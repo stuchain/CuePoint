@@ -44,7 +44,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Dict
 
 import pytest
 
@@ -62,24 +61,14 @@ from cuepoint.models.file_status import (
     FILE_PRESENT,
     TrackFileStatus,
 )
-from cuepoint.models.library_source import source_for_import
 from cuepoint.models.rekordbox_playlist import KIND_PLAYLIST
-from cuepoint.models.library_track import LibraryTrack, utc_now_iso
+from cuepoint.models.library_track import utc_now_iso
 from cuepoint.models.rekordbox_export_values import (
     EXPORT_VALUE_COLUMNS,
     ExportTrackValues,
 )
-from cuepoint.persistence.activity_repository import ActivityRepository
-from cuepoint.persistence.collection_repository import CollectionRepository
-from cuepoint.persistence.file_status_repository import FileStatusRepository
-from cuepoint.persistence.library_source_repository import LibrarySourceRepository
-from cuepoint.persistence.track_metadata_repository import TrackMetadataRepository
 from cuepoint.persistence.track_query import JOINS
 from cuepoint.persistence.track_repository import TrackRepository
-from cuepoint.services.activity_service import ActivityService
-from cuepoint.services.collection_service import CollectionService
-from cuepoint.services.database_service import DatabaseService
-from cuepoint.services.migration_runner import MigrationRunner
 from cuepoint.services.rekordbox_export_service import (
     DEFAULT_KEY_FORMAT,
     SIGNAL_MODIFIED,
@@ -90,186 +79,13 @@ from cuepoint.services.rekordbox_export_service import (
     SOURCE_REFUSALS,
     SOURCE_UNREADABLE,
     ExportSourceError,
-    RekordboxExportService,
 )
 from cuepoint.services.tag_write_options import KEY_FORMATS
 from cuepoint.services.tag_write_service import key_text
 
+from .library import SOURCE
+
 pytestmark = pytest.mark.unit
-
-
-# --------------------------------------------------------------------- fixtures
-
-
-#: A source whose values are exactly what the library holds, so that a preview
-#: over it reports nothing changed unless a test changes something. Track 99 is
-#: in the file and not in the library; the library's fourth track is in the
-#: library and not in the file. Those two are DEC-082's counts.
-SOURCE = b"""<?xml version="1.0" encoding="UTF-8"?>
-<DJ_PLAYLISTS Version="1.0.0">
-  <COLLECTION Entries="4">
-    <TRACK TrackID="1" Name="One" Artist="A" Tonality="Am" AverageBpm="128.00"\
- Genre="Techno" Label="Drumcode" Year="2019" Rating="102"\
- Location="file://localhost/C:/Music/one.mp3">
-      <TEMPO Inizio="0.025" Bpm="128.00" Metro="4/4" Battito="1"/>
-      <POSITION_MARK Name="Intro" Type="0" Start="0.025" Num="-1"/>
-    </TRACK>
-    <TRACK TrackID="2" Name="Two" Artist="B" Tonality="F#m" AverageBpm="124.00"\
- Genre="House" Label="Defected" Year="2021" Rating="0"/>
-    <TRACK TrackID="3" Name="Three" Artist="C" Tonality="Gm" AverageBpm="90.00"/>
-    <TRACK TrackID="99" Name="Stranger" Artist="Nobody" Tonality="Dm"/>
-  </COLLECTION>
-  <PLAYLISTS>
-    <NODE Type="0" Name="ROOT" Count="0"/>
-  </PLAYLISTS>
-</DJ_PLAYLISTS>
-"""
-
-#: What the library holds, matching the file track for track and value for value.
-LIBRARY = (
-    dict(
-        rekordbox_track_id="1",
-        file_path="/m/one.mp3",
-        title="One",
-        artist="A",
-        key="Am",
-        bpm=128.0,
-        genre="Techno",
-        label="Drumcode",
-        year=2019,
-        rating=2,
-    ),
-    dict(
-        rekordbox_track_id="2",
-        file_path="/m/two.mp3",
-        title="Two",
-        artist="B",
-        key="F#m",
-        bpm=124.0,
-        genre="House",
-        label="Defected",
-        year=2021,
-        rating=0,
-    ),
-    dict(
-        rekordbox_track_id="3",
-        file_path="/m/three.mp3",
-        title="Three",
-        artist="C",
-        key="Gm",
-        bpm=90.0,
-    ),
-    dict(
-        rekordbox_track_id="4",
-        file_path="/m/four.mp3",
-        title="Four",
-        artist="D",
-        key="Cm",
-        bpm=140.0,
-    ),
-)
-
-
-@pytest.fixture()
-def db(tmp_path: Path):
-    service = DatabaseService(db_path=tmp_path / "cuepoint.db")
-    MigrationRunner(service).migrate()
-    yield service
-    service.close_all()
-
-
-@pytest.fixture()
-def source(tmp_path: Path) -> Path:
-    path = tmp_path / "collection.xml"
-    path.write_bytes(SOURCE)
-    return path
-
-
-@pytest.fixture()
-def tracks(db) -> TrackRepository:
-    repo = TrackRepository(db)
-    repo.add_many([LibraryTrack(**values) for values in LIBRARY])
-    return repo
-
-
-@pytest.fixture()
-def ids(db, tracks) -> Dict[str, int]:
-    """Rekordbox track id to the library id, which the Collections point at."""
-    rows = db.connect().execute("SELECT id, rekordbox_track_id FROM tracks ORDER BY id")
-    return {str(row["rekordbox_track_id"]): int(row["id"]) for row in rows}
-
-
-@pytest.fixture()
-def metadata(db, tracks) -> TrackMetadataRepository:
-    return TrackMetadataRepository(db)
-
-
-@pytest.fixture()
-def files(db, tracks) -> FileStatusRepository:
-    return FileStatusRepository(db)
-
-
-@pytest.fixture()
-def sources(db, source: Path) -> LibrarySourceRepository:
-    repo = LibrarySourceRepository(db)
-    repo.replace(source_for_import(str(source), utc_now_iso(), len(LIBRARY), 0))
-    return repo
-
-
-@pytest.fixture()
-def collections(db, tracks) -> CollectionRepository:
-    return CollectionRepository(db)
-
-
-@pytest.fixture()
-def collection_service(db, collections, tracks) -> CollectionService:
-    return CollectionService(
-        collections, db, tracks, ActivityService(ActivityRepository(db), tracks)
-    )
-
-
-@pytest.fixture()
-def service(
-    tracks, collections, collection_service, sources, files
-) -> RekordboxExportService:
-    return RekordboxExportService(
-        track_repository=tracks,
-        collection_repository=collections,
-        collection_service=collection_service,
-        library_source_repository=sources,
-        file_status_repository=files,
-    )
-
-
-@pytest.fixture()
-def tree(collection_service, collections, ids) -> Dict[str, int]:
-    """A filing a user might really have, three levels deep.
-
-    Gigs/Saturday and Gigs/2026/Summer hold tracks; Archive/Old is filed
-    elsewhere and Loose sits at the top level, so a test can prove that choosing
-    one folder brings exactly what is under it.
-    """
-    gigs = collection_service.create_folder("Gigs")
-    saturday = collection_service.create_collection("Saturday", gigs.id)
-    year = collection_service.create_folder("2026", gigs.id)
-    summer = collection_service.create_collection("Summer", year.id)
-    archive = collection_service.create_folder("Archive")
-    old = collection_service.create_collection("Old", archive.id)
-    loose = collection_service.create_collection("Loose")
-
-    collection_service.add_tracks(saturday.id, [ids["1"], ids["2"]])
-    collection_service.add_tracks(summer.id, [ids["3"]])
-    collection_service.add_tracks(old.id, [ids["1"]])
-    collection_service.add_tracks(loose.id, [ids["2"]])
-    return {
-        "gigs": int(gigs.id),
-        "saturday": int(saturday.id),
-        "2026": int(year.id),
-        "summer": int(summer.id),
-        "archive": int(archive.id),
-        "old": int(old.id),
-        "loose": int(loose.id),
-    }
 
 
 def paths_of(preview) -> list:
@@ -1660,13 +1476,13 @@ class TestThePlanIsWhatTheWriteNeeds:
 
 @pytest.mark.unit
 class TestNothingReachesItYet:
-    def test_no_route_or_job_names_the_preview_yet(self):
-        """EXPORT-06 puts it on the wire and EXPORT-07 draws it. Until then a
-        caller appearing by accident is worth failing on rather than reviewing
-        for."""
+    def test_no_route_names_the_service_yet(self):
+        """EXPORT-05's job is its one caller; EXPORT-06 puts it on the wire and
+        EXPORT-07 draws it. Until then a caller appearing by accident is worth
+        failing on rather than reviewing for."""
         import re
 
-        package = Path(__file__).resolve().parents[3] / "cuepoint"
+        package = Path(__file__).resolve().parents[4] / "cuepoint"
         named = re.compile(r"\bI?RekordboxExportService\b")
         callers = sorted(
             path.relative_to(package).as_posix()
@@ -1675,6 +1491,7 @@ class TestNothingReachesItYet:
         )
 
         assert callers == [
+            "engine/rekordbox_export_jobs.py",
             "services/bootstrap.py",
             "services/interfaces.py",
             "services/rekordbox_export_service.py",

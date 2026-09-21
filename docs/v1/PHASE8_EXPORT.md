@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 8: Rekordbox Export, Detailed Step Specifications
 
-Status: **EXPORT-01…EXPORT-04 implemented; EXPORT-05…EXPORT-07 specified.**
+Status: **EXPORT-01…EXPORT-05 implemented; EXPORT-06 and EXPORT-07 specified.**
 The seven steps below replace the roadmap's placeholder inventory (EXPORT-01…EXPORT-08, which
 Round 10's answers came in one under).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -868,7 +868,7 @@ they were.
 
 ---
 
-## EXPORT-05 — The Export Job
+## EXPORT-05 — The Export Job ✅ IMPLEMENTED 2026-09-21
 
 **Objective**: Run an export as a cancellable background job that writes the file, records what it
 wrote, and raises an activity event.
@@ -925,6 +925,131 @@ is written is the phase's plausible out-of-memory, and EXPORT-01's choice of mec
 Measure rather than assume.
 
 **Complexity**: **M**
+
+**Outcome**: Complete. `engine/rekordbox_export_jobs.py::start_rekordbox_export` validates on the
+calling thread and starts a `rekordbox_export` job; `RekordboxExportService.export` writes the file
+and records how it ended; `persistence/rekordbox_export_repository.py` is the first and only code to
+touch EXPORT-03's two tables, and a test now pins it as the only one. Every export that gets past
+validation ends in exactly one row — `written` with its playlists and one `rekordbox.exported`
+activity event, `cancelled` or `failed` with neither — and the job's state, error and result say the
+same thing as the row.
+
+**The row is EXPORT-04's report, recorded.** `export` builds the same `ExportPlan` the preview
+builds, hands it to `patch_collection_xml` instead of `plan_collection_xml`, and turns the result
+into numbers through the same `report`. So the anti-drift property from the other side is not a
+second comparison: the job's result carries the report, and a test asserts it equals the preview of
+the same scope and that every count on the row is the report's.
+
+**Two phases of progress and three places to stop, in the writer.** `patch_collection_xml` and
+`plan_collection_xml` gained `on_progress(phase, done, total)` and `should_cancel()`. Tracks are
+reported every 1,000 and at both ends; playlists one by one. A stop is asked between every track,
+between every playlist, and once more after the temp file is written and before it replaces anything
+— the last moment it can be honoured, because afterwards the file is the user's. A stop raises
+`ExportCancelled`, which is deliberately not a `ValidationError`, and in every case the destination
+is left as it was and the temp file is removed. The one thing not interruptible is expat's parse
+itself, about a second at 50,000 tracks. The job samples the ticks every 0.1 s as every job does,
+except that each phase's first and last always get through.
+
+**Six decisions taken while implementing.**
+
+1. **The export joins `LIBRARY_JOB_TYPES`, and conflicts with nothing else.** The specification's
+   list — "library_import", "match", "tag_write", "batch" — named job types loosely ("match" is the
+   retired inKey type) and was one-directional: `create_job` checks only the new job's list, so an
+   import started *during* an export would not have been refused. Joining the group makes the
+   refusal run both ways with no new mechanism, and it covers exactly the jobs that change what an
+   export reads: import, both halves of a refresh, and batch edits and reverts. A match records
+   attempts and applies no values, a tag write changes audio files and its own record, and a file
+   check's count is read once and recorded as what the last check found; none of them conflict, and
+   a test proves a match and an export run side by side.
+2. **Refusals happen before a job exists.** `validate` checks the notation, the source, the
+   destination, every chosen node, and that every chosen Smart Collection's rules can run —
+   everything that can be known cheaply. So the specification's "a refusal is a typed error, not an
+   exception in a log" holds literally: the caller gets `ExportDestinationError` or
+   `ExportSourceError` with a reason and the path, and no job, row or event exists. The job
+   validates again as it starts, because the source can go in between; a refusal there fails the job
+   with the refusal's own code and still records no row.
+3. **The destination must end in `.xml`, must not be a folder, and must be in a folder that
+   exists.** DEC-083 refused only the source. A destination ending `.mp3` would have replaced
+   somebody's audio file with a Rekordbox collection, which DEC-085 says this phase never does — so
+   DEC-085 is now held at the destination too. The other two are paths a save dialog cannot produce,
+   and creating folders nobody chose is not an export's business; the writer's own `mkdir` stays for
+   its existing callers, and the service refuses before reaching it. Recorded in DEC-083.
+4. **A row's counts are what was written.** A cancelled or failed export records zero changed
+   tracks, no fields and no playlist rows, qualified by its outcome; staleness, notation and the
+   missing-file count are facts about the moment and are recorded whatever happened. The alternative
+   — the plan's numbers on a row that wrote nothing — would describe a file that does not exist.
+   Recorded in DEC-086.
+5. **The row, its playlists and its event are one transaction, after the `replace`.** So the row
+   never claims a file that is not there. The reverse is possible and is not hidden: if the database
+   refuses the row after the file is written, the job fails with the reason and the file stays,
+   because it is the user's and deleting it would be a second, worse mistake. A test makes the
+   activity write refuse after the file is in place and asserts that neither the row nor its
+   playlists survive while the file does.
+6. **The destination is recorded absolute.** A relative path meant something only relative to the
+   engine's working directory; the row records where the file actually went.
+
+**Also in this step.** The status strip names the job "Exporting to Rekordbox" rather than falling
+through to "Working" — the specification's user-visible result is "a job in the status strip", and
+"Exporting" alone would read as the CSV export. `test_file_write_boundary.py` gains the service as
+the second and last module allowed to reach the writer, which its own comment had reserved for this
+step, and `test_persistence_boundary.py` lists the service beside the other services that open a
+transaction and run no SQL — the full unit run caught that on its first pass. The service's tests
+moved into `services/rekordbox_export/` with a `conftest.py`, so the preview's and the export's
+tests share one library by fixture rather than by importing one test module into another.
+
+**Measured**, on a 20.8 MiB source of 50,000 tracks with 100,000 position marks and 50,000 tempo
+elements, a library of 50,000 tracks with 10,000 genre overrides, and 21 playlists holding 35,000
+entries, each export in a process of its own so the peak is the export's: **3.12 s and a peak
+working set of 161 MiB** (46 MiB before it started), writing 21.9 MiB. In Camelot, where all 50,000
+keys are rewritten, 6.18 s and 181 MiB. The risk this step named — a document held as a tree while a
+second is written — does not arise: EXPORT-01's byte splice holds the source once, the splices and
+the output once, and no tree at all.
+
+**Tests**: 115 new. `test_rekordbox_export_progress.py` (19) covers the two phases and the three
+stopping points against a previous export already at the destination.
+`rekordbox_export/test_rekordbox_export_write.py` (57) covers the specification's list — a full
+export writing the file, one row, its playlists and one event; a cancel leaving no file, no temp
+file, a `cancelled` row and no event; the source refused by its own path, a relative path, a `..`, a
+different case on Windows and a symlink; a failure mid-write recorded with its reason and the
+destination untouched; and the row's numbers equal to the preview's — and beyond it: every other
+destination refusal, every other refusal recording nothing, a Smart Collection's row keeping its
+rules, cue points and grid surviving, a cancel at each stopping point, a failure with no message
+still saying what it was, and the row and the event rolling back together.
+`test_rekordbox_export_repository.py` (16) covers the reads and the transaction.
+`engine/test_rekordbox_export_jobs.py` (23) runs real job threads over a library a real import job
+imported: refusals that never become jobs, two exports refused, an import and a batch refused during
+an export and an export refused during an import or a refresh, a match not held up, and cancel,
+failure and an unexpected error each ending job and row in agreement. The symlink case skips on a
+Windows account without the privilege to make one; EXPORT-01's comparison it relies on is tested
+there.
+
+**Thirty-five mutations were introduced deliberately to prove the tests bite, and all thirty-five
+failed the suite**: each of the three stopping points removed, the tracks phase never reported
+finished, folders counted as playlists, the temp file left behind, every destination refusal removed
+in turn and the suffix compared case-sensitively, the destination recorded as given, a cancel
+recorded as a failure, a failure recorded without its reason, no playlist rows, a smart row without
+its rules, every field recorded rather than the changed ones, staleness and the missing count
+dropped from a written row, the row written outside the transaction, an unknown node and broken
+rules left for the job to find, repeated ids kept, the stop before the walk removed, a cancelled row
+counting tracks it did not write, the latest export chosen whatever its outcome, history oldest
+first, the export conflicting with nothing, the export left out of the library group, validation
+skipped at start, a cancel and a failure each reported as success, a cancel never passed on, and a
+phase's last tick sampled away.
+
+**Checks run**: the full `src/tests/unit` (7,261 passed, 47 skipped — 7,147 as EXPORT-04 left it
+plus 114 new, the 115th being the symlink case, which skips), `src/tests/integration
+src/tests/regression src/tests/acceptance -m "not slow"` (368 passed, 19 skipped), the renderer's
+`npm test` (2,577 passed), `npm run typecheck` and `npm run lint` (exit 0; its three warnings are in
+files this step does not touch), `ruff check src/`, `ruff format --check src/`, `python
+scripts/check_no_qt_in_core.py`, `git diff --check`, and the mypy gates with the job module added to
+`GUARDED`. `mypy` reports nothing new: the six findings in `library_refresh.py`, which this step
+touched only to add one member to a tuple, are the same six at HEAD.
+
+**Not done here, deliberately**: no CHANGELOG entry, for EXPORT-01's reason — nothing a user can do
+starts an export until EXPORT-06 puts it on the wire and EXPORT-07 draws it. And a process killed in
+the middle of the write can leave one `cuepoint_export_*.xml` temp file in the chosen folder, since
+nothing survives to delete it; the job record is closed out as interrupted at the next start, as
+every job's is, and no row is written.
 
 ---
 

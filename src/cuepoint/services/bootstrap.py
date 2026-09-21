@@ -40,6 +40,7 @@ from cuepoint.services.interfaces import (
     IArtworkService,
     IFileWriteRepository,
     IHealthService,
+    IRekordboxExportRepository,
     IRekordboxExportService,
     IReviewExportService,
     ITagWriteService,
@@ -82,6 +83,9 @@ from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.authored_data_repository import AuthoredDataRepository
 from cuepoint.persistence.artwork_repository import ArtworkRepository
 from cuepoint.persistence.file_write_repository import FileWriteRepository
+from cuepoint.persistence.rekordbox_export_repository import (
+    RekordboxExportRepository,
+)
 from cuepoint.services.tag_write_service import TagWriteService
 from cuepoint.persistence.duplicate_repository import DuplicateRepository
 from cuepoint.persistence.file_status_repository import FileStatusRepository
@@ -548,12 +552,23 @@ def bootstrap_services() -> None:
 
     container.register_factory(ITagWriteService, create_tag_write_service)
 
-    # What a Rekordbox export would write (EXPORT-04, DEC-084). Five reads and
-    # no writes: the source file and its recorded state, both value layers for
+    # The Rekordbox export (EXPORT-04, EXPORT-05, DEC-084). Five reads make the
+    # preview: the source file and its recorded state, both value layers for
     # every track, CuePoint's tree with each Collection's own order, a Smart
     # Collection resolved live through the service that owns that rule, and what
-    # the last file check found. EXPORT-05's job will take the same plan and
-    # write it, which is what keeps the preview and the result one accounting.
+    # the last file check found. The export walks the same plan and writes it,
+    # which is what keeps the preview and the result one accounting, then
+    # records the row (DEC-086) and the event (DEC-029) in one transaction.
+    def create_rekordbox_export_repository() -> IRekordboxExportRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return RekordboxExportRepository(
+            database_service=container.resolve(IDatabaseService)
+        )
+
+    container.register_factory(
+        IRekordboxExportRepository, create_rekordbox_export_repository
+    )
+
     def create_rekordbox_export_service() -> IRekordboxExportService:
         return RekordboxExportService(
             track_repository=container.resolve(ITrackRepository),
@@ -561,6 +576,9 @@ def bootstrap_services() -> None:
             collection_service=container.resolve(ICollectionService),
             library_source_repository=container.resolve(ILibrarySourceRepository),
             file_status_repository=container.resolve(IFileStatusRepository),
+            export_repository=container.resolve(IRekordboxExportRepository),
+            activity_service=container.resolve(IActivityService),
+            database_service=container.resolve(IDatabaseService),
         )
 
     container.register_factory(IRekordboxExportService, create_rekordbox_export_service)

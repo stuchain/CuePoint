@@ -2639,6 +2639,13 @@ timestamped names never overwrites anything but grows without bound somewhere th
   where Settings keeps the rest.
 - The write keeps `write_updated_collection_xml`'s temp-file-then-`replace` pattern, so an interrupted
   export cannot leave a half-written document at the destination.
+- **The source is not the only destination refused** (added 2026-09-21 with EXPORT-05). The path
+  must end in `.xml`, must not be a folder, and must be in a folder that already exists. The first
+  is DEC-085 held at the destination: the one file this phase writes is an XML document, and a path
+  ending `.mp3` would otherwise replace somebody's audio file with a Rekordbox collection. The other
+  two close paths a save dialog cannot produce, so one that names them came from somewhere else, and
+  creating folders on a user's disk nobody chose is not an export's business. Each refusal has its
+  own reason, and all of them happen before anything is parsed.
 
 **Decided with**: User · **Date**: 2026-09-20
 
@@ -2750,6 +2757,21 @@ it.
   child table on a parent delete unless the referencing column is indexed, and that index is also
   how every reader asks an export for its playlists. Nothing else here is indexed, because "the most
   recent export" is already the last rowid.
+
+**Amended 2026-09-21 (precision, found while writing the rows in EXPORT-05 — the decision above is
+unchanged)**: what a row says when the export did not write.
+
+- **A row's counts are what was written.** "Records what CuePoint wrote" is taken literally: a
+  cancelled or failed export records zero changed tracks, no fields and no playlist rows, and its
+  `outcome` is what qualifies the zeros — they mean nothing was written, not that nothing was in
+  scope. The source's staleness, the key notation and the missing-file count are facts about the
+  moment rather than about the file, so every row records them whatever the outcome.
+- **A refusal is not an export and records nothing.** A destination that is the source, a library
+  never imported, an unknown notation or a Smart Collection whose rules cannot run is refused before
+  a job exists; one row per export means one row per export that was attempted.
+- **"The most recent export" is the most recent one that wrote.** DEC-083 pre-fills the next save
+  dialog's folder from it, and a cancelled or failed export's destination is somewhere nothing was
+  written.
 
 **Decided with**: User · **Date**: 2026-09-20
 

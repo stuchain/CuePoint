@@ -88,9 +88,12 @@ ALLOWED_IMPORTERS: Dict[str, Set[str]] = {
     # EXPORT-01 removed this module's writers, so nothing reaches one.
     "cuepoint.data.rekordbox": set(),
     "cuepoint.data.rekordbox_export": {
-        # The package re-exports the patch. EXPORT-05's job will be the second
-        # entry here, and nothing else should be.
+        # The package re-exports the patch.
         "src/cuepoint/data/__init__.py",
+        # EXPORT-05's export, the one caller that writes: an XML at a
+        # destination a person chose, validated to end in .xml and never to be
+        # the source (DEC-083, DEC-085). Nothing else should join it.
+        "src/cuepoint/services/rekordbox_export_service.py",
     },
 }
 

@@ -1214,14 +1214,12 @@ class TestUpgradingAVersionNineteenLibrary:
 
 
 @pytest.mark.unit
-class TestNothingReadsThemYet:
-    """EXPORT-03's DoD: the schema lands, and no service touches it.
+class TestOneModuleRunsTheirSQL:
+    """EXPORT-03 landed the schema with nothing touching it; EXPORT-05 gave it
+    its one reader and writer. All SQL for these tables lives in that
+    repository, and a query anywhere else is a second copy of it."""
 
-    EXPORT-05 is what writes these rows. Until then a query against either
-    table is code that got ahead of its step, and this is where that shows.
-    """
-
-    def test_no_module_runs_sql_against_either_table(self):
+    def test_only_the_repository_runs_sql_against_either_table(self):
         package = Path(__file__).resolve().parents[3] / "cuepoint"
         statement = re.compile(
             r"\b(FROM|INTO|UPDATE|JOIN|DELETE\s+FROM)\s+(rekordbox_exports"
@@ -1233,5 +1231,5 @@ class TestNothingReadsThemYet:
             if path.name == "m0020_rekordbox_exports.py":
                 continue
             if statement.search(path.read_text(encoding="utf-8")):
-                offenders.append(str(path.relative_to(package)))
-        assert offenders == []
+                offenders.append(path.relative_to(package).as_posix())
+        assert offenders == ["persistence/rekordbox_export_repository.py"]

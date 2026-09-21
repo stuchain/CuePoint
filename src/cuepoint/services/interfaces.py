@@ -63,7 +63,16 @@ if TYPE_CHECKING:
     from cuepoint.models.track_metadata import TrackMetadata
     from cuepoint.models.track_clean_state import TrackCleanState
     from cuepoint.models.rekordbox_export_values import ExportTrackValues
-    from cuepoint.services.rekordbox_export_service import ExportPlan, ExportPreview
+    from cuepoint.services.rekordbox_export_service import (
+        ExportPlan,
+        ExportPreview,
+        ExportRequest,
+        ExportResult,
+    )
+    from cuepoint.models.rekordbox_export import (
+        RekordboxExport,
+        RekordboxExportPlaylist,
+    )
     from cuepoint.services.health_service import HealthReport
     from cuepoint.services.review_export_service import ReviewExport
     from cuepoint.persistence.authored_data_repository import AuthoredTracks
@@ -321,9 +330,11 @@ class IRekordboxExportService(ABC):
     """Interface for what a Rekordbox export would write (EXPORT-04, DEC-084).
 
     Not :class:`IExportService`, which is the CSV, JSON and Excel one reached
-    from Settings. Nothing declared here writes anything: the preview is
-    computed by walking the patch itself with the serialization skipped, and
-    EXPORT-05's job is what writes.
+    from Settings. The preview is computed by walking the patch itself with the
+    serialization skipped, and :meth:`export` is the same walk with it kept. That
+    is the one method here that writes, and it writes one file: the XML at the
+    destination a person chose, never the source and never an audio file
+    (DEC-083, DEC-085).
 
     ``key_format`` carries no default on purpose. The vocabulary and its default
     live in ``services/tag_write_options.py`` (DEC-089), and an interface that
@@ -341,6 +352,72 @@ class IRekordboxExportService(ABC):
         self, collection_ids: Sequence[int], key_format: str
     ) -> "ExportPreview":
         """Return what that export would do, before it is asked to do it."""
+        ...
+
+    @abstractmethod
+    def validate(
+        self, collection_ids: Sequence[int], key_format: str, destination_path: str
+    ) -> "ExportRequest":
+        """Refuse, with a typed reason, an export that cannot run (EXPORT-05)."""
+        ...
+
+    @abstractmethod
+    def export(
+        self,
+        collection_ids: Sequence[int],
+        key_format: str,
+        destination_path: str,
+        *,
+        job_id: Optional[str] = None,
+        on_progress: Optional[Callable[[str, int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "ExportResult":
+        """Write the export and record how it ended, whatever that was (EXPORT-05)."""
+        ...
+
+
+class IRekordboxExportRepository(ABC):
+    """Interface for the record of each Rekordbox export (EXPORT-05, DEC-086).
+
+    One row per export and one per playlist it wrote. Written once, when an
+    export ends, and never updated or deleted.
+    """
+
+    @abstractmethod
+    def add(self, export: "RekordboxExport") -> "RekordboxExport":
+        """Record one export and return it with its id."""
+        ...
+
+    @abstractmethod
+    def add_playlists(
+        self, playlists: Sequence["RekordboxExportPlaylist"]
+    ) -> List["RekordboxExportPlaylist"]:
+        """Record the playlists an export wrote, and return them with ids."""
+        ...
+
+    @abstractmethod
+    def get(self, export_id: int) -> Optional["RekordboxExport"]:
+        """Return one export, or None."""
+        ...
+
+    @abstractmethod
+    def for_job(self, job_id: str) -> Optional["RekordboxExport"]:
+        """Return the export a job recorded, or None."""
+        ...
+
+    @abstractmethod
+    def playlists_for(self, export_id: int) -> List["RekordboxExportPlaylist"]:
+        """Return the playlists an export wrote, in order."""
+        ...
+
+    @abstractmethod
+    def recent(self, limit: int = 20) -> List["RekordboxExport"]:
+        """Return the newest exports first, whatever their outcome."""
+        ...
+
+    @abstractmethod
+    def latest_written(self) -> Optional["RekordboxExport"]:
+        """Return the most recent export that wrote its file (DEC-083), or None."""
         ...
 
 

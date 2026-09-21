@@ -65,6 +65,12 @@ describe("jobLabel", () => {
     expect(jobLabel(job({ type: "tag_restore" }))).toBe("Restoring tags 3/10");
   });
 
+  it("names the Rekordbox export apart from the other exports (EXPORT-05)", () => {
+    expect(jobLabel(job({ type: "rekordbox_export" }))).toBe(
+      "Exporting to Rekordbox 3/10",
+    );
+  });
+
   it("has no verb for inKey's retired file-based match (CLEAN-14)", () => {
     // No build since CLEAN-14 starts one, and the strip shows only active
     // jobs, which a restart closes out.

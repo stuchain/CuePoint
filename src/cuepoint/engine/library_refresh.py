@@ -47,6 +47,7 @@ from cuepoint.compat.gui_types import ProgressInfo
 from cuepoint.engine.batch_jobs import JOB_TYPE_LIBRARY_BATCH
 from cuepoint.engine.jobs import Job, JobState, JobStore, _ensure_services
 from cuepoint.engine.library_jobs import JOB_TYPE_LIBRARY_IMPORT
+from cuepoint.engine.rekordbox_export_jobs import JOB_TYPE_REKORDBOX_EXPORT
 from cuepoint.exceptions.cuepoint_exceptions import CuePointException
 from cuepoint.models.library_source import describe_file
 from cuepoint.models.library_track import utc_now_iso
@@ -73,11 +74,18 @@ JOB_TYPE_LIBRARY_REFRESH_APPLY = "library_refresh_apply"
 #: collide with an import the way an import collides with itself — but it acts
 #: on an id set resolved once, and a refresh deleting some of those tracks
 #: underneath it turns its counts into a report of who won a race.
+#:
+#: EXPORT-05's Rekordbox export joined for the preview's reason, from the other
+#: side: it reads the whole library as one snapshot and writes it into a file, and
+#: a refresh or a batch landing half way through would produce a file matching
+#: neither state. Being in the group is what makes the refusal run both ways —
+#: an import started during an export is refused, not only the reverse.
 LIBRARY_JOB_TYPES: Tuple[str, ...] = (
     JOB_TYPE_LIBRARY_IMPORT,
     JOB_TYPE_LIBRARY_REFRESH_PREVIEW,
     JOB_TYPE_LIBRARY_REFRESH_APPLY,
     JOB_TYPE_LIBRARY_BATCH,
+    JOB_TYPE_REKORDBOX_EXPORT,
 )
 
 #: How many previews are remembered. Small on purpose: a user previews, looks,

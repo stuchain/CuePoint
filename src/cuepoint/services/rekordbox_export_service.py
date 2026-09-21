@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""What an export would write, computed rather than estimated (EXPORT-04).
+"""What an export would write, and then writing it (EXPORT-04, EXPORT-05).
 
 The Rekordbox export — not ``export_service.py``, which is the CSV, JSON and
 Excel one reached from Settings. Nothing in this module is named so that the two
 can be confused, and the phase's own rule says a reviewer should never have to
 open a file to learn which export it is.
 
-This step is the preview: one call that answers, for a chosen set of Collections
-and the file the library came from, exactly what an export would do. It writes
-nothing, and the job that will write is EXPORT-05.
+Two calls. :meth:`RekordboxExportService.preview` answers, for a chosen set of
+Collections and the file the library came from, exactly what an export would do,
+and writes nothing. :meth:`RekordboxExportService.export` does it: one file at a
+destination a person chose, then one row recording how it ended and, when it
+wrote, one activity event.
 
 Why a plan, and then a preview of it
 ------------------------------------
@@ -21,8 +23,10 @@ preview does not know about. So the shape here is deliberate:
 effective values per track, the playlist tree resolved to track ids, the source
 and its staleness — and :meth:`RekordboxExportService.preview` hands that plan to
 ``plan_collection_xml``, which is ``patch_collection_xml`` with the write left
-out. EXPORT-05 will hand the same plan to the patch itself. There is no second
-accounting to keep in step, and a test asserts the two report the same numbers.
+out. :meth:`RekordboxExportService.export` hands the same plan to the patch
+itself and reports through the same :meth:`RekordboxExportService.report`. There
+is no second accounting to keep in step, and a test asserts the two report the
+same numbers.
 
 The two layers are resolved once, in Python
 -------------------------------------------
@@ -42,35 +46,78 @@ mtime is a hard block on a routine action, and the counts that follow — tracks
 the file holds that CuePoint does not know, tracks CuePoint knows the file lacks,
 references dropped from each playlist — are what make the consequence legible
 before anything is written.
+
+Where the export may write
+--------------------------
+DEC-083 refuses the source as a destination, and :meth:`validate` enforces that
+before anything is parsed, through the same comparison the writer makes: resolved
+and case-folded, so a relative path, a trailing separator, a case difference on
+Windows or a symlink cannot defeat it. Three more refusals stand beside it, each
+closing a way a path could reach something it should not. The destination must
+end in ``.xml``, because the one file this phase writes is an XML document and a
+path ending ``.mp3`` would otherwise replace somebody's audio file — DEC-085 made
+a rule the destination is held to as well. It must not be a folder. And its
+folder must already exist: a save dialog cannot produce one that does not, so a
+path that names one came from somewhere else, and creating directories on a
+user's disk that nobody chose is not an export's business.
+
+How an export ends, and what is recorded
+----------------------------------------
+Every export that gets past :meth:`validate` ends in exactly one row: ``written``
+with its playlists and an activity event, ``cancelled`` or ``failed`` with
+neither. A refusal records nothing, because nothing was attempted. The counts
+on a row are what was *written* (DEC-086 records what CuePoint wrote), so a
+cancelled or failed export records zero changed tracks and no fields, and its
+outcome is what qualifies the zeros. The source's staleness and the library's
+missing-file count are facts about the moment rather than about the file, and a
+row records them whatever the outcome.
 """
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from cuepoint.data.rekordbox_export import (
     EXPORT_FIELDS,
+    PHASE_TRACKS,
+    ExportCancelled,
     ExportFolder,
     ExportNode,
     ExportPlaylist,
     PatchResult,
     PlaylistResult,
     TrackExportValues,
+    patch_collection_xml,
     plan_collection_xml,
+    refuse_source_as_destination,
 )
 from cuepoint.exceptions.cuepoint_exceptions import ValidationError
 from cuepoint.models.collection import Collection
+from cuepoint.models.library_track import utc_now_iso
+from cuepoint.models.rekordbox_export import (
+    EXPORT_CANCELLED,
+    EXPORT_FAILED,
+    EXPORT_WRITTEN,
+    RekordboxExport,
+    RekordboxExportPlaylist,
+)
 from cuepoint.models.rekordbox_export_values import ExportTrackValues
 from cuepoint.models.library_source import LibrarySource, describe_file
 from cuepoint.models.row_values import one_of
 from cuepoint.services.interfaces import (
+    IActivityService,
     ICollectionRepository,
     ICollectionService,
+    IDatabaseService,
     IFileStatusRepository,
     ILibrarySourceRepository,
+    IRekordboxExportRepository,
     IRekordboxExportService,
     ITrackRepository,
 )
@@ -91,6 +138,30 @@ SOURCE_REFUSALS = (SOURCE_NEVER_IMPORTED, SOURCE_MISSING, SOURCE_UNREADABLE)
 SIGNAL_MODIFIED = "mtime"
 SIGNAL_SIZE = "size"
 
+#: Why a destination cannot be written to (DEC-083, DEC-085).
+DESTINATION_BLANK = "destination_blank"
+DESTINATION_IS_SOURCE = "destination_is_source"
+DESTINATION_NOT_XML = "destination_not_xml"
+DESTINATION_IS_FOLDER = "destination_is_folder"
+DESTINATION_FOLDER_MISSING = "destination_folder_missing"
+DESTINATION_REFUSALS = (
+    DESTINATION_BLANK,
+    DESTINATION_IS_SOURCE,
+    DESTINATION_NOT_XML,
+    DESTINATION_IS_FOLDER,
+    DESTINATION_FOLDER_MISSING,
+)
+
+#: The one kind of file an export writes.
+EXPORT_SUFFIX = ".xml"
+
+#: The activity event a written export records (DEC-029, DEC-084). One per
+#: export, carrying the destination and the counts; none for a cancel or a
+#: failure, which the export row and the job record already say.
+EVENT_REKORDBOX_EXPORTED = "rekordbox.exported"
+
+_logger = logging.getLogger(__name__)
+
 #: Ids per query while a Smart Collection's membership is read. ``browse_ids``
 #: caps one request, so this is not an optimization: it is what keeps a Smart
 #: Collection over a library larger than one page exporting all of its tracks
@@ -109,6 +180,21 @@ class ExportSourceError(ValidationError):
 
     def __init__(self, reason: str, message: str, path: Optional[str] = None) -> None:
         """Record which refusal this is, and which file it is about."""
+        super().__init__(message, error_code=reason, context={"path": path})
+        self.reason = reason
+        self.path = path
+
+
+class ExportDestinationError(ValidationError):
+    """The destination cannot be written to, with the reason and the path.
+
+    Raised before anything is parsed, so a refused export costs nothing and
+    records nothing. A :class:`ValidationError` for the same reason
+    :class:`ExportSourceError` is one.
+    """
+
+    def __init__(self, reason: str, message: str, path: Optional[str] = None) -> None:
+        """Record which refusal this is, and which path it is about."""
         super().__init__(message, error_code=reason, context={"path": path})
         self.reason = reason
         self.path = path
@@ -318,8 +404,99 @@ class ExportPlan:
     missing_file_count: Optional[int] = None
 
 
+@dataclass(frozen=True)
+class ExportRequest:
+    """An export that :meth:`RekordboxExportService.validate` accepted.
+
+    Attributes:
+        collection_ids: The chosen nodes, each once, in the order first named.
+        key_format: One of ``KEY_FORMATS``.
+        destination_path: Absolute, as the file will be written and recorded.
+        source_path: The file it patches.
+    """
+
+    collection_ids: Tuple[int, ...]
+    key_format: str
+    destination_path: str
+    source_path: str
+
+
+@dataclass(frozen=True)
+class ExportResult:
+    """How one export ended, with the row that records it.
+
+    Attributes:
+        record: The export row, with its id.
+        playlists: The playlist rows, for a written export; empty otherwise.
+        report: The numbers the export produced, for a written export — the
+            same type and the same translation the preview uses, which is what
+            lets a test hold the two side by side — and it carries the count per
+            field, which the row keeps only the names of. ``None`` otherwise.
+    """
+
+    record: RekordboxExport
+    playlists: Tuple[RekordboxExportPlaylist, ...] = ()
+    report: Optional[ExportPreview] = None
+
+    @property
+    def outcome(self) -> str:
+        """``written``, ``cancelled`` or ``failed``."""
+        return self.record.outcome
+
+    @property
+    def written(self) -> bool:
+        """True when the file is at the destination."""
+        return self.record.outcome == EXPORT_WRITTEN
+
+    @property
+    def cancelled(self) -> bool:
+        """True when a person stopped it before anything was written."""
+        return self.record.outcome == EXPORT_CANCELLED
+
+    @property
+    def failed(self) -> bool:
+        """True when it could not finish, for the reason on the record."""
+        return self.record.outcome == EXPORT_FAILED
+
+    def summary_line(self) -> str:
+        """One sentence for a log, a job's message and the activity feed."""
+        record = self.record
+        name = Path(record.destination_path).name
+        if self.cancelled:
+            return f"Rekordbox export to {name} cancelled; nothing was written"
+        if self.failed:
+            return f"Rekordbox export to {name} failed: {record.error}"
+        playlists = len(self.playlists)
+        return (
+            f"Exported {_count(record.track_count, 'track')} to Rekordbox as {name}: "
+            f"{_count(record.changed_track_count, 'track')} changed, "
+            f"{_count(playlists, 'playlist')} added"
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """What a finished export job answers with."""
+        record = self.record
+        return {
+            "export_id": record.id,
+            "outcome": record.outcome,
+            "destination_path": record.destination_path,
+            "source_path": record.source_path,
+            "source_stale": record.source_stale,
+            "key_format": record.key_format,
+            "track_count": record.track_count,
+            "changed_track_count": record.changed_track_count,
+            "fields": list(record.fields),
+            "missing_file_count": record.missing_file_count,
+            "dropped_reference_count": record.dropped_reference_count,
+            "playlist_count": len(self.playlists),
+            "error": record.error,
+            "summary": self.summary_line(),
+            "report": None if self.report is None else self.report.to_dict(),
+        }
+
+
 class RekordboxExportService(IRekordboxExportService):
-    """Answers what an export would write, and never writes it."""
+    """Answers what an export would write, and writes it when asked."""
 
     def __init__(
         self,
@@ -328,8 +505,11 @@ class RekordboxExportService(IRekordboxExportService):
         collection_service: ICollectionService,
         library_source_repository: ILibrarySourceRepository,
         file_status_repository: IFileStatusRepository,
+        export_repository: IRekordboxExportRepository,
+        activity_service: IActivityService,
+        database_service: IDatabaseService,
     ) -> None:
-        """Wire the five reads a preview is made of.
+        """Wire the five reads a preview is made of, and the three an export adds.
 
         Args:
             track_repository: The library's two value layers, and the ids a
@@ -342,12 +522,19 @@ class RekordboxExportService(IRekordboxExportService):
             library_source_repository: Which file the library came from, and
                 what it looked like then (DEC-035).
             file_status_repository: What the last file check found (DEC-088).
+            export_repository: Where each export's row goes (DEC-086).
+            activity_service: Where a written export's event goes (DEC-029).
+            database_service: The transaction a row, its playlists and its
+                event commit in together. No SQL is run here.
         """
         self._tracks = track_repository
         self._collections = collection_repository
         self._collection_service = collection_service
         self._sources = library_source_repository
         self._files = file_status_repository
+        self._exports = export_repository
+        self._activity = activity_service
+        self._db = database_service
 
     # -------------------------------------------------------------- the plan
 
@@ -471,6 +658,275 @@ class RekordboxExportService(IRekordboxExportService):
             playlist_folder=result.playlist_folder,
             playlist_folder_renamed=result.playlist_folder_renamed,
         )
+
+    # ------------------------------------------------------------ the export
+
+    def validate(
+        self,
+        collection_ids: Sequence[int],
+        key_format: str,
+        destination_path: str,
+    ) -> ExportRequest:
+        """Refuse an export that cannot run, before anything is parsed.
+
+        Everything that can be known cheaply is checked here, so a job is only
+        ever started for an export that can reasonably be expected to finish:
+        the notation, the source, the destination, that every chosen node
+        exists, and that every chosen Smart Collection's rules can run. What is
+        left to fail inside the job is what cannot be known without doing the
+        work — a malformed source, a full disk.
+
+        Raises:
+            ValueError: The notation is not one of ``KEY_FORMATS``, or an id
+                names no node.
+            ExportSourceError: As :meth:`plan`.
+            ExportDestinationError: The destination is blank, is the source,
+                does not end in ``.xml``, is a folder, or is in a folder that
+                does not exist.
+            BrokenRuleError: A chosen Smart Collection's rules cannot be run.
+        """
+        notation = one_of(key_format, KEY_FORMATS, "key_format")
+        source = self._require_source()
+        destination = self._check_destination(destination_path, source.xml_path)
+
+        chosen: List[int] = []
+        for raw in collection_ids:
+            identifier = int(raw)
+            if identifier not in chosen:
+                chosen.append(identifier)
+        by_id = {int(node.id): node for node in self._collections.tree() if node.id}
+        for identifier in chosen:
+            if identifier not in by_id:
+                raise ValueError(f"No such collection to export: {identifier}")
+        children: Dict[Optional[int], List[Collection]] = defaultdict(list)
+        for node in by_id.values():
+            children[node.parent_id].append(node)
+        for identifier in chosen:
+            for node in _playlists_under(by_id[identifier], children):
+                if node.is_smart:
+                    self._collection_service.resolve(int(node.id or 0)).require_query()
+
+        return ExportRequest(
+            collection_ids=tuple(chosen),
+            key_format=notation,
+            destination_path=destination,
+            source_path=source.xml_path,
+        )
+
+    def export(
+        self,
+        collection_ids: Sequence[int],
+        key_format: str,
+        destination_path: str,
+        *,
+        job_id: Optional[str] = None,
+        on_progress: Optional[Callable[[str, int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> ExportResult:
+        """Write the export, and record how it ended whatever that was.
+
+        Validated first, again: a job starts moments after the request that
+        validated it, and the source can go in between. A refusal still raises
+        and records nothing. Past that, every ending is a row — ``written`` with
+        its playlists and one activity event, all in one transaction after the
+        file is in place; ``cancelled`` or ``failed`` with neither, and nothing
+        at the destination, because the write is a temp file and a ``replace``.
+
+        Args:
+            collection_ids: As :meth:`plan` takes them.
+            key_format: As :meth:`plan` takes it.
+            destination_path: Where to write; see :meth:`validate`.
+            job_id: The job running this, recorded on the row so the two can be
+                read together.
+            on_progress: As ``patch_collection_xml`` takes it: a phase, how far
+                through it, and its total.
+            should_cancel: Asked between tracks, between playlists, and before
+                the written file replaces anything.
+
+        Raises:
+            ValueError, ExportSourceError, ExportDestinationError,
+            BrokenRuleError: As :meth:`validate`.
+        """
+        request = self.validate(collection_ids, key_format, destination_path)
+        started_at = utc_now_iso()
+        source = self._require_source()
+        state = self._source_state(source)
+        missing = self._files.missing_count()
+        try:
+            plan = self.plan(request.collection_ids, request.key_format)
+            state, missing = plan.source, plan.missing_file_count
+            if should_cancel is not None and should_cancel():
+                raise ExportCancelled(PHASE_TRACKS)
+            result = patch_collection_xml(
+                plan.source_path,
+                plan.updates,
+                request.destination_path,
+                plan.playlists,
+                on_progress=on_progress,
+                should_cancel=should_cancel,
+            )
+        except ExportCancelled:
+            ended = self._record_ending(
+                request, job_id, started_at, state, missing, EXPORT_CANCELLED, None
+            )
+        except Exception as exc:  # noqa: BLE001 — recorded, then reported
+            _logger.warning(
+                "[rekordbox export] failed writing %s: %s",
+                request.destination_path,
+                exc,
+                exc_info=True,
+            )
+            ended = self._record_ending(
+                request,
+                job_id,
+                started_at,
+                state,
+                missing,
+                EXPORT_FAILED,
+                _describe_failure(exc),
+            )
+        else:
+            ended = self._record_written(request, job_id, started_at, plan, result)
+        _logger.info("[rekordbox export] %s (job %s)", ended.summary_line(), job_id)
+        return ended
+
+    def _record_written(
+        self,
+        request: ExportRequest,
+        job_id: Optional[str],
+        started_at: str,
+        plan: ExportPlan,
+        result: PatchResult,
+    ) -> ExportResult:
+        """Record a written export, its playlists and its event, as one unit.
+
+        Called after the ``replace``, so the row never claims a file that is not
+        there. The reverse can happen — the file is written and the database
+        then refuses the row — and is logged and raised rather than hidden: the
+        file is the user's and stays; what is lost is only CuePoint's note of it.
+        """
+        report = self.report(plan, result)
+        record = RekordboxExport(
+            job_id=job_id,
+            started_at=started_at,
+            finished_at=utc_now_iso(),
+            outcome=EXPORT_WRITTEN,
+            destination_path=request.destination_path,
+            source_path=plan.source_path,
+            source_stale=bool(plan.source.stale),
+            track_count=report.track_count,
+            changed_track_count=report.changed_track_count,
+            fields_json=json.dumps(list(report.changed_fields)),
+            key_format=report.key_format,
+            missing_file_count=report.missing_file_count,
+            dropped_reference_count=report.dropped_reference_count,
+        )
+        with self._db.transaction(join_existing=True):
+            stored = self._exports.add(record)
+            playlists = self._exports.add_playlists(
+                [
+                    _playlist_row(int(stored.id or 0), written, plan.collections)
+                    for written in report.playlists
+                ]
+            )
+            ended = ExportResult(
+                record=stored, playlists=tuple(playlists), report=report
+            )
+            self._activity.record_event(
+                EVENT_REKORDBOX_EXPORTED,
+                ended.summary_line(),
+                {
+                    "export_id": stored.id,
+                    "job_id": job_id,
+                    "destination_path": stored.destination_path,
+                    "source_path": stored.source_path,
+                    "source_stale": stored.source_stale,
+                    "key_format": stored.key_format,
+                    "track_count": stored.track_count,
+                    "changed_track_count": stored.changed_track_count,
+                    "fields": list(stored.fields),
+                    "playlist_count": len(playlists),
+                    "dropped_reference_count": stored.dropped_reference_count,
+                    "missing_file_count": stored.missing_file_count,
+                },
+            )
+        return ended
+
+    def _record_ending(
+        self,
+        request: ExportRequest,
+        job_id: Optional[str],
+        started_at: str,
+        state: SourceState,
+        missing: Optional[int],
+        outcome: str,
+        error: Optional[str],
+    ) -> ExportResult:
+        """Record an export that wrote nothing: cancelled, or failed and why.
+
+        The counts are zero because nothing was written, not because nothing
+        was in scope — the outcome is what qualifies them. No playlist rows and
+        no activity event: neither would describe anything that happened.
+        """
+        record = RekordboxExport(
+            job_id=job_id,
+            started_at=started_at,
+            finished_at=utc_now_iso(),
+            outcome=outcome,
+            destination_path=request.destination_path,
+            source_path=request.source_path,
+            source_stale=bool(state.stale),
+            track_count=0,
+            changed_track_count=0,
+            fields_json="[]",
+            key_format=request.key_format,
+            missing_file_count=missing,
+            error=error,
+        )
+        with self._db.transaction(join_existing=True):
+            stored = self._exports.add(record)
+        return ExportResult(record=stored)
+
+    @staticmethod
+    def _check_destination(destination_path: str, source_path: str) -> str:
+        """Return the destination as it will be written, or refuse it (DEC-083).
+
+        Absolute, so the row records where the file actually went rather than
+        a path that meant something only relative to the engine's working
+        directory. The source comparison is the writer's own, so the check here
+        and the check at the moment of writing cannot disagree.
+        """
+        text = str(destination_path or "").strip()
+        if not text:
+            raise ExportDestinationError(
+                DESTINATION_BLANK, "Choose where to save the export."
+            )
+        destination = os.path.abspath(text)
+        try:
+            refuse_source_as_destination(source_path, destination)
+        except ValidationError as exc:
+            raise ExportDestinationError(
+                DESTINATION_IS_SOURCE, exc.message, destination
+            ) from exc
+        if Path(destination).suffix.lower() != EXPORT_SUFFIX:
+            raise ExportDestinationError(
+                DESTINATION_NOT_XML,
+                f"An export is saved as an {EXPORT_SUFFIX} file: {destination}",
+                destination,
+            )
+        if os.path.isdir(destination):
+            raise ExportDestinationError(
+                DESTINATION_IS_FOLDER,
+                f"That is a folder, not a file to save to: {destination}",
+                destination,
+            )
+        if not os.path.isdir(os.path.dirname(destination)):
+            raise ExportDestinationError(
+                DESTINATION_FOLDER_MISSING,
+                f"The folder to save into does not exist: {destination}",
+                destination,
+            )
+        return destination
 
     # ------------------------------------------------------------- the source
 
@@ -651,6 +1107,44 @@ class RekordboxExportService(IRekordboxExportService):
 # ------------------------------------------------------------------- helpers
 
 
+def _count(number: int, noun: str) -> str:
+    """``1 track``, ``2 tracks``, ``50,000 tracks``."""
+    return f"{number:,} {noun}{'' if number == 1 else 's'}"
+
+
+def _describe_failure(exc: BaseException) -> str:
+    """The reason a failed export's row carries, in words a person can act on.
+
+    A :class:`CuePointException`'s own message, which already names the file;
+    otherwise the exception's text, or its type when it has none — a row that
+    says only "failed" is the one the model refuses.
+    """
+    message = getattr(exc, "message", None) or str(exc)
+    return str(message).strip() or type(exc).__name__
+
+
+def _playlist_row(
+    export_id: int, written: PlaylistPreview, collections: Mapping[str, Collection]
+) -> RekordboxExportPlaylist:
+    """One written playlist as its export row (DEC-086).
+
+    A Smart Collection's row keeps the rules it was resolved from: DEC-081 makes
+    them the only thing that can later explain its count, and the Smart
+    Collection itself may be edited or deleted tomorrow.
+    """
+    node = collections.get(str(written.collection_id))
+    return RekordboxExportPlaylist(
+        export_id=export_id,
+        collection_id=written.collection_id,
+        kind=written.kind,
+        name=written.name,
+        path=written.path,
+        entry_count=written.entry_count,
+        dropped_count=written.dropped_count,
+        rules_json=node.rules_json if node is not None and node.is_smart else None,
+    )
+
+
 def _export_values(values: ExportTrackValues, key_format: str) -> TrackExportValues:
     """The six values one track would carry, resolved and rendered.
 
@@ -715,8 +1209,19 @@ def _playlists_under(
 
 __all__ = (
     "DEFAULT_KEY_FORMAT",
+    "DESTINATION_BLANK",
+    "DESTINATION_FOLDER_MISSING",
+    "DESTINATION_IS_FOLDER",
+    "DESTINATION_IS_SOURCE",
+    "DESTINATION_NOT_XML",
+    "DESTINATION_REFUSALS",
+    "EVENT_REKORDBOX_EXPORTED",
+    "EXPORT_SUFFIX",
+    "ExportDestinationError",
     "ExportPlan",
     "ExportPreview",
+    "ExportRequest",
+    "ExportResult",
     "ExportSourceError",
     "PlaylistPreview",
     "RekordboxExportService",

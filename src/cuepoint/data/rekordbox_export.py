@@ -69,6 +69,18 @@ under are database questions, answered by EXPORT-04 and EXPORT-05; what arrives
 here is a finished tree of :class:`ExportFolder` and :class:`ExportPlaylist`. So
 every test over this module runs without a database, which is what makes the two
 riskiest steps of the phase the two cheapest to prove.
+
+Progress, and stopping part way (EXPORT-05)
+-------------------------------------------
+A patch reports progress in two phases — :data:`PHASE_TRACKS`, proportional to
+the collection, then :data:`PHASE_PLAYLISTS`, proportional to the selection —
+because one bar that jumps from the first to the second is worse than two honest
+ones. It asks whether to stop between every track, between every playlist, and
+once more after the new file is written and before it replaces anything, and a
+stop raises :class:`ExportCancelled`. Nothing is at the destination then, and no
+temp file is left behind: a cancelled export is not a partial one. The parse
+itself is one call into expat and is not interrupted; at 50,000 tracks it is
+about a second, which is the bound on how long a stop waits.
 """
 
 import logging
@@ -78,7 +90,18 @@ import tempfile
 import xml.parsers.expat as expat
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 
 from cuepoint.data.rekordbox import (
     MAX_XML_SIZE_BYTES,
@@ -137,6 +160,49 @@ FORBIDDEN_ATTRS: Mapping[str, str] = {
 #: top-level folder of this name that CuePoint did not create is never merged
 #: into; the export renames its own folder instead.
 CUEPOINT_FOLDER_NAME = "CuePoint"
+
+#: The two phases a patch reports progress in (EXPORT-05).
+PHASE_TRACKS = "tracks"
+PHASE_PLAYLISTS = "playlists"
+PHASES = (PHASE_TRACKS, PHASE_PLAYLISTS)
+
+#: Not a phase anything reports progress in: the moment between the temp file
+#: being written and it replacing the destination, which a stop can still reach.
+PHASE_WRITE = "write"
+
+#: Tracks between two progress reports. A report is a callback into the job
+#: store, which takes a lock and wakes the event stream; per track would be
+#: 50,000 of them for a bar that cannot show the difference.
+PROGRESS_EVERY_TRACKS = 1000
+
+#: What a progress callback is: the phase, how far through it, and of how many.
+ProgressCallback = Callable[[str, int, int], None]
+
+#: What a stop request is: asked often, answered cheaply.
+CancelCheck = Callable[[], bool]
+
+
+class ExportCancelled(Exception):
+    """The caller asked the patch to stop, and it did before writing anything.
+
+    Not a :class:`ValidationError`: nothing is wrong with the request, and a
+    handler that turns validation errors into "that cannot be done" must not
+    turn a user's own cancel into one.
+    """
+
+    def __init__(self, phase: str) -> None:
+        super().__init__(f"Export cancelled while {phase_description(phase)}")
+        self.phase = phase
+
+
+def phase_description(phase: str) -> str:
+    """How a phase is described in a sentence about stopping during it."""
+    if phase == PHASE_TRACKS:
+        return "patching tracks"
+    if phase == PHASE_PLAYLISTS:
+        return "building playlists"
+    return "writing the file"
+
 
 #: How a name collision on that folder is resolved: ``CuePoint (2)``, then (3).
 _COLLISION_SUFFIX = "{name} ({number})"
@@ -403,6 +469,9 @@ def plan_collection_xml(
     source_path: str,
     updates: Mapping[str, TrackExportValues],
     playlists: Optional[Sequence[ExportNode]] = None,
+    *,
+    on_progress: Optional[ProgressCallback] = None,
+    should_cancel: Optional[CancelCheck] = None,
 ) -> PatchResult:
     """Return what :func:`patch_collection_xml` would do, without writing.
 
@@ -417,6 +486,8 @@ def plan_collection_xml(
         source_path: The Rekordbox XML the library was imported from (DEC-035).
         updates: As :func:`patch_collection_xml` takes them.
         playlists: As :func:`patch_collection_xml` takes them.
+        on_progress: As :func:`patch_collection_xml` takes it.
+        should_cancel: As :func:`patch_collection_xml` takes it.
 
     Returns:
         The same :class:`PatchResult` the write returns: every attribute that
@@ -429,8 +500,9 @@ def plan_collection_xml(
         ValidationError: The source is too large, its encoding is not one this
             can splice, it is not well-formed, or the tree is deeper than
             :data:`MAX_EXPORT_DEPTH`.
+        ExportCancelled: ``should_cancel`` answered yes.
     """
-    return _plan(source_path, updates, playlists)[0]
+    return _plan(source_path, updates, playlists, on_progress, should_cancel)[0]
 
 
 def patch_collection_xml(
@@ -438,6 +510,9 @@ def patch_collection_xml(
     updates: Mapping[str, TrackExportValues],
     destination_path: str,
     playlists: Optional[Sequence[ExportNode]] = None,
+    *,
+    on_progress: Optional[ProgressCallback] = None,
+    should_cancel: Optional[CancelCheck] = None,
 ) -> PatchResult:
     """Write a copy of ``source_path`` with CuePoint's values and playlists.
 
@@ -450,6 +525,12 @@ def patch_collection_xml(
             resolved to track ids in export order. ``None`` and an empty
             sequence both mean "append nothing", and then no folder is created:
             an empty ``CuePoint`` folder in a DJ's tree is litter, not a result.
+        on_progress: Called with a phase from :data:`PHASES`, how far through
+            it the patch is, and the phase's total — at the start and end of
+            each phase and every :data:`PROGRESS_EVERY_TRACKS` tracks between.
+        should_cancel: Asked between every track, between every playlist, and
+            once more before the written file replaces anything. Answering yes
+            raises :class:`ExportCancelled` with nothing at the destination.
 
     Returns:
         A :class:`PatchResult` counting what changed, what was not found, and
@@ -460,11 +541,14 @@ def patch_collection_xml(
         ValidationError: The source is too large, its encoding is not one this
             can splice, it is not well-formed, the tree is deeper than
             :data:`MAX_EXPORT_DEPTH`, or the destination is the source.
+        ExportCancelled: ``should_cancel`` answered yes.
         OSError: Writing failed.
     """
     refuse_source_as_destination(source_path, destination_path)
-    result, data, edits = _plan(source_path, updates, playlists)
-    _write_atomically(data, edits, destination_path)
+    result, data, edits = _plan(
+        source_path, updates, playlists, on_progress, should_cancel
+    )
+    _write_atomically(data, edits, destination_path, should_cancel)
     return result
 
 
@@ -472,6 +556,8 @@ def _plan(
     source_path: str,
     updates: Mapping[str, TrackExportValues],
     playlists: Optional[Sequence[ExportNode]],
+    on_progress: Optional[ProgressCallback] = None,
+    should_cancel: Optional[CancelCheck] = None,
 ) -> Tuple[PatchResult, bytes, List[Tuple[int, int, bytes]]]:
     """The whole of a patch except the write: what it would do, and the edits.
 
@@ -500,7 +586,13 @@ def _plan(
     # One parse, one pass. Counting is per track id rather than per element so a
     # source that repeats one cannot inflate "how many tracks did this change".
     scan = _scan_document(data)
+    total = len(scan.tracks)
+    _report(on_progress, PHASE_TRACKS, 0, total)
     for offset, attrs in scan.tracks:
+        if should_cancel is not None and should_cancel():
+            raise ExportCancelled(PHASE_TRACKS)
+        if result.tracks_seen and result.tracks_seen % PROGRESS_EVERY_TRACKS == 0:
+            _report(on_progress, PHASE_TRACKS, result.tracks_seen, total)
         result.tracks_seen += 1
         track_id = _identity(attrs)
         if track_id is not None:
@@ -522,15 +614,50 @@ def _plan(
     result.not_found = tuple(
         track_id for track_id in updates if track_id not in seen_ids
     )
+    _report(on_progress, PHASE_TRACKS, total, total)
+
+    wanted = _count_playlists(playlists or ())
+    written = 0
+
+    def tick() -> None:
+        # Once per playlist, before it is rendered: a stop is honoured between
+        # playlists, and the count reported is the number already finished.
+        nonlocal written
+        if should_cancel is not None and should_cancel():
+            raise ExportCancelled(PHASE_PLAYLISTS)
+        _report(on_progress, PHASE_PLAYLISTS, written, wanted)
+        written += 1
 
     if playlists:
-        appended = _append_playlists(data, scan, playlists, seen_ids, encoding)
+        appended = _append_playlists(data, scan, playlists, seen_ids, encoding, tick)
         edits.extend(appended.edits)
         result.playlists = appended.playlists
         result.playlist_folder = appended.folder
         result.playlist_folder_renamed = appended.renamed
+    _report(on_progress, PHASE_PLAYLISTS, wanted, wanted)
 
     return result, data, edits
+
+
+def _report(
+    on_progress: Optional[ProgressCallback], phase: str, done: int, total: int
+) -> None:
+    """Hand one progress tick to the caller, if it asked for them."""
+    if on_progress is not None:
+        on_progress(phase, done, total)
+
+
+def _count_playlists(nodes: Sequence[ExportNode]) -> int:
+    """How many playlists a tree holds, at any depth — the playlist phase's total."""
+    count = 0
+    pending: List[ExportNode] = list(nodes)
+    while pending:
+        node = pending.pop()
+        if isinstance(node, ExportFolder):
+            pending.extend(node.children)
+        else:
+            count += 1
+    return count
 
 
 # ------------------------------------------------------------------- internals
@@ -838,6 +965,7 @@ def _append_playlists(
     nodes: Sequence[ExportNode],
     known_ids: Set[str],
     encoding: str,
+    tick: Callable[[], None] = lambda: None,
 ) -> _Appended:
     """Render ``nodes`` under the ``CuePoint`` folder and return the splices."""
     container, wrappers = _append_target(scan)
@@ -857,6 +985,7 @@ def _append_playlists(
         results,
         lines,
         encoding,
+        tick,
     )
     for opening, closing in reversed(wrappers):
         level -= 1
@@ -926,6 +1055,7 @@ def _emit(
     results: List[PlaylistResult],
     lines: List[Tuple[int, str]],
     encoding: str,
+    tick: Callable[[], None] = lambda: None,
 ) -> None:
     """Append one node's lines, depth first, and record what a playlist became.
 
@@ -954,10 +1084,11 @@ def _emit(
             return
         lines.append((level, opening + ">"))
         for child in node.children:
-            _emit(child, level + 1, path, known_ids, results, lines, encoding)
+            _emit(child, level + 1, path, known_ids, results, lines, encoding, tick)
         lines.append((level, "</NODE>"))
         return
 
+    tick()
     entries, dropped = _split_entries(node.track_ids, known_ids)
     results.append(
         PlaylistResult(
@@ -1137,12 +1268,18 @@ def _write_atomically(
     data: bytes,
     edits: List[Tuple[int, int, bytes]],
     destination_path: str,
+    should_cancel: Optional[CancelCheck] = None,
 ) -> None:
     """Splice the edits into ``data`` and write via a temp file in the same dir.
 
     A temp file beside the destination, then ``replace``: the pattern the
     orphaned writer used, and the reason an export that fails part-way leaves
     nothing at the destination and no temp file behind.
+
+    A stop asked for while the temp file was being written is honoured before
+    the ``replace``, which is the last moment it can be: afterwards the file is
+    the user's, and removing it again would be deleting something rather than
+    declining to write it.
     """
     destination = Path(destination_path)
     parent = destination.parent
@@ -1166,6 +1303,8 @@ def _write_atomically(
         )
         with os.fdopen(handle, "wb") as stream:
             stream.write(out)
+        if should_cancel is not None and should_cancel():
+            raise ExportCancelled(PHASE_WRITE)
         Path(temp_path).replace(destination)
         temp_path = None
     finally:

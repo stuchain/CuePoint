@@ -93,6 +93,12 @@ _ALLOWED = {
     # leave a written file with no record. The SQL is the file write, file
     # status and artwork repositories'.
     "services/tag_write_service.py",
+    # EXPORT-05's Rekordbox export: an export's row, its playlist rows and its
+    # activity event are one transaction, opened after the file is in place, so
+    # the record never claims a file that is not there and never half-describes
+    # one that is. The SQL is the export repository's and the activity
+    # service's; no SQL is run there.
+    "services/rekordbox_export_service.py",
     # The one retry loop for a write that finds the database busy: it opens
     # the transaction it retries, and runs no SQL of its own.
     "services/busy_wait.py",

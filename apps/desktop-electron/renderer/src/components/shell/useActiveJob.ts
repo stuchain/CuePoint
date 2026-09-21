@@ -85,6 +85,10 @@ const JOB_VERBS: Record<string, string> = {
   tag_write_preview: "Reading tags",
   tag_write: "Writing tags",
   tag_restore: "Restoring tags",
+  // EXPORT-05's Rekordbox export. "Exporting" alone would read as the CSV,
+  // JSON and Excel export Settings offers, which is a different thing that
+  // writes a different file.
+  rekordbox_export: "Exporting to Rekordbox",
 };
 
 /** A short description of what a job is doing, for the strip. */

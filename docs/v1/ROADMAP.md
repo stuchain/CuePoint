@@ -257,7 +257,7 @@ DEC-011's refresh warning now counts every track carrying the user's own data �
 tags, review decisions and applied values as well as Collections — and DEC-076's artwork is cached
 as real thumbnails, making Pillow a runtime dependency behind one guarded decoder.
 
-## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-07) — specified; EXPORT-01…EXPORT-04 done
+## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-07) — specified; EXPORT-01…EXPORT-05 done
 
 No full-XML export exists today (only the narrow attribute-patch write) — this phase builds real
 export, carrying forward the existing "always write a new file, never silently overwrite the source"
@@ -286,6 +286,13 @@ implementation, and `services/rekordbox_export_service.py` turns whichever of th
 numbers to show. A preview of a 50,000-track library with 10,000 overrides and 21 playlists takes
 3.0 s and writes nothing. It also corrected DEC-084, which had put the parse inside the job: the
 counts that decision requires the preview to state cannot be known without reading the source.
+
+EXPORT-05 is the job that writes: validated before it exists, cancellable between tracks, between
+playlists and before the file replaces anything, and ending in one row that agrees with the job —
+with the preview's own report recorded on it, so the two cannot disagree. It joined the library job
+group, so an import cannot start beside an export any more than the reverse, and it refuses any
+destination but an `.xml` file in a folder that exists, holding DEC-085 at the destination. A
+50,000-track export takes 3.1 s with a 161 MiB peak working set.
 
 Round 10's central finding came from the code rather than the roadmap: `POSITION_MARK` and `TEMPO`
 appear nowhere in `src/`, so CuePoint has never parsed a cue point or a beat grid. An XML generated
