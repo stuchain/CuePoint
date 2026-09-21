@@ -190,6 +190,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- The engine could keep running after the app had gone — on its port, holding
+  the library database — when the app was killed or crashed, or when quitting
+  finished before its cleanup did. Quitting now waits for its cleanup, and the
+  engine ends itself when the app that started it is no longer there
 - Importing a large library in the app crawled: a 50,000-track collection that
   takes three seconds reported one track every five seconds and never finished.
   Two parts of the engine had ended up with a connection each to the same

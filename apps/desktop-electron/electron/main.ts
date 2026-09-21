@@ -13,6 +13,7 @@ import { chooseRekordboxExportDestination } from "./rekordboxExportDialog";
 import type { QueueItemInput, RepeatMode } from "./playbackQueue";
 import type { LibraryBrowseParams } from "./engineClient";
 import { PlayerSupervisor } from "./playerSupervisor";
+import { quitAfter } from "./quitAfter";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === "development";
@@ -748,7 +749,10 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-app.on("before-quit", async () => {
+// Held until it has finished: Electron does not wait for an async
+// `before-quit` listener, and this one used to lose the race to the quit and
+// leave the engine running (EXPORT-07).
+quitAfter(app, async () => {
   const tasks: Array<Promise<unknown>> = [];
   if (privacyExitPrefs.clearCacheOnExit) tasks.push(engine.clearCuepointCache());
   if (privacyExitPrefs.clearLogsOnExit) tasks.push(engine.clearCuepointLogs());

@@ -64,6 +64,7 @@ pip install -r requirements.txt -r requirements-dev.txt
 | `CUEPOINT_DEBUG` | Set to `1` for debug logs |
 | `CUEPOINT_ENV` | Set to `dev` for development mode |
 | `CUEPOINT_MPV_PATH` | Path to an mpv binary to use instead of the bundled player sidecar |
+| `CUEPOINT_PARENT_PID` | Set by the desktop app to its own process id; the engine exits when that process has gone. Leave unset when running the engine by hand |
 
 ## Engine sidecar layout
 
@@ -73,6 +74,15 @@ electron-builder's `${os}-${arch}` macros, not Python's `sys.platform`, because 
 expands them when packaging; a mismatch makes the packaged app silently omit the sidecar. If you
 have a `resources/engine/win32/` or `resources/engine/darwin/` directory from an older checkout it
 is stale build output and can be deleted.
+
+## Packaging on Windows
+
+`npm run pack` and `npm run dist` need **Developer Mode** on (Settings → System → For developers).
+electron-builder downloads a tools archive the first time it packages, and that archive contains
+symbolic links, which Windows lets an ordinary account create only in Developer Mode. Without it
+the pack fails with "Cannot create symbolic link: A required privilege is not held by the client"
+and retries. CI's Windows runners are not affected. If a failed attempt left partial extractions
+behind, delete `%LOCALAPPDATA%\electron-builder\Cache\winCodeSign` and pack again.
 
 ## Player sidecar (mpv)
 

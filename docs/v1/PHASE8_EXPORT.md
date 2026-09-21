@@ -1420,11 +1420,29 @@ skipped), the export journey three times in a row against the packaged build
 scripts/check_desktop_version_coupling.py`, `PYTHONPATH=src python scripts/smoke_engine_health.py`,
 the mypy gates and `git diff --check`.
 
-**Packaging note.** `npm run pack` failed at electron-builder's download of its Windows code-signing
-tools: the archive holds macOS symbolic links, which this Windows account has no privilege to
-create. The tools were extracted once into electron-builder's cache, skipping those links, and the
-pack then succeeded. Nothing in the repository changed for it; a machine with Developer Mode or an
-elevated shell does not meet it.
+**Packaging on Windows.** `npm run pack` failed at electron-builder's download of its Windows
+code-signing tools: the archive holds symbolic links, which Windows lets an ordinary account create
+only in Developer Mode. Developer Mode was turned on, the stale cache and the partial extractions
+left by earlier failed attempts were deleted, and a pack from nothing then downloaded, extracted and
+stamped the executable with its product name first time. `docs/development/developer-setup.md` now
+names Developer Mode as a prerequisite for packaging on Windows; CI's runners do not meet the
+problem.
+
+**Found and fixed after the phase was recorded: the engine could outlive the app.** A packaged run
+left a `cuepoint-engine.exe` running with no app — on its port, holding the library database,
+reachable by nothing. Two causes, each with a fix and a test that fails without it. First, `main.ts`
+stopped the engine in an `async` `before-quit` listener, which Electron does not wait for, so a quit
+could finish while the player was still being disposed and the engine was never stopped;
+`electron/quitAfter.ts` now holds the first quit until the cleanup has finished, for at most five
+seconds (`quitAfter.test.ts`, 7). Second, an app that is killed or crashes runs no cleanup at all,
+and while Windows ends the processes an app started along with it, it does not end what those start
+in turn — and a packaged engine is a bootloader and its child, so the child survived, every time.
+The shell now passes its own process id as `CUEPOINT_PARENT_PID`, and `engine/parent_watch.py` ends
+the engine when that process has gone, holding it by a handle on Windows so a reused id cannot pass
+for the app (`test_parent_watch.py`, 22, including a real engine outliving a killed stand-in without
+the watch and exiting with it). `e2e/engineLifetime.spec.ts` drives both against the real app:
+killing it outright left one engine behind in the packaged build before the fix, and after it passes
+three times in a row packaged and once in development, with no engine left anywhere.
 
 ---
 

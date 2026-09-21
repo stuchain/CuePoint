@@ -1142,10 +1142,40 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
         {"version": __version__, "port": cfg.port},
     )
     server = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg))
+    _stop_with_parent(server)
     try:
         server.serve_forever()
     finally:
         server.server_close()
+
+
+#: How long a running job gets to reach a stopping point once the app has gone.
+PARENT_GONE_GRACE_SECONDS = 3.0
+
+
+def _stop_with_parent(server: ThreadingHTTPServer) -> None:
+    """End the engine when the app that started it has gone (see ``parent_watch``).
+
+    The server stops accepting first, so nothing new starts; a job already
+    running gets a moment, and then the process ends whatever is still running
+    — nothing is left that could ever ask for its result, and it would otherwise
+    hold the library database and its port until the machine restarts. SQLite
+    rolls back an interrupted transaction, and an export's temp file is the one
+    thing such an end can leave, as a crash would.
+    """
+    from cuepoint.engine.parent_watch import parent_pid_from_env, watch_parent
+
+    pid = parent_pid_from_env(os.environ)
+    if pid is None:
+        return
+
+    def gone() -> None:
+        threading.Thread(target=server.shutdown, daemon=True).start()
+        timer = threading.Timer(PARENT_GONE_GRACE_SECONDS, lambda: os._exit(0))
+        timer.daemon = True
+        timer.start()
+
+    watch_parent(pid, gone)
 
 
 def start_engine_thread(

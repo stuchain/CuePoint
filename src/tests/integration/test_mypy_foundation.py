@@ -68,6 +68,7 @@ GUARDED = (
     "cuepoint/services/rekordbox_export_service.py",
     "cuepoint/engine/rekordbox_export_jobs.py",
     "cuepoint/engine/rekordbox_export_api.py",
+    "cuepoint/engine/parent_watch.py",
     "cuepoint/services/health_service.py",
     "cuepoint/services/review_export_service.py",
     "cuepoint/services/match_comparison.py",

@@ -146,6 +146,10 @@ export class EngineSupervisor {
       CUEPOINT_TOKEN: this.token,
       CUEPOINT_SESSION_ID: this.sessionId,
       CUEPOINT_HEADLESS: "1",
+      // This process, not the engine's parent: a packaged engine's parent is
+      // its own bootloader. The engine ends itself when this process has gone,
+      // however it went (EXPORT-07, `parent_watch.py`).
+      CUEPOINT_PARENT_PID: String(process.pid),
     };
 
     if (shouldUseBundledEngine()) {
