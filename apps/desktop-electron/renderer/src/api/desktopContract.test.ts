@@ -1034,7 +1034,9 @@ describe("desktop contract", () => {
 
     it.each(Object.entries(FILES))("%s names no retired bridge method", (_name, source) => {
       for (const method of RETIRED_METHODS) {
-        expect(source).not.toMatch(new RegExp(`\b${method}\b`));
+        // `\\b`, not `\b`: in a template literal `\b` is a backspace character,
+        // and a pattern of backspaces matches nothing, so the check never ran.
+        expect(source).not.toMatch(new RegExp(`\\b${method}\\b`));
       }
     });
 
