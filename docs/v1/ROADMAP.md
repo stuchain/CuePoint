@@ -257,7 +257,7 @@ DEC-011's refresh warning now counts every track carrying the user's own data �
 tags, review decisions and applied values as well as Collections — and DEC-076's artwork is cached
 as real thumbnails, making Pillow a runtime dependency behind one guarded decoder.
 
-## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-07) — specified; EXPORT-01…EXPORT-05 done
+## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-07) — specified; EXPORT-01…EXPORT-06 done
 
 No full-XML export exists today (only the narrow attribute-patch write) — this phase builds real
 export, carrying forward the existing "always write a new file, never silently overwrite the source"
@@ -293,6 +293,14 @@ with the preview's own report recorded on it, so the two cannot disagree. It joi
 group, so an import cannot start beside an export any more than the reverse, and it refuses any
 destination but an `.xml` file in a folder that exists, holding DEC-085 at the destination. A
 50,000-track export takes 3.1 s with a 161 MiB peak working set.
+
+EXPORT-06 puts both on the wire: three routes under `/api/v1/rekordbox-export/`, carried through all
+six desktop-contract files, and a native save dialog that suggests a dated name in the folder the
+last export went to and never judges the path — the engine does. A refusal a person can act on
+crosses the bridge as a value carrying its reason, since a rejection loses everything but its
+message on the way to the renderer, and the folder and notation to start from are read from the
+export record rather than kept as settings that could drift from it. A test in Python holds every
+TypeScript shape against what the engine actually serializes.
 
 Round 10's central finding came from the code rather than the roadmap: `POSITION_MARK` and `TEMPO`
 appear nowhere in `src/`, so CuePoint has never parsed a cue point or a beat grid. An XML generated

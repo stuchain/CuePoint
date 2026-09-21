@@ -19,6 +19,49 @@ async function readJson<T>(res: Response): Promise<T> {
   return body;
 }
 
+/**
+ * The refusal codes a Rekordbox export answers as a value rather than a throw
+ * (EXPORT-06). A rejection reaches the renderer as its message alone, and the
+ * reason beside it is what says whether to import, find the file again, choose
+ * another destination or wait for a job.
+ */
+export const REKORDBOX_EXPORT_REFUSAL_CODES: readonly RekordboxExportRefusalCode[] = [
+  "REKORDBOX_EXPORT_SOURCE_REFUSED",
+  "REKORDBOX_EXPORT_DESTINATION_REFUSED",
+  "LIBRARY_BUSY",
+];
+
+function textOrNull(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+/**
+ * Read an answer that may be one of the refusals above. Any other failure is
+ * thrown, as `readJson` throws it: a malformed request is a bug, not a state
+ * to draw.
+ */
+async function readRefusable<T>(
+  res: Response,
+): Promise<{ body: T; refusal: null } | { body: null; refusal: RekordboxExportRefusal }> {
+  const body = (await res.json()) as T & { error?: EngineApiError & Record<string, unknown> };
+  if (res.ok) return { body, refusal: null };
+  const error = body.error;
+  if (error && (REKORDBOX_EXPORT_REFUSAL_CODES as readonly string[]).includes(error.code)) {
+    return {
+      body: null,
+      refusal: {
+        code: error.code as RekordboxExportRefusalCode,
+        message: error.message,
+        reason: textOrNull(error.reason) as RekordboxExportRefusal["reason"],
+        path: textOrNull(error.path),
+        job_id: textOrNull(error.job_id),
+        job_type: textOrNull(error.job_type),
+      },
+    };
+  }
+  throw new Error(error?.message ?? `Engine request failed (${res.status})`);
+}
+
 export interface LibraryTrackRow {
   id: number | null;
   rekordbox_track_id: string;
@@ -849,6 +892,190 @@ export interface ReviewExportResult {
   columns: string[];
 }
 
+// --- The Rekordbox export (EXPORT-06) ----------------------------------------
+// Not the CSV, JSON and Excel export above (`ReviewExportResult`): every name
+// here says Rekordbox, as the routes under /api/v1/rekordbox-export/ do.
+
+/** The three key notations an export can write (DEC-089); `normal` is classic. */
+export type RekordboxKeyFormat = "normal" | "camelot" | "short";
+
+/** The six values an export can rewrite on a track, in the export's order. */
+export type RekordboxExportField = "key" | "bpm" | "genre" | "label" | "year" | "rating";
+
+/** The source file as the import recorded it, beside how it is now (DEC-082). */
+export interface RekordboxExportSourceState {
+  path: string;
+  /** `null` when the import recorded nothing to compare with: not "unchanged". */
+  stale: boolean | null;
+  signals: Array<"mtime" | "size">;
+  recorded_modified_at: string | null;
+  actual_modified_at: string | null;
+  recorded_size_bytes: number | null;
+  actual_size_bytes: number | null;
+}
+
+/** One playlist an export would append. */
+export interface RekordboxExportPlaylistPreview {
+  collection_id: number;
+  kind: "collection" | "smart";
+  name: string;
+  /** Where it would land, the parent folder included: `CuePoint/Gigs/Saturday`. */
+  path: string;
+  entry_count: number;
+  dropped_count: number;
+  requested_count: number;
+}
+
+/** Everything an export would do, before it is asked to (DEC-084). */
+export interface RekordboxExportPreview {
+  source: RekordboxExportSourceState;
+  key_format: RekordboxKeyFormat;
+  track_count: number;
+  changed_track_count: number;
+  fields_changed: Partial<Record<RekordboxExportField, number>>;
+  changed_fields: RekordboxExportField[];
+  unknown_track_count: number;
+  absent_track_count: number;
+  /** `null` when no track has ever been checked (DEC-088): not zero. */
+  missing_file_count: number | null;
+  file_check_known: boolean;
+  dropped_reference_count: number;
+  changes_nothing: boolean;
+  playlists: RekordboxExportPlaylistPreview[];
+  playlist_folder: string | null;
+  playlist_folder_renamed: boolean;
+}
+
+/** The refusals a person can act on, each with its own next step. */
+export type RekordboxExportRefusalCode =
+  | "REKORDBOX_EXPORT_SOURCE_REFUSED"
+  | "REKORDBOX_EXPORT_DESTINATION_REFUSED"
+  | "LIBRARY_BUSY";
+
+export type RekordboxExportSourceReason =
+  | "source_never_imported"
+  | "source_missing"
+  | "source_unreadable"
+  | "source_invalid";
+
+export type RekordboxExportDestinationReason =
+  | "destination_blank"
+  | "destination_is_source"
+  | "destination_not_xml"
+  | "destination_is_folder"
+  | "destination_folder_missing";
+
+/**
+ * A refusal, as a value rather than a rejection. A rejection crosses IPC as
+ * its message alone, and the reason is what says which next step to offer.
+ */
+export interface RekordboxExportRefusal {
+  code: RekordboxExportRefusalCode;
+  message: string;
+  reason: RekordboxExportSourceReason | RekordboxExportDestinationReason | null;
+  path: string | null;
+  /** For `LIBRARY_BUSY`: the job holding the library, to follow it. */
+  job_id: string | null;
+  job_type: string | null;
+}
+
+/** A preview, or the refusal that stands in its place. Exactly one is set. */
+export interface RekordboxExportPreviewAnswer {
+  preview: RekordboxExportPreview | null;
+  refusal: RekordboxExportRefusal | null;
+}
+
+/** An export started as a job: what it will write, as the engine validated it. */
+export interface RekordboxExportStarted {
+  job_id: string;
+  id: string;
+  state: string;
+  collection_ids: number[];
+  key_format: RekordboxKeyFormat;
+  destination_path: string;
+}
+
+/** A started export, or the refusal that stands in its place. Exactly one is set. */
+export interface RekordboxExportStartAnswer {
+  started: RekordboxExportStarted | null;
+  refusal: RekordboxExportRefusal | null;
+}
+
+/** What a finished export job answers with, as its result. */
+export interface RekordboxExportResult {
+  export_id: number;
+  outcome: "written" | "cancelled" | "failed";
+  destination_path: string;
+  source_path: string;
+  source_stale: boolean;
+  key_format: RekordboxKeyFormat;
+  track_count: number;
+  changed_track_count: number;
+  fields: RekordboxExportField[];
+  missing_file_count: number | null;
+  dropped_reference_count: number;
+  playlist_count: number;
+  error: string | null;
+  summary: string;
+  report: RekordboxExportPreview | null;
+}
+
+/** One playlist an export wrote, as it was written (DEC-086). */
+export interface RekordboxExportPlaylistRecord {
+  id: number;
+  /** The Collection it came from, which may since have been deleted. */
+  collection_id: number | null;
+  kind: "collection" | "smart";
+  name: string;
+  path: string;
+  entry_count: number;
+  dropped_count: number;
+  requested_count: number;
+  /** A Smart Collection's rules as they were resolved; `null` for a Collection. */
+  rules: FilterRuleSet | null;
+}
+
+/** One export as recorded: what CuePoint wrote, not what is on disk now. */
+export interface RekordboxExportRecord {
+  id: number;
+  job_id: string | null;
+  started_at: string;
+  finished_at: string | null;
+  outcome: "written" | "cancelled" | "failed";
+  destination_path: string;
+  source_path: string;
+  source_stale: boolean;
+  key_format: RekordboxKeyFormat;
+  track_count: number;
+  changed_track_count: number;
+  fields: RekordboxExportField[];
+  missing_file_count: number | null;
+  file_check_known: boolean;
+  dropped_reference_count: number;
+  error: string | null;
+  playlists: RekordboxExportPlaylistRecord[];
+}
+
+/** What the next export starts from: the last one that wrote (DEC-083). */
+export interface RememberedRekordboxExport {
+  /** The folder only, never the file name, so no export overwrites the last. */
+  folder: string | null;
+  folder_exists: boolean;
+  key_format: RekordboxKeyFormat;
+  export_id: number | null;
+}
+
+export interface RekordboxExportHistory {
+  exports: RekordboxExportRecord[];
+  limit: number;
+  remembered: RememberedRekordboxExport;
+}
+
+/** The file a person chose in the save dialog, or that they chose none. */
+export type RekordboxExportDestinationChoice =
+  | { canceled: true }
+  | { canceled: false; filePath: string };
+
 export class EngineClient {
   constructor(
     private readonly port: number,
@@ -1084,6 +1311,16 @@ export class EngineClient {
   private async getJson<T>(path: string): Promise<T> {
     const res = await fetch(this.url(path), { headers: this.headers() });
     return readJson<T>(res);
+  }
+
+  /** A POST whose typed refusals come back as a value (EXPORT-06). */
+  private async postRefusable<T>(path: string, body: unknown) {
+    const res = await fetch(this.url(path), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(body ?? {}),
+    });
+    return readRefusable<T>(res);
   }
 
   /** The whole Collection tree, with counts and broken-rule state (ORG-04). */
@@ -1486,6 +1723,46 @@ export class EngineClient {
     overwrite?: boolean;
   }): Promise<ReviewExportResult> {
     return this.postJson("/api/v1/clean/export", params);
+  }
+
+  /**
+   * What a Rekordbox export of these Collections would write (DEC-084). Not
+   * `exportReviewList` above, which is the CSV, JSON and Excel file.
+   */
+  async previewRekordboxExport(params: {
+    collection_ids?: number[] | null;
+    key_format?: RekordboxKeyFormat | null;
+  }): Promise<RekordboxExportPreviewAnswer> {
+    const answer = await this.postRefusable<{ preview: RekordboxExportPreview }>(
+      "/api/v1/rekordbox-export/preview",
+      params,
+    );
+    return answer.refusal
+      ? { preview: null, refusal: answer.refusal }
+      : { preview: answer.body.preview, refusal: null };
+  }
+
+  /** Start a Rekordbox export to the file a person chose, as a job. */
+  async startRekordboxExport(params: {
+    collection_ids?: number[] | null;
+    key_format?: RekordboxKeyFormat | null;
+    destination_path: string;
+  }): Promise<RekordboxExportStartAnswer> {
+    const answer = await this.postRefusable<RekordboxExportStarted>(
+      "/api/v1/rekordbox-export/start",
+      params,
+    );
+    return answer.refusal
+      ? { started: null, refusal: answer.refusal }
+      : { started: answer.body, refusal: null };
+  }
+
+  /** Recent Rekordbox exports, and what the next one starts from (DEC-083). */
+  async getRekordboxExportHistory(params?: { limit?: number }): Promise<RekordboxExportHistory> {
+    const query = new URLSearchParams();
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return this.getJson(`/api/v1/rekordbox-export/history${suffix}`);
   }
 
   /**

@@ -76,6 +76,7 @@ from cuepoint.services.rekordbox_export_service import (
     SMART_PAGE_SIZE,
     SOURCE_MISSING,
     SOURCE_NEVER_IMPORTED,
+    SOURCE_INVALID,
     SOURCE_REFUSALS,
     SOURCE_UNREADABLE,
     ExportSourceError,
@@ -191,6 +192,7 @@ class TestTheSourceMustBeThere:
             SOURCE_NEVER_IMPORTED,
             SOURCE_MISSING,
             SOURCE_UNREADABLE,
+            SOURCE_INVALID,
         }
         assert len(set(SOURCE_REFUSALS)) == len(SOURCE_REFUSALS)
 
@@ -213,15 +215,41 @@ class TestTheSourceMustBeThere:
         monkeypatch.setattr(writer.os.path, "getsize", lambda _p: 200 * 1024 * 1024)
         monkeypatch.setattr(writer, "_scan_document", explode)
 
-        with pytest.raises(ValidationError, match="too large"):
+        with pytest.raises(ExportSourceError, match="too large") as raised:
             service.preview()
+
+        assert raised.value.reason == SOURCE_INVALID
 
     def test_a_malformed_source_is_refused_by_name(
         self, service, sources, source: Path
     ):
         source.write_bytes(b"<DJ_PLAYLISTS><COLLECTION><TRACK TrackID='1'>")
 
-        with pytest.raises(ValidationError, match="not well-formed"):
+        with pytest.raises(ExportSourceError, match="not well-formed") as raised:
+            service.preview()
+
+        assert raised.value.reason == SOURCE_INVALID
+        assert raised.value.path == str(source)
+
+    def test_an_encoding_it_cannot_write_back_is_refused_with_a_reason(
+        self, service, sources, source: Path
+    ):
+        source.write_bytes(b'<?xml version="1.0" encoding="UTF-16"?><DJ_PLAYLISTS/>')
+
+        with pytest.raises(
+            ExportSourceError, match="Unsupported XML encoding"
+        ) as raised:
+            service.preview()
+
+        assert raised.value.reason == SOURCE_INVALID
+
+    def test_an_unusable_source_is_still_a_validation_error(
+        self, service, sources, source: Path
+    ):
+        """Existing handling of a request that cannot be honoured still applies."""
+        source.write_bytes(b"<DJ_PLAYLISTS><COLLECTION><TRACK TrackID='1'>")
+
+        with pytest.raises(ValidationError):
             service.preview()
 
 
@@ -1475,11 +1503,11 @@ class TestThePlanIsWhatTheWriteNeeds:
 
 
 @pytest.mark.unit
-class TestNothingReachesItYet:
-    def test_no_route_names_the_service_yet(self):
-        """EXPORT-05's job is its one caller; EXPORT-06 puts it on the wire and
-        EXPORT-07 draws it. Until then a caller appearing by accident is worth
-        failing on rather than reviewing for."""
+class TestWhatReachesIt:
+    def test_only_the_job_and_the_routes_name_the_service(self):
+        """EXPORT-05's job and EXPORT-06's routes are its callers; EXPORT-07
+        reaches it through those routes, never directly. A caller appearing by
+        accident is worth failing on rather than reviewing for."""
         import re
 
         package = Path(__file__).resolve().parents[4] / "cuepoint"
@@ -1491,6 +1519,7 @@ class TestNothingReachesItYet:
         )
 
         assert callers == [
+            "engine/rekordbox_export_api.py",
             "engine/rekordbox_export_jobs.py",
             "services/bootstrap.py",
             "services/interfaces.py",

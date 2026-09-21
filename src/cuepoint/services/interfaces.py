@@ -68,6 +68,7 @@ if TYPE_CHECKING:
         ExportPreview,
         ExportRequest,
         ExportResult,
+        RememberedExport,
     )
     from cuepoint.models.rekordbox_export import (
         RekordboxExport,
@@ -373,6 +374,11 @@ class IRekordboxExportService(ABC):
         should_cancel: Optional[Callable[[], bool]] = None,
     ) -> "ExportResult":
         """Write the export and record how it ended, whatever that was (EXPORT-05)."""
+        ...
+
+    @abstractmethod
+    def remembered(self) -> "RememberedExport":
+        """The folder and notation the last written export used (EXPORT-06)."""
         ...
 
 

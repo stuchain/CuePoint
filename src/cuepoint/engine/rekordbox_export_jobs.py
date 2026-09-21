@@ -46,12 +46,23 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Callable, Dict, Optional, Sequence
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Sequence
 
 from cuepoint.compat.gui_types import ProgressInfo
 from cuepoint.data.rekordbox_export import PHASE_PLAYLISTS, PHASE_TRACKS
-from cuepoint.engine.jobs import Job, JobState, JobStore, _ensure_services
+from cuepoint.engine.jobs import (
+    _ACTIVE_STATES,
+    Job,
+    JobState,
+    JobStore,
+    JobTypeBusyError,
+    _ensure_services,
+)
 from cuepoint.exceptions.cuepoint_exceptions import CuePointException
+
+if TYPE_CHECKING:
+    from cuepoint.services.rekordbox_export_service import ExportRequest
 
 _logger = logging.getLogger(__name__)
 
@@ -75,6 +86,28 @@ FAILURE_CODE = "REKORDBOX_EXPORT_FAILED"
 _PROGRESS_REPORT_INTERVAL_SECONDS = 0.1
 
 
+@dataclass(frozen=True)
+class StartedRekordboxExport:
+    """An export started on request, and what it will write.
+
+    ``request`` is the export as validated — the destination made absolute and
+    each node once — so whoever started it shows what is running rather than
+    what it sent, and nothing has to validate a second time to learn it.
+    """
+
+    job: Job
+    request: "ExportRequest"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """The answer a route returns for a started export."""
+        return {
+            "job_id": self.job.id,
+            "collection_ids": list(self.request.collection_ids),
+            "key_format": self.request.key_format,
+            "destination_path": self.request.destination_path,
+        }
+
+
 def _export_service() -> Any:
     """Resolve the export service, bootstrapping the container if needed."""
     _ensure_services()
@@ -85,6 +118,26 @@ def _export_service() -> Any:
     return get_container().resolve(IRekordboxExportService)  # type: ignore[type-abstract]
 
 
+def refuse_if_library_busy(store: JobStore) -> None:
+    """Refuse a preview while the library is held by a job an export waits for.
+
+    Exactly the jobs :func:`start_rekordbox_export` is refused beside, so a
+    preview is refused when — and only when — the export it describes could
+    not start. A preview computed while an import or a batch edit rewrites the
+    library would describe numbers that are about to change, and one shown
+    beside a running export would offer a confirm that can only be refused.
+    For the preview, which registers no job to take the store's lock with.
+
+    Raises:
+        JobTypeBusyError: Naming the job holding the library.
+    """
+    from cuepoint.engine.library_refresh import LIBRARY_JOB_TYPES
+
+    for job in store.list_all():
+        if job.type in LIBRARY_JOB_TYPES and job.state.value in _ACTIVE_STATES:
+            raise JobTypeBusyError(job.type, job.id)
+
+
 def start_rekordbox_export(
     store: JobStore,
     collection_ids: Sequence[int],
@@ -92,7 +145,7 @@ def start_rekordbox_export(
     destination_path: str,
     *,
     service: Optional[Any] = None,
-) -> Job:
+) -> StartedRekordboxExport:
     """Validate an export on this thread, then start it as a job.
 
     Args:
@@ -102,6 +155,9 @@ def start_rekordbox_export(
         destination_path: The file a person chose in the save dialog.
         service: The export service. Resolved from the container when not
             given; a test hands in one over its own database.
+
+    Returns:
+        The job, and the export as validated.
 
     Raises:
         ValueError, ExportSourceError, ExportDestinationError, BrokenRuleError:
@@ -127,12 +183,13 @@ def start_rekordbox_export(
             exporter,
         )
 
-    return store.create_job(
+    job = store.create_job(
         job_type=JOB_TYPE_REKORDBOX_EXPORT,
         runner=runner,
         exclusive=True,
         conflicts_with=LIBRARY_JOB_TYPES,
     )
+    return StartedRekordboxExport(job=job, request=request)
 
 
 def run_rekordbox_export_job(
@@ -237,6 +294,8 @@ __all__ = (
     "FAILURE_CODE",
     "JOB_TYPE_REKORDBOX_EXPORT",
     "PHASE_MESSAGES",
+    "StartedRekordboxExport",
+    "refuse_if_library_busy",
     "run_rekordbox_export_job",
     "start_rekordbox_export",
 )

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import socket
 import urllib.error
 import urllib.request
@@ -114,6 +115,16 @@ def test_the_module_behind_a_retired_route_is_gone(module):
     assert importlib.util.find_spec(module) is None
 
 
+def _names(name: str, text: str) -> bool:
+    """True when ``text`` names the module ``name`` as a whole identifier.
+
+    Not a substring: ``rekordbox_export_api`` (EXPORT-06) contains the retired
+    ``export_api`` and is a different module. Word boundaries still catch every
+    way of naming the retired one — ``engine.export_api``, ``import export_api``.
+    """
+    return re.search(rf"\b{re.escape(name)}\b", text) is not None
+
+
 @pytest.mark.unit
 def test_nothing_in_the_engine_names_a_retired_module():
     names = [module.rsplit(".", 1)[1] for module in RETIRED_MODULES]
@@ -121,6 +132,15 @@ def test_nothing_in_the_engine_names_a_retired_module():
         f"{path.name}: {name}"
         for path in sorted(_ENGINE.glob("*.py"))
         for name in names
-        if name in path.read_text(encoding="utf-8")
+        if _names(name, path.read_text(encoding="utf-8"))
     ]
     assert offenders == []
+
+
+@pytest.mark.unit
+def test_the_guard_tells_a_retired_module_from_one_that_contains_its_name():
+    assert _names("export_api", "from cuepoint.engine.export_api import handle")
+    assert _names("export_api", "import export_api")
+    assert not _names(
+        "export_api", "from cuepoint.engine.rekordbox_export_api import x"
+    )

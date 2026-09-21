@@ -880,6 +880,135 @@ describe("desktop contract", () => {
     });
   });
 
+  describe("the Rekordbox export (EXPORT-06)", () => {
+    // Three engine methods and one dialog across all six files. Named here as
+    // CLEAN-11's were: the generic checks compare the files with each other,
+    // so a method missing from all of them passes every one.
+    const methods = ["previewRekordboxExport", "startRekordboxExport", "getRekordboxExportHistory"];
+
+    const clientMethod = (name: string) => {
+      const start = engineClient.indexOf(`async ${name}(`);
+      const next = engineClient.indexOf("\n  async ", start + 1);
+      return engineClient.slice(start, next === -1 ? undefined : next);
+    };
+
+    /** One `ipcMain.handle` registration in main.ts, up to the next one. */
+    const handler = (channel: string) => {
+      const start = main.indexOf(`"${channel}"`);
+      const next = main.indexOf("ipcMain.handle(", start);
+      return main.slice(start, next === -1 ? undefined : next);
+    };
+
+    it.each(methods)("exposes %s on the preload", (method) => {
+      expect(invokedChannels(preload)).toContain(`engine:${method}`);
+    });
+
+    it.each(methods)("handles engine:%s in the main process", (method) => {
+      expect(handledChannels(main)).toContain(`engine:${method}`);
+    });
+
+    it.each(methods)("forwards %s through the supervisor", (method) => {
+      expect(supervisorMethodsDeclared(supervisor)).toContain(method);
+    });
+
+    it.each(methods)("has a typed client method for %s", (method) => {
+      expect(engineClient).toContain(`async ${method}(`);
+    });
+
+    it.each([...methods, "chooseRekordboxExportDestination"])(
+      "declares %s on the renderer bridge type",
+      (method) => {
+        expect(bridgeTypes).toContain(`${method}?:`);
+      },
+    );
+
+    it("hits its own routes, which no other export shares", () => {
+      expect(clientMethod("previewRekordboxExport")).toContain('"/api/v1/rekordbox-export/preview"');
+      expect(clientMethod("startRekordboxExport")).toContain('"/api/v1/rekordbox-export/start"');
+      expect(clientMethod("getRekordboxExportHistory")).toContain("/api/v1/rekordbox-export/history");
+      for (const name of methods) {
+        expect(clientMethod(name), name).not.toContain("/api/v1/clean/export");
+      }
+    });
+
+    it("writes with POST and reads with GET", () => {
+      // A GET that started an export would be retried by anything that retries
+      // GETs — and an export repeated is a second file.
+      expect(clientMethod("previewRekordboxExport")).toContain("postRefusable");
+      expect(clientMethod("startRekordboxExport")).toContain("postRefusable");
+      expect(clientMethod("getRekordboxExportHistory")).toContain("getJson");
+      expect(clientMethod("getRekordboxExportHistory")).not.toMatch(/post/i);
+    });
+
+    it("answers a refusal as a value, because a rejection loses its reason over IPC", () => {
+      expect(bridgeTypes).toContain("=> Promise<RekordboxExportPreviewAnswer>");
+      expect(bridgeTypes).toContain("=> Promise<RekordboxExportStartAnswer>");
+      expect(clientMethod("previewRekordboxExport")).toContain("refusal");
+      expect(clientMethod("startRekordboxExport")).toContain("refusal");
+    });
+
+    it("gets the destination from a dialog the main process opens", () => {
+      expect(handledChannels(main)).toContain("dialog:saveRekordboxExport");
+      expect(invokedChannels(preload)).toContain("dialog:saveRekordboxExport");
+      expect(preload).toContain("chooseRekordboxExportDestination");
+    });
+
+    it("never starts an export from the dialog, and never judges its path there", () => {
+      // The dialog chooses a file; the engine decides whether it may be
+      // written (DEC-083). A cancelled dialog is only an answer.
+      const dialog = handler("dialog:saveRekordboxExport");
+      expect(dialog).toContain("chooseRekordboxExportDestination(");
+      expect(dialog).not.toContain("startRekordboxExport");
+      expect(dialog).not.toContain("previewRekordboxExport");
+      expect(dialog).not.toMatch(/existsSync|statSync|\.xml/);
+    });
+
+    it("lets a job's result be read as an export's", () => {
+      expect(bridgeTypes).toContain("| RekordboxExportResult");
+    });
+
+    it.each([
+      "RekordboxExportSourceState",
+      "RekordboxExportPlaylistPreview",
+      "RekordboxExportPreview",
+      "RekordboxExportRefusal",
+      "RekordboxExportPreviewAnswer",
+      "RekordboxExportStarted",
+      "RekordboxExportStartAnswer",
+      "RekordboxExportResult",
+      "RekordboxExportPlaylistRecord",
+      "RekordboxExportRecord",
+      "RememberedRekordboxExport",
+      "RekordboxExportHistory",
+    ])("keeps the engine and the renderer agreeing about %s", (shape) => {
+      const fields = (source: string) => {
+        const start = source.indexOf(`export interface ${shape} `);
+        const body = source.slice(start, source.indexOf("\n}", start));
+        return [...body.matchAll(/^ {2}([a-z_]+)\??:/gm)].map((match) => match[1]!).sort();
+      };
+
+      expect(fields(bridgeTypes).length).toBeGreaterThan(0);
+      expect(fields(bridgeTypes)).toEqual(fields(engineClient));
+    });
+
+    it.each([
+      "RekordboxKeyFormat",
+      "RekordboxExportField",
+      "RekordboxExportRefusalCode",
+      "RekordboxExportSourceReason",
+      "RekordboxExportDestinationReason",
+      "RekordboxExportDestinationChoice",
+    ])("keeps the engine and the renderer agreeing about the union %s", (union) => {
+      const declaration = (source: string) => {
+        const start = source.indexOf(`export type ${union} =`);
+        expect(start, union).toBeGreaterThan(-1);
+        return source.slice(start, source.indexOf(";", start)).replace(/\s+/g, " ");
+      };
+
+      expect(declaration(bridgeTypes)).toEqual(declaration(engineClient));
+    });
+  });
+
   describe("inKey's routes are gone (CLEAN-14, DEC-071)", () => {
     // A removal is the same six-file sweep as an addition, and a method left in
     // one file is as silent as one missing from another: the renderer would

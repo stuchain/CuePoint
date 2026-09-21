@@ -9,6 +9,7 @@ import { MediaKeyBinding } from "./mediaKeys";
 import type { PlayerNotice } from "./playbackFailures";
 import { PlaybackController } from "./playbackController";
 import { queueTruncationMessage, resolveQueueFromView } from "./queueResolver";
+import { chooseRekordboxExportDestination } from "./rekordboxExportDialog";
 import type { QueueItemInput, RepeatMode } from "./playbackQueue";
 import type { LibraryBrowseParams } from "./engineClient";
 import { PlayerSupervisor } from "./playerSupervisor";
@@ -360,6 +361,15 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:exportReviewList", (_event, params) =>
     engine.exportReviewList(params),
   );
+  ipcMain.handle("engine:previewRekordboxExport", (_event, params) =>
+    engine.previewRekordboxExport(params),
+  );
+  ipcMain.handle("engine:startRekordboxExport", (_event, params) =>
+    engine.startRekordboxExport(params),
+  );
+  ipcMain.handle("engine:getRekordboxExportHistory", (_event, params) =>
+    engine.getRekordboxExportHistory(params),
+  );
   ipcMain.handle("engine:startLibraryImport", (_event, params) =>
     engine.startLibraryImport(params),
   );
@@ -643,6 +653,26 @@ function registerIpcHandlers(): void {
     }
     return { canceled: false as const, filePath: result.filePaths[0] };
   });
+  /**
+   * Where a Rekordbox export goes (EXPORT-06, DEC-083). The dialog chooses a
+   * file and nothing else: whether that file may be written is the engine's to
+   * say when the export starts, so nothing here judges the path, and nothing
+   * here starts an export — a cancelled dialog is simply an answer.
+   */
+  ipcMain.handle(
+    "dialog:saveRekordboxExport",
+    (_event, request?: { currentPath?: string | null }) =>
+      chooseRekordboxExportDestination(
+        {
+          history: () => engine.getRekordboxExportHistory({ limit: 1 }),
+          fallbackFolder: () => app.getPath("documents"),
+          showSaveDialog: (options) =>
+            showSaveDialogFor(BrowserWindow.getFocusedWindow(), options),
+          now: () => new Date(),
+        },
+        request,
+      ),
+  );
   ipcMain.handle(
     "dialog:saveExport",
     async (_event, options: { defaultPath?: string; format: string }) => {

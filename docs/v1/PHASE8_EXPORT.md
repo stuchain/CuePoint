@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 8: Rekordbox Export, Detailed Step Specifications
 
-Status: **EXPORT-01…EXPORT-05 implemented; EXPORT-06 and EXPORT-07 specified.**
+Status: **EXPORT-01…EXPORT-06 implemented; EXPORT-07 specified.**
 The seven steps below replace the roadmap's placeholder inventory (EXPORT-01…EXPORT-08, which
 Round 10's answers came in one under).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -1053,7 +1053,7 @@ every job's is, and no row is written.
 
 ---
 
-## EXPORT-06 — The Export API, the Save Dialog and the Desktop Contract
+## EXPORT-06 — The Export API, the Save Dialog and the Desktop Contract ✅ IMPLEMENTED 2026-09-21
 
 **Objective**: Put preview and export on the wire through all six contract files, and get the
 destination from a native save dialog.
@@ -1105,6 +1105,135 @@ scripts/smoke_engine_health.py` passes.
 type that reads as the CSV export will be wired to the wrong thing by someone later.
 
 **Complexity**: **M**
+
+**Outcome**: Complete. `engine/rekordbox_export_api.py` answers `POST
+/api/v1/rekordbox-export/preview`, `POST /api/v1/rekordbox-export/start` and `GET
+/api/v1/rekordbox-export/history`, routed from `server.py` beside Clean and organization in ORG-08's
+shape — the module says what it handles and what each refusal is, the server sends it. The three
+methods and the save dialog move through all six contract files in the order the specification gave:
+`engineClient.ts`, `engineSupervisor.ts`, `main.ts` (three `engine:` handlers and
+`dialog:saveRekordboxExport`), `preload.cjs`, and `cuepointBridge.types.ts`, where the preview, the
+refusal, the started export, the job's result and the history are each typed once.
+`electron/rekordboxExportDialog.ts` holds the dialog's options, apart from `main.ts` so they can be
+tested; `renderer/src/api/rekordboxExportBridge.ts` names the eight bridge methods the export UI
+will call, so EXPORT-07 reaches the bridge through one door.
+
+**A refusal crosses the bridge as a value, not a rejection.** The specification asks for "a start
+with the source path as destination returning the typed refusal", and implementing it found that
+nothing typed survives the trip: `readJson` throws the envelope's message alone, and Electron then
+flattens any rejection to its message, so the reason, the path and a busy job's id never reach the
+renderer. The engine still answers with its normal envelope — 400
+`REKORDBOX_EXPORT_DESTINATION_REFUSED`, 409 `REKORDBOX_EXPORT_SOURCE_REFUSED`, 409 `LIBRARY_BUSY`,
+each carrying `reason`, `path` or `job_id` — and the two client methods that can meet one turn
+exactly those three codes into `{ preview | started, refusal }`, with exactly one set. Anything else
+still throws in the engine's words: a malformed body is a bug, not a state for a dialog to draw.
+
+**Six decisions taken while implementing.**
+
+1. **The remembered folder and notation are read from the export record, not kept as settings.** The
+   specification said "stored in settings"; DEC-086 already names the recorded destination as what
+   pre-fills the dialog, and a copy in `config.yaml` would be a second store that could disagree
+   with where the last export went and would need its own rule for a cancelled one.
+   `RekordboxExportService.remembered()` answers the folder and notation of the last export that
+   *wrote*, and whether the folder is still there; the history carries it, and `main.ts` asks for it
+   when the dialog opens, so the shell holds no path and the renderer never stores one. The cost,
+   stated in DEC-083's precision: the default notation changes by exporting in another, not by a
+   separate setting, so EXPORT-07's Settings section shows these rather than holding them (DEC-087
+   cross-referenced).
+
+2. **A preview is refused exactly when a start would be refused for a busy library.** Without this
+   the dialog would compute numbers during an import that are about to change, then offer a confirm
+   that can only fail. `refuse_if_library_busy` checks the same `LIBRARY_JOB_TYPES` the start
+   conflicts with — the pattern Clean's tag-write preview already uses — and a match does not hold
+   it up, as it does not hold up a start. Recorded in DEC-084.
+
+3. **A source the patch cannot read is a typed refusal, `source_invalid`.** A preview over a source
+   that is too large, not well-formed or in an encoding the writer cannot write back used to raise a
+   bare `ValidationError`, which would have reached the dialog as a generic 400. It is now an
+   `ExportSourceError` with its own reason, so EXPORT-07 can offer "import again" rather than "fix
+   your request". It stays a `ValidationError`, so every existing handler still applies.
+
+4. **`start_rekordbox_export` answers with the job and the export as validated.** The route must say
+   what will be written — the destination made absolute, each node once — and learning that by
+   validating a second time would be a race: a source that vanished in between would answer 409 for
+   a job that had already started. It now returns `StartedRekordboxExport`, the shape
+   `start_match_job` and the file check already use.
+
+5. **`parse_selection` is not used.** It reads a *track* selection; an export's unit is a Collection
+   (DEC-087), so the body is `collection_ids` and `key_format`, both optional, `null` read as absent
+   (ORG-13's lesson), and an unknown key refused. A missing or `null` `destination_path` reaches the
+   service as blank and comes back as its own `destination_blank`, like every other destination
+   refusal.
+
+6. **The dialog can reopen at a previous choice.** `chooseRekordboxExportDestination` takes an
+   optional `currentPath`, used only if it is an absolute `.xml` path, so "change destination" in
+   EXPORT-07 does not start over. It decides where the dialog opens and nothing else; the dialog
+   judges no path, starts nothing, and a cancel — including one that still reports the text that was
+   in the box — answers `{ canceled: true }`.
+
+**Also in this step.** `test_retired_inkey_routes.py` looked for the retired `export_api` module as
+a substring of every engine file, and `rekordbox_export_api` contains it — the naming risk this
+step's specification named, arriving as a false alarm. It now matches whole identifiers, with a test
+that it still catches `engine.export_api` and does not catch the new module. And
+`test_rekordbox_export_preview.py`'s guard that "no route names the service yet" now expects exactly
+the job and this module.
+
+**Tested end to end, not only in layers.** The real TypeScript `EngineClient`, bundled with esbuild,
+was run against a real `python -m cuepoint.engine` over a temporary `CUEPOINT_HOME`: a preview
+refused before any import with `source_never_imported`, an import, a preview with `null` notation
+and a node named twice, a bad notation thrown in the engine's words, the source as destination
+refused with its reason and path and nothing started, an export in Camelot run to `succeeded` with
+the file written and the source byte-identical, the history answering it with its playlist and
+remembering its folder and notation, and the dialog options built from that live history starting in
+that folder — 22 checks, all passing.
+
+**Tests**: 135 new in Python and 102 in TypeScript. `engine/test_engine_rekordbox_export_api.py`
+(93) runs a real engine over a library a real import job imported and covers the specification's
+list — a preview over a scope, a start returning a job id whose job writes the file, the source as
+destination returning the typed refusal and starting nothing, malformed selections as 400s never
+500s, `null` read as absent — and beyond it: every other destination and source refusal, a busy
+library for the preview and the start, the token on every route, the history's order, shape, clamped
+limit and remembered folder, and every branch of `status_for`.
+`engine/test_rekordbox_export_contract.py` (20) holds every TypeScript interface and union in
+`engineClient.ts` against what Python actually serializes, from real objects — the one comparison
+`desktopContract.test.ts` cannot make, because Vite will not read a file outside its app.
+`test_rekordbox_export_remembered.py` (11) covers what is remembered and what never is; the job and
+preview tests gain 10 more. On the TypeScript side, `rekordboxExportDialog.test.ts` (23) asserts the
+filter, the dated name, the starting folder in each case and that a cancelled dialog starts nothing;
+`engineClient.rekordboxExport.test.ts` (15) the refusal translation; `rekordboxExportBridge.test.ts`
+(24) evaluates the runtime preload and asserts every method the export UI calls exists on it; and
+`desktopContract.test.ts` gains 40 for the six files.
+
+**Fifty mutations were introduced deliberately to prove the tests bite, and all fifty now fail the
+suite.** Forty-eight did on the first run. The two that survived were test gaps and each gained a
+test: a dialog that reports a path on cancel answered as a choice, and the accessor losing
+`cancelJob` unnoticed because its tests iterated the list they should have pinned. The fifty span
+`null` refused, a bool taken as an id, an unknown field let through, each typed refusal flattened or
+losing its reason, a busy library a 500, the preview beside a busy library, the history unclamped,
+the start answering what was sent, unreadable rules passed on, the routes unwired, the busy check
+narrowed or blind to ended jobs, an unusable source untyped, a cancelled export or the file name
+remembered, a gone folder said to exist, every failure drawn as a refusal, the reason or the busy
+job dropped, a busy library thrown, the history posted, the month off by one, a gone folder opened,
+an engine failure stopping the dialog, a relative or non-XML previous choice taken, a cancel
+answered with a file, any file offered, no overwrite confirmation, and each of the six contract
+files missing its piece.
+
+**Checks run**: the full `src/tests/unit` (7,396 passed, 47 skipped), `src/tests/integration
+src/tests/regression src/tests/acceptance -m "not slow"` (368 passed, 19 skipped), `python -m pytest
+src/tests/unit/engine` inside that, `PYTHONPATH=src python scripts/smoke_engine_health.py` (OK), the
+renderer's `npm test` (2,641 passed), `npm run typecheck` (clean) and `npm run lint` (exit 0; its
+warnings are in files this step does not touch), the Electron workspace's `npm test` (431 passed)
+and `npm run typecheck` (clean), `oxlint -D correctness` over the touched Electron files, an esbuild
+bundle of `main.ts`, `ruff check src/`, `ruff format --check src/`, `python
+scripts/check_no_qt_in_core.py`, `python scripts/check_desktop_version_coupling.py`, `git diff
+--check`, and the mypy gates with the API module added to `GUARDED`.
+
+**Not done here, deliberately**: no CHANGELOG entry, for EXPORT-01's reason — the routes exist but
+nothing in the UI calls them until EXPORT-07. No Electron E2E: there is no screen to drive yet, and
+the preload, the IPC channels and the dialog's options are each tested against the real files;
+EXPORT-07's packaged pass covers the dialog opening for real. The preview's cost is EXPORT-04's
+measured 3.0 s at 50,000 tracks — the route adds only the serialization — so it was not measured
+again.
 
 ---
 

@@ -132,7 +132,16 @@ DEFAULT_KEY_FORMAT = KEY_FORMAT_NORMAL
 SOURCE_NEVER_IMPORTED = "source_never_imported"
 SOURCE_MISSING = "source_missing"
 SOURCE_UNREADABLE = "source_unreadable"
-SOURCE_REFUSALS = (SOURCE_NEVER_IMPORTED, SOURCE_MISSING, SOURCE_UNREADABLE)
+#: The file is there and readable, and is not a collection the export can patch:
+#: too large to parse, not well-formed, or in an encoding it cannot write back.
+#: Found only by reading it, so only the preview can say it before a job does.
+SOURCE_INVALID = "source_invalid"
+SOURCE_REFUSALS = (
+    SOURCE_NEVER_IMPORTED,
+    SOURCE_MISSING,
+    SOURCE_UNREADABLE,
+    SOURCE_INVALID,
+)
 
 #: The two signals DEC-082 compares, named so a preview can say which changed.
 SIGNAL_MODIFIED = "mtime"
@@ -495,6 +504,39 @@ class ExportResult:
         }
 
 
+@dataclass(frozen=True)
+class RememberedExport:
+    """What the next export starts from: the last one that wrote (DEC-083, DEC-089).
+
+    Read from the export record rather than kept as a setting of its own, so it
+    cannot disagree with where the last export actually went. A cancelled or
+    failed export is not remembered: nothing was written where it pointed.
+
+    Attributes:
+        folder: The folder the last written export went to, or ``None`` when
+            nothing has been exported. Only the folder: DEC-083 never remembers
+            the file name, so no export silently overwrites the previous one.
+        folder_exists: True when that folder is still there. A drive that has
+            been unplugged is not somewhere to open a save dialog.
+        key_format: The notation it used, or the default when there is none.
+        export_id: The export these came from, or ``None``.
+    """
+
+    folder: Optional[str] = None
+    folder_exists: bool = False
+    key_format: str = DEFAULT_KEY_FORMAT
+    export_id: Optional[int] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """The choices under the names the history payload carries them."""
+        return {
+            "folder": self.folder,
+            "folder_exists": self.folder_exists,
+            "key_format": self.key_format,
+            "export_id": self.export_id,
+        }
+
+
 class RekordboxExportService(IRekordboxExportService):
     """Answers what an export would write, and writes it when asked."""
 
@@ -632,7 +674,35 @@ class RekordboxExportService(IRekordboxExportService):
                 f"The collection file could not be read: {plan.source_path}",
                 plan.source_path,
             ) from exc
+        except ExportSourceError:
+            raise
+        except ValidationError as exc:
+            # Every refusal the patch makes while reading is about the file:
+            # its size, its encoding, its well-formedness. (Its one other, the
+            # tree-depth guard, is unreachable from here: a Collection tree is
+            # half as deep as that guard allows.) Given a reason so the preview
+            # can say which of the source's problems this is.
+            raise ExportSourceError(
+                SOURCE_INVALID, exc.message, plan.source_path
+            ) from exc
         return self.report(plan, result)
+
+    def remembered(self) -> RememberedExport:
+        """Return the folder and notation the next export should start from.
+
+        The last export that wrote, as DEC-086's record holds it — the one
+        store, rather than a copy in settings that could drift from it.
+        """
+        latest = self._exports.latest_written()
+        if latest is None:
+            return RememberedExport()
+        folder = os.path.dirname(latest.destination_path) or None
+        return RememberedExport(
+            folder=folder,
+            folder_exists=folder is not None and os.path.isdir(folder),
+            key_format=latest.key_format,
+            export_id=latest.id,
+        )
 
     def report(self, plan: ExportPlan, result: PatchResult) -> ExportPreview:
         """Turn a plan and a patch's own result into the numbers to show.
@@ -1225,10 +1295,12 @@ __all__ = (
     "ExportSourceError",
     "PlaylistPreview",
     "RekordboxExportService",
+    "RememberedExport",
     "SIGNAL_MODIFIED",
     "SIGNAL_SIZE",
     "SOURCE_MISSING",
     "SOURCE_NEVER_IMPORTED",
+    "SOURCE_INVALID",
     "SOURCE_REFUSALS",
     "SOURCE_UNREADABLE",
     "SourceState",

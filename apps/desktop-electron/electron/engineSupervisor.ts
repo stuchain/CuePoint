@@ -49,6 +49,9 @@ import {
   type MatchStarted,
   type ResumableMatches,
   type ReviewExportResult,
+  type RekordboxExportHistory,
+  type RekordboxExportPreviewAnswer,
+  type RekordboxExportStartAnswer,
   type TagPreviewOutcome,
   type TagRestoreStarted,
   type TagWriteRecord,
@@ -535,6 +538,24 @@ export class EngineSupervisor {
     params: Parameters<EngineClient["exportReviewList"]>[0],
   ): Promise<ReviewExportResult> {
     return this.client().exportReviewList(params);
+  }
+
+  async previewRekordboxExport(
+    params: Parameters<EngineClient["previewRekordboxExport"]>[0],
+  ): Promise<RekordboxExportPreviewAnswer> {
+    return this.client().previewRekordboxExport(params);
+  }
+
+  async startRekordboxExport(
+    params: Parameters<EngineClient["startRekordboxExport"]>[0],
+  ): Promise<RekordboxExportStartAnswer> {
+    return this.client().startRekordboxExport(params);
+  }
+
+  async getRekordboxExportHistory(
+    params?: Parameters<EngineClient["getRekordboxExportHistory"]>[0],
+  ): Promise<RekordboxExportHistory> {
+    return this.client().getRekordboxExportHistory(params);
   }
 
   async startLibraryImport(params: {

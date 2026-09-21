@@ -2646,6 +2646,19 @@ timestamped names never overwrites anything but grows without bound somewhere th
   two close paths a save dialog cannot produce, so one that names them came from somewhere else, and
   creating folders on a user's disk nobody chose is not an export's business. Each refusal has its
   own reason, and all of them happen before anything is parsed.
+- **The remembered folder and notation are read from the export record, not kept as settings of
+  their own** (added 2026-09-21 with EXPORT-06). They are the folder and the notation of the last
+  export that wrote, as DEC-086's row holds them — which DEC-086 already names as what pre-fills the
+  dialog. A copy in a settings file would be a second store that could disagree with where the last
+  export actually went, and would need its own rule for a cancelled or failed export; the record has
+  that rule already. The engine answers them with the export history, saying whether the folder is
+  still there, and the save dialog starts in it or, when there is nothing to remember or the drive
+  is gone, in Documents. The shell keeps no path of its own. The consequence is stated rather than
+  hidden: the default notation changes by exporting in another one, not by a separate setting, so
+  Settings (DEC-087) shows the remembered folder and notation rather than holding them.
+- **The dialog reopens at a previous choice.** When a person changes the destination before
+  exporting, the dialog opens at the file they had chosen rather than starting over. That path only
+  decides where the dialog opens; the person still chooses, and the engine still judges.
 
 **Decided with**: User · **Date**: 2026-09-20
 
@@ -2682,6 +2695,12 @@ notices it.
   re-parses it, applies the size guard first for the same reason the write does, and stops before
   serializing. Measured at 3.0 s for 50,000 tracks with 10,000 overrides, which is a preview a user
   asked for rather than something running behind them.
+- **A preview is refused exactly when the export it describes could not start** (added 2026-09-21
+  with EXPORT-06). While an import, a refresh, a batch edit or another export holds the library, the
+  preview answers the same busy refusal a start would, naming the job. A preview computed while the
+  library is being rewritten would state numbers that are about to change, and one shown beside a
+  running export would offer a confirm that can only be refused. A match, a tag write or a file
+  check does not refuse it, as none of them refuses a start.
 
 **Decided with**: User · **Date**: 2026-09-20
 
@@ -2798,7 +2817,8 @@ offering it alongside the other two invites the reading that those mean somethin
 - The Collection context menu's entry pre-ticks that node; the header's entry opens with none ticked,
   and both land in the same preview.
 - Settings holds the remembered destination folder and the default key notation (DEC-083, DEC-089), and
-  offers no way to start an export.
+  offers no way to start an export. (Shows rather than holds: since EXPORT-06 both are read from the
+  export record, per DEC-083's precision of 2026-09-21.)
 - The nav registry is unchanged, so no `export` destination, icon or route is added.
 
 **Decided with**: User · **Date**: 2026-09-20

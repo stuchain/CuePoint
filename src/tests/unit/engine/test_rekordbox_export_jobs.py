@@ -241,7 +241,7 @@ class TestAnExportJob:
         self, store, imported, destination
     ):
         job = finished(
-            store, start_rekordbox_export(store, [], "normal", str(destination))
+            store, start_rekordbox_export(store, [], "normal", str(destination)).job
         )
 
         assert job.type == JOB_TYPE_REKORDBOX_EXPORT
@@ -257,7 +257,7 @@ class TestAnExportJob:
 
     def test_its_answer_is_the_exports_own(self, store, imported, destination):
         job = finished(
-            store, start_rekordbox_export(store, [], "camelot", str(destination))
+            store, start_rekordbox_export(store, [], "camelot", str(destination)).job
         )
 
         assert job.result["outcome"] == EXPORT_WRITTEN
@@ -279,7 +279,9 @@ class TestAnExportJob:
 
         job = finished(
             store,
-            start_rekordbox_export(store, [int(node.id)], "normal", str(destination)),
+            start_rekordbox_export(
+                store, [int(node.id)], "normal", str(destination)
+            ).job,
         )
 
         assert job.result["playlist_count"] == 1
@@ -302,14 +304,16 @@ class TestAnExportJob:
             real(job, progress)
 
         store.report_progress = spy  # type: ignore[method-assign]
-        finished(store, start_rekordbox_export(store, [], "normal", str(destination)))
+        finished(
+            store, start_rekordbox_export(store, [], "normal", str(destination)).job
+        )
 
         assert seen[0] == PHASE_MESSAGES[PHASE_TRACKS]
         assert seen[-1] == PHASE_MESSAGES[PHASE_PLAYLISTS]
 
     def test_the_job_is_recorded_in_the_job_log(self, store, imported, destination):
         job = finished(
-            store, start_rekordbox_export(store, [], "normal", str(destination))
+            store, start_rekordbox_export(store, [], "normal", str(destination)).job
         )
 
         row = (
@@ -329,7 +333,7 @@ class TestARefusalIsNotAJob:
         self, store, imported
     ):
         with pytest.raises(ExportDestinationError) as refused:
-            start_rekordbox_export(store, [], "normal", str(imported))
+            start_rekordbox_export(store, [], "normal", str(imported)).job
 
         assert refused.value.reason == DESTINATION_IS_SOURCE
         assert [
@@ -341,7 +345,7 @@ class TestARefusalIsNotAJob:
         self, store, imported, destination
     ):
         with pytest.raises(ValueError):
-            start_rekordbox_export(store, [], "boring", str(destination))
+            start_rekordbox_export(store, [], "boring", str(destination)).job
 
         assert [
             job for job in store.list_all() if job.type == JOB_TYPE_REKORDBOX_EXPORT
@@ -353,7 +357,7 @@ class TestARefusalIsNotAJob:
         from cuepoint.services.rekordbox_export_service import ExportSourceError
 
         with pytest.raises(ExportSourceError):
-            start_rekordbox_export(store, [], "normal", str(destination))
+            start_rekordbox_export(store, [], "normal", str(destination)).job
 
         assert store.list_all() == []
 
@@ -362,7 +366,7 @@ class TestARefusalIsNotAJob:
     ):
         job = start_rekordbox_export(
             store, [], "normal", str(destination), service=held
-        )
+        ).job
         held.started.wait(10)
         imported.unlink()
         held.release.set()
@@ -384,13 +388,13 @@ class TestWhatWaitsForWhat:
     ):
         first = start_rekordbox_export(
             store, [], "normal", str(destination), service=held
-        )
+        ).job
         held.started.wait(10)
 
         with pytest.raises(JobTypeBusyError) as busy:
             start_rekordbox_export(
                 store, [], "normal", str(destination.with_name("b.xml"))
-            )
+            ).job
 
         assert busy.value.job_id == first.id
         held.release.set()
@@ -401,7 +405,7 @@ class TestWhatWaitsForWhat:
     ):
         export = start_rekordbox_export(
             store, [], "normal", str(destination), service=held
-        )
+        ).job
         held.started.wait(10)
 
         with pytest.raises(JobTypeBusyError) as busy:
@@ -416,7 +420,7 @@ class TestWhatWaitsForWhat:
     ):
         export = start_rekordbox_export(
             store, [], "normal", str(destination), service=held
-        )
+        ).job
         held.started.wait(10)
 
         with pytest.raises(JobTypeBusyError):
@@ -434,7 +438,7 @@ class TestWhatWaitsForWhat:
         release = blocking_job(store, job_type, LIBRARY_JOB_TYPES)
         try:
             with pytest.raises(JobTypeBusyError) as busy:
-                start_rekordbox_export(store, [], "normal", str(destination))
+                start_rekordbox_export(store, [], "normal", str(destination)).job
             assert busy.value.job_type == job_type
         finally:
             release.set()
@@ -446,7 +450,7 @@ class TestWhatWaitsForWhat:
         release = blocking_job(store, JOB_TYPE_CLEAN_MATCH, MATCH_JOB_CONFLICTS)
         try:
             job = finished(
-                store, start_rekordbox_export(store, [], "normal", str(destination))
+                store, start_rekordbox_export(store, [], "normal", str(destination)).job
             )
             assert job.state is JobState.SUCCEEDED
         finally:
@@ -457,7 +461,7 @@ class TestWhatWaitsForWhat:
     ):
         export = start_rekordbox_export(
             store, [], "normal", str(destination), service=held
-        )
+        ).job
         held.started.wait(10)
         try:
             release = blocking_job(store, JOB_TYPE_CLEAN_MATCH, MATCH_JOB_CONFLICTS)
@@ -479,7 +483,7 @@ class TestHowItEnds:
     ):
         job = start_rekordbox_export(
             store, [], "normal", str(destination), service=held
-        )
+        ).job
         held.started.wait(10)
         store.request_cancel(job.id)
         held.release.set()
@@ -501,7 +505,7 @@ class TestHowItEnds:
     ):
         job = start_rekordbox_export(
             store, [], "normal", str(destination), service=held
-        )
+        ).job
         held.started.wait(10)
         imported.write_text("<DJ_PLAYLISTS><COLLECTION>", encoding="utf-8")
         held.release.set()
@@ -530,7 +534,7 @@ class TestHowItEnds:
             store,
             start_rekordbox_export(
                 store, [], "normal", str(destination), service=Broken()
-            ),
+            ).job,
         )
 
         assert ended.state is JobState.FAILED
@@ -589,3 +593,71 @@ class TestProgressSampling:
             PHASE_TRACKS: "Patching tracks",
             PHASE_PLAYLISTS: "Building playlists",
         }
+
+
+# ------------------------------------------------------------ what a start says
+
+
+class TestWhatAStartAnswers:
+    def test_it_answers_with_the_job_and_the_export_as_validated(
+        self, store, imported, destination, monkeypatch
+    ):
+        """What runs, not what was sent: the destination made absolute and each
+        node once — so a route need not validate a second time to say it."""
+        from cuepoint.services.interfaces import ICollectionService
+
+        node = resolve(ICollectionService).create_collection("Saturday")
+        monkeypatch.chdir(destination.parent)
+
+        started = start_rekordbox_export(
+            store, [int(node.id), int(node.id)], "camelot", destination.name
+        )
+        finished(store, started.job)
+
+        assert started.request.collection_ids == (int(node.id),)
+        assert started.request.destination_path == str(destination)
+        assert started.to_dict() == {
+            "job_id": started.job.id,
+            "collection_ids": [int(node.id)],
+            "key_format": "camelot",
+            "destination_path": str(destination),
+        }
+        assert started.job.type == JOB_TYPE_REKORDBOX_EXPORT
+
+
+# ------------------------------------------------------------ a busy preview
+
+
+class TestAPreviewWaitsForWhatAStartWaitsFor:
+    @pytest.mark.parametrize("job_type", sorted(LIBRARY_JOB_TYPES))
+    def test_every_library_job_refuses_it(self, store, job_type):
+        from cuepoint.engine.rekordbox_export_jobs import refuse_if_library_busy
+
+        release = blocking_job(store, job_type, LIBRARY_JOB_TYPES)
+        try:
+            with pytest.raises(JobTypeBusyError) as busy:
+                refuse_if_library_busy(store)
+            assert busy.value.job_type == job_type
+        finally:
+            release.set()
+
+    def test_a_match_does_not(self, store):
+        from cuepoint.engine.rekordbox_export_jobs import refuse_if_library_busy
+
+        release = blocking_job(store, JOB_TYPE_CLEAN_MATCH, MATCH_JOB_CONFLICTS)
+        try:
+            refuse_if_library_busy(store)
+        finally:
+            release.set()
+
+    def test_a_job_that_has_ended_does_not(self, store):
+        from cuepoint.engine.rekordbox_export_jobs import refuse_if_library_busy
+
+        release = blocking_job(store, JOB_TYPE_LIBRARY_IMPORT, LIBRARY_JOB_TYPES)
+        release.set()
+        wait_until(
+            lambda: all(job.state in TERMINAL for job in store.list_all()),
+            "the blocking job to end",
+        )
+
+        refuse_if_library_busy(store)
