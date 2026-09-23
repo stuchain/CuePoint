@@ -252,6 +252,14 @@ export interface EngineStatus {
   /** True while a bounded auto-restart is in progress (DEC-028). */
   reconnecting?: boolean;
   restartAttempts?: number;
+  /**
+   * True while the engine has been started but has not answered yet.
+   *
+   * Distinct from `connected: false` on its own, which means the engine is not
+   * there: this one resolves by waiting. A packaged macOS engine needs about
+   * ten seconds on a cold start.
+   */
+  starting?: boolean;
 }
 
 export type JobState = "queued" | "running" | "succeeded" | "failed" | "cancelled";

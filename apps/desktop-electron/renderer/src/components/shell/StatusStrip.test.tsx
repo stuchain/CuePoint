@@ -77,6 +77,54 @@ describe("engine state", () => {
     expect(await screen.findByText(/Engine offline: Engine not running/)).toBeInTheDocument();
   });
 
+  it("says the engine is starting rather than connected, before it answers", async () => {
+    // The bug this pins, found by the Phase 8 macOS pass. A packaged macOS
+    // engine is a PyInstaller one-file build that takes about ten seconds to
+    // unpack and answer on a cold start, and the supervisor called it
+    // connected the moment the child was spawned. For those ten seconds the
+    // strip said "Engine connected" while every call through it failed.
+    getEngineStatus.mockResolvedValue({ connected: false, starting: true, error: "Starting" });
+
+    render(<StatusStrip />);
+
+    expect(await screen.findByText(/Starting engine…/)).toBeInTheDocument();
+    expect(screen.queryByText(/Engine connected/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Engine offline/)).not.toBeInTheDocument();
+  });
+
+  it("does not offer Restart engine to an engine that is still starting", async () => {
+    // Restarting an engine that is merely slow to unpack sets it back to the
+    // beginning, which is the opposite of what the person wanted.
+    bridge({ restartEngine: vi.fn() });
+    getEngineStatus.mockResolvedValue({ connected: false, starting: true, error: "Starting" });
+
+    render(<StatusStrip />);
+    await screen.findByText(/Starting engine…/);
+
+    expect(screen.queryByRole("button", { name: /restart engine/i })).not.toBeInTheDocument();
+  });
+
+  it("still offers Restart engine to an engine that is simply not there", async () => {
+    bridge({ restartEngine: vi.fn() });
+    getEngineStatus.mockResolvedValue({ connected: false, error: "Engine not running" });
+
+    render(<StatusStrip />);
+    await screen.findByText(/Engine offline/);
+
+    expect(screen.getByRole("button", { name: /restart engine/i })).toBeInTheDocument();
+  });
+
+  it("goes from starting to connected without a remount", async () => {
+    getEngineStatus.mockResolvedValue({ connected: false, starting: true, error: "Starting" });
+    render(<StatusStrip />);
+    await screen.findByText(/Starting engine…/);
+
+    getEngineStatus.mockResolvedValue({ connected: true, version: "1.0.0" });
+    await vi.advanceTimersByTimeAsync(4100);
+
+    await waitFor(() => expect(screen.getByText(/Engine connected/)).toBeInTheDocument());
+  });
+
   it("notices the engine going down without a remount", async () => {
     // The carried-in obligation. The component this replaces would pass a test
     // that only checked the first render, because it read the status once and

@@ -91,7 +91,39 @@ export interface EngineStatus {
   reconnecting?: boolean;
   /** Restart attempts made since the engine last ran healthily. */
   restartAttempts?: number;
+  /**
+   * True while the engine has been spawned but has not yet answered `/health`.
+   *
+   * Its own state, because "not connected yet" and "not connected any more"
+   * ask different things of the person reading the strip: the first is worth
+   * waiting out, the second is worth acting on. A packaged macOS engine takes
+   * about ten seconds to answer on a cold start (see `HEALTH_TIMEOUT_MS`), and
+   * for all of it `getStatus()` used to report `connected: true` — every call
+   * made in that window failed while the strip said the engine was there.
+   */
+  starting?: boolean;
 }
+
+/**
+ * How long the engine gets to answer `/health` before it is called dead.
+ *
+ * This was 5 seconds (20 attempts, 250ms apart) and a packaged macOS engine
+ * does not cold-start in five seconds. It is a PyInstaller one-file build: the
+ * first run of a given build unpacks ~76MB into a temporary directory and
+ * imports the whole engine before it can bind a socket, which measured **9.7s**
+ * on an M5 Pro — so every engine call in the first ten seconds after launch
+ * failed, on the run that matters most, the first one after installing.
+ *
+ * `scripts/build_engine_sidecar.py` learned this already and allows 90s, with
+ * the same reasoning written next to it; the supervisor never did. The number
+ * is deliberately generous and matches it: this bound exists to catch an engine
+ * that never starts, not to police how long starting takes. Nothing waits on
+ * it — `starting` tells the UI what is happening meanwhile.
+ */
+export const HEALTH_TIMEOUT_MS = 90_000;
+
+/** How often `/health` is asked while waiting. */
+export const HEALTH_POLL_MS = 250;
 
 /**
  * How hard CuePoint tries to bring a dead engine back (DEC-028).
@@ -123,6 +155,14 @@ export class EngineSupervisor {
   private jobStreams = new Map<string, { abort: AbortController; refs: number }>();
   private restartAttempts = 0;
   private reconnecting = false;
+  /**
+   * Whether `/health` has answered for the child now running.
+   *
+   * A spawned child is not a reachable engine, and `getStatus()` used to treat
+   * the two as one. Set only by a successful health poll, and cleared whenever
+   * a child is started or lost.
+   */
+  private healthy = false;
   /** Set while `stop()` is deliberate, so quitting is not treated as a crash. */
   private stopping = false;
   private restartTimer: NodeJS.Timeout | null = null;
@@ -136,6 +176,7 @@ export class EngineSupervisor {
     this.stopping = true;
     await this.stop();
     this.stopping = false;
+    this.healthy = false;
     this.port = await this.pickPort();
     this.token = crypto.randomBytes(24).toString("hex");
 
@@ -179,6 +220,7 @@ export class EngineSupervisor {
 
     this.child.on("exit", () => {
       this.child = null;
+      this.healthy = false;
       // A deliberate stop is not a crash, and neither is an exit during a
       // restart we are already running.
       if (this.stopping || this.reconnecting) return;
@@ -267,6 +309,18 @@ export class EngineSupervisor {
       return {
         connected: false,
         error: this.reconnecting ? "Reconnecting" : "Engine not running",
+        reconnecting: this.reconnecting,
+        restartAttempts: this.restartAttempts,
+      };
+    }
+    // A child that has not answered `/health` yet is not something to send a
+    // request to, and saying so is the difference between a strip a person can
+    // trust and one that was connected for ten seconds before anything worked.
+    if (!this.healthy) {
+      return {
+        connected: false,
+        starting: true,
+        error: "Starting",
         reconnecting: this.reconnecting,
         restartAttempts: this.restartAttempts,
       };
@@ -776,15 +830,30 @@ export class EngineSupervisor {
     });
   }
 
-  private async pollHealth(maxAttempts = 20, delayMs = 250): Promise<boolean> {
+  /**
+   * Ask `/health` until it answers or the budget runs out.
+   *
+   * Bounded by elapsed time rather than by a count of attempts, so the budget
+   * says what it means and stays right if the poll interval changes. It also
+   * stops early when the child has gone: an engine that exited is not going to
+   * answer, and waiting out the whole budget for it would delay the restart
+   * that should follow.
+   */
+  private async pollHealth(
+    timeoutMs = HEALTH_TIMEOUT_MS,
+    delayMs = HEALTH_POLL_MS,
+  ): Promise<boolean> {
     if (!this.port) return false;
     const url = `http://127.0.0.1:${this.port}/health`;
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (!this.child) return false;
       try {
         const res = await fetch(url);
         if (res.ok) {
           const body = (await res.json()) as { version?: string };
           this.version = body.version;
+          this.healthy = true;
           return true;
         }
       } catch {

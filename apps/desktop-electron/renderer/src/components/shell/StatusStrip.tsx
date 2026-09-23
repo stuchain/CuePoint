@@ -32,12 +32,17 @@ export function StatusStrip() {
   const percent = jobPercent(job);
   const connected = status?.connected === true;
   const reconnecting = status?.reconnecting === true;
+  // Starting is a third state, not a flavour of offline: it ends by itself.
+  const starting = status?.starting === true;
   // Offered only once the automatic attempts have given up (DEC-028): a button
-  // competing with a restart already in flight helps nobody.
+  // competing with a restart already in flight helps nobody — and an engine
+  // still unpacking itself is not one to restart, which is what "Restart
+  // engine" offered for the first ten seconds on a Mac.
   const canRestart =
     status !== null &&
     !connected &&
     !reconnecting &&
+    !starting &&
     Boolean(window.cuepoint?.restartEngine);
   const [restarting, setRestarting] = useState(false);
 
@@ -103,7 +108,7 @@ export function StatusStrip() {
           className={`cp-status__engine ${
             connected
               ? "cp-status__engine--ok"
-              : reconnecting
+              : reconnecting || starting
                 ? "cp-status__engine--reconnecting"
                 : "cp-status__engine--error"
           }`}
@@ -116,7 +121,9 @@ export function StatusStrip() {
                 ? `Reconnecting to engine…${
                     status.restartAttempts ? ` (${status.restartAttempts}/3)` : ""
                   }`
-                : `Engine offline${status.error ? `: ${status.error}` : ""}`}
+                : starting
+                  ? "Starting engine…"
+                  : `Engine offline${status.error ? `: ${status.error}` : ""}`}
         </span>
 
         {/*

@@ -698,7 +698,26 @@ function registerIpcHandlers(): void {
 }
 
 async function createWindow(): Promise<void> {
-  const status = await engine.start();
+  /**
+   * The engine starts beside the window, not before it.
+   *
+   * This used to `await engine.start()`, so the app showed nothing at all —
+   * no window, no splash — until the engine answered. On a packaged macOS
+   * build that is about ten seconds of a dock icon and an empty screen, and
+   * once the health budget was raised to cover a real cold start it would have
+   * been up to the whole of it for an engine that never came up.
+   *
+   * There is nothing to wait for: every engine call goes through the bridge,
+   * which reports its own failures, and the status strip says "Starting
+   * engine…" until `getStatus()` says the engine has answered. Showing the
+   * shell immediately and saying what is happening is both faster and more
+   * honest than hiding the window and claiming, on arrival, that the engine
+   * was connected when it was not.
+   */
+  void engine.start().catch(() => {
+    // Reported through `getStatus()`, which the strip already polls; a
+    // rejection here would otherwise be an unhandled one.
+  });
 
   const win = new BrowserWindow({
     width: 1280,
@@ -730,10 +749,11 @@ async function createWindow(): Promise<void> {
   if (win.isFocused()) mediaKeys.acquire();
 
   if (isDev) {
-    const url = new URL(DEV_URL);
-    url.searchParams.set("engine", status.connected ? "1" : "0");
-    if (status.version) url.searchParams.set("engineVersion", status.version);
-    await win.loadURL(url.toString());
+    // The `engine`/`engineVersion` query parameters this once carried were
+    // read by nothing — searched before removing — and carrying them was the
+    // only reason the window had to wait for the engine at all. The renderer
+    // asks the bridge, which is the answer that stays right afterwards.
+    await win.loadURL(DEV_URL);
     win.webContents.openDevTools({ mode: "detach" });
   } else {
     await win.loadFile(path.join(__dirname, "../renderer/dist/index.html"));
