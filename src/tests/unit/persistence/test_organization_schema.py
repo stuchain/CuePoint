@@ -38,6 +38,7 @@ from cuepoint.models.library_track import LibraryTrack
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
+from tests.fixtures import legacy_rows
 
 ORG_TABLES = (
     "track_metadata",
@@ -286,8 +287,8 @@ class TestUpgradingARealDatabase:
         service = DatabaseService(db_path=tmp_path / "upgrade.db")
         MigrationRunner(service, migrations=_migrations_up_to(8)).migrate()
 
-        repo = TrackRepository(service)
-        repo.add_many(
+        legacy_rows.add_tracks(
+            service,
             [
                 LibraryTrack(
                     rekordbox_track_id=str(i),
@@ -297,7 +298,7 @@ class TestUpgradingARealDatabase:
                     rating=i % 6,
                 )
                 for i in range(1, 26)
-            ]
+            ],
         )
         first_id = (
             service.connect()

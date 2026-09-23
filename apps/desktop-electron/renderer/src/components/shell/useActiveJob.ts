@@ -89,6 +89,10 @@ const JOB_VERBS: Record<string, string> = {
   // JSON and Excel export Settings offers, which is a different thing that
   // writes a different file.
   rekordbox_export: "Exporting to Rekordbox",
+  // DISCOVER-03's name index, which the engine builds on its own when a
+  // library predates it or its rule changed. Unasked-for, so it says plainly
+  // what it is doing rather than falling through to "Working".
+  credit_index: "Indexing artists and labels",
 };
 
 /** A short description of what a job is doing, for the strip. */

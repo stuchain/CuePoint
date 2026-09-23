@@ -44,6 +44,7 @@ from cuepoint.services.interfaces import (
     IRekordboxExportService,
     IReviewExportService,
     ITagWriteService,
+    ICreditIndexService,
     IDuplicateRepository,
     IDuplicateService,
     IFileCheckService,
@@ -72,6 +73,7 @@ from cuepoint.services.interfaces import (
     ILibrarySourceRepository,
     IPlaylistRepository,
     ITrackMetadataRepository,
+    ITrackCreditRepository,
     ITrackRepository,
 )
 from cuepoint.services.logging_service import LoggingService
@@ -88,6 +90,7 @@ from cuepoint.persistence.rekordbox_export_repository import (
 )
 from cuepoint.services.tag_write_service import TagWriteService
 from cuepoint.persistence.duplicate_repository import DuplicateRepository
+from cuepoint.services.credit_index_service import CreditIndexService
 from cuepoint.persistence.file_status_repository import FileStatusRepository
 from cuepoint.persistence.job_repository import JobRepository
 from cuepoint.persistence.library_source_repository import (
@@ -101,6 +104,7 @@ from cuepoint.persistence.tag_repository import TagRepository
 from cuepoint.persistence.track_metadata_repository import (
     TrackMetadataRepository,
 )
+from cuepoint.persistence.track_credit_repository import TrackCreditRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.backup_service import BackupService
@@ -194,6 +198,23 @@ def bootstrap_services() -> None:
         return TrackRepository(database_service=container.resolve(IDatabaseService))
 
     container.register_factory(ITrackRepository, create_track_repository)
+
+    # The library's name index (DISCOVER-03): its repository, and the service
+    # that rebuilds it when the running rule version did not build it.
+    def create_track_credit_repository() -> ITrackCreditRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return TrackCreditRepository(
+            database_service=container.resolve(IDatabaseService)
+        )
+
+    container.register_factory(ITrackCreditRepository, create_track_credit_repository)
+
+    def create_credit_index_service() -> ICreditIndexService:
+        return CreditIndexService(
+            credit_repository=container.resolve(ITrackCreditRepository)
+        )
+
+    container.register_factory(ICreditIndexService, create_credit_index_service)
 
     def create_playlist_repository() -> IPlaylistRepository:
         """Build the mirrored Rekordbox playlist tree repository.

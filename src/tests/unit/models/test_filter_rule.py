@@ -366,3 +366,53 @@ class TestImmutability:
         original = rule("genre", "IS", " House ")
         assert original.validated() is not original
         assert original.operator == "IS"
+
+
+class TestNameFields:
+    """DISCOVER-03: an artist or a label by identity, not by spelling."""
+
+    def test_both_are_in_the_vocabulary_the_renderer_is_sent(self):
+        described = {field["name"]: field for field in describe_fields()}
+        for name in ("artist_name", "label_name"):
+            assert described[name]["type"] == "name"
+            assert described[name]["facetable"] is True
+            assert described[name]["operators"] == ["is", "is_not", "any_of"]
+            assert described[name]["choices"] is None
+
+    def test_a_name_field_offers_whole_names_only(self):
+        from cuepoint.models.filter_rule import OPERATORS_BY_TYPE, TYPE_NAME
+
+        assert OPERATORS_BY_TYPE[TYPE_NAME] == ("is", "is_not", "any_of")
+
+    def test_any_of_trims_every_name_and_refuses_a_blank_one(self):
+        checked = rule("label_name", "any_of", [" Kompakt ", "Âme"]).validated()
+        assert checked.value == ("Kompakt", "Âme")
+        with pytest.raises(FilterRuleError):
+            rule("label_name", "any_of", ["Kompakt", "  "]).validated()
+
+    @pytest.mark.parametrize("value", [None, ["a"], True, {"a": 1}])
+    def test_a_name_must_be_a_single_value(self, value):
+        with pytest.raises(FilterRuleError):
+            rule("artist_name", "is", value).validated()
+
+    def test_a_number_is_a_name_as_it_is_a_text_value(self):
+        # Acts are called "808" and "2 Bad Mice"; a number in a saved rule reads
+        # as its text, as it does for every text field.
+        assert rule("artist_name", "is", 808).validated().value == "808"
+
+    def test_the_credit_field_reads_the_credit_index_and_shows_its_names(self):
+        spec = field_spec("artist_name")
+        assert spec.values is not None
+        assert (spec.values.table, spec.values.value_column) == (
+            "track_credits",
+            "name_key",
+        )
+        assert spec.display == "name"
+
+    def test_the_label_field_reads_the_effective_key_and_shows_the_label(self):
+        spec = field_spec("label_name")
+        assert spec.expression == "COALESCE(meta.label_key, tracks.label_key)"
+        assert spec.display == "COALESCE(meta.label, tracks.label)"
+        # The same layering as the effective label itself (DEC-068).
+        assert spec.display == field_spec("label").expression
+        assert spec.joins == field_spec("label").joins

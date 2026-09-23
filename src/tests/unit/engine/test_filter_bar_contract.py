@@ -123,10 +123,12 @@ class TestEveryFieldKindHasAControl:
     ) -> None:
         # `text` and `date` share the free-text control, which is the fallback
         # every branch falls through to, so they are satisfied by that rather
-        # than by a branch of their own.
+        # than by a branch of their own. So is `name` (DISCOVER-03): an artist
+        # or a label is typed or picked from the facet as text, and the engine
+        # folds it to its key, so what was typed is exactly what it wants.
         branching = filter_bar + filter_text
         for kind in FIELD_TYPES:
-            if kind in ("text", "date"):
+            if kind in ("text", "date", "name"):
                 continue
             assert f'"{kind}"' in branching, (
                 f"The engine describes a {kind!r} field and the bar has no "

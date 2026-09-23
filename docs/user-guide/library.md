@@ -53,6 +53,24 @@ Nothing here changes your music. The Library page reads.
   tracks are left after them.
 - **Click a column heading** to sort by it; click again to reverse it.
 
+**Filter by one artist or one label, however it is spelled.** Two filters look
+for an artist or a label rather than for text:
+
+- **Credited artist** finds the tracks an artist is credited on — as one of
+  several artists, as a featured artist, or as the remixer. "Credited artist is
+  B" finds "A, B" and "B feat. D", and not "Bob B", which **Artist contains B**
+  would. Credits are split at commas and at "feat.", "ft." and "featuring", but
+  not at "&", "and", "x" or "vs", so "Above & Beyond" stays one act.
+- **Label, any spelling** finds a label's tracks whatever the spelling:
+  "Nightfall Audio", "NIGHTFALL AUDIO" and "Nightfall-Audio" are one label. It
+  reads your own label when you have set one, as the Label column does.
+
+Both ignore capitals, accents on letters like é and Â, and punctuation, and
+both offer the names in your library to choose from. The first time CuePoint
+starts after this update it takes a few seconds to index your artists and
+labels — **Indexing artists and labels** in the status bar — and until then
+these two filters may find fewer tracks than they should.
+
 A playlist opens in the order you arranged it in Rekordbox, which is what a set
 list is for. The whole library opens by artist. Sorting a playlist by anything
 else and then going back to **All tracks** does not carry that sort over.

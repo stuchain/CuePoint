@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Two Library filters that find an artist or a label rather than a piece of
+  text. **Credited artist** finds every track an artist is credited on — in a
+  list of artists, featured, or as the remixer — so "B" no longer also finds
+  "Bob B". **Label, any spelling** treats "Nightfall Audio", "NIGHTFALL AUDIO"
+  and "Nightfall-Audio" as one label, and reads your own label where you have
+  set one. Both ignore capitals, accents and punctuation, offer the names in
+  your library to choose from, and work in Smart Collections. The first start
+  after updating indexes your artists and labels in the background, shown as
+  **Indexing artists and labels** in the status bar; at 50,000 tracks it takes
+  about a second
 - Export to Rekordbox. **Export to Rekordbox…** in the Library's **Collection
   file** menu, or on a Collection, Smart Collection or folder's right-click menu, writes a new
   Rekordbox XML file carrying your key, BPM, genre, label, year and rating, and

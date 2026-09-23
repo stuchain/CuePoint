@@ -28,9 +28,9 @@ import pytest
 
 from cuepoint.migrations import discover_migrations
 from cuepoint.models.library_track import LibraryTrack
-from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
+from tests.fixtures import legacy_rows
 
 NOW = "2026-09-13T12:00:00+00:00"
 
@@ -108,15 +108,15 @@ def sequence(service) -> Dict[str, int]:
 
 
 def add_track(service, number: int) -> int:
-    stored = TrackRepository(service).add(
+    return legacy_rows.add_track(
+        service,
         LibraryTrack(
             rekordbox_track_id=str(number),
             file_path=f"/m/{number}.mp3",
             title=f"T{number}",
             artist="An Artist",
-        )
+        ),
     )
-    return int(stored.id)
 
 
 def add_attempt(conn, track_id: int) -> int:

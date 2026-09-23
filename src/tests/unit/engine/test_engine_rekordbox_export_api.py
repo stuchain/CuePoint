@@ -59,6 +59,7 @@ from cuepoint.services.rekordbox_export_service import (
     ExportSourceError,
 )
 from cuepoint.utils.di_container import get_container, reset_container
+from tests.fixtures.job_settling import wait_until_settled
 
 TOKEN = "rekordbox-export-api-token"
 TERMINAL = (JobState.SUCCEEDED, JobState.FAILED, JobState.CANCELLED)
@@ -234,10 +235,9 @@ def imported(store, source) -> Path:
     job = start_library_import_job(store, str(source))
     wait_until(lambda: store.get(job.id).state in TERMINAL, "the import")
     assert store.get(job.id).state is JobState.SUCCEEDED
-    wait_until(
-        lambda: all(job.state in TERMINAL for job in store.list_all()),
-        "the import's follow-up jobs",
-    )
+    # Not "every job finished": an import finishes and then starts its
+    # follow-ups, so that is briefly true before they exist.
+    wait_until_settled(store, "the import's follow-up jobs")
     return source
 
 

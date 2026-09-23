@@ -43,6 +43,7 @@ from cuepoint.models.track_metadata import (
     normalize_rating,
 )
 from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
+from cuepoint.persistence.track_credit_repository import label_key_of
 from cuepoint.services.interfaces import IDatabaseService, ITrackMetadataRepository
 
 # The override columns (CLEAN-01) are read with the rest so a record is never
@@ -229,14 +230,24 @@ class TrackMetadataRepository(ITrackMetadataRepository):
                 deleted by a refresh.
         """
         now = utc_now_iso()
+        # A label override carries its name key in the same statement
+        # (DISCOVER-03, migration 0022), so the two can never disagree.
+        columns = [column]
+        values = [value]
+        if column == "label":
+            columns.append("label_key")
+            values.append(label_key_of(value))
+        names = ", ".join(columns)
+        marks = ", ".join("?" for _ in columns)
+        updates = ", ".join(f"{name} = excluded.{name}" for name in columns)
         with self._db.transaction(join_existing=True) as conn:
             conn.execute(
                 "INSERT INTO track_metadata"
-                f" (track_id, {column}, created_at, updated_at)"
-                " VALUES (?, ?, ?, ?)"
+                f" (track_id, {names}, created_at, updated_at)"
+                f" VALUES (?, {marks}, ?, ?)"
                 " ON CONFLICT(track_id) DO UPDATE SET"
-                f" {column} = excluded.{column}, updated_at = excluded.updated_at",
-                (track_id, value, now, now),
+                f" {updates}, updated_at = excluded.updated_at",
+                (track_id, *values, now, now),
             )
             row = conn.execute(f"{_SELECT} WHERE track_id = ?", (track_id,)).fetchone()
         return TrackMetadata.from_row(row)

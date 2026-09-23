@@ -590,8 +590,12 @@ export interface LibraryFacet {
 
 export interface LibraryFilterField {
   name: string;
-  /** All six kinds, each with a control in the bar since ORG-12. */
-  type: "text" | "number" | "date" | "bool" | "tag" | "collection";
+  /**
+   * All seven kinds, each with a control in the bar since ORG-12. `name`
+   * (DISCOVER-03) is an artist or a label compared by identity: typed as text,
+   * and the engine folds case, accents and punctuation before it compares.
+   */
+  type: "text" | "number" | "date" | "bool" | "tag" | "collection" | "name";
   label: string;
   facetable: boolean;
   integer: boolean;

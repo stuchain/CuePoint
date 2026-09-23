@@ -78,8 +78,10 @@ from cuepoint.models.match_attempt import (
 from cuepoint.models.track_metadata import OVERRIDE_FIELDS, TrackMetadata
 from cuepoint.persistence.track_query import BrowseQuery
 from cuepoint.persistence.track_repository import TrackRepository
+from cuepoint.persistence.track_credit_repository import LABEL_KEY_COLUMN
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
+from tests.fixtures import legacy_rows
 
 NOW = "2026-09-13T12:00:00+00:00"
 
@@ -427,6 +429,8 @@ class TestMigration:
         assert set(CLEAN_INDEXES) <= present
 
     def test_track_metadata_gains_exactly_the_five_overrides(self, db):
+        # Then migration 0022 adds the label override's name key (DISCOVER-03),
+        # derived data the repository writes beside the label.
         assert columns_of(db, "track_metadata") == [
             "track_id",
             "rating",
@@ -435,6 +439,7 @@ class TestMigration:
             "created_at",
             "updated_at",
             *OVERRIDE_FIELDS,
+            LABEL_KEY_COLUMN,
         ]
 
     def test_the_override_columns_have_the_imported_columns_types(self, db):
@@ -455,7 +460,12 @@ class TestMigration:
         # The contract every repository from CLEAN-02 on is built over: a
         # column with no field is data no read returns, and a field with no
         # column is data no write stores.
-        assert {f.name for f in dataclasses.fields(model)} == set(columns_of(db, table))
+        #
+        # The one exception is a derived column (migration 0022): the label's
+        # name key is written with the label by the repository and read by the
+        # rules, and is never part of a record.
+        stored = set(columns_of(db, table)) - {LABEL_KEY_COLUMN}
+        assert {f.name for f in dataclasses.fields(model)} == stored
 
     def test_every_field_a_beatport_candidate_carries_is_a_column(self, db):
         # DEC-066 keeps all candidates; a field dropped here is evidence no
@@ -1005,7 +1015,8 @@ class TestUpgradingARealDatabase:
         service = DatabaseService(db_path=tmp_path / "upgrade.db")
         MigrationRunner(service, migrations=_migrations_up_to(10)).migrate()
 
-        TrackRepository(service).add_many(
+        legacy_rows.add_tracks(
+            service,
             [
                 LibraryTrack(
                     rekordbox_track_id=str(i),
@@ -1021,7 +1032,7 @@ class TestUpgradingARealDatabase:
                     comment="from rekordbox",
                 )
                 for i in range(1, 26)
-            ]
+            ],
         )
         ids = [
             int(row["id"])
@@ -1100,8 +1111,11 @@ class TestUpgradingARealDatabase:
         assert 11 in [m.version for m in applied]
 
     def test_no_row_in_any_existing_table_changes(self, populated_v10):
+        # Up to this migration and no further: a later one that adds a column
+        # to an existing table (0022's label key) is that migration's change,
+        # tested there, and not something this one did.
         before = snapshot(populated_v10)
-        MigrationRunner(populated_v10).migrate()
+        MigrationRunner(populated_v10, migrations=_migrations_up_to(11)).migrate()
         after = snapshot(populated_v10)
 
         for table, rows in before.items():

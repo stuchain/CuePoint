@@ -61,6 +61,8 @@ if TYPE_CHECKING:
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
+    from cuepoint.models.track_credit import DerivedIndex, TrackCredit
+    from cuepoint.services.credit_index_service import CreditIndexResult
     from cuepoint.models.track_clean_state import TrackCleanState
     from cuepoint.models.rekordbox_export_values import ExportTrackValues
     from cuepoint.services.rekordbox_export_service import (
@@ -1159,6 +1161,65 @@ class ITrackRepository(ABC):
         differing would cost a read nothing, which is why it is spelled twice
         where a vocabulary would not be.
         """
+        ...
+
+
+class ITrackCreditRepository(ABC):
+    """Interface for the library's name index (DISCOVER-03, DEC-094).
+
+    Reads a track's credits and which rule version built the index, and
+    rebuilds the credits and label keys a chunk of tracks at a time. Writing
+    them when a track is written is ``ITrackRepository``'s and
+    ``ITrackMetadataRepository``'s job, inside their own transactions.
+    """
+
+    @abstractmethod
+    def credits(self, track_id: int) -> List["TrackCredit"]:
+        """One track's credits, artists first, each role in credit order."""
+        ...
+
+    @abstractmethod
+    def built(self) -> List["DerivedIndex"]:
+        """The name indexes that have been built, and by which version."""
+        ...
+
+    @abstractmethod
+    def is_current(self, version: int) -> bool:
+        """True when every name index was built by exactly this rule version."""
+        ...
+
+    @abstractmethod
+    def track_count(self) -> int:
+        """How many tracks a rebuild will read."""
+        ...
+
+    @abstractmethod
+    def rebuild_chunk(self, after_id: int, limit: int) -> Tuple[int, int]:
+        """Rebuild the next ``limit`` tracks after ``after_id`` in one transaction."""
+        ...
+
+    @abstractmethod
+    def mark_built(self, version: int, built_at: str) -> None:
+        """Record that every name index is now built by rule ``version``."""
+        ...
+
+
+class ICreditIndexService(ABC):
+    """Interface for keeping the library's name index current (DISCOVER-03)."""
+
+    @abstractmethod
+    def is_current(self) -> bool:
+        """True when the index was built by the running rule version."""
+        ...
+
+    @abstractmethod
+    def rebuild(
+        self,
+        *,
+        on_progress: Optional[Callable[[int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "CreditIndexResult":
+        """Rebuild every track's credits and label keys, a chunk at a time."""
         ...
 
 

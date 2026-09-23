@@ -33,6 +33,11 @@ from cuepoint.models.rekordbox_export_values import ExportTrackValues
 from cuepoint.models.track_clean_state import TrackCleanState
 from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
 from cuepoint.persistence.rule_references import check_rule_references
+from cuepoint.persistence.track_credit_repository import (
+    CreditSource,
+    label_key_of,
+    write_credits,
+)
 from cuepoint.persistence.track_query import (
     BrowseQuery,
     build_clean_states,
@@ -68,6 +73,9 @@ _COLUMNS = (
     "remixer",
     "album",
     "label",
+    # Derived from `label` by the name rule (DISCOVER-03, migration 0022) and
+    # written in the same statement, so the two can never disagree.
+    "label_key",
     "genre",
     "key",
     "bpm",
@@ -128,6 +136,20 @@ _EXPORT_VALUES_SQL = (
 # every track, and 50,000 rows of fourteen columns is a list nobody needs in
 # memory at once when the caller consumes them one by one.
 EXPORT_VALUES_BATCH_SIZE = 2000
+
+
+def _credit_changed(
+    before: Tuple[Optional[str], Optional[str]],
+    after: Tuple[Optional[str], Optional[str]],
+) -> bool:
+    """True when a track's artist or remixer credit is different text.
+
+    ``None`` and ``""`` are the same empty credit — Rekordbox writes both — so
+    moving between them rewrites nothing.
+    """
+    return tuple(value or "" for value in before) != tuple(
+        value or "" for value in after
+    )
 
 
 def _search_joins() -> str:
@@ -215,7 +237,32 @@ class TrackRepository(ITrackRepository):
     @staticmethod
     def _values(track: LibraryTrack) -> tuple:
         data = track.to_dict()
+        data["label_key"] = label_key_of(track.label)
         return tuple(data[column] for column in _COLUMNS)
+
+    @staticmethod
+    def _credits_of_inserted(
+        conn: Any, tracks: List[LibraryTrack]
+    ) -> List[CreditSource]:
+        """The credit sources of tracks just inserted, with their new ids.
+
+        ``executemany`` reports no id per row, so the ids are read back by
+        ``rekordbox_track_id``, which is unique (migration 0002).
+        """
+        by_rekordbox_id = {track.rekordbox_track_id: track for track in tracks}
+        wanted = list(by_rekordbox_id)
+        sources: List[CreditSource] = []
+        for start in range(0, len(wanted), CHUNK_SIZE):
+            chunk = wanted[start : start + CHUNK_SIZE]
+            placeholders = ", ".join("?" for _ in chunk)
+            for row in conn.execute(
+                "SELECT id, rekordbox_track_id FROM tracks"
+                f" WHERE rekordbox_track_id IN ({placeholders})",
+                tuple(chunk),
+            ):
+                track = by_rekordbox_id[row["rekordbox_track_id"]]
+                sources.append((int(row["id"]), track.artist, track.remixer))
+        return sources
 
     # ------------------------------------------------------------------ write
 
@@ -229,6 +276,7 @@ class TrackRepository(ITrackRepository):
         with self._db.transaction(join_existing=True) as conn:
             cursor = conn.execute(_INSERT_SQL, self._values(track))
             track.id = int(cursor.lastrowid or 0)
+            write_credits(conn, [(track.id, track.artist, track.remixer)])
         return track
 
     def add_many(self, tracks: Iterable[LibraryTrack]) -> int:
@@ -241,11 +289,13 @@ class TrackRepository(ITrackRepository):
         Returns:
             Number of tracks inserted.
         """
-        rows = [self._values(track) for track in tracks]
+        incoming = list(tracks)
+        rows = [self._values(track) for track in incoming]
         if not rows:
             return 0
         with self._db.transaction(join_existing=True) as conn:
             conn.executemany(_INSERT_SQL, rows)
+            write_credits(conn, self._credits_of_inserted(conn, incoming))
         return len(rows)
 
     def update(self, track: LibraryTrack) -> LibraryTrack:
@@ -258,7 +308,16 @@ class TrackRepository(ITrackRepository):
             raise ValueError("Cannot update a track that has no id")
         track.touch()
         with self._db.transaction(join_existing=True) as conn:
+            before = conn.execute(
+                "SELECT artist, remixer FROM tracks WHERE id = ?", (track.id,)
+            ).fetchone()
             conn.execute(_UPDATE_SQL, (*self._values(track), track.id))
+            # Only when a credit changed: an edit to the BPM is not a reason to
+            # rewrite who made the track (DISCOVER-03).
+            if before is not None and _credit_changed(
+                (before["artist"], before["remixer"]), (track.artist, track.remixer)
+            ):
+                write_credits(conn, [(track.id, track.artist, track.remixer)])
         return track
 
     def delete(self, track_id: int) -> bool:
@@ -822,6 +881,22 @@ class TrackRepository(ITrackRepository):
         relinked: List[RelinkedTrack] = []
         insert_rows: List[tuple] = []
         update_rows: List[tuple] = []
+        # The credits each flush has to write beside it (DISCOVER-03): every
+        # inserted track's, and an updated track's only when a credit changed.
+        inserted_tracks: List[LibraryTrack] = []
+        recredited: List[CreditSource] = []
+
+        def flush_inserts(conn: Any) -> None:
+            conn.executemany(_INSERT_SQL, insert_rows)
+            write_credits(conn, self._credits_of_inserted(conn, inserted_tracks))
+            insert_rows.clear()
+            inserted_tracks.clear()
+
+        def flush_updates(conn: Any) -> None:
+            conn.executemany(_UPDATE_SQL, update_rows)
+            write_credits(conn, recredited)
+            update_rows.clear()
+            recredited.clear()
 
         with self._db.transaction(join_existing=True) as conn:
             for track in incoming:
@@ -834,6 +909,7 @@ class TrackRepository(ITrackRepository):
                 existing = match.track if match is not None else None
                 if existing is None or existing.id in claimed:
                     insert_rows.append(self._values(track))
+                    inserted_tracks.append(track)
                     inserted += 1
                 else:
                     claimed.add(existing.id)
@@ -843,6 +919,11 @@ class TrackRepository(ITrackRepository):
                     track.created_at = existing.created_at
                     track.updated_at = utc_now_iso()
                     update_rows.append((*self._values(track), existing.id))
+                    if existing.id is not None and _credit_changed(
+                        (existing.artist, existing.remixer),
+                        (track.artist, track.remixer),
+                    ):
+                        recredited.append((existing.id, track.artist, track.remixer))
                     updated += 1
                     if match is not None and match.relinked:
                         relinked.append(
@@ -856,16 +937,14 @@ class TrackRepository(ITrackRepository):
                         )
 
                 if len(insert_rows) >= batch_size:
-                    conn.executemany(_INSERT_SQL, insert_rows)
-                    insert_rows = []
+                    flush_inserts(conn)
                 if len(update_rows) >= batch_size:
-                    conn.executemany(_UPDATE_SQL, update_rows)
-                    update_rows = []
+                    flush_updates(conn)
 
             if insert_rows:
-                conn.executemany(_INSERT_SQL, insert_rows)
+                flush_inserts(conn)
             if update_rows:
-                conn.executemany(_UPDATE_SQL, update_rows)
+                flush_updates(conn)
 
         return BulkUpsertResult(
             inserted=inserted,

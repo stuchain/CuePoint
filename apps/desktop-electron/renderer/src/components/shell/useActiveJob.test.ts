@@ -71,6 +71,14 @@ describe("jobLabel", () => {
     );
   });
 
+  it("says what the unasked-for name index rebuild is doing (DISCOVER-03)", () => {
+    // It starts on its own after an upgrade, so "Working" would be a job the
+    // user never started and cannot identify.
+    expect(jobLabel(job({ type: "credit_index" }))).toBe(
+      "Indexing artists and labels 3/10",
+    );
+  });
+
   it("has no verb for inKey's retired file-based match (CLEAN-14)", () => {
     // No build since CLEAN-14 starts one, and the strip shows only active
     // jobs, which a restart closes out.

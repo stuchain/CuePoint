@@ -50,6 +50,15 @@ CREDIT_ROLES = (ROLE_ARTIST, ROLE_REMIXER)
 #: The ``derived_indexes`` name of the credit index.
 TRACK_CREDITS_INDEX = "track_credits"
 
+#: The ``derived_indexes`` name of the label keys beside each layer of a
+#: track's label (DISCOVER-03, migration 0022). Built by the same rule, and so
+#: rebuilt with the credits whenever that rule's version changes.
+LABEL_KEYS_INDEX = "label_keys"
+
+#: Every derived index the library's name rule builds, in the order a rebuild
+#: records them.
+NAME_INDEXES = (TRACK_CREDITS_INDEX, LABEL_KEYS_INDEX)
+
 
 @dataclass(frozen=True)
 class TrackCredit:

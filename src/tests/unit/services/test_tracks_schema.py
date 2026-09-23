@@ -76,6 +76,9 @@ class TestTracksTable:
             "bitrate",
             "created_at",
             "updated_at",
+            # Added by migration 0022 (DISCOVER-03): the label's name key, derived
+            # data the repository writes beside the label.
+            "label_key",
         } == columns
 
     def test_library_track_round_trips_through_the_table(self, db):

@@ -73,6 +73,14 @@ TYPE_BOOL = "bool"
 TYPE_TAG = "tag"
 TYPE_COLLECTION = "collection"
 
+#: An artist or a label, compared by identity rather than by spelling
+#: (DISCOVER-03, DEC-095). A rule carries the name as a person typed or picked
+#: it, and it is compared by its ``name_key``: "Âme", "AME" and "Ame" are one
+#: artist, and "tracks by B" never finds "Bob B". Normalizing is the query
+#: builder's job, because the key is ``core.entity_names``'s rule and a model
+#: imports nothing outside ``cuepoint.models``.
+TYPE_NAME = "name"
+
 FIELD_TYPES = (
     TYPE_TEXT,
     TYPE_NUMBER,
@@ -80,6 +88,7 @@ FIELD_TYPES = (
     TYPE_BOOL,
     TYPE_TAG,
     TYPE_COLLECTION,
+    TYPE_NAME,
 )
 
 #: The only ``match`` value v1 accepts (DEC-016).
@@ -174,6 +183,10 @@ OPERATORS_BY_TYPE: Dict[str, Tuple[str, ...]] = {
     # operator nobody uses is a shape to keep working forever.
     TYPE_TAG: (OP_HAS_TAG, OP_NOT_HAS_TAG, OP_ANY_OF, OP_IS_EMPTY),
     TYPE_COLLECTION: (OP_IN_COLLECTION, OP_NOT_IN_COLLECTION),
+    # Identity, so whole names only: "contains" would ask about spelling, which
+    # is what the plain `artist` and `label` text fields are for. `any_of` is
+    # "by any of these", which a Smart Collection of a label's artists needs.
+    TYPE_NAME: (OP_IS, OP_IS_NOT, OP_ANY_OF),
 }
 
 #: A rating's unit. Declared here rather than in a renderer so the five-star
@@ -317,6 +330,12 @@ class FieldSpec:
             fields were ratings would draw stars beside a field this registry
             had moved on from. A field with no unit is a plain value, and a
             unit a renderer does not recognize is one too.
+        display: What a facet shows for a value, when the expression a rule
+            compares is a key rather than something a person reads
+            (DISCOVER-03). A ``name`` field groups by ``name_key`` and shows
+            the name, so "Âme" and "Ame" are one row that reads "Âme". For a
+            multi-valued field it is a column of ``values``' table; otherwise
+            an expression, like ``column``.
         choices: The fixed set of values a text field can hold, each with what a
             person calls it (CLEAN-13). A match state is one of five words and
             nothing else, so the bar offers the five rather than a text box,
@@ -336,6 +355,7 @@ class FieldSpec:
     unit: Optional[str] = None
     values: Optional[LinkTable] = None
     choices: Tuple[Tuple[str, str], ...] = ()
+    display: Optional[str] = None
 
     @property
     def metadata(self) -> bool:
@@ -375,6 +395,11 @@ class FieldSpec:
 #: public contract for no one's benefit.
 _TAG_LINK = LinkTable("track_tags", "tag_id")
 _COLLECTION_LINK = LinkTable("collection_tracks", "collection_id")
+
+#: A track's credited names, one row each, compared by key (DISCOVER-03,
+#: migration 0021). Its track column is ``NOT NULL``, which is what makes the
+#: ``NOT IN`` that ``is_not`` compiles to safe.
+_CREDIT_NAMES = LinkTable("track_credits", "name_key")
 
 #: The fixed value sets (CLEAN-13), in the order a person reads them, with what
 #: each is called. The words are the engine's; the labels are what the filter
@@ -633,6 +658,30 @@ FIELDS: Tuple[FieldSpec, ...] = (
         joins=(ARTWORK_ALIAS, MATCH_ALIAS, MATCH_CANDIDATE_ALIAS),
         choices=ARTWORK_CHOICES,
     ),
+    # --- Artists and labels by identity (DISCOVER-03, DEC-094, DEC-095) -----
+    # A credited artist: any name `tracks.artist` or `tracks.remixer` credits,
+    # split into artists by `split_credit`, so "tracks by B" finds "A, B" and
+    # "B feat. D" and never "Bob B". Remixer credits count.
+    FieldSpec(
+        "artist_name",
+        TYPE_NAME,
+        "Credited artist",
+        facetable=True,
+        values=_CREDIT_NAMES,
+        display="name",
+    ),
+    # The effective label (DEC-068), compared by its key. The key of each layer
+    # is stored beside it (migration 0022), and a key is null exactly when its
+    # label is, so the COALESCE is the effective label's key.
+    FieldSpec(
+        "label_name",
+        TYPE_NAME,
+        "Label, any spelling",
+        facetable=True,
+        column=f"COALESCE({METADATA_ALIAS}.label_key, tracks.label_key)",
+        display=f"COALESCE({METADATA_ALIAS}.label, tracks.label)",
+        joins=(METADATA_ALIAS,),
+    ),
 )
 
 _FIELDS_BY_NAME: Dict[str, FieldSpec] = {spec.name: spec for spec in FIELDS}
@@ -765,9 +814,26 @@ def _coerce_one(value: Any, spec: FieldSpec, operator: str) -> Any:
         return _coerce_bool(value, spec, operator)
     if spec.type in (TYPE_TAG, TYPE_COLLECTION):
         return _coerce_id(value, spec, operator)
+    if spec.type == TYPE_NAME:
+        return _coerce_name(value, spec, operator)
     text = _coerce_text(value, spec, operator)
     if spec.choices and operator in CHOICE_OPERATORS:
         return _coerce_choice(text, spec, operator)
+    return text
+
+
+def _coerce_name(value: Any, spec: FieldSpec, operator: str) -> str:
+    """Coerce one value for a name field: the name, trimmed, never blank.
+
+    Kept as the name rather than as its key, so a chip and a saved Smart
+    Collection read "Âme" rather than "ame". Blank is refused even for ``is``,
+    unlike a text field: a text field can ask for the empty string Rekordbox
+    writes, but no artist or label is called nothing, and a blank name has no
+    key to compare.
+    """
+    text = _coerce_text(value, spec, operator).strip()
+    if not text:
+        raise FilterRuleError(f"{spec.label} {operator!r} needs a name")
     return text
 
 
@@ -1172,6 +1238,7 @@ __all__: Sequence[str] = (
     "TYPE_BOOL",
     "TYPE_COLLECTION",
     "TYPE_DATE",
+    "TYPE_NAME",
     "TYPE_NUMBER",
     "TYPE_TAG",
     "TYPE_TEXT",

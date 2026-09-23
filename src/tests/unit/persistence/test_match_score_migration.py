@@ -33,6 +33,7 @@ from cuepoint.persistence.track_query import BrowseQuery
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
+from tests.fixtures import legacy_rows
 
 NOW = "2026-09-17T12:00:00+00:00"
 
@@ -72,17 +73,20 @@ def candidate(index: int, score: float) -> BeatportCandidate:
 
 
 def library(service) -> List[int]:
-    tracks = TrackRepository(service)
-    for n in range(3):
-        tracks.add(
-            LibraryTrack(
-                rekordbox_track_id=str(n),
-                file_path=f"/m/{n}.mp3",
-                title=f"T{n}",
-                artist="A",
-            )
+    return sorted(
+        legacy_rows.add_tracks(
+            service,
+            [
+                LibraryTrack(
+                    rekordbox_track_id=str(n),
+                    file_path=f"/m/{n}.mp3",
+                    title=f"T{n}",
+                    artist="A",
+                )
+                for n in range(3)
+            ],
         )
-    return sorted(track.id for track in tracks.list_all())
+    )
 
 
 def attempt(repo: MatchRepository, track_id: int, *scores: float):

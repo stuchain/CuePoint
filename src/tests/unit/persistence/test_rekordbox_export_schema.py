@@ -65,6 +65,7 @@ from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
 from cuepoint.services.tag_write_options import KEY_FORMATS
+from tests.fixtures import legacy_rows
 
 NOW = "2026-09-20T12:00:00+00:00"
 
@@ -1054,7 +1055,8 @@ class TestUpgradingAVersionNineteenLibrary:
         service = DatabaseService(db_path=tmp_path / "upgrade.db")
         MigrationRunner(service, migrations=_migrations_up_to(19)).migrate()
 
-        TrackRepository(service).add_many(
+        legacy_rows.add_tracks(
+            service,
             [
                 LibraryTrack(
                     rekordbox_track_id=str(i),
@@ -1070,7 +1072,7 @@ class TestUpgradingAVersionNineteenLibrary:
                     comment="from rekordbox",
                 )
                 for i in range(1, 26)
-            ]
+            ],
         )
         ids = [
             int(row["id"])
@@ -1161,8 +1163,10 @@ class TestUpgradingAVersionNineteenLibrary:
         assert [m.version for m in runner.migrate()] == [20]
 
     def test_no_row_in_any_existing_table_changes(self, populated_v19):
+        # Up to this migration and no further, for the reason
+        # test_clean_schema gives.
         before = snapshot(populated_v19)
-        MigrationRunner(populated_v19).migrate()
+        MigrationRunner(populated_v19, migrations=_migrations_up_to(20)).migrate()
         after = snapshot(populated_v19)
 
         for table, rows in before.items():

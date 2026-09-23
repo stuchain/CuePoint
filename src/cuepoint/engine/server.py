@@ -1141,6 +1141,13 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
         f"Engine started (v{__version__})",
         {"version": __version__, "port": cfg.port},
     )
+    # DISCOVER-03: a library the running name rule did not index — one upgraded
+    # from before the index existed, or one a rule change made stale — is
+    # rebuilt in the background. After the migrations the lines above ran, and
+    # never a reason not to start: it logs and waits for the next start.
+    from cuepoint.engine.credit_index_jobs import start_credit_index_if_stale
+
+    start_credit_index_if_stale(_JOB_STORE)
     server = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg))
     _stop_with_parent(server)
     try:

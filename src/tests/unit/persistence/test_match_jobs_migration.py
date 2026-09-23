@@ -19,9 +19,9 @@ import pytest
 from cuepoint.migrations import discover_migrations
 from cuepoint.models.library_track import LibraryTrack
 from cuepoint.models.match_attempt import MatchPlan
-from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
+from tests.fixtures import legacy_rows
 
 NOW = "2026-09-13T12:00:00+00:00"
 
@@ -163,11 +163,12 @@ class TestUpgradingAVersionTwelveLibrary:
         MigrationRunner(
             service, migrations=[m for m in discover_migrations() if m.version <= 12]
         ).migrate()
-        TrackRepository(service).add_many(
+        legacy_rows.add_tracks(
+            service,
             [
                 LibraryTrack(rekordbox_track_id=str(i), title=f"T{i}", artist="A")
                 for i in range(1, 4)
-            ]
+            ],
         )
         with service.transaction() as conn:
             conn.executemany(

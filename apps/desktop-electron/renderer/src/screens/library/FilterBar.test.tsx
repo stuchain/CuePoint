@@ -990,3 +990,91 @@ describe("the tag vocabulary (ORG-12)", () => {
     expect(screen.queryByRole("button", { name: "Tags…" })).not.toBeInTheDocument();
   });
 });
+
+describe("an artist or a label by identity (DISCOVER-03)", () => {
+  /** The two `name` fields as the engine describes them. */
+  const NAMES: LibraryFilterVocabulary = {
+    ...VOCABULARY,
+    fields: [
+      {
+        name: "artist_name",
+        type: "name",
+        label: "Credited artist",
+        facetable: true,
+        unit: null,
+        integer: false,
+        operators: ["is", "is_not", "any_of"],
+        choices: null,
+      },
+      ...VOCABULARY.fields,
+    ],
+    operators: { ...VOCABULARY.operators, is_not: { arity: "single" } },
+  };
+
+  const ARTIST_FACET: LibraryFacet = {
+    field: "artist_name",
+    values: [
+      { value: "Âme", count: 14 },
+      { value: "Mara Veil", count: 9 },
+      { value: null, count: 2 },
+    ],
+    truncated: false,
+    total_values: 3,
+    range: null,
+  };
+
+  it("asks for the artists when the field is chosen", () => {
+    const onRequestFacet = vi.fn();
+    show({ vocabulary: NAMES, onRequestFacet });
+    openBuilder();
+    expect(onRequestFacet).toHaveBeenCalledWith("artist_name");
+  });
+
+  it("offers the artists as suggestions for a name typed as text", () => {
+    show({ vocabulary: NAMES, facet: ARTIST_FACET });
+    openBuilder();
+
+    const options = document.querySelectorAll("#cp-filter-values option");
+    expect(options[0]!.getAttribute("value")).toBe("Âme");
+    expect(options[0]!.getAttribute("label")).toBe("Âme — 14");
+    expect(screen.getByLabelText("Value")).toBeInTheDocument();
+  });
+
+  it("sends the name as it was typed, which the engine folds to its key", () => {
+    const { onFiltersChange } = show({ vocabulary: NAMES });
+    openBuilder();
+    fireEvent.change(screen.getByLabelText("Value"), { target: { value: "ame" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(onFiltersChange).toHaveBeenCalledWith({
+      match: "all",
+      rules: [{ field: "artist_name", operator: "is", value: "ame" }],
+    });
+  });
+
+  it("builds any-of as a list of names", () => {
+    const { onFiltersChange } = show({ vocabulary: NAMES });
+    openBuilder();
+    chooseOperator("any_of");
+    fireEvent.change(screen.getByLabelText("Values"), {
+      target: { value: "Âme, Mara Veil" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(onFiltersChange).toHaveBeenCalledWith({
+      match: "all",
+      rules: [{ field: "artist_name", operator: "any_of", value: ["Âme", "Mara Veil"] }],
+    });
+  });
+
+  it("reads a saved clause back as the name, not as a key", () => {
+    show({
+      vocabulary: NAMES,
+      filters: {
+        match: "all",
+        rules: [{ field: "artist_name", operator: "is_not", value: "Âme" }],
+      },
+    });
+    expect(screen.getByText("Credited artist is not Âme")).toBeInTheDocument();
+  });
+});

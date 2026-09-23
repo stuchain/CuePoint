@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); DISCOVER-01 and DISCOVER-02 are implemented, with DISCOVER-01's recorded spike
+(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-03 are implemented, with DISCOVER-01's recorded spike
 owed.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
@@ -366,7 +366,7 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01, DISCOVER-02 implemented
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-03 implemented
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
@@ -409,6 +409,16 @@ track references that run's track, so a reason for a track the run never listed 
 it also found a trap SQLite sets for any table keyed by someone else's number. Given no id, an
 `INTEGER PRIMARY KEY` invents the next free one, even with `NOT NULL` declared, so the two tables
 keyed by a Beatport id are `WITHOUT ROWID`, where a missing id is refused.
+
+DISCOVER-03 is implemented: "tracks by B" now means B, not every artist whose name contains B.
+Credits are split into artists, and names are compared with case, Latin accents and punctuation
+folded, so **Credited artist** and **Label, any spelling** are filters, facets and Smart Collection
+rules like any other. The index is written in the same transaction as the tracks it comes from,
+and rebuilt in about a second at 50,000 tracks when a library predates it. Both of the step's
+measured choices went the faster way. A credited artist is a set lookup: 0.1 ms, against 19.5 ms
+as the specified `EXISTS`. A label compares stored keys: 13 ms, against 31.5 ms through a SQLite
+function. The specification contradicted itself on "A, B & C", and its rule was kept over its
+example. Caching the pure name functions took the index's cost on an import from 1.5 s to 0.2 s.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 

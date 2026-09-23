@@ -85,6 +85,7 @@ from cuepoint.services.beatport_api_client import BEATPORT_ERROR_CLASSES
 from cuepoint.services.beatport_catalog import parse_catalog_track
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
+from tests.fixtures import legacy_rows
 
 NOW = "2026-09-23T12:00:00+00:00"
 
@@ -454,21 +455,25 @@ def add_want(service, track_id: int, **overrides: Any) -> None:
 
 
 def add_library_tracks(service, n: int = 3) -> List[int]:
-    TrackRepository(service).add_many(
+    """Library tracks as raw rows, with no credits.
+
+    Raw because these tests are about the table: the repository writes a
+    track's credits itself (DISCOVER-03), and a test that inserts credits by
+    hand needs a track that has none yet.
+    """
+    existing = service.connect().execute("SELECT count(*) FROM tracks").fetchone()[0]
+    return legacy_rows.add_tracks(
+        service,
         [
             LibraryTrack(
-                rekordbox_track_id=f"rb-{i}",
-                file_path=f"/m/{i}.mp3",
+                rekordbox_track_id=f"rb-{existing + i}",
+                file_path=f"/m/{existing + i}.mp3",
                 title=f"T{i}",
                 artist="Mara Veil, Dub Phizix Jr",
             )
             for i in range(1, n + 1)
-        ]
+        ],
     )
-    return [
-        int(row["id"])
-        for row in service.connect().execute("SELECT id FROM tracks ORDER BY id")
-    ]
 
 
 def add_track_credit(
@@ -1894,7 +1899,8 @@ class TestUpgradingAVersionTwentyLibrary:
         service = DatabaseService(db_path=tmp_path / "upgrade.db")
         MigrationRunner(service, migrations=_migrations_up_to(20)).migrate()
 
-        TrackRepository(service).add_many(
+        legacy_rows.add_tracks(
+            service,
             [
                 LibraryTrack(
                     rekordbox_track_id=str(i),
@@ -1909,7 +1915,7 @@ class TestUpgradingAVersionTwentyLibrary:
                     year=2000 + i,
                 )
                 for i in range(1, 26)
-            ]
+            ],
         )
         ids = [
             int(row["id"])
@@ -1983,8 +1989,10 @@ class TestUpgradingAVersionTwentyLibrary:
         assert [m.version for m in runner.migrate()] == [21]
 
     def test_no_row_in_any_existing_table_changes(self, populated_v20):
+        # Up to this migration and no further, for the reason
+        # test_clean_schema gives.
         before = snapshot(populated_v20)
-        MigrationRunner(populated_v20).migrate()
+        MigrationRunner(populated_v20, migrations=_migrations_up_to(21)).migrate()
         after = snapshot(populated_v20)
 
         for table, rows in before.items():
@@ -2051,16 +2059,23 @@ class TestUpgradingAVersionTwentyLibrary:
 
 
 @pytest.mark.unit
-class TestNothingTouchesThemYet:
-    """DISCOVER-02 lands the schema with no reader or writer. The steps that
-    add one change this test to name its repository, as EXPORT-05 did."""
+class TestOneModuleRunsEachTablesSQL:
+    """DISCOVER-02 landed the schema with no reader or writer. Each step that
+    adds one names its repository here, as EXPORT-05 did, and a query anywhere
+    else is a second copy of it."""
 
-    def test_no_module_runs_sql_against_any_of_them(self):
+    #: The one module allowed to run SQL against each table. A table not named
+    #: here has no reader or writer yet.
+    OWNERS = {
+        "track_credits": "persistence/track_credit_repository.py",
+        "derived_indexes": "persistence/track_credit_repository.py",
+    }
+
+    @pytest.mark.parametrize("table", DISCOVER_TABLES)
+    def test_only_its_owner_runs_sql_against_it(self, table):
         package = Path(__file__).resolve().parents[3] / "cuepoint"
         statement = re.compile(
-            r"\b(FROM|INTO|UPDATE|JOIN|DELETE\s+FROM)\s+("
-            + "|".join(DISCOVER_TABLES)
-            + r")\b",
+            r"\b(FROM|INTO|UPDATE|JOIN|DELETE\s+FROM)\s+" + table + r"\b",
             re.IGNORECASE,
         )
         offenders = []
@@ -2069,4 +2084,5 @@ class TestNothingTouchesThemYet:
                 continue
             if statement.search(path.read_text(encoding="utf-8")):
                 offenders.append(path.relative_to(package).as_posix())
-        assert offenders == []
+        owner = self.OWNERS.get(table)
+        assert offenders == ([owner] if owner else [])

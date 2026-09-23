@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **DISCOVER-01 and DISCOVER-02 implemented; DISCOVER-01's recorded spike, which needs a
-developer's Beatport token, is owed (see its outcome). DISCOVER-03…DISCOVER-12 not started.** The twelve steps below replace the
+Status: **DISCOVER-01 to DISCOVER-03 implemented; DISCOVER-01's recorded spike, which needs a
+developer's Beatport token, is owed (see its outcome). DISCOVER-04…DISCOVER-12 not started.** The twelve steps below replace the
 roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -574,6 +574,161 @@ browse counts, and the two facets, each measured and recorded. `python -m pytest
 mitigation is the direction it errs in and Beatport resolution overriding it, not a smarter splitter.
 
 **Complexity**: **L**
+
+**Outcome**: Implemented. The two name functions, the credit index and the label keys, maintained
+where tracks are written and rebuilt when the rule changes, and two rule fields that the filter bar,
+facets and Smart Collections read like any other field.
+
+**What was built.**
+
+- **`core/entity_names.py`**: `name_key` and `split_credit`, with `ENTITY_NAMES_VERSION = 1`. The
+  module imports nothing from CuePoint.
+  - **Accents are folded only on Latin letters.** Taken literally, "NFKD, accents stripped" merges
+    what a reader sees as two different letters: Japanese "ガ" becomes "カ" and Cyrillic "й" becomes
+    "и". Folding a combining mark only when the letter under it is Latin unites "Âme" and "Ame"
+    (DEC-095) and leaves other scripts alone.
+  - **A name made only of punctuation keeps it.** "!!!" has the key "!!!", so no non-empty name
+    gets an empty key.
+  - **`split_credit` also splits at semicolons**, the separator tag editors write between several
+    values.
+  - **A featuring marker splits only with an artist on both sides**, so an act called "Feat Lux"
+    or "Soft Feat" stays whole.
+  - **Both functions are cached (bounded at 65,536 entries), since they are pure.** Uncached, keeping
+    the index added 1.5 s to a 50,000-track import. Cached, it adds 0.21 s (below).
+  - **A pinned table of answers holds the version.** A test fails if either function's answers
+    change while `ENTITY_NAMES_VERSION` stays the same.
+- **`persistence/track_credit_repository.py`**, the one module that runs SQL on `track_credits` and
+  `derived_indexes`.
+  - `write_credits` and `label_key_of` are called inside the transactions of `TrackRepository` (on
+    `add`, `add_many` and `update`, and in both upserts) and of `TrackMetadataRepository._set`. An
+    import, a refresh apply, a revert and a label override therefore commit a track and its derived
+    rows together.
+  - An update rewrites credits only when the artist or remixer text changed. `None` and `""` count as
+    the same empty credit.
+  - `rebuild_chunk` reads a run of tracks and writes their credits and label keys in one
+    `BEGIN IMMEDIATE` transaction.
+- **`services/credit_index_service.py`** rebuilds 2,000 tracks per chunk. It can be cancelled
+  between chunks and reports progress. It records both derived indexes, `track_credits` and
+  `label_keys`, only after the last chunk, so a cancelled rebuild runs again at the next start.
+- **`engine/credit_index_jobs.py`** registers the job type `credit_index`.
+  - `start_credit_index_if_stale` runs at engine start, after migration. It never raises and starts
+    nothing when the index is current.
+  - The job refuses to start beside any `LIBRARY_JOB_TYPES` job, as specified. An import may start
+    while a rebuild runs, because chunks are atomic under the write lock.
+  - The status strip says **Indexing artists and labels**.
+- **Rule fields.** A new field type, `name`, with the operators `is`, `is_not` and `any_of`. A rule
+  keeps the name as typed, trimmed and never blank, and the query builder binds its `name_key`.
+  Because `name_key` is idempotent, a rule may carry either a name or a key.
+  - **`artist_name`, "Credited artist":** any artist or remixer credit, over `track_credits`.
+  - **`label_name`, "Label, any spelling":** the effective label (DEC-068), compared by
+    `COALESCE(meta.label_key, tracks.label_key)`.
+  - `FieldSpec.display` is what a facet shows beside a key: the first spelling alphabetically, the
+    existing facets' `min()` rule.
+- **Facets.** Both fields are facetable through the Library's existing facet endpoint.
+- **The renderer.** `name` joins the field-type union in `cuepointBridge.types.ts` and
+  `engineClient.ts`, and `desktopContract.test.ts` pins it. The filter bar's free-text control, with
+  the facet as suggestions, is exactly the right control, so `test_filter_bar_contract` counts `name`
+  with `text` and `date`. The status strip has the job's verb.
+- **Docs.** The Library user guide and the changelog describe the two filters.
+
+**The two measured choices, at 50,000 tracks.**
+
+- **`artist_name` uses the set shape, not the specified `EXISTS`.** "Is" takes 0.0 ms as
+  `tracks.id IN (SELECT track_id … WHERE name_key = ?)` against 19.5 ms as a correlated `EXISTS`.
+  "Is not" takes 6.7 ms against 20.4 ms. The tag rules already use the set shape.
+- **`label_name` uses stored key columns (migration `m0022_label_keys`), not a SQLite function.**
+  "Is" took 13.0 ms against 31.5 ms, and the facet 44.7 ms against 71.4 ms. The plain `label` rule
+  takes 12.6 ms, so the new rule costs no more than the old one. The migration adds
+  `tracks.label_key` and `track_metadata.label_key`, and the two repositories write each key in the
+  same statement as its label. It adds no index: the effective key spans two tables, so no single
+  index serves it.
+
+**Measured through the real code** (50,000 tracks, 75,803 credits, 1,200 labels, 10,000 label
+overrides, medians of seven runs):
+
+| What | Time |
+| --- | --- |
+| Backfill (`CreditIndexService.rebuild`) | 0.94–1.34 s |
+| Import through `upsert_many_from_rekordbox` | 1.97 s, against 1.76 s without the credit writes |
+| `artist_name is`: count / first page | 0.1 ms / 0.9 ms (51 tracks) |
+| `artist_name is_not`: count / first page | 6.8 ms / 1.5 ms |
+| `artist_name any_of` (three names): count / first page | 0.1 ms / 1.6 ms |
+| `label_name is`: count / first page | 19.8 ms / 41.2 ms (39 tracks) |
+| `label_name is_not`: count / first page | 21.0 ms / 1.5 ms |
+| `artist_name` facet: whole library / narrowed by a BPM rule | 93.4 ms / 122.3 ms |
+| `label_name` facet: whole library / narrowed | 97.1 ms / 64.8 ms |
+
+When nothing narrows the view, the credited-artist facet skips its scope filter. The tag facet
+already did this, and it took the whole-library facet from 143 ms to 93 ms.
+
+**Where it differs from the specification, and why.**
+
+- **"A, B & C" credits "A" and "B & C".** The specification's rule does not split on `&`
+  ("Above & Beyond"), but one of its example tests expects `artist_name is B` to find "A, B & C".
+  The two contradict each other. The rule wins, since it errs by not grouping (DEC-095), and a test
+  pins the choice. Once a track is resolved (DISCOVER-04), Beatport's own artist list settles such
+  cases.
+- **Accents on non-Latin letters are kept** (see above).
+- **`any_of` is allowed on both fields.** A Smart Collection of "tracks by any of these artists" needs
+  it, and it compiles to the same one-seek set.
+- **`EXISTS` became the set shape, as measured above.**
+- **The rebuild does not block imports**, for the reason given above. Refusing an import during the
+  second a start-up rebuild takes would make a user wait for work they did not start.
+
+**Two bugs found and fixed.**
+
+- **Migration tests could no longer build old databases.** Seven migration test files filled a
+  version-8-to-20 database through today's `TrackRepository`, which now writes columns and a table
+  those versions lack. They now insert through `tests/fixtures/legacy_rows.py`, which writes only
+  the columns a table has at its version. Three "no row changes" tests now migrate only up to their
+  own migration, so a later migration's new column doesn't read as a changed row.
+- **A race in two engine test fixtures, present before this step.** An import sets its own terminal
+  state before it starts its follow-up file check, so "every job has finished" was briefly true too
+  early. The Rekordbox-export preview test then read the library in that gap: it reported no file
+  check over the wire, and three missing files when read directly a moment later. It failed once in
+  the combined engine run. `tests/fixtures/job_settling.wait_until_settled` also waits for the job
+  threads, and only a running job thread can start a follow-up.
+
+**What binds later steps.**
+
+1. **Facets stop at 1,000 values** (`FACET_LIMIT_MAX`). The test library above has 1,695 credited
+   names, so DISCOVER-05's "the `artist_name` facet" cannot be the scope as written. The scope needs
+   a repository read of every distinct key, or paging, not the capped facet.
+2. **Until the first rebuild finishes, the index is incomplete** on a library upgraded from before
+   this step: about a second at start-up, at 50,000 tracks. `ICreditIndexService.is_current()` says
+   whether it is complete. DISCOVER-07 can draw a "still indexing" state from it rather than a
+   short list.
+3. **A change to either name function is a bump of `ENTITY_NAMES_VERSION`**, and no migration. The
+   pinned-answer test enforces it.
+4. **`label_key` belongs to the repositories.** Any new writer of `tracks.label` or
+   `track_metadata.label` must write it too. Today only the two repositories write either column,
+   and `LABEL_KEY_COLUMN` names it.
+
+**Tests**:
+
+- 71 in `src/tests/unit/core/test_entity_names.py`.
+- 80 in `src/tests/unit/persistence/test_library_names.py`, covering:
+  - every write path, including the import upsert, a relink, a revert and a label override;
+  - a refresh that changes only the BPM, which leaves a sentinel credit untouched;
+  - both rules, and every facet value's count equal to its rule's count;
+  - a Smart Collection finding what the filter finds;
+  - the rebuild producing exactly the write path's rows, plus version bumps, cancelling and
+    progress.
+- 19 in `src/tests/unit/engine/test_credit_index_jobs.py`, including a real import job and a real
+  rebuild.
+- 10 new in `test_filter_rule.py`.
+- 5 new FilterBar tests and 1 status-strip test in the renderer.
+- The DISCOVER-02 schema test now names the credit repository as the one module allowed to run SQL
+  on `track_credits` and `derived_indexes`.
+
+**Checks run**:
+
+- **Python:** `python -m pytest src/tests` (full suite), `ruff check src/`,
+  `ruff format --check src/`, `check_no_qt_in_core.py`, and the strict mypy gate with the four new
+  modules and `models/filter_rule.py` added to it.
+- **Renderer:** `npm test` (2,783), `npm run lint` and `npm run typecheck`.
+- **Electron:** `npm test` (446), `npm run typecheck` and `npm run build`.
+- **Repository:** `git diff --check`.
 
 ---
 
