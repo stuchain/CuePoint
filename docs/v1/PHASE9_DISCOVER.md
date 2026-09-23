@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **DISCOVER-01 to DISCOVER-04 implemented, and DISCOVER-01's spike recorded against the
-live API (2026-09-23; see its outcome). DISCOVER-05…DISCOVER-12 not started.** The twelve steps below replace the
+Status: **DISCOVER-01 to DISCOVER-05 implemented, and DISCOVER-01's spike recorded against the
+live API (2026-09-23; see its outcome). DISCOVER-06…DISCOVER-12 not started.** The twelve steps below replace the
 roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -1038,6 +1038,173 @@ test against inCrate's own function, run while both exist, is the guard, and it 
 inCrate in DISCOVER-12.
 
 **Complexity**: **L**
+
+**Outcome**: Implemented. inCrate's algorithm now runs over the library as a job. Every run is kept
+with its scope, its tracks in the order found, and every reason each was found. Ownership is
+computed when a run is read.
+
+**What was built.**
+
+- **`services/discovery_service.py`**:
+  - `DiscoveryService.request` fills in inCrate's defaults: `incrate.discovery_genre_ids`,
+    `incrate.new_releases_days`, and the last 30 days of charts. It refuses what a run cannot use
+    (bad genre ids, a window that ends before it starts or is over 366 days, 0 days). Days are
+    counted in the user's local date, as inCrate's `date.today()` counted them; timestamps stay
+    UTC.
+  - `DiscoveryService.run` resolves the scope once and stores the run before asking Beatport
+    anything. It then reads charts, resolves labels and reads releases, and ends the run as
+    `succeeded`, `cancelled` or `failed`, whatever happens, including a bug.
+  - The service also reads runs back: `list_runs`, `get_run`, `run_tracks`, `delete_run` and
+    `close_interrupted`.
+- **`persistence/discovery_repository.py`** is the one writer of `discovery_runs`,
+  `discovery_run_tracks`, `discovery_run_sources` and `beatport_name_lookups`.
+  - `record_found` commits catalog rows, new tracks at the next positions, every reason
+    (`INSERT OR IGNORE`, so none twice) and the run's counts in one transaction. The catalog rows
+    go through `beatport_catalog_repository.store_catalog_tracks`, extracted so that module keeps
+    the catalog's SQL.
+  - Counts that break the run's rules roll the whole write back, and an ended run takes no more
+    writes.
+  - `run_tracks` reads a window with ownership from DISCOVER-04's `owned_beatport_ids_sql()`, which
+    SQLite builds once per statement. It filters owned tracks (`hide`, the default, `only` or
+    `all`) and sorts by found order, release date, artist or title, with missing values last and
+    ties in found order. Each row carries its artists, remixers and reasons, and each page carries
+    `total`, `tracks`, `owned` and `hidden`.
+- **The scope reads** are in `TrackCreditRepository`, which owns the credit index they read:
+  - `library_artists` and `library_labels` give every credited name and every effective label, the
+    override where there is one. Each is read whole, since facets stop at 1,000 (DISCOVER-03's
+    first binding note), and spelled as its facet spells it.
+  - `artist_ids_by_key` and `label_ids_by_key` give the Beatport ids resolution linked to them.
+- **`engine/discovery_jobs.py`** registers the job type `discovery`.
+  - `start_discovery_job` refuses with no token (`no_token`) or an unusable request (`ValueError`),
+    and in both cases creates no job and no run.
+  - The job is exclusive with itself only. Its progress names the stage (**Reading charts**,
+    **Resolving labels**, **Reading releases**).
+  - A failed run's job code is `BEATPORT_<CLASS>`, or `DISCOVERY_FAILED`, and the result carries
+    the run's id, outcome and counts.
+  - `run_engine` calls `close_interrupted_discovery_runs`, which never raises. It ends any run the
+    last engine left open as failed, "CuePoint stopped before the run finished", keeping its
+    tracks.
+- **A chart listing that keeps what discovery needs.** DISCOVER-12 deletes the legacy chart parsers,
+  so new code must not rest on them. So the step adds `CatalogChart` (id, name, web URL,
+  publish date, `artist`, `owner_name`, genre ids, track count), `parse_catalog_chart`, and
+  `BeatportApi.charts(genre_id, since, until)`. The date window and the genre are applied on our
+  side as well as sent, since the recording never showed `genre_id` being honoured. The listing
+  pages up to `MAX_LISTING_PAGES`. Discovery also uses `chart_tracks`, `label_tracks` and
+  `search_label_by_name`.
+- **The failure policy is shared.** `REPEATING_ERROR_CLASSES` and `MAX_CONSECUTIVE_FAILURES` (3)
+  moved into `beatport_api_client.py`, and the resolve job and discovery both read them.
+
+**How a run decides.**
+
+- **Artists.** A chart made by a Beatport artist counts for the library artist resolution linked
+  that artist's id to. It also counts for a library artist with no linked id whose key the chart
+  artist's name has. A chart no artist made counts by its account's `owner_name`.
+- **Linking an artist id.** An id is linked to a library artist when the same library track
+  credits that name and its accepted Beatport track credits that id under the same key. So "A, B"
+  resolved to A and B links A's id to A alone.
+- **Labels.** A label uses the id resolution linked to it: the Beatport label most of its resolved
+  tracks are on, with ties going to the lower id. So "Nightfall" in the library links to
+  Beatport's "Nightfall Audio".
+  - Without a link, the name-lookup cache answers. A found id is kept for good, since Beatport's
+    ids do not change. "Not found" is trusted for 30 days (`NOT_FOUND_LOOKUP_MAX_AGE`).
+  - Only a miss calls `search_label_by_name`, and its answer, "not found" included, is stored.
+  - A search that failed is not stored, so the next run asks again.
+- **Commits.** Findings are held and committed at most once a second (`FLUSH_INTERVAL_SECONDS`)
+  or every 1,000 tracks (`FLUSH_TRACKS`). A cancel or failure commits what it holds before the
+  run ends, so it keeps everything; a crash loses at most a second.
+
+**Where it differs from the specification, and why.**
+
+- **A library artist known by id is not matched by name.** The specification says a chart counts
+  by `artist.id` *or* by name. But DEC-095 makes a known id the identity, and with the "or" a chart
+  by a different artist of the same name would count. A test holds this, and allowing the "or"
+  fails it.
+- **inCrate's retry across all genres is not ported.** When the chosen genres gave no chart
+  tracks, inCrate read charts from every genre, genres the user had not chosen.
+- **`None` means the whole library, and an empty selection means none.** In inCrate an empty list
+  meant all, so there was no way to say "no artists".
+- **Discovery commits about once a second, not once per chart or label.** One commit per unit
+  spent 4.4 s of a 5.7 s mocked run waiting on the disk (measured below). A cancel or failure
+  still keeps every finding.
+- **A release reason has no link.** Beatport's listing gives a release's slug, but DISCOVER-01's
+  `CatalogTrack` does not keep it. Adding a field would break DISCOVER-02's rule that every parsed
+  field has a column. The track keeps its own link, and the reason names the release.
+- **Only a matching chart costs a second request.** A chart listing carries the artist, where
+  inCrate read every chart's detail to find it. Against the same world, discovery makes fewer
+  requests than inCrate, and a test holds that.
+
+**Measured** (median of three, at 50,000 library tracks with 1,700 credited artists and 1,200
+labels). Beatport is mocked: 1,000 of the labels are on it with recent releases, and two genres
+have 400 charts each, 100 of them by library artists. The times are CuePoint's work plus the
+fake's, without network time:
+
+| Run | Time | Requests |
+| --- | --- | --- |
+| First | 1.93 s | 2,708: 8 chart listings, 100 chart track lists, 1,600 label searches (one per found label; three for each of the 200 that are not on Beatport), 1,000 label track lists |
+| Second | 0.73 s | 1,108: no label searches |
+
+Batching commits took these from 6.0 s and 4.9 s. The library reads a run starts with take:
+
+| Read | Time |
+| --- | --- |
+| `library_artists` | 112 ms |
+| `library_labels` | 47 ms |
+| `artist_ids_by_key`, with 40,000 resolved tracks | 229 ms |
+| `label_ids_by_key`, with 40,000 resolved tracks | 82 ms |
+
+The first window of a 6,505-track run takes 7 ms. Against the real API, a run is bounded by its
+round trips: 1,108 requests is several minutes at typical latency, and the first run's label
+searches are paid once.
+
+**What binds later steps.**
+
+1. **DISCOVER-09's `runs/start`** calls `start_discovery_job`. It must turn the `no_token`
+   refusal and the `ValueError` into values, and add `discovery` (and DISCOVER-04's
+   `beatport_resolve`) to the status strip's `JOB_VERBS`. The stage is the progress's
+   `status_message`. A test holds that nothing else starts a run.
+2. **`runs/{id}/tracks`** is `run_tracks`: windows of 1 to 500, the four sorts, the three owned
+   filters, and every page's `hidden` count. `params_json` is not in the job result, since it
+   holds the whole scope. The run header reads it with `get_run`.
+3. **DISCOVER-06's wantlist and playlist push** read catalog rows the run already wrote. A track
+   found by a run always has one, because `record_found` writes the two together.
+4. **A run's scope is in its `params_json`**: `artists` and `labels`, each with `picked`,
+   `count`, `linked_ids` and `scope` (key and name). DISCOVER-10 draws "what this run looked for"
+   from it.
+
+**Tests**:
+
+- 74 in `src/tests/unit/services/test_discovery_service.py`, over a real library and DISCOVER-01's
+  real `BeatportApi`, answered by `tests/fixtures/beatport_world.py`, an in-memory Beatport that
+  serves inCrate's legacy routes and the new ones from the same data. They cover:
+  - **the request:** defaults, config and refusals;
+  - **a run:** found order, every reason, counts, the scope as recorded, stages, the activity
+    event and the catalog rows;
+  - **parity with inCrate's own `run_discovery`:** the same tracks in the same order, plus the
+    two reasons it dropped, in fewer requests;
+  - **labels:** no label searches on a second run, "not found" trusted for its age, a label
+    linked by resolution, a failed search not stored, an override read as the label;
+  - **identity by id, name and account**, and **the scope**;
+  - **stopping:** a cancel mid-releases, a 401 keeping rows, a 403 or 429 stopping at once, three
+    failures in a row, one failure skipped, no token, a bug still ending the run;
+  - **ownership:** hidden and counted, and a match accepted after the run read as owned;
+  - **reading runs**, and **the commit policy**.
+- 45 in `src/tests/unit/persistence/test_discovery_repository.py`: positions, reasons, refused
+  tracks, counts, rollbacks, ended runs, closing interrupted runs, windows, sorts, the plan,
+  lookups, and the library scope and link reads.
+- 17 in `src/tests/unit/services/test_beatport_charts.py`: the chart parser over every recorded
+  chart and DJEFF's, refusals, and the listing's window, genre, cap and order.
+- 16 in `src/tests/unit/engine/test_discovery_jobs.py`, through the real job store and
+  container:
+  - refusals before a job exists, success, a rejected token, bugs and a run that cannot start;
+  - cancel, exclusivity, and running beside an import;
+  - closing interrupted runs, including through `run_engine`;
+  - nothing but the job module starting a run.
+- DISCOVER-02's ownership test names the new repository as owner of its four tables and the only
+  other reader of the catalog. A new test per table holds that only the owner writes it.
+
+**Checks run**: `python -m pytest src/tests` (full suite), `ruff check src/`,
+`ruff format --check src/`, `check_no_qt_in_core.py`, the strict mypy gate with the two new
+modules added, and `git diff --check`.
 
 ---
 

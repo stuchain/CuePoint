@@ -35,7 +35,7 @@ chunk, so an interrupted rebuild is simply run again at the next start.
 from __future__ import annotations
 
 import sqlite3
-from typing import Iterable, List, Optional, Sequence, Tuple, TypeVar
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple, TypeVar
 
 from cuepoint.core.entity_names import name_key, split_credit
 from cuepoint.models.track_credit import (
@@ -65,6 +65,53 @@ _INSERT_CREDIT = (
 )
 
 _T = TypeVar("_T")
+_K = TypeVar("_K", int, str)
+_V = TypeVar("_V", int, str)
+
+# The effective label (the override where there is one, DEC-068) by key, with
+# the first spelling alphabetically, as the label_name facet shows it.
+_EFFECTIVE_LABEL_KEY = f"COALESCE(m.{LABEL_KEY_COLUMN}, t.{LABEL_KEY_COLUMN})"
+_EFFECTIVE_LABEL = (
+    f"CASE WHEN m.{LABEL_KEY_COLUMN} IS NOT NULL THEN m.label ELSE t.label END"
+)
+
+_LIBRARY_LABELS = (
+    f"SELECT {_EFFECTIVE_LABEL_KEY} AS name_key, min({_EFFECTIVE_LABEL}) AS name"
+    " FROM tracks AS t LEFT JOIN track_metadata AS m ON m.track_id = t.id"
+    f" WHERE {_EFFECTIVE_LABEL_KEY} IS NOT NULL"
+    " GROUP BY 1 ORDER BY 1"
+)
+
+# DISCOVER-04's identity view, joined to the library's own names by track.
+_ARTIST_LINKS = (
+    "SELECT c.name_key AS name_key, b.beatport_id AS beatport_id,"
+    " count(DISTINCT c.track_id) AS tracks"
+    " FROM library_beatport_credits AS b"
+    " JOIN track_credits AS c ON c.track_id = b.track_id AND c.name_key = b.name_key"
+    " WHERE b.kind = 'artist' AND b.beatport_id IS NOT NULL"
+    " GROUP BY c.name_key, b.beatport_id"
+)
+
+_LABEL_LINKS = (
+    f"SELECT {_EFFECTIVE_LABEL_KEY} AS name_key, b.beatport_id AS beatport_id,"
+    " count(*) AS tracks"
+    " FROM library_beatport_credits AS b"
+    " JOIN tracks AS t ON t.id = b.track_id"
+    " LEFT JOIN track_metadata AS m ON m.track_id = t.id"
+    " WHERE b.kind = 'label' AND b.beatport_id IS NOT NULL"
+    f" AND {_EFFECTIVE_LABEL_KEY} IS NOT NULL"
+    " GROUP BY 1, 2"
+)
+
+
+def _majority(rows: Iterable[Tuple[_K, _V, int]]) -> Dict[_K, _V]:
+    """For each key, the value on the most tracks, ties to the lowest value."""
+    best: Dict[_K, Tuple[int, _V]] = {}
+    for key, value, tracks in rows:
+        held = best.get(key)
+        if held is None or (-tracks, value) < (-held[0], held[1]):
+            best[key] = (tracks, value)
+    return {key: best[key][1] for key in sorted(best)}
 
 
 def _chunks(values: Sequence[_T], size: int = CHUNK_SIZE) -> Iterable[Sequence[_T]]:
@@ -165,6 +212,56 @@ class TrackCreditRepository(ITrackCreditRepository):
         built = {index.name: index for index in self.built()}
         return all(
             name in built and built[name].is_current(version) for name in NAME_INDEXES
+        )
+
+    def library_artists(self) -> List[Tuple[str, str]]:
+        """Every credited name in the library as ``(key, name)``, by key.
+
+        Every key, not a facet's first thousand (DISCOVER-03's first binding
+        note). ``name`` is the first spelling alphabetically, the rule the
+        credited-artist facet shows.
+        """
+        rows = self._db.connect().execute(
+            "SELECT name_key, min(name) AS name FROM track_credits"
+            " GROUP BY name_key ORDER BY name_key"
+        )
+        return [(str(r["name_key"]), str(r["name"]).strip()) for r in rows]
+
+    def library_labels(self) -> List[Tuple[str, str]]:
+        """Every effective label in the library as ``(key, name)``, by key.
+
+        The effective label is the override where there is one (DEC-068),
+        compared by key as the ``label_name`` rule compares it.
+        """
+        rows = self._db.connect().execute(_LIBRARY_LABELS)
+        return [(str(r["name_key"]), str(r["name"]).strip()) for r in rows]
+
+    def artist_ids_by_key(self) -> Dict[int, str]:
+        """Each Beatport artist id resolution has linked to a library artist.
+
+        An id is linked to a credited name when a library track credits that
+        name and its accepted Beatport track credits an artist with that id
+        under the same key (``library_beatport_credits``, DISCOVER-04). Both
+        sides must name the artist: a track by "A, B" resolved to A and B links
+        A's id to "A" alone. An id two library names share goes to the one on
+        more tracks, and then to the lower key.
+        """
+        rows = self._db.connect().execute(_ARTIST_LINKS)
+        return _majority(
+            (int(r["beatport_id"]), str(r["name_key"]), int(r["tracks"])) for r in rows
+        )
+
+    def label_ids_by_key(self) -> Dict[str, int]:
+        """The Beatport label id resolution has linked to each library label.
+
+        A library label is linked to the Beatport label its resolved tracks are
+        on — by track, not by spelling, so "Nightfall" in the library links to
+        Beatport's "Nightfall Audio". Where its tracks disagree, the label most
+        of them are on wins, and then the lower id.
+        """
+        rows = self._db.connect().execute(_LABEL_LINKS)
+        return _majority(
+            (str(r["name_key"]), int(r["beatport_id"]), int(r["tracks"])) for r in rows
         )
 
     def track_count(self) -> int:

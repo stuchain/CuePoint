@@ -33,6 +33,7 @@ read it.
 from __future__ import annotations
 
 import logging
+import sqlite3
 from typing import Dict, Iterable, List, Sequence, Set, Tuple
 
 from cuepoint.core.entity_names import name_key
@@ -157,6 +158,67 @@ def catalog_rows(
     return cached, credits
 
 
+_Rows = Dict[int, Tuple[CachedBeatportTrack, List[CachedBeatportCredit]]]
+
+
+def _rows_of(tracks: Sequence[CatalogTrack], fetched_at: str) -> _Rows:
+    """Each storable track's rows, by id; a refused track is logged and left out."""
+    rows: _Rows = {}
+    for track in tracks:
+        try:
+            rows[track.id] = catalog_rows(track, fetched_at)
+        except (TypeError, ValueError) as exc:
+            _logger.warning(
+                "[beatport] catalog track %s not stored: %s",
+                getattr(track, "id", "?"),
+                exc,
+            )
+    return rows
+
+
+def _write_rows(conn: sqlite3.Connection, rows: _Rows) -> None:
+    conn.executemany(
+        _UPSERT_TRACK,
+        [
+            tuple(cached.to_dict()[c] for c in _TRACK_COLUMNS)
+            for cached, _ in rows.values()
+        ],
+    )
+    for chunk in chunked(list(rows)):
+        conn.execute(
+            "DELETE FROM beatport_track_artists WHERE beatport_track_id IN"
+            f" ({', '.join('?' for _ in chunk)})",
+            chunk,
+        )
+    conn.executemany(
+        _INSERT_CREDIT,
+        [
+            tuple(credit.to_dict()[c] for c in _CREDIT_COLUMNS)
+            for _, credits in rows.values()
+            for credit in credits
+        ],
+    )
+
+
+def store_catalog_tracks(
+    conn: sqlite3.Connection, tracks: Sequence[CatalogTrack], fetched_at: str
+) -> List[int]:
+    """Store catalog tracks on a connection whose transaction the caller holds.
+
+    What :meth:`BeatportCatalogRepository.upsert_tracks` does, for a writer
+    that must commit the catalog rows together with rows of its own — a
+    discovery run's tracks reference them (DISCOVER-05). The SQL stays here,
+    in the one module that writes the catalog.
+
+    Returns:
+        The ids stored, in the order given; a refused track is left out.
+    """
+    rows = _rows_of(tracks, fetched_at)
+    if rows:
+        _write_rows(conn, rows)
+    return list(rows)
+
+
 class BeatportCatalogRepository(IBeatportCatalogRepository):
     """The Beatport catalog cache, and what the library owns and is by on Beatport."""
 
@@ -176,40 +238,11 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
         Returns:
             How many tracks were stored.
         """
-        rows: Dict[int, Tuple[CachedBeatportTrack, List[CachedBeatportCredit]]] = {}
-        for track in tracks:
-            try:
-                rows[track.id] = catalog_rows(track, fetched_at)
-            except (TypeError, ValueError) as exc:
-                _logger.warning(
-                    "[beatport] catalog track %s not stored: %s",
-                    getattr(track, "id", "?"),
-                    exc,
-                )
+        rows = _rows_of(tracks, fetched_at)
         if not rows:
             return 0
         with self._db.transaction() as conn:
-            conn.executemany(
-                _UPSERT_TRACK,
-                [
-                    tuple(cached.to_dict()[c] for c in _TRACK_COLUMNS)
-                    for cached, _ in rows.values()
-                ],
-            )
-            for chunk in chunked(list(rows)):
-                conn.execute(
-                    "DELETE FROM beatport_track_artists WHERE beatport_track_id IN"
-                    f" ({', '.join('?' for _ in chunk)})",
-                    chunk,
-                )
-            conn.executemany(
-                _INSERT_CREDIT,
-                [
-                    tuple(credit.to_dict()[c] for c in _CREDIT_COLUMNS)
-                    for _, credits in rows.values()
-                    for credit in credits
-                ],
-            )
+            _write_rows(conn, rows)
         return len(rows)
 
     # ------------------------------------------------------------------ read

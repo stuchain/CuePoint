@@ -29,6 +29,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.incrate.beatport_api_models import (
     CatalogArtist,
+    CatalogChart,
     CatalogLabel,
     CatalogTrack,
     ChartDetail,
@@ -47,6 +48,7 @@ from cuepoint.services.beatport_catalog import (
     chart_publish_date,
     page_items,
     parse_catalog_artist,
+    parse_catalog_chart,
     parse_catalog_label,
     parse_catalog_track,
     positive_id,
@@ -1126,6 +1128,52 @@ class BeatportApi:
     ) -> List[CatalogTrack]:
         """A label's tracks released from ``since`` to ``until``, newest first."""
         return self._recent_tracks("label_id", label_id, since, until, max_pages)
+
+    def charts(
+        self,
+        genre_id: Optional[int],
+        since: date,
+        until: date,
+        max_pages: int = MAX_LISTING_PAGES,
+    ) -> List[CatalogChart]:
+        """Charts published from ``since`` to ``until``, newest first (DISCOVER-05).
+
+        Asks ``catalog/charts/`` with ``publish_date=since:until`` — a filter
+        DISCOVER-01's recording showed Beatport applies — and ``genre_id``,
+        which the recording did not test. Both are applied here as well, as
+        ``_recent_tracks`` applies its window, so the answer is right whether
+        or not Beatport honours them: a chart dated outside the window, or
+        naming genres none of which is ``genre_id``, is left out. A chart
+        with no date or no genres is kept, as the filtered listing gave it.
+        """
+        first, last = since.isoformat(), until.isoformat()
+        params: Dict[str, Any] = {
+            "publish_date": f"{first}:{last}",
+            "per_page": MAX_PER_PAGE,
+        }
+        wanted_genre = positive_id(genre_id) if genre_id is not None else None
+        if wanted_genre is not None:
+            params["genre_id"] = wanted_genre
+        charts: List[CatalogChart] = []
+        seen: set = set()
+        for item in self._paginate("/catalog/charts/", params, max_pages):
+            chart = parse_catalog_chart(item)
+            if chart is None or chart.id in seen:
+                continue
+            seen.add(chart.id)
+            if chart.publish_date is not None and not (
+                first <= chart.publish_date <= last
+            ):
+                continue
+            if (
+                wanted_genre is not None
+                and chart.genre_ids
+                and wanted_genre not in chart.genre_ids
+            ):
+                continue
+            charts.append(chart)
+        charts.sort(key=lambda c: c.publish_date or "", reverse=True)
+        return charts
 
     def chart_tracks(
         self, chart_id: int, max_pages: int = MAX_LISTING_PAGES

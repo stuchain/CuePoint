@@ -1148,6 +1148,12 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     from cuepoint.engine.credit_index_jobs import start_credit_index_if_stale
 
     start_credit_index_if_stale(_JOB_STORE)
+    # DISCOVER-05: a discovery run the last engine left open is ended as
+    # failed, keeping what it found, before any new run can start. Never a
+    # reason not to start.
+    from cuepoint.engine.discovery_jobs import close_interrupted_discovery_runs
+
+    close_interrupted_discovery_runs()
     server = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg))
     _stop_with_parent(server)
     try:

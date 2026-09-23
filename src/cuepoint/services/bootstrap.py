@@ -46,6 +46,8 @@ from cuepoint.services.interfaces import (
     ITagWriteService,
     IBeatportCatalogRepository,
     IBeatportResolveService,
+    IDiscoveryRepository,
+    IDiscoveryService,
     ICreditIndexService,
     IDuplicateRepository,
     IDuplicateService,
@@ -93,6 +95,7 @@ from cuepoint.persistence.rekordbox_export_repository import (
 from cuepoint.services.tag_write_service import TagWriteService
 from cuepoint.persistence.duplicate_repository import DuplicateRepository
 from cuepoint.services.beatport_resolve_service import BeatportResolveService
+from cuepoint.services.discovery_service import DiscoveryService
 from cuepoint.services.credit_index_service import CreditIndexService
 from cuepoint.persistence.file_status_repository import FileStatusRepository
 from cuepoint.persistence.job_repository import JobRepository
@@ -108,6 +111,7 @@ from cuepoint.persistence.track_metadata_repository import (
     TrackMetadataRepository,
 )
 from cuepoint.persistence.beatport_catalog_repository import BeatportCatalogRepository
+from cuepoint.persistence.discovery_repository import DiscoveryRepository
 from cuepoint.persistence.track_credit_repository import TrackCreditRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
@@ -694,6 +698,26 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IBeatportResolveService, create_beatport_resolve_service)
+
+    # Discovery over the library, kept as runs (DISCOVER-05). Built per job for
+    # the resolve service's reason: its client carries the token configured
+    # when the run starts.
+    def create_discovery_repository() -> IDiscoveryRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return DiscoveryRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(IDiscoveryRepository, create_discovery_repository)
+
+    def create_discovery_service() -> IDiscoveryService:
+        return DiscoveryService(
+            runs=container.resolve(IDiscoveryRepository),
+            credits=container.resolve(ITrackCreditRepository),
+            beatport=container.resolve(BeatportApi),
+            activity_service=container.resolve(IActivityService),
+            config_service=config_service,
+        )
+
+    container.register_factory(IDiscoveryService, create_discovery_service)
 
     # inCrate Phase 1: Inventory service (import from XML, enrich via shared matching pipeline + workers)
     def create_inventory_service() -> InventoryService:

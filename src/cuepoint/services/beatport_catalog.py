@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from cuepoint.incrate.beatport_api_models import (
     CatalogArtist,
+    CatalogChart,
     CatalogLabel,
     CatalogTrack,
 )
@@ -31,6 +32,7 @@ MAX_CREDITS = 50
 
 BEATPORT_WEB_BASE = "https://www.beatport.com"
 BEATPORT_WEB_TRACK_BASE = f"{BEATPORT_WEB_BASE}/track"
+BEATPORT_WEB_CHART_BASE = f"{BEATPORT_WEB_BASE}/chart"
 
 _ISO_DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
 _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -224,3 +226,52 @@ def chart_publish_date(obj: Any) -> str:
         if value:
             return value
     return ""
+
+
+def chart_web_url(chart_id: int, slug: Any = None) -> str:
+    """The www.beatport.com page of a chart, built as :func:`track_web_url` is."""
+    slug_text = catalog_text(slug).lower()
+    slug_part = slug_text if _SLUG_RE.match(slug_text) else "t"
+    return f"{BEATPORT_WEB_CHART_BASE}/{slug_part}/{int(chart_id)}"
+
+
+def _genre_ids(value: Any) -> Tuple[int, ...]:
+    if not isinstance(value, list):
+        return ()
+    found: List[int] = []
+    for item in value[:MAX_CREDITS]:
+        genre_id = positive_id(_object(item).get("id"))
+        if genre_id is not None and genre_id not in found:
+            found.append(genre_id)
+    return tuple(found)
+
+
+def parse_catalog_chart(obj: Any) -> Optional[CatalogChart]:
+    """One item of ``catalog/charts/``, or a ``catalog/charts/{id}/`` object.
+
+    None when it has no usable id or name. The shape is the recorded one
+    (DISCOVER-01): ``artist`` for a chart an artist made, ``person.owner_name``
+    for the account, ``publish_date``, ``genres`` as a list of objects, and
+    ``slug``.
+    """
+    chart = _object(obj)
+    chart_id = positive_id(chart.get("id"))
+    name = catalog_text(chart.get("name"))
+    if chart_id is None or not name:
+        return None
+    count = chart.get("track_count")
+    track_count = (
+        count
+        if isinstance(count, int) and not isinstance(count, bool) and count >= 0
+        else None
+    )
+    return CatalogChart(
+        id=chart_id,
+        name=name,
+        url=chart_web_url(chart_id, chart.get("slug")),
+        publish_date=chart_publish_date(chart) or None,
+        artist=chart_artist(chart),
+        owner_name=chart_owner_name(chart) or None,
+        genre_ids=_genre_ids(chart.get("genres")),
+        track_count=track_count,
+    )

@@ -53,6 +53,26 @@ class CatalogTrack:
     genre_name: Optional[str]
 
 
+@dataclass(frozen=True)
+class CatalogChart:
+    """A Beatport chart as a v4 listing gives it (DISCOVER-05).
+
+    ``artist`` is the Beatport artist who made it, when one did; ``owner_name``
+    is the account that published it, which can be named differently
+    (DISCOVER-01's recording). ``url`` is the www.beatport.com page.
+    ``publish_date`` is ``YYYY-MM-DD``; ``genre_ids`` are the chart's genres.
+    """
+
+    id: int
+    name: str
+    url: str
+    publish_date: Optional[str]
+    artist: Optional[CatalogArtist]
+    owner_name: Optional[str]
+    genre_ids: Tuple[int, ...]
+    track_count: Optional[int]
+
+
 @dataclass
 class Genre:
     """Beatport genre from API."""

@@ -21,6 +21,7 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    Mapping,
     Optional,
     Sequence,
     Set,
@@ -70,6 +71,13 @@ if TYPE_CHECKING:
         LibraryBeatportCredit,
     )
     from cuepoint.services.beatport_resolve_service import BeatportResolveResult
+    from cuepoint.models.beatport_cache import BeatportNameLookup
+    from cuepoint.services.discovery_service import DiscoveryRequest
+    from cuepoint.models.discovery_run import (
+        DiscoveryRun,
+        DiscoveryRunSource,
+        RunTracksPage,
+    )
     from cuepoint.models.track_clean_state import TrackCleanState
     from cuepoint.models.rekordbox_export_values import ExportTrackValues
     from cuepoint.services.rekordbox_export_service import (
@@ -1196,6 +1204,26 @@ class ITrackCreditRepository(ABC):
         ...
 
     @abstractmethod
+    def library_artists(self) -> List[Tuple[str, str]]:
+        """Every credited name in the library as ``(key, name)``, by key."""
+        ...
+
+    @abstractmethod
+    def library_labels(self) -> List[Tuple[str, str]]:
+        """Every effective label in the library as ``(key, name)``, by key."""
+        ...
+
+    @abstractmethod
+    def artist_ids_by_key(self) -> Dict[int, str]:
+        """Each Beatport artist id resolution has linked to a library artist key."""
+        ...
+
+    @abstractmethod
+    def label_ids_by_key(self) -> Dict[str, int]:
+        """The Beatport label id resolution has linked to each library label key."""
+        ...
+
+    @abstractmethod
     def track_count(self) -> int:
         """How many tracks a rebuild will read."""
         ...
@@ -1268,6 +1296,161 @@ class IBeatportCatalogRepository(ABC):
         self, track_ids: Iterable[int]
     ) -> Dict[int, List["LibraryBeatportCredit"]]:
         """The Beatport artists and label of each resolved library track."""
+        ...
+
+
+class IDiscoveryRepository(ABC):
+    """Interface for discovery runs and the name-lookup cache (DISCOVER-05, DEC-091)."""
+
+    @abstractmethod
+    def start_run(self, run: "DiscoveryRun") -> "DiscoveryRun":
+        """Store a run as it starts, and return it with its id."""
+        ...
+
+    @abstractmethod
+    def record_found(
+        self,
+        run_id: int,
+        tracks: Sequence["CatalogTrack"],
+        sources: Sequence["DiscoveryRunSource"],
+        fetched_at: str,
+        counts: Mapping[str, int],
+    ) -> int:
+        """Store what one chart or label gave a run; how many tracks were new."""
+        ...
+
+    @abstractmethod
+    def update_counts(self, run_id: int, counts: Mapping[str, int]) -> None:
+        """Set some of a running run's counts."""
+        ...
+
+    @abstractmethod
+    def finish_run(
+        self,
+        run_id: int,
+        outcome: str,
+        finished_at: str,
+        error: Optional[str] = None,
+        error_class: Optional[str] = None,
+    ) -> "DiscoveryRun":
+        """Record how a running run ended."""
+        ...
+
+    @abstractmethod
+    def close_interrupted(self, finished_at: str, error: str) -> List[int]:
+        """Fail every run still marked running; the ids closed."""
+        ...
+
+    @abstractmethod
+    def get_run(self, run_id: int) -> Optional["DiscoveryRun"]:
+        """One run, or None."""
+        ...
+
+    @abstractmethod
+    def list_runs(self, limit: int = 50, offset: int = 0) -> List["DiscoveryRun"]:
+        """Runs, newest first."""
+        ...
+
+    @abstractmethod
+    def delete_run(self, run_id: int) -> bool:
+        """Delete an ended run with what it found; True when it existed."""
+        ...
+
+    @abstractmethod
+    def run_tracks(
+        self,
+        run_id: int,
+        owned: str = "hide",
+        sort: str = "position",
+        descending: bool = False,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> "RunTracksPage":
+        """A window of a run's tracks, with ownership as it is now."""
+        ...
+
+    @abstractmethod
+    def run_sources(self, run_id: int) -> List["DiscoveryRunSource"]:
+        """Every reason a run found each track."""
+        ...
+
+    @abstractmethod
+    def lookups(
+        self, kind: str, keys: Iterable[str]
+    ) -> Dict[str, "BeatportNameLookup"]:
+        """The cached name searches among ``keys``, by key."""
+        ...
+
+    @abstractmethod
+    def save_lookup(self, lookup: "BeatportNameLookup") -> None:
+        """Store what a name search answered."""
+        ...
+
+
+class IDiscoveryService(ABC):
+    """Interface for discovery over the library, kept as runs (DISCOVER-05)."""
+
+    @abstractmethod
+    def require_token(self) -> None:
+        """Refuse, as ``no_token``, when no Beatport token is configured."""
+        ...
+
+    @abstractmethod
+    def request(
+        self,
+        genre_ids: Optional[Iterable[int]] = None,
+        charts_from: Optional[date] = None,
+        charts_to: Optional[date] = None,
+        new_releases_days: Optional[int] = None,
+        artists: Optional[Iterable[str]] = None,
+        labels: Optional[Iterable[str]] = None,
+    ) -> "DiscoveryRequest":
+        """A run's request, with the defaults filled in; ValueError if unusable."""
+        ...
+
+    @abstractmethod
+    def run(
+        self,
+        request: "DiscoveryRequest",
+        *,
+        job_id: Optional[str] = None,
+        on_progress: Optional[Callable[[str, int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "DiscoveryRun":
+        """Run discovery and return the run as it ended."""
+        ...
+
+    @abstractmethod
+    def close_interrupted(self) -> List[int]:
+        """End every run a crash left open; the ids closed."""
+        ...
+
+    @abstractmethod
+    def list_runs(self, limit: int = 50, offset: int = 0) -> List["DiscoveryRun"]:
+        """Runs, newest first."""
+        ...
+
+    @abstractmethod
+    def get_run(self, run_id: int) -> Optional["DiscoveryRun"]:
+        """One run, or None."""
+        ...
+
+    @abstractmethod
+    def run_tracks(
+        self,
+        run_id: int,
+        owned: str = "hide",
+        sort: str = "position",
+        descending: bool = False,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> "RunTracksPage":
+        """A window of a run's tracks, owned hidden by default."""
+        ...
+
+    @abstractmethod
+    def delete_run(self, run_id: int) -> bool:
+        """Delete an ended run; True when it existed."""
         ...
 
 

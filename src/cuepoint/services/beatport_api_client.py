@@ -67,6 +67,18 @@ BEATPORT_ERROR_CLASSES = (
     ERROR_UNAVAILABLE,
 )
 
+#: The classes a job making many requests stops at, at the first one: every
+#: later request would be refused the same way, and repeating a rate-limited
+#: request only extends the limit (DISCOVER-04, DISCOVER-05).
+REPEATING_ERROR_CLASSES = frozenset(
+    {ERROR_NO_TOKEN, ERROR_REJECTED, ERROR_FORBIDDEN, ERROR_RATE_LIMITED}
+)
+
+#: Failed requests in a row after which such a job stops on ``unavailable``
+#: (CLEAN-09's rule): each has already cost a timeout, and a network that
+#: failed this often in a row is not coming back within the job.
+MAX_CONSECUTIVE_FAILURES = 3
+
 _NO_TOKEN_MESSAGE = (
     "Configure Beatport API token "
     "(incrate.beatport_access_token or BEATPORT_ACCESS_TOKEN)"

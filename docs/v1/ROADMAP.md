@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-04 are implemented, and DISCOVER-01's spike is recorded.
+(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-05 are implemented, and DISCOVER-01's spike is recorded.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -365,7 +365,7 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-04 implemented
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-05 implemented
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
@@ -430,6 +430,18 @@ lacks, 100 per request: 10,000 tracks are 100 requests and 0.9 s of CuePoint's o
 second resolve within the month reads nothing. It stops at once on a refusal every later request
 would repeat, and after three failed batches in a row. With no token it is refused before a job
 exists.
+
+DISCOVER-05 is implemented: inCrate's discovery now runs over the library as a job, and every run
+is kept, with what it looked for, what it found in order, and every reason for each track. inCrate
+kept only the first reason. It finds the same tracks as inCrate for the same inputs, held by a
+test that runs both, and in fewer requests. A chart listing names its artist, so only a chart by
+a library artist costs a second request. Where resolution knows an artist's Beatport id, that id
+is the artist, so a chart by someone else of the same name no longer counts. Labels are searched
+once and remembered, including "not found". At 50,000 tracks and 1,200 labels against a mocked
+Beatport, a first run is 2,708 requests in 1.9 s, and a second makes no label searches: 1,108
+requests in 0.7 s. Committing once a second rather than once per chart or label took the mocked
+first run from 6.0 s to 1.9 s. A cancel or failure keeps everything found, and a crash loses at
+most a second.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 

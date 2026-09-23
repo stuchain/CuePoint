@@ -76,6 +76,8 @@ GUARDED = (
     "cuepoint/services/beatport_ownership.py",
     "cuepoint/services/beatport_resolve_service.py",
     "cuepoint/engine/beatport_resolve_jobs.py",
+    "cuepoint/services/discovery_service.py",
+    "cuepoint/engine/discovery_jobs.py",
     "cuepoint/services/rekordbox_export_service.py",
     "cuepoint/engine/rekordbox_export_jobs.py",
     "cuepoint/engine/rekordbox_export_api.py",

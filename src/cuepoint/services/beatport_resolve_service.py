@@ -48,6 +48,8 @@ from cuepoint.services.beatport_api_client import (
     ERROR_NO_TOKEN,
     ERROR_RATE_LIMITED,
     ERROR_REJECTED,
+    MAX_CONSECUTIVE_FAILURES,
+    REPEATING_ERROR_CLASSES,
     classify_beatport_error,
 )
 from cuepoint.services.interfaces import (
@@ -68,17 +70,10 @@ RESOLVE_BATCH_SIZE = 100
 #: tracks it holds.
 RESOLVED_TRACK_MAX_AGE = timedelta(days=30)
 
-#: Failed batches in a row after which a resolve stops (CLEAN-09's rule). Each
-#: failure has already cost a timeout, and a network that failed this often in
-#: a row is not coming back within the job.
-MAX_CONSECUTIVE_FAILURES = 3
-
-#: The error classes that stop a resolve at the first failure: every later
-#: request would be refused the same way, and repeating a rate-limited request
-#: only extends the limit.
-STOP_AT_ONCE = frozenset(
-    {ERROR_NO_TOKEN, ERROR_REJECTED, ERROR_FORBIDDEN, ERROR_RATE_LIMITED}
-)
+#: The error classes that stop a resolve at the first failure. With
+#: ``MAX_CONSECUTIVE_FAILURES``, the client module's policy, shared with
+#: discovery (DISCOVER-05).
+STOP_AT_ONCE = REPEATING_ERROR_CLASSES
 
 #: The activity event one resolve records, whatever its outcome.
 EVENT_BEATPORT_RESOLVED = "discover.beatport.resolved"

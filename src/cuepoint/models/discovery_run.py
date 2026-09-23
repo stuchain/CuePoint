@@ -39,8 +39,9 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
+from cuepoint.models.beatport_cache import CachedBeatportTrack
 from cuepoint.models.row_values import (
     non_negative,
     one_of,
@@ -71,6 +72,27 @@ SOURCE_LABEL_RELEASE = "label_release"
 
 #: Why a run found a track.
 SOURCE_TYPES = (SOURCE_CHART, SOURCE_LABEL_RELEASE)
+
+#: Owned tracks left out of a run's list: DEC-092's default.
+OWNED_HIDE = "hide"
+
+#: Only the owned tracks.
+OWNED_ONLY = "only"
+
+#: Every track, owned or not.
+OWNED_ALL = "all"
+
+#: How a run's list treats owned tracks (DEC-092).
+OWNED_FILTERS = (OWNED_HIDE, OWNED_ONLY, OWNED_ALL)
+
+#: A run's list in the order it found its tracks.
+SORT_FOUND = "position"
+SORT_RELEASE_DATE = "release_date"
+SORT_ARTIST = "artist"
+SORT_TITLE = "title"
+
+#: What a run's list can be sorted by.
+RUN_TRACK_SORTS = (SORT_FOUND, SORT_RELEASE_DATE, SORT_ARTIST, SORT_TITLE)
 
 #: The counts a run keeps, in the order the table declares them.
 RUN_COUNTS = (
@@ -298,6 +320,64 @@ class DiscoveryRunSource:
             source_name=data.get("source_name"),
             source_url=data.get("source_url"),
         )
+
+
+@dataclass(frozen=True)
+class RunTrackRow:
+    """One track in a window of a run's list, as it reads now.
+
+    Attributes:
+        position: Its place in the run's first-seen order.
+        track: The cached catalog track.
+        artists: Its artists' names, in Beatport's order.
+        remixers: Its remixers' names, in Beatport's order.
+        owned: Whether the library owns it now (DEC-092), computed when read.
+        sources: Every reason the run found it, in the order it found them.
+    """
+
+    position: int
+    track: CachedBeatportTrack
+    artists: Tuple[str, ...] = ()
+    remixers: Tuple[str, ...] = ()
+    owned: bool = False
+    sources: Tuple[DiscoveryRunSource, ...] = ()
+
+    def __post_init__(self) -> None:
+        """Validate the row."""
+        object.__setattr__(self, "position", non_negative(self.position, "position"))
+        for source in self.sources:
+            if source.beatport_track_id != self.track.beatport_track_id:
+                raise ValueError("A row's sources are its own track's")
+
+
+@dataclass(frozen=True)
+class RunTracksPage:
+    """A window of a run's list, and the counts every response carries.
+
+    Attributes:
+        rows: The window.
+        total: Tracks the list holds under its owned filter; the window is a
+            slice of these.
+        tracks: Every track the run found.
+        owned: How many of those the library owns now.
+        hidden: How many owned tracks the filter leaves out — "N owned tracks
+            hidden" (DEC-092). ``owned`` under ``hide``, otherwise 0.
+    """
+
+    rows: Tuple[RunTrackRow, ...]
+    total: int
+    tracks: int
+    owned: int
+    hidden: int
+
+    def __post_init__(self) -> None:
+        """Validate the counts."""
+        for name in ("total", "tracks", "owned", "hidden"):
+            object.__setattr__(self, name, non_negative(getattr(self, name), name))
+        if self.owned > self.tracks or self.total > self.tracks:
+            raise ValueError("A run's counts cannot exceed its tracks")
+        if len(self.rows) > self.total:
+            raise ValueError("A window cannot hold more rows than its list")
 
 
 def _json_object(value: Any, name: str) -> str:

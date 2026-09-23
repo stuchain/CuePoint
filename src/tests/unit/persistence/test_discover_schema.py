@@ -2071,6 +2071,18 @@ class TestOneModuleRunsEachTablesSQL:
         "derived_indexes": "persistence/track_credit_repository.py",
         "beatport_tracks": "persistence/beatport_catalog_repository.py",
         "beatport_track_artists": "persistence/beatport_catalog_repository.py",
+        "beatport_name_lookups": "persistence/discovery_repository.py",
+        "discovery_runs": "persistence/discovery_repository.py",
+        "discovery_run_tracks": "persistence/discovery_repository.py",
+        "discovery_run_sources": "persistence/discovery_repository.py",
+    }
+
+    #: Modules that read a table another module owns, and why. Only its owner
+    #: writes it: ``test_only_its_owner_writes_it`` holds that.
+    READERS = {
+        # DISCOVER-05: a run's window shows the catalog tracks it found.
+        "beatport_tracks": {"persistence/discovery_repository.py"},
+        "beatport_track_artists": {"persistence/discovery_repository.py"},
     }
 
     @pytest.mark.parametrize("table", DISCOVER_TABLES)
@@ -2089,4 +2101,22 @@ class TestOneModuleRunsEachTablesSQL:
             if statement.search(path.read_text(encoding="utf-8")):
                 offenders.append(path.relative_to(package).as_posix())
         owner = self.OWNERS.get(table)
-        assert offenders == ([owner] if owner else [])
+        allowed = ({owner} if owner else set()) | self.READERS.get(table, set())
+        assert set(offenders) == allowed
+        if owner:
+            assert owner in offenders, f"{owner} no longer touches {table}"
+
+    @pytest.mark.parametrize("table", DISCOVER_TABLES)
+    def test_only_its_owner_writes_it(self, table):
+        package = Path(__file__).resolve().parents[3] / "cuepoint"
+        statement = re.compile(
+            r"\b(INTO|UPDATE|DELETE\s+FROM)\s+" + table + r"\b", re.IGNORECASE
+        )
+        writers = sorted(
+            path.relative_to(package).as_posix()
+            for path in package.rglob("*.py")
+            if path.parent.name != "migrations"
+            and statement.search(path.read_text(encoding="utf-8"))
+        )
+        owner = self.OWNERS.get(table)
+        assert writers == ([owner] if owner else [])
