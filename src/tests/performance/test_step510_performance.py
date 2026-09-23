@@ -244,28 +244,30 @@ class TestCachePerformance:
         )
 
     def test_cache_hit_vs_miss_performance(self):
-        """Test that cache hits are significantly faster than misses."""
+        """A cache hit returns the stored value, and costs microseconds.
+
+        This used to assert that one hit was faster than one miss. For an
+        in-memory cache that is not true: a miss is one dictionary lookup, and
+        a hit is the same lookup plus an expiry check. Both take about a tenth
+        of a microsecond — the resolution of ``perf_counter`` on Windows — so
+        the comparison failed at random. What a cache promises is a hit cheap
+        enough to replace the work it saves, and that is what is held here.
+        """
         from cuepoint.services.cache_service import CacheService
 
         cache = CacheService()
-
-        # First access (cache miss - will be None)
-        start = time.perf_counter()
-        _ = cache.get("test_key")
-        miss_time = time.perf_counter() - start
-
-        # Set value
         cache.set("test_key", "test_value")
+        reads = 10_000
 
-        # Second access (cache hit)
         start = time.perf_counter()
-        result2 = cache.get("test_key")
-        hit_time = time.perf_counter() - start
+        for _ in range(reads):
+            result = cache.get("test_key")
+        per_hit = (time.perf_counter() - start) / reads
 
-        # Cache hit should be faster (or at least not slower)
-        # In practice, both should be very fast, but hit should be <= miss time
-        assert hit_time <= miss_time * 1.5, "Cache hit not faster than miss"
-        assert result2 == "test_value"
+        assert result == "test_value"
+        assert cache.get("missing_key") is None
+        # Generous for a slow CI machine: a hit measures well under 1 µs here.
+        assert per_hit < 50e-6, f"A cache hit took {per_hit * 1e6:.1f} µs"
 
 
 @pytest.mark.performance
