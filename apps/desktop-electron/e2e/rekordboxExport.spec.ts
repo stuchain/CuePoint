@@ -50,7 +50,11 @@ function writeLibrary(dir: string) {
   const files = [0, 1, 2].map((i) => path.join(music, `${i}.mp3`));
   copyFileSync(TONE, files[0]!);
   copyFileSync(TONE, files[1]!);
-  const location = (file: string) => "file://localhost/" + file.replace(/\\/g, "/");
+  // A Rekordbox Location is a file URL: "file://localhost/" then the path
+// with no leading slash. Dropping the strip left "file://localhost//var/..."
+// on macOS, whose doubled slash the file check reads as a UNC share
+// ("//server/share") and reports every file under it as missing.
+const location = (file: string) => "file://localhost/" + file.replace(/\\/g, "/").replace(/^\/+/, "");
   const xml = path.join(dir, "collection.xml");
   writeFileSync(
     xml,

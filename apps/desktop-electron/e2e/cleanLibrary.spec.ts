@@ -86,7 +86,11 @@ function writeExport(dir: string): { xml: string; files: string[] } {
     const file = path.join(music, `${i}.mp3`);
     if (name !== "Gone") copyFileSync(TONE, file);
     files.push(file);
-    const location = "file://localhost/" + file.replace(/\\/g, "/");
+    // A Rekordbox Location is a file URL: "file://localhost/" then the path
+    // with no leading slash. Dropping the strip left "file://localhost//var/..."
+    // on macOS, whose doubled slash the file check reads as a UNC share
+    // ("//server/share") and reports every file under it as missing.
+    const location = "file://localhost/" + file.replace(/\\/g, "/").replace(/^\/+/, "");
     return (
       `<TRACK TrackID="${i + 1}" Name="${name}" Artist="Artist ${i + 1}" ` +
       `Genre="House" Tonality="8A" AverageBpm="124.00" Year="2020" TotalTime="1" Location="${location}"/>`
