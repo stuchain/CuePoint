@@ -1,0 +1,14 @@
+{
+  "id": 301001,
+  "name": "Mara Veil",
+  "slug": "mara-veil",
+  "url": "https://api.beatport.com/v4/catalog/artists/301001/",
+  "image": {
+    "id": 5001,
+    "uri": "https://geo-media.beatport.com/image_size/590x404/301001.jpg",
+    "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/301001.jpg"
+  },
+  "bio": "",
+  "enabled": true,
+  "dj_association": null
+}

@@ -1,0 +1,534 @@
+{
+  "results": [
+    {
+      "artists": [
+        {
+          "id": 413759,
+          "image": {
+            "id": 58808904,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/d3f843ae-92a3-429c-8994-741caf0ca363.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d3f843ae-92a3-429c-8994-741caf0ca363.jpg"
+          },
+          "name": "Gabriel Moraes",
+          "slug": "gabriel-moraes",
+          "url": "https://api.beatport.com/v4/catalog/artists/413759/"
+        },
+        {
+          "id": 1234845,
+          "image": {
+            "id": 59166767,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/0e406ede-6fa7-4924-a0e8-27ac3da898ab.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/0e406ede-6fa7-4924-a0e8-27ac3da898ab.jpg"
+          },
+          "name": "Eddi Sander",
+          "slug": "eddi-sander",
+          "url": "https://api.beatport.com/v4/catalog/artists/1234845/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 133,
+      "bsrc_remixer": [],
+      "catalog_number": "ALPAK205",
+      "current_status": {
+        "id": 7,
+        "name": "Exclusive",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/7/"
+      },
+      "encoded_date": "2026-09-11T14:28:50-06:00",
+      "exclusive": true,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 30573298,
+      "image": {
+        "id": 58810128,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/ab3a9f76-6ece-4420-9f55-c7fb1842c714.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/ab3a9f76-6ece-4420-9f55-c7fb1842c714.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "US83Z2661906",
+      "key": {
+        "camelot_number": 2,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+        },
+        "id": 33,
+        "is_sharp": false,
+        "is_flat": true,
+        "letter": "G",
+        "name": "Gb Major",
+        "url": "https://api.beatport.com/v4/catalog/keys/33/"
+      },
+      "label_track_identifier": null,
+      "length": "7:05",
+      "length_ms": 425864,
+      "mix_name": "Original Mix",
+      "name": "Vumbra",
+      "new_release_date": "2026-09-18",
+      "pre_order": false,
+      "pre_order_date": "2026-09-15",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 2.39,
+        "display": "€2.39"
+      },
+      "publish_date": "2026-09-18",
+      "release": {
+        "id": 7452330,
+        "name": "Vumbra",
+        "image": {
+          "id": 59175675,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/86916449-c33d-4d9c-bedd-ca9fa58daea1.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/86916449-c33d-4d9c-bedd-ca9fa58daea1.jpg"
+        },
+        "label": {
+          "id": 80811,
+          "name": "AlpaKa MuziK",
+          "image": {
+            "id": 22627985,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/7b5435ae-dedd-4140-9e13-ea63d1f97ec1.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/7b5435ae-dedd-4140-9e13-ea63d1f97ec1.jpg"
+          },
+          "slug": "alpaka-muzik"
+        },
+        "slug": "vumbra"
+      },
+      "remixers": [],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/377f10dc-0191-4f87-b9c8-44dfa7358477.LOFI.mp3",
+      "sample_start_ms": 170346,
+      "sample_end_ms": 290346,
+      "slug": "vumbra",
+      "sub_genre": {
+        "id": 328,
+        "name": "Psy-Techno",
+        "slug": "psy-techno",
+        "url": "https://api.beatport.com/v4/catalog/sub-genres/328/",
+        "enabled": true
+      },
+      "url": "https://api.beatport.com/v4/catalog/tracks/30573298/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 413759,
+          "image": {
+            "id": 58808904,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/d3f843ae-92a3-429c-8994-741caf0ca363.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d3f843ae-92a3-429c-8994-741caf0ca363.jpg"
+          },
+          "name": "Gabriel Moraes",
+          "slug": "gabriel-moraes",
+          "url": "https://api.beatport.com/v4/catalog/artists/413759/"
+        },
+        {
+          "id": 1234845,
+          "image": {
+            "id": 59166767,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/0e406ede-6fa7-4924-a0e8-27ac3da898ab.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/0e406ede-6fa7-4924-a0e8-27ac3da898ab.jpg"
+          },
+          "name": "Eddi Sander",
+          "slug": "eddi-sander",
+          "url": "https://api.beatport.com/v4/catalog/artists/1234845/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 133,
+      "bsrc_remixer": [],
+      "catalog_number": "ALPAK205",
+      "current_status": {
+        "id": 7,
+        "name": "Exclusive",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/7/"
+      },
+      "encoded_date": "2026-09-11T14:28:50-06:00",
+      "exclusive": true,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 30573299,
+      "image": {
+        "id": 58810127,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/b68b639e-b9e9-4609-9075-7a3fc9be750a.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/b68b639e-b9e9-4609-9075-7a3fc9be750a.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "US83Z2661907",
+      "key": {
+        "camelot_number": 11,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+        },
+        "id": 23,
+        "is_sharp": false,
+        "is_flat": false,
+        "letter": "A",
+        "name": "A Major",
+        "url": "https://api.beatport.com/v4/catalog/keys/23/"
+      },
+      "label_track_identifier": null,
+      "length": "6:22",
+      "length_ms": 382556,
+      "mix_name": "Original Mix",
+      "name": "Circular",
+      "new_release_date": "2026-09-18",
+      "pre_order": false,
+      "pre_order_date": "2026-09-15",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 2.39,
+        "display": "€2.39"
+      },
+      "publish_date": "2026-09-18",
+      "release": {
+        "id": 7452330,
+        "name": "Vumbra",
+        "image": {
+          "id": 59175675,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/86916449-c33d-4d9c-bedd-ca9fa58daea1.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/86916449-c33d-4d9c-bedd-ca9fa58daea1.jpg"
+        },
+        "label": {
+          "id": 80811,
+          "name": "AlpaKa MuziK",
+          "image": {
+            "id": 22627985,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/7b5435ae-dedd-4140-9e13-ea63d1f97ec1.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/7b5435ae-dedd-4140-9e13-ea63d1f97ec1.jpg"
+          },
+          "slug": "alpaka-muzik"
+        },
+        "slug": "vumbra"
+      },
+      "remixers": [],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/f88db470-9ba3-452e-a9e0-27976cca1fc8.LOFI.mp3",
+      "sample_start_ms": 153022,
+      "sample_end_ms": 273022,
+      "slug": "circular",
+      "sub_genre": {
+        "id": 328,
+        "name": "Psy-Techno",
+        "slug": "psy-techno",
+        "url": "https://api.beatport.com/v4/catalog/sub-genres/328/",
+        "enabled": true
+      },
+      "url": "https://api.beatport.com/v4/catalog/tracks/30573299/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 16609,
+          "image": {
+            "id": 29882383,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/93c65e09-1046-4974-ab75-57f3ea54ce30.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/93c65e09-1046-4974-ab75-57f3ea54ce30.jpg"
+          },
+          "name": "Carbon",
+          "slug": "carbon",
+          "url": "https://api.beatport.com/v4/catalog/artists/16609/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 132,
+      "bsrc_remixer": [],
+      "catalog_number": "SS100",
+      "current_status": {
+        "id": 10,
+        "name": "General Content",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/10/"
+      },
+      "encoded_date": "2026-06-25T12:59:55-06:00",
+      "exclusive": false,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 29482480,
+      "image": {
+        "id": 56358363,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/d4d0e715-82e1-43fb-8a7f-9ad7a2102f1f.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d4d0e715-82e1-43fb-8a7f-9ad7a2102f1f.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "US83Z2642907",
+      "key": {
+        "camelot_number": 9,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+        },
+        "id": 21,
+        "is_sharp": false,
+        "is_flat": false,
+        "letter": "G",
+        "name": "G Major",
+        "url": "https://api.beatport.com/v4/catalog/keys/21/"
+      },
+      "label_track_identifier": null,
+      "length": "6:18",
+      "length_ms": 378181,
+      "mix_name": "Gabriel Moraes Remix",
+      "name": "Look At Me",
+      "new_release_date": "2026-07-10",
+      "pre_order": false,
+      "pre_order_date": "2026-06-29",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.39,
+        "display": "€1.39"
+      },
+      "publish_date": "2026-07-10",
+      "release": {
+        "id": 7126071,
+        "name": "Look At Me (Gabriel Moraes Remix)",
+        "image": {
+          "id": 56358358,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/2d701d6f-5080-485c-84e8-973b474982c3.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/2d701d6f-5080-485c-84e8-973b474982c3.jpg"
+        },
+        "label": {
+          "id": 60818,
+          "name": "Stone Seed",
+          "image": {
+            "id": 38526938,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/0661f079-2ed9-433a-9a7b-4fabc33631ed.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/0661f079-2ed9-433a-9a7b-4fabc33631ed.jpg"
+          },
+          "slug": "stone-seed"
+        },
+        "slug": "look-at-me-gabriel-moraes-remix"
+      },
+      "remixers": [
+        {
+          "id": 413759,
+          "image": {
+            "id": 58808904,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/d3f843ae-92a3-429c-8994-741caf0ca363.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d3f843ae-92a3-429c-8994-741caf0ca363.jpg"
+          },
+          "name": "Gabriel Moraes",
+          "slug": "gabriel-moraes",
+          "url": "https://api.beatport.com/v4/catalog/artists/413759/"
+        }
+      ],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/d4d0e715-82e1-43fb-8a7f-9ad7a2102f1f.LOFI.mp3",
+      "sample_start_ms": 151272,
+      "sample_end_ms": 271272,
+      "slug": "look-at-me",
+      "sub_genre": {
+        "id": 328,
+        "name": "Psy-Techno",
+        "slug": "psy-techno",
+        "url": "https://api.beatport.com/v4/catalog/sub-genres/328/",
+        "enabled": true
+      },
+      "url": "https://api.beatport.com/v4/catalog/tracks/29482480/",
+      "is_hype": true
+    },
+    {
+      "artists": [
+        {
+          "id": 591733,
+          "image": {
+            "id": 56589182,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/b4850d58-cbe4-4c50-99b4-c8768afbff9b.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/b4850d58-cbe4-4c50-99b4-c8768afbff9b.jpg"
+          },
+          "name": "Sabura",
+          "slug": "sabura",
+          "url": "https://api.beatport.com/v4/catalog/artists/591733/"
+        },
+        {
+          "id": 1151435,
+          "image": {
+            "id": 35829516,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/85c473d0-8c92-4bbc-ac98-df86c09603a1.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/85c473d0-8c92-4bbc-ac98-df86c09603a1.jpg"
+          },
+          "name": "MAWU",
+          "slug": "mawu",
+          "url": "https://api.beatport.com/v4/catalog/artists/1151435/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 133,
+      "bsrc_remixer": [],
+      "catalog_number": "ALULA346",
+      "current_status": {
+        "id": 10,
+        "name": "General Content",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/10/"
+      },
+      "encoded_date": "2026-06-16T07:26:59-06:00",
+      "exclusive": false,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 29351472,
+      "image": {
+        "id": 56080106,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/7552a3d7-c13d-4d3f-9a31-5aadebb7983e.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/7552a3d7-c13d-4d3f-9a31-5aadebb7983e.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "US83Z2640891",
+      "key": {
+        "camelot_number": 2,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+        },
+        "id": 33,
+        "is_sharp": false,
+        "is_flat": true,
+        "letter": "G",
+        "name": "Gb Major",
+        "url": "https://api.beatport.com/v4/catalog/keys/33/"
+      },
+      "label_track_identifier": null,
+      "length": "6:33",
+      "length_ms": 393383,
+      "mix_name": "Gabriel Moraes Remix",
+      "name": "Dark Desires",
+      "new_release_date": "2026-06-26",
+      "pre_order": false,
+      "pre_order_date": "2026-06-22",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.39,
+        "display": "€1.39"
+      },
+      "publish_date": "2026-06-26",
+      "release": {
+        "id": 7077530,
+        "name": "Dark Desires",
+        "image": {
+          "id": 56254092,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/fb971cac-267b-4cb9-9fbd-ebf47f0cf307.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/fb971cac-267b-4cb9-9fbd-ebf47f0cf307.jpg"
+        },
+        "label": {
+          "id": 78259,
+          "name": "Alula Tunes",
+          "image": {
+            "id": 21892216,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/c86e9c66-def8-4a48-afa6-ac1d90a75bae.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/c86e9c66-def8-4a48-afa6-ac1d90a75bae.jpg"
+          },
+          "slug": "alula-tunes"
+        },
+        "slug": "dark-desires"
+      },
+      "remixers": [
+        {
+          "id": 413759,
+          "image": {
+            "id": 58808904,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/d3f843ae-92a3-429c-8994-741caf0ca363.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d3f843ae-92a3-429c-8994-741caf0ca363.jpg"
+          },
+          "name": "Gabriel Moraes",
+          "slug": "gabriel-moraes",
+          "url": "https://api.beatport.com/v4/catalog/artists/413759/"
+        }
+      ],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/ad4e520d-f4aa-42a9-8183-eecd3befbe46.LOFI.mp3",
+      "sample_start_ms": 157353,
+      "sample_end_ms": 277353,
+      "slug": "dark-desires",
+      "sub_genre": {
+        "id": 328,
+        "name": "Psy-Techno",
+        "slug": "psy-techno",
+        "url": "https://api.beatport.com/v4/catalog/sub-genres/328/",
+        "enabled": true
+      },
+      "url": "https://api.beatport.com/v4/catalog/tracks/29351472/",
+      "is_hype": false
+    }
+  ],
+  "next": null,
+  "previous": null,
+  "count": 4,
+  "page": "1/1",
+  "per_page": 100
+}

@@ -3,6 +3,22 @@
 The parsers in `cuepoint/services/beatport_catalog.py` are written against these files, and
 `src/tests/unit/services/test_beatport_catalog.py` holds them to it. No test reaches the network.
 
+## Recorded (2026-09-23)
+
+`recorded/` holds eleven real, sanitized responses, taken with a developer's own token (scope
+`app:docs user:dj`) by `scripts/beatport_v4_spike.py --playlist --write-fixtures`. Every
+reconstructed shape below agreed with them: the agreement tests passed over all eleven with no
+parser change. They also showed two things the reconstruction did not have, both now read and
+pinned by `src/tests/regression/test_regression_v4_chart_artist_and_date.py`:
+
+- a chart carries `artist: {id, name, slug}` when a Beatport artist made it, and `null` otherwise;
+  `person` is the publishing *account*, whose `owner_name` can differ from the artist's name
+  (DJEFF's chart is owned by "OFFICIALDJEFFMUSIC") and whose `id` is not an artist id;
+- a chart's date is `publish_date`, not `published_date`.
+
+They are public catalog data. The one personal answer, the throwaway playlist's, has its id and
+name replaced (`playlist_created.json`); nothing here names the account that recorded them.
+
 ## Where each shape comes from
 
 DISCOVER-01 asks for these to be **recorded** from the live API with a developer's token. When the

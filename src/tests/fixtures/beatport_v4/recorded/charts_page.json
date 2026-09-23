@@ -1,0 +1,307 @@
+{
+  "results": [
+    {
+      "add_date": "2026-09-23T04:47:56-06:00",
+      "change_date": "2026-09-23T04:55:45-06:00",
+      "id": 903396,
+      "image": {
+        "id": 59268418,
+        "uri": "https://geo-media.beatport.com/image_size/500x500/dac112dd-ed35-4ac5-8515-721f0e5e8f72.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/dac112dd-ed35-4ac5-8515-721f0e5e8f72.jpg"
+      },
+      "name": "IMPULSE Chart",
+      "person": {
+        "id": 474095,
+        "owner_image": "https://geo-media.beatport.com/image_size/500x500/de8188fe-b4dc-42ce-8440-c6538fb31384.jpg",
+        "owner_name": "Gabriel Moraes",
+        "owner_slug": "Gabriel Moraes",
+        "owner_type": "djprofile",
+        "owner_person": 2939726
+      },
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 16.3,
+        "display": "€16.30"
+      },
+      "publish_date": "2026-09-23T04:55:45-06:00",
+      "slug": "impulse-chart",
+      "track_count": 10,
+      "url": "https://api.beatport.com/v4/catalog/charts/903396/",
+      "artist": null,
+      "genres": [
+        {
+          "id": 90,
+          "name": "Melodic House & Techno",
+          "slug": "melodic-house-techno",
+          "url": "https://api.beatport.com/v4/catalog/genres/90/"
+        },
+        {
+          "id": 6,
+          "name": "Techno (Peak Time / Driving)",
+          "slug": "techno-peak-time-driving",
+          "url": "https://api.beatport.com/v4/catalog/genres/6/"
+        }
+      ]
+    },
+    {
+      "add_date": "2026-09-23T04:38:39-06:00",
+      "change_date": "2026-09-23T04:47:40-06:00",
+      "id": 903395,
+      "image": {
+        "id": 59268292,
+        "uri": "https://geo-media.beatport.com/image_size/500x500/9817b9d1-8e4d-4135-ac96-023dfb68dcf5.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/9817b9d1-8e4d-4135-ac96-023dfb68dcf5.jpg"
+      },
+      "name": "In My Rotation – October 26",
+      "person": {
+        "id": 769449,
+        "owner_image": "https://geo-media.beatport.com/image_size/500x500/6dfbeff8-2e36-479f-9892-72101cc1a0fe.jpg",
+        "owner_name": "Dario Milkovic",
+        "owner_slug": "Dario Milkovic",
+        "owner_type": "djprofile",
+        "owner_person": 9275602
+      },
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 15.3,
+        "display": "€15.30"
+      },
+      "publish_date": "2026-09-23T04:47:40-06:00",
+      "slug": "in-my-rotation-october-26",
+      "track_count": 10,
+      "url": "https://api.beatport.com/v4/catalog/charts/903395/",
+      "artist": {
+        "id": 1190547,
+        "name": "Dario Milkovic",
+        "slug": "dario-milkovic"
+      },
+      "genres": [
+        {
+          "id": 37,
+          "name": "Indie Dance",
+          "slug": "indie-dance",
+          "url": "https://api.beatport.com/v4/catalog/genres/37/"
+        },
+        {
+          "id": 5,
+          "name": "House",
+          "slug": "house",
+          "url": "https://api.beatport.com/v4/catalog/genres/5/"
+        },
+        {
+          "id": 11,
+          "name": "Tech House",
+          "slug": "tech-house",
+          "url": "https://api.beatport.com/v4/catalog/genres/11/"
+        },
+        {
+          "id": 90,
+          "name": "Melodic House & Techno",
+          "slug": "melodic-house-techno",
+          "url": "https://api.beatport.com/v4/catalog/genres/90/"
+        },
+        {
+          "id": 91,
+          "name": "Bass House",
+          "slug": "bass-house",
+          "url": "https://api.beatport.com/v4/catalog/genres/91/"
+        }
+      ]
+    },
+    {
+      "add_date": "2026-09-23T03:35:28-06:00",
+      "change_date": "2026-09-23T03:46:46-06:00",
+      "id": 903393,
+      "image": {
+        "id": 59267540,
+        "uri": "https://geo-media.beatport.com/image_size/500x500/83db9ca0-61e3-44e8-aec0-015e685943a3.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/83db9ca0-61e3-44e8-aec0-015e685943a3.jpg"
+      },
+      "name": "September Odyssey",
+      "person": {
+        "id": 625181,
+        "owner_image": "https://geo-media.beatport.com/image_size/500x500/3646ca1e-6072-4f7e-811e-fe04250f8a7f.jpg",
+        "owner_name": "OFFICIALDJEFFMUSIC",
+        "owner_slug": "OFFICIALDJEFFMUSIC",
+        "owner_type": "djprofile",
+        "owner_person": 7576355
+      },
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 16.7,
+        "display": "€16.70"
+      },
+      "publish_date": "2026-09-23T03:46:46-06:00",
+      "slug": "september-odyssey",
+      "track_count": 10,
+      "url": "https://api.beatport.com/v4/catalog/charts/903393/",
+      "artist": {
+        "id": 132419,
+        "name": "DJEFF",
+        "slug": "djeff"
+      },
+      "genres": [
+        {
+          "id": 5,
+          "name": "House",
+          "slug": "house",
+          "url": "https://api.beatport.com/v4/catalog/genres/5/"
+        },
+        {
+          "id": 39,
+          "name": "Dance / Pop",
+          "slug": "dance-pop",
+          "url": "https://api.beatport.com/v4/catalog/genres/39/"
+        },
+        {
+          "id": 11,
+          "name": "Tech House",
+          "slug": "tech-house",
+          "url": "https://api.beatport.com/v4/catalog/genres/11/"
+        },
+        {
+          "id": 89,
+          "name": "Afro House",
+          "slug": "afro-house",
+          "url": "https://api.beatport.com/v4/catalog/genres/89/"
+        },
+        {
+          "id": 90,
+          "name": "Melodic House & Techno",
+          "slug": "melodic-house-techno",
+          "url": "https://api.beatport.com/v4/catalog/genres/90/"
+        }
+      ]
+    },
+    {
+      "add_date": "2026-09-23T03:29:43-06:00",
+      "change_date": "2026-09-23T03:50:40-06:00",
+      "id": 903392,
+      "image": {
+        "id": 59267543,
+        "uri": "https://geo-media.beatport.com/image_size/500x500/7a77a8b8-9f2a-4ff6-9d61-cff449259bc4.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/7a77a8b8-9f2a-4ff6-9d61-cff449259bc4.jpg"
+      },
+      "name": "September Chart",
+      "person": {
+        "id": 786777,
+        "owner_image": "https://geo-media.beatport.com/image_size/500x500/358ec8ee-d852-44e7-bef7-6f0fd1c95987.jpg",
+        "owner_name": "Aler",
+        "owner_slug": "Aler",
+        "owner_type": "djprofile",
+        "owner_person": 9421684
+      },
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 26.25,
+        "display": "€26.25"
+      },
+      "publish_date": "2026-09-23T03:50:40-06:00",
+      "slug": "september-chart",
+      "track_count": 15,
+      "url": "https://api.beatport.com/v4/catalog/charts/903392/",
+      "artist": {
+        "id": 935818,
+        "name": "Aler",
+        "slug": "aler"
+      },
+      "genres": [
+        {
+          "id": 90,
+          "name": "Melodic House & Techno",
+          "slug": "melodic-house-techno",
+          "url": "https://api.beatport.com/v4/catalog/genres/90/"
+        },
+        {
+          "id": 93,
+          "name": "Organic House",
+          "slug": "organic-house",
+          "url": "https://api.beatport.com/v4/catalog/genres/93/"
+        },
+        {
+          "id": 15,
+          "name": "Progressive House",
+          "slug": "progressive-house",
+          "url": "https://api.beatport.com/v4/catalog/genres/15/"
+        }
+      ]
+    },
+    {
+      "add_date": "2026-09-23T03:25:46-06:00",
+      "change_date": "2026-09-23T03:36:49-06:00",
+      "id": 903391,
+      "image": {
+        "id": 59267505,
+        "uri": "https://geo-media.beatport.com/image_size/500x500/5f8d42b1-aaf7-4491-b25b-7f4dfcda717e.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/5f8d42b1-aaf7-4491-b25b-7f4dfcda717e.jpg"
+      },
+      "name": "OCTOBER 2026 CHART",
+      "person": {
+        "id": 5414,
+        "owner_image": "https://geo-media.beatport.com/image_size/500x500/0742a8fb-840f-40dc-8bc7-c7c3d38a5dd2.jpg",
+        "owner_name": "DJ Colin Gaff",
+        "owner_slug": "djcolingaff",
+        "owner_type": "djprofile",
+        "owner_person": 1739186
+      },
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 17.5,
+        "display": "€17.50"
+      },
+      "publish_date": "2026-09-23T03:36:49-06:00",
+      "slug": "october-2026-chart",
+      "track_count": 10,
+      "url": "https://api.beatport.com/v4/catalog/charts/903391/",
+      "artist": null,
+      "genres": [
+        {
+          "id": 5,
+          "name": "House",
+          "slug": "house",
+          "url": "https://api.beatport.com/v4/catalog/genres/5/"
+        },
+        {
+          "id": 7,
+          "name": "Trance (Main Floor)",
+          "slug": "trance-main-floor",
+          "url": "https://api.beatport.com/v4/catalog/genres/7/"
+        },
+        {
+          "id": 11,
+          "name": "Tech House",
+          "slug": "tech-house",
+          "url": "https://api.beatport.com/v4/catalog/genres/11/"
+        },
+        {
+          "id": 15,
+          "name": "Progressive House",
+          "slug": "progressive-house",
+          "url": "https://api.beatport.com/v4/catalog/genres/15/"
+        },
+        {
+          "id": 81,
+          "name": "Funky House",
+          "slug": "funky-house",
+          "url": "https://api.beatport.com/v4/catalog/genres/81/"
+        },
+        {
+          "id": 90,
+          "name": "Melodic House & Techno",
+          "slug": "melodic-house-techno",
+          "url": "https://api.beatport.com/v4/catalog/genres/90/"
+        }
+      ]
+    }
+  ],
+  "next": "api.beatport.com/v4/catalog/charts/?per_page=5&publish_date=2026-06-25%3A2026-09-23&page=2",
+  "previous": null,
+  "count": 7606,
+  "page": "1/1522",
+  "per_page": 5
+}

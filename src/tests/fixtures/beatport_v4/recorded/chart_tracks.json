@@ -1,0 +1,1214 @@
+{
+  "next": null,
+  "previous": null,
+  "count": 10,
+  "page": "1/1",
+  "per_page": 10,
+  "results": [
+    {
+      "artists": [
+        {
+          "id": 413759,
+          "image": {
+            "id": 58808904,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/d3f843ae-92a3-429c-8994-741caf0ca363.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d3f843ae-92a3-429c-8994-741caf0ca363.jpg"
+          },
+          "name": "Gabriel Moraes",
+          "slug": "gabriel-moraes",
+          "url": "https://api.beatport.com/v4/catalog/artists/413759/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 135,
+      "bsrc_remixer": [],
+      "catalog_number": "VOLTA078",
+      "current_status": {
+        "id": 12,
+        "name": "Pre-order New Release",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/12/"
+      },
+      "encoded_date": "2026-08-26T16:33:56-06:00",
+      "exclusive": false,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 30378061,
+      "image": {
+        "id": 58350706,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/5f7b1cac-6c25-419e-8f64-090814445159.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/5f7b1cac-6c25-419e-8f64-090814445159.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "DEY472678774",
+      "key": {
+        "camelot_number": 3,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+        },
+        "id": 15,
+        "is_sharp": false,
+        "is_flat": true,
+        "letter": "D",
+        "name": "Db Major",
+        "url": "https://api.beatport.com/v4/catalog/keys/15/"
+      },
+      "label_track_identifier": "4255928633229DEY472678774",
+      "length": "5:58",
+      "length_ms": 358500,
+      "mix_name": "Original Mix",
+      "name": "Impulse",
+      "new_release_date": "2026-09-24",
+      "pre_order": true,
+      "pre_order_date": "2026-09-10",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.59,
+        "display": "€1.59"
+      },
+      "publish_date": "2026-09-24",
+      "release": {
+        "id": 7392479,
+        "name": "Impulse",
+        "image": {
+          "id": 58376148,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/acd0d1fb-b0fa-4e18-95ec-d96f7418db34.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/acd0d1fb-b0fa-4e18-95ec-d96f7418db34.jpg"
+        },
+        "label": {
+          "id": 106172,
+          "name": "VOLTA",
+          "image": {
+            "id": 32181914,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg"
+          },
+          "slug": "volta"
+        },
+        "slug": "impulse"
+      },
+      "remixers": [],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/97d6e696-38af-4a8b-89ea-ab1f49748c6f.LOFI.mp3",
+      "sample_start_ms": 143400,
+      "sample_end_ms": 263400,
+      "slug": "impulse",
+      "sub_genre": null,
+      "url": "https://api.beatport.com/v4/catalog/tracks/30378061/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 413759,
+          "image": {
+            "id": 58808904,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/d3f843ae-92a3-429c-8994-741caf0ca363.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d3f843ae-92a3-429c-8994-741caf0ca363.jpg"
+          },
+          "name": "Gabriel Moraes",
+          "slug": "gabriel-moraes",
+          "url": "https://api.beatport.com/v4/catalog/artists/413759/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 135,
+      "bsrc_remixer": [],
+      "catalog_number": "VOLTA078",
+      "current_status": {
+        "id": 12,
+        "name": "Pre-order New Release",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/12/"
+      },
+      "encoded_date": "2026-08-26T16:33:56-06:00",
+      "exclusive": false,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 30378060,
+      "image": {
+        "id": 58350705,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/5b1f2d76-320b-4408-8b96-d76cb1a8d6df.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/5b1f2d76-320b-4408-8b96-d76cb1a8d6df.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "DEY472678773",
+      "key": {
+        "camelot_number": 2,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+        },
+        "id": 33,
+        "is_sharp": false,
+        "is_flat": true,
+        "letter": "G",
+        "name": "Gb Major",
+        "url": "https://api.beatport.com/v4/catalog/keys/33/"
+      },
+      "label_track_identifier": "4255928633229DEY472678773",
+      "length": "6:43",
+      "length_ms": 403000,
+      "mix_name": "Original Mix",
+      "name": "Your Voice",
+      "new_release_date": "2026-09-24",
+      "pre_order": true,
+      "pre_order_date": "2026-09-10",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.59,
+        "display": "€1.59"
+      },
+      "publish_date": "2026-09-24",
+      "release": {
+        "id": 7392479,
+        "name": "Impulse",
+        "image": {
+          "id": 58376148,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/acd0d1fb-b0fa-4e18-95ec-d96f7418db34.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/acd0d1fb-b0fa-4e18-95ec-d96f7418db34.jpg"
+        },
+        "label": {
+          "id": 106172,
+          "name": "VOLTA",
+          "image": {
+            "id": 32181914,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg"
+          },
+          "slug": "volta"
+        },
+        "slug": "impulse"
+      },
+      "remixers": [],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/759c0c5d-3b26-46e0-86b0-4dc77d561151.LOFI.mp3",
+      "sample_start_ms": 161200,
+      "sample_end_ms": 281200,
+      "slug": "your-voice",
+      "sub_genre": null,
+      "url": "https://api.beatport.com/v4/catalog/tracks/30378060/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 10490,
+          "image": {
+            "id": 9923840,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/8b079b9a-073a-4d07-84d8-35ac195e1d42.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/8b079b9a-073a-4d07-84d8-35ac195e1d42.jpg"
+          },
+          "name": "Oliver Huntemann",
+          "slug": "oliver-huntemann",
+          "url": "https://api.beatport.com/v4/catalog/artists/10490/"
+        },
+        {
+          "id": 558346,
+          "image": {
+            "id": 46485952,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/45530c94-7521-4a41-99d9-7bf3767a6524.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/45530c94-7521-4a41-99d9-7bf3767a6524.jpg"
+          },
+          "name": "OZBEK",
+          "slug": "ozbek",
+          "url": "https://api.beatport.com/v4/catalog/artists/558346/"
+        },
+        {
+          "id": 626850,
+          "image": {
+            "id": 35413301,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/af288ddf-6a33-4a43-b9c7-7e26691a2749.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/af288ddf-6a33-4a43-b9c7-7e26691a2749.jpg"
+          },
+          "name": "Zafer Atabey",
+          "slug": "zafer-atabey",
+          "url": "https://api.beatport.com/v4/catalog/artists/626850/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": false,
+      "bpm": 128,
+      "bsrc_remixer": [],
+      "catalog_number": "SENSO131",
+      "current_status": {
+        "id": 8,
+        "name": "New Release",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/8/"
+      },
+      "encoded_date": "2026-08-12T14:48:42-06:00",
+      "exclusive": false,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 30202658,
+      "image": {
+        "id": 57951578,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/7172e51d-6386-41a2-9792-4f9d03591796.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/7172e51d-6386-41a2-9792-4f9d03591796.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "DEL022602037",
+      "key": {
+        "camelot_number": 11,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+        },
+        "id": 23,
+        "is_sharp": false,
+        "is_flat": false,
+        "letter": "A",
+        "name": "A Major",
+        "url": "https://api.beatport.com/v4/catalog/keys/23/"
+      },
+      "label_track_identifier": "A10374Z000011CYZW5",
+      "length": "5:02",
+      "length_ms": 302460,
+      "mix_name": "Original Mix",
+      "name": "The Sound",
+      "new_release_date": "2026-09-11",
+      "pre_order": false,
+      "pre_order_date": "2026-08-28",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.59,
+        "display": "€1.59"
+      },
+      "publish_date": "2026-09-11",
+      "release": {
+        "id": 7341856,
+        "name": "The Sound",
+        "image": {
+          "id": 57951572,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/4dc869b5-f454-4552-ac00-23906485e52b.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/4dc869b5-f454-4552-ac00-23906485e52b.jpg"
+        },
+        "label": {
+          "id": 41999,
+          "name": "Senso Sounds",
+          "image": {
+            "id": 10206557,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/cef0cd6f-d3c0-4a74-890a-a41d0e4b451a.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/cef0cd6f-d3c0-4a74-890a-a41d0e4b451a.jpg"
+          },
+          "slug": "senso-sounds"
+        },
+        "slug": "the-sound"
+      },
+      "remixers": [],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/7172e51d-6386-41a2-9792-4f9d03591796.LOFI.mp3",
+      "sample_start_ms": 120984,
+      "sample_end_ms": 240984,
+      "slug": "the-sound",
+      "sub_genre": null,
+      "url": "https://api.beatport.com/v4/catalog/tracks/30202658/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 960834,
+          "image": {
+            "id": 45465452,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/efe3e47c-2b38-4c16-b025-9174c4d7ed6e.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/efe3e47c-2b38-4c16-b025-9174c4d7ed6e.jpg"
+          },
+          "name": "HNGT",
+          "slug": "hngt",
+          "url": "https://api.beatport.com/v4/catalog/artists/960834/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 134,
+      "bsrc_remixer": [],
+      "catalog_number": "TURBO019",
+      "current_status": {
+        "id": 8,
+        "name": "New Release",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/8/"
+      },
+      "encoded_date": "2026-07-19T21:57:17-06:00",
+      "exclusive": false,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 29822180,
+      "image": {
+        "id": 57069870,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/201e40ea-a19d-44f3-8cae-a3ea202e18fc.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/201e40ea-a19d-44f3-8cae-a3ea202e18fc.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "US83Z2648071",
+      "key": {
+        "camelot_number": 9,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+        },
+        "id": 21,
+        "is_sharp": false,
+        "is_flat": false,
+        "letter": "G",
+        "name": "G Major",
+        "url": "https://api.beatport.com/v4/catalog/keys/21/"
+      },
+      "label_track_identifier": null,
+      "length": "5:00",
+      "length_ms": 300895,
+      "mix_name": "Extended Mix",
+      "name": "The Reason",
+      "new_release_date": "2026-08-21",
+      "pre_order": false,
+      "pre_order_date": "2026-08-13",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.59,
+        "display": "€1.59"
+      },
+      "publish_date": "2026-08-21",
+      "release": {
+        "id": 7226564,
+        "name": "The Reason",
+        "image": {
+          "id": 57069869,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/48139442-d9b9-4210-a289-85723ea7fb00.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/48139442-d9b9-4210-a289-85723ea7fb00.jpg"
+        },
+        "label": {
+          "id": 123480,
+          "name": "TURBO",
+          "image": {
+            "id": 39927440,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/49be927c-a759-453f-bb0f-7697a2ea1566.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/49be927c-a759-453f-bb0f-7697a2ea1566.jpg"
+          },
+          "slug": "turbo"
+        },
+        "slug": "the-reason"
+      },
+      "remixers": [],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/201e40ea-a19d-44f3-8cae-a3ea202e18fc.LOFI.mp3",
+      "sample_start_ms": 120358,
+      "sample_end_ms": 240358,
+      "slug": "the-reason",
+      "sub_genre": null,
+      "url": "https://api.beatport.com/v4/catalog/tracks/29822180/",
+      "is_hype": true
+    },
+    {
+      "artists": [
+        {
+          "id": 413759,
+          "image": {
+            "id": 58808904,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/d3f843ae-92a3-429c-8994-741caf0ca363.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d3f843ae-92a3-429c-8994-741caf0ca363.jpg"
+          },
+          "name": "Gabriel Moraes",
+          "slug": "gabriel-moraes",
+          "url": "https://api.beatport.com/v4/catalog/artists/413759/"
+        },
+        {
+          "id": 1234845,
+          "image": {
+            "id": 59166767,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/0e406ede-6fa7-4924-a0e8-27ac3da898ab.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/0e406ede-6fa7-4924-a0e8-27ac3da898ab.jpg"
+          },
+          "name": "Eddi Sander",
+          "slug": "eddi-sander",
+          "url": "https://api.beatport.com/v4/catalog/artists/1234845/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 133,
+      "bsrc_remixer": [],
+      "catalog_number": "ALPAK205",
+      "current_status": {
+        "id": 7,
+        "name": "Exclusive",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/7/"
+      },
+      "encoded_date": "2026-09-11T14:28:50-06:00",
+      "exclusive": true,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 30573298,
+      "image": {
+        "id": 58810128,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/ab3a9f76-6ece-4420-9f55-c7fb1842c714.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/ab3a9f76-6ece-4420-9f55-c7fb1842c714.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "US83Z2661906",
+      "key": {
+        "camelot_number": 2,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+        },
+        "id": 33,
+        "is_sharp": false,
+        "is_flat": true,
+        "letter": "G",
+        "name": "Gb Major",
+        "url": "https://api.beatport.com/v4/catalog/keys/33/"
+      },
+      "label_track_identifier": null,
+      "length": "7:05",
+      "length_ms": 425864,
+      "mix_name": "Original Mix",
+      "name": "Vumbra",
+      "new_release_date": "2026-09-18",
+      "pre_order": false,
+      "pre_order_date": "2026-09-15",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 2.39,
+        "display": "€2.39"
+      },
+      "publish_date": "2026-09-18",
+      "release": {
+        "id": 7452330,
+        "name": "Vumbra",
+        "image": {
+          "id": 59175675,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/86916449-c33d-4d9c-bedd-ca9fa58daea1.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/86916449-c33d-4d9c-bedd-ca9fa58daea1.jpg"
+        },
+        "label": {
+          "id": 80811,
+          "name": "AlpaKa MuziK",
+          "image": {
+            "id": 22627985,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/7b5435ae-dedd-4140-9e13-ea63d1f97ec1.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/7b5435ae-dedd-4140-9e13-ea63d1f97ec1.jpg"
+          },
+          "slug": "alpaka-muzik"
+        },
+        "slug": "vumbra"
+      },
+      "remixers": [],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/377f10dc-0191-4f87-b9c8-44dfa7358477.LOFI.mp3",
+      "sample_start_ms": 170346,
+      "sample_end_ms": 290346,
+      "slug": "vumbra",
+      "sub_genre": {
+        "id": 328,
+        "name": "Psy-Techno",
+        "slug": "psy-techno",
+        "url": "https://api.beatport.com/v4/catalog/sub-genres/328/",
+        "enabled": true
+      },
+      "url": "https://api.beatport.com/v4/catalog/tracks/30573298/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 105392,
+          "image": {
+            "id": 56769016,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/2a4e31e0-57bc-4534-bced-7c0aacf88587.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/2a4e31e0-57bc-4534-bced-7c0aacf88587.jpg"
+          },
+          "name": "Victor Ruiz",
+          "slug": "victor-ruiz",
+          "url": "https://api.beatport.com/v4/catalog/artists/105392/"
+        },
+        {
+          "id": 866330,
+          "image": {
+            "id": 56727437,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/c5d87508-56a8-4271-8325-b84f63c4fb28.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/c5d87508-56a8-4271-8325-b84f63c4fb28.jpg"
+          },
+          "name": "Kaufmann (DE)",
+          "slug": "kaufmann-de",
+          "url": "https://api.beatport.com/v4/catalog/artists/866330/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 130,
+      "bsrc_remixer": [],
+      "catalog_number": "VOLTA074",
+      "current_status": {
+        "id": 10,
+        "name": "General Content",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/10/"
+      },
+      "encoded_date": "2026-07-13T16:33:49-06:00",
+      "exclusive": false,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 29704299,
+      "image": {
+        "id": 56832658,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/f0dd4423-66a4-4167-b493-e40fd6e846e6.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/f0dd4423-66a4-4167-b493-e40fd6e846e6.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "DEY472677314",
+      "key": {
+        "camelot_number": 12,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+        },
+        "id": 24,
+        "is_sharp": false,
+        "is_flat": false,
+        "letter": "E",
+        "name": "E Major",
+        "url": "https://api.beatport.com/v4/catalog/keys/24/"
+      },
+      "label_track_identifier": "4255928625903DEY472677314",
+      "length": "6:43",
+      "length_ms": 403384,
+      "mix_name": "Original Mix",
+      "name": "Don't Mess With Us",
+      "new_release_date": "2026-07-23",
+      "pre_order": false,
+      "pre_order_date": "2026-07-16",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.39,
+        "display": "€1.39"
+      },
+      "publish_date": "2026-07-23",
+      "release": {
+        "id": 7193364,
+        "name": "Don't Mess With Us",
+        "image": {
+          "id": 56897367,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/11ac23f4-28d2-4de0-96d9-9371be8dbbf2.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/11ac23f4-28d2-4de0-96d9-9371be8dbbf2.jpg"
+        },
+        "label": {
+          "id": 106172,
+          "name": "VOLTA",
+          "image": {
+            "id": 32181914,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg"
+          },
+          "slug": "volta"
+        },
+        "slug": "dont-mess-with-us"
+      },
+      "remixers": [],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/3a0913db-647e-4c83-b0fb-3393c23575bd.LOFI.mp3",
+      "sample_start_ms": 161354,
+      "sample_end_ms": 281354,
+      "slug": "dont-mess-with-us",
+      "sub_genre": null,
+      "url": "https://api.beatport.com/v4/catalog/tracks/29704299/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 681738,
+          "image": {
+            "id": 35413291,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/833bc1eb-f185-4c91-bc12-b544ab463b50.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/833bc1eb-f185-4c91-bc12-b544ab463b50.jpg"
+          },
+          "name": "Tom Baker",
+          "slug": "tom-baker",
+          "url": "https://api.beatport.com/v4/catalog/artists/681738/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 126,
+      "bsrc_remixer": [],
+      "catalog_number": "SS103",
+      "current_status": {
+        "id": 8,
+        "name": "New Release",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/8/"
+      },
+      "encoded_date": "2026-08-03T11:41:26-06:00",
+      "exclusive": false,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 30074641,
+      "image": {
+        "id": 57691351,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/68277562-b9ab-4320-9633-707e185ff566.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/68277562-b9ab-4320-9633-707e185ff566.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "US83Z2651147",
+      "key": {
+        "camelot_number": 10,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+        },
+        "id": 22,
+        "is_sharp": false,
+        "is_flat": false,
+        "letter": "D",
+        "name": "D Major",
+        "url": "https://api.beatport.com/v4/catalog/keys/22/"
+      },
+      "label_track_identifier": null,
+      "length": "10:25",
+      "length_ms": 625206,
+      "mix_name": "Original Mix",
+      "name": "Sticks & Tones",
+      "new_release_date": "2026-08-21",
+      "pre_order": false,
+      "pre_order_date": "2026-08-07",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.59,
+        "display": "€1.59"
+      },
+      "publish_date": "2026-08-21",
+      "release": {
+        "id": 7303850,
+        "name": "Unlearn Everything",
+        "image": {
+          "id": 57691346,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/d6c5f65c-4e6d-41d9-804e-e754021a997d.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d6c5f65c-4e6d-41d9-804e-e754021a997d.jpg"
+        },
+        "label": {
+          "id": 60818,
+          "name": "Stone Seed",
+          "image": {
+            "id": 38526938,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/0661f079-2ed9-433a-9a7b-4fabc33631ed.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/0661f079-2ed9-433a-9a7b-4fabc33631ed.jpg"
+          },
+          "slug": "stone-seed"
+        },
+        "slug": "unlearn-everything"
+      },
+      "remixers": [],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/68277562-b9ab-4320-9633-707e185ff566.LOFI.mp3",
+      "sample_start_ms": 363000,
+      "sample_end_ms": 483000,
+      "slug": "sticks-tones",
+      "sub_genre": {
+        "id": 328,
+        "name": "Psy-Techno",
+        "slug": "psy-techno",
+        "url": "https://api.beatport.com/v4/catalog/sub-genres/328/",
+        "enabled": true
+      },
+      "url": "https://api.beatport.com/v4/catalog/tracks/30074641/",
+      "is_hype": true
+    },
+    {
+      "artists": [
+        {
+          "id": 1234845,
+          "image": {
+            "id": 59166767,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/0e406ede-6fa7-4924-a0e8-27ac3da898ab.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/0e406ede-6fa7-4924-a0e8-27ac3da898ab.jpg"
+          },
+          "name": "Eddi Sander",
+          "slug": "eddi-sander",
+          "url": "https://api.beatport.com/v4/catalog/artists/1234845/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 128,
+      "bsrc_remixer": [],
+      "catalog_number": "SUBIOS216",
+      "current_status": {
+        "id": 8,
+        "name": "New Release",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/8/"
+      },
+      "encoded_date": "2026-07-15T20:13:50-06:00",
+      "exclusive": false,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 29739137,
+      "image": {
+        "id": 56906187,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/c9f15e70-0868-4a24-91a3-0357dbefc088.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/c9f15e70-0868-4a24-91a3-0357dbefc088.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "US83Z2647424",
+      "key": {
+        "camelot_number": 9,
+        "camelot_letter": "A",
+        "chord_type": {
+          "id": 1,
+          "name": "Minor",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/1/"
+        },
+        "id": 9,
+        "is_sharp": false,
+        "is_flat": false,
+        "letter": "E",
+        "name": "E Minor",
+        "url": "https://api.beatport.com/v4/catalog/keys/9/"
+      },
+      "label_track_identifier": null,
+      "length": "6:00",
+      "length_ms": 360703,
+      "mix_name": "Original Mix",
+      "name": "Beluga",
+      "new_release_date": "2026-08-07",
+      "pre_order": false,
+      "pre_order_date": "2026-07-29",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.59,
+        "display": "€1.59"
+      },
+      "publish_date": "2026-08-07",
+      "release": {
+        "id": 7203798,
+        "name": "Beluga",
+        "image": {
+          "id": 56906271,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/f9e32e88-e888-4ffb-be21-20fd92c9bb00.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/f9e32e88-e888-4ffb-be21-20fd92c9bb00.jpg"
+        },
+        "label": {
+          "id": 58183,
+          "name": "Subios Records",
+          "image": {
+            "id": 14191804,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/87b2d376-514d-414f-9649-99b020a15336.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/87b2d376-514d-414f-9649-99b020a15336.jpg"
+          },
+          "slug": "subios-records"
+        },
+        "slug": "beluga"
+      },
+      "remixers": [],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/c9f15e70-0868-4a24-91a3-0357dbefc088.LOFI.mp3",
+      "sample_start_ms": 144281,
+      "sample_end_ms": 264281,
+      "slug": "beluga",
+      "sub_genre": null,
+      "url": "https://api.beatport.com/v4/catalog/tracks/29739137/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 11778,
+          "image": {
+            "id": 55471119,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/c4da6247-1ae9-4946-8e40-8026fbe62648.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/c4da6247-1ae9-4946-8e40-8026fbe62648.jpg"
+          },
+          "name": "Joris Voorn",
+          "slug": "joris-voorn",
+          "url": "https://api.beatport.com/v4/catalog/artists/11778/"
+        },
+        {
+          "id": 345505,
+          "image": {
+            "id": 5539565,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/0dc61986-bccf-49d4-8fad-6b147ea8f327.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/0dc61986-bccf-49d4-8fad-6b147ea8f327.jpg"
+          },
+          "name": "Taylr Renee",
+          "slug": "taylr-renee",
+          "url": "https://api.beatport.com/v4/catalog/artists/345505/"
+        },
+        {
+          "id": 900082,
+          "image": {
+            "id": 45505804,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/ec3c9f9e-e573-4d70-a779-528a47e2835a.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/ec3c9f9e-e573-4d70-a779-528a47e2835a.jpg"
+          },
+          "name": "Roddy Lima",
+          "slug": "roddy-lima",
+          "url": "https://api.beatport.com/v4/catalog/artists/900082/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 130,
+      "bsrc_remixer": [],
+      "catalog_number": "SPCTRM090",
+      "current_status": {
+        "id": 10,
+        "name": "General Content",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/10/"
+      },
+      "encoded_date": "2026-04-27T16:19:31-06:00",
+      "exclusive": false,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 90,
+        "name": "Melodic House & Techno",
+        "slug": "melodic-house-techno",
+        "url": "https://api.beatport.com/v4/catalog/genres/90/"
+      },
+      "id": 28702504,
+      "image": {
+        "id": 54723327,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/40f017bd-6a27-4416-a25b-8c2b1f98afcd.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/40f017bd-6a27-4416-a25b-8c2b1f98afcd.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "NLEW22600051",
+      "key": {
+        "camelot_number": 4,
+        "camelot_letter": "A",
+        "chord_type": {
+          "id": 1,
+          "name": "Minor",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/1/"
+        },
+        "id": 4,
+        "is_sharp": false,
+        "is_flat": false,
+        "letter": "F",
+        "name": "F Minor",
+        "url": "https://api.beatport.com/v4/catalog/keys/4/"
+      },
+      "label_track_identifier": null,
+      "length": "5:02",
+      "length_ms": 302769,
+      "mix_name": "Original Mix",
+      "name": "Machine ",
+      "new_release_date": "2026-05-15",
+      "pre_order": false,
+      "pre_order_date": "2026-05-01",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.39,
+        "display": "€1.39"
+      },
+      "publish_date": "2026-05-15",
+      "release": {
+        "id": 6864698,
+        "name": "Machine",
+        "image": {
+          "id": 54723314,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/d007c40d-306f-4fcd-8c83-09b61887585c.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d007c40d-306f-4fcd-8c83-09b61887585c.jpg"
+        },
+        "label": {
+          "id": 77926,
+          "name": "Spectrum (NL)",
+          "image": {
+            "id": 30104398,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/3351169a-19d0-48ba-a171-8db8638d6214.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/3351169a-19d0-48ba-a171-8db8638d6214.jpg"
+          },
+          "slug": "spectrum-nl"
+        },
+        "slug": "machine"
+      },
+      "remixers": [],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/40f017bd-6a27-4416-a25b-8c2b1f98afcd.LOFI.mp3",
+      "sample_start_ms": 75000,
+      "sample_end_ms": 195000,
+      "slug": "machine",
+      "sub_genre": {
+        "id": 267,
+        "name": "Melodic House",
+        "slug": "melodic-house",
+        "url": "https://api.beatport.com/v4/catalog/sub-genres/267/",
+        "enabled": true
+      },
+      "url": "https://api.beatport.com/v4/catalog/tracks/28702504/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 348875,
+          "image": {
+            "id": 42629533,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/e27a03b3-c0dc-4fa2-84f6-5fbbb7225d2f.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/e27a03b3-c0dc-4fa2-84f6-5fbbb7225d2f.jpg"
+          },
+          "name": "Stone Van Brooken",
+          "slug": "stone-van-brooken",
+          "url": "https://api.beatport.com/v4/catalog/artists/348875/"
+        },
+        {
+          "id": 923057,
+          "image": {
+            "id": 42144206,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/b8960720-64db-4eb0-afb1-cc01687b6247.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/b8960720-64db-4eb0-afb1-cc01687b6247.jpg"
+          },
+          "name": "Tao Andra",
+          "slug": "tao-andra",
+          "url": "https://api.beatport.com/v4/catalog/artists/923057/"
+        }
+      ],
+      "publish_status": "published",
+      "available_worldwide": true,
+      "bpm": 130,
+      "bsrc_remixer": [],
+      "catalog_number": "VOLTA077",
+      "current_status": {
+        "id": 8,
+        "name": "New Release",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/8/"
+      },
+      "encoded_date": "2026-08-10T14:17:51-06:00",
+      "exclusive": false,
+      "free_downloads": [],
+      "free_download_start_date": null,
+      "free_download_end_date": null,
+      "genre": {
+        "id": 6,
+        "name": "Techno (Peak Time / Driving)",
+        "slug": "techno-peak-time-driving",
+        "url": "https://api.beatport.com/v4/catalog/genres/6/"
+      },
+      "id": 30173628,
+      "image": {
+        "id": 57890794,
+        "uri": "https://geo-media.beatport.com/image_size/1500x250/f22f4ea9-2a33-477d-8a46-f8694f5dfc37.png",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/f22f4ea9-2a33-477d-8a46-f8694f5dfc37.png"
+      },
+      "is_available_for_streaming": true,
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "isrc": "DEY472678250",
+      "key": {
+        "camelot_number": 8,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+        },
+        "id": 20,
+        "is_sharp": false,
+        "is_flat": false,
+        "letter": "C",
+        "name": "C Major",
+        "url": "https://api.beatport.com/v4/catalog/keys/20/"
+      },
+      "label_track_identifier": "4255928630655DEY472678250",
+      "length": "5:15",
+      "length_ms": 315000,
+      "mix_name": "Original Mix",
+      "name": "Altan",
+      "new_release_date": "2026-09-10",
+      "pre_order": false,
+      "pre_order_date": "2026-08-27",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.59,
+        "display": "€1.59"
+      },
+      "publish_date": "2026-09-10",
+      "release": {
+        "id": 7332765,
+        "name": "Altan",
+        "image": {
+          "id": 57977651,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/96a22370-258a-40e5-b48b-1e84f742ee98.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/96a22370-258a-40e5-b48b-1e84f742ee98.jpg"
+        },
+        "label": {
+          "id": 106172,
+          "name": "VOLTA",
+          "image": {
+            "id": 32181914,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg"
+          },
+          "slug": "volta"
+        },
+        "slug": "altan"
+      },
+      "remixers": [],
+      "sale_type": {
+        "id": 1,
+        "name": "purchase",
+        "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/e11c728b-e291-4053-9b20-bdd2747695dc.LOFI.mp3",
+      "sample_start_ms": 126000,
+      "sample_end_ms": 246000,
+      "slug": "altan",
+      "sub_genre": null,
+      "url": "https://api.beatport.com/v4/catalog/tracks/30173628/",
+      "is_hype": false
+    }
+  ]
+}

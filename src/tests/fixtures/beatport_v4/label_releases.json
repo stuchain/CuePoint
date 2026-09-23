@@ -1,0 +1,84 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "page": "1/1",
+  "per_page": 100,
+  "results": [
+    {
+      "id": 4500010,
+      "name": "Harbour Lights",
+      "slug": "harbour-lights",
+      "artists": [
+        {
+          "id": 301001,
+          "name": "Mara Veil",
+          "slug": "mara-veil",
+          "url": "https://api.beatport.com/v4/catalog/artists/301001/",
+          "image": {
+            "id": 5001,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/301001.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/301001.jpg"
+          }
+        }
+      ],
+      "remixers": [],
+      "label": {
+        "id": 40211,
+        "name": "Nightfall Audio",
+        "slug": "nightfall-audio",
+        "image": {
+          "id": 7001,
+          "uri": "https://geo-media.beatport.com/image_size/500x500/l.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/l.jpg"
+        }
+      },
+      "catalog_number": "NFA010",
+      "upc": "0000000000010",
+      "new_release_date": "2026-09-10",
+      "publish_date": "2026-09-10",
+      "track_count": 1,
+      "bpm_range": {
+        "min": 122,
+        "max": 122
+      },
+      "tracks": [
+        "https://api.beatport.com/v4/catalog/tracks/19000010/"
+      ],
+      "url": "https://api.beatport.com/v4/catalog/releases/4500010/"
+    },
+    {
+      "id": 4500020,
+      "name": "White Label 001",
+      "slug": "white-label-001",
+      "artists": [
+        {
+          "id": 301004,
+          "name": "Above & Below",
+          "slug": "above-below",
+          "url": "https://api.beatport.com/v4/catalog/artists/301004/",
+          "image": {
+            "id": 5004,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/301004.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/301004.jpg"
+          }
+        }
+      ],
+      "remixers": [],
+      "label": null,
+      "catalog_number": "",
+      "upc": "",
+      "new_release_date": "2026-08-30",
+      "publish_date": "2026-08-30",
+      "track_count": 1,
+      "bpm_range": {
+        "min": 130,
+        "max": 130
+      },
+      "tracks": [
+        "https://api.beatport.com/v4/catalog/tracks/19000020/"
+      ],
+      "url": "https://api.beatport.com/v4/catalog/releases/4500020/"
+    }
+  ]
+}

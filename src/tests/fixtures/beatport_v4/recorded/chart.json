@@ -1,0 +1,49 @@
+{
+  "add_by": 2939726,
+  "add_date": "2026-09-23T04:47:56-06:00",
+  "change_date": "2026-09-23T04:55:45-06:00",
+  "description": null,
+  "enabled": true,
+  "id": 903396,
+  "image": {
+    "id": 59268418,
+    "uri": "https://geo-media.beatport.com/image_size/500x500/dac112dd-ed35-4ac5-8515-721f0e5e8f72.jpg",
+    "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/dac112dd-ed35-4ac5-8515-721f0e5e8f72.jpg"
+  },
+  "is_approved": false,
+  "is_indexed": false,
+  "is_published": true,
+  "name": "IMPULSE Chart",
+  "person": {
+    "id": 474095,
+    "owner_image": "https://geo-media.beatport.com/image_size/500x500/de8188fe-b4dc-42ce-8440-c6538fb31384.jpg",
+    "owner_name": "Gabriel Moraes",
+    "owner_slug": "Gabriel Moraes",
+    "owner_type": "djprofile",
+    "owner_person": 2939726
+  },
+  "price": {
+    "code": "EUR",
+    "symbol": "€",
+    "value": 16.3,
+    "display": "€16.30"
+  },
+  "publish_date": "2026-09-23T04:55:45-06:00",
+  "slug": "impulse-chart",
+  "track_count": 10,
+  "artist": null,
+  "genres": [
+    {
+      "id": 90,
+      "name": "Melodic House & Techno",
+      "slug": "melodic-house-techno",
+      "url": "https://api.beatport.com/v4/catalog/genres/90/"
+    },
+    {
+      "id": 6,
+      "name": "Techno (Peak Time / Driving)",
+      "slug": "techno-peak-time-driving",
+      "url": "https://api.beatport.com/v4/catalog/genres/6/"
+    }
+  ]
+}

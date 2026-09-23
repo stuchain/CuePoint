@@ -1,0 +1,183 @@
+{
+  "count": 4,
+  "next": null,
+  "previous": null,
+  "page": "2/2",
+  "per_page": 2,
+  "results": [
+    {
+      "id": 19000012,
+      "name": "Glass Coast",
+      "mix_name": "Original Mix",
+      "slug": "glass-coast",
+      "artists": [
+        {
+          "id": 301001,
+          "name": "Mara Veil",
+          "slug": "mara-veil",
+          "url": "https://api.beatport.com/v4/catalog/artists/301001/",
+          "image": {
+            "id": 5001,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/301001.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/301001.jpg"
+          }
+        }
+      ],
+      "remixers": [],
+      "bpm": 128,
+      "key": {
+        "id": 10,
+        "name": "C Major",
+        "letter": "C",
+        "camelot_number": 8,
+        "camelot_letter": "B",
+        "chord_type": {
+          "id": 2,
+          "name": "Major",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/1/"
+        },
+        "is_sharp": false,
+        "is_flat": false,
+        "url": "https://api.beatport.com/v4/catalog/keys/10/"
+      },
+      "genre": {
+        "id": 5,
+        "name": "House",
+        "slug": "house",
+        "url": "https://api.beatport.com/v4/catalog/genres/5/"
+      },
+      "sub_genre": null,
+      "release": {
+        "id": 4500012,
+        "name": "Glass Coast",
+        "slug": "glass-coast",
+        "label": {
+          "id": 40211,
+          "name": "Nightfall Audio",
+          "slug": "nightfall-audio",
+          "image": {
+            "id": 7001,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/l.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/l.jpg"
+          }
+        },
+        "image": {
+          "id": 9012,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/4500012.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/4500012.jpg"
+        }
+      },
+      "publish_date": "2026-08-20",
+      "new_release_date": "2026-08-20",
+      "isrc": "XXA0B2400001",
+      "length": "6:45",
+      "length_ms": 405000,
+      "number": 1,
+      "exclusive": false,
+      "is_available_for_streaming": true,
+      "is_hype": false,
+      "price": {
+        "code": "USD",
+        "symbol": "$",
+        "value": 1.69,
+        "display": "$1.69"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/19000012.LOFI.mp3",
+      "sample_start_ms": 130976,
+      "sample_end_ms": 250976,
+      "current_status": {
+        "id": 10,
+        "name": "General Content",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/10/"
+      },
+      "url": "https://api.beatport.com/v4/catalog/tracks/19000012/"
+    },
+    {
+      "id": 19000013,
+      "name": "Old Pier",
+      "mix_name": "Original Mix",
+      "slug": "old-pier",
+      "artists": [
+        {
+          "id": 301001,
+          "name": "Mara Veil",
+          "slug": "mara-veil",
+          "url": "https://api.beatport.com/v4/catalog/artists/301001/",
+          "image": {
+            "id": 5001,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/301001.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/301001.jpg"
+          }
+        }
+      ],
+      "remixers": [],
+      "bpm": 120,
+      "key": {
+        "id": 10,
+        "name": "D Minor",
+        "letter": "D",
+        "camelot_number": 7,
+        "camelot_letter": "A",
+        "chord_type": {
+          "id": 1,
+          "name": "Minor",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/1/"
+        },
+        "is_sharp": false,
+        "is_flat": false,
+        "url": "https://api.beatport.com/v4/catalog/keys/10/"
+      },
+      "genre": {
+        "id": 5,
+        "name": "House",
+        "slug": "house",
+        "url": "https://api.beatport.com/v4/catalog/genres/5/"
+      },
+      "sub_genre": null,
+      "release": {
+        "id": 4500013,
+        "name": "Old Pier",
+        "slug": "old-pier",
+        "label": {
+          "id": 40211,
+          "name": "Nightfall Audio",
+          "slug": "nightfall-audio",
+          "image": {
+            "id": 7001,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/l.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/l.jpg"
+          }
+        },
+        "image": {
+          "id": 9013,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/4500013.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/4500013.jpg"
+        }
+      },
+      "publish_date": "2025-11-03",
+      "new_release_date": "2025-11-03",
+      "isrc": "XXA0B2400001",
+      "length": "6:45",
+      "length_ms": 405000,
+      "number": 1,
+      "exclusive": false,
+      "is_available_for_streaming": true,
+      "is_hype": false,
+      "price": {
+        "code": "USD",
+        "symbol": "$",
+        "value": 1.69,
+        "display": "$1.69"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/19000013.LOFI.mp3",
+      "sample_start_ms": 130976,
+      "sample_end_ms": 250976,
+      "current_status": {
+        "id": 10,
+        "name": "General Content",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/10/"
+      },
+      "url": "https://api.beatport.com/v4/catalog/tracks/19000013/"
+    }
+  ]
+}

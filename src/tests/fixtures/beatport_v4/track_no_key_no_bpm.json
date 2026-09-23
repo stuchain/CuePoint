@@ -1,0 +1,73 @@
+{
+  "id": 19000002,
+  "name": "Untitled Loop",
+  "mix_name": "Original Mix",
+  "slug": "untitled-loop",
+  "artists": [
+    {
+      "id": 301004,
+      "name": "Above & Below",
+      "slug": "above-below",
+      "url": "https://api.beatport.com/v4/catalog/artists/301004/",
+      "image": {
+        "id": 5004,
+        "uri": "https://geo-media.beatport.com/image_size/590x404/301004.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/301004.jpg"
+      }
+    }
+  ],
+  "remixers": [],
+  "bpm": null,
+  "key": null,
+  "genre": {
+    "id": 18,
+    "name": "Dubstep",
+    "slug": "dubstep",
+    "url": "https://api.beatport.com/v4/catalog/genres/18/"
+  },
+  "sub_genre": null,
+  "release": {
+    "id": 4500002,
+    "name": "Loops Vol. 1",
+    "slug": "loops-vol-1",
+    "label": {
+      "id": 40211,
+      "name": "Nightfall Audio",
+      "slug": "nightfall-audio",
+      "image": {
+        "id": 7001,
+        "uri": "https://geo-media.beatport.com/image_size/500x500/l.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/l.jpg"
+      }
+    },
+    "image": {
+      "id": 9002,
+      "uri": "https://geo-media.beatport.com/image_size/1400x1400/4500002.jpg",
+      "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/4500002.jpg"
+    }
+  },
+  "publish_date": "2026-07-02",
+  "new_release_date": "2026-07-02",
+  "isrc": "XXA0B2400001",
+  "length": "6:45",
+  "length_ms": 405000,
+  "number": 1,
+  "exclusive": false,
+  "is_available_for_streaming": true,
+  "is_hype": false,
+  "price": {
+    "code": "USD",
+    "symbol": "$",
+    "value": 1.69,
+    "display": "$1.69"
+  },
+  "sample_url": "https://geo-samples.beatport.com/track/19000002.LOFI.mp3",
+  "sample_start_ms": 130976,
+  "sample_end_ms": 250976,
+  "current_status": {
+    "id": 10,
+    "name": "General Content",
+    "url": "https://api.beatport.com/v4/auxiliary/current-status/10/"
+  },
+  "url": "https://api.beatport.com/v4/catalog/tracks/19000002/"
+}

@@ -1,0 +1,124 @@
+{
+  "artists": [
+    {
+      "id": 413759,
+      "image": {
+        "id": 58808904,
+        "uri": "https://geo-media.beatport.com/image_size/590x404/d3f843ae-92a3-429c-8994-741caf0ca363.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d3f843ae-92a3-429c-8994-741caf0ca363.jpg"
+      },
+      "name": "Gabriel Moraes",
+      "slug": "gabriel-moraes",
+      "url": "https://api.beatport.com/v4/catalog/artists/413759/"
+    }
+  ],
+  "audio_format": null,
+  "available_worldwide": true,
+  "bpm": 135,
+  "bsrc_remixer": [],
+  "catalog_number": "VOLTA078",
+  "current_status": {
+    "id": 12,
+    "name": "Pre-order New Release",
+    "url": "https://api.beatport.com/v4/auxiliary/current-status/12/"
+  },
+  "desc": null,
+  "enabled": true,
+  "encode_status": "CONVERTED",
+  "encoded_date": "2026-08-26T16:33:56-06:00",
+  "exclusive": false,
+  "exclusive_period": {
+    "days": 0,
+    "description": "Not exclusive",
+    "id": 1,
+    "url": "https://api.beatport.com/v4/auxiliary/exclusive-period/1/"
+  },
+  "free_downloads": [],
+  "free_download_start_date": null,
+  "free_download_end_date": null,
+  "genre": {
+    "id": 6,
+    "name": "Techno (Peak Time / Driving)",
+    "slug": "techno-peak-time-driving",
+    "url": "https://api.beatport.com/v4/catalog/genres/6/"
+  },
+  "hidden": false,
+  "id": 30378061,
+  "image": {
+    "id": 58350706,
+    "uri": "https://geo-media.beatport.com/image_size/1500x250/5f7b1cac-6c25-419e-8f64-090814445159.png",
+    "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/5f7b1cac-6c25-419e-8f64-090814445159.png"
+  },
+  "is_available_for_streaming": true,
+  "is_explicit": false,
+  "is_ugc_remix": false,
+  "is_dj_edit": false,
+  "is_dj_version": false,
+  "is_classic": false,
+  "isrc": "DEY472678774",
+  "key": {
+    "camelot_number": 3,
+    "camelot_letter": "B",
+    "chord_type": {
+      "id": 2,
+      "name": "Major",
+      "url": "https://api.beatport.com/v4/catalog/chord-types/2/"
+    },
+    "id": 15,
+    "is_sharp": false,
+    "is_flat": true,
+    "letter": "D",
+    "name": "Db Major",
+    "url": "https://api.beatport.com/v4/catalog/keys/15/"
+  },
+  "label_track_identifier": "4255928633229DEY472678774",
+  "length": "5:58",
+  "length_ms": 358500,
+  "mix_name": "Original Mix",
+  "name": "Impulse",
+  "new_release_date": "2026-09-24",
+  "number": 2,
+  "pre_order": true,
+  "pre_order_date": "2026-09-10",
+  "price": {
+    "code": "EUR",
+    "symbol": "€",
+    "value": 1.59,
+    "display": "€1.59"
+  },
+  "publish_date": "2026-09-24",
+  "publish_status": "published",
+  "release": {
+    "id": 7392479,
+    "name": "Impulse",
+    "image": {
+      "id": 58376148,
+      "uri": "https://geo-media.beatport.com/image_size/1400x1400/acd0d1fb-b0fa-4e18-95ec-d96f7418db34.jpg",
+      "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/acd0d1fb-b0fa-4e18-95ec-d96f7418db34.jpg"
+    },
+    "label": {
+      "id": 106172,
+      "name": "VOLTA",
+      "image": {
+        "id": 32181914,
+        "uri": "https://geo-media.beatport.com/image_size/500x500/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg"
+      },
+      "slug": "volta"
+    },
+    "slug": "impulse"
+  },
+  "remixers": [],
+  "sale_type": {
+    "id": 1,
+    "name": "purchase",
+    "url": "https://api.beatport.com/v4/auxiliary/sale-types/1/"
+  },
+  "sample_url": "https://geo-samples.beatport.com/track/97d6e696-38af-4a8b-89ea-ab1f49748c6f.LOFI.mp3",
+  "sample_start_ms": 143400,
+  "sample_end_ms": 263400,
+  "slug": "impulse",
+  "sub_genre": null,
+  "was_ever_exclusive": false,
+  "is_hype": false
+}

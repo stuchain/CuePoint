@@ -1,0 +1,26 @@
+{
+  "bio": null,
+  "created": "2022-09-20T14:24:16-06:00",
+  "default_pre_order_weeks": null,
+  "enabled": true,
+  "has_exclusive_contract": false,
+  "id": 106172,
+  "image": {
+    "id": 32181914,
+    "uri": "https://geo-media.beatport.com/image_size/500x500/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg",
+    "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg"
+  },
+  "is_available_for_hype": false,
+  "is_available_for_bundle_subscription": "<redacted>",
+  "is_available_for_pre_order": false,
+  "is_available_for_streaming": true,
+  "is_included_in_rightsflow": true,
+  "latest_active_publish_date": "2026-09-10",
+  "name": "VOLTA",
+  "slug": "volta",
+  "updated": "2026-09-10T00:15:08-06:00",
+  "hype_eligible": false,
+  "hype_active": false,
+  "hype_trial_start_date": null,
+  "hype_trial_end_date": null
+}

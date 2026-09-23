@@ -42,7 +42,9 @@ from cuepoint.services.beatport_api_client import BeatportApiClient
 from cuepoint.services.beatport_catalog import (
     BEATPORT_WEB_BASE,
     catalog_text,
+    chart_artist,
     chart_owner_name,
+    chart_publish_date,
     page_items,
     parse_catalog_artist,
     parse_catalog_label,
@@ -136,7 +138,12 @@ def _parse_chart_summary(
     else:
         author_name = str(author).strip() if author else ""
         author_id = None
-    if not author_name:
+    artist = chart_artist(obj)
+    if artist is not None:
+        # A chart a Beatport artist made is that artist's (recorded): its
+        # account can be named otherwise, and inCrate matches by the name.
+        author_name, author_id = artist.name, artist.id
+    elif not author_name:
         # v4 names a chart's curator in ``person.owner_name``.
         author_name = chart_owner_name(obj)
     return ChartSummary(
@@ -146,10 +153,11 @@ def _parse_chart_summary(
         genre_slug=str(obj.get("genre_slug") or genre_slug).strip(),
         author_id=int(author_id) if author_id is not None else None,
         author_name=author_name,
-        published_date=_parse_date(
-            obj.get("published_date") or obj.get("published") or ""
-        ),
+        # v4's key is `publish_date` (recorded). Every chart used to parse
+        # with no date, which list_charts keeps whatever the window.
+        published_date=chart_publish_date(obj),
         track_count=int(obj.get("track_count", obj.get("tracks_count", 0)) or 0),
+        artist=artist,
     )
 
 
@@ -191,7 +199,12 @@ def _parse_chart_detail(obj: Any) -> ChartDetail:
     author_name = (
         author.get("name", "") if isinstance(author, dict) else str(author or "")
     ).strip()
-    if not author_name:
+    artist = chart_artist(obj)
+    if artist is not None:
+        # `person` is found first above and has no `name`; the chart's artist
+        # is who made it, as in _parse_chart_summary.
+        author_name = artist.name
+    elif not author_name:
         # v4 names a chart's curator in ``person.owner_name``.
         author_name = chart_owner_name(obj)
     # API may nest tracks under "tracks", "track_list", "results", or "data"
@@ -228,10 +241,9 @@ def _parse_chart_detail(obj: Any) -> ChartDetail:
         id=int(obj.get("id", 0) or 0),
         name=str(obj.get("name") or "").strip(),
         author_name=author_name,
-        published_date=_parse_date(
-            obj.get("published_date") or obj.get("published") or ""
-        ),
+        published_date=chart_publish_date(obj),
         tracks=tracks,
+        artist=artist,
     )
 
 

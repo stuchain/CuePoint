@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **DISCOVER-01 to DISCOVER-03 implemented; DISCOVER-01's recorded spike, which needs a
-developer's Beatport token, is owed (see its outcome). DISCOVER-04…DISCOVER-12 not started.** The twelve steps below replace the
+Status: **DISCOVER-01 to DISCOVER-03 implemented, and DISCOVER-01's spike recorded against the
+live API (2026-09-23; see its outcome). DISCOVER-04…DISCOVER-12 not started.** The twelve steps below replace the
 roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -224,9 +224,10 @@ measured cost decides whether it needs a cap.
 
 **Complexity**: **L**
 
-**Outcome**: Implemented, with the recorded spike still owed. The code is complete and tested, the
-route map was established against the live API, and the one thing that needs a developer's token —
-recording real response bodies — is a single command, written and tested offline:
+**Outcome**: Implemented, and the spike recorded against the live API on 2026-09-23 (see **The
+recording**, at the end of this outcome, which answers every question the text below leaves open).
+The code was written and tested before a token was available: the route map was established without
+one, and the recording was a single command, written and tested offline:
 `python scripts/beatport_v4_spike.py --playlist --write-fixtures`.
 
 **What was built.**
@@ -290,9 +291,9 @@ Findings that bind later steps:
    `get_tracks` asks it and checks the answer: a track it was not asked for, a 400, or leaving out a
    track that a single lookup then finds all switch the instance to one request per track. So
    DISCOVER-04's resolve job is correct either way, and its measured cost says which world it is in.
-3. **A chart names its curator in `person.owner_name`**, with no field known to be an artist id.
-   DISCOVER-05 compares curators by `name_key`; the "author id is a resolved library artist's
-   Beatport id" branch waits for a recording to show whether `person.id` is one.
+3. ~~**A chart names its curator in `person.owner_name`**, with no field known to be an artist
+   id.~~ **Replaced by the recording (below):** a chart an artist made carries `artist: {id, name}`,
+   `person` is its account, and `person.id` is not an artist id.
 4. **Pagination is `next`, not `page`.** `page` is a string like `"1/4"`, so it is not read.
 5. **The date filter is applied twice.** `artist_tracks`/`label_tracks` send
    `publish_date=from:to` and `order_by=-publish_date`, then keep only tracks inside the window and
@@ -338,11 +339,47 @@ concurrency cap is held by a threaded test of twelve clients; `playlist_url` nev
 `ruff format --check src/`, `check_no_qt_in_core.py`, and the strict mypy gate with the two new
 modules added to it.
 
-**Owed**: running the spike with a real token, then recording its report here. It answers the
-batched-id filter, the date filter, the chart filter by artist, the playlist add-track body (the
-existing `{"track_id": …}` is kept until then), rate-limit headers, and whether a chart's `person.id`
-is an artist id. A failing agreement test after recording means a reconstructed shape was wrong, and
-the parser changes.
+**The recording** (2026-09-23, with the developer's own token, scope `app:docs user:dj`, taken from
+Beatport's API documentation page; the token lived ten minutes and was never written anywhere).
+Every probe answered, 17 of 17, and the eleven sanitized bodies are committed in
+`src/tests/fixtures/beatport_v4/recorded/`. **The reconstructed shapes were right**: the agreement
+tests passed over all eleven recordings with no parser change.
+
+| Question left open above | Answer |
+| --- | --- |
+| Does `catalog/tracks/?id=a,b` filter? | **Yes.** It answered exactly the tracks asked for. `get_tracks`' batched path is the one it takes. |
+| Does `publish_date=from:to` filter a listing? | **Yes**, for an artist's tracks (all 4 inside the window) and a label's (23 inside it; 210 without it) and for charts. The client-side window stays as a guard that costs nothing. |
+| Does `catalog/charts/?artist_id=` filter? | **No.** Neither `artist_id` nor `artist` does; the answer is the unfiltered listing, item for item. Finding 1 stands. |
+| Is a chart's `person.id` an artist id? | **No.** It is the publishing account's (769449 for the artist 1190547). But a chart **does** carry `artist: {id, name, slug}` when a Beatport artist made it, and `null` otherwise — the field the reconstruction did not have. |
+| Playlist create and add-track | Both **201**: `POST my/playlists/` with `{"name"}`, then `POST my/playlists/{id}/tracks/` with `{"track_id": …}`, the body the code already sends. A docs-page token has the scope. |
+| Rate-limit headers | **None**, on any of the 17 answers. The `Retry-After` handling stays for a 429 that says it. |
+| Pagination | `next` is an absolute URL; `page` a string (`"1/1522"`); `count` caps at 10,000. Finding 4 stands. |
+
+**Finding 3 is replaced.** A chart made by an artist names that artist in `artist`, with its
+Beatport id, and its `person.owner_name` can be a different name altogether: DJEFF's chart is owned
+by "OFFICIALDJEFFMUSIC". So DISCOVER-05's two tests become: a chart counts when **`artist.id` is a
+resolved library artist's Beatport id**, or when **`name_key(artist.name)` is a library artist's
+key**; `person.owner_name` is only a fallback for a chart no artist made. `beatport_catalog.
+chart_artist` reads it, and `ChartSummary` and `ChartDetail` carry it as `artist`.
+
+**Two bugs the recording exposed, both in the parsers inCrate runs on today, fixed:**
+
+- *A chart an artist made was credited to its account*, so inCrate — which matches library artists
+  against a chart's author — never found DJEFF's chart for a library holding DJEFF, and `author_id`
+  was always `None`. Both parsers now take the author, and its id, from `artist` when there is one.
+- *Every chart parsed with no date*: v4's key is `publish_date`, the parsers read `published_date`
+  and `published`. `list_charts` keeps an undated chart whatever the window, so its date filter and
+  its newest-first sort had never done anything. `chart_publish_date` reads the right key, the old
+  ones as fallbacks.
+
+Pinned by `src/tests/regression/test_regression_v4_chart_artist_and_date.py`, which reads the
+recorded page and fails four of five on the unfixed parsers.
+
+**And one bug in this step's own commit**: `.gitignore` ignores every `*.json` as user output, so
+DISCOVER-01's commit carried the fixtures' README and none of the fourteen fixtures — every test
+reading them passed only on the machine that wrote them. An exception now sits beside the file's
+others, and `src/tests/regression/test_regression_fixtures_not_ignored.py` asks git, for every file
+under `src/tests/fixtures/`, whether it would be committed.
 
 ---
 
@@ -804,8 +841,10 @@ Beatport track id — ported rather than reinvented. `IncrateDiscoveryService`'s
   `beatport_name_lookups` is asked, and only a miss calls `search_label_by_name`, whose answer
   (including "not found") is stored. A second run spends no requests on labels the first one resolved.
   `_CANONICAL_LABEL_IDS` is not ported (DEC-099).
-- **Chart curators compare by key.** A chart counts when `name_key(author)` is a library artist's key,
-  or when its author id is a resolved library artist's Beatport id. inCrate compared lowercased strings.
+- **Chart curators compare by the chart's artist.** A chart counts when its `artist.id` is a resolved
+  library artist's Beatport id, or when `name_key(artist.name)` is a library artist's key; a chart no
+  artist made falls back to `name_key(person.owner_name)`. DISCOVER-01's recording showed `artist`,
+  and that an account's name can differ from its artist's. inCrate compared lowercased strings.
 - **Every found track is written through.** Its catalog row goes to `beatport_tracks`, its place in
   the run to `discovery_run_tracks`, and each reason it was found to `discovery_run_sources`. Written
   in committed chunks, so a cancel keeps what was found and the run records `cancelled`.

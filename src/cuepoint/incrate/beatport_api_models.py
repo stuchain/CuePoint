@@ -74,6 +74,9 @@ class ChartSummary:
     author_name: str
     published_date: str
     track_count: int
+    #: The Beatport artist who made the chart, when one did (DISCOVER-01's
+    #: recording); ``author_id`` and ``author_name`` are then that artist's.
+    artist: Optional[CatalogArtist] = None
 
 
 @dataclass
@@ -97,6 +100,8 @@ class ChartDetail:
     author_name: str
     published_date: str
     tracks: List[ChartTrack]
+    #: The Beatport artist who made the chart, when one did.
+    artist: Optional[CatalogArtist] = None
 
 
 @dataclass

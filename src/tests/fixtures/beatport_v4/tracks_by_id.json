@@ -1,0 +1,197 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "page": "1/1",
+  "per_page": 100,
+  "results": [
+    {
+      "id": 19000001,
+      "name": "Lantern Signal",
+      "mix_name": "Dub Phizix Jr Remix",
+      "slug": "lantern-signal",
+      "artists": [
+        {
+          "id": 301001,
+          "name": "Mara Veil",
+          "slug": "mara-veil",
+          "url": "https://api.beatport.com/v4/catalog/artists/301001/",
+          "image": {
+            "id": 5001,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/301001.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/301001.jpg"
+          }
+        },
+        {
+          "id": 301002,
+          "name": "Óscar Lindqvist",
+          "slug": "oscar-lindqvist",
+          "url": "https://api.beatport.com/v4/catalog/artists/301002/",
+          "image": {
+            "id": 5002,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/301002.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/301002.jpg"
+          }
+        }
+      ],
+      "remixers": [
+        {
+          "id": 301003,
+          "name": "Dub Phizix Jr",
+          "slug": "dub-phizix-jr",
+          "url": "https://api.beatport.com/v4/catalog/artists/301003/",
+          "image": {
+            "id": 5003,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/301003.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/301003.jpg"
+          }
+        }
+      ],
+      "bpm": 124,
+      "key": {
+        "id": 10,
+        "name": "Eb Minor",
+        "letter": "E",
+        "camelot_number": 2,
+        "camelot_letter": "A",
+        "chord_type": {
+          "id": 1,
+          "name": "Minor",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/1/"
+        },
+        "is_sharp": false,
+        "is_flat": true,
+        "url": "https://api.beatport.com/v4/catalog/keys/10/"
+      },
+      "genre": {
+        "id": 5,
+        "name": "House",
+        "slug": "house",
+        "url": "https://api.beatport.com/v4/catalog/genres/5/"
+      },
+      "sub_genre": {
+        "id": 44,
+        "name": "Deep Tech",
+        "slug": "deep-tech",
+        "url": "https://api.beatport.com/v4/catalog/sub-genres/44/"
+      },
+      "release": {
+        "id": 4500001,
+        "name": "Lantern Signal EP",
+        "slug": "lantern-signal-ep",
+        "label": {
+          "id": 40211,
+          "name": "Nightfall Audio",
+          "slug": "nightfall-audio",
+          "image": {
+            "id": 7001,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/l.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/l.jpg"
+          }
+        },
+        "image": {
+          "id": 9001,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/4500001.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/4500001.jpg"
+        }
+      },
+      "publish_date": "2026-08-14",
+      "new_release_date": "2026-08-14",
+      "isrc": "XXA0B2400001",
+      "length": "6:45",
+      "length_ms": 405000,
+      "number": 1,
+      "exclusive": false,
+      "is_available_for_streaming": true,
+      "is_hype": false,
+      "price": {
+        "code": "USD",
+        "symbol": "$",
+        "value": 1.69,
+        "display": "$1.69"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/19000001.LOFI.mp3",
+      "sample_start_ms": 130976,
+      "sample_end_ms": 250976,
+      "current_status": {
+        "id": 10,
+        "name": "General Content",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/10/"
+      },
+      "url": "https://api.beatport.com/v4/catalog/tracks/19000001/"
+    },
+    {
+      "id": 19000002,
+      "name": "Untitled Loop",
+      "mix_name": "Original Mix",
+      "slug": "untitled-loop",
+      "artists": [
+        {
+          "id": 301004,
+          "name": "Above & Below",
+          "slug": "above-below",
+          "url": "https://api.beatport.com/v4/catalog/artists/301004/",
+          "image": {
+            "id": 5004,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/301004.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/301004.jpg"
+          }
+        }
+      ],
+      "remixers": [],
+      "bpm": null,
+      "key": null,
+      "genre": {
+        "id": 18,
+        "name": "Dubstep",
+        "slug": "dubstep",
+        "url": "https://api.beatport.com/v4/catalog/genres/18/"
+      },
+      "sub_genre": null,
+      "release": {
+        "id": 4500002,
+        "name": "Loops Vol. 1",
+        "slug": "loops-vol-1",
+        "label": {
+          "id": 40211,
+          "name": "Nightfall Audio",
+          "slug": "nightfall-audio",
+          "image": {
+            "id": 7001,
+            "uri": "https://geo-media.beatport.com/image_size/500x500/l.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/l.jpg"
+          }
+        },
+        "image": {
+          "id": 9002,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/4500002.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/4500002.jpg"
+        }
+      },
+      "publish_date": "2026-07-02",
+      "new_release_date": "2026-07-02",
+      "isrc": "XXA0B2400001",
+      "length": "6:45",
+      "length_ms": 405000,
+      "number": 1,
+      "exclusive": false,
+      "is_available_for_streaming": true,
+      "is_hype": false,
+      "price": {
+        "code": "USD",
+        "symbol": "$",
+        "value": 1.69,
+        "display": "$1.69"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/19000002.LOFI.mp3",
+      "sample_start_ms": 130976,
+      "sample_end_ms": 250976,
+      "current_status": {
+        "id": 10,
+        "name": "General Content",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/10/"
+      },
+      "url": "https://api.beatport.com/v4/catalog/tracks/19000002/"
+    }
+  ]
+}

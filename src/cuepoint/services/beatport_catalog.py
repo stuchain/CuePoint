@@ -190,5 +190,37 @@ def page_items(data: Any) -> Tuple[List[Dict[str, Any]], bool]:
 
 
 def chart_owner_name(obj: Any) -> str:
-    """The name of a v4 chart's curator, from its ``person`` object."""
+    """The name of a v4 chart's curator, from its ``person`` object.
+
+    The *account* that published it. For a chart an artist made, that is the
+    artist's account and can be named differently from the artist — recorded:
+    DJEFF's chart is owned by "OFFICIALDJEFFMUSIC" — so :func:`chart_artist`
+    comes first wherever a chart is matched to an artist.
+    """
     return catalog_text(_object(_object(obj).get("person")).get("owner_name"))
+
+
+def chart_artist(obj: Any) -> Optional[CatalogArtist]:
+    """The Beatport artist a v4 chart belongs to, or ``None``.
+
+    Recorded against the live API (DISCOVER-01's spike): a chart carries
+    ``artist: {id, name, slug}`` when a Beatport artist made it, and ``null``
+    when an ordinary account did. It is the one field that ties a chart to an
+    artist by id — ``person.id`` is an account id (769449 for the artist
+    1190547), and ``catalog/charts/`` ignores an ``artist_id`` filter.
+    """
+    return parse_catalog_artist(_object(obj).get("artist"))
+
+
+def chart_publish_date(obj: Any) -> str:
+    """A v4 chart's publish date, ``YYYY-MM-DD``, or ``""``.
+
+    v4 calls it ``publish_date`` (recorded); ``published_date`` and
+    ``published`` are the names the older parsers guessed.
+    """
+    chart = _object(obj)
+    for key in ("publish_date", "published_date", "published"):
+        value = _iso_date(chart.get(key))
+        if value:
+            return value
+    return ""

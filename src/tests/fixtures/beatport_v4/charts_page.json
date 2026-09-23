@@ -1,0 +1,43 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "page": "1/1",
+  "per_page": 100,
+  "results": [
+    {
+      "id": 880001,
+      "name": "September Selects",
+      "slug": "september-selects",
+      "track_count": 2,
+      "person": {
+        "id": 77001,
+        "owner_name": "Mara Veil",
+        "owner_slug": "mara-veil",
+        "owner_type": "artist",
+        "owner_image": "https://geo-media.beatport.com/image_size/590x404/p.jpg"
+      },
+      "genres": [
+        {
+          "id": 5,
+          "name": "House",
+          "slug": "house",
+          "url": "https://api.beatport.com/v4/catalog/genres/5/"
+        }
+      ],
+      "add_date": "2026-09-05T10:00:00-06:00",
+      "change_date": "2026-09-05T10:00:00-06:00",
+      "publish_date": "2026-09-05T10:00:00-06:00",
+      "enabled": true,
+      "is_approved": true,
+      "is_published": true,
+      "is_indexed": true,
+      "image": {
+        "id": 9901,
+        "uri": "https://geo-media.beatport.com/image_size/1050x508/c.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/c.jpg"
+      },
+      "url": "https://api.beatport.com/v4/catalog/charts/880001/"
+    }
+  ]
+}

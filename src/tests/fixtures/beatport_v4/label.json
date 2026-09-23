@@ -1,0 +1,15 @@
+{
+  "id": 40211,
+  "name": "Nightfall Audio",
+  "slug": "nightfall-audio",
+  "image": {
+    "id": 7001,
+    "uri": "https://geo-media.beatport.com/image_size/500x500/l.jpg",
+    "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/l.jpg"
+  },
+  "bio": "",
+  "enabled": true,
+  "hype_active": false,
+  "is_available_for_streaming": true,
+  "url": "https://api.beatport.com/v4/catalog/labels/40211/"
+}

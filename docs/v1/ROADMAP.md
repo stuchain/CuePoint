@@ -2,8 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-03 are implemented, with DISCOVER-01's recorded spike
-owed.
+(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-03 are implemented, and DISCOVER-01's spike is recorded.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -398,8 +397,10 @@ established against the live API anyway — its router answers 404 for a missing
 for a token — and it settled one of DEC-094's open questions: there is no route listing charts by
 artist or by label. It also found that creating a Beatport playlist had never worked. The playlist
 paths lacked their trailing slash, Beatport redirected them, and the redirect turned the POST into a
-GET of the playlist list, so inCrate blamed the token every time. Recording real response bodies is
-one command for whoever holds a token, `scripts/beatport_v4_spike.py`, and is owed.
+GET of the playlist list, so inCrate blamed the token every time. Real response bodies were then
+recorded with a developer's token (2026-09-23). Every reconstructed shape held, and no filter lists
+charts by artist. But a chart made by an artist names that artist, and its account's name can
+differ, so inCrate had been missing such charts; it had also read no chart's date. Both are fixed.
 
 DISCOVER-02 is implemented: migration `m0021_discover`, nine empty tables and their models, applied
 to a 50,000-track library in 6 ms. Two things in it go past the specification, each because a

@@ -210,6 +210,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - inCrate now reads the name of a Beatport chart's curator where Beatport's
   current API puts it, so charts curated by artists in your collection can be
   found; before, every chart's curator read as blank
+- **inCrate missed charts made by artists in your collection** whose Beatport
+  account has a different name from the artist — DJEFF's charts, published by
+  "OFFICIALDJEFFMUSIC", were never found for a library holding DJEFF. A chart
+  an artist made is now credited to that artist. inCrate also read no chart's
+  date, so the chart date range you chose never excluded a chart and charts
+  were not listed newest first; both now work
 - **On macOS, an export could overwrite the Rekordbox file it was read from.**
   Saving an export as `COLLECTION.XML` when the library had been imported from
   `collection.xml` was allowed, and on a Mac's ordinary disk those two names are

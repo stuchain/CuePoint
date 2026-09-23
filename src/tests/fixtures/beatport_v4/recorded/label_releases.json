@@ -1,0 +1,397 @@
+{
+  "results": [
+    {
+      "artists": [
+        {
+          "id": 413759,
+          "image": {
+            "id": 58808904,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/d3f843ae-92a3-429c-8994-741caf0ca363.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d3f843ae-92a3-429c-8994-741caf0ca363.jpg"
+          },
+          "name": "Gabriel Moraes",
+          "slug": "gabriel-moraes",
+          "url": "https://api.beatport.com/v4/catalog/artists/413759/"
+        }
+      ],
+      "bpm_range": {
+        "min": 135,
+        "max": 135
+      },
+      "catalog_number": "VOLTA078",
+      "desc": "Gabriel Moraes delivers two fast, groove-led techno cuts built around vocals that shape the identity of each track.\\n\\n\"Impulse\" pairs a haunting female vocal with distorted synth lines that respond to the lyrics, creating a tense and hypnotic atmosphere.\\n\\n\"Your Voice\" takes a darker approach, driven by a deep vocal that almost becomes another synth within the track. Its low tone locks into the rhythm, adding weight and movement to the chunky groove.\\n\\nTogether, the two tracks form a powerful, vocal-driven techno EP made for the dance floor.",
+      "enabled": true,
+      "encoded_date": "2026-08-26T16:33:56-06:00",
+      "exclusive": false,
+      "id": 7392479,
+      "image": {
+        "id": 58376148,
+        "uri": "https://geo-media.beatport.com/image_size/1400x1400/acd0d1fb-b0fa-4e18-95ec-d96f7418db34.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/acd0d1fb-b0fa-4e18-95ec-d96f7418db34.jpg"
+      },
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "label": {
+        "id": 106172,
+        "name": "VOLTA",
+        "image": {
+          "id": 32181914,
+          "uri": "https://geo-media.beatport.com/image_size/500x500/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg"
+        },
+        "slug": "volta"
+      },
+      "name": "Impulse",
+      "new_release_date": "2026-09-24",
+      "override_price": null,
+      "pre_order": true,
+      "pre_order_date": "2026-09-10",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 3.18,
+        "display": "€3.18"
+      },
+      "price_override_firm": false,
+      "publish_date": "2026-09-24",
+      "remixers": [],
+      "slug": "impulse",
+      "track_count": 2,
+      "upc": "4255928633229",
+      "updated": "2026-09-10T00:33:20-06:00",
+      "url": "https://api.beatport.com/v4/catalog/releases/7392479/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 13377,
+          "image": {
+            "id": 5042241,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/11934dca-dc22-41c3-b4ca-39571aecef2c.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/11934dca-dc22-41c3-b4ca-39571aecef2c.jpg"
+          },
+          "name": "1200 Micrograms",
+          "slug": "1200-micrograms",
+          "url": "https://api.beatport.com/v4/catalog/artists/13377/"
+        }
+      ],
+      "bpm_range": {
+        "min": 132,
+        "max": 132
+      },
+      "catalog_number": "VOLTA076",
+      "desc": "1200 Micrograms' iconic psychedelic trance classic \"Mescaline\" gets a powerful new interpretation from Brazilian techno heavyweights Victor Ruiz & Alex Stein. Keeping the hypnotic spirit of the original intact, the duo reshape it for today's dancefloors with driving grooves, rolling low-end and peak-time energy. A meeting of psytrance heritage and contemporary techno",
+      "enabled": true,
+      "encoded_date": "2026-08-19T15:19:47-06:00",
+      "exclusive": false,
+      "id": 7366176,
+      "image": {
+        "id": 58120624,
+        "uri": "https://geo-media.beatport.com/image_size/1400x1400/d6ea2fa7-c821-4786-ba02-a0b37830011c.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/d6ea2fa7-c821-4786-ba02-a0b37830011c.jpg"
+      },
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "label": {
+        "id": 106172,
+        "name": "VOLTA",
+        "image": {
+          "id": 32181914,
+          "uri": "https://geo-media.beatport.com/image_size/500x500/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg"
+        },
+        "slug": "volta"
+      },
+      "name": "Mescaline (Victor Ruiz & Alex Stein Remix)",
+      "new_release_date": "2026-08-27",
+      "override_price": null,
+      "pre_order": false,
+      "pre_order_date": "2026-08-20",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.59,
+        "display": "€1.59"
+      },
+      "price_override_firm": false,
+      "publish_date": "2026-08-27",
+      "remixers": [
+        {
+          "id": 105392,
+          "image": {
+            "id": 56769016,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/2a4e31e0-57bc-4534-bced-7c0aacf88587.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/2a4e31e0-57bc-4534-bced-7c0aacf88587.jpg"
+          },
+          "name": "Victor Ruiz",
+          "slug": "victor-ruiz",
+          "url": "https://api.beatport.com/v4/catalog/artists/105392/"
+        },
+        {
+          "id": 196067,
+          "image": {
+            "id": 35560254,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/430e59db-509b-4fdc-85f8-26adc1f760d6.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/430e59db-509b-4fdc-85f8-26adc1f760d6.jpg"
+          },
+          "name": "Alex Stein",
+          "slug": "alex-stein",
+          "url": "https://api.beatport.com/v4/catalog/artists/196067/"
+        }
+      ],
+      "slug": "mescaline-victor-ruiz-alex-stein-remix",
+      "track_count": 1,
+      "upc": "4255928632031",
+      "updated": "2026-08-20T00:33:11-06:00",
+      "url": "https://api.beatport.com/v4/catalog/releases/7366176/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 348875,
+          "image": {
+            "id": 42629533,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/e27a03b3-c0dc-4fa2-84f6-5fbbb7225d2f.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/e27a03b3-c0dc-4fa2-84f6-5fbbb7225d2f.jpg"
+          },
+          "name": "Stone Van Brooken",
+          "slug": "stone-van-brooken",
+          "url": "https://api.beatport.com/v4/catalog/artists/348875/"
+        },
+        {
+          "id": 923057,
+          "image": {
+            "id": 42144206,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/b8960720-64db-4eb0-afb1-cc01687b6247.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/b8960720-64db-4eb0-afb1-cc01687b6247.jpg"
+          },
+          "name": "Tao Andra",
+          "slug": "tao-andra",
+          "url": "https://api.beatport.com/v4/catalog/artists/923057/"
+        }
+      ],
+      "bpm_range": {
+        "min": 128,
+        "max": 130
+      },
+      "catalog_number": "VOLTA077",
+      "desc": "Tao Andra and Stone Van Brooken join forces for \"Altan,\" a two-track collaboration born during a period when both artists were living in Lisbon. After quickly becoming friends, taking that connection into the studio felt like a natural next step, and with their distinct musical backgrounds, the idea was to find a space somewhere between melodic and peak-time techno.",
+      "enabled": true,
+      "encoded_date": "2026-08-10T14:17:51-06:00",
+      "exclusive": false,
+      "id": 7332765,
+      "image": {
+        "id": 57977651,
+        "uri": "https://geo-media.beatport.com/image_size/1400x1400/96a22370-258a-40e5-b48b-1e84f742ee98.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/96a22370-258a-40e5-b48b-1e84f742ee98.jpg"
+      },
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "label": {
+        "id": 106172,
+        "name": "VOLTA",
+        "image": {
+          "id": 32181914,
+          "uri": "https://geo-media.beatport.com/image_size/500x500/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg"
+        },
+        "slug": "volta"
+      },
+      "name": "Altan",
+      "new_release_date": "2026-09-10",
+      "override_price": null,
+      "pre_order": false,
+      "pre_order_date": "2026-08-27",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 3.18,
+        "display": "€3.18"
+      },
+      "price_override_firm": false,
+      "publish_date": "2026-09-10",
+      "remixers": [],
+      "slug": "altan",
+      "track_count": 2,
+      "upc": "4255928630655",
+      "updated": "2026-08-27T00:33:15-06:00",
+      "url": "https://api.beatport.com/v4/catalog/releases/7332765/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 105392,
+          "image": {
+            "id": 56769016,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/2a4e31e0-57bc-4534-bced-7c0aacf88587.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/2a4e31e0-57bc-4534-bced-7c0aacf88587.jpg"
+          },
+          "name": "Victor Ruiz",
+          "slug": "victor-ruiz",
+          "url": "https://api.beatport.com/v4/catalog/artists/105392/"
+        },
+        {
+          "id": 196067,
+          "image": {
+            "id": 35560254,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/430e59db-509b-4fdc-85f8-26adc1f760d6.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/430e59db-509b-4fdc-85f8-26adc1f760d6.jpg"
+          },
+          "name": "Alex Stein",
+          "slug": "alex-stein",
+          "url": "https://api.beatport.com/v4/catalog/artists/196067/"
+        }
+      ],
+      "bpm_range": {
+        "min": 128,
+        "max": 128
+      },
+      "catalog_number": "VOLTA075",
+      "desc": "Khainz revisits Alex Stein & Victor Ruiz's iconic \"New Generation\" with a remix rooted in nearly two decades of friendship. After first meeting Victor in Brazil in 2009 and sharing stages around the world with both artists over the years, Khainz set out to reimagine a track that had long been a staple in his DJ sets. Three years and five versions later, the remix stays true to the original's driving groove while adding Khainz's unmistakable touch, delivering a fresh take that feels both timeless and deeply personal.",
+      "enabled": true,
+      "encoded_date": "2026-07-31T10:21:42-06:00",
+      "exclusive": false,
+      "id": 7296444,
+      "image": {
+        "id": 57631247,
+        "uri": "https://geo-media.beatport.com/image_size/1400x1400/5840a102-6b44-4c6b-8a8a-5327b2d8d906.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/5840a102-6b44-4c6b-8a8a-5327b2d8d906.jpg"
+      },
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "label": {
+        "id": 106172,
+        "name": "VOLTA",
+        "image": {
+          "id": 32181914,
+          "uri": "https://geo-media.beatport.com/image_size/500x500/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg"
+        },
+        "slug": "volta"
+      },
+      "name": "New Generation (Khainz Remix)",
+      "new_release_date": "2026-08-13",
+      "override_price": null,
+      "pre_order": false,
+      "pre_order_date": "2026-08-06",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.59,
+        "display": "€1.59"
+      },
+      "price_override_firm": false,
+      "publish_date": "2026-08-13",
+      "remixers": [
+        {
+          "id": 36604,
+          "image": {
+            "id": 42679643,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/b4891647-5cae-4262-9ee2-52be6aa2dd0f.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/b4891647-5cae-4262-9ee2-52be6aa2dd0f.jpg"
+          },
+          "name": "Khainz",
+          "slug": "khainz",
+          "url": "https://api.beatport.com/v4/catalog/artists/36604/"
+        }
+      ],
+      "slug": "new-generation-khainz-remix",
+      "track_count": 1,
+      "upc": "4255928629581",
+      "updated": "2026-08-06T00:33:18-06:00",
+      "url": "https://api.beatport.com/v4/catalog/releases/7296444/",
+      "is_hype": false
+    },
+    {
+      "artists": [
+        {
+          "id": 105392,
+          "image": {
+            "id": 56769016,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/2a4e31e0-57bc-4534-bced-7c0aacf88587.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/2a4e31e0-57bc-4534-bced-7c0aacf88587.jpg"
+          },
+          "name": "Victor Ruiz",
+          "slug": "victor-ruiz",
+          "url": "https://api.beatport.com/v4/catalog/artists/105392/"
+        },
+        {
+          "id": 866330,
+          "image": {
+            "id": 56727437,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/c5d87508-56a8-4271-8325-b84f63c4fb28.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/c5d87508-56a8-4271-8325-b84f63c4fb28.jpg"
+          },
+          "name": "Kaufmann (DE)",
+          "slug": "kaufmann-de",
+          "url": "https://api.beatport.com/v4/catalog/artists/866330/"
+        }
+      ],
+      "bpm_range": {
+        "min": 130,
+        "max": 130
+      },
+      "catalog_number": "VOLTA074",
+      "desc": "Victor Ruiz & Kaufmann (DE) join forces for their first collaboration, \"Don't Mess With Us\".",
+      "enabled": true,
+      "encoded_date": "2026-07-13T16:33:49-06:00",
+      "exclusive": false,
+      "id": 7193364,
+      "image": {
+        "id": 56897367,
+        "uri": "https://geo-media.beatport.com/image_size/1400x1400/11ac23f4-28d2-4de0-96d9-9371be8dbbf2.jpg",
+        "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/11ac23f4-28d2-4de0-96d9-9371be8dbbf2.jpg"
+      },
+      "is_explicit": false,
+      "is_ugc_remix": false,
+      "is_dj_edit": false,
+      "is_dj_version": false,
+      "label": {
+        "id": 106172,
+        "name": "VOLTA",
+        "image": {
+          "id": 32181914,
+          "uri": "https://geo-media.beatport.com/image_size/500x500/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/45207f3f-5f12-4fc9-ab1c-12c70127e9a9.jpg"
+        },
+        "slug": "volta"
+      },
+      "name": "Don't Mess With Us",
+      "new_release_date": "2026-07-23",
+      "override_price": null,
+      "pre_order": false,
+      "pre_order_date": "2026-07-16",
+      "price": {
+        "code": "EUR",
+        "symbol": "€",
+        "value": 1.39,
+        "display": "€1.39"
+      },
+      "price_override_firm": false,
+      "publish_date": "2026-07-23",
+      "remixers": [],
+      "slug": "dont-mess-with-us",
+      "track_count": 1,
+      "upc": "4255928625903",
+      "updated": "2026-07-16T00:33:18-06:00",
+      "url": "https://api.beatport.com/v4/catalog/releases/7193364/",
+      "is_hype": false
+    }
+  ],
+  "next": "api.beatport.com/v4/catalog/labels/106172/releases/?per_page=5&page=2",
+  "previous": null,
+  "count": 81,
+  "page": "1/17",
+  "per_page": 5
+}

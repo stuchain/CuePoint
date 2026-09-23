@@ -1,0 +1,87 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "page": "1/1",
+  "per_page": 100,
+  "results": [
+    {
+      "id": 19000020,
+      "name": "Blank Sleeve",
+      "mix_name": "Original Mix",
+      "slug": "blank-sleeve",
+      "artists": [
+        {
+          "id": 301004,
+          "name": "Above & Below",
+          "slug": "above-below",
+          "url": "https://api.beatport.com/v4/catalog/artists/301004/",
+          "image": {
+            "id": 5004,
+            "uri": "https://geo-media.beatport.com/image_size/590x404/301004.jpg",
+            "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/301004.jpg"
+          }
+        }
+      ],
+      "remixers": [],
+      "bpm": 130,
+      "key": {
+        "id": 10,
+        "name": "G Minor",
+        "letter": "G",
+        "camelot_number": 6,
+        "camelot_letter": "A",
+        "chord_type": {
+          "id": 1,
+          "name": "Minor",
+          "url": "https://api.beatport.com/v4/catalog/chord-types/1/"
+        },
+        "is_sharp": false,
+        "is_flat": false,
+        "url": "https://api.beatport.com/v4/catalog/keys/10/"
+      },
+      "genre": {
+        "id": 5,
+        "name": "House",
+        "slug": "house",
+        "url": "https://api.beatport.com/v4/catalog/genres/5/"
+      },
+      "sub_genre": null,
+      "release": {
+        "id": 4500020,
+        "name": "White Label 001",
+        "slug": "white-label-001",
+        "label": null,
+        "image": {
+          "id": 9020,
+          "uri": "https://geo-media.beatport.com/image_size/1400x1400/4500020.jpg",
+          "dynamic_uri": "https://geo-media.beatport.com/image_size/{w}x{h}/4500020.jpg"
+        }
+      },
+      "publish_date": "2026-08-30",
+      "new_release_date": "2026-08-30",
+      "isrc": "XXA0B2400001",
+      "length": "6:45",
+      "length_ms": 405000,
+      "number": 1,
+      "exclusive": false,
+      "is_available_for_streaming": true,
+      "is_hype": false,
+      "price": {
+        "code": "USD",
+        "symbol": "$",
+        "value": 1.69,
+        "display": "$1.69"
+      },
+      "sample_url": "https://geo-samples.beatport.com/track/19000020.LOFI.mp3",
+      "sample_start_ms": 130976,
+      "sample_end_ms": 250976,
+      "current_status": {
+        "id": 10,
+        "name": "General Content",
+        "url": "https://api.beatport.com/v4/auxiliary/current-status/10/"
+      },
+      "url": "https://api.beatport.com/v4/catalog/tracks/19000020/"
+    }
+  ]
+}

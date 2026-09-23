@@ -174,6 +174,15 @@ src/output/
 # scoring-unchanged test has nothing to compare against.
 !src/tests/fixtures/beatport/scoring_baseline.json
 
+# Beatport v4 catalog fixtures (exception to user-output *.json above). The
+# shapes DISCOVER-01's parsers are tested against, and the sanitized live
+# recordings its spike writes into recorded/. Without them a fresh clone's
+# parser, agreement and regression tests have nothing to read — which is how
+# they went uncommitted at first.
+!src/tests/fixtures/beatport_v4/*.json
+!src/tests/fixtures/beatport_v4/recorded/
+!src/tests/fixtures/beatport_v4/recorded/*.json
+
 # Test fixture (exception to user-output *.json above). The Beatport answers the
 # end-to-end journey and the offline match test read (CLEAN-14); without it
 # neither can match anything.
