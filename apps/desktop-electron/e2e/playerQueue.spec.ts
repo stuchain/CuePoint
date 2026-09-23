@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { waitForEngine } from "./engineReady";
+
 /**
  * A view becomes a playing queue, through the whole stack (PLAYER-05, DEC-012).
  *
@@ -79,6 +81,9 @@ test("playing a view queues exactly what the table shows, in its order", async (
   try {
     const win: Page = await app.firstWindow({ timeout: 60_000 });
     await expect(win).toHaveTitle(/CuePoint/i, { timeout: 30_000 });
+    // A window is not an engine: the shell now opens before the engine has
+    // answered, and everything below calls the engine.
+    await waitForEngine(win);
 
     const started = await win.evaluate(
       (file) => (window as never as Record<string, any>).cuepoint.startLibraryImport({ xml_path: file }),

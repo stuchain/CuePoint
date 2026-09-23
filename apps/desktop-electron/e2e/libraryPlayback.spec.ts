@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { waitForEngine } from "./engineReady";
+
 /**
  * Playing from the Library table, by hand (PLAYER-09, DEC-012, DEC-013).
  *
@@ -118,6 +120,9 @@ test("plays and queues from the Library table", async () => {
   try {
     const win = await app.firstWindow({ timeout: 60_000 });
     await expect(win).toHaveTitle(/CuePoint/i, { timeout: 30_000 });
+    // A window is not an engine: the shell now opens before the engine has
+    // answered, and everything below calls the engine.
+    await waitForEngine(win);
     await app.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0]?.setSize(1440, 900);
     });

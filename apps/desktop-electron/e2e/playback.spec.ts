@@ -10,6 +10,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { waitForEngine } from "./engineReady";
+
 /**
  * Phase 5 end to end, in the running app (PLAYER-12).
  *
@@ -84,6 +86,9 @@ function launch(
 async function ready(app: ElectronApplication): Promise<Page> {
   const win = await app.firstWindow({ timeout: 60_000 });
   await expect(win).toHaveTitle(/CuePoint/i, { timeout: 30_000 });
+  // A window is not an engine: the shell now opens before the engine has
+  // answered, and everything below calls the engine.
+  await waitForEngine(win);
   await app.evaluate(({ BrowserWindow }) => {
     BrowserWindow.getAllWindows()[0]?.setSize(1440, 900);
   });
