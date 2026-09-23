@@ -1007,6 +1007,15 @@ class BeatportApi:
 
     # --- Catalog (DISCOVER-01) -------------------------------------------------
 
+    def require_token(self) -> None:
+        """Refuse, as ``no_token``, when no token is configured (DISCOVER-04).
+
+        Raises:
+            BeatportAPIError: Classified ``no_token`` by
+                ``classify_beatport_error``.
+        """
+        self._client.require_token()
+
     def get_track(self, track_id: int) -> Optional[CatalogTrack]:
         """One catalog track by id, or None when Beatport has no such track."""
         tid = positive_id(track_id)

@@ -3,7 +3,8 @@
 
 """What CuePoint has read from the Beatport catalog (DISCOVER-02).
 
-The three types over ``m0021_discover``'s catalog cache:
+The types over ``m0021_discover``'s catalog cache, and over the identity view
+``m0023_beatport_identity`` reads out of it:
 
 - :class:`CachedBeatportTrack` — one ``beatport_tracks`` row, DISCOVER-01's
   ``CatalogTrack`` as stored, with when it was read.
@@ -11,6 +12,9 @@ The three types over ``m0021_discover``'s catalog cache:
   credited on that track, with its Beatport artist id when Beatport gave one.
 - :class:`BeatportNameLookup` — one ``beatport_name_lookups`` row: what a name
   search answered, including "nothing" (DEC-091).
+- :class:`LibraryBeatportCredit` — one ``library_beatport_credits`` row: an
+  artist or label Beatport credits on a library track's accepted match
+  (DEC-095). Read-only: it is a view.
 
 A model imports from ``cuepoint.models`` and from nowhere else, so the mapping
 from ``CatalogTrack`` lives with the code that writes these rows (DISCOVER-04,
@@ -234,6 +238,82 @@ class CachedBeatportCredit:
             name=data["name"],
             name_key=data["name_key"],
             artist_id=data.get("artist_id"),
+        )
+
+
+@dataclass(frozen=True)
+class LibraryBeatportCredit:
+    """Who Beatport says a library track is by, or which label it is on.
+
+    One row of the ``library_beatport_credits`` view (migration 0023, DEC-095):
+    a library track whose match is accepted, and whose Beatport track has been
+    read into the catalog cache.
+
+    Attributes:
+        track_id: The library track.
+        beatport_track_id: The Beatport track its accepted match stands for.
+        kind: :data:`ENTITY_ARTIST` or :data:`ENTITY_LABEL`.
+        role: For an artist, one of
+            :data:`~cuepoint.models.track_credit.CREDIT_ROLES`; ``None`` for a
+            label.
+        position: For an artist, its place among that role's names in
+            Beatport's order; ``None`` for a label.
+        beatport_id: Beatport's artist or label id, when Beatport gave one.
+        name: Beatport's spelling. Always present for an artist; a label
+            Beatport gave an id and no name has none.
+        name_key: ``name`` normalized for identity (DISCOVER-03), present
+            exactly when ``name`` is.
+    """
+
+    track_id: int
+    beatport_track_id: int
+    kind: str
+    role: Optional[str] = None
+    position: Optional[int] = None
+    beatport_id: Optional[int] = None
+    name: Optional[str] = None
+    name_key: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        """Validate the row."""
+        object.__setattr__(self, "track_id", required_id(self.track_id, "track_id"))
+        object.__setattr__(
+            self,
+            "beatport_track_id",
+            required_id(self.beatport_track_id, "beatport_track_id"),
+        )
+        one_of(self.kind, ENTITY_KINDS, "kind")
+        object.__setattr__(
+            self, "beatport_id", optional_id(self.beatport_id, "beatport_id")
+        )
+        optional_text(self.name, "name")
+        optional_text(self.name_key, "name_key")
+        if (self.name is None) != (self.name_key is None):
+            raise ValueError("name and name_key are stored together")
+        if self.kind == ENTITY_ARTIST:
+            one_of(self.role, CREDIT_ROLES, "role")
+            object.__setattr__(
+                self, "position", non_negative(self.position, "position")
+            )
+            required_text(self.name, "name")
+        elif self.role is not None or self.position is not None:
+            raise ValueError("A label has no role or position")
+        elif self.beatport_id is None and self.name is None:
+            raise ValueError("A label credit names a label")
+
+    @classmethod
+    def from_row(cls, row: Any) -> "LibraryBeatportCredit":
+        """Build a credit from a view row (``sqlite3.Row`` or mapping)."""
+        data = dict(row)
+        return cls(
+            track_id=data["track_id"],
+            beatport_track_id=data["beatport_track_id"],
+            kind=data["kind"],
+            role=data.get("role"),
+            position=data.get("position"),
+            beatport_id=data.get("beatport_id"),
+            name=data.get("name"),
+            name_key=data.get("name_key"),
         )
 
 

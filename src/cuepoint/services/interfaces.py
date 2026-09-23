@@ -63,6 +63,13 @@ if TYPE_CHECKING:
     from cuepoint.models.track_metadata import TrackMetadata
     from cuepoint.models.track_credit import DerivedIndex, TrackCredit
     from cuepoint.services.credit_index_service import CreditIndexResult
+    from cuepoint.incrate.beatport_api_models import CatalogTrack
+    from cuepoint.models.beatport_cache import (
+        CachedBeatportCredit,
+        CachedBeatportTrack,
+        LibraryBeatportCredit,
+    )
+    from cuepoint.services.beatport_resolve_service import BeatportResolveResult
     from cuepoint.models.track_clean_state import TrackCleanState
     from cuepoint.models.rekordbox_export_values import ExportTrackValues
     from cuepoint.services.rekordbox_export_service import (
@@ -1220,6 +1227,66 @@ class ICreditIndexService(ABC):
         should_cancel: Optional[Callable[[], bool]] = None,
     ) -> "CreditIndexResult":
         """Rebuild every track's credits and label keys, a chunk at a time."""
+        ...
+
+
+class IBeatportCatalogRepository(ABC):
+    """Interface for the Beatport catalog cache and the library's identity on it.
+
+    Owns the SQL for ``beatport_tracks`` and ``beatport_track_artists``
+    (DISCOVER-02), and reads migration 0023's two views: what the library owns
+    (DEC-092) and who Beatport says its tracks are by (DEC-095).
+    """
+
+    @abstractmethod
+    def upsert_tracks(self, tracks: Sequence["CatalogTrack"], fetched_at: str) -> int:
+        """Store catalog tracks and their credits, replacing what was read before."""
+        ...
+
+    @abstractmethod
+    def get_tracks(self, ids: Iterable[int]) -> Dict[int, "CachedBeatportTrack"]:
+        """The cached tracks among ``ids``, keyed by Beatport track id."""
+        ...
+
+    @abstractmethod
+    def credits(self, beatport_track_id: int) -> List["CachedBeatportCredit"]:
+        """One cached track's credits, artists first, each role in order."""
+        ...
+
+    @abstractmethod
+    def owned_among(self, ids: Iterable[int]) -> Set[int]:
+        """Which of ``ids`` the library owns (DEC-092)."""
+        ...
+
+    @abstractmethod
+    def resolve_plan(self, stale_before: str) -> Tuple[List[int], int]:
+        """Owned Beatport ids to read, and how many owned ids there are in all."""
+        ...
+
+    @abstractmethod
+    def library_credits(
+        self, track_ids: Iterable[int]
+    ) -> Dict[int, List["LibraryBeatportCredit"]]:
+        """The Beatport artists and label of each resolved library track."""
+        ...
+
+
+class IBeatportResolveService(ABC):
+    """Interface for resolving accepted matches into Beatport identities (DISCOVER-04)."""
+
+    @abstractmethod
+    def require_token(self) -> None:
+        """Refuse, as ``no_token``, when no Beatport token is configured."""
+        ...
+
+    @abstractmethod
+    def resolve(
+        self,
+        *,
+        on_progress: Optional[Callable[[int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "BeatportResolveResult":
+        """Read every owned Beatport track the cache lacks or holds stale."""
         ...
 
 

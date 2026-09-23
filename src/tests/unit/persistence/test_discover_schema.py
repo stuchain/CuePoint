@@ -2069,6 +2069,8 @@ class TestOneModuleRunsEachTablesSQL:
     OWNERS = {
         "track_credits": "persistence/track_credit_repository.py",
         "derived_indexes": "persistence/track_credit_repository.py",
+        "beatport_tracks": "persistence/beatport_catalog_repository.py",
+        "beatport_track_artists": "persistence/beatport_catalog_repository.py",
     }
 
     @pytest.mark.parametrize("table", DISCOVER_TABLES)
@@ -2080,7 +2082,9 @@ class TestOneModuleRunsEachTablesSQL:
         )
         offenders = []
         for path in sorted(package.rglob("*.py")):
-            if path.name == "m0021_discover.py":
+            # The schema itself: m0021 creates the tables, and m0023's views
+            # (DISCOVER-04) read two of them. Neither runs a query.
+            if path.parent.name == "migrations":
                 continue
             if statement.search(path.read_text(encoding="utf-8")):
                 offenders.append(path.relative_to(package).as_posix())

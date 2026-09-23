@@ -151,6 +151,17 @@ class BeatportApiClient:
             "Content-Type": "application/json",
         }
 
+    def require_token(self) -> None:
+        """Refuse, as ``no_token``, when no token is configured.
+
+        What a job asks before it exists, so that "no token" is a refusal the
+        person can act on rather than a job that starts and fails (DEC-098).
+
+        Raises:
+            BeatportAPIError: Classified ``no_token``.
+        """
+        self._require_token()
+
     def _require_token(self) -> None:
         if not self.access_token:
             raise BeatportAPIError(

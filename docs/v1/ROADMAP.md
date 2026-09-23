@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-03 are implemented, and DISCOVER-01's spike is recorded.
+(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-04 are implemented, and DISCOVER-01's spike is recorded.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -365,7 +365,7 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-03 implemented
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-04 implemented
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
@@ -420,6 +420,16 @@ measured choices went the faster way. A credited artist is a set lookup: 0.1 ms,
 as the specified `EXISTS`. A label compares stored keys: 13 ms, against 31.5 ms through a SQLite
 function. The specification contradicted itself on "A, B & C", and its rule was kept over its
 example. Caching the pure name functions took the index's cost on an import from 1.5 s to 0.2 s.
+
+DISCOVER-04 is implemented: CuePoint knows which Beatport tracks the library owns, and, once asked
+to resolve them, who each library track is by on Beatport. "Owned" is written once, as a database
+view over Clean's accepted matches, and a Python copy of the rule is held to it by a test over
+every case and 3,000 generated ids and URLs. Nothing is stored, so a match that is rejected or
+re-pointed changes both answers at once. The resolve job reads the owned tracks the catalog cache
+lacks, 100 per request: 10,000 tracks are 100 requests and 0.9 s of CuePoint's own time, and a
+second resolve within the month reads nothing. It stops at once on a refusal every later request
+would repeat, and after three failed batches in a row. With no token it is refused before a job
+exists.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 

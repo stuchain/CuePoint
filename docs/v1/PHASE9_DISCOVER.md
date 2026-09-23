@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **DISCOVER-01 to DISCOVER-03 implemented, and DISCOVER-01's spike recorded against the
-live API (2026-09-23; see its outcome). DISCOVER-04…DISCOVER-12 not started.** The twelve steps below replace the
+Status: **DISCOVER-01 to DISCOVER-04 implemented, and DISCOVER-01's spike recorded against the
+live API (2026-09-23; see its outcome). DISCOVER-05…DISCOVER-12 not started.** The twelve steps below replace the
 roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -815,6 +815,170 @@ DISCOVER-01 found no batched lookup, it is one request per track, and the named 
 consecutive-failure stop are what keep it polite.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented. "Owned" is written once, as a view, with a Python copy of the rule that a
+test holds to it. A job reads the Beatport tracks the library owns into the catalog cache, and a
+second view says who each library track is by on Beatport, and on which label.
+
+**What was built.**
+
+- **Migration `m0023_beatport_identity`**, two views and nothing stored:
+  - `library_beatport_tracks (track_id, candidate_id, beatport_track_id)` is DEC-092's rule. It has
+    one row per library track whose match is accepted, automatically or by the user. The id comes
+    from the accepted candidate's `beatport_track_id`, or, when that is not an id, from the
+    `/track/<slug>/<id>` in its URL. A track with neither has no row.
+  - `library_beatport_credits (track_id, beatport_track_id, kind, role, position, beatport_id, name,
+    name_key)` is DEC-095's identity. It has one row per Beatport artist or remixer credit on each
+    owned track that has been read into the cache, and one row for its label.
+- **`services/beatport_ownership.py`** holds the rule in Python (`accepted_beatport_track_id`,
+  `beatport_id`, `url_beatport_id`), the fragment later steps join (`owned_beatport_ids_sql()`,
+  which selects from the view), and `is_owned`.
+- **`persistence/beatport_catalog_repository.py`** is the one module that runs SQL on
+  `beatport_tracks` and `beatport_track_artists`, and the reader of both views.
+  - `upsert_tracks` stores a batch in one transaction as an `ON CONFLICT DO UPDATE`, and rewrites
+    each track's credits in the same transaction (DISCOVER-02's first binding note).
+  - `catalog_rows` is the one mapping from DISCOVER-01's `CatalogTrack`. The label and each credit
+    are keyed by DISCOVER-03's `name_key`, so a Beatport name and a library name compare.
+  - It also has `get_tracks`, `credits`, `owned_among`, `resolve_plan` and `library_credits`.
+  - `LibraryBeatportCredit` models a view row.
+- **`services/beatport_resolve_service.py`** reads every owned Beatport track that the cache has
+  no row for, or a row older than `RESOLVED_TRACK_MAX_AGE` (30 days). It asks for
+  `RESOLVE_BATCH_SIZE` (100) at a time through `get_tracks`, and each batch is its own
+  transaction. It checks for a cancel between batches.
+  - It stops at the first refusal that every later request would repeat: `no_token`, `rejected`,
+    `forbidden`, or `rate_limited` after the one `Retry-After` the client honours.
+  - It also stops after `MAX_CONSECUTIVE_FAILURES` (3) failed batches in a row. A batch that
+    succeeds resets the count.
+  - It records one activity event, `discover.beatport.resolved`, with its counts and outcome.
+    The feed shows it whatever the outcome, including "up to date".
+- **`engine/beatport_resolve_jobs.py`** registers the job type `beatport_resolve`.
+  - `start_beatport_resolve_job` asks `require_token()` first. With no token it raises the
+    `no_token` refusal, and no job is created.
+  - A failure's class goes in the job's result, and its code is `BEATPORT_<CLASS>`.
+  - The job conflicts only with itself.
+  - The service is built per job, so its client carries the token configured when the job
+    starts.
+- **`require_token()`** was added to `BeatportApiClient` and `BeatportApi`. It is an extension
+  inCrate does not use.
+
+**Where it differs from the specification, and why.**
+
+- **The one definition is a view, not a fragment built in Python.** The identity view has to join
+  owned tracks by the same rule, and a second copy of the rule in SQL text is what fact 3 forbids.
+  The view is that copy's only place. `owned_beatport_ids_sql()` selects from it. A migration's SQL
+  never changes once shipped, so a change to the rule is a new migration that replaces the view.
+  `m0016` did the same for duplicate signals.
+- **A Beatport id is the plain decimal of a positive 64-bit integer**, tested by casting the text to
+  an integer and back. So `"0123"`, `" 123"`, `"12abc"` and a 20-digit number are refused, and fall
+  back to the URL. SQLite answers the test with no regular expression, and Beatport has never
+  written any of the refused forms. It is also faster. At 50,000 accepted matches, reading every
+  owned id takes 21 ms this way, against 57 ms with the `GLOB` checks it replaced. Nesting the URL
+  parse in a scalar subquery means it runs only for the rare candidate with no usable stored id.
+- **The SQL for `is_owned` is in the repository.** `test_persistence_boundary` forbids a service
+  from touching the database. The service module keeps the rule, the fragment and `is_owned`, and
+  `is_owned` delegates.
+- **Some refusals stop the job at once**, before three failures. The specification named only the
+  consecutive-failure stop. But a rejected token fails every later request the same way, and
+  repeating a rate-limited request only extends the limit.
+- **A track Beatport no longer has is asked about again on the next resolve.** The schema has no
+  place to record that a track is gone (DISCOVER-02), and in a batch the question costs no extra
+  request.
+
+**Measured** (median of five, against the fake Beatport of the tests, so this is CuePoint's own
+work; wall-clock time is its round trips on top):
+
+| What | Result |
+| --- | --- |
+| Resolve 10,000 accepted tracks, batched | 0.88 s, **100 requests** |
+| The same with the batched filter refused | 0.91 s, 10,001 requests (the refused one, then one per track) |
+| A second resolve within the age | 20 ms, **no requests** |
+
+At 50,000 library tracks with 45,000 accepted matches, 50,000 cached tracks and two credits each,
+the two views answer as follows:
+
+| Query | Time |
+| --- | --- |
+| Every owned id (`count(*)` over the view) | 21.4 ms |
+| `owned_among` for 500 ids | 32.4 ms |
+| 500 catalog ids filtered by `IN (owned_beatport_ids_sql())` | 57.1 ms |
+| A Beatport artist's library tracks, by id | 39.4 ms |
+| A Beatport label's library tracks, by id | 50.5 ms |
+| One window's identity (100 library tracks) | 0.8 ms |
+| `resolve_plan` (nothing stale) | 53.2 ms |
+
+The owned id is computed from each accepted candidate, so no index can serve it, and every question
+about many tracks scans the accepted matches once. One window's identity starts from its track ids
+and reads each row by key.
+
+**What binds later steps.**
+
+1. **Ownership is read, never re-derived.** DISCOVER-05's run window, DISCOVER-06's wantlist and
+   playlist push, and DISCOVER-07's pages join `owned_beatport_ids_sql()` or call `owned_among`.
+   Each costs a scan of the accepted matches, 20–60 ms at 50,000, so each statement should
+   reference it once.
+2. **DISCOVER-07's `beatport_artist` and `beatport_label` rule fields** read
+   `library_beatport_credits` with `kind` and `beatport_id`, at 39–51 ms per statement at 50,000.
+   A page's count, window and facets are several statements, so DISCOVER-07 measures the page
+   whole. If the page is too slow, the fix is an index on an expression over `match_candidates`,
+   not a stored copy of the id.
+3. **Every catalog write goes through `BeatportCatalogRepository.upsert_tracks`**, DISCOVER-05's
+   found tracks included, so every label and credit key is written the same way. `fetched_at` is
+   `datetime.now(timezone.utc).isoformat()`, and the plan compares it as text.
+4. **The job has no route yet.** DISCOVER-09 adds `resolve/start`. It must turn the `no_token`
+   refusal into a value, and add `beatport_resolve` to the status strip's `JOB_VERBS` with
+   `PROGRESS_MESSAGE`. A test holds that nothing but the job module starts the job, so the route
+   is the only caller it gains.
+5. **Linking a name group to an id** (DEC-095's last implication) is a join on the same library
+   track: `track_credits.name_key` against `library_beatport_credits.name_key`, where the credit
+   carries a `beatport_id`. DISCOVER-07 writes it.
+
+**Tests**:
+
+- 58 in `src/tests/unit/services/test_beatport_ownership.py`:
+  - the rule, case by case;
+  - the view and the Python agreeing on every case (automatic and user accepts, rejected, needs
+    review, no match, a stored id with and without a URL, a URL with none, ids that are not ids,
+    and a state resting on a candidate other than the winner);
+  - the two agreeing again on 3,000 generated ids and URLs;
+  - `is_owned` over more ids than a statement carries;
+  - ownership following a reject, a new candidate and a deleted track;
+  - the real accept and reject path through `MatchStateService`.
+
+  Breaking the Python rule on purpose, by letting a leading zero through, fails the generated-ids
+  test.
+- 40 in `src/tests/unit/persistence/test_beatport_catalog_repository.py`:
+  - the mapping against the fixture and every recorded track;
+  - a re-read that updates in place, rewrites credits and keeps the wantlist entry that references
+    the track;
+  - a refused track left out while the rest are stored, and a batch that fails storing nothing;
+  - the plan (missing and stale, each id once, only owned tracks);
+  - identity following a reject and a new candidate at once;
+  - the model's refusals, the migration applied alone to a version-22 library, and the query plans.
+- 36 in `src/tests/unit/services/test_beatport_resolve_service.py`, over DISCOVER-01's real
+  `BeatportApi` with a fake HTTP client that counts requests:
+  - 1,000 tracks in 10 requests, one row each;
+  - reuse within the age, and a re-read after it;
+  - a cancel between batches, with the next resolve finishing the job;
+  - the failure limit, and a success resetting it;
+  - 401, 403 and 429 stopping at once;
+  - no token;
+  - not found, not asked and unreadable answers;
+  - the per-track fallback, and the activity event.
+
+  The 10,000-track measure is marked slow.
+- 14 in `src/tests/unit/engine/test_beatport_resolve_jobs.py`, through the real job store and
+  container:
+  - refusal before the job exists, including with the container's own client and no token
+    configured;
+  - success, failure classes, cancel, and exclusivity;
+  - running beside an import;
+  - nothing but the job module starting it.
+- 3 new in `test_beatport_api_client.py`, for `require_token`.
+- DISCOVER-02's ownership test now names the repository as the owner of the two catalog tables.
+
+**Checks run**: `python -m pytest src/tests` (full suite), `ruff check src/`,
+`ruff format --check src/`, `check_no_qt_in_core.py`, the strict mypy gate with the three new
+modules added (`persistence/` and `migrations/` were already in it), and `git diff --check`.
 
 ---
 

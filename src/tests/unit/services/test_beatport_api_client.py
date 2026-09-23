@@ -201,6 +201,29 @@ class TestErrorClasses:
         assert classify_beatport_error(RuntimeError("?")) == ERROR_UNAVAILABLE
 
 
+class TestRequireToken:
+    """DISCOVER-04: a job asks before it exists, and asks nothing of Beatport."""
+
+    def test_no_token_is_refused_as_no_token(self):
+        session = Mock()
+        client = BeatportApiClient("https://api.test", "", session=session)
+        error = _raised(client.require_token)
+        assert classify_beatport_error(error) == ERROR_NO_TOKEN
+        session.request.assert_not_called()
+
+    def test_a_token_is_not_refused_and_nothing_is_asked(self):
+        session = Mock()
+        BeatportApiClient("https://api.test", "t", session=session).require_token()
+        session.request.assert_not_called()
+
+    def test_the_api_asks_its_client(self):
+        from cuepoint.services.beatport_api import BeatportApi
+
+        empty = BeatportApi(BeatportApiClient("https://api.test", ""))
+        assert classify_beatport_error(_raised(empty.require_token)) == ERROR_NO_TOKEN
+        BeatportApi(BeatportApiClient("https://api.test", "t")).require_token()
+
+
 class TestRetryAfter:
     def test_parse_seconds_and_dates(self):
         now = datetime(2026, 9, 23, 12, 0, 0, tzinfo=timezone.utc)

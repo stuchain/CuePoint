@@ -44,6 +44,8 @@ from cuepoint.services.interfaces import (
     IRekordboxExportService,
     IReviewExportService,
     ITagWriteService,
+    IBeatportCatalogRepository,
+    IBeatportResolveService,
     ICreditIndexService,
     IDuplicateRepository,
     IDuplicateService,
@@ -90,6 +92,7 @@ from cuepoint.persistence.rekordbox_export_repository import (
 )
 from cuepoint.services.tag_write_service import TagWriteService
 from cuepoint.persistence.duplicate_repository import DuplicateRepository
+from cuepoint.services.beatport_resolve_service import BeatportResolveService
 from cuepoint.services.credit_index_service import CreditIndexService
 from cuepoint.persistence.file_status_repository import FileStatusRepository
 from cuepoint.persistence.job_repository import JobRepository
@@ -104,6 +107,7 @@ from cuepoint.persistence.tag_repository import TagRepository
 from cuepoint.persistence.track_metadata_repository import (
     TrackMetadataRepository,
 )
+from cuepoint.persistence.beatport_catalog_repository import BeatportCatalogRepository
 from cuepoint.persistence.track_credit_repository import TrackCreditRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
@@ -667,6 +671,29 @@ def bootstrap_services() -> None:
         return BeatportApi(client=client, cache_service=cache_service)
 
     container.register_factory(BeatportApi, create_beatport_api)
+
+    # Discover's catalog cache and the library's identity on it (DISCOVER-04):
+    # the repository, and the resolve service, which is built per job so that
+    # the Beatport client it holds carries the token configured when the job
+    # starts.
+    def create_beatport_catalog_repository() -> IBeatportCatalogRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return BeatportCatalogRepository(
+            database_service=container.resolve(IDatabaseService)
+        )
+
+    container.register_factory(
+        IBeatportCatalogRepository, create_beatport_catalog_repository
+    )
+
+    def create_beatport_resolve_service() -> IBeatportResolveService:
+        return BeatportResolveService(
+            catalog_repository=container.resolve(IBeatportCatalogRepository),
+            beatport=container.resolve(BeatportApi),
+            activity_service=container.resolve(IActivityService),
+        )
+
+    container.register_factory(IBeatportResolveService, create_beatport_resolve_service)
 
     # inCrate Phase 1: Inventory service (import from XML, enrich via shared matching pipeline + workers)
     def create_inventory_service() -> InventoryService:
