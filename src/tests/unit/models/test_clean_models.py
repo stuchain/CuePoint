@@ -74,10 +74,14 @@ from cuepoint.models.match_attempt import (
 )
 from cuepoint.models.row_values import (
     flag,
+    https_url,
     non_negative,
     one_of,
+    optional_https_url,
     optional_id,
+    optional_iso_date,
     optional_number,
+    optional_text,
     required_text,
     whole_number,
 )
@@ -172,6 +176,58 @@ class TestRowValues:
     def test_a_vocabulary_names_what_is_allowed(self):
         with pytest.raises(ValueError, match="'a', 'b'"):
             one_of("c", ("a", "b"), "kind")
+
+    def test_optional_text_is_none_or_kept_as_given(self):
+        assert optional_text(None, "note") is None
+        assert optional_text(" the dub ", "note") == " the dub "
+
+    @pytest.mark.parametrize("value", ["", "  ", 5])
+    def test_optional_text_is_not_blank(self, value):
+        # None and "" are different facts; only None means "no value".
+        with pytest.raises(ValueError):
+            optional_text(value, "note")
+
+    @pytest.mark.parametrize("value", [None, "2026-08-14", "2024-02-29"])
+    def test_an_iso_date_is_kept(self, value):
+        assert optional_iso_date(value, "release_date") == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "2026-8-14",
+            "2026-02-30",
+            "2023-02-29",
+            "14/08/2026",
+            "2026-08-14T00:00",
+            20260814,
+        ],
+    )
+    def test_an_iso_date_is_exactly_yyyy_mm_dd(self, value):
+        # Anything else sorts wrongly as text.
+        with pytest.raises(ValueError, match="YYYY-MM-DD"):
+            optional_iso_date(value, "release_date")
+
+    def test_an_https_url_is_kept_as_given(self):
+        url = "https://www.beatport.com/track/x/1"
+        assert https_url(url, "url") == url
+        assert optional_https_url(None, "url") is None
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "http://www.beatport.com/track/x/1",
+            "javascript:alert(1)",
+            "file:///C:/Windows",
+            "HTTPS://",
+            "https://",
+            "",
+            None,
+            7,
+        ],
+    )
+    def test_a_link_the_app_would_open_is_https(self, value):
+        with pytest.raises(ValueError):
+            https_url(value, "url")
 
 
 class TestMatchAttempt:

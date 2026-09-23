@@ -2,7 +2,8 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); DISCOVER-01 is implemented, with its recorded spike owed.
+(DEC-090…DEC-101); DISCOVER-01 and DISCOVER-02 are implemented, with DISCOVER-01's recorded spike
+owed.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -365,7 +366,7 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 implemented
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01, DISCOVER-02 implemented
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
@@ -399,6 +400,15 @@ artist or by label. It also found that creating a Beatport playlist had never wo
 paths lacked their trailing slash, Beatport redirected them, and the redirect turned the POST into a
 GET of the playlist list, so inCrate blamed the token every time. Recording real response bodies is
 one command for whoever holds a token, `scripts/beatport_v4_spike.py`, and is owed.
+
+DISCOVER-02 is implemented: migration `m0021_discover`, nine empty tables and their models, applied
+to a 50,000-track library in 6 ms. Two things in it go past the specification, each because a
+forward-only schema could not add them later without another migration. A run stores the class of
+the Beatport failure that ended it, so a reopened run can point to Settings. A reason a run found a
+track references that run's track, so a reason for a track the run never listed is refused. Writing
+it also found a trap SQLite sets for any table keyed by someone else's number. Given no id, an
+`INTEGER PRIMARY KEY` invents the next free one, even with `NOT NULL` declared, so the two tables
+keyed by a Beatport id are `WITHOUT ROWID`, where a missing id is refused.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 

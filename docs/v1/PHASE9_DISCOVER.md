@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **DISCOVER-01 implemented; its recorded spike, which needs a developer's Beatport token, is
-owed (see its outcome). DISCOVER-02…DISCOVER-12 not started.** The twelve steps below replace the
+Status: **DISCOVER-01 and DISCOVER-02 implemented; DISCOVER-01's recorded spike, which needs a
+developer's Beatport token, is owed (see its outcome). DISCOVER-03…DISCOVER-12 not started.** The twelve steps below replace the
 roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -410,6 +410,102 @@ a second, since it creates empty tables. `python -m pytest src/tests` clean.
 an expectation of them.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented. `migrations/m0021_discover.py` creates the nine tables, each with a model
+beside it: `models/beatport_cache.py` (`CachedBeatportTrack`, `CachedBeatportCredit`,
+`BeatportNameLookup`), `models/discovery_run.py` (`DiscoveryRun`, `DiscoveryRunTrack`,
+`DiscoveryRunSource`), `models/wantlist.py` (`WantlistEntry`) and `models/track_credit.py`
+(`TrackCredit`, `DerivedIndex`). The credit roles are one vocabulary, `CREDIT_ROLES`, shared by the
+library's and Beatport's credit tables. All four model modules are in the strict mypy gate. Nothing
+reads or writes the tables yet, and a test holds that true until a later step names its repository.
+`models/row_values.py` gained four checks that the new models share: `optional_text`,
+`optional_iso_date`, `https_url` and `optional_https_url`.
+
+**Where it goes past the design, and why.** Each change is one that a forward-only schema could not
+make later without another migration.
+
+- **`discovery_run_sources` references the run's track, not the run.** The design gave it
+  `run_id` and `beatport_track_id` separately, which would accept a reason for a track the run
+  never listed. It now has one composite reference, `(run_id, beatport_track_id)`, into
+  `discovery_run_tracks`, with a cascade. Deleting a run cascades to its tracks, and from them to
+  their sources.
+- **`matched_on` is `NOT NULL`.** It is the library artist or label that put a source in scope, and
+  the writer always knows it. A reason that cannot say what in the library it came from is the
+  unnamed signal DEC-074 refuses.
+- **`discovery_runs.error_class`**, unchecked. DISCOVER-05 fails a run "with that class", and a
+  reopened run has to be drawn from it: a rejected token points to Settings. Parsing that back out of
+  `error` text is not reliable. The vocabulary is DISCOVER-01's `BEATPORT_ERROR_CLASSES`, and it is
+  not restated in a `CHECK`, for the reason `m0020` left `key_format` unchecked. Tests store every
+  class and show that the model defines none of its own.
+- **`discovery_runs.id` is `AUTOINCREMENT`**, and every count is `NOT NULL DEFAULT 0`. Runs are
+  deleted, and an id in an activity event must not come to name a later run. A run is written when it
+  starts, so each count begins at a true zero.
+- **`beatport_tracks` and `wantlist` are `WITHOUT ROWID`.** In a rowid table, SQLite answers a `NULL`
+  for an `INTEGER PRIMARY KEY` by assigning the next free number, even with `NOT NULL` declared
+  (checked on SQLite 3.49.1). A writer that lost a track's id would then store it under an id
+  Beatport never gave. With the wantlist, the invented id can even pass the foreign key. Without a
+  rowid, a missing id is refused, and integer affinity still stores `'19000001'` as the number.
+  `derived_indexes.name` is `NOT NULL` for the same reason, since a text primary key otherwise
+  accepts any number of `NULL` rows.
+- **The credit indexes are covering.** They are `track_credits (name_key, track_id)`, and
+  `beatport_track_artists (artist_id, beatport_track_id)` and `(name_key, beatport_track_id)`. The
+  design asked for single-column indexes on `name_key` and `artist_id`, and each of these leads with
+  that column. With the track id added, DISCOVER-03's `artist_name` rule reads back as one seek per
+  library track that never touches the table:
+  `SEARCH track_credits USING COVERING INDEX idx_track_credits_name (name_key=? AND track_id=?)`.
+  A single-column index carries the rowid, not the track id, so it could not do that.
+- **`discovery_run_tracks (run_id, position)` is a unique index.** A run's tracks are read windowed
+  in first-seen order with no sort, and no two tracks can hold the same place.
+
+**What binds later steps.**
+
+1. **A re-read of a catalog track is an upsert** (`INSERT … ON CONFLICT (beatport_track_id) DO
+   UPDATE`), never `INSERT OR REPLACE`. The replace deletes the row first, SQLite runs the delete's
+   cascade, and the track's credits silently vanish. A test runs both and shows this.
+2. **Ownership needs no cast.** `match_candidates.beatport_track_id` is `TEXT`, and the catalog's is
+   `INTEGER`. SQLite's numeric affinity makes them compare equal in a join and in `IN (SELECT …)`,
+   and a test holds DISCOVER-04's join to that.
+3. **A catalog row that a run or the wantlist holds cannot be deleted**, so a cache prune has to
+   name only rows that nothing holds. A test runs the prune statement that does that.
+4. **A run left with no outcome by a crash stays "running"** until something closes it; the schema
+   cannot tell a live run from a dead one. DISCOVER-05 closes any open run at engine start, as
+   `JobRepository.mark_interrupted` closes jobs: `failed`, with an error saying CuePoint stopped
+   before the run finished, and an outcome and an end time together, which the model requires.
+   What the run committed before the crash is kept. No `interrupted` outcome is needed for this, so
+   the vocabulary has none.
+5. **`DerivedIndex.is_current` is exact equality.** An index built by any other rule version answers
+   wrongly for the running engine, so a downgrade rebuilds too.
+6. **Nothing in the schema records when an artist's or label's listing was last fetched.** The
+   design left that out on purpose, since nothing stores a page. If DISCOVER-07 needs "this listing
+   is complete as of", it keeps that outside this schema or adds it in a migration of its own.
+
+**Tests**: 370 in `src/tests/unit/persistence/test_discover_schema.py`:
+
+- **Shape:** columns in order, and each model exactly its table.
+- **Statements:** the migration's SQL is only `CREATE`s of its own tables and indexes.
+- **Indexes:** the exact indexes, and every reference leading one. The query plans cover the credit
+  rule, the name and artist lookups, a label's cached tracks, and a run read in order with no sort.
+- **References:** the whole reference map, and each cascade, `SET NULL` and refusal.
+- **Vocabularies:** each `CHECK` read out of `sqlite_master` and compared with the model's constant.
+- **Columns:** `NOT NULL` column by column.
+- **Ids:** a missing Beatport id is refused rather than invented.
+- **Upsert:** the upsert against `INSERT OR REPLACE`.
+- **DISCOVER-01 agreement:** every `CatalogTrack` field has a column, and the fixture track (two
+  artists, one accented, and a remixer) is stored and read back through the models.
+- **Models:** every model round-trips a real row, and every refusal is tested.
+- **Upgrade:** a populated version-20 library, with tracks, overrides, a Collection, an accepted
+  match, an export record and an activity event, keeps every row. It ends with the same schema as a
+  fresh one, still browses and deletes tracks, and takes every new row straight away.
+
+Three deliberate breakages were each caught by behaviour tests and not only by the DDL-text tests:
+dropping the composite reference, dropping `WITHOUT ROWID`, and narrowing the credit index.
+
+**Measured**: applying `m0021` to a copy of a 50,000-track version-20 library (20.4 MB, with a
+`track_metadata` row per track) took a median of **6.4 ms** over five copies, with a maximum of
+7.4 ms. The budget was one second.
+
+**Checks run**: `python -m pytest src/tests` (full suite), `ruff check src/`,
+`ruff format --check src/`, `check_no_qt_in_core.py`, the strict mypy gate, and `git diff --check`.
 
 ---
 

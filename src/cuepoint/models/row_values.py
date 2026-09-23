@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Value checks shared by the Clean models (CLEAN-01).
+"""Value checks shared by the models over CuePoint's own tables (CLEAN-01).
 
-Five models sit over the tables ``m0011_clean`` creates, and each of them has
-to refuse the same few kinds of wrong value: a word outside a closed
+Written for the five models over the tables ``m0011_clean`` creates, and used
+since by the export record (``m0020``) and Discover's tables (``m0021``). Each
+of them has to refuse the same few kinds of wrong value: a word outside a closed
 vocabulary, a count that is negative, a flag that is not a yes or a no. The
 database refuses most of these too, with a CHECK — but as an
 ``IntegrityError`` from a statement far from the mistake. These say what was
@@ -18,6 +19,7 @@ tells the user their library holds something it does not.
 from __future__ import annotations
 
 import math
+from datetime import date
 from typing import Any, Optional, Sequence
 
 
@@ -140,6 +142,60 @@ def required_text(value: Any, name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{name} is required, got {value!r}")
     return value
+
+
+def optional_text(value: Any, name: str) -> Optional[str]:
+    """Return non-blank text as given, or ``None`` for no value.
+
+    Blank text is refused rather than read as "no value": ``None`` and ``""``
+    are different facts, and a column that can hold both answers "is there a
+    note?" two ways (DEC-068's reason for refusing an empty override).
+
+    Raises:
+        ValueError: If the value is not text, or is blank.
+    """
+    return None if value is None else required_text(value, name)
+
+
+def optional_iso_date(value: Any, name: str) -> Optional[str]:
+    """Return an ISO-8601 calendar date (``YYYY-MM-DD``) as given, or ``None``.
+
+    Stored dates are compared and sorted as text, which orders them correctly
+    only in exactly this form.
+
+    Raises:
+        ValueError: If the value is not a date in that form.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str) or len(value) != 10:
+        raise ValueError(f"{name} must be a YYYY-MM-DD date, got {value!r}")
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        raise ValueError(f"{name} must be a YYYY-MM-DD date, got {value!r}") from None
+    return value
+
+
+def https_url(value: Any, name: str) -> str:
+    """Return an ``https://`` URL as given.
+
+    A stored link is something the desktop app opens for the user, so a
+    ``javascript:``, ``file:`` or plain ``http:`` value is refused where the row
+    is built rather than trusted where it is clicked.
+
+    Raises:
+        ValueError: If the value is not text starting ``https://`` with a host.
+    """
+    text = required_text(value, name)
+    if not text.startswith("https://") or len(text) <= len("https://"):
+        raise ValueError(f"{name} must be an https:// URL, got {value!r}")
+    return text
+
+
+def optional_https_url(value: Any, name: str) -> Optional[str]:
+    """Return an ``https://`` URL, or ``None`` for no value."""
+    return None if value is None else https_url(value, name)
 
 
 def optional_id(value: Any, name: str) -> Optional[int]:
