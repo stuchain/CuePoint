@@ -1,7 +1,9 @@
 # CuePoint v1.0.0 — Phase 7: Clean, Detailed Step Specifications
 
 Status: **Implemented. All fourteen steps (CLEAN-01 to CLEAN-14); the phase acceptance is met in a
-packaged Windows build, and the macOS packaged checks are owed with Phase 5's macOS pass.** The
+packaged Windows build, and the macOS packaged checks were run on 2026-09-23 — the packaged engine's
+Pillow thumbnail, its measured size cost and the end-to-end journey, all recorded under CLEAN-09 and
+CLEAN-14. The pass itself is written up under Phase 8, where its defects were diagnosed.** The
 fourteen steps below replace the roadmap's placeholder inventory (CLEAN-01…CLEAN-13, which Round
 9's answers outgrew by one). Per the process, no implementation happens from this document — each
 step needs an explicit "Implement CLEAN-NN" instruction, scoped to exactly that step, and its
@@ -4064,8 +4066,23 @@ tracks with 30,000 attempts of 40 candidates (1.2 million rows), 8,000 decisions
 **Packaging (Windows).** The packaged engine imports Pillow and makes a thumbnail: the journey
 decodes Beatport's artwork for the accepted track in `release/win-unpacked`. Pillow adds 6,155,219
 bytes to the engine (77,758,564 bytes with it, 71,603,345 built without it: 7.9%).
-**macOS is owed**: this machine is Windows-only, so the packaged macOS engine's Pillow thumbnail,
-its size change and the journey on it are recorded as outstanding, beside Phase 5's macOS pass.
+**Packaging (macOS), run 2026-09-23.** macOS 27.0 (build 26A428), Apple M5 Pro, arm64, Python
+3.12.14, Node 24.18.0, Electron 34.5.8, on the `feature` branch, against an ad-hoc-signed
+`release/mac-arm64/CuePoint.app` under the hardened runtime (115 nested binaries signed,
+`codesign --verify --deep --strict` accepting it, and `scripts/verify_macos_bundle.py
+--expect-hardened-runtime` reporting that nothing structural stands in the way of notarization).
+
+The packaged engine imports Pillow and makes a thumbnail: `e2e/clean.spec.ts` decodes Beatport's
+artwork for the accepted track in the packaged bundle and asserts a square thumbnail wider than
+zero. Pillow adds **3,585,280 bytes** to the macOS engine — 76,056,704 bytes with it against
+72,471,424 built from the same commit with `PIL`, `cuepoint.data.artwork` and
+`cuepoint.data.artwork_image` excluded: **4.9%**, against 7.9% on Windows. The shipped build's
+module graph carries 1,184 `PIL.` references and the `_imaging` extension; the control build carries
+none, which is how the two builds are known to differ in the intended way.
+
+The journey itself passes in the packaged macOS build, after two defects this pass found — a file
+URL the test fixtures built for Windows path shapes, and the engine start-up timing below. Both are
+recorded under Phase 8's macOS pass, since that is where they were diagnosed.
 
 **Backup and restore** (`test_backup_restores_clean.py`, 8 tests): attempts with every candidate,
 decisions, overrides with their sources, file status, a dismissal and a file-write record come back

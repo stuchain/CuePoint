@@ -1,7 +1,9 @@
 # CuePoint v1.0.0 — Phase 8: Rekordbox Export, Detailed Step Specifications
 
-Status: **EXPORT-01…EXPORT-07 implemented. Phase acceptance checked on Windows (below); opening
-the result in Rekordbox itself, and the macOS packaged checks, are owed.**
+Status: **EXPORT-01…EXPORT-07 implemented. Phase acceptance checked on Windows, and the macOS pass
+run on 2026-09-23 (below) — which found that an export could overwrite its own source on a
+case-insensitive volume, so acceptance point 10 was never true on macOS until it was fixed. Opening
+the result in Rekordbox itself is still owed.**
 The seven steps below replace the roadmap's placeholder inventory (EXPORT-01…EXPORT-08, which
 Round 10's answers came in one under).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -1482,6 +1484,15 @@ In a packaged Windows build unless said otherwise. **Owed**: opening the result 
 Rekordbox installed on this machine, which is the user's; and every macOS packaged check, alongside
 Phase 5's and Phase 7's.
 
+**Re-checked on macOS 2026-09-23** (the pass is recorded below). Every point above holds in a
+packaged macOS build, with one correction: **point 10 was not true on macOS when it was written
+here.** `refuse_source_as_destination` compared paths with `os.path.normcase`, which does nothing on
+POSIX, so choosing the source under a different capitalisation was accepted and the export
+overwrote the library it was read from — on the default APFS volume those two names are one file.
+It is fixed and pinned by a regression test; point 10 now holds on both platforms, and the sentence
+below ("EXPORT-05 for a relative path, a case difference and a symlink") was true only of the
+Windows run until then, because the case test skipped itself unless `os.name == "nt"`.
+
 1. **Met, except the look in Rekordbox, which is owed.** A collection exported to a new file in the
    packaged journey, and the file read back through CuePoint's own importer — the reader built for
    Rekordbox's files — with its tree intact: the mirrored `Journey` playlist, the `CuePoint` folder
@@ -1532,6 +1543,144 @@ Phase 5's and Phase 7's.
     measured the service alone at 3.0 s and 3.1 s with a 161 MiB peak.
 15. **Met.** `write_updated_collection_xml`, `build_rekordbox_updates` and the other orphaned
     writers exist nowhere in `src/`; `test_rekordbox_export.py` asserts their absence.
+
+## macOS pass, first run (2026-09-23)
+
+macOS 27.0 (build 26A428), Apple M5 Pro, arm64, Python 3.12.14, Node 24.18.0, Electron 34.5.8, on
+the `feature` branch. Run against an ad-hoc-signed `release/mac-arm64/CuePoint.app` under the
+hardened runtime, which `scripts/verify_macos_bundle.py --expect-hardened-runtime` accepts.
+
+This pass discharges the macOS packaged checks Phase 7 and Phase 8 both owed, and it found four
+defects. Two of them are in shipped code, and one of those would have destroyed a user's library.
+
+**Green, and what was run.** `ruff check`, `ruff format --check` (616 files), the Qt guard, desktop
+version coupling, and CI's two mypy gates. The engine sidecar builds and answers `/health`; the mpv
+sidecar verifies at `v0.41.0-dev-g876ba7b28` with 7 decoders. Renderer: 2,777 tests, lint (exit 0),
+type-check, `build:check`. Electron: 442 tests and type-check, the real-mpv integration tests
+included. `npm run pack` produces a bundle carrying both sidecars.
+
+### The defect that mattered: an export could overwrite its own source (DEC-083)
+
+`refuse_source_as_destination` compared the two paths with `os.path.normcase`, which folds case on
+Windows and does nothing at all on POSIX. Its docstring said it defeated "a case difference on
+Windows", and the unit test that should have caught it carried
+`@pytest.mark.skipif(os.name != "nt", reason="case-insensitive paths are Windows")`. That premise is
+false: the default APFS and HFS+ volumes are case-insensitive too.
+
+So on a Mac, exporting to `COLLECTION.XML` from a library imported as `collection.xml` passed the
+check, and the write landed on the same bytes — the user's Rekordbox library replaced by the export,
+silently, with no way back. Confirmed directly on this volume: `os.path.samefile` says the two names
+are one file, the `normcase` comparison says they are not, and writing the second destroys the first.
+
+Phase 8 acceptance point 10 was recorded **Met** on Windows and was never true here. The engine-level
+test `test_the_source_spelled_differently_is_refused_all_the_same` had no platform skip and is the
+one failure in the 7,880-test Python run that started this pass.
+
+Fixed by asking the filesystem before the path strings: `os.path.samefile` decides whenever both
+paths exist, and the resolved case-folded comparison remains for a destination that does not exist
+yet and therefore cannot be the source. A case difference, a hard link and a volume reached by two
+names are now all refused, on every platform.
+`src/tests/regression/test_regression_export_over_source_by_case.py` pins it — four tests, three of
+which fail on the unfixed code, including one asserting the source is byte-identical afterwards — and
+the data-layer test now asks the volume whether it is case-insensitive instead of asking `os.name`.
+
+### The packaged engine was unreachable for the first ten seconds, and the strip said otherwise
+
+`pollHealth` allowed 5 seconds (20 attempts, 250ms apart). A packaged macOS engine is a PyInstaller
+one-file build whose first run unpacks ~76MB and imports the whole engine before it can bind:
+measured **9.7s** here. So the health check timed out on every cold start. Worse,
+`EngineSupervisor.getStatus()` reported `connected: true` as soon as a child process existed, without
+ever checking that the engine had answered — so the status strip said "Engine connected" while every
+call through it failed with `fetch failed`. That is what the packaged `clean.spec.ts` and
+`rekordboxExport.spec.ts` runs were hitting.
+
+`scripts/build_engine_sidecar.py` had already been bitten by this and allows 90s, with the reasoning
+written beside it; the supervisor never was. Fixed three ways:
+
+- `HEALTH_TIMEOUT_MS` is 90s, matching the build script so two numbers about the same binary cannot
+  drift apart, and the poll is bounded by elapsed time rather than a count of attempts. It gives up
+  early if the child has gone, so a crash still restarts promptly.
+- A `healthy` flag, set only by a successful health poll and cleared whenever a child is started or
+  lost. `getStatus()` now reports a third state, `starting`, and the strip says "Starting engine…"
+  rather than claiming a connection or an outage. It also stops offering **Restart engine** to an
+  engine that is merely still unpacking.
+- `createWindow()` no longer awaits `engine.start()`. It did, which is why raising the budget would
+  have meant a blank screen for as long as the engine took, or for the whole budget if it never came
+  up. The only thing the result was used for was two dev-URL query parameters that nothing reads
+  (searched before removing). **Startup went from 9.5s to 2.2s** before the shell appears, and the
+  strip narrates the rest.
+
+`electron/engineHealthBudget.test.ts` keeps the budget from drifting back under the measured cold
+start; four renderer tests cover the three strip states and the Restart button, and all of them fail
+on the unfixed code.
+
+### Two defects in the tests themselves, which is why nothing had caught the above
+
+- **Four E2E fixtures built a Rekordbox `Location` for Windows path shapes** —
+  `"file://localhost/" + file.replace(/\\/g, "/")` — which on POSIX yields `file://localhost//var/…`.
+  `path_root()` reads that doubled slash as a UNC share (`//server/share`), correctly and
+  deliberately, so the file check declared the share unavailable and reported every file missing.
+  Six specs failed on it. Three other specs already stripped the leading slash; the four stragglers
+  now match them. The product behaviour is right and unchanged: a Windows library read on a Mac
+  should say its drive is not connected, and real Rekordbox writes a single slash.
+- **Three player specs called the engine immediately after the window appeared.** They only ever
+  passed because `createWindow()` blocked on the engine — the thing removed above — so they were
+  inheriting a wait they never asked for. They now use `e2e/engineReady.ts`, which waits for the
+  engine to report itself connected, as the Library and Clean specs already did.
+
+### The packaged E2E suite: 46 passed, 1 skipped, 3 failed
+
+Up from 37 passed and 12 failed at the start of this pass. `clean.spec.ts` (Phase 7's journey) and
+`rekordboxExport.spec.ts` (Phase 8's) both pass in the packaged macOS build, which is what these two
+phases owed. The three that remain:
+
+- **`libraryJourney.spec.ts`** — passes on its own, twice in a row, and fails under full-suite load.
+  It races a real 250,000-track import against the status strip's two-second discovery poll; Phase 5's
+  macOS pass had already raised it from 60,000 for this reason. Contention, not a defect, and the
+  verbs it checks are covered deterministically by `useActiveJob.test.ts`. Left as it is rather than
+  raised again or weakened.
+- **`playback.spec.ts` and `libraryPlayback.spec.ts`** — double-click a row to play it. See below.
+
+### Double-click to play: one defect fixed, one layout question left open
+
+Playback itself is sound on macOS: driven through the bridge, `player.playView` queues all four
+tracks and mpv plays `tone.aiff`, with the state, the queue and the current item all correct.
+
+What failed was the gesture, and the cause was found: `.library-screen__main` is a grid whose
+implicit column is `auto`, so the column is at least as wide as its widest child's *min-content*. The
+selection strip is that child — its buttons come to about 748px in a 624px region — so **selecting a
+row stretched the whole column to 748px**, the filter bar above no longer needed to wrap, it lost a
+line, and the rows jumped 125px upward. On the *first* click of a double-click. The second then
+landed on a different row or on nothing, no `dblclick` was raised, and double-clicking a track
+silently failed to play it.
+
+Fixed with `grid-template-columns: minmax(0, 1fr)`, which lets the column be narrower than its
+content so a wide child wraps inside it instead of resizing everything beside it —
+`.library-screen__body` already does this for the same reason. Measured after: the filter bar is
+600x220 before and after a selection, the movement is down from 128px to 28px, and **double-clicking
+a fully visible row now plays it**, bar and queue and all.
+
+**What is left, and deliberately not changed here.** At the default `--scale: 2` in a
+laptop-height window, only **one row of four is fully visible** in the table region. Clicking a
+partly-visible row makes the browser scroll it into view, which moves it again by 28px, and the two
+specs above both target `rows.nth(1)`. The cause is the trade-off `library.css` already states in
+full: the table has a floor of `140px * var(--scale)`, so at scale 2 the column overflows and scrolls
+rather than leaving a zero-height table. Deciding what gives at short window heights — the filter
+bar's wrapping, that floor, or the default scale — is a design decision that reaches across Phases 4
+and 6 and is signed off on Windows, so it is recorded here for its own step rather than changed
+during a verification pass. The two specs are reported failing on macOS rather than weakened:
+`rows.nth(1)` is load-bearing, because it proves the row that was clicked is the row that plays.
+
+### Still owed after this pass
+
+- **Opening an exported file in Rekordbox itself** (acceptance 1-6), unchanged from the Windows run.
+  rekordbox 6 and 7 are installed on this machine, but importing the file would change that
+  installation's Imported Library setting — the user's own library — so it stays the user's step.
+- **A `notarytool` submission with a Developer ID** (Phase 5, row 2). The whole chain runs ad-hoc and
+  the bundle passes the structural check; no submission has been made.
+- **Phase 5's rows 6, 7 and 9**, which need a second audio interface to contend for, an interface to
+  unplug, and somebody to listen.
+- **The Library screen's vertical fit at scale 2**, above.
 
 ## Deferred, with reasons
 

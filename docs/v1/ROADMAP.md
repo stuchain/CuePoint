@@ -13,7 +13,7 @@ non-code (see below). Phase 6's thirteen steps are specified in `PHASE6_ORG.md`
 are implemented and the phase-level acceptance is met in a packaged build. Phase 7's fourteen steps
 are specified in `PHASE7_CLEAN.md` (CLEAN-01…CLEAN-14), unblocked by Decision Round 9
 (DEC-065…DEC-076); all fourteen are implemented and the phase-level acceptance is met in a packaged
-Windows build, with the macOS packaged checks owed alongside Phase 5's macOS pass. The two open
+Windows build, and the macOS packaged checks were run on 2026-09-23. The two open
 points that document raised are settled as amendments to DEC-011 and DEC-076.
 Audio-analysis scope is the one remaining deferred item, to be resolved before the phase it affects
 starts; crossfade was resolved by DEC-056 in Round 7, Smart Collection duplication by DEC-061 in
@@ -227,7 +227,7 @@ metadata back together, and the whole journey runs end to end in a packaged buil
 
 Step specifications: `PHASE6_ORG.md` (ORG-01…ORG-13, all implemented).
 
-## Phase 7 — Clean / Beatport (CLEAN-01 … CLEAN-14) — implemented; macOS packaged checks owed
+## Phase 7 — Clean / Beatport (CLEAN-01 … CLEAN-14) — implemented; checked on Windows and macOS
 
 Metadata precedence settled by DEC-004 (auto-mark accepted, explicit apply step). The one phase
 most dominated by "reuse, don't rebuild" —
@@ -250,14 +250,14 @@ is in — read from files, fetched from Beatport for accepted matches, and embed
 that have none (DEC-076, against the recommendation to defer).
 
 Step specifications: `PHASE7_CLEAN.md` (CLEAN-01…CLEAN-14, all implemented; the acceptance is
-checked point by point under CLEAN-14, on Windows, with the macOS packaged checks owed).
+checked point by point under CLEAN-14, on Windows, and the macOS packaged checks run 2026-09-23).
 Writing them grew the placeholder by one step and raised two open points, both settled as
 amendments (Q-076, Q-077):
 DEC-011's refresh warning now counts every track carrying the user's own data — ratings, notes,
 tags, review decisions and applied values as well as Collections — and DEC-076's artwork is cached
 as real thumbnails, making Pillow a runtime dependency behind one guarded decoder.
 
-## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-07) — implemented; the check in Rekordbox itself and macOS packaged checks owed
+## Phase 8 — Rekordbox Export (EXPORT-01 … EXPORT-07) — implemented; checked on Windows and macOS, the check in Rekordbox itself owed
 
 No full-XML export exists today (only the narrow attribute-patch write) — this phase builds real
 export, carrying forward the existing "always write a new file, never silently overwrite the source"
@@ -311,7 +311,22 @@ and an end-to-end journey passes three times in a row in the packaged Windows bu
 grids kept, the source and every audio file byte-identical. Adding the header entry first stacked the
 header's buttons and left the track table 20 pixels tall, which only the packaged run could see; import
 and export now share one menu. Phase acceptance is recorded point by point in `PHASE8_EXPORT.md`:
-opening the result in Rekordbox itself, and the macOS packaged checks, are owed.
+opening the result in Rekordbox itself is owed.
+
+The macOS pass was run on 2026-09-23 and is written up in `PHASE8_EXPORT.md`. It discharges the
+packaged checks Phases 7 and 8 both owed — both journeys pass in a packaged, hardened-runtime macOS
+build — and it found that **acceptance point 10 had never been true on macOS**: the guard that
+refuses the source as a destination compared paths with `os.path.normcase`, which folds case on
+Windows and does nothing on POSIX, so an export could overwrite the library it was read from on a
+case-insensitive volume. The unit test that would have caught it skipped itself unless
+`os.name == "nt"`. It is fixed, with a regression test. The pass also found that the packaged engine
+needs about ten seconds to cold-start while the supervisor allowed five, and that the status strip
+called a spawned process a connected engine — so the first ten seconds of every Mac launch failed
+silently. Fixed, and the shell now opens in 2.2s rather than 9.5s instead of waiting for the engine
+at all. One item is left open by design: at the default `--scale: 2` in a laptop-height window the
+Library screen shows very few whole rows, and double-clicking a partly visible one is defeated by
+the scroll that brings it into view. What gives at short window heights is a design decision
+reaching back into Phases 4 and 6, so it is recorded rather than changed.
 
 Round 10's central finding came from the code rather than the roadmap: `POSITION_MARK` and `TEMPO`
 appear nowhere in `src/`, so CuePoint has never parsed a cue point or a beat grid. An XML generated

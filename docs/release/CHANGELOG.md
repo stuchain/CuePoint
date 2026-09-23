@@ -190,6 +190,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **On macOS, an export could overwrite the Rekordbox file it was read from.**
+  Saving an export as `COLLECTION.XML` when the library had been imported from
+  `collection.xml` was allowed, and on a Mac's ordinary disk those two names are
+  one file — so the export replaced the library, with no warning. The check that
+  refuses the source as a destination compared the two spellings instead of
+  asking the disk whether they were the same file; it now asks, so a different
+  capitalisation, a hard link, or the same file reached by another name are all
+  refused on every platform. Windows was never affected
+- **On macOS, nothing worked for the first ten seconds and CuePoint said it
+  was ready.** The engine needs about ten seconds to start the first time a
+  packaged build is run, and CuePoint waited only five before giving up — while
+  the status strip reported "Engine connected" as soon as the engine had been
+  launched, rather than when it answered. Every action in that window failed.
+  CuePoint now waits as long as starting actually takes, and the strip says
+  "Starting engine…" until the engine is really there
+- CuePoint's window now opens straight away instead of waiting for the engine,
+  which took it from about nine seconds to about two on macOS. The window and
+  the library browser are usable while the engine finishes starting
+- Double-clicking a track in the Library did not always play it: selecting the
+  row made the list jump, so the second click landed somewhere else. Selecting
+  a track no longer moves the list
 - The engine could keep running after the app had gone — on its port, holding
   the library database — when the app was killed or crashed, or when quitting
   finished before its cleanup did. Quitting now waits for its cleanup, and the
