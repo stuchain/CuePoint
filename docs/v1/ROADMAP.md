@@ -1,6 +1,8 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–10 resolved (DEC-001…DEC-089).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
+Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
+(DEC-090…DEC-101); no step is implemented.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -363,10 +365,32 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-09)
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — specified, not started
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
+
+Decision Round 11 settled the shape (DEC-090…DEC-101), and the steps are specified in
+`PHASE9_DISCOVER.md` — twelve, three more than the placeholder. Reading the code found that inCrate
+runs a second copy of the matcher, writing labels outside Clean's history and override layer; that
+discovery runs inside one blocking request and keeps nothing; that it cannot tell an owned track from
+one that is not; that the Beatport v4 parsers throw away every id this phase needs; and that an
+accepted match identifies a Beatport *track*, so an artist's or label's Beatport id is one API lookup
+further away.
+
+Discovery reads the library's effective values, and inCrate's inventory and enrichment retire
+(DEC-090). A run is a cancellable job whose runs are kept (DEC-091). A track is owned when an accepted
+match carries its Beatport id; owned tracks are hidden by default and counted (DEC-092). A found track
+can go on a CuePoint wantlist or into a Beatport playlist, pushed through the API only, with the unused
+browser fallback deleted (DEC-093, DEC-099). Artist and Label pages show the user's own tracks through
+the Library's query and Beatport's catalog beside them (DEC-094), identified by Beatport id when it has
+been resolved and by a normalized name otherwise, saying which (DEC-095). Similar Tracks is a
+deterministic, explained, offline rule over the library, written for Phase 10 to reuse (DEC-096). No
+previews (DEC-097), no For You (DEC-101), and the Beatport token is handled as it is today — against
+the recommendation to move it into OS secure storage (DEC-098). The Tools group and its landing page
+retire, and the Library becomes home (DEC-100).
+
+Step specifications: `PHASE9_DISCOVER.md`.
 
 ## Phase 10 — Prepare (PREP-01 … PREP-12)
 

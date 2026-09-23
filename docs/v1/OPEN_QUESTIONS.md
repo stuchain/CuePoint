@@ -1982,3 +1982,257 @@ whichever phase revisits DEC-034's capture-as-Rekordbox-has-it rule, not to expo
 **Chosen**: **C**. The user chose one enum and one converter over a subset, accepting the mixed-column
 risk as opt-in. DEC-089 records the two mitigations that follow: the default is classic, and the
 preview states the consequence at the moment of choosing rather than in a footnote.
+
+---
+
+## DECISION ROUND 11 — DISCOVER ✅ Resolved 2026-09-21
+
+Asked before writing Phase 9's step specifications. Earlier rounds left this phase three obligations
+and no shape. DEC-021 re-homes inCrate into Discover and retires its Tools entry. DEC-030 retires
+inCrate's separate inventory database, so that inCrate reads the library. DEC-041 moves inCrate's
+bare lists onto `TrackTable`. The roadmap adds Artist and Label pages and Similar Tracks, none of
+which exist. None of that says where Discover's artists and labels come from, what a discovery run
+leaves behind, what a user can do with a track they do not own, or what an artist *is*.
+
+Nine of these came from reading the code rather than the roadmap:
+
+- **inCrate runs a second match flow.** `incrate/enrichment.py` calls `IProcessorService.process_track`
+  for every inventory row with no label and writes the winner's label straight into the inventory
+  table. That bypasses DEC-066 (no attempt is stored), DEC-067 (nothing is reviewed) and DEC-068 (no
+  override layer, no history, no revert). Clean has done the same job properly since Phase 7.
+- **Discovery blocks one HTTP request.** `POST /api/v1/incrate/discover` runs `run_discovery` inline.
+  The label branch makes one `search_label_by_name` call per library label, then one releases call per
+  resolved label, so a real library spends minutes in one request with no progress and no cancel.
+- **Nothing a run finds is kept.** The results live in React state. `incrate/past_results_storage.py`
+  can save runs to a JSON file, but nothing calls it.
+- **Discovery never asks whether you already own a track.** Charts and label releases come back with
+  tracks that are already in the library. Since Phase 7, accepted matches give library tracks a
+  Beatport track id that could answer the question.
+- **The Beatport v4 parsers keep names and throw the ids away.** `_parse_chart_track` and
+  `_parse_label_release_track` join the artist objects into a comma-separated string and keep none of
+  their ids, and they drop the label, BPM, key and genre the API returns. The parsers also check
+  several guessed nestings (`tracks`, `track_list`, `results`, `data`), which shows the response shapes
+  were never pinned down.
+- **The match tables store a Beatport *track* id, but only names for artist and label.**
+  `match_candidates` has `beatport_track_id` and text columns `artists` and `label`. An accepted match
+  therefore identifies a Beatport track exactly, and its artists and label only by the text on the
+  page.
+- **The artist column is a credit, not an artist.** `tracks.artist` holds "A, B & C", and the rule
+  vocabulary's `artist` field is text, so no rule can mean "tracks by B" without also matching every
+  artist whose name contains B.
+- **Beatport playlist writing is half built.** `BeatportApi.playlist_url` returns
+  `https://www.beatport.com/playlist/placeholder/<id>`. The 402-line Playwright fallback in
+  `beatport_playlist_browser.py` is reachable only from tests, because `run_playlist_create` passes
+  `browser_add_to_playlist=None`. And `discovery.py` carries `_CANONICAL_LABEL_IDS = {"nothing but":
+  43219}`, one user's label hard-coded into product code.
+- **Tools is also the home page.** `HOME_DESTINATION_ID` is `"tools"`, at path `/`. Once inCrate
+  leaves, the Tools group holds nothing but its own landing page, which is DEC-027's fallback.
+
+Outcomes are DEC-090…DEC-101 in `DECISIONS.md`. One answer went against the recommendation — Q-100,
+the Beatport token — and is noted as such below.
+
+---
+
+### Q-092 — Where Discover's artists and labels come from
+
+**Status**: Resolved → DEC-090 (Option A chosen: the library's effective values)
+
+**Question**: inCrate reads its artists and labels from its own inventory, and fills missing labels
+with a second match flow that writes outside Clean's history and override layer. Once DEC-030
+retires that inventory, what does Discover read?
+
+- **Option A — The values the Library table shows**: the imported artist credit, the effective label
+  (override first, then imported), plus the Beatport ids that accepted matches provide. Enrichment is
+  retired; a track with no label is sent to Clean's match and apply.
+- **Option B — A, plus the label of an accepted but unapplied candidate.** Finds more labels, at the
+  cost of Discover reading a value the table does not show.
+- **Option C — Keep enrichment**, re-homed as a Discover action that runs Clean's match job and writes
+  through DEC-068's layer.
+
+**Recommendation**: **A**. B breaks DEC-079's principle that what CuePoint acts on is what the table
+showed. C is a second entry point to a job Clean already offers, whose only difference would be its
+name.
+
+---
+
+### Q-093 — How a discovery run runs, and what it leaves behind
+
+**Status**: Resolved → DEC-091 (Option A chosen: a job, with stored runs)
+
+**Question**: Discovery blocks one request for minutes and keeps nothing.
+
+- **Option A — A cancellable background job** in the status strip, each run stored in the database
+  with its parameters and tracks, reopenable and comparable. The unused JSON store is deleted.
+- **Option B — A job whose results last only for the session.**
+- **Option C — Keep it synchronous.**
+
+**Recommendation**: **A**. It is DEC-033's reason again — a long network operation does not hold the
+UI — and a run that took minutes and cost hundreds of API calls should not vanish on restart.
+
+---
+
+### Q-094 — Tracks you already own
+
+**Status**: Resolved → DEC-092 (Option A chosen: marked, hidden by default)
+
+**Question**: Discovery lists tracks already in the library. What should it do with them?
+
+- **Option A — Mark them "In library"** by accepted Beatport id and hide them by default, with a toggle
+  and the hidden count shown.
+- **Option B — Mark them, and show them.**
+- **Option C — No check.**
+
+**Recommendation**: **A**. A discovery list is a list of things to consider buying, and every owned
+track in it is noise. Hiding with a stated count keeps the noise out without hiding the fact.
+
+---
+
+### Q-095 — What a user can do with a discovered track
+
+**Status**: Resolved → DEC-093 (Option A chosen: a wantlist, plus Beatport)
+
+**Question**: A discovered track is not in the library, so it cannot join a Collection, whose entries
+reference `tracks.id`.
+
+- **Option A — A CuePoint wantlist** (save, remove, note, mark bought), plus today's push to a Beatport
+  playlist and "open on Beatport". A wantlist track that later appears in the library through an
+  accepted match reads as owned.
+- **Option B — Beatport only**, as today. Nothing is kept in CuePoint.
+- **Option C — The wantlist only**, dropping the Beatport push.
+
+**Recommendation**: **A**. Collections are for tracks a user has; the wantlist is for tracks they do
+not have yet, and it closes the loop through Clean without any new link between the two.
+
+---
+
+### Q-096 — What an Artist or Label page shows
+
+**Status**: Resolved → DEC-094 (Option A chosen: library and Beatport)
+
+**Question**: Neither page exists. An artist or a label today is a string.
+
+- **Option A — Your tracks by that artist or label**, offline, through the Library's own table and
+  query, **plus Beatport's recent releases and charts** when a token is set, each marked owned or not.
+  No token or no network is an empty state for that half, not an error.
+- **Option B — Library only.**
+- **Option C — Beatport only.**
+
+**Recommendation**: **A**. B groups a user's tracks without discovering anything; C shows nothing
+offline and ignores the library the page is for.
+
+---
+
+### Q-097 — What identifies an artist or a label
+
+**Status**: Resolved → DEC-095 (Option A chosen: Beatport id when known, otherwise the name)
+
+**Question**: Names vary in spelling, and two artists can share one. Accepted matches identify some
+tracks exactly.
+
+- **Option A — The Beatport artist or label id** when an accepted match gives one; otherwise a
+  normalized name, with the page saying it is a name-matched group.
+- **Option B — Normalized names only.**
+- **Option C — Beatport ids only**; an artist with no accepted match has no page.
+
+**Recommendation**: **A**. It uses exact identity where CuePoint has it and says so where it does not,
+which is DEC-074's discipline of naming the signal that grouped something.
+
+---
+
+### Q-098 — Where Similar Tracks come from
+
+**Status**: Resolved → DEC-096 (Option A chosen: local, explained)
+
+**Question**: No track-to-track similarity exists anywhere. Phase 10's Set Builder will want "what fits
+next", which is a related question.
+
+- **Option A — A deterministic Python rule over the library**: close BPM, compatible key, and the same
+  genre, label or artist, all read as effective values, with every suggestion stating its reasons.
+  Offline, and reused by Phase 10.
+- **Option B — A, plus Beatport tracks** not in the library, ranked by the same rule.
+- **Option C — Beatport only**, pending a spike into what the v4 API offers.
+
+**Recommendation**: **A**. It keeps matching's rule — deterministic and reviewable — for a new kind of
+suggestion, and it is useful the day it ships, without a token.
+
+---
+
+### Q-099 — Audio previews of discovered tracks
+
+**Status**: Resolved → DEC-097 (Option A chosen: no preview)
+
+**Question**: Beatport exposes preview clips. The player (DEC-050) owns a queue of local files.
+
+- **Option A — No preview.** "Open on Beatport" is how a user listens.
+- **Option B — Stream the clip through mpv** as a one-off preview outside the queue.
+
+**Recommendation**: **A**. B adds a network source and a second mode to a contract DEC-056 took care to
+keep to one decoder and one queue.
+
+---
+
+### Q-100 — How the Beatport token is held
+
+**Status**: Resolved → DEC-098 (Option B chosen: keep as is — **not** the recommended option)
+
+**Question**: Every Beatport feature in this phase needs a v4 token. Today a user pastes one into
+Settings; it is saved in plain text in `~/.cuepoint/config.yaml`, and it expires. A password-grant
+helper exists in `incrate/beatport_oauth.py` with no production caller.
+
+- **Option A — OS secure storage** through Electron `safeStorage`, handed to the engine in memory at
+  spawn, the existing config value migrated once and removed, expiry shown plainly.
+- **Option B — Keep as is.**
+- **Option C — A real sign-in flow** with refresh. Needs Beatport client credentials CuePoint does not
+  have for distribution.
+
+**Recommendation**: **A**. A credential on disk in plain text is the one security property this phase
+could improve cheaply.
+
+**Chosen**: **B**. Token handling does not change in this phase. DEC-098 records what that leaves in
+place, so a later phase that revisits it starts from the facts rather than rediscovering them.
+
+---
+
+### Q-101 — Beatport playlist writing
+
+**Status**: Resolved → DEC-099 (Option A chosen: the API path only, fixed)
+
+**Question**: The API path returns a placeholder URL; the browser fallback has no production caller.
+
+- **Option A — Keep the API path**, return the real playlist URL, add tracks as a job that counts what
+  was added and what failed, and delete the browser fallback and its tests.
+- **Option B — Fix the URL and wire the browser fallback** for tokens without playlist scope.
+- **Option C — Retire Beatport playlist writing.**
+
+**Recommendation**: **A**. B puts browser automation into the product to rescue a token that lacks a
+scope; C removes the one route from discovery to a DJ's Beatport account.
+
+---
+
+### Q-102 — The Tools group and the home page
+
+**Status**: Resolved → DEC-100 (Option A chosen: retire Tools; Library is home)
+
+**Question**: Once inCrate moves, Tools holds only its own landing page, which is also DEC-027's
+fallback destination.
+
+- **Option A — Retire the Tools group and its landing page.** Library becomes home; `/incrate` and
+  `tools` redirect through `RETIRED_DESTINATIONS`.
+- **Option B — Keep the landing page** as a Home dashboard.
+
+**Recommendation**: **A**. A home page that links to three destinations the sidebar already shows is
+a click between the user and their library, on every launch that falls back to it.
+
+---
+
+### Q-103 — "For You"
+
+**Status**: Resolved → DEC-101 (Option A chosen: out of Phase 9)
+
+**Question**: GAP_ANALYSIS §D lists "For You" under Discover; the roadmap's Phase 9 line does not.
+
+- **Option A — Out of Phase 9**, recorded as deferred.
+- **Option B — A simple feed** seeded from top-rated and favorite tracks.
+
+**Recommendation**: **A**. It needs a ranking rule nobody has asked for yet, and DEC-096's engine is
+the thing it would be built on.
