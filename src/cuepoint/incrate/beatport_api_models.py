@@ -1,7 +1,56 @@
-"""Data models for Beatport API responses (Phase 2). Normalized in-memory shapes for charts and labels."""
+"""Data models for Beatport API responses (Phase 2). Normalized in-memory shapes for charts and labels.
+
+The ``Catalog*`` models (DISCOVER-01) keep the ids the Discover phase needs —
+every artist, label, release and genre id on a track — where the older shapes
+flatten artists to a string and drop them. They live here until DISCOVER-12
+retires inCrate and moves them beside ``services/beatport_api.py``.
+"""
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Tuple
+
+
+@dataclass(frozen=True)
+class CatalogArtist:
+    """A Beatport artist, by id."""
+
+    id: int
+    name: str
+
+
+@dataclass(frozen=True)
+class CatalogLabel:
+    """A Beatport label, by id."""
+
+    id: int
+    name: str
+
+
+@dataclass(frozen=True)
+class CatalogTrack:
+    """A Beatport catalog track with every id Discover reads.
+
+    ``url`` is the www.beatport.com page, never the API URL. ``key`` is in
+    classic notation, converted from Beatport's own spelling, because every
+    other key in CuePoint is classic or Camelot. ``release_date`` is
+    ``YYYY-MM-DD``. Anything Beatport left out is None or empty, never guessed.
+    """
+
+    id: int
+    title: str
+    mix_name: str
+    url: str
+    artists: Tuple[CatalogArtist, ...]
+    remixers: Tuple[CatalogArtist, ...]
+    label_id: Optional[int]
+    label_name: Optional[str]
+    release_id: Optional[int]
+    release_name: Optional[str]
+    release_date: Optional[str]
+    bpm: Optional[float]
+    key: Optional[str]
+    genre_id: Optional[int]
+    genre_name: Optional[str]
 
 
 @dataclass
@@ -36,6 +85,7 @@ class ChartTrack:
     artists: str
     beatport_url: str
     position: int
+    catalog: Optional[CatalogTrack] = None
 
 
 @dataclass
@@ -58,6 +108,7 @@ class LabelReleaseTrack:
     artists: str
     beatport_url: str
     release_date: str
+    catalog: Optional[CatalogTrack] = None
 
 
 @dataclass

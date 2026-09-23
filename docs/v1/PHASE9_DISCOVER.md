@@ -1,6 +1,8 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **Specified. No step implemented.** The twelve steps below replace the roadmap's placeholder
+Status: **DISCOVER-01 implemented; its recorded spike, which needs a developer's Beatport token, is
+owed (see its outcome). DISCOVER-02…DISCOVER-12 not started.** The twelve steps below replace the
+roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
 "Implement DISCOVER-NN" instruction, scoped to exactly that step, and its outcome is recorded under
@@ -221,6 +223,126 @@ batched track lookup does not exist, DISCOVER-04's resolution does one request p
 measured cost decides whether it needs a cap.
 
 **Complexity**: **L**
+
+**Outcome**: Implemented, with the recorded spike still owed. The code is complete and tested, the
+route map was established against the live API, and the one thing that needs a developer's token —
+recording real response bodies — is a single command, written and tested offline:
+`python scripts/beatport_v4_spike.py --playlist --write-fixtures`.
+
+**What was built.**
+
+- `services/beatport_api_client.py`: the five error classes (`classify_beatport_error`:
+  `no_token`, `rejected`, `forbidden`, `rate_limited`, `unavailable`); `Retry-After` honored once
+  (seconds or an HTTP date; 2 s when absent; a wait over 30 s is reported at once rather than sat
+  through), carried on the error as `retry_after`; one engine-wide gate of
+  `MAX_CONCURRENT_REQUESTS = 4` shared by every client, released on failure and not held during a
+  rate-limit wait; responses over 8 MiB refused before parsing; a POST that never follows a
+  redirect; network failures on POST wrapped as `BeatportAPIError` like GET's.
+- `services/beatport_catalog.py`, new: the parsers, one shape each, bounding every string (500
+  characters) and credit list (50), rejecting ids that are not positive integers, and answering
+  None rather than guessing. The key comes out in classic notation through `parse_key`/`format_key`,
+  reading Beatport's Camelot number and letter first and its display name ("Eb Minor") second. The
+  release date is `new_release_date`, falling back to `publish_date`. Split out of
+  `beatport_api.py` so it could join `test_mypy_foundation.py`'s strict gate — as did the client —
+  while the legacy parsers beside it keep their 14 known errors until DISCOVER-12 deletes them.
+- `CatalogArtist`, `CatalogLabel`, `CatalogTrack` in `incrate/beatport_api_models.py`, and
+  `catalog: CatalogTrack | None` at the end of `ChartTrack` and `LabelReleaseTrack`.
+- `BeatportApi.get_track`, `get_tracks`, `get_artist`, `get_label`, `artist_tracks`,
+  `label_tracks`, and `chart_tracks` (not in the list above; DISCOVER-05 needs a chart's full track
+  list with ids, and `get_chart` reads only the first page). Every listing follows `next` to
+  `MAX_LISTING_PAGES = 10`. `playlist_url` returns `https://www.beatport.com/library/playlists/{id}`
+  — or a website URL from the create response, if a recording shows one — and validates the id, as
+  `add_track_to_playlist` now does before building a path from it.
+- `scripts/beatport_v4_spike.py` and `src/tests/fixtures/beatport_v4/` (see below).
+
+**The spike, endpoint by endpoint.** No token was available when the step was implemented, and the
+developer's stored credentials were deliberately not read. What could be established without one
+was: Beatport's router answers **404** for a path it does not have and **401** for one it does,
+before it looks at a token, so the route map below is live evidence. Response *shapes* come from
+two open-source clients that decode real responses — beatportdl's typed Go structs fail on a type
+mismatch, so their field names and types are strong evidence — and are documented, with the one
+recorded body, in the fixtures' README.
+
+| Endpoint | Exists (live, 2026-09-23) | Shape from | Used by |
+| --- | --- | --- | --- |
+| `catalog/tracks/{id}/` | yes | beatportdl, beets-beatport4 | `get_track` |
+| `catalog/tracks/?id=a,b` | route yes; filter unverified | — | `get_tracks`, which checks it (below) |
+| `catalog/tracks/?artist_id=` / `?label_id=` | route yes | beatportdl | `artist_tracks`, `label_tracks` |
+| `catalog/artists/{id}/` | yes | beatportdl | `get_artist` |
+| `catalog/artists/{id}/tracks/` | yes | — | not used; the filtered listing is the one path for both kinds |
+| `catalog/labels/{id}/` | yes | beatportdl | `get_label` |
+| `catalog/labels/{id}/releases/` | yes | beatportdl (`tracks` is a list of URLs) | existing, inCrate |
+| `catalog/releases/{id}/tracks/` | yes | beatportdl | existing, inCrate |
+| `catalog/charts/`, `catalog/charts/{id}/`, `…/tracks/` | yes | beatportdl (`person.owner_name`) | existing; `chart_tracks` |
+| `catalog/search/` | yes | existing code | existing `search_label_by_name` |
+| `my/playlists/`, `my/playlists/{id}/tracks/` | yes | existing code | existing, paths fixed |
+| `my/playlists/{id}/tracks/bulk/` | yes | — | not used; its body is unknown |
+| `catalog/artists/{id}/charts/`, `catalog/labels/{id}/charts/` | **no** | — | — |
+| `catalog/labels/{id}/tracks/`, `…/top-10-tracks/` | **no** | — | — |
+
+Findings that bind later steps:
+
+1. **There is no route listing charts by artist or by label.** Whether `catalog/charts/?artist_id=`
+   filters is a question only a token answers; the spike asks it. Until a recording shows it does,
+   DISCOVER-07's Beatport half offers an artist's and a label's recent tracks and no charts, which is
+   DEC-094's own fallback.
+2. **Batched lookup is used if it proves itself.** The `id=a,b,c` filter could not be tested, so
+   `get_tracks` asks it and checks the answer: a track it was not asked for, a 400, or leaving out a
+   track that a single lookup then finds all switch the instance to one request per track. So
+   DISCOVER-04's resolve job is correct either way, and its measured cost says which world it is in.
+3. **A chart names its curator in `person.owner_name`**, with no field known to be an artist id.
+   DISCOVER-05 compares curators by `name_key`; the "author id is a resolved library artist's
+   Beatport id" branch waits for a recording to show whether `person.id` is one.
+4. **Pagination is `next`, not `page`.** `page` is a string like `"1/4"`, so it is not read.
+5. **The date filter is applied twice.** `artist_tracks`/`label_tracks` send
+   `publish_date=from:to` and `order_by=-publish_date`, then keep only tracks inside the window and
+   stop at the first page wholly older than it, so the answer is right whether or not Beatport
+   honors the filter. The spike reports whether it does.
+6. No rate-limit headers appear on unauthenticated answers; the spike records any on real ones.
+
+**Two bugs found and fixed, both in code inCrate uses today.**
+
+- **Creating a Beatport playlist had never worked.** `create_playlist` posted to `my/playlists`
+  without its trailing slash; Beatport answers 301 (observed live), `requests` replays a redirected
+  POST as a GET, and the GET returned the user's playlist *list*, which has no `id` — so inCrate
+  reported "your token may not have playlist write access" for every token. Paths now carry the
+  slash, and `post` refuses redirects so a wrong path fails loudly. Pinned by
+  `src/tests/regression/test_regression_playlist_post_redirect.py`, which drives a real `requests`
+  session against a local server that redirects as Beatport does, and fails on the unfixed code.
+- **Every chart's curator read as blank.** The old parser looked for `author`, `user`, `creator` or
+  `person.name`; v4 puts it in `person.owner_name`. inCrate's chart branch could therefore match no
+  chart. Both chart parsers now fall back to it.
+
+Also found, left alone: inCrate's label-release fallback asks `catalog/labels/{id}/tracks`, a route
+that does not exist, so that branch has only ever returned nothing. It retires with inCrate in
+DISCOVER-12, and `label_tracks` is the working replacement.
+
+**Fixtures and the recording.** `src/tests/fixtures/beatport_v4/` holds 14 reconstructed files
+(invented names and ids; fields the parsers ignore are present to prove they are ignored) and the
+one recorded body. Value tests read them for the cases a recording cannot be relied on to contain —
+two artists and a remixer, no key and no BPM, a release with no label, a page older than the window.
+Agreement tests run over every fixture **and every file in `recorded/`**, checking that the parser
+kept exactly what the raw JSON says: every id, the artists in order, label, release, tempo, key. The
+spike writes its sanitized recordings to `recorded/` — no email, user, account or token field, and a
+playlist's id and name replaced — so once a developer runs it, the parsers are held to real answers
+with no test rewritten. The script's sanitizing and a whole run against a fake Beatport built from
+the fixtures are tested offline.
+
+**Tests**: 80 in `test_beatport_catalog.py`, 23 new in `test_beatport_api_client.py` (30 in all),
+10 in `src/tests/unit/scripts/test_beatport_v4_spike.py`, 3 regression. inCrate's own tests pass
+unchanged, as do the engine suite and the Beatport integration tests (1,072 passed, 7 skipped). The
+concurrency cap is held by a threaded test of twelve clients; `playlist_url` never contains
+`placeholder`; no test reaches the network.
+
+**Checks run**: `python -m pytest src/tests` (full suite), `ruff check src/`,
+`ruff format --check src/`, `check_no_qt_in_core.py`, and the strict mypy gate with the two new
+modules added to it.
+
+**Owed**: running the spike with a real token, then recording its report here. It answers the
+batched-id filter, the date filter, the chart filter by artist, the playlist add-track body (the
+existing `{"track_id": …}` is kept until then), rate-limit headers, and whether a chart's `person.id`
+is an artist id. A failing agreement test after recording means a reconstructed shape was wrong, and
+the parser changes.
 
 ---
 

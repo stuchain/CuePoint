@@ -43,15 +43,23 @@ class ProcessingError(CuePointException):
 class BeatportAPIError(CuePointException):
     """Error from Beatport API."""
 
-    def __init__(self, message: str, status_code: Optional[int] = None, **kwargs):
+    def __init__(
+        self,
+        message: str,
+        status_code: Optional[int] = None,
+        retry_after: Optional[float] = None,
+        **kwargs,
+    ):
         """Initialize API error.
 
         Args:
             message: Error message.
             status_code: HTTP status code if applicable.
+            retry_after: Seconds Beatport asked to wait, when it said (a 429).
         """
         super().__init__(message, **kwargs)
         self.status_code = status_code
+        self.retry_after = retry_after
 
 
 class ValidationError(CuePointException):

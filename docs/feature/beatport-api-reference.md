@@ -107,8 +107,16 @@ API field names may differ (e.g. `performers` vs `artists`); parsing in `beatpor
 | **401** | Raise `BeatportAPIError` “Invalid or expired Beatport API token”; do not retry |
 | **403** | Raise “Beatport API access forbidden” |
 | **404** | Return `None` or `[]` (no exception for missing chart/release/label) |
-| **429** | Raise “Rate limited; try again later”; retries use `run_with_retry` (e.g. 2 retries for 5xx/429) |
-| **5xx** | Retry up to 2× then raise |
+| **429** | Wait out `Retry-After` **once** (or 2 s when absent) and retry; a second 429, or a `Retry-After` over 30 s, raises “Rate limited; try again later” carrying `retry_after` |
+| **5xx** | Retry with backoff (one attempt plus up to three retries), then raise |
+| **3xx on POST** | Raise `BEATPORT_API_REDIRECT` — a POST never follows a redirect (see §8) |
+| **Body over 8 MiB** | Raise `BEATPORT_API_TOO_LARGE` before parsing |
+
+Every failure maps to one of five classes through
+`beatport_api_client.classify_beatport_error`: `no_token`, `rejected` (401), `forbidden` (403,
+including a token without playlist scope), `rate_limited` (429) and `unavailable` (everything else).
+At most four Beatport requests are in flight across the engine
+(`beatport_api_client.MAX_CONCURRENT_REQUESTS`).
 | **No token** | Raise “Configure Beatport API token (incrate.beatport_access_token or BEATPORT_ACCESS_TOKEN)” |
 | **Timeout** | Raise “Request timed out” |
 | **Malformed JSON** | Raise “Invalid API response” |
@@ -125,11 +133,41 @@ API field names may differ (e.g. `performers` vs `artists`); parsing in `beatpor
 
 ---
 
-## 8. References in repo
+## 8. Catalog client for Discover (DISCOVER-01)
+
+`BeatportApi` gained `get_track`, `get_tracks` (batched through `catalog/tracks/?id=a,b,c`, checked
+against what it returns and falling back to one request per track if the filter does not hold),
+`get_artist`, `get_label`, `artist_tracks` and `label_tracks` (`catalog/tracks/?artist_id=` /
+`?label_id=` with a date window, newest first) and `chart_tracks`. They return the `Catalog*`
+models, which keep every artist, label, release and genre id. The parsers are in
+`services/beatport_catalog.py`; the shapes and where each comes from are in
+`src/tests/fixtures/beatport_v4/README.md`. Listings follow `next` up to 10 pages.
+
+**Route map**, checked against the live API on 2026-09-23 (its router answers 404 for a missing
+path and 401 for an existing one, before it checks a token):
+
+- **Exist:** `catalog/tracks/`, `catalog/tracks/{id}/`, `catalog/artists/{id}/`,
+  `catalog/artists/{id}/tracks/`, `catalog/labels/`, `catalog/labels/{id}/`,
+  `catalog/labels/{id}/releases/`, `catalog/releases/{id}/tracks/`, `catalog/charts/`,
+  `catalog/charts/{id}/`, `catalog/charts/{id}/tracks/`, `catalog/genres/`, `catalog/search/`,
+  `my/playlists/`, `my/playlists/{id}/tracks/`, `my/playlists/{id}/tracks/bulk/`.
+- **Do not exist:** any chart listing by artist or by label (`catalog/artists/{id}/charts/`,
+  `catalog/labels/{id}/charts/`), `catalog/labels/{id}/tracks/`, and the `top-10-tracks` routes.
+- **Every path needs its trailing slash.** Without it Beatport answers 301, and `requests` replays a
+  redirected POST as a GET — which is why creating a playlist used to read the playlist list
+  instead. Paths now carry the slash, and a POST never follows a redirect.
+- A playlist's page is `https://www.beatport.com/library/playlists/{id}`.
+
+A developer with a token records the real responses with `scripts/beatport_v4_spike.py` (see the
+fixtures README).
+
+---
+
+## 9. References in repo
 
 - **Token and auth:** [beatport-api-token.md](beatport-api-token.md)
 - **Implementation design:** [incrate-02-beatport-api.md](incrate-02-beatport-api.md)
-- **Code:** `src/cuepoint/services/beatport_api_client.py`, `src/cuepoint/services/beatport_api.py`, `src/cuepoint/incrate/beatport_api_models.py`
+- **Code:** `src/cuepoint/services/beatport_api_client.py`, `src/cuepoint/services/beatport_api.py`, `src/cuepoint/services/beatport_catalog.py`, `src/cuepoint/incrate/beatport_api_models.py`
 - **Diagnostic script:** `scripts/diagnose_beatport_api.py` (raw API responses for debugging)
 
 ---

@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); no step is implemented.
+(DEC-090…DEC-101); DISCOVER-01 is implemented, with its recorded spike owed.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -365,7 +365,7 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — specified, not started
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 implemented
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
@@ -389,6 +389,16 @@ deterministic, explained, offline rule over the library, written for Phase 10 to
 previews (DEC-097), no For You (DEC-101), and the Beatport token is handled as it is today — against
 the recommendation to move it into OS secure storage (DEC-098). The Tools group and its landing page
 retire, and the Library becomes home (DEC-100).
+
+DISCOVER-01 is implemented: a catalog client that keeps every artist, label, release and genre id,
+says which of five things went wrong when Beatport refuses, honors `Retry-After` once, and holds
+the whole engine to four Beatport requests at a time. With no token available, the route map was
+established against the live API anyway — its router answers 404 for a missing path before it asks
+for a token — and it settled one of DEC-094's open questions: there is no route listing charts by
+artist or by label. It also found that creating a Beatport playlist had never worked. The playlist
+paths lacked their trailing slash, Beatport redirected them, and the redirect turned the POST into a
+GET of the playlist list, so inCrate blamed the token every time. Recording real response bodies is
+one command for whoever holds a token, `scripts/beatport_v4_spike.py`, and is owed.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 

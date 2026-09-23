@@ -71,6 +71,8 @@ GUARDED = (
     "cuepoint/engine/parent_watch.py",
     "cuepoint/services/health_service.py",
     "cuepoint/services/review_export_service.py",
+    "cuepoint/services/beatport_api_client.py",
+    "cuepoint/services/beatport_catalog.py",
     "cuepoint/services/match_comparison.py",
     "cuepoint/engine/clean_api.py",
     "cuepoint/services/override_values.py",

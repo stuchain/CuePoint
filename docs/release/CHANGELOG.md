@@ -190,6 +190,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **inCrate's Create playlist on Beatport always failed**, saying the token
+  might lack playlist access whatever the token was. Beatport redirects the
+  address CuePoint posted to, and the redirect turned the request into a read of
+  your playlists, so no playlist was ever made. CuePoint now posts to the
+  address Beatport expects, and the link it gives you opens the playlist on
+  beatport.com rather than a page that did not exist. A request that Beatport
+  redirects is now reported as an error instead of quietly doing something else
+- inCrate now reads the name of a Beatport chart's curator where Beatport's
+  current API puts it, so charts curated by artists in your collection can be
+  found; before, every chart's curator read as blank
 - **On macOS, an export could overwrite the Rekordbox file it was read from.**
   Saving an export as `COLLECTION.XML` when the library had been imported from
   `collection.xml` was allowed, and on a Mac's ordinary disk those two names are

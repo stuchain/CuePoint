@@ -1,13 +1,36 @@
-"""High-level Beatport API: list genres, charts, chart detail, label releases, search label (Phase 2)."""
+"""High-level Beatport API: list genres, charts, chart detail, label releases, search label (Phase 2).
+
+DISCOVER-01 adds the catalog half: tracks, artists and labels by id, an
+artist's or label's recent tracks, and a chart's tracks, parsed by
+``services/beatport_catalog.py`` into the ``Catalog*`` models that keep every
+id. The older parsers below, which guess between several nestings, are left
+alone for inCrate and retire with it in DISCOVER-12.
+
+The route map, established against the live API — its router answers 404 for
+a path it lacks and 401 for one it has, before it checks a token:
+
+- ``catalog/tracks/{id}/``, ``catalog/tracks/`` (filters ``artist_id``,
+  ``label_id``), ``catalog/artists/{id}/``, ``catalog/labels/{id}/``,
+  ``catalog/charts/{id}/tracks/``, ``my/playlists/`` and
+  ``my/playlists/{id}/tracks/`` exist.
+- ``catalog/artists/{id}/charts/``, ``catalog/labels/{id}/charts/``,
+  ``catalog/labels/{id}/tracks/`` and the ``top-10-tracks`` routes do not.
+  So there is no listing of charts by artist or by label, and nothing here
+  offers one.
+- Every path wants its trailing slash; without it Beatport answers 301.
+"""
 
 import json
 import logging
 import re
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.incrate.beatport_api_models import (
+    CatalogArtist,
+    CatalogLabel,
+    CatalogTrack,
     ChartDetail,
     ChartSummary,
     ChartTrack,
@@ -16,6 +39,16 @@ from cuepoint.incrate.beatport_api_models import (
     LabelReleaseTrack,
 )
 from cuepoint.services.beatport_api_client import BeatportApiClient
+from cuepoint.services.beatport_catalog import (
+    BEATPORT_WEB_BASE,
+    catalog_text,
+    chart_owner_name,
+    page_items,
+    parse_catalog_artist,
+    parse_catalog_label,
+    parse_catalog_track,
+    positive_id,
+)
 
 # Web track URL format: https://www.beatport.com/track/{slug}/{id} or /track/t/{id}
 BEATPORT_WEB_TRACK_BASE = "https://www.beatport.com/track"
@@ -23,6 +56,18 @@ BEATPORT_WEB_TRACK_BASE = "https://www.beatport.com/track"
 _API_TRACK_ID_RE = re.compile(r"/catalog/tracks/(\d+)/?$")
 
 _logger = logging.getLogger(__name__)
+
+#: Beatport's largest page.
+MAX_PER_PAGE = 100
+#: Most pages one listing reads, so one call cannot page forever.
+MAX_LISTING_PAGES = 10
+#: Ids asked for in one batched track lookup.
+TRACK_BATCH_SIZE = MAX_PER_PAGE
+
+#: Where a playlist of the user's own lives on the website. No API response
+#: names it; it is the page the website itself opens for a playlist.
+PLAYLIST_WEB_BASE = f"{BEATPORT_WEB_BASE}/library/playlists"
+_PLAYLIST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 # Cache key prefixes and TTLs
 _CACHE_GENRES = "beatport_api:genres"
@@ -91,6 +136,9 @@ def _parse_chart_summary(
     else:
         author_name = str(author).strip() if author else ""
         author_id = None
+    if not author_name:
+        # v4 names a chart's curator in ``person.owner_name``.
+        author_name = chart_owner_name(obj)
     return ChartSummary(
         id=int(obj.get("id", 0) or 0),
         name=str(obj.get("name") or "").strip(),
@@ -126,6 +174,7 @@ def _parse_chart_track(obj: Any, position: int = 0) -> ChartTrack:
         artists=artists_str,
         beatport_url=beatport_url,
         position=int(obj.get("position", position) or position),
+        catalog=parse_catalog_track(obj),
     )
 
 
@@ -142,6 +191,9 @@ def _parse_chart_detail(obj: Any) -> ChartDetail:
     author_name = (
         author.get("name", "") if isinstance(author, dict) else str(author or "")
     ).strip()
+    if not author_name:
+        # v4 names a chart's curator in ``person.owner_name``.
+        author_name = chart_owner_name(obj)
     # API may nest tracks under "tracks", "track_list", "results", or "data"
     tracks_raw = (
         obj.get("tracks")
@@ -204,6 +256,7 @@ def _parse_label_release_track(obj: Any) -> LabelReleaseTrack:
         artists=artists_str,
         beatport_url=beatport_url,
         release_date=_parse_date(obj.get("release_date") or obj.get("date") or ""),
+        catalog=parse_catalog_track(obj),
     )
 
 
@@ -251,6 +304,10 @@ class BeatportApi:
     ):
         self._client = client
         self._cache = cache_service
+        # Whether ``catalog/tracks/?id=a,b,c`` answers exactly the tracks it
+        # was asked for: None until a lookup has shown it, then True or False.
+        self._batch_lookup: Optional[bool] = None
+        self._playlist_web_urls: Dict[str, str] = {}
 
     def list_genres(self) -> List[Genre]:
         """List genres. Cached 24h."""
@@ -936,6 +993,209 @@ class BeatportApi:
             self._cache.set(cache_key, None, ttl=_CACHE_LABEL_SEARCH_TTL)
         return None
 
+    # --- Catalog (DISCOVER-01) -------------------------------------------------
+
+    def get_track(self, track_id: int) -> Optional[CatalogTrack]:
+        """One catalog track by id, or None when Beatport has no such track."""
+        tid = positive_id(track_id)
+        if tid is None:
+            return None
+        return parse_catalog_track(self._client.get(f"/catalog/tracks/{tid}/"))
+
+    def get_tracks(self, track_ids: Iterable[int]) -> List[CatalogTrack]:
+        """Catalog tracks by id, in the order asked, leaving out any not found.
+
+        Asks ``catalog/tracks/?id=a,b,c`` for up to :data:`TRACK_BATCH_SIZE` at
+        a time, and checks the answer rather than trusting the filter: a batch
+        that returns a track it was not asked for, or leaves out one that a
+        single lookup finds, means the filter is not what it seems, and every
+        lookup from then on is one request per track. Errors are raised, so a
+        caller counting failures (DISCOVER-04) sees each one.
+        """
+        wanted: List[int] = []
+        seen: set = set()
+        for raw in track_ids:
+            tid = positive_id(raw)
+            if tid is not None and tid not in seen:
+                seen.add(tid)
+                wanted.append(tid)
+        found: Dict[int, CatalogTrack] = {}
+        for start in range(0, len(wanted), TRACK_BATCH_SIZE):
+            chunk = wanted[start : start + TRACK_BATCH_SIZE]
+            batch = self._get_tracks_batch(chunk) if len(chunk) > 1 else None
+            if batch is None:
+                batch = {}
+                for tid in chunk:
+                    track = self.get_track(tid)
+                    if track is not None:
+                        batch[tid] = track
+            found.update(batch)
+        return [found[tid] for tid in wanted if tid in found]
+
+    def _get_tracks_batch(self, chunk: List[int]) -> Optional[Dict[int, CatalogTrack]]:
+        """One batched lookup, or None when batching cannot be trusted."""
+        if self._batch_lookup is False:
+            return None
+        try:
+            data = self._client.get(
+                "/catalog/tracks/",
+                params={"id": ",".join(str(t) for t in chunk), "per_page": len(chunk)},
+            )
+        except BeatportAPIError as e:
+            if e.status_code == 400:
+                self._stop_batching("refused the id filter (400)")
+                return None
+            raise
+        items, _ = page_items(data)
+        found: Dict[int, CatalogTrack] = {}
+        for item in items:
+            track = parse_catalog_track(item)
+            if track is not None:
+                found[track.id] = track
+        asked = set(chunk)
+        if any(tid not in asked for tid in found):
+            self._stop_batching("answered tracks it was not asked for")
+            return None
+        if self._batch_lookup is None:
+            missing = [tid for tid in chunk if tid not in found]
+            if missing and self.get_track(missing[0]) is not None:
+                self._stop_batching("left out a track a single lookup finds")
+                return None
+            if found:
+                self._batch_lookup = True
+        return found
+
+    def _stop_batching(self, reason: str) -> None:
+        _logger.warning(
+            "Beatport API: batched track lookup %s; looking tracks up one at a time",
+            reason,
+        )
+        self._batch_lookup = False
+
+    def get_artist(self, artist_id: int) -> Optional[CatalogArtist]:
+        """One artist by id, or None when Beatport has no such artist."""
+        aid = positive_id(artist_id)
+        if aid is None:
+            return None
+        return parse_catalog_artist(self._client.get(f"/catalog/artists/{aid}/"))
+
+    def get_label(self, label_id: int) -> Optional[CatalogLabel]:
+        """One label by id, or None when Beatport has no such label."""
+        lid = positive_id(label_id)
+        if lid is None:
+            return None
+        return parse_catalog_label(self._client.get(f"/catalog/labels/{lid}/"))
+
+    def artist_tracks(
+        self,
+        artist_id: int,
+        since: date,
+        until: Optional[date] = None,
+        max_pages: int = MAX_LISTING_PAGES,
+    ) -> List[CatalogTrack]:
+        """An artist's tracks released from ``since`` to ``until``, newest first."""
+        return self._recent_tracks("artist_id", artist_id, since, until, max_pages)
+
+    def label_tracks(
+        self,
+        label_id: int,
+        since: date,
+        until: Optional[date] = None,
+        max_pages: int = MAX_LISTING_PAGES,
+    ) -> List[CatalogTrack]:
+        """A label's tracks released from ``since`` to ``until``, newest first."""
+        return self._recent_tracks("label_id", label_id, since, until, max_pages)
+
+    def chart_tracks(
+        self, chart_id: int, max_pages: int = MAX_LISTING_PAGES
+    ) -> List[CatalogTrack]:
+        """Every track of a chart, in chart order, with its ids."""
+        cid = positive_id(chart_id)
+        if cid is None:
+            return []
+        tracks: List[CatalogTrack] = []
+        seen: set = set()
+        for item in self._paginate(
+            f"/catalog/charts/{cid}/tracks/", {"per_page": MAX_PER_PAGE}, max_pages
+        ):
+            track = parse_catalog_track(item)
+            if track is not None and track.id not in seen:
+                seen.add(track.id)
+                tracks.append(track)
+        return tracks
+
+    def _recent_tracks(
+        self,
+        filter_name: str,
+        entity_id: int,
+        since: date,
+        until: Optional[date],
+        max_pages: int,
+    ) -> List[CatalogTrack]:
+        """``catalog/tracks/`` filtered to one artist or label and a date window.
+
+        The window is also applied here, and the listing stops at the first
+        page older than it, so the answer is right whether or not Beatport
+        applies the date filter itself.
+        """
+        eid = positive_id(entity_id)
+        if eid is None:
+            return []
+        end = until or date.today()
+        first, last = since.isoformat(), end.isoformat()
+        params = {
+            filter_name: eid,
+            "publish_date": f"{first}:{last}",
+            "order_by": "-publish_date",
+            "per_page": MAX_PER_PAGE,
+        }
+        tracks: List[CatalogTrack] = []
+        seen: set = set()
+        for page in self._paginate_pages("/catalog/tracks/", params, max_pages):
+            dated_older = 0
+            dated = 0
+            for item in page:
+                track = parse_catalog_track(item)
+                if track is None or track.id in seen:
+                    continue
+                if track.release_date is not None:
+                    dated += 1
+                    if track.release_date < first:
+                        dated_older += 1
+                        continue
+                    if track.release_date > last:
+                        continue
+                seen.add(track.id)
+                tracks.append(track)
+            if dated and dated_older == dated:
+                break
+        return tracks
+
+    def _paginate(
+        self, path: str, params: Dict[str, Any], max_pages: int
+    ) -> Iterator[Dict[str, Any]]:
+        for page in self._paginate_pages(path, params, max_pages):
+            yield from page
+
+    def _paginate_pages(
+        self, path: str, params: Dict[str, Any], max_pages: int
+    ) -> Iterator[List[Dict[str, Any]]]:
+        """Each page of a v4 listing, until ``next`` is null or the cap is hit."""
+        for number in range(1, max(0, max_pages) + 1):
+            data = self._client.get(path, params={**params, "page": number})
+            items, has_next = page_items(data)
+            if items:
+                yield items
+            if not items or not has_next:
+                return
+        _logger.info(
+            "Beatport API: %s stopped at the %s-page cap with more pages left",
+            path,
+            max_pages,
+        )
+
+    # --- Playlists ------------------------------------------------------------
+
     def create_playlist(self, name: str) -> Optional[str]:
         """Create a playlist for the current user. Returns playlist id or None."""
         if not (name or "").strip():
@@ -944,13 +1204,16 @@ class BeatportApi:
         if not callable(post):
             return None
         try:
-            data = post("my/playlists", json={"name": (name or "").strip()})
+            data = post("my/playlists/", json={"name": (name or "").strip()})
             if data is None or not isinstance(data, dict):
                 return None
             pid = data.get("id")
-            if pid is not None:
-                return str(pid)
-            return None
+            if pid is None or not _PLAYLIST_ID_RE.match(str(pid)):
+                return None
+            web_url = catalog_text(data.get("url"))
+            if web_url.startswith(f"{BEATPORT_WEB_BASE}/"):
+                self._playlist_web_urls[str(pid)] = web_url
+            return str(pid)
         except BeatportAPIError:
             raise
         except Exception as e:
@@ -962,9 +1225,17 @@ class BeatportApi:
         post = getattr(self._client, "post", None)
         if not callable(post):
             raise RuntimeError("API client does not support POST")
-        post(f"my/playlists/{playlist_id}/tracks", json={"track_id": int(track_id)})
+        if not _PLAYLIST_ID_RE.match(str(playlist_id)):
+            raise ValueError(f"Not a Beatport playlist id: {playlist_id!r}")
+        post(f"my/playlists/{playlist_id}/tracks/", json={"track_id": int(track_id)})
 
     def playlist_url(self, playlist_id: str) -> Optional[str]:
-        """Return the Beatport URL for a playlist (if known)."""
-        base = "https://www.beatport.com"
-        return f"{base}/playlist/placeholder/{playlist_id}" if playlist_id else None
+        """The www.beatport.com page of one of the user's playlists.
+
+        The create response's own URL when it carried a website one, otherwise
+        the page the website itself opens for a playlist.
+        """
+        pid = str(playlist_id or "")
+        if not _PLAYLIST_ID_RE.match(pid):
+            return None
+        return self._playlist_web_urls.get(pid) or f"{PLAYLIST_WEB_BASE}/{pid}"
