@@ -240,8 +240,31 @@
  * A floor means the column overflows instead, and the column scrolls, which is
  * a thing a user can see and deal with.
  */
+/*
+ * The column is `minmax(0, 1fr)`, and that is load-bearing.
+ *
+ * A grid's implicit column is `auto`, which is at least as wide as the widest
+ * item's *min-content* — so one wide child stretches the track and every other
+ * row with it. The selection strip is that child: its buttons come to about
+ * 748px and the region is 624px, so the moment a row was selected the whole
+ * column jumped to 748px, the filter bar above stopped needing to wrap, and it
+ * lost a line — 100px of height, plus 28px of scroll, all of it above the
+ * table.
+ *
+ * Which moved the rows 125px up, under the pointer, on the *first* click of a
+ * double-click. The second click then landed on a different row or on nothing,
+ * no `dblclick` was raised, and double-clicking a track did not play it. Found
+ * by the Phase 8 macOS pass, where a 1440x900 window — as tall as a Mac's
+ * built-in display allows — at `--scale: 2` makes this region small enough to
+ * hit every time.
+ *
+ * `minmax(0, 1fr)` lets the column be narrower than its content, so a wide
+ * child scrolls or wraps inside it instead of resizing everything beside it.
+ * `.library-screen__body` already does this for the same reason.
+ */
 .library-screen__main {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(calc(140px * var(--scale)), 1fr) auto auto;
   min-width: 0;
   min-height: 0;
