@@ -275,7 +275,7 @@ def _pick(
     return [entry for entry in library if entry[0] in wanted]
 
 
-def _local_date(moment: datetime) -> date:
+def local_date(moment: datetime) -> date:
     """The user's date at ``moment``: a window of days is counted in their days,
     as inCrate's ``date.today()`` counted it, while timestamps stay UTC."""
     return moment.astimezone().date() if moment.tzinfo is not None else moment.date()
@@ -359,7 +359,7 @@ class DiscoveryService(IDiscoveryService):
         Raises:
             ValueError: If a value is not one a run can use.
         """
-        today = _local_date(self._clock())
+        today = local_date(self._clock())
         until = charts_to or today
         since = charts_from or (until - timedelta(days=DEFAULT_CHART_DAYS))
         if genre_ids is None:
@@ -430,7 +430,7 @@ class DiscoveryService(IDiscoveryService):
         still ended as ``failed`` with that reason, so no run is left open.
         """
         now = self._clock()
-        today = _local_date(now)
+        today = local_date(now)
         artists = _pick(self._credits.library_artists(), request.artists)
         labels = _pick(self._credits.library_labels(), request.labels)
         artist_names = dict(artists)

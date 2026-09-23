@@ -390,19 +390,35 @@ class TestReadingAWindow:
         assert (row.artists, row.remixers) == (("Zed",), ())
         assert [s.source_id for s in row.sources] == [1]
 
-    def test_the_owned_query_is_read_once_per_statement(self, db, filled):
-        """The plan materialises the owned set once rather than per row."""
+    def test_the_owned_set_is_built_once_per_statement(self, db, filled):
+        """The plan builds the owned set once rather than asking per row."""
         from cuepoint.persistence import discovery_repository as module
 
         sql = (
             f"SELECT rt.position FROM discovery_run_tracks AS rt"
-            f" WHERE rt.run_id = ?{module._OWNED_WHERE[OWNED_HIDE]}"
+            f" WHERE rt.run_id = :run{module._OWNED_WHERE[OWNED_HIDE]}"
         )
         plan = " | ".join(
             r[3]
-            for r in db.connect().execute("EXPLAIN QUERY PLAN " + sql, (filled.id,))
+            for r in db.connect().execute(
+                "EXPLAIN QUERY PLAN " + sql, {"run": filled.id, "owned": "[1]"}
+            )
         )
         assert "LIST SUBQUERY" in plan and "CORRELATED LIST SUBQUERY" not in plan
+
+    @pytest.mark.parametrize("owned", [OWNED_HIDE, OWNED_ONLY, OWNED_ALL])
+    def test_the_ownership_view_is_read_once_per_window(self, db, runs, filled, owned):
+        """DISCOVER-06: each ``IN (view)`` built every owned id again, and a
+        window asked up to four times; at 40,000 accepted matches that was
+        98 ms of a window. It is now read once, and every use shares it."""
+        statements = []
+        conn = db.connect()
+        conn.set_trace_callback(statements.append)
+        try:
+            runs.run_tracks(filled.id, owned=owned)
+        finally:
+            conn.set_trace_callback(None)
+        assert sum("library_beatport_tracks" in s for s in statements) == 1
 
     def test_an_empty_run(self, runs, run):
         page = runs.run_tracks(run.id)

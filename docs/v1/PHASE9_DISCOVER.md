@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **DISCOVER-01 to DISCOVER-05 implemented, and DISCOVER-01's spike recorded against the
-live API (2026-09-23; see its outcome). DISCOVER-06…DISCOVER-12 not started.** The twelve steps below replace the
+Status: **DISCOVER-01 to DISCOVER-06 implemented, and DISCOVER-01's spike recorded against the
+live API (2026-09-23; see its outcome). DISCOVER-07…DISCOVER-12 not started.** The twelve steps below replace the
 roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -1152,7 +1152,8 @@ Batching commits took these from 6.0 s and 4.9 s. The library reads a run starts
 | `artist_ids_by_key`, with 40,000 resolved tracks | 229 ms |
 | `label_ids_by_key`, with 40,000 resolved tracks | 82 ms |
 
-The first window of a 6,505-track run takes 7 ms. Against the real API, a run is bounded by its
+The first window of a 6,505-track run takes 7 ms, on a library with no accepted matches; at
+40,000 it took 98 ms, which DISCOVER-06 found and cut to 34 ms. Against the real API, a run is bounded by its
 round trips: 1,108 requests is several minutes at typical latency, and the first run's label
 searches are paid once.
 
@@ -1247,6 +1248,191 @@ skipped by default and included on request, and the event carries a URL with no 
 **Risks**: Low.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented. The wantlist keeps Beatport tracks with a note and a bought mark, owned
+computed when it is read. A push creates a Beatport playlist through the API as a job, skipping
+owned tracks unless asked, and reports the real URL.
+
+**What was built.**
+
+- **`persistence/wantlist_repository.py`** is the one reader and writer of `wantlist`.
+  - `add` stores new catalog rows and entries in one transaction, through
+    `store_catalog_tracks`. It never touches an entry already there: not its note, its bought
+    mark or when it was added. It leaves out an entry whose track has no catalog row.
+  - `remove`, `set_note` and `set_bought` change only what is asked. Marking an entry bought
+    again keeps the moment it was first marked.
+  - `page` reads a window, sorted newest first by default, or by release date, first artist or
+    title, with missing values last and ties by id. Each row carries its track, credits and
+    `owned`. Each page carries `total`, `entries`, `owned` and `bought`.
+  - Every write joins a transaction its caller holds.
+- **`services/wantlist_service.py`**:
+  - `add(ids, run_id=None)`: from a run, every track must be one the run found. An id the cache
+    lacks is read from Beatport in one batched request, outside the transaction, and stored with
+    its entry. A track Beatport does not have is reported as `not_found`. A read that fails raises
+    with its class and adds nothing, and an add needing no read works with no token.
+  - `remove`, `set_note` (trimmed; `None` or blank clears; at most `MAX_NOTE_LENGTH`, 1,000
+    characters) and `set_bought(ids, bought)`.
+  - Each returns a `WantlistChange`: what changed, what was already as asked, what is not on the
+    list, what Beatport does not have, and a sentence. Adding an entry that exists changes nothing
+    and says "Already on the wantlist".
+  - Each change writes one activity event (`discover.wantlist.added`, `.removed`, `.noted`,
+    `.bought`, `.unbought`) **inside the change's own transaction**, so an event that cannot be
+    written undoes the change (DEC-008). No `track_history` row is written.
+- **`services/beatport_playlist_service.py`**:
+  - `plan(ids, name=None, include_owned=False)` decides before a job exists which tracks go and
+    which are skipped as owned. The default name is inCrate's, from
+    `incrate.playlist_name_format`, in the user's own date. A push that would add nothing because
+    every track is owned is refused, rather than creating an empty playlist.
+  - `push(plan)` creates the playlist, adds each track in order, checks cancel before the create
+    and before each track, and returns a `BeatportPlaylistResult`: added, the failed ids,
+    skipped-as-owned, not attempted, and the playlist's id and URL.
+  - One activity event per push, `discover.playlist.pushed`, whatever the outcome, carrying the
+    URL once a playlist exists.
+- **`engine/beatport_playlist_jobs.py`**: job type `beatport_playlist`, exclusive with itself.
+  - `start_beatport_playlist_job` refuses with no token (`no_token`) or an unusable push
+    (`ValueError`); either way no job exists and nothing is asked of Beatport.
+  - Progress names the stage: **Creating the Beatport playlist**, then **Adding tracks to the
+    Beatport playlist**.
+  - A failure's code is `BEATPORT_<CLASS>`, or `BEATPORT_PLAYLIST_FAILED` when Beatport named no
+    playlist. A push where some tracks failed succeeds, with the failures in its result.
+- **A 403 on create is refused as `forbidden`**: "Beatport refused to create a playlist (403): the
+  token may not have playlist scope". There is no fallback (DEC-099).
+- **A run's window says which tracks are on the wantlist** (`RunTrackRow.on_wantlist`), which
+  DISCOVER-10's run table shows. It asks through `wantlist_repository.listed_ids_sql`, so the
+  SQL over the table stays in its module.
+- **The catalog is read one way beside other rows.** `beatport_catalog_repository` now exports
+  `CATALOG_TRACK_COLUMNS`, `credit_names` and `first_artist_key_sql`, and the run window's copies
+  of them are gone. So `discovery_repository` no longer runs SQL against `beatport_track_artists`,
+  and DISCOVER-02's ownership test says so.
+- **`requested_track_ids`**, in `beatport_ownership.py`, is the one check for Beatport track ids
+  from outside the engine. They must be whole numbers from 1 to `MAX_BEATPORT_ID`, not booleans or
+  text, one to a limit, each asked about once. The wantlist and the push both use it, with
+  `MAX_CHANGE` and `MAX_PLAYLIST_TRACKS` of 10,000.
+
+**Where it differs from the specification, and why.**
+
+- **`playlist_writer.py`'s API path is not reused.** It has no cancel, no error classes, no stop
+  rule and no URL check, and it retires with inCrate. The job calls the two `BeatportApi` methods
+  that path wraps, the ones DISCOVER-01 fixed.
+- **The four filters are two independent ones.** Bought and owned are each `all`, `only` or
+  `hide`, the words a run's owned filter uses. That gives the four filters the specification
+  names, and their combinations. "Bought and not owned yet", the case DEC-093 names, is
+  `bought="only"`, `owned="hide"`.
+- **An add from a run must name tracks that run found.** Otherwise an entry would say it came
+  from a run that never listed it.
+- **A refusal about the track does not count toward stopping.** A 404 for an id Beatport does
+  not have, or a 400, shows that Beatport is answering. It is reported and skipped, and it resets
+  the failures-in-a-row count. The shared policy still applies to everything else: a rejected
+  token, a missing scope or a rate limit stops at once, and three other failures in a row stop the
+  push.
+- **A push of only owned tracks is refused before its job**, as above.
+- **The wantlist's events are atomic with their change; the push's event is best-effort.** A
+  wantlist change can be rolled back with its event, and DEC-008 says it must be. A playlist that
+  exists on Beatport cannot be rolled back, so a feed that cannot be written must not fail the
+  push.
+
+**A slow query found and fixed, in DISCOVER-05's run window as well as here.** The ownership view
+computes every accepted match's id, so no index serves it. Each `IN (view)` in a statement built a
+list of every owned id again, 34 ms at 40,000 accepted matches. A window asked up to four times: to
+count, to filter and to flag. DISCOVER-05 measured its window at 7 ms on a library with no
+accepted matches. At 40,000 accepted matches the same window took 98 ms, and the wantlist's up to
+137 ms. Both now read the owned ids among their own list once per window
+(`beatport_catalog_repository.owned_among_json`). Every use then tests membership in that JSON
+array (`owned_json_sql`), so each part of one answer sees the same ownership. A test per filter
+traces the connection and holds the view to one read per window; it fails on the old form.
+
+**Measured** (median of five to seven, 50,000 library tracks with 40,000 accepted matches, 12,000
+cached catalog tracks):
+
+| Read or write | Before the fix | After |
+| --- | --- | --- |
+| Run window of 6,500 tracks, owned hidden (the default) | 98 ms | 34 ms |
+| Run window, all or owned only | 68 ms / 98 ms | 34 ms / 35 ms |
+| Wantlist window of 5,001 entries, any of the nine filter pairs | 71–137 ms | 35–38 ms |
+| Wantlist window, by release date, artist or title; the last window | — | 39–46 ms |
+
+| Write | Time |
+| --- | --- |
+| Add 5,000 cached tracks in one call, with its event | 172 ms |
+| Mark 2,500 bought in one call | 37 ms |
+| Add one, note one | 1.2 ms each |
+| Plan a push of 100, 1,000 or 10,000 tracks (the owned check) | 26, 54 and 58 ms |
+
+The bought filter needs no index. The list is read whole at its size, and a window's cost is the
+one ownership read.
+
+**What binds later steps.**
+
+1. **DISCOVER-09's routes**:
+   - `wantlist` is `WantlistService.page`, and `wantlist/add`, `/remove`, `/note` and `/bought`
+     answer `WantlistChange.to_dict()`.
+   - `playlist/start` calls `start_beatport_playlist_job`, and its result is
+     `BeatportPlaylistResult.to_dict()`.
+   - The `ValueError` and `LookupError` refusals, and the `BeatportAPIError` an add raises when a
+     track must be read, cross the bridge as values with their class.
+   - `beatport_playlist` joins `JOB_VERBS`.
+   - A test holds that nothing but the job module starts a push.
+2. **"A run's visible tracks"** can be more than any window holds. `playlist/start` should accept
+   a run id and the owned filter and page the run window on the engine side, rather than take ids
+   the renderer never loaded.
+3. **DISCOVER-10** draws the wantlist from `WantlistPage`, and the run table's "on wantlist"
+   column from `RunTrackRow.on_wantlist`.
+4. **DISCOVER-12** deletes the whole of `playlist_writer.py`: the job does not use its API path,
+   and once `incrate_api.py` goes it has no caller. It moves `playlist_name.py` beside
+   `beatport_playlist_service.py`, which imports it.
+5. **A reader that asks "owned?" more than once per request** reads the owned ids once with
+   `owned_among_json` and tests them with `owned_json_sql`, as both windows now do.
+
+**Tests**:
+
+- 68 in `src/tests/unit/persistence/test_wantlist_repository.py`:
+  - **writes:** an add that leaves an existing entry alone; catalog rows stored with entries; a
+    refused catalog track leaving the rest; a missing run writing nothing; joining a caller's
+    transaction; remove, notes, bought marks.
+  - **reads:** the nine filter pairs with their counts; ownership read now and counted once;
+    the four sorts with missing values last; windows and refusals; rows with credits.
+  - **the plan, the run link** (`on_wantlist`, `tracks_in_run`, a deleted run) **and the models.**
+- 66 in `src/tests/unit/services/test_wantlist_service.py`, over the real repositories, activity
+  service and `BeatportApi`:
+  - **adds:** from a run, from a page, by an id never read, batched, not found; idempotent adds;
+    every refusal, including no token and a rejected read writing nothing.
+  - **each operation's result and event;** owned and bought independent in all four combinations;
+    becoming owned removes and marks nothing.
+  - **an event that cannot be written undoes each of the four changes,** including the catalog
+    row an add read.
+  - **what is kept:** a large change's event; no library history; a relaunch; a deleted run.
+- 51 in `src/tests/unit/services/test_beatport_playlist_service.py`, through `BeatportApi` over the
+  in-memory Beatport, which now answers the two playlist routes:
+  - **planning:** owned skipped by default and included on request; every name rule.
+  - **pushing:** all added, in order, with the real URL and its event; some failing; refusals
+    about the track never stopping it; three failures in a row stopping it; a success resetting
+    the count; 401, 403 and 429 stopping at once.
+  - **creating:** 403 on create refused as `forbidden` with "playlist scope"; other create
+    refusals; no id in the answer.
+  - **stopping and the feed:** cancelled before create and mid-way; the feed best-effort.
+- 18 in `src/tests/unit/engine/test_beatport_playlist_jobs.py`, through the real job store and
+  container:
+  - refusals before a job exists; success with its URL and event; owned skipped and included;
+  - a failing track; stage progress; 403 on create; a rejected token mid-way; no playlist id; a
+    bug;
+  - cancel mid-way; exclusivity; nothing else starting a push; the container building the
+    wantlist.
+- 17 in `test_beatport_ownership.py` for `requested_track_ids`, 4 in
+  `test_beatport_catalog_repository.py` for the shared readers, and 3 in
+  `test_discovery_repository.py` for one ownership read per window.
+- DISCOVER-02's ownership test names `wantlist_repository.py` as the owner of `wantlist`, and the
+  persistence boundary lists `wantlist_service.py` for its one transaction.
+- 12 deliberate breakages were each caught:
+  - **the wantlist:** an add overwriting an entry; a second bought mark overwriting the first;
+    the owned filter reading bought; the run check skipped; an event failure swallowed;
+    `on_wantlist` not read.
+  - **the push:** owned tracks pushed by default; a refusal about the track counting toward
+    stopping; a repeating refusal not stopping; cancel not checked between tracks.
+  - **each window:** the view read per use.
+
+**Checks run**: `python -m pytest src/tests` (full suite), `ruff check src/`,
+`ruff format --check src/`, `check_no_qt_in_core.py`, the strict mypy gate with the three new
+modules added, and `git diff --check`.
 
 ---
 

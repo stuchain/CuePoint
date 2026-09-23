@@ -2075,14 +2075,19 @@ class TestOneModuleRunsEachTablesSQL:
         "discovery_runs": "persistence/discovery_repository.py",
         "discovery_run_tracks": "persistence/discovery_repository.py",
         "discovery_run_sources": "persistence/discovery_repository.py",
+        "wantlist": "persistence/wantlist_repository.py",
     }
 
     #: Modules that read a table another module owns, and why. Only its owner
     #: writes it: ``test_only_its_owner_writes_it`` holds that.
     READERS = {
-        # DISCOVER-05: a run's window shows the catalog tracks it found.
-        "beatport_tracks": {"persistence/discovery_repository.py"},
-        "beatport_track_artists": {"persistence/discovery_repository.py"},
+        # DISCOVER-05 and DISCOVER-06: a run's window and the wantlist show the
+        # catalog tracks they hold. Their credits and sort key come from the
+        # catalog module's own helpers, so only the catalog table is joined.
+        "beatport_tracks": {
+            "persistence/discovery_repository.py",
+            "persistence/wantlist_repository.py",
+        },
     }
 
     @pytest.mark.parametrize("table", DISCOVER_TABLES)

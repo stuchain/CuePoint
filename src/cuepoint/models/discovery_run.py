@@ -333,6 +333,8 @@ class RunTrackRow:
         remixers: Its remixers' names, in Beatport's order.
         owned: Whether the library owns it now (DEC-092), computed when read.
         sources: Every reason the run found it, in the order it found them.
+        on_wantlist: Whether it is on the wantlist now (DISCOVER-06), also
+            computed when read.
     """
 
     position: int
@@ -341,6 +343,7 @@ class RunTrackRow:
     remixers: Tuple[str, ...] = ()
     owned: bool = False
     sources: Tuple[DiscoveryRunSource, ...] = ()
+    on_wantlist: bool = False
 
     def __post_init__(self) -> None:
         """Validate the row."""

@@ -21,17 +21,18 @@ catalog row or a count ahead of its rows.
 Reading a run
 -------------
 :meth:`~DiscoveryRepository.run_tracks` reads a window in one of four orders
-with ownership computed then (DEC-092), through DISCOVER-04's
-``owned_beatport_ids_sql``: a track matched after the run reads as owned when
-the run is reopened. Every page carries the counts the list needs to say "N
+with ownership computed then (DEC-092), through DISCOVER-04's view, read once
+per window by ``beatport_catalog_repository.owned_among_json`` (DISCOVER-06): a
+track matched after the run reads as owned when the run is reopened. Every page carries the counts the list needs to say "N
 owned tracks hidden". It joins the catalog it shows, which
-``beatport_catalog_repository`` alone writes.
+``beatport_catalog_repository`` alone writes, and says whether each track is on
+the wantlist through ``wantlist_repository.listed_ids_sql`` (DISCOVER-06).
 """
 
 from __future__ import annotations
 
 import sqlite3
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from cuepoint.incrate.beatport_api_models import CatalogTrack
 from cuepoint.models.beatport_cache import BeatportNameLookup, CachedBeatportTrack
@@ -52,9 +53,16 @@ from cuepoint.models.discovery_run import (
     RunTrackRow,
     RunTracksPage,
 )
-from cuepoint.persistence.beatport_catalog_repository import store_catalog_tracks
+from cuepoint.persistence.beatport_catalog_repository import (
+    CATALOG_TRACK_COLUMNS,
+    credit_names,
+    first_artist_key_sql,
+    owned_among_json,
+    owned_json_sql,
+    store_catalog_tracks,
+)
 from cuepoint.persistence.id_chunks import chunked, unique_ids
-from cuepoint.services.beatport_ownership import owned_beatport_ids_sql
+from cuepoint.persistence.wantlist_repository import listed_ids_sql
 from cuepoint.services.interfaces import IDatabaseService, IDiscoveryRepository
 
 #: The largest window a run's list answers at once.
@@ -82,33 +90,17 @@ _SOURCE_COLUMNS: Tuple[str, ...] = (
     "matched_on",
 )
 
-_TRACK_COLUMNS: Tuple[str, ...] = (
-    "beatport_track_id",
-    "title",
-    "mix_name",
-    "url",
-    "label_id",
-    "label_name",
-    "label_key",
-    "release_id",
-    "release_name",
-    "release_date",
-    "bpm",
-    "key",
-    "genre_id",
-    "genre_name",
-    "fetched_at",
-)
-
 _SELECT_RUN = f"SELECT {', '.join(_RUN_COLUMNS)} FROM discovery_runs"
 
-_OWNED = f"rt.beatport_track_id IN ({owned_beatport_ids_sql()})"
+_OWNED = owned_json_sql("rt.beatport_track_id")
 
-_FIRST_ARTIST = (
-    "(SELECT a.name_key FROM beatport_track_artists AS a"
-    " WHERE a.beatport_track_id = rt.beatport_track_id AND a.role = 'artist'"
-    " ORDER BY a.position LIMIT 1)"
+_RUN_TRACK_IDS = (
+    "SELECT beatport_track_id FROM discovery_run_tracks WHERE run_id = :run"
 )
+
+_ON_WANTLIST = f"rt.beatport_track_id IN ({listed_ids_sql()})"
+
+_FIRST_ARTIST = first_artist_key_sql("rt.beatport_track_id")
 
 _SORT_KEYS = {
     SORT_RELEASE_DATE: "b.release_date",
@@ -359,10 +351,16 @@ class DiscoveryRepository(IDiscoveryRepository):
                 f"A window is 1 to {MAX_WINDOW} tracks from offset 0 or later"
             )
         conn = self._db.connect()
+        values = {
+            "run": int(run_id),
+            "owned": owned_among_json(conn, _RUN_TRACK_IDS, {"run": int(run_id)}),
+            "limit": int(limit),
+            "offset": int(offset),
+        }
         counted = conn.execute(
             f"SELECT count(*) AS tracks, coalesce(sum({_OWNED}), 0) AS owned"
-            " FROM discovery_run_tracks AS rt WHERE rt.run_id = ?",
-            (run_id,),
+            " FROM discovery_run_tracks AS rt WHERE rt.run_id = :run",
+            values,
         ).fetchone()
         tracks, owned_count = int(counted["tracks"]), int(counted["owned"])
         total = {
@@ -372,15 +370,16 @@ class DiscoveryRepository(IDiscoveryRepository):
         }[owned]
         rows = conn.execute(
             f"SELECT rt.position AS position, {_OWNED} AS owned,"
-            f" {', '.join('b.' + c for c in _TRACK_COLUMNS)}"
+            f" {_ON_WANTLIST} AS on_wantlist,"
+            f" {', '.join('b.' + c for c in CATALOG_TRACK_COLUMNS)}"
             " FROM discovery_run_tracks AS rt"
             " JOIN beatport_tracks AS b ON b.beatport_track_id = rt.beatport_track_id"
-            f" WHERE rt.run_id = ?{_OWNED_WHERE[owned]}"
-            f"{_order_by(sort, descending)} LIMIT ? OFFSET ?",
-            (run_id, int(limit), int(offset)),
+            f" WHERE rt.run_id = :run{_OWNED_WHERE[owned]}"
+            f"{_order_by(sort, descending)} LIMIT :limit OFFSET :offset",
+            values,
         ).fetchall()
         ids = [int(r["beatport_track_id"]) for r in rows]
-        credits = _credits(conn, ids)
+        credits = credit_names(conn, ids)
         sources = _sources(conn, run_id, ids)
         window = tuple(
             RunTrackRow(
@@ -390,6 +389,7 @@ class DiscoveryRepository(IDiscoveryRepository):
                 remixers=credits.get(int(r["beatport_track_id"]), ((), ()))[1],
                 owned=bool(r["owned"]),
                 sources=tuple(sources.get(int(r["beatport_track_id"]), ())),
+                on_wantlist=bool(r["on_wantlist"]),
             )
             for r in rows
         )
@@ -409,6 +409,21 @@ class DiscoveryRepository(IDiscoveryRepository):
             (run_id,),
         )
         return [DiscoveryRunSource.from_row(row) for row in rows]
+
+    def tracks_in_run(self, run_id: int, ids: Iterable[int]) -> Set[int]:
+        """Which of ``ids`` a run found."""
+        found: Set[int] = set()
+        conn = self._db.connect()
+        for chunk in chunked(unique_ids(ids)):
+            found.update(
+                int(row[0])
+                for row in conn.execute(
+                    "SELECT beatport_track_id FROM discovery_run_tracks"
+                    f" WHERE run_id = ? AND beatport_track_id IN ({_placeholders(chunk)})",
+                    (int(run_id), *chunk),
+                )
+            )
+        return found
 
     # ---------------------------------------------------------- name lookups
 
@@ -479,23 +494,6 @@ def _write_counts(
     # Read back through the model, inside the transaction: counts that break
     # its rules (more labels resolved than in scope) roll the whole write back.
     _run_on(conn, run_id)
-
-
-def _credits(
-    conn: sqlite3.Connection, ids: Sequence[int]
-) -> Dict[int, Tuple[Tuple[str, ...], Tuple[str, ...]]]:
-    """Each track's artist and remixer names, in Beatport's order."""
-    names: Dict[int, Tuple[List[str], List[str]]] = {}
-    for chunk in chunked(list(ids)):
-        for row in conn.execute(
-            "SELECT beatport_track_id, role, name FROM beatport_track_artists"
-            f" WHERE beatport_track_id IN ({_placeholders(chunk)})"
-            " ORDER BY beatport_track_id, role, position",
-            chunk,
-        ):
-            artists, remixers = names.setdefault(int(row[0]), ([], []))
-            (artists if row[1] == "artist" else remixers).append(str(row[2]))
-    return {k: (tuple(a), tuple(r)) for k, (a, r) in names.items()}
 
 
 def _sources(

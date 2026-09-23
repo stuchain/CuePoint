@@ -99,6 +99,11 @@ _ALLOWED = {
     # one that is. The SQL is the export repository's and the activity
     # service's; no SQL is run there.
     "services/rekordbox_export_service.py",
+    # DISCOVER-06's wantlist: each change and the activity event recording it
+    # are one transaction, so the Activity panel's history of the list is the
+    # list's history (DEC-008). The SQL is the wantlist, catalog and activity
+    # repositories'; no SQL is run there.
+    "services/wantlist_service.py",
     # The one retry loop for a write that finds the database busy: it opens
     # the transaction it retries, and runs no SQL of its own.
     "services/busy_wait.py",

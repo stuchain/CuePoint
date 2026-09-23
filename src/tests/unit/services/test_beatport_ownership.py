@@ -27,6 +27,7 @@ from cuepoint.persistence.match_repository import MatchRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.beatport_ownership import (
+    requested_track_ids,
     MAX_BEATPORT_ID,
     OWNED_VIEW,
     accepted_beatport_track_id,
@@ -122,6 +123,49 @@ class TestABeatportId:
 
     def test_anything_but_text_is_not_one(self):
         assert beatport_id(123) is None  # type: ignore[arg-type]
+
+
+class TestIdsAskedAbout:
+    """DISCOVER-06: ids from outside the engine, checked once for every caller."""
+
+    def test_each_once_in_the_order_given(self):
+        assert requested_track_ids([3, 1, 3, 2, 1], limit=10) == (3, 1, 2)
+
+    def test_the_largest_id(self):
+        assert requested_track_ids([MAX_BEATPORT_ID], limit=1) == (MAX_BEATPORT_ID,)
+
+    @pytest.mark.parametrize(
+        "values",
+        [
+            [0],
+            [-5],
+            [MAX_BEATPORT_ID + 1],
+            [True],
+            [False],
+            ["12"],
+            [1.0],
+            [None],
+            "12",
+            b"12",
+            12,
+            None,
+        ],
+    )
+    def test_anything_else_is_refused(self, values):
+        with pytest.raises(ValueError):
+            requested_track_ids(values, limit=10)
+
+    def test_none_at_all_is_refused(self):
+        with pytest.raises(ValueError, match="No Beatport tracks"):
+            requested_track_ids([], limit=10)
+
+    def test_the_limit_counts_distinct_ids(self):
+        assert requested_track_ids([1, 1, 2, 2], limit=2) == (1, 2)
+        with pytest.raises(ValueError, match="At most 2"):
+            requested_track_ids([1, 2, 3], limit=2)
+
+    def test_a_generator_is_read_once(self):
+        assert requested_track_ids((i for i in (5, 6)), limit=2) == (5, 6)
 
 
 class TestTheIdInAUrl:

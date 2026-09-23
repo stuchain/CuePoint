@@ -29,6 +29,10 @@ from cuepoint.persistence import (
 from cuepoint.persistence.beatport_catalog_repository import (
     BeatportCatalogRepository,
     catalog_rows,
+    credit_names,
+    first_artist_key_sql,
+    owned_among_json,
+    owned_json_sql,
 )
 from cuepoint.services.beatport_catalog import page_items, parse_catalog_track
 from cuepoint.services.database_service import DatabaseService
@@ -272,6 +276,47 @@ class TestReading:
             ("remixer", "B"),
         ]
         assert repo.credits(2) == []
+
+
+class TestReadingBesideOtherRows:
+    """DISCOVER-06: what a run's window and the wantlist read from here."""
+
+    def test_credit_names_by_track_in_beatports_order(self, db, repo):
+        repo.upsert_tracks(
+            [
+                catalog_track(1, artists=[(5, "E"), (4, "D")], remixers=[(3, "C")]),
+                catalog_track(2),
+            ],
+            NOW,
+        )
+        assert credit_names(db.connect(), [2, 1, 1, 9]) == {1: (("E", "D"), ("C",))}
+
+    def test_the_first_artists_key(self, db, repo):
+        repo.upsert_tracks(
+            [catalog_track(1, artists=[(5, "Âme"), (4, "Dixon")]), catalog_track(2)],
+            NOW,
+        )
+        sql = f"SELECT {first_artist_key_sql('t.id')} FROM (SELECT ? AS id) AS t"
+        conn = db.connect()
+        assert conn.execute(sql, (1,)).fetchone()[0] == name_key("Âme")
+        assert conn.execute(sql, (2,)).fetchone()[0] is None
+
+    def test_owned_among_a_selection_once_sorted_and_distinct(self, db):
+        with db.transaction() as conn:
+            for track_id, beatport_id in zip(add_tracks(conn, 4), (30, 10, 30, 20)):
+                accept(conn, track_id, str(beatport_id))
+        conn = db.connect()
+        among = "SELECT value FROM json_each(:asked)"
+        assert owned_among_json(conn, among, {"asked": "[30, 20, 99]"}) == "[20, 30]"
+        assert owned_among_json(conn, among, {"asked": "[]"}) == "[]"
+
+    def test_membership_in_the_array(self, db):
+        sql = f"SELECT {owned_json_sql('t.id', 'set')} FROM (SELECT ? AS id) AS t"
+        conn = db.connect()
+        assert [
+            conn.execute(sql.replace("?", str(i)), {"set": "[1, 3]"}).fetchone()[0]
+            for i in (1, 2, 3)
+        ] == [1, 0, 1]
 
 
 # --------------------------------------------------------------------- plan

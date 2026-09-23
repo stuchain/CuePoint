@@ -78,6 +78,12 @@ if TYPE_CHECKING:
         DiscoveryRunSource,
         RunTracksPage,
     )
+    from cuepoint.models.wantlist import WantlistEntry, WantlistPage
+    from cuepoint.services.wantlist_service import WantlistChange
+    from cuepoint.services.beatport_playlist_service import (
+        BeatportPlaylistResult,
+        PlaylistPush,
+    )
     from cuepoint.models.track_clean_state import TrackCleanState
     from cuepoint.models.rekordbox_export_values import ExportTrackValues
     from cuepoint.services.rekordbox_export_service import (
@@ -1375,6 +1381,11 @@ class IDiscoveryRepository(ABC):
         ...
 
     @abstractmethod
+    def tracks_in_run(self, run_id: int, ids: Iterable[int]) -> Set[int]:
+        """Which of ``ids`` a run found."""
+        ...
+
+    @abstractmethod
     def lookups(
         self, kind: str, keys: Iterable[str]
     ) -> Dict[str, "BeatportNameLookup"]:
@@ -1451,6 +1462,132 @@ class IDiscoveryService(ABC):
     @abstractmethod
     def delete_run(self, run_id: int) -> bool:
         """Delete an ended run; True when it existed."""
+        ...
+
+
+class IWantlistRepository(ABC):
+    """Interface for the wantlist's rows (DISCOVER-06, DEC-093)."""
+
+    @abstractmethod
+    def entries(self, ids: Sequence[int]) -> Dict[int, "WantlistEntry"]:
+        """The entries among ``ids``, keyed by Beatport track id."""
+        ...
+
+    @abstractmethod
+    def get(self, beatport_track_id: int) -> Optional["WantlistEntry"]:
+        """One entry, or None."""
+        ...
+
+    @abstractmethod
+    def page(
+        self,
+        owned: str = "all",
+        bought: str = "all",
+        sort: str = "added_at",
+        descending: bool = True,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> "WantlistPage":
+        """A window of the list, with ownership as it is now."""
+        ...
+
+    @abstractmethod
+    def add(
+        self,
+        entries: Sequence["WantlistEntry"],
+        tracks: Sequence["CatalogTrack"] = (),
+        fetched_at: Optional[str] = None,
+    ) -> List[int]:
+        """Add entries, storing catalog rows first; the ids added."""
+        ...
+
+    @abstractmethod
+    def remove(self, ids: Sequence[int]) -> List[int]:
+        """Remove entries; the ids that were on the list."""
+        ...
+
+    @abstractmethod
+    def set_note(self, beatport_track_id: int, note: Optional[str]) -> bool:
+        """Set or clear a note; False when there is no such entry."""
+        ...
+
+    @abstractmethod
+    def set_bought(self, ids: Sequence[int], bought_at: Optional[str]) -> List[int]:
+        """Mark or unmark entries bought; the ids whose mark changed."""
+        ...
+
+
+class IWantlistService(ABC):
+    """Interface for the wantlist (DISCOVER-06, DEC-093)."""
+
+    @abstractmethod
+    def add(
+        self, track_ids: Sequence[int], *, run_id: Optional[int] = None
+    ) -> "WantlistChange":
+        """Add Beatport tracks, reading any the catalog lacks."""
+        ...
+
+    @abstractmethod
+    def remove(self, track_ids: Sequence[int]) -> "WantlistChange":
+        """Remove entries."""
+        ...
+
+    @abstractmethod
+    def set_note(self, track_id: int, note: Optional[str]) -> "WantlistChange":
+        """Set an entry's note, or clear it with None or blank text."""
+        ...
+
+    @abstractmethod
+    def set_bought(self, track_ids: Sequence[int], bought: bool) -> "WantlistChange":
+        """Mark entries bought, or unmark them."""
+        ...
+
+    @abstractmethod
+    def get(self, track_id: int) -> Optional["WantlistEntry"]:
+        """One entry, or None."""
+        ...
+
+    @abstractmethod
+    def page(
+        self,
+        owned: str = "all",
+        bought: str = "all",
+        sort: str = "added_at",
+        descending: bool = True,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> "WantlistPage":
+        """A window of the list, with ownership as it is now."""
+        ...
+
+
+class IBeatportPlaylistService(ABC):
+    """Interface for pushing tracks to a Beatport playlist (DISCOVER-06, DEC-099)."""
+
+    @abstractmethod
+    def require_token(self) -> None:
+        """Refuse, as ``no_token``, when no Beatport token is configured."""
+        ...
+
+    @abstractmethod
+    def plan(
+        self,
+        track_ids: Sequence[int],
+        name: Optional[str] = None,
+        include_owned: bool = False,
+    ) -> "PlaylistPush":
+        """What a push will do; ValueError when it could do nothing."""
+        ...
+
+    @abstractmethod
+    def push(
+        self,
+        plan: "PlaylistPush",
+        *,
+        on_progress: Optional[Callable[[str, int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "BeatportPlaylistResult":
+        """Create the playlist and add the tracks; what happened."""
         ...
 
 

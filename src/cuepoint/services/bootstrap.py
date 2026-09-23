@@ -48,6 +48,9 @@ from cuepoint.services.interfaces import (
     IBeatportResolveService,
     IDiscoveryRepository,
     IDiscoveryService,
+    IBeatportPlaylistService,
+    IWantlistRepository,
+    IWantlistService,
     ICreditIndexService,
     IDuplicateRepository,
     IDuplicateService,
@@ -96,6 +99,8 @@ from cuepoint.services.tag_write_service import TagWriteService
 from cuepoint.persistence.duplicate_repository import DuplicateRepository
 from cuepoint.services.beatport_resolve_service import BeatportResolveService
 from cuepoint.services.discovery_service import DiscoveryService
+from cuepoint.services.beatport_playlist_service import BeatportPlaylistService
+from cuepoint.services.wantlist_service import WantlistService
 from cuepoint.services.credit_index_service import CreditIndexService
 from cuepoint.persistence.file_status_repository import FileStatusRepository
 from cuepoint.persistence.job_repository import JobRepository
@@ -112,6 +117,7 @@ from cuepoint.persistence.track_metadata_repository import (
 )
 from cuepoint.persistence.beatport_catalog_repository import BeatportCatalogRepository
 from cuepoint.persistence.discovery_repository import DiscoveryRepository
+from cuepoint.persistence.wantlist_repository import WantlistRepository
 from cuepoint.persistence.track_credit_repository import TrackCreditRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.activity_service import ActivityService
@@ -718,6 +724,39 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IDiscoveryService, create_discovery_service)
+
+    # The wantlist and the Beatport playlist push (DISCOVER-06). Built per
+    # request and per job for the same reason: an add that reads a track, and
+    # a push, use the token configured at that moment.
+    def create_wantlist_repository() -> IWantlistRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return WantlistRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(IWantlistRepository, create_wantlist_repository)
+
+    def create_wantlist_service() -> IWantlistService:
+        return WantlistService(
+            database_service=container.resolve(IDatabaseService),
+            wantlist=container.resolve(IWantlistRepository),
+            catalog=container.resolve(IBeatportCatalogRepository),
+            runs=container.resolve(IDiscoveryRepository),
+            beatport=container.resolve(BeatportApi),
+            activity_service=container.resolve(IActivityService),
+        )
+
+    container.register_factory(IWantlistService, create_wantlist_service)
+
+    def create_beatport_playlist_service() -> IBeatportPlaylistService:
+        return BeatportPlaylistService(
+            catalog=container.resolve(IBeatportCatalogRepository),
+            beatport=container.resolve(BeatportApi),
+            activity_service=container.resolve(IActivityService),
+            config_service=config_service,
+        )
+
+    container.register_factory(
+        IBeatportPlaylistService, create_beatport_playlist_service
+    )
 
     # inCrate Phase 1: Inventory service (import from XML, enrich via shared matching pipeline + workers)
     def create_inventory_service() -> InventoryService:

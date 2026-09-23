@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-05 are implemented, and DISCOVER-01's spike is recorded.
+(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-06 are implemented, and DISCOVER-01's spike is recorded.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -365,7 +365,7 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-05 implemented
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-06 implemented
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
@@ -442,6 +442,16 @@ Beatport, a first run is 2,708 requests in 1.9 s, and a second makes no label se
 requests in 0.7 s. Committing once a second rather than once per chart or label took the mocked
 first run from 6.0 s to 1.9 s. A cancel or failure keeps everything found, and a crash loses at
 most a second.
+
+DISCOVER-06 is implemented: the wantlist keeps Beatport tracks with a note and a bought mark,
+and owned is computed when it is read. Bought and owned filter independently, and nothing removes
+an entry. Each change and its activity event commit together. An add of a track never read reads
+it first, in one batched request. A push to a Beatport playlist runs as a job through the API
+only. It skips owned tracks unless asked, stops at once on a refusal every later track would
+repeat, and reports the real URL; a 403 on create says the token may lack playlist scope. The
+step also found that a window asking "owned?" rebuilt the ownership view for every use. DISCOVER-05's
+run window took 98 ms at 40,000 accepted matches, and both windows now read ownership once, in
+34 to 46 ms.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 

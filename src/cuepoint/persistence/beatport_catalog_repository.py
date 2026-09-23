@@ -28,13 +28,31 @@ The mapping from DISCOVER-01's ``CatalogTrack`` lives here, as the models ask
 (``models/beatport_cache.py``): DISCOVER-05's discovery job writes catalog
 tracks too, and one mapping is what keeps a label's key the same whichever job
 read it.
+
+Reading the catalog beside rows of one's own
+--------------------------------------------
+A discovery run's window (DISCOVER-05) and the wantlist (DISCOVER-06) show
+catalog tracks beside their own rows. They join ``beatport_tracks`` for the
+track's columns (:data:`CATALOG_TRACK_COLUMNS`), and take each track's names
+from :func:`credit_names` and the artist they sort by from
+:func:`first_artist_key_sql`, so a credit is read one way wherever it is shown.
+
+Each asks "owned?" through :func:`owned_among_json` and
+:func:`owned_json_sql`. The ownership view computes every accepted match's id,
+so no index can serve it, and each ``IN (view)`` in a statement builds a list
+of every owned id: 34 ms at 40,000 accepted matches. A window asked it up to
+four times — to count, to filter and to flag — so a run's window took 98 ms and
+the wantlist's up to 137. Reading the owned ids among the list's own tracks
+once, and binding them to every use as a JSON array, is one view read per
+request, and the answer is the same in every part of it.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import sqlite3
-from typing import Dict, Iterable, List, Sequence, Set, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Sequence, Set, Tuple, Union
 
 from cuepoint.core.entity_names import name_key
 from cuepoint.incrate.beatport_api_models import CatalogTrack
@@ -46,7 +64,7 @@ from cuepoint.models.beatport_cache import (
 from cuepoint.models.track_credit import ROLE_ARTIST, ROLE_REMIXER
 from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
 from cuepoint.persistence.track_credit_repository import label_key_of
-from cuepoint.services.beatport_ownership import OWNED_VIEW
+from cuepoint.services.beatport_ownership import OWNED_VIEW, owned_beatport_ids_sql
 from cuepoint.services.interfaces import IBeatportCatalogRepository, IDatabaseService
 
 _logger = logging.getLogger(__name__)
@@ -54,7 +72,9 @@ _logger = logging.getLogger(__name__)
 #: The view of each resolved library track's Beatport artists and label.
 CREDITS_VIEW = "library_beatport_credits"
 
-_TRACK_COLUMNS: Tuple[str, ...] = (
+#: ``beatport_tracks``' columns, in the table's order: what a reader joining
+#: the catalog selects to build a ``CachedBeatportTrack``.
+CATALOG_TRACK_COLUMNS: Tuple[str, ...] = (
     "beatport_track_id",
     "title",
     "mix_name",
@@ -71,6 +91,8 @@ _TRACK_COLUMNS: Tuple[str, ...] = (
     "genre_name",
     "fetched_at",
 )
+
+_TRACK_COLUMNS = CATALOG_TRACK_COLUMNS
 
 _CREDIT_COLUMNS: Tuple[str, ...] = (
     "beatport_track_id",
@@ -198,6 +220,67 @@ def _write_rows(conn: sqlite3.Connection, rows: _Rows) -> None:
             for credit in credits
         ],
     )
+
+
+def first_artist_key_sql(track_id_column: str) -> str:
+    """A scalar subquery: the key of the first artist credited on a track.
+
+    What a list sorted "by artist" sorts on. ``track_id_column`` names the
+    Beatport track id in the caller's query, such as ``rt.beatport_track_id``.
+    """
+    return (
+        "(SELECT a.name_key FROM beatport_track_artists AS a"
+        f" WHERE a.beatport_track_id = {track_id_column} AND a.role = 'artist'"
+        " ORDER BY a.position LIMIT 1)"
+    )
+
+
+def owned_among_json(
+    conn: sqlite3.Connection,
+    ids_sql: str,
+    params: Union[Sequence[Any], Mapping[str, Any]] = (),
+) -> str:
+    """The owned Beatport ids among those ``ids_sql`` selects, as a JSON array.
+
+    One read of the ownership view (DEC-092), for a statement to test
+    membership against with :func:`owned_json_sql` as often as it needs.
+    ``ids_sql`` is a one-column ``SELECT`` of Beatport track ids, such as a
+    run's tracks, with its ``params``.
+    """
+    rows = conn.execute(
+        f"SELECT DISTINCT beatport_track_id FROM ({owned_beatport_ids_sql()})"
+        f" WHERE beatport_track_id IN ({ids_sql})",
+        params,
+    )
+    return json.dumps(sorted(int(row[0]) for row in rows))
+
+
+def owned_json_sql(column: str, param: str = "owned") -> str:
+    """``column`` is owned: a member of :func:`owned_among_json`'s array.
+
+    The array is bound as the named parameter ``param``.
+    """
+    return f"{column} IN (SELECT value FROM json_each(:{param}))"
+
+
+def credit_names(
+    conn: sqlite3.Connection, ids: Sequence[int]
+) -> Dict[int, Tuple[Tuple[str, ...], Tuple[str, ...]]]:
+    """Each cached track's artist and remixer names, in Beatport's order.
+
+    A track with no credits is absent.
+    """
+    names: Dict[int, Tuple[List[str], List[str]]] = {}
+    for chunk in chunked(unique_ids(ids)):
+        for row in conn.execute(
+            "SELECT beatport_track_id, role, name FROM beatport_track_artists"
+            f" WHERE beatport_track_id IN ({', '.join('?' for _ in chunk)})"
+            " ORDER BY beatport_track_id, role, position",
+            chunk,
+        ):
+            artists, remixers = names.setdefault(int(row[0]), ([], []))
+            (artists if row[1] == ROLE_ARTIST else remixers).append(str(row[2]))
+    return {k: (tuple(a), tuple(r)) for k, (a, r) in names.items()}
 
 
 def store_catalog_tracks(

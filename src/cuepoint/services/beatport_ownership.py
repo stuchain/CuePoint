@@ -30,7 +30,7 @@ say where the answer comes from (DEC-092's last implication).
 
 from __future__ import annotations
 
-from typing import Iterable, Optional, Set
+from typing import Any, Iterable, Optional, Set, Tuple
 
 from cuepoint.services.interfaces import IBeatportCatalogRepository
 
@@ -104,6 +104,38 @@ def accepted_beatport_track_id(
     """
     found = beatport_id(stored_id)
     return found if found is not None else url_beatport_id(url)
+
+
+def requested_track_ids(values: Any, *, limit: int) -> Tuple[int, ...]:
+    """Beatport track ids a caller asked about, each once, in the order given.
+
+    The one check for ids that arrive from outside the engine (DISCOVER-06):
+    each must be a whole number — not a boolean, not text — from 1 to
+    :data:`MAX_BEATPORT_ID`, and there must be from one to ``limit`` distinct
+    ids. An id repeated is asked about once.
+
+    Raises:
+        ValueError: If ``values`` is not a list of such ids, is empty, or holds
+            more than ``limit``.
+    """
+    if isinstance(values, (str, bytes)) or not isinstance(values, Iterable):
+        raise ValueError("Beatport track ids are a list of whole numbers")
+    ids: dict = {}
+    for value in values:
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or not 0 < value <= MAX_BEATPORT_ID
+        ):
+            raise ValueError(
+                f"A Beatport track id is a positive whole number, got {value!r}"
+            )
+        ids[value] = None
+        if len(ids) > limit:
+            raise ValueError(f"At most {limit:,} Beatport tracks at a time")
+    if not ids:
+        raise ValueError("No Beatport tracks were given")
+    return tuple(ids)
 
 
 def is_owned(catalog: IBeatportCatalogRepository, ids: Iterable[int]) -> Set[int]:

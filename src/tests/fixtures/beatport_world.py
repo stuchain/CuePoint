@@ -15,6 +15,10 @@ and tracks, in the v4 shapes DISCOVER-01 recorded.
 - **The routes inCrate reads**: ``catalog/charts`` without its slash, a chart
   by id, ``catalog/labels/{id}/releases`` and ``catalog/releases/{id}/tracks``.
 
+- **The playlist routes DISCOVER-06 writes**: ``post`` to ``my/playlists/``
+  creates a playlist, and to ``my/playlists/{id}/tracks/`` adds a track, with
+  404 for a playlist or track this world does not have, as a server would.
+
 So inCrate's ``run_discovery`` and the new service can be run against the same
 world and held to the same answer, and every request either makes is counted.
 No test reaches the network.
@@ -62,6 +66,8 @@ class BeatportWorld:
     failures: List[Failure] = field(default_factory=list)
     requests: List[Tuple[str, Dict[str, Any]]] = field(default_factory=list)
     access_token: str = "token"
+    #: Playlists created, by id: ``{"name": …, "tracks": [ids in order]}``.
+    playlists: Dict[int, Dict[str, Any]] = field(default_factory=dict)
 
     # ------------------------------------------------------------- building
 
@@ -92,9 +98,7 @@ class BeatportWorld:
         """The paths asked, normalized, that start with ``prefix``."""
         return [p for p, _ in self.requests if p.startswith(prefix)]
 
-    def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
-        params = dict(params or {})
-        route = path.strip("/")
+    def _ask(self, route: str, params: Dict[str, Any]) -> None:
         self.requests.append((route, params))
         for failure in self.failures:
             status = failure(route, params, len(self.requests))
@@ -102,6 +106,29 @@ class BeatportWorld:
                 raise BeatportAPIError(
                     f"Beatport answered {status}", status_code=status
                 )
+
+    def post(self, path: str, json: Optional[Dict[str, Any]] = None) -> Any:
+        body = dict(json or {})
+        route = path.strip("/")
+        self._ask(route, body)
+        parts = route.split("/")
+        if route == "my/playlists":
+            playlist_id = 700_001 + len(self.playlists)
+            self.playlists[playlist_id] = {"name": body["name"], "tracks": []}
+            return {"id": playlist_id, "name": body["name"], "track_count": 0}
+        if parts[:2] == ["my", "playlists"] and parts[3:] == ["tracks"]:
+            playlist = self.playlists.get(int(parts[2]))
+            track_id = int(body["track_id"])
+            if playlist is None or track_id not in self.tracks:
+                raise BeatportAPIError("Beatport answered 404", status_code=404)
+            playlist["tracks"].append(track_id)
+            return {"id": track_id}
+        raise BeatportAPIError("Beatport answered 404", status_code=404)
+
+    def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        params = dict(params or {})
+        route = path.strip("/")
+        self._ask(route, params)
         parts = route.split("/")
         if parts[:2] == ["catalog", "charts"]:
             if len(parts) == 2:

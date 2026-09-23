@@ -115,6 +115,7 @@ def catalog_track(
     remixers: Sequence[tuple] = (),
     label: Optional[tuple] = None,
     title: Optional[str] = None,
+    release_date: Optional[str] = None,
 ):
     """A DISCOVER-01 ``CatalogTrack``, with ``(id, name)`` credits and label."""
     from cuepoint.incrate.beatport_api_models import CatalogArtist, CatalogTrack
@@ -133,7 +134,7 @@ def catalog_track(
         label_name=label[1] if label else None,
         release_id=None,
         release_name=None,
-        release_date=None,
+        release_date=release_date,
         bpm=None,
         key=None,
         genre_id=None,
