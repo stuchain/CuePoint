@@ -85,7 +85,7 @@ def scale(tmp_path_factory):
     export = write_export(
         workspace / "collection.xml", list(range(1, TRACKS + 1)), PLAYLISTS
     )
-    service = build_service(workspace / "library.db")
+    service, _tracks, _playlists = build_service(workspace / "library.db")
 
     with Timed() as timing:
         summary = service.import_rekordbox_xml(str(export))
