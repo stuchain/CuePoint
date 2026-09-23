@@ -447,8 +447,20 @@ def refuse_source_as_destination(source_path: str, destination_path: str) -> Non
     level that writes, so every caller inherits it and EXPORT-05 has one
     implementation to reuse rather than a second to keep in step.
 
-    Paths are compared resolved and case-folded, so a relative path, a trailing
-    separator, a case difference on Windows or a symlink cannot defeat it.
+    The filesystem is asked first, and only then the path strings. ``samefile``
+    answers the question that matters — is this the same file — for a case
+    difference, a hard link or a mount reached by two names, none of which a
+    string comparison can see. ``os.path.normcase`` cannot stand in for it:
+    it folds case on Windows and does nothing at all on POSIX, so on a
+    case-insensitive macOS volume — the default for APFS and HFS+ —
+    ``COLLECTION.XML`` compared unequal to ``collection.xml`` and named the
+    very same bytes. That is the source being overwritten, silently, which is
+    the one thing this function exists to prevent.
+
+    The string comparison stays for the case ``samefile`` cannot answer: a
+    destination that does not exist yet, which is the ordinary export. It is
+    resolved and case-folded, so a relative path, a trailing separator, a case
+    difference on Windows or a symlink cannot defeat it either.
     """
 
     def normalized(path: str) -> str:
@@ -458,7 +470,15 @@ def refuse_source_as_destination(source_path: str, destination_path: str) -> Non
             resolved = os.path.abspath(path)
         return os.path.normcase(resolved)
 
-    if normalized(source_path) == normalized(destination_path):
+    def is_the_same_file() -> bool:
+        try:
+            return os.path.samefile(source_path, destination_path)
+        except OSError:
+            # One of them does not exist, or cannot be stat'ed. A destination
+            # that is not there cannot be the source, so fall back to the paths.
+            return normalized(source_path) == normalized(destination_path)
+
+    if is_the_same_file():
         raise ValidationError(
             "Refusing to write the export over the collection it was read from: "
             f"{destination_path}. Choose a different file."

@@ -89,6 +89,21 @@ COLLECTION = b"""<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
+def _spelling_shares_a_file(path: Path) -> bool:
+    """Whether this volume reaches ``path`` by a differently-cased name.
+
+    Asked of the volume the test is running on rather than of ``os.name``,
+    because case-insensitivity is a property of the filesystem: NTFS and the
+    default APFS and HFS+ volumes have it, a case-sensitive APFS volume and
+    ext4 do not, and Windows can mount either.
+    """
+    upper = Path(str(path).upper())
+    try:
+        return upper.exists() and os.path.samefile(path, upper)
+    except OSError:  # pragma: no cover - an unreadable path is not this test's
+        return False
+
+
 @pytest.fixture()
 def source(tmp_path: Path) -> Path:
     path = tmp_path / "collection.xml"
@@ -930,8 +945,19 @@ class TestItRefusesTheWrongThings:
         with pytest.raises(ValidationError):
             refuse_source_as_destination(str(source), sneaky)
 
-    @pytest.mark.skipif(os.name != "nt", reason="case-insensitive paths are Windows")
-    def test_a_case_difference_is_still_the_source_on_windows(self, source: Path):
+    def test_a_case_difference_is_still_the_source(self, source: Path):
+        """Not a Windows-only concern, which is how this got through.
+
+        This test used to skip unless ``os.name == "nt"``, on the premise that
+        "case-insensitive paths are Windows". macOS's default APFS volume is
+        case-insensitive too, and there ``refuse_source_as_destination`` let
+        ``COLLECTION.XML`` through and the export overwrote ``collection.xml``.
+        Asking the volume rather than the OS runs it wherever it means
+        something and skips it only where a different spelling really is a
+        different file.
+        """
+        if not _spelling_shares_a_file(source):
+            pytest.skip("this volume is case-sensitive")
         with pytest.raises(ValidationError):
             refuse_source_as_destination(str(source), str(source).upper())
 
