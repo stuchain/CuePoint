@@ -1614,6 +1614,17 @@ written beside it; the supervisor never was. Fixed three ways:
 start; four renderer tests cover the three strip states and the Restart button, and all of them fail
 on the unfixed code.
 
+**The third fix left a gap, found on Windows afterwards (2026-09-23).** With the window no longer
+waiting, the first screen asked for its data while the engine was still starting, and nothing held
+the request: it was refused, the Library read its summary as absent, and a relaunch over an imported
+library said "No collection imported yet" — and kept saying it after the engine answered, because the
+Library asks once. Every E2E spec starts from an empty library and waits for "Engine connected", so
+none could see it. It reproduced on Windows, where the development engine takes about four seconds.
+The supervisor now records the start in flight and every engine call waits for it (`readyClient()`),
+bounded by the same budget; the window still opens at once. `electron/engineStartup.test.ts` and
+`e2e/engineStartup.spec.ts`, which relaunches over an imported library without waiting for the engine,
+both fail with the wait removed.
+
 ### Two defects in the tests themselves, which is why nothing had caught the above
 
 - **Four E2E fixtures built a Rekordbox `Location` for Windows path shapes** —

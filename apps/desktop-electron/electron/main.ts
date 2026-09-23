@@ -707,9 +707,11 @@ async function createWindow(): Promise<void> {
    * once the health budget was raised to cover a real cold start it would have
    * been up to the whole of it for an engine that never came up.
    *
-   * There is nothing to wait for: every engine call goes through the bridge,
-   * which reports its own failures, and the status strip says "Starting
-   * engine…" until `getStatus()` says the engine has answered. Showing the
+   * The window has nothing to wait for: an engine call made while the engine
+   * starts is held by the supervisor until it has answered (`readyClient()`),
+   * so the first screen gets its data rather than a refusal it reads as "no
+   * library", and the status strip says "Starting engine…" until `getStatus()`
+   * says the engine has answered. Showing the
    * shell immediately and saying what is happening is both faster and more
    * honest than hiding the window and claiming, on arrival, that the engine
    * was connected when it was not.

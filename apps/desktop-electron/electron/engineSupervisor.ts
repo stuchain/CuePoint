@@ -117,8 +117,10 @@ export interface EngineStatus {
  * `scripts/build_engine_sidecar.py` learned this already and allows 90s, with
  * the same reasoning written next to it; the supervisor never did. The number
  * is deliberately generous and matches it: this bound exists to catch an engine
- * that never starts, not to police how long starting takes. Nothing waits on
- * it — `starting` tells the UI what is happening meanwhile.
+ * that never starts, not to police how long starting takes. The window does
+ * not wait on it — `starting` tells the UI what is happening meanwhile — but
+ * engine requests do (see `readyClient()`), so the first screen's data arrives
+ * when the engine can give it rather than failing before it could.
  */
 export const HEALTH_TIMEOUT_MS = 90_000;
 
@@ -163,6 +165,15 @@ export class EngineSupervisor {
    * a child is started or lost.
    */
   private healthy = false;
+  /**
+   * The start in flight, if any; requests made meanwhile wait for it.
+   *
+   * The window no longer waits for the engine, so the first screen asks for
+   * its data while the engine is still starting. Refused then, the Library
+   * read its summary as absent and said "No collection imported yet" to a
+   * library that was there — and, having asked once, never asked again.
+   */
+  private startup: Promise<EngineStatus> | null = null;
   /** Set while `stop()` is deliberate, so quitting is not treated as a crash. */
   private stopping = false;
   private restartTimer: NodeJS.Timeout | null = null;
@@ -171,7 +182,25 @@ export class EngineSupervisor {
     return REPO_ROOT;
   }
 
-  async start(): Promise<EngineStatus> {
+  /**
+   * Start the engine, and hold every request made until it has answered.
+   *
+   * Deliberately not `async`: the start is recorded before this returns, so
+   * a window created straight after it cannot ask for anything in between.
+   */
+  start(): Promise<EngineStatus> {
+    const run = this.launch();
+    this.startup = run;
+    void run
+      .catch(() => undefined)
+      .finally(() => {
+        // A restart may have replaced it meanwhile; that one is still running.
+        if (this.startup === run) this.startup = null;
+      });
+    return run;
+  }
+
+  private async launch(): Promise<EngineStatus> {
     // `stop()` kills the current child; that exit is ours, not a crash.
     this.stopping = true;
     await this.stop();
@@ -341,20 +370,34 @@ export class EngineSupervisor {
     return new EngineClient(this.port, this.token, this.sessionId);
   }
 
+  /**
+   * A client, once any start in flight has finished.
+   *
+   * Waiting is bounded by the start itself — `HEALTH_TIMEOUT_MS`, or sooner
+   * when the child exits — and a start that fails leaves `client()` to report
+   * it, as it would have done without waiting.
+   */
+  private async readyClient(): Promise<EngineClient> {
+    while (this.startup) {
+      await this.startup.catch(() => undefined);
+    }
+    return this.client();
+  }
+
   async searchLibrary(params: {
     q: string;
     limit?: number;
     offset?: number;
   }): Promise<LibrarySearchResponse> {
-    return this.client().searchLibrary(params);
+    return (await this.readyClient()).searchLibrary(params);
   }
 
   async browseLibrary(params: LibraryBrowseParams): Promise<LibrarySearchResponse> {
-    return this.client().browseLibrary(params);
+    return (await this.readyClient()).browseLibrary(params);
   }
 
   async getLibraryPlaylists(): Promise<LibraryPlaylistTree> {
-    return this.client().getLibraryPlaylists();
+    return (await this.readyClient()).getLibraryPlaylists();
   }
 
   async getLibraryFacet(params: {
@@ -366,22 +409,22 @@ export class EngineSupervisor {
     scope?: "collection" | "smart";
     collectionId?: number | null;
   }): Promise<LibraryFacet> {
-    return this.client().getLibraryFacet(params);
+    return (await this.readyClient()).getLibraryFacet(params);
   }
 
   async getLibraryFilterFields(): Promise<LibraryFilterVocabulary> {
-    return this.client().getLibraryFilterFields();
+    return (await this.readyClient()).getLibraryFilterFields();
   }
 
   async getLibraryTrack(params: { trackId: number }): Promise<LibraryTrackDetail> {
-    return this.client().getLibraryTrack(params);
+    return (await this.readyClient()).getLibraryTrack(params);
   }
 
   async getTrackArtwork(params: {
     trackId: number;
     size: ArtworkSize;
   }): Promise<Uint8Array | null> {
-    return this.client().getTrackArtwork(params);
+    return (await this.readyClient()).getTrackArtwork(params);
   }
 
   // CuePoint's own organization (ORG-08). One forward per client method:
@@ -390,272 +433,272 @@ export class EngineSupervisor {
   // type-checks — which is why the contract test enumerates them.
 
   async getCollections(): Promise<CollectionTree> {
-    return this.client().getCollections();
+    return (await this.readyClient()).getCollections();
   }
 
   async getCollectionEntries(params: { collectionId: number; limit?: number; offset?: number }): Promise<CollectionEntryPage> {
-    return this.client().getCollectionEntries(params);
+    return (await this.readyClient()).getCollectionEntries(params);
   }
 
   async createCollection(params: { kind: "folder" | "collection"; name: string; parent_id?: number | null }): Promise<{ collection: CollectionNode }> {
-    return this.client().createCollection(params);
+    return (await this.readyClient()).createCollection(params);
   }
 
   async renameCollection(params: { id: number; name: string }): Promise<{ collection: CollectionNode }> {
-    return this.client().renameCollection(params);
+    return (await this.readyClient()).renameCollection(params);
   }
 
   async moveCollection(params: { id: number; parent_id?: number | null; position?: number | null }): Promise<{ collection: CollectionNode }> {
-    return this.client().moveCollection(params);
+    return (await this.readyClient()).moveCollection(params);
   }
 
   async deleteCollection(params: { id: number }): Promise<{ removed: CollectionSubtree }> {
-    return this.client().deleteCollection(params);
+    return (await this.readyClient()).deleteCollection(params);
   }
 
   async previewCollectionDelete(params: { id: number }): Promise<{ removes: CollectionSubtree }> {
-    return this.client().previewCollectionDelete(params);
+    return (await this.readyClient()).previewCollectionDelete(params);
   }
 
   async addTracksToCollection(params: { collection_id: number; track_ids: number[] }): Promise<CollectionAdded> {
-    return this.client().addTracksToCollection(params);
+    return (await this.readyClient()).addTracksToCollection(params);
   }
 
   async insertTrackInCollection(params: { collection_id: number; track_id: number; position: number }): Promise<{ entry: CollectionEntry }> {
-    return this.client().insertTrackInCollection(params);
+    return (await this.readyClient()).insertTrackInCollection(params);
   }
 
   async removeCollectionEntries(params: { entry_ids: number[] }): Promise<{ removed: number }> {
-    return this.client().removeCollectionEntries(params);
+    return (await this.readyClient()).removeCollectionEntries(params);
   }
 
   async reorderCollectionEntry(params: { entry_id: number; position: number }): Promise<{ entry: CollectionEntry }> {
-    return this.client().reorderCollectionEntry(params);
+    return (await this.readyClient()).reorderCollectionEntry(params);
   }
 
   async saveSmartCollection(params: { name: string; rules: FilterRuleSet; parent_id?: number | null; sort?: string | null; dir?: "asc" | "desc" | null }): Promise<{ collection: CollectionNode }> {
-    return this.client().saveSmartCollection(params);
+    return (await this.readyClient()).saveSmartCollection(params);
   }
 
   async updateSmartCollection(params: { id: number; rules: FilterRuleSet; sort?: string | null; dir?: "asc" | "desc" | null }): Promise<{ collection: CollectionNode }> {
-    return this.client().updateSmartCollection(params);
+    return (await this.readyClient()).updateSmartCollection(params);
   }
 
   async duplicateSmartCollection(params: { id: number; name?: string | null }): Promise<{ collection: CollectionNode }> {
-    return this.client().duplicateSmartCollection(params);
+    return (await this.readyClient()).duplicateSmartCollection(params);
   }
 
   async freezeSmartCollection(params: { id: number; name?: string | null }): Promise<FrozenCollection> {
-    return this.client().freezeSmartCollection(params);
+    return (await this.readyClient()).freezeSmartCollection(params);
   }
 
   async getTags(): Promise<TagVocabulary> {
-    return this.client().getTags();
+    return (await this.readyClient()).getTags();
   }
 
   async createTag(params: { name: string; category?: string | null; colour?: string | null }): Promise<{ tag: Tag }> {
-    return this.client().createTag(params);
+    return (await this.readyClient()).createTag(params);
   }
 
   async updateTag(params: { id: number; name?: string; category?: string | null; colour?: string | null }): Promise<{ tag: Tag }> {
-    return this.client().updateTag(params);
+    return (await this.readyClient()).updateTag(params);
   }
 
   async deleteTag(params: { id: number }): Promise<{ untagged: number }> {
-    return this.client().deleteTag(params);
+    return (await this.readyClient()).deleteTag(params);
   }
 
   async mergeTags(params: { source_id: number; target_id: number }): Promise<{ moved: number }> {
-    return this.client().mergeTags(params);
+    return (await this.readyClient()).mergeTags(params);
   }
 
   async assignTag(params: { tag_id: number; track_ids: number[] }): Promise<{ changed: number; track_ids: number[] }> {
-    return this.client().assignTag(params);
+    return (await this.readyClient()).assignTag(params);
   }
 
   async unassignTag(params: { tag_id: number; track_ids: number[] }): Promise<{ changed: number; track_ids: number[] }> {
-    return this.client().unassignTag(params);
+    return (await this.readyClient()).unassignTag(params);
   }
 
   async setTrackMetadata(params: { trackId: number; rating?: number | null; favorite?: boolean; notes?: string | null }): Promise<{ metadata: TrackMetadata }> {
-    return this.client().setTrackMetadata(params);
+    return (await this.readyClient()).setTrackMetadata(params);
   }
 
   async getTrackHistory(params: { trackId: number; limit?: number }): Promise<TrackHistory> {
-    return this.client().getTrackHistory(params);
+    return (await this.readyClient()).getTrackHistory(params);
   }
 
   async applyBatch(params: { selection: BatchSelection; operation: BatchOperation }): Promise<BatchOutcome> {
-    return this.client().applyBatch(params);
+    return (await this.readyClient()).applyBatch(params);
   }
 
   // Clean (CLEAN-11). One forward per client method, for ORG-08's reason: a
   // method missing here is a runtime failure nothing type-checks.
 
   async startCleanMatch(params: Parameters<EngineClient["startCleanMatch"]>[0]): Promise<MatchStarted> {
-    return this.client().startCleanMatch(params);
+    return (await this.readyClient()).startCleanMatch(params);
   }
 
   async resumeCleanMatch(params: { job_id: string }): Promise<MatchStarted> {
-    return this.client().resumeCleanMatch(params);
+    return (await this.readyClient()).resumeCleanMatch(params);
   }
 
   async getResumableMatches(): Promise<ResumableMatches> {
-    return this.client().getResumableMatches();
+    return (await this.readyClient()).getResumableMatches();
   }
 
   async getTrackMatches(params: { trackId: number }): Promise<TrackMatches> {
-    return this.client().getTrackMatches(params);
+    return (await this.readyClient()).getTrackMatches(params);
   }
 
   async getMatchCandidates(params: { attemptId: number }): Promise<AttemptCandidates> {
-    return this.client().getMatchCandidates(params);
+    return (await this.readyClient()).getMatchCandidates(params);
   }
 
   async getTrackFolder(params: { trackId: number }): Promise<TrackFolder> {
-    return this.client().getTrackFolder(params);
+    return (await this.readyClient()).getTrackFolder(params);
   }
 
   async decideMatch(params: Parameters<EngineClient["decideMatch"]>[0]): Promise<DecisionOutcome> {
-    return this.client().decideMatch(params);
+    return (await this.readyClient()).decideMatch(params);
   }
 
   async applyMatch(params: Parameters<EngineClient["applyMatch"]>[0]): Promise<ApplyOutcome> {
-    return this.client().applyMatch(params);
+    return (await this.readyClient()).applyMatch(params);
   }
 
   async setTrackOverrides(
     params: Parameters<EngineClient["setTrackOverrides"]>[0],
   ): Promise<{ track: LibraryTrackRow }> {
-    return this.client().setTrackOverrides(params);
+    return (await this.readyClient()).setTrackOverrides(params);
   }
 
   async revertChange(params: { change_id: number }): Promise<{ revert: FieldRevert }> {
-    return this.client().revertChange(params);
+    return (await this.readyClient()).revertChange(params);
   }
 
   async revertBatch(params: { batch_id: string }): Promise<BatchRevertOutcome> {
-    return this.client().revertBatch(params);
+    return (await this.readyClient()).revertBatch(params);
   }
 
   async startFileCheck(params: { selection: BatchSelection }): Promise<FileCheckStarted> {
-    return this.client().startFileCheck(params);
+    return (await this.readyClient()).startFileCheck(params);
   }
 
   async startDuplicateScan(
     params?: Parameters<EngineClient["startDuplicateScan"]>[0],
   ): Promise<DuplicateScanStarted> {
-    return this.client().startDuplicateScan(params);
+    return (await this.readyClient()).startDuplicateScan(params);
   }
 
   async getDuplicateGroups(
     params?: Parameters<EngineClient["getDuplicateGroups"]>[0],
   ): Promise<DuplicateGroupList> {
-    return this.client().getDuplicateGroups(params);
+    return (await this.readyClient()).getDuplicateGroups(params);
   }
 
   async dismissDuplicateGroup(params: { group_id: number }): Promise<{ group: DuplicateGroup }> {
-    return this.client().dismissDuplicateGroup(params);
+    return (await this.readyClient()).dismissDuplicateGroup(params);
   }
 
   async restoreDuplicateGroup(params: { group_id: number }): Promise<{ group: DuplicateGroup }> {
-    return this.client().restoreDuplicateGroup(params);
+    return (await this.readyClient()).restoreDuplicateGroup(params);
   }
 
   async startArtworkScan(
     params: Parameters<EngineClient["startArtworkScan"]>[0],
   ): Promise<ArtworkScanStarted> {
-    return this.client().startArtworkScan(params);
+    return (await this.readyClient()).startArtworkScan(params);
   }
 
   async previewTagWrite(
     params: Parameters<EngineClient["previewTagWrite"]>[0],
   ): Promise<TagPreviewOutcome> {
-    return this.client().previewTagWrite(params);
+    return (await this.readyClient()).previewTagWrite(params);
   }
 
   async startTagWrite(params: { preview_id: string }): Promise<TagWriteStarted> {
-    return this.client().startTagWrite(params);
+    return (await this.readyClient()).startTagWrite(params);
   }
 
   async startTagRestore(
     params: Parameters<EngineClient["startTagRestore"]>[0],
   ): Promise<TagRestoreStarted> {
-    return this.client().startTagRestore(params);
+    return (await this.readyClient()).startTagRestore(params);
   }
 
   async getTagWrites(params: Parameters<EngineClient["getTagWrites"]>[0]): Promise<TagWriteRecord> {
-    return this.client().getTagWrites(params);
+    return (await this.readyClient()).getTagWrites(params);
   }
 
   async getLibraryHealth(): Promise<LibraryHealth> {
-    return this.client().getLibraryHealth();
+    return (await this.readyClient()).getLibraryHealth();
   }
 
   async exportReviewList(
     params: Parameters<EngineClient["exportReviewList"]>[0],
   ): Promise<ReviewExportResult> {
-    return this.client().exportReviewList(params);
+    return (await this.readyClient()).exportReviewList(params);
   }
 
   async previewRekordboxExport(
     params: Parameters<EngineClient["previewRekordboxExport"]>[0],
   ): Promise<RekordboxExportPreviewAnswer> {
-    return this.client().previewRekordboxExport(params);
+    return (await this.readyClient()).previewRekordboxExport(params);
   }
 
   async startRekordboxExport(
     params: Parameters<EngineClient["startRekordboxExport"]>[0],
   ): Promise<RekordboxExportStartAnswer> {
-    return this.client().startRekordboxExport(params);
+    return (await this.readyClient()).startRekordboxExport(params);
   }
 
   async getRekordboxExportHistory(
     params?: Parameters<EngineClient["getRekordboxExportHistory"]>[0],
   ): Promise<RekordboxExportHistory> {
-    return this.client().getRekordboxExportHistory(params);
+    return (await this.readyClient()).getRekordboxExportHistory(params);
   }
 
   async startLibraryImport(params: {
     xml_path: string;
   }): Promise<LibraryImportStarted> {
-    return this.client().startLibraryImport(params);
+    return (await this.readyClient()).startLibraryImport(params);
   }
 
   async startLibraryRefreshPreview(params?: {
     xml_path?: string;
     force?: boolean;
   }): Promise<LibraryRefreshStarted> {
-    return this.client().startLibraryRefreshPreview(params);
+    return (await this.readyClient()).startLibraryRefreshPreview(params);
   }
 
   async startLibraryRefreshApply(params: {
     diff_id: string;
     confirm_references?: boolean;
   }): Promise<LibraryRefreshStarted> {
-    return this.client().startLibraryRefreshApply(params);
+    return (await this.readyClient()).startLibraryRefreshApply(params);
   }
 
   async getLibrarySummary(): Promise<LibrarySummary> {
-    return this.client().getLibrarySummary();
+    return (await this.readyClient()).getLibrarySummary();
   }
 
   async getRecentActivity(params?: {
     limit?: number;
     type?: string;
   }): Promise<ActivityFeed> {
-    return this.client().getRecentActivity(params);
+    return (await this.readyClient()).getRecentActivity(params);
   }
 
   async listJobs(params?: {
     state?: "active" | "all";
     limit?: number;
   }): Promise<EngineJobList> {
-    return this.client().listJobs(params);
+    return (await this.readyClient()).listJobs(params);
   }
 
   async getJob(jobId: string): Promise<Record<string, unknown>> {
-    return this.client().getJob(jobId);
+    return (await this.readyClient()).getJob(jobId);
   }
 
   async getJobResults(jobId: string): Promise<{
@@ -664,7 +707,7 @@ export class EngineSupervisor {
     /** What the job produced, for a job that produces something. */
     result?: Record<string, unknown>;
   }> {
-    return this.client().getJobResults(jobId);
+    return (await this.readyClient()).getJobResults(jobId);
   }
 
   async getIncrateInventory(params?: {
@@ -672,22 +715,22 @@ export class EngineSupervisor {
     search?: string;
     demo?: boolean;
   }): Promise<Record<string, unknown>> {
-    return this.client().getIncrateInventory(params);
+    return (await this.readyClient()).getIncrateInventory(params);
   }
 
   async importIncrateXml(body: {
     xml_path: string;
     enrich?: boolean;
   }): Promise<Record<string, unknown>> {
-    return this.client().importIncrateXml(body);
+    return (await this.readyClient()).importIncrateXml(body);
   }
 
   async resetIncrateInventory() {
-    return this.client().resetIncrateInventory();
+    return (await this.readyClient()).resetIncrateInventory();
   }
 
   async getIncrateDiscoverOptions(): Promise<Record<string, unknown>> {
-    return this.client().getIncrateDiscoverOptions();
+    return (await this.readyClient()).getIncrateDiscoverOptions();
   }
 
   async runIncrateDiscover(body: {
@@ -699,32 +742,32 @@ export class EngineSupervisor {
     artist_names?: string[];
     label_names?: string[];
   }): Promise<{ tracks: Record<string, unknown>[]; count: number; demo?: boolean }> {
-    return this.client().runIncrateDiscover(body);
+    return (await this.readyClient()).runIncrateDiscover(body);
   }
 
   async createIncratePlaylist(body: {
     name: string;
     tracks: Record<string, unknown>[];
   }): Promise<Record<string, unknown>> {
-    return this.client().createIncratePlaylist(body);
+    return (await this.readyClient()).createIncratePlaylist(body);
   }
 
   async cancelJob(jobId: string): Promise<{ id: string; state: string }> {
-    return this.client().cancelJob(jobId);
+    return (await this.readyClient()).cancelJob(jobId);
   }
 
   async getBeatportTokenStatus(): Promise<{ configured: boolean; masked: string | null }> {
-    return this.client().getBeatportTokenStatus();
+    return (await this.readyClient()).getBeatportTokenStatus();
   }
 
   async setBeatportToken(token: string): Promise<{ configured: boolean; masked: string | null }> {
-    return this.client().setBeatportToken(token);
+    return (await this.readyClient()).setBeatportToken(token);
   }
 
   async testBeatportToken(body?: {
     token?: string;
   }): Promise<{ ok: boolean; message: string }> {
-    return this.client().testBeatportToken(body);
+    return (await this.readyClient()).testBeatportToken(body);
   }
 
   async exportSupportBundle(body: {
@@ -733,11 +776,11 @@ export class EngineSupervisor {
     include_config?: boolean;
     sanitize?: boolean;
   }) {
-    return this.client().exportSupportBundle(body);
+    return (await this.readyClient()).exportSupportBundle(body);
   }
 
   async getLogsDir(): Promise<{ logs_dir: string }> {
-    return this.client().getLogsDir();
+    return (await this.readyClient()).getLogsDir();
   }
 
   async getCuepointLog(body?: {
@@ -747,15 +790,15 @@ export class EngineSupervisor {
     maxBytes?: number;
     sanitize?: boolean;
   }) {
-    return this.client().getCuepointLog(body);
+    return (await this.readyClient()).getCuepointLog(body);
   }
 
   async clearCuepointLogs(): Promise<{ ok: boolean }> {
-    return this.client().clearCuepointLogs();
+    return (await this.readyClient()).clearCuepointLogs();
   }
 
   async clearCuepointCache(): Promise<{ ok: boolean }> {
-    return this.client().clearCuepointCache();
+    return (await this.readyClient()).clearCuepointCache();
   }
 
   subscribeJobEvents(jobId: string, senderId: number, sender: WebContents): () => void {
@@ -774,12 +817,12 @@ export class EngineSupervisor {
     const abort = new AbortController();
     this.jobStreams.set(key, { abort, refs: 1 });
 
-    void this.client()
-      .streamJobEvents(jobId, abort.signal, (event) => {
+    void this.readyClient()
+      .then((client) => client.streamJobEvents(jobId, abort.signal, (event) => {
         if (!sender.isDestroyed()) {
           sender.send("engine:jobEvent", { jobId, event });
         }
-      })
+      }))
       .then(() => {
         if (!sender.isDestroyed()) {
           sender.send("engine:jobEventEnd", { jobId });

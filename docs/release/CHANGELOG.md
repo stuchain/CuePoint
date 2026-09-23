@@ -206,8 +206,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   CuePoint now waits as long as starting actually takes, and the strip says
   "Starting engine…" until the engine is really there
 - CuePoint's window now opens straight away instead of waiting for the engine,
-  which took it from about nine seconds to about two on macOS. The window and
-  the library browser are usable while the engine finishes starting
+  which took it from about nine seconds to about two on macOS. The window is
+  usable while the engine finishes starting, and whatever the first screen asks
+  for arrives once the engine can answer — the Library shows your collection
+  rather than saying none has been imported
 - Double-clicking a track in the Library did not always play it: selecting the
   row made the list jump, so the second click landed somewhere else. Selecting
   a track no longer moves the list
