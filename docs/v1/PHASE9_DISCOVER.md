@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **DISCOVER-01 to DISCOVER-06 implemented, and DISCOVER-01's spike recorded against the
-live API (2026-09-23; see its outcome). DISCOVER-07…DISCOVER-12 not started.** The twelve steps below replace the
+Status: **DISCOVER-01 to DISCOVER-07 implemented, and DISCOVER-01's spike recorded against the
+live API (2026-09-23; see its outcome). DISCOVER-08…DISCOVER-12 not started.** The twelve steps below replace the
 roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -1153,7 +1153,8 @@ Batching commits took these from 6.0 s and 4.9 s. The library reads a run starts
 | `label_ids_by_key`, with 40,000 resolved tracks | 82 ms |
 
 The first window of a 6,505-track run takes 7 ms, on a library with no accepted matches; at
-40,000 it took 98 ms, which DISCOVER-06 found and cut to 34 ms. Against the real API, a run is bounded by its
+40,000 it took 98 ms, which DISCOVER-06 found and cut to 34 ms, and DISCOVER-07's index to
+13–15 ms. Against the real API, a run is bounded by its
 round trips: 1,108 requests is several minutes at typical latency, and the first run's label
 searches are paid once.
 
@@ -1481,6 +1482,233 @@ identities. Each Beatport-half state from a mocked API. The header's counts equa
 **Risks**: Medium, inherited from DISCOVER-01: the Beatport half is as wide as the API allows.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented. A reference names an artist or a label by Beatport id or by normalized
+name, and the page says which. It resolves to a rule set for the Library, with a header read from
+the Library's own count and facets, and to the recent Beatport tracks as a state that is always
+drawable. Both halves answer in under 50 ms at 50,000 tracks.
+
+**What was built.**
+
+- **`models/entity_page.py`**:
+  - `EntityRef` with `parse_entity_ref`: `bp:<id>` (a plain decimal, 1 to 2⁶³−1) or
+    `name:<key>`. It renders back to what was parsed.
+  - The page's answers: `EntityResolution`, `EntityLibrarySummary`, `EntityPage`,
+    `EntityTrackRow`, `EntityTracksPage` and `EntityBeatportHalf`, each with `to_dict()`.
+  - The Beatport half's states are DISCOVER-01's five error classes plus `ok` and `name_only`. A
+    test holds them to `BEATPORT_ERROR_CLASSES`.
+  - `name_only` carries a reason: `not_resolved`, `shared` or `not_on_beatport`. A half carries an
+    action: `settings` or `resolve`.
+- **Two rule fields**, `beatport_artist` and `beatport_label`, of a new field type, `beatport`,
+  with `is`, `is_not` and `any_of`. An id is read exactly and bounded by what SQLite stores. The
+  fields are not facetable: the name facets are what a page offers.
+  - The renderer's two copies of the field-type union, the filter bar's value check and the
+    desktop contract test take the new type. A typed id is sent as a number.
+- **What the rule means**, in `track_credit_repository.identity_tracks_sql`:
+  - every library track whose accepted Beatport track credits the id, as artist or remixer, or is
+    on the label;
+  - every track not resolved yet whose name is linked to that id and to no other.
+  - The link is DISCOVER-05's own. An artist name is linked to an id when a resolved track credits
+    the name and Beatport credits the id on it under the same key. A library label is linked to
+    the Beatport label most of its resolved tracks are on, ties to the lower id.
+- **`services/entity_page_service.py`**:
+  - `reference` folds a name through `name_key`, so `name:ÂME` is `name:ame`.
+  - `resolve`: a name linked to one artist, or a label linked to any, redirects to the id. The
+    answer says what was asked (`redirected_from`). A name several artists share stays a name page
+    and lists them (`links`). An id page lists the library spellings it gathers (`names`).
+  - `page`: the resolution, with a header of the Library's `browse_count`, the `year` range, the
+    `genre` facet, and an artist's labels (`label_name`) or a label's artists (`artist_name`),
+    five values each. It includes `index_current` for DISCOVER-03's still-indexing state.
+    `LibraryService.browse_count` was added so the count is the Library's own, not a window read
+    for its total.
+  - `beatport`: an id's tracks released in the last 365 days (artist) or 90 days (label), newest
+    first.
+    - Each track is marked owned and on the wantlist, with the owned filter and a window of 1 to
+      500 tracks.
+    - A listing is read once, through `artist_tracks` or `label_tracks`, and read back from the
+      cache while it is younger than `LISTING_MAX_AGE` (12 hours) and covers the window.
+      `refresh` reads it again.
+    - A label's name is looked up through DISCOVER-05's lookup cache and its rule for trusting it,
+      now one function, `lookup_is_current`. Only a miss searches, and the page says "found by
+      name on Beatport". A search that fails is not kept.
+    - An artist's name is never looked up. It is `name_only`, offering the resolve job only when
+      some of the name's tracks are matched and not read yet (`resolvable`).
+    - A refusal is a value with its state, never an exception. The owned filter and the window are
+      checked before Beatport is asked anything.
+- **Migration `m0024_entity_pages`**:
+  - `beatport_listings`: when an artist's or label's recent tracks were last read whole, the
+    record DISCOVER-02's sixth binding note left to this step.
+  - An index on the owned-id expression, with `library_beatport_tracks` recreated from the same
+    expression.
+  - Two indexes on the label keys.
+  - Two per-kind identity views, with `library_beatport_credits` rebuilt from them, unchanged.
+  - `beatport_catalog_credits`, the catalog's side of "which tracks does this id credit".
+- **The catalog reads** are in `beatport_catalog_repository`, the owner of the tables:
+  `store_listing` (tracks and record in one transaction), `listing`, `entity_name` (the spelling
+  on most cached tracks) and `entity_tracks`. A cached track by the same artist in the same
+  window is shown whichever read cached it. An undated track is not, since "recent" is a date.
+- **The container** builds `IEntityPageService` per request, so the Beatport half asks with the
+  token configured at that moment.
+
+**Where it differs from the specification, and why.**
+
+- **An id's library half also gathers the unresolved tracks of its linked names.** The
+  specification's membership rule over `library_beatport_credits` alone would lose, on every
+  redirect, every track of the name that is not matched on Beatport, usually most of them. That
+  is the opposite of DEC-095's "shown as one page". A name that two Beatport artists share gives
+  its unresolved tracks to neither, the error DEC-095 exists to prevent. A test states the rule
+  again in Python and holds the SQL to it over generated libraries.
+- **A name redirects only when it is linked to exactly one artist.** A name linked to several is
+  several people, and its page lists them. A label redirects to the one most of its tracks are
+  on, DISCOVER-05's rule, so a page and a discovery run agree on what a label is.
+- **Charts are not offered.** DISCOVER-01 found no listing of charts by artist or label. This is
+  DEC-094's own fallback.
+- **The recent window differs by kind.** A quarter is often empty for an artist. A year reaches
+  the listing's page cap for a busy label.
+- **Two states are added to the specification's seven, as reasons**: `name_only` says why
+  (`not_resolved`, `shared`, `not_on_beatport`), because each is drawn differently and only one
+  offers Resolve.
+- **The listing needed a record** (`beatport_listings`). Freshness cannot be read from the
+  tracks: an artist with no recent releases leaves none, and a track cached by a run or the
+  wantlist says nothing about completeness.
+
+**A slow first form, found and fixed; and DISCOVER-05's windows are faster for it.** Written as
+specified, over DISCOVER-04's views, an artist page took **1.9 s** and a label page **9.4 s** at
+50,000 tracks. Three causes, each measured:
+
+1. **The owned id has no index.** m0023 wrote the URL fallback with nested subqueries, which an
+   index cannot hold. So "which library tracks own these Beatport tracks" read every accepted match
+   and computed its id, 30 to 50 ms, in each statement, and a page asks in all of them. m0024
+   writes the same rule as one expression without subqueries, indexes it, and recreates the view
+   from the same function. The page's reads by id drive from the id's own catalog tracks, as a list
+   of values, because SQLite uses an index on an expression for a list and not for a join.
+2. **The identity view could not be read one track at a time.** `library_beatport_credits` is a
+   `UNION ALL`, which SQLite does not flatten into a correlated lookup. So "is this track resolved?"
+   computed the whole view for each track asked about, about a second per question. The per-kind
+   views flatten into lookups by key: 0.1 ms.
+3. **A label's tracks were found by computing every track's effective label**: 16 ms a statement,
+   and one read did it per track. DISCOVER-03 left the label keys unindexed "until the step with a
+   label page measures it". The two indexes find them in two reads.
+
+`beatport_catalog_repository.owned_among_json` uses the same index. So **DISCOVER-05's run
+window**, 98 ms before DISCOVER-06 and 34 ms after, now takes **13 to 15 ms** at 40,000 accepted
+matches. The wantlist's window uses the same function.
+
+**Measured** (median of seven, 50,000 library tracks, 1,700 credited artists, 1,200 labels,
+40,000 accepted matches, 40,000 cached catalog tracks with their credits):
+
+| Read | First form | Now |
+| --- | --- | --- |
+| Artist page: resolve, count, year range, two facets | 1,923 ms | 25–29 ms |
+| Label page: the same | 9,443 ms | 43–47 ms |
+| The rule's count, artist / label | 291 / 1,218 ms | 0.4 / 0.4 ms |
+| A window of the Library under the rule, artist / label | 570 / 2,352 ms | 13 / 20 ms |
+| `is_not`, artist / label | 1,141 / 2,144 ms | 8 / 9 ms |
+| Resolving a name that redirects, artist / label | 198 / 1,131 ms | 0.4 / 0.6 ms |
+| The Beatport half's window (after the listing is read) | 33 ms | 1.2 ms |
+| DISCOVER-05's run window of 6,500 tracks | 34 ms | 13–15 ms |
+
+What the step costs: m0024 applies to that library in **52 ms**, the owned-id index
+included. The two label-key indexes add 0.10 s to an import of 50,000 tracks (2.00 s against
+1.90 s), which DISCOVER-03 measured at 1.97 s.
+
+**What binds later steps.**
+
+1. **DISCOVER-09's routes**:
+   - `entity` is `EntityPageService.page(kind, ref)`, answering `EntityPage.to_dict()`.
+   - `entity/beatport` is `beatport(kind, ref, refresh, owned, offset, limit)`, answering
+     `EntityBeatportHalf.to_dict()`. A refusal is already a value. The `ValueError` for a bad
+     reference or window crosses the bridge as one too.
+   - The page's route takes `kind` and the reference as written (`bp:<id>` or `name:<key>`). When
+     the answer's `ref` differs from what was asked (`redirected_from`), the renderer replaces
+     the route with it.
+2. **DISCOVER-11 draws the library half** by handing `rules` to the Library's browse unchanged, and
+   the header from `library`. It draws each Beatport state with its `message` and `action`:
+   Settings for `settings`, the resolve job (DISCOVER-04, route in DISCOVER-09) for `resolve`, and
+   the `links` of a shared name as choices. "Found by name on Beatport" is `found_by_name`.
+3. **The `beatport` field type** is in the filter bar, which types an id as a number. A chip reads
+   "Beatport artist is 1190547". DISCOVER-11 may give the bar the page's name to show instead; the
+   rule stays the id.
+4. **Every "which library tracks own these Beatport tracks" read** passes a list of values to
+   `library_beatport_tracks`, as `owned_among_json` does, so the index serves it. A join on the
+   view's `beatport_track_id` scans every accepted match.
+5. **A per-track read of identity** uses `library_beatport_artists` or `library_beatport_labels`,
+   never `library_beatport_credits`, which a query cannot read one track at a time.
+6. **A change to the owned rule** is a migration that rebuilds the index and the view from one
+   expression, as m0024 does. A test holds the two to each other and to the Python rule.
+
+**Tests**:
+
+- 85 in `src/tests/unit/persistence/test_library_identity.py`:
+  - **the rule, case by case, for both kinds**: resolved tracks, a linked name's unresolved tracks,
+    a track matched and not read, a remix, Beatport authoritative for a resolved track, a shared
+    name gathered by neither, a link needing both sides, a credit with no id, `is_not` as the
+    exact complement, an empty id, a rejected match followed at once, the majority, a tie, the
+    override, a label with no id;
+  - **the reads** (links, gathered names, spellings, resolvable);
+  - **agreement**: the SQL held to the rule stated in Python over five generated libraries, eight
+    id sets each; a name redirecting exactly when its id gathers it; the links equal to DISCOVER-05's;
+  - **the plans** that keep a page fast. Each fails on the first form.
+- 22 in `src/tests/unit/persistence/test_entity_pages_migration.py`:
+  - every owned id and identity row the same before and after m0024, over 22 hand-made cases of
+    stored id and URL and 4,500 generated;
+  - the new expression equal to the Python rule;
+  - the migration alone on a populated library, and exactly its objects;
+  - the indexes used, and the index holding the view's expression;
+  - the listing table's shape and checks, and only the catalog's module running SQL on it.
+- 20 in `src/tests/unit/persistence/test_entity_catalog_reads.py`:
+  - storing a listing atomically, and a failure storing neither;
+  - the name by most spellings;
+  - the window's both ends, remixes, undated and other-source tracks;
+  - owned marked, counted and filtered;
+  - windows and refusals, and ownership read once.
+- 66 in `src/tests/unit/services/test_entity_page_service.py`, over the real library,
+  `LibraryService` and `BeatportApi` on the in-memory Beatport, which now answers
+  `catalog/tracks/?artist_id=`:
+  - **references and redirects**;
+  - **the header equal to the Library's count, facets and years** for both kinds and both
+    identities; a name page and its id page holding the same tracks; the rules crossing as JSON
+    unchanged; a Smart Collection of them finding the same tracks;
+  - **every state**: no token, 401, 403, 429 with its wait, 500, 503;
+  - **the listing**: read once, stale after its age, refreshed, a shorter window not answering a
+    longer one, a new release arriving once read again, a refusal storing nothing, a fresh cache
+    answering while Beatport is down;
+  - **names**: an artist never looked up, with and without resolvable tracks; a shared name; a
+    label found by name, not found, trusted for its age, reused from a discovery run; a failed
+    search not kept;
+  - **the container** building the service.
+- 62 in `src/tests/unit/models/test_entity_page.py`, and 23 new in `test_filter_rule.py`.
+- 4 new renderer tests in `filterText.test.ts`, and `desktopContract.test.ts` with the new type.
+- Two earlier tests updated:
+  - `test_match_similarity_migration` compares m0012's rebuild at version 12, since a later index
+    on the table is not something that rebuild lost;
+  - `test_clean_schema` names the two new indexes among its named-query indexes.
+- **A bug found by the tests**: the first id check went through `float()`, which refused 2⁶³−1 and
+  would read 2⁵³+1 as its neighbour. Ids are now read exactly, and a test holds that.
+- **A test outside this step, fixed**: `test_embedded_artwork`'s "without a front cover, the
+  first picture is used" failed for MP3, WAV and AIFF on the last commit as well. mutagen
+  writes ID3 frames smallest first, not in the order they were added, and the test's two
+  8-pixel images compress to 75 and 77 bytes, so the file stored the other picture first and
+  the reader, correctly, used it. The second picture is now larger, so the back cover is
+  stored first in every format, and the test checks the stored order it relies on.
+- 14 deliberate breakages, each caught:
+  - **the rule**: a linked name's tracks dropped; a shared name gathered; a resolved track gathered
+    by name; a tie to the higher id; `is_not` compiled as `is`;
+  - **the page**: a name with any link redirecting; a listing never stale; a shorter window
+    answering; "not found" trusted forever; the label window's last day dropped; an artist's
+    window a label's;
+  - **the model**: a reference with a leading zero; an id through a float;
+  - **the speed**: ownership read by scanning again.
+
+**Checks run**:
+
+- **Python:** `python -m pytest src/tests` (full suite: 9,382 passed, 66 skipped; the three
+  artwork failures above were fixed, and a CLI help test that timed out under load passes alone),
+  `ruff check src/` and `ruff format --check src/` with ruff 0.14.0, the version CI and pre-commit
+  pin, `check_no_qt_in_core.py`, and the strict mypy gate with the three new modules added.
+- **Renderer:** `npm run typecheck`, `npm run lint` and `npm test`.
+- **Electron:** `npm run typecheck` and `npm test`.
+- **Repository:** `git diff --check`.
 
 ---
 

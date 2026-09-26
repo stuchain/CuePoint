@@ -349,6 +349,17 @@ function coerceValue(field: LibraryFilterField, raw: string): ValueResult {
 
   if (text === "") return { ok: false, reason: `Give a value for ${field.label}` };
 
+  if (field.type === "beatport") {
+    // An artist or a label by its Beatport id (DISCOVER-07). Usually built by
+    // an Artist or Label page rather than typed, but a typed one is checked as
+    // the engine checks it: a positive whole number, sent as a number.
+    const value = parseNumber(text);
+    if (value === null || !Number.isSafeInteger(value) || value <= 0) {
+      return { ok: false, reason: `${field.label} is a Beatport id, a whole number` };
+    }
+    return { ok: true, value };
+  }
+
   if (field.type === "number") {
     const value = parseNumber(text);
     if (value === null) return { ok: false, reason: `${field.label} takes numbers` };

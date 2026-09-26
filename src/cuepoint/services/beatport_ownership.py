@@ -32,14 +32,11 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Optional, Set, Tuple
 
+from cuepoint.models.beatport_cache import MAX_BEATPORT_ID
 from cuepoint.services.interfaces import IBeatportCatalogRepository
 
 #: The view holding the rule in SQL (migration 0023).
 OWNED_VIEW = "library_beatport_tracks"
-
-#: The largest id SQLite stores as an integer. An id beyond it would be cast
-#: to this value, so the rule refuses it rather than match the wrong track.
-MAX_BEATPORT_ID = 2**63 - 1
 
 #: Where a Beatport track page's id begins: ``/track/<slug>/<id>``.
 _TRACK_PATH = "/track/"

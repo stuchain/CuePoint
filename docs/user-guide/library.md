@@ -71,6 +71,15 @@ starts after this update it takes a few seconds to index your artists and
 labels — **Indexing artists and labels** in the status bar — and until then
 these two filters may find fewer tracks than they should.
 
+**Beatport artist** and **Beatport label** find an artist's or a label's tracks
+by its Beatport id, the number at the end of its page address on
+beatport.com. A track counts when its accepted Beatport match credits that
+artist or label, and so does a track that is not matched yet when its artist or
+label name has been tied to that id by the tracks that are, and to no other
+artist of the same name. They need CuePoint to have read your matched tracks'
+credits from Beatport, which needs a Beatport token, and until it has they
+find nothing.
+
 A playlist opens in the order you arranged it in Rekordbox, which is what a set
 list is for. The whole library opens by artist. Sorting a playlist by anything
 else and then going back to **All tracks** does not carry that sort over.

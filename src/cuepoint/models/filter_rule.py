@@ -38,6 +38,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
+from cuepoint.models.beatport_cache import (
+    ENTITY_ARTIST,
+    ENTITY_KINDS,
+    ENTITY_LABEL,
+    MAX_BEATPORT_ID,
+)
 from cuepoint.models.duplicate_group import SIGNAL_BEATPORT, SIGNAL_PATH, SIGNAL_TEXT
 from cuepoint.models.file_status import (
     FILE_MISSING,
@@ -81,6 +87,13 @@ TYPE_COLLECTION = "collection"
 #: imports nothing outside ``cuepoint.models``.
 TYPE_NAME = "name"
 
+#: An artist or a label named by its Beatport id (DISCOVER-07, DEC-095): the
+#: identity resolution gives it, where a ``name`` field has only a spelling.
+#: Answered by membership in a set of tracks, like a tag, but its values are
+#: Beatport's ids rather than rows of CuePoint's, so they are checked as ids
+#: and never looked up: an id with no tracks is an answer, not a mistake.
+TYPE_BEATPORT = "beatport"
+
 FIELD_TYPES = (
     TYPE_TEXT,
     TYPE_NUMBER,
@@ -89,6 +102,7 @@ FIELD_TYPES = (
     TYPE_TAG,
     TYPE_COLLECTION,
     TYPE_NAME,
+    TYPE_BEATPORT,
 )
 
 #: The only ``match`` value v1 accepts (DEC-016).
@@ -187,6 +201,8 @@ OPERATORS_BY_TYPE: Dict[str, Tuple[str, ...]] = {
     # is what the plain `artist` and `label` text fields are for. `any_of` is
     # "by any of these", which a Smart Collection of a label's artists needs.
     TYPE_NAME: (OP_IS, OP_IS_NOT, OP_ANY_OF),
+    # The same three, for the same reason: an id is a whole identity.
+    TYPE_BEATPORT: (OP_IS, OP_IS_NOT, OP_ANY_OF),
 }
 
 #: A rating's unit. Declared here rather than in a renderer so the five-star
@@ -330,6 +346,9 @@ class FieldSpec:
             fields were ratings would draw stars beside a field this registry
             had moved on from. A field with no unit is a plain value, and a
             unit a renderer does not recognize is one too.
+        identity: For a ``beatport`` field, which kind of Beatport identity
+            its ids name: ``"artist"`` or ``"label"`` (DISCOVER-07). The query
+            builder answers each from the identity DEC-095 gives it.
         display: What a facet shows for a value, when the expression a rule
             compares is a key rather than something a person reads
             (DISCOVER-03). A ``name`` field groups by ``name_key`` and shows
@@ -356,6 +375,14 @@ class FieldSpec:
     values: Optional[LinkTable] = None
     choices: Tuple[Tuple[str, str], ...] = ()
     display: Optional[str] = None
+    identity: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        """Refuse a registry entry the query builder could not answer."""
+        if (self.type == TYPE_BEATPORT) != (self.identity is not None):
+            raise ValueError(f"{self.name}: only a beatport field names an identity")
+        if self.identity is not None and self.identity not in ENTITY_KINDS:
+            raise ValueError(f"{self.name}: {self.identity!r} is not an identity kind")
 
     @property
     def metadata(self) -> bool:
@@ -682,6 +709,24 @@ FIELDS: Tuple[FieldSpec, ...] = (
         display=f"COALESCE({METADATA_ALIAS}.label, tracks.label)",
         joins=(METADATA_ALIAS,),
     ),
+    # --- Artists and labels by Beatport id (DISCOVER-07, DEC-095) -----------
+    # What an Artist or Label page scopes the Library by once resolution knows
+    # the id: the library tracks whose accepted Beatport track credits it, and
+    # the tracks not resolved yet whose name resolution has linked to it and
+    # to nothing else (``track_credit_repository``). Not facetable: an id is
+    # not something a person reads, and the page offers the name facets.
+    FieldSpec(
+        "beatport_artist",
+        TYPE_BEATPORT,
+        "Beatport artist",
+        identity=ENTITY_ARTIST,
+    ),
+    FieldSpec(
+        "beatport_label",
+        TYPE_BEATPORT,
+        "Beatport label",
+        identity=ENTITY_LABEL,
+    ),
 )
 
 _FIELDS_BY_NAME: Dict[str, FieldSpec] = {spec.name: spec for spec in FIELDS}
@@ -787,6 +832,39 @@ def _coerce_id(value: Any, spec: FieldSpec, operator: str) -> int:
     return identifier
 
 
+def _coerce_beatport_id(value: Any, spec: FieldSpec, operator: str) -> int:
+    """Coerce one value for a ``beatport`` field: a Beatport id.
+
+    A whole number, or its plain digits as a query string sends it, from 1 to
+    the largest integer SQLite stores: a larger one would be cast to that one
+    and name a different artist. Read exactly, never through a float, which
+    cannot hold every id past 2**53 and would turn one id into its neighbour.
+    """
+    if isinstance(value, bool):
+        raise FilterRuleError(
+            f"{spec.label} needs a Beatport id, not {value!r} ({operator})"
+        )
+    if isinstance(value, int):
+        identifier = value
+    elif isinstance(value, float) and value.is_integer() and abs(value) < 2**53:
+        identifier = int(value)
+    elif isinstance(value, str) and value.strip().isascii() and value.strip().isdigit():
+        identifier = int(value.strip())
+    else:
+        raise FilterRuleError(
+            f"{spec.label} needs a Beatport id, not {value!r} ({operator})"
+        )
+    if identifier <= 0:
+        raise FilterRuleError(
+            f"{spec.label} needs a positive id, not {value!r} ({operator})"
+        )
+    if identifier > MAX_BEATPORT_ID:
+        raise FilterRuleError(
+            f"{spec.label} needs a Beatport id, and {value!r} is too large to be one"
+        )
+    return identifier
+
+
 def _coerce_text(value: Any, spec: FieldSpec, operator: str) -> str:
     """Coerce one value for a text or date field."""
     if value is None or isinstance(value, (list, tuple, dict, bool)):
@@ -816,6 +894,8 @@ def _coerce_one(value: Any, spec: FieldSpec, operator: str) -> Any:
         return _coerce_id(value, spec, operator)
     if spec.type == TYPE_NAME:
         return _coerce_name(value, spec, operator)
+    if spec.type == TYPE_BEATPORT:
+        return _coerce_beatport_id(value, spec, operator)
     text = _coerce_text(value, spec, operator)
     if spec.choices and operator in CHOICE_OPERATORS:
         return _coerce_choice(text, spec, operator)
@@ -1235,6 +1315,7 @@ __all__: Sequence[str] = (
     "MATCH_CANDIDATE_ALIAS",
     "METADATA_ALIAS",
     "OPERATORS_BY_TYPE",
+    "TYPE_BEATPORT",
     "TYPE_BOOL",
     "TYPE_COLLECTION",
     "TYPE_DATE",

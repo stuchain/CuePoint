@@ -591,11 +591,13 @@ export interface LibraryFacet {
 export interface LibraryFilterField {
   name: string;
   /**
-   * All seven kinds, each with a control in the bar since ORG-12. `name`
+   * All eight kinds, each with a control in the bar since ORG-12. `name`
    * (DISCOVER-03) is an artist or a label compared by identity: typed as text,
    * and the engine folds case, accents and punctuation before it compares.
+   * `beatport` (DISCOVER-07) is an artist or a label by its Beatport id, the
+   * rule an Artist or Label page hands the Library once resolution knows it.
    */
-  type: "text" | "number" | "date" | "bool" | "tag" | "collection" | "name";
+  type: "text" | "number" | "date" | "bool" | "tag" | "collection" | "name" | "beatport";
   label: string;
   facetable: boolean;
   integer: boolean;

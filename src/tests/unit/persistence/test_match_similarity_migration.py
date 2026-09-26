@@ -189,15 +189,23 @@ class TestShape:
 
         assert info(fresh) == info(v11)
 
-    def test_the_index_and_every_reference_are_as_they_were(self, fresh, v11):
-        for sql in (
-            "PRAGMA index_list(match_candidates)",
-            "PRAGMA index_info(idx_match_candidates_attempt)",
-            "PRAGMA foreign_key_list(match_candidates)",
-            "PRAGMA foreign_key_list(track_match)",
-        ):
-            assert rows(fresh, sql) == rows(v11, sql), sql
-        assert rows(fresh, "PRAGMA index_list(match_candidates)")[0]["unique"] == 1
+    def test_the_index_and_every_reference_are_as_they_were(self, tmp_path, v11):
+        # Compared at version 12, the rebuild's own: a later migration may add
+        # an index to the table (DISCOVER-07's owned id, m0024), which is not
+        # something this rebuild lost.
+        rebuilt = at_version(tmp_path, "v12.db", 12)
+        try:
+            for sql in (
+                "PRAGMA index_list(match_candidates)",
+                "PRAGMA index_info(idx_match_candidates_attempt)",
+                "PRAGMA foreign_key_list(match_candidates)",
+                "PRAGMA foreign_key_list(track_match)",
+            ):
+                assert rows(rebuilt, sql) == rows(v11, sql), sql
+            listed = rows(rebuilt, "PRAGMA index_list(match_candidates)")
+            assert listed[0]["unique"] == 1
+        finally:
+            rebuilt.close_all()
 
     def test_no_working_table_is_left_behind(self, fresh):
         assert (

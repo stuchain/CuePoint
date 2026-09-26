@@ -15,6 +15,8 @@ and tracks, in the v4 shapes DISCOVER-01 recorded.
 - **The routes inCrate reads**: ``catalog/charts`` without its slash, a chart
   by id, ``catalog/labels/{id}/releases`` and ``catalog/releases/{id}/tracks``.
 
+- **The route an Artist page adds** (DISCOVER-07): ``catalog/tracks/?artist_id=``,
+  the same dated listing, of the tracks crediting an artist.
 - **The playlist routes DISCOVER-06 writes**: ``post`` to ``my/playlists/``
   creates a playlist, and to ``my/playlists/{id}/tracks/`` adds a track, with
   404 for a playlist or track this world does not have, as a server would.
@@ -152,7 +154,7 @@ class BeatportWorld:
                     ],
                     params,
                 )
-            return self._label_tracks(params)
+            return self._filtered_tracks(params)
         if parts[:2] == ["catalog", "tracks"] and len(parts) == 3:
             track = self.tracks.get(int(parts[2]))
             return self._track_json(track) if track is not None else None
@@ -270,13 +272,25 @@ class BeatportWorld:
         ]
         return self._page([self._chart_json(c) for c in charts], params)
 
-    def _label_tracks(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        label_id = int(params["label_id"])
+    def _filtered_tracks(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """``catalog/tracks/`` filtered to a label or an artist, newest first."""
         first, last = self._window(params)
+        if "artist_id" in params:
+            artist_id = int(params["artist_id"])
+
+            def wanted(track: Track) -> bool:
+                return any(i == artist_id for i, _ in track.artists)
+
+        else:
+            label_id = int(params["label_id"])
+
+            def wanted(track: Track) -> bool:
+                return track.label[0] == label_id
+
         tracks = [
             t
             for t in self._by_date(self.tracks.values())
-            if t.label[0] == label_id and first <= t.released.isoformat() <= last
+            if wanted(t) and first <= t.released.isoformat() <= last
         ]
         return self._page([self._track_json(t) for t in tracks], params)
 

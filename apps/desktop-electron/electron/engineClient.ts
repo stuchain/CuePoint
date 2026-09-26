@@ -370,7 +370,7 @@ export interface LibraryFacet {
 
 export interface LibraryFilterField {
   name: string;
-  type: "text" | "number" | "date" | "bool" | "tag" | "collection" | "name";
+  type: "text" | "number" | "date" | "bool" | "tag" | "collection" | "name" | "beatport";
   label: string;
   facetable: boolean;
   integer: boolean;

@@ -23,6 +23,7 @@ import struct
 from pathlib import Path
 from typing import Callable, Dict
 
+import mutagen
 import pytest
 from mutagen.aiff import AIFF
 from mutagen.flac import FLAC, Picture
@@ -54,6 +55,16 @@ def png(colour: str) -> bytes:
 
 FRONT = png("red")
 BACK = png("blue")
+
+
+def _larger_png(colour: str) -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", (64, 64), colour).save(buffer, "PNG")
+    return buffer.getvalue()
+
+
+#: A picture larger than ``BACK``, so an ID3 file stores it after (see below).
+LARGER_OTHER = _larger_png("green")
 
 
 def flac_picture(data: bytes, kind: int) -> Picture:
@@ -218,9 +229,21 @@ class TestWhichPicture:
 
     @pytest.mark.parametrize("name", TYPED_FORMATS)
     def test_without_a_front_cover_the_first_picture_is_used(self, tmp_path, name):
+        # mutagen writes ID3 frames smallest first, not in the order they were
+        # added, so the second picture is made larger than the first: the back
+        # cover is then stored first in every format. With two 8-pixel images
+        # the order hung on which colour compressed smaller.
         path = audio_file(tmp_path, name)
-        TYPED_FORMATS[name](path, {PICTURE_BACK_COVER: BACK, PICTURE_OTHER: FRONT})
+        TYPED_FORMATS[name](
+            path, {PICTURE_BACK_COVER: BACK, PICTURE_OTHER: LARGER_OTHER}
+        )
 
+        tags = getattr(mutagen.File(str(path)), "tags", None)
+        if hasattr(tags, "getall"):
+            assert [f.type for f in tags.getall("APIC")] == [
+                PICTURE_BACK_COVER,
+                PICTURE_OTHER,
+            ], "the file does not store the back cover first"
         assert read_embedded(path) == BACK
 
     def test_an_empty_picture_is_no_picture(self, tmp_path):

@@ -419,6 +419,29 @@ class LibraryService(ILibraryService):
         )
         return self._tracks.facet_range(browse, field_spec(field).name)
 
+    def browse_count(
+        self,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional[RuleSet] = None,
+        collection_id: Optional[int] = None,
+    ) -> int:
+        """Return how many tracks the view holds, without reading a window.
+
+        The ``total`` :meth:`browse_tracks` answers, from the same query, for a
+        caller that shows a count beside rules rather than a table: an Artist
+        or Label page's header (DISCOVER-07), which must say the number the
+        table under it will.
+
+        Raises:
+            BrowseQueryError: If the query is not one that exists.
+            FilterRuleError: If a filter rule cannot be honoured as written.
+        """
+        browse = self._browse_query(
+            query, playlist_id, collection_id, rules, DEFAULT_SORT, "asc"
+        )
+        return self._tracks.browse_count(browse)
+
     def track_count(self) -> int:
         """Return the number of tracks in the library."""
         return self._tracks.count()

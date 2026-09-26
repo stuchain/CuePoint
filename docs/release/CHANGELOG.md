@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Two Library filters that find an artist or a label by its Beatport id:
+  **Beatport artist** and **Beatport label**. A track counts when its accepted
+  Beatport match credits that artist or label, and so does an unmatched track
+  whose artist or label name the matched ones tie to that id alone, so two
+  artists who share a name are never mixed. They find tracks once CuePoint has
+  read your matched tracks' credits from Beatport, which needs a Beatport token
 - Two Library filters that find an artist or a label rather than a piece of
   text. **Credited artist** finds every track an artist is credited on — in a
   list of artists, featured, or as the remixer — so "B" no longer also finds

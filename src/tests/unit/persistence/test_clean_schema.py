@@ -109,15 +109,27 @@ CLEAN_INDEXES = (
     "idx_file_writes_track",
 )
 
-#: The one index on a column that references nothing: CLEAN-10's restore reads
-#: a job's write record by it, and the specification names it.
-SPECIFIED_QUERY_INDEXES = {("file_writes", "job_id")}
+#: Indexes on columns that reference nothing, each serving a query that names
+#: it: CLEAN-10's restore reads a job's write record by ``job_id``. DISCOVER-07
+#: (m0024) finds a label's tracks by the override's ``label_key``, and a library
+#: track by the Beatport id its accepted candidate stands for, which is an
+#: expression over the candidate and reads as ``EXPRESSION``.
+SPECIFIED_QUERY_INDEXES = {
+    ("file_writes", "job_id"),
+    ("track_metadata", "label_key"),
+    ("match_candidates", "<expression>"),
+}
+
+#: What ``PRAGMA index_info`` names a column of an index on an expression.
+EXPRESSION = "<expression>"
 
 #: Left unindexed until the step that writes the query measures it — the
 #: discipline LIBUI-01 paid for and ORG-01 kept.
 DELIBERATELY_UNINDEXED = (
     ("track_match", "state"),
     ("track_files", "status"),
+    # DISCOVER-07 indexes the owned id computed from it and the URL (m0024),
+    # which is not the column: a read of the column itself has no index.
     ("match_candidates", "beatport_track_id"),
     ("match_attempts", "job_id"),
     ("track_metadata", "key"),
@@ -353,7 +365,10 @@ def indexes_on(service, table: str) -> Dict[str, Dict[str, Any]]:
         found[row["name"]] = {
             "origin": row["origin"],
             "unique": bool(row["unique"]),
-            "columns": [r["name"] for r in sorted(info, key=lambda r: r["seqno"])],
+            "columns": [
+                EXPRESSION if r["name"] is None else r["name"]
+                for r in sorted(info, key=lambda r: r["seqno"])
+            ],
         }
     return found
 

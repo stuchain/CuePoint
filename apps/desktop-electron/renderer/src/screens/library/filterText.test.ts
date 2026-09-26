@@ -692,3 +692,53 @@ describe("CuePoint's own field kinds (ORG-12)", () => {
     });
   });
 });
+
+describe("an artist or a label by Beatport id (DISCOVER-07)", () => {
+  const V: LibraryFilterVocabulary = {
+    ...VOCABULARY,
+    operators: { ...VOCABULARY.operators, is_not: { arity: "single" } },
+    fields: [
+      ...VOCABULARY.fields,
+      {
+        name: "beatport_artist",
+        type: "beatport",
+        label: "Beatport artist",
+        facetable: false,
+        unit: null,
+        integer: false,
+        operators: ["is", "is_not", "any_of"],
+      },
+    ],
+  };
+
+  it("sends the id as a number, as the engine wants it", () => {
+    expect(
+      buildRule(V, draft({ field: "beatport_artist", operator: "is", value: " 1190547 " })),
+    ).toEqual({
+      ok: true,
+      rule: { field: "beatport_artist", operator: "is", value: 1190547 },
+    });
+  });
+
+  it("sends a list of ids for any of them", () => {
+    expect(
+      buildRule(V, draft({ field: "beatport_artist", operator: "any_of", value: "3, 4" })),
+    ).toEqual({
+      ok: true,
+      rule: { field: "beatport_artist", operator: "any_of", value: [3, 4] },
+    });
+  });
+
+  it("refuses a name, a fraction and a zero rather than send them", () => {
+    for (const value of ["Âme", "1.5", "0", "-3"]) {
+      const built = buildRule(V, draft({ field: "beatport_artist", operator: "is", value }));
+      expect(built.ok).toBe(false);
+    }
+  });
+
+  it("reads back as the id it names", () => {
+    expect(
+      describeRule(V, { field: "beatport_artist", operator: "is", value: 1190547 }),
+    ).toBe("Beatport artist is 1190547");
+  });
+});

@@ -84,6 +84,14 @@ if TYPE_CHECKING:
         BeatportPlaylistResult,
         PlaylistPush,
     )
+    from cuepoint.models.beatport_listing import BeatportListing
+    from cuepoint.models.entity_page import (
+        EntityBeatportHalf,
+        EntityPage,
+        EntityRef,
+        EntityResolution,
+        EntityTracksPage,
+    )
     from cuepoint.models.track_clean_state import TrackCleanState
     from cuepoint.models.rekordbox_export_values import ExportTrackValues
     from cuepoint.services.rekordbox_export_service import (
@@ -957,6 +965,17 @@ class ILibraryService(ABC):
         ...
 
     @abstractmethod
+    def browse_count(
+        self,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional["RuleSet"] = None,
+        collection_id: Optional[int] = None,
+    ) -> int:
+        """Return how many tracks the view holds: a window's ``total`` alone."""
+        ...
+
+    @abstractmethod
     def track_count(self) -> int:
         """Return the number of tracks in the library."""
         ...
@@ -1230,6 +1249,31 @@ class ITrackCreditRepository(ABC):
         ...
 
     @abstractmethod
+    def artist_links(self, key: str) -> List[Tuple[int, str, int]]:
+        """The Beatport artist ids a library name is linked to (DISCOVER-07)."""
+        ...
+
+    @abstractmethod
+    def label_links(self, key: str) -> List[Tuple[int, Optional[str], int]]:
+        """The Beatport labels a library label's resolved tracks are on."""
+        ...
+
+    @abstractmethod
+    def linked_names(self, kind: str, beatport_id: int) -> List[Tuple[str, str, int]]:
+        """The library names whose unresolved tracks a Beatport id takes."""
+        ...
+
+    @abstractmethod
+    def library_name(self, kind: str, key: str) -> Optional[str]:
+        """How the library spells a name, or None when no track carries it."""
+        ...
+
+    @abstractmethod
+    def unresolved_owned(self, kind: str, key: str) -> int:
+        """How many of a name's tracks a resolve job could still identify."""
+        ...
+
+    @abstractmethod
     def track_count(self) -> int:
         """How many tracks a rebuild will read."""
         ...
@@ -1302,6 +1346,37 @@ class IBeatportCatalogRepository(ABC):
         self, track_ids: Iterable[int]
     ) -> Dict[int, List["LibraryBeatportCredit"]]:
         """The Beatport artists and label of each resolved library track."""
+        ...
+
+    @abstractmethod
+    def store_listing(
+        self, listing: "BeatportListing", tracks: Sequence["CatalogTrack"]
+    ) -> int:
+        """Store an artist's or label's recent tracks and when they were read."""
+        ...
+
+    @abstractmethod
+    def listing(self, kind: str, beatport_id: int) -> Optional["BeatportListing"]:
+        """When an artist's or label's recent tracks were last read, or None."""
+        ...
+
+    @abstractmethod
+    def entity_name(self, kind: str, beatport_id: int) -> Optional[str]:
+        """How Beatport spells an artist or label the cache has seen, or None."""
+        ...
+
+    @abstractmethod
+    def entity_tracks(
+        self,
+        kind: str,
+        beatport_id: int,
+        since: str,
+        until: str,
+        owned: str = "all",
+        offset: int = 0,
+        limit: int = 100,
+    ) -> "EntityTracksPage":
+        """A window of an artist's or label's cached tracks released in a window."""
         ...
 
 
@@ -1588,6 +1663,39 @@ class IBeatportPlaylistService(ABC):
         should_cancel: Optional[Callable[[], bool]] = None,
     ) -> "BeatportPlaylistResult":
         """Create the playlist and add the tracks; what happened."""
+        ...
+
+
+class IEntityPageService(ABC):
+    """Interface for Artist and Label pages' data (DISCOVER-07, DEC-094, DEC-095)."""
+
+    @abstractmethod
+    def reference(self, kind: str, token: str) -> "EntityRef":
+        """Read a ``bp:<id>`` or ``name:<key>`` reference, the key folded."""
+        ...
+
+    @abstractmethod
+    def resolve(self, kind: str, token: str) -> "EntityResolution":
+        """What a reference names, following a name to the id it is linked to."""
+        ...
+
+    @abstractmethod
+    def page(self, kind: str, token: str) -> "EntityPage":
+        """A reference resolved, with its library half's header facts."""
+        ...
+
+    @abstractmethod
+    def beatport(
+        self,
+        kind: str,
+        token: str,
+        *,
+        refresh: bool = False,
+        owned: str = "all",
+        offset: int = 0,
+        limit: int = 100,
+    ) -> "EntityBeatportHalf":
+        """A page's recent Beatport tracks, or the state that stands in for them."""
         ...
 
 

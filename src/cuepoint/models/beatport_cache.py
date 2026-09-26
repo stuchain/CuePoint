@@ -69,6 +69,12 @@ ENTITY_LABEL = "label"
 #: What a name can be looked up as (DEC-095).
 ENTITY_KINDS = (ENTITY_ARTIST, ENTITY_LABEL)
 
+#: The largest id SQLite stores as an integer. A Beatport id beyond it would be
+#: cast to this value, so every check of one refuses it rather than match the
+#: wrong row. Declared here, with the models, so the rule vocabulary and the
+#: services check ids against one number (DISCOVER-07).
+MAX_BEATPORT_ID = 2**63 - 1
+
 
 @dataclass(frozen=True)
 class CachedBeatportTrack:

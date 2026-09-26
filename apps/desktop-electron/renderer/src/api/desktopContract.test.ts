@@ -535,8 +535,9 @@ describe("desktop contract", () => {
       };
 
       expect(kinds(bridgeTypes)).toEqual(
-        // `name` is DISCOVER-03's artist or label compared by identity.
-        ["bool", "collection", "date", "name", "number", "tag", "text"].sort(),
+        // `name` is DISCOVER-03's artist or label compared by identity, and
+        // `beatport` DISCOVER-07's artist or label by Beatport id.
+        ["beatport", "bool", "collection", "date", "name", "number", "tag", "text"].sort(),
       );
       expect(kinds(bridgeTypes)).toEqual(kinds(engineClient));
     });

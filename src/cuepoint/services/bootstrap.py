@@ -49,6 +49,7 @@ from cuepoint.services.interfaces import (
     IDiscoveryRepository,
     IDiscoveryService,
     IBeatportPlaylistService,
+    IEntityPageService,
     IWantlistRepository,
     IWantlistService,
     ICreditIndexService,
@@ -101,6 +102,7 @@ from cuepoint.services.beatport_resolve_service import BeatportResolveService
 from cuepoint.services.discovery_service import DiscoveryService
 from cuepoint.services.beatport_playlist_service import BeatportPlaylistService
 from cuepoint.services.wantlist_service import WantlistService
+from cuepoint.services.entity_page_service import EntityPageService
 from cuepoint.services.credit_index_service import CreditIndexService
 from cuepoint.persistence.file_status_repository import FileStatusRepository
 from cuepoint.persistence.job_repository import JobRepository
@@ -757,6 +759,20 @@ def bootstrap_services() -> None:
     container.register_factory(
         IBeatportPlaylistService, create_beatport_playlist_service
     )
+
+    # Artist and Label pages (DISCOVER-07). Built per request, for the reason
+    # above: a page's Beatport half asks with the token configured then.
+    def create_entity_page_service() -> IEntityPageService:
+        return EntityPageService(
+            credits=container.resolve(ITrackCreditRepository),
+            catalog=container.resolve(IBeatportCatalogRepository),
+            lookups=container.resolve(IDiscoveryRepository),
+            wantlist=container.resolve(IWantlistRepository),
+            library=container.resolve(ILibraryService),
+            beatport=container.resolve(BeatportApi),
+        )
+
+    container.register_factory(IEntityPageService, create_entity_page_service)
 
     # inCrate Phase 1: Inventory service (import from XML, enrich via shared matching pipeline + workers)
     def create_inventory_service() -> InventoryService:

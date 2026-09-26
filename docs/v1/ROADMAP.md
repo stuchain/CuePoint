@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-06 are implemented, and DISCOVER-01's spike is recorded.
+(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-07 are implemented, and DISCOVER-01's spike is recorded.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -365,7 +365,7 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-06 implemented
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-07 implemented
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
@@ -452,6 +452,19 @@ repeat, and reports the real URL; a 403 on create says the token may lack playli
 step also found that a window asking "owned?" rebuilt the ownership view for every use. DISCOVER-05's
 run window took 98 ms at 40,000 accepted matches, and both windows now read ownership once, in
 34 to 46 ms.
+
+DISCOVER-07 is implemented: an Artist or Label page's data, for a reference by Beatport id or by
+normalized name. A name resolution has linked to one artist, or a label linked to any, redirects
+to the id. A name several artists share stays a name page and lists them. The library half is a
+rule set for the Library's own browse. Two new rule fields, **Beatport artist** and **Beatport
+label**, gather the resolved tracks and the unresolved tracks of a linked name, so nothing is lost
+on the redirect. The header is the Library's own count and facets over those rules. The Beatport
+half is the recent tracks, read once and then from the cache for 12 hours, each marked owned and
+on the wantlist. A label is looked up by name, an artist never. Every answer carries a state:
+`ok`, `name_only` with its reason, or DISCOVER-01's error class. Written first over DISCOVER-04's
+views, a page took 1.9 s (artist) and 9.4 s (label) at 50,000 tracks. Migration 0024 indexes the
+owned id, splits the identity view by kind and indexes the label keys, and a page now takes 25 to
+47 ms. DISCOVER-05's run window fell from 34 ms to 13–15 ms with it.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 

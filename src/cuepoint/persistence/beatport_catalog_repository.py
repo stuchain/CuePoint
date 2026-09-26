@@ -4,8 +4,8 @@
 """All SQL for the Beatport catalog cache and the library's identity on it (DISCOVER-04).
 
 The one module that runs SQL against ``beatport_tracks`` and
-``beatport_track_artists`` (migration 0021), and the reader of migration
-0023's two views:
+``beatport_track_artists`` (migration 0021) and ``beatport_listings``
+(migration 0024), and the reader of migration 0023's two views:
 
 - ``library_beatport_tracks`` — which Beatport tracks the library owns, one
   row per library track with an accepted match (DEC-092);
@@ -45,6 +45,19 @@ four times — to count, to filter and to flag — so a run's window took 98 ms 
 the wantlist's up to 137. Reading the owned ids among the list's own tracks
 once, and binding them to every use as a JSON array, is one view read per
 request, and the answer is the same in every part of it.
+
+An artist's or label's recent tracks (DISCOVER-07)
+--------------------------------------------------
+An Artist or Label page's Beatport half is a listing read whole from Beatport:
+:meth:`BeatportCatalogRepository.store_listing` stores its tracks and records
+that it was read (``beatport_listings``) in one transaction, and
+:meth:`~BeatportCatalogRepository.entity_tracks` reads it back from the cache
+by the artist's or label's id and a window of release days, through the
+indexes on ``beatport_track_artists (artist_id, …)`` and
+``beatport_tracks (label_id)``. A track the cache holds for another reason that
+is by the same artist in the same window is one of their releases too, and is
+shown with them. A track with no release date is not, since "recent" is a
+date.
 """
 
 from __future__ import annotations
@@ -52,7 +65,18 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Set, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 
 from cuepoint.core.entity_names import name_key
 from cuepoint.incrate.beatport_api_models import CatalogTrack
@@ -60,6 +84,19 @@ from cuepoint.models.beatport_cache import (
     CachedBeatportCredit,
     CachedBeatportTrack,
     LibraryBeatportCredit,
+)
+from cuepoint.models.beatport_cache import ENTITY_ARTIST, ENTITY_LABEL
+from cuepoint.models.beatport_listing import BeatportListing
+from cuepoint.models.discovery_run import (
+    OWNED_ALL,
+    OWNED_FILTERS,
+    OWNED_HIDE,
+    OWNED_ONLY,
+)
+from cuepoint.models.entity_page import (
+    MAX_ENTITY_WINDOW,
+    EntityTrackRow,
+    EntityTracksPage,
 )
 from cuepoint.models.track_credit import ROLE_ARTIST, ROLE_REMIXER
 from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
@@ -125,6 +162,30 @@ _TO_RESOLVE = (
     " WHERE b.beatport_track_id IS NULL OR b.fetched_at < ?"
     " ORDER BY l.beatport_track_id"
 )
+
+_LISTING_COLUMNS: Tuple[str, ...] = (
+    "kind",
+    "beatport_id",
+    "since",
+    "fetched_at",
+    "tracks",
+)
+
+# One artist's or label's cached tracks released in a window, by id; bound as
+# :id, :since and :until.
+_ENTITY_TRACK_IDS = {
+    ENTITY_ARTIST: (
+        "SELECT DISTINCT a.beatport_track_id FROM beatport_track_artists AS a"
+        " JOIN beatport_tracks AS t ON t.beatport_track_id = a.beatport_track_id"
+        " WHERE a.artist_id = :id"
+        " AND t.release_date >= :since AND t.release_date <= :until"
+    ),
+    ENTITY_LABEL: (
+        "SELECT beatport_track_id FROM beatport_tracks"
+        " WHERE label_id = :id"
+        " AND release_date >= :since AND release_date <= :until"
+    ),
+}
 
 _OWNED_COUNT = (
     "SELECT count(DISTINCT beatport_track_id) AS n FROM library_beatport_tracks"
@@ -248,8 +309,10 @@ def owned_among_json(
     run's tracks, with its ``params``.
     """
     rows = conn.execute(
-        f"SELECT DISTINCT beatport_track_id FROM ({owned_beatport_ids_sql()})"
-        f" WHERE beatport_track_id IN ({ids_sql})",
+        f"WITH listed(id) AS ({ids_sql})"
+        f" SELECT DISTINCT beatport_track_id FROM ({owned_beatport_ids_sql()})"
+        " WHERE beatport_track_id IN (SELECT value FROM json_each("
+        "(SELECT json_group_array(id) FROM listed)))",
         params,
     )
     return json.dumps(sorted(int(row[0]) for row in rows))
@@ -261,6 +324,16 @@ def owned_json_sql(column: str, param: str = "owned") -> str:
     The array is bound as the named parameter ``param``.
     """
     return f"{column} IN (SELECT value FROM json_each(:{param}))"
+
+
+_ENTITY_OWNED = owned_json_sql("b.beatport_track_id")
+
+# What each owned filter keeps, as a condition that is true or false per row.
+_ENTITY_OWNED_KEEPS = {
+    OWNED_HIDE: f"NOT ({_ENTITY_OWNED})",
+    OWNED_ONLY: _ENTITY_OWNED,
+    OWNED_ALL: "1",
+}
 
 
 def credit_names(
@@ -328,7 +401,143 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
             _write_rows(conn, rows)
         return len(rows)
 
+    def store_listing(
+        self, listing: BeatportListing, tracks: Sequence[CatalogTrack]
+    ) -> int:
+        """Store an artist's or label's listing and its tracks in one transaction.
+
+        The tracks are stored as :meth:`upsert_tracks` stores them, with the
+        listing's ``fetched_at``; the listing replaces the one read before.
+
+        Returns:
+            How many tracks were stored.
+        """
+        rows = _rows_of(tracks, listing.fetched_at)
+        with self._db.transaction() as conn:
+            if rows:
+                _write_rows(conn, rows)
+            conn.execute(
+                f"INSERT INTO beatport_listings ({', '.join(_LISTING_COLUMNS)})"
+                f" VALUES ({', '.join('?' for _ in _LISTING_COLUMNS)})"
+                " ON CONFLICT (kind, beatport_id) DO UPDATE SET"
+                " since = excluded.since, fetched_at = excluded.fetched_at,"
+                " tracks = excluded.tracks",
+                tuple(listing.to_dict()[c] for c in _LISTING_COLUMNS),
+            )
+        return len(rows)
+
     # ------------------------------------------------------------------ read
+
+    def listing(self, kind: str, beatport_id: int) -> Optional[BeatportListing]:
+        """When an artist's or label's recent tracks were last read, or None."""
+        row = (
+            self._db.connect()
+            .execute(
+                f"SELECT {', '.join(_LISTING_COLUMNS)} FROM beatport_listings"
+                " WHERE kind = ? AND beatport_id = ?",
+                (str(kind), int(beatport_id)),
+            )
+            .fetchone()
+        )
+        return None if row is None else BeatportListing.from_row(row)
+
+    def entity_name(self, kind: str, beatport_id: int) -> Optional[str]:
+        """How Beatport spells an artist or label the cache has seen, or None.
+
+        The spelling on most cached tracks, then the first alphabetically, so
+        a rename read on one track does not flip the page's title.
+        """
+        if kind == ENTITY_ARTIST:
+            sql = (
+                "SELECT name, count(*) AS n FROM beatport_track_artists"
+                " WHERE artist_id = ? GROUP BY name ORDER BY n DESC, name LIMIT 1"
+            )
+        elif kind == ENTITY_LABEL:
+            sql = (
+                "SELECT label_name AS name, count(*) AS n FROM beatport_tracks"
+                " WHERE label_id = ? AND label_name IS NOT NULL"
+                " GROUP BY label_name ORDER BY n DESC, label_name LIMIT 1"
+            )
+        else:
+            raise ValueError(f"No entity of kind {kind!r}")
+        row = self._db.connect().execute(sql, (int(beatport_id),)).fetchone()
+        return None if row is None else str(row["name"])
+
+    def entity_tracks(
+        self,
+        kind: str,
+        beatport_id: int,
+        since: str,
+        until: str,
+        owned: str = OWNED_ALL,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> EntityTracksPage:
+        """A window of an artist's or label's cached tracks released in a window.
+
+        Newest release first, then the higher id, with ownership read once
+        (DEC-092). ``on_wantlist`` is left False: the wantlist's own module
+        answers it.
+
+        Raises:
+            ValueError: If the kind, the filter or the window is not one this
+                answers.
+        """
+        if kind not in _ENTITY_TRACK_IDS:
+            raise ValueError(f"No entity of kind {kind!r}")
+        if owned not in OWNED_FILTERS:
+            raise ValueError(f"owned must be one of {OWNED_FILTERS}, got {owned!r}")
+        if not 1 <= int(limit) <= MAX_ENTITY_WINDOW or int(offset) < 0:
+            raise ValueError(
+                f"A window is 1 to {MAX_ENTITY_WINDOW} tracks from offset 0 or later"
+            )
+        ids_sql = _ENTITY_TRACK_IDS[kind]
+        conn = self._db.connect()
+        values: Dict[str, Any] = {
+            "id": int(beatport_id),
+            "since": str(since),
+            "until": str(until),
+            "limit": int(limit),
+            "offset": int(offset),
+        }
+        values["owned"] = owned_among_json(conn, ids_sql, values)
+        keeps = _ENTITY_OWNED_KEEPS[owned]
+        counted = conn.execute(
+            "SELECT count(*) AS tracks,"
+            f" coalesce(sum({_ENTITY_OWNED}), 0) AS owned,"
+            f" coalesce(sum({keeps}), 0) AS total"
+            " FROM beatport_tracks AS b"
+            f" WHERE b.beatport_track_id IN ({ids_sql})",
+            values,
+        ).fetchone()
+        rows = conn.execute(
+            f"SELECT {_ENTITY_OWNED} AS owned,"
+            f" {', '.join('b.' + c for c in CATALOG_TRACK_COLUMNS)}"
+            " FROM beatport_tracks AS b"
+            f" WHERE b.beatport_track_id IN ({ids_sql}) AND {keeps}"
+            " ORDER BY b.release_date DESC, b.beatport_track_id DESC"
+            " LIMIT :limit OFFSET :offset",
+            values,
+        ).fetchall()
+        ids = [int(r["beatport_track_id"]) for r in rows]
+        credits = credit_names(conn, ids)
+        window = tuple(
+            EntityTrackRow(
+                track=CachedBeatportTrack.from_row(
+                    {c: r[c] for c in CATALOG_TRACK_COLUMNS}
+                ),
+                artists=credits.get(int(r["beatport_track_id"]), ((), ()))[0],
+                remixers=credits.get(int(r["beatport_track_id"]), ((), ()))[1],
+                owned=bool(r["owned"]),
+            )
+            for r in rows
+        )
+        return EntityTracksPage(
+            rows=window,
+            total=int(counted["total"]),
+            tracks=int(counted["tracks"]),
+            owned=int(counted["owned"]),
+        )
 
     def get_tracks(self, ids: Iterable[int]) -> Dict[int, CachedBeatportTrack]:
         """The cached tracks among ``ids``, keyed by Beatport track id."""

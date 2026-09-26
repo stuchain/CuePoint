@@ -30,6 +30,36 @@ values, or it commits after, and writes its own credits. A rebuild is therefore
 safe beside any writer, and a cancelled one leaves every chunk it finished
 correct. The versions are recorded only by :meth:`mark_built`, after the last
 chunk, so an interrupted rebuild is simply run again at the next start.
+
+Who a library track is by, when Beatport knows (DISCOVER-07)
+------------------------------------------------------------
+DEC-095 makes a Beatport id an artist's or label's identity once resolution
+knows it, and shows a name group and the id it turned out to be as one page.
+That page's library half is a rule, ``beatport_artist is <id>`` or
+``beatport_label is <id>``, and :func:`identity_tracks_sql` is what it means:
+
+- **every library track whose accepted Beatport track credits the id**
+  (DISCOVER-04's ``library_beatport_credits``). Beatport's own credits are
+  authoritative for a resolved track, so a track resolved to someone else of
+  the same name is not on the page;
+- **and every track not resolved yet whose name is linked to the id and to no
+  other.** A library name is linked to an artist id when a resolved track
+  credits that name and Beatport credits the id on it under the same key, the
+  link DISCOVER-05's ``artist_ids_by_key`` reads. A library label is linked to
+  the Beatport label most of its resolved tracks are on, ties to the lower id:
+  ``label_ids_by_key``'s rule, by track rather than by spelling. So "Âme"
+  tracks that were never matched stay on Âme's page once her id is known, and
+  a name two Beatport artists share gives its unresolved tracks to neither:
+  the name's own page lists both.
+
+Without the second half, following a name to its id would drop every track
+that is not matched on Beatport, which in most libraries is most of them.
+
+The resolution reads (:meth:`TrackCreditRepository.artist_links`,
+:meth:`~TrackCreditRepository.label_links` and
+:meth:`~TrackCreditRepository.linked_names`) ask the same questions of the same
+view, so a name redirects to an id exactly when that id's page takes the name's
+tracks.
 """
 
 from __future__ import annotations
@@ -38,6 +68,7 @@ import sqlite3
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, TypeVar
 
 from cuepoint.core.entity_names import name_key, split_credit
+from cuepoint.models.beatport_cache import ENTITY_ARTIST, ENTITY_LABEL
 from cuepoint.models.track_credit import (
     NAME_INDEXES,
     ROLE_ARTIST,
@@ -102,6 +133,178 @@ _LABEL_LINKS = (
     f" AND {_EFFECTIVE_LABEL_KEY} IS NOT NULL"
     " GROUP BY 1, 2"
 )
+
+
+#: Who Beatport says each resolved library track is by, and on which label,
+#: one view per kind (migration 0024), which SQLite reads one track at a time.
+_ARTISTS_VIEW = "library_beatport_artists"
+_LABELS_VIEW = "library_beatport_labels"
+
+# A track's Beatport label id and name, looked up by the track.
+_LABEL_ID_OF_TRACK = (
+    f"(SELECT b.beatport_id FROM {_LABELS_VIEW} AS b WHERE b.track_id = t.id)"
+)
+_LABEL_NAME_OF_TRACK = (
+    f"(SELECT b.name FROM {_LABELS_VIEW} AS b WHERE b.track_id = t.id)"
+)
+
+
+def _placeholders(count: int) -> str:
+    return ", ".join("?" for _ in range(count))
+
+
+def _labelled(keys: str) -> str:
+    """The library tracks whose effective label key is one of ``keys``.
+
+    Read through migration 0024's two indexes rather than by computing every
+    track's effective key: tracks with no override label whose own key
+    matches, and tracks whose override's key does. The effective key is the
+    override's where there is one (DEC-068), so the two arms are exact and
+    disjoint. ``keys`` is the inside of an ``IN``, and appears twice.
+    """
+    return (
+        "SELECT t.id AS track_id FROM tracks AS t"
+        " LEFT JOIN track_metadata AS m ON m.track_id = t.id"
+        f" WHERE t.{LABEL_KEY_COLUMN} IN ({keys}) AND m.{LABEL_KEY_COLUMN} IS NULL"
+        " UNION ALL SELECT track_id FROM track_metadata"
+        f" WHERE {LABEL_KEY_COLUMN} IN ({keys})"
+    )
+
+
+def _labelled_tracks(keys: str) -> str:
+    """``FROM`` the tracks :func:`_labelled` finds, as ``t`` and ``m``."""
+    return (
+        f" FROM ({_labelled(keys)}) AS x"
+        " JOIN tracks AS t ON t.id = x.track_id"
+        " LEFT JOIN track_metadata AS m ON m.track_id = t.id"
+    )
+
+
+def _found(view: str, kind: str, ids: str, columns: str) -> str:
+    """The resolved library tracks Beatport credits one of the ids on.
+
+    Driven from the id's own catalog tracks: their Beatport track ids, as a
+    list, are looked up through migration 0024's index on the owned id, one
+    probe each, where a filter on the view's ``beatport_id`` alone would read
+    every accepted match. SQLite uses an index on an expression for a list of
+    values and not for a join, hence the list. Binds the ids twice.
+    """
+    return (
+        f"SELECT {columns} FROM {view}"
+        f" WHERE beatport_id IN ({ids}) AND beatport_track_id IN ("
+        "SELECT value FROM json_each((SELECT json_group_array(beatport_track_id)"
+        f" FROM beatport_catalog_credits WHERE kind = '{kind}'"
+        f" AND beatport_id IN ({ids}))))"
+    )
+
+
+def _artist_identity(count: int) -> str:
+    """The CTEs of an artist id's library identity, for ``count`` ids.
+
+    - ``bp_found``: resolved tracks Beatport credits one of the ids on.
+    - ``bp_linked``: the library names those credits link, by key.
+    - ``bp_named``: every library track crediting a linked name.
+    - ``bp_shared``: the linked names a resolved track links to some other id.
+    - ``bp_names``: the linked names that link no other id, whose unresolved
+      tracks the ids take.
+
+    Each is materialized, so each is computed once, and each reaches the views
+    by key. Binds the ids three times.
+    """
+    ids = _placeholders(count)
+    return (
+        "WITH bp_found AS MATERIALIZED ("
+        + _found(_ARTISTS_VIEW, ENTITY_ARTIST, ids, "track_id, name_key")
+        + "), bp_linked AS MATERIALIZED ("
+        "SELECT DISTINCT f.name_key AS name_key FROM bp_found AS f"
+        " JOIN track_credits AS c"
+        " ON c.track_id = f.track_id AND c.name_key = f.name_key),"
+        " bp_named AS MATERIALIZED ("
+        "SELECT DISTINCT c.track_id AS track_id, c.name_key AS name_key"
+        " FROM bp_linked AS k CROSS JOIN track_credits AS c"
+        " WHERE c.name_key = k.name_key),"
+        " bp_shared AS MATERIALIZED ("
+        "SELECT DISTINCT n.name_key AS name_key FROM bp_named AS n"
+        f" WHERE EXISTS (SELECT 1 FROM {_ARTISTS_VIEW} AS o"
+        " WHERE o.track_id = n.track_id AND o.name_key = n.name_key"
+        f" AND o.beatport_id IS NOT NULL AND o.beatport_id NOT IN ({ids}))),"
+        " bp_names AS MATERIALIZED ("
+        "SELECT name_key FROM bp_linked"
+        " WHERE name_key NOT IN (SELECT name_key FROM bp_shared))"
+    )
+
+
+def _label_identity(count: int) -> str:
+    """The CTEs of a label id's library identity, for ``count`` ids.
+
+    - ``bp_found``: resolved tracks on one of the ids.
+    - ``bp_keys``: the effective library labels of those tracks.
+    - ``bp_named``: every library track with one of those labels, and the
+      Beatport label id resolution gave it, if any.
+    - ``bp_votes``: for each of those labels, how many resolved tracks are on
+      each Beatport label.
+    - ``bp_names``: the library labels whose most-voted Beatport label, ties to
+      the lower id, is one of the ids.
+
+    Materialized, as :func:`_artist_identity`'s are. Binds the ids three times.
+    """
+    ids = _placeholders(count)
+    return (
+        "WITH bp_found AS MATERIALIZED ("
+        + _found(_LABELS_VIEW, ENTITY_LABEL, ids, "track_id")
+        + "), bp_keys AS MATERIALIZED ("
+        f"SELECT DISTINCT {_EFFECTIVE_LABEL_KEY} AS name_key FROM bp_found AS f"
+        " JOIN tracks AS t ON t.id = f.track_id"
+        " LEFT JOIN track_metadata AS m ON m.track_id = t.id"
+        f" WHERE {_EFFECTIVE_LABEL_KEY} IS NOT NULL),"
+        " bp_named AS MATERIALIZED ("
+        f"SELECT t.id AS track_id, {_EFFECTIVE_LABEL_KEY} AS name_key,"
+        f" {_LABEL_ID_OF_TRACK} AS beatport_id"
+        + _labelled_tracks("SELECT name_key FROM bp_keys")
+        + "),"
+        " bp_votes AS MATERIALIZED ("
+        "SELECT name_key, beatport_id, count(*) AS tracks FROM bp_named"
+        " WHERE beatport_id IS NOT NULL GROUP BY name_key, beatport_id),"
+        " bp_names AS MATERIALIZED ("
+        "SELECT v.name_key AS name_key FROM bp_votes AS v"
+        f" WHERE v.beatport_id IN ({ids})"
+        " AND NOT EXISTS (SELECT 1 FROM bp_votes AS w"
+        " WHERE w.name_key = v.name_key AND (w.tracks > v.tracks"
+        " OR (w.tracks = v.tracks AND w.beatport_id < v.beatport_id))))"
+    )
+
+
+def identity_tracks_sql(kind: str, ids: Sequence[int]) -> Tuple[str, Tuple[int, ...]]:
+    """A ``SELECT`` of the library tracks by any of these Beatport ids.
+
+    One column, ``track_id``, never null, for a rule's ``IN`` or ``NOT IN``
+    (DISCOVER-07). ``kind`` is ``"artist"`` or ``"label"``. What it selects is
+    described at the top of this module.
+
+    Raises:
+        ValueError: If ``kind`` is neither, or there are no ids.
+    """
+    wanted = tuple(int(i) for i in ids)
+    if not wanted:
+        raise ValueError("An identity names at least one Beatport id")
+    if kind == ENTITY_ARTIST:
+        sql = (
+            _artist_identity(len(wanted)) + " SELECT track_id FROM bp_found"
+            " UNION SELECT n.track_id FROM bp_named AS n"
+            " WHERE n.name_key IN (SELECT name_key FROM bp_names)"
+            f" AND NOT EXISTS (SELECT 1 FROM {_ARTISTS_VIEW} AS r"
+            " WHERE r.track_id = n.track_id)"
+        )
+    elif kind == ENTITY_LABEL:
+        sql = (
+            _label_identity(len(wanted)) + " SELECT track_id FROM bp_found"
+            " UNION SELECT track_id FROM bp_named"
+            " WHERE beatport_id IS NULL"
+            " AND name_key IN (SELECT name_key FROM bp_names)"
+        )
+    else:
+        raise ValueError(f"No identity of kind {kind!r}")
+    return sql, wanted * 3
 
 
 def _majority(rows: Iterable[Tuple[_K, _V, int]]) -> Dict[_K, _V]:
@@ -263,6 +466,135 @@ class TrackCreditRepository(ITrackCreditRepository):
         return _majority(
             (str(r["name_key"]), int(r["beatport_id"]), int(r["tracks"])) for r in rows
         )
+
+    # ------------------------------------------------- identity (DISCOVER-07)
+
+    def artist_links(self, key: str) -> List[Tuple[int, str, int]]:
+        """The Beatport artist ids a library name is linked to.
+
+        As ``(beatport_id, beatport_name, tracks)``, the id on most of the
+        name's resolved tracks first, then by id. One id is the name's identity
+        (DEC-095); several are artists who share it; none is a name resolution
+        has not linked yet.
+        """
+        rows = self._db.connect().execute(
+            "SELECT b.beatport_id AS beatport_id, min(b.name) AS name,"
+            " count(DISTINCT c.track_id) AS tracks"
+            f" FROM track_credits AS c CROSS JOIN {_ARTISTS_VIEW} AS b"
+            " WHERE c.name_key = ? AND b.track_id = c.track_id"
+            " AND b.name_key = c.name_key AND b.beatport_id IS NOT NULL"
+            " GROUP BY b.beatport_id ORDER BY tracks DESC, b.beatport_id",
+            (str(key),),
+        )
+        return [(int(r["beatport_id"]), str(r["name"]), int(r["tracks"])) for r in rows]
+
+    def label_links(self, key: str) -> List[Tuple[int, Optional[str], int]]:
+        """The Beatport labels a library label's resolved tracks are on.
+
+        As ``(beatport_id, beatport_name, tracks)``, most tracks first and then
+        the lower id, so the first is the one the label is linked to: the rule
+        :meth:`label_ids_by_key` applies to the whole library.
+        """
+        rows = self._db.connect().execute(
+            f"WITH named AS MATERIALIZED (SELECT {_LABEL_ID_OF_TRACK} AS beatport_id,"
+            f" {_LABEL_NAME_OF_TRACK} AS name"
+            + _labelled_tracks("?")
+            + ") SELECT beatport_id, min(name) AS name, count(*) AS tracks"
+            " FROM named WHERE beatport_id IS NOT NULL"
+            " GROUP BY beatport_id ORDER BY tracks DESC, beatport_id",
+            (str(key), str(key)),
+        )
+        return [
+            (
+                int(r["beatport_id"]),
+                None if r["name"] is None else str(r["name"]),
+                int(r["tracks"]),
+            )
+            for r in rows
+        ]
+
+    def linked_names(self, kind: str, beatport_id: int) -> List[Tuple[str, str, int]]:
+        """The library names whose unresolved tracks a Beatport id takes.
+
+        As ``(key, name, tracks)`` by key, ``tracks`` counting every library
+        track with that name: exactly the names :func:`identity_tracks_sql`
+        reads, so a page can say which spellings it gathered.
+        """
+        if kind == ENTITY_ARTIST:
+            sql = (
+                _artist_identity(1)
+                + " SELECT n.name_key AS name_key, min(c.name) AS name,"
+                " count(DISTINCT c.track_id) AS tracks"
+                " FROM bp_names AS n JOIN track_credits AS c"
+                " ON c.name_key = n.name_key"
+                " GROUP BY n.name_key ORDER BY n.name_key"
+            )
+        elif kind == ENTITY_LABEL:
+            sql = (
+                _label_identity(1) + f" SELECT {_EFFECTIVE_LABEL_KEY} AS name_key,"
+                f" min({_EFFECTIVE_LABEL}) AS name, count(*) AS tracks"
+                + _labelled_tracks("SELECT name_key FROM bp_names")
+                + " GROUP BY 1 ORDER BY 1"
+            )
+        else:
+            raise ValueError(f"No identity of kind {kind!r}")
+        rows = self._db.connect().execute(sql, (int(beatport_id),) * 3)
+        return [
+            (str(r["name_key"]), str(r["name"]).strip(), int(r["tracks"])) for r in rows
+        ]
+
+    def library_name(self, kind: str, key: str) -> Optional[str]:
+        """How the library spells a name, or None when no track carries it.
+
+        The first spelling alphabetically, the rule the name facets show.
+        """
+        params: Tuple[str, ...]
+        if kind == ENTITY_ARTIST:
+            sql = "SELECT min(name) AS name FROM track_credits WHERE name_key = ?"
+            params = (str(key),)
+        elif kind == ENTITY_LABEL:
+            sql = f"SELECT min({_EFFECTIVE_LABEL}) AS name" + _labelled_tracks("?")
+            params = (str(key), str(key))
+        else:
+            raise ValueError(f"No name of kind {kind!r}")
+        row = self._db.connect().execute(sql, params).fetchone()
+        if row is None or row["name"] is None:
+            return None
+        return str(row["name"]).strip() or None
+
+    def unresolved_owned(self, kind: str, key: str) -> int:
+        """How many of a name's tracks resolution could still identify.
+
+        Tracks with that name whose match is accepted but whose Beatport
+        credits are not in the catalog cache yet: what a resolve job
+        (DISCOVER-04) would read. Zero means resolving cannot help, because
+        none of the name's tracks is matched to Beatport.
+        """
+        if kind not in (ENTITY_ARTIST, ENTITY_LABEL):
+            raise ValueError(f"No name of kind {kind!r}")
+        view = _ARTISTS_VIEW if kind == ENTITY_ARTIST else _LABELS_VIEW
+        owned = (
+            "EXISTS (SELECT 1 FROM library_beatport_tracks AS l"
+            " WHERE l.track_id = {track})"
+            f" AND NOT EXISTS (SELECT 1 FROM {view} AS r"
+            " WHERE r.track_id = {track})"
+        )
+        if kind == ENTITY_ARTIST:
+            sql = (
+                "SELECT count(DISTINCT c.track_id) AS n FROM track_credits AS c"
+                " WHERE c.name_key = ? AND " + owned.format(track="c.track_id")
+            )
+            params: Tuple[str, ...] = (str(key),)
+        else:
+            sql = (
+                "SELECT count(*) AS n"
+                + _labelled_tracks("?")
+                + " WHERE "
+                + owned.format(track="t.id")
+            )
+            params = (str(key), str(key))
+        row = self._db.connect().execute(sql, params).fetchone()
+        return int(row["n"]) if row is not None else 0
 
     def track_count(self) -> int:
         """How many tracks a rebuild will read."""

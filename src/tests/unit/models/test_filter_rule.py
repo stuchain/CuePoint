@@ -416,3 +416,70 @@ class TestNameFields:
         # The same layering as the effective label itself (DEC-068).
         assert spec.display == field_spec("label").expression
         assert spec.joins == field_spec("label").joins
+
+
+class TestBeatportFields:
+    """DISCOVER-07: an artist or a label by the Beatport id resolution gives it."""
+
+    def test_both_are_in_the_vocabulary_the_renderer_is_sent(self):
+        described = {field["name"]: field for field in describe_fields()}
+        for name in ("beatport_artist", "beatport_label"):
+            assert described[name]["type"] == "beatport"
+            assert described[name]["operators"] == ["is", "is_not", "any_of"]
+            # An id is not something a person reads; the name fields are the
+            # facets a page offers.
+            assert described[name]["facetable"] is False
+            assert described[name]["unit"] is None
+            assert described[name]["choices"] is None
+
+    def test_each_names_its_kind_of_identity(self):
+        assert field_spec("beatport_artist").identity == "artist"
+        assert field_spec("beatport_label").identity == "label"
+        assert {spec.identity for spec in FIELDS if spec.type != "beatport"} == {None}
+
+    def test_the_type_is_declared(self):
+        from cuepoint.models.filter_rule import TYPE_BEATPORT
+
+        assert TYPE_BEATPORT in FIELD_TYPES
+        assert OPERATORS_BY_TYPE[TYPE_BEATPORT] == ("is", "is_not", "any_of")
+
+    def test_an_id_arrives_as_a_number_or_its_digits(self):
+        assert rule("beatport_artist", "is", 1190547).validated().value == 1190547
+        assert rule("beatport_artist", "is", "1190547").validated().value == 1190547
+        assert rule("beatport_label", "any_of", [3, "4"]).validated().value == (3, 4)
+
+    @pytest.mark.parametrize(
+        "value", [0, -3, 1.5, "Âme", True, None, [3], 2**63, "9" * 30]
+    )
+    def test_anything_but_a_beatport_id_is_refused(self, value):
+        with pytest.raises(FilterRuleError):
+            rule("beatport_artist", "is", value).validated()
+
+    def test_the_largest_id_sqlite_stores_is_accepted(self):
+        assert rule("beatport_label", "is", 2**63 - 1).validated().value == 2**63 - 1
+
+    @pytest.mark.parametrize("value", [2**53 + 1, str(2**53 + 1), 2**63 - 1])
+    def test_an_id_is_read_exactly_and_never_through_a_float(self, value):
+        # A float holds every whole number only up to 2**53; past it, 2**53 + 1
+        # reads as 2**53, and a rule would name the neighbouring id. The first
+        # coercion went through float() and refused 2**63 - 1 for it.
+        assert rule("beatport_artist", "is", value).validated().value == int(value)
+
+    @pytest.mark.parametrize("operator", ["contains", "lt", "is_empty", "has_tag"])
+    def test_only_whole_identities_are_asked_about(self, operator):
+        with pytest.raises(FilterRuleError):
+            rule("beatport_artist", operator, 3).validated()
+
+    def test_it_round_trips_as_a_saved_rule_does(self):
+        saved = RuleSet(rules=(rule("beatport_label", "is", 900005),)).validated()
+        assert RuleSet.from_dict(saved.to_dict()).validated() == saved
+
+    def test_a_registry_entry_cannot_mix_up_an_identity(self):
+        from cuepoint.models.filter_rule import TYPE_BEATPORT, FieldSpec
+
+        with pytest.raises(ValueError):
+            FieldSpec("x", TYPE_BEATPORT, "X")
+        with pytest.raises(ValueError):
+            FieldSpec("x", "text", "X", identity="artist")
+        with pytest.raises(ValueError):
+            FieldSpec("x", TYPE_BEATPORT, "X", identity="genre")

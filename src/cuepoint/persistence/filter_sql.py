@@ -71,6 +71,7 @@ from cuepoint.models.filter_rule import (
     OP_NOT_HAS_TAG,
     OP_NOT_IN_COLLECTION,
     OP_STARTS_WITH,
+    TYPE_BEATPORT,
     TYPE_BOOL,
     TYPE_NAME,
     TYPE_NUMBER,
@@ -81,6 +82,7 @@ from cuepoint.models.filter_rule import (
     RuleSet,
     field_spec,
 )
+from cuepoint.persistence.track_credit_repository import identity_tracks_sql
 
 #: Same escape character as the text search, so one convention covers every
 #: LIKE in the library.
@@ -303,6 +305,26 @@ def _compile_name(
     return f"{column} IN ({placeholders})", keys
 
 
+def _compile_beatport(
+    spec: FieldSpec, operator: str, value: Any
+) -> Tuple[str, Tuple[Any, ...]]:
+    """Compile an artist or label rule by Beatport id (DISCOVER-07).
+
+    The membership shape again: the tracks by these ids, as
+    ``track_credit_repository.identity_tracks_sql`` defines them — resolved
+    tracks Beatport credits the id on, and unresolved tracks whose name
+    resolution linked to it alone (DEC-095). The set is gathered once and
+    tested, and ``is not`` is its exact complement: every track it selects has
+    an id, so ``NOT IN`` is safe.
+    """
+    ids = tuple(value) if operator == OP_ANY_OF else (value,)
+    if spec.identity is None:  # pragma: no cover - FieldSpec refuses it
+        raise FilterRuleError(f"{spec.label} names no Beatport identity")
+    inner, params = identity_tracks_sql(spec.identity, ids)
+    keyword = "NOT IN" if operator == OP_IS_NOT else "IN"
+    return f"tracks.id {keyword} ({inner})", params
+
+
 def _empty_test(spec: FieldSpec, *, negated: bool) -> str:
     """ "Has no value" for this field's type.
 
@@ -381,6 +403,8 @@ def compile_rule(rule: FilterRule) -> Tuple[str, Tuple[Any, ...]]:
     # compared by key whichever it is.
     if spec.type == TYPE_NAME:
         return _compile_name(spec, operator, value)
+    if spec.type == TYPE_BEATPORT:
+        return _compile_beatport(spec, operator, value)
     if spec.is_membership:
         return _compile_membership(spec, operator, value)
     if spec.is_multivalued:

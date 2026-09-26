@@ -281,6 +281,21 @@ def local_date(moment: datetime) -> date:
     return moment.astimezone().date() if moment.tzinfo is not None else moment.date()
 
 
+def lookup_is_current(lookup: Optional[BeatportNameLookup], now: datetime) -> bool:
+    """True when a cached name search answers without asking Beatport again.
+
+    A label found is kept for good, since Beatport's ids do not change; "not
+    found" is trusted for :data:`NOT_FOUND_LOOKUP_MAX_AGE`. Discovery and the
+    Label page (DISCOVER-07) both ask this, so one rule decides when a name is
+    searched again.
+    """
+    if lookup is None:
+        return False
+    return lookup.found or lookup.looked_up_at >= (
+        (now - NOT_FOUND_LOOKUP_MAX_AGE).isoformat()
+    )
+
+
 def _count(n: int, one: str, many: str) -> str:
     return f"{n:,} {one if n == 1 else many}"
 
@@ -682,7 +697,7 @@ class DiscoveryService(IDiscoveryService):
         cached = self._runs.lookups(
             ENTITY_LABEL, [key for key, _ in labels if key not in linked]
         )
-        stale_before = (self._clock() - NOT_FOUND_LOOKUP_MAX_AGE).isoformat()
+        now = self._clock()
         resolved: List[Tuple[str, int]] = []
         for done, (key, name) in enumerate(labels):
             beatport_id: Optional[int] = linked.get(key)
@@ -690,7 +705,7 @@ class DiscoveryService(IDiscoveryService):
             if (
                 beatport_id is None
                 and lookup is not None
-                and (lookup.found or lookup.looked_up_at >= stale_before)
+                and lookup_is_current(lookup, now)
             ):
                 beatport_id = lookup.beatport_id
             elif beatport_id is None:
