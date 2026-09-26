@@ -64,6 +64,7 @@ tracks.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, TypeVar
 
@@ -371,6 +372,67 @@ def write_credits(conn: sqlite3.Connection, sources: Iterable[CreditSource]) -> 
     if rows:
         conn.executemany(_INSERT_CREDIT, rows)
     return len(rows)
+
+
+# --- Credits as another module reads them (DISCOVER-08) -----------------------
+#
+# Similar Tracks reads credits beside other columns, so it cannot go through a
+# repository method. It takes its SQL from here instead, as DISCOVER-07's page
+# takes ``identity_tracks_sql``, so this module stays the one that knows the
+# table.
+
+#: What joins a track's name keys in :func:`credit_keys_sql`'s one column. The
+#: unit separator, which no name key holds: a key keeps printable characters
+#: and folds whitespace to spaces.
+CREDIT_KEY_SEPARATOR = "\x1f"
+
+
+def credit_keys_sql(track_id: str) -> str:
+    """A scalar subquery: every name key the track ``track_id`` credits.
+
+    ``track_id`` is a column expression, such as ``tracks.id``. The keys are
+    joined by :data:`CREDIT_KEY_SEPARATOR`, or the answer is ``NULL`` for a
+    track with no credits. Answered by the primary key, which leads with the
+    track: meant for a few rows, not for a scan.
+    """
+    return (
+        "(SELECT group_concat(c.name_key, char(31)) FROM track_credits AS c"
+        f" WHERE c.track_id = {track_id})"
+    )
+
+
+def crediting_any_sql() -> str:
+    """A ``SELECT`` of the tracks crediting any key in one JSON-array parameter.
+
+    For ``tracks.id IN (…)``. Answered by ``idx_track_credits_name``.
+    """
+    return (
+        "SELECT track_id FROM track_credits"
+        " WHERE name_key IN (SELECT value FROM json_each(?))"
+    )
+
+
+def credited_among(
+    conn: sqlite3.Connection, keys: Iterable[str]
+) -> Dict[int, Tuple[str, ...]]:
+    """Which tracks credit any of ``keys``, and which of those keys, sorted.
+
+    One read through the name index, for a caller that would otherwise ask per
+    track: Similar Tracks reads a candidate's artists only for what they share
+    with the seed.
+    """
+    wanted = sorted({key for key in keys if key})
+    if not wanted:
+        return {}
+    found: Dict[int, List[str]] = {}
+    for track_id, key in conn.execute(
+        "SELECT DISTINCT track_id, name_key FROM track_credits"
+        " WHERE name_key IN (SELECT value FROM json_each(?))"
+        " ORDER BY track_id, name_key",
+        (json.dumps(wanted),),
+    ):
+        found.setdefault(int(track_id), []).append(key)
+    return {track_id: tuple(names) for track_id, names in found.items()}
 
 
 class TrackCreditRepository(ITrackCreditRepository):

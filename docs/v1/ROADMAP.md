@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-07 are implemented, and DISCOVER-01's spike is recorded.
+(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-08 are implemented, and DISCOVER-01's spike is recorded.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -365,7 +365,7 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-07 implemented
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-08 implemented
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
@@ -465,6 +465,19 @@ on the wantlist. A label is looked up by name, an artist never. Every answer car
 views, a page took 1.9 s (artist) and 9.4 s (label) at 50,000 tracks. Migration 0024 indexes the
 owned id, splits the identity view by kind and indexes the label keys, and a page now takes 25 to
 47 ms. DISCOVER-05's run window fell from 34 ms to 13–15 ms with it.
+
+DISCOVER-08 is implemented: Similar Tracks' engine, with nothing drawn yet. The rule is in
+`core/similarity.py`, with no SQL and no I/O, so Phase 10 can call it over its own candidates. It
+scores tempo within 6% (half and double time counted, and said), a key on the Camelot wheel (the
+same key, one step, or the relative key), and a genre, label or artist in common. Every weight is a
+named constant, and the components add up to 100. When the seed has a BPM, the tempo window is a gate.
+Every reason is data, with its points and the values compared, keys in the library's notation, and
+the renderer has words for each. A test on each side holds the two lists together. The service reads
+effective values. It pre-selects in SQL by the tempo window, or by genre, label, artist or compatible
+key for a seed with no BPM, and says which components the seed could not offer. It leaves out the seed
+and its duplicates, takes the Library's scope, orders by score and then by id, and writes nothing. A
+test holds it to scoring every track in Python. A seed whose tempo window holds 72% of a
+50,000-track library took 713 ms as first written and now takes 327 ms, against a budget of 0.5 s.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 

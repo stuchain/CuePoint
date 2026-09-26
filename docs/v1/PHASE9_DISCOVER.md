@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **DISCOVER-01 to DISCOVER-07 implemented, and DISCOVER-01's spike recorded against the
-live API (2026-09-23; see its outcome). DISCOVER-08…DISCOVER-12 not started.** The twelve steps below replace the
+Status: **DISCOVER-01 to DISCOVER-08 implemented, and DISCOVER-01's spike recorded against the
+live API (2026-09-23; see its outcome). DISCOVER-09…DISCOVER-12 not started.** The twelve steps below replace the
 roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -1759,6 +1759,218 @@ reasons are shown: a suggestion that says why can be discounted, and one that do
 distrusted.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented. A seed's suggestions are scored by one rule in `core/`, with every reason
+as data and keys written in the library's notation. The same library gives the same list, ordered
+by score and then by id. The worst case, a seed whose tempo window holds 72% of a 50,000-track
+library, takes **327 ms** against a budget of **0.5 s**.
+
+**What was built.**
+
+- **`core/similarity.py`**, the rule and nothing else. It imports nothing from CuePoint, and a test
+  holds that.
+  - **Inputs**: `Traits`: `bpm`, `key` as a `MusicalKey` (pitch class and mode), `genre_key`,
+    `label_key` and `artist_keys`. Zero and blank values read as no value.
+  - **Key**: `MusicalKey.camelot` places a key on the wheel by arithmetic. A test checks all 24
+    keys against the library reader's own Camelot table. `key_relation` answers `same`,
+    `adjacent` (one step, 12↔1 wrapping) or `relative` (same number, other letter);
+    `compatible_keys` lists the four.
+  - **Tempo**: within **6%** of the seed's BPM, scored from **30** points at the same tempo to
+    **10** at the window's edge. Half and double time are scored by the same closeness, as heard
+    (64 is 128), with their own details. `tempo_ranges` gives the three windows for a
+    pre-selection.
+  - **The weights**: key 25 for the same key and 20 for a step or the relative key, genre 20,
+    label 10, shared artist 15 (once, however many are shared). The components add up to 100.
+    Every weight is a named constant (DEC-067's reason), and a test pins the values recorded
+    here.
+  - **The gate**: when the seed has a BPM, a candidate outside every window, or with no BPM, is
+    not a suggestion, whatever else it shares. When the seed has none, having any reason is the
+    gate.
+  - **`score`**: the similarity, with each `Reason`'s component, detail, points and the two values
+    compared.
+  - **`rank`**: the top N by score, then by track id. It totals every candidate from the same
+    private match list `score` reads, and builds reasons only for the ones it keeps.
+  - **`unused_components`**: what a seed could not offer. `REASONS` lists all ten
+    `(component, detail)` pairs.
+- **`models/similar_tracks.py`**:
+  - `SimilarTracks` answers `seed_id`, `notation`, `unused`, `considered`, `duplicates_excluded`,
+    `index_current` and `suggestions`.
+  - Each `SimilarTrack` carries `track_id`, `score` and `reasons`, each reason a wire object:
+    - `tempo`: `from` and `to` BPM;
+    - `key`: `from` and `to` in the library's notation;
+    - `genre` and `label`: `name`, the seed's spelling;
+    - `artist`: `names`, as the seed credits them;
+    - and `points` on every reason.
+  - `TraitRow` is a row as read.
+- **`persistence/similarity_repository.py`**, read only:
+  - `seed`: every credit;
+  - `check_scope`: the Library's own validation and reference check;
+  - `candidates`: any of tempo ranges, genre, label or key spellings, or credited artists, within
+    a scope, less an exclusion list;
+  - `spellings`: the effective values a field takes;
+  - `duplicates_of`: the tracks sharing a shown group, from the view the Duplicates list reads.
+  - Every value is read through the rule vocabulary's own expression, so an override is what is
+    compared (DEC-068).
+  - The credit index's SQL comes from its owner, `track_credit_repository`: `credit_keys_sql`,
+    `crediting_any_sql` and `credited_among`. `test_discover_schema` allows one module per table,
+    and the first form, which queried `track_credits` here, failed it.
+- **`track_query.build_select_scoped`**: a fourth projection of the browse predicate. A caller's
+  columns over the tracks a `BrowseQuery` would show, narrowed by one more condition. A playlist,
+  a Collection, rules and a text query restrict candidates exactly as they restrict the table.
+- **`services/similarity_service.py`**: `similar(track_id, scope=None, limit=50)`, 1 to 200.
+  1. Reads the seed.
+  2. Excludes it and its duplicates.
+  3. Pre-selects in SQL: the tempo windows, or for a seed with no BPM, the tracks sharing its
+     genre, label or an artist, or having a compatible key. Each is matched by the library's
+     spellings whose name key or parsed key is the seed's, so the pre-selection is exact.
+  4. Ranks with the core.
+  5. Writes the reasons.
+
+  A missing seed is a `LookupError`; a bad id, limit or scope a `ValueError`.
+- **The container** builds `ISimilarityRepository` and `ISimilarityService`. No Beatport client,
+  and no token.
+- **The reasons in words**: `renderer/src/screens/discover/similarReasons.ts` has
+  `describeSimilarReason` ("One step on the wheel: 8A → 9A", "Half time: 128 → 64", "Shared
+  artists: Âme, Dixon") and `describeUnused` ("This track has no BPM or key to compare."). DISCOVER-11
+  draws them.
+
+**Where it differs from the specification, and why.**
+
+- **The tempo window is part of the rule, not only of the SQL.** The specification pre-selects by it.
+  Written only there, Phase 10, which scores candidates it gathers itself, would suggest a 90 BPM
+  track for a 124 BPM seed. So the rule refuses what the window refuses, and the SQL is a superset
+  (the windows widened by 0.01 BPM, so a float at the edge is never lost to rounding).
+- **A seed without a BPM also pre-selects by a compatible key.** The specification names genre, label
+  and artist. DEC-096 scores a key without a BPM, and a seed with only a key would otherwise have no
+  candidates at all.
+- **A remixer counts as an artist**, as it does in the `artist_name` rule, so a shared artist means
+  one thing on a page and in a suggestion.
+- **A dismissed duplicate group is not excluded.** The user said those tracks are not the same
+  recording, so they are suggestions like any other. The view the Duplicates list reads already
+  answers that.
+- **Each reason carries its points.** The specification's reasons are `{component, detail}`. The
+  points let a person see why one suggestion ranks above another, which is DEC-096's case for
+  explaining at all.
+- **The answer says more than ids and reasons**: `considered`, `duplicates_excluded`, `index_current`
+  (DISCOVER-03's rebuild state, as the entity pages report it) and `notation`. Each explains an
+  absence or how to read a reason.
+- **The renderer's words are written now**, not in DISCOVER-11, so the test the specification asks for
+  exists on both sides in this step.
+
+**A first form over budget, found and fixed.** Written directly, the dense band took **713 ms**.
+Profiling found two causes:
+1. **A subquery per candidate** for its credits doubled the read, from 58 to 115 ms. The rule reads
+   nothing of a candidate's artists but those it shares with the seed. So the repository now reads
+   the seed's artists' tracks once, through `track_credits`' name index (`credits_among`), and
+   candidates are read as plain tuples.
+2. **Building a validated reason list for all 36,000 candidates**, when only fifty are shown. `rank`
+   now totals every candidate from the rule's match tuples and builds `Reason` objects for the ones
+   it keeps. `score` reads the same tuples, so the two cannot disagree, and a test holds `rank` to
+   sorting every `score`.
+
+Parsed keys and genre and label keys are remembered per spelling, and a key's place on the wheel is
+computed once per key. The answer did not change: the benchmark's list read the same scores before
+and after, and the test against scoring every track holds the service to the rule.
+
+**Measured** (median of seven, 50,000 tracks: 70% at 120–130 BPM, 15% at 170–175 and 15% spread
+over 70–160; 24 keys, 40 genres, 1,200 labels, 1,700 artists, 30% of credits with two artists and 20%
+with a remixer):
+
+| List | Candidates scored | First form | Now |
+| --- | --- | --- | --- |
+| Seed at 125 BPM, the densest band, 50 suggestions | 36,105 | 713 ms | **327 ms** |
+| The same, 200 suggestions | 36,105 | 714 ms | 344 ms |
+| Seed at 90 BPM | 8,651 | 215 ms | 121 ms |
+| Seed with no BPM (key, genre, label, artist) | 9,350 | 264 ms | 172 ms |
+| Dense-band seed scoped to one genre | 907 | 75 ms | 63 ms |
+
+Of the dense band's 327 ms, reading the 36,105 candidates is 89 ms. Counting the library's key
+notation is 30 ms, and the rest is scoring. The budget, `DENSE_BAND_BUDGET_SECONDS`, is 0.5 s. That
+is enough for a list opened by hand, and no Discover surface opens one per keystroke.
+
+**What binds later steps.**
+
+1. **DISCOVER-09's `similar` route**:
+   - It is `SimilarityService.similar(track_id, scope, limit)`, answering `SimilarTracks.to_dict()`.
+   - The scope arrives as the Library's own query parameters (`playlist_id`, `collection_id`, `rules`,
+     `query`) and becomes a `BrowseQuery`. Its refusals are the Library's, so they map to the same
+     envelope.
+   - A missing seed is a `LookupError`, a 404 as `artwork_service`'s is.
+2. **DISCOVER-11 draws suggestions** by reading their rows through the track-detail path (fact 5),
+   in the answer's order, and words the Reasons column with `describeSimilarReason`. It shows
+   `describeUnused(unused)` when the seed could not offer something. When `index_current` is false,
+   it says shared artists may be missing, as the entity pages do.
+3. **Phase 10 calls `core.similarity`** with its own candidates' `Traits`. It can use `rank` for an
+   ordered list and `score` for one pair. `traits_of` turns a `TraitRow` into `Traits` the way this
+   service does. A new component is a new pair in `REASONS`, which fails
+   `test_similar_reasons_fixture.py` until the fixture is written again, and then
+   `similarReasons.test.ts` until it has words.
+4. **The weights are recorded here**, and `test_the_weights_are_what_the_step_records` pins them.
+   Changing one is a decision to record, not a tweak.
+
+**Tests**:
+
+- 125 in `src/tests/unit/core/test_similarity.py`:
+  - **the wheel**: 24 keys against the library's table; 18 relations, the 12→1 wrap in both modes and
+    the relative switch among them; symmetry over all 576 pairs; `compatible_keys` exactly the related
+    keys; enharmonic and spelled-out notations one key;
+  - **tempo**: the same tempo, closeness to the edge, a hundredth apart, outside the window, half and
+    double time scored as heard, and the windows agreeing with the rule over 3,000 random pairs;
+  - **the rule**: a table of five candidates with their scores and reasons; the gate, even with
+    everything else in common; a seed with no BPM, and with no BPM and no key; nothing in common;
+    `unused`;
+  - **`Traits`** normalization and refusals;
+  - **ranking**: equal to sorting every `score` over 40 generated libraries; the same list from any
+    input order; ties by id; exclusion; the limit; each score the sum of its reasons;
+  - **reasons**: every one listed is given and every one given is listed; the weights; no imports from
+    CuePoint.
+- 44 in `src/tests/unit/services/test_similarity_service.py`, over a real library:
+  - **the answer** on the wire; the same twice; ties; the limit and refusals; a missing seed;
+  - **effective values**: an override on a candidate and on the seed; name keys; an artist as a credit
+    and not a substring, remixers included; non-values;
+  - **notation**: Camelot and classic libraries;
+  - **no BPM**: genre, label, artist and key pre-selected, and `unused`;
+  - **duplicates**: across two signals; a dismissed group; another track's group; a group not being a
+    chain;
+  - **scope**: a Collection, a playlist, a rule set; the seed outside the scope; a broken scope
+    refused, even when nothing is pre-selected;
+  - **no writes** (`total_changes` unchanged); `index_current`; the container;
+  - **the whole answer against scoring every track in Python** from the tracks' own columns, over
+    three generated libraries of 250 tracks with overrides, 25 seeds each. This is what shows the
+    pre-selection loses nothing.
+- 23 in `src/tests/unit/persistence/test_similarity_repository.py`:
+  - each criterion alone and as alternatives; inclusive ranges; exact spellings; effective values;
+    no criterion; exclusion;
+  - `credits_among`, and a name credited twice on one track read once;
+  - a playlist, a Collection, a text query, a rule, a criterion and an exclusion binding together;
+  - spellings; duplicates; the builder; no writes.
+- 3 in `src/tests/unit/services/test_similar_reasons_fixture.py`. They produce
+  `similarReasons.fixture.json` from the real service, holding one of each of the ten reasons and
+  every component as unused, and fail when the engine's answer or `REASONS` moves.
+- 20 in `renderer/src/screens/discover/similarReasons.test.ts`: every reason in the fixture has its
+  own sentence, the expected wording, singular and plural artists, BPM formatting, a reason from a
+  newer engine, and the unused sentence.
+- The strict mypy gate covers the three new modules outside `persistence/`, which it already covers
+  whole.
+- **21 deliberate breakages**, each caught:
+  - the wheel not wrapping;
+  - no relative key;
+  - half time, and double time, not counted;
+  - the tempo gate dropped, and a candidate with no BPM passing it;
+  - ties broken the other way;
+  - "the same tempo" too loose;
+  - closeness not scored;
+  - `unused` empty;
+  - duplicates, and the seed, not excluded;
+  - a dismissed group still excluding;
+  - the imported BPM instead of the effective one;
+  - the scope ignored;
+  - the notation fixed;
+  - a genre compared as text;
+  - a seed with no BPM not pre-selecting by key;
+  - candidates' shared artists not read;
+  - the tempo slack negative;
+  - artist names in key order instead of credit order.
 
 ---
 

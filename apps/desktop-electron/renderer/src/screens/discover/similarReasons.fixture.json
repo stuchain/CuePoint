@@ -1,0 +1,82 @@
+{
+  "notation": "camelot",
+  "reasons": [
+    {
+      "component": "tempo",
+      "detail": "same",
+      "from": 124.0,
+      "points": 30.0,
+      "to": 124.0
+    },
+    {
+      "component": "tempo",
+      "detail": "close",
+      "from": 124.0,
+      "points": 23.3,
+      "to": 126.5
+    },
+    {
+      "component": "tempo",
+      "detail": "half",
+      "from": 124.0,
+      "points": 30.0,
+      "to": 62.0
+    },
+    {
+      "component": "tempo",
+      "detail": "double",
+      "from": 124.0,
+      "points": 30.0,
+      "to": 248.0
+    },
+    {
+      "component": "key",
+      "detail": "same",
+      "from": "8A",
+      "points": 25.0,
+      "to": "8A"
+    },
+    {
+      "component": "key",
+      "detail": "adjacent",
+      "from": "8A",
+      "points": 20.0,
+      "to": "9A"
+    },
+    {
+      "component": "key",
+      "detail": "relative",
+      "from": "8A",
+      "points": 20.0,
+      "to": "8B"
+    },
+    {
+      "component": "genre",
+      "detail": "same",
+      "name": "Deep House",
+      "points": 20.0
+    },
+    {
+      "component": "label",
+      "detail": "same",
+      "name": "Innervisions",
+      "points": 10.0
+    },
+    {
+      "component": "artist",
+      "detail": "shared",
+      "names": [
+        "Âme",
+        "Dixon"
+      ],
+      "points": 15.0
+    }
+  ],
+  "unused": [
+    "tempo",
+    "key",
+    "genre",
+    "label",
+    "artist"
+  ]
+}

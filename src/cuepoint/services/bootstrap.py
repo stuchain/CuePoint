@@ -50,6 +50,8 @@ from cuepoint.services.interfaces import (
     IDiscoveryService,
     IBeatportPlaylistService,
     IEntityPageService,
+    ISimilarityRepository,
+    ISimilarityService,
     IWantlistRepository,
     IWantlistService,
     ICreditIndexService,
@@ -103,6 +105,8 @@ from cuepoint.services.discovery_service import DiscoveryService
 from cuepoint.services.beatport_playlist_service import BeatportPlaylistService
 from cuepoint.services.wantlist_service import WantlistService
 from cuepoint.services.entity_page_service import EntityPageService
+from cuepoint.services.similarity_service import SimilarityService
+from cuepoint.persistence.similarity_repository import SimilarityRepository
 from cuepoint.services.credit_index_service import CreditIndexService
 from cuepoint.persistence.file_status_repository import FileStatusRepository
 from cuepoint.persistence.job_repository import JobRepository
@@ -773,6 +777,25 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IEntityPageService, create_entity_page_service)
+
+    # Similar Tracks (DISCOVER-08). Local and offline (DEC-096): no Beatport
+    # client, no token, and nothing written.
+    def create_similarity_repository() -> ISimilarityRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return SimilarityRepository(
+            database_service=container.resolve(IDatabaseService)
+        )
+
+    container.register_factory(ISimilarityRepository, create_similarity_repository)
+
+    def create_similarity_service() -> ISimilarityService:
+        return SimilarityService(
+            repository=container.resolve(ISimilarityRepository),
+            credits=container.resolve(ITrackCreditRepository),
+            tracks=container.resolve(ITrackRepository),
+        )
+
+    container.register_factory(ISimilarityService, create_similarity_service)
 
     # inCrate Phase 1: Inventory service (import from XML, enrich via shared matching pipeline + workers)
     def create_inventory_service() -> InventoryService:

@@ -748,6 +748,48 @@ def build_count(query: BrowseQuery) -> Tuple[str, Tuple[object, ...]]:
     )
 
 
+def build_select_scoped(
+    query: BrowseQuery,
+    columns: str,
+    *,
+    condition: str = "",
+    params: Sequence[object] = (),
+    joins: Iterable[str] = (),
+) -> Tuple[str, Tuple[object, ...]]:
+    """Build a caller's projection of the tracks in a scope, narrowed further.
+
+    The fourth projection of one predicate (DISCOVER-08): the tracks a browse
+    of ``query`` would show, reading ``columns`` rather than a row, and only
+    those that also meet ``condition``. Similar Tracks scores its candidates in
+    Python, so it needs their values and not a page, and a Collection, playlist
+    or rule set restricts them exactly as it restricts the table.
+
+    Unordered and unpaged: the caller reads every row it asked for and orders
+    what it keeps.
+
+    Args:
+        query: The scope. Its sort is ignored.
+        columns: The ``SELECT`` list. It may read ``tracks`` and any alias
+            named in ``joins``, and binds no parameters.
+        condition: A further ``WHERE`` term, or empty.
+        params: ``condition``'s parameters, in order.
+        joins: Aliases the projection or condition reads (``meta``, …).
+
+    Raises:
+        BrowseQueryError: Via :meth:`BrowseQuery.validated`, or for an alias
+            that names no join.
+    """
+    valid = query.validated()
+    parts = _predicate(valid, joins=joins)
+    where = parts.where
+    if condition:
+        where = f"{where} AND ({condition})" if where else f" WHERE ({condition})"
+    return (
+        f"{parts.cte}SELECT {columns} FROM tracks{parts.join}{where}",
+        (*parts.params, *params),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Clean's projections of a set of tracks (CLEAN-11)
 # ---------------------------------------------------------------------------

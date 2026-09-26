@@ -92,6 +92,7 @@ if TYPE_CHECKING:
         EntityResolution,
         EntityTracksPage,
     )
+    from cuepoint.models.similar_tracks import SimilarTracks, TraitRow
     from cuepoint.models.track_clean_state import TrackCleanState
     from cuepoint.models.rekordbox_export_values import ExportTrackValues
     from cuepoint.services.rekordbox_export_service import (
@@ -1696,6 +1697,61 @@ class IEntityPageService(ABC):
         limit: int = 100,
     ) -> "EntityBeatportHalf":
         """A page's recent Beatport tracks, or the state that stands in for them."""
+        ...
+
+
+class ISimilarityRepository(ABC):
+    """Interface for Similar Tracks' reads (DISCOVER-08, DEC-096)."""
+
+    @abstractmethod
+    def seed(self, track_id: int) -> Optional["TraitRow"]:
+        """A track's effective values, or None when there is no such track."""
+        ...
+
+    @abstractmethod
+    def check_scope(self, scope: "BrowseQuery") -> "BrowseQuery":
+        """A scope validated, with its tag and Collection references checked."""
+        ...
+
+    @abstractmethod
+    def candidates(
+        self,
+        scope: "BrowseQuery",
+        *,
+        tempo_ranges: Sequence[Tuple[float, float]] = (),
+        genres: Sequence[str] = (),
+        labels: Sequence[str] = (),
+        keys: Sequence[str] = (),
+        artist_keys: Sequence[str] = (),
+        credits_among: Sequence[str] = (),
+        exclude: Sequence[int] = (),
+    ) -> Iterator["TraitRow"]:
+        """The tracks in a scope meeting any criterion given, less ``exclude``."""
+        ...
+
+    @abstractmethod
+    def spellings(self, field: str) -> List[str]:
+        """Every effective value ``genre``, ``label`` or ``key`` takes, once."""
+        ...
+
+    @abstractmethod
+    def duplicates_of(self, track_id: int) -> Set[int]:
+        """Every other track in a duplicate group shown with this one."""
+        ...
+
+
+class ISimilarityService(ABC):
+    """Interface for Similar Tracks (DISCOVER-08, DEC-096)."""
+
+    @abstractmethod
+    def similar(
+        self,
+        track_id: int,
+        *,
+        scope: Optional["BrowseQuery"] = None,
+        limit: int = 50,
+    ) -> "SimilarTracks":
+        """A seed's suggestions, best first, each with its reasons."""
         ...
 
 
