@@ -625,6 +625,36 @@ describe("the review queue", () => {
     await within(panel).findByRole("button", { name: "Accept #1" }, LOADED);
   });
 
+  it("takes a key pressed the moment the queue appears", async () => {
+    // The listener was registered in a passive effect, which React runs after
+    // the commit that shows the rows: a key pressed in between reached the
+    // listener of the empty queue and was dropped. It is pressed here from a
+    // MutationObserver, in the microtask after the rows appear and before any
+    // passive effect could run — what the suite's own findBy did, now and
+    // then, under load.
+    const actEnvironment = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+    const previous = actEnvironment.IS_REACT_ACT_ENVIRONMENT;
+    actEnvironment.IS_REACT_ACT_ENVIRONMENT = false;
+    try {
+      renderClean();
+      await new Promise<void>((resolve) => {
+        const observer = new MutationObserver(() => {
+          if (!screen.queryByText("Track 1")) return;
+          observer.disconnect();
+          fireEvent.keyDown(window, { key: "ArrowDown" });
+          resolve();
+        });
+        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+      await waitFor(
+        () => expect(bridge.getTrackMatches).toHaveBeenCalledWith({ trackId: 1 }),
+        LOADED,
+      );
+    } finally {
+      actEnvironment.IS_REACT_ACT_ENVIRONMENT = previous;
+    }
+  });
+
   it("ignores the keys while typing", async () => {
     renderClean();
     await screen.findByText("Track 1");

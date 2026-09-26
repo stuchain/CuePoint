@@ -15,7 +15,7 @@
  * **Matching is a job the status strip follows**, like every job. The page
  * waits for it to end to read the queue again, and says what it started.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type {
   BatchSelection,
@@ -395,7 +395,11 @@ export function ReviewView({ health, onHealthChanged, focus = null }: ReviewView
   );
 
   const dialogOpen = exportOpen || columnsOpen;
-  useEffect(() => {
+  // A layout effect, not a passive one: the listener is replaced in the same
+  // commit that shows the rows its command reads. As a passive effect it was
+  // replaced only after that commit, and a key pressed in between reached the
+  // previous listener — the empty queue's, whose ArrowDown does nothing.
+  useLayoutEffect(() => {
     if (dialogOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
