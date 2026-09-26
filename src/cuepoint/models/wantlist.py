@@ -169,6 +169,27 @@ class WantlistRow:
         if self.entry.beatport_track_id != self.track.beatport_track_id:
             raise ValueError("A row's track is its entry's")
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API (DISCOVER-09).
+
+        A Beatport track row as every Beatport table sends one (see
+        ``EntityTrackRow``), so one column registry draws a run, a page and
+        this list; ``on_wantlist`` is always true here. Then the entry's own
+        fields. Bought is the user's mark and owned the library's, and both
+        are sent, since neither is derived from the other (DEC-093).
+        """
+        return {
+            **self.track.to_dict(),
+            "artists": list(self.artists),
+            "remixers": list(self.remixers),
+            "owned": self.owned,
+            "on_wantlist": True,
+            "note": self.entry.note,
+            "added_at": self.entry.added_at,
+            "bought_at": self.entry.bought_at,
+            "added_from_run_id": self.entry.added_from_run_id,
+        }
+
 
 @dataclass(frozen=True)
 class WantlistPage:
@@ -196,3 +217,13 @@ class WantlistPage:
             raise ValueError("The list's counts cannot exceed its entries")
         if len(self.rows) > self.total:
             raise ValueError("A window cannot hold more rows than its list")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API (DISCOVER-09)."""
+        return {
+            "rows": [row.to_dict() for row in self.rows],
+            "total": self.total,
+            "entries": self.entries,
+            "owned": self.owned,
+            "bought": self.bought,
+        }

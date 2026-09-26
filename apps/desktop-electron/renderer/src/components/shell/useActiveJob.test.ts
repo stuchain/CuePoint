@@ -79,6 +79,57 @@ describe("jobLabel", () => {
     );
   });
 
+  it("names Discover's three Beatport jobs (DISCOVER-09)", () => {
+    expect(jobLabel(job({ type: "discovery", progress: undefined }))).toBe(
+      "Discovering on Beatport",
+    );
+    expect(jobLabel(job({ type: "beatport_playlist", progress: undefined }))).toBe(
+      "Pushing to Beatport",
+    );
+    expect(jobLabel(job({ type: "beatport_resolve" }))).toBe(
+      "Resolving Beatport identities 3/10",
+    );
+  });
+
+  it("says a discovery's or a push's stage, since a count means nothing without it", () => {
+    // DISCOVER-05's stages, as the engine words them in its progress.
+    const stage = (type: string, status_message: string | null) =>
+      jobLabel(
+        job({ type, progress: { completed_tracks: 3, total_tracks: 10, status_message } }),
+      );
+    expect(stage("discovery", "Reading charts")).toBe("Reading charts 3/10");
+    expect(stage("discovery", "Resolving labels")).toBe("Resolving labels 3/10");
+    expect(stage("beatport_playlist", "Adding tracks to the Beatport playlist")).toBe(
+      "Adding tracks to the Beatport playlist 3/10",
+    );
+    // No stage yet, or a blank one: the verb stands in.
+    expect(stage("discovery", null)).toBe("Discovering on Beatport 3/10");
+    expect(stage("discovery", "  ")).toBe("Discovering on Beatport 3/10");
+  });
+
+  it("keeps every other job's verb whatever its progress says", () => {
+    // A match's status message is the matcher's own chatter, not a stage.
+    expect(
+      jobLabel(
+        job({
+          progress: { completed_tracks: 3, total_tracks: 10, status_message: "Querying Beatport" },
+        }),
+      ),
+    ).toBe("Matching on Beatport 3/10");
+  });
+
+  it("says queued for a staged job before it starts", () => {
+    expect(
+      jobLabel(
+        job({
+          type: "discovery",
+          state: "queued",
+          progress: { completed_tracks: 0, total_tracks: 0, status_message: "Reading charts" },
+        }),
+      ),
+    ).toBe("Queued");
+  });
+
   it("has no verb for inKey's retired file-based match (CLEAN-14)", () => {
     // No build since CLEAN-14 starts one, and the strip shows only active
     // jobs, which a restart closes out.

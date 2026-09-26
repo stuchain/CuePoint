@@ -320,7 +320,7 @@ class TestRunsACrashLeftOpen:
 
 class TestNothingStartsItButAPerson:
     def test_no_module_starts_a_run(self):
-        """Until DISCOVER-09's ``runs/start`` route, only this module does."""
+        """DISCOVER-09's ``runs/start`` route is its one caller."""
         from pathlib import Path
 
         package = Path(jobs.__file__).resolve().parents[1]
@@ -329,7 +329,7 @@ class TestNothingStartsItButAPerson:
             for path in package.rglob("*.py")
             if "start_discovery_job" in path.read_text(encoding="utf-8")
         )
-        assert callers == ["engine/discovery_jobs.py"]
+        assert callers == ["engine/discover_api.py", "engine/discovery_jobs.py"]
 
 
 def test_the_default_window_is_the_last_thirty_days(store, world):

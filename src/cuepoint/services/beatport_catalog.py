@@ -22,6 +22,7 @@ from cuepoint.incrate.beatport_api_models import (
     CatalogChart,
     CatalogLabel,
     CatalogTrack,
+    Genre,
 )
 from cuepoint.services.override_values import NOTATION_CLASSIC, format_key, parse_key
 
@@ -233,6 +234,23 @@ def chart_web_url(chart_id: int, slug: Any = None) -> str:
     slug_text = catalog_text(slug).lower()
     slug_part = slug_text if _SLUG_RE.match(slug_text) else "t"
     return f"{BEATPORT_WEB_CHART_BASE}/{slug_part}/{int(chart_id)}"
+
+
+def parse_catalog_genre(obj: Any) -> Optional[Genre]:
+    """One item of ``catalog/genres/``, or None when it has no id or name.
+
+    Not in DISCOVER-01's recording; the listing is read as every v4 listing
+    is (:func:`page_items`), with ``id``, ``name`` and ``slug``. A slug that
+    is not one is dropped rather than kept, since nothing needs it to be
+    present and a page might build a link from it.
+    """
+    genre = _object(obj)
+    genre_id = positive_id(genre.get("id"))
+    name = catalog_text(genre.get("name"))
+    if genre_id is None or not name:
+        return None
+    slug = catalog_text(genre.get("slug")).lower()
+    return Genre(id=genre_id, name=name, slug=slug if _SLUG_RE.match(slug) else "")
 
 
 def _genre_ids(value: Any) -> Tuple[int, ...]:

@@ -608,6 +608,27 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
         row = conn.execute(_OWNED_COUNT).fetchone()
         return to_read, int(row["n"]) if row is not None else 0
 
+    def resolve_counts(self, stale_before: str) -> Tuple[int, int]:
+        """``(to_read, owned)``: what :meth:`resolve_plan` would answer, counted.
+
+        The same rule — an owned id with no catalog row, or one fetched before
+        ``stale_before`` — in one statement over one scan of the ownership
+        view, for a prompt that shows the number and reads no id (DISCOVER-09).
+        """
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT count(*) AS owned, coalesce(sum("
+                "b.beatport_track_id IS NULL OR b.fetched_at < ?), 0) AS to_read"
+                " FROM (SELECT DISTINCT beatport_track_id FROM library_beatport_tracks)"
+                " AS l LEFT JOIN beatport_tracks AS b"
+                " ON b.beatport_track_id = l.beatport_track_id",
+                (stale_before,),
+            )
+            .fetchone()
+        )
+        return int(row["to_read"]), int(row["owned"])
+
     def library_credits(
         self, track_ids: Iterable[int]
     ) -> Dict[int, List[LibraryBeatportCredit]]:

@@ -81,6 +81,13 @@ from cuepoint.engine.incrate_api import (
     run_incrate_reset,
     run_playlist_create,
 )
+from cuepoint.engine.discover_api import (
+    handle_get as discover_get,
+    handle_post as discover_post,
+    handles_get as discover_handles_get,
+    handles_post as discover_handles_post,
+    status_for as discover_status,
+)
 from cuepoint.engine.clean_api import (
     handle_get as clean_get,
     handle_post as clean_post,
@@ -701,6 +708,12 @@ def make_handler(
                     rekordbox_export_status,
                 )
                 return
+            if discover_handles_get(path):
+                self._handle_routed(
+                    lambda: discover_get(path, parse_qs(parsed.query)),
+                    discover_status,
+                )
+                return
             if organization_handles_get(path):
                 # Before the prefix below, which would read the whole of
                 # "7/history" as a track id and refuse it as one.
@@ -1044,6 +1057,14 @@ def make_handler(
                 self._handle_routed(
                     lambda: rekordbox_export_post(path, raw, job_store=job_store),
                     rekordbox_export_status,
+                )
+                return
+
+            if discover_handles_post(path):
+                raw = self._read_body()
+                self._handle_routed(
+                    lambda: discover_post(path, raw, job_store=job_store),
+                    discover_status,
                 )
                 return
 

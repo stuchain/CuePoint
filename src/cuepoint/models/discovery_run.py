@@ -352,6 +352,34 @@ class RunTrackRow:
             if source.beatport_track_id != self.track.beatport_track_id:
                 raise ValueError("A row's sources are its own track's")
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API (DISCOVER-09).
+
+        A Beatport track row as every Beatport table sends one — the catalog
+        track's own fields, its credits, ``owned`` and ``on_wantlist``, which
+        is ``EntityTrackRow``'s shape — plus the run's place for it and every
+        reason it was found. A reason leaves out the run and the track, which
+        the row already says.
+        """
+        return {
+            **self.track.to_dict(),
+            "artists": list(self.artists),
+            "remixers": list(self.remixers),
+            "owned": self.owned,
+            "on_wantlist": self.on_wantlist,
+            "position": self.position,
+            "sources": [
+                {
+                    "source_type": source.source_type,
+                    "source_id": source.source_id,
+                    "source_name": source.source_name,
+                    "source_url": source.source_url,
+                    "matched_on": source.matched_on,
+                }
+                for source in self.sources
+            ],
+        }
+
 
 @dataclass(frozen=True)
 class RunTracksPage:
@@ -381,6 +409,16 @@ class RunTracksPage:
             raise ValueError("A run's counts cannot exceed its tracks")
         if len(self.rows) > self.total:
             raise ValueError("A window cannot hold more rows than its list")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API (DISCOVER-09)."""
+        return {
+            "rows": [row.to_dict() for row in self.rows],
+            "total": self.total,
+            "tracks": self.tracks,
+            "owned": self.owned,
+            "hidden": self.hidden,
+        }
 
 
 def _json_object(value: Any, name: str) -> str:

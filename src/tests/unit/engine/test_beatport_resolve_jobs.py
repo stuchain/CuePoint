@@ -292,11 +292,11 @@ class TestWhatWaitsForWhat:
 class TestNothingStartsItButAPerson:
     def test_no_module_starts_it(self):
         """DEC-095: never at engine start, never by browsing. DISCOVER-09's
-        ``resolve/start`` route is the one caller it will have."""
+        ``resolve/start`` route is its one caller."""
         package = Path(jobs.__file__).resolve().parents[1]
         callers = sorted(
             path.relative_to(package).as_posix()
             for path in package.rglob("*.py")
             if "start_beatport_resolve_job" in path.read_text(encoding="utf-8")
         )
-        assert callers == ["engine/beatport_resolve_jobs.py"]
+        assert callers == ["engine/beatport_resolve_jobs.py", "engine/discover_api.py"]

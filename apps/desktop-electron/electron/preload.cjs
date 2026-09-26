@@ -145,6 +145,24 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
     ipcRenderer.invoke("engine:getRekordboxExportHistory", params),
   chooseRekordboxExportDestination: (request) =>
     ipcRenderer.invoke("dialog:saveRekordboxExport", request),
+  // Discover (DISCOVER-09): every answer is { value, refusal }.
+  getDiscoverOptions: () => ipcRenderer.invoke("engine:getDiscoverOptions"),
+  listDiscoveryRuns: (params) => ipcRenderer.invoke("engine:listDiscoveryRuns", params),
+  getDiscoveryRun: (params) => ipcRenderer.invoke("engine:getDiscoveryRun", params),
+  getDiscoveryRunTracks: (params) => ipcRenderer.invoke("engine:getDiscoveryRunTracks", params),
+  startDiscoveryRun: (params) => ipcRenderer.invoke("engine:startDiscoveryRun", params),
+  deleteDiscoveryRun: (params) => ipcRenderer.invoke("engine:deleteDiscoveryRun", params),
+  getWantlist: (params) => ipcRenderer.invoke("engine:getWantlist", params),
+  addToWantlist: (params) => ipcRenderer.invoke("engine:addToWantlist", params),
+  removeFromWantlist: (params) => ipcRenderer.invoke("engine:removeFromWantlist", params),
+  setWantlistNote: (params) => ipcRenderer.invoke("engine:setWantlistNote", params),
+  setWantlistBought: (params) => ipcRenderer.invoke("engine:setWantlistBought", params),
+  startBeatportPlaylistPush: (params) =>
+    ipcRenderer.invoke("engine:startBeatportPlaylistPush", params),
+  startBeatportResolve: () => ipcRenderer.invoke("engine:startBeatportResolve"),
+  getEntityPage: (params) => ipcRenderer.invoke("engine:getEntityPage", params),
+  getEntityBeatport: (params) => ipcRenderer.invoke("engine:getEntityBeatport", params),
+  getSimilarTracks: (params) => ipcRenderer.invoke("engine:getSimilarTracks", params),
   startLibraryImport: (params) =>
     ipcRenderer.invoke("engine:startLibraryImport", params),
   startLibraryRefreshPreview: (params) =>

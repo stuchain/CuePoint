@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **DISCOVER-01 to DISCOVER-08 implemented, and DISCOVER-01's spike recorded against the
-live API (2026-09-23; see its outcome). DISCOVER-09…DISCOVER-12 not started.** The twelve steps below replace the
+Status: **DISCOVER-01 to DISCOVER-09 implemented, and DISCOVER-01's spike recorded against the
+live API (2026-09-23; see its outcome). DISCOVER-10…DISCOVER-12 not started.** The twelve steps below replace the
 roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -2010,6 +2010,237 @@ methods exist in the types.
 **Risks**: Low, and the supervisor is the file to check twice.
 
 **Complexity**: **L**
+
+**Outcome**: Implemented. DISCOVER-04 to DISCOVER-08 are on the wire, through all six contract files:
+sixteen bridge methods over sixteen routes under `/api/v1/discover/`. Every method answers
+`{ value, refusal }`, so a refusal a person can act on reaches the renderer with its code and, for
+Beatport, its class. A Python test holds every TypeScript shape to what the engine serializes.
+
+**What was built.**
+
+- **`engine/discover_api.py`**, a routed module in ORG-08's shape: it says which paths it answers,
+  answers them, and maps every refusal to a status and the one envelope. `server.py` gains two
+  dispatch lines.
+  - **Reads (GET)**:
+    - `options`: token state, genres, the `artist_name` and `label_name` facets, a run's defaults and
+      a push's default name, the resolve count, `index_current`, and the engine's limits;
+    - `runs`: a window, newest first, with `total`;
+    - `runs/{id}`: the run, with the artist and label names its scope resolved to;
+    - `runs/{id}/tracks`: a window, with the owned filter and `hidden`;
+    - `wantlist`, `entity`, `entity/beatport` and `similar`.
+  - **Actions (POST)**: `runs/start`, `runs/{id}/delete`, `wantlist/add`, `/remove`, `/note`, `/bought`,
+    `playlist/start` and `resolve/start`. The three starts answer **202** with the job's `id`, `type`
+    and `state`; progress, cancel and the result are the job routes'.
+  - **Every read echoes the window it answered** (`window`), so a late response can be told from a
+    current one (LIBUI-05's rule).
+  - **Requests are read strictly.** A key or parameter a route does not take is refused, naming it
+    and what the route takes. So is a parameter given twice, and a number that is not written as
+    one. Each route's accepted names are module constants, and a test holds the client's to them.
+  - **`similar` takes the Library's own scope parameters** (`q`, `playlist_id`, `filters`, `scope`,
+    `collection_id`) and resolves them as the Library's search does, a Smart Collection included.
+    `library_api.combine_rules`, which was private, is now public for it.
+  - **The refusals**:
+    - `BEATPORT_REFUSED` carries `reason` (DISCOVER-01's class) and `retry_after`: 409 for `no_token`,
+      `rejected` and `forbidden`, 429 for `rate_limited`, 502 for `unavailable`;
+    - `DISCOVER_BUSY` (409) carries the running job's `job_id` and `job_type`;
+    - `DISCOVERY_RUN_NOT_FOUND` (404), `DISCOVERY_RUN_RUNNING` (409) and `TRACK_NOT_FOUND` (404);
+    - `INVALID_REQUEST` (400) for everything the services refuse, in their words;
+    - 503 and 500 are not refusals: nobody can act on them.
+- **The six contract files.** `engineClient.ts` declares the shapes and sixteen methods over two
+  private helpers, `discoverGet` and `discoverPost`, and `readDiscover`. That function turns the six
+  refusal codes into values and throws anything else. `engineSupervisor.ts` forwards each method,
+  `main.ts` handles each channel, and `preload.cjs` exposes each. `cuepointBridge.types.ts` copies
+  the shapes and declares the methods. A job's result can be read as `DiscoveryRunResult`,
+  `BeatportPlaylistResult` or `BeatportResolveResult`.
+- **One Beatport track row on the wire.** A run's row and a wantlist row are DISCOVER-07's
+  `EntityTrackRow` shape (the catalog track's fields, `artists`, `remixers`, `owned`, `on_wantlist`)
+  plus their own fields. So one row type and one column registry can draw all three Beatport tables
+  in DISCOVER-10. `RunTrackRow`, `RunTracksPage`, `WantlistRow` and `WantlistPage` gained
+  `to_dict()`.
+- **What the routes needed from the services**, each added to its interface and tested:
+  - `DiscoveryService.count_runs`;
+  - `DiscoveryService.visible_track_ids`, over the new `DiscoveryRepository.run_track_ids`;
+  - `BeatportResolveService.plan()` (a `ResolvePlan`), over the new
+    `BeatportCatalogRepository.resolve_counts`;
+  - `BeatportPlaylistService.default_name()`.
+- **Genres read whole.** `BeatportApi.genres()` pages `catalog/genres/` through the parser every new
+  catalog read uses, `parse_catalog_genre`, and keeps the answer for a day under its own cache key.
+  inCrate's `list_genres` reads the listing's first page only; it is left as it is and retires with
+  inCrate.
+- **The status strip** names the three jobs: "Discovering on Beatport", "Pushing to Beatport",
+  "Resolving Beatport identities". For a discovery or a push it shows the stage the job reports
+  ("Reading charts 3/10"), because a count means nothing without it.
+- **Similar Tracks' reason types** moved into the bridge types with the rest of the wire's shapes.
+  `similarReasons.ts` re-exports them, so its callers are unchanged.
+
+**Where it differs from the specification, and why.**
+
+- **Every refusal a person can act on is a value, not only Beatport's.** DISCOVER-04 to DISCOVER-08's
+  binding notes each asked for their `ValueError`s and missing things to cross as values. A form must
+  be able to say "A note is at most 1000 characters" rather than fail. What throws is what nobody can
+  act on: an unreachable library, a bug, an unknown path.
+- **A busy Discover job is `DISCOVER_BUSY`, not `LIBRARY_BUSY`.** These jobs wait only for their own
+  kind, and saying the library is busy would name the wrong thing.
+- **`options` says more than the specification lists:**
+  - the resolve count, which DISCOVER-10's resolve prompt needs and no route answered;
+  - the engine's limits, so a form refuses what the engine would;
+  - `index_current`, as the entity pages report it, since the facets may be short while DISCOVER-03
+    indexes;
+  - the default playlist name, so a push dialog shows the name it will take.
+
+  "Whether Beatport accepted the token" is read from the genre request, which the panel needs anyway
+  and which is cached for a day. It is not a separate probe.
+- **A push can name a run** (`run_id` with the owned filter, sort and direction the table shows), as
+  DISCOVER-06's second binding note asked. The engine gathers the tracks, so a push holds every
+  track the table would show, not only those the renderer loaded.
+- **A deleted run answers `{id, deleted}`.** A run that is still running is refused as
+  `DISCOVERY_RUN_RUNNING` before the repository is asked.
+- **The run list leaves out the names a run's scope resolved to.** A run over the whole library holds
+  every artist in it, which a list of runs has no use for. The header adds them.
+
+**Two slow reads, found and fixed.** Measured first as written, at 50,000 tracks with 40,000 accepted
+matches:
+
+1. **A push by run read its tracks window by window**, every source and credit included, only to keep
+   the ids: **773 ms** for a 10,000-track run. `DiscoveryRepository.run_track_ids` reads the ids in
+   one statement, built from the window's own filter and order fragments (`_OWNED_WHERE`,
+   `_order_by`) over the same single ownership read. It takes **21 ms**, and it cannot order or
+   filter differently from the table. A test holds it to the window under every filter and order.
+2. **The resolve count built the list of 35,000 ids it counted**, in two statements that each scanned
+   the ownership view: **137 ms** of `options`. `resolve_counts` counts both numbers in one statement
+   over one scan, in **50 ms**. A test holds it to `resolve_plan` in every case and over a generated
+   library.
+
+**Measured** (median of seven, DISCOVER-08's 50,000-track library: 1,700 artists, 1,200 labels, 75,105
+credit rows; 40,000 accepted matches, a 10,000-track run):
+
+| Read | First form | Now |
+| --- | --- | --- |
+| `options`, whole | 458 ms | **302 ms** |
+| of which the `artist_name` facet | 237 ms | 193 ms |
+| of which the `label_name` facet | 71 ms | 63 ms |
+| of which the resolve count | 137 ms | 50 ms |
+| A push's tracks, from a 10,000-track run | 773 ms | **21 ms** |
+| A run's window of 100 | — | 24 ms |
+
+The `artist_name` facet is the Library's own, and this library's credits are denser than those
+DISCOVER-03 measured at 93 ms: 161 ms here with no matches at all. `options` is read when the
+Discover page opens, not per keystroke.
+
+**A defect outside this step, found by its checks and fixed in its own commit.** The full renderer
+suite failed once in four runs in `CleanScreen.test.tsx`: the first ArrowDown on the review queue was
+dropped. The queue's key listener was replaced in a passive effect, after the commit that showed the
+rows. A key pressed in between reached the previous listener, the empty queue's, and did nothing. It
+is now replaced in a layout effect. A regression test presses the key from a `MutationObserver`, in
+the microtask after the rows appear. It fails on every run against the old code and passes against
+the new.
+
+**What binds later steps.**
+
+1. **DISCOVER-10 draws from `getDiscoverOptions`:**
+   - an empty state and a Settings link from `beatport.state`;
+   - the "New run" panel's genres, facets and defaults, and the form's bounds from `limits`;
+   - the resolve prompt from `resolve.to_read`, started by `startBeatportResolve`.
+
+   It lists runs with `listDiscoveryRuns` (`total` pages it), shows "what this run looked for" from
+   `getDiscoveryRun`, and draws tables from `getDiscoveryRunTracks` and `getWantlist`. Both of those
+   echo their `window`. "Push to Beatport playlist…" on a run's table sends `run_id` with the table's
+   owned filter, sort and direction, not the loaded ids. A job's result is read through
+   `getJobResults` as the matching result type.
+2. **Every Discover answer is `{ value, refusal }`:**
+   - `refusal.reason` picks the Beatport empty state and its action;
+   - `DISCOVER_BUSY`'s `job_id` is the job to follow;
+   - `INVALID_REQUEST`'s `message` is shown as written.
+3. **DISCOVER-11** calls `getEntityPage` and replaces the route when `redirected_from` is set. It
+   calls `getEntityBeatport` for the half, and `getSimilarTracks` with the Library's scope
+   parameters. It reads suggestions' rows through `getLibraryTrack` in the answer's order, and words
+   reasons with `describeSimilarReason`.
+4. **DISCOVER-12** removes the inCrate routes and methods beside these. `list_genres` retires with
+   them, since `genres()` replaces it, and the `Genre` model moves with the catalog models. The
+   contract tests' DISCOVER-09 blocks stay.
+5. **A new Discover method** is one route in `discover_api.py`, one method in each of the six files,
+   and a line in each contract test's lists. A new field is a new key in both TypeScript copies,
+   which both contract tests hold to the engine.
+6. **If the Discover page must open faster than `options` answers**, the facets are the cost. Loading
+   them after the rest, or only when the "New run" panel opens, is DISCOVER-10's to decide.
+
+**Tests**:
+
+- 167 in `src/tests/unit/engine/test_engine_discover_api.py`, through a running engine over a real
+  library, the real job store and container, and `BeatportApi` over the in-memory Beatport:
+  - **the routes**: every path under its prefix and none called `incrate`; the token on every read
+    and action; unknown paths; reads and actions apart; inCrate's routes left to inCrate; bodies that
+    are not objects; a parameter given twice;
+  - **options**: every part; the resolve count; the name index; no token, and each refusal as a
+    state; 250 genres over three pages; a genre written badly;
+  - **runs**: a start answering its job; every field carried to the run; no token, nine unusable
+    requests and a busy discovery, each starting nothing; the list, header and a running run; bad
+    windows and ids; a run's tracks with every reason, owned hidden, counted and shown, sorted and
+    windowed; deleting, and refusing a running run;
+  - **the wantlist**: an add from a run, shown on the list and on the run; adding again; a track
+    read from Beatport; no token and each Beatport class adding nothing; a run that is not there or
+    did not find the track; remove, note and bought; the two filters; thirteen refused changes and
+    four refused windows;
+  - **pushes**: by ids; by a run's sorted table with owned hidden; owned shown and still skipped; a
+    run showing nothing; only owned tracks; no token; one at a time; twelve refused requests;
+  - **resolving**: the job reading what `options` counted; an empty body; no token; one at a time;
+  - **pages**: a name page's rules giving the Library's count; a label found by name; an artist
+    never looked up; a refusal as a state; the window and refresh; nine refused requests;
+  - **Similar Tracks**: best first with reasons, the same twice; the limit; a Collection, a rule set
+    and a text query narrowing it; a missing seed; ten refused requests;
+  - **every refusal typed** through `status_for`, and the container's own client without a token.
+- 42 in `src/tests/unit/engine/test_discover_contract.py`, from real answers:
+  - every TypeScript interface against the engine's serialized objects, every nested one included;
+  - every union against the engine's vocabulary;
+  - the refusal's fields against every refusal's;
+  - the request types and each method's parameters against the routes' constants;
+  - every route called by the client, and every job a route starts named by the status strip.
+- 28 in `src/tests/unit/services/test_beatport_genres.py`: the parser's refusals, slugs and bounds;
+  every page read; the page cap; a bad genre left out; a refusal's class; the day's cache under its own
+  key, never inCrate's first page; an empty answer not kept.
+- 11 new in `test_discovery_service.py` (the visible list under six filters and orders, 1,203 tracks
+  over three windows, an empty list, refusals; the run count) and 32 new in
+  `test_discovery_repository.py` (the ids against the window under 24 filter and order pairs, the
+  ownership view read once, refusals; the run count).
+- 5 new in `test_beatport_resolve_service.py` for the plan, and 1 in
+  `test_beatport_playlist_service.py` for the default name. In `test_beatport_catalog_repository.py`,
+  every resolve-plan test now holds the count to the plan, and one new test adds a generated library.
+- The three "nothing else starts it" tests name `engine/discover_api.py` as each job's one caller.
+- **Electron**: 22 in `electron/engineClient.discover.test.ts`. They cover every route, method, query
+  and body; each refusal as a value; a field of the wrong type or an unknown class read as absent;
+  what throws; and the two lists of codes and classes.
+- **Renderer**:
+  - 144 new in `desktopContract.test.ts`: the sixteen methods in all six files; GETs and POSTs on their
+    own routes; every answer a `DiscoverAnswer`; nothing incrate; the job results; 39 interfaces,
+    what each extends included, and 20 types kept identical in both copies;
+  - 4 new in `useActiveJob.test.ts`: the three verbs, and a staged job's stage.
+- The strict mypy gate covers `engine/discover_api.py`.
+- **26 deliberate breakages, each caught by the test named for it:**
+  - **status codes and refusals**: a rejected token as 400; no `retry_after`; a missing seed as a
+    plain 404; `INVALID_REQUEST` thrown rather than answered;
+  - **reading requests**: an unknown parameter ignored; a parameter given twice read once; a note left
+    out clearing it; an empty body refused;
+  - **runs**: the owned filter ignored; a running run deleted;
+  - **pushes**: a push by run in found order; a push by run showing owned tracks; a push's ids without
+    the owned filter;
+  - **options and pages**: no token read as configured; refresh ignored; the resolve count counting
+    every row;
+  - **genres**: read from one page; a genre id of 0 kept;
+  - **Similar Tracks**: its scope ignored;
+  - **the wire's shapes**: a run's row without its position; a wantlist row not on the wantlist; a
+    null sent in a query; a field missing from the renderer's copy; the supervisor forwarding the
+    wrong method;
+  - **the renderer**: a staged job's stage not shown; the Clean key listener back in a passive
+    effect.
+
+**Checks run**:
+
+- **Python:** `python -m pytest src/tests/unit/engine/ -q` (1,245 passed); the full suite on the
+  final tree (9,868 passed, 66 skipped, the strict mypy gate among them); `ruff check` and
+  `ruff format --check` with the pinned 0.14.0; `check_no_qt_in_core.py`; and `git diff --check`.
+- **Renderer:** `npm run typecheck`, `npm run lint` (only the warnings already there) and `npm test`
+  (2,956 passed), the suite six times over for the Clean fix.
+- **Electron:** `npm run typecheck` and `npm test` (468 passed).
 
 ---
 

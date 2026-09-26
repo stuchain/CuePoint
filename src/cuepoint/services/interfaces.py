@@ -70,7 +70,10 @@ if TYPE_CHECKING:
         CachedBeatportTrack,
         LibraryBeatportCredit,
     )
-    from cuepoint.services.beatport_resolve_service import BeatportResolveResult
+    from cuepoint.services.beatport_resolve_service import (
+        BeatportResolveResult,
+        ResolvePlan,
+    )
     from cuepoint.models.beatport_cache import BeatportNameLookup
     from cuepoint.services.discovery_service import DiscoveryRequest
     from cuepoint.models.discovery_run import (
@@ -1343,6 +1346,11 @@ class IBeatportCatalogRepository(ABC):
         ...
 
     @abstractmethod
+    def resolve_counts(self, stale_before: str) -> Tuple[int, int]:
+        """``(to_read, owned)``: the plan's two numbers, counted in one read."""
+        ...
+
+    @abstractmethod
     def library_credits(
         self, track_ids: Iterable[int]
     ) -> Dict[int, List["LibraryBeatportCredit"]]:
@@ -1434,6 +1442,22 @@ class IDiscoveryRepository(ABC):
         ...
 
     @abstractmethod
+    def count_runs(self) -> int:
+        """How many runs are kept."""
+        ...
+
+    @abstractmethod
+    def run_track_ids(
+        self,
+        run_id: int,
+        owned: str = "hide",
+        sort: str = "position",
+        descending: bool = False,
+    ) -> List[int]:
+        """Every track id a run's list shows, in its order."""
+        ...
+
+    @abstractmethod
     def delete_run(self, run_id: int) -> bool:
         """Delete an ended run with what it found; True when it existed."""
         ...
@@ -1518,6 +1542,11 @@ class IDiscoveryService(ABC):
         ...
 
     @abstractmethod
+    def count_runs(self) -> int:
+        """How many runs are kept."""
+        ...
+
+    @abstractmethod
     def get_run(self, run_id: int) -> Optional["DiscoveryRun"]:
         """One run, or None."""
         ...
@@ -1533,6 +1562,17 @@ class IDiscoveryService(ABC):
         limit: int = 100,
     ) -> "RunTracksPage":
         """A window of a run's tracks, owned hidden by default."""
+        ...
+
+    @abstractmethod
+    def visible_track_ids(
+        self,
+        run_id: int,
+        owned: str = "hide",
+        sort: str = "position",
+        descending: bool = False,
+    ) -> List[int]:
+        """Every Beatport track id a run's list shows, in its order."""
         ...
 
     @abstractmethod
@@ -1643,6 +1683,11 @@ class IBeatportPlaylistService(ABC):
     @abstractmethod
     def require_token(self) -> None:
         """Refuse, as ``no_token``, when no Beatport token is configured."""
+        ...
+
+    @abstractmethod
+    def default_name(self) -> str:
+        """The name a push given none would take today."""
         ...
 
     @abstractmethod
@@ -1761,6 +1806,11 @@ class IBeatportResolveService(ABC):
     @abstractmethod
     def require_token(self) -> None:
         """Refuse, as ``no_token``, when no Beatport token is configured."""
+        ...
+
+    @abstractmethod
+    def plan(self) -> "ResolvePlan":
+        """What a resolve started now would read; asks Beatport nothing."""
         ...
 
     @abstractmethod

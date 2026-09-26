@@ -223,6 +223,16 @@ class TestTheName:
         with pytest.raises(ValueError):
             service.plan([501], name=5)
 
+    def test_the_default_offered_is_the_default_taken(self, db, world):
+        # What a push dialog shows before anyone types (DISCOVER-09's options)
+        # is the name a push given none, or blank, goes on to take.
+        for config in (None, Config(**{"incrate.playlist_name_format": "iso"})):
+            service = make_service(db, world, config=config)
+            offered = service.default_name()
+            assert service.plan([501]).name == offered
+            assert service.plan([501], name="   ").name == offered
+        assert make_service(db, world).default_name() == f"sep{TODAY.day}"
+
 
 # ------------------------------------------------------------------- pushing
 

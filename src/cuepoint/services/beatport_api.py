@@ -49,6 +49,7 @@ from cuepoint.services.beatport_catalog import (
     page_items,
     parse_catalog_artist,
     parse_catalog_chart,
+    parse_catalog_genre,
     parse_catalog_label,
     parse_catalog_track,
     positive_id,
@@ -76,6 +77,8 @@ _PLAYLIST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 # Cache key prefixes and TTLs
 _CACHE_GENRES = "beatport_api:genres"
 _CACHE_GENRES_TTL = 86400
+# DISCOVER-09's whole genre listing, kept apart from inCrate's first page.
+_CACHE_CATALOG_GENRES = "beatport_api:catalog_genres"
 _CACHE_CHARTS = "beatport_api:charts"
 _CACHE_CHARTS_TTL = 3600
 _CACHE_CHART = "beatport_api:chart"
@@ -1174,6 +1177,32 @@ class BeatportApi:
             charts.append(chart)
         charts.sort(key=lambda c: c.publish_date or "", reverse=True)
         return charts
+
+    def genres(self, max_pages: int = MAX_LISTING_PAGES) -> List[Genre]:
+        """Every genre on ``catalog/genres/``, each once, in Beatport's order.
+
+        What a Discover run's genre picker offers (DISCOVER-09). inCrate's
+        :meth:`list_genres` reads the listing's first page only, which is left
+        as it is for inCrate; this reads every page, through the parser every
+        new catalog read uses. Kept for a day, as inCrate's is, under its own
+        key. Raises as the client does, so a caller can say why there are none.
+        """
+        if self._cache:
+            cached = self._cache.get(_CACHE_CATALOG_GENRES)
+            if isinstance(cached, list):
+                return list(cached)
+        genres: List[Genre] = []
+        seen: set = set()
+        for item in self._paginate(
+            "/catalog/genres/", {"per_page": MAX_PER_PAGE}, max_pages
+        ):
+            genre = parse_catalog_genre(item)
+            if genre is not None and genre.id not in seen:
+                seen.add(genre.id)
+                genres.append(genre)
+        if self._cache and genres:
+            self._cache.set(_CACHE_CATALOG_GENRES, genres, ttl=_CACHE_GENRES_TTL)
+        return genres
 
     def chart_tracks(
         self, chart_id: int, max_pages: int = MAX_LISTING_PAGES

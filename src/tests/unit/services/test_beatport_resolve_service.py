@@ -37,6 +37,7 @@ from cuepoint.services.beatport_resolve_service import (
     RESOLVED_TRACK_MAX_AGE,
     BeatportResolveResult,
     BeatportResolveService,
+    ResolvePlan,
 )
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
@@ -581,3 +582,44 @@ class TestTenThousandTracks:
         assert (result.resolved, cached(db)) == (10_000, 10_000)
         again = service(catalog, beatport, clock=clock).resolve()
         assert (again.to_read, len(beatport.requests)) == (0, 100)
+
+
+# ------------------------------------------------------------------ the plan
+
+
+class TestThePlan:
+    """What a resolve would read, as the Discover page's prompt counts it
+    (DISCOVER-09): by the rule a resolve reads by, and asking Beatport nothing.
+    """
+
+    def test_it_is_what_a_resolve_then_reads(self, db, catalog, activity, clock):
+        wanted = own(db, 250)
+        beatport = FakeBeatport(set(wanted[:200]))
+        resolver = service(catalog, beatport, activity, clock)
+        assert resolver.plan() == ResolvePlan(owned=250, to_read=250)
+        assert beatport.requests == []
+        assert resolver.resolve().to_read == 250
+
+    def test_a_track_beatport_does_not_have_is_counted_again(
+        self, db, catalog, activity, clock
+    ):
+        wanted = own(db, 250)
+        resolver = service(catalog, FakeBeatport(set(wanted[:200])), activity, clock)
+        resolver.resolve()
+        assert resolver.plan() == ResolvePlan(owned=250, to_read=50)
+
+    def test_a_row_past_its_age_is_counted_again(self, db, catalog, clock):
+        wanted = own(db, 20)
+        resolver = service(catalog, FakeBeatport(set(wanted)), clock=clock)
+        resolver.resolve()
+        assert resolver.plan().to_read == 0
+        clock.now = START + RESOLVED_TRACK_MAX_AGE + timedelta(seconds=1)
+        assert resolver.plan() == ResolvePlan(owned=20, to_read=20)
+
+    def test_it_needs_no_token(self, db, catalog, clock):
+        own(db, 3)
+        api = BeatportApi(BeatportApiClient("https://api.beatport.com/v4", ""))
+        assert service(catalog, api, clock=clock).plan() == ResolvePlan(3, 3)
+
+    def test_on_the_wire(self):
+        assert ResolvePlan(owned=4, to_read=1).to_dict() == {"owned": 4, "to_read": 1}

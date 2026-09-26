@@ -371,6 +371,51 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:getRekordboxExportHistory", (_event, params) =>
     engine.getRekordboxExportHistory(params),
   );
+  // Discover (DISCOVER-09).
+  ipcMain.handle("engine:getDiscoverOptions", () => engine.getDiscoverOptions());
+  ipcMain.handle("engine:listDiscoveryRuns", (_event, params) =>
+    engine.listDiscoveryRuns(params),
+  );
+  ipcMain.handle("engine:getDiscoveryRun", (_event, params) =>
+    engine.getDiscoveryRun(params),
+  );
+  ipcMain.handle("engine:getDiscoveryRunTracks", (_event, params) =>
+    engine.getDiscoveryRunTracks(params),
+  );
+  ipcMain.handle("engine:startDiscoveryRun", (_event, params) =>
+    engine.startDiscoveryRun(params),
+  );
+  ipcMain.handle("engine:deleteDiscoveryRun", (_event, params) =>
+    engine.deleteDiscoveryRun(params),
+  );
+  ipcMain.handle("engine:getWantlist", (_event, params) =>
+    engine.getWantlist(params),
+  );
+  ipcMain.handle("engine:addToWantlist", (_event, params) =>
+    engine.addToWantlist(params),
+  );
+  ipcMain.handle("engine:removeFromWantlist", (_event, params) =>
+    engine.removeFromWantlist(params),
+  );
+  ipcMain.handle("engine:setWantlistNote", (_event, params) =>
+    engine.setWantlistNote(params),
+  );
+  ipcMain.handle("engine:setWantlistBought", (_event, params) =>
+    engine.setWantlistBought(params),
+  );
+  ipcMain.handle("engine:startBeatportPlaylistPush", (_event, params) =>
+    engine.startBeatportPlaylistPush(params),
+  );
+  ipcMain.handle("engine:startBeatportResolve", () => engine.startBeatportResolve());
+  ipcMain.handle("engine:getEntityPage", (_event, params) =>
+    engine.getEntityPage(params),
+  );
+  ipcMain.handle("engine:getEntityBeatport", (_event, params) =>
+    engine.getEntityBeatport(params),
+  );
+  ipcMain.handle("engine:getSimilarTracks", (_event, params) =>
+    engine.getSimilarTracks(params),
+  );
   ipcMain.handle("engine:startLibraryImport", (_event, params) =>
     engine.startLibraryImport(params),
   );

@@ -20,6 +20,8 @@ and tracks, in the v4 shapes DISCOVER-01 recorded.
 - **The playlist routes DISCOVER-06 writes**: ``post`` to ``my/playlists/``
   creates a playlist, and to ``my/playlists/{id}/tracks/`` adds a track, with
   404 for a playlist or track this world does not have, as a server would.
+- **The genre listing a "New run" panel reads** (DISCOVER-09):
+  ``catalog/genres/``, paged like every other listing.
 
 So inCrate's ``run_discovery`` and the new service can be run against the same
 world and held to the same answer, and every request either makes is counted.
@@ -70,6 +72,14 @@ class BeatportWorld:
     access_token: str = "token"
     #: Playlists created, by id: ``{"name": …, "tracks": [ids in order]}``.
     playlists: Dict[int, Dict[str, Any]] = field(default_factory=dict)
+    #: ``catalog/genres/``, in Beatport's order: ``(id, name, slug)``.
+    genres: List[Tuple[int, str, str]] = field(
+        default_factory=lambda: [
+            (5, "House", "house"),
+            (6, "Techno (Peak Time / Driving)", "techno-peak-time-driving"),
+            (12, "Deep House", "deep-house"),
+        ]
+    )
 
     # ------------------------------------------------------------- building
 
@@ -158,6 +168,10 @@ class BeatportWorld:
         if parts[:2] == ["catalog", "tracks"] and len(parts) == 3:
             track = self.tracks.get(int(parts[2]))
             return self._track_json(track) if track is not None else None
+        if route == "catalog/genres":
+            return self._page(
+                [{"id": i, "name": n, "slug": s} for i, n, s in self.genres], params
+            )
         if route == "catalog/search":
             query = str(params.get("q") or params.get("query") or "").lower()
             return {

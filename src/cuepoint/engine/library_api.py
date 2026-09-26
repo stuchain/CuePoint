@@ -462,7 +462,7 @@ def search_library(
     """
     service = _resolve_library_service()
     resolved = resolve_scope(scope, collection_id)
-    rules = _combine(resolved.rules, filters)
+    rules = combine_rules(resolved.rules, filters)
     # What the caller asked for wins; the scope's own answer is the fallback,
     # and the library's default is the fallback for that. A caller who names a
     # sort gets it, inside a Collection or out of one.
@@ -551,7 +551,7 @@ def search_library(
     return payload
 
 
-def _combine(saved: RuleSet, sent: Optional[RuleSet]) -> RuleSet:
+def combine_rules(saved: RuleSet, sent: Optional[RuleSet]) -> RuleSet:
     """AND a scope's saved rules with the ones the caller sent (DEC-016).
 
     Concatenation is the whole of it, because the rule model is flat and
@@ -647,7 +647,7 @@ def library_facet(
     service = _resolve_library_service()
     spec = field_spec(field)
     resolved = resolve_scope(scope, collection_id)
-    rules = _combine(resolved.rules, filters)
+    rules = combine_rules(resolved.rules, filters)
     facet = service.facet(
         spec.name,
         query=query,

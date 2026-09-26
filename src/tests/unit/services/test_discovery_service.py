@@ -56,7 +56,7 @@ from cuepoint.services.discovery_service import (
     DiscoveryService,
 )
 from cuepoint.services.migration_runner import MigrationRunner
-from tests.fixtures.beatport_library import accept
+from tests.fixtures.beatport_library import accept, catalog_track
 from tests.fixtures.beatport_world import BeatportWorld, Chart
 
 TODAY = date(2026, 9, 23)
@@ -834,6 +834,91 @@ class TestReadingRuns:
         assert [r.id for r in service.list_runs()] == [second.id]
         # The catalog rows stay: the other run holds them, and the cache is shared.
         assert len(BeatportCatalogRepository(db).get_tracks(range(1, 11))) == 7
+
+    def test_the_runs_are_counted_running_ones_included(self, db, ran):
+        service, _ = ran
+        assert service.count_runs() == 1
+        DiscoveryRepository(db).start_run(
+            DiscoveryRun(started_at=NOW.isoformat(), params_json="{}")
+        )
+        assert service.count_runs() == 2
+        assert len(service.list_runs()) == 2
+
+
+class TestAVisibleList:
+    """A run's visible tracks, as a push asks for them (DISCOVER-09): every
+    track the run's table shows under a filter and an order, however many."""
+
+    @pytest.fixture
+    def ran(self, db, library, world) -> Tuple[DiscoveryService, DiscoveryRun]:
+        service = make(db, world)
+        return service, service.run(request(service))
+
+    def table(self, service, run_id, **kwargs) -> List[int]:
+        page = service.run_tracks(run_id, limit=500, **kwargs)
+        return [row.track.beatport_track_id for row in page.rows]
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {},
+            {"owned": OWNED_ALL},
+            {"owned": OWNED_ONLY},
+            {"sort": SORT_TITLE, "descending": True},
+            {"sort": SORT_RELEASE_DATE},
+            {"sort": SORT_ARTIST, "owned": OWNED_ALL},
+        ],
+    )
+    def test_it_is_what_the_table_shows(self, db, ran, library, kwargs):
+        service, run = ran
+        with db.transaction() as conn:
+            accept(conn, library[0], "3")
+        assert service.visible_track_ids(run.id, **kwargs) == self.table(
+            service, run.id, **kwargs
+        )
+
+    def test_owned_hidden_by_default(self, db, ran, library):
+        service, run = ran
+        with db.transaction() as conn:
+            accept(conn, library[0], "3")
+        assert service.visible_track_ids(run.id) == [1, 2, 4, 5, 7, 8]
+
+    def test_more_than_one_window(self, db):
+        runs = DiscoveryRepository(db)
+        run = runs.start_run(DiscoveryRun(started_at=NOW.isoformat(), params_json="{}"))
+        count = 2 * 500 + 203
+        runs.record_found(
+            run.id,
+            [catalog_track(n) for n in range(10_001, 10_001 + count)],
+            [],
+            NOW.isoformat(),
+            {},
+        )
+        service = make(db, BeatportWorld())
+        ids = service.visible_track_ids(run.id)
+        assert ids == list(range(10_001, 10_001 + count))
+        backwards = service.visible_track_ids(run.id, sort=SORT_TITLE, descending=True)
+        assert len(backwards) == count and len(set(backwards)) == count
+        assert backwards == [
+            r.track.beatport_track_id
+            for offset in (0, 500, 1000)
+            for r in service.run_tracks(
+                run.id, sort=SORT_TITLE, descending=True, offset=offset, limit=500
+            ).rows
+        ]
+
+    def test_an_empty_list(self, db, ran):
+        service, run = ran
+        assert service.visible_track_ids(run.id, owned=OWNED_ONLY) == []
+
+    def test_a_missing_run_and_a_filter_it_does_not_answer(self, ran):
+        service, run = ran
+        with pytest.raises(LookupError):
+            service.visible_track_ids(999)
+        with pytest.raises(ValueError):
+            service.visible_track_ids(run.id, owned="some")
+        with pytest.raises(ValueError):
+            service.visible_track_ids(run.id, sort="bpm")
 
 
 class TestInterruptedRuns:

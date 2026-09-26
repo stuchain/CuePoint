@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-08 are implemented, and DISCOVER-01's spike is recorded.
+(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-09 are implemented, and DISCOVER-01's spike is recorded.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -365,7 +365,7 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-08 implemented
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-09 implemented
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
@@ -478,6 +478,18 @@ key for a seed with no BPM, and says which components the seed could not offer. 
 and its duplicates, takes the Library's scope, orders by score and then by id, and writes nothing. A
 test holds it to scoring every track in Python. A seed whose tempo window holds 72% of a
 50,000-track library took 713 ms as first written and now takes 327 ms, against a budget of 0.5 s.
+
+DISCOVER-09 is implemented: DISCOVER-04 to DISCOVER-08 on the wire, with nothing drawn yet. Sixteen
+routes under `/api/v1/discover/` go through all six contract files as sixteen bridge methods. They
+are the options, runs and their tracks, the wantlist and its four changes, the playlist push and the
+resolve job, both halves of a page, and Similar Tracks. Every method answers `{ value, refusal }`,
+so a refusal a person can act on reaches the renderer with its code and, for Beatport, its class. A
+Python test holds every TypeScript shape and vocabulary to what the engine serializes. A push can
+name a run and gets exactly the tracks its table shows. The status strip names the three Beatport
+jobs and shows a discovery's stage. Two slow reads were found and fixed: a push's tracks from a
+10,000-track run (773 ms to 21 ms) and the resolve count (137 ms to 50 ms). `options` answers in
+302 ms at 50,000 tracks, most of it the Library's own artist facet. The step's checks also found a
+dropped key on Clean's review queue; it was fixed in its own commit.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 

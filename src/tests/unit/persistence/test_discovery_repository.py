@@ -423,6 +423,70 @@ class TestReadingAWindow:
     def test_an_empty_run(self, runs, run):
         page = runs.run_tracks(run.id)
         assert (page.rows, page.total, page.tracks) == ((), 0, 0)
+        assert runs.run_track_ids(run.id) == []
+
+
+class TestAListsIds:
+    """``run_track_ids``, a push's tracks (DISCOVER-09): the list the window
+    shows, under every filter and order, read as ids in one statement."""
+
+    filled = TestReadingAWindow.filled
+
+    @pytest.mark.parametrize("owned", [OWNED_HIDE, OWNED_ONLY, OWNED_ALL])
+    @pytest.mark.parametrize(
+        "sort, descending",
+        [
+            (SORT_FOUND, False),
+            (SORT_FOUND, True),
+            ("release_date", False),
+            ("release_date", True),
+            ("artist", False),
+            ("artist", True),
+            ("title", False),
+            ("title", True),
+        ],
+    )
+    def test_they_are_what_the_window_shows(
+        self, runs, filled, owned, sort, descending
+    ):
+        page = runs.run_tracks(
+            filled.id, owned=owned, sort=sort, descending=descending, limit=500
+        )
+        assert runs.run_track_ids(filled.id, owned, sort, descending) == [
+            r.track.beatport_track_id for r in page.rows
+        ]
+
+    def test_owned_hidden_by_default(self, runs, filled):
+        assert runs.run_track_ids(filled.id) == [10, 11, 13]
+
+    @pytest.mark.parametrize("owned", [OWNED_HIDE, OWNED_ONLY, OWNED_ALL])
+    def test_the_ownership_view_is_read_once(self, db, runs, filled, owned):
+        statements = []
+        conn = db.connect()
+        conn.set_trace_callback(statements.append)
+        try:
+            runs.run_track_ids(filled.id, owned)
+        finally:
+            conn.set_trace_callback(None)
+        assert sum("library_beatport_tracks" in s for s in statements) == 1
+
+    def test_a_run_with_no_such_id_has_none(self, runs):
+        assert runs.run_track_ids(999) == []
+
+    @pytest.mark.parametrize("kwargs", [{"owned": "some"}, {"sort": "bpm"}])
+    def test_a_filter_or_sort_it_does_not_answer(self, runs, run, kwargs):
+        with pytest.raises(ValueError):
+            runs.run_track_ids(run.id, **kwargs)
+
+
+class TestCountingRuns:
+    def test_every_run_running_or_ended(self, runs, run):
+        assert runs.count_runs() == 1
+        runs.finish_run(run.id, RUN_SUCCEEDED, LATER)
+        runs.start_run(DiscoveryRun(started_at=NOW, params_json="{}"))
+        assert runs.count_runs() == 2
+        runs.delete_run(run.id)
+        assert runs.count_runs() == 1
 
 
 class TestNameLookups:

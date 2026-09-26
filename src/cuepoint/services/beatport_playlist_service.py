@@ -355,9 +355,18 @@ class BeatportPlaylistService(IBeatportPlaylistService):
             include_owned=include_owned,
         )
 
+    def default_name(self) -> str:
+        """The name a push given none would take today.
+
+        inCrate's dated name, in the format ``incrate.playlist_name_format``
+        configures and the user's own date: what a push dialog offers before
+        anyone types (DISCOVER-10).
+        """
+        return default_playlist_name(self._name_format(), local_date(self._clock()))
+
     def _name(self, name: Optional[str]) -> str:
         if name is None or (isinstance(name, str) and not name.strip()):
-            return default_playlist_name(self._name_format(), local_date(self._clock()))
+            return self.default_name()
         if not isinstance(name, str):
             raise ValueError(f"A playlist name is text, got {type(name).__name__}")
         text = " ".join(name.split())

@@ -12,43 +12,11 @@
  * reason added to the engine without words here fails a test on each side.
  */
 
-/** The parts of the rule a suggestion can score on, in the engine's order. */
-export type SimilarComponent = "tempo" | "key" | "genre" | "label" | "artist";
+import type { SimilarComponent, SimilarReason } from "../../api/cuepointBridge.types";
 
-/** One reason a suggestion scored, as the engine serializes it. */
-export type SimilarReason =
-  | {
-      component: "tempo";
-      detail: "same" | "close" | "half" | "double";
-      points: number;
-      /** The seed's BPM. */
-      from: number;
-      /** The suggestion's BPM. */
-      to: number;
-    }
-  | {
-      component: "key";
-      detail: "same" | "adjacent" | "relative";
-      points: number;
-      /** The seed's key, in the library's notation ("8A" or "Am"). */
-      from: string;
-      /** The suggestion's key. */
-      to: string;
-    }
-  | {
-      component: "genre" | "label";
-      detail: "same";
-      points: number;
-      /** The seed's own spelling. */
-      name: string;
-    }
-  | {
-      component: "artist";
-      detail: "shared";
-      points: number;
-      /** The shared artists, as the seed credits them. */
-      names: string[];
-    };
+// The wire's own types, declared once with the rest of Discover's shapes
+// (DISCOVER-09); re-exported so a caller of this module needs one import.
+export type { SimilarComponent, SimilarReason };
 
 /** What a component is called when a sentence names it. */
 const COMPONENT_WORDS: Record<SimilarComponent, string> = {

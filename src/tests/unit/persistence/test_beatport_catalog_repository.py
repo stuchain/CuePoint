@@ -322,6 +322,13 @@ class TestReadingBesideOtherRows:
 # --------------------------------------------------------------------- plan
 
 
+def planned(repo, stale_before):
+    """The resolve plan, with its count held to it (DISCOVER-09's prompt)."""
+    to_read, owned = repo.resolve_plan(stale_before)
+    assert repo.resolve_counts(stale_before) == (len(to_read), owned)
+    return to_read, owned
+
+
 class TestTheResolvePlan:
     def test_missing_and_stale_are_read_and_fresh_are_kept(self, db, repo):
         with db.transaction() as conn:
@@ -330,7 +337,7 @@ class TestTheResolvePlan:
                 accept(conn, track_id, str(beatport))
         repo.upsert_tracks([catalog_track(10)], EARLIER)  # stale
         repo.upsert_tracks([catalog_track(20)], LATER)  # fresh
-        to_read, owned = repo.resolve_plan("2026-09-01T00:00:00+00:00")
+        to_read, owned = planned(repo, "2026-09-01T00:00:00+00:00")
         assert to_read == [10, 30, 40, 50]
         assert owned == 5
 
@@ -339,7 +346,7 @@ class TestTheResolvePlan:
             ids = add_tracks(conn, 3)
             for track_id in ids:
                 accept(conn, track_id, "77")
-        assert repo.resolve_plan(NOW) == ([77], 1)
+        assert planned(repo, NOW) == ([77], 1)
 
     def test_only_owned_tracks_are_read(self, db, repo):
         with db.transaction() as conn:
@@ -348,14 +355,30 @@ class TestTheResolvePlan:
             accept(conn, ids[1], "2", state="needs_review")
             accept(conn, ids[2], "3", state="no_match")
             accept(conn, ids[3], "4")
-        assert repo.resolve_plan(NOW) == ([4], 1)
+        assert planned(repo, NOW) == ([4], 1)
 
     def test_an_empty_library(self, repo):
-        assert repo.resolve_plan(NOW) == ([], 0)
+        assert planned(repo, NOW) == ([], 0)
 
     def test_a_cached_track_nothing_owns_is_not_read(self, db, repo):
         repo.upsert_tracks([catalog_track(1)], EARLIER)
-        assert repo.resolve_plan(LATER) == ([], 0)
+        assert planned(repo, LATER) == ([], 0)
+
+    def test_the_count_agrees_over_generated_libraries(self, db, repo):
+        import random
+
+        rnd = random.Random(9)
+        with db.transaction() as conn:
+            ids = add_tracks(conn, 300)
+            for track_id in ids:
+                if rnd.random() < 0.8:
+                    accept(conn, track_id, str(rnd.randrange(1, 120)))
+        for beatport in rnd.sample(range(1, 120), 60):
+            repo.upsert_tracks(
+                [catalog_track(beatport)], rnd.choice((EARLIER, NOW, LATER))
+            )
+        for stale_before in (EARLIER, NOW, LATER, "9999"):
+            planned(repo, stale_before)
 
 
 # ----------------------------------------------------------------- identity

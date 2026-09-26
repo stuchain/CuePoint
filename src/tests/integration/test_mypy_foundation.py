@@ -87,6 +87,7 @@ GUARDED = (
     "cuepoint/core/similarity.py",
     "cuepoint/models/similar_tracks.py",
     "cuepoint/services/similarity_service.py",
+    "cuepoint/engine/discover_api.py",
     "cuepoint/services/rekordbox_export_service.py",
     "cuepoint/engine/rekordbox_export_jobs.py",
     "cuepoint/engine/rekordbox_export_api.py",

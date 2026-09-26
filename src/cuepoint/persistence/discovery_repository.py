@@ -308,6 +308,13 @@ class DiscoveryRepository(IDiscoveryRepository):
         )
         return [DiscoveryRun.from_row(row) for row in rows]
 
+    def count_runs(self) -> int:
+        """How many runs are kept, running ones included: the list's length."""
+        row = (
+            self._db.connect().execute("SELECT count(*) FROM discovery_runs").fetchone()
+        )
+        return int(row[0]) if row is not None else 0
+
     def delete_run(self, run_id: int) -> bool:
         """Delete a run with its tracks and sources; True when it existed.
 
@@ -400,6 +407,42 @@ class DiscoveryRepository(IDiscoveryRepository):
             owned=owned_count,
             hidden=owned_count if owned == OWNED_HIDE else 0,
         )
+
+    def run_track_ids(
+        self,
+        run_id: int,
+        owned: str = OWNED_HIDE,
+        sort: str = SORT_FOUND,
+        descending: bool = False,
+    ) -> List[int]:
+        """Every track id a run's list shows, in its order: a push's tracks.
+
+        The window's own filter and order (``_OWNED_WHERE``, ``_order_by``)
+        over the same ownership read, in one statement, rather than window
+        after window of rows whose credits and reasons a push never reads —
+        so it cannot disagree with the table, and at 10,000 tracks it is a
+        read of ids (DISCOVER-09).
+
+        Raises:
+            ValueError: If the filter or sort is not one this answers.
+        """
+        if owned not in OWNED_FILTERS:
+            raise ValueError(f"owned must be one of {OWNED_FILTERS}, got {owned!r}")
+        if sort not in RUN_TRACK_SORTS:
+            raise ValueError(f"sort must be one of {RUN_TRACK_SORTS}, got {sort!r}")
+        conn = self._db.connect()
+        values = {
+            "run": int(run_id),
+            "owned": owned_among_json(conn, _RUN_TRACK_IDS, {"run": int(run_id)}),
+        }
+        rows = conn.execute(
+            "SELECT rt.beatport_track_id FROM discovery_run_tracks AS rt"
+            " JOIN beatport_tracks AS b ON b.beatport_track_id = rt.beatport_track_id"
+            f" WHERE rt.run_id = :run{_OWNED_WHERE[owned]}"
+            f"{_order_by(sort, descending)}",
+            values,
+        )
+        return [int(row[0]) for row in rows]
 
     def run_sources(self, run_id: int) -> List[DiscoveryRunSource]:
         """Every reason a run found each track, in the order it found them."""

@@ -93,7 +93,23 @@ const JOB_VERBS: Record<string, string> = {
   // library predates it or its rule changed. Unasked-for, so it says plainly
   // what it is doing rather than falling through to "Working".
   credit_index: "Indexing artists and labels",
+  // Discover's three Beatport jobs (DISCOVER-04 to DISCOVER-06, started over
+  // DISCOVER-09's routes). Each spends requests on the user's token, so the
+  // strip says Beatport, as the match does.
+  discovery: "Discovering on Beatport",
+  beatport_playlist: "Pushing to Beatport",
+  beatport_resolve: "Resolving Beatport identities",
 };
+
+/**
+ * Jobs whose progress names the stage they are in, in the engine's words.
+ *
+ * A discovery run counts charts, then labels, then releases (DISCOVER-05), and
+ * a push creates its playlist and then adds tracks (DISCOVER-06): "3/10" means
+ * nothing without which. For these the stage is the label, and the verb above
+ * stands in until the first progress arrives.
+ */
+const STAGED_JOBS: ReadonlySet<string> = new Set(["discovery", "beatport_playlist"]);
 
 /** A short description of what a job is doing, for the strip. */
 export function jobLabel(job: EngineJobSummary | null): string {
@@ -104,11 +120,16 @@ export function jobLabel(job: EngineJobSummary | null): string {
     typeof done === "number" && typeof total === "number" && total > 0
       ? ` ${done}/${total}`
       : "";
+  const stage = job.progress?.status_message;
   // An unknown type falls back to "Working" rather than to "Matching": a job
   // this build has not heard of is not necessarily a match, and guessing wrong
   // tells the user something untrue about their library.
   const verb =
-    job.state === "queued" ? "Queued" : (JOB_VERBS[job.type] ?? "Working");
+    job.state === "queued"
+      ? "Queued"
+      : STAGED_JOBS.has(job.type) && typeof stage === "string" && stage.trim()
+        ? stage.trim()
+        : (JOB_VERBS[job.type] ?? "Working");
   return `${verb}${counted}`;
 }
 

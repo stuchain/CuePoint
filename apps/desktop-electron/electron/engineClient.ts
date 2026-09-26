@@ -62,6 +62,84 @@ async function readRefusable<T>(
   throw new Error(error?.message ?? `Engine request failed (${res.status})`);
 }
 
+/**
+ * The refusal codes a Discover route answers as a value (DISCOVER-09).
+ *
+ * Wider than the export's list on purpose: DISCOVER-04 to DISCOVER-08 each
+ * asked for their refused values and missing runs to cross as values too, so
+ * a form can say what the engine refused, in its words, rather than fail.
+ * What is left to throw — an unreachable library, a bug — is nothing a
+ * person can act on.
+ */
+export const DISCOVER_REFUSAL_CODES: readonly DiscoverRefusalCode[] = [
+  "BEATPORT_REFUSED",
+  "INVALID_REQUEST",
+  "DISCOVER_BUSY",
+  "DISCOVERY_RUN_NOT_FOUND",
+  "DISCOVERY_RUN_RUNNING",
+  "TRACK_NOT_FOUND",
+];
+
+/** DISCOVER-01's classes, so a reason the engine never sends reads as none. */
+export const BEATPORT_ERROR_CLASSES: readonly BeatportErrorClass[] = [
+  "no_token",
+  "rejected",
+  "forbidden",
+  "rate_limited",
+  "unavailable",
+];
+
+function numberOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Read a Discover answer: the value, or a refusal as a value. Any other
+ * failure is thrown, as `readJson` throws it.
+ */
+async function readDiscover<T>(res: Response): Promise<DiscoverAnswer<T>> {
+  let body: T & { error?: Record<string, unknown> };
+  try {
+    body = (await res.json()) as T & { error?: Record<string, unknown> };
+  } catch {
+    throw new Error(`Engine request failed (${res.status})`);
+  }
+  if (res.ok) return { value: body, refusal: null };
+  const error = body?.error;
+  const code = textOrNull(error?.code);
+  if (error && code !== null && (DISCOVER_REFUSAL_CODES as readonly string[]).includes(code)) {
+    const reason = textOrNull(error.reason);
+    return {
+      value: null,
+      refusal: {
+        code: code as DiscoverRefusalCode,
+        message: textOrNull(error.message) ?? `Engine request failed (${res.status})`,
+        reason:
+          reason !== null && (BEATPORT_ERROR_CLASSES as readonly string[]).includes(reason)
+            ? (reason as BeatportErrorClass)
+            : null,
+        retry_after: numberOrNull(error.retry_after),
+        job_id: textOrNull(error.job_id),
+        job_type: textOrNull(error.job_type),
+      },
+    };
+  }
+  throw new Error(textOrNull(error?.message) ?? `Engine request failed (${res.status})`);
+}
+
+/** A query string from the values given; absent and null are left out. */
+function discoverQuery(
+  values: Record<string, string | number | boolean | null | undefined>,
+): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) {
+    if (value === undefined || value === null) continue;
+    query.set(key, String(value));
+  }
+  const text = query.toString();
+  return text ? `?${text}` : "";
+}
+
 export interface LibraryTrackRow {
   id: number | null;
   rekordbox_track_id: string;
@@ -1076,6 +1154,506 @@ export type RekordboxExportDestinationChoice =
   | { canceled: true }
   | { canceled: false; filePath: string };
 
+// ---------------------------------------------------------------------------
+// Discover (DISCOVER-09)
+//
+// Mirrors `discover_api.py` and the models it serializes. Declared twice, here
+// and in the other process's copy, because neither can import the other's;
+// `desktopContract.test.ts` holds the two copies together, and
+// `test_discover_contract.py` holds them to what the engine actually sends.
+//
+// Every Discover method answers a `DiscoverAnswer`. A refusal a person can act
+// on — no token, a token Beatport rejected, a job already running, a run that
+// is gone, a value the engine refused — comes back as a value, because a
+// rejected IPC promise reaches the renderer as its message alone (EXPORT-06).
+// ---------------------------------------------------------------------------
+
+/** DISCOVER-01's classes of Beatport failure, which every empty state is drawn from (DEC-098). */
+export type BeatportErrorClass = "no_token" | "rejected" | "forbidden" | "rate_limited" | "unavailable";
+
+/** The codes a Discover refusal can carry; any other failure throws. */
+export type DiscoverRefusalCode =
+  | "BEATPORT_REFUSED"
+  | "INVALID_REQUEST"
+  | "DISCOVER_BUSY"
+  | "DISCOVERY_RUN_NOT_FOUND"
+  | "DISCOVERY_RUN_RUNNING"
+  | "TRACK_NOT_FOUND";
+
+export interface DiscoverRefusal {
+  code: DiscoverRefusalCode;
+  message: string;
+  /** For `BEATPORT_REFUSED`: which class, and so which empty state and action. */
+  reason: BeatportErrorClass | null;
+  /** For `rate_limited`: the seconds Beatport asked for, when it said. */
+  retry_after: number | null;
+  /** For `DISCOVER_BUSY`: the job already running, to follow instead. */
+  job_id: string | null;
+  job_type: string | null;
+}
+
+/** An answer, or the refusal standing in for it. */
+export type DiscoverAnswer<T> =
+  | { value: T; refusal: null }
+  | { value: null; refusal: DiscoverRefusal };
+
+export type DiscoverOwnedFilter = "hide" | "only" | "all";
+export type DiscoverRunSort = "position" | "release_date" | "artist" | "title";
+export type WantlistSort = "added_at" | "release_date" | "artist" | "title";
+export type DiscoverSortDirection = "asc" | "desc";
+export type DiscoverRunOutcome = "succeeded" | "cancelled" | "failed";
+export type DiscoverSourceType = "chart" | "label_release";
+export type DiscoverBeatportState = "ok" | "no_token" | "rejected" | "forbidden" | "rate_limited" | "unavailable";
+export type DiscoverJobType = "discovery" | "beatport_playlist" | "beatport_resolve";
+export type WantlistAction = "added" | "removed" | "noted" | "bought" | "unbought";
+export type EntityKind = "artist" | "label";
+export type EntityIdentity = "beatport" | "name";
+export type EntityBeatportState =
+  | "ok"
+  | "no_token"
+  | "rejected"
+  | "forbidden"
+  | "rate_limited"
+  | "unavailable"
+  | "name_only";
+export type EntityNameOnlyReason = "not_resolved" | "shared" | "not_on_beatport";
+export type EntityAction = "settings" | "resolve";
+export type SimilarKeyNotation = "classic" | "camelot";
+
+/** Whether a Beatport token is configured and Beatport took it; never the token. */
+export interface DiscoverBeatportStatus {
+  configured: boolean;
+  state: DiscoverBeatportState;
+  message: string | null;
+  retry_after: number | null;
+}
+
+export interface DiscoverGenre {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+/** The Library's facet over a name field, as `Facet.to_dict` sends it. */
+export interface DiscoverFacet {
+  field: string;
+  values: LibraryFacetValue[];
+  truncated: boolean;
+  total_values: number;
+}
+
+/** What a new run and a push start from when nothing is chosen. */
+export interface DiscoverDefaults {
+  genre_ids: number[];
+  charts_from: string;
+  charts_to: string;
+  new_releases_days: number;
+  playlist_name: string;
+}
+
+/** The engine's bounds, so a form refuses what the engine would. */
+export interface DiscoverLimits {
+  max_genres: number;
+  max_window_days: number;
+  max_runs: number;
+  max_run_window: number;
+  max_entity_window: number;
+  max_change: number;
+  max_playlist_tracks: number;
+  max_playlist_name_length: number;
+  max_note_length: number;
+  max_similar: number;
+}
+
+/** What a resolve started now would read: the resolve prompt's count. */
+export interface DiscoverResolvePlan {
+  owned: number;
+  to_read: number;
+}
+
+export interface DiscoverOptions {
+  beatport: DiscoverBeatportStatus;
+  genres: DiscoverGenre[];
+  artists: DiscoverFacet;
+  labels: DiscoverFacet;
+  defaults: DiscoverDefaults;
+  limits: DiscoverLimits;
+  resolve: DiscoverResolvePlan;
+  index_current: boolean;
+}
+
+/** An artist or label scope as a run recorded it. `picked` null is the whole library. */
+export interface DiscoverRunScope {
+  picked: string[] | null;
+  count: number;
+  linked_ids: number;
+}
+
+export interface DiscoverRunParams {
+  genre_ids: number[];
+  charts_from: string | null;
+  charts_to: string | null;
+  new_releases_days: number | null;
+  releases_from: string | null;
+  releases_to: string | null;
+  artists: DiscoverRunScope;
+  labels: DiscoverRunScope;
+}
+
+export interface DiscoverRun {
+  id: number;
+  job_id: string | null;
+  started_at: string;
+  finished_at: string | null;
+  outcome: DiscoverRunOutcome | null;
+  running: boolean;
+  params: DiscoverRunParams;
+  labels_in_scope: number;
+  labels_resolved: number;
+  artists_in_scope: number;
+  charts_read: number;
+  releases_read: number;
+  tracks_found: number;
+  error: string | null;
+  error_class: BeatportErrorClass | null;
+}
+
+export interface DiscoverRunList {
+  runs: DiscoverRun[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface DiscoverScopeName {
+  key: string;
+  name: string;
+}
+
+/** A run with the artists and labels its scope resolved to: what it looked for. */
+export interface DiscoverRunHeader {
+  run: DiscoverRun;
+  artists: DiscoverScopeName[];
+  labels: DiscoverScopeName[];
+}
+
+/** One Beatport track as every Beatport table sends it: a run, the wantlist, a page. */
+export interface BeatportTrackRow {
+  beatport_track_id: number;
+  title: string;
+  mix_name: string | null;
+  url: string;
+  label_id: number | null;
+  label_name: string | null;
+  label_key: string | null;
+  release_id: number | null;
+  release_name: string | null;
+  release_date: string | null;
+  bpm: number | null;
+  key: string | null;
+  genre_id: number | null;
+  genre_name: string | null;
+  fetched_at: string;
+  artists: string[];
+  remixers: string[];
+  owned: boolean;
+  on_wantlist: boolean;
+}
+
+/** One reason a run found a track. */
+export interface DiscoverRunSource {
+  source_type: DiscoverSourceType;
+  source_id: number;
+  source_name: string | null;
+  source_url: string | null;
+  matched_on: string;
+}
+
+export interface DiscoverRunTrackRow extends BeatportTrackRow {
+  position: number;
+  sources: DiscoverRunSource[];
+}
+
+/** The window a run's page answers, echoed so a late answer can be told apart. */
+export interface DiscoverRunTracksWindow {
+  owned: DiscoverOwnedFilter;
+  sort: DiscoverRunSort;
+  dir: DiscoverSortDirection;
+  offset: number;
+  limit: number;
+}
+
+export interface DiscoverRunTracksPage {
+  run_id: number;
+  rows: DiscoverRunTrackRow[];
+  total: number;
+  tracks: number;
+  owned: number;
+  /** "N owned tracks hidden" (DEC-092): owned tracks the filter leaves out. */
+  hidden: number;
+  window: DiscoverRunTracksWindow;
+}
+
+export interface DiscoverRunDeleted {
+  id: number;
+  deleted: boolean;
+}
+
+/** A job a Discover route started; progress and results are the job routes'. */
+export interface DiscoverJobStarted {
+  id: string;
+  type: DiscoverJobType;
+  state: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+}
+
+/** A wantlist entry. Bought is the user's mark, owned the library's (DEC-093). */
+export interface WantlistRow extends BeatportTrackRow {
+  note: string | null;
+  added_at: string;
+  bought_at: string | null;
+  added_from_run_id: number | null;
+}
+
+export interface WantlistWindow {
+  owned: DiscoverOwnedFilter;
+  bought: DiscoverOwnedFilter;
+  sort: WantlistSort;
+  dir: DiscoverSortDirection;
+  offset: number;
+  limit: number;
+}
+
+export interface WantlistPage {
+  rows: WantlistRow[];
+  total: number;
+  entries: number;
+  owned: number;
+  bought: number;
+  window: WantlistWindow;
+}
+
+/** What one wantlist call did, and a sentence saying so. */
+export interface WantlistChange {
+  action: WantlistAction;
+  changed: number[];
+  unchanged: number[];
+  not_listed: number[];
+  not_found: number[];
+  read_from_beatport: number;
+  message: string;
+}
+
+/** A discovery job's result: the run as it ended, without its scope. */
+export interface DiscoveryRunResult {
+  id: number;
+  job_id: string | null;
+  started_at: string;
+  finished_at: string | null;
+  outcome: DiscoverRunOutcome | null;
+  labels_in_scope: number;
+  labels_resolved: number;
+  artists_in_scope: number;
+  charts_read: number;
+  releases_read: number;
+  tracks_found: number;
+  error: string | null;
+  error_class: BeatportErrorClass | null;
+}
+
+/** A playlist push's result, with the real playlist URL once one exists (DEC-099). */
+export interface BeatportPlaylistResult {
+  outcome: DiscoverRunOutcome;
+  name: string;
+  playlist_id: string | null;
+  playlist_url: string | null;
+  requested: number;
+  skipped_owned: number;
+  to_add: number;
+  added: number;
+  failed: number;
+  not_attempted: number;
+  failed_track_ids: number[];
+  cancelled: boolean;
+  error_class: BeatportErrorClass | null;
+  error: string | null;
+}
+
+/** A resolve's result (DISCOVER-04). */
+export interface BeatportResolveResult {
+  outcome: DiscoverRunOutcome;
+  owned: number;
+  to_read: number;
+  up_to_date: number;
+  resolved: number;
+  not_found: number;
+  unreadable: number;
+  failed: number;
+  batches: number;
+  cancelled: boolean;
+  error_class: BeatportErrorClass | null;
+  error: string | null;
+}
+
+/** A Beatport artist a shared name is linked to, as a choice (DEC-095). */
+export interface EntityLink {
+  ref: string;
+  beatport_id: number;
+  name: string | null;
+  tracks: number;
+}
+
+/** A library name whose unresolved tracks an id page gathers. */
+export interface EntityLinkedName {
+  name_key: string;
+  name: string;
+  tracks: number;
+}
+
+export interface EntityYears {
+  first: number | null;
+  last: number | null;
+}
+
+/** The header's facts, each the Library's own answer over the page's rules. */
+export interface EntityLibrarySummary {
+  tracks: number;
+  years: EntityYears;
+  genres: DiscoverFacet;
+  related: DiscoverFacet;
+  index_current: boolean;
+}
+
+/**
+ * An Artist or Label page's identity and library half (DISCOVER-07). `rules`
+ * go to the Library's browse unchanged. When `redirected_from` is set, a name
+ * is now known by an id, and the route is replaced with `ref`.
+ */
+export interface EntityPage {
+  kind: EntityKind;
+  ref: string;
+  identity: EntityIdentity;
+  beatport_id: number | null;
+  name_key: string | null;
+  name: string | null;
+  redirected_from: string | null;
+  links: EntityLink[];
+  names: EntityLinkedName[];
+  rules: FilterRuleSet;
+  library: EntityLibrarySummary;
+}
+
+export interface EntityTracksPage {
+  rows: BeatportTrackRow[];
+  total: number;
+  tracks: number;
+  owned: number;
+}
+
+/** A page's Beatport half: tracks when `ok`, otherwise the state standing in for them. */
+export interface EntityBeatportHalf {
+  kind: EntityKind;
+  ref: string;
+  state: EntityBeatportState;
+  message: string;
+  action: EntityAction | null;
+  reason: EntityNameOnlyReason | null;
+  beatport_id: number | null;
+  found_by_name: boolean;
+  since: string | null;
+  until: string | null;
+  fetched_at: string | null;
+  from_cache: boolean;
+  page: EntityTracksPage | null;
+  resolvable: number;
+  retry_after: number | null;
+}
+
+/** The parts of the similarity rule a suggestion can score on, in the engine's order. */
+export type SimilarComponent = "tempo" | "key" | "genre" | "label" | "artist";
+
+/** One reason a suggestion scored, as the engine serializes it (DISCOVER-08). */
+export type SimilarReason =
+  | {
+      component: "tempo";
+      detail: "same" | "close" | "half" | "double";
+      points: number;
+      /** The seed's BPM. */
+      from: number;
+      /** The suggestion's BPM. */
+      to: number;
+    }
+  | {
+      component: "key";
+      detail: "same" | "adjacent" | "relative";
+      points: number;
+      /** The seed's key, in the library's notation ("8A" or "Am"). */
+      from: string;
+      /** The suggestion's key. */
+      to: string;
+    }
+  | {
+      component: "genre" | "label";
+      detail: "same";
+      points: number;
+      /** The seed's own spelling. */
+      name: string;
+    }
+  | {
+      component: "artist";
+      detail: "shared";
+      points: number;
+      /** The shared artists, as the seed credits them. */
+      names: string[];
+    };
+
+export interface SimilarTrack {
+  track_id: number;
+  score: number;
+  reasons: SimilarReason[];
+}
+
+/** A seed's suggestions, best first; read their rows through the track-detail path. */
+export interface SimilarTracks {
+  seed_id: number;
+  notation: SimilarKeyNotation;
+  unused: SimilarComponent[];
+  considered: number;
+  duplicates_excluded: number;
+  index_current: boolean;
+  suggestions: SimilarTrack[];
+}
+
+/** A run's request; anything left out takes the engine's default. */
+export interface DiscoverRunRequest {
+  genre_ids?: number[];
+  charts_from?: string;
+  charts_to?: string;
+  new_releases_days?: number;
+  /** Library artist names; absent or null is the whole library, [] is none. */
+  artists?: string[] | null;
+  labels?: string[] | null;
+}
+
+/** A push: explicit ids, or a run and the order and filter its table shows. */
+export type BeatportPlaylistRequest = {
+  name?: string | null;
+  include_owned?: boolean;
+} & (
+  | { track_ids: number[] }
+  | { run_id: number; owned?: DiscoverOwnedFilter; sort?: DiscoverRunSort; dir?: DiscoverSortDirection }
+);
+
+/** Similar Tracks' seed and the Library's own scope parameters (DISCOVER-08). */
+export interface SimilarTracksRequest {
+  track_id: number;
+  limit?: number;
+  q?: string;
+  playlist_id?: number | null;
+  filters?: FilterRuleSet | null;
+  scope?: "collection" | "smart" | null;
+  collection_id?: number | null;
+}
+
 export class EngineClient {
   constructor(
     private readonly port: number,
@@ -1321,6 +1899,162 @@ export class EngineClient {
       body: JSON.stringify(body ?? {}),
     });
     return readRefusable<T>(res);
+  }
+
+  // -------------------------------------------------------------------------
+  // Discover (DISCOVER-09)
+  //
+  // Reads are GETs and actions are POSTs, as every other route. Each answers
+  // a `DiscoverAnswer`, so a refusal keeps its code and class across IPC.
+  // -------------------------------------------------------------------------
+
+  private async discoverGet<T>(path: string): Promise<DiscoverAnswer<T>> {
+    const res = await fetch(this.url(path), { headers: this.headers() });
+    return readDiscover<T>(res);
+  }
+
+  private async discoverPost<T>(path: string, body: unknown): Promise<DiscoverAnswer<T>> {
+    const res = await fetch(this.url(path), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(body ?? {}),
+    });
+    return readDiscover<T>(res);
+  }
+
+  /** What a "New run" panel starts from: token state, genres, facets, defaults. */
+  async getDiscoverOptions(): Promise<DiscoverAnswer<DiscoverOptions>> {
+    return this.discoverGet("/api/v1/discover/options");
+  }
+
+  /** A window of kept runs, newest first, with how many there are. */
+  async listDiscoveryRuns(params?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<DiscoverAnswer<DiscoverRunList>> {
+    return this.discoverGet(
+      `/api/v1/discover/runs${discoverQuery({ limit: params?.limit, offset: params?.offset })}`,
+    );
+  }
+
+  /** One run, with the artists and labels its scope resolved to. */
+  async getDiscoveryRun(params: { run_id: number }): Promise<DiscoverAnswer<DiscoverRunHeader>> {
+    return this.discoverGet(`/api/v1/discover/runs/${encodeURIComponent(String(params.run_id))}`);
+  }
+
+  /** A window of a run's tracks; owned tracks are hidden unless asked (DEC-092). */
+  async getDiscoveryRunTracks(params: {
+    run_id: number;
+    owned?: DiscoverOwnedFilter;
+    sort?: DiscoverRunSort;
+    dir?: DiscoverSortDirection;
+    offset?: number;
+    limit?: number;
+  }): Promise<DiscoverAnswer<DiscoverRunTracksPage>> {
+    const { run_id, ...window } = params;
+    return this.discoverGet(
+      `/api/v1/discover/runs/${encodeURIComponent(String(run_id))}/tracks${discoverQuery(window)}`,
+    );
+  }
+
+  /** Start a discovery run; follow it through the job routes (DISCOVER-05). */
+  async startDiscoveryRun(
+    params?: DiscoverRunRequest,
+  ): Promise<DiscoverAnswer<DiscoverJobStarted>> {
+    return this.discoverPost("/api/v1/discover/runs/start", params ?? {});
+  }
+
+  /** Delete an ended run and its tracks; the catalog rows stay. */
+  async deleteDiscoveryRun(params: { run_id: number }): Promise<DiscoverAnswer<DiscoverRunDeleted>> {
+    return this.discoverPost(
+      `/api/v1/discover/runs/${encodeURIComponent(String(params.run_id))}/delete`,
+      {},
+    );
+  }
+
+  /** A window of the wantlist, newest first, owned computed now (DEC-093). */
+  async getWantlist(params?: {
+    owned?: DiscoverOwnedFilter;
+    bought?: DiscoverOwnedFilter;
+    sort?: WantlistSort;
+    dir?: DiscoverSortDirection;
+    offset?: number;
+    limit?: number;
+  }): Promise<DiscoverAnswer<WantlistPage>> {
+    return this.discoverGet(`/api/v1/discover/wantlist${discoverQuery({ ...params })}`);
+  }
+
+  /** Add Beatport tracks, from a run or a page; any not cached are read. */
+  async addToWantlist(params: {
+    track_ids: number[];
+    run_id?: number | null;
+  }): Promise<DiscoverAnswer<WantlistChange>> {
+    return this.discoverPost("/api/v1/discover/wantlist/add", params);
+  }
+
+  async removeFromWantlist(params: { track_ids: number[] }): Promise<DiscoverAnswer<WantlistChange>> {
+    return this.discoverPost("/api/v1/discover/wantlist/remove", params);
+  }
+
+  /** Set a note; null or blank text clears it. */
+  async setWantlistNote(params: {
+    track_id: number;
+    note: string | null;
+  }): Promise<DiscoverAnswer<WantlistChange>> {
+    return this.discoverPost("/api/v1/discover/wantlist/note", params);
+  }
+
+  /** Mark entries bought or not; owned is never touched (DEC-093). */
+  async setWantlistBought(params: {
+    track_ids: number[];
+    bought: boolean;
+  }): Promise<DiscoverAnswer<WantlistChange>> {
+    return this.discoverPost("/api/v1/discover/wantlist/bought", params);
+  }
+
+  /** Push tracks to a new Beatport playlist, as a job (DISCOVER-06, DEC-099). */
+  async startBeatportPlaylistPush(
+    params: BeatportPlaylistRequest,
+  ): Promise<DiscoverAnswer<DiscoverJobStarted>> {
+    return this.discoverPost("/api/v1/discover/playlist/start", params);
+  }
+
+  /** Resolve the library's accepted matches on Beatport, as a job (DISCOVER-04). */
+  async startBeatportResolve(): Promise<DiscoverAnswer<DiscoverJobStarted>> {
+    return this.discoverPost("/api/v1/discover/resolve/start", {});
+  }
+
+  /** An Artist or Label page's identity and library half (DISCOVER-07). */
+  async getEntityPage(params: {
+    kind: EntityKind;
+    ref: string;
+  }): Promise<DiscoverAnswer<EntityPage>> {
+    return this.discoverGet(
+      `/api/v1/discover/entity${discoverQuery({ kind: params.kind, ref: params.ref })}`,
+    );
+  }
+
+  /** A page's recent Beatport tracks, or the state standing in for them. */
+  async getEntityBeatport(params: {
+    kind: EntityKind;
+    ref: string;
+    refresh?: boolean;
+    owned?: DiscoverOwnedFilter;
+    offset?: number;
+    limit?: number;
+  }): Promise<DiscoverAnswer<EntityBeatportHalf>> {
+    return this.discoverGet(`/api/v1/discover/entity/beatport${discoverQuery({ ...params })}`);
+  }
+
+  /** A seed's suggestions, best first, within the Library's own scope (DISCOVER-08). */
+  async getSimilarTracks(params: SimilarTracksRequest): Promise<DiscoverAnswer<SimilarTracks>> {
+    const { filters, ...rest } = params;
+    return this.discoverGet(
+      `/api/v1/discover/similar${discoverQuery({
+        ...rest,
+        filters: filters && filters.rules.length > 0 ? JSON.stringify(filters) : undefined,
+      })}`,
+    );
   }
 
   /** The whole Collection tree, with counts and broken-rule state (ORG-04). */

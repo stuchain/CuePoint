@@ -1011,6 +1011,202 @@ describe("desktop contract", () => {
     });
   });
 
+  describe("Discover (DISCOVER-09)", () => {
+    // Sixteen engine methods across all six files, named here as the export's
+    // are: the generic checks compare the files with each other, so a method
+    // missing from all of them passes every one.
+    const READS: Record<string, string> = {
+      getDiscoverOptions: '"/api/v1/discover/options"',
+      listDiscoveryRuns: "`/api/v1/discover/runs${",
+      getDiscoveryRun: "`/api/v1/discover/runs/${",
+      getDiscoveryRunTracks: "}/tracks${",
+      getWantlist: "`/api/v1/discover/wantlist${",
+      getEntityPage: "`/api/v1/discover/entity${",
+      getEntityBeatport: "`/api/v1/discover/entity/beatport${",
+      getSimilarTracks: "`/api/v1/discover/similar${",
+    };
+    const ACTIONS: Record<string, string> = {
+      startDiscoveryRun: '"/api/v1/discover/runs/start"',
+      deleteDiscoveryRun: "}/delete`",
+      addToWantlist: '"/api/v1/discover/wantlist/add"',
+      removeFromWantlist: '"/api/v1/discover/wantlist/remove"',
+      setWantlistNote: '"/api/v1/discover/wantlist/note"',
+      setWantlistBought: '"/api/v1/discover/wantlist/bought"',
+      startBeatportPlaylistPush: '"/api/v1/discover/playlist/start"',
+      startBeatportResolve: '"/api/v1/discover/resolve/start"',
+    };
+    const methods = [...Object.keys(READS), ...Object.keys(ACTIONS)];
+
+    const clientMethod = (name: string) => {
+      const start = engineClient.indexOf(`async ${name}(`);
+      expect(start, name).toBeGreaterThan(-1);
+      const next = engineClient.indexOf("\n  async ", start + 1);
+      return engineClient.slice(start, next === -1 ? undefined : next);
+    };
+
+    it("has sixteen of them", () => {
+      expect(new Set(methods).size).toBe(16);
+    });
+
+    it.each(methods)("exposes %s on the preload", (method) => {
+      expect(invokedChannels(preload)).toContain(`engine:${method}`);
+    });
+
+    it.each(methods)("handles engine:%s in the main process", (method) => {
+      expect(handledChannels(main)).toContain(`engine:${method}`);
+    });
+
+    it.each(methods)("forwards %s through the supervisor", (method) => {
+      expect(supervisorMethodsDeclared(supervisor)).toContain(method);
+      expect(supervisor).toContain(`(await this.readyClient()).${method}(`);
+    });
+
+    it.each(methods)("declares %s on the renderer bridge as an answer", (method) => {
+      const start = bridgeTypes.indexOf(`  ${method}?: (`);
+      expect(start, method).toBeGreaterThan(-1);
+      const declaration = bridgeTypes.slice(start, bridgeTypes.indexOf(">>;\n", start) + 3);
+      expect(declaration).toMatch(/\) => Promise<DiscoverAnswer<[A-Za-z]+>>;$/);
+      // One method read, not this one and the next.
+      expect(declaration.match(/\?: \(/g)).toHaveLength(1);
+    });
+
+    it.each(Object.entries(READS))("%s reads with GET on its own route", (method, route) => {
+      const body = clientMethod(method);
+      expect(body).toContain(route);
+      expect(body).toContain("this.discoverGet(");
+      expect(body).not.toContain("discoverPost");
+    });
+
+    it.each(Object.entries(ACTIONS))("%s acts with POST on its own route", (method, route) => {
+      // A GET that started a run or a push would be repeated by anything that
+      // retries GETs — and a push repeated is a second playlist on Beatport.
+      const body = clientMethod(method);
+      expect(body).toContain(route);
+      expect(body).toContain("this.discoverPost(");
+    });
+
+    it("answers every refusal as a value, because a rejection loses its reason over IPC", () => {
+      for (const method of methods) {
+        expect(clientMethod(method), method).toContain("Promise<DiscoverAnswer<");
+      }
+      expect(engineClient).toContain("async function readDiscover<T>");
+    });
+
+    it("names nothing incrate: those routes and methods retire in DISCOVER-12", () => {
+      for (const method of methods) {
+        expect(method.toLowerCase()).not.toContain("incrate");
+        expect(clientMethod(method)).not.toContain("/api/v1/incrate/");
+      }
+    });
+
+    it("lets a job's result be read as a run's, a push's or a resolve's", () => {
+      for (const shape of ["DiscoveryRunResult", "BeatportPlaylistResult", "BeatportResolveResult"]) {
+        expect(bridgeTypes).toContain(`| ${shape}`);
+      }
+    });
+
+    const INTERFACES = [
+      "DiscoverRefusal",
+      "DiscoverBeatportStatus",
+      "DiscoverGenre",
+      "DiscoverFacet",
+      "DiscoverDefaults",
+      "DiscoverLimits",
+      "DiscoverResolvePlan",
+      "DiscoverOptions",
+      "DiscoverRunScope",
+      "DiscoverRunParams",
+      "DiscoverRun",
+      "DiscoverRunList",
+      "DiscoverScopeName",
+      "DiscoverRunHeader",
+      "BeatportTrackRow",
+      "DiscoverRunSource",
+      "DiscoverRunTrackRow",
+      "DiscoverRunTracksWindow",
+      "DiscoverRunTracksPage",
+      "DiscoverRunDeleted",
+      "DiscoverJobStarted",
+      "WantlistRow",
+      "WantlistWindow",
+      "WantlistPage",
+      "WantlistChange",
+      "DiscoveryRunResult",
+      "BeatportPlaylistResult",
+      "BeatportResolveResult",
+      "EntityLink",
+      "EntityLinkedName",
+      "EntityYears",
+      "EntityLibrarySummary",
+      "EntityPage",
+      "EntityTracksPage",
+      "EntityBeatportHalf",
+      "SimilarTrack",
+      "SimilarTracks",
+      "DiscoverRunRequest",
+      "SimilarTracksRequest",
+    ];
+
+    it.each(INTERFACES)("keeps the engine and the renderer agreeing about %s", (shape) => {
+      const read = (source: string) => {
+        const start = source.indexOf(`export interface ${shape} `);
+        expect(start, shape).toBeGreaterThan(-1);
+        const body = source.slice(start, source.indexOf("\n}", start));
+        return {
+          // What it extends is part of its shape: a row's inherited fields.
+          heading: body.slice(0, body.indexOf("{")).trim(),
+          fields: [...body.matchAll(/^ {2}([a-z_]+)\??: (.*);$/gm)]
+            .map((match) => `${match[1]}: ${match[2]}`)
+            .sort(),
+        };
+      };
+
+      expect(read(bridgeTypes).fields.length).toBeGreaterThan(0);
+      expect(read(bridgeTypes)).toEqual(read(engineClient));
+    });
+
+    it.each([
+      "BeatportErrorClass",
+      "DiscoverRefusalCode",
+      "DiscoverAnswer<T>",
+      "DiscoverOwnedFilter",
+      "DiscoverRunSort",
+      "WantlistSort",
+      "DiscoverSortDirection",
+      "DiscoverRunOutcome",
+      "DiscoverSourceType",
+      "DiscoverBeatportState",
+      "DiscoverJobType",
+      "WantlistAction",
+      "EntityKind",
+      "EntityIdentity",
+      "EntityBeatportState",
+      "EntityNameOnlyReason",
+      "EntityAction",
+      "SimilarKeyNotation",
+      "SimilarComponent",
+      "BeatportPlaylistRequest",
+    ])("keeps the engine and the renderer agreeing about the type %s", (name) => {
+      const declaration = (source: string) => {
+        const start = source.indexOf(`export type ${name} =`);
+        expect(start, name).toBeGreaterThan(-1);
+        return source.slice(start, source.indexOf(";\n", start)).replace(/\s+/g, " ");
+      };
+
+      expect(declaration(bridgeTypes)).toEqual(declaration(engineClient));
+    });
+
+    it("keeps the reasons Similar Tracks can give in one place for both processes", () => {
+      const reasons = (source: string) => {
+        const start = source.indexOf("export type SimilarReason =");
+        expect(start).toBeGreaterThan(-1);
+        return source.slice(start, source.indexOf("};\n\n", start)).replace(/\s+/g, " ");
+      };
+
+      expect(reasons(bridgeTypes)).toEqual(reasons(engineClient));
+    });
+  });
+
   describe("inKey's routes are gone (CLEAN-14, DEC-071)", () => {
     // A removal is the same six-file sweep as an addition, and a method left in
     // one file is as silent as one missing from another: the renderer would

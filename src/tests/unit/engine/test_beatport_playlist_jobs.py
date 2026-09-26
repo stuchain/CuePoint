@@ -310,7 +310,7 @@ class TestWhatWaitsForWhat:
 
 class TestNothingPushesButAPerson:
     def test_no_module_starts_a_push(self):
-        """Until DISCOVER-09's ``playlist/start`` route, only this module does."""
+        """DISCOVER-09's ``playlist/start`` route is its one caller."""
         from pathlib import Path
 
         package = Path(jobs.__file__).resolve().parents[1]
@@ -319,7 +319,7 @@ class TestNothingPushesButAPerson:
             for path in package.rglob("*.py")
             if "start_beatport_playlist_job" in path.read_text(encoding="utf-8")
         )
-        assert callers == ["engine/beatport_playlist_jobs.py"]
+        assert callers == ["engine/beatport_playlist_jobs.py", "engine/discover_api.py"]
 
 
 class TestTheContainer:

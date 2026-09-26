@@ -39,6 +39,18 @@ import {
   type AttemptCandidates,
   type BatchRevertOutcome,
   type DecisionOutcome,
+  type DiscoverAnswer,
+  type DiscoverJobStarted,
+  type DiscoverOptions,
+  type DiscoverRunDeleted,
+  type DiscoverRunHeader,
+  type DiscoverRunList,
+  type DiscoverRunTracksPage,
+  type EntityBeatportHalf,
+  type EntityPage,
+  type SimilarTracks,
+  type WantlistChange,
+  type WantlistPage,
   type DuplicateGroup,
   type DuplicateGroupList,
   type DuplicateScanStarted,
@@ -657,6 +669,99 @@ export class EngineSupervisor {
     params?: Parameters<EngineClient["getRekordboxExportHistory"]>[0],
   ): Promise<RekordboxExportHistory> {
     return (await this.readyClient()).getRekordboxExportHistory(params);
+  }
+
+  // Discover (DISCOVER-09): forwarded one by one, as every method is.
+  async getDiscoverOptions(): Promise<DiscoverAnswer<DiscoverOptions>> {
+    return (await this.readyClient()).getDiscoverOptions();
+  }
+
+  async listDiscoveryRuns(
+    params?: Parameters<EngineClient["listDiscoveryRuns"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverRunList>> {
+    return (await this.readyClient()).listDiscoveryRuns(params);
+  }
+
+  async getDiscoveryRun(
+    params: Parameters<EngineClient["getDiscoveryRun"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverRunHeader>> {
+    return (await this.readyClient()).getDiscoveryRun(params);
+  }
+
+  async getDiscoveryRunTracks(
+    params: Parameters<EngineClient["getDiscoveryRunTracks"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverRunTracksPage>> {
+    return (await this.readyClient()).getDiscoveryRunTracks(params);
+  }
+
+  async startDiscoveryRun(
+    params?: Parameters<EngineClient["startDiscoveryRun"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverJobStarted>> {
+    return (await this.readyClient()).startDiscoveryRun(params);
+  }
+
+  async deleteDiscoveryRun(
+    params: Parameters<EngineClient["deleteDiscoveryRun"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverRunDeleted>> {
+    return (await this.readyClient()).deleteDiscoveryRun(params);
+  }
+
+  async getWantlist(
+    params?: Parameters<EngineClient["getWantlist"]>[0],
+  ): Promise<DiscoverAnswer<WantlistPage>> {
+    return (await this.readyClient()).getWantlist(params);
+  }
+
+  async addToWantlist(
+    params: Parameters<EngineClient["addToWantlist"]>[0],
+  ): Promise<DiscoverAnswer<WantlistChange>> {
+    return (await this.readyClient()).addToWantlist(params);
+  }
+
+  async removeFromWantlist(
+    params: Parameters<EngineClient["removeFromWantlist"]>[0],
+  ): Promise<DiscoverAnswer<WantlistChange>> {
+    return (await this.readyClient()).removeFromWantlist(params);
+  }
+
+  async setWantlistNote(
+    params: Parameters<EngineClient["setWantlistNote"]>[0],
+  ): Promise<DiscoverAnswer<WantlistChange>> {
+    return (await this.readyClient()).setWantlistNote(params);
+  }
+
+  async setWantlistBought(
+    params: Parameters<EngineClient["setWantlistBought"]>[0],
+  ): Promise<DiscoverAnswer<WantlistChange>> {
+    return (await this.readyClient()).setWantlistBought(params);
+  }
+
+  async startBeatportPlaylistPush(
+    params: Parameters<EngineClient["startBeatportPlaylistPush"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverJobStarted>> {
+    return (await this.readyClient()).startBeatportPlaylistPush(params);
+  }
+
+  async startBeatportResolve(): Promise<DiscoverAnswer<DiscoverJobStarted>> {
+    return (await this.readyClient()).startBeatportResolve();
+  }
+
+  async getEntityPage(
+    params: Parameters<EngineClient["getEntityPage"]>[0],
+  ): Promise<DiscoverAnswer<EntityPage>> {
+    return (await this.readyClient()).getEntityPage(params);
+  }
+
+  async getEntityBeatport(
+    params: Parameters<EngineClient["getEntityBeatport"]>[0],
+  ): Promise<DiscoverAnswer<EntityBeatportHalf>> {
+    return (await this.readyClient()).getEntityBeatport(params);
+  }
+
+  async getSimilarTracks(
+    params: Parameters<EngineClient["getSimilarTracks"]>[0],
+  ): Promise<DiscoverAnswer<SimilarTracks>> {
+    return (await this.readyClient()).getSimilarTracks(params);
   }
 
   async startLibraryImport(params: {

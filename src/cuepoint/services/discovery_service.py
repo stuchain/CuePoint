@@ -778,6 +778,10 @@ class DiscoveryService(IDiscoveryService):
         """Runs, newest first."""
         return self._runs.list_runs(limit, offset)
 
+    def count_runs(self) -> int:
+        """How many runs are kept, running ones included."""
+        return self._runs.count_runs()
+
     def get_run(self, run_id: int) -> Optional[DiscoveryRun]:
         """One run, or None."""
         return self._runs.get_run(run_id)
@@ -800,6 +804,29 @@ class DiscoveryService(IDiscoveryService):
         if self._runs.get_run(run_id) is None:
             raise LookupError(f"No discovery run {run_id}")
         return self._runs.run_tracks(run_id, owned, sort, descending, offset, limit)
+
+    def visible_track_ids(
+        self,
+        run_id: int,
+        owned: str = OWNED_HIDE,
+        sort: str = SORT_FOUND,
+        descending: bool = False,
+    ) -> List[int]:
+        """Every Beatport track id a run's list shows, in the list's order.
+
+        What "a run's visible tracks" are when a push is asked for them
+        (DISCOVER-06's second binding note): more than any window the renderer
+        has loaded. They are read with the list's own filter and order, so a
+        push holds exactly the tracks the table would show, ownership as it is
+        now included.
+
+        Raises:
+            LookupError: If there is no such run.
+            ValueError: If the filter or sort is not one a run answers.
+        """
+        if self._runs.get_run(run_id) is None:
+            raise LookupError(f"No discovery run {run_id}")
+        return self._runs.run_track_ids(run_id, owned, sort, descending)
 
     def delete_run(self, run_id: int) -> bool:
         """Delete an ended run; True when it existed.

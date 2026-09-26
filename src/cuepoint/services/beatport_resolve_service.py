@@ -107,6 +107,26 @@ def _count(n: int, one: str, many: str) -> str:
 
 
 @dataclass(frozen=True)
+class ResolvePlan:
+    """What a resolve would read now.
+
+    Attributes:
+        owned: Distinct Beatport tracks the library owns.
+        to_read: Of those, how many have no catalog row or a stale one: the
+            tracks whose identity a resolve would read. A track Beatport no
+            longer has stays here, since the schema has nowhere to record that
+            it is gone (DISCOVER-04).
+    """
+
+    owned: int
+    to_read: int
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API."""
+        return {"owned": self.owned, "to_read": self.to_read}
+
+
+@dataclass(frozen=True)
 class BeatportResolveResult:
     """What one resolve did.
 
@@ -234,6 +254,19 @@ class BeatportResolveService(IBeatportResolveService):
         """
         self._beatport.require_token()
 
+    def _stale_before(self) -> str:
+        return (self._clock() - self._max_age).isoformat()
+
+    def plan(self) -> ResolvePlan:
+        """What a resolve started now would read, without asking Beatport.
+
+        What the Discover page's resolve prompt counts (DISCOVER-10), by the
+        rule :meth:`resolve` reads by — the catalog's own count of it — so the
+        number offered is the number a job would read. Needs no token.
+        """
+        to_read, owned = self._catalog.resolve_counts(self._stale_before())
+        return ResolvePlan(owned=owned, to_read=to_read)
+
     def resolve(
         self,
         *,
@@ -247,8 +280,7 @@ class BeatportResolveService(IBeatportResolveService):
         about, found or not. The activity feed gets one event whatever the
         outcome. A database error is not a Beatport failure and is raised.
         """
-        stale_before = (self._clock() - self._max_age).isoformat()
-        to_read, owned = self._catalog.resolve_plan(stale_before)
+        to_read, owned = self._catalog.resolve_plan(self._stale_before())
         total = len(to_read)
         counts = {"resolved": 0, "not_found": 0, "unreadable": 0, "failed": 0}
         batches = 0
