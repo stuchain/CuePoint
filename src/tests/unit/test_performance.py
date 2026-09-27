@@ -14,6 +14,7 @@ This script tests:
 import sys
 import os
 import time
+from pathlib import Path
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
@@ -22,12 +23,13 @@ from cuepoint.utils.performance import performance_collector
 from cuepoint.services.output_writer import write_performance_report
 
 
-def test_performance_collector():
-    """Test basic performance collector functionality"""
-    print("=" * 80)
-    print("Test 1: Performance Collector Basic Functionality")
-    print("=" * 80)
+def _record_one_matched_track():
+    """One session with one matched track and three queries, from a clean collector.
 
+    Each test records its own: the collector is process-wide, and a test that
+    read what an earlier test left in it failed whenever the suite's workers
+    ran the two apart.
+    """
     # Reset collector
     performance_collector.reset()
 
@@ -69,9 +71,17 @@ def test_performance_collector():
     # End session
     performance_collector.end_session()
     print("[OK] Session ended")
+    return performance_collector.get_stats()
+
+
+def test_performance_collector():
+    """Test basic performance collector functionality"""
+    print("=" * 80)
+    print("Test 1: Performance Collector Basic Functionality")
+    print("=" * 80)
 
     # Get stats
-    stats = performance_collector.get_stats()
+    stats = _record_one_matched_track()
     assert stats is not None, "Failed to retrieve stats"
     print("\n[OK] Stats retrieved:")
     print(f"  - Total tracks: {stats.total_tracks}")
@@ -85,17 +95,17 @@ def test_performance_collector():
     print(f"  - Avg time per query: {stats.average_time_per_query():.3f}s")
 
 
-def test_performance_report():
+def test_performance_report(tmp_path):
     """Test performance report generation"""
     print("\n" + "=" * 80)
     print("Test 2: Performance Report Generation")
     print("=" * 80)
 
-    stats = performance_collector.get_stats()
+    stats = _record_one_matched_track()
     assert stats is not None, "No stats available for report generation"
 
-    # Generate report
-    report_path = write_performance_report(stats, "test_performance", "output")
+    # Generate report, into the test's own folder rather than the checkout's
+    report_path = write_performance_report(stats, "test_performance", str(tmp_path))
     print(f"[OK] Performance report generated: {report_path}")
 
     # Check if file exists
@@ -212,7 +222,8 @@ def main():
 
     # Run tests
     results.append(("Basic Collector", test_performance_collector()))
-    results.append(("Report Generation", test_performance_report()))
+    # Run by hand, the report goes where the collector's reports always went.
+    results.append(("Report Generation", test_performance_report(Path("output"))))
     results.append(("Multiple Tracks", test_multiple_tracks()))
     results.append(("Retry Decorator", test_retry_decorator()))
 
