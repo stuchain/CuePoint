@@ -1268,6 +1268,11 @@ class ITrackCreditRepository(ABC):
         ...
 
     @abstractmethod
+    def track_identity(self, track_id: int) -> Tuple[Dict[str, int], Optional[int]]:
+        """One resolved track's Beatport artist ids by name key, and its label id."""
+        ...
+
+    @abstractmethod
     def library_name(self, kind: str, key: str) -> Optional[str]:
         """How the library spells a name, or None when no track carries it."""
         ...

@@ -66,7 +66,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple, TypeVar
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple, TypeVar
 
 from cuepoint.core.entity_names import name_key, split_credit
 from cuepoint.models.beatport_cache import ENTITY_ARTIST, ENTITY_LABEL
@@ -604,6 +604,40 @@ class TrackCreditRepository(ITrackCreditRepository):
         return [
             (str(r["name_key"]), str(r["name"]).strip(), int(r["tracks"])) for r in rows
         ]
+
+    def track_identity(self, track_id: int) -> Tuple[Dict[str, int], Optional[int]]:
+        """Who Beatport says one resolved library track is by, and its label.
+
+        As ``(artists, label)``: each name key Beatport credits on the track's
+        accepted Beatport track, artist or remixer, with the id it credits
+        under that key, and the id of the Beatport label the track is on. A key
+        Beatport credits two ids under on the one track names neither, since
+        the key cannot say which. A track not resolved answers ``({}, None)``.
+
+        Read through the per-kind views, which SQLite reads one track at a
+        time (DISCOVER-07's fifth binding note).
+        """
+        conn = self._db.connect()
+        found: Dict[str, Set[int]] = {}
+        for row in conn.execute(
+            f"SELECT name_key, beatport_id FROM {_ARTISTS_VIEW}"
+            " WHERE track_id = ? AND beatport_id IS NOT NULL",
+            (int(track_id),),
+        ):
+            if row["name_key"]:
+                found.setdefault(str(row["name_key"]), set()).add(
+                    int(row["beatport_id"])
+                )
+        artists = {key: min(ids) for key, ids in found.items() if len(ids) == 1}
+        labels = {
+            int(row["beatport_id"])
+            for row in conn.execute(
+                f"SELECT beatport_id FROM {_LABELS_VIEW}"
+                " WHERE track_id = ? AND beatport_id IS NOT NULL",
+                (int(track_id),),
+            )
+        }
+        return artists, (min(labels) if len(labels) == 1 else None)
 
     def library_name(self, kind: str, key: str) -> Optional[str]:
         """How the library spells a name, or None when no track carries it.

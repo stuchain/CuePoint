@@ -1145,6 +1145,8 @@ describe("desktop contract", () => {
       "SimilarTracks",
       "DiscoverRunRequest",
       "SimilarTracksRequest",
+      "TrackCreditLink",
+      "TrackCreditLinks",
     ];
 
     it.each(INTERFACES)("keeps the engine and the renderer agreeing about %s", (shape) => {
@@ -1186,6 +1188,7 @@ describe("desktop contract", () => {
       "SimilarKeyNotation",
       "SimilarComponent",
       "BeatportPlaylistRequest",
+      "TrackCreditRole",
     ])("keeps the engine and the renderer agreeing about the type %s", (name) => {
       const declaration = (source: string) => {
         const start = source.indexOf(`export type ${name} =`);

@@ -1,0 +1,347 @@
+/**
+ * Discover's hooks in the Library (DISCOVER-11).
+ *
+ * The Library is where a person already is, so it is where the pages are
+ * reached from:
+ * - **the operations list** offers Similar tracks, Artist page and Label page
+ *   for one track, in the row menu and behind the Actions button alike, since
+ *   they are one list (ORG-11), and nothing for several;
+ * - **a filter chip** that names one artist or label offers Open page;
+ * - **the Inspector's credits** are links;
+ * - **a page's rules** open with the page's name on their chip.
+ *
+ * Without the hooks (a build without Discover) none of it is offered, and the
+ * menu opens as it always did — which the Library's own tests hold unchanged.
+ */
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+import type {
+  FilterRuleSet,
+  LibrarySearchResponse,
+  LibrarySummary,
+  LibraryTrackDetail,
+  LibraryTrackRow,
+  TrackCreditLinks,
+} from "../../api/cuepointBridge.types";
+import { ToastProvider } from "../../components";
+import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
+import { ScaleProvider } from "../../tokens/ScaleContext";
+import { LibraryScreen, type LibraryScreenProps } from "./LibraryScreen";
+
+const SUMMARY: LibrarySummary = {
+  track_count: 2,
+  playlist_count: 0,
+  playlist_entry_count: 0,
+  library_empty: false,
+  source: {
+    xml_path: "C:\\x\\collection.xml",
+    imported_at: "2026-09-03T10:00:00Z",
+    xml_modified_at: null,
+    xml_size_bytes: null,
+    track_count: 2,
+    playlist_count: 0,
+    exists: true,
+    changed: false,
+  },
+};
+
+function track(id: number, artist: string, label: string | null): LibraryTrackRow {
+  return {
+    id,
+    rekordbox_track_id: String(id),
+    title: `Track ${id}`,
+    artist,
+    remixer: null,
+    album: null,
+    label,
+    genre: "House",
+    key: "8A",
+    bpm: 124,
+    year: 2025,
+    duration_seconds: 300,
+    rating: null,
+    play_count: null,
+    colour: null,
+    date_added: null,
+    comment: null,
+    bitrate: null,
+    file_path: `C:\\music\\${id}.mp3`,
+    effective_rating: null,
+    rating_source: null,
+    favorite: false,
+  };
+}
+
+const TRACKS = [track(1, "Mara Veil, Kiko", "Nightfall Audio"), track(2, "DJEFF", null)];
+
+const CREDITS: Record<number, TrackCreditLinks> = {
+  1: {
+    artists: [
+      { kind: "artist", name: "Mara Veil", role: "artist", ref: "bp:301001", identity: "beatport" },
+      { kind: "artist", name: "Kiko", role: "artist", ref: "name:kiko", identity: "name" },
+    ],
+    remixers: [],
+    label: { kind: "label", name: "Nightfall Audio", role: null, ref: "bp:40211", identity: "beatport" },
+  },
+  2: {
+    artists: [{ kind: "artist", name: "DJEFF", role: "artist", ref: "name:djeff", identity: "name" }],
+    remixers: [],
+    label: null,
+  },
+};
+
+function answer(params: Record<string, unknown>): LibrarySearchResponse {
+  return {
+    query: "",
+    total: TRACKS.length,
+    limit: Number(params.limit ?? 100),
+    offset: Number(params.offset ?? 0),
+    tracks: params.fields === "id" ? [] : TRACKS,
+    track_ids: params.fields === "id" ? TRACKS.map((row) => row.id!) : undefined,
+    library_empty: false,
+    mode: "browse",
+    scope: null,
+    collection_scope: null,
+    collection_id: null,
+    sort: params.sort as string,
+    dir: params.dir as "asc" | "desc",
+    filters: (params.filters as LibrarySearchResponse["filters"]) ?? null,
+  };
+}
+
+function detail(id: number): LibraryTrackDetail {
+  return {
+    track: TRACKS[id - 1]!,
+    playlists: [],
+    playlist_count: 0,
+    metadata: {
+      track_id: id,
+      rating: null,
+      rekordbox_rating: null,
+      effective_rating: null,
+      rating_source: null,
+      favorite: false,
+      notes: null,
+      created_at: null,
+      updated_at: null,
+    },
+    tags: [],
+    collections: [],
+    credits: CREDITS[id],
+  };
+}
+
+const VOCABULARY = {
+  fields: [
+    { name: "artist_name", label: "Credited artist", type: "name", operators: ["is", "is_not"] },
+    { name: "label_name", label: "Label, any spelling", type: "name", operators: ["is"] },
+    { name: "beatport_artist", label: "Beatport artist", type: "beatport", operators: ["is"] },
+    { name: "genre", label: "Genre", type: "text", operators: ["is"] },
+  ],
+  operators: { is: { arity: "single" }, is_not: { arity: "single" } },
+  facetable: [],
+  sortable: ["artist", "title"],
+};
+
+type Mock = ReturnType<typeof vi.fn>;
+let bridge: Record<string, Mock | Record<string, Mock>>;
+
+beforeAll(() => {
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  Object.defineProperty(HTMLElement.prototype, "offsetWidth", { configurable: true, get: () => 1200 });
+  Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, get: () => 600 });
+});
+
+afterAll(() => {
+  Reflect.deleteProperty(HTMLElement.prototype, "offsetWidth");
+  Reflect.deleteProperty(HTMLElement.prototype, "offsetHeight");
+});
+
+beforeEach(() => {
+  localStorage.clear();
+  bridge = {
+    getLibrarySummary: vi.fn().mockResolvedValue(SUMMARY),
+    browseLibrary: vi.fn(async (params: Record<string, unknown>) => answer(params)),
+    getLibraryPlaylists: vi.fn().mockResolvedValue({ playlists: [], total: 0 }),
+    getCollections: vi.fn().mockResolvedValue({ collections: [], total: 0 }),
+    getLibraryFilterFields: vi.fn().mockResolvedValue(VOCABULARY),
+    getLibraryTrack: vi.fn(async ({ trackId }: { trackId: number }) => detail(trackId)),
+    getTags: vi.fn().mockResolvedValue({ tags: [], categories: [] }),
+    player: {
+      playView: vi.fn().mockResolvedValue({ ok: true }),
+      playQueue: vi.fn().mockResolvedValue({ ok: true }),
+      playNext: vi.fn().mockResolvedValue(undefined),
+      addToQueue: vi.fn().mockResolvedValue(undefined),
+    },
+  };
+  (window as unknown as { cuepoint?: unknown }).cuepoint = bridge;
+});
+
+afterEach(() => {
+  delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+  vi.restoreAllMocks();
+});
+
+function renderScreen(props: LibraryScreenProps = {}) {
+  const hooks = { onOpenEntity: vi.fn(), onOpenSimilar: vi.fn() };
+  render(
+    <ScaleProvider>
+      <ToastProvider>
+        <InspectorSlotProvider>
+          <LibraryScreen {...hooks} {...props} />
+          <aside aria-label="Inspector">
+            <InspectorSlotOutlet />
+          </aside>
+        </InspectorSlotProvider>
+      </ToastProvider>
+    </ScaleProvider>,
+  );
+  return hooks;
+}
+
+async function tableReady() {
+  await screen.findByRole("table", { name: "Library tracks" });
+  await screen.findByText("Track 1");
+}
+
+async function openMenuOn(text: string) {
+  const row = screen.getByText(text).closest("[role=row]")!;
+  fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
+  return screen.findByRole("menu");
+}
+
+function labels(menu: HTMLElement): string[] {
+  return within(menu)
+    .getAllByRole("menuitem")
+    .map((node) => node.textContent ?? "");
+}
+
+describe("the operations list's Discover entries", () => {
+  it("offers Similar tracks and both pages for one track, before its organization entries", async () => {
+    renderScreen();
+    await tableReady();
+    const menu = await openMenuOn("Track 1");
+    const all = labels(menu);
+    const at = all.indexOf("Similar tracks");
+    expect(all.slice(at, at + 3)).toEqual(["Similar tracks", "Artist page▸", "Label page"]);
+    expect(all.indexOf("Add to Collection…")).toBeGreaterThan(at);
+    expect(all.slice(0, 3)).toEqual(["Play", "Play next", "Add to queue"]);
+  });
+
+  it("opens each: Similar tracks by track, an artist from the submenu, the label", async () => {
+    const hooks = renderScreen();
+    await tableReady();
+    await userEvent.click(within(await openMenuOn("Track 1")).getByRole("menuitem", { name: "Similar tracks" }));
+    expect(hooks.onOpenSimilar).toHaveBeenCalledWith(1);
+
+    await userEvent.click(within(await openMenuOn("Track 1")).getByRole("menuitem", { name: /Artist page/ }));
+    await userEvent.click(
+      within(screen.getByRole("menu", { name: "Artist page" })).getByRole("menuitem", { name: "Kiko" }),
+    );
+    expect(hooks.onOpenEntity).toHaveBeenLastCalledWith("artist", "name:kiko");
+
+    await userEvent.click(within(await openMenuOn("Track 1")).getByRole("menuitem", { name: "Label page" }));
+    expect(hooks.onOpenEntity).toHaveBeenLastCalledWith("label", "bp:40211");
+  });
+
+  it("opens a single artist's page directly, and disables a label the track lacks", async () => {
+    const hooks = renderScreen();
+    await tableReady();
+    const menu = await openMenuOn("Track 2");
+    expect(within(menu).getByRole("menuitem", { name: "Label page" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Artist page" }));
+    expect(hooks.onOpenEntity).toHaveBeenCalledWith("artist", "name:djeff");
+  });
+
+  it("is the same list behind the Actions button", async () => {
+    const hooks = renderScreen();
+    await tableReady();
+    await userEvent.click(screen.getByText("Track 1"));
+    await userEvent.click(screen.getByRole("button", { name: "Actions…" }));
+    const menu = await screen.findByRole("menu");
+    expect(labels(menu).slice(0, 3)).toEqual(["Similar tracks", "Artist page▸", "Label page"]);
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Similar tracks" }));
+    expect(hooks.onOpenSimilar).toHaveBeenCalledWith(1);
+  });
+
+  it("offers nothing of Discover's for several tracks", async () => {
+    renderScreen();
+    await tableReady();
+    const table = screen.getByRole("table", { name: "Library tracks" });
+    fireEvent.click(within(table).getByText("Track 1"));
+    fireEvent.click(within(table).getByText("Track 2"), { ctrlKey: true });
+    expect(await screen.findByText("2 tracks selected")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Actions…" }));
+    const menu = await screen.findByRole("menu");
+    expect(labels(menu)).not.toContain("Similar tracks");
+    expect(labels(menu)).not.toContain("Artist page");
+  });
+
+  it("offers none of it in a build without Discover, and opens the menu at once", async () => {
+    renderScreen({ onOpenEntity: undefined, onOpenSimilar: undefined });
+    await tableReady();
+    const row = screen.getByText("Track 1").closest("[role=row]")!;
+    fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
+    // Synchronously: nothing had to be read first.
+    const menu = screen.getByRole("menu");
+    expect(labels(menu)).not.toContain("Similar tracks");
+  });
+});
+
+describe("filter chips and the Inspector", () => {
+  const RULES: FilterRuleSet = {
+    match: "all",
+    rules: [
+      { field: "artist_name", operator: "is", value: "Kiko" },
+      { field: "artist_name", operator: "is_not", value: "DJEFF" },
+      { field: "genre", operator: "is", value: "House" },
+    ],
+  };
+
+  it("offers Open page on a chip naming one artist, and on no other", async () => {
+    const hooks = renderScreen({ openWith: { rules: RULES, token: "nav-1" } });
+    await tableReady();
+    const chips = await screen.findByRole("list", { name: "Active filters" });
+    const open = within(chips).getAllByRole("button", { name: /^Open page/ });
+    expect(open).toHaveLength(1);
+    expect(open[0]).toHaveAccessibleName("Open page: Credited artist is Kiko");
+    fireEvent.click(open[0]);
+    expect(hooks.onOpenEntity).toHaveBeenCalledWith("artist", "name:Kiko");
+  });
+
+  it("reads a page's id rule as the page's name, and opens that page", async () => {
+    const hooks = renderScreen({
+      openWith: {
+        rules: { match: "all", rules: [{ field: "beatport_artist", operator: "is", value: 301001 }] },
+        token: "nav-2",
+        names: { "beatport_artist:301001": "Mara Veil" },
+      },
+    });
+    await tableReady();
+    const chips = await screen.findByRole("list", { name: "Active filters" });
+    expect(await within(chips).findByText("Beatport artist is Mara Veil")).toBeInTheDocument();
+    fireEvent.click(within(chips).getByRole("button", { name: /^Open page/ }));
+    expect(hooks.onOpenEntity).toHaveBeenCalledWith("artist", "bp:301001");
+  });
+
+  it("links the Inspector's credits to their pages", async () => {
+    const hooks = renderScreen();
+    await tableReady();
+    await userEvent.click(screen.getByText("Track 1"));
+    const inspector = screen.getByRole("complementary", { name: "Inspector" });
+    await userEvent.click(await within(inspector).findByRole("button", { name: "Mara Veil" }));
+    expect(hooks.onOpenEntity).toHaveBeenCalledWith("artist", "bp:301001");
+    await waitFor(() =>
+      expect(within(inspector).getByRole("button", { name: "Nightfall Audio" })).toBeInTheDocument(),
+    );
+  });
+});

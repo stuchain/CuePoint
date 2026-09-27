@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import type { LibrarySummary } from "../../api/cuepointBridge.types";
+import type { EntityKind, LibrarySummary } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { Panel } from "../../components/Panel";
 import { Tabs } from "../../components/Tabs";
@@ -22,6 +22,7 @@ import { HealthView } from "./HealthView";
 import { MissingFilesView } from "./MissingFilesView";
 import { ReviewView } from "./ReviewView";
 import type { CleanOpening, CleanSectionOpening } from "./cleanLink";
+import { entityPath } from "../discover/discoverLinks";
 import {
   CLEAN_SECTIONS,
   loadCleanSection,
@@ -48,6 +49,11 @@ export interface CleanScreenProps {
 
 export function CleanScreen({ openWith = null, openSection = null }: CleanScreenProps = {}) {
   const navigate = useNavigate();
+  // The Inspector's artist and label links (DISCOVER-11).
+  const openEntity = useCallback(
+    (kind: EntityKind, ref: string) => navigate(entityPath(kind, ref)),
+    [navigate],
+  );
   const [section, setSection] = useState<CleanSection>(() =>
     openWith ? "review" : (openSection?.section ?? loadCleanSection()),
   );
@@ -146,10 +152,15 @@ export function CleanScreen({ openWith = null, openSection = null }: CleanScreen
             health={cleanHealth.health}
             onHealthChanged={reloadHealth}
             focus={focus}
+            onOpenEntity={openEntity}
           />
         )}
         {section === "missing" && (
-          <MissingFilesView health={cleanHealth.health} onHealthChanged={reloadHealth} />
+          <MissingFilesView
+            health={cleanHealth.health}
+            onHealthChanged={reloadHealth}
+            onOpenEntity={openEntity}
+          />
         )}
         {section === "duplicates" && (
           <DuplicatesView health={cleanHealth.health} onHealthChanged={reloadHealth} />

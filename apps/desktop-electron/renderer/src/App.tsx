@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   AboutDialog,
@@ -16,6 +16,7 @@ import {
   applyLaunchDestination,
   AppShellLayout,
   enabledDestinations,
+  findDestinationById,
   GlobalSearch,
   HOME_DESTINATION_ID,
   Sidebar,
@@ -38,6 +39,15 @@ import {
   ToolSelectionScreen,
 } from "./screens";
 import { libraryOpening } from "./screens/library/libraryLink";
+import { EntityScreen } from "./screens/discover/EntityScreen";
+import { SimilarScreen } from "./screens/discover/SimilarScreen";
+import {
+  ARTIST_PAGE_ROUTE,
+  LABEL_PAGE_ROUTE,
+  SIMILAR_ROUTE,
+  entityPath,
+  similarPath,
+} from "./screens/discover/discoverLinks";
 import {
   cleanOpening,
   cleanSectionOpening,
@@ -98,6 +108,20 @@ function AppShell() {
   }, []);
 
   useRememberDestination();
+
+  // DISCOVER-11: the pages every track leads to, and Similar tracks.
+  const openEntity = useCallback(
+    (kind: "artist" | "label", ref: string) => navigate(entityPath(kind, ref)),
+    [navigate],
+  );
+  const openSimilar = useCallback(
+    (trackId: number) => navigate(similarPath(trackId)),
+    [navigate],
+  );
+  const openInClean = useCallback(
+    (trackId: number) => navigate("/clean", { state: cleanTrackState(trackId) }),
+    [navigate],
+  );
   // Shuffle and repeat are remembered across sessions (PLAYER-07). Restored
   // here rather than in the bar, which does not exist until the first play —
   // by then the queue has already been built and ordered.
@@ -123,8 +147,10 @@ function AppShell() {
           <LibraryScreen
             openWith={libraryOpening(location)}
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
-            onOpenInClean={(trackId) => navigate("/clean", { state: cleanTrackState(trackId) })}
+            onOpenInClean={openInClean}
             onOpenMissingFiles={() => navigate("/clean", { state: cleanSectionState("missing") })}
+            onOpenEntity={openEntity}
+            onOpenSimilar={openSimilar}
           />
         );
       case "clean":
@@ -145,8 +171,10 @@ function AppShell() {
           <LibraryScreen
             focus="collections"
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
-            onOpenInClean={(trackId) => navigate("/clean", { state: cleanTrackState(trackId) })}
+            onOpenInClean={openInClean}
             onOpenMissingFiles={() => navigate("/clean", { state: cleanSectionState("missing") })}
+            onOpenEntity={openEntity}
+            onOpenSimilar={openSimilar}
           />
         );
       // DISCOVER-10. inCrate stays beside it, unchanged, until DISCOVER-12.
@@ -194,6 +222,24 @@ function AppShell() {
               element={screenFor(destination.id)}
             />
           ))}
+          {/*
+            Artist and Label pages and Similar tracks are routes under
+            Discover, not destinations of their own (DEC-094): the sidebar
+            keeps Discover lit on them, and the app reopens on Discover.
+          */}
+          {findDestinationById("discover")?.enabled && (
+            <>
+              <Route
+                path={ARTIST_PAGE_ROUTE}
+                element={<EntityScreen kind="artist" onOpenInClean={openInClean} />}
+              />
+              <Route
+                path={LABEL_PAGE_ROUTE}
+                element={<EntityScreen kind="label" onOpenInClean={openInClean} />}
+              />
+              <Route path={SIMILAR_ROUTE} element={<SimilarScreen onOpenInClean={openInClean} />} />
+            </>
+          )}
           {/*
             A retired page's path lands on the page that replaced it (DEC-071),
             so a bookmark or an old link still arrives somewhere real.

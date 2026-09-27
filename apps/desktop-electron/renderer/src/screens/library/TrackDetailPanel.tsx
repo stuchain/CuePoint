@@ -30,11 +30,14 @@ import { useCallback, useState } from "react";
 import { PixelIcon } from "../../components/PixelIcon";
 import type {
   CollectionNode,
+  EntityKind,
   LibraryPlaylistNode,
   LibraryTrackDetail,
+  TrackCreditLink,
   TrackFieldChange,
 } from "../../api/cuepointBridge.types";
 import { announceLibraryChange } from "../../api/libraryChanges";
+import { CreditLinks } from "./CreditLinks";
 import { followJob } from "./followJob";
 import { starsFor } from "./filterText";
 import { jobErrorMessage } from "./libraryFormat";
@@ -73,6 +76,11 @@ export interface TrackDetailPanelProps {
   onOpenInClean?: (trackId: number) => void;
   /** Where a finished revert or restore says what it did. */
   onMessage?: (message: string) => void;
+  /**
+   * Open an artist's or a label's page (DISCOVER-11). Absent, the credit and
+   * the label are text, as they always were.
+   */
+  onOpenEntity?: (kind: EntityKind, ref: string) => void;
 }
 
 /** Absent is absent: an em dash, never a zero. */
@@ -89,6 +97,19 @@ function duration(seconds: number | null): string {
   const minutes = Math.floor(seconds / 60);
   const rest = Math.round(seconds % 60);
   return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+/**
+ * A credit as links when the engine named its artists and there is somewhere
+ * to open them, and as the text it always was otherwise.
+ */
+function credited(
+  credit: string | null | undefined,
+  links: readonly TrackCreditLink[] | undefined,
+  onOpen: ((kind: EntityKind, ref: string) => void) | undefined,
+): React.ReactNode {
+  if (!onOpen || !links || links.length === 0) return text(credit);
+  return <CreditLinks credit={credit ?? ""} links={links} onOpen={onOpen} />;
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -119,6 +140,7 @@ export function TrackDetailPanel({
   onTrackChanged,
   onOpenInClean,
   onMessage,
+  onOpenEntity,
 }: TrackDetailPanelProps) {
   // Bumped by every accepted write, which is what makes the History section
   // re-read. A local append would show entries the engine did not write:
@@ -192,7 +214,7 @@ export function TrackDetailPanel({
     );
   }
 
-  const { track, playlists, collections } = detail;
+  const { track, playlists, collections, credits } = detail;
 
   return (
     <div className="cp-track-detail">
@@ -201,7 +223,17 @@ export function TrackDetailPanel({
           <TrackArtwork trackId={track.id} version={written} />
         )}
         <h2 className="cp-track-detail__title">{text(track.title)}</h2>
-        <p className="cp-track-detail__artist">{text(track.artist)}</p>
+        <p className="cp-track-detail__artist">
+          {credited(track.artist, credits?.artists, onOpenEntity)}
+        </p>
+        {/* The label a Label page means: the effective one (DEC-068), which
+            is why it is here beside the artist rather than in the imported
+            record below, whose Label row stays what Rekordbox sent. */}
+        {onOpenEntity && credits?.label && (
+          <p className="cp-track-detail__label">
+            {credited(credits.label.name, [credits.label], onOpenEntity)}
+          </p>
+        )}
         {selectionCount > 1 && (
           // DEC-045: the panel shows the last-clicked track and says how many
           // there are. Editing all of them is ORG-11's toolbar, and saying so
@@ -243,7 +275,10 @@ export function TrackDetailPanel({
 
       <h3 className="cp-track-detail__subtitle">From Rekordbox</h3>
       <dl className="cp-track-detail__fields">
-        <Row label="Remixer" value={text(track.remixer)} />
+        <Row
+          label="Remixer"
+          value={credited(track.remixer, credits?.remixers, onOpenEntity)}
+        />
         <Row label="Album" value={text(track.album)} />
         <Row label="Label" value={text(track.label)} />
         <Row label="Genre" value={text(track.genre)} />

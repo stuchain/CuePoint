@@ -184,6 +184,17 @@ export function starsFor(value: number): string {
 export interface ValueNames {
   tag?: ReadonlyMap<number, string>;
   collection?: ReadonlyMap<number, string>;
+  /**
+   * What a Beatport id a rule carries is called (DISCOVER-11), keyed by
+   * `beatportNameKey`: "Beatport artist is Mara Veil" rather than an id. The
+   * rule stays the id; a page that knows the name hands it over.
+   */
+  beatport?: ReadonlyMap<string, string>;
+}
+
+/** The key a Beatport id rule's name is kept under in `ValueNames.beatport`. */
+export function beatportNameKey(field: string, id: unknown): string {
+  return `${field}:${String(id)}`;
 }
 
 /** What is shown for an id whose row is gone — deleted between saves. */
@@ -220,6 +231,9 @@ function valueText(
   }
   if (isMembership(field)) return nameFor(field, value, names);
   if (value === null || value === undefined || value === "") return "(none)";
+  if (field?.type === "beatport") {
+    return names?.beatport?.get(beatportNameKey(field.name, value)) ?? String(value);
+  }
   if (field?.type === "bool") return value === true || value === "true" ? "yes" : "no";
   if (isStars(field) && typeof value === "number") return starsFor(value);
   return choiceLabel(field, value) ?? String(value);

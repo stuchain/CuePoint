@@ -60,6 +60,21 @@ describe("Sidebar", () => {
     expect(links.indexOf("Clean")).toBeLessThan(links.indexOf("Discover"));
   });
 
+  it("keeps Discover lit on its Artist, Label and Similar pages (DISCOVER-11)", () => {
+    for (const path of [
+      "/discover/artist/bp%3A301001",
+      "/discover/label/name%3Acold%20room",
+      "/discover/similar/12",
+    ]) {
+      const view = renderSidebar(path);
+      expect(
+        within(nav()).getByRole("link", { name: "Discover" }),
+        path,
+      ).toHaveAttribute("aria-current", "page");
+      view.unmount();
+    }
+  });
+
   it("groups today's screens under a Tools heading (DEC-021)", () => {
     renderSidebar();
     expect(within(nav()).getByText("Tools", { selector: "p" })).toBeInTheDocument();

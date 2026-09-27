@@ -19,6 +19,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import type {
   BatchSelection,
+  EntityKind,
   LibraryHealth,
   LibraryTrackRow,
   MatchCandidate,
@@ -106,9 +107,19 @@ export interface ReviewViewProps {
    * track's own state, and the comparison shows it until a row is chosen.
    */
   focus?: CleanOpening | null;
+  /**
+   * Open an artist's or a label's page from the Inspector's credits
+   * (DISCOVER-11). Absent, they are text.
+   */
+  onOpenEntity?: (kind: EntityKind, ref: string) => void;
 }
 
-export function ReviewView({ health, onHealthChanged, focus = null }: ReviewViewProps) {
+export function ReviewView({
+  health,
+  onHealthChanged,
+  focus = null,
+  onOpenEntity,
+}: ReviewViewProps) {
   const { push } = useToast();
   const [scope, setScope] = useState<ReviewScope>(DEFAULT_REVIEW_SCOPE);
   const [where, setWhere] = useState(WHOLE_LIBRARY);
@@ -479,6 +490,7 @@ export function ReviewView({ health, onHealthChanged, focus = null }: ReviewView
       onReveal={() => reveal(trackId)}
       onError={(text) => push(text, "warning")}
       onMessage={(text) => push(text, "success")}
+      onOpenEntity={onOpenEntity}
       onTrackChanged={() => {
         window_.reload();
         matches.reload();

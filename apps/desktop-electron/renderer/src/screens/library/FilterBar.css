@@ -85,6 +85,20 @@
   color: var(--accent-danger);
 }
 
+/* A chip that names one artist or label opens its page (DISCOVER-11). A word,
+   not a glyph beside the ×, so the two are never mistaken for each other. */
+.cp-filter-bar__chip .cp-filter-bar__chip-open {
+  width: auto;
+  color: var(--accent-info);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+}
+
+.cp-filter-bar__chip .cp-filter-bar__chip-open:hover {
+  color: var(--accent-info);
+  text-decoration: underline;
+}
+
 /* The new field kinds (ORG-12). A tag is chosen from chips and a rating from
    stars, because both are things a user recognizes and neither is a number
    anyone would type. */

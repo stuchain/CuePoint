@@ -639,6 +639,35 @@ class TestTrackDetailEndpoint:
         assert payload["playlists"] == []
         assert payload["playlist_count"] == 0
 
+    def test_its_artists_and_label_are_links_to_their_pages(self, engine, seeded):
+        """DISCOVER-11: the Inspector's links, split and named by the engine."""
+        payload = get_json(
+            engine, f"/api/v1/library/tracks/{self.track_id(engine, '3')}"
+        )
+        credits = payload["credits"]
+        assert [(a["name"], a["ref"], a["role"]) for a in credits["artists"]] == [
+            ("Ame", "name:ame", "artist")
+        ]
+        assert credits["remixers"] == []
+        assert (credits["label"]["name"], credits["label"]["ref"]) == (
+            "Innervisions",
+            "name:innervisions",
+        )
+        # A track with no label links none.
+        bare = get_json(engine, f"/api/v1/library/tracks/{self.track_id(engine, '4')}")
+        assert bare["credits"]["label"] is None
+
+    def test_the_label_linked_is_the_effective_one(self, engine, seeded):
+        from cuepoint.services.interfaces import IMetadataService
+        from cuepoint.utils.di_container import get_container
+
+        track_id = self.track_id(engine, "3")
+        get_container().resolve(IMetadataService).set_override(
+            track_id, "label", "Keinemusik"
+        )
+        payload = get_json(engine, f"/api/v1/library/tracks/{track_id}")
+        assert payload["credits"]["label"]["ref"] == "name:keinemusik"
+
     def test_a_missing_track_is_a_404(self, engine, seeded):
         status, payload = get_error(engine, "/api/v1/library/tracks/999999")
         assert status == 404

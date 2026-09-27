@@ -115,13 +115,18 @@ the cap. If a file is no longer where Rekordbox says it is, **Show in folder**
 opens the nearest folder that still exists, and says so.
 
 **Actions…**, and a track's right-click menu, offer the same list: everything in
-[Organizing your library](organization.md), and the Clean actions below.
+[Organizing your library](organization.md), the Clean actions below, and — for
+one track — **Similar tracks**, **Artist page** and **Label page** (see
+[Discover](discover.md#artist-and-label-pages)). A filter chip that names one
+artist or label, such as "Credited artist is Mara Veil", offers **Open page**.
 
 ### The Inspector
 
 Selecting one track fills the Inspector. From the top:
 
-- **The track's artwork**, or *No artwork* when it has none.
+- **The track's artwork**, or *No artwork* when it has none, its title, and its
+  artists and label. Each artist in the credit, and the label, is a link to
+  their page (see [Discover](discover.md#artist-and-label-pages)).
 - **Yours** — what you have added in CuePoint: your rating, favorite, notes,
   tags, and your key, BPM, genre, label and year. See
   [Organizing your library](organization.md) and
@@ -487,7 +492,7 @@ Nothing is uploaded anywhere. The library never leaves your machine.
 
 - [Organizing your library](organization.md) — Collections, tags and ratings
 - [Clean](clean.md) — matching on Beatport, reviewing, missing files, duplicates and Health
-- [Discover](discover.md) — new music from your artists and labels, and the wantlist
+- [Discover](discover.md) — new music from your artists and labels, the wantlist, artist and label pages, and similar tracks
 - [The CuePoint window](the-window.md#keyboard-shortcuts) — navigation, search, the status strip, and the keys for Clean's review queue
 - [Performance](performance.md#the-library) — measured timings at 50,000 tracks
 - [Troubleshooting](troubleshooting.md)

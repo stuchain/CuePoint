@@ -1,0 +1,26 @@
+/*
+ * A name inside a credit, as a link to its page (DISCOVER-11).
+ *
+ * It keeps the type of the sentence it sits in — a credit is read as a line,
+ * not as a row of buttons — and takes the accent and an underline on hover,
+ * as the Inspector's other links do.
+ */
+.cp-credit-link {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent-info);
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.cp-credit-link:hover {
+  text-decoration: underline;
+}
+
+.cp-credit-link:focus-visible {
+  outline: var(--border-width) solid var(--accent-info);
+  outline-offset: calc(1px * var(--scale));
+}

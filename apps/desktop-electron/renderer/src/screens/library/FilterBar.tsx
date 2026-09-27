@@ -51,6 +51,7 @@ import {
   type ValueNames,
 } from "./filterText";
 import { isModified, smartStatus, type SmartAttachment } from "./smartFilter";
+import { pageOfRule, type PageRef } from "../discover/discoverLinks";
 import "./FilterBar.css";
 
 /** One Collection a membership clause can name. Folders are drawn, not chosen. */
@@ -102,6 +103,13 @@ export interface FilterBarProps {
    */
   problem?: string | null;
   onRetry?: () => void;
+
+  /**
+   * Open the page a clause names (DISCOVER-11): "Credited artist is Mara
+   * Veil" is her page. Offered on a chip that names one artist or label, and
+   * nowhere when absent.
+   */
+  onOpenPage?: (page: PageRef) => void;
 }
 
 export function FilterBar({
@@ -122,6 +130,7 @@ export function FilterBar({
   onManageTags,
   problem: refusal = null,
   onRetry,
+  onOpenPage,
 }: FilterBarProps) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<DraftRule>(() => emptyDraft(vocabulary));
@@ -456,18 +465,33 @@ export function FilterBar({
 
       {rules.length > 0 && (
         <ul className="cp-filter-bar__chips" aria-label="Active filters">
-          {rules.map((rule, index) => (
-            <li key={`${rule.field}-${rule.operator}-${index}`} className="cp-filter-bar__chip">
-              <span>{describeRule(vocabulary, rule, names)}</span>
-              <button
-                type="button"
-                aria-label={`Remove filter: ${describeRule(vocabulary, rule, names)}`}
-                onClick={() => onFiltersChange(removeRule(filters, index))}
-              >
-                ×
-              </button>
-            </li>
-          ))}
+          {rules.map((rule, index) => {
+            const text = describeRule(vocabulary, rule, names);
+            const page = onOpenPage ? pageOfRule(rule) : null;
+            return (
+              <li key={`${rule.field}-${rule.operator}-${index}`} className="cp-filter-bar__chip">
+                <span>{text}</span>
+                {page && onOpenPage && (
+                  <button
+                    type="button"
+                    className="cp-filter-bar__chip-open"
+                    aria-label={`Open page: ${text}`}
+                    title={page.kind === "label" ? "Open the label page" : "Open the artist page"}
+                    onClick={() => onOpenPage(page)}
+                  >
+                    Open page
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-label={`Remove filter: ${text}`}
+                  onClick={() => onFiltersChange(removeRule(filters, index))}
+                >
+                  ×
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 

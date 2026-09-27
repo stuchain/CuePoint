@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-10 are implemented, and DISCOVER-01's spike is recorded.
+(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-11 are implemented, and DISCOVER-01's spike is recorded.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -365,7 +365,7 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-10 implemented
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-11 implemented
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
@@ -507,6 +507,19 @@ end-to-end journey runs over a Beatport answered from a fixture file, whose new 
 real client reads in place of the network. The journey found that the Runs tab left the open
 run no room at the default scale, so it stacks when narrow, and that Settings could not focus its
 token field while its status loaded; both were fixed.
+
+DISCOVER-11 is implemented: every track leads to its artist's and label's pages and to its
+similar tracks, from the Inspector (a credit's artists and the label are links), the one
+operations list (row menu and Actions…) and a filter chip that names one artist or label, in
+the Library and on Clean. The engine answers the links with the track's detail — the credit
+split by `split_credit`, by Beatport id where the track is resolved — so the renderer has no
+copy of the rule. A page, under the `discover` destination, says which identity it is, holds
+the Library's own table over the engine's rule set (double-click plays it as the queue) and
+the Beatport half in every state, and takes its rules to the Library or a Smart Collection.
+Similar tracks shows DISCOVER-08's suggestions as library rows with a Reasons column in
+words. The end-to-end journey (Library track, artist page, play, Similar tracks, queue a
+suggestion) passes in a packaged build; its checks found the Beatport half blanking while it
+re-asked and Similar tracks' reasons out of sight on a narrow pane, both fixed.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 

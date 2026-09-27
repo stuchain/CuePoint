@@ -16,6 +16,7 @@ import { useCallback, useMemo, useState } from "react";
 import type {
   BatchSelection,
   CleanJobStarted,
+  EntityKind,
   FileCheckStarted,
   LibraryHealth,
   LibraryTrackRow,
@@ -45,9 +46,18 @@ const WHOLE_LIBRARY_SELECTION: BatchSelection = { query: {} };
 export interface MissingFilesViewProps {
   health: LibraryHealth | null;
   onHealthChanged: () => void;
+  /**
+   * Open an artist's or a label's page from the Inspector's credits
+   * (DISCOVER-11). Absent, they are text.
+   */
+  onOpenEntity?: (kind: EntityKind, ref: string) => void;
 }
 
-export function MissingFilesView({ health, onHealthChanged }: MissingFilesViewProps) {
+export function MissingFilesView({
+  health,
+  onHealthChanged,
+  onOpenEntity,
+}: MissingFilesViewProps) {
   const { push } = useToast();
   const [order, setOrder] = useState<{ sort: string; dir: SortDirection }>({
     sort: "artist",
@@ -125,6 +135,7 @@ export function MissingFilesView({ health, onHealthChanged }: MissingFilesViewPr
       selectionCount={selection.count}
       onReveal={() => reveal(trackId)}
       onError={(text) => push(text, "warning")}
+      onOpenEntity={onOpenEntity}
     />,
   );
 

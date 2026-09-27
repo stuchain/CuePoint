@@ -488,11 +488,89 @@ class EntityBeatportHalf:
         }
 
 
+#: The roles a credited artist link carries: the library's own two
+#: (``models.track_credit``), restated because a model imports only models
+#: and a test holds the two lists together.
+CREDIT_LINK_ROLES = ("artist", "remixer")
+
+
+@dataclass(frozen=True)
+class CreditLink:
+    """One name a library track credits, and the page it opens (DISCOVER-11).
+
+    What the Inspector draws as a link: an artist from the track's credit, as
+    ``split_credit`` finds it, or its label. The reference is the Beatport id
+    when the track is resolved and Beatport credits one id under that name on
+    it (DEC-095), and the name's key otherwise.
+
+    Attributes:
+        name: The name as the library spells it.
+        ref: The page it opens.
+        role: For an artist, ``artist`` or ``remixer``; None for a label.
+    """
+
+    name: str
+    ref: EntityRef
+    role: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        """Validate the link."""
+        if not isinstance(self.name, str) or not self.name.strip():
+            raise ValueError("A credit link names someone")
+        if self.ref.kind == ENTITY_ARTIST:
+            one_of(self.role, CREDIT_LINK_ROLES, "role")
+        elif self.role is not None:
+            raise ValueError("A label is credited without a role")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API."""
+        return {
+            "kind": self.ref.kind,
+            "name": self.name,
+            "role": self.role,
+            "ref": self.ref.token,
+            "identity": self.ref.identity,
+        }
+
+
+@dataclass(frozen=True)
+class TrackCreditLinks:
+    """Who a library track is by and which label it is on, as links.
+
+    Attributes:
+        artists: The artists its credit names, in credit order.
+        remixers: The remixers its remixer credit names, in order.
+        label: Its effective label (DEC-068), or None when it has none.
+    """
+
+    artists: Tuple[CreditLink, ...] = ()
+    remixers: Tuple[CreditLink, ...] = ()
+    label: Optional[CreditLink] = None
+
+    def __post_init__(self) -> None:
+        """Validate the links."""
+        for link in (*self.artists, *self.remixers):
+            if link.ref.kind != ENTITY_ARTIST:
+                raise ValueError("An artist credit links to an artist page")
+        if self.label is not None and self.label.ref.kind != ENTITY_LABEL:
+            raise ValueError("A label links to a label page")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API."""
+        return {
+            "artists": [link.to_dict() for link in self.artists],
+            "remixers": [link.to_dict() for link in self.remixers],
+            "label": None if self.label is None else self.label.to_dict(),
+        }
+
+
 __all__: List[str] = [
     "ACTIONS",
     "ACTION_RESOLVE",
     "ACTION_SETTINGS",
     "BEATPORT_STATES",
+    "CREDIT_LINK_ROLES",
+    "CreditLink",
     "ENTITY_ARTIST",
     "ENTITY_LABEL",
     "EntityBeatportHalf",
@@ -522,5 +600,6 @@ __all__: List[str] = [
     "STATE_RATE_LIMITED",
     "STATE_REJECTED",
     "STATE_UNAVAILABLE",
+    "TrackCreditLinks",
     "parse_entity_ref",
 ]

@@ -1078,3 +1078,61 @@ describe("an artist or a label by identity (DISCOVER-03)", () => {
     expect(screen.getByText("Credited artist is not Âme")).toBeInTheDocument();
   });
 });
+
+describe("a chip that names one artist or label (DISCOVER-11)", () => {
+  const NAMES: LibraryFilterVocabulary = {
+    ...VOCABULARY,
+    fields: [
+      ...VOCABULARY.fields,
+      {
+        name: "artist_name",
+        type: "name",
+        label: "Credited artist",
+        facetable: true,
+        unit: null,
+        integer: false,
+        operators: ["is", "is_not"],
+      },
+    ],
+    operators: { ...VOCABULARY.operators, is_not: { arity: "single" } },
+  };
+  const RULES: FilterRuleSet = {
+    match: "all",
+    rules: [
+      { field: "artist_name", operator: "is", value: "Kiko" },
+      { field: "artist_name", operator: "is_not", value: "Kiko" },
+      { field: "genre", operator: "is", value: "House" },
+    ],
+  };
+
+  function bar(onOpenPage?: (page: { kind: string; ref: string }) => void) {
+    render(
+      <FilterBar
+        vocabulary={NAMES}
+        filters={RULES}
+        onFiltersChange={vi.fn()}
+        query=""
+        onQueryChange={vi.fn()}
+        total={3}
+        onOpenPage={onOpenPage}
+      />,
+    );
+    return screen.getByRole("list", { name: "Active filters" });
+  }
+
+  it("opens the page it names, and only from a chip that names one", () => {
+    const open = vi.fn();
+    const chips = bar(open);
+    const buttons = within(chips).getAllByRole("button", { name: /^Open page/ });
+    expect(buttons).toHaveLength(1);
+    fireEvent.click(buttons[0]);
+    expect(open).toHaveBeenCalledWith({ kind: "artist", ref: "name:Kiko" });
+  });
+
+  it("offers nothing when there is nowhere to open a page", () => {
+    const chips = bar();
+    expect(within(chips).queryByRole("button", { name: /^Open page/ })).toBeNull();
+    // The remove buttons are untouched.
+    expect(within(chips).getAllByRole("button", { name: /^Remove filter/ })).toHaveLength(3);
+  });
+});

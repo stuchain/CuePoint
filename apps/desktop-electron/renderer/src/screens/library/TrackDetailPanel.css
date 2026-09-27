@@ -43,6 +43,12 @@
   font-size: var(--font-size-xs);
 }
 
+.cp-track-detail__label {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+}
+
 .cp-track-detail__selection {
   margin: var(--space-xs) 0 0;
   color: var(--accent-info);

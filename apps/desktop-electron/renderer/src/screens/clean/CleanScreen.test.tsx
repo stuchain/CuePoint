@@ -27,6 +27,7 @@ import type {
   TrackMatchState,
 } from "../../api/cuepointBridge.types";
 import { ToastProvider } from "../../components";
+import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { CleanScreen } from "./CleanScreen";
 import fixture from "./cleanEmpty.fixture.json";
@@ -1244,5 +1245,72 @@ describe("opening a part from somewhere else (EXPORT-07)", () => {
       section: "missing",
       token: "k",
     });
+  });
+});
+
+describe("the Inspector's links to the pages (DISCOVER-11)", () => {
+  const CREDITS = {
+    artists: [
+      { kind: "artist", name: "Artist 1", role: "artist", ref: "name:artist 1", identity: "name" },
+    ],
+    remixers: [],
+    label: null,
+  };
+
+  function renderWithInspector(section: string) {
+    localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, section);
+    return render(
+      <ScaleProvider>
+        <ToastProvider>
+          <InspectorSlotProvider>
+            <MemoryRouter initialEntries={["/clean"]}>
+              <Routes>
+                <Route path="/clean" element={<CleanScreen />} />
+                <Route path="*" element={<LocationProbe />} />
+              </Routes>
+            </MemoryRouter>
+            <aside aria-label="Inspector">
+              <InspectorSlotOutlet />
+            </aside>
+          </InspectorSlotProvider>
+        </ToastProvider>
+      </ScaleProvider>,
+    );
+  }
+
+  it.each([
+    ["review", "Track 1"],
+    ["missing", "Track 9"],
+  ])("opens an artist's page from the %s Inspector", async (section, title) => {
+    // The queue's own detail, with credits and CuePoint's layer added.
+    const read = bridge.getLibraryTrack!.getMockImplementation() as (params: {
+      trackId: number;
+    }) => Promise<{ track: Record<string, unknown> } & Record<string, unknown>>;
+    bridge.getLibraryTrack!.mockImplementation(async (params: { trackId: number }) => {
+      const detail = await read(params);
+      return {
+        ...detail,
+        track: { ...detail.track, artist: "Artist 1" },
+        // The Inspector draws CuePoint's own layer, which the queue never needed.
+        metadata: {
+          track_id: params.trackId,
+          rating: null,
+          rekordbox_rating: null,
+          effective_rating: null,
+          rating_source: null,
+          favorite: false,
+          notes: null,
+          created_at: null,
+          updated_at: null,
+        },
+        credits: CREDITS,
+      };
+    });
+    renderWithInspector(section);
+    fireEvent.click(await screen.findByText(title));
+    const inspector = screen.getByRole("complementary", { name: "Inspector" });
+    fireEvent.click(await within(inspector).findByRole("button", { name: "Artist 1" }));
+    const probe = await screen.findByTestId("location");
+    expect(JSON.parse(probe.textContent ?? "{}").pathname).toBe("/discover/artist/name%3Aartist%201");
   });
 });

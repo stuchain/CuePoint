@@ -12,7 +12,7 @@ Quick links:
 - [Your library](user-guide/library.md) (importing and refreshing a Rekordbox collection)
 - [Organizing your library](user-guide/organization.md) (Collections, tags, ratings and saved filters)
 - [Clean](user-guide/clean.md) (matching on Beatport, review, missing files, duplicates and Health)
-- [Discover](user-guide/discover.md) (new music from your artists and labels, the wantlist, Beatport playlists)
+- [Discover](user-guide/discover.md) (new music from your artists and labels, the wantlist, Beatport playlists, artist and label pages, similar tracks)
 - [Feature implementation designs](feature/README.md) (inCrate and others)
 - [UI overhaul](ui-overhaul/README.md) (lab layout → production rollout)
 - [Contributing](https://github.com/stuchain/CuePoint/blob/main/.github/CONTRIBUTING.md)

@@ -1,5 +1,5 @@
 import {
-  findDestinationByPath,
+  findOwningDestination,
   findDestinationById,
   homeDestination,
   pageDestination,
@@ -82,7 +82,7 @@ export function destinationToRemember(
   pathname: string,
   destinations?: readonly NavDestination[],
 ): NavDestination | null {
-  const destination = findDestinationByPath(pathname, destinations);
+  const destination = findOwningDestination(pathname, destinations);
   if (!destination || !destination.enabled) return null;
   const page = pageDestination(destination, destinations);
   return page.enabled ? page : null;

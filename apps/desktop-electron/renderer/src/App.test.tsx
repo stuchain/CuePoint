@@ -265,6 +265,52 @@ describe("App shell", () => {
   });
 
   /**
+   * DISCOVER-11: Artist and Label pages and Similar tracks are routes under
+   * Discover (DEC-094), not destinations: Discover stays lit on them, and the
+   * app remembers Discover, not the page.
+   */
+  describe("the pages under Discover (DISCOVER-11)", () => {
+    it.each([
+      ["#/discover/artist/name%3AKiko", /This page could not open/],
+      ["#/discover/label/bp%3A40211", /This page could not open/],
+      ["#/discover/similar/12", /Similar tracks could not open/],
+    ])("routes %s to its page, with Discover lit", async (hash, marker) => {
+      const { container } = render(<App />);
+      await screen.findByText(/Select a tool to get started/i);
+
+      act(() => {
+        window.location.hash = hash;
+      });
+
+      const main = container.querySelector("main.app-main") as HTMLElement;
+      expect(await within(main).findByText(marker)).toBeInTheDocument();
+      expect(within(main).queryByText(/Select a tool to get started/i)).toBeNull();
+      expect(navLink("Discover")).toHaveAttribute("aria-current", "page");
+      await waitFor(() =>
+        expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("discover"),
+      );
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it("reopens on Discover, not on the page", async () => {
+      const first = render(<App />);
+      await screen.findByText(/Select a tool to get started/i);
+      act(() => {
+        window.location.hash = "#/discover/artist/name%3AKiko";
+      });
+      await waitFor(() =>
+        expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("discover"),
+      );
+      first.unmount();
+      window.location.hash = "";
+
+      render(<App />);
+
+      expect(window.location.hash).toBe("#/discover");
+    });
+  });
+
+  /**
    * DEC-062: two entries in the sidebar, one page behind them.
    *
    * The registry tests prove the rule; these prove the app obeys it, which is

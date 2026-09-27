@@ -1,0 +1,2030 @@
+{
+  "detail_resolved": {
+    "collections": [],
+    "credits": {
+      "artists": [
+        {
+          "identity": "beatport",
+          "kind": "artist",
+          "name": "Mara Veil",
+          "ref": "bp:301001",
+          "role": "artist"
+        },
+        {
+          "identity": "name",
+          "kind": "artist",
+          "name": "Kiko",
+          "ref": "name:kiko",
+          "role": "artist"
+        }
+      ],
+      "label": {
+        "identity": "beatport",
+        "kind": "label",
+        "name": "Nightfall Audio",
+        "ref": "bp:40211",
+        "role": null
+      },
+      "remixers": []
+    },
+    "metadata": {
+      "created_at": null,
+      "effective_rating": null,
+      "favorite": false,
+      "notes": null,
+      "rating": null,
+      "rating_source": null,
+      "rekordbox_rating": null,
+      "track_id": 1,
+      "updated_at": null
+    },
+    "playlist_count": 0,
+    "playlists": [],
+    "tags": [],
+    "track": {
+      "album": null,
+      "artist": "Mara Veil, Kiko",
+      "artwork": "unknown",
+      "bitrate": null,
+      "bpm": 124.0,
+      "colour": null,
+      "comment": null,
+      "date_added": null,
+      "duration_seconds": null,
+      "effective_bpm": 124.0,
+      "effective_genre": "House",
+      "effective_key": "8A",
+      "effective_label": "Nightfall Audio",
+      "effective_rating": null,
+      "effective_year": 2025,
+      "favorite": false,
+      "file_path": "/music/p1.mp3",
+      "file_status": "not_checked",
+      "genre": "House",
+      "id": 1,
+      "key": "8A",
+      "label": "Nightfall Audio",
+      "match_disputed": false,
+      "match_score": null,
+      "match_state": "accepted",
+      "overridden": [],
+      "override_sources": {},
+      "play_count": null,
+      "rating": null,
+      "rating_source": null,
+      "rekordbox_track_id": "p1",
+      "remixer": null,
+      "title": "Harbour Lights",
+      "year": 2025
+    }
+  },
+  "detail_unresolved": {
+    "collections": [],
+    "credits": {
+      "artists": [
+        {
+          "identity": "name",
+          "kind": "artist",
+          "name": "Kiko",
+          "ref": "name:kiko",
+          "role": "artist"
+        }
+      ],
+      "label": {
+        "identity": "name",
+        "kind": "label",
+        "name": "Cold Room",
+        "ref": "name:cold room",
+        "role": null
+      },
+      "remixers": [
+        {
+          "identity": "name",
+          "kind": "artist",
+          "name": "DJEFF",
+          "ref": "name:djeff",
+          "role": "remixer"
+        }
+      ]
+    },
+    "metadata": {
+      "created_at": null,
+      "effective_rating": null,
+      "favorite": false,
+      "notes": null,
+      "rating": null,
+      "rating_source": null,
+      "rekordbox_rating": null,
+      "track_id": 3,
+      "updated_at": null
+    },
+    "playlist_count": 0,
+    "playlists": [],
+    "tags": [],
+    "track": {
+      "album": null,
+      "artist": "Kiko",
+      "artwork": "unknown",
+      "bitrate": null,
+      "bpm": 62.0,
+      "colour": null,
+      "comment": null,
+      "date_added": null,
+      "duration_seconds": null,
+      "effective_bpm": 62.0,
+      "effective_genre": "Techno",
+      "effective_key": "8A",
+      "effective_label": "Cold Room",
+      "effective_rating": null,
+      "effective_year": 2023,
+      "favorite": false,
+      "file_path": "/music/p3.mp3",
+      "file_status": "not_checked",
+      "genre": "Techno",
+      "id": 3,
+      "key": "8A",
+      "label": "Cold Room",
+      "match_disputed": false,
+      "match_score": null,
+      "match_state": "not_matched",
+      "overridden": [],
+      "override_sources": {},
+      "play_count": null,
+      "rating": null,
+      "rating_source": null,
+      "rekordbox_track_id": "p3",
+      "remixer": "DJEFF",
+      "title": "Night Bus",
+      "year": 2023
+    }
+  },
+  "half_artist_ok": {
+    "refusal": null,
+    "value": {
+      "action": null,
+      "beatport_id": 301001,
+      "fetched_at": "2026-09-20T12:00:00+00:00",
+      "found_by_name": false,
+      "from_cache": false,
+      "kind": "artist",
+      "message": "2 tracks released on Beatport since 2025-09-20",
+      "page": {
+        "owned": 1,
+        "rows": [
+          {
+            "artists": [
+              "Mara Veil"
+            ],
+            "beatport_track_id": 7,
+            "bpm": 124.0,
+            "fetched_at": "2026-09-20T12:00:00+00:00",
+            "genre_id": 5,
+            "genre_name": "House",
+            "key": null,
+            "label_id": 40211,
+            "label_key": "nightfall audio",
+            "label_name": "Nightfall Audio",
+            "mix_name": "Original Mix",
+            "on_wantlist": false,
+            "owned": true,
+            "release_date": "2026-09-18",
+            "release_id": 700,
+            "release_name": "Lantern EP",
+            "remixers": [],
+            "title": "Track 7",
+            "url": "https://www.beatport.com/track/track-7/7"
+          },
+          {
+            "artists": [
+              "Mara Veil"
+            ],
+            "beatport_track_id": 9,
+            "bpm": 124.0,
+            "fetched_at": "2026-09-20T12:00:00+00:00",
+            "genre_id": 5,
+            "genre_name": "House",
+            "key": null,
+            "label_id": 40211,
+            "label_key": "nightfall audio",
+            "label_name": "Nightfall Audio",
+            "mix_name": "Original Mix",
+            "on_wantlist": false,
+            "owned": false,
+            "release_date": "2026-08-11",
+            "release_id": 701,
+            "release_name": "Signal EP",
+            "remixers": [],
+            "title": "Track 9",
+            "url": "https://www.beatport.com/track/track-9/9"
+          }
+        ],
+        "total": 2,
+        "tracks": 2
+      },
+      "reason": null,
+      "ref": "bp:301001",
+      "resolvable": 0,
+      "retry_after": null,
+      "since": "2025-09-20",
+      "state": "ok",
+      "until": "2026-09-20"
+    }
+  },
+  "half_forbidden": {
+    "refusal": null,
+    "value": {
+      "action": "settings",
+      "beatport_id": 40211,
+      "fetched_at": null,
+      "found_by_name": false,
+      "from_cache": false,
+      "kind": "label",
+      "message": "The Beatport token is not allowed to read the catalog",
+      "page": null,
+      "reason": null,
+      "ref": "bp:40211",
+      "resolvable": 0,
+      "retry_after": null,
+      "since": "2026-06-22",
+      "state": "forbidden",
+      "until": "2026-09-20"
+    }
+  },
+  "half_found_by_name": {
+    "refusal": null,
+    "value": {
+      "action": null,
+      "beatport_id": 40211,
+      "fetched_at": "2026-09-20T12:00:00+00:00",
+      "found_by_name": true,
+      "from_cache": false,
+      "kind": "label",
+      "message": "Found by name on Beatport; 3 tracks released on Beatport since 2026-06-22",
+      "page": {
+        "owned": 2,
+        "rows": [
+          {
+            "artists": [
+              "Mara Veil"
+            ],
+            "beatport_track_id": 7,
+            "bpm": 124.0,
+            "fetched_at": "2026-09-20T12:00:00+00:00",
+            "genre_id": 5,
+            "genre_name": "House",
+            "key": null,
+            "label_id": 40211,
+            "label_key": "nightfall audio",
+            "label_name": "Nightfall Audio",
+            "mix_name": "Original Mix",
+            "on_wantlist": false,
+            "owned": true,
+            "release_date": "2026-09-18",
+            "release_id": 700,
+            "release_name": "Lantern EP",
+            "remixers": [],
+            "title": "Track 7",
+            "url": "https://www.beatport.com/track/track-7/7"
+          },
+          {
+            "artists": [
+              "Someone"
+            ],
+            "beatport_track_id": 8,
+            "bpm": 124.0,
+            "fetched_at": "2026-09-20T12:00:00+00:00",
+            "genre_id": 5,
+            "genre_name": "House",
+            "key": null,
+            "label_id": 40211,
+            "label_key": "nightfall audio",
+            "label_name": "Nightfall Audio",
+            "mix_name": "Original Mix",
+            "on_wantlist": false,
+            "owned": true,
+            "release_date": "2026-09-17",
+            "release_id": 700,
+            "release_name": "Lantern EP",
+            "remixers": [],
+            "title": "Track 8",
+            "url": "https://www.beatport.com/track/track-8/8"
+          },
+          {
+            "artists": [
+              "Mara Veil"
+            ],
+            "beatport_track_id": 9,
+            "bpm": 124.0,
+            "fetched_at": "2026-09-20T12:00:00+00:00",
+            "genre_id": 5,
+            "genre_name": "House",
+            "key": null,
+            "label_id": 40211,
+            "label_key": "nightfall audio",
+            "label_name": "Nightfall Audio",
+            "mix_name": "Original Mix",
+            "on_wantlist": false,
+            "owned": false,
+            "release_date": "2026-08-11",
+            "release_id": 701,
+            "release_name": "Signal EP",
+            "remixers": [],
+            "title": "Track 9",
+            "url": "https://www.beatport.com/track/track-9/9"
+          }
+        ],
+        "total": 3,
+        "tracks": 3
+      },
+      "reason": null,
+      "ref": "name:nightfall audio",
+      "resolvable": 2,
+      "retry_after": null,
+      "since": "2026-06-22",
+      "state": "ok",
+      "until": "2026-09-20"
+    }
+  },
+  "half_label_ok": {
+    "refusal": null,
+    "value": {
+      "action": null,
+      "beatport_id": 40211,
+      "fetched_at": "2026-09-20T12:00:00+00:00",
+      "found_by_name": false,
+      "from_cache": false,
+      "kind": "label",
+      "message": "3 tracks released on Beatport since 2026-06-22",
+      "page": {
+        "owned": 2,
+        "rows": [
+          {
+            "artists": [
+              "Mara Veil"
+            ],
+            "beatport_track_id": 7,
+            "bpm": 124.0,
+            "fetched_at": "2026-09-20T12:00:00+00:00",
+            "genre_id": 5,
+            "genre_name": "House",
+            "key": null,
+            "label_id": 40211,
+            "label_key": "nightfall audio",
+            "label_name": "Nightfall Audio",
+            "mix_name": "Original Mix",
+            "on_wantlist": false,
+            "owned": true,
+            "release_date": "2026-09-18",
+            "release_id": 700,
+            "release_name": "Lantern EP",
+            "remixers": [],
+            "title": "Track 7",
+            "url": "https://www.beatport.com/track/track-7/7"
+          },
+          {
+            "artists": [
+              "Someone"
+            ],
+            "beatport_track_id": 8,
+            "bpm": 124.0,
+            "fetched_at": "2026-09-20T12:00:00+00:00",
+            "genre_id": 5,
+            "genre_name": "House",
+            "key": null,
+            "label_id": 40211,
+            "label_key": "nightfall audio",
+            "label_name": "Nightfall Audio",
+            "mix_name": "Original Mix",
+            "on_wantlist": false,
+            "owned": true,
+            "release_date": "2026-09-17",
+            "release_id": 700,
+            "release_name": "Lantern EP",
+            "remixers": [],
+            "title": "Track 8",
+            "url": "https://www.beatport.com/track/track-8/8"
+          },
+          {
+            "artists": [
+              "Mara Veil"
+            ],
+            "beatport_track_id": 9,
+            "bpm": 124.0,
+            "fetched_at": "2026-09-20T12:00:00+00:00",
+            "genre_id": 5,
+            "genre_name": "House",
+            "key": null,
+            "label_id": 40211,
+            "label_key": "nightfall audio",
+            "label_name": "Nightfall Audio",
+            "mix_name": "Original Mix",
+            "on_wantlist": false,
+            "owned": false,
+            "release_date": "2026-08-11",
+            "release_id": 701,
+            "release_name": "Signal EP",
+            "remixers": [],
+            "title": "Track 9",
+            "url": "https://www.beatport.com/track/track-9/9"
+          }
+        ],
+        "total": 3,
+        "tracks": 3
+      },
+      "reason": null,
+      "ref": "bp:40211",
+      "resolvable": 0,
+      "retry_after": null,
+      "since": "2026-06-22",
+      "state": "ok",
+      "until": "2026-09-20"
+    }
+  },
+  "half_label_owned_hidden": {
+    "refusal": null,
+    "value": {
+      "action": null,
+      "beatport_id": 40211,
+      "fetched_at": "2026-09-20T12:00:00+00:00",
+      "found_by_name": false,
+      "from_cache": false,
+      "kind": "label",
+      "message": "3 tracks released on Beatport since 2026-06-22",
+      "page": {
+        "owned": 2,
+        "rows": [
+          {
+            "artists": [
+              "Mara Veil"
+            ],
+            "beatport_track_id": 9,
+            "bpm": 124.0,
+            "fetched_at": "2026-09-20T12:00:00+00:00",
+            "genre_id": 5,
+            "genre_name": "House",
+            "key": null,
+            "label_id": 40211,
+            "label_key": "nightfall audio",
+            "label_name": "Nightfall Audio",
+            "mix_name": "Original Mix",
+            "on_wantlist": false,
+            "owned": false,
+            "release_date": "2026-08-11",
+            "release_id": 701,
+            "release_name": "Signal EP",
+            "remixers": [],
+            "title": "Track 9",
+            "url": "https://www.beatport.com/track/track-9/9"
+          }
+        ],
+        "total": 1,
+        "tracks": 3
+      },
+      "reason": null,
+      "ref": "bp:40211",
+      "resolvable": 0,
+      "retry_after": null,
+      "since": "2026-06-22",
+      "state": "ok",
+      "until": "2026-09-20"
+    }
+  },
+  "half_no_token": {
+    "refusal": null,
+    "value": {
+      "action": "settings",
+      "beatport_id": 40211,
+      "fetched_at": null,
+      "found_by_name": false,
+      "from_cache": false,
+      "kind": "label",
+      "message": "No Beatport token is set, so CuePoint cannot read Beatport",
+      "page": null,
+      "reason": null,
+      "ref": "bp:40211",
+      "resolvable": 0,
+      "retry_after": null,
+      "since": "2026-06-22",
+      "state": "no_token",
+      "until": "2026-09-20"
+    }
+  },
+  "half_not_on_beatport": {
+    "refusal": null,
+    "value": {
+      "action": null,
+      "beatport_id": null,
+      "fetched_at": null,
+      "found_by_name": false,
+      "from_cache": false,
+      "kind": "label",
+      "message": "Beatport has no label by this name",
+      "page": null,
+      "reason": "not_on_beatport",
+      "ref": "name:cold room",
+      "resolvable": 0,
+      "retry_after": null,
+      "since": null,
+      "state": "name_only",
+      "until": null
+    }
+  },
+  "half_not_resolved": {
+    "refusal": null,
+    "value": {
+      "action": null,
+      "beatport_id": null,
+      "fetched_at": null,
+      "found_by_name": false,
+      "from_cache": false,
+      "kind": "artist",
+      "message": "CuePoint knows this artist only by name, and none of these tracks is matched to Beatport, so it cannot tell which Beatport artist this is",
+      "page": null,
+      "reason": "not_resolved",
+      "ref": "name:kiko",
+      "resolvable": 0,
+      "retry_after": null,
+      "since": null,
+      "state": "name_only",
+      "until": null
+    }
+  },
+  "half_not_resolved_resolvable": {
+    "refusal": null,
+    "value": {
+      "action": "resolve",
+      "beatport_id": null,
+      "fetched_at": null,
+      "found_by_name": false,
+      "from_cache": false,
+      "kind": "artist",
+      "message": "CuePoint knows this artist only by name. Resolving 1 matched track will find them on Beatport",
+      "page": null,
+      "reason": "not_resolved",
+      "ref": "name:djeff",
+      "resolvable": 1,
+      "retry_after": null,
+      "since": null,
+      "state": "name_only",
+      "until": null
+    }
+  },
+  "half_rate_limited": {
+    "refusal": null,
+    "value": {
+      "action": null,
+      "beatport_id": 40211,
+      "fetched_at": null,
+      "found_by_name": false,
+      "from_cache": false,
+      "kind": "label",
+      "message": "Beatport asked CuePoint to slow down; try again shortly",
+      "page": null,
+      "reason": null,
+      "ref": "bp:40211",
+      "resolvable": 0,
+      "retry_after": null,
+      "since": "2026-06-22",
+      "state": "rate_limited",
+      "until": "2026-09-20"
+    }
+  },
+  "half_rejected": {
+    "refusal": null,
+    "value": {
+      "action": "settings",
+      "beatport_id": 40211,
+      "fetched_at": null,
+      "found_by_name": false,
+      "from_cache": false,
+      "kind": "label",
+      "message": "Beatport rejected the token",
+      "page": null,
+      "reason": null,
+      "ref": "bp:40211",
+      "resolvable": 0,
+      "retry_after": null,
+      "since": "2026-06-22",
+      "state": "rejected",
+      "until": "2026-09-20"
+    }
+  },
+  "half_shared": {
+    "refusal": null,
+    "value": {
+      "action": null,
+      "beatport_id": null,
+      "fetched_at": null,
+      "found_by_name": false,
+      "from_cache": false,
+      "kind": "artist",
+      "message": "2 Beatport artists share this name; choose one to see their releases",
+      "page": null,
+      "reason": "shared",
+      "ref": "name:someone",
+      "resolvable": 0,
+      "retry_after": null,
+      "since": null,
+      "state": "name_only",
+      "until": null
+    }
+  },
+  "half_unavailable": {
+    "refusal": null,
+    "value": {
+      "action": null,
+      "beatport_id": 40211,
+      "fetched_at": null,
+      "found_by_name": false,
+      "from_cache": false,
+      "kind": "label",
+      "message": "Beatport could not be reached",
+      "page": null,
+      "reason": null,
+      "ref": "bp:40211",
+      "resolvable": 0,
+      "retry_after": null,
+      "since": "2026-06-22",
+      "state": "unavailable",
+      "until": "2026-09-20"
+    }
+  },
+  "library_artist_id": {
+    "collection_id": null,
+    "collection_scope": null,
+    "dir": "desc",
+    "filters": {
+      "match": "all",
+      "rules": [
+        {
+          "field": "beatport_artist",
+          "operator": "is",
+          "value": 301001
+        }
+      ]
+    },
+    "filters_applied": {
+      "match": "all",
+      "rules": [
+        {
+          "field": "beatport_artist",
+          "operator": "is",
+          "value": 301001
+        }
+      ]
+    },
+    "library_empty": false,
+    "limit": 100,
+    "mode": "browse",
+    "offset": 0,
+    "query": "",
+    "scope": null,
+    "sort": "year",
+    "total": 2,
+    "tracks": [
+      {
+        "album": null,
+        "artist": "Mara Veil, Kiko",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 124.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": 124.0,
+        "effective_genre": "House",
+        "effective_key": "8A",
+        "effective_label": "Nightfall Audio",
+        "effective_rating": null,
+        "effective_year": 2025,
+        "favorite": false,
+        "file_path": "/music/p1.mp3",
+        "file_status": "not_checked",
+        "genre": "House",
+        "id": 1,
+        "key": "8A",
+        "label": "Nightfall Audio",
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "accepted",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p1",
+        "remixer": null,
+        "title": "Harbour Lights",
+        "year": 2025
+      },
+      {
+        "album": null,
+        "artist": "Mara Veil",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 124.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": 124.0,
+        "effective_genre": "House",
+        "effective_key": "9A",
+        "effective_label": "Nightfall Audio",
+        "effective_rating": null,
+        "effective_year": 2024,
+        "favorite": false,
+        "file_path": "/music/p2.mp3",
+        "file_status": "not_checked",
+        "genre": "House",
+        "id": 2,
+        "key": "9A",
+        "label": "Nightfall Audio",
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "not_matched",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p2",
+        "remixer": null,
+        "title": "Low Tide",
+        "year": 2024
+      }
+    ]
+  },
+  "library_artist_name": {
+    "collection_id": null,
+    "collection_scope": null,
+    "dir": "desc",
+    "filters": {
+      "match": "all",
+      "rules": [
+        {
+          "field": "artist_name",
+          "operator": "is",
+          "value": "Kiko"
+        }
+      ]
+    },
+    "filters_applied": {
+      "match": "all",
+      "rules": [
+        {
+          "field": "artist_name",
+          "operator": "is",
+          "value": "Kiko"
+        }
+      ]
+    },
+    "library_empty": false,
+    "limit": 100,
+    "mode": "browse",
+    "offset": 0,
+    "query": "",
+    "scope": null,
+    "sort": "year",
+    "total": 3,
+    "tracks": [
+      {
+        "album": null,
+        "artist": "Mara Veil, Kiko",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 124.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": 124.0,
+        "effective_genre": "House",
+        "effective_key": "8A",
+        "effective_label": "Nightfall Audio",
+        "effective_rating": null,
+        "effective_year": 2025,
+        "favorite": false,
+        "file_path": "/music/p1.mp3",
+        "file_status": "not_checked",
+        "genre": "House",
+        "id": 1,
+        "key": "8A",
+        "label": "Nightfall Audio",
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "accepted",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p1",
+        "remixer": null,
+        "title": "Harbour Lights",
+        "year": 2025
+      },
+      {
+        "album": null,
+        "artist": "Kiko",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 62.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": 62.0,
+        "effective_genre": "Techno",
+        "effective_key": "8A",
+        "effective_label": "Cold Room",
+        "effective_rating": null,
+        "effective_year": 2023,
+        "favorite": false,
+        "file_path": "/music/p3.mp3",
+        "file_status": "not_checked",
+        "genre": "Techno",
+        "id": 3,
+        "key": "8A",
+        "label": "Cold Room",
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "not_matched",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p3",
+        "remixer": "DJEFF",
+        "title": "Night Bus",
+        "year": 2023
+      },
+      {
+        "album": null,
+        "artist": "Kiko",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": null,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": null,
+        "effective_genre": "Techno",
+        "effective_key": null,
+        "effective_label": null,
+        "effective_rating": null,
+        "effective_year": null,
+        "favorite": false,
+        "file_path": "/music/p7.mp3",
+        "file_status": "not_checked",
+        "genre": "Techno",
+        "id": 7,
+        "key": null,
+        "label": null,
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "not_matched",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p7",
+        "remixer": null,
+        "title": "Untimed",
+        "year": null
+      }
+    ]
+  },
+  "library_label_id": {
+    "collection_id": null,
+    "collection_scope": null,
+    "dir": "desc",
+    "filters": {
+      "match": "all",
+      "rules": [
+        {
+          "field": "beatport_label",
+          "operator": "is",
+          "value": 40211
+        }
+      ]
+    },
+    "filters_applied": {
+      "match": "all",
+      "rules": [
+        {
+          "field": "beatport_label",
+          "operator": "is",
+          "value": 40211
+        }
+      ]
+    },
+    "library_empty": false,
+    "limit": 100,
+    "mode": "browse",
+    "offset": 0,
+    "query": "",
+    "scope": null,
+    "sort": "year",
+    "total": 3,
+    "tracks": [
+      {
+        "album": null,
+        "artist": "Mara Veil, Kiko",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 124.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": 124.0,
+        "effective_genre": "House",
+        "effective_key": "8A",
+        "effective_label": "Nightfall Audio",
+        "effective_rating": null,
+        "effective_year": 2025,
+        "favorite": false,
+        "file_path": "/music/p1.mp3",
+        "file_status": "not_checked",
+        "genre": "House",
+        "id": 1,
+        "key": "8A",
+        "label": "Nightfall Audio",
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "accepted",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p1",
+        "remixer": null,
+        "title": "Harbour Lights",
+        "year": 2025
+      },
+      {
+        "album": null,
+        "artist": "Mara Veil",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 124.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": 124.0,
+        "effective_genre": "House",
+        "effective_key": "9A",
+        "effective_label": "Nightfall Audio",
+        "effective_rating": null,
+        "effective_year": 2024,
+        "favorite": false,
+        "file_path": "/music/p2.mp3",
+        "file_status": "not_checked",
+        "genre": "House",
+        "id": 2,
+        "key": "9A",
+        "label": "Nightfall Audio",
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "not_matched",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p2",
+        "remixer": null,
+        "title": "Low Tide",
+        "year": 2024
+      },
+      {
+        "album": null,
+        "artist": "Someone",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 126.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": 126.0,
+        "effective_genre": "Deep House",
+        "effective_key": "3A",
+        "effective_label": "Nightfall Audio",
+        "effective_rating": null,
+        "effective_year": 2021,
+        "favorite": false,
+        "file_path": "/music/p5.mp3",
+        "file_status": "not_checked",
+        "genre": "Deep House",
+        "id": 5,
+        "key": "3A",
+        "label": "Nightfall Audio",
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "accepted",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p5",
+        "remixer": null,
+        "title": "Someone Else",
+        "year": 2021
+      }
+    ]
+  },
+  "page_artist_id": {
+    "refusal": null,
+    "value": {
+      "beatport_id": 301001,
+      "identity": "beatport",
+      "kind": "artist",
+      "library": {
+        "genres": {
+          "field": "genre",
+          "total_values": 1,
+          "truncated": false,
+          "values": [
+            {
+              "count": 2,
+              "value": "House"
+            }
+          ]
+        },
+        "index_current": true,
+        "related": {
+          "field": "label_name",
+          "total_values": 1,
+          "truncated": false,
+          "values": [
+            {
+              "count": 2,
+              "value": "Nightfall Audio"
+            }
+          ]
+        },
+        "tracks": 2,
+        "years": {
+          "first": 2024,
+          "last": 2025
+        }
+      },
+      "links": [],
+      "name": "Mara Veil",
+      "name_key": null,
+      "names": [
+        {
+          "name": "Mara Veil",
+          "name_key": "mara veil",
+          "tracks": 2
+        }
+      ],
+      "redirected_from": null,
+      "ref": "bp:301001",
+      "rules": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "beatport_artist",
+            "operator": "is",
+            "value": 301001
+          }
+        ]
+      }
+    }
+  },
+  "page_artist_name": {
+    "refusal": null,
+    "value": {
+      "beatport_id": null,
+      "identity": "name",
+      "kind": "artist",
+      "library": {
+        "genres": {
+          "field": "genre",
+          "total_values": 2,
+          "truncated": false,
+          "values": [
+            {
+              "count": 2,
+              "value": "Techno"
+            },
+            {
+              "count": 1,
+              "value": "House"
+            }
+          ]
+        },
+        "index_current": true,
+        "related": {
+          "field": "label_name",
+          "total_values": 3,
+          "truncated": false,
+          "values": [
+            {
+              "count": 1,
+              "value": "Cold Room"
+            },
+            {
+              "count": 1,
+              "value": "Nightfall Audio"
+            },
+            {
+              "count": 1,
+              "value": null
+            }
+          ]
+        },
+        "tracks": 3,
+        "years": {
+          "first": 2023,
+          "last": 2025
+        }
+      },
+      "links": [],
+      "name": "Kiko",
+      "name_key": "kiko",
+      "names": [],
+      "redirected_from": null,
+      "ref": "name:kiko",
+      "rules": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "artist_name",
+            "operator": "is",
+            "value": "Kiko"
+          }
+        ]
+      }
+    }
+  },
+  "page_artist_redirected": {
+    "refusal": null,
+    "value": {
+      "beatport_id": 301001,
+      "identity": "beatport",
+      "kind": "artist",
+      "library": {
+        "genres": {
+          "field": "genre",
+          "total_values": 1,
+          "truncated": false,
+          "values": [
+            {
+              "count": 2,
+              "value": "House"
+            }
+          ]
+        },
+        "index_current": true,
+        "related": {
+          "field": "label_name",
+          "total_values": 1,
+          "truncated": false,
+          "values": [
+            {
+              "count": 2,
+              "value": "Nightfall Audio"
+            }
+          ]
+        },
+        "tracks": 2,
+        "years": {
+          "first": 2024,
+          "last": 2025
+        }
+      },
+      "links": [],
+      "name": "Mara Veil",
+      "name_key": null,
+      "names": [
+        {
+          "name": "Mara Veil",
+          "name_key": "mara veil",
+          "tracks": 2
+        }
+      ],
+      "redirected_from": "name:mara veil",
+      "ref": "bp:301001",
+      "rules": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "beatport_artist",
+            "operator": "is",
+            "value": 301001
+          }
+        ]
+      }
+    }
+  },
+  "page_artist_shared": {
+    "refusal": null,
+    "value": {
+      "beatport_id": null,
+      "identity": "name",
+      "kind": "artist",
+      "library": {
+        "genres": {
+          "field": "genre",
+          "total_values": 1,
+          "truncated": false,
+          "values": [
+            {
+              "count": 2,
+              "value": "Deep House"
+            }
+          ]
+        },
+        "index_current": true,
+        "related": {
+          "field": "label_name",
+          "total_values": 2,
+          "truncated": false,
+          "values": [
+            {
+              "count": 1,
+              "value": "Elsewhere"
+            },
+            {
+              "count": 1,
+              "value": "Nightfall Audio"
+            }
+          ]
+        },
+        "tracks": 2,
+        "years": {
+          "first": 2020,
+          "last": 2021
+        }
+      },
+      "links": [
+        {
+          "beatport_id": 5001,
+          "name": "Someone",
+          "ref": "bp:5001",
+          "tracks": 1
+        },
+        {
+          "beatport_id": 5002,
+          "name": "Someone",
+          "ref": "bp:5002",
+          "tracks": 1
+        }
+      ],
+      "name": "Someone",
+      "name_key": "someone",
+      "names": [],
+      "redirected_from": null,
+      "ref": "name:someone",
+      "rules": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "artist_name",
+            "operator": "is",
+            "value": "Someone"
+          }
+        ]
+      }
+    }
+  },
+  "page_label_id": {
+    "refusal": null,
+    "value": {
+      "beatport_id": 40211,
+      "identity": "beatport",
+      "kind": "label",
+      "library": {
+        "genres": {
+          "field": "genre",
+          "total_values": 2,
+          "truncated": false,
+          "values": [
+            {
+              "count": 2,
+              "value": "House"
+            },
+            {
+              "count": 1,
+              "value": "Deep House"
+            }
+          ]
+        },
+        "index_current": true,
+        "related": {
+          "field": "artist_name",
+          "total_values": 3,
+          "truncated": false,
+          "values": [
+            {
+              "count": 2,
+              "value": "Mara Veil"
+            },
+            {
+              "count": 1,
+              "value": "Kiko"
+            },
+            {
+              "count": 1,
+              "value": "Someone"
+            }
+          ]
+        },
+        "tracks": 3,
+        "years": {
+          "first": 2021,
+          "last": 2025
+        }
+      },
+      "links": [],
+      "name": "Nightfall Audio",
+      "name_key": null,
+      "names": [
+        {
+          "name": "Nightfall Audio",
+          "name_key": "nightfall audio",
+          "tracks": 3
+        }
+      ],
+      "redirected_from": null,
+      "ref": "bp:40211",
+      "rules": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "beatport_label",
+            "operator": "is",
+            "value": 40211
+          }
+        ]
+      }
+    }
+  },
+  "page_label_name": {
+    "refusal": null,
+    "value": {
+      "beatport_id": null,
+      "identity": "name",
+      "kind": "label",
+      "library": {
+        "genres": {
+          "field": "genre",
+          "total_values": 2,
+          "truncated": false,
+          "values": [
+            {
+              "count": 1,
+              "value": "House"
+            },
+            {
+              "count": 1,
+              "value": "Techno"
+            }
+          ]
+        },
+        "index_current": true,
+        "related": {
+          "field": "artist_name",
+          "total_values": 2,
+          "truncated": false,
+          "values": [
+            {
+              "count": 2,
+              "value": "DJEFF"
+            },
+            {
+              "count": 1,
+              "value": "Kiko"
+            }
+          ]
+        },
+        "tracks": 2,
+        "years": {
+          "first": 2022,
+          "last": 2023
+        }
+      },
+      "links": [],
+      "name": "Cold Room",
+      "name_key": "cold room",
+      "names": [],
+      "redirected_from": null,
+      "ref": "name:cold room",
+      "rules": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "label_name",
+            "operator": "is",
+            "value": "Cold Room"
+          }
+        ]
+      }
+    }
+  },
+  "page_refused": {
+    "refusal": {
+      "code": "INVALID_REQUEST",
+      "job_id": null,
+      "job_type": null,
+      "message": "A reference is bp:<id> or name:<key>, got 'Mara Veil'",
+      "reason": null,
+      "retry_after": null
+    },
+    "value": null
+  },
+  "similar": {
+    "refusal": null,
+    "value": {
+      "considered": 5,
+      "duplicates_excluded": 0,
+      "index_current": true,
+      "notation": "camelot",
+      "seed_id": 1,
+      "suggestions": [
+        {
+          "reasons": [
+            {
+              "component": "tempo",
+              "detail": "same",
+              "from": 124.0,
+              "points": 30.0,
+              "to": 124.0
+            },
+            {
+              "component": "key",
+              "detail": "adjacent",
+              "from": "8A",
+              "points": 20.0,
+              "to": "9A"
+            },
+            {
+              "component": "genre",
+              "detail": "same",
+              "name": "House",
+              "points": 20.0
+            },
+            {
+              "component": "label",
+              "detail": "same",
+              "name": "Nightfall Audio",
+              "points": 10.0
+            },
+            {
+              "component": "artist",
+              "detail": "shared",
+              "names": [
+                "Mara Veil"
+              ],
+              "points": 15.0
+            }
+          ],
+          "score": 95.0,
+          "track_id": 2
+        },
+        {
+          "reasons": [
+            {
+              "component": "tempo",
+              "detail": "half",
+              "from": 124.0,
+              "points": 30.0,
+              "to": 62.0
+            },
+            {
+              "component": "key",
+              "detail": "same",
+              "from": "8A",
+              "points": 25.0,
+              "to": "8A"
+            },
+            {
+              "component": "artist",
+              "detail": "shared",
+              "names": [
+                "Kiko"
+              ],
+              "points": 15.0
+            }
+          ],
+          "score": 70.0,
+          "track_id": 3
+        },
+        {
+          "reasons": [
+            {
+              "component": "tempo",
+              "detail": "close",
+              "from": 124.0,
+              "points": 19.2,
+              "to": 128.0
+            },
+            {
+              "component": "key",
+              "detail": "relative",
+              "from": "8A",
+              "points": 20.0,
+              "to": "8B"
+            },
+            {
+              "component": "genre",
+              "detail": "same",
+              "name": "House",
+              "points": 20.0
+            }
+          ],
+          "score": 59.2,
+          "track_id": 4
+        },
+        {
+          "reasons": [
+            {
+              "component": "tempo",
+              "detail": "close",
+              "from": 124.0,
+              "points": 24.6,
+              "to": 126.0
+            },
+            {
+              "component": "label",
+              "detail": "same",
+              "name": "Nightfall Audio",
+              "points": 10.0
+            }
+          ],
+          "score": 34.6,
+          "track_id": 5
+        },
+        {
+          "reasons": [
+            {
+              "component": "tempo",
+              "detail": "close",
+              "from": 124.0,
+              "points": 24.6,
+              "to": 126.0
+            }
+          ],
+          "score": 24.6,
+          "track_id": 6
+        }
+      ],
+      "unused": []
+    }
+  },
+  "similar_details": {
+    "2": {
+      "collections": [],
+      "credits": {
+        "artists": [
+          {
+            "identity": "name",
+            "kind": "artist",
+            "name": "Mara Veil",
+            "ref": "name:mara veil",
+            "role": "artist"
+          }
+        ],
+        "label": {
+          "identity": "name",
+          "kind": "label",
+          "name": "Nightfall Audio",
+          "ref": "name:nightfall audio",
+          "role": null
+        },
+        "remixers": []
+      },
+      "metadata": {
+        "created_at": null,
+        "effective_rating": null,
+        "favorite": false,
+        "notes": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_rating": null,
+        "track_id": 2,
+        "updated_at": null
+      },
+      "playlist_count": 0,
+      "playlists": [],
+      "tags": [],
+      "track": {
+        "album": null,
+        "artist": "Mara Veil",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 124.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": 124.0,
+        "effective_genre": "House",
+        "effective_key": "9A",
+        "effective_label": "Nightfall Audio",
+        "effective_rating": null,
+        "effective_year": 2024,
+        "favorite": false,
+        "file_path": "/music/p2.mp3",
+        "file_status": "not_checked",
+        "genre": "House",
+        "id": 2,
+        "key": "9A",
+        "label": "Nightfall Audio",
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "not_matched",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p2",
+        "remixer": null,
+        "title": "Low Tide",
+        "year": 2024
+      }
+    },
+    "3": {
+      "collections": [],
+      "credits": {
+        "artists": [
+          {
+            "identity": "name",
+            "kind": "artist",
+            "name": "Kiko",
+            "ref": "name:kiko",
+            "role": "artist"
+          }
+        ],
+        "label": {
+          "identity": "name",
+          "kind": "label",
+          "name": "Cold Room",
+          "ref": "name:cold room",
+          "role": null
+        },
+        "remixers": [
+          {
+            "identity": "name",
+            "kind": "artist",
+            "name": "DJEFF",
+            "ref": "name:djeff",
+            "role": "remixer"
+          }
+        ]
+      },
+      "metadata": {
+        "created_at": null,
+        "effective_rating": null,
+        "favorite": false,
+        "notes": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_rating": null,
+        "track_id": 3,
+        "updated_at": null
+      },
+      "playlist_count": 0,
+      "playlists": [],
+      "tags": [],
+      "track": {
+        "album": null,
+        "artist": "Kiko",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 62.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": 62.0,
+        "effective_genre": "Techno",
+        "effective_key": "8A",
+        "effective_label": "Cold Room",
+        "effective_rating": null,
+        "effective_year": 2023,
+        "favorite": false,
+        "file_path": "/music/p3.mp3",
+        "file_status": "not_checked",
+        "genre": "Techno",
+        "id": 3,
+        "key": "8A",
+        "label": "Cold Room",
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "not_matched",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p3",
+        "remixer": "DJEFF",
+        "title": "Night Bus",
+        "year": 2023
+      }
+    },
+    "4": {
+      "collections": [],
+      "credits": {
+        "artists": [
+          {
+            "identity": "name",
+            "kind": "artist",
+            "name": "DJEFF",
+            "ref": "name:djeff",
+            "role": "artist"
+          }
+        ],
+        "label": {
+          "identity": "name",
+          "kind": "label",
+          "name": "Cold Room",
+          "ref": "name:cold room",
+          "role": null
+        },
+        "remixers": []
+      },
+      "metadata": {
+        "created_at": null,
+        "effective_rating": null,
+        "favorite": false,
+        "notes": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_rating": null,
+        "track_id": 4,
+        "updated_at": null
+      },
+      "playlist_count": 0,
+      "playlists": [],
+      "tags": [],
+      "track": {
+        "album": null,
+        "artist": "DJEFF",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 128.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": 128.0,
+        "effective_genre": "House",
+        "effective_key": "8B",
+        "effective_label": "Cold Room",
+        "effective_rating": null,
+        "effective_year": 2022,
+        "favorite": false,
+        "file_path": "/music/p4.mp3",
+        "file_status": "not_checked",
+        "genre": "House",
+        "id": 4,
+        "key": "8B",
+        "label": "Cold Room",
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "not_matched",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p4",
+        "remixer": null,
+        "title": "Signal",
+        "year": 2022
+      }
+    },
+    "5": {
+      "collections": [],
+      "credits": {
+        "artists": [
+          {
+            "identity": "name",
+            "kind": "artist",
+            "name": "Someone",
+            "ref": "name:someone",
+            "role": "artist"
+          }
+        ],
+        "label": {
+          "identity": "name",
+          "kind": "label",
+          "name": "Nightfall Audio",
+          "ref": "name:nightfall audio",
+          "role": null
+        },
+        "remixers": []
+      },
+      "metadata": {
+        "created_at": null,
+        "effective_rating": null,
+        "favorite": false,
+        "notes": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_rating": null,
+        "track_id": 5,
+        "updated_at": null
+      },
+      "playlist_count": 0,
+      "playlists": [],
+      "tags": [],
+      "track": {
+        "album": null,
+        "artist": "Someone",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 126.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": 126.0,
+        "effective_genre": "Deep House",
+        "effective_key": "3A",
+        "effective_label": "Nightfall Audio",
+        "effective_rating": null,
+        "effective_year": 2021,
+        "favorite": false,
+        "file_path": "/music/p5.mp3",
+        "file_status": "not_checked",
+        "genre": "Deep House",
+        "id": 5,
+        "key": "3A",
+        "label": "Nightfall Audio",
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "accepted",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p5",
+        "remixer": null,
+        "title": "Someone Else",
+        "year": 2021
+      }
+    },
+    "6": {
+      "collections": [],
+      "credits": {
+        "artists": [
+          {
+            "identity": "name",
+            "kind": "artist",
+            "name": "Someone",
+            "ref": "name:someone",
+            "role": "artist"
+          }
+        ],
+        "label": {
+          "identity": "name",
+          "kind": "label",
+          "name": "Elsewhere",
+          "ref": "name:elsewhere",
+          "role": null
+        },
+        "remixers": []
+      },
+      "metadata": {
+        "created_at": null,
+        "effective_rating": null,
+        "favorite": false,
+        "notes": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_rating": null,
+        "track_id": 6,
+        "updated_at": null
+      },
+      "playlist_count": 0,
+      "playlists": [],
+      "tags": [],
+      "track": {
+        "album": null,
+        "artist": "Someone",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 126.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": null,
+        "effective_bpm": 126.0,
+        "effective_genre": "Deep House",
+        "effective_key": "3A",
+        "effective_label": "Elsewhere",
+        "effective_rating": null,
+        "effective_year": 2020,
+        "favorite": false,
+        "file_path": "/music/p6.mp3",
+        "file_status": "not_checked",
+        "genre": "Deep House",
+        "id": 6,
+        "key": "3A",
+        "label": "Elsewhere",
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "accepted",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "p6",
+        "remixer": null,
+        "title": "Far",
+        "year": 2020
+      }
+    }
+  },
+  "similar_gone": {
+    "refusal": {
+      "code": "TRACK_NOT_FOUND",
+      "job_id": null,
+      "job_type": null,
+      "message": "There is no track 999 in the library",
+      "reason": null,
+      "retry_after": null
+    },
+    "value": null
+  },
+  "similar_no_bpm": {
+    "refusal": null,
+    "value": {
+      "considered": 2,
+      "duplicates_excluded": 0,
+      "index_current": true,
+      "notation": "camelot",
+      "seed_id": 7,
+      "suggestions": [
+        {
+          "reasons": [
+            {
+              "component": "genre",
+              "detail": "same",
+              "name": "Techno",
+              "points": 20.0
+            },
+            {
+              "component": "artist",
+              "detail": "shared",
+              "names": [
+                "Kiko"
+              ],
+              "points": 15.0
+            }
+          ],
+          "score": 35.0,
+          "track_id": 3
+        },
+        {
+          "reasons": [
+            {
+              "component": "artist",
+              "detail": "shared",
+              "names": [
+                "Kiko"
+              ],
+              "points": 15.0
+            }
+          ],
+          "score": 15.0,
+          "track_id": 1
+        }
+      ],
+      "unused": [
+        "tempo",
+        "key",
+        "label"
+      ]
+    }
+  },
+  "similar_none": {
+    "refusal": null,
+    "value": {
+      "considered": 0,
+      "duplicates_excluded": 0,
+      "index_current": true,
+      "notation": "camelot",
+      "seed_id": 1,
+      "suggestions": [],
+      "unused": []
+    }
+  }
+}

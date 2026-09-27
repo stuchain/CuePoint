@@ -59,6 +59,14 @@ interface NavDestinationBase {
    * a second identity for a page that already has one.
    */
   pageId?: string;
+  /**
+   * True when routes under this path are pages of this destination rather than
+   * destinations of their own: Discover's Artist and Label pages and Similar
+   * tracks (DEC-094). The sidebar keeps the destination lit on them, and
+   * launch memory remembers the destination, never the page — a page is
+   * reached from a track, not reopened on a week later.
+   */
+  nested?: boolean;
 }
 
 /**
@@ -80,7 +88,7 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
   { id: "library", label: "Library", path: "/library", group: "workspace", icon: "library", enabled: true },
   { id: "collections", label: "Collections", path: "/collections", group: "workspace", icon: "collections", enabled: true, pageId: "library" },
   { id: "clean", label: "Clean", path: "/clean", group: "workspace", icon: "clean", enabled: true },
-  { id: "discover", label: "Discover", path: "/discover", group: "workspace", icon: "discover", enabled: true },
+  { id: "discover", label: "Discover", path: "/discover", group: "workspace", icon: "discover", enabled: true, nested: true },
   { id: "prepare", label: "Prepare", path: "/prepare", group: "workspace", icon: "prepare", enabled: false },
 
   // Today's screens, kept intact as Tools (DEC-021). inKey and Results retired
@@ -184,6 +192,23 @@ export function findDestinationByPath(
   destinations: readonly NavDestination[] = NAV_DESTINATIONS,
 ): NavDestination | null {
   return destinations.find((destination) => destination.path === pathname) ?? null;
+}
+
+/**
+ * The destination a path belongs to: its own, or the `nested` destination it
+ * is a page of (DISCOVER-11's `/discover/artist/…` is Discover's).
+ */
+export function findOwningDestination(
+  pathname: string,
+  destinations: readonly NavDestination[] = NAV_DESTINATIONS,
+): NavDestination | null {
+  return (
+    findDestinationByPath(pathname, destinations) ??
+    destinations.find(
+      (destination) => destination.nested && pathname.startsWith(`${destination.path}/`),
+    ) ??
+    null
+  );
 }
 
 export interface NavGroupEntry {

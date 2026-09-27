@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **DISCOVER-01 to DISCOVER-10 implemented, and DISCOVER-01's spike recorded against the
-live API (2026-09-23; see its outcome). DISCOVER-11 and DISCOVER-12 not started.** The twelve steps below replace the
+Status: **DISCOVER-01 to DISCOVER-11 implemented, and DISCOVER-01's spike recorded against the
+live API (2026-09-23; see its outcome). DISCOVER-12 not started.** The twelve steps below replace the
 roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -2522,6 +2522,225 @@ the Library, open its artist's page, play a track from it, open Similar tracks a
 Discover is a change to the Library and Clean too. Their existing tests must pass unchanged.
 
 **Complexity**: **L**
+
+**Outcome** (2026-09-27): **Implemented.** A track's artists and label are links to their pages, from
+the Inspector, the operations list and the filter chips, in the Library and on the Clean page. An
+Artist or Label page holds the Library's own table over the engine's rule set and the Beatport half
+in every state DISCOVER-07 answers, and says which identity it is. Similar tracks lists a seed's
+suggestions with their reasons in words. Suggestions and a page's tracks play and queue as library
+rows do. The end-to-end journey passes in a packaged Windows build.
+
+**What was built.**
+
+- **The engine: the Inspector's links.** The track detail read (`/api/v1/library/tracks/{id}`)
+  gains `credits`: the artists and remixers the credit names and the effective label, each with
+  the page it opens. It is additive, as every change to that shape has been.
+  - `services/track_credit_links.py` splits the shown credit with `split_credit` at read time,
+    not from the credit index, so a track read while DISCOVER-03's index builds still has its
+    links.
+  - A resolved track links by id: `TrackCreditRepository.track_identity` reads the per-kind
+    views one track at a time (DISCOVER-07's fifth binding note). A name Beatport credits under
+    the same key links to that artist's id, and the label to its Beatport label.
+  - Everything else links by the name's key, which the page follows to an id if resolution has
+    linked it since. A key Beatport credits two ids under on the one track links by name, since
+    the key cannot say which.
+  - `models/entity_page.py` gains `CreditLink` and `TrackCreditLinks`. Both TypeScript copies
+    gain `TrackCreditLink`, `TrackCreditLinks` and `TrackCreditRole`, which both contract tests
+    hold to the engine.
+- **Routes** `/discover/artist/:ref`, `/discover/label/:ref` and `/discover/similar/:trackId`,
+  under the `discover` destination (DEC-094). `discover` is `nested` in `navRegistry.ts`: the
+  sidebar keeps it lit on its pages (a `NavLink` already did), and launch memory remembers
+  Discover, not the page (`findOwningDestination`). `discoverLinks.ts` writes and reads the
+  addresses.
+- **A page** (`EntityScreen.tsx`):
+  - **The header**: the name, the identity ("Beatport artist" or "Grouped by name") and what it
+    means, the spellings an id page gathers, "Opened by name" after a redirect, and the
+    Library's facts: tracks, years, genres, and an artist's labels or a label's artists as
+    links to their pages. "Still indexing" shows while DISCOVER-03's index builds.
+  - **Its address is its reference.** When the answer's `ref` differs from the address — a name
+    now linked to an id, or a name as typed — the address is replaced, not pushed, and the page
+    held is not asked for again.
+  - **Open in Library** carries the rules and, for an id page, the name its id goes by, so the
+    Library's chip reads "Beatport artist is Mara Veil" (DISCOVER-07's third note).
+    **Save as Smart Collection…** saves the same rules through ORG-12's dialog.
+- **The library half** (`LibraryHalf.tsx`) is the Library's `useTrackWindow`,
+  `useTrackSelection`, `useLibraryPlayback` and `LIBRARY_COLUMNS` over the page's rules, newest
+  first, with its own column layout.
+  - A double-click plays the row with the whole table as the queue (DEC-012).
+  - The menu and **Actions…** offer Play, Play next, Add to queue, Similar tracks, Artist page
+    and Label page (DEC-013). Copy and Show in folder are the Library's `SelectionActions`.
+- **The Beatport half** (`BeatportHalf.tsx`) is DISCOVER-10's `BeatportTable`,
+  `useBeatportWindow` and `useBeatportSelection` over `getEntityBeatport`, with
+  `ENTITY_COLUMNS` (the run's columns less the run's). Its actions are `runActions`: add to the
+  wantlist (without a run), push (the engine's default name and limits read when the dialog
+  opens), and open on Beatport.
+  - Each state is drawn with its reason and its action. Token problems go to Settings' token
+    field. A rate limit and an unreachable Beatport offer **Try again**, which reads again
+    however fresh the copy. A resolvable name offers the resolve job, followed until it ends,
+    and the page is then read again. A shared name offers the artists who share it. "Found by
+    name on Beatport" is said.
+- **Similar tracks** (`SimilarScreen.tsx`): the seed (its credit as links, BPM, key and genre,
+  what it was compared with, what it could not be compared by, and the index note), then the
+  suggestions.
+  - Each suggestion's row is read through `getLibraryTrack` in the answer's order (fact 5). A
+    row gone by then is left out.
+  - `SIMILAR_COLUMNS` put the title, a **Reasons** column in `describeSimilarReason`'s words and
+    the score first, then the Library's columns. None sorts.
+  - A double-click plays the list from that row. The menu and Actions… offer Play, Play next,
+    Add to queue, the pages, and **Similar tracks**, which makes the suggestion the next seed.
+  - The Inspector shows the seed until a suggestion is selected.
+- **The hooks** (the risk this step named: shared by every page):
+  - **The Inspector** (`TrackDetailPanel`): with `onOpenEntity`, the header's credit is shown
+    as written with each name in it a link (`CreditLinks`, over `creditSegments`), the
+    effective label is a link beneath it, and the Remixer row is linked. Without the prop, or
+    from an older engine, it reads as it always did. The Library, the Clean review queue,
+    Missing files, the pages and Similar tracks pass it.
+  - **The operations list**: `discoverMenuItems` adds Similar tracks, Artist page (a submenu
+    when a credit names several, remixers after artists) and Label page for one track. It is
+    in `LibraryScreen`'s one list, so the row menu and Actions… offer them alike. The one
+    track's credits are read before the menu opens, from the Inspector's detail when it is that
+    track's; a menu that needs none opens at once, as it always did.
+  - **The filter chips**: a clause that names one artist or label (`artist_name`, `label_name`,
+    `beatport_artist` or `beatport_label` with `is`) offers **Open page** (`pageOfRule`).
+
+**Where it differs from the specification, and why.**
+
+- **The engine splits the credit and names the pages.** The specification draws links "from
+  `split_credit`", which is Python. A second copy in TypeScript would be a second rule, so the
+  track detail answers the split and each link's reference.
+- **The label link is the effective label, beside the artist.** The imported record's Label row
+  stays exactly what Rekordbox sent (DEC-057's discipline), and a Label page's rule compares the
+  effective label (DEC-068).
+- **Remixers are linked too**, and **Artist page** lists them, because the `artist_name` rule and
+  Similar tracks both count a remixer as an artist.
+- **A page's Beatport half shows owned tracks, marked**, with **Hide tracks you own**, unlike a
+  run's. A page is about the artist, and which of their releases a person already has is part of
+  that; a run is a list of music to buy.
+- **One selection per page.** Selecting in one half lets go of the other's, and the Inspector
+  shows the library track selected or its empty state for a Beatport row (DISCOVER-10's rule).
+- **A page's table offers playback and Discover's entries, not the Library's organization
+  entries.** **Open in Library** is one click away, and tagging from a page would be a second
+  Library.
+- **The address is replaced whenever it is not the page's own reference**, not only after a
+  redirect, so a name typed as "Mara Veil" and one linked as "mara veil" are one address.
+- **The pages are remembered as Discover.** DEC-027 reopens on destinations. A page is reached
+  from a track, and reopening on one a week later would be a guess.
+
+**Defects found by this step's own checks, and fixed before commit.**
+
+1. **The Beatport half blanked while it asked again.** Ticking **Hide tracks you own** is a new
+   question, so the window dropped its answer and the half drew "Asking Beatport…", the checkbox
+   included, until the new one landed. The half now keeps its last answer for the same page
+   while it asks. The component test that toggles the filter failed on the first form.
+2. **Similar tracks' reasons were out of sight** at 1,280 pixels with the sidebar and the
+   Inspector open: the Library's wide title and the score came first. The reasons now sit
+   beside a narrower title.
+3. **Similar tracks' actions were cut off on a short window**, because the view hid its
+   overflow. It scrolls as one now, as the runs pane does.
+
+**What binds later steps.**
+
+1. **DISCOVER-12's journey** — "open an artist page by id and a label page by name, play from one,
+   open Similar tracks and queue a suggestion" — extends `e2e/discoverPages.spec.ts`. A page by
+   id needs the library resolved, so its mocked Beatport answers `catalog/tracks/?id=` for the
+   resolve job and `?artist_id=` for the page, in the fixture file's `api` section.
+2. **Retiring inCrate touches none of this.** `discover` stays `nested`, and `/incrate`'s
+   redirect lands on `/discover`, whose pages stay routes under it.
+3. **A new entry for one track** goes in `discoverMenuItems` (or beside it in `LibraryScreen`'s
+   one list), and a page's table offers it through `libraryRowMenuItems`.
+4. **A new place that draws the Inspector** passes `onOpenEntity`, or its credits stay text.
+5. **Phase 10 (Set Builder)** can call Similar tracks with a scope, which the route takes and
+   this view does not send. `SIMILAR_COLUMNS` and `reasonsText` draw any list of suggestions.
+6. **A page that sends id rules to the Library** sends their names with them,
+   `libraryRulesState(rules, names)`, keyed by `beatportNameKey`.
+
+**Tests**:
+
+- **Renderer**:
+  - `EntityScreen.test.tsx` (33), over the engine's own answers: both kinds in both identities,
+    a name replaced by its own reference and a name redirected to its id (asked once), the
+    related names as links, the index note, a refusal and a missing bridge; every Beatport-half
+    state with its reason and its action (Settings' token field, **Try again** asking afresh,
+    the resolve job and the page read again after it, a shared name's choices); releases marked
+    owned and the owned hidden; found by name; add to the wantlist and open on Beatport; a push
+    of everything shown with the engine's default name and its outcome; the library half's
+    double-click playing the page's view, its menu queueing without interrupting and leading to
+    an artist's page and Similar tracks, Actions… on one track, a selection played as the
+    queue; Open in Library and Save as Smart Collection with the same rules, and a refused
+    save; the Inspector describing a library row and never a Beatport one.
+  - `SimilarScreen.test.tsx` (14): suggestions read through the track-detail path in the
+    answer's order, with their scores and reasons; the seed's facts, credit links and what it
+    was compared with; no BPM or key, nothing close, the index note, a seed gone, an address
+    naming no track, a row gone by the time it is read; a double-click playing the list from
+    that row, Play next and Add to queue, a selection played from Actions…, a suggestion made
+    the next seed, its label page; the Inspector on the seed and then on a suggestion.
+  - `discoverPages.test.ts` (28): addresses and references; every page's words and every
+    Beatport state's headline from the fixture; a credit split into links, a name inside
+    another, a name the text spells otherwise; the operations list's entries for none, one and
+    several tracks, before the credits are known, remixers, a person once, the credits read or
+    reused; playback first; an id rule read as the page's name, and names carried to the
+    Library and checked; every reason the engine can emit in the Reasons column (DISCOVER-08's
+    test, from the other side); no column sorting suggestions; the page's Beatport columns.
+  - `TrackDetailPanel.discover.test.tsx` (7): each artist in the credit linked where it
+    stands, by id or by name; the label; remixers; the imported Label row left as text; text
+    without the prop, without credits, and for a track with none.
+  - `LibraryScreen.discover.test.tsx` (9): the entries in the row menu and behind Actions…,
+    each opening the right thing, a single artist without a submenu, a label a track lacks
+    disabled, nothing for several tracks, nothing and no wait without the hooks; a chip's Open
+    page, an id chip reading as its name, the Inspector's links.
+  - Two new in `CleanScreen.test.tsx` (the review and Missing files Inspectors), two in
+    `FilterBar.test.tsx`, one in `Sidebar.test.tsx` (Discover lit on its pages), four in
+    `App.test.tsx` (the three routes and reopening on Discover), and three shapes more in
+    `desktopContract.test.ts`.
+- **Python**:
+  - `test_discover_pages_fixture.py` (37) produces `discoverPages.fixture.json` — 30 answers,
+    through a running engine — and holds it to the engine, with checks that every state,
+    identity and reason the renderer draws is in it and that each header counts its table.
+  - `test_track_credit_links.py` (17): the split, remixers, an act joined by "&", a blank
+    credit, a name too long for a reference; links by id where resolved, a remixer by id, a key
+    credited twice, a track matched and not read, a label with no id, the effective label;
+    `track_identity`; the models.
+  - Two new in `test_engine_library_browse.py` (the credits on the wire, the effective label)
+    and two in `test_discover_contract.py` (the shapes and the role vocabulary).
+  - The strict mypy gate covers `services/track_credit_links.py`.
+- **End to end**: `e2e/discoverPages.spec.ts` — import four playable tracks, select one in the
+  Library, open its artist through the Inspector's credit (the address replaced with the name's
+  key, Discover lit), see the page's two tracks newest first and "Known by name only", play one
+  (the page's table is the queue), open Similar tracks from the other (best first, reasons in
+  words), and queue a suggestion without interrupting.
+- **Deliberate breakages, 30, each caught by the test named for it**: the address not replaced,
+  or the replaced address asked again; a double-click playing the row, not the view; the rules
+  ignored; the wantlist sent no tracks; owned hidden by default; Try again answered from the
+  copy; the half blanking while it re-asks; Settings opened without the token field; Open in
+  Library losing the names; a Smart Collection of other rules; the Inspector describing a
+  library row under a Beatport selection; a shared name's choices not drawn; the related names
+  opening the wrong kind of page; names found from the start of the credit; remixers left out
+  of the submenu; the entries offered for several tracks; the Library's menu waiting when
+  nothing needs reading; remixers not linked; Clean's Inspector not wired; an "is not" chip
+  offering a page; Similar tracks playing from the top; a gone row kept; suggestions sortable;
+  a reason drawn as its code; Discover forgetting its pages; and, in the engine, the imported
+  label linked, a key Beatport credits twice linked to one id, a resolved track linked by name,
+  and a remixer credit left unsplit.
+
+**A test outside this step, found by its checks and fixed in its own commit.**
+`test_performance.py::test_performance_report` read the stats an earlier test had left in the
+process-wide collector, so it failed whenever the suite's eight workers ran the two apart, and it
+wrote its report into the checkout's `output/`. Each test now records its own session, and the
+report goes to the test's own folder. Run alone, the old test fails and the new one passes.
+
+**Checks run**:
+
+- **Python:** the full suite (9,998 passed, 66 skipped, the strict mypy gate among them);
+  `ruff check` and `ruff format --check` with the pinned 0.14.0; `check_no_qt_in_core.py`;
+  `check_desktop_version_coupling.py`; `git diff --check`.
+- **Renderer:** `npm run typecheck`, `npm run lint` (only the eight warnings already there) and
+  `npm test` (3,173 passed).
+- **Electron:** `npm run typecheck` and `npm test` (490 passed).
+- **End to end:** the whole suite against the development build (53 passed, 1 skipped), and
+  `discoverPages.spec.ts` with `discover.spec.ts` three times in a row against the packaged
+  build (`release/win-unpacked`, rebuilt with a fresh engine sidecar): 3 of 3 each time.
+- **By eye:** the Inspector's links, both pages and Similar tracks at 1,280 × 800 with the
+  sidebar and the Inspector open, which is how the two layout defects above were found.
 
 ---
 

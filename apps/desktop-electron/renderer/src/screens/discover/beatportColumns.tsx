@@ -22,6 +22,7 @@ import { artistsText, formatWhen, sourcesText, trackName } from "./discoverForma
 
 export const RUN_TABLE_LAYOUT_KEY = "cuepoint-discover-run-table-layout";
 export const WANTLIST_TABLE_LAYOUT_KEY = "cuepoint-discover-wantlist-table-layout";
+export const ENTITY_TABLE_LAYOUT_KEY = "cuepoint-discover-page-beatport-layout";
 
 /** The columns every Beatport table has, over any row that is one. */
 function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
@@ -102,6 +103,17 @@ function ownedColumn<Row extends BeatportTrackRow>(): TrackColumnDef<Row> {
   };
 }
 
+/** "Wanted" when the track is on the wantlist now (DISCOVER-06). */
+function wantedColumn<Row extends BeatportTrackRow>(): TrackColumnDef<Row> {
+  return {
+    id: "on_wantlist",
+    header: "Wantlist",
+    minWidthPx: 70,
+    defaultWidthPx: 84,
+    render: (row) => (row.on_wantlist ? "Wanted" : ""),
+  };
+}
+
 export const RUN_COLUMNS: readonly TrackColumnDef<DiscoverRunTrackRow>[] = [
   {
     id: "position",
@@ -122,13 +134,17 @@ export const RUN_COLUMNS: readonly TrackColumnDef<DiscoverRunTrackRow>[] = [
     render: (row) => sourcesText(row.sources),
   },
   ownedColumn<DiscoverRunTrackRow>(),
-  {
-    id: "on_wantlist",
-    header: "Wantlist",
-    minWidthPx: 70,
-    defaultWidthPx: 84,
-    render: (row) => (row.on_wantlist ? "Wanted" : ""),
-  },
+  wantedColumn<DiscoverRunTrackRow>(),
+];
+
+/**
+ * An Artist or Label page's Beatport half (DISCOVER-11). The engine answers
+ * it newest release first and takes no other order, so no column sorts it.
+ */
+export const ENTITY_COLUMNS: readonly TrackColumnDef<BeatportTrackRow>[] = [
+  ...sharedColumns<BeatportTrackRow>().map(({ sortKey: _unsorted, ...column }) => column),
+  ownedColumn<BeatportTrackRow>(),
+  wantedColumn<BeatportTrackRow>(),
 ];
 
 export const WANTLIST_COLUMNS: readonly TrackColumnDef<WantlistRow>[] = [

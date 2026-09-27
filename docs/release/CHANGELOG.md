@@ -21,6 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   identities** reads your matched tracks' artists and labels from Beatport when
   you ask. inCrate stays in Tools, unchanged, for now. See the new user guide
   page, Discover
+- **Artist and label pages**, under Discover. An artist's page holds your own
+  tracks by that artist — the Library's table, playable and queueable as there
+  — and their recent releases on Beatport, marked owned or on your wantlist; a
+  label's page does the same for a label. Each says whether it knows the artist
+  by their Beatport id or groups your tracks by the name. **Open in Library**
+  and **Save as Smart Collection…** take the page's tracks to the Library.
+  Reach one from the Inspector, where each artist in a track's credit and its
+  label are now links, from **Artist page** and **Label page** on a track's
+  right-click menu and **Actions…**, and from **Open page** on a filter chip
+  that names one artist or label
+- **Similar tracks**, on a track's right-click menu and **Actions…**: the tracks
+  in your library closest to it in tempo, key, genre, label and artists, best
+  first, each with its reasons in words ("One step on the wheel: 8A → 9A").
+  Offline, and playable and queueable like any library track
 - Two Library filters that find an artist or a label by its Beatport id:
   **Beatport artist** and **Beatport label**. A track counts when its accepted
   Beatport match credits that artist or label, and so does an unmatched track

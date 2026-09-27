@@ -484,6 +484,8 @@ export interface LibraryTrackDetail {
   track: LibraryTrackRow;
   playlists: LibraryPlaylistNode[];
   playlist_count: number;
+  /** Its artists and label as links to their pages (DISCOVER-11). */
+  credits?: TrackCreditLinks;
 }
 
 export interface LibrarySearchResponse {
@@ -1566,6 +1568,30 @@ export interface EntityBeatportHalf {
   page: EntityTracksPage | null;
   resolvable: number;
   retry_after: number | null;
+}
+
+/** Who a library track credits: its artist credit, or its remixer credit. */
+export type TrackCreditRole = "artist" | "remixer";
+
+/**
+ * A name a library track credits, as a link to its page (DISCOVER-11). The
+ * engine splits the credit and chooses the page: the Beatport id when the
+ * track is resolved and Beatport credits that name on it, the name otherwise.
+ */
+export interface TrackCreditLink {
+  kind: EntityKind;
+  name: string;
+  /** `artist` or `remixer` for an artist; null for a label. */
+  role: TrackCreditRole | null;
+  ref: string;
+  identity: EntityIdentity;
+}
+
+/** A track's artists, remixers and effective label, as links. */
+export interface TrackCreditLinks {
+  artists: TrackCreditLink[];
+  remixers: TrackCreditLink[];
+  label: TrackCreditLink | null;
 }
 
 /** The parts of the similarity rule a suggestion can score on, in the engine's order. */

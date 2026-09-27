@@ -33,8 +33,9 @@ export interface BeatportTableProps<Row> {
   source: TrackTableSource<Row>;
   selection: BeatportSelection<Row>;
   idOf: (row: Row) => number;
-  sort: TrackTableSort;
-  onSortChange: (sort: TrackTableSort) => void;
+  /** Absent for a table the engine orders by itself: no header sorts it. */
+  sort?: TrackTableSort | null;
+  onSortChange?: (sort: TrackTableSort) => void;
   actions: readonly BeatportAction[];
   onAction: (id: BeatportActionId) => void;
   /** What the rows are, for a screen reader and the toolbar. */

@@ -291,6 +291,23 @@ class TestPages:
         holds("EntityBeatportHalf", half)
 
 
+class TestTrackCredits:
+    """DISCOVER-11: the Inspector's links, on the track detail read."""
+
+    def test_a_tracks_artists_and_label(self, engine_state):
+        from cuepoint.engine.library_api import library_track_detail
+
+        detail = library_track_detail(engine_state["ids"][0])
+        assert set(detail) >= _fields("LibraryTrackDetail")
+        credits = detail["credits"]
+        holds("TrackCreditLinks", credits)
+        holds("TrackCreditLink", first(credits["artists"]))
+        holds("TrackCreditLink", credits["label"])
+
+    def test_the_words(self):
+        assert _union("TrackCreditRole") == set(entity_page.CREDIT_LINK_ROLES)
+
+
 class TestSimilarTracks:
     def test_the_answer_and_a_suggestion(self, engine_state):
         seed = engine_state["ids"][0]

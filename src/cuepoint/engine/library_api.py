@@ -690,6 +690,9 @@ def library_filter_fields() -> Dict[str, Any]:
 def library_track_detail(track_id: int) -> Dict[str, Any]:
     """Return one track and the playlists that contain it (DEC-047).
 
+    DISCOVER-11 adds ``credits``: its artists, remixers and label as links to
+    their pages. Additive, as every change to this shape has been.
+
     The Inspector's content: everything imported, read-only, plus where the
     track sits in the collection. Membership comes from
     ``playlist_ids_for_track``, which LIBRARY-03 built an index for to answer
@@ -723,6 +726,19 @@ def library_track_detail(track_id: int) -> Dict[str, Any]:
     record = resolve_metadata_service().get(int(track_id))
     clean = service.clean_states([int(track_id)]).get(int(track_id))
     sources = service.override_sources([int(track_id)]).get(int(track_id))
+    # DISCOVER-11: the artists and label as links to their pages, split and
+    # identified by the engine's rules rather than a copy of them in the
+    # renderer. The label is the effective one (DEC-068), which is the one a
+    # label page's rule compares.
+    from cuepoint.services.track_credit_links import track_credit_links
+
+    credits = track_credit_links(
+        _resolve_track_credit_repository(),
+        int(track_id),
+        track.artist,
+        track.remixer,
+        effective_value(track.label, record.label if record is not None else None),
+    )
     return {
         "track": track_to_dict(track, record, clean, sources),
         "playlists": holders,
@@ -730,6 +746,7 @@ def library_track_detail(track_id: int) -> Dict[str, Any]:
         "metadata": metadata_to_dict(int(track_id), track.rating, record),
         "tags": tags_on(int(track_id)),
         "collections": collections_holding(int(track_id)),
+        "credits": credits.to_dict(),
     }
 
 
@@ -820,6 +837,17 @@ def _resolve_import_service() -> Any:
         from cuepoint.utils.di_container import get_container
 
         return get_container().resolve(ILibraryImportService)
+    except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
+        raise LibraryUnavailableError(str(exc)) from exc
+
+
+def _resolve_track_credit_repository() -> Any:
+    """Resolve ``ITrackCreditRepository``, or raise :class:`LibraryUnavailableError`."""
+    try:
+        from cuepoint.services.interfaces import ITrackCreditRepository
+        from cuepoint.utils.di_container import get_container
+
+        return get_container().resolve(ITrackCreditRepository)
     except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
         raise LibraryUnavailableError(str(exc)) from exc
 

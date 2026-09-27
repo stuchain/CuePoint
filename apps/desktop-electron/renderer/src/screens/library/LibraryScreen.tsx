@@ -36,6 +36,7 @@ import { useInspectorSlot } from "../../components/shell";
 import type {
   BatchSelection,
   CollectionNode,
+  EntityKind,
   FilterRuleSet,
   LibraryPlaylistNode,
   LibrarySummary,
@@ -43,6 +44,7 @@ import type {
   RefreshApplied,
   RefreshDiff,
   TagUsage,
+  TrackCreditLinks,
 } from "../../api/cuepointBridge.types";
 import { FilterBar, type FilterCollectionOption } from "./FilterBar";
 import { LibraryHeader } from "./LibraryHeader";
@@ -82,6 +84,7 @@ import { emptyStateFor } from "./libraryEmpty";
 import type { LibraryOpening } from "./libraryLink";
 import { batchConsequence, batchSelection, type BatchAction } from "./libraryBatch";
 import { cleanMenuItems } from "./libraryClean";
+import { creditsFor, discoverMenuItems } from "./libraryDiscover";
 import { organizationMenuItems } from "./trackMenu";
 import { useLibraryBatch } from "./useLibraryBatch";
 import { useLibraryClean } from "./useLibraryClean";
@@ -157,6 +160,14 @@ export interface LibraryScreenProps {
    * missing-file count links to. A prop for `focus`'s reason.
    */
   onOpenMissingFiles?: () => void;
+  /**
+   * Open an artist's or a label's page (DISCOVER-11): from the Inspector's
+   * credits, a filter chip and the operations list. A prop for `focus`'s
+   * reason. Absent, none of them is offered.
+   */
+  onOpenEntity?: (kind: EntityKind, ref: string) => void;
+  /** Open Similar tracks for one track (DISCOVER-11). Absent, not offered. */
+  onOpenSimilar?: (trackId: number) => void;
 }
 
 export function LibraryScreen({
@@ -165,6 +176,8 @@ export function LibraryScreen({
   openWith,
   onOpenInClean,
   onOpenMissingFiles,
+  onOpenEntity,
+  onOpenSimilar,
 }: LibraryScreenProps) {
   const { push } = useToast();
   const [summary, setSummary] = useState<LibrarySummary | null>(null);
@@ -242,6 +255,8 @@ export function LibraryScreen({
     target: BatchTarget;
     /** A row's menu carries playback; the toolbar's carries the actions only. */
     kind: "row" | "selection";
+    /** The one track's credits, for its Artist and Label pages (DISCOVER-11). */
+    credits: TrackCreditLinks | null;
   } | null>(null);
   const [picker, setPicker] = useState<{
     kind: "collection" | "tag-add" | "tag-remove";
@@ -280,6 +295,12 @@ export function LibraryScreen({
    * the user did next on every render.
    */
   const [collectionsFocus, setCollectionsFocus] = useState(0);
+  /**
+   * What the Beatport ids in rules an Artist or Label page sent are called
+   * (DISCOVER-11), so their chips read as names. Kept while the page stays,
+   * since a rule the user keeps is still that artist.
+   */
+  const [openedNames, setOpenedNames] = useState<Readonly<Record<string, string>>>({});
 
   useEffect(() => {
     if (focus === "collections") setCollectionsFocus((token) => token + 1);
@@ -300,6 +321,7 @@ export function LibraryScreen({
     collections.select(null);
     setSmart(null);
     setBarRules(openWith.rules);
+    setOpenedNames(openWith.names ?? {});
     setQuery({ ...DEFAULT_LIBRARY_QUERY, filters: openWith.rules });
   }, [collections, openWith, playlists]);
   /** Where a row drag started, which is the only Collection position in hand. */
@@ -474,6 +496,7 @@ export function LibraryScreen({
       }}
       onOpenInClean={onOpenInClean}
       onMessage={(message) => push(message, "success")}
+      onOpenEntity={onOpenEntity}
     />,
   );
 
@@ -509,6 +532,25 @@ export function LibraryScreen({
   );
 
   /**
+   * The credits the Discover entries need, for a target of one known track,
+   * or null when no entry needs them.
+   *
+   * Read before the menu opens, as a selection's rows are, so the menu never
+   * changes shape under the pointer. A menu that needs nothing read opens at
+   * once, as it always has: only the one-track menu of a page that can open
+   * pages waits.
+   */
+  const discoverCredits = useCallback(
+    (target: BatchTarget): Promise<TrackCreditLinks | null> | null => {
+      if (!onOpenEntity || !onOpenSimilar || target.count !== 1 || target.trackId == null) {
+        return null;
+      }
+      return creditsFor(target.trackId, detail.detail);
+    },
+    [detail.detail, onOpenEntity, onOpenSimilar],
+  );
+
+  /**
    * Open the menu on a row (PLAYER-09, DEC-045).
    *
    * The target is the selection when the clicked row belongs to it, and the
@@ -537,9 +579,11 @@ export function LibraryScreen({
               count: 1,
               trackId: row.id,
             };
-      setMenu({ x, y, rows, index, target, kind: "row" });
+      const reading = discoverCredits(target);
+      const credits = reading ? await reading : null;
+      setMenu({ x, y, rows, index, target, kind: "row", credits });
     },
-    [query, selection],
+    [discoverCredits, query, selection],
   );
 
   /** Run one organization action over a target, through ORG-07's entry point. */
@@ -691,7 +735,17 @@ export function LibraryScreen({
 
   /** The organization entries, for whichever surface asked for them. */
   const actionItems = useCallback(
-    (target: BatchTarget): TrackContextMenuItem[] => [
+    (target: BatchTarget, credits: TrackCreditLinks | null): TrackContextMenuItem[] => [
+      // Discover's ways out of one track (DISCOVER-11), in the same list.
+      ...(onOpenEntity && onOpenSimilar && target.trackId != null
+        ? discoverMenuItems(
+            { count: target.count, credits },
+            {
+              onSimilar: () => target.trackId != null && onOpenSimilar(target.trackId),
+              onOpenPage: onOpenEntity,
+            },
+          )
+        : []),
       ...organizationMenuItems(
         {
           count: target.count,
@@ -729,12 +783,12 @@ export function LibraryScreen({
       // Clean's entries (CLEAN-13), in the same list both surfaces render.
       ...cleanMenuItems({ count: target.count }, clean.handlersFor(target)),
     ],
-    [clean, openPicker, runAction, scopedCollection],
+    [clean, onOpenEntity, onOpenSimilar, openPicker, runAction, scopedCollection],
   );
 
   const menuItems = useMemo((): TrackContextMenuItem[] => {
     if (!menu) return [];
-    const organization = actionItems(menu.target);
+    const organization = actionItems(menu.target, menu.credits);
     if (menu.kind === "selection") {
       // Nothing above them here, so the first entry's divider would be a line
       // along the top of the menu.
@@ -942,8 +996,9 @@ export function LibraryScreen({
       collection: new Map(
         flattenCollections(collections.tree).map((node) => [node.id, node.name]),
       ),
+      beatport: new Map(Object.entries(openedNames)),
     }),
-    [collections.tree, tags],
+    [collections.tree, openedNames, tags],
   );
 
   /** What the open picker offers: the tree, or the tag vocabulary. */
@@ -1379,6 +1434,9 @@ export function LibraryScreen({
               }}
               problem={window_.error}
               onRetry={window_.retry}
+              onOpenPage={
+                onOpenEntity ? (page) => onOpenEntity(page.kind, page.ref) : undefined
+              }
             />
           </div>
 
@@ -1506,23 +1564,29 @@ export function LibraryScreen({
             }
             onClear={selection.clear}
             onSelectAll={selection.selectAllMatching}
-            onActions={(anchor) =>
-              setMenu({
-                x: anchor.x,
-                y: anchor.y,
-                rows: [],
-                index: -1,
-                target: {
-                  selection: batchSelection(selection.selection, query),
-                  count: selection.count,
-                  trackId:
-                    selection.count === 1
-                      ? onlySelectedId(selection.selection, window_.total)
-                      : null,
-                },
-                kind: "selection",
-              })
-            }
+            onActions={(anchor) => {
+              const target: BatchTarget = {
+                selection: batchSelection(selection.selection, query),
+                count: selection.count,
+                trackId:
+                  selection.count === 1
+                    ? onlySelectedId(selection.selection, window_.total)
+                    : null,
+              };
+              const open = (credits: TrackCreditLinks | null) =>
+                setMenu({
+                  x: anchor.x,
+                  y: anchor.y,
+                  rows: [],
+                  index: -1,
+                  target,
+                  kind: "selection",
+                  credits,
+                });
+              const reading = discoverCredits(target);
+              if (reading) void reading.then(open);
+              else open(null);
+            }}
           />
 
           <div className="library-screen__columns">
