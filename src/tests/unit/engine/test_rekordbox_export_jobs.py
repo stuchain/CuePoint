@@ -315,6 +315,10 @@ class TestAnExportJob:
         job = finished(
             store, start_rekordbox_export(store, [], "normal", str(destination)).job
         )
+        # The store says a job has finished before it writes the row, and the
+        # job's thread ends only once it has: read the log after that, or a
+        # busy machine reads the row a moment early, still "running".
+        wait_until_settled(store, "the export's row to be written")
 
         row = (
             database()

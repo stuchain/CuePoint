@@ -42,7 +42,10 @@ class TestExportSupportBundleCLI:
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=5,
+            # A guard against a hang, not a speed test: a fresh interpreter
+            # importing the CLI takes about a second alone, and more than five
+            # when the suite runs across eight workers.
+            timeout=60,
         )
         assert result.returncode == 0
         stdout = result.stdout or ""
