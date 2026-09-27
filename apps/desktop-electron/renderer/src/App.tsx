@@ -31,6 +31,7 @@ import { useRestorePlayerAudio } from "./components/player/playerAudioState";
 import { useRestorePlayerOrder } from "./components/player/playerOrderState";
 import {
   CleanScreen,
+  DiscoverScreen,
   InCrateMainScreen,
   LibraryScreen,
   SettingsExportScreen,
@@ -148,6 +149,9 @@ function AppShell() {
             onOpenMissingFiles={() => navigate("/clean", { state: cleanSectionState("missing") })}
           />
         );
+      // DISCOVER-10. inCrate stays beside it, unchanged, until DISCOVER-12.
+      case "discover":
+        return <DiscoverScreen />;
       case "incrate":
         return <InCrateMainScreen />;
       case "settings":

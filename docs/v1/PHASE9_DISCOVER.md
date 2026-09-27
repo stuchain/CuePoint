@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **DISCOVER-01 to DISCOVER-09 implemented, and DISCOVER-01's spike recorded against the
-live API (2026-09-23; see its outcome). DISCOVER-10…DISCOVER-12 not started.** The twelve steps below replace the
+Status: **DISCOVER-01 to DISCOVER-10 implemented, and DISCOVER-01's spike recorded against the
+live API (2026-09-23; see its outcome). DISCOVER-11 and DISCOVER-12 not started.** The twelve steps below replace the
 roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -2291,6 +2291,188 @@ spec passes three times in a row in the packaged Windows build.
 needs more than a column registry and a data source, the step says what changed and why.
 
 **Complexity**: **L**
+
+**Outcome** (2026-09-27): **Implemented.** Discover is in the sidebar and works end to end, in a
+packaged Windows build as well. inCrate is still under Tools, unchanged, until DISCOVER-12.
+
+**What was built.**
+
+- **Navigation.** `discover` is enabled in `navRegistry.ts`, in the workspace group after Clean, and
+  `App.tsx` routes it to `DiscoverScreen`. `lastDestination.test.ts`'s disabled example moved to
+  `prepare`, as its comment said a later phase would have to.
+- **The page** (`screens/discover/`). Two tabs, **Runs** and **Wantlist**, the last one used
+  remembered (`discoverSections.ts`, CLEAN-12's pattern). `options` is read once when the page opens;
+  a Beatport notice, the resolve prompt and a push's outcome sit above both tabs, because each is the
+  page's and not a tab's.
+- **Runs.** The list of kept runs, newest first, each with its date, state, what it looked for and
+  how many tracks it found, paged by `total` ("Show older runs"). Beside it, the open run or **New
+  run**:
+  - **New run**: the genres (filterable), chart dates, release days, and the artist and label scope:
+    every one, only those picked from the Library's own facets with their counts, or none.
+    Everything starts from `options.defaults`, and `newRun.ts` refuses what the engine would, from
+    `options.limits`. It also refuses two requests the engine accepts and that can find nothing: no
+    artists and no labels, and genres with no artists (a run's charts are its artists').
+  - **Starting a run** follows its job from the page. The run is opened as soon as the engine has
+    made it, and the list and the open run are read again every two seconds while anything runs, and
+    once when it ends. Nothing else polls.
+  - **A run**: what it looked for, from its own recorded scope (the names folded under "The N
+    artists it looked for"), how it ended and why, and its tracks. Owned tracks are hidden by
+    default, with "N owned tracks hidden" and **Show tracks you own**. **Delete run…** asks first.
+- **Wantlist.** The same table over `getWantlist` with the note, added and bought columns, the two
+  independent filters DISCOVER-06 made of the four (**Owned**, **Bought**), and the entries, bought
+  and owned counts.
+- **The actions** (`beatportActions.ts`): one list, drawn as the toolbar's buttons and as the
+  right-click menu. A run with nothing selected offers **Push to Beatport playlist…** for everything
+  the table shows; a selection adds **Add to wantlist** and **Open on Beatport**. The wantlist adds
+  **Edit note…** (one track), **Mark bought** (or **Mark not bought** when everything selected is
+  marked) and **Remove from wantlist**. A push without a token Beatport accepts is shown disabled,
+  with why.
+- **Pushing.** The dialog asks the name (the engine's default) and whether to include owned tracks.
+  A run's table with nothing selected is pushed by `run_id` with its owned filter, sort and
+  direction, as DISCOVER-09 made possible; the wantlist with nothing selected reads every id it shows
+  from the engine, window by window, in its order. The outcome stays on the page with **Open the
+  playlist** until dismissed. A refusal stays in the dialog in the engine's words.
+- **Token states.** `beatportState.ts` draws DISCOVER-01's five classes: **Open Settings** for no
+  token, a rejected one and a refused one, **Try again** for a rate limit and an unreachable
+  Beatport. A refusal a run's start meets replaces what `options` said. Runs and the wantlist stay
+  readable in every state, and a run is not offered when only Settings can help.
+- **The resolve prompt** says how many matched tracks have not been read and starts DISCOVER-04's
+  job, followed from the page; `options` is read again when it ends.
+- **Rows from Beatport are not library rows.** `TrackTable` holds them with a column registry of its
+  own (`beatportColumns.tsx`) and a windowed source (`useBeatportWindow.ts`); the table itself did
+  not change. Double-click does nothing. The Inspector shows its empty state, saying why, for as
+  long as the page is open.
+- **Open on Beatport** is a new, narrow bridge method, `openBeatportPage(url)`. It is not an engine
+  route, so it crosses three files, not six: `preload.cjs`, `main.ts` and the bridge types. The main
+  process opens only an https page on `www.beatport.com` or `beatport.com`, with no port or
+  credentials (`electron/externalLinks.ts`), and answers whether it did. At most ten pages open at
+  once.
+- **Settings' token field** can be linked to: `settingsLink.ts` carries the field in the location's
+  state, as Clean's links do, and Settings scrolls to it and focuses it once its status has been
+  read.
+- **A mocked Beatport for end-to-end tests.** `CUEPOINT_BEATPORT_FIXTURE` files gained an `api`
+  section: v4 answers by method, path and the parameters an entry lists, with a status, headers and
+  an optional `delay_ms`. `BeatportApiClient` answers from it in place of the network when a fixture
+  is active, as a real `requests.Response`, so paging, parsing and error classes run unchanged.
+  Anything unlisted is a 404, and no request reaches the network.
+
+**Where it differs from the specification, and why.**
+
+- **"Open on Beatport" opens at most ten pages.** The specification offers it to a multi-selection,
+  and it is; each page is a browser tab, and a hundred at once is a click nobody meant.
+- **The wantlist's "four filters" are two menus**, **Owned** and **Bought**, each "or not", "not" or
+  "only": DISCOVER-06's reading of the four, whose combinations include "bought, not owned yet".
+- **A push of a whole wantlist is offered**, beside a selection's: nothing selected pushes every
+  track the list shows, read from the engine rather than from the rows loaded.
+- **The Runs tab stacks when narrow.** At the default scale, with the sidebar and the Inspector
+  open, a 1,280-pixel window left the open run about 300 pixels beside the list; its header took the
+  whole height and the table was out of reach. Below 560 pixels at scale 1 (`useNarrow.ts`, measured
+  on the element, since the sidebar and the Inspector change its width), the list goes above the
+  run, and the tab scrolls as one. Found by the end-to-end spec.
+- **`options` is read once, when the page opens**, facets included. DISCOVER-09 left this to this
+  step: 302 ms at 50,000 tracks is a page opening, not a keystroke, and loading the facets apart
+  would be a second request and a second loading state for the one panel that needs them.
+- **The mocked Beatport is a fixture file**, as CLEAN-14's journey stubbed Beatport's website, not a
+  local server. It reads nothing from the network, never sends the token anywhere, works the same in
+  a packaged engine, and holds nothing the file does not say.
+
+**Three defects found by this step's own tests, and fixed before commit.**
+
+1. **Settings could not focus its token field when linked to.** The field is disabled while its
+   status loads, and was focused first: Chromium drops the focus of a field disabled after it was
+   focused, and jsdom keeps it, so only the end-to-end spec saw it. Settings now focuses the field
+   once its status has been read (`useBeatportToken` reports `loaded`). A component test records
+   when the focus came and fails on the old order.
+2. **The table's rows were squeezed to nothing** when its actions wrapped in a narrow pane: the
+   height floor was on the table, and the actions took it. The floor is on the rows.
+3. **The run's table could be pushed out of reach** on a short window: see "stacks when narrow".
+
+**What binds later steps.**
+
+1. **DISCOVER-11** draws an Artist or Label page's Beatport half with `BeatportTable`,
+   `useBeatportWindow` (its `answers` checking the page's echoed ref and owned filter) and
+   `useBeatportSelection`, over `EntityTracksPage` rows, which are `BeatportTrackRow`s. The shared
+   columns come from `beatportColumns.tsx`; the actions are `runActions` less the run. The page's
+   empty states use `beatportNotice` for the classes the half shares.
+2. **A new Beatport table** is a column registry, a `fetch` and an `answers` for
+   `useBeatportWindow`; the table, the selection and the actions are shared.
+3. **DISCOVER-12** moves the token's Settings wording from inCrate to Discover; `settingsLink.ts`
+   and the field's id stay. The sidebar test that orders Discover before inCrate goes with inCrate.
+4. **An end-to-end spec that needs Beatport's API** adds `api` entries to a fixture file, not a
+   server; `test_discover_journey_fixture.py` is the pattern for holding such a file to its journey.
+
+**Tests**:
+
+- **Renderer** (`screens/discover/`):
+  - `DiscoverScreen.test.tsx` (47), over the engine's own answers: the tabs and their memory; the
+    engine unreachable and the bridge missing; the Inspector's empty state; every token state and
+    its action, the Settings link and **Try again**, no run without a token, a start's refusal
+    replacing `options`; the resolve prompt, its job and when it is not offered; the run list; the
+    newest run opened; New run when there is none; what a run looked for; owned hidden, counted and
+    shown; every track owned; sorting; the actions by selection size; add to wantlist; Open on
+    Beatport, and a page refused; double-click doing nothing; the right-click menu; a push by run,
+    in its sort, and by ids, a refusal kept, a name refused; delete and a run gone; New run's
+    defaults, picking artists, the engine's refusal, the started run opened; the wantlist's rows,
+    filters, empty state, actions, bought and not bought, remove, notes and a push of the whole
+    list.
+  - `discoverPure.test.ts` (44): the tab's memory; every Beatport state; the actions by selection
+    size; the New run form's rules and request; every sentence, from the engine's answers; the
+    columns.
+  - `useBeatportWindow.test.tsx` (11): the first page, paging once, stale answers by question and by
+    identity, the echoed window, a reload that keeps rows, shrinks and empties, a new question,
+    refusals and failures, disabled.
+  - `useNarrow.test.tsx` (2).
+  - `settingsLink.test.tsx` (4); `navRegistry.test.ts`, `lastDestination.test.ts` and
+    `Sidebar.test.tsx` for Discover enabled; `desktopContract.test.ts` (3) for the new bridge method
+    and that nothing else opens a browser.
+- **Electron**: `externalLinks.test.ts` (22).
+- **Python**:
+  - `test_discover_page_fixture.py` (36) produces `discoverPage.fixture.json` — 32 states, through a
+    running engine, as the renderer receives them — and holds it to the engine (EXPORT-07's
+    practice).
+  - `test_beatport_fixture.py`: 33 new, for the `api` section, the client answering from it, its
+    refusals classified as Beatport's, the delay, and no network.
+  - `test_discover_journey_fixture.py` (3) holds the journey's Beatport to the journey.
+  - The strict mypy gate covers `data/beatport_fixture.py`.
+- **End to end**: `e2e/discover.spec.ts`: a first visit without a token, to the token field; and the
+  journey — import, a run started and watched in the status strip, opened, two tracks added to the
+  wantlist, one marked bought, found by the Bought filter.
+- **Deliberate breakages, each caught by the test named for it**: owned shown by default; a push by
+  run in found order, or with owned shown; an add without its run; Open offered with nothing
+  selected, or for more than ten; a bought mark never undone; a push offered without a token; a
+  busy refusal shown raw; a stale answer kept, by question and by identity; a reload blanking the
+  rows; the Inspector left alone; the resolve prompt with nothing to read; the Settings link without
+  its field; the tab not remembered; the whole library sent as none; a chart window a day too long;
+  positions from zero; the stacked width ignoring the scale; Discover left disabled; Settings
+  focusing before the read; an http page or a look-alike host opened; main opening unchecked; the
+  fixture ignoring listed parameters, reaching the network, or ignoring its delay.
+
+**Three things outside this step, found by its checks and fixed.**
+
+- **The journey's Beatport file would never have been committed.** `.gitignore` ignores `*.json`
+  outside its exceptions; `test_regression_fixtures_not_ignored.py` caught the new file, and it has
+  its own exception beside the Clean journey's.
+- **`test_the_job_is_recorded_in_the_job_log` (EXPORT-05) read the job's row too early.** The
+  store marks a job finished before it writes the row, so under eight workers the row still said
+  running. The test now waits for the job's thread, which ends once the row is written. A
+  300 ms delay injected before the write fails the old test and passes the new one.
+- **`shell.spec.ts` walked a fixed fourteen Tab presses** to reach the status strip; enabling
+  Discover added a stop. It now tabs until Activity, bounded at forty, so the next enabled page
+  does not break it, and lists Discover among the sidebar's links. Also, a CLI `--help` test's
+  five-second subprocess timeout, a hang guard, failed under eight workers; it is sixty.
+
+**Checks run**:
+
+- **Python:** the full suite (9,940 passed, 66 skipped, the strict mypy gate among them); `ruff check` and
+  `ruff format --check` with the pinned 0.14.0; `check_no_qt_in_core.py`;
+  `check_desktop_version_coupling.py`; `git diff --check`.
+- **Renderer:** `npm run typecheck`, `npm run lint` (only the eight warnings already there) and
+  `npm test` (3,070 passed).
+- **Electron:** `npm run typecheck` and `npm test` (490 passed).
+- **End to end:** the whole suite against the development build (51 passed, 1 skipped, and the
+  shell spec's keyboard test failing as above; `shell.spec.ts` then 7 of 7 after its fix), and
+  `discover.spec.ts` three times in a row against the packaged build
+  (`release/win-unpacked`, rebuilt with a fresh engine sidecar): 2 of 2 each time.
 
 ---
 

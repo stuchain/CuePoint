@@ -17,6 +17,10 @@ the rules that have to hold for all of them live here (DISCOVER-01):
   create would silently read a list instead. POSTs refuse redirects outright.
 - **Responses are bounded.** A body larger than :data:`MAX_RESPONSE_BYTES` is
   refused before it is parsed.
+- **An end-to-end test answers from a file.** With ``CUEPOINT_BEATPORT_FIXTURE``
+  set, every request is answered by :mod:`cuepoint.data.beatport_fixture` in
+  place of the network, as a response Beatport could have sent, so everything
+  above — the budget aside — runs on it unchanged (DISCOVER-10).
 """
 
 import email.utils
@@ -28,6 +32,7 @@ from typing import Any, Callable, Dict, Optional
 
 import requests
 
+from cuepoint.data import beatport_fixture
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.services.reliability_retry import run_with_retry
 
@@ -105,6 +110,32 @@ def classify_beatport_error(error: BaseException) -> str:
         if status == 429:
             return ERROR_RATE_LIMITED
     return ERROR_UNAVAILABLE
+
+
+def fixture_response(
+    fixture: beatport_fixture.BeatportFixture,
+    method: str,
+    url: str,
+    path: str,
+    params: Optional[Dict[str, Any]],
+    body: Optional[Dict[str, Any]],
+) -> requests.Response:
+    """The response a fixture file gives one request, as ``requests`` builds one.
+
+    A real :class:`requests.Response`, so ``raise_for_status``, ``json`` and
+    the header lookups behave exactly as they do on Beatport's own answers.
+    """
+    answer = fixture.api_answer(method, path, params=params, body=body)
+    if answer.delay_ms:
+        time.sleep(answer.delay_ms / 1000)
+    response = requests.Response()
+    response.status_code = answer.status
+    response._content = answer.content()
+    response.headers.update({"Content-Type": "application/json", **answer.headers})
+    response.url = url
+    response.reason = "Fixture"
+    response.encoding = "utf-8"
+    return response
 
 
 def parse_retry_after(
@@ -196,8 +227,14 @@ class BeatportApiClient:
                 for k, v in list(params.items())[:5]
             },
         )
-        with self._gate:
-            resp = self._session.request(method, url, **kwargs)
+        fixture = beatport_fixture.active()
+        if fixture is not None:
+            resp = fixture_response(
+                fixture, method, url, path, kwargs.get("params"), kwargs.get("json")
+            )
+        else:
+            with self._gate:
+                resp = self._session.request(method, url, **kwargs)
         try:
             body_len = len(resp.content) if resp.content else 0
             _logger.info(

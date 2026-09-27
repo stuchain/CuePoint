@@ -1207,6 +1207,38 @@ describe("desktop contract", () => {
     });
   });
 
+  describe("the Discover page (DISCOVER-10)", () => {
+    /** The body of the handler for one channel, as text. */
+    const handlerOf = (channel: string) => {
+      const start = main.indexOf(`ipcMain.handle("${channel}"`);
+      expect(start, channel).toBeGreaterThan(-1);
+      return main.slice(start, main.indexOf("\n  });", start));
+    };
+
+    it("opens a Beatport page through one narrow method in every file it crosses", () => {
+      expect(invokedChannels(preload)).toContain("shell:openBeatportPage");
+      expect(handledChannels(main)).toContain("shell:openBeatportPage");
+      expect(preload).toMatch(/openBeatportPage: \(url\) => ipcRenderer\.invoke\("shell:openBeatportPage", url\)/);
+      expect(bridgeTypes).toContain("openBeatportPage?: (url: string) => Promise<boolean>;");
+    });
+
+    it("checks the URL in the main process before anything opens it", () => {
+      const handler = handlerOf("shell:openBeatportPage");
+      expect(handler).toContain("beatportPageUrl(url)");
+      expect(handler.indexOf("beatportPageUrl(url)")).toBeLessThan(
+        handler.indexOf("shell.openExternal("),
+      );
+      expect(main).toContain('import { beatportPageUrl } from "./externalLinks";');
+    });
+
+    it("opens nothing else in the browser, anywhere in the main process", () => {
+      // One call, the checked one: an unchecked openExternal is a renderer
+      // able to start any protocol handler on the machine.
+      expect(main.match(/shell\.openExternal\(/g)).toHaveLength(1);
+      expect(handlerOf("shell:openBeatportPage")).toContain("shell.openExternal(page)");
+    });
+  });
+
   describe("inKey's routes are gone (CLEAN-14, DEC-071)", () => {
     // A removal is the same six-file sweep as an addition, and a method left in
     // one file is as silent as one missing from another: the renderer would

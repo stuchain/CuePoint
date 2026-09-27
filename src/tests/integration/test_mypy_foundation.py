@@ -96,6 +96,7 @@ GUARDED = (
     "cuepoint/services/review_export_service.py",
     "cuepoint/services/beatport_api_client.py",
     "cuepoint/services/beatport_catalog.py",
+    "cuepoint/data/beatport_fixture.py",
     "cuepoint/services/match_comparison.py",
     "cuepoint/engine/clean_api.py",
     "cuepoint/services/override_values.py",

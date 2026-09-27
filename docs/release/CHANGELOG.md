@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- The **Discover** page, in the sidebar. **Runs** finds new music on Beatport
+  from your library: charts your artists made in the genres you choose, and
+  recent releases on your labels — every artist and label, or the ones you pick.
+  A run works in the background, shown in the status strip, and is kept with
+  what it looked for, how it ended and what it found. Tracks you already own
+  (through an accepted match) are hidden and counted. Found tracks can go on a
+  **Wantlist**, with a note and a bought mark, be pushed to a new playlist on
+  your Beatport account, or be opened on Beatport. Without a Beatport token, or
+  when Beatport refuses it, the page says so with a link to the token in
+  Settings, and past runs and the wantlist still open. **Resolve Beatport
+  identities** reads your matched tracks' artists and labels from Beatport when
+  you ask. inCrate stays in Tools, unchanged, for now. See the new user guide
+  page, Discover
 - Two Library filters that find an artist or a label by its Beatport id:
   **Beatport artist** and **Beatport label**. A track counts when its accepted
   Beatport match credits that artist or label, and so does an unmatched track

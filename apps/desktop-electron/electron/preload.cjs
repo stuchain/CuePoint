@@ -186,6 +186,7 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   testBeatportToken: (body) => ipcRenderer.invoke("engine:testBeatportToken", body),
   exportSupportBundle: (options) => ipcRenderer.invoke("support:exportBundle", options ?? {}),
   showItemInFolder: (filePath) => ipcRenderer.invoke("shell:showItemInFolder", filePath),
+  openBeatportPage: (url) => ipcRenderer.invoke("shell:openBeatportPage", url),
   getLogsDir: () => ipcRenderer.invoke("engine:getLogsDir"),
   getCuepointLog: (options) => ipcRenderer.invoke("engine:getCuepointLog", options ?? {}),
   clearCuepointLogs: () => ipcRenderer.invoke("engine:clearCuepointLogs"),

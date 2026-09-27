@@ -2541,6 +2541,11 @@ export interface CuePointBridge {
     sanitize?: boolean;
   }) => Promise<SupportBundleExportResult>;
   showItemInFolder?: (filePath: string) => Promise<void>;
+  /**
+   * Open a Beatport page in the system browser (DISCOVER-10). Only an https
+   * page on beatport.com opens; anything else answers false, unopened.
+   */
+  openBeatportPage?: (url: string) => Promise<boolean>;
   getLogsDir?: () => Promise<LogsDirResponse>;
   getCuepointLog?: (options?: {
     level?: string;

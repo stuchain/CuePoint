@@ -5,6 +5,7 @@ import { app, BrowserWindow, dialog, globalShortcut, ipcMain, shell, systemPrefe
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
+import { beatportPageUrl } from "./externalLinks";
 import { MediaKeyBinding } from "./mediaKeys";
 import type { PlayerNotice } from "./playbackFailures";
 import { PlaybackController } from "./playbackController";
@@ -475,6 +476,17 @@ function registerIpcHandlers(): void {
   );
   ipcMain.handle("shell:showItemInFolder", (_event, filePath: string) => {
     shell.showItemInFolder(filePath);
+  });
+  /**
+   * "Open on Beatport" (DISCOVER-10): a Beatport page in the system browser.
+   * Anything that is not an https page on Beatport's website is refused here,
+   * whatever the renderer sent, and the answer says whether it opened.
+   */
+  ipcMain.handle("shell:openBeatportPage", async (_event, url: unknown) => {
+    const page = beatportPageUrl(url);
+    if (page === null) return false;
+    await shell.openExternal(page);
+    return true;
   });
 
   // --- Player (PLAYER-03) ---------------------------------------------------

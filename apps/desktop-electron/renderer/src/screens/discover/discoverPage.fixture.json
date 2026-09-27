@@ -1,0 +1,1641 @@
+{
+  "discovery_result": {
+    "artists_in_scope": 3,
+    "charts_read": 3,
+    "error": null,
+    "error_class": null,
+    "finished_at": "2026-09-20T12:00:00+00:00",
+    "id": 1,
+    "job_id": "job-1",
+    "labels_in_scope": 2,
+    "labels_resolved": 1,
+    "outcome": "succeeded",
+    "releases_read": 2,
+    "started_at": "2026-09-20T12:00:00+00:00",
+    "tracks_found": 7
+  },
+  "options_forbidden": {
+    "refusal": null,
+    "value": {
+      "artists": {
+        "field": "artist_name",
+        "total_values": 3,
+        "truncated": false,
+        "values": [
+          {
+            "count": 1,
+            "value": "DJEFF"
+          },
+          {
+            "count": 1,
+            "value": "Kiko"
+          },
+          {
+            "count": 1,
+            "value": "Mara Veil"
+          }
+        ]
+      },
+      "beatport": {
+        "configured": true,
+        "message": "Beatport answered 403",
+        "retry_after": null,
+        "state": "forbidden"
+      },
+      "defaults": {
+        "charts_from": "2026-08-21",
+        "charts_to": "2026-09-20",
+        "genre_ids": [],
+        "new_releases_days": 30,
+        "playlist_name": "sep20"
+      },
+      "genres": [],
+      "index_current": false,
+      "labels": {
+        "field": "label_name",
+        "total_values": 2,
+        "truncated": false,
+        "values": [
+          {
+            "count": 2,
+            "value": "NIGHTFALL-AUDIO"
+          },
+          {
+            "count": 1,
+            "value": "Cold Room"
+          }
+        ]
+      },
+      "limits": {
+        "max_change": 10000,
+        "max_entity_window": 500,
+        "max_genres": 50,
+        "max_note_length": 1000,
+        "max_playlist_name_length": 200,
+        "max_playlist_tracks": 10000,
+        "max_run_window": 500,
+        "max_runs": 200,
+        "max_similar": 200,
+        "max_window_days": 366
+      },
+      "resolve": {
+        "owned": 0,
+        "to_read": 0
+      }
+    }
+  },
+  "options_no_token": {
+    "refusal": null,
+    "value": {
+      "artists": {
+        "field": "artist_name",
+        "total_values": 3,
+        "truncated": false,
+        "values": [
+          {
+            "count": 1,
+            "value": "DJEFF"
+          },
+          {
+            "count": 1,
+            "value": "Kiko"
+          },
+          {
+            "count": 1,
+            "value": "Mara Veil"
+          }
+        ]
+      },
+      "beatport": {
+        "configured": false,
+        "message": "no token",
+        "retry_after": null,
+        "state": "no_token"
+      },
+      "defaults": {
+        "charts_from": "2026-08-21",
+        "charts_to": "2026-09-20",
+        "genre_ids": [],
+        "new_releases_days": 30,
+        "playlist_name": "sep20"
+      },
+      "genres": [],
+      "index_current": false,
+      "labels": {
+        "field": "label_name",
+        "total_values": 2,
+        "truncated": false,
+        "values": [
+          {
+            "count": 2,
+            "value": "NIGHTFALL-AUDIO"
+          },
+          {
+            "count": 1,
+            "value": "Cold Room"
+          }
+        ]
+      },
+      "limits": {
+        "max_change": 10000,
+        "max_entity_window": 500,
+        "max_genres": 50,
+        "max_note_length": 1000,
+        "max_playlist_name_length": 200,
+        "max_playlist_tracks": 10000,
+        "max_run_window": 500,
+        "max_runs": 200,
+        "max_similar": 200,
+        "max_window_days": 366
+      },
+      "resolve": {
+        "owned": 0,
+        "to_read": 0
+      }
+    }
+  },
+  "options_ok": {
+    "refusal": null,
+    "value": {
+      "artists": {
+        "field": "artist_name",
+        "total_values": 3,
+        "truncated": false,
+        "values": [
+          {
+            "count": 1,
+            "value": "DJEFF"
+          },
+          {
+            "count": 1,
+            "value": "Kiko"
+          },
+          {
+            "count": 1,
+            "value": "Mara Veil"
+          }
+        ]
+      },
+      "beatport": {
+        "configured": true,
+        "message": null,
+        "retry_after": null,
+        "state": "ok"
+      },
+      "defaults": {
+        "charts_from": "2026-08-21",
+        "charts_to": "2026-09-20",
+        "genre_ids": [],
+        "new_releases_days": 30,
+        "playlist_name": "sep20"
+      },
+      "genres": [
+        {
+          "id": 12,
+          "name": "Deep House",
+          "slug": "deep-house"
+        },
+        {
+          "id": 5,
+          "name": "House",
+          "slug": "house"
+        },
+        {
+          "id": 6,
+          "name": "Techno (Peak Time / Driving)",
+          "slug": "techno-peak-time-driving"
+        }
+      ],
+      "index_current": false,
+      "labels": {
+        "field": "label_name",
+        "total_values": 2,
+        "truncated": false,
+        "values": [
+          {
+            "count": 2,
+            "value": "NIGHTFALL-AUDIO"
+          },
+          {
+            "count": 1,
+            "value": "Cold Room"
+          }
+        ]
+      },
+      "limits": {
+        "max_change": 10000,
+        "max_entity_window": 500,
+        "max_genres": 50,
+        "max_note_length": 1000,
+        "max_playlist_name_length": 200,
+        "max_playlist_tracks": 10000,
+        "max_run_window": 500,
+        "max_runs": 200,
+        "max_similar": 200,
+        "max_window_days": 366
+      },
+      "resolve": {
+        "owned": 2,
+        "to_read": 2
+      }
+    }
+  },
+  "options_rate_limited": {
+    "refusal": null,
+    "value": {
+      "artists": {
+        "field": "artist_name",
+        "total_values": 3,
+        "truncated": false,
+        "values": [
+          {
+            "count": 1,
+            "value": "DJEFF"
+          },
+          {
+            "count": 1,
+            "value": "Kiko"
+          },
+          {
+            "count": 1,
+            "value": "Mara Veil"
+          }
+        ]
+      },
+      "beatport": {
+        "configured": true,
+        "message": "Beatport answered 429",
+        "retry_after": null,
+        "state": "rate_limited"
+      },
+      "defaults": {
+        "charts_from": "2026-08-21",
+        "charts_to": "2026-09-20",
+        "genre_ids": [],
+        "new_releases_days": 30,
+        "playlist_name": "sep20"
+      },
+      "genres": [],
+      "index_current": false,
+      "labels": {
+        "field": "label_name",
+        "total_values": 2,
+        "truncated": false,
+        "values": [
+          {
+            "count": 2,
+            "value": "NIGHTFALL-AUDIO"
+          },
+          {
+            "count": 1,
+            "value": "Cold Room"
+          }
+        ]
+      },
+      "limits": {
+        "max_change": 10000,
+        "max_entity_window": 500,
+        "max_genres": 50,
+        "max_note_length": 1000,
+        "max_playlist_name_length": 200,
+        "max_playlist_tracks": 10000,
+        "max_run_window": 500,
+        "max_runs": 200,
+        "max_similar": 200,
+        "max_window_days": 366
+      },
+      "resolve": {
+        "owned": 0,
+        "to_read": 0
+      }
+    }
+  },
+  "options_rejected": {
+    "refusal": null,
+    "value": {
+      "artists": {
+        "field": "artist_name",
+        "total_values": 3,
+        "truncated": false,
+        "values": [
+          {
+            "count": 1,
+            "value": "DJEFF"
+          },
+          {
+            "count": 1,
+            "value": "Kiko"
+          },
+          {
+            "count": 1,
+            "value": "Mara Veil"
+          }
+        ]
+      },
+      "beatport": {
+        "configured": true,
+        "message": "Beatport answered 401",
+        "retry_after": null,
+        "state": "rejected"
+      },
+      "defaults": {
+        "charts_from": "2026-08-21",
+        "charts_to": "2026-09-20",
+        "genre_ids": [],
+        "new_releases_days": 30,
+        "playlist_name": "sep20"
+      },
+      "genres": [],
+      "index_current": false,
+      "labels": {
+        "field": "label_name",
+        "total_values": 2,
+        "truncated": false,
+        "values": [
+          {
+            "count": 2,
+            "value": "NIGHTFALL-AUDIO"
+          },
+          {
+            "count": 1,
+            "value": "Cold Room"
+          }
+        ]
+      },
+      "limits": {
+        "max_change": 10000,
+        "max_entity_window": 500,
+        "max_genres": 50,
+        "max_note_length": 1000,
+        "max_playlist_name_length": 200,
+        "max_playlist_tracks": 10000,
+        "max_run_window": 500,
+        "max_runs": 200,
+        "max_similar": 200,
+        "max_window_days": 366
+      },
+      "resolve": {
+        "owned": 0,
+        "to_read": 0
+      }
+    }
+  },
+  "options_resolved": {
+    "refusal": null,
+    "value": {
+      "artists": {
+        "field": "artist_name",
+        "total_values": 3,
+        "truncated": false,
+        "values": [
+          {
+            "count": 1,
+            "value": "DJEFF"
+          },
+          {
+            "count": 1,
+            "value": "Kiko"
+          },
+          {
+            "count": 1,
+            "value": "Mara Veil"
+          }
+        ]
+      },
+      "beatport": {
+        "configured": true,
+        "message": null,
+        "retry_after": null,
+        "state": "ok"
+      },
+      "defaults": {
+        "charts_from": "2026-08-21",
+        "charts_to": "2026-09-20",
+        "genre_ids": [],
+        "new_releases_days": 30,
+        "playlist_name": "sep20"
+      },
+      "genres": [
+        {
+          "id": 12,
+          "name": "Deep House",
+          "slug": "deep-house"
+        },
+        {
+          "id": 5,
+          "name": "House",
+          "slug": "house"
+        },
+        {
+          "id": 6,
+          "name": "Techno (Peak Time / Driving)",
+          "slug": "techno-peak-time-driving"
+        }
+      ],
+      "index_current": false,
+      "labels": {
+        "field": "label_name",
+        "total_values": 2,
+        "truncated": false,
+        "values": [
+          {
+            "count": 2,
+            "value": "NIGHTFALL-AUDIO"
+          },
+          {
+            "count": 1,
+            "value": "Cold Room"
+          }
+        ]
+      },
+      "limits": {
+        "max_change": 10000,
+        "max_entity_window": 500,
+        "max_genres": 50,
+        "max_note_length": 1000,
+        "max_playlist_name_length": 200,
+        "max_playlist_tracks": 10000,
+        "max_run_window": 500,
+        "max_runs": 200,
+        "max_similar": 200,
+        "max_window_days": 366
+      },
+      "resolve": {
+        "owned": 2,
+        "to_read": 0
+      }
+    }
+  },
+  "options_unavailable": {
+    "refusal": null,
+    "value": {
+      "artists": {
+        "field": "artist_name",
+        "total_values": 3,
+        "truncated": false,
+        "values": [
+          {
+            "count": 1,
+            "value": "DJEFF"
+          },
+          {
+            "count": 1,
+            "value": "Kiko"
+          },
+          {
+            "count": 1,
+            "value": "Mara Veil"
+          }
+        ]
+      },
+      "beatport": {
+        "configured": true,
+        "message": "Beatport answered 503",
+        "retry_after": null,
+        "state": "unavailable"
+      },
+      "defaults": {
+        "charts_from": "2026-08-21",
+        "charts_to": "2026-09-20",
+        "genre_ids": [],
+        "new_releases_days": 30,
+        "playlist_name": "sep20"
+      },
+      "genres": [],
+      "index_current": false,
+      "labels": {
+        "field": "label_name",
+        "total_values": 2,
+        "truncated": false,
+        "values": [
+          {
+            "count": 2,
+            "value": "NIGHTFALL-AUDIO"
+          },
+          {
+            "count": 1,
+            "value": "Cold Room"
+          }
+        ]
+      },
+      "limits": {
+        "max_change": 10000,
+        "max_entity_window": 500,
+        "max_genres": 50,
+        "max_note_length": 1000,
+        "max_playlist_name_length": 200,
+        "max_playlist_tracks": 10000,
+        "max_run_window": 500,
+        "max_runs": 200,
+        "max_similar": 200,
+        "max_window_days": 366
+      },
+      "resolve": {
+        "owned": 0,
+        "to_read": 0
+      }
+    }
+  },
+  "playlist_refused": {
+    "added": 0,
+    "cancelled": false,
+    "error": "Beatport refused to create a playlist (403): the token may not have playlist scope",
+    "error_class": "forbidden",
+    "failed": 0,
+    "failed_track_ids": [],
+    "name": "Friday",
+    "not_attempted": 2,
+    "outcome": "failed",
+    "playlist_id": null,
+    "playlist_url": null,
+    "requested": 2,
+    "skipped_owned": 0,
+    "to_add": 2
+  },
+  "playlist_result": {
+    "added": 2,
+    "cancelled": false,
+    "error": null,
+    "error_class": null,
+    "failed": 0,
+    "failed_track_ids": [],
+    "name": "Friday finds",
+    "not_attempted": 0,
+    "outcome": "succeeded",
+    "playlist_id": "700001",
+    "playlist_url": "https://www.beatport.com/library/playlists/700001",
+    "requested": 3,
+    "skipped_owned": 1,
+    "to_add": 2
+  },
+  "refusal_busy": {
+    "refusal": {
+      "code": "DISCOVER_BUSY",
+      "job_id": "job-1",
+      "job_type": "discovery",
+      "message": "A discovery job is already running: job-1",
+      "reason": null,
+      "retry_after": null
+    },
+    "value": null
+  },
+  "refusal_no_token": {
+    "refusal": {
+      "code": "BEATPORT_REFUSED",
+      "job_id": null,
+      "job_type": null,
+      "message": "no token",
+      "reason": "no_token",
+      "retry_after": null
+    },
+    "value": null
+  },
+  "refusal_note_too_long": {
+    "refusal": {
+      "code": "INVALID_REQUEST",
+      "job_id": null,
+      "job_type": null,
+      "message": "A note is at most 1000 characters",
+      "reason": null,
+      "retry_after": null
+    },
+    "value": null
+  },
+  "refusal_run_gone": {
+    "refusal": {
+      "code": "DISCOVERY_RUN_NOT_FOUND",
+      "job_id": null,
+      "job_type": null,
+      "message": "No discovery run 41",
+      "reason": null,
+      "retry_after": null
+    },
+    "value": null
+  },
+  "resolve_result": {
+    "batches": 1,
+    "cancelled": false,
+    "error": null,
+    "error_class": null,
+    "failed": 0,
+    "not_found": 0,
+    "outcome": "succeeded",
+    "owned": 2,
+    "resolved": 2,
+    "to_read": 2,
+    "unreadable": 0,
+    "up_to_date": 0
+  },
+  "run_deleted": {
+    "refusal": null,
+    "value": {
+      "deleted": true,
+      "id": 1
+    }
+  },
+  "run_header": {
+    "refusal": null,
+    "value": {
+      "artists": [
+        {
+          "key": "djeff",
+          "name": "DJEFF"
+        },
+        {
+          "key": "kiko",
+          "name": "Kiko"
+        },
+        {
+          "key": "mara veil",
+          "name": "Mara Veil"
+        }
+      ],
+      "labels": [
+        {
+          "key": "cold room",
+          "name": "Cold Room"
+        },
+        {
+          "key": "nightfall audio",
+          "name": "NIGHTFALL-AUDIO"
+        }
+      ],
+      "run": {
+        "artists_in_scope": 3,
+        "charts_read": 3,
+        "error": null,
+        "error_class": null,
+        "finished_at": "2026-09-20T12:00:00+00:00",
+        "id": 1,
+        "job_id": "job-1",
+        "labels_in_scope": 2,
+        "labels_resolved": 1,
+        "outcome": "succeeded",
+        "params": {
+          "artists": {
+            "count": 3,
+            "linked_ids": 0,
+            "picked": null
+          },
+          "charts_from": "2026-08-21",
+          "charts_to": "2026-09-20",
+          "genre_ids": [
+            5,
+            6
+          ],
+          "labels": {
+            "count": 2,
+            "linked_ids": 0,
+            "picked": null
+          },
+          "new_releases_days": 30,
+          "releases_from": "2026-08-21",
+          "releases_to": "2026-09-20"
+        },
+        "releases_read": 2,
+        "running": false,
+        "started_at": "2026-09-20T12:00:00+00:00",
+        "tracks_found": 7
+      }
+    }
+  },
+  "run_started": {
+    "refusal": null,
+    "value": {
+      "id": "job-1",
+      "state": "running",
+      "type": "discovery"
+    }
+  },
+  "run_tracks_all": {
+    "refusal": null,
+    "value": {
+      "hidden": 0,
+      "owned": 2,
+      "rows": [
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 1,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 1,
+          "label_key": "elsewhere",
+          "label_name": "Elsewhere",
+          "mix_name": "Original Mix",
+          "on_wantlist": true,
+          "owned": false,
+          "position": 0,
+          "release_date": "2026-08-31",
+          "release_id": 601,
+          "release_name": "R",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "Mara Veil",
+              "source_id": 1,
+              "source_name": "Mara's September",
+              "source_type": "chart",
+              "source_url": "https://www.beatport.com/chart/chart-1/1"
+            }
+          ],
+          "title": "Track 1",
+          "url": "https://www.beatport.com/track/track-1/1"
+        },
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 2,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "on_wantlist": true,
+          "owned": false,
+          "position": 1,
+          "release_date": "2026-09-16",
+          "release_id": 701,
+          "release_name": "Signal EP",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "Mara Veil",
+              "source_id": 1,
+              "source_name": "Mara's September",
+              "source_type": "chart",
+              "source_url": "https://www.beatport.com/chart/chart-1/1"
+            },
+            {
+              "matched_on": "NIGHTFALL-AUDIO",
+              "source_id": 701,
+              "source_name": "Signal EP",
+              "source_type": "label_release",
+              "source_url": null
+            }
+          ],
+          "title": "Track 2",
+          "url": "https://www.beatport.com/track/track-2/2"
+        },
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 3,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 1,
+          "label_key": "elsewhere",
+          "label_name": "Elsewhere",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": true,
+          "position": 2,
+          "release_date": "2026-08-31",
+          "release_id": 603,
+          "release_name": "R",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "Mara Veil",
+              "source_id": 1,
+              "source_name": "Mara's September",
+              "source_type": "chart",
+              "source_url": "https://www.beatport.com/chart/chart-1/1"
+            },
+            {
+              "matched_on": "DJEFF",
+              "source_id": 2,
+              "source_name": "DJEFF picks",
+              "source_type": "chart",
+              "source_url": "https://www.beatport.com/chart/chart-2/2"
+            }
+          ],
+          "title": "Track 3",
+          "url": "https://www.beatport.com/track/track-3/3"
+        },
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 4,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 1,
+          "label_key": "elsewhere",
+          "label_name": "Elsewhere",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": true,
+          "position": 3,
+          "release_date": "2026-08-31",
+          "release_id": 604,
+          "release_name": "R",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "DJEFF",
+              "source_id": 2,
+              "source_name": "DJEFF picks",
+              "source_type": "chart",
+              "source_url": "https://www.beatport.com/chart/chart-2/2"
+            }
+          ],
+          "title": "Track 4",
+          "url": "https://www.beatport.com/track/track-4/4"
+        },
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 5,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 1,
+          "label_key": "elsewhere",
+          "label_name": "Elsewhere",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": false,
+          "position": 4,
+          "release_date": "2026-08-31",
+          "release_id": 605,
+          "release_name": "R",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "Kiko",
+              "source_id": 3,
+              "source_name": "Kiko's crate",
+              "source_type": "chart",
+              "source_url": "https://www.beatport.com/chart/chart-3/3"
+            }
+          ],
+          "title": "Track 5",
+          "url": "https://www.beatport.com/track/track-5/5"
+        },
+        {
+          "artists": [
+            "Mara Veil"
+          ],
+          "beatport_track_id": 7,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": false,
+          "position": 5,
+          "release_date": "2026-09-18",
+          "release_id": 700,
+          "release_name": "Lantern EP",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "NIGHTFALL-AUDIO",
+              "source_id": 700,
+              "source_name": "Lantern EP",
+              "source_type": "label_release",
+              "source_url": null
+            }
+          ],
+          "title": "Track 7",
+          "url": "https://www.beatport.com/track/track-7/7"
+        },
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 8,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": false,
+          "position": 6,
+          "release_date": "2026-09-18",
+          "release_id": 700,
+          "release_name": "Lantern EP",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "NIGHTFALL-AUDIO",
+              "source_id": 700,
+              "source_name": "Lantern EP",
+              "source_type": "label_release",
+              "source_url": null
+            }
+          ],
+          "title": "Track 8",
+          "url": "https://www.beatport.com/track/track-8/8"
+        }
+      ],
+      "run_id": 1,
+      "total": 7,
+      "tracks": 7,
+      "window": {
+        "dir": "asc",
+        "limit": 100,
+        "offset": 0,
+        "owned": "all",
+        "sort": "position"
+      }
+    }
+  },
+  "run_tracks_all_owned": {
+    "refusal": null,
+    "value": {
+      "hidden": 7,
+      "owned": 7,
+      "rows": [],
+      "run_id": 1,
+      "total": 0,
+      "tracks": 7,
+      "window": {
+        "dir": "asc",
+        "limit": 100,
+        "offset": 0,
+        "owned": "hide",
+        "sort": "position"
+      }
+    }
+  },
+  "run_tracks_hidden": {
+    "refusal": null,
+    "value": {
+      "hidden": 2,
+      "owned": 2,
+      "rows": [
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 1,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 1,
+          "label_key": "elsewhere",
+          "label_name": "Elsewhere",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": false,
+          "position": 0,
+          "release_date": "2026-08-31",
+          "release_id": 601,
+          "release_name": "R",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "Mara Veil",
+              "source_id": 1,
+              "source_name": "Mara's September",
+              "source_type": "chart",
+              "source_url": "https://www.beatport.com/chart/chart-1/1"
+            }
+          ],
+          "title": "Track 1",
+          "url": "https://www.beatport.com/track/track-1/1"
+        },
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 2,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": false,
+          "position": 1,
+          "release_date": "2026-09-16",
+          "release_id": 701,
+          "release_name": "Signal EP",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "Mara Veil",
+              "source_id": 1,
+              "source_name": "Mara's September",
+              "source_type": "chart",
+              "source_url": "https://www.beatport.com/chart/chart-1/1"
+            },
+            {
+              "matched_on": "NIGHTFALL-AUDIO",
+              "source_id": 701,
+              "source_name": "Signal EP",
+              "source_type": "label_release",
+              "source_url": null
+            }
+          ],
+          "title": "Track 2",
+          "url": "https://www.beatport.com/track/track-2/2"
+        },
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 5,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 1,
+          "label_key": "elsewhere",
+          "label_name": "Elsewhere",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": false,
+          "position": 4,
+          "release_date": "2026-08-31",
+          "release_id": 605,
+          "release_name": "R",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "Kiko",
+              "source_id": 3,
+              "source_name": "Kiko's crate",
+              "source_type": "chart",
+              "source_url": "https://www.beatport.com/chart/chart-3/3"
+            }
+          ],
+          "title": "Track 5",
+          "url": "https://www.beatport.com/track/track-5/5"
+        },
+        {
+          "artists": [
+            "Mara Veil"
+          ],
+          "beatport_track_id": 7,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": false,
+          "position": 5,
+          "release_date": "2026-09-18",
+          "release_id": 700,
+          "release_name": "Lantern EP",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "NIGHTFALL-AUDIO",
+              "source_id": 700,
+              "source_name": "Lantern EP",
+              "source_type": "label_release",
+              "source_url": null
+            }
+          ],
+          "title": "Track 7",
+          "url": "https://www.beatport.com/track/track-7/7"
+        },
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 8,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": false,
+          "position": 6,
+          "release_date": "2026-09-18",
+          "release_id": 700,
+          "release_name": "Lantern EP",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "NIGHTFALL-AUDIO",
+              "source_id": 700,
+              "source_name": "Lantern EP",
+              "source_type": "label_release",
+              "source_url": null
+            }
+          ],
+          "title": "Track 8",
+          "url": "https://www.beatport.com/track/track-8/8"
+        }
+      ],
+      "run_id": 1,
+      "total": 5,
+      "tracks": 7,
+      "window": {
+        "dir": "asc",
+        "limit": 100,
+        "offset": 0,
+        "owned": "hide",
+        "sort": "position"
+      }
+    }
+  },
+  "runs": {
+    "refusal": null,
+    "value": {
+      "limit": 50,
+      "offset": 0,
+      "runs": [
+        {
+          "artists_in_scope": 3,
+          "charts_read": 0,
+          "error": "Beatport answered 401",
+          "error_class": "rejected",
+          "finished_at": "2026-09-20T12:00:00+00:00",
+          "id": 2,
+          "job_id": "job-1",
+          "labels_in_scope": 2,
+          "labels_resolved": 0,
+          "outcome": "failed",
+          "params": {
+            "artists": {
+              "count": 3,
+              "linked_ids": 0,
+              "picked": null
+            },
+            "charts_from": "2026-08-21",
+            "charts_to": "2026-09-20",
+            "genre_ids": [
+              5,
+              6
+            ],
+            "labels": {
+              "count": 2,
+              "linked_ids": 2,
+              "picked": null
+            },
+            "new_releases_days": 30,
+            "releases_from": "2026-08-21",
+            "releases_to": "2026-09-20"
+          },
+          "releases_read": 0,
+          "running": false,
+          "started_at": "2026-09-20T12:00:00+00:00",
+          "tracks_found": 0
+        },
+        {
+          "artists_in_scope": 3,
+          "charts_read": 3,
+          "error": null,
+          "error_class": null,
+          "finished_at": "2026-09-20T12:00:00+00:00",
+          "id": 1,
+          "job_id": "job-2",
+          "labels_in_scope": 2,
+          "labels_resolved": 1,
+          "outcome": "succeeded",
+          "params": {
+            "artists": {
+              "count": 3,
+              "linked_ids": 0,
+              "picked": null
+            },
+            "charts_from": "2026-08-21",
+            "charts_to": "2026-09-20",
+            "genre_ids": [
+              5,
+              6
+            ],
+            "labels": {
+              "count": 2,
+              "linked_ids": 0,
+              "picked": null
+            },
+            "new_releases_days": 30,
+            "releases_from": "2026-08-21",
+            "releases_to": "2026-09-20"
+          },
+          "releases_read": 2,
+          "running": false,
+          "started_at": "2026-09-20T12:00:00+00:00",
+          "tracks_found": 7
+        }
+      ],
+      "total": 2
+    }
+  },
+  "runs_empty": {
+    "refusal": null,
+    "value": {
+      "limit": 50,
+      "offset": 0,
+      "runs": [],
+      "total": 0
+    }
+  },
+  "wantlist_added": {
+    "refusal": null,
+    "value": {
+      "action": "added",
+      "changed": [
+        1,
+        2
+      ],
+      "message": "Added 2 tracks to the wantlist",
+      "not_found": [],
+      "not_listed": [],
+      "read_from_beatport": 0,
+      "unchanged": []
+    }
+  },
+  "wantlist_added_again": {
+    "refusal": null,
+    "value": {
+      "action": "added",
+      "changed": [
+        2
+      ],
+      "message": "Added “Track 2 (Original Mix)” by Someone to the wantlist; 1 track already on it",
+      "not_found": [],
+      "not_listed": [],
+      "read_from_beatport": 0,
+      "unchanged": [
+        1
+      ]
+    }
+  },
+  "wantlist_all": {
+    "refusal": null,
+    "value": {
+      "bought": 1,
+      "entries": 4,
+      "owned": 1,
+      "rows": [
+        {
+          "added_at": "2026-09-20T12:00:00+00:00",
+          "added_from_run_id": 1,
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 1,
+          "bought_at": null,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 1,
+          "label_key": "elsewhere",
+          "label_name": "Elsewhere",
+          "mix_name": "Original Mix",
+          "note": null,
+          "on_wantlist": true,
+          "owned": false,
+          "release_date": "2026-08-31",
+          "release_id": 601,
+          "release_name": "R",
+          "remixers": [],
+          "title": "Track 1",
+          "url": "https://www.beatport.com/track/track-1/1"
+        },
+        {
+          "added_at": "2026-09-20T12:00:00+00:00",
+          "added_from_run_id": 1,
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 2,
+          "bought_at": "2026-09-20T12:00:00+00:00",
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "note": null,
+          "on_wantlist": true,
+          "owned": false,
+          "release_date": "2026-09-16",
+          "release_id": 701,
+          "release_name": "Signal EP",
+          "remixers": [],
+          "title": "Track 2",
+          "url": "https://www.beatport.com/track/track-2/2"
+        },
+        {
+          "added_at": "2026-09-20T12:00:00+00:00",
+          "added_from_run_id": 1,
+          "artists": [
+            "Mara Veil"
+          ],
+          "beatport_track_id": 7,
+          "bought_at": null,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "note": "For the Friday warm-up",
+          "on_wantlist": true,
+          "owned": false,
+          "release_date": "2026-09-18",
+          "release_id": 700,
+          "release_name": "Lantern EP",
+          "remixers": [],
+          "title": "Track 7",
+          "url": "https://www.beatport.com/track/track-7/7"
+        },
+        {
+          "added_at": "2026-09-20T12:00:00+00:00",
+          "added_from_run_id": 1,
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 8,
+          "bought_at": null,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "note": null,
+          "on_wantlist": true,
+          "owned": true,
+          "release_date": "2026-09-18",
+          "release_id": 700,
+          "release_name": "Lantern EP",
+          "remixers": [],
+          "title": "Track 8",
+          "url": "https://www.beatport.com/track/track-8/8"
+        }
+      ],
+      "total": 4,
+      "window": {
+        "bought": "all",
+        "dir": "desc",
+        "limit": 100,
+        "offset": 0,
+        "owned": "all",
+        "sort": "added_at"
+      }
+    }
+  },
+  "wantlist_bought": {
+    "refusal": null,
+    "value": {
+      "action": "bought",
+      "changed": [
+        1
+      ],
+      "message": "Marked “Track 1 (Original Mix)” by Someone bought",
+      "not_found": [],
+      "not_listed": [],
+      "read_from_beatport": 0,
+      "unchanged": []
+    }
+  },
+  "wantlist_bought_only": {
+    "refusal": null,
+    "value": {
+      "bought": 1,
+      "entries": 4,
+      "owned": 1,
+      "rows": [
+        {
+          "added_at": "2026-09-20T12:00:00+00:00",
+          "added_from_run_id": 1,
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 2,
+          "bought_at": "2026-09-20T12:00:00+00:00",
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "note": null,
+          "on_wantlist": true,
+          "owned": false,
+          "release_date": "2026-09-16",
+          "release_id": 701,
+          "release_name": "Signal EP",
+          "remixers": [],
+          "title": "Track 2",
+          "url": "https://www.beatport.com/track/track-2/2"
+        }
+      ],
+      "total": 1,
+      "window": {
+        "bought": "only",
+        "dir": "desc",
+        "limit": 100,
+        "offset": 0,
+        "owned": "all",
+        "sort": "added_at"
+      }
+    }
+  },
+  "wantlist_empty": {
+    "refusal": null,
+    "value": {
+      "bought": 0,
+      "entries": 0,
+      "owned": 0,
+      "rows": [],
+      "total": 0,
+      "window": {
+        "bought": "all",
+        "dir": "desc",
+        "limit": 100,
+        "offset": 0,
+        "owned": "all",
+        "sort": "added_at"
+      }
+    }
+  },
+  "wantlist_not_owned": {
+    "refusal": null,
+    "value": {
+      "bought": 1,
+      "entries": 4,
+      "owned": 1,
+      "rows": [
+        {
+          "added_at": "2026-09-20T12:00:00+00:00",
+          "added_from_run_id": 1,
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 1,
+          "bought_at": null,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 1,
+          "label_key": "elsewhere",
+          "label_name": "Elsewhere",
+          "mix_name": "Original Mix",
+          "note": null,
+          "on_wantlist": true,
+          "owned": false,
+          "release_date": "2026-08-31",
+          "release_id": 601,
+          "release_name": "R",
+          "remixers": [],
+          "title": "Track 1",
+          "url": "https://www.beatport.com/track/track-1/1"
+        },
+        {
+          "added_at": "2026-09-20T12:00:00+00:00",
+          "added_from_run_id": 1,
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 2,
+          "bought_at": "2026-09-20T12:00:00+00:00",
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "note": null,
+          "on_wantlist": true,
+          "owned": false,
+          "release_date": "2026-09-16",
+          "release_id": 701,
+          "release_name": "Signal EP",
+          "remixers": [],
+          "title": "Track 2",
+          "url": "https://www.beatport.com/track/track-2/2"
+        },
+        {
+          "added_at": "2026-09-20T12:00:00+00:00",
+          "added_from_run_id": 1,
+          "artists": [
+            "Mara Veil"
+          ],
+          "beatport_track_id": 7,
+          "bought_at": null,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "note": "For the Friday warm-up",
+          "on_wantlist": true,
+          "owned": false,
+          "release_date": "2026-09-18",
+          "release_id": 700,
+          "release_name": "Lantern EP",
+          "remixers": [],
+          "title": "Track 7",
+          "url": "https://www.beatport.com/track/track-7/7"
+        }
+      ],
+      "total": 3,
+      "window": {
+        "bought": "all",
+        "dir": "desc",
+        "limit": 100,
+        "offset": 0,
+        "owned": "hide",
+        "sort": "added_at"
+      }
+    }
+  },
+  "wantlist_noted": {
+    "refusal": null,
+    "value": {
+      "action": "noted",
+      "changed": [
+        1
+      ],
+      "message": "Noted “Track 1 (Original Mix)” by Someone on the wantlist",
+      "not_found": [],
+      "not_listed": [],
+      "read_from_beatport": 0,
+      "unchanged": []
+    }
+  },
+  "wantlist_removed": {
+    "refusal": null,
+    "value": {
+      "action": "removed",
+      "changed": [
+        1,
+        7
+      ],
+      "message": "Removed 2 tracks from the wantlist",
+      "not_found": [],
+      "not_listed": [],
+      "read_from_beatport": 0,
+      "unchanged": []
+    }
+  }
+}

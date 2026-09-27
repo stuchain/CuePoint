@@ -10,6 +10,9 @@ export function useBeatportToken() {
   });
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
+  // Whether the status has been read once: until then the field is about to
+  // be disabled for the read, and anything that focuses it would lose focus.
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
@@ -25,6 +28,7 @@ export function useBeatportToken() {
       setStatus(next);
     } finally {
       setLoading(false);
+      setLoaded(true);
     }
   }, []);
 
@@ -77,6 +81,7 @@ export function useBeatportToken() {
     draft,
     setDraft,
     loading,
+    loaded,
     saving,
     testing,
     testMessage,

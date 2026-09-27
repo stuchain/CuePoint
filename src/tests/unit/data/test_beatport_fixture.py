@@ -11,6 +11,10 @@
   list.
 - **Without the variable, nothing changes**, and ``CUEPOINT_SKIP_BEATPORT``
   still answers every search with nothing.
+- **The v4 API answers from it too** (DISCOVER-10): the first entry matching a
+  request's method, path and listed parameters, a 404 for anything else, and
+  never the network — through the real client, so a refusal in the file is
+  classified as Beatport's own would be.
 """
 
 from __future__ import annotations
@@ -23,8 +27,19 @@ from pathlib import Path
 import pytest
 
 from cuepoint.data import beatport, beatport_fixture
-from cuepoint.data.beatport_fixture import ENV_VAR, BeatportFixtureError, load
+from cuepoint.data.beatport_fixture import (
+    ENV_VAR,
+    UNLISTED_STATUS,
+    BeatportFixtureError,
+    load,
+)
+from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.services import artwork_service
+from cuepoint.services.beatport_api import BeatportApi
+from cuepoint.services.beatport_api_client import (
+    BeatportApiClient,
+    classify_beatport_error,
+)
 
 JOURNEY = (
     Path(__file__).resolve().parents[2] / "fixtures" / "beatport" / "journey"
@@ -70,6 +85,24 @@ class TestReadingTheFile:
             ({"pages": ["x"]}, "pages must map"),
             ({"pages": {"u": 1}}, "pages must map"),
             ({"images": {"u": None}}, "images must map"),
+            ({"api": {}}, "api must be a list"),
+            ({"api": ["catalog/genres"]}, "is an object"),
+            ({"api": [{"path": "a", "query": {}}]}, "does not take query"),
+            ({"api": [{"path": "a", "method": "PUT"}]}, "GET or POST"),
+            ({"api": [{"path": "a", "method": 1}]}, "GET or POST"),
+            ({"api": [{"body": {}}]}, "needs a 'path'"),
+            ({"api": [{"path": " / "}]}, "needs a 'path'"),
+            ({"api": [{"path": "a", "json": {}}]}, "matches on 'params'"),
+            ({"api": [{"path": "a", "method": "POST", "params": {}}]}, "on 'json'"),
+            ({"api": [{"path": "a", "params": []}]}, "plain values"),
+            ({"api": [{"path": "a", "params": {"x": [1]}}]}, "plain values"),
+            ({"api": [{"path": "a", "status": "200"}]}, "whole number"),
+            ({"api": [{"path": "a", "status": True}]}, "whole number"),
+            ({"api": [{"path": "a", "status": 999}]}, "HTTP status"),
+            ({"api": [{"path": "a", "headers": {"Retry-After": 5}}]}, "names to text"),
+            ({"api": [{"path": "a", "delay_ms": "5"}]}, "delay_ms is a whole"),
+            ({"api": [{"path": "a", "delay_ms": 30_001}]}, "delay_ms is 0 to 30000"),
+            ({"api": [{"path": "a", "delay_ms": -1}]}, "delay_ms is 0 to 30000"),
         ],
     )
     def test_a_malformed_file_is_refused_by_name(self, tmp_path, data, message):
@@ -85,6 +118,7 @@ class TestReadingTheFile:
         assert fixture.search("anything", 10) == []
         assert fixture.page(URL_ONE) is None
         assert fixture.image(IMAGE) is None
+        assert fixture.api_answer("GET", "catalog/genres/").status == UNLISTED_STATUS
 
 
 @pytest.mark.unit
@@ -208,3 +242,170 @@ class TestTheHooks:
         assert beatport.track_urls(1, "Tone One", 10) == [URL_ONE]
         assert beatport.parse_track_page(URL_ONE)[0] == "Tone One"
         assert artwork_service.fetch_image(IMAGE) is not None
+
+
+#: A small catalog: genres, one chart listing that ignores its dates, a chart's
+#: tracks, a refused playlist and a rate limit.
+API = {
+    "api": [
+        {
+            "path": "/catalog/genres/",
+            "body": {"results": [{"id": 5, "name": "House", "slug": "house"}]},
+        },
+        {
+            "path": "catalog/charts",
+            "params": {"genre_id": 5, "page": 1},
+            "body": {"results": [{"id": 501, "name": "Peak"}], "next": None},
+        },
+        {
+            "path": "catalog/charts",
+            "params": {"genre_id": 5},
+            "body": {"results": [], "next": None},
+        },
+        {"path": "catalog/charts", "params": {"genre_id": 6}, "status": 401},
+        {
+            "path": "catalog/charts",
+            "params": {"genre_id": 7},
+            "status": 429,
+            "headers": {"Retry-After": "120"},
+        },
+        {"path": "catalog/tracks", "params": {"public": True}, "body": {"n": 1}},
+        {
+            "method": "post",
+            "path": "my/playlists/",
+            "json": {"name": "Friday"},
+            "body": {"id": 9001, "name": "Friday"},
+        },
+        {"method": "POST", "path": "my/playlists", "status": 403},
+    ]
+}
+
+
+@pytest.fixture
+def api(monkeypatch, tmp_path):
+    path = write(tmp_path, API)
+    monkeypatch.setenv(ENV_VAR, str(path))
+    return load(path)
+
+
+def client(token: str = "e2e-token") -> BeatportApiClient:
+    return BeatportApiClient(
+        "https://api.beatport.com/v4", token, sleep=lambda _seconds: None
+    )
+
+
+@pytest.mark.unit
+class TestTheApiEntries:
+    def test_the_first_entry_matching_method_path_and_params_answers(self, api):
+        first = api.api_answer("GET", "catalog/charts/", {"genre_id": 5, "page": 1})
+        assert first.status == 200
+        assert first.body["results"] == [{"id": 501, "name": "Peak"}]
+        # The same path on a later page falls to the next entry.
+        later = api.api_answer("GET", "catalog/charts", {"genre_id": "5", "page": 2})
+        assert later.body == {"results": [], "next": None}
+
+    def test_parameters_an_entry_does_not_list_are_not_compared(self, api):
+        answer = api.api_answer(
+            "GET",
+            "catalog/charts",
+            {"genre_id": 5, "page": 1, "publish_date": "2026-01-01:2026-01-31"},
+        )
+        assert answer.body["results"][0]["id"] == 501
+
+    def test_a_listed_parameter_the_request_lacks_does_not_match(self, api):
+        assert api.api_answer("GET", "catalog/charts", {}).status == UNLISTED_STATUS
+
+    def test_values_are_compared_as_a_query_string_carries_them(self, api):
+        for sent in (True, "true"):
+            answer = api.api_answer("GET", "catalog/tracks", {"public": sent})
+            assert answer.body == {"n": 1}
+        capital = api.api_answer("GET", "catalog/tracks", {"public": "True"})
+        assert capital.status == UNLISTED_STATUS
+
+    def test_a_post_matches_on_its_body_and_its_method_ignoring_case(self, api):
+        made = api.api_answer("POST", "my/playlists", body={"name": "Friday"})
+        assert made.body == {"id": 9001, "name": "Friday"}
+        other = api.api_answer("POST", "/my/playlists/", body={"name": "Other"})
+        assert other.status == 403
+        # A GET to the same path is not the POST's answer.
+        assert api.api_answer("GET", "my/playlists").status == UNLISTED_STATUS
+
+    def test_an_answer_carries_its_headers_and_a_json_body(self, api):
+        answer = api.api_answer("GET", "catalog/charts", {"genre_id": 7})
+        assert answer.headers == {"Retry-After": "120"}
+        assert answer.content() == b"null"
+
+    def test_anything_unlisted_is_a_404(self, api):
+        assert api.api_answer("GET", "catalog/labels/3").status == UNLISTED_STATUS
+
+
+@pytest.mark.unit
+class TestTheClientAnswersFromTheFile:
+    def test_a_listing_is_read_and_paged_as_a_live_one_would_be(self, api):
+        genres = BeatportApi(client()).genres()
+        assert [(g.id, g.name, g.slug) for g in genres] == [(5, "House", "house")]
+
+    def test_an_unlisted_path_is_what_a_404_is_to_the_client(self, api):
+        assert client().get("catalog/labels/3/") is None
+
+    def test_a_refusal_in_the_file_is_classified_as_beatport_would_be(self, api):
+        with pytest.raises(BeatportAPIError) as rejected:
+            client().get("catalog/charts/", {"genre_id": 6})
+        assert classify_beatport_error(rejected.value) == "rejected"
+
+        with pytest.raises(BeatportAPIError) as limited:
+            client().get("catalog/charts/", {"genre_id": 7})
+        assert classify_beatport_error(limited.value) == "rate_limited"
+        # Longer than the client waits out, so reported with Beatport's figure.
+        assert limited.value.retry_after == 120.0
+
+        with pytest.raises(BeatportAPIError) as forbidden:
+            client().post("my/playlists/", {"name": "Other"})
+        assert classify_beatport_error(forbidden.value) == "forbidden"
+
+    def test_a_post_answers_its_body(self, api):
+        assert client().post("my/playlists/", {"name": "Friday"}) == {
+            "id": 9001,
+            "name": "Friday",
+        }
+
+    def test_an_answer_held_back_arrives_after_its_delay(self, tmp_path, monkeypatch):
+        path = write(
+            tmp_path,
+            {
+                "api": [
+                    {"path": "catalog/genres", "delay_ms": 150, "body": {"results": []}}
+                ]
+            },
+        )
+        monkeypatch.setenv(ENV_VAR, str(path))
+        began = time.monotonic()
+        assert client().get("catalog/genres/") == {"results": []}
+        assert time.monotonic() - began >= 0.14
+
+    def test_no_token_is_still_refused_before_the_file_is_asked(self, api):
+        with pytest.raises(BeatportAPIError) as refused:
+            client(token="").get("catalog/genres/")
+        assert classify_beatport_error(refused.value) == "no_token"
+
+    def test_nothing_reaches_the_network(self, api, monkeypatch):
+        def refuse(*_args, **_kwargs):
+            raise AssertionError("the network was reached")
+
+        monkeypatch.setattr("requests.Session.request", refuse)
+        assert BeatportApi(client()).genres()
+        assert client().get("catalog/anything/") is None
+
+    def test_without_the_variable_the_client_asks_the_network(self, monkeypatch):
+        monkeypatch.delenv(ENV_VAR, raising=False)
+        asked = []
+
+        class Session:
+            def request(self, method, url, **kwargs):
+                asked.append((method, url))
+                raise AssertionError("stop here")
+
+        live = BeatportApiClient("https://api.beatport.com/v4", "t", session=Session())
+        with pytest.raises(AssertionError, match="stop here"):
+            live.get("catalog/genres/")
+        assert asked == [("GET", "https://api.beatport.com/v4/catalog/genres/")]

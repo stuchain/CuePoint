@@ -487,6 +487,7 @@ Nothing is uploaded anywhere. The library never leaves your machine.
 
 - [Organizing your library](organization.md) — Collections, tags and ratings
 - [Clean](clean.md) — matching on Beatport, reviewing, missing files, duplicates and Health
+- [Discover](discover.md) — new music from your artists and labels, and the wantlist
 - [The CuePoint window](the-window.md#keyboard-shortcuts) — navigation, search, the status strip, and the keys for Clean's review queue
 - [Performance](performance.md#the-library) — measured timings at 50,000 tracks
 - [Troubleshooting](troubleshooting.md)

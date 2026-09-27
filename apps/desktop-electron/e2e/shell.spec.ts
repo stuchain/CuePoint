@@ -202,7 +202,7 @@ test.describe("Application shell navigation", () => {
 
       // Every destination is still reachable with labels hidden — the state
       // DEC-022 chose, where an icon is all there is to go on.
-      for (const label of ["Library", "Collections", "Clean", "Tools", "inCrate", "Settings"]) {
+      for (const label of ["Library", "Collections", "Clean", "Discover", "Tools", "inCrate", "Settings"]) {
         await expect(nav.getByRole("link", { name: label, exact: true })).toBeVisible();
       }
     } finally {
@@ -216,13 +216,14 @@ test.describe("Application shell navigation", () => {
       const window = await app.firstWindow({ timeout: 60_000 });
       await dismissOnboarding(window);
 
-      // Tab from the top and record where focus goes. Every shell region has to
-      // appear, or some part of the app is mouse-only.
-      // Fourteen: ORG-13 enabled the Collections destination and CLEAN-12 the
-      // Clean one, and CLEAN-14 retired inKey and Results, so the rail is as
-      // long as SHELL-10 wrote it.
+      // Tab from the top and record where focus goes, until the status strip's
+      // Activity button — the last shell region. Every region has to appear on
+      // the way, or some part of the app is mouse-only. Walked to a stop rather
+      // than a count: a count had to change with every page a phase enabled
+      // (Collections, Clean, Discover), and a stop still fails on focus lost to
+      // the body or a region skipped. Bounded, so a trap fails rather than hangs.
       const reached: string[] = [];
-      for (let i = 0; i < 14; i += 1) {
+      for (let i = 0; i < 40 && !reached.join("|").includes("Activity"); i += 1) {
         await window.keyboard.press("Tab");
         reached.push(
           await window.evaluate(() => {

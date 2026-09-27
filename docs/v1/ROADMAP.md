@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-09 are implemented, and DISCOVER-01's spike is recorded.
+(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-10 are implemented, and DISCOVER-01's spike is recorded.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -365,7 +365,7 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-09 implemented
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-10 implemented
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
@@ -490,6 +490,23 @@ jobs and shows a discovery's stage. Two slow reads were found and fixed: a push'
 10,000-track run (773 ms to 21 ms) and the resolve count (137 ms to 50 ms). `options` answers in
 302 ms at 50,000 tracks, most of it the Library's own artist facet. The step's checks also found a
 dropped key on Clean's review queue; it was fixed in its own commit.
+
+DISCOVER-10 is implemented: the Discover page is in the sidebar and works end to end, in a
+packaged Windows build too, with inCrate still under Tools until DISCOVER-12. **Runs** lists the
+kept runs beside the open one or **New run** (genres, chart dates, release days, and the artist
+and label scope from the Library's facets); a run is a job the status strip follows, opened as
+soon as it exists, its owned tracks hidden and counted. **Wantlist** has the note, bought and owned
+columns and the two filters. One list of actions, by selection size, is both the toolbar and the
+right-click menu: add to the wantlist, push to a Beatport playlist (a run's whole table by
+`run_id`), open on Beatport through a new bridge method the main process restricts to https
+pages on beatport.com, note, bought and remove. Every token state is drawn from DISCOVER-01's
+classes with a link to the token field in Settings, and the resolve prompt starts DISCOVER-04's
+job. `TrackTable` holds Beatport rows with its own column registry and windowed source and did
+not change. The component tests read the engine's own answers, produced by the Python suite; the
+end-to-end journey runs over a Beatport answered from a fixture file, whose new `api` section the
+real client reads in place of the network. The journey found that the Runs tab left the open
+run no room at the default scale, so it stacks when narrow, and that Settings could not focus its
+token field while its status loaded; both were fixed.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 

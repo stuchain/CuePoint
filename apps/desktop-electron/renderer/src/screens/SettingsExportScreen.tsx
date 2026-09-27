@@ -1,10 +1,17 @@
+import { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
+
 import { Button, Panel, TextField } from "../components";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { useBeatportToken } from "../hooks/useBeatportToken";
 import { AudioSettingsPanel } from "./AudioSettingsPanel";
 import { RekordboxExportSettingsPanel } from "./RekordboxExportSettingsPanel";
 import { ThemeSettingsPanel } from "./ThemeSettingsPanel";
+import { settingsFocus } from "./settingsLink";
 import "./screens.css";
+
+/** The Beatport token field's id: what Discover's Settings link focuses. */
+export const BEATPORT_TOKEN_FIELD_ID = "settings-beatport-token";
 
 /**
  * Settings. Exporting matches moved to Clean's "Export review list" when
@@ -19,12 +26,29 @@ export function SettingsExportScreen() {
     draft,
     setDraft,
     loading,
+    loaded,
     saving,
     testing,
     testMessage,
     save,
     test,
   } = useBeatportToken();
+
+  // Discover's "no token" and "token rejected" states link here, to the token
+  // field (DISCOVER-10). Scrolled to and focused once per navigation — once
+  // its status has been read: the field is disabled while it loads, and a
+  // field disabled after it was focused loses the focus without a word.
+  const location = useLocation();
+  const focusToken = settingsFocus(location)?.token ?? null;
+  const focused = useRef<string | null>(null);
+  const fieldReady = engineAvailable && loaded && !loading;
+  useEffect(() => {
+    if (!focusToken || !fieldReady || focused.current === focusToken) return;
+    focused.current = focusToken;
+    const field = document.getElementById(BEATPORT_TOKEN_FIELD_ID);
+    field?.scrollIntoView?.({ block: "center" });
+    field?.focus();
+  }, [fieldReady, focusToken]);
 
   const tokenHint = engineAvailable
     ? status.configured
@@ -44,6 +68,7 @@ export function SettingsExportScreen() {
         <div className="settings-form">
           <TextField
             label="Beatport token"
+            id={BEATPORT_TOKEN_FIELD_ID}
             type="password"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}

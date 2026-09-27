@@ -188,6 +188,11 @@ src/output/
 # neither can match anything.
 !src/tests/fixtures/beatport/journey/fixture.json
 
+# Test fixture (exception to user-output *.json above). The Beatport v4 answers
+# the Discover journey reads (DISCOVER-10); without it the journey's run finds
+# nothing.
+!src/tests/fixtures/beatport/discover/fixture.json
+
 # Recorded engine responses (exception to user-output *.json above). These are
 # produced by a test that starts the real engine and asserted against by both
 # languages, so they are source: without them the renderer's empty states have

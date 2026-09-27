@@ -1,0 +1,108 @@
+{
+  "api": [
+    {
+      "path": "catalog/genres",
+      "body": {
+        "count": 2,
+        "next": null,
+        "page": "1/1",
+        "per_page": 100,
+        "results": [
+          {"id": 5, "name": "House", "slug": "house"},
+          {"id": 6, "name": "Techno (Peak Time / Driving)", "slug": "techno-peak-time-driving"}
+        ]
+      }
+    },
+    {
+      "path": "catalog/charts",
+      "params": {"genre_id": 5, "page": 1},
+      "body": {
+        "count": 1,
+        "next": null,
+        "page": "1/1",
+        "per_page": 100,
+        "results": [
+          {
+            "id": 880001,
+            "name": "Journey Selects",
+            "slug": "journey-selects",
+            "artist": {"id": 301001, "name": "Mara Veil", "slug": "mara-veil"},
+            "person": {"id": 77001, "owner_name": "Mara Veil", "owner_type": "artist"},
+            "genres": [{"id": 5, "name": "House", "slug": "house"}],
+            "track_count": 3
+          }
+        ]
+      }
+    },
+    {
+      "path": "catalog/charts/880001/tracks",
+      "params": {"page": 1},
+      "delay_ms": 4000,
+      "body": {
+        "count": 3,
+        "next": null,
+        "page": "1/1",
+        "per_page": 100,
+        "results": [
+          {
+            "id": 19000011,
+            "name": "Harbour Lights",
+            "mix_name": "Extended Mix",
+            "slug": "harbour-lights",
+            "key": {"id": 10, "name": "F# Major"},
+            "bpm": 122,
+            "artists": [{"id": 301001, "name": "Mara Veil", "slug": "mara-veil"}],
+            "remixers": [],
+            "genre": {"id": 5, "name": "House", "slug": "house"},
+            "release": {
+              "id": 4500011,
+              "name": "Harbour Lights",
+              "slug": "harbour-lights",
+              "label": {"id": 40211, "name": "Nightfall Audio", "slug": "nightfall-audio"}
+            },
+            "new_release_date": "2026-09-10",
+            "publish_date": "2026-09-10"
+          },
+          {
+            "id": 19000012,
+            "name": "Low Tide",
+            "mix_name": "Original Mix",
+            "slug": "low-tide",
+            "key": {"id": 7, "name": "A Minor"},
+            "bpm": 124,
+            "artists": [{"id": 301002, "name": "Oda Lune", "slug": "oda-lune"}],
+            "remixers": [],
+            "genre": {"id": 5, "name": "House", "slug": "house"},
+            "release": {
+              "id": 4500012,
+              "name": "Tides EP",
+              "slug": "tides-ep",
+              "label": {"id": 40212, "name": "Cold Room", "slug": "cold-room"}
+            },
+            "new_release_date": "2026-09-03",
+            "publish_date": "2026-09-03"
+          },
+          {
+            "id": 19000013,
+            "name": "Night Bus",
+            "mix_name": "Dub",
+            "slug": "night-bus",
+            "key": {"id": 3, "name": "C Minor"},
+            "bpm": 126,
+            "artists": [{"id": 301003, "name": "Kiko", "slug": "kiko"}],
+            "remixers": [],
+            "genre": {"id": 5, "name": "House", "slug": "house"},
+            "release": {
+              "id": 4500013,
+              "name": "Night Bus",
+              "slug": "night-bus",
+              "label": {"id": 40211, "name": "Nightfall Audio", "slug": "nightfall-audio"}
+            },
+            "new_release_date": "2026-08-28",
+            "publish_date": "2026-08-28"
+          }
+        ]
+      }
+    }
+  ]
+}

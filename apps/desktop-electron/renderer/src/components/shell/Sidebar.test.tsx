@@ -49,6 +49,17 @@ describe("Sidebar", () => {
     }
   });
 
+  it("offers Discover in the workspace, before Tools (DISCOVER-10)", () => {
+    renderSidebar("/discover");
+    const discover = within(nav()).getByRole("link", { name: "Discover" });
+    expect(discover).toHaveAttribute("href", "/discover");
+    expect(discover).toHaveAttribute("aria-current", "page");
+    // inCrate stays beside it until DISCOVER-12.
+    const links = within(nav()).getAllByRole("link").map((link) => link.textContent);
+    expect(links.indexOf("Discover")).toBeLessThan(links.indexOf("inCrate"));
+    expect(links.indexOf("Clean")).toBeLessThan(links.indexOf("Discover"));
+  });
+
   it("groups today's screens under a Tools heading (DEC-021)", () => {
     renderSidebar();
     expect(within(nav()).getByText("Tools", { selector: "p" })).toBeInTheDocument();

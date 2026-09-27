@@ -12,8 +12,9 @@ shortcuts — see [The CuePoint window](the-window.md).
 | **Library** | Your imported Rekordbox collection: browse, search, filter, sort, play, and edit your own values | [Your library](library.md) |
 | **Collections** | CuePoint's own Collections and Smart Collections, beside Rekordbox's playlists | [Organizing your library](organization.md) |
 | **Clean** | Match tracks on Beatport, review the matches, find missing files and possible duplicates, and see what needs you | [Clean](clean.md) |
+| **Discover** | Find new music on Beatport from your artists and labels, keep a wantlist, and push tracks to a Beatport playlist | [Discover](discover.md) |
 | **inCrate** (Tools) | Discover new music on Beatport from the artists and labels in your collection, and build a Beatport playlist | [inCrate](../features/incrate.md) |
-| **Settings** | Theme, audio output, where Rekordbox exports go, and the Beatport token inCrate uses | [The CuePoint window](the-window.md#interface-scale-and-theme) |
+| **Settings** | Theme, audio output, where Rekordbox exports go, and the Beatport token Discover and inCrate use | [The CuePoint window](the-window.md#interface-scale-and-theme) |
 
 Music plays in the player along the bottom of the window — see
 [Playing music](player.md).
