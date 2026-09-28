@@ -405,16 +405,21 @@ class TestTheRefresh:
                     collection_track_count=3,
                     tagged_track_count=1,
                     edited_track_count=2,
+                    set_track_count=1,
+                    set_ids=(9,),
                 ),
-                "3 in 2 Collections, in 1 Set, 1 tagged, 2 edited",
+                # PREP-02: a Set is its own kind, counted like a Collection.
+                "3 in 2 Collections, 1 in 1 Set, 1 tagged, 2 edited",
             ),
             (
                 ReferenceSummary(
                     set_count=2,
                     referenced_track_ids=(4,),
                     reviewed_track_count=1,
+                    set_track_count=1,
+                    set_ids=(7, 8),
                 ),
-                "in 2 Sets, 1 reviewed",
+                "1 in 2 Sets, 1 reviewed",
             ),
         ],
     )

@@ -12,8 +12,10 @@ and Sets".
 
 Phase 6 gave the question teeth. ORG-04 filled the seam DEC-032 had built
 empty, so a Collection holding a track Rekordbox no longer has is now a real
-answer rather than the zero every earlier build could only return. Sets stay
-zero until Phase 10.
+answer rather than the zero every earlier build could only return. PREP-02
+counts Sets as their own kind: a Set is a node in the same tree (DEC-102), and
+the Collection counts exclude it, so "4 in 1 Set" and "3 in 2 Collections" are
+each true on their own.
 
 :meth:`~cuepoint.services.interfaces.ILibraryService.references_for` takes the
 library ids of the tracks a refresh would delete and returns one of these. The
@@ -35,7 +37,8 @@ class ReferenceSummary:
     Attributes:
         collection_count: Collections holding at least one of the tracks
             (DEC-006, Phase 6).
-        set_count: Sets holding at least one of them (Phase 10).
+        set_count: Sets holding at least one of them (PREP-02). Never
+            counted among the Collections.
         referenced_track_ids: The library ids that are referenced by something,
             so a preview can point at them rather than only counting. A subset
             of what was asked about, never all of it by default.
@@ -46,6 +49,11 @@ class ReferenceSummary:
             always consistent with ``collection_count``.
         collection_track_count: How many of the tracks a Collection holds
             (CLEAN-05), so a warning can say "3 in 2 Collections".
+        set_track_count: How many of the tracks a Set holds (PREP-02), so a
+            warning can say "4 in 1 Set". A track in a Set and a Collection is
+            counted once in each, and once in ``referenced_track_ids``.
+        set_ids: Which Sets those are, sorted and distinct, for the same reason
+            ``collection_ids`` is carried.
         rated_track_count: Tracks carrying a CuePoint rating, favorite or note.
         tagged_track_count: Tracks carrying a tag.
         reviewed_track_count: Tracks whose match a user decided (DEC-067).
@@ -68,6 +76,8 @@ class ReferenceSummary:
     tagged_track_count: int = 0
     reviewed_track_count: int = 0
     edited_track_count: int = 0
+    set_track_count: int = 0
+    set_ids: Tuple[int, ...] = field(default_factory=tuple)
 
     @property
     def referenced_track_count(self) -> int:
@@ -105,6 +115,8 @@ class ReferenceSummary:
             "tagged_track_count": self.tagged_track_count,
             "reviewed_track_count": self.reviewed_track_count,
             "edited_track_count": self.edited_track_count,
+            "set_track_count": self.set_track_count,
+            "set_ids": list(self.set_ids),
         }
 
 

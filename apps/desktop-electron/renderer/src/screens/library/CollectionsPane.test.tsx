@@ -77,6 +77,7 @@ const SUBTREE = {
   folders: 1,
   collections: 2,
   smart_collections: 0,
+  sets: 0,
   entries: 40,
   nodes: 3,
 };

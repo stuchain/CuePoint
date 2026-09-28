@@ -47,6 +47,7 @@ from cuepoint.engine.api_errors import (
     error_payload,
     not_found,
 )
+from cuepoint.models.collection import KIND_COLLECTION, KIND_FOLDER, KIND_SET
 from cuepoint.models.filter_rule import FilterRuleError, RuleSet
 from cuepoint.models.track_metadata import (
     TrackMetadata,
@@ -212,11 +213,15 @@ def entry_to_dict(entry: Any) -> Dict[str, Any]:
 
 
 def subtree_to_dict(summary: Any) -> Dict[str, Any]:
-    """Serialize what a delete would take, or did (ORG-09's confirmation)."""
+    """Serialize what a delete would take, or did (ORG-09's confirmation).
+
+    ``sets`` since PREP-02, so ``nodes`` is the sum of the kinds it lists.
+    """
     return {
         "folders": summary.folders,
         "collections": summary.collections,
         "smart_collections": summary.smart_collections,
+        "sets": summary.sets,
         "entries": summary.entries,
         "nodes": summary.nodes,
     }
@@ -301,7 +306,7 @@ def collection_tree() -> Dict[str, Any]:
     payload: List[Dict[str, Any]] = []
     for node in nodes:
         problem = None
-        if node.kind == "smart":
+        if node.is_smart:
             problem = service.resolve(node.id).problem
         payload.append(
             collection_to_dict(node, counts.get(int(node.id or 0), (0, 0)), problem)
@@ -499,28 +504,29 @@ def _rule_set(value: Any, key: str = "rules") -> RuleSet:
 # ---------------------------------------------------------------------------
 
 #: What ``create`` may be asked for. A Smart Collection is not among them: it is
-#: made by saving rules, which is a different request with a different body.
-CREATABLE_KINDS = ("folder", "collection")
+#: made by saving rules, which is a different request with a different body. A
+#: Set is (PREP-02): an empty one is a name and a place, like a Collection.
+CREATABLE_KINDS = (KIND_FOLDER, KIND_COLLECTION, KIND_SET)
 
 
 def create_collection(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Create a folder or a Collection."""
+    """Create a folder, a Collection or an empty Set."""
     service = resolve_collection_service()
     kind = _require_str(data, "kind").strip().lower()
     if kind not in CREATABLE_KINDS:
-        allowed = " or ".join(repr(value) for value in CREATABLE_KINDS)
+        allowed = ", ".join(repr(value) for value in CREATABLE_KINDS[:-1])
         raise bad_request(
-            f"kind may only be {allowed}, not {kind!r}; a smart collection is "
-            "created by saving its rules"
+            f"kind may only be {allowed} or {CREATABLE_KINDS[-1]!r}, not "
+            f"{kind!r}; a smart collection is created by saving its rules"
         )
     name = _require_str(data, "name")
     parent_id = _optional_int(data, "parent_id")
-    node = (
-        service.create_folder(name, parent_id)
-        if kind == "folder"
-        else service.create_collection(name, parent_id)
-    )
-    return {"collection": collection_to_dict(node)}
+    create = {
+        KIND_FOLDER: service.create_folder,
+        KIND_COLLECTION: service.create_collection,
+        KIND_SET: service.create_set,
+    }[kind]
+    return {"collection": collection_to_dict(create(name, parent_id))}
 
 
 def rename_collection(data: Dict[str, Any]) -> Dict[str, Any]:

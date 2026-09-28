@@ -49,6 +49,45 @@ MAX_CHAPTER_NAME_LENGTH = 120
 #: A warning name is a word from PREP-05's vocabulary, not prose.
 MAX_WARNING_LENGTH = 60
 
+#: The most entries one Set may hold (PREP-02). The Set editor reads a Set
+#: whole, and a ten-hour set is about 150 tracks, so this is far past any set a
+#: person plays while keeping every read of one small. A Collection has no such
+#: limit: it is a crate, and a crate may hold the library.
+MAX_SET_ENTRIES = 1000
+
+
+class SetLimitError(ValueError):
+    """Adding these entries would take a Set past :data:`MAX_SET_ENTRIES`.
+
+    Raised before anything is written, and a ``ValueError`` so every handler
+    that already answers a refusal with its message answers this one too.
+
+    Attributes:
+        name: The Set's name.
+        holding: How many entries it holds now.
+        adding: How many the request would add.
+    """
+
+    def __init__(self, name: str, holding: int, adding: int) -> None:
+        self.name = name
+        self.holding = holding
+        self.adding = adding
+        super().__init__(
+            f"{name!r} holds {holding:,} "
+            f"{'entry' if holding == 1 else 'entries'}, and adding {adding:,} "
+            f"would make {holding + adding:,}: a Set holds at most "
+            f"{MAX_SET_ENTRIES:,}"
+        )
+
+
+class SetIntegrityError(RuntimeError):
+    """A write left a Set's entries unplanned or its chapters out of order.
+
+    Not a ``ValueError``: nothing a user sends can cause it, so it is a bug in
+    the writer, and the transaction it is raised in rolls back rather than
+    committing a Set that breaks DEC-103.
+    """
+
 
 def normalize_chapter_name(value: Any) -> str:
     """Return a chapter name, trimmed; empty means an unnamed chapter.

@@ -246,6 +246,8 @@ export interface CollectionSubtree {
   folders: number;
   collections: number;
   smart_collections: number;
+  /** Sets that would go (PREP-02); `nodes` counts them. */
+  sets: number;
   entries: number;
   nodes: number;
 }

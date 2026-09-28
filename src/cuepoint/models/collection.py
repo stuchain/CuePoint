@@ -22,9 +22,11 @@ The four kinds
 - ``smart`` holds a saved rule set and **no membership at all**: DEC-061
   evaluates it live, every time, so there is nothing stored to go stale.
 - ``set`` holds a running order (DEC-102): entries exactly as a Collection
-  holds them, plus chapters and planned times kept beside them. It is part of
-  the stored vocabulary from ``m0025_sets`` (PREP-01); the code that creates,
-  fills and counts one is PREP-02's.
+  holds them, plus chapters and planned times kept beside them
+  (:mod:`cuepoint.models.set_plan`). Every test of ``kind`` asks one of two
+  questions, and a Set answers them differently: it *holds tracks*
+  (:attr:`Collection.holds_tracks`), and it is *not a crate*
+  (:attr:`Collection.is_set`).
 
 Why a Collection is ordered, and may repeat a track
 ---------------------------------------------------
@@ -75,7 +77,7 @@ MAX_COLLECTION_DEPTH = 8
 
 @dataclass
 class Collection:
-    """One folder, Collection or Smart Collection in CuePoint's own tree.
+    """One folder, Collection, Smart Collection or Set in CuePoint's own tree.
 
     Attributes:
         name: What the user called it, trimmed.
@@ -150,14 +152,25 @@ class Collection:
         return self.kind == KIND_SMART
 
     @property
+    def is_set(self) -> bool:
+        """True when this node is a running order with chapters (DEC-102).
+
+        The question "is this a crate?" is ``kind == KIND_COLLECTION``; this is
+        its complement among the nodes that hold tracks.
+        """
+        return self.kind == KIND_SET
+
+    @property
     def holds_tracks(self) -> bool:
         """True when membership is stored rows this node owns.
 
-        False for a folder (it holds nodes) and for a smart collection (it
-        holds a question). The one property every membership operation should
-        be asking about, rather than testing ``kind`` in five places.
+        True for a Collection and for a Set, whose entries are the same rows
+        (DEC-102). False for a folder (it holds nodes) and for a smart
+        collection (it holds a question). The one property every membership
+        operation should be asking about, rather than testing ``kind`` in five
+        places.
         """
-        return self.kind == KIND_COLLECTION
+        return self.kind in (KIND_COLLECTION, KIND_SET)
 
     @property
     def was_frozen(self) -> bool:
@@ -344,17 +357,21 @@ class SubtreeSummary:
         smart_collections: Smart Collections that would go.
         entries: Membership rows across all of them. Tracks are never counted
             here, because no track is deleted by any of this.
+        sets: Sets that would go, with their chapters and plans (PREP-02).
+            Last, so every positional use written before Sets existed means
+            what it meant.
     """
 
     folders: int = 0
     collections: int = 0
     smart_collections: int = 0
     entries: int = 0
+    sets: int = 0
 
     @property
     def nodes(self) -> int:
         """Every node that would be removed."""
-        return self.folders + self.collections + self.smart_collections
+        return self.folders + self.collections + self.smart_collections + self.sets
 
     @property
     def is_empty(self) -> bool:

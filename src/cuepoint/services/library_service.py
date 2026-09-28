@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional
 
+from cuepoint.models.collection import KIND_COLLECTION, KIND_SET
 from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet, field_spec
 from cuepoint.models.library_track import LibraryTrack, QueueTrack
 from cuepoint.models.references import ReferenceSummary
@@ -470,7 +471,11 @@ class LibraryService(ILibraryService):
         The counts are of *referencing things*, not of references: a Collection
         holding three of the doomed tracks is one Collection a user would find
         changed, and a track filed in two Collections twice over is one track
-        that is referenced. Sets stay zero until Phase 10.
+        that is referenced.
+
+        **PREP-02 split the membership by kind.** Sets are counted as Sets and
+        never as Collections, so a track in one of each is one track in each
+        count and one referenced track.
 
         **CLEAN-05 grew the body again, and the summary, and nothing else.**
         DEC-011 as amended counts every removed track carrying work nothing can
@@ -498,15 +503,18 @@ class LibraryService(ILibraryService):
         # Consumed rather than ignored: a caller passing a generator must not
         # find it silently untouched.
         wanted = list(track_ids)
-        collection_ids, collected = self._collections.references_for(wanted)
+        collection_ids, collected = self._collections.references_for(
+            wanted, KIND_COLLECTION
+        )
+        set_ids, planned = self._collections.references_for(wanted, KIND_SET)
         authored = self._authored.tracks_carrying(wanted)
         # A track carrying several kinds is one referenced track, and the order
         # stays the sorted one ORG-04 gave, so a Collection-only answer is the
         # same list it always was.
-        referenced = sorted({*collected, *authored.track_ids})
+        referenced = sorted({*collected, *planned, *authored.track_ids})
         return ReferenceSummary(
             collection_count=len(collection_ids),
-            set_count=0,
+            set_count=len(set_ids),
             referenced_track_ids=tuple(referenced),
             collection_ids=tuple(collection_ids),
             collection_track_count=len(collected),
@@ -514,4 +522,6 @@ class LibraryService(ILibraryService):
             tagged_track_count=len(authored.tagged),
             reviewed_track_count=len(authored.reviewed),
             edited_track_count=len(authored.edited),
+            set_track_count=len(planned),
+            set_ids=tuple(set_ids),
         )

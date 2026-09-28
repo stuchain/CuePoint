@@ -114,6 +114,8 @@ function diff(overrides: Partial<RefreshDiff> = {}): RefreshDiff {
       tagged_track_count: 0,
       reviewed_track_count: 0,
       edited_track_count: 0,
+      set_track_count: 0,
+      set_ids: [],
     },
     ...overrides,
   };
@@ -842,6 +844,8 @@ describe("the reference warning (DEC-011)", () => {
       tagged_track_count: 0,
       reviewed_track_count: 0,
       edited_track_count: 0,
+      set_track_count: 0,
+      set_ids: [],
     },
   });
 
@@ -2900,6 +2904,8 @@ describe("the table's empty state (ORG-13)", () => {
             tagged_track_count: 0,
             reviewed_track_count: 0,
             edited_track_count: 0,
+            set_track_count: 0,
+            set_ids: [],
           },
         }),
       })
@@ -2947,6 +2953,8 @@ describe("the table's empty state (ORG-13)", () => {
             tagged_track_count: 0,
             reviewed_track_count: 0,
             edited_track_count: 0,
+            set_track_count: 0,
+            set_ids: [],
           },
         }),
       })

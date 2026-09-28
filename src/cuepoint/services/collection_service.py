@@ -78,6 +78,22 @@ a query or a problem: rules that cannot be read would otherwise come back as an
 empty rule set, and an empty rule set does not match nothing — it matches
 everything. That is the failure this shape makes unrepresentable rather than
 unlikely.
+
+A Set is a node of this tree, and is made here (PREP-02, DEC-102)
+-----------------------------------------------------------------
+A Set holds tracks the way a Collection does, so adding, inserting, removing
+and reordering are the methods above, and the repository plans every entry into
+a chapter as it writes it. What only a Set has is made here: a new Set
+(:meth:`CollectionService.create_set`), a Set copied from something else
+(:meth:`CollectionService.create_set_from`) and a copy of a Set
+(:meth:`CollectionService.duplicate_set`). Its chapters, times and notes are
+edited by PREP-03's service.
+
+"New Set from…" copies, as a freeze does: a Collection's entries with their
+repeats, a Smart Collection's current answer in its saved order, a Rekordbox
+playlist in its order, or a selection in the order the table showed it. Nothing
+is converted in place and nothing links the two afterwards, and it records one
+activity event for the same reason a freeze does.
 """
 
 from __future__ import annotations
@@ -89,6 +105,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from cuepoint.models.collection import (
     KIND_COLLECTION,
     KIND_FOLDER,
+    KIND_SET,
     KIND_SMART,
     MAX_COLLECTION_DEPTH,
     MAX_COLLECTION_NAME_LENGTH,
@@ -100,6 +117,8 @@ from cuepoint.models.collection import (
 )
 from cuepoint.models.filter_rule import FilterRuleError, RuleSet
 from cuepoint.models.library_track import utc_now_iso
+from cuepoint.models.set_plan import MAX_SET_ENTRIES, SetLimitError
+from cuepoint.persistence.playlist_repository import PlaylistRepository
 from cuepoint.persistence.rule_references import BrokenRuleError, check_rule_references
 from cuepoint.persistence.track_query import (
     DEFAULT_SORT,
@@ -114,6 +133,7 @@ from cuepoint.services.interfaces import (
     ICollectionRepository,
     ICollectionService,
     IDatabaseService,
+    IPlaylistRepository,
     ITrackRepository,
 )
 
@@ -121,6 +141,19 @@ from cuepoint.services.interfaces import (
 #: whole freeze, carrying the count: the per-track detail is the Collection it
 #: produced, which the user can open.
 EVENT_COLLECTION_FROZEN = "collection.frozen"
+
+#: The activity event "New Set from…" records (PREP-02). One per Set, like a
+#: freeze, because it copies membership at a moment.
+EVENT_SET_CREATED_FROM = "set.created_from"
+
+#: What "New Set from…" can copy. ``collection`` is a node of CuePoint's own
+#: tree, a Collection or a Smart Collection; ``playlist`` is a node of the
+#: mirrored Rekordbox tree; ``selection`` is tracks the caller has already
+#: resolved, once, in the order the table showed them (DEC-063).
+SOURCE_COLLECTION = "collection"
+SOURCE_PLAYLIST = "playlist"
+SOURCE_SELECTION = "selection"
+SET_SOURCES = (SOURCE_COLLECTION, SOURCE_PLAYLIST, SOURCE_SELECTION)
 
 #: Ids per query while a freeze collects what it is about to store. Paging is
 #: not an optimization here — ``browse_ids`` caps one request at 50,000, so this
@@ -199,6 +232,71 @@ class FreezeResult:
     track_count: int
 
 
+@dataclass(frozen=True)
+class SetSource:
+    """What "New Set from…" copies (PREP-02, DEC-104).
+
+    Build one with :meth:`collection`, :meth:`playlist` or :meth:`selection`
+    rather than directly: each names the one field its kind uses.
+
+    Attributes:
+        kind: One of :data:`SET_SOURCES`.
+        id: The node or playlist, for ``collection`` and ``playlist``.
+        track_ids: The tracks, in order, for ``selection``.
+    """
+
+    kind: str
+    id: Optional[int] = None
+    track_ids: Tuple[int, ...] = ()
+
+    def __post_init__(self) -> None:
+        """Refuse a source that does not say what it is."""
+        if self.kind not in SET_SOURCES:
+            raise ValueError(
+                f"A Set is made from one of {SET_SOURCES}, not {self.kind!r}"
+            )
+        if self.kind == SOURCE_SELECTION:
+            if self.id is not None or not self.track_ids:
+                raise ValueError("A selection names its tracks, and at least one")
+        elif self.id is None or self.track_ids:
+            raise ValueError(f"A {self.kind} source names its id and no tracks")
+
+    @classmethod
+    def collection(cls, node_id: int) -> "SetSource":
+        """A Collection's entries or a Smart Collection's current answer."""
+        return cls(SOURCE_COLLECTION, id=int(node_id))
+
+    @classmethod
+    def playlist(cls, playlist_id: int) -> "SetSource":
+        """A Rekordbox playlist's tracks in its order."""
+        return cls(SOURCE_PLAYLIST, id=int(playlist_id))
+
+    @classmethod
+    def selection(cls, track_ids: Iterable[int]) -> "SetSource":
+        """Tracks already resolved, in the order the table showed them."""
+        return cls(SOURCE_SELECTION, track_ids=tuple(int(t) for t in track_ids))
+
+
+@dataclass(frozen=True)
+class NewSetResult:
+    """What "New Set from…" made, and from what.
+
+    Attributes:
+        set: The new Set, holding its one unnamed chapter.
+        source_kind: The source's kind, from :data:`SET_SOURCES`.
+        source_id: The node or playlist it was made from, or ``None`` for a
+            selection.
+        source_name: What that was called at the time, or ``None``.
+        track_count: How many entries the Set was given, repeats counted.
+    """
+
+    set: Collection
+    source_kind: str
+    source_id: Optional[int]
+    source_name: Optional[str]
+    track_count: int
+
+
 class CollectionService(ICollectionService):
     """Owns what a legal collection tree is, and keeps it that way."""
 
@@ -208,6 +306,7 @@ class CollectionService(ICollectionService):
         database_service: IDatabaseService,
         track_repository: ITrackRepository,
         activity_service: IActivityService,
+        playlist_repository: Optional[IPlaylistRepository] = None,
     ) -> None:
         """Wire the tree to its store, the library, the feed and transactions.
 
@@ -223,14 +322,25 @@ class CollectionService(ICollectionService):
             database_service: Used to open the transaction a multi-statement
                 operation runs in, and to hand a connection to the persistence
                 function that checks what a rule names. No SQL is written here.
-            track_repository: The library, read only, and only by a freeze:
-                the ids a rule set matches, in the order it saved.
-            activity_service: Where a freeze is recorded (DEC-029).
+            track_repository: The library, read only, and only by a freeze
+                and "New Set from…" a Smart Collection: the ids a rule set
+                matches, in the order it saved.
+            activity_service: Where a freeze and "New Set from…" are recorded
+                (DEC-029).
+            playlist_repository: The mirrored Rekordbox tree, read only, and
+                only by "New Set from…" a playlist (PREP-02). Optional so the
+                tree can be built over a bare database; the default reads the
+                same database.
         """
         self._collections = collection_repository
         self._db = database_service
         self._tracks = track_repository
         self._activity = activity_service
+        self._playlists: IPlaylistRepository = (
+            playlist_repository
+            if playlist_repository is not None
+            else PlaylistRepository(database_service)
+        )
 
     # -------------------------------------------------------------- the tree
 
@@ -346,23 +456,54 @@ class CollectionService(ICollectionService):
         with self._db.transaction(join_existing=True):
             return self._collections.add(collection_id, track_ids)
 
+    def check_add(self, collection_id: int, track_ids: Iterable[int]) -> None:
+        """Refuse, before anything is written, an add that could not finish.
+
+        What :meth:`add_tracks` would refuse, asked without adding: a node that
+        holds no tracks, or a Set the tracks would take past
+        :data:`~cuepoint.models.set_plan.MAX_SET_ENTRIES`. Only the tracks
+        not already there count, as they do when the add happens. A batch asks
+        this once for the whole selection (ORG-07), because it writes a chunk
+        at a time and a limit met halfway would leave half a selection added.
+
+        Raises:
+            ValueError: If there is no such node or it does not hold tracks.
+            SetLimitError: If the node is a Set and the tracks would not fit.
+        """
+        node = self._require_collection(collection_id)
+        if not node.is_set:
+            return
+        present = set(self._collections.track_ids(int(collection_id)))
+        adding = len({int(t) for t in track_ids} - present)
+        holding = self._collections.entry_count(int(collection_id))
+        if holding + adding > MAX_SET_ENTRIES:
+            raise SetLimitError(node.name, holding, adding)
+
     def insert_track(
-        self, collection_id: int, track_id: int, position: int
+        self,
+        collection_id: int,
+        track_id: int,
+        position: int,
+        chapter_id: Optional[int] = None,
     ) -> CollectionEntry:
         """Put a track at a position, even if the Collection already holds it.
 
         The deliberate-duplicate path DEC-058 allows, and what a drop between
-        two rows calls.
+        two rows calls. In a Set, the entry joins the chapter the position is
+        in, or ``chapter_id`` when one is named (PREP-02).
 
         Raises:
-            ValueError: If there is no such node, it does not hold tracks, or
-                the position is negative.
+            ValueError: If there is no such node, it does not hold tracks, the
+                position is negative, the Set is full, or the chapter named is
+                not one the position can be in.
         """
         self._require_collection(collection_id)
         if int(position) < 0:
             raise ValueError(f"A position cannot be negative: {position}")
         with self._db.transaction():
-            return self._collections.insert_at(collection_id, track_id, int(position))
+            return self._collections.insert_at(
+                collection_id, track_id, int(position), chapter_id
+            )
 
     def remove_entries(self, entry_ids: Iterable[int]) -> int:
         """Remove entries by their own ids, closing the gaps they leave.
@@ -373,16 +514,22 @@ class CollectionService(ICollectionService):
         with self._db.transaction(join_existing=True):
             return self._collections.remove_entries(entry_ids)
 
-    def reorder_entry(self, entry_id: int, position: int) -> CollectionEntry:
+    def reorder_entry(
+        self, entry_id: int, position: int, chapter_id: Optional[int] = None
+    ) -> CollectionEntry:
         """Move one entry within its Collection.
 
+        In a Set, the entry joins the chapter it lands in, or ``chapter_id``
+        when one is named (PREP-02).
+
         Raises:
-            ValueError: If there is no such entry, or the position is negative.
+            ValueError: If there is no such entry, the position is negative, or
+                the chapter named is not one the position can be in.
         """
         if int(position) < 0:
             raise ValueError(f"A position cannot be negative: {position}")
         with self._db.transaction():
-            moved = self._collections.reorder_entry(entry_id, int(position))
+            moved = self._collections.reorder_entry(entry_id, int(position), chapter_id)
         if moved is None:
             raise ValueError(f"No such entry: {entry_id}")
         return moved
@@ -586,7 +733,153 @@ class CollectionService(ICollectionService):
             self._record_freeze(result)
         return result
 
+    # ------------------------------------------------------------------ sets
+
+    def create_set(self, name: str, parent_id: Optional[int] = None) -> Collection:
+        """Create an empty Set with one unnamed chapter (DEC-102, DEC-103).
+
+        Filed like a Collection: under a folder, or at the top level.
+
+        Raises:
+            ValueError: As :meth:`create_folder`.
+        """
+        return self._create(KIND_SET, name, parent_id)
+
+    def create_set_from(
+        self,
+        source: SetSource,
+        name: Optional[str] = None,
+        parent_id: Optional[int] = None,
+    ) -> NewSetResult:
+        """Make a Set holding a copy of something else's tracks (DEC-104).
+
+        Everything goes into the new Set's one chapter, in the source's order:
+
+        - a Collection's entries, repeats included;
+        - a Smart Collection's current answer in its saved order, as a freeze
+          reads it;
+        - a Rekordbox playlist's tracks in its order;
+        - a selection, in the order given.
+
+        The source is read, the limit checked, the Set made and filled and the
+        event recorded in one transaction, so a refusal writes nothing and the
+        answer cannot move between reading it and storing it.
+
+        Args:
+            source: What to copy.
+            name: The Set's name; the source's name when omitted. A selection
+                has no name of its own, so it needs one.
+            parent_id: The folder to file it in, or ``None`` for the top level.
+
+        Raises:
+            ValueError: If the source does not exist or holds no tracks (a
+                folder, another Set), the name is missing or unusable, the
+                parent is not a folder, or the source holds more than
+                :data:`~cuepoint.models.set_plan.MAX_SET_ENTRIES` entries.
+            BrokenRuleError: If a Smart Collection's rules cannot be run.
+        """
+        with self._db.transaction():
+            source_name, track_ids = self._source_tracks(source)
+            wanted = name if name is not None else source_name
+            if wanted is None:
+                raise ValueError("A Set made from a selection needs a name")
+            wanted = normalize_collection_name(wanted)
+            if len(track_ids) > MAX_SET_ENTRIES:
+                raise SetLimitError(wanted, 0, len(track_ids))
+            made = self._create(KIND_SET, wanted, parent_id)
+            self._collections.append(int(made.id or 0), track_ids)
+            result = NewSetResult(
+                set=made,
+                source_kind=source.kind,
+                source_id=source.id,
+                source_name=source_name,
+                track_count=len(track_ids),
+            )
+            self._record_set_from(result)
+        return result
+
+    def duplicate_set(self, node_id: int, name: Optional[str] = None) -> Collection:
+        """Copy a Set whole: chapters, targets, notes, times, acknowledgements.
+
+        How last week's set becomes this week's (PREP-02). The copy sits under
+        the same parent, at the end, like a duplicated Smart Collection, and
+        nothing links the two afterwards.
+
+        Raises:
+            ValueError: If there is no such node, it is not a Set, or the name
+                is unusable.
+        """
+        node = self._require_set(node_id)
+        wanted = normalize_collection_name(
+            name if name is not None else _suffixed_name(node.name, "copy")
+        )
+        with self._db.transaction():
+            copy = self._collections.duplicate_set(int(node.id or 0), wanted)
+        assert copy is not None  # it was a Set a statement ago
+        return copy
+
     # --------------------------------------------------------------- helpers
+
+    def _source_tracks(self, source: SetSource) -> Tuple[Optional[str], List[int]]:
+        """Return a source's name and its tracks, in order, repeats kept.
+
+        Raises:
+            ValueError: If the source is not there or holds no tracks.
+            BrokenRuleError: If it is a Smart Collection that cannot be run.
+        """
+        if source.kind == SOURCE_SELECTION:
+            return None, list(source.track_ids)
+
+        identifier = int(source.id or 0)
+        if source.kind == SOURCE_PLAYLIST:
+            playlist = self._playlists.get(identifier)
+            if playlist is None:
+                raise ValueError(f"No such Rekordbox playlist: {identifier}")
+            if playlist.is_folder:
+                raise ValueError(
+                    f"{playlist.name!r} is a Rekordbox folder and holds no tracks"
+                )
+            return playlist.name, self._playlists.track_ids_for(identifier)
+
+        node = self._require_node(identifier)
+        if node.is_smart:
+            query = self._resolution_for(node).require_query()
+            return node.name, self._matching_ids(query)
+        if node.is_set:
+            raise ValueError(
+                f"{node.name!r} is already a Set: duplicate it to copy its "
+                "chapters and plan as well"
+            )
+        if not node.holds_tracks:
+            raise ValueError(f"{node.name!r} is a folder and does not hold tracks")
+        return node.name, self._collections.track_ids(identifier)
+
+    def _record_set_from(self, result: NewSetResult) -> None:
+        """Record the one event "New Set from…" writes (DEC-029).
+
+        Inside the operation's transaction, like a freeze's: a Set that is not
+        in the feed is also not in the tree.
+        """
+        tracks = result.track_count
+        counted = f"{tracks} track" if tracks == 1 else f"{tracks} tracks"
+        if result.source_kind == SOURCE_SELECTION:
+            origin = "a selection"
+        elif result.source_kind == SOURCE_PLAYLIST:
+            origin = f"the Rekordbox playlist {result.source_name!r}"
+        else:
+            origin = repr(result.source_name)
+        self._activity.record_event(
+            EVENT_SET_CREATED_FROM,
+            f"Made the Set {result.set.name!r} from {origin} — {counted}",
+            {
+                "set_id": result.set.id,
+                "set_name": result.set.name,
+                "source_kind": result.source_kind,
+                "source_id": result.source_id,
+                "source_name": result.source_name,
+                "tracks": tracks,
+            },
+        )
 
     def _create(
         self,
@@ -782,8 +1075,22 @@ class CollectionService(ICollectionService):
             raise ValueError(f"No such collection: {node_id}")
         return node
 
+    def _require_set(self, node_id: int) -> Collection:
+        """Return a Set, or say what the node is instead.
+
+        Raises:
+            ValueError: If there is no such node, or it is not a Set.
+        """
+        node = self._require_node(node_id)
+        if not node.is_set:
+            raise ValueError(f"{node.name!r} is a {node.kind}, not a Set")
+        return node
+
     def _require_collection(self, node_id: int) -> Collection:
         """Return a node that can hold tracks, or say why it cannot.
+
+        A Collection or a Set (PREP-02): both hold entries, and the repository
+        plans a Set's as it writes them.
 
         Raises:
             ValueError: If there is no such node, or it is a folder or a Smart

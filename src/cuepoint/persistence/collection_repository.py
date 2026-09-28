@@ -36,6 +36,38 @@ Depth is stored, and maintained on move
 Mirroring ``rekordbox_playlists`` so a pane can indent without walking parents.
 Moving a subtree shifts every descendant's depth by the same delta, in one
 recursive statement.
+
+A Set's entries are planned in the same transaction that writes them (PREP-02)
+------------------------------------------------------------------------------
+A Set (DEC-102) holds its entries in ``collection_tracks`` like a Collection,
+and every one of them needs a ``set_entries`` row naming its chapter from the
+moment it exists (DEC-103). This module is the only writer of
+``collection_tracks``, so it is the one place that can promise that: every
+method that writes an entry into a Set writes its plan row in the same
+transaction, and a batch job, a drag, a freeze and a duplicate all pass through
+here. Doing it in a service would leave one path that forgets.
+
+Where a new entry goes:
+
+- **Appended** entries go into the last chapter.
+- **Inserted** entries go into the chapter of the entry before them, or the
+  first chapter at position 0.
+- A **moved** entry keeps its chapter when the chapter still reaches the new
+  position, which is inside it or at one of its edges, and otherwise follows
+  the insert rule. Reordering within a chapter, even to its first place, never
+  moves an entry into the chapter before.
+- A caller may **name a chapter** instead, for an insert or a move, and the name
+  is refused unless the chapter reaches the position.
+
+After every write to a Set, :meth:`CollectionRepository._check_set` reads the
+Set back: at least one chapter, every entry planned, and chapter positions that
+never decrease in entry order. A violation raises
+:class:`~cuepoint.models.set_plan.SetIntegrityError` and the transaction rolls
+back, because it is a bug in this module and not something a user sent.
+
+**A Set holds at most** :data:`~cuepoint.models.set_plan.MAX_SET_ENTRIES`
+entries, and an add that would pass it is refused with the numbers before
+anything is written.
 """
 
 from __future__ import annotations
@@ -45,6 +77,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from cuepoint.models.collection import (
     KIND_COLLECTION,
     KIND_FOLDER,
+    KIND_SET,
     KIND_SMART,
     AddResult,
     Collection,
@@ -53,6 +86,15 @@ from cuepoint.models.collection import (
     normalize_collection_name,
 )
 from cuepoint.models.library_track import utc_now_iso
+from cuepoint.models.set_plan import (
+    MAX_SET_ENTRIES,
+    SetAcknowledgement,
+    SetChapter,
+    SetDetails,
+    SetEntryPlan,
+    SetIntegrityError,
+    SetLimitError,
+)
 from cuepoint.persistence.id_chunks import chunked, unique_ids
 from cuepoint.services.interfaces import ICollectionRepository, IDatabaseService
 
@@ -81,6 +123,24 @@ _TREE_ORDER = " ORDER BY depth, position, id"
 
 _SELECT_ENTRY = (
     "SELECT id, collection_id, track_id, position, added_at FROM collection_tracks"
+)
+
+_SELECT_CHAPTER = (
+    "SELECT id, collection_id, position, name, notes, target_seconds, bpm_min,"
+    " bpm_max, created_at, updated_at FROM set_chapters"
+)
+
+#: One Set's plan rows, in the Set's own entry order.
+_SELECT_PLANS = (
+    "SELECT se.entry_id, se.collection_id, se.chapter_id, se.in_seconds,"
+    " se.out_seconds, se.note FROM set_entries se"
+    " JOIN collection_tracks ct ON ct.id = se.entry_id"
+    " WHERE se.collection_id = ? ORDER BY ct.position, ct.id"
+)
+
+_SELECT_ACKNOWLEDGEMENTS = (
+    "SELECT id, collection_id, from_entry_id, to_entry_id, warning,"
+    " compared_json, created_at FROM set_acknowledgements"
 )
 
 #: Where a node sits for the two statements between leaving one parent and
@@ -160,7 +220,12 @@ class CollectionRepository(ICollectionRepository):
         if not ids:
             return SubtreeSummary()
 
-        kinds: Dict[str, int] = {KIND_FOLDER: 0, KIND_COLLECTION: 0, KIND_SMART: 0}
+        kinds: Dict[str, int] = {
+            KIND_FOLDER: 0,
+            KIND_COLLECTION: 0,
+            KIND_SMART: 0,
+            KIND_SET: 0,
+        }
         entries = 0
         connection = self._db.connect()
         for chunk in chunked(ids):
@@ -183,6 +248,7 @@ class CollectionRepository(ICollectionRepository):
             collections=kinds[KIND_COLLECTION],
             smart_collections=kinds[KIND_SMART],
             entries=entries,
+            sets=kinds[KIND_SET],
         )
 
     def max_depth_in_subtree(self, node_id: int) -> int:
@@ -221,34 +287,23 @@ class CollectionRepository(ICollectionRepository):
         ``position`` and ``depth`` are computed here rather than taken from the
         caller: they are facts about where the node is going, and a caller that
         could get them wrong is a caller that could corrupt the ordering.
+
+        A Set is made with its details row and one unnamed chapter in the same
+        transaction (DEC-103), so no Set exists, even for a statement, that an
+        entry could not be planned into.
         """
-        now = utc_now_iso()
         with self._db.transaction(join_existing=True) as conn:
-            depth = self._depth_for(conn, node.parent_id)
-            position = self._next_position(conn, node.parent_id)
-            cursor = conn.execute(
-                "INSERT INTO collections"
-                " (parent_id, kind, name, position, depth, rules_json, sort_field,"
-                "  sort_dir, frozen_from_id, frozen_at, created_at, updated_at)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    node.parent_id,
-                    node.kind,
-                    normalize_collection_name(node.name),
-                    position,
-                    depth,
-                    node.rules_json,
-                    node.sort_field,
-                    node.sort_dir,
-                    node.frozen_from_id,
-                    node.frozen_at,
-                    node.created_at or now,
-                    now,
-                ),
-            )
-            node.id = int(cursor.lastrowid or 0)
-            node.position = position
-            node.depth = depth
+            self._insert_node(conn, node)
+            if node.kind == KIND_SET:
+                set_id = int(node.id or 0)
+                now = utc_now_iso()
+                self._insert_details(conn, set_id, None, now)
+                conn.execute(
+                    "INSERT INTO set_chapters"
+                    " (collection_id, position, name, created_at, updated_at)"
+                    " VALUES (?, 0, '', ?, ?)",
+                    (set_id, now, now),
+                )
         return node
 
     def rename(self, node_id: int, name: str) -> Optional[Collection]:
@@ -461,41 +516,74 @@ class CollectionRepository(ICollectionRepository):
         dropped selection that overlaps what is already there adds the new ones
         and says how many it left alone. :meth:`insert_at` is how a deliberate
         duplicate is made.
+
+        Into a Set, the new entries join its last chapter, and an add that
+        would take it past :data:`~cuepoint.models.set_plan.MAX_SET_ENTRIES` is
+        refused before anything is written. Only the tracks that would actually
+        be added count against the limit.
+
+        Raises:
+            SetLimitError: If the node is a Set and the tracks would not fit.
         """
         collection_id = int(collection_id)
         wanted = unique_ids(track_ids)
         if not wanted:
             return AddResult()
 
-        present = set(self.track_ids(collection_id))
-        adding = [track_id for track_id in wanted if track_id not in present]
-        skipped = tuple(track_id for track_id in wanted if track_id in present)
-        if not adding:
-            return AddResult(skipped_track_ids=skipped)
-
-        now = utc_now_iso()
-        with self._db.transaction(join_existing=True) as conn:
-            start = self._next_entry_position(conn, collection_id)
-            conn.executemany(
-                "INSERT INTO collection_tracks"
-                " (collection_id, track_id, position, added_at) VALUES (?, ?, ?, ?)",
-                [
-                    (collection_id, track_id, start + offset, now)
-                    for offset, track_id in enumerate(adding)
-                ],
-            )
+        with self._db.transaction(join_existing=True):
+            present = set(self.track_ids(collection_id))
+            adding = [track_id for track_id in wanted if track_id not in present]
+            skipped = tuple(track_id for track_id in wanted if track_id in present)
+            if adding:
+                self._append(collection_id, adding)
         return AddResult(added_track_ids=tuple(adding), skipped_track_ids=skipped)
 
+    def append(self, collection_id: int, track_ids: Iterable[int]) -> AddResult:
+        """Append tracks exactly as given, repeats and all.
+
+        What copying a running order needs (PREP-02's "New Set from…"): a
+        Collection's entries with the track it holds twice held twice, in the
+        order they were in. :meth:`add` is the gesture a person makes, and skips
+        what is already there; this is a copy, and skips nothing.
+
+        Raises:
+            SetLimitError: If the node is a Set and the tracks would not fit.
+        """
+        adding = [int(track_id) for track_id in track_ids]
+        if adding:
+            with self._db.transaction(join_existing=True):
+                self._append(int(collection_id), adding)
+        return AddResult(added_track_ids=tuple(adding))
+
     def insert_at(
-        self, collection_id: int, track_id: int, position: int
+        self,
+        collection_id: int,
+        track_id: int,
+        position: int,
+        chapter_id: Optional[int] = None,
     ) -> CollectionEntry:
         """Put a track at a given place, even if it is already in the Collection.
 
         The deliberate-duplicate path (DEC-058), and what a drop between two
         rows calls.
+
+        Into a Set, the entry joins the chapter of the entry before it, or the
+        first chapter at position 0, unless ``chapter_id`` names one. Naming one
+        settles which side of a chapter boundary a drop lands on.
+
+        Raises:
+            SetLimitError: If the node is a Set that is full.
+            ValueError: If ``chapter_id`` is given for a node that is not a Set,
+                names a chapter of another Set, or names one the position is
+                not inside or at the edge of.
         """
         collection_id = int(collection_id)
         with self._db.transaction(join_existing=True) as conn:
+            is_set = self._kind_of(conn, collection_id) == KIND_SET
+            if chapter_id is not None and not is_set:
+                raise ValueError("Only an entry in a Set belongs to a chapter")
+            if is_set:
+                self._check_room(conn, collection_id, 1)
             end = self._next_entry_position(conn, collection_id)
             target = max(0, min(int(position), end))
             conn.execute(
@@ -509,6 +597,16 @@ class CollectionRepository(ICollectionRepository):
                 (collection_id, int(track_id), target, utc_now_iso()),
             )
             entry_id = int(cursor.lastrowid or 0)
+            if is_set:
+                chapter = self._chapter_for_slot(
+                    conn, collection_id, entry_id, target, chapter_id
+                )
+                conn.execute(
+                    "INSERT INTO set_entries (entry_id, collection_id, chapter_id)"
+                    " VALUES (?, ?, ?)",
+                    (entry_id, collection_id, chapter),
+                )
+                self._check_set(conn, collection_id)
             row = conn.execute(f"{_SELECT_ENTRY} WHERE id = ?", (entry_id,)).fetchone()
         return CollectionEntry.from_row(row)
 
@@ -540,13 +638,33 @@ class CollectionRepository(ICollectionRepository):
                 removed += int(cursor.rowcount or 0)
             for collection_id in affected:
                 self._renumber_entries(conn, collection_id)
+                # A removal cannot break a Set: the plan rows and any
+                # acknowledgement naming the entries go by cascade, and what is
+                # left is still in order. The check is cheap and makes that a
+                # fact rather than an argument.
+                if self._kind_of(conn, collection_id) == KIND_SET:
+                    self._check_set(conn, collection_id)
         return removed
 
-    def reorder_entry(self, entry_id: int, position: int) -> Optional[CollectionEntry]:
+    def reorder_entry(
+        self, entry_id: int, position: int, chapter_id: Optional[int] = None
+    ) -> Optional[CollectionEntry]:
         """Move one entry within its Collection.
 
         Arithmetic on the affected range rather than a rewrite of the whole
         list — see the module docstring for why that is possible here.
+
+        In a Set, the entry keeps its chapter when that still reaches the new
+        position, and otherwise joins the chapter of the entry now before it,
+        or the first chapter at position 0; ``chapter_id`` overrides both. A
+        move to where the entry already is changes nothing unless a chapter is
+        named, so naming one there moves the entry across a chapter boundary
+        without moving it in the list.
+
+        Raises:
+            ValueError: If ``chapter_id`` is given for an entry that is not in a
+                Set, names a chapter of another Set, or names one the position
+                is not inside or at the edge of.
         """
         entry_id = int(entry_id)
         with self._db.transaction(join_existing=True) as conn:
@@ -558,10 +676,13 @@ class CollectionRepository(ICollectionRepository):
                 return None
 
             collection_id = int(row["collection_id"])
+            is_set = self._kind_of(conn, collection_id) == KIND_SET
+            if chapter_id is not None and not is_set:
+                raise ValueError("Only an entry in a Set belongs to a chapter")
             current = int(row["position"])
             end = self._next_entry_position(conn, collection_id) - 1
             target = max(0, min(int(position), end))
-            if target == current:
+            if target == current and chapter_id is None:
                 return CollectionEntry.from_row(
                     conn.execute(
                         f"{_SELECT_ENTRY} WHERE id = ?", (entry_id,)
@@ -574,7 +695,7 @@ class CollectionRepository(ICollectionRepository):
                     " WHERE collection_id = ? AND position > ? AND position <= ?",
                     (collection_id, current, target),
                 )
-            else:
+            elif target < current:
                 conn.execute(
                     "UPDATE collection_tracks SET position = position + 1"
                     " WHERE collection_id = ? AND position >= ? AND position < ?",
@@ -584,6 +705,24 @@ class CollectionRepository(ICollectionRepository):
                 "UPDATE collection_tracks SET position = ? WHERE id = ?",
                 (target, entry_id),
             )
+            if is_set:
+                planned = conn.execute(
+                    "SELECT chapter_id FROM set_entries WHERE entry_id = ?",
+                    (entry_id,),
+                ).fetchone()
+                chapter = self._chapter_for_slot(
+                    conn,
+                    collection_id,
+                    entry_id,
+                    target,
+                    chapter_id,
+                    keep=None if planned is None else int(planned["chapter_id"]),
+                )
+                conn.execute(
+                    "UPDATE set_entries SET chapter_id = ? WHERE entry_id = ?",
+                    (chapter, entry_id),
+                )
+                self._check_set(conn, collection_id)
             row = conn.execute(f"{_SELECT_ENTRY} WHERE id = ?", (entry_id,)).fetchone()
         return CollectionEntry.from_row(row)
 
@@ -616,33 +755,408 @@ class CollectionRepository(ICollectionRepository):
         )
         return [int(row["collection_id"]) for row in rows]
 
-    def references_for(self, track_ids: Iterable[int]) -> Tuple[List[int], List[int]]:
-        """Return ``(collection ids, referenced track ids)`` for a set of tracks.
+    def references_for(
+        self, track_ids: Iterable[int], kind: str = KIND_COLLECTION
+    ) -> Tuple[List[int], List[int]]:
+        """Return ``(node ids, referenced track ids)`` for a set of tracks.
 
         What DEC-011's warning is built from. Both lists are distinct: a
         Collection holding three of the doomed tracks is one Collection a user
         would find changed, and a track held twice by two Collections is one
         track that is referenced.
+
+        One kind at a time (PREP-02): Collections by default, as every caller
+        written before Sets existed meant, and Sets when asked, so the warning
+        can state them as their own kind.
         """
         wanted = unique_ids(track_ids)
         if not wanted:
             return [], []
 
-        collections: set = set()
+        nodes: set = set()
         tracks: set = set()
         connection = self._db.connect()
         for chunk in chunked(wanted):
             placeholders = ", ".join("?" for _ in chunk)
             for row in connection.execute(
-                "SELECT DISTINCT collection_id, track_id FROM collection_tracks"
-                f" WHERE track_id IN ({placeholders})",
-                tuple(chunk),
+                "SELECT DISTINCT ct.collection_id, ct.track_id"
+                " FROM collection_tracks ct"
+                " JOIN collections c ON c.id = ct.collection_id"
+                f" WHERE c.kind = ? AND ct.track_id IN ({placeholders})",
+                (kind, *chunk),
             ):
-                collections.add(int(row["collection_id"]))
+                nodes.add(int(row["collection_id"]))
                 tracks.add(int(row["track_id"]))
-        return sorted(collections), sorted(tracks)
+        return sorted(nodes), sorted(tracks)
+
+    # -------------------------------------------------------------- sets
+
+    def set_details(self, set_id: int) -> Optional[SetDetails]:
+        """Return a Set's details row, or ``None`` when the node is not a Set."""
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT collection_id, notes, created_at, updated_at"
+                " FROM set_details WHERE collection_id = ?",
+                (int(set_id),),
+            )
+            .fetchone()
+        )
+        return None if row is None else SetDetails.from_row(row)
+
+    def chapters(self, set_id: int) -> List[SetChapter]:
+        """Return a Set's chapters in their own order."""
+        rows = (
+            self._db.connect()
+            .execute(
+                f"{_SELECT_CHAPTER} WHERE collection_id = ? ORDER BY position, id",
+                (int(set_id),),
+            )
+            .fetchall()
+        )
+        return [SetChapter.from_row(row) for row in rows]
+
+    def entry_plans(self, set_id: int) -> List[SetEntryPlan]:
+        """Return every entry's plan row, in the Set's own entry order."""
+        rows = self._db.connect().execute(_SELECT_PLANS, (int(set_id),)).fetchall()
+        return [SetEntryPlan.from_row(row) for row in rows]
+
+    def acknowledgements(self, set_id: int) -> List[SetAcknowledgement]:
+        """Return the transition warnings a Set's user has accepted, oldest first."""
+        rows = (
+            self._db.connect()
+            .execute(
+                f"{_SELECT_ACKNOWLEDGEMENTS} WHERE collection_id = ? ORDER BY id",
+                (int(set_id),),
+            )
+            .fetchall()
+        )
+        return [SetAcknowledgement.from_row(row) for row in rows]
+
+    def duplicate_set(self, set_id: int, name: str) -> Optional[Collection]:
+        """Copy a Set whole, under a new name, beside the original.
+
+        How last week's set becomes this week's (PREP-02): the chapters with
+        their names, notes and targets, the entries in order with their repeats,
+        each entry's chapter, times and note, the Set's notes, and every
+        acknowledged warning, pointed at the new entries. An acknowledgement
+        keeps the moment it was made, because the user did accept that
+        transition then; everything else is new now.
+
+        One transaction, so a copy is whole or absent. Positions are written
+        from 0, so the copy is contiguous whatever the original was.
+
+        Returns:
+            The new Set, or ``None`` if there is no Set with that id.
+        """
+        set_id = int(set_id)
+        with self._db.transaction(join_existing=True) as conn:
+            source = self.get(set_id)
+            details = self.set_details(set_id)
+            if source is None or not source.is_set or details is None:
+                return None
+
+            copy = Collection(name=name, kind=KIND_SET, parent_id=source.parent_id)
+            self._insert_node(conn, copy)
+            copy_id = int(copy.id or 0)
+            now = utc_now_iso()
+            self._insert_details(conn, copy_id, details.notes, now)
+
+            chapters: Dict[int, int] = {}
+            for index, chapter in enumerate(self.chapters(set_id)):
+                cursor = conn.execute(
+                    "INSERT INTO set_chapters"
+                    " (collection_id, position, name, notes, target_seconds,"
+                    "  bpm_min, bpm_max, created_at, updated_at)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        copy_id,
+                        index,
+                        chapter.name,
+                        chapter.notes,
+                        chapter.target_seconds,
+                        chapter.bpm_min,
+                        chapter.bpm_max,
+                        now,
+                        now,
+                    ),
+                )
+                chapters[int(chapter.id or 0)] = int(cursor.lastrowid or 0)
+
+            plans = {plan.entry_id: plan for plan in self.entry_plans(set_id)}
+            entries: Dict[int, int] = {}
+            for index, entry in enumerate(self.entries(set_id)):
+                plan = plans.get(int(entry.id or 0))
+                if plan is None:
+                    raise SetIntegrityError(
+                        f"Entry {entry.id} of Set {set_id} has no chapter"
+                    )
+                cursor = conn.execute(
+                    "INSERT INTO collection_tracks"
+                    " (collection_id, track_id, position, added_at)"
+                    " VALUES (?, ?, ?, ?)",
+                    (copy_id, entry.track_id, index, now),
+                )
+                copied = int(cursor.lastrowid or 0)
+                entries[int(entry.id or 0)] = copied
+                conn.execute(
+                    "INSERT INTO set_entries"
+                    " (entry_id, collection_id, chapter_id, in_seconds,"
+                    "  out_seconds, note) VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        copied,
+                        copy_id,
+                        chapters[plan.chapter_id],
+                        plan.in_seconds,
+                        plan.out_seconds,
+                        plan.note,
+                    ),
+                )
+
+            conn.executemany(
+                "INSERT INTO set_acknowledgements"
+                " (collection_id, from_entry_id, to_entry_id, warning,"
+                "  compared_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                [
+                    (
+                        copy_id,
+                        entries[ack.from_entry_id],
+                        entries[ack.to_entry_id],
+                        ack.warning,
+                        ack.compared_json,
+                        ack.created_at,
+                    )
+                    for ack in self.acknowledgements(set_id)
+                ],
+            )
+            self._check_set(conn, copy_id)
+        return self.get(copy_id)
 
     # --------------------------------------------------------------- helpers
+
+    @classmethod
+    def _insert_node(cls, conn, node: Collection) -> None:
+        """Insert one ``collections`` row at the end of its parent's children.
+
+        Fills in the node's id, position and depth.
+        """
+        now = utc_now_iso()
+        depth = cls._depth_for(conn, node.parent_id)
+        position = cls._next_position(conn, node.parent_id)
+        cursor = conn.execute(
+            "INSERT INTO collections"
+            " (parent_id, kind, name, position, depth, rules_json, sort_field,"
+            "  sort_dir, frozen_from_id, frozen_at, created_at, updated_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                node.parent_id,
+                node.kind,
+                normalize_collection_name(node.name),
+                position,
+                depth,
+                node.rules_json,
+                node.sort_field,
+                node.sort_dir,
+                node.frozen_from_id,
+                node.frozen_at,
+                node.created_at or now,
+                now,
+            ),
+        )
+        node.id = int(cursor.lastrowid or 0)
+        node.position = position
+        node.depth = depth
+
+    @staticmethod
+    def _insert_details(conn, set_id: int, notes: Optional[str], now: str) -> None:
+        """Write the row that makes a node a Set; the database fills its kind."""
+        conn.execute(
+            "INSERT INTO set_details (collection_id, notes, created_at, updated_at)"
+            " VALUES (?, ?, ?, ?)",
+            (set_id, notes, now, now),
+        )
+
+    @staticmethod
+    def _kind_of(conn, node_id: int) -> Optional[str]:
+        """Return a node's kind, or ``None`` when there is no such node."""
+        row = conn.execute(
+            "SELECT kind FROM collections WHERE id = ?", (int(node_id),)
+        ).fetchone()
+        return None if row is None else str(row["kind"])
+
+    def _append(self, collection_id: int, track_ids: Sequence[int]) -> None:
+        """Append entries in the order given; plan them if the node is a Set.
+
+        The one place new entries are appended, for :meth:`add` and
+        :meth:`append`. Into a Set they join its last chapter, after the limit
+        has been checked and before anything is written.
+        """
+        now = utc_now_iso()
+        with self._db.transaction(join_existing=True) as conn:
+            is_set = self._kind_of(conn, collection_id) == KIND_SET
+            if is_set:
+                self._check_room(conn, collection_id, len(track_ids))
+            start = self._next_entry_position(conn, collection_id)
+            conn.executemany(
+                "INSERT INTO collection_tracks"
+                " (collection_id, track_id, position, added_at) VALUES (?, ?, ?, ?)",
+                [
+                    (collection_id, int(track_id), start + offset, now)
+                    for offset, track_id in enumerate(track_ids)
+                ],
+            )
+            if not is_set:
+                return
+            last = conn.execute(
+                "SELECT id FROM set_chapters WHERE collection_id = ?"
+                " ORDER BY position DESC, id DESC LIMIT 1",
+                (collection_id,),
+            ).fetchone()
+            if last is None:
+                raise SetIntegrityError(f"Set {collection_id} has no chapter")
+            # The new rows are exactly those at or past ``start``: the positions
+            # before them were contiguous, and nothing else has written since.
+            conn.execute(
+                "INSERT INTO set_entries (entry_id, collection_id, chapter_id)"
+                " SELECT id, collection_id, ? FROM collection_tracks"
+                " WHERE collection_id = ? AND position >= ?",
+                (int(last["id"]), collection_id, start),
+            )
+            self._check_set(conn, collection_id)
+
+    @staticmethod
+    def _check_room(conn, set_id: int, adding: int) -> None:
+        """Refuse entries that would take a Set past its limit.
+
+        Raises:
+            SetLimitError: If they would, naming the Set and the numbers.
+        """
+        row = conn.execute(
+            "SELECT c.name AS name, (SELECT count(*) FROM collection_tracks ct"
+            "  WHERE ct.collection_id = c.id) AS n"
+            " FROM collections c WHERE c.id = ?",
+            (int(set_id),),
+        ).fetchone()
+        holding = int(row["n"]) if row is not None else 0
+        if holding + int(adding) > MAX_SET_ENTRIES:
+            name = str(row["name"]) if row is not None else f"Set {set_id}"
+            raise SetLimitError(name, holding, int(adding))
+
+    @staticmethod
+    def _neighbour_chapter(conn, set_id: int, entry_id: int, position: int):
+        """The chapter of the entry at ``position`` other than ``entry_id``."""
+        if position < 0:
+            return None
+        return conn.execute(
+            "SELECT ch.id, ch.position, ch.name FROM collection_tracks ct"
+            " JOIN set_entries se ON se.entry_id = ct.id"
+            " JOIN set_chapters ch ON ch.id = se.chapter_id"
+            " WHERE ct.collection_id = ? AND ct.position = ? AND ct.id != ?",
+            (set_id, position, entry_id),
+        ).fetchone()
+
+    def _chapter_for_slot(
+        self,
+        conn,
+        set_id: int,
+        entry_id: int,
+        position: int,
+        named: Optional[int],
+        keep: Optional[int] = None,
+    ) -> int:
+        """Return the chapter an entry now at ``position`` belongs in.
+
+        A chapter *reaches* a position when it is at or after the chapter of
+        the entry before, and at or before the chapter of the entry after.
+
+        - A chapter the caller **named** is used, once it is known to be this
+          Set's and to reach the position.
+        - A moved entry **keeps** its chapter when that still reaches the new
+          position, so reordering within a chapter, even to its first place,
+          never moves an entry into the chapter before.
+        - Otherwise the entry before decides, or the first chapter at position
+          0 (the module docstring's rule).
+
+        Raises:
+            ValueError: If the named chapter is another Set's or does not reach
+                the position.
+            SetIntegrityError: If the Set has no chapter at all.
+        """
+        before = self._neighbour_chapter(conn, set_id, entry_id, position - 1)
+        if named is None and keep is not None:
+            current = conn.execute(
+                "SELECT position FROM set_chapters WHERE id = ?", (int(keep),)
+            ).fetchone()
+            after = self._neighbour_chapter(conn, set_id, entry_id, position + 1)
+            if current is not None and _reaches(current, before, after):
+                return int(keep)
+        if named is None:
+            if before is not None:
+                return int(before["id"])
+            first = conn.execute(
+                "SELECT id FROM set_chapters WHERE collection_id = ?"
+                " ORDER BY position, id LIMIT 1",
+                (set_id,),
+            ).fetchone()
+            if first is None:
+                raise SetIntegrityError(f"Set {set_id} has no chapter")
+            return int(first["id"])
+
+        chapter = conn.execute(
+            "SELECT id, position, name FROM set_chapters"
+            " WHERE id = ? AND collection_id = ?",
+            (int(named), set_id),
+        ).fetchone()
+        if chapter is None:
+            raise ValueError(f"Chapter {named} is not a chapter of this Set")
+        after = self._neighbour_chapter(conn, set_id, entry_id, position + 1)
+        if not _reaches(chapter, before, after):
+            too_early = before is not None and chapter["position"] < before["position"]
+            neighbour = before if too_early else after
+            raise ValueError(
+                f"{_chapter_label(chapter)} does not reach position {position + 1}: "
+                f"the entry {'before' if too_early else 'after'} it is in "
+                f"{_chapter_label(neighbour)}, and a chapter's entries stay "
+                "together"
+            )
+        return int(chapter["id"])
+
+    @staticmethod
+    def _check_set(conn, set_id: int) -> None:
+        """Hold DEC-103 after a write: chapters exist, entries planned, in order.
+
+        Raises:
+            SetIntegrityError: If the write broke any of the three. The caller's
+                transaction rolls back.
+        """
+        row = conn.execute(
+            "SELECT"
+            " (SELECT count(*) FROM set_chapters WHERE collection_id = :set)"
+            "   AS chapters,"
+            " (SELECT count(*) FROM collection_tracks ct"
+            "   WHERE ct.collection_id = :set AND NOT EXISTS"
+            "   (SELECT 1 FROM set_entries se WHERE se.entry_id = ct.id))"
+            "   AS unplanned,"
+            " (SELECT count(*) FROM ("
+            "   SELECT ch.position AS here,"
+            "    lag(ch.position) OVER (ORDER BY ct.position, ct.id) AS before"
+            "   FROM collection_tracks ct"
+            "   JOIN set_entries se ON se.entry_id = ct.id"
+            "   JOIN set_chapters ch ON ch.id = se.chapter_id"
+            "   WHERE ct.collection_id = :set"
+            " ) WHERE here < before) AS backwards",
+            {"set": int(set_id)},
+        ).fetchone()
+        if not int(row["chapters"]):
+            raise SetIntegrityError(f"Set {set_id} has no chapter")
+        if int(row["unplanned"]):
+            raise SetIntegrityError(
+                f"{row['unplanned']} entries of Set {set_id} have no chapter"
+            )
+        if int(row["backwards"]):
+            raise SetIntegrityError(
+                f"Set {set_id}'s chapters are out of order in its entries"
+            )
 
     def _update(self, node_id: int, values: Dict[str, object]) -> Optional[Collection]:
         """Write named columns on one node and return it.
@@ -778,6 +1292,24 @@ class CollectionRepository(ICollectionRepository):
             " FROM ordered WHERE ordered.id = collection_tracks.id",
             (int(collection_id),),
         )
+
+
+def _reaches(chapter, before, after) -> bool:
+    """True when ``chapter`` may hold an entry between these two neighbours.
+
+    Each argument is a row with a chapter ``position``; a missing neighbour
+    (the top or the end of the Set) bounds nothing.
+    """
+    here = int(chapter["position"])
+    return (before is None or here >= int(before["position"])) and (
+        after is None or here <= int(after["position"])
+    )
+
+
+def _chapter_label(row) -> str:
+    """How a refusal names a chapter: its name, or its place when unnamed."""
+    name = str(row["name"] or "")
+    return repr(name) if name else f"chapter {int(row['position']) + 1}"
 
 
 __all__: Sequence[str] = ("CollectionRepository",)

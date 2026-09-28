@@ -240,7 +240,9 @@ def _kinds_of_work(references: ReferenceSummary) -> str:
             f"{_counted(references.collection_count, 'Collection')}"
         )
     if references.set_count:
-        parts.append(f"in {_counted(references.set_count, 'Set')}")
+        parts.append(
+            f"{references.set_track_count} in {_counted(references.set_count, 'Set')}"
+        )
     for count, words in (
         (references.rated_track_count, "rated or noted"),
         (references.tagged_track_count, "tagged"),
@@ -623,6 +625,7 @@ class LibraryImportService(ILibraryImportService):
                     "set_count": references.set_count,
                     "referenced_track_count": references.referenced_track_count,
                     "collection_track_count": references.collection_track_count,
+                    "set_track_count": references.set_track_count,
                     "rated_track_count": references.rated_track_count,
                     "tagged_track_count": references.tagged_track_count,
                     "reviewed_track_count": references.reviewed_track_count,

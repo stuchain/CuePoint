@@ -391,7 +391,9 @@ class BatchService(IBatchService):
             )
         return found
 
-    def check(self, operation: BatchOperation) -> str:
+    def check(
+        self, operation: BatchOperation, track_ids: Optional[Sequence[int]] = None
+    ) -> str:
         """Refuse an operation that cannot be applied, and name what it targets.
 
         Everything :meth:`apply_batch` would refuse before its first write, in
@@ -401,15 +403,23 @@ class BatchService(IBatchService):
         request that cannot be honoured comes back as a refusal rather than as
         a job that starts and fails.
 
+        Given the tracks it would apply to, it also asks whether they fit
+        (PREP-02): a selection that would take a Set past its limit is refused
+        whole, rather than added a chunk at a time until the limit stops it.
+
         Raises:
             ValueError: If the operation is unknown, its value is wrong for it,
-                or its target does not exist.
+                its target does not exist, or the tracks would not fit it.
 
         Returns:
             The name of what it applies — a tag's name, a Collection's name, or
             the value itself for a rating or a favorite.
         """
-        return self._applier_for(operation.validated()).target()
+        applier = self._applier_for(operation.validated())
+        target = applier.target()
+        if track_ids is not None:
+            applier.admit(track_ids)
+        return target
 
     def apply_batch(
         self,
@@ -445,6 +455,7 @@ class BatchService(IBatchService):
         # Collection that is not there refuses the batch by name once, rather
         # than failing 47,913 times and reporting that as the answer.
         target = applier.target()
+        applier.admit(track_ids)
         applier.begin()
 
         batch_id = str(uuid.uuid4())
@@ -600,6 +611,17 @@ class _Applier(ABC):
                 what is being asked of it.
         """
 
+    def admit(self, track_ids: Sequence[int]) -> None:
+        """Refuse the whole selection if it cannot be applied whole.
+
+        Nothing, for most operations: each track either takes the change or
+        does not. Overridden where a limit applies to the selection as a whole,
+        so that it refuses before the first chunk rather than partway through.
+
+        Raises:
+            ValueError: If the selection cannot be applied whole.
+        """
+
     def begin(self) -> None:
         """Read whatever the operation needs before its first chunk.
 
@@ -723,6 +745,11 @@ class _AddToCollection(_Applier):
 
     def target(self) -> str:
         return _require_collection_named(self._collections, self._collection_id)
+
+    def admit(self, track_ids: Sequence[int]) -> None:
+        # A Set holds at most MAX_SET_ENTRIES (PREP-02), and chunks commit one
+        # at a time: checked once, for everything, before any of it.
+        self._collections.check_add(self._collection_id, track_ids)
 
     def apply(self, track_ids: Sequence[int], batch_id: str) -> int:
         # No batch id: membership is an entry row rather than a field of a

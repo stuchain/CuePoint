@@ -125,7 +125,8 @@ class TestTheSeamAnswersToday:
         """
 
         class ReadsNothing:
-            def references_for(self, track_ids):
+            # PREP-02 asks one kind at a time.
+            def references_for(self, track_ids, kind="collection"):
                 return [], []
 
         service = LibraryService(
@@ -177,6 +178,9 @@ class TestTheSeamAnswersToday:
             "tagged_track_count",
             "reviewed_track_count",
             "edited_track_count",
+            # PREP-02: Sets as their own kind, beside the Collections.
+            "set_track_count",
+            "set_ids",
         }
 
 

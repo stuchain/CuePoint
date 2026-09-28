@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
-Status: **Specified 2026-09-28. PREP-01 is implemented (2026-09-28).** The twelve steps below replace the roadmap's
+Status: **Specified 2026-09-28. PREP-01 and PREP-02 are implemented (2026-09-28).** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -395,7 +395,7 @@ the Electron type-check and 490 tests; and `git diff --check`.
 
 ---
 
-## PREP-02 — The Set Kind Through the Collection Code
+## PREP-02 — The Set Kind Through the Collection Code ✅ IMPLEMENTED 2026-09-28
 
 **Objective**: A Set is created, filed, filled, counted, referenced and ruled on by the code that does
 all of that for Collections, and every test of `kind` is correct for it.
@@ -458,7 +458,200 @@ unlisted. `python -m pytest src/tests` clean; `ruff`, `mypy` clean.
 
 **Complexity**: **M**
 
-**Outcome**: Not started.
+**Outcome**: Implemented (2026-09-28). A Set can be created, filed, filled, moved, counted, referenced,
+ruled on, copied from a Collection, a Smart Collection, a Rekordbox playlist or a selection, and
+duplicated. Every entry written into a Set gets its chapter in the same transaction, by every path.
+Nothing a user can reach changes yet: the renderer creates no Set until PREP-09.
+
+**What was built.**
+
+- **The kind.** `Collection.holds_tracks` is true for a Collection or a Set. `Collection.is_set` is
+  added. `SubtreeSummary` gains `sets`, and `nodes` counts them.
+- **The one writer plans every entry** (`persistence/collection_repository.py`).
+  - Creating a Set writes the node, its `set_details` row and one unnamed chapter together.
+  - `add` and the new `append` put entries into the last chapter. `append` keeps repeats and order
+    and exists for copies. `add` still skips what is already there (DEC-058).
+  - `insert_at` puts an entry into the chapter of the entry before it, or the first chapter at
+    position 0.
+  - `reorder_entry` keeps the entry's chapter when that still reaches the new position, and otherwise
+    follows the insert rule (correction 1).
+  - Both take an optional `chapter_id`, refused unless the chapter reaches the position (correction 2).
+  - After every write to a Set, `_check_set` reads it back: at least one chapter, every entry planned,
+    and chapter positions never decreasing in entry order. A violation raises `SetIntegrityError`
+    (a `RuntimeError`, so a 500: it is a bug, not a refusal) and the transaction rolls back.
+  - `duplicate_set` copies the Set whole in one transaction and remaps every id.
+  - `references_for(track_ids, kind)` answers one kind at a time, Collections by default.
+  - Reads: `set_details`, `chapters`, `entry_plans`, `acknowledgements`.
+- **The limit.** `MAX_SET_ENTRIES = 1000` and `SetLimitError` (a `ValueError`, so a 400) are in
+  `models/set_plan.py`. The message has the numbers: "'Friday' holds 990 entries, and adding 20 would
+  make 1,010: a Set holds at most 1,000". Only the tracks that would actually be added count. The
+  repository refuses before writing, and the batch refuses before its first chunk (correction 3).
+- **The service** (`services/collection_service.py`).
+  - `create_set`.
+  - `create_set_from(SetSource, name, parent_id)`, which copies:
+    - a Collection's entries, repeats included;
+    - a Smart Collection's current answer, in its saved sort;
+    - a Rekordbox playlist's tracks, in its order and with its repeats;
+    - a selection, in the order given.
+
+    Everything goes into one chapter. Reading the source, the limit check, the Set, its entries and
+    one `set.created_from` activity event are one transaction.
+  - `duplicate_set`, named "… copy" by default and trimmed to fit, as a Smart Collection's duplicate
+    is.
+  - `check_add`, which asks whether an add would fit without writing anything.
+  - Insert and reorder pass a chapter through.
+- **References** (`models/references.py`, `services/library_service.py`). Sets are counted as Sets, and
+  the Collection counts exclude them. `ReferenceSummary` gains `set_track_count` and `set_ids`, extended
+  rather than renamed. A track in a Set and a Collection counts once in each and is one referenced
+  track. The refresh refusal reads "3 in 2 Collections, 4 in 1 Set, …".
+- **The wire.**
+  - `/api/v1/collections/create` accepts `kind: "set"`.
+  - The delete summary carries `sets`.
+  - The reference summary carries `set_track_count` and `set_ids`.
+  - The TypeScript types match (`CollectionSubtree`, `RefreshReferences`), and the renderer's typed
+    fixtures gained the new fields as zeros. No renderer behavior changed.
+
+**The kind audit, Python side.** Each place in `src/cuepoint` that asks what kind a node of CuePoint's
+tree is, and what it now answers for a Set. The Rekordbox mirror (`RekordboxPlaylist.is_folder`, used by
+the import, the playlist repository and "New Set from…" a playlist) is a different type and a
+different tree, so it is not listed.
+
+| Where | The question | A Set |
+| --- | --- | --- |
+| `models/collection.py` `holds_tracks` | Does it hold entries? | **Yes** (widened) |
+| `models/collection.py` `is_set` (new), `is_folder`, `is_smart` | Which kind is it? | A Set; not a folder, not smart |
+| `models/collection.py` `__post_init__` | Rules only on a smart node; none on a folder | Neither rule applies. Like a Collection, a Set may carry rules no code writes |
+| `models/rekordbox_export.py` `EXPORTED_KINDS` and its rule checks | May the export record name it? | Yes, and never with rules (PREP-01) |
+| `collection_repository` `subtree_summary` | What would a delete take? | Counted as `sets` |
+| `collection_repository` `create`, `_append`, `insert_at`, `reorder_entry`, `remove_entries` | Does this write need a plan? | Yes, and a check after it |
+| `collection_repository` `references_for` | Which kind is being counted? | Sets when asked for, never among Collections |
+| `collection_repository` `duplicate_set` | Is it a Set? | Only a Set is copied this way |
+| `collection_service` `_depth_under` (create and move) | May it be a parent? | **No**: only a folder contains nodes |
+| `collection_service` `_require_smart` (resolve, update rules, duplicate, freeze) | Is it a saved question? | No, refused: "'Friday' is a set, not a smart collection" |
+| `collection_service` `_require_collection` (add, insert, `check_add`; the batch through it) | May tracks be put in it? | **Yes** |
+| `collection_service` `freeze` | What does a freeze make? | A Collection, a crate, never a Set |
+| `collection_service` `_source_tracks` | What can "New Set from…" copy? | Not a Set: "already a Set: duplicate it" |
+| `collection_service` `_require_set`, `check_add` | Is it a Set? | New, Set-only |
+| `organization_api` `collection_tree` | Should its rules be resolved? | No: only a Smart Collection's are |
+| `organization_api` `CREATABLE_KINDS` | May `create` make it? | **Yes** (widened) |
+| `organization_api` `collections_holding` (the Inspector) | No test | Listed with `kind: "set"` |
+| `rule_references` `_check_collections` | May a rule name it? | **Yes**: only a Smart Collection is refused (DEC-060) |
+| `library_service` `references_for` | Which kind is this count? | Its own |
+| `library_api` `resolve_scope` | No test for `collection`; `smart` goes through `_require_smart` | Scopes as a Collection; refused as `smart` |
+| `rekordbox_export_service` (validate, build, `_entries`, `_playlist_preview`, `_playlists_under`) | Smart, folder, or otherwise a playlist? | Otherwise a playlist: its entries in order with repeats. PREP-07 tests and labels this |
+| `filter_sql` `_COLLECTION_LINK`, `track_query` Collection scope | No test | "In Set X" and the Library scope work unchanged |
+
+The final search matched `KIND_*`, `is_folder`, `is_smart`, `is_set`, `holds_tracks`,
+`CREATABLE_KINDS`, `EXPORTED_KINDS`, `c.kind`, `SMART` and string comparisons of `kind` across
+`src/cuepoint` (migrations aside), and found nothing that is not in the table.
+
+**Where the specification was wrong, and what was done instead.**
+
+1. **A moved entry keeps its chapter when it can.** The specified rule, "a move follows the insert
+   rule", assigns a moved entry to the chapter of the entry before it. Reordering an entry to the first
+   place of its own chapter would then silently move it into the chapter before, which no user means.
+   The first test of a reorder within a chapter caught it. A moved entry now keeps its chapter whenever
+   that chapter still *reaches* the new position (at or after the chapter before, at or before the
+   chapter after), and follows the insert rule only when it does not. A regression test holds it, and
+   removing it is caught.
+2. **A chapter may be named on an insert, not only on a move.** An insertion point between the last
+   entry of one chapter and the first of the next is in both chapters. Without a way to name one, a
+   drop at the top of a chapter could only land at the end of the one before. The same "reaches" rule
+   validates both.
+3. **The batch checks the limit before its first chunk.** The specification said an add past the limit
+   is "refused before anything is written". The batch path commits one chunk at a time, so a
+   repository-only check would have added chunks until the limit stopped it. `BatchService.check(op,
+   track_ids)` and an `admit` hook on each operation refuse the whole selection first. The engine asks
+   this before it decides whether to start a job, so an oversized "Add to Set" is a 400 and never a
+   job that fails.
+4. **Two public shapes grew, additively.** The specification said nothing else on the wire changes, but
+   the two summaries it changes are serialized as they are:
+   - The delete summary gains `sets`, so `nodes` stays the sum of the kinds it names.
+   - The reference summary gains `set_ids` beside `set_track_count`, for the reason ORG-13 gave for
+     `collection_ids`: a user whose Set a refresh emptied is owed its name.
+
+   The one engine test that pins the delete shape and the one that lists the summary's keys were
+   extended. The two wording tests of the refresh refusal now expect "N in 1 Set".
+5. **The Collection repository's `references_for` takes a kind**, defaulting to Collections. That keeps
+   its existing tests unmodified. One test double of it gained the parameter.
+6. **"New Set from…" files at the top level unless told otherwise, and is named after its source.** The
+   specification left both open. The caller passes `parent_id`, which the renderer knows. A selection has
+   no name of its own, so it needs one. A Set is refused as a source and pointed at duplicate, which also
+   copies the plan. A folder is refused.
+7. **`CollectionService` takes the playlist repository**, optionally, for "New Set from…" a playlist.
+   The bootstrap passes the registered one, and every existing construction keeps working.
+
+**Handed on.**
+
+- **PREP-07:** the export already writes a Set as one playlist through the "not a folder, not smart"
+  path, with repeats in order. PREP-07's work is the tests and the label.
+- **PREP-09, the renderer half of the audit:**
+  - `describeDeletion` does not yet name Sets.
+  - `referenceWarning` still says "in 1 Set" without the count.
+  - The refresh's "emptied" marking reads `collection_ids` only, which no longer includes Sets. It
+    should read `set_ids` too.
+
+**Tests**: 115 new, in three files.
+
+- **`src/tests/unit/persistence/test_set_entries.py` (64):**
+  - Creation and its transaction, and the delete preview.
+  - Every write path: the last chapter, the chapter before, the first at 0, and named chapters that
+    reach, do not reach, or belong to another Set.
+  - Keeping a chapter on a move.
+  - The limit at 1,000 and 1,001 by every path, with nothing written.
+  - Removal, clear and delete cascades.
+  - Duplicate: chapters, targets, notes, times, repeats and remapped acknowledgements, with the two
+    Sets independent.
+  - References by kind.
+  - `SetIntegrityError` for an unplanned entry, chapters out of order and a Set with no chapter, each
+    rolling back.
+  - No Set row for a Collection by any path.
+  - A Hypothesis property test: 60 random sequences of up to 40 edits, including refused named
+    chapters, which must leave the Set exactly as it was. The invariants are recomputed from the rows,
+    not taken from the module's own check.
+  - An exhaustive check of every insertion point against every chapter.
+- **`src/tests/unit/services/test_collection_service_sets.py` (40):**
+  - The tree rules for a Set.
+  - Membership by every service path.
+  - `check_add`.
+  - "New Set from…" each source: a Collection's repeat, a Smart Collection's saved order, a playlist's
+    order and repeat, and a selection's order. Its refusals (folder, Set, broken rules, no name, past
+    the limit, a failure part-way) each leave nothing behind, and it writes one event.
+  - Duplicate and its refusals.
+  - The batch: last chapter, removal of repeats, and a selection refused whole with a 100-track chunk
+    size.
+  - References counted once per kind.
+  - "In Set X" and "not in Set X" resolving to the Set's tracks, and breaking when it is deleted.
+    DEC-060's refusal unchanged.
+  - A freeze into a Set's folder leaving the Set as it was.
+- **`src/tests/unit/engine/test_engine_organization_sets.py` (11):**
+  - Create, the tree, the folder, the refusals.
+  - Every entry route planning what it writes.
+  - The Inspector's list and the Library scope.
+  - The delete preview.
+  - The limit as a 400 with its message, for an add and for a batch.
+
+Seven deliberate breakages were each caught:
+
+- `_check_set` doing nothing;
+- a move not keeping its chapter;
+- an insert left unplanned;
+- the batch skipping the admission check;
+- `holds_tracks` narrowed back to Collections;
+- references not split by kind;
+- duplicate not remapping acknowledgements.
+
+Every existing Collection test passes unmodified except the four shape and wording tests, and the test
+double, named above.
+
+**Checks run**:
+
+- **Python:** the full suite (10,226 passed, 62 skipped, on eight workers); `ruff check` and
+  `ruff format --check` on `src/` with the pinned ruff 0.14.0; the strict mypy gate;
+  `check_no_qt_in_core.py`; the desktop version coupling; the engine health smoke test.
+- **Renderer:** the type-check, lint (the 8 existing warnings) and 3,186 tests.
+- **Electron:** the type-check and 490 tests.
+- `git diff --check`.
 
 ---
 
@@ -769,7 +962,9 @@ place a Collection is.
 **Design**:
 
 - **The kind audit, renderer side.** Every `kind` test in `renderer/src` is listed in the outcome with
-  what it now answers for a Set (fact 2). `CollectionKind` gains `"set"` in both type files.
+  what it now answers for a Set (fact 2). `CollectionKind` gains `"set"` in both type files. PREP-02
+  handed on three items, in its outcome: `describeDeletion` and `referenceWarning` do not yet name
+  Sets, and the refresh's "emptied" marking must read `set_ids` beside `collection_ids`.
 - **The tree.** A Set shows the `prepare` icon and its entry count. "New Set" sits beside "New
   Collection" and files into the selected folder. The context menu adds "Open in Prepare", "Duplicate",
   "Save set list…", "Copy set list" and the existing "Export to Rekordbox…". A Collection, a Smart

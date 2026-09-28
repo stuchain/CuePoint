@@ -285,6 +285,9 @@ def apply_or_start(
     # worse way to say so than an error is.
     service.check(wanted)
     track_ids: List[int] = service.resolve(selection)
+    # And one that needs the tracks: a selection a Set could not hold whole is
+    # refused whole (PREP-02), not added a chunk at a time until it stops.
+    service.check(wanted, track_ids)
 
     if len(track_ids) <= BATCH_JOB_THRESHOLD:
         result: BatchResult = service.apply_batch(

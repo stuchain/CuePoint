@@ -416,6 +416,7 @@ def bootstrap_services() -> None:
             database_service=container.resolve(IDatabaseService),
             track_repository=container.resolve(ITrackRepository),
             activity_service=container.resolve(IActivityService),
+            playlist_repository=container.resolve(IPlaylistRepository),
         )
 
     container.register_factory(ICollectionService, create_collection_service)

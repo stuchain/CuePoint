@@ -663,6 +663,8 @@ export interface CollectionSubtree {
   folders: number;
   collections: number;
   smart_collections: number;
+  /** Sets that would go (PREP-02); `nodes` counts them. */
+  sets: number;
   entries: number;
   nodes: number;
 }
@@ -924,6 +926,12 @@ export interface RefreshReferences {
   tagged_track_count: number;
   reviewed_track_count: number;
   edited_track_count: number;
+  /**
+   * Sets as their own kind (PREP-02): how many of the tracks a Set holds, and
+   * which Sets, beside `set_count`. The Collection counts never include a Set.
+   */
+  set_track_count: number;
+  set_ids: number[];
 }
 
 /**

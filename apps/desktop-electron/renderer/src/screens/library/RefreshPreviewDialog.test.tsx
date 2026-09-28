@@ -26,6 +26,8 @@ const NO_REFERENCES: RefreshReferences = {
   tagged_track_count: 0,
   reviewed_track_count: 0,
   edited_track_count: 0,
+  set_track_count: 0,
+  set_ids: [],
 };
 
 function category<T>(count = 0, items: T[] = []) {

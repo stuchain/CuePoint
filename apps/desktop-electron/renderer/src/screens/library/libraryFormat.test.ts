@@ -66,6 +66,8 @@ function diff(overrides: Partial<RefreshDiff> = {}): RefreshDiff {
       tagged_track_count: 0,
       reviewed_track_count: 0,
       edited_track_count: 0,
+      set_track_count: 0,
+      set_ids: [],
     },
     ...overrides,
   };
@@ -233,6 +235,8 @@ describe("referenceWarning (DEC-011)", () => {
         tagged_track_count: 0,
         reviewed_track_count: 0,
         edited_track_count: 0,
+        set_track_count: 0,
+        set_ids: [],
       },
     });
     const warning = referenceWarning(withRefs)!;
@@ -256,6 +260,8 @@ describe("referenceWarning (DEC-011)", () => {
         tagged_track_count: 0,
         reviewed_track_count: 0,
         edited_track_count: 0,
+        set_track_count: 0,
+        set_ids: [],
       },
     });
     const warning = referenceWarning(setsOnly)!;
@@ -281,6 +287,8 @@ describe("referenceWarning (DEC-011)", () => {
         tagged_track_count: 4,
         reviewed_track_count: 6,
         edited_track_count: 2,
+        set_track_count: 0,
+        set_ids: [],
       },
     });
     expect(referenceWarning(everything)).toBe(
@@ -304,6 +312,8 @@ describe("referenceWarning (DEC-011)", () => {
         tagged_track_count: 0,
         reviewed_track_count: 0,
         edited_track_count: 0,
+        set_track_count: 0,
+        set_ids: [],
       },
     });
     expect(needsReferenceConfirmation(ratedOnly)).toBe(true);
@@ -349,6 +359,8 @@ describe("appliedLine", () => {
         tagged_track_count: 0,
         reviewed_track_count: 0,
         edited_track_count: 0,
+        set_track_count: 0,
+        set_ids: [],
       },
       duration_seconds: 0.6,
       summary_line: "Library refreshed",

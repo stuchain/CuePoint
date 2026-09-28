@@ -127,6 +127,12 @@ if TYPE_CHECKING:
         CollectionEntry,
         SubtreeSummary,
     )
+    from cuepoint.models.set_plan import (
+        SetAcknowledgement,
+        SetChapter,
+        SetDetails,
+        SetEntryPlan,
+    )
     from cuepoint.models.refresh_diff import RefreshDiff
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack, QueueTrack
     from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet
@@ -153,7 +159,12 @@ if TYPE_CHECKING:
         BatchResult,
         BatchSelection,
     )
-    from cuepoint.services.collection_service import FreezeResult, SmartResolution
+    from cuepoint.services.collection_service import (
+        FreezeResult,
+        NewSetResult,
+        SetSource,
+        SmartResolution,
+    )
     from cuepoint.services.artwork_service import ArtworkScanResult
     from cuepoint.services.duplicate_service import DuplicateScanResult
     from cuepoint.services.file_check_service import FileCheckResult
@@ -2778,10 +2789,22 @@ class ICollectionRepository(ABC):
         ...
 
     @abstractmethod
+    def append(self, collection_id: int, track_ids: Iterable[int]) -> "AddResult":
+        """Append tracks exactly as given, repeats included (PREP-02)."""
+        ...
+
+    @abstractmethod
     def insert_at(
-        self, collection_id: int, track_id: int, position: int
+        self,
+        collection_id: int,
+        track_id: int,
+        position: int,
+        chapter_id: Optional[int] = None,
     ) -> "CollectionEntry":
-        """Put a track at a given place, duplicates allowed (DEC-058)."""
+        """Put a track at a given place, duplicates allowed (DEC-058).
+
+        In a Set, into the chapter named, or the one the position falls in.
+        """
         ...
 
     @abstractmethod
@@ -2791,9 +2814,9 @@ class ICollectionRepository(ABC):
 
     @abstractmethod
     def reorder_entry(
-        self, entry_id: int, position: int
+        self, entry_id: int, position: int, chapter_id: Optional[int] = None
     ) -> Optional["CollectionEntry"]:
-        """Move one entry within its Collection."""
+        """Move one entry within its Collection, or its Set and chapter."""
         ...
 
     @abstractmethod
@@ -2807,8 +2830,35 @@ class ICollectionRepository(ABC):
         ...
 
     @abstractmethod
-    def references_for(self, track_ids: Iterable[int]) -> Tuple[List[int], List[int]]:
-        """Return (collection ids, referenced track ids) for a set of tracks."""
+    def references_for(
+        self, track_ids: Iterable[int], kind: str = "collection"
+    ) -> Tuple[List[int], List[int]]:
+        """Return (node ids, referenced track ids) of one kind for these tracks."""
+        ...
+
+    @abstractmethod
+    def set_details(self, set_id: int) -> Optional["SetDetails"]:
+        """Return a Set's details row, or ``None`` for a node that is not one."""
+        ...
+
+    @abstractmethod
+    def chapters(self, set_id: int) -> List["SetChapter"]:
+        """Return a Set's chapters in their own order."""
+        ...
+
+    @abstractmethod
+    def entry_plans(self, set_id: int) -> List["SetEntryPlan"]:
+        """Return every entry's plan row, in the Set's entry order."""
+        ...
+
+    @abstractmethod
+    def acknowledgements(self, set_id: int) -> List["SetAcknowledgement"]:
+        """Return a Set's acknowledged transition warnings, oldest first."""
+        ...
+
+    @abstractmethod
+    def duplicate_set(self, set_id: int, name: str) -> Optional["Collection"]:
+        """Copy a Set whole beside the original, or ``None`` if it is not one."""
         ...
 
 
@@ -2883,10 +2933,22 @@ class ICollectionService(ABC):
         ...
 
     @abstractmethod
+    def check_add(self, collection_id: int, track_ids: Iterable[int]) -> None:
+        """Refuse, writing nothing, an add the node could not take (PREP-02)."""
+        ...
+
+    @abstractmethod
     def insert_track(
-        self, collection_id: int, track_id: int, position: int
+        self,
+        collection_id: int,
+        track_id: int,
+        position: int,
+        chapter_id: Optional[int] = None,
     ) -> "CollectionEntry":
-        """Put a track at a position, deliberately allowing a duplicate."""
+        """Put a track at a position, deliberately allowing a duplicate.
+
+        In a Set, into the chapter named, or the one the position falls in.
+        """
         ...
 
     @abstractmethod
@@ -2895,8 +2957,10 @@ class ICollectionService(ABC):
         ...
 
     @abstractmethod
-    def reorder_entry(self, entry_id: int, position: int) -> "CollectionEntry":
-        """Move one entry within its Collection."""
+    def reorder_entry(
+        self, entry_id: int, position: int, chapter_id: Optional[int] = None
+    ) -> "CollectionEntry":
+        """Move one entry within its Collection, or its Set and chapter."""
         ...
 
     @abstractmethod
@@ -2952,6 +3016,26 @@ class ICollectionService(ABC):
     @abstractmethod
     def freeze(self, node_id: int, name: Optional[str] = None) -> "FreezeResult":
         """Store a Smart Collection's current answer as a Collection (DEC-061)."""
+        ...
+
+    @abstractmethod
+    def create_set(self, name: str, parent_id: Optional[int] = None) -> "Collection":
+        """Create an empty Set with one unnamed chapter (DEC-102, DEC-103)."""
+        ...
+
+    @abstractmethod
+    def create_set_from(
+        self,
+        source: "SetSource",
+        name: Optional[str] = None,
+        parent_id: Optional[int] = None,
+    ) -> "NewSetResult":
+        """Make a Set holding a copy of something else's tracks (DEC-104)."""
+        ...
+
+    @abstractmethod
+    def duplicate_set(self, node_id: int, name: Optional[str] = None) -> "Collection":
+        """Copy a Set whole, chapters, plan and acknowledgements included."""
         ...
 
 
@@ -3228,7 +3312,11 @@ class IBatchService(ABC):
         ...
 
     @abstractmethod
-    def check(self, operation: "BatchOperation") -> str:
+    def check(
+        self,
+        operation: "BatchOperation",
+        track_ids: Optional[Sequence[int]] = None,
+    ) -> str:
         """Refuse an operation that cannot be applied, and name what it targets."""
         ...
 

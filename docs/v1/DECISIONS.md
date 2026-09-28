@@ -3289,6 +3289,21 @@ entry table, and keeps the two words meaning two things.
 **Why the decision stands**: all of this is the decision's own consequence. A Set is a node, and what
 only a Set has is kept beside it, now enforced where it is stored.
 
+### Implemented (2026-09-28, PREP-02) — the kind through the Collection code
+
+- **`holds_tracks` is true for a Set**, so adding, inserting, moving and removing entries, the counts,
+  the Library scope, the "in Collection" rule and the export path take a Set as they take a
+  Collection. Everything that asks "is this a crate?" still answers no. `PHASE10_PREPARE.md` records
+  the audit, one row per place `kind` is tested.
+- **The one writer of entries plans them.** Every entry written into a Set gets its chapter in the same
+  transaction, by every path, and a Set is checked after every write.
+- **A Set holds at most 1,000 entries**, refused with the numbers before anything is written,
+  including by a batch.
+- **DEC-011's count has Sets of its own.** `references_for()` splits by kind, and the refusal reads
+  "4 in 1 Set" beside "3 in 2 Collections". The summary carries `set_track_count` and `set_ids`,
+  extended rather than renamed.
+- **"New Set from…" and duplicate are copies.** Nothing is converted in place.
+
 ---
 
 ## DEC-103 — Chapters Are Contiguous Sections With Optional Targets
@@ -3311,6 +3326,23 @@ CuePoint can check: forty minutes, 118 to 122 BPM.
 - Chapters are not exported to Rekordbox (DEC-109). They appear in the set list files (DEC-110).
 
 **Decided with**: User · **Date**: 2026-09-28
+
+### Implemented (2026-09-28, PREP-02) — which chapter an entry joins
+
+- **Contiguity is enforced by the one writer of entries**, the Collection repository, rather than the
+  service. Every write path passes through it (DEC-102's reason for keeping entries in one table), and
+  it checks the Set after each write.
+- **An appended entry joins the last chapter. An inserted entry joins the chapter of the entry before
+  it, or the first chapter at position 0.**
+- **Precision: a moved entry keeps its chapter when it can.** The first rule written made a move follow
+  the insert rule, so reordering an entry to the top of its own chapter would have put it in the
+  chapter before. A moved entry now keeps its chapter whenever that chapter still reaches the new
+  position, and follows the insert rule only when it does not.
+- **A caller may name the chapter on an insert or a move.** At a boundary between two chapters an
+  entry could belong to either. The name is refused unless the chapter reaches the position.
+
+**Why the decision stands**: this is how "every entry belongs to exactly one chapter, and a chapter's
+entries are contiguous" is kept, not a change to it.
 
 ---
 

@@ -308,6 +308,8 @@ class TestTreeMutation:
             "folders": 0,
             "collections": 1,
             "smart_collections": 0,
+            # PREP-02: the shape names every kind ``nodes`` counts.
+            "sets": 0,
             "entries": 4,
             "nodes": 1,
         }
