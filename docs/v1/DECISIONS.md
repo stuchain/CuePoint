@@ -3272,6 +3272,23 @@ entry table, and keeps the two words meaning two things.
 
 **Decided with**: User · **Date**: 2026-09-28
 
+### Implemented (2026-09-28, PREP-01) — the schema, and what the database now refuses
+
+- **The rebuild is as decided.** `collections`, `collection_tracks` and `rekordbox_export_playlists` are
+  set aside, dropped child first, and refilled with every id and sequence value. At 100,000 entries it
+  takes 785 ms, once.
+- **The vocabulary moved with the schema.** `KIND_SET` is in `KINDS` and `EXPORTED_KINDS`, and in the
+  TypeScript unions, from PREP-01 rather than PREP-02. The repository holds each `CHECK` and its model
+  constant to one list, and a schema that stores `set` must have models that can read it back. Nothing
+  can create a Set until PREP-02.
+- **"Set data belongs to a Set" is a constraint, not a convention.** Composite references make the
+  database refuse three things: details on a node that is not a Set, a plan whose chapter is in another
+  Set, and an acknowledgement across two Sets. A Set holding details cannot be turned into another
+  kind. `PHASE10_PREPARE.md` records the tables and why.
+
+**Why the decision stands**: all of this is the decision's own consequence. A Set is a node, and what
+only a Set has is kept beside it, now enforced where it is stored.
+
 ---
 
 ## DEC-103 — Chapters Are Contiguous Sections With Optional Targets

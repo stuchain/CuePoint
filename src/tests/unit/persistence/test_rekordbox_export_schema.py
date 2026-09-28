@@ -46,6 +46,7 @@ from cuepoint.migrations import discover_migrations
 from cuepoint.models.collection import (
     KIND_COLLECTION,
     KIND_FOLDER,
+    KIND_SET,
     KIND_SMART,
     Collection,
 )
@@ -404,9 +405,12 @@ class TestTheVocabularies:
         )
 
     def test_a_folder_is_not_an_exported_playlist(self, db):
-        """The tree's folders are structure; only these two kinds are rows."""
+        """The tree's folders are structure; its track-holding kinds are rows.
+
+        A Set joined them in m0025 (DEC-109), and exports as its entries.
+        """
         assert KIND_FOLDER not in EXPORTED_KINDS
-        assert set(EXPORTED_KINDS) == {KIND_COLLECTION, KIND_SMART}
+        assert set(EXPORTED_KINDS) == {KIND_COLLECTION, KIND_SMART, KIND_SET}
         with pytest.raises(sqlite3.IntegrityError):
             add_playlist(db, add_export(db), kind=KIND_FOLDER)
 
@@ -1232,7 +1236,9 @@ class TestOneModuleRunsTheirSQL:
         )
         offenders = []
         for path in sorted(package.rglob("*.py")):
-            if path.name == "m0020_rekordbox_exports.py":
+            # A migration is the schema itself, not a second copy of a query:
+            # m0020 created these tables and m0025 rebuilt one (PREP-01).
+            if path.parent.name == "migrations":
                 continue
             if statement.search(path.read_text(encoding="utf-8")):
                 offenders.append(path.relative_to(package).as_posix())

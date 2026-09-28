@@ -114,6 +114,9 @@ GUARDED = (
     "cuepoint/services/config_service.py",
     "cuepoint/services/privacy_service.py",
     "cuepoint/services/onboarding_service.py",
+    # PREP-01: the Set schema's models, and the node model it widened.
+    "cuepoint/models/set_plan.py",
+    "cuepoint/models/collection.py",
 )
 
 

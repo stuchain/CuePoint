@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
-Status: **Specified 2026-09-28. No step is implemented.** The twelve steps below replace the roadmap's
+Status: **Specified 2026-09-28. PREP-01 is implemented (2026-09-28).** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -180,7 +180,7 @@ stored on the entry rather than the track, because the same track twice in a Set
 
 ---
 
-## PREP-01 — The Set Schema
+## PREP-01 — The Set Schema ✅ IMPLEMENTED 2026-09-28
 
 **Objective**: Migration `m0025_sets`: the `set` kind, and the tables a Set needs that a Collection
 does not.
@@ -277,7 +277,121 @@ m0025).
 
 **Complexity**: **M**
 
-**Outcome**: Not started.
+**Outcome**: Implemented (2026-09-28). Migration `m0025_sets` lands the `set` kind and the four
+tables. On a copy of a 50,000-track version-24 library with 500 nodes, 100,000 entries and 400 export
+records, it takes a median of **785 ms** over five copies (maximum 815 ms), against a budget of one
+second. Every row, id and sequence value is unchanged, and the foreign-key check is clean. Nothing
+creates a Set yet: `CREATABLE_KINDS` is still folder and collection, so this step changes no behavior
+a user can reach.
+
+**What was built.**
+
+- `migrations/m0025_sets.py`. It sets aside all three tables and the sequence values, drops them child
+  first, recreates them, refills them, builds their indexes and restores the sequences, then creates
+  the four new tables. The rebuilt tables' DDL is m0009's and m0020's with only the `CHECK` widened.
+- `models/set_plan.py`: `SetDetails`, `SetChapter`, `SetEntryPlan` and `SetAcknowledgement`. Notes use
+  the library's own `normalize_notes`. Times must be whole seconds, a chapter name is at most 120
+  characters and may be empty, and comparison data must be a JSON object. `SetEntryPlan.is_timed` and
+  `planned_seconds` state DEC-107's rule: timed means an out time, and an empty in time is the start.
+- `KIND_SET` in `models/collection.py`, and `set` in `EXPORTED_KINDS`, with a Set's export row refused
+  if it carries rules, as a Collection's is. `CollectionKind` and the two export-playlist `kind`
+  unions gain `"set"` in `engineClient.ts` and `cuepointBridge.types.ts`, as types only.
+- `models/set_plan.py` and `models/collection.py` join the strict mypy gate.
+
+**Where the specification was wrong, and what was done instead.** Five points, each settled the most
+durable way and recorded here rather than left to be rediscovered.
+
+1. **The vocabulary lands with the schema, not in PREP-02.** The specification said `KIND_SET` would
+   wait for PREP-02 "so this step changes no behavior". But the repository already holds each `CHECK`
+   and its model constant to one list: `test_the_kind_check_says_what_the_model_says` for the export
+   table, and a TypeScript contract test for the export record. A schema that stores `set` beside models
+   that refuse to read it back would break that rule, or the tests would have to be weakened. So
+   `KINDS`, `EXPORTED_KINDS` and the TypeScript unions all gain `set` here, and the organization schema
+   test now reads the kinds from `KINDS` and holds the `CHECK` to it. Behavior is still unchanged: the
+   create route accepts only folder and collection, and the services create nodes of fixed kinds.
+   `holds_tracks`, the kind summary and every other caller are PREP-02's audit, as specified.
+2. **The database refuses Set data that does not belong to a Set.** The specified DDL let a chapter
+   hang off any node, and let an entry's plan name a chapter in a different Set. m0009's principle is to
+   make such mistakes impossible rather than unlikely, and DISCOVER-02 had already used composite
+   references to that end. So:
+   - `set_details` references `collections(id, kind)` with a `kind` that can only be `'set'`.
+   - Chapters reference `set_details`.
+   - A plan references its entry as `collection_tracks(id, collection_id)` and its chapter as
+     `set_chapters(id, collection_id)` with the same `collection_id`.
+   - An acknowledgement's two ends reference `set_entries(entry_id, collection_id)` with one
+     `collection_id`.
+
+   Four unique indexes serve as the parent keys: `collections(id, kind)`,
+   `collection_tracks(id, collection_id)`, `set_chapters(id, collection_id)` and
+   `set_entries(entry_id, collection_id)`. Each leads with a primary key, so every row already
+   satisfies it. A side effect worth having: a Set that holds details cannot be turned into another kind
+   while it has them.
+3. **`set_details` and `set_entries` are `WITHOUT ROWID`.** Both are keyed by another table's id. In a
+   rowid table an omitted `INTEGER PRIMARY KEY` is given the next free number, and the tests construct
+   the case where that number names a real, unplanned entry in the same Set, which the reference would
+   then accept. This is the trap DISCOVER-02 found for tables keyed by a Beatport id.
+4. **Chapter positions are indexed, not unique.** The specified `UNIQUE (collection_id, position)`
+   contradicts m0009's reasoning for `collection_tracks`: chapters are reordered, SQLite has no deferred
+   uniqueness, and a swap would violate the index halfway through. Contiguity belongs to the service,
+   as the specification already said of entries.
+5. **The rebuilt tables' indexes are built after the refill.** Built first, the refill of 100,000
+   entries took 973 ms of a 1.12 s migration, keeping four indexes current one row at a time. Built
+   after, the whole migration takes 785 ms. Most of what remains is the foreign-key check on every
+   restored row. The runner cannot switch that off inside its transaction, and it is worth keeping: it
+   proves each row still points at something. A runner mode that disables keys for a migration
+   (SQLite's documented twelve-step rebuild) would avoid rewriting `collection_tracks` at all. It was
+   weighed and not built, because it adds a mode where the database's references are unchecked to save
+   a fraction of a second, once.
+
+Two assumptions were checked rather than trusted. `defer_foreign_keys` was in the first draft, to let a
+Collection filed under a folder made after it (so with a lower id than its parent) be refilled. It was
+removed: SQLite checks an immediate key at the end of each statement, and each refill is one
+statement. The upgrade fixture holds a tree shaped like that. And dropping `collection_tracks` before
+`collections` turned out not to be what protects the rows, which the copies do. It keeps the drop
+cheap, because the other order cascades a delete to every entry just before the table goes anyway. The
+test and the migration's docstring say so.
+
+**Tests**: 187 new: 93 in `src/tests/unit/persistence/test_sets_schema.py` and 94 in
+`src/tests/unit/models/test_set_plan_models.py`.
+
+- **The rebuild.** Each rebuilt table's DDL equals its version-24 text with only the `CHECK` widened.
+  Columns, references and indexes are the same, plus exactly the two named unique indexes. Nothing
+  outside the rebuilt tables pointed into them before; only `set_details` and `set_entries` do now. No
+  working table is left behind.
+- **The upgrade.** The version-24 fixture has a nested tree, a Collection older than its folder, a
+  repeat, a Smart Collection, a frozen Collection, deleted nodes, entries and export rows (so each
+  sequence sits above its highest id), and rows in the tables around them. It keeps every row of every
+  table and every sequence value, and new ids continue from them. The foreign-key and integrity checks
+  are clean. The repository reads the same tree and entries. Folder and track deletes still cascade.
+  The schema equals a fresh one. Empty tables gain no sequence row.
+- **The hazard.** A test drops `collections` first inside a savepoint and watches `collection_tracks`
+  empty. The migration's own statement order is checked: every copy before any drop, entries before
+  nodes. A migration made to fail halfway leaves version 24 and every row.
+- **The new tables.** Columns in order. `WITHOUT ROWID` and `AUTOINCREMENT` where intended. The whole
+  reference map. Every reference leads an index, and every composite reference has its unique key.
+  Each refusal is tested: details on a folder, Collection or Smart Collection; a plan for a
+  Collection's entry; a chapter from another Set; a plan naming the wrong Set; an acknowledgement
+  across two Sets, of an unplanned entry, or from an entry to itself; a second plan per entry. Each
+  `CHECK` is tested at its boundaries. Each cascade is tested: deleting a Set, its folder, a track or
+  one entry takes exactly what it should. A chapter still holding entries cannot be deleted, and
+  neither can a Set's details while its entries are planned.
+- **The models.** Each is exactly its table, except `set_details.kind`, a constant the database fills.
+  Each round-trips a real row. Every refusal names its field.
+
+Three deliberate breakages were each caught:
+
+- dropping `WITHOUT ROWID`, by the two behavioural tests as well as the DDL check;
+- making the chapter reference plain, by three tests;
+- removing `collection_tracks(id, collection_id)`, by 5 failures and 40 errors.
+
+A fourth, a migration made to fail after its last statement, is a test of its own and leaves version
+24 intact.
+
+**Checks run**: the full Python suite (10,111 passed, 62 skipped, on eight workers); `ruff check` and
+`ruff format --check` on `src/` with the pinned ruff 0.14.0; the
+strict mypy gate with two more modules; `check_no_qt_in_core.py`; the backup-before-migration and
+concurrent-migration tests; the renderer's type-check, lint (the 8 existing warnings) and 3,186 tests;
+the Electron type-check and 490 tests; and `git diff --check`.
 
 ---
 
@@ -295,7 +409,8 @@ all of that for Collections, and every test of `kind` is correct for it.
 
 **Design**:
 
-- **The kind.** `KIND_SET = "set"` joins `KINDS`. `Collection.holds_tracks` is true for a Collection or
+- **The kind.** `KIND_SET = "set"` is already in `KINDS` (PREP-01 landed the vocabulary with the
+  schema; see its outcome). `Collection.holds_tracks` is true for a Collection or
   a Set, and `Collection.is_set` is added. The repository's kind summary (the delete preview) counts
   Sets.
 - **The kind audit, Python side.** Every test of `kind` in `src/cuepoint` is listed in the outcome with
@@ -567,7 +682,8 @@ cancelled write leaves no partial file.
 
 **Design**:
 
-- `EXPORTED_KINDS` gains `KIND_SET`. A Set is appended exactly as a Collection is: one `NODE` of
+- `EXPORTED_KINDS` already holds `KIND_SET` (PREP-01, with the widened `CHECK`); this step makes the
+  writer and preview use it. A Set is appended exactly as a Collection is: one `NODE` of
   playlist type, entries in order, a repeat written twice, at its folder path under CuePoint's folder
   (DEC-078).
 - Chapters, times, notes and acknowledgements are not written.

@@ -29,11 +29,13 @@ only kind that matters.
 
 from __future__ import annotations
 
+import re
 import sqlite3
 
 import pytest
 
 from cuepoint.migrations import discover_migrations
+from cuepoint.models.collection import KINDS
 from cuepoint.models.library_track import LibraryTrack
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
@@ -361,11 +363,22 @@ class TestUpgradingARealDatabase:
 
 
 class TestTheKindDiscriminator:
-    @pytest.mark.parametrize("kind", ["folder", "collection", "smart"])
-    def test_the_three_kinds_are_accepted(self, db, kind):
+    @pytest.mark.parametrize("kind", KINDS)
+    def test_every_kind_is_accepted(self, db, kind):
+        # m0009 declared three; m0025 widened the CHECK with the Set (DEC-102).
         assert make_collection(db, name=f"a {kind}", kind=kind) > 0
 
-    def test_a_fourth_kind_is_refused(self, db):
+    def test_the_check_says_what_the_model_says(self, db):
+        sql = str(
+            db.connect()
+            .execute("SELECT sql FROM sqlite_master WHERE name = 'collections'")
+            .fetchone()["sql"]
+        )
+        declared = re.search(r"CHECK \(kind IN \(([^)]*)\)\)", sql)
+        assert declared, sql
+        assert set(re.findall(r"'([a-z]+)'", declared.group(1))) == set(KINDS)
+
+    def test_a_kind_outside_the_vocabulary_is_refused(self, db):
         # m0006's reasoning, applied again: a typo in a discriminator would
         # otherwise sit in the database until something quietly failed to find
         # a folder.

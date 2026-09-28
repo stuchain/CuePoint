@@ -194,7 +194,7 @@ export type OverrideSource = "beatport" | "cuepoint";
  * renderer — because neither process can import the other's, and the contract
  * test compares them.
  */
-export type CollectionKind = "folder" | "collection" | "smart";
+export type CollectionKind = "folder" | "collection" | "smart" | "set";
 
 export interface CollectionNode {
   id: number;
@@ -997,7 +997,7 @@ export interface RekordboxExportSourceState {
 /** One playlist an export would append. */
 export interface RekordboxExportPlaylistPreview {
   collection_id: number;
-  kind: "collection" | "smart";
+  kind: "collection" | "smart" | "set";
   name: string;
   /** Where it would land, the parent folder included: `CuePoint/Gigs/Saturday`. */
   path: string;
@@ -1105,7 +1105,7 @@ export interface RekordboxExportPlaylistRecord {
   id: number;
   /** The Collection it came from, which may since have been deleted. */
   collection_id: number | null;
-  kind: "collection" | "smart";
+  kind: "collection" | "smart" | "set";
   name: string;
   path: string;
   entry_count: number;

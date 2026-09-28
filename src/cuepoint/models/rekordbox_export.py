@@ -43,11 +43,13 @@ vocabulary by the service that takes the notation as an argument, before an
 export runs. What is stored is the notation used — the only thing that can later
 explain why some of a library's keys read ``8A``.
 
-The two kinds, and the one that is not here
--------------------------------------------
-A playlist row came from a Collection or a Smart Collection, and the vocabulary
-is :data:`EXPORTED_KINDS` — Collection's own two track-holding kinds, imported
-rather than spelled again. ``folder`` is not among them: the folders in the
+The three kinds, and the one that is not here
+---------------------------------------------
+A playlist row came from a Collection, a Smart Collection or a Set, and the
+vocabulary is :data:`EXPORTED_KINDS` — the tree's own track-holding kinds,
+imported rather than spelled again. A Set exports as one playlist of its entries
+(DEC-109), which ``m0025_sets`` let this table record. ``folder`` is not among
+them: the folders in the
 written tree are structure, and DEC-078's ``CuePoint`` parent is CuePoint's own.
 What records the shape is :attr:`RekordboxExportPlaylist.path`, which is the
 path in the file that was written, collision suffix and all.
@@ -59,7 +61,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
-from cuepoint.models.collection import KIND_COLLECTION, KIND_SMART
+from cuepoint.models.collection import KIND_COLLECTION, KIND_SET, KIND_SMART
 from cuepoint.models.row_values import (
     flag,
     non_negative,
@@ -84,8 +86,9 @@ EXPORT_FAILED = "failed"
 EXPORT_OUTCOMES = (EXPORT_WRITTEN, EXPORT_CANCELLED, EXPORT_FAILED)
 
 #: The kinds of node that export as a playlist, from Collection's own
-#: vocabulary. A folder is not one: it is structure in the written tree.
-EXPORTED_KINDS = (KIND_COLLECTION, KIND_SMART)
+#: vocabulary, and exactly what ``rekordbox_export_playlists.kind``'s CHECK
+#: accepts. A folder is not one: it is structure in the written tree.
+EXPORTED_KINDS = (KIND_COLLECTION, KIND_SMART, KIND_SET)
 
 
 def _json_or_none(value: Any, name: str) -> Optional[str]:
@@ -290,8 +293,8 @@ class RekordboxExportPlaylist:
         dropped_count: Entries the source file held no track for, dropped and
             counted (DEC-082).
         rules_json: The Smart Collection's rule set as it was (DEC-081). A
-            Smart Collection has one; a Collection exported stored membership,
-            so it has none.
+            Smart Collection has one; a Collection or a Set exported stored
+            membership, so it has none.
     """
 
     export_id: int
@@ -333,6 +336,10 @@ class RekordboxExportPlaylist:
             raise ValueError(
                 "A Collection exported its stored membership, not a rule set"
             )
+        # A Set is its entries in their running order (DEC-109), stored exactly
+        # as a Collection's are, so the same reasoning applies.
+        if self.kind == KIND_SET and self.rules_json:
+            raise ValueError("A Set exported its stored entries, not a rule set")
 
     @property
     def is_smart(self) -> bool:

@@ -14,13 +14,17 @@ place, and rebuilt by nothing. Two types rather than one shared table because a
 user edit landing in a table the next import overwrites is the single worst bug
 this area could have.
 
-The three kinds
----------------
+The four kinds
+--------------
 - ``folder`` holds other nodes and no tracks.
 - ``collection`` holds tracks, in an order the user chose, and may hold the
   same track more than once (DEC-058).
 - ``smart`` holds a saved rule set and **no membership at all**: DEC-061
   evaluates it live, every time, so there is nothing stored to go stale.
+- ``set`` holds a running order (DEC-102): entries exactly as a Collection
+  holds them, plus chapters and planned times kept beside them. It is part of
+  the stored vocabulary from ``m0025_sets`` (PREP-01); the code that creates,
+  fills and counts one is PREP-02's.
 
 Why a Collection is ordered, and may repeat a track
 ---------------------------------------------------
@@ -50,7 +54,15 @@ KIND_COLLECTION = "collection"
 #: A node that holds a rule set and evaluates it live (DEC-061).
 KIND_SMART = "smart"
 
-KINDS = (KIND_FOLDER, KIND_COLLECTION, KIND_SMART)
+#: A node that holds a running order: entries like a Collection's, divided into
+#: chapters and planned in time (DEC-102). Its plan lives in the tables
+#: ``m0025_sets`` added, modelled in :mod:`cuepoint.models.set_plan`.
+KIND_SET = "set"
+
+#: Every kind the tree can hold, and exactly what ``collections.kind``'s CHECK
+#: accepts. This is the stored vocabulary, which a row read back must satisfy;
+#: which kinds a request may create is decided where the request is handled.
+KINDS = (KIND_FOLDER, KIND_COLLECTION, KIND_SMART, KIND_SET)
 
 #: A name is a label in a tree, not a description.
 MAX_COLLECTION_NAME_LENGTH = 120

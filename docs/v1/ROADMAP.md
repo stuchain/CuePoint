@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–12 resolved (DEC-001…DEC-112).**
 Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
-(DEC-102…DEC-112); no step is implemented.
+(DEC-102…DEC-112); PREP-01 is implemented.
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
 (DEC-090…DEC-101); all twelve steps are implemented and DISCOVER-01's spike is recorded. Phase 9's
 acceptance is met on Windows; the macOS packaged checks and one manual pass through the app
@@ -566,6 +566,10 @@ a transition preview). It exports to Rekordbox as one playlist (DEC-109), and sa
 M3U8 set list (DEC-110, M3U8 against the recommendation). It shows its tempo and key as lanes, with no
 energy field (DEC-111), and the page is laid out side by side (DEC-112). Phase 5's acceptance and
 Phase 9's macOS and live checks are owed before PREP-10 wires playback.
+
+PREP-01 is implemented: migration `m0025_sets` rebuilds the Collection tables to accept a Set, adds its
+details, chapters, planned times and acknowledgements, and takes 785 ms at 100,000 entries. Every row,
+id and sequence survives, and the database itself refuses Set data that does not belong to one Set.
 
 ## Phase 11 — Waveforms (WAVE-01 … WAVE-07)
 
