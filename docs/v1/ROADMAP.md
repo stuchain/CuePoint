@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–12 resolved (DEC-001…DEC-112).**
 Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
-(DEC-102…DEC-112); PREP-01 to PREP-04 are implemented.
+(DEC-102…DEC-112); PREP-01 to PREP-05 are implemented.
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
 (DEC-090…DEC-101); all twelve steps are implemented and DISCOVER-01's spike is recorded. Phase 9's
 acceptance is met on Windows; the macOS packaged checks and one manual pass through the app
@@ -586,6 +586,11 @@ PREP-04 is implemented: the engine answers what fits at any gap in a Set, scored
 against each neighbour, with each side's reasons, and marks tracks already in the Set. A gap nothing can
 bridge says by how much, and each side's own list can then be asked for. The worst case at 50,000
 tracks takes 401 ms against DISCOVER-08's 0.5 s budget.
+
+PREP-05 is implemented: a Set checks every transition, entry and chapter against DEC-096's rule, the
+last file check and its chapters' targets, and a transition warning can be acknowledged until what it
+accepted changes. A track Suggestions offer never has a tempo warning where it was offered, and the
+renderer already has words for every warning. A 1,000-entry Set is checked in 57 ms.
 
 ## Phase 11 — Waveforms (WAVE-01 … WAVE-07)
 

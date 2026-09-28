@@ -271,7 +271,9 @@ _ARTWORK_EXPRESSION = (
 # a refresh moved the file — says nothing about the file the library now names,
 # so it reads exactly as no row does. `tracks.file_path` is never null, and a
 # checked path is never blank, so an unchecked track never compares equal.
-_FILE_CHECK_CURRENT = f"{FILES_ALIAS}.checked_path = tracks.file_path"
+#: Public because a Set's warnings read a track's current check too (PREP-05),
+#: and two spellings of "current" would be two rules.
+FILE_CHECK_CURRENT = f"{FILES_ALIAS}.checked_path = tracks.file_path"
 
 
 @dataclass(frozen=True)
@@ -635,7 +637,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "File status",
         facetable=True,
         column=(
-            f"CASE WHEN {_FILE_CHECK_CURRENT} THEN {FILES_ALIAS}.status"
+            f"CASE WHEN {FILE_CHECK_CURRENT} THEN {FILES_ALIAS}.status"
             f" ELSE '{FILE_NOT_CHECKED}' END"
         ),
         joins=(FILES_ALIAS,),
@@ -649,7 +651,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         TYPE_DATE,
         "File checked",
         column=(
-            f"CASE WHEN {_FILE_CHECK_CURRENT}"
+            f"CASE WHEN {FILE_CHECK_CURRENT}"
             f" THEN date({FILES_ALIAS}.checked_at, 'localtime') END"
         ),
         joins=(FILES_ALIAS,),
@@ -1309,6 +1311,7 @@ __all__: Sequence[str] = (
     "ARTWORK_VALUES",
     "DUPLICATE_SIGNALS_VIEW",
     "FILES_ALIAS",
+    "FILE_CHECK_CURRENT",
     "MATCH_ALL",
     "MATCH_ANY",
     "MATCH_ALIAS",

@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
-Status: **Specified 2026-09-28. PREP-01 to PREP-04 are implemented (2026-09-28).** The twelve steps below replace the roadmap's
+Status: **Specified 2026-09-28. PREP-01 to PREP-05 are implemented (2026-09-28).** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -1109,7 +1109,7 @@ Every existing test passes unmodified.
 
 ---
 
-## PREP-05 — The Set's Warnings
+## PREP-05 — The Set's Warnings ✅ IMPLEMENTED 2026-09-28
 
 **Objective**: DEC-106: every transition, entry and chapter checked and explained, with transition
 warnings acknowledgeable.
@@ -1160,7 +1160,185 @@ src/tests` clean.
 
 **Complexity**: **M**
 
-**Outcome**: Not started.
+**Outcome**: Implemented (2026-09-28). A Set checks every transition, entry and chapter, and says what
+it found as data the renderer has words for. Transition warnings can be acknowledged, and an
+acknowledgement stops applying as soon as what it accepted changes. Nothing blocks anything
+(DEC-017). A 1,000-entry Set in a 50,000-track library is checked in **57 ms** against the budget of
+**0.2 s**. Nothing a user can reach changes yet: the routes are PREP-08's and the drawing PREP-10's.
+
+**What was built.**
+
+- **`core/set_analysis.py`**, with no SQL and no I/O. It takes `EntryFacts` (effective BPM and key,
+  length, planned times, file state), `ChapterFacts` (targets) and `Acknowledged` (accepted
+  warnings), and `analyse` returns a `SetAnalysis`:
+  - **Per transition**:
+    - `tempo_jump` (`faster` or `slower`, with the two BPMs and the gap in percent);
+    - `key_clash` (the two keys, with no relation on the wheel);
+    - `tempo_unknown` and `key_unknown` (`from`, `to` or `both`).
+  - **Per entry**:
+    - `file_missing` (`not_found` or `drive_unavailable`);
+    - `file_unreadable`;
+    - `time_outside_track` (`out`, or `in` when even the in time is past the end).
+
+    A repeated track is a `repeat` notice with its other positions, not a warning.
+  - **Per chapter**: `over_target` (`all_timed` or `partly_timed`), `under_target` (only when every
+    entry is timed) and `bpm_outside_range` (`below`, `above` or `both`, with the entries outside).
+  - **For the Set**: the count of each kind not acknowledged, how many are acknowledged, the notices,
+    the running time with its untimed count, and a `FileCoverage` by track. Its `never_checked` says a
+    Set was never checked, rather than that nothing is missing (DEC-088).
+  - `WARNINGS` lists all twenty `(kind, detail)` pairs, and `NOTICES` the one notice.
+  - `transition_warning` finds one warning by name, which is what an acknowledgement is made against.
+- **The shared rule, read and not restated.**
+  - `core/similarity.py` gains `tempo_relation(seed_bpm, candidate_bpm)`, DEC-096's tempo gate as a
+    public question.
+  - The key check is `key_relation`, and the gap in percent is PREP-04's `tempo_gap`.
+  - A test reads the module's source and finds no window percentage in it.
+- **`persistence/set_repository.py`**:
+  - `entry_facts(set_id)` is one statement for the whole Set. It reads the effective BPM and key
+    through the rule vocabulary's expressions, the track's length, and the last check of the track's
+    current path, as the Library's `file_status` filter reads it. `filter_rule.FILE_CHECK_CURRENT` is
+    public for that, so "current" has one spelling.
+  - `acknowledge` is an upsert that keeps the first moment while the values are unchanged.
+  - `unacknowledge` is a delete.
+  - `models/set_plan.py` gains `EntryFactsRow`, the row as read.
+- **`services/set_analysis_service.py`**, `SetAnalysisService`:
+  - `analyse(set_id)` reads the entries, chapters and acknowledgements in one transaction and returns
+    a `SetAnalysisReport`. Its `to_dict` writes keys in the library's notation.
+  - `acknowledge(from_entry_id, to_entry_id, warning)` and `unacknowledge(...)`.
+  - It writes nothing but acknowledgements, and records no activity.
+- **Wiring.**
+  - `ISetAnalysisService` is in `interfaces.py`, registered in `bootstrap.py`. `ISetRepository` gains
+    three methods.
+  - `core/set_analysis.py` and `services/set_analysis_service.py` join the strict mypy gate.
+  - The persistence-boundary allow-list gains the service, with its reason: it opens transactions and
+    runs no SQL.
+- **The renderer's words**, written now as DISCOVER-08 wrote Similar Tracks' reasons:
+  - `screens/prepare/setWarnings.ts`: `describeSetWarning` ("Tempo jumps 16.7% faster: 120 → 140",
+    "1:00 over the 5:00 target, before 1 entry still untimed"), `describeSetNotice` ("Also at 3"),
+    `describeFileCheck` and `isAcknowledgeable`.
+  - `screens/prepare/setTime.ts`: `formatTime`, the engine's `format_time`.
+  - The wire types (`SetWarning`, `SetNotice`, `SetFileCheck`, `SetRunningTime`, `SetAnalysis`) are in
+    `cuepointBridge.types.ts`.
+  - `test_set_warnings_fixture.py` writes `setWarnings.fixture.json` from the real services. It holds
+    one of each of the twenty warnings, the notice, the three file-check states and a table of times.
+  - `setWarnings.test.ts` and `setTime.test.ts` give each warning a sentence of its own and hold
+    `formatTime` to every time the engine wrote.
+
+**Where the specification was open or wrong, and what was done instead.**
+
+1. **A transition is a tempo jump only when neither track is within the other's window.** DEC-096's
+   window is a percentage of the seed, so it is not symmetric: 100 then 106.2 is outside 100's window
+   but inside 106.2's. PREP-04 judges a slot from each neighbour, so a check from the earlier track
+   only would warn about a track Suggestions had just offered. That is the failure fact 6 forbids.
+   Judged both ways, the shared-rule test holds, by property over tempos and through both real
+   services. The jump is described the closest way it is heard: 90 after 128 is "29.7% slower",
+   not double time.
+2. **Keys are compared as Camelot codes and written in the library's notation.** An acknowledgement
+   stores the canonical values, so a library whose notation changes does not see every acknowledgement
+   go stale. A test proves an acknowledgement holds across that change. BPMs are compared at the
+   library's two decimals, so float noise cannot make one stale either.
+3. **`file_unreadable` is a warning of its own, and a missing file says when the drive was the
+   cause.** The specification named only missing files. A file that cannot be read will not play
+   either. A drive that was not connected is a different fix from a deleted file, and CLEAN-07 already
+   records which.
+4. **`time_outside_track` covers the in time too.** An in time at or past the end (`in`) is as
+   impossible as an out time past it (`out`). An out time exactly at the end is fine.
+5. **Two details for being over target.** `partly_timed` says the chapter is already over with
+   untimed entries still to add. An empty chapter with a target is under it, because all none of its
+   entries are timed and it plays for no time.
+6. **The BPM range is literal and inclusive**, as the range that narrows Suggestions (PREP-04). Half
+   and double time do not count as inside. A track with no BPM is not listed as outside, because its
+   transitions already say it has none.
+7. **Acknowledging is refused unless the warning is there now.** Accepting a warning nobody was shown
+   is not something a user did. Acknowledging again after the values changed accepts the new ones.
+   Acknowledging again with no change keeps the first moment.
+8. **An acknowledgement that no longer applies is kept, not deleted.** Undoing a reorder brings it
+   back. It goes by cascade when either of its entries is removed.
+9. **The wire lists only what found something.** Transitions and entries appear only with a warning
+   or notice, so a clean 1,000-entry Set is not a thousand empty objects. Every chapter is listed,
+   with its running time.
+10. **The renderer formats times with a copy of `format_time`, held to it by a test.** PREP-03 handed
+    that choice to PREP-08. It was needed here, for the warnings' words, and a table the engine writes
+    settles it: a time is drawn far more often than it is sent.
+
+**Measured**: a 1,000-entry Set in DISCOVER-08's 50,000-track library, with ten chapters with
+targets and ranges, half the entries timed, every file checked, and a hundred acknowledgements. The
+median of nine runs is **57 ms** for the check and its wire object, and **55 ms** for the check alone.
+About 30 ms of that is counting the library's key notation. The budget is
+`ANALYSIS_BUDGET_SECONDS`, 0.2 s.
+
+**Handed on.**
+
+- **PREP-08:**
+  - Three routes: the check, acknowledge and unacknowledge.
+  - Their refusals are `ValueError`s with messages.
+  - The types are in place, so only the methods move through the six contract files.
+- **PREP-10:**
+  - It draws each warning beside its entry, transition or chapter, and offers acknowledging where
+    `isAcknowledgeable` says to.
+  - It shows the file-check sentence, and formats `last_checked_at` as a date.
+- **PREP-06 and PREP-07:** the warnings never gate an export (DEC-017).
+
+**Tests**: 114 new Python tests in four files, and 45 renderer tests in two.
+
+- **`src/tests/unit/core/test_set_analysis.py` (81):**
+  - Every kind from tables of cases: half and double time, the 12→1 wrap, a relative key, unknown
+    values on each side, each file state, times at and past a shortened track's end, repeats, and each
+    target with timed and untimed entries.
+  - The cases yield exactly `WARNINGS`.
+  - Acknowledgements: applied, inert four ways, and read back from JSON.
+  - Two properties tying the rule to PREP-04's gate.
+- **`src/tests/unit/services/test_set_analysis_service.py` (26):**
+  - Overrides, and values that are not values.
+  - Notation, and every file state, including a check of a path a refresh has since changed.
+  - A shortened track, chapter targets and a repeat.
+  - The wire shape, and refusals.
+  - Acknowledgements: made; stale after a reorder, a replaced neighbour and a new BPM override;
+    holding across unrelated edits and a change of notation; withdrawn; cascading; every refusal.
+  - Nothing else written.
+  - **The shared-rule test** through both real services: every suggestion for every gap of a seeded
+    Set is inserted there and checked (over forty in all).
+  - The container.
+- **`src/tests/unit/persistence/test_set_repository.py` (+4):** the read, the upsert and delete, and
+  the database refusing an acknowledgement across two Sets.
+- **`src/tests/unit/services/test_set_warnings_fixture.py` (3):** the fixture is the engine's answer,
+  and covers every warning, notice and file-check state.
+- **`setWarnings.test.ts` and `setTime.test.ts` (45):** a sentence for each warning, distinct and as
+  written; notices; file checks; and `formatTime` against the engine's table.
+
+Fourteen deliberate breakages, each caught:
+
+- a jump judged one way only;
+- under target with untimed entries;
+- over target only when all timed;
+- an acknowledgement ignoring its values;
+- one applying either way round;
+- a repeat reported as a warning;
+- the range's edges exclusive;
+- a time at the exact end called outside;
+- both keys unknown left unsaid;
+- never checked read as missing;
+- another path's check read as current;
+- the stored BPM read instead of the override;
+- a non-adjacent transition acknowledged;
+- keys always written in Camelot.
+
+The repeat breakage was first written against the counts, which already ignore anything that is not a
+warning. It was rewritten to make the repeat a warning, and was caught.
+
+Every existing test passes unmodified, except the persistence boundary's allow-list, which gains the
+service with its reason.
+
+**Checks run**:
+
+- **Python:** the full suite (10,734 passed, 62 skipped, on eight workers), with the strict mypy gate
+  and two more modules inside it; `ruff check` and `ruff format --check` on `src/` with the pinned
+  ruff 0.14.0; `check_no_qt_in_core.py`; the desktop version coupling; the engine health smoke test.
+- **Renderer:** the type-check, lint (exit 0, the 8 existing warnings) and the full suite (3,231
+  tests).
+- **Electron:** the type-check, because the bridge types changed. Its tests were not run: no Electron
+  file changed.
+- **The measurement** above, and `git diff --check`.
 
 ---
 

@@ -111,6 +111,12 @@ _ALLOWED = {
     # plan is read whole rather than as chapters and entries from two moments.
     # The SQL is the Set and Collection repositories'; no SQL is run there.
     "services/set_service.py",
+    # PREP-05's warnings: a check reads a Set's entries, chapters and
+    # acknowledgements in one transaction, so it never pairs an entry with a
+    # chapter list from another moment, and an acknowledgement is judged
+    # against the rows it is written beside. The SQL is the Set and Collection
+    # repositories'; no SQL is run there.
+    "services/set_analysis_service.py",
     # The one retry loop for a write that finds the database busy: it opens
     # the transaction it retries, and runs no SQL of its own.
     "services/busy_wait.py",

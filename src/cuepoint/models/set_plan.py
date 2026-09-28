@@ -18,8 +18,9 @@ are the rows ``m0025_sets`` adds beside them:
   accepted, with the values it was given, so that it stops applying when they
   change (DEC-106).
 
-And one that is not a table: :class:`SetEntryRow`, an entry as a Set's plan
-reads it, with its place, its track and that track's length (PREP-03).
+And two that are not tables: :class:`SetEntryRow`, an entry as a Set's plan
+reads it, with its place, its track and that track's length (PREP-03); and
+:class:`EntryFactsRow`, an entry as a Set's checks read it (PREP-05).
 
 The models refuse what the database would refuse, where the row is built, and
 say what was wrong. A few things the database cannot see are refused here only:
@@ -31,7 +32,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, NamedTuple, Optional
 
 from cuepoint.models.library_track import utc_now_iso
 from cuepoint.models.row_values import (
@@ -419,6 +420,42 @@ class SetEntryRow:
             plan=SetEntryPlan.from_row(data),
             length_seconds=data.get("length_seconds"),
         )
+
+
+class EntryFactsRow(NamedTuple):
+    """One entry of a Set as its checks read it, unparsed (PREP-05).
+
+    A tuple, as ``TraitRow`` is: the service parses it into the rule's own
+    value object, and a Set is read whole on every check.
+
+    Attributes:
+        position: The entry's place in the Set.
+        entry_id: The entry.
+        track_id: Its track.
+        chapter_id: Its chapter.
+        in_seconds: The planned in time, or None.
+        out_seconds: The planned out time, or None.
+        length_seconds: The track's length as stored, or None.
+        bpm: The effective BPM (DEC-068), as stored.
+        key: The effective key, in whatever notation it was written.
+        file_status: The status of the last check of the track's current path,
+            or None when that path was never checked.
+        file_reason: Why a missing file is missing, when known, or None.
+        file_checked_at: When the current path was checked, or None.
+    """
+
+    position: int
+    entry_id: int
+    track_id: int
+    chapter_id: int
+    in_seconds: Optional[int]
+    out_seconds: Optional[int]
+    length_seconds: Optional[int]
+    bpm: Optional[float]
+    key: Optional[str]
+    file_status: Optional[str]
+    file_reason: Optional[str]
+    file_checked_at: Optional[str]
 
 
 @dataclass(frozen=True)

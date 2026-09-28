@@ -46,6 +46,7 @@ from cuepoint.services.interfaces import (
     IBeatportPlaylistService,
     IEntityPageService,
     ISetRepository,
+    ISetAnalysisService,
     ISetService,
     ISetSuggestionService,
     ISimilarityRepository,
@@ -127,6 +128,7 @@ from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.backup_service import BackupService
 from cuepoint.services.batch_service import BatchService
 from cuepoint.services.collection_service import CollectionService
+from cuepoint.services.set_analysis_service import SetAnalysisService
 from cuepoint.services.set_service import SetService
 from cuepoint.services.set_suggestion_service import SetSuggestionService
 from cuepoint.services.artwork_cache import ArtworkCache, default_artwork_cache_dir
@@ -446,6 +448,19 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(ISetService, create_set_service)
+
+    # A Set's warnings (PREP-05, DEC-106): DEC-096's rule over every transition,
+    # the last file check of every entry, and each chapter's targets. It
+    # writes nothing but the warnings a user acknowledges.
+    def create_set_analysis_service() -> ISetAnalysisService:
+        return SetAnalysisService(
+            collection_repository=container.resolve(ICollectionRepository),
+            set_repository=container.resolve(ISetRepository),
+            track_repository=container.resolve(ITrackRepository),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(ISetAnalysisService, create_set_analysis_service)
 
     # One operation over a selection of any size (ORG-07, DEC-063). It resolves
     # a query selection through the track repository and then delegates every

@@ -133,6 +133,7 @@ if TYPE_CHECKING:
         SetDetails,
         SetEntryPlan,
         SetEntryRow,
+        EntryFactsRow,
     )
     from cuepoint.models.refresh_diff import RefreshDiff
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack, QueueTrack
@@ -168,6 +169,7 @@ if TYPE_CHECKING:
     )
     from cuepoint.services.set_service import SetPlan
     from cuepoint.models.set_suggestions import SetSuggestions
+    from cuepoint.services.set_analysis_service import SetAnalysisReport
     from cuepoint.services.artwork_service import ArtworkScanResult
     from cuepoint.services.duplicate_service import DuplicateScanResult
     from cuepoint.services.file_check_service import FileCheckResult
@@ -3112,6 +3114,23 @@ class ISetRepository(ABC):
         """Write a Set's notes, or return None if the node is not a Set."""
         ...
 
+    @abstractmethod
+    def entry_facts(self, set_id: int) -> List["EntryFactsRow"]:
+        """Return a Set's entries as its checks read them, in order."""
+        ...
+
+    @abstractmethod
+    def acknowledge(
+        self, acknowledgement: "SetAcknowledgement"
+    ) -> "SetAcknowledgement":
+        """Store an acknowledged transition warning, or bring it up to date."""
+        ...
+
+    @abstractmethod
+    def unacknowledge(self, from_entry_id: int, to_entry_id: int, warning: str) -> bool:
+        """Remove an acknowledgement; True if there was one."""
+        ...
+
 
 class ISetService(ABC):
     """Interface for editing a Set's chapters, times and notes (PREP-03).
@@ -3195,6 +3214,27 @@ class ISetService(ABC):
     @abstractmethod
     def plan(self, set_id: int) -> "SetPlan":
         """A Set's chapters, entries, planned times and running times."""
+        ...
+
+
+class ISetAnalysisService(ABC):
+    """Interface for a Set's warnings and acknowledgements (PREP-05, DEC-106)."""
+
+    @abstractmethod
+    def analyse(self, set_id: int) -> "SetAnalysisReport":
+        """Check every transition, entry and chapter of a Set."""
+        ...
+
+    @abstractmethod
+    def acknowledge(
+        self, from_entry_id: int, to_entry_id: int, warning: str
+    ) -> "SetAcknowledgement":
+        """Accept a transition warning that is there now."""
+        ...
+
+    @abstractmethod
+    def unacknowledge(self, from_entry_id: int, to_entry_id: int, warning: str) -> bool:
+        """Withdraw an acknowledgement; True if there was one."""
         ...
 
 

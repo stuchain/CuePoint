@@ -123,6 +123,9 @@ GUARDED = (
     # PREP-04: what fits at a point in a Set.
     "cuepoint/models/set_suggestions.py",
     "cuepoint/services/set_suggestion_service.py",
+    # PREP-05: a Set's warnings.
+    "cuepoint/core/set_analysis.py",
+    "cuepoint/services/set_analysis_service.py",
 )
 
 

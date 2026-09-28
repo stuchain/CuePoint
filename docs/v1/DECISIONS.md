@@ -3474,6 +3474,26 @@ then means exactly that it earned no key points.
 
 **Decided with**: User · **Date**: 2026-09-28
 
+### Implemented (2026-09-28, PREP-05) — the checks, and one rule with Suggestions
+
+- **As decided.** Every transition, entry and chapter is checked. The thresholds are DEC-096's, read
+  from `core/similarity.py` and never restated. Only transition warnings can be acknowledged, and an
+  acknowledgement applies while its two entries are adjacent in that order with the values it
+  accepted. A repeat is a notice. A Set never checked says so. Nothing blocks anything.
+- **Precision: a transition is a tempo jump only when neither track is within the other's window.**
+  DEC-096's window is a percentage of the seed, so it is not symmetric. Suggestions (DEC-105) judge a
+  slot from each neighbour. So a warning judged from the earlier track only would flag a track
+  Suggestions had just offered, which this decision's own reason rules out. A test holds the two
+  together through both services.
+- **Precision: acknowledgements compare canonical values**: keys as Camelot codes and BPMs to the
+  library's two decimals. A change of the library's key notation leaves them standing, and the wire
+  still writes keys in the library's notation.
+- **Precision: an unreadable file warns as a missing one does**, and a missing file says when its
+  drive was not connected. An in time past the track's end is outside it, as an out time is.
+
+**Why the decision stands**: these keep "Suggestions and warnings judge a transition by one rule" true
+in the direction the decision cares about, and say more exactly what was found.
+
 ---
 
 ## DEC-107 — Running Time Comes From Typed Times, and Counts Only What Is Timed

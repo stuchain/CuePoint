@@ -2130,6 +2130,121 @@ export interface SimilarTracks {
   suggestions: SimilarTrack[];
 }
 
+/** How far a planned time or a target is, in whole seconds (DEC-107). */
+export type SetSeconds = number;
+
+/**
+ * One thing a Set's checks found (PREP-05, DEC-106), as the engine serializes
+ * it. Keys are in the library's notation; BPMs to two decimals; times in whole
+ * seconds. Only a transition's warnings can be `acknowledged`.
+ */
+export type SetWarning =
+  | {
+      kind: "tempo_jump";
+      /** How the next track is heard against this one, the closest way. */
+      detail: "faster" | "slower";
+      compared: { from: number; to: number; percent: number };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "key_clash";
+      detail: "no_relation";
+      compared: { from: string; to: string };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "tempo_unknown";
+      /** Which side has no BPM: the track before, this one, or both. */
+      detail: "from" | "to" | "both";
+      compared: { from: number | null; to: number | null };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "key_unknown";
+      detail: "from" | "to" | "both";
+      compared: { from: string | null; to: string | null };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "file_missing";
+      /** A drive that was not there is not the same as a file that is gone. */
+      detail: "not_found" | "drive_unavailable";
+      compared: { checked_at: string | null };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "file_unreadable";
+      detail: "unreadable";
+      compared: { checked_at: string | null };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "time_outside_track";
+      /** Which planned time is past the track's end. */
+      detail: "out" | "in";
+      compared: { length: SetSeconds; in: SetSeconds | null; out: SetSeconds | null };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "over_target" | "under_target";
+      /** Over is reported with untimed entries still to add; under never is. */
+      detail: "all_timed" | "partly_timed";
+      compared: { target: SetSeconds; planned: SetSeconds; untimed: number };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "bpm_outside_range";
+      detail: "below" | "above" | "both";
+      compared: {
+        min: number | null;
+        max: number | null;
+        entries: { entry_id: number; bpm: number }[];
+      };
+      acknowledged: boolean;
+    };
+
+/** Something worth knowing that is not a problem: a track played again (DEC-017). */
+export interface SetNotice {
+  kind: "repeat";
+  detail: "track";
+  /** The Set positions, from 0, of the track's other entries. */
+  compared: { others: number[] };
+}
+
+/** What the file checks say about a Set's tracks (DEC-073, DEC-088). */
+export interface SetFileCheck {
+  tracks: number;
+  checked: number;
+  unchecked: number;
+  missing: number;
+  unreadable: number;
+  /** No track in a non-empty Set has been checked: say so, never "none missing". */
+  never_checked: boolean;
+  last_checked_at: string | null;
+}
+
+/** A running time: the timed entries' sum, and how many are left out (DEC-107). */
+export interface SetRunningTime {
+  seconds: SetSeconds;
+  timed: number;
+  untimed: number;
+}
+
+/** A Set's checks (PREP-05). Transitions and entries appear only when something was found. */
+export interface SetAnalysis {
+  set_id: number;
+  notation: SimilarKeyNotation;
+  running_time: SetRunningTime;
+  /** Warnings not acknowledged, by kind; a kind with none is absent. */
+  counts: Partial<Record<SetWarning["kind"], number>>;
+  acknowledged: number;
+  notices: Partial<Record<SetNotice["kind"], number>>;
+  files: SetFileCheck;
+  transitions: { from_entry_id: number; to_entry_id: number; warnings: SetWarning[] }[];
+  entries: { entry_id: number; warnings: SetWarning[]; notices: SetNotice[] }[];
+  chapters: { chapter_id: number; running_time: SetRunningTime; warnings: SetWarning[] }[];
+}
+
 /** A run's request; anything left out takes the engine's default. */
 export interface DiscoverRunRequest {
   genre_ids?: number[];

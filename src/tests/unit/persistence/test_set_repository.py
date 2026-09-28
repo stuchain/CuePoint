@@ -784,3 +784,94 @@ def test_the_set_repository_reads_entries_and_never_writes_them():
     text = (_SRC / "persistence" / "set_repository.py").read_text(encoding="utf-8")
     assert "collection_tracks" in text
     assert not _WRITES_ENTRIES.search(text)
+
+
+# ------------------------------------------------------------- PREP-05 reads
+
+
+@pytest.mark.unit
+class TestTheChecksRead:
+    """What a Set's checks read, and the acknowledgements they keep (PREP-05)."""
+
+    def test_entry_facts_in_the_sets_order(self, db, repo, sets, gig, ids):
+        from cuepoint.models.file_status import TrackFileStatus
+        from cuepoint.persistence.file_status_repository import FileStatusRepository
+        from cuepoint.persistence.track_metadata_repository import (
+            TrackMetadataRepository,
+        )
+
+        repo.add(gig, ids[:3])
+        repo.insert_at(gig, ids[0], 3)
+        TrackMetadataRepository(db).set_override(ids[1], "bpm", 131.5)
+        files = FileStatusRepository(db)
+        files.record(
+            [
+                TrackFileStatus(
+                    ids[0], "missing", "/m/1.mp3", NOW, reason="root_unavailable"
+                ),
+                TrackFileStatus(ids[2], "present", "/elsewhere.mp3", NOW, size_bytes=1),
+            ]
+        )
+        rows = sets.entry_facts(gig)
+        entries = [int(e.id) for e in repo.entries(gig)]
+        assert [r.entry_id for r in rows] == entries
+        assert [r.position for r in rows] == [0, 1, 2, 3]
+        assert [r.track_id for r in rows] == [ids[0], ids[1], ids[2], ids[0]]
+        assert rows[1].bpm == 131.5  # the override (DEC-068)
+        assert rows[0].file_status == "missing"
+        assert rows[0].file_reason == "root_unavailable"
+        assert rows[0].file_checked_at == NOW
+        # A check of another path answers for nothing.
+        assert (rows[2].file_status, rows[2].file_checked_at) == (None, None)
+        assert rows[3].file_status == "missing"
+        assert {r.chapter_id for r in rows} == {int(repo.chapters(gig)[0].id)}
+        assert rows[0].length_seconds == 301
+
+    def test_a_collections_entries_are_not_read(self, repo, sets, ids):
+        crate = int(repo.create(Collection(name="Crate", kind=KIND_COLLECTION)).id)
+        repo.add(crate, ids[:2])
+        assert sets.entry_facts(crate) == []
+
+    def test_acknowledging_is_an_upsert_and_withdrawing_a_delete(
+        self, db, repo, sets, gig, ids
+    ):
+        from cuepoint.models.set_plan import SetAcknowledgement
+
+        repo.add(gig, ids[:2])
+        first, second = [int(e.id) for e in repo.entries(gig)]
+        made = sets.acknowledge(
+            SetAcknowledgement(
+                gig, first, second, "tempo_jump", '{"to": 140.0}', created_at=NOW
+            )
+        )
+        assert made.id is not None and made.created_at == NOW
+        same = sets.acknowledge(
+            SetAcknowledgement(gig, first, second, "tempo_jump", '{"to": 140.0}')
+        )
+        assert same == made, "the same values keep the first moment"
+        changed = sets.acknowledge(
+            SetAcknowledgement(gig, first, second, "tempo_jump", '{"to": 145.0}')
+        )
+        assert changed.id == made.id and changed.compared == {"to": 145.0}
+        assert changed.created_at != NOW
+        assert len(repo.acknowledgements(gig)) == 1
+        assert sets.unacknowledge(first, second, "tempo_jump") is True
+        assert sets.unacknowledge(first, second, "tempo_jump") is False
+        assert repo.acknowledgements(gig) == []
+
+    def test_the_database_refuses_one_across_two_sets(self, db, repo, sets, gig, ids):
+        from cuepoint.models.set_plan import SetAcknowledgement
+
+        repo.add(gig, ids[:1])
+        other = make_set(repo, "Saturday")
+        repo.add(other, ids[1:2])
+        with pytest.raises(sqlite3.IntegrityError):
+            sets.acknowledge(
+                SetAcknowledgement(
+                    gig,
+                    int(repo.entries(gig)[0].id),
+                    int(repo.entries(other)[0].id),
+                    "tempo_jump",
+                    "{}",
+                )
+            )

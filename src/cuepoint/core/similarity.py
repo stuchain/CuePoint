@@ -404,6 +404,30 @@ def _tempo(seed: float, candidate: float) -> Optional[_Match]:
     return None
 
 
+def tempo_relation(seed_bpm: float, candidate_bpm: float) -> Optional[str]:
+    """How a candidate's tempo is heard against a seed's, or None when too far.
+
+    DEC-096's tempo gate as a question anyone may ask: ``same``, ``close``,
+    ``half`` or ``double`` when the candidate is within the window of the
+    seed's BPM, as it is or at half or double time, and None when it is not.
+    A Set's warnings read it (PREP-05), so a tempo jump is the gate's answer
+    and never a second statement of it.
+
+    Raises:
+        ValueError: If either tempo is not a positive finite number.
+    """
+    for bpm in (seed_bpm, candidate_bpm):
+        if (
+            isinstance(bpm, bool)
+            or not isinstance(bpm, (int, float))
+            or not math.isfinite(bpm)
+            or bpm <= 0
+        ):
+            raise ValueError(f"A tempo is a positive number, got {bpm!r}")
+    match = _tempo(float(seed_bpm), float(candidate_bpm))
+    return None if match is None else match[1]
+
+
 def _side(seed: Traits, candidate: Traits) -> Optional[List[_Match]]:
     """Every component the two have in common, or None when the gate refuses.
 
@@ -747,5 +771,6 @@ __all__ = (
     "score",
     "tempo_gap",
     "tempo_ranges",
+    "tempo_relation",
     "unused_components",
 )

@@ -11,7 +11,8 @@ everything else a user edits on a Set:
 - **chapters**: inserting one, changing its name, notes and targets, deleting
   one into its neighbour, and splitting one at an entry;
 - **each entry's plan**: its planned in and out times and its note;
-- **the Set's own notes**.
+- **the Set's own notes**;
+- **acknowledged warnings** (PREP-05), and the one read a Set's checks need.
 
 It never writes ``collection_tracks``, and a test holds it to that.
 
@@ -46,8 +47,16 @@ from __future__ import annotations
 import sqlite3
 from typing import List, Optional, Sequence, Tuple
 
+from cuepoint.models.filter_rule import (
+    FILE_CHECK_CURRENT,
+    FILES_ALIAS,
+    METADATA_ALIAS,
+    field_spec,
+)
 from cuepoint.models.library_track import utc_now_iso
 from cuepoint.models.set_plan import (
+    EntryFactsRow,
+    SetAcknowledgement,
     SetChapter,
     SetDetails,
     SetEntryPlan,
@@ -56,6 +65,7 @@ from cuepoint.models.set_plan import (
     normalize_chapter_name,
 )
 from cuepoint.persistence.set_integrity import check_set
+from cuepoint.persistence.track_query import JOINS
 from cuepoint.services.interfaces import IDatabaseService, ISetRepository
 
 _SELECT_CHAPTER = (
@@ -73,6 +83,38 @@ _SELECT_ENTRY_ROWS = (
     " FROM set_entries se"
     " JOIN collection_tracks ct ON ct.id = se.entry_id"
     " JOIN tracks t ON t.id = ct.track_id"
+)
+
+
+def _current(column: str) -> str:
+    """A column of the last file check, when it checked the current path."""
+    return f"CASE WHEN {FILE_CHECK_CURRENT} THEN {FILES_ALIAS}.{column} END"
+
+
+#: A Set's entries as its checks read them (PREP-05): the plan, the effective
+#: BPM and key through the rule vocabulary's own expressions (DEC-068), the
+#: track's length, and the last check of its current path (DEC-073), read the
+#: way the Library's ``file_status`` filter reads it. One statement for the
+#: whole Set.
+_SELECT_FACTS = (
+    "SELECT ct.position, ct.id AS entry_id, ct.track_id, se.chapter_id,"
+    " se.in_seconds, se.out_seconds, tracks.duration_seconds AS length_seconds,"
+    f" {field_spec('bpm').expression} AS bpm,"
+    f" {field_spec('key').expression} AS key,"
+    f" {_current('status')} AS file_status,"
+    f" {_current('reason')} AS file_reason,"
+    f" {_current('checked_at')} AS file_checked_at"
+    " FROM collection_tracks ct"
+    " JOIN set_entries se ON se.entry_id = ct.id"
+    " JOIN tracks ON tracks.id = ct.track_id"
+    f"{JOINS[METADATA_ALIAS]}{JOINS[FILES_ALIAS]}"
+    " WHERE ct.collection_id = ? ORDER BY ct.position, ct.id"
+)
+
+_SELECT_ACKNOWLEDGEMENT = (
+    "SELECT id, collection_id, from_entry_id, to_entry_id, warning,"
+    " compared_json, created_at FROM set_acknowledgements"
+    " WHERE from_entry_id = ? AND to_entry_id = ? AND warning = ?"
 )
 
 
@@ -334,6 +376,63 @@ class SetRepository(ISetRepository):
                 (int(set_id),),
             ).fetchone()
         return SetDetails.from_row(row)
+
+    # -------------------------------------------------------- the checks
+
+    def entry_facts(self, set_id: int) -> List[EntryFactsRow]:
+        """Return a Set's entries as its checks read them, in the Set's order."""
+        cursor = self._db.connect().cursor()
+        # Plain tuples, as Similar Tracks reads a band: a Set is read whole on
+        # every check, and each row is parsed once.
+        cursor.row_factory = None
+        cursor.execute(_SELECT_FACTS, (int(set_id),))
+        return [EntryFactsRow(*row) for row in cursor]
+
+    def acknowledge(self, acknowledgement: SetAcknowledgement) -> SetAcknowledgement:
+        """Store an acknowledgement, or bring one up to date (DEC-106).
+
+        One per transition and warning: acknowledging again replaces the
+        values compared, and the moment, only when the values changed. The
+        database refuses an acknowledgement across two Sets or of an entry
+        that is not planned.
+        """
+        with self._db.transaction(join_existing=True) as conn:
+            conn.execute(
+                "INSERT INTO set_acknowledgements (collection_id, from_entry_id,"
+                " to_entry_id, warning, compared_json, created_at)"
+                " VALUES (?, ?, ?, ?, ?, ?)"
+                " ON CONFLICT (from_entry_id, to_entry_id, warning) DO UPDATE SET"
+                " compared_json = excluded.compared_json,"
+                " created_at = excluded.created_at"
+                " WHERE set_acknowledgements.compared_json <> excluded.compared_json",
+                (
+                    int(acknowledgement.collection_id),
+                    int(acknowledgement.from_entry_id),
+                    int(acknowledgement.to_entry_id),
+                    acknowledgement.warning,
+                    acknowledgement.compared_json,
+                    acknowledgement.created_at,
+                ),
+            )
+            row = conn.execute(
+                _SELECT_ACKNOWLEDGEMENT,
+                (
+                    int(acknowledgement.from_entry_id),
+                    int(acknowledgement.to_entry_id),
+                    acknowledgement.warning,
+                ),
+            ).fetchone()
+        return SetAcknowledgement.from_row(row)
+
+    def unacknowledge(self, from_entry_id: int, to_entry_id: int, warning: str) -> bool:
+        """Remove an acknowledgement; True if there was one."""
+        with self._db.transaction(join_existing=True) as conn:
+            cursor = conn.execute(
+                "DELETE FROM set_acknowledgements"
+                " WHERE from_entry_id = ? AND to_entry_id = ? AND warning = ?",
+                (int(from_entry_id), int(to_entry_id), warning),
+            )
+            return bool(cursor.rowcount)
 
     # --------------------------------------------------------------- helpers
 
