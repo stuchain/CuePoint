@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–12 resolved (DEC-001…DEC-112).**
 Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
-(DEC-102…DEC-112); PREP-01 and PREP-02 are implemented.
+(DEC-102…DEC-112); PREP-01, PREP-02 and PREP-03 are implemented.
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
 (DEC-090…DEC-101); all twelve steps are implemented and DISCOVER-01's spike is recorded. Phase 9's
 acceptance is met on Windows; the macOS packaged checks and one manual pass through the app
@@ -575,6 +575,12 @@ PREP-02 is implemented: a Set is created, filed, filled, counted, referenced and
 Collection code. Every entry written into a Set is planned into a chapter by the one writer of entries,
 a Set holds at most 1,000 entries, and "New Set from…" and duplicate are copies. A moved entry keeps
 its chapter when it can, a precision to DEC-103.
+
+PREP-03 is implemented: a Set's chapters are added, renamed, given notes and targets, moved with their
+entries, deleted into a neighbour and started at an entry. Entries carry typed in and out times, held to
+the track's length when it is known, and a note. The plan reads back with the running time of each
+chapter and of the Set, counting only timed entries and saying how many are not (DEC-107). A new Set
+repository writes all of this, and the Collection repository stays the only writer of entries.
 
 ## Phase 11 — Waveforms (WAVE-01 … WAVE-07)
 

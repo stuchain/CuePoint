@@ -60,14 +60,20 @@ Where a new entry goes:
   is refused unless the chapter reaches the position.
 
 After every write to a Set, :meth:`CollectionRepository._check_set` reads the
-Set back: at least one chapter, every entry planned, and chapter positions that
-never decrease in entry order. A violation raises
+Set back: at least one chapter, numbered from 0 with no gaps, every entry
+planned, and chapter positions that never decrease in entry order. A violation raises
 :class:`~cuepoint.models.set_plan.SetIntegrityError` and the transaction rolls
 back, because it is a bug in this module and not something a user sent.
 
 **A Set holds at most** :data:`~cuepoint.models.set_plan.MAX_SET_ENTRIES`
 entries, and an add that would pass it is refused with the numbers before
 anything is written.
+
+**Moving a whole chapter** is here too (PREP-03), because it moves entries:
+:meth:`CollectionRepository.move_chapter` takes the chapter's entries along as
+one block. Everything else about a Set's chapters, times and notes is
+``set_repository``'s, which never writes an entry. The check both use is
+:func:`~cuepoint.persistence.set_integrity.check_set`.
 """
 
 from __future__ import annotations
@@ -96,6 +102,7 @@ from cuepoint.models.set_plan import (
     SetLimitError,
 )
 from cuepoint.persistence.id_chunks import chunked, unique_ids
+from cuepoint.persistence.set_integrity import check_set
 from cuepoint.services.interfaces import ICollectionRepository, IDatabaseService
 
 _NODE_COLUMNS = (
@@ -833,6 +840,82 @@ class CollectionRepository(ICollectionRepository):
         )
         return [SetAcknowledgement.from_row(row) for row in rows]
 
+    def move_chapter(self, chapter_id: int, position: int) -> Optional[SetChapter]:
+        """Move a chapter among its Set's chapters, its entries with it (PREP-03).
+
+        Here rather than in ``set_repository`` because it moves entries, and
+        this module is the only writer of ``collection_tracks``.
+
+        Two steps in one transaction. The chapter moves among the chapters by
+        the same range arithmetic as an entry among entries. Then the Set's
+        entries are renumbered in one statement, ordered by their chapter's new
+        position and then by their own old one. Each chapter's entries were
+        together and keep their order among themselves, so the moved chapter's
+        entries travel as one block and every other block closes up behind or
+        opens up ahead of it. Acknowledgements stay as they are: PREP-05 judges
+        an acknowledgement by whether its two entries are still adjacent, which
+        is exactly what a move can change.
+
+        Args:
+            chapter_id: The chapter to move.
+            position: Its new place among the chapters, from 0; clamped to the
+                last place.
+
+        Returns:
+            The chapter where it now is, or ``None`` if there is no such
+            chapter.
+        """
+        chapter_id = int(chapter_id)
+        with self._db.transaction(join_existing=True) as conn:
+            row = conn.execute(
+                "SELECT collection_id, position FROM set_chapters WHERE id = ?",
+                (chapter_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            set_id = int(row["collection_id"])
+            current = int(row["position"])
+            last = conn.execute(
+                "SELECT count(*) AS n FROM set_chapters WHERE collection_id = ?",
+                (set_id,),
+            ).fetchone()
+            target = max(0, min(int(position), int(last["n"]) - 1))
+            if target != current:
+                if target > current:
+                    conn.execute(
+                        "UPDATE set_chapters SET position = position - 1"
+                        " WHERE collection_id = ? AND position > ? AND position <= ?",
+                        (set_id, current, target),
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE set_chapters SET position = position + 1"
+                        " WHERE collection_id = ? AND position >= ? AND position < ?",
+                        (set_id, target, current),
+                    )
+                conn.execute(
+                    "UPDATE set_chapters SET position = ?, updated_at = ? WHERE id = ?",
+                    (target, utc_now_iso(), chapter_id),
+                )
+                conn.execute(
+                    "WITH ordered AS ("
+                    "  SELECT ct.id, row_number() OVER"
+                    "   (ORDER BY ch.position, ct.position, ct.id) - 1 AS rn"
+                    "  FROM collection_tracks ct"
+                    "  JOIN set_entries se ON se.entry_id = ct.id"
+                    "  JOIN set_chapters ch ON ch.id = se.chapter_id"
+                    "  WHERE ct.collection_id = ?"
+                    ")"
+                    " UPDATE collection_tracks SET position = ordered.rn"
+                    " FROM ordered WHERE ordered.id = collection_tracks.id",
+                    (set_id,),
+                )
+                self._check_set(conn, set_id)
+            moved = conn.execute(
+                f"{_SELECT_CHAPTER} WHERE id = ?", (chapter_id,)
+            ).fetchone()
+        return SetChapter.from_row(moved)
+
     def duplicate_set(self, set_id: int, name: str) -> Optional[Collection]:
         """Copy a Set whole, under a new name, beside the original.
 
@@ -1123,40 +1206,13 @@ class CollectionRepository(ICollectionRepository):
 
     @staticmethod
     def _check_set(conn, set_id: int) -> None:
-        """Hold DEC-103 after a write: chapters exist, entries planned, in order.
+        """Hold DEC-103 after a write; see :func:`~.set_integrity.check_set`.
 
         Raises:
-            SetIntegrityError: If the write broke any of the three. The caller's
-                transaction rolls back.
+            SetIntegrityError: If the write broke it. The caller's transaction
+                rolls back.
         """
-        row = conn.execute(
-            "SELECT"
-            " (SELECT count(*) FROM set_chapters WHERE collection_id = :set)"
-            "   AS chapters,"
-            " (SELECT count(*) FROM collection_tracks ct"
-            "   WHERE ct.collection_id = :set AND NOT EXISTS"
-            "   (SELECT 1 FROM set_entries se WHERE se.entry_id = ct.id))"
-            "   AS unplanned,"
-            " (SELECT count(*) FROM ("
-            "   SELECT ch.position AS here,"
-            "    lag(ch.position) OVER (ORDER BY ct.position, ct.id) AS before"
-            "   FROM collection_tracks ct"
-            "   JOIN set_entries se ON se.entry_id = ct.id"
-            "   JOIN set_chapters ch ON ch.id = se.chapter_id"
-            "   WHERE ct.collection_id = :set"
-            " ) WHERE here < before) AS backwards",
-            {"set": int(set_id)},
-        ).fetchone()
-        if not int(row["chapters"]):
-            raise SetIntegrityError(f"Set {set_id} has no chapter")
-        if int(row["unplanned"]):
-            raise SetIntegrityError(
-                f"{row['unplanned']} entries of Set {set_id} have no chapter"
-            )
-        if int(row["backwards"]):
-            raise SetIntegrityError(
-                f"Set {set_id}'s chapters are out of order in its entries"
-            )
+        check_set(conn, set_id)
 
     def _update(self, node_id: int, values: Dict[str, object]) -> Optional[Collection]:
         """Write named columns on one node and return it.

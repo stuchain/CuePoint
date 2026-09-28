@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
-Status: **Specified 2026-09-28. PREP-01 and PREP-02 are implemented (2026-09-28).** The twelve steps below replace the roadmap's
+Status: **Specified 2026-09-28. PREP-01, PREP-02 and PREP-03 are implemented (2026-09-28).** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -655,7 +655,7 @@ double, named above.
 
 ---
 
-## PREP-03 — Chapters, Times and Notes
+## PREP-03 — Chapters, Times and Notes ✅ IMPLEMENTED 2026-09-28
 
 **Objective**: Everything a user edits on a Set that is not an entry's position, and the running time
 that follows from it.
@@ -701,7 +701,170 @@ the length is unknown. A repeat planned twice keeps two sets of times.
 
 **Complexity**: **M**
 
-**Outcome**: Not started.
+**Outcome**: Implemented (2026-09-28). Everything a user edits on a Set that is not which tracks it
+holds can now be edited: chapters, their notes and targets, each entry's planned times and note, and
+the Set's notes. The plan reads back with the running time of each chapter and of the Set. Nothing a
+user can reach changes yet: the wire is PREP-08's, and the page is PREP-10's.
+
+**What was built.**
+
+- **`core/set_timing.py`**, with no SQL and no I/O:
+  - `parse_time` reads `m:ss` and `h:mm:ss` into whole seconds and refuses anything else with the
+    reason. `format_time` writes the shortest form back, and is its inverse for every time it can
+    read.
+  - `parse_optional_time` reads a blank field as no time, which is how a time is cleared.
+  - `planned_seconds` states DEC-107's rule, and a property test holds `SetEntryPlan` to agree with it.
+  - `running_time` returns a `RunningTime` (seconds, timed, untimed), which adds.
+  - `starts_at` gives each entry's start up to and including the first untimed entry.
+- **`persistence/set_repository.py`**, `SetRepository`: all SQL for a Set's plan that does not move an
+  entry.
+  - It inserts, updates, deletes and splits chapters, and writes entries' times and notes and the Set's
+    notes.
+  - It reads a chapter, one entry or all of a Set's entries with their plan and track length, a
+    chapter's first entry, and the chapter count.
+  - It never writes `collection_tracks`, and a test holds it to that.
+- **`CollectionRepository.move_chapter`**: the one chapter operation that moves entries, so it lives
+  with the one writer of entries. The chapter moves by range arithmetic, then the Set's entries are
+  renumbered in one statement ordered by chapter and then by their old place, so the chapter's entries
+  travel as one block.
+- **`persistence/set_integrity.py`**: the check that ends every write to a Set, moved out of the
+  Collection repository so both writers call one function. It now also holds chapter positions to
+  `0 … n - 1`.
+- **`services/set_service.py`**, `SetService`:
+  - Chapters: `create_chapter` (at a position, after a chapter, or at the end), `rename_chapter`,
+    `set_chapter_notes`, `set_chapter_targets`, `move_chapter`, `delete_chapter` and
+    `split_chapter_at`.
+  - Entries: `move_entry` (PREP-02's rule, with an optional chapter), `set_entry_times` and
+    `set_entry_note`.
+  - The Set: `set_notes` and `plan`.
+
+  `plan` returns a `SetPlan` of `ChapterPlan`s and `PlannedEntry`s. It carries each entry's planned
+  length, start and track length, and each chapter's entries, running time and start, with `to_dict`
+  for PREP-08. It reads in one transaction, so a write between its reads cannot pair an entry with a
+  chapter list that has lost its chapter.
+- **Wiring.** `ISetRepository` and `ISetService` are in `interfaces.py`, and both are registered in
+  `bootstrap.py`. `ICollectionRepository` gains `move_chapter`. `SetChapter.label` names a chapter in a
+  refusal. `SetEntryRow` is an entry as the plan reads it; it is not a table. `core/set_timing.py` and
+  `services/set_service.py` join the strict mypy gate, and the new persistence modules are already
+  under it.
+- **Nothing is recorded.** No activity event and no track history, as for a Collection's edits. A test
+  runs every operation and counts both tables.
+
+**Where the specification was open or wrong, and what was done instead.**
+
+1. **Chapter SQL has its own repository, and moving a chapter does not.** The specification put
+   everything in `set_service`. The SQL went into `SetRepository`, with one exception.
+   `move_chapter` moves entries, so it stays in `collection_repository.py`, which keeps fact 4 whole.
+   A new test scans `src/cuepoint` and fails if any module but that one has a statement writing
+   `collection_tracks`.
+2. **"Start a chapter here" is refused at a chapter's first entry.** The specification asked for a test
+   "on the first entry" without saying what it should do. A split there would move every entry into the
+   new chapter and leave the old one empty, with its name and targets holding nothing. The refusal says
+   to rename the chapter instead. The test on the first entry proves the refusal, and the test on the
+   last entry proves a one-entry chapter.
+3. **The repository chooses the chapter a deleted chapter's entries join.** A caller choosing it could
+   merge a chapter into one its entries are not beside. The repository applies DEC-103's rule itself,
+   and the service refuses deleting the only chapter with a message. The repository refuses it as well,
+   as an integrity error, in case the service's check is ever skipped.
+4. **The integrity check holds chapter numbering.** PREP-02's check proved entry order but not that
+   chapters are numbered without gaps or repeats. Every chapter operation here renumbers, so the check
+   now proves it. A "lowest place is 0" condition was tried and taken out: the schema already refuses a
+   negative position, so it could never fail, which a deliberate breakage showed. A test records why.
+5. **What a typed time may be.** DEC-107 named the two forms. They are now exact:
+   - up to three digits of minutes in `m:ss`, so `75:30` is read;
+   - up to two digits of hours in `h:mm:ss`;
+   - fields from 00 to 59, and ASCII digits only;
+   - no bare number, fraction, sign or unit.
+
+   The forms stop at 99:59:59 (`MAX_TIME_SECONDS`), which also caps a chapter's target.
+6. **An in time is held to the track too.** DEC-107 held the out time to a known length. An in time at
+   or past the end is as impossible, so it is refused as well. A stored length of zero reads as
+   unknown, because it is an import that did not know the length, not a track that plays for no time.
+7. **Times are written as a pair.** `set_entry_times` writes both times, and a blank clears one. An in
+   time alone is kept, and the entry stays untimed. An out time of 0:00 is refused with the same "come
+   in before it goes out" message as any other out time that is not after the in time.
+8. **A chapter's start is part of the plan.** The specification asked only for starts per entry. A
+   chapter heading showing when it starts is the obvious use, so each chapter carries one. An empty
+   chapter starts where the entries before it end.
+
+**Handed on.**
+
+- **PREP-08:** the wire. Wire shapes are `SetPlan.to_dict` and `SetChapter` fields. The plan carries
+  times in seconds only. Whether the renderer formats them with a copy of `format_time`, held to it by
+  a test as DISCOVER-08 did for reasons, or the engine sends text, is PREP-08's call. A chapter's
+  target takes seconds, so a typed target is parsed where it arrives, with `parse_time`.
+- **PREP-05:** `plan()` already has what the warnings need about times: each entry's times and track
+  length, and each chapter's running time and targets. A shortened track keeps its times, and a test
+  proves the rest of the entry still edits.
+
+**Measured** on a 1,000-entry Set in ten chapters (the limit), with half its entries timed:
+
+| Operation | Median |
+| --- | --- |
+| `plan` | 13 ms |
+| Moving the first chapter to the end | 7.5 ms |
+| Moving an entry from first to last | 8.8 ms |
+| A split followed by a delete | 10.7 ms |
+| `set_entry_times` | about 2 ms |
+
+**Tests**: 266 new, in four files.
+
+- **`src/tests/unit/core/test_set_timing.py` (110):**
+  - `parse_time` on every accepted form and every refused one, from a table, each refusal with its
+    reason.
+  - `format_time`, and the round trip: exhaustively up to three hours, and by property to 99:59:59.
+  - `planned_seconds`, and agreement with the model.
+  - Running time and "starts at" with an untimed entry at the start, the middle and the end, and a
+    property holding each start to the running time before it.
+- **`src/tests/unit/persistence/test_set_repository.py` (68):**
+  - Inserting a chapter at every place.
+  - Updating one without moving it.
+  - Deleting the first, a middle, the last-placed, an empty and the only chapter.
+  - Splitting in the middle, at the last entry, in the last chapter, and across a repeat.
+  - Moving a chapter to every place, with plans, repeats and acknowledgements going with their
+    entries.
+  - Another Set untouched by each operation.
+  - The check's numbering rule, with every write calling it.
+  - The one-writer scan.
+- **`src/tests/unit/services/test_set_service.py` (77):**
+  - Each operation and each of its refusals, every refusal leaving every Set table exactly as it was.
+  - Times refused past a known length and accepted when it is unknown or zero.
+  - A shortened track keeping its times.
+  - A repeat planned twice keeping two sets of times and two notes.
+  - The plan's running times, starts, empty-chapter starts and wire shape.
+  - Nothing recorded, and the container building the service.
+  - A Hypothesis property: 60 random sequences of up to 40 edits of every kind, refusals included,
+    each checked against DEC-103 computed from the rows.
+- **`src/tests/unit/models/test_set_plan_models.py` (+11):** `SetChapter.label` and `SetEntryRow`.
+
+Eleven deliberate breakages, each caught:
+
+- `move_chapter` leaving the entries where they were;
+- delete always joining the chapter after;
+- a split moving only its one entry;
+- a split allowed at a chapter's first entry;
+- times not held to the track's length;
+- "starts at" counting on after an untimed entry;
+- the only chapter's deletion not refused by the service;
+- an empty chapter's start read from the wrong place;
+- an untimed entry counted as timed;
+- the numbering check ignoring repeated places;
+- the numbering check ignoring the highest place.
+
+The repeated-places breakage was missed at first. `(0, 2, 2)` is the one case only that condition
+catches, and it was added to the table.
+
+Every PREP-01 and PREP-02 test passes unmodified. One existing test changed: the persistence
+boundary's allow-list gains `services/set_service.py`, which opens transactions and runs no SQL,
+with its reason written beside it as every other entry has.
+
+**Checks run**:
+
+- **Python:** the full suite (10,492 passed, 62 skipped, on eight workers); `ruff check` and
+  `ruff format --check` on `src/` with the pinned ruff 0.14.0; the strict mypy gate with two more
+  modules; `check_no_qt_in_core.py`; the desktop version coupling; the engine health smoke test.
+- **Not run:** the renderer and Electron suites. This step changes no TypeScript and no wire shape.
+- `git diff --check`.
 
 ---
 

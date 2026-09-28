@@ -36,6 +36,7 @@ from cuepoint.models.set_plan import (
     SetChapter,
     SetDetails,
     SetEntryPlan,
+    SetEntryRow,
     normalize_chapter_name,
 )
 from cuepoint.models.track_metadata import MAX_NOTES_LENGTH
@@ -424,3 +425,72 @@ class TestSetAcknowledgement:
         ack = self.ack()
         with pytest.raises(AttributeError):
             ack.warning = "key_clash"  # type: ignore[misc]
+
+
+@pytest.mark.unit
+class TestChapterLabel:
+    """How a refusal names a chapter (PREP-03)."""
+
+    def test_by_name(self):
+        assert SetChapter(collection_id=1, position=3, name="Peak").label == "'Peak'"
+
+    def test_by_place_when_unnamed(self):
+        assert SetChapter(collection_id=1, position=0).label == "chapter 1"
+        assert SetChapter(collection_id=1, position=4, name="  ").label == "chapter 5"
+
+
+@pytest.mark.unit
+class TestSetEntryRow:
+    """An entry as a Set's plan reads it (PREP-03); not a table."""
+
+    def plan(self, **values: Any) -> SetEntryPlan:
+        return SetEntryPlan(entry_id=7, collection_id=1, chapter_id=2, **values)
+
+    def test_from_a_joined_row(self):
+        row = SetEntryRow.from_row(
+            {
+                "position": 3,
+                "track_id": 11,
+                "entry_id": 7,
+                "collection_id": 1,
+                "chapter_id": 2,
+                "in_seconds": 10,
+                "out_seconds": 250,
+                "note": "early",
+                "length_seconds": 300,
+            }
+        )
+        assert (row.position, row.track_id, row.entry_id, row.length_seconds) == (
+            3,
+            11,
+            7,
+            300,
+        )
+        assert row.plan == self.plan(in_seconds=10, out_seconds=250, note="early")
+
+    @pytest.mark.parametrize("stored", [None, 0, -5])
+    def test_a_length_that_is_not_one_reads_as_unknown(self, stored):
+        row = SetEntryRow(
+            position=0, track_id=1, plan=self.plan(), length_seconds=stored
+        )
+        assert row.length_seconds is None
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("position", -1),
+            ("track_id", None),
+            ("track_id", 0),
+            ("length_seconds", 1.5),
+        ],
+    )
+    def test_refusals_name_their_field(self, field, value):
+        values: Dict[str, Any] = {"position": 0, "track_id": 1, "plan": self.plan()}
+        values[field] = value
+        with pytest.raises(ValueError, match=field):
+            SetEntryRow(**values)
+
+    def test_it_cannot_be_changed_once_made(self):
+        row = SetEntryRow(position=0, track_id=1, plan=self.plan())
+        with pytest.raises(AttributeError):
+            row.position = 2  # type: ignore[misc]

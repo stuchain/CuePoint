@@ -117,6 +117,9 @@ GUARDED = (
     # PREP-01: the Set schema's models, and the node model it widened.
     "cuepoint/models/set_plan.py",
     "cuepoint/models/collection.py",
+    # PREP-03: a Set's timing rule and the service that edits its plan.
+    "cuepoint/core/set_timing.py",
+    "cuepoint/services/set_service.py",
 )
 
 

@@ -87,7 +87,7 @@ a chapter as it writes it. What only a Set has is made here: a new Set
 (:meth:`CollectionService.create_set`), a Set copied from something else
 (:meth:`CollectionService.create_set_from`) and a copy of a Set
 (:meth:`CollectionService.duplicate_set`). Its chapters, times and notes are
-edited by PREP-03's service.
+edited by ``set_service`` (PREP-03).
 
 "New Set from…" copies, as a freeze does: a Collection's entries with their
 repeats, a Smart Collection's current answer in its saved order, a Rekordbox

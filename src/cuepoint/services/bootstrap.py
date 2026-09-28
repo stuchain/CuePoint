@@ -45,6 +45,8 @@ from cuepoint.services.interfaces import (
     IDiscoveryService,
     IBeatportPlaylistService,
     IEntityPageService,
+    ISetRepository,
+    ISetService,
     ISimilarityRepository,
     ISimilarityService,
     IWantlistRepository,
@@ -110,6 +112,7 @@ from cuepoint.persistence.match_job_repository import MatchJobRepository
 from cuepoint.persistence.match_repository import MatchRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
 from cuepoint.persistence.collection_repository import CollectionRepository
+from cuepoint.persistence.set_repository import SetRepository
 from cuepoint.persistence.tag_repository import TagRepository
 from cuepoint.persistence.track_metadata_repository import (
     TrackMetadataRepository,
@@ -123,6 +126,7 @@ from cuepoint.services.activity_service import ActivityService
 from cuepoint.services.backup_service import BackupService
 from cuepoint.services.batch_service import BatchService
 from cuepoint.services.collection_service import CollectionService
+from cuepoint.services.set_service import SetService
 from cuepoint.services.artwork_cache import ArtworkCache, default_artwork_cache_dir
 from cuepoint.services.artwork_service import ArtworkService, FetchGate
 from cuepoint.services.duplicate_service import DuplicateService
@@ -420,6 +424,26 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(ICollectionService, create_collection_service)
+
+    # A Set's chapters, planned times and notes (PREP-03). Its entries are the
+    # Collection repository's, the only writer of entries, so moving an entry
+    # or a whole chapter goes through that one; everything else a user edits on
+    # a Set is the Set repository's. Nothing here records activity (Phase 6's
+    # rule for a Collection's edits).
+    def create_set_repository() -> ISetRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return SetRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(ISetRepository, create_set_repository)
+
+    def create_set_service() -> ISetService:
+        return SetService(
+            collection_repository=container.resolve(ICollectionRepository),
+            set_repository=container.resolve(ISetRepository),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(ISetService, create_set_service)
 
     # One operation over a selection of any size (ORG-07, DEC-063). It resolves
     # a query selection through the track repository and then delegates every

@@ -132,6 +132,7 @@ if TYPE_CHECKING:
         SetChapter,
         SetDetails,
         SetEntryPlan,
+        SetEntryRow,
     )
     from cuepoint.models.refresh_diff import RefreshDiff
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack, QueueTrack
@@ -165,6 +166,7 @@ if TYPE_CHECKING:
         SetSource,
         SmartResolution,
     )
+    from cuepoint.services.set_service import SetPlan
     from cuepoint.services.artwork_service import ArtworkScanResult
     from cuepoint.services.duplicate_service import DuplicateScanResult
     from cuepoint.services.file_check_service import FileCheckResult
@@ -2861,6 +2863,11 @@ class ICollectionRepository(ABC):
         """Copy a Set whole beside the original, or ``None`` if it is not one."""
         ...
 
+    @abstractmethod
+    def move_chapter(self, chapter_id: int, position: int) -> Optional["SetChapter"]:
+        """Move a chapter among its Set's chapters, its entries as one block."""
+        ...
+
 
 class ICollectionService(ABC):
     """Interface for editing the collection tree (DEC-006, DEC-058, DEC-059).
@@ -3036,6 +3043,157 @@ class ICollectionService(ABC):
     @abstractmethod
     def duplicate_set(self, node_id: int, name: Optional[str] = None) -> "Collection":
         """Copy a Set whole, chapters, plan and acknowledgements included."""
+        ...
+
+
+class ISetRepository(ABC):
+    """Interface for a Set's chapters, planned times and notes (PREP-03).
+
+    Everything a user edits on a Set that does not move an entry. Moving
+    entries, a whole chapter's included, is :class:`ICollectionRepository`'s,
+    the only writer of entries (PREP-02).
+    """
+
+    @abstractmethod
+    def chapter(self, chapter_id: int) -> Optional["SetChapter"]:
+        """Return one chapter, or None."""
+        ...
+
+    @abstractmethod
+    def entry_row(self, entry_id: int) -> Optional["SetEntryRow"]:
+        """Return one Set entry with its plan and track length, or None."""
+        ...
+
+    @abstractmethod
+    def entry_rows(self, set_id: int) -> List["SetEntryRow"]:
+        """Return a Set's entries with their plans, in the Set's order."""
+        ...
+
+    @abstractmethod
+    def first_entry_position(self, chapter_id: int) -> Optional[int]:
+        """Return the position of a chapter's first entry, or None if empty."""
+        ...
+
+    @abstractmethod
+    def chapter_count(self, set_id: int) -> int:
+        """Return how many chapters a Set has."""
+        ...
+
+    @abstractmethod
+    def insert_chapter(
+        self, set_id: int, position: int, name: str = ""
+    ) -> "SetChapter":
+        """Insert an empty chapter at a place among the chapters."""
+        ...
+
+    @abstractmethod
+    def update_chapter(self, chapter: "SetChapter") -> Optional["SetChapter"]:
+        """Write a chapter's name, notes and targets."""
+        ...
+
+    @abstractmethod
+    def delete_chapter(self, chapter_id: int) -> Optional[Tuple[int, int]]:
+        """Delete a chapter into its neighbour; return (joined id, moved)."""
+        ...
+
+    @abstractmethod
+    def split_chapter(self, entry_id: int, name: str = "") -> Optional["SetChapter"]:
+        """Start a new chapter at an entry, taking the rest of its chapter."""
+        ...
+
+    @abstractmethod
+    def update_entry_plan(self, plan: "SetEntryPlan") -> bool:
+        """Write an entry's planned times and note."""
+        ...
+
+    @abstractmethod
+    def set_notes(self, set_id: int, notes: Optional[str]) -> Optional["SetDetails"]:
+        """Write a Set's notes, or return None if the node is not a Set."""
+        ...
+
+
+class ISetService(ABC):
+    """Interface for editing a Set's chapters, times and notes (PREP-03).
+
+    DEC-103's chapters and DEC-107's planned times. Adding and removing entries
+    is :class:`ICollectionService`'s, as it is for a Collection.
+    """
+
+    @abstractmethod
+    def create_chapter(
+        self,
+        set_id: int,
+        name: str = "",
+        *,
+        position: Optional[int] = None,
+        after_chapter_id: Optional[int] = None,
+    ) -> "SetChapter":
+        """Add an empty chapter at a place, after a chapter, or at the end."""
+        ...
+
+    @abstractmethod
+    def rename_chapter(self, chapter_id: int, name: str) -> "SetChapter":
+        """Rename a chapter; an empty name makes it unnamed."""
+        ...
+
+    @abstractmethod
+    def set_chapter_notes(self, chapter_id: int, notes: Optional[str]) -> "SetChapter":
+        """Write a chapter's notes; None or blank clears them."""
+        ...
+
+    @abstractmethod
+    def set_chapter_targets(
+        self,
+        chapter_id: int,
+        target_seconds: Optional[int] = None,
+        bpm_min: Optional[float] = None,
+        bpm_max: Optional[float] = None,
+    ) -> "SetChapter":
+        """Set a chapter's target length and BPM range; None clears each."""
+        ...
+
+    @abstractmethod
+    def move_chapter(self, chapter_id: int, position: int) -> "SetChapter":
+        """Move a chapter, its entries moving with it as one block."""
+        ...
+
+    @abstractmethod
+    def delete_chapter(self, chapter_id: int) -> "SetChapter":
+        """Delete a chapter; its entries join a neighbour, which is returned."""
+        ...
+
+    @abstractmethod
+    def split_chapter_at(self, entry_id: int, name: str = "") -> "SetChapter":
+        """Start a chapter at an entry: it and the rest of its chapter move."""
+        ...
+
+    @abstractmethod
+    def move_entry(
+        self, entry_id: int, position: int, chapter_id: Optional[int] = None
+    ) -> "CollectionEntry":
+        """Move one entry of a Set, by PREP-02's chapter rule."""
+        ...
+
+    @abstractmethod
+    def set_entry_times(
+        self, entry_id: int, in_text: Optional[str], out_text: Optional[str]
+    ) -> "SetEntryPlan":
+        """Plan an entry's in and out times, typed as m:ss or h:mm:ss."""
+        ...
+
+    @abstractmethod
+    def set_entry_note(self, entry_id: int, note: Optional[str]) -> "SetEntryPlan":
+        """Write an entry's note; None or blank clears it."""
+        ...
+
+    @abstractmethod
+    def set_notes(self, set_id: int, notes: Optional[str]) -> "SetDetails":
+        """Write a Set's notes; None or blank clears them."""
+        ...
+
+    @abstractmethod
+    def plan(self, set_id: int) -> "SetPlan":
+        """A Set's chapters, entries, planned times and running times."""
         ...
 
 

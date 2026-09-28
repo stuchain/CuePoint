@@ -3344,6 +3344,26 @@ CuePoint can check: forty minutes, 118 to 122 BPM.
 **Why the decision stands**: this is how "every entry belongs to exactly one chapter, and a chapter's
 entries are contiguous" is kept, not a change to it.
 
+### Implemented (2026-09-28, PREP-03) — the chapter operations
+
+- **Deleting follows the decision.** A chapter's entries join the chapter before it, or the one after
+  for the first, and the last chapter a Set has cannot be deleted. The repository picks the neighbour
+  itself rather than taking it from a caller, so no path can merge a chapter into one its entries are
+  not beside.
+- **Moving a chapter moves its entries as one block**, in their order, in one renumbering statement.
+- **Precision: "start a chapter here" is refused at a chapter's first entry.** Nothing comes before it
+  in that chapter, so a split there would move every entry into the new chapter and leave the old one
+  empty. The refusal says to rename the chapter instead. An empty chapter is still legal, and one made
+  on purpose (a new chapter, not yet filled) is kept.
+- **Contiguity now includes the chapters' own numbering.** The check that ends every write also holds
+  chapter positions to `0 … n - 1`, and one function serves both writers.
+- **Two writers, one rule for entries.** Chapters, times and notes have their own repository. Anything
+  that moves an entry, a whole chapter included, stays with the Collection repository, and a test holds
+  that no other module writes an entry.
+
+**Why the decision stands**: these are the operations the decision implies, and the one precision
+refuses a gesture that would only have made an empty chapter.
+
 ---
 
 ## DEC-104 — Prepare Is Its Own Page, and Sets Are in the Library Tree
@@ -3456,6 +3476,27 @@ full lengths minus a mix length in bars, with no typing; and, for untimed entrie
   (DEC-110).
 
 **Decided with**: User · **Date**: 2026-09-28
+
+### Implemented (2026-09-28, PREP-03) — times as typed, and the running time
+
+- **The rule is in `core/set_timing.py`**, with no SQL and no I/O. It reads `m:ss` and `h:mm:ss`, and
+  writes a time back the shortest way. It also holds the planned length, the running time (a sum and an
+  untimed count) and "starts at".
+- **Precision: what a time may be.**
+  - `m:ss` takes up to three digits of minutes, so `75:30` is read as DJs write it.
+  - `h:mm:ss` takes up to two digits of hours.
+  - Seconds, and minutes after hours, run from 00 to 59.
+  - A bare number is refused, because `90` could be a minute and a half or an hour and a half. So are
+    fractions, signs and units.
+  - The forms stop at 99:59:59. That bound also caps a chapter's target.
+- **Precision: an in time is also held to the track.** When the length is known, the out time is no
+  later than the end, as decided, and the in time is before it. A stored length of zero is treated as
+  unknown.
+- **"Starts at" includes the first untimed entry**, whose start is still known, and is empty after it.
+  An empty chapter starts where the entries before it end.
+
+**Why the decision stands**: this is the decided rule written down once, with the typing forms made
+exact.
 
 ---
 

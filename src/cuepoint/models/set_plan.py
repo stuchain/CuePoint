@@ -18,6 +18,9 @@ are the rows ``m0025_sets`` adds beside them:
   accepted, with the values it was given, so that it stops applying when they
   change (DEC-106).
 
+And one that is not a table: :class:`SetEntryRow`, an entry as a Set's plan
+reads it, with its place, its track and that track's length (PREP-03).
+
 The models refuse what the database would refuse, where the row is built, and
 say what was wrong. A few things the database cannot see are refused here only:
 a time that is not a whole number of seconds, blank notes, a name too long to be
@@ -247,6 +250,11 @@ class SetChapter:
         """True when either end of a BPM range is set."""
         return self.bpm_min is not None or self.bpm_max is not None
 
+    @property
+    def label(self) -> str:
+        """How a message names the chapter: its name, or its place if unnamed."""
+        return repr(self.name) if self.name else f"chapter {self.position + 1}"
+
     def touch(self) -> None:
         """Mark the chapter as updated now."""
         self.updated_at = utc_now_iso()
@@ -363,6 +371,53 @@ class SetEntryPlan:
             in_seconds=data.get("in_seconds"),
             out_seconds=data.get("out_seconds"),
             note=data.get("note"),
+        )
+
+
+@dataclass(frozen=True)
+class SetEntryRow:
+    """One entry of a Set as its plan reads it (PREP-03).
+
+    The entry's place and track beside its plan, and the track's length, which
+    is what a planned out time is checked against (DEC-107).
+
+    Attributes:
+        position: The entry's place in the Set, from 0.
+        track_id: The track it plays.
+        plan: Its chapter, planned times and note.
+        length_seconds: The track's length, or ``None`` when it is not known. A
+            stored length of zero is an import that did not know it, not a
+            track that plays for no time, so it reads as ``None``.
+    """
+
+    position: int
+    track_id: int
+    plan: SetEntryPlan
+    length_seconds: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        """Validate the row."""
+        object.__setattr__(self, "position", non_negative(self.position, "position"))
+        object.__setattr__(self, "track_id", required_id(self.track_id, "track_id"))
+        length = optional_whole_number(self.length_seconds, "length_seconds")
+        object.__setattr__(
+            self, "length_seconds", None if length is None or length <= 0 else length
+        )
+
+    @property
+    def entry_id(self) -> int:
+        """The entry's own id."""
+        return self.plan.entry_id
+
+    @classmethod
+    def from_row(cls, row: Any) -> "SetEntryRow":
+        """Build the row from a join of an entry, its plan and its track."""
+        data = dict(row)
+        return cls(
+            position=data["position"],
+            track_id=data["track_id"],
+            plan=SetEntryPlan.from_row(data),
+            length_seconds=data.get("length_seconds"),
         )
 
 

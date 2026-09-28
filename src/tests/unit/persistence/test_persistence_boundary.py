@@ -105,6 +105,12 @@ _ALLOWED = {
     # list's history (DEC-008). The SQL is the wantlist, catalog and activity
     # repositories'; no SQL is run there.
     "services/wantlist_service.py",
+    # PREP-03's Set editing: each edit's check and its write are one
+    # transaction, so a refusal ("the only chapter", "already starts here", "past
+    # the track's end") is judged against the rows it would write over, and the
+    # plan is read whole rather than as chapters and entries from two moments.
+    # The SQL is the Set and Collection repositories'; no SQL is run there.
+    "services/set_service.py",
     # The one retry loop for a write that finds the database busy: it opens
     # the transaction it retries, and runs no SQL of its own.
     "services/busy_wait.py",
