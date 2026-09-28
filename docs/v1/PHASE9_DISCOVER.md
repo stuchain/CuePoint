@@ -2959,14 +2959,16 @@ written (acceptance 10).
   remembered `incrate` or `tools`, the redirect's page remembered), the sidebar, the contract test's
   DISCOVER-12 block (8), `retiredModules.test.ts` with the three modules and six methods, and the
   pixel-icon test now checking every registry icon exists.
-- End to end: the phase journey; `shell.spec.ts` gains a relaunch with a remembered `tools` and
-  `incrate` and now expects the Library on first paint and Discover remembered.
-- **Deliberate breakages**: 16, each caught by its test — home back on Tools, the `incrate` or `tools`
+- End to end: the phase journey; `incrateLeftovers.spec.ts`, inCrate's files and settings left
+  exactly as they were across a whole session; `shell.spec.ts` gains a relaunch with a remembered
+  `tools` and `incrate` and now expects the Library on first paint and Discover remembered.
+- **Deliberate breakages**: 19, each caught by its test — home back on Tools, the `incrate` or `tools`
   redirect removed or pointed elsewhere, an unknown path rendered in place, a Tools group restored,
   an inCrate method left in the preload, an inCrate interface declared, a relative day counted the
   wrong way or not at all, an unused key no longer loaded, the schema bundled again, a chart by an
   account counting for nobody, a chart's artist dropped, the journey's chart answering nothing, and a
-  wantlist add writing to the library's tracks.
+  wantlist add writing to the library's tracks; and, for the leftovers spec, an engine that touches
+  the inventory's time, rewrites the past results, or leaves a journal beside the inventory.
 
 **Checks run**: see the phase acceptance below for the full list and numbers.
 
@@ -3046,9 +3048,14 @@ API is owed** — this step does not read the developer's token, by rule.
 11. **Met.** No Tools group and no inCrate in the sidebar; `/incrate` opens Discover and `/` the
     Library (the journey); a remembered `tools` or `incrate` opens the Library or Discover, and a
     launch with nothing remembered opens the Library (`shell.spec.ts`).
-12. **Met** (against a running engine, not a packaged build). Both files are where they were, with the
-    same bytes and times, after the engine has started and been asked every retired route and two
-    Discover reads (`test_retired_incrate.py`).
+12. **Met.** In a packaged build, `e2e/incrateLeftovers.spec.ts` puts the inventory database,
+    `incrate_past_results.json` and a `config.yaml` holding every `incrate.` key where a real install
+    has them, runs a session — a library imported, every Discover read, the old `/incrate` address
+    followed, Settings — and quits. All three keep their bytes and times, no journal appears beside the
+    inventory, and the settings still load (Discover's release window and playlist-name format are the
+    file's). Three deliberate breakages of the engine — touching the inventory's time, rewriting the
+    past results, leaving a journal — each fail it. `test_retired_incrate.py` holds the same for every
+    retired route against an engine in the test process.
 13. **Met**, measured at 50,000 tracks in the steps that built each: the credit backfill 0.94–1.34 s
     and the artist and label facets 93 and 97 ms (DISCOVER-03); a run's library reads 47–229 ms
     (DISCOVER-05); an Artist and a Label page's library half 25–29 and 43–47 ms (DISCOVER-07); a
@@ -3062,8 +3069,8 @@ three more modules; the Qt guard; version coupling; the renderer's type-check, l
 warnings) and 3,186 tests; the Electron type-check and 490 tests; the whole end-to-end suite on the
 development build (55 passed, 1 skipped); and, against a freshly packaged
 `release/win-unpacked/CuePoint.exe`, `discoverPages.spec.ts` (both journeys), `discover.spec.ts` and
-`shell.spec.ts` — 12 tests — three times in a row after the push step's fix; 16 deliberate
-breakages, each caught.
+`shell.spec.ts` — 12 tests — three times in a row after the push step's fix, and
+`incrateLeftovers.spec.ts` three times in a row; 19 deliberate breakages, each caught.
 
 ## Deferred, with reasons
 
