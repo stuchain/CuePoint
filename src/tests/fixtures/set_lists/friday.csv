@@ -1,0 +1,5 @@
+﻿Position,Chapter,Starts at,In,Out,Planned,Artist,Title,Remixer,BPM,Key,Length,File,File status,Note
+1,Warm-up,0:00:00,,0:04:00,0:04:00,Âme,Rej (Original Mix),,122.5,8A,0:05:00,/music/Âme - Rej.mp3,present,
+2,Warm-up,0:04:00,0:00:30,0:05:30,0:05:00,Dixon,'=Formula Track,Kerri Chandler,124,9A,,/music/Dixon - Formula.flac,missing,'=cmd|' /C calc'!A0
+3,Peak,0:09:00,,,,Âme,Rej (Original Mix),,122.5,8A,0:05:00,/music/Âme - Rej.mp3,present,
+4,Peak,,0:00:15,,,Kraftwerk,Das Model (Remastered),,,,0:06:40,/music/Kraftwerk - Das Model.wav,not checked,Bring the lights down

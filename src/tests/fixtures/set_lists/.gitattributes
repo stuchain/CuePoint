@@ -1,0 +1,3 @@
+# Golden set list files (PREP-06): compared byte for byte, line endings and
+# byte-order mark included, so git must never rewrite them.
+* -text

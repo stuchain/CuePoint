@@ -134,6 +134,7 @@ if TYPE_CHECKING:
         SetEntryPlan,
         SetEntryRow,
         EntryFactsRow,
+        EntryTrackRow,
     )
     from cuepoint.models.refresh_diff import RefreshDiff
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack, QueueTrack
@@ -170,6 +171,8 @@ if TYPE_CHECKING:
     from cuepoint.services.set_service import SetPlan
     from cuepoint.models.set_suggestions import SetSuggestions
     from cuepoint.services.set_analysis_service import SetAnalysisReport
+    from cuepoint.services.set_list_service import SetListSaved
+    from cuepoint.data.set_list_file import SetList
     from cuepoint.services.artwork_service import ArtworkScanResult
     from cuepoint.services.duplicate_service import DuplicateScanResult
     from cuepoint.services.file_check_service import FileCheckResult
@@ -3120,6 +3123,11 @@ class ISetRepository(ABC):
         ...
 
     @abstractmethod
+    def entry_tracks(self, set_id: int) -> List["EntryTrackRow"]:
+        """Return each entry's track as a set list names it, in order."""
+        ...
+
+    @abstractmethod
     def acknowledge(
         self, acknowledgement: "SetAcknowledgement"
     ) -> "SetAcknowledgement":
@@ -3235,6 +3243,25 @@ class ISetAnalysisService(ABC):
     @abstractmethod
     def unacknowledge(self, from_entry_id: int, to_entry_id: int, warning: str) -> bool:
         """Withdraw an acknowledgement; True if there was one."""
+        ...
+
+
+class ISetListService(ABC):
+    """Interface for a Set's set lists: text, CSV and M3U8 (PREP-06, DEC-110)."""
+
+    @abstractmethod
+    def set_list(self, set_id: int) -> "SetList":
+        """A Set as its set list is written."""
+        ...
+
+    @abstractmethod
+    def text(self, set_id: int) -> str:
+        """The plain-text set list, for the clipboard."""
+        ...
+
+    @abstractmethod
+    def save(self, set_id: int, path: str) -> "SetListSaved":
+        """Write a set list file in the form its extension names."""
         ...
 
 

@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
-Status: **Specified 2026-09-28. PREP-01 to PREP-05 are implemented (2026-09-28).** The twelve steps below replace the roadmap's
+Status: **Specified 2026-09-28. PREP-01 to PREP-06 are implemented (2026-09-28).** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -1342,7 +1342,7 @@ service with its reason.
 
 ---
 
-## PREP-06 — Set Lists: Text, CSV and M3U8
+## PREP-06 — Set Lists: Text, CSV and M3U8 ✅ IMPLEMENTED 2026-09-28
 
 **Objective**: DEC-110: a Set written as a set list file, or as text to copy.
 
@@ -1386,7 +1386,153 @@ cancelled write leaves no partial file.
 
 **Complexity**: **S**
 
-**Outcome**: Not started.
+**Outcome**: Implemented (2026-09-28). A Set can be copied as a plain-text tracklist, or saved as a
+text, CSV or M3U8 set list to a path a save dialog returns. The engine checks the path, writes the file
+atomically, and records one activity event. No audio file is opened. Nothing a user can reach changes
+yet: the routes and the save dialog are PREP-08's, and the buttons PREP-10's.
+
+**What was built.**
+
+- **`data/set_list_file.py`**: pure renderers over a `SetList` of `SetListChapter`s and `SetListRow`s,
+  and one writer.
+  - `render_text` gives the Set's name and running time, then each chapter as a heading and each
+    entry as `NN. [starts at]  Artist – Title`, with `(in m:ss, out m:ss)` when it has times. The
+    running-time line says how many untimed entries it did not count.
+  - `render_csv` gives one row per entry with fifteen columns: position, chapter, starts at, in, out,
+    planned, artist, title, remixer, BPM, key, length, file, file status and note. It is written with
+    a byte-order mark by `encoded`.
+  - `render_m3u8` gives `#EXTM3U`, `#PLAYLIST:<name>`, each chapter as `# Chapter: <name>`, and each
+    entry as `#EXTINF:<length or -1>,Artist - Title` followed by its path. It has no times.
+  - `form_of` maps `.txt`, `.csv` and `.m3u8`, in any case, to their form, and nothing else.
+  - `write_set_list` is the only writing function. It writes a temporary file beside the destination,
+    then replaces the destination. A stop or a failure leaves nothing behind, and an existing file
+    stays as it was.
+- **`services/set_list_service.py`**, `SetListService`:
+  - `set_list(set_id)` reads the Set in one transaction: PREP-03's plan (chapters, times, starts,
+    notes), PREP-05's facts (effective BPM, effective key written in the library's notation, the last
+    check of the current path, length), and the new `SetRepository.entry_tracks` (artist, title,
+    remixer and file path, which have no override).
+  - `text(set_id)` returns the copy.
+  - `save(set_id, path)`:
+    1. Checks the destination before reading anything.
+    2. Writes the file in the form its extension names.
+    3. Records one `set_list.saved` event, for example "Saved 'Friday' as a CSV set list — 4 entries,
+       1 file missing, 2 untimed", whose detail holds the form, the path and the counts.
+    4. Returns a `SetListSaved` with `to_dict`.
+  - `SetListDestinationError` is a `ValidationError` with a `reason`, as the export's destination
+    refusal is. The reasons are `destination_blank`, `destination_not_set_list`,
+    `destination_is_folder` and `destination_folder_missing`.
+- **Wiring.** `ISetListService` is in `interfaces.py` and registered in `bootstrap.py`.
+  `ISetRepository` gains `entry_tracks`, and `models/set_plan.py` gains `EntryTrackRow`. The two new
+  modules join the strict mypy gate.
+- **The boundaries.**
+  - CLEAN-10's file-write boundary test lists `data/set_list_file.py` as a writing module whose one
+    writer is `write_set_list`, reached only from the set list service. Its scanner found exactly
+    that.
+  - The persistence boundary's allow-list gains the service, which opens transactions and runs no SQL.
+
+**Where the specification was open or wrong, and what was done instead.**
+
+1. **CSV times are `h:mm:ss`.** A spreadsheet reads `3:45` as three hours and forty-five minutes, so
+   the CSV writes `0:03:45`. The text form keeps `m:ss`, as a DJ reads it.
+2. **The formula guard covers OWASP's list**: `=`, `+`, `-`, `@`, and a leading tab or carriage return.
+   Words are written on one line with their outer whitespace trimmed, so the last two can only reach a
+   cell through a file path, which is written as the library holds it. That path is quoted too.
+3. **Every value is written on one line.** A line break in a title would end an `#EXTINF` early and
+   split a text line. Every run of whitespace is written as one space.
+4. **"artist – title (mix)" (DEC-110) is the title as Rekordbox holds it**, which usually names its mix
+   already. A remixer the title does not mention is added as "(Remixer Remix)". The CSV keeps the
+   remixer in a column of its own.
+5. **Chapters follow DEC-103.** A Set with only its one unnamed chapter has no headings or chapter
+   lines, and its CSV chapter column is empty. Otherwise every chapter is written, an empty one
+   included, and an unnamed one as "Chapter N".
+6. **The M3U8 names the Set** with `#PLAYLIST:`, which players that support it show as the playlist's
+   name, and which readers that do not, including `parse_m3u`, skip.
+7. **An entry with no words is named by its file**, and one with no file either as "Untitled", so no
+   line is blank.
+8. **The CSV has a file status column** (`present`, `missing`, `unreadable`, `not checked`) and a note
+   column. "Not checked" is a track with no check of its current path, which is not missing
+   (DEC-088).
+9. **A relative path is resolved** to an absolute one before it is checked, and the result reports the
+   absolute path, as the export's does.
+10. **The event is recorded after the file is in place.** A failed write records nothing, as the
+    export's record never claims a file that is not there.
+11. **The golden files keep their bytes.** The repository normalizes line endings (`core.autocrlf`),
+    which would rewrite a golden `.txt` or `.m3u8` on checkout. A `.gitattributes` in the golden folder
+    marks them `-text`, and a test holds that it does. Their paths are fixed at `/music`, so they are
+    the same on every system. The M3U8 read-back uses the system's own absolute folder, because from
+    Python 3.13 a Windows path with no drive is relative.
+
+**Handed on.**
+
+- **PREP-08:** three routes, for the set list's text, a save to a path, and the save dialog in
+  Electron. The dialog remembers its folder and offers the three extensions, as EXPORT-06's does.
+  `SetListDestinationError.reason` becomes the refusal code.
+- **PREP-10:** "Copy set list" and "Save set list…" on the Prepare page.
+
+**Tests**: 92 new, in two files.
+
+- **`src/tests/unit/data/test_set_list_file.py` (63):**
+  - Each form against its golden file (`src/tests/fixtures/set_lists/friday.*`). The golden Set has a
+    repeat, an empty unnamed chapter, a missing length, a missing file, a non-ASCII title, a title and
+    a note beginning with `=`, and a title broken over two lines.
+  - The text read line by line: headings, numbering width at 120 entries, what an entry is called in
+    ten cases, and the running-time line.
+  - The CSV read back through `csv`: every column, the byte-order mark, the formula guard on words and
+    on a path, and `h:mm:ss` times.
+  - The M3U8 read back through `parse_m3u` with the same paths, titles and artists in order, carrying
+    no times and no byte-order mark.
+  - The forms and their extensions.
+  - The write: bytes and size; replacing a file; a stop leaving nothing, or the old file as it was; a
+    failed write and a folder that does not exist leaving nothing; and no audio file ever opened.
+- **`src/tests/unit/services/test_set_list_service.py` (29):**
+  - What a set list reads: overrides, notation, file states including a stale check, an empty Set, and
+    only a Set.
+  - Copy is the text form, and records nothing.
+  - Save in each form by its extension, with the one event's words and detail, and a clean Set's
+    shorter summary.
+  - The M3U8 with a missing file and a repeat, and the CSV as a spreadsheet reads it.
+  - A relative path.
+  - Every refusal writing nothing, and the destination checked before the Set is read.
+  - A failed write recording nothing.
+  - No audio file opened, and no audio reader imported.
+  - The container.
+
+Fourteen deliberate breakages, each caught:
+
+- no formula guard;
+- no byte-order mark;
+- a missing file dropped from the M3U8;
+- planned times in the M3U8;
+- a value left on several lines;
+- the write going straight to the destination;
+- a lone unnamed chapter given a heading;
+- a remixer added twice;
+- spreadsheet times as `m:ss`;
+- any extension accepted;
+- a missing folder accepted;
+- the event recorded before the write;
+- keys written as stored;
+- never checked read as missing.
+
+Every existing test passes unmodified, except the two boundary lists, which gain the new module and
+service with their reasons.
+
+**A bug the suite caught.** The repository ignores `*.csv` as user output, so the golden CSV would
+never have been committed. The set list tests would then have failed on every clean checkout.
+`test_regression_fixtures_not_ignored` caught it in the full run, and `.gitignore` gains an exception
+for `src/tests/fixtures/set_lists/*.csv` with its reason, beside the other test oracles.
+
+**Checks run**:
+
+- **Python:**
+  - the full suite: 10,826 passed and 62 skipped on eight workers, the one fixture guard included after
+    the fix above; the strict mypy gate with two more modules runs inside it;
+  - `ruff check` and `ruff format --check` on `src/` with the pinned ruff 0.14.0;
+  - `check_no_qt_in_core.py`, the desktop version coupling and the engine health smoke test.
+- **Not run:** the renderer and Electron suites. This step changes no TypeScript.
+- The pre-commit hygiene hooks on the golden files, to prove they leave them byte for byte.
+- `git diff --check`.
 
 ---
 

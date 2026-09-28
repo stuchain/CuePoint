@@ -65,6 +65,9 @@ WRITING_FUNCTIONS: Dict[str, FrozenSet[str]] = {
     "cuepoint.data.rekordbox_export": frozenset(
         {"patch_collection_xml", "_write_atomically"}
     ),
+    # PREP-06: a set list file, text, CSV or M3U8, at a path a save dialog
+    # returned. It writes text, and never opens an audio file.
+    "cuepoint.data.set_list_file": frozenset({"write_set_list"}),
 }
 
 #: Functions in those modules that write, but never to user data, so the
@@ -94,6 +97,11 @@ ALLOWED_IMPORTERS: Dict[str, Set[str]] = {
         # destination a person chose, validated to end in .xml and never to be
         # the source (DEC-083, DEC-085). Nothing else should join it.
         "src/cuepoint/services/rekordbox_export_service.py",
+    },
+    "cuepoint.data.set_list_file": {
+        # PREP-06's save, the one caller: a .txt, .csv or .m3u8 at a
+        # destination a person chose, in a folder that exists (DEC-110).
+        "src/cuepoint/services/set_list_service.py",
     },
 }
 

@@ -56,6 +56,7 @@ from cuepoint.models.filter_rule import (
 from cuepoint.models.library_track import utc_now_iso
 from cuepoint.models.set_plan import (
     EntryFactsRow,
+    EntryTrackRow,
     SetAcknowledgement,
     SetChapter,
     SetDetails,
@@ -387,6 +388,32 @@ class SetRepository(ISetRepository):
         cursor.row_factory = None
         cursor.execute(_SELECT_FACTS, (int(set_id),))
         return [EntryFactsRow(*row) for row in cursor]
+
+    def entry_tracks(self, set_id: int) -> List[EntryTrackRow]:
+        """Return each entry's track as a set list names it, in the Set's order."""
+        rows = (
+            self._db.connect()
+            .execute(
+                "SELECT ct.id AS entry_id, tracks.artist, tracks.title,"
+                " tracks.remixer, tracks.file_path"
+                " FROM collection_tracks ct"
+                " JOIN set_entries se ON se.entry_id = ct.id"
+                " JOIN tracks ON tracks.id = ct.track_id"
+                " WHERE ct.collection_id = ? ORDER BY ct.position, ct.id",
+                (int(set_id),),
+            )
+            .fetchall()
+        )
+        return [
+            EntryTrackRow(
+                entry_id=int(row["entry_id"]),
+                artist=row["artist"],
+                title=row["title"],
+                remixer=row["remixer"],
+                file_path=str(row["file_path"] or ""),
+            )
+            for row in rows
+        ]
 
     def acknowledge(self, acknowledgement: SetAcknowledgement) -> SetAcknowledgement:
         """Store an acknowledgement, or bring one up to date (DEC-106).

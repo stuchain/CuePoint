@@ -126,6 +126,9 @@ GUARDED = (
     # PREP-05: a Set's warnings.
     "cuepoint/core/set_analysis.py",
     "cuepoint/services/set_analysis_service.py",
+    # PREP-06: set lists.
+    "cuepoint/data/set_list_file.py",
+    "cuepoint/services/set_list_service.py",
 )
 
 

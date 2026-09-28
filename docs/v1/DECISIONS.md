@@ -3607,6 +3607,25 @@ Set to other players or a USB stick. The recommendation left M3U8 out.
 
 **Decided with**: User · **Date**: 2026-09-28
 
+### Implemented (2026-09-28, PREP-06) — the three forms
+
+- **As decided.**
+  - The text and CSV forms carry the chapters, the planned times and "artist – title (mix)", read
+    as effective values.
+  - The M3U8 form carries the order, each file's path and an `#EXTINF` line, with chapters as comment
+    lines and no times. A missing file is listed and counted.
+  - The engine writes only to a `.txt`, `.csv` or `.m3u8` path in a folder that exists, atomically.
+    It opens no audio file, and each save records one event.
+- **Precision: the CSV is safe in a spreadsheet.** It has a byte-order mark, so accents read. A cell
+  that begins with `=`, `+`, `-`, `@`, a tab or a return is quoted. Times are written `h:mm:ss`,
+  because `3:45` would be read as three hours and forty-five minutes.
+- **Precision: "(mix)" is the title as Rekordbox holds it.** A remixer the title does not name is added
+  as "(Remixer Remix)", and every value is written on one line.
+- **Precision: a Set that never used chapters is written as a plain list**, as DEC-103 draws it.
+
+**Why the decision stands**: the forms are as decided, and each precision keeps a file from being
+misread by the program it is opened in.
+
 ---
 
 ## DEC-111 — A Set's Shape Is Its Tempo and Key, and There Is No Energy Field

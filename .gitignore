@@ -204,6 +204,11 @@ src/output/
 # nothing real to render from (ORG-13).
 !apps/**/*.fixture.json
 
+# Golden set list files (exception to user-output *.csv above). PREP-06's writer
+# is compared against them byte for byte; without them the set list tests have
+# nothing to compare against.
+!src/tests/fixtures/set_lists/*.csv
+
 # Test files
 test_output/
 test_results/

@@ -18,9 +18,10 @@ are the rows ``m0025_sets`` adds beside them:
   accepted, with the values it was given, so that it stops applying when they
   change (DEC-106).
 
-And two that are not tables: :class:`SetEntryRow`, an entry as a Set's plan
+And three that are not tables: :class:`SetEntryRow`, an entry as a Set's plan
 reads it, with its place, its track and that track's length (PREP-03); and
-:class:`EntryFactsRow`, an entry as a Set's checks read it (PREP-05).
+:class:`EntryFactsRow`, an entry as a Set's checks read it (PREP-05); and
+:class:`EntryTrackRow`, the words a set list names an entry by (PREP-06).
 
 The models refuse what the database would refuse, where the row is built, and
 say what was wrong. A few things the database cannot see are refused here only:
@@ -456,6 +457,28 @@ class EntryFactsRow(NamedTuple):
     file_status: Optional[str]
     file_reason: Optional[str]
     file_checked_at: Optional[str]
+
+
+class EntryTrackRow(NamedTuple):
+    """One entry's track as a set list names it (PREP-06).
+
+    Title, artist and remixer have no CuePoint override, so they are the
+    imported values; BPM and key come from :class:`EntryFactsRow`, which reads
+    the effective ones (DEC-068).
+
+    Attributes:
+        entry_id: The entry.
+        artist: The track's artist, as imported.
+        title: Its title, as imported.
+        remixer: Its remixer, or None.
+        file_path: Its file, as the library holds it.
+    """
+
+    entry_id: int
+    artist: Optional[str]
+    title: Optional[str]
+    remixer: Optional[str]
+    file_path: str
 
 
 @dataclass(frozen=True)

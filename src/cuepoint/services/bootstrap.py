@@ -47,6 +47,7 @@ from cuepoint.services.interfaces import (
     IEntityPageService,
     ISetRepository,
     ISetAnalysisService,
+    ISetListService,
     ISetService,
     ISetSuggestionService,
     ISimilarityRepository,
@@ -129,6 +130,7 @@ from cuepoint.services.backup_service import BackupService
 from cuepoint.services.batch_service import BatchService
 from cuepoint.services.collection_service import CollectionService
 from cuepoint.services.set_analysis_service import SetAnalysisService
+from cuepoint.services.set_list_service import SetListService
 from cuepoint.services.set_service import SetService
 from cuepoint.services.set_suggestion_service import SetSuggestionService
 from cuepoint.services.artwork_cache import ArtworkCache, default_artwork_cache_dir
@@ -461,6 +463,20 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(ISetAnalysisService, create_set_analysis_service)
+
+    # A Set's set lists (PREP-06, DEC-110): text for the clipboard, and text,
+    # CSV or M3U8 saved to the path a save dialog returned. The one writer is
+    # data/set_list_file.py, reached only from here; one activity event per save.
+    def create_set_list_service() -> ISetListService:
+        return SetListService(
+            set_service=container.resolve(ISetService),
+            set_repository=container.resolve(ISetRepository),
+            track_repository=container.resolve(ITrackRepository),
+            activity_service=container.resolve(IActivityService),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(ISetListService, create_set_list_service)
 
     # One operation over a selection of any size (ORG-07, DEC-063). It resolves
     # a query selection through the track repository and then delegates every

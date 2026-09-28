@@ -117,6 +117,11 @@ _ALLOWED = {
     # against the rows it is written beside. The SQL is the Set and Collection
     # repositories'; no SQL is run there.
     "services/set_analysis_service.py",
+    # PREP-06's set lists: a set list is read in one transaction, so its
+    # chapters, times and file checks are from one moment, and a save's
+    # activity event is recorded in its own. The SQL is the Set repository's
+    # and the activity service's; no SQL is run there.
+    "services/set_list_service.py",
     # The one retry loop for a write that finds the database busy: it opens
     # the transaction it retries, and runs no SQL of its own.
     "services/busy_wait.py",
