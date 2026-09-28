@@ -45,13 +45,14 @@ import math
 from functools import lru_cache
 from typing import (
     Any,
-    Callable,
     Dict,
     FrozenSet,
     Iterable,
     List,
     Mapping,
     Optional,
+    Sequence,
+    Set,
     Tuple,
 )
 
@@ -178,8 +179,17 @@ def _seed_id(track_id: Any) -> int:
     return int(track_id)
 
 
-class _Writer:
-    """Writes a seed's reasons as their wire objects."""
+class ReasonWriter:
+    """Writes a seed's reasons as their wire objects.
+
+    Public because a Set's suggestions (PREP-04) write each neighbour's reasons
+    exactly as Similar Tracks writes a seed's, so the renderer reads one shape.
+
+    Args:
+        seed: The seed as read, for its own spellings of genre and label.
+        notation: The library's key notation, ``classic`` or ``camelot``.
+        names: The seed's credited artists, name key to name as credited.
+    """
 
     def __init__(self, seed: TraitRow, notation: str, names: Mapping[str, str]):
         self._seed = seed
@@ -191,6 +201,7 @@ class _Writer:
         return format_key(value.pitch, value.minor, self._notation)
 
     def reason(self, reason: Reason) -> Dict[str, Any]:
+        """One reason as its wire object."""
         wire: Dict[str, Any] = {
             "component": reason.component,
             "detail": reason.detail,
@@ -215,6 +226,7 @@ class _Writer:
         return wire
 
     def suggestion(self, suggestion: Suggestion) -> SimilarTrack:
+        """One suggestion with its reasons written."""
         return SimilarTrack(
             track_id=suggestion.track_id,
             score=suggestion.score,
@@ -273,14 +285,20 @@ class SimilarityService(ISimilarityService):
                 considered += 1
                 yield candidate.track_id, traits_of(candidate)
 
-        rows = self._candidates(scope or BrowseQuery(), seed, exclude)
+        rows = read_candidates(
+            self._repository,
+            scope or BrowseQuery(),
+            [seed],
+            exclude,
+            tempo_ranges(seed.bpm) if seed.bpm is not None else None,
+        )
         suggestions = rank(seed, counted(rows), wanted, exclude=exclude)
 
         notation = notation_from_counts(*self._tracks.key_notation_counts())
         names: Dict[str, str] = {}
         for credit in self._credits.credits(seed_id):
             names.setdefault(credit.name_key, credit.name)
-        writer = _Writer(row, notation, names)
+        writer = ReasonWriter(row, notation, names)
         return SimilarTracks(
             seed_id=seed_id,
             notation=notation,
@@ -291,45 +309,73 @@ class SimilarityService(ISimilarityService):
             suggestions=tuple(writer.suggestion(s) for s in suggestions),
         )
 
-    def _candidates(
-        self, scope: BrowseQuery, seed: Traits, exclude: List[int]
-    ) -> Iterable[TraitRow]:
-        """The rows worth scoring for ``seed``: the pre-selection, in SQL."""
-        if seed.bpm is not None:
-            return self._repository.candidates(
-                scope,
-                tempo_ranges=[
-                    (low - TEMPO_SLACK_BPM, high + TEMPO_SLACK_BPM)
-                    for low, high in tempo_ranges(seed.bpm)
-                ],
-                credits_among=sorted(seed.artist_keys),
-                exclude=exclude,
-            )
-        compatible = set(compatible_keys(seed.key)) if seed.key is not None else set()
-        return self._repository.candidates(
+
+def read_candidates(
+    repository: ISimilarityRepository,
+    scope: BrowseQuery,
+    seeds: Sequence[Traits],
+    exclude: Sequence[int],
+    windows: Optional[Sequence[Tuple[float, float]]],
+) -> Iterable[TraitRow]:
+    """The rows worth scoring against ``seeds``: the pre-selection, in SQL.
+
+    Similar Tracks passes one seed and a Set's gap two (PREP-04). Either way a
+    row read here is only a candidate: the rule decides, so the pre-selection
+    must be a superset of what the rule keeps, and exact where it can be.
+
+    - **When tempo restricts** (``windows`` is not None), the rows are those
+      in the windows, each widened by :data:`TEMPO_SLACK_BPM`. An empty
+      sequence means nothing can pass the gate, and nothing is read.
+    - **When it does not** (every seed without a BPM), the rows are those
+      sharing any seed's genre, label or an artist, or having a key
+      compatible with any seed's. Each is matched by the library's spellings
+      whose name key or parsed key is wanted, so the match is exact rather
+      than a guess ``LIKE`` would make.
+
+    Each row's credits are read among every seed's artists, which is all the
+    rule reads of a candidate's artists.
+    """
+    artists: Set[str] = set()
+    for seed in seeds:
+        artists.update(seed.artist_keys)
+    credits_among = sorted(artists)
+    if windows is not None:
+        return repository.candidates(
             scope,
-            genres=self._spelled("genre", lambda v: _name(v) == seed.genre_key)
-            if seed.genre_key is not None
-            else (),
-            labels=self._spelled("label", lambda v: _name(v) == seed.label_key)
-            if seed.label_key is not None
-            else (),
-            keys=self._spelled("key", lambda v: _key(v) in compatible)
-            if compatible
-            else (),
-            artist_keys=sorted(seed.artist_keys),
-            credits_among=sorted(seed.artist_keys),
+            tempo_ranges=[
+                (low - TEMPO_SLACK_BPM, high + TEMPO_SLACK_BPM) for low, high in windows
+            ],
+            credits_among=credits_among,
             exclude=exclude,
         )
+    genres = {seed.genre_key for seed in seeds if seed.genre_key is not None}
+    labels = {seed.label_key for seed in seeds if seed.label_key is not None}
+    compatible: Set[MusicalKey] = set()
+    for seed in seeds:
+        if seed.key is not None:
+            compatible.update(compatible_keys(seed.key))
 
-    def _spelled(self, field: str, wanted: Callable[[str], bool]) -> List[str]:
-        """The library's spellings of ``field`` that ``wanted`` keeps."""
-        return [value for value in self._repository.spellings(field) if wanted(value)]
+    def spelled(field: str, wanted: bool, keep: Any) -> List[str]:
+        if not wanted:
+            return []
+        return [value for value in repository.spellings(field) if keep(value)]
+
+    return repository.candidates(
+        scope,
+        genres=spelled("genre", bool(genres), lambda v: _name(v) in genres),
+        labels=spelled("label", bool(labels), lambda v: _name(v) in labels),
+        keys=spelled("key", bool(compatible), lambda v: _key(v) in compatible),
+        artist_keys=credits_among,
+        credits_among=credits_among,
+        exclude=exclude,
+    )
 
 
 __all__ = (
     "DENSE_BAND_BUDGET_SECONDS",
     "TEMPO_SLACK_BPM",
+    "ReasonWriter",
     "SimilarityService",
+    "read_candidates",
     "traits_of",
 )

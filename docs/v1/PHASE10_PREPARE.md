@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
-Status: **Specified 2026-09-28. PREP-01, PREP-02 and PREP-03 are implemented (2026-09-28).** The twelve steps below replace the roadmap's
+Status: **Specified 2026-09-28. PREP-01 to PREP-04 are implemented (2026-09-28).** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -868,7 +868,7 @@ with its reason written beside it as every other entry has.
 
 ---
 
-## PREP-04 — Suggestions at an Insertion Point
+## PREP-04 — Suggestions at an Insertion Point ✅ IMPLEMENTED 2026-09-28
 
 **Objective**: DEC-105: what fits between two entries, or after or before one, explained, over a chosen
 pool.
@@ -918,7 +918,194 @@ src/tests` clean.
 
 **Complexity**: **M**
 
-**Outcome**: Not started.
+**Outcome**: Implemented (2026-09-28). The engine answers "what fits here" for any gap in a Set:
+between two entries, or before the first or after the last. The answer is scored by DEC-096's rule
+against each neighbour, with each side's reasons kept apart. The worst case, both neighbours in the
+densest tempo band of a 50,000-track library with the whole library as the pool, takes **401 ms**
+against the budget of **0.5 s**. Nothing a user can reach changes yet: the route is PREP-08's and the
+panel PREP-11's.
+
+**What was built.**
+
+- **The rule, in `core/similarity.py`**, still with no SQL and no I/O:
+  - `fit(before, after, candidate)`, where either side may be absent. The candidate passes the tempo
+    gate of every side with a BPM, and needs at least one reason on some side. Its score is the mean of
+    the sides' scores as shown, rounded as a score is. A fit against one side is exactly `score`
+    against it, and a property test holds that for every generated pair.
+  - `Fit` carries both sides' `Similarity`; `FitSuggestion` is a ranked fit.
+  - `rank_fits` orders fits by score, then by track id, and builds reasons only for those kept, as
+    `rank` does.
+  - `fit_tempo_ranges(before_bpm, after_bpm)` intersects the two sides' windows. A property test holds
+    it to exactly the tempos that pass both gates, asked of the rule itself.
+  - `tempo_gap(before_bpm, after_bpm)` gives how far apart two tempos are as heard, counting half and
+    double time.
+  - The rule is stated once. A new `_side` is the gate and the matches for one seed. `score` and `rank`
+    read it through `_matches` as before, and `fit` reads it for each side.
+- **`models/set_suggestions.py`**, the answer, shaped after `SimilarTracks`:
+  - `SetSuggestions` gives the gap's entries, the sides fitted, the gap's chapter and any BPM range
+    that narrowed the pool, the notation, each side's unused components, `considered`,
+    `duplicates_excluded`, `index_current`, `no_fit` and the suggestions.
+  - A `SlotSuggestion` has its score, `in_set`, and a `SideFit` (score and reasons) for each side.
+    The reasons are the wire objects Similar Tracks writes, so `similarReasons.ts` serves both.
+  - `NoFit` gives the two BPMs, the gap in percent, and the two keys with their relation. The keys are
+    `null` when either is unknown, and the relation is `null` when they clash.
+  - `BpmRange` is the chapter's range, inclusive, open at either end, and never holding an unknown
+    tempo.
+- **`services/set_suggestion_service.py`**, `SetSuggestionService.suggest(set_id, before_entry_id,
+  after_entry_id, pool, chapter_id, against, limit)`, read only:
+  1. The gap is checked (below).
+  2. Each neighbour is read as a seed, from its effective values.
+  3. With both BPMs known and no tempo bridging them, the answer is `no_fit`.
+  4. Otherwise the pool is pre-selected by the intersected windows, clipped to the chapter's range,
+     or by what either side shares when neither has a BPM.
+  5. The chapter's range is applied to every row read.
+  6. `rank_fits` scores everything, and each side's reasons are written.
+- **Reuse, not copies** (`services/similarity_service.py`). Similar Tracks' private writer is now the
+  public `ReasonWriter`. Its pre-selection is now `read_candidates`, which takes any number of seeds.
+  `SimilarityService` calls both with one seed, and DISCOVER-08's brute-force test still passes
+  unchanged.
+- **Wiring.** `ISetSuggestionService` is in `interfaces.py` and registered in `bootstrap.py`.
+  `models/set_suggestions.py` and `services/set_suggestion_service.py` join the strict mypy gate.
+
+**The gap, and its refusals.** A gap is named by two entry ids, so a view that has gone stale cannot
+aim at a different gap. `InsertionPointError` is a `ValueError` with a `reason` for PREP-08 to turn into
+a code:
+
+- `empty_set`: the Set holds nothing to fit against (DEC-105).
+- `no_neighbour`: neither entry is named.
+- `stale`, in any of these cases:
+  - the two entries are no longer adjacent in that order;
+  - an entry named at an end is no longer at that end;
+  - an entry has left the Set, or belongs to another one;
+  - a neighbour's track has gone from the library.
+
+Everything else a caller can get wrong is a plain `ValueError` with a message: a node that is not a
+Set, a bad id, a bad limit, a bad `against`, or a chapter that does not reach the gap. A broken pool is
+refused as the Library refuses it, even when nothing could have fitted.
+
+**Where the specification was open or wrong, and what was done instead.**
+
+1. **"Offers each side's own list" needed a way to ask for it.** DEC-105 has the answer offer each
+   side's list when nothing bridges the gap. The specification's answer had only `no_fit`. The engine
+   now takes `against="before"` or `"after"`, which fits one side at the same gap. It is still
+   checked as that gap, and the other neighbour is still left out. The panel can offer both lists
+   without the engine loosening anything. Computing both lists inside every `no_fit` answer was
+   rejected: it would roughly triple the worst case for an answer the user may not open.
+2. **A side with nothing to offer counts as 0 in the mean.** When a neighbour has no BPM, it has no
+   gate. A candidate that shares nothing with it but suits the other side is still a fit, and the
+   number says it suits one side. Dropping that side from the mean would rank it as if it suited both.
+   A candidate with no reason on either side is not a fit, which is DEC-096's own gate for a seed with
+   no BPM.
+3. **The mean is of the sides' scores as shown.** Each side's score is rounded before the mean, so the
+   number a person reads is the mean of the two numbers beside it.
+4. **Which chapter.** A gap is in the chapter an entry dropped there would join (PREP-02's rule): the
+   chapter of the entry before, or the first chapter at the start. A caller may name another chapter
+   for a gap on a boundary, and it must reach the gap as it would for an insert.
+5. **The chapter's range narrows, and never widens.** It is inclusive. A track with no BPM is outside
+   any range, because it cannot be shown to be inside. When the range misses every window, the answer
+   is empty but is not `no_fit`: the neighbours can be bridged, just not inside this chapter's range.
+6. **`no_fit` depends on the neighbours, not the pool.** It is reported only when both sides fitted
+   have a BPM and no tempo passes both gates. A pool with nothing in the window is an ordinary empty
+   answer.
+7. **`considered`** counts the rows read and inside the chapter's range: what was actually scored.
+8. **The worst case was over budget, and was fixed without restating the rule.** The first form took
+   502 ms, because a gap scores every candidate twice. `_tempo` is a pure function of two tempos, and a
+   library stores BPMs to two decimals. So a dense band of 36,000 tracks holds about a thousand
+   distinct tempos, and `_tempo` is now remembered (`TEMPO_MEMO_SIZE`). `_total` adds in a loop rather
+   than through a generator, which is the same float from the same additions. Every similarity test
+   passed before and after. Similar Tracks' own worst case got faster too, from 343 to 287 ms on this
+   machine.
+
+**Measured** (median of seven, on DISCOVER-08's library shape: 50,000 tracks, 70% at 120–130 BPM,
+15% at 170–175 and 15% over 70–160; 24 keys, 40 genres, 1,200 labels, 1,700 artists):
+
+| Answer | Candidates scored | First form | Now |
+| --- | --- | --- | --- |
+| A gap between two tracks at about 125 BPM, the whole library, 50 suggestions | 36,023 | 502 ms | **401 ms** |
+| The same, 200 suggestions | 36,023 | 511 ms | 400 ms |
+| After the last entry, one side at 140 BPM | 1,746 | 71 ms | 68 ms |
+| A gap nothing bridges (120 to 140) | 0 | 29 ms | 29 ms |
+| The dense gap, pool one genre | 880 | 64 ms | 63 ms |
+| Similar Tracks, DISCOVER-08's worst case, for comparison | 36,037 | 343 ms | 287 ms |
+
+The budget is `DENSE_GAP_BUDGET_SECONDS`, 0.5 s, DISCOVER-08's.
+
+**Handed on.**
+
+- **PREP-05:** the shared-rule test. The rule side is proven here: every suggestion passes both
+  neighbours' tempo gates, by the window property and by the service's brute-force test. PREP-05's test
+  inserts suggestions and reads its own warnings.
+- **PREP-08:** the route takes these parameters:
+  - `set_id`, `before_entry_id` and `after_entry_id`;
+  - the pool as the Library's own query parameters. A Smart Collection is resolved to its rules by
+    `CollectionService.resolve`, as the scope of Similar Tracks is;
+  - `chapter_id`, `against` and `limit`.
+
+  It maps `InsertionPointError.reason` to refusal codes. A `stale` refusal is the view's cue to reload.
+- **PREP-11:** the panel draws each side's reasons with `similarReasons.ts` and marks `in_set`. It
+  explains `no_fit` in words, from its gap and key relation, and offers each side's list through
+  `against`.
+
+**Tests**: 128 new, in three files.
+
+- **`src/tests/unit/core/test_similarity_fit.py` (47):**
+  - One side is exactly `score`, both ways, by property.
+  - The mean, and the gate on each side.
+  - Half and double time against each side.
+  - A side with nothing to offer, and no reason anywhere.
+  - A property restating the whole rule independently.
+  - `rank_fits`: its order, ties by id, sameness, the limit, exclusions, and a property that it is
+    every fit sorted.
+  - `fit_tempo_ranges` held to the rule's own gate by property.
+  - `tempo_gap` cases and refusals.
+  - The tempo memo changing no answer.
+- **`src/tests/unit/services/test_set_suggestion_service.py` (56):**
+  - Both sides with their reasons, and the wire shape.
+  - The same answer twice, ties by id, and the limit.
+  - Both ends, and one side matching Similar Tracks exactly.
+  - Every refusal of a gap, including a Set changed under the view.
+  - `no_fit`, with an adjacent key, a clash and an unknown key; each side's own list; half time is
+    not a gap; a neighbour without a BPM is never one.
+  - The chapter: its range, an open end, a boundary and a named chapter, the first chapter at the
+    start, a chapter that does not reach, a range the windows miss, and tracks with no BPM.
+  - Neighbours and their duplicates left out. Other Set tracks kept and counted, and a repeated
+    neighbour still left out.
+  - Collection, playlist and rule pools, and a broken pool.
+  - Nothing written, checked across every table.
+  - The container.
+  - **The brute-force test.** Over three seeded libraries of 220 tracks each, with overrides, repeats
+    and a chapter range, every gap of a 30-entry Set is fitted three ways (both sides, before, after).
+    Each answer must equal `rank_fits` over every track read from the tracks' own columns.
+- **`src/tests/unit/models/test_set_suggestions_model.py` (25):** each wire shape, the range's bounds,
+  and the answer's refusals.
+
+Thirteen deliberate breakages, each caught:
+
+- the better side instead of the mean;
+- the gate held on one side only;
+- windows unioned instead of intersected;
+- a side with nothing dropped from the mean;
+- ties broken against the id;
+- duplicates suggested;
+- Set tracks hidden instead of marked;
+- a gap that is not adjacent accepted;
+- the chapter's range used only in SQL;
+- the gate loosened when nothing bridges;
+- the chapter after taken by default;
+- only one side's artists read;
+- `in_set` counting one chapter.
+
+Every existing test passes unmodified.
+
+**Checks run**:
+
+- **Python:** the full suite (10,620 passed, 62 skipped, on eight workers), with the strict mypy gate
+  and two more modules inside it; `ruff check` and `ruff format --check` on `src/` with the pinned
+  ruff 0.14.0; `check_no_qt_in_core.py`; the desktop version coupling; the engine health smoke test.
+- **The 50,000-track measurement** above, from a script built to DISCOVER-08's recorded library
+  shape. It reproduces DISCOVER-08's own worst case within a few percent of its recorded 327 ms.
+- **Not run:** the renderer and Electron suites. This step changes no TypeScript and no wire route.
+- `git diff --check`.
 
 ---
 

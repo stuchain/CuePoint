@@ -167,6 +167,7 @@ if TYPE_CHECKING:
         SmartResolution,
     )
     from cuepoint.services.set_service import SetPlan
+    from cuepoint.models.set_suggestions import SetSuggestions
     from cuepoint.services.artwork_service import ArtworkScanResult
     from cuepoint.services.duplicate_service import DuplicateScanResult
     from cuepoint.services.file_check_service import FileCheckResult
@@ -3194,6 +3195,25 @@ class ISetService(ABC):
     @abstractmethod
     def plan(self, set_id: int) -> "SetPlan":
         """A Set's chapters, entries, planned times and running times."""
+        ...
+
+
+class ISetSuggestionService(ABC):
+    """Interface for what fits at a point in a Set (PREP-04, DEC-105)."""
+
+    @abstractmethod
+    def suggest(
+        self,
+        set_id: int,
+        *,
+        before_entry_id: Optional[int] = None,
+        after_entry_id: Optional[int] = None,
+        pool: Optional["BrowseQuery"] = None,
+        chapter_id: Optional[int] = None,
+        against: Optional[str] = None,
+        limit: int = 50,
+    ) -> "SetSuggestions":
+        """What fits between two adjacent entries, best first, per-side reasons."""
         ...
 
 

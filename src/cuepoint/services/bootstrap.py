@@ -47,6 +47,7 @@ from cuepoint.services.interfaces import (
     IEntityPageService,
     ISetRepository,
     ISetService,
+    ISetSuggestionService,
     ISimilarityRepository,
     ISimilarityService,
     IWantlistRepository,
@@ -127,6 +128,7 @@ from cuepoint.services.backup_service import BackupService
 from cuepoint.services.batch_service import BatchService
 from cuepoint.services.collection_service import CollectionService
 from cuepoint.services.set_service import SetService
+from cuepoint.services.set_suggestion_service import SetSuggestionService
 from cuepoint.services.artwork_cache import ArtworkCache, default_artwork_cache_dir
 from cuepoint.services.artwork_service import ArtworkService, FetchGate
 from cuepoint.services.duplicate_service import DuplicateService
@@ -814,6 +816,20 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(ISimilarityService, create_similarity_service)
+
+    # What fits at a point in a Set (PREP-04). DEC-096's rule applied to both
+    # neighbours of a gap, over the same reads Similar Tracks uses: local,
+    # offline, and nothing written.
+    def create_set_suggestion_service() -> ISetSuggestionService:
+        return SetSuggestionService(
+            collection_repository=container.resolve(ICollectionRepository),
+            set_repository=container.resolve(ISetRepository),
+            similarity_repository=container.resolve(ISimilarityRepository),
+            credits=container.resolve(ITrackCreditRepository),
+            tracks=container.resolve(ITrackRepository),
+        )
+
+    container.register_factory(ISetSuggestionService, create_set_suggestion_service)
 
     # Register processor service (depends on beatport, matcher, logging, config)
     def create_processor_service() -> IProcessorService:

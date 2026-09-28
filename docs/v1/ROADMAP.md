@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–12 resolved (DEC-001…DEC-112).**
 Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
-(DEC-102…DEC-112); PREP-01, PREP-02 and PREP-03 are implemented.
+(DEC-102…DEC-112); PREP-01 to PREP-04 are implemented.
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
 (DEC-090…DEC-101); all twelve steps are implemented and DISCOVER-01's spike is recorded. Phase 9's
 acceptance is met on Windows; the macOS packaged checks and one manual pass through the app
@@ -581,6 +581,11 @@ entries, deleted into a neighbour and started at an entry. Entries carry typed i
 the track's length when it is known, and a note. The plan reads back with the running time of each
 chapter and of the Set, counting only timed entries and saying how many are not (DEC-107). A new Set
 repository writes all of this, and the Collection repository stays the only writer of entries.
+
+PREP-04 is implemented: the engine answers what fits at any gap in a Set, scored by DEC-096's rule
+against each neighbour, with each side's reasons, and marks tracks already in the Set. A gap nothing can
+bridge says by how much, and each side's own list can then be asked for. The worst case at 50,000
+tracks takes 401 ms against DISCOVER-08's 0.5 s budget.
 
 ## Phase 11 — Waveforms (WAVE-01 … WAVE-07)
 

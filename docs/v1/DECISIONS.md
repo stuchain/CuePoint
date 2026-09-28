@@ -3417,6 +3417,30 @@ explained.
 
 **Decided with**: User · **Date**: 2026-09-28
 
+### Implemented (2026-09-28, PREP-04) — the rule at a gap
+
+- **As decided.** A candidate passes the tempo gate of each neighbour with a BPM, its score is the
+  mean of the two sides' scores, its reasons are listed per side, and ties break by track id. The
+  neighbours and their duplicate groups are left out. Tracks already in the Set are marked with how
+  many times they are there. An empty Set is refused. The rule is `core.similarity.fit`, beside
+  DEC-096's, and a fit against one side is exactly DEC-096's score.
+- **Precision: a side with nothing to offer counts as 0 in the mean.** A neighbour with no BPM has no
+  gate, so a candidate may share nothing with it. The mean then says the candidate suits one side, not
+  both.
+- **Precision: each side's own list is asked for, not sent.** When nothing bridges the two
+  neighbours, the answer says so, with the tempo gap in percent and how their keys relate. The same
+  gap can then be fitted against one side (`against`), which is how the list for each side is offered.
+  Computing both lists inside every such answer would have roughly tripled the worst case for lists the
+  user may not open.
+- **Precision: the gap is two entry ids, and a stale one is refused.** A view that no longer matches
+  the Set cannot aim at a different gap.
+- **Precision: the chapter's range is inclusive, and a track with no BPM is outside it.** A range the
+  tempo windows miss gives an empty answer, which is not "nothing bridges": the neighbours can be
+  bridged, just not inside that range.
+
+**Why the decision stands**: the decided rule, written down, with the one gesture it named
+("offers each side's own list") given a way to be asked for.
+
 ---
 
 ## DEC-106 — Set Warnings Cover Transitions, Entries and Chapters, and Can Be Acknowledged

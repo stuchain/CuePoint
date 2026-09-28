@@ -45,6 +45,17 @@ library gives the same list every time (DEC-096). Scores are rounded to
 a person would call equal tie and fall to their ids rather than to the
 thirteenth decimal of a float.
 
+Fitting a gap (PREP-04, DEC-105)
+--------------------------------
+A Set asks a second question of the same rule: what fits between this track
+and that one. :func:`fit` applies the rule to each neighbour as the seed. A
+candidate must pass the tempo gate of every side with a BPM, and its score is
+the mean of the sides' scores, with each side's reasons kept apart.
+:func:`rank_fits` orders fits as :func:`rank` orders suggestions.
+:func:`fit_tempo_ranges` intersects the sides' windows for a pre-selection, and
+:func:`tempo_gap` says how far apart two neighbours are when nothing can pass
+both gates. The gate is never loosened to fill a list.
+
 This module imports nothing from CuePoint, so every layer can use it.
 """
 
@@ -52,7 +63,7 @@ from __future__ import annotations
 
 import heapq
 import math
-from functools import cached_property
+from functools import cached_property, lru_cache
 from dataclasses import dataclass, field
 from typing import FrozenSet, Iterable, List, Optional, Sequence, Tuple, Union
 
@@ -362,8 +373,19 @@ def _points(value: float) -> float:
 _Match = Tuple[str, str, float, ReasonValue, ReasonValue]
 
 
+#: How many tempo pairs :func:`_tempo` remembers. A library stores BPMs to two
+#: decimals, so a dense band of tens of thousands of tracks holds about a
+#: thousand distinct tempos; a gap asks each of them against two neighbours.
+TEMPO_MEMO_SIZE = 8192
+
+
+@lru_cache(maxsize=TEMPO_MEMO_SIZE)
 def _tempo(seed: float, candidate: float) -> Optional[_Match]:
-    """Tempo's match, or None when the candidate is outside every window."""
+    """Tempo's match, or None when the candidate is outside every window.
+
+    Remembered: it is a pure function of two tempos, the most repeated question
+    a ranking asks, and a tuple answer that nothing can change.
+    """
     window = TEMPO_WINDOW_PERCENT / 100
     for detail, heard in (
         (TEMPO_CLOSE, candidate),
@@ -382,10 +404,13 @@ def _tempo(seed: float, candidate: float) -> Optional[_Match]:
     return None
 
 
-def _matches(seed: Traits, candidate: Traits) -> Optional[List[_Match]]:
-    """Every component the two have in common, or None when not a suggestion.
+def _side(seed: Traits, candidate: Traits) -> Optional[List[_Match]]:
+    """Every component the two have in common, or None when the gate refuses.
 
-    The rule, stated once: :func:`score` and :func:`rank` both read it.
+    The rule, stated once. An empty list is a candidate the gate lets through
+    with nothing in common, which only a seed with no BPM can do: whether that
+    is a suggestion is the caller's question. :func:`score` and :func:`rank`
+    say it is not (:func:`_matches`); :func:`fit` asks it of both sides.
     """
     matches: List[_Match] = []
     if seed.bpm is not None:
@@ -411,11 +436,25 @@ def _matches(seed: Traits, candidate: Traits) -> Optional[List[_Match]]:
             matches.append(
                 (COMPONENT_ARTIST, SHARED, ARTIST_POINTS, tuple(sorted(shared)), None)
             )
-    return matches or None
+    return matches
+
+
+def _matches(seed: Traits, candidate: Traits) -> Optional[List[_Match]]:
+    """Every component the two have in common, or None when not a suggestion.
+
+    :func:`score` and :func:`rank` both read it: the gate, and at least one
+    reason.
+    """
+    return _side(seed, candidate) or None
 
 
 def _total(matches: Sequence[_Match]) -> float:
-    return _points(sum(match[2] for match in matches))
+    # A loop rather than sum() over a generator: the same additions in the same
+    # order, so the same float, without a generator per candidate.
+    total = 0.0
+    for match in matches:
+        total += match[2]
+    return round(total, SCORE_DECIMALS)
 
 
 def _similarity(matches: Sequence[_Match]) -> Similarity:
@@ -465,6 +504,206 @@ def rank(
     return [Suggestion(track_id, _similarity(matches)) for _, track_id, matches in best]
 
 
+# ---------------------------------------------------------------- fitting
+
+
+@dataclass(frozen=True)
+class Fit:
+    """How well a candidate fits between two tracks, and why (PREP-04, DEC-105).
+
+    Each side is DEC-096's rule applied to that neighbour as the seed, so the
+    reasons stay per side and a person can see which neighbour a suggestion
+    suits and which it only tolerates.
+
+    Attributes:
+        score: The mean of the present sides' scores, rounded as a score is.
+        before: The candidate against the track before the gap, or None when
+            that side is not being fitted.
+        after: The candidate against the track after the gap, likewise.
+    """
+
+    score: float
+    before: Optional[Similarity]
+    after: Optional[Similarity]
+
+
+@dataclass(frozen=True)
+class FitSuggestion:
+    """A fitted candidate, as :func:`rank_fits` returns it."""
+
+    track_id: int
+    fit: Fit
+
+    @property
+    def score(self) -> float:
+        """The candidate's score."""
+        return self.fit.score
+
+
+#: What :func:`_fit_matches` finds: the score, and each side's matches, or
+#: None for a side that is not being fitted.
+_FitMatch = Tuple[float, Optional[List[_Match]], Optional[List[_Match]]]
+
+
+def _fit_matches(
+    before: Optional[Traits], after: Optional[Traits], candidate: Traits
+) -> Optional[_FitMatch]:
+    """The fit's score and each side's matches, or None when it is not a fit.
+
+    The rule for a gap, stated once, for :func:`fit` and :func:`rank_fits`:
+    the candidate passes the gate against **each** side present (a side with a
+    BPM refuses a candidate outside its tempo window, DEC-096's gate), and has
+    at least one reason on some side. A side with no BPM that shares nothing
+    with the candidate counts as 0 in the mean: the candidate suits one
+    neighbour and nothing about it suits the other, which is what the number
+    should say.
+    """
+    sides: List[Optional[List[_Match]]] = []
+    total = 0.0
+    present = 0
+    reasons = False
+    for seed in (before, after):
+        if seed is None:
+            sides.append(None)
+            continue
+        matches = _side(seed, candidate)
+        if matches is None:
+            return None
+        sides.append(matches)
+        total += _total(matches)
+        present += 1
+        reasons = reasons or bool(matches)
+    if not reasons:
+        return None
+    return _points(total / present), sides[0], sides[1]
+
+
+def _require_a_side(before: Optional[Traits], after: Optional[Traits]) -> None:
+    if before is None and after is None:
+        raise ValueError("A fit is judged against at least one neighbour")
+
+
+def _fit_of(found: _FitMatch) -> Fit:
+    total, before_matches, after_matches = found
+    return Fit(
+        score=total,
+        before=None if before_matches is None else _similarity(before_matches),
+        after=None if after_matches is None else _similarity(after_matches),
+    )
+
+
+def fit(
+    before: Optional[Traits], after: Optional[Traits], candidate: Traits
+) -> Optional[Fit]:
+    """How well ``candidate`` fits between ``before`` and ``after``, or None.
+
+    Either side may be absent, at either end of a Set, and a fit against one
+    side is exactly :func:`score` against it. None when the candidate is outside
+    the tempo window of a side that has a BPM, or has nothing in common with
+    either side.
+
+    Raises:
+        ValueError: If both sides are absent.
+    """
+    _require_a_side(before, after)
+    found = _fit_matches(before, after, candidate)
+    return None if found is None else _fit_of(found)
+
+
+def rank_fits(
+    before: Optional[Traits],
+    after: Optional[Traits],
+    candidates: Iterable[Tuple[int, Traits]],
+    limit: int,
+    *,
+    exclude: Sequence[int] = (),
+) -> List[FitSuggestion]:
+    """The ``limit`` best fits among ``candidates``, by score then track id.
+
+    What :func:`rank` is for one seed, for a gap: each suggestion is exactly
+    what :func:`fit` answers for it, and only the ones kept are turned into
+    reasons. ``exclude`` names tracks that are never suggestions.
+
+    Raises:
+        ValueError: If both sides are absent, or ``limit`` is not a positive
+            whole number.
+    """
+    _require_a_side(before, after)
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
+        raise ValueError(f"limit must be a positive whole number, got {limit!r}")
+    left_out = frozenset(exclude)
+
+    def totals() -> Iterable[Tuple[float, int, _FitMatch]]:
+        for track_id, traits in candidates:
+            if track_id in left_out:
+                continue
+            found = _fit_matches(before, after, traits)
+            if found is not None:
+                yield -found[0], track_id, found
+
+    best = heapq.nsmallest(limit, totals(), key=lambda kept: (kept[0], kept[1]))
+    return [FitSuggestion(track_id, _fit_of(found)) for _, track_id, found in best]
+
+
+def fit_tempo_ranges(
+    before_bpm: Optional[float], after_bpm: Optional[float]
+) -> Tuple[Tuple[float, float], ...]:
+    """The BPMs a candidate may have to pass the gate against both sides.
+
+    Each side with a BPM allows its three windows (:func:`tempo_ranges`), and
+    a candidate must be in one of each side's. So the answer is every
+    non-empty intersection of a window of one with a window of the other,
+    lowest first. With one side's BPM, it is that side's windows. With neither,
+    it is no range at all, which means the tempo does not restrict.
+
+    Empty with both BPMs known means nothing can pass both gates: the gap is
+    too wide to bridge, and :func:`tempo_gap` says by how much. For a
+    pre-selection, as :func:`tempo_ranges` is: widen by a hair, and let
+    :func:`fit` decide the edge.
+    """
+    known = [bpm for bpm in (before_bpm, after_bpm) if bpm is not None and bpm > 0]
+    if not known:
+        return ()
+    if len(known) == 1:
+        return tempo_ranges(known[0])
+    return tuple(
+        sorted(
+            (max(low_a, low_b), min(high_a, high_b))
+            for low_a, high_a in tempo_ranges(known[0])
+            for low_b, high_b in tempo_ranges(known[1])
+            if max(low_a, low_b) <= min(high_a, high_b)
+        )
+    )
+
+
+def tempo_gap(before_bpm: float, after_bpm: float) -> float:
+    """How far apart two tempos are, in percent of the first, as heard.
+
+    The closest of the three ways the rule hears a tempo: as it is, at half
+    time and at double time, so 128 and 64 are 0 apart. Rounded as a score is.
+    What a Set reports when :func:`fit_tempo_ranges` finds nothing that can
+    pass both gates, so a person sees how wide the jump is rather than only
+    that nothing fits.
+
+    Raises:
+        ValueError: If either tempo is not a positive finite number.
+    """
+    for bpm in (before_bpm, after_bpm):
+        if (
+            isinstance(bpm, bool)
+            or not isinstance(bpm, (int, float))
+            or not math.isfinite(bpm)
+            or bpm <= 0
+        ):
+            raise ValueError(f"A tempo is a positive number, got {bpm!r}")
+    return _points(
+        min(
+            abs(heard - before_bpm) / before_bpm * 100
+            for heard in (after_bpm, after_bpm * 2, after_bpm / 2)
+        )
+    )
+
+
 __all__ = (
     "ARTIST_POINTS",
     "COMPONENTS",
@@ -497,10 +736,16 @@ __all__ = (
     "Similarity",
     "Suggestion",
     "Traits",
+    "Fit",
+    "FitSuggestion",
     "compatible_keys",
+    "fit",
+    "fit_tempo_ranges",
     "key_relation",
     "rank",
+    "rank_fits",
     "score",
+    "tempo_gap",
     "tempo_ranges",
     "unused_components",
 )

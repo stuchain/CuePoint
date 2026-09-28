@@ -120,6 +120,9 @@ GUARDED = (
     # PREP-03: a Set's timing rule and the service that edits its plan.
     "cuepoint/core/set_timing.py",
     "cuepoint/services/set_service.py",
+    # PREP-04: what fits at a point in a Set.
+    "cuepoint/models/set_suggestions.py",
+    "cuepoint/services/set_suggestion_service.py",
 )
 
 
