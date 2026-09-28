@@ -3234,3 +3234,281 @@ evidence.
 Missing.
 
 **Decided with**: User · **Date**: 2026-09-21
+
+
+---
+
+## DEC-102 — A Set Is a Kind of Collection Node
+
+**Status**: Approved · **Related**: DEC-006, DEC-017, DEC-058, DEC-059, DEC-011
+
+**Decision**: A Set is a fourth `kind` in the existing Collections tree and table, beside `folder`,
+`collection` and `smart`. Its entries are `collection_tracks` rows, ordered, and a track may repeat
+(DEC-017). What a Set has that a Collection does not — chapters, planned times, notes, acknowledged
+warnings — lives in side tables keyed by the Set and by its entries.
+
+**Reason**: DEC-058 made a Collection and a Set structurally the same and recorded that the difference
+would rest on what this phase adds. A separate set of tables would write Phase 6's tree, folders,
+ordering and drag, DEC-060's membership rule, DEC-011's reference count and Phase 8's export path a
+second time, and each copy would drift. Adding set features to every Collection instead would be the
+merge DEC-058 warned about: "Collection" would stop meaning a crate. A kind keeps one tree and one
+entry table, and keeps the two words meaning two things.
+
+**Implications**:
+- **Widening the kind is a table rebuild, and the rebuild must not cascade.** SQLite cannot change a
+  `CHECK` in place. Under `PRAGMA foreign_keys=ON`, which the migration runner cannot switch off inside
+  its transaction, `DROP TABLE collections` is an implicit `DELETE` that cascades to every
+  `collection_tracks` row and every child node. The migration therefore sets both tables aside first,
+  as m0012 did for `match_candidates`, and restores every id, position and `sqlite_sequence` value.
+  The launch backup (FOUNDATION-11) runs before any migration, so a copy of the pre-migration database
+  always exists.
+- `rekordbox_export_playlists.kind` (m0020) is rebuilt in the same migration to accept `set`, so an
+  exported Set is recorded as what it was (DEC-086).
+- Every place that tests `kind` in Python and TypeScript is audited in one step. `Collection.holds_tracks`
+  becomes true for a Set, and each `kind === "collection"` test in the renderer is either widened or
+  confirmed as meaning a Collection only.
+- `references_for()` splits by kind, so DEC-011's warning finally has a `set_count` to state.
+- A Set sits in DEC-059's folders beside Collections. A folder may hold both.
+
+**Decided with**: User · **Date**: 2026-09-28
+
+---
+
+## DEC-103 — Chapters Are Contiguous Sections With Optional Targets
+
+**Status**: Approved · **Related**: DEC-102, DEC-106, DEC-107
+
+**Decision**: A Set is divided into ordered, named chapters. Every entry belongs to exactly one, and a
+chapter's entries are contiguous in the Set's order. A chapter may carry notes, a target length and a
+target BPM range. The warnings (DEC-106) and suggestions (DEC-105) read the targets.
+
+**Reason**: A divider with no targets is a label. The targets are what turn "Warm-up" into a plan that
+CuePoint can check: forty minutes, 118 to 122 BPM.
+
+**Implications**:
+- A Set always has at least one chapter. A new Set has one, unnamed, and the Set view draws no chapter
+  header while that is the only one, so a Set that never uses chapters looks like a list.
+- Deleting a chapter moves its entries into the chapter before it (the one after, for the first). The
+  last chapter cannot be deleted.
+- Contiguity is enforced by the service on every write and held by a test over random edits.
+- Chapters are not exported to Rekordbox (DEC-109). They appear in the set list files (DEC-110).
+
+**Decided with**: User · **Date**: 2026-09-28
+
+---
+
+## DEC-104 — Prepare Is Its Own Page, and Sets Are in the Library Tree
+
+**Status**: Approved · **Amends**: nothing; enables DEC-020's `prepare` destination · **Related**:
+DEC-062, DEC-072
+
+**Decision**: The `prepare` destination is enabled as the Set Builder: the Sets, the open Set with its
+chapters, times and warnings, and a source panel of suggestions and library tracks. Sets also appear in
+the Library's CuePoint tree, where selecting one scopes the table as a Collection does and "Open in
+Prepare" edits it.
+
+**Reason**: DEC-072's reasoning: a Set beside a source of tracks and a suggestion list does not fit the
+Library page. DEC-062's reasoning still holds for browsing: a Set is a node in the one CuePoint tree, and
+a user filing Sets in folders beside Collections sees them where they filed them.
+
+**Implications**:
+- The Library's Set scope is the browse query's Collection scope, which lists each track once. The Set
+  as a running order, with its repeats, is read through the Set's own entries on the Prepare page.
+- The Collections tree's context menu gains "Open in Prepare" for a Set and "New Set from…" for a
+  Collection, a Smart Collection or a Rekordbox playlist. "New Set from…" copies entries; nothing is
+  converted in place.
+- ORG-11's operations list gains "Add to Set…".
+
+**Decided with**: User · **Date**: 2026-09-28
+
+---
+
+## DEC-105 — Suggestions Fit Both Neighbours
+
+**Status**: Approved · **Related**: DEC-096, DEC-103
+
+**Decision**: Suggestions are DEC-096's rule applied at an insertion point. A candidate is scored
+against the entry before the insertion point and the entry after it, or against one of them at either
+end of the Set. The pool is the whole library or a Collection, Smart Collection or Rekordbox playlist the
+user picks. The chapter's BPM range, when it has one, narrows the pool. Tracks already in the Set are
+marked, not hidden.
+
+**Reason**: "What is like this track" is DEC-096's question. "What goes between these two" is the one a
+Set Builder exists for, and it is the same rule applied twice, so the answer stays deterministic and
+explained.
+
+**Implications**:
+- A candidate must pass DEC-096's tempo gate against each neighbour that has a BPM. Its score is the
+  mean of its two scores, and its reasons are listed per side. Ties break by track id.
+- When nothing can pass both gates, the answer says so, with the tempo gap between the neighbours, and
+  offers each side's own list. It does not loosen the gate.
+- The neighbours themselves and their duplicate groups (DEC-074) are excluded.
+- The rule change is in `core/`, with no SQL and no I/O, like DEC-096's.
+- An empty Set has nothing to fit against and shows no suggestions.
+
+**Decided with**: User · **Date**: 2026-09-28
+
+---
+
+## DEC-106 — Set Warnings Cover Transitions, Entries and Chapters, and Can Be Acknowledged
+
+**Status**: Approved · **Related**: DEC-017, DEC-096, DEC-073, DEC-103, DEC-107
+
+**Decision**: A Set checks each transition for a tempo jump outside DEC-096's window (half and double
+time counted as close), a key that the Camelot wheel does not call compatible, and a BPM or key it cannot
+check. It checks each entry for a missing file and for planned times outside the track, and notes a
+repeated track. It checks each chapter against its target length and BPM range. Every threshold is a
+named constant. A transition warning can be acknowledged. Nothing blocks anything (DEC-017).
+
+**Reason**: A warning that can never be dismissed is read once and then ignored, including the times it
+matters. Reusing DEC-096's window and key relation means Suggestions and warnings judge a transition by
+one rule. A track Suggestions offered for a slot never has a tempo warning there, because tempo is
+DEC-096's gate. Key only adds points in DEC-096, so a suggested track can still clash, and the warning
+then means exactly that it earned no key points.
+
+**Implications**:
+- An acknowledgement belongs to two adjacent entries and records the values it was given. It applies
+  while those entries are adjacent in that order and the values compared are unchanged. A reorder, a
+  replaced entry or a new BPM or key override brings the warning back.
+- A repeated track is a notice, not a warning, because DEC-017 says repeating is legitimate.
+- "Missing file" reads DEC-073's stored status. A library whose files were never checked says so rather
+  than reporting no missing files (DEC-088's rule).
+- A chapter's length check follows DEC-107: over target is reported whenever the timed entries already
+  exceed it; under target is reported only when every entry in the chapter is timed.
+- DEC-017's "PREP-11/PREP-12 never gate export" names the roadmap's placeholder steps. In the
+  specification the warnings are PREP-05 and the two exports PREP-06 and PREP-07; the rule is
+  unchanged.
+
+**Decided with**: User · **Date**: 2026-09-28
+
+---
+
+## DEC-107 — Running Time Comes From Typed Times, and Counts Only What Is Timed
+
+**Status**: Approved · **Recommendation not taken** (Q-109 and its follow-up Q-112)
+
+**Decision**: Each Set entry may carry a planned in time and out time, typed by the user. A Set's and a
+chapter's running time is the sum of the planned lengths of timed entries, and states how many entries
+are untimed. An untimed entry counts as nothing. Playback ignores the times (DEC-108).
+
+**Reason**: The user plans with real times rather than an estimate, and a running time should be a sum of
+what was planned, saying what it leaves out rather than guessing. The recommendation was an estimate from
+full lengths minus a mix length in bars, with no typing; and, for untimed entries, their full length.
+
+**Implications**:
+- An entry is timed when it has an out time. An in time left empty is 0:00.
+- Times are whole seconds, typed as `m:ss` or `h:mm:ss`, with `in < out`, and `out` no later than the
+  track's end when its length is known. A later refresh that shortens a track makes the times a warning
+  (DEC-106), not an error, and nothing rewrites them.
+- A "starts at" time is shown for each entry up to the first untimed one, because after it the clock is
+  unknown.
+- Times belong to the entry, not the track: the same track twice in a Set can be planned twice.
+- Times are not exported to Rekordbox and are not in M3U8. They are in the text and CSV set lists
+  (DEC-110).
+
+**Decided with**: User · **Date**: 2026-09-28
+
+---
+
+## DEC-108 — A Set Plays as the Queue, Whole Tracks, With No Transition Preview
+
+**Status**: Approved · **Recommendation not taken** (Q-110) · **Related**: DEC-012, DEC-050, DEC-056
+
+**Decision**: Playing a Set loads its entries, in order and with repeats, as the queue, starting from
+the entry chosen. Tracks play whole. There is no transition preview, and nothing about the player
+changes.
+
+**Reason**: The user kept the player out of this phase. The recommendation added a "Preview transition"
+built from a seek and a queue of two, inside DEC-056's contract.
+
+**Implications**:
+- The queue is built with the existing `player.playQueue(items)`. `playView` is not used, because the
+  Library's Collection scope lists a repeated track once (DEC-104).
+- DEC-050 and DEC-056 stand unchanged. The player is not told it is playing a Set.
+
+**Decided with**: User · **Date**: 2026-09-28
+
+---
+
+## DEC-109 — A Set Exports as One Rekordbox Playlist
+
+**Status**: Approved · **Related**: DEC-078, DEC-080, DEC-086, DEC-087
+
+**Decision**: Sets join Phase 8's export dialog. Each chosen Set is written as one ordered playlist,
+repeats kept, under CuePoint's folder at its folder path, like a Collection. Chapters, times and notes
+are not written.
+
+**Reason**: A DJ plays from one list. Rekordbox XML has no section marker, so chapters have no honest
+place in it, which is DEC-080's reason for keeping tags in CuePoint.
+
+**Implications**:
+- `EXPORTED_KINDS` gains `set`, and the export record stores it (DEC-102's rebuild of m0020's table).
+- The Collection context menu's "Export to Rekordbox…" (DEC-087) works on a Set and pre-ticks it.
+- Warnings are not mentioned in the preview and never stop an export (DEC-017).
+
+**Decided with**: User · **Date**: 2026-09-28
+
+---
+
+## DEC-110 — A Set List Can Be Saved as Text, CSV or M3U8, or Copied
+
+**Status**: Approved · **Recommendation not taken** (Q-113) · **Related**: DEC-083, DEC-085, DEC-088
+
+**Decision**: "Save set list…" writes a Set as a plain-text tracklist, a CSV or an M3U8 playlist to a
+file the user chooses in a save dialog. "Copy set list" puts the plain-text form on the clipboard.
+
+**Reason**: A tracklist is what a DJ posts after a gig or prints for the booth, and an M3U8 carries the
+Set to other players or a USB stick. The recommendation left M3U8 out.
+
+**Implications**:
+- Text and CSV carry the chapter, the planned times and "artist – title (mix)", read as effective values.
+  M3U8 carries the order, each file's absolute path and an `#EXTINF` line, with each chapter as a
+  comment line. M3U8 has no standard way to say where to start or stop, so it carries no times.
+- The file is written by the engine to the path the save dialog returned, as DEC-083's export is. The
+  engine refuses any other extension or a folder that does not exist. Nothing else is written, and no
+  audio file is opened.
+- A missing file is still listed in the M3U8 and counted, by DEC-088's reasoning: dropping it would
+  make the file quietly differ from the Set.
+- Each save records one activity event. No per-Set save record is kept, because nothing reads one.
+
+**Decided with**: User · **Date**: 2026-09-28
+
+---
+
+## DEC-111 — A Set's Shape Is Its Tempo and Key, and There Is No Energy Field
+
+**Status**: Approved · **Related**: DEC-015, DEC-057, the Phase 12 audio-analysis item
+
+**Decision**: The Set view draws the Set's tempo curve and its key path on the Camelot wheel from the
+entries' effective values. CuePoint gains no energy field in this phase.
+
+**Reason**: Both lanes come from data every library already has. Tags with an "Energy" category already
+let a user record energy by hand (DEC-015). A measured energy is audio analysis, which is Phase 12's, and
+a hand-typed field added now might have to be reconciled with that.
+
+**Implications**:
+- The lanes are drawn in the pixel style, with no chart library.
+- An entry with no BPM or key is a gap in its lane, not a zero.
+
+**Decided with**: User · **Date**: 2026-09-28
+
+---
+
+## DEC-112 — Prepare Lays Out Side by Side
+
+**Status**: Approved · **Related**: DEC-048, the Phase 8 macOS item on the Library's vertical fit
+
+**Decision**: The Prepare page puts the Set and the source panel side by side rather than stacked. An
+end-to-end test holds how many whole rows the Set shows at the default window size and scale. A
+double-click on a partly visible row, which the table's own scroll-into-view currently defeats, is
+fixed in `TrackTable` as a bug.
+
+**Reason**: Stacking two tables halves a height that Phase 8 already found too small at `--scale: 2`. A
+compact density app-wide would reach back into Phases 4 and 6 for a problem that is not Phase 10's alone.
+
+**Implications**:
+- The Library's own vertical fit stays recorded as Phase 8 left it. This decision does not change the
+  Library page, its floor or the default scale.
+- The `TrackTable` fix benefits every table, and is tested where it is made.
+
+**Decided with**: User · **Date**: 2026-09-28

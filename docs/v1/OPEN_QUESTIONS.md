@@ -2236,3 +2236,253 @@ a click between the user and their library, on every launch that falls back to i
 
 **Recommendation**: **A**. It needs a ranking rule nobody has asked for yet, and DEC-096's engine is
 the thing it would be built on.
+
+
+---
+
+## DECISION ROUND 12 — PREPARE ✅ Resolved 2026-09-28
+
+Asked before writing Phase 10's step specifications. Earlier rounds left this phase one rule and
+one warning. DEC-017 decided that a track may repeat in a Set and that Set warnings never block
+export. DEC-058 then made a Collection ordered and repeatable too, and recorded what follows from
+that: the Collection/Set distinction rests entirely on what Phase 10 adds, not on structure. DEC-056
+and DEC-050 each left a door open for a Set Builder use case. DEC-096 wrote Similar Tracks for this
+phase to reuse. None of that says what a Set is in the schema, what a Chapter is, what a warning
+checks, or how a Set leaves CuePoint.
+
+Seven of these came from reading the code rather than the roadmap:
+
+- **The Collection kind is a closed vocabulary.** `collections.kind` carries `CHECK (kind IN
+  ('folder', 'collection', 'smart'))` (m0009), and `rekordbox_export_playlists.kind` carries
+  `CHECK (kind IN ('collection', 'smart'))` (m0020). SQLite cannot widen a `CHECK` in place, so a
+  new kind is a table rebuild.
+- **CuePoint has no mix points.** DEC-077 found that nothing parses cue points or beat grids, and
+  nothing in `src/` mentions energy. A transition can be judged on BPM, key, genre, label, artist
+  and `duration_seconds`, which is a whole number of seconds and may be empty.
+- **DEC-096's rule scores against one seed.** `core/similarity.py::score(seed, candidate)` has one
+  seed, and `similarity_service.similar()` already accepts a scope as a `BrowseQuery`.
+- **The player plays a list.** `player.playQueue(items)` exists beside `playView`, with one decoder
+  and gapless playback (DEC-056).
+- **The Library's Collection scope shows each track once.** `track_query.py`'s `collection_scope`
+  groups by track and keeps its earliest position, so a Set with a repeated track cannot be read
+  through the browse query as a running order.
+- **The seams are waiting.** `ReferenceSummary.set_count` exists and answers zero, and
+  `navRegistry.ts` declares `prepare` disabled with its pixel icon already drawn (SHELL-09).
+- **Short windows are already tight.** Phase 8's macOS pass left the Library's vertical fit at
+  `--scale: 2` open as a design decision. The Set Builder is the first screen with two lists.
+
+Outcomes are DEC-102…DEC-112 in `DECISIONS.md`. Four answers went against the recommendation —
+Q-109, Q-110, Q-112 and Q-113 — and are noted as such below. Q-112 was a follow-up asked because
+of Q-109's answer, and is recorded with it in DEC-107.
+
+---
+
+### Q-104 — What a Set is in the data model
+
+**Status**: Resolved → DEC-102 (Option A chosen: a kind of Collection node)
+
+**Question**: DEC-058 left a Collection and a Set structurally identical. Is a Set a new entity, a
+kind of Collection, or a Collection with more features?
+
+- **Option A — A new `kind` in the Collections tree and table.** Entries are `collection_tracks`
+  rows. Chapters, times and notes live in side tables. Folders, ordering, drag, membership rules,
+  DEC-011's references and export come with it; one migration rebuilds `collections` to widen its
+  `CHECK`.
+- **Option B — Separate tables** (`sets`, `set_entries`, `chapters`) with a folder tree of their own.
+- **Option C — No new concept.** Any Collection can gain chapters and set analysis.
+
+**Recommendation**: **A**. B writes Phase 6's tree and Phase 8's export path a second time. C is the
+merge DEC-058 recorded so that Phase 10 would weigh it rather than drift into it: every Collection
+would carry set features, and "Collection" would stop meaning a crate.
+
+---
+
+### Q-105 — What a Chapter is
+
+**Status**: Resolved → DEC-103 (Option A chosen: sections with optional targets)
+
+**Question**: The roadmap names Chapters and nothing defines them.
+
+- **Option A — Named, contiguous sections of one Set.** Every entry belongs to exactly one. A chapter
+  may carry notes, a target length and a target BPM range, which warnings and suggestions read.
+- **Option B — Named dividers**, with no targets.
+- **Option C — No chapters in v1.**
+
+**Recommendation**: **A**. The targets are what make a chapter part of planning rather than a label,
+and both are optional.
+
+---
+
+### Q-106 — Where Prepare lives in the UI
+
+**Status**: Resolved → DEC-104 (Option A chosen: its own page, and Sets in the Library tree)
+
+**Question**: DEC-062 folded Collections into the Library page; DEC-072 gave Clean its own page. A Set
+Builder needs the Set and a source of tracks on screen at once.
+
+- **Option A — Enable the `prepare` destination** as the Set Builder, and show Sets in the Library's
+  CuePoint tree too, where they scope the table and offer "Open in Prepare".
+- **Option B — Prepare only.** Sets do not appear in the Library pane.
+- **Option C — The Library pane only**, with set tools when a Set is scoped.
+
+**Recommendation**: **A**. It is DEC-072's reasoning: two lists and a suggestion panel do not fit the
+Library page, and a Set is still a node in the one CuePoint tree.
+
+---
+
+### Q-107 — How "what fits next" works
+
+**Status**: Resolved → DEC-105 (Option A chosen: fit both neighbours)
+
+**Question**: DEC-096 answers "what is like this track". A Set Builder asks "what goes here".
+
+- **Option A — DEC-096's rule at an insertion point**, scored against the entry before and the entry
+  after (one neighbour when appending). The pool is the library or a chosen Collection, playlist or
+  Smart Collection; a chapter's BPM range narrows it; tracks already in the Set are marked, not hidden.
+- **Option B — The previous entry only**, with the same pool.
+- **Option C — Similar Tracks unchanged.**
+
+**Recommendation**: **A**. Filling a gap between two tracks is the question a Set Builder exists to
+answer, and it is the same rule applied twice.
+
+---
+
+### Q-108 — Which warnings a Set shows, and whether they can be acknowledged
+
+**Status**: Resolved → DEC-106 (Option A chosen: the full set, with acknowledgement)
+
+**Question**: DEC-017 made every warning advisory. Which exist?
+
+- **Option A — Per transition**: a tempo jump outside DEC-096's window (half and double time counted),
+  a key the Camelot wheel does not call compatible, an unknown BPM or key. **Per entry**: a missing
+  file, a repeated track. **Per chapter**: outside its target length or BPM range. Thresholds are
+  named constants. A transition warning can be acknowledged, and stays acknowledged until either
+  side changes.
+- **Option B — The same**, always shown.
+- **Option C — Tempo and key only.**
+
+**Recommendation**: **A**. A deliberate clash that can never be dismissed teaches a user to stop
+reading the column.
+
+---
+
+### Q-109 — How a Set's running time is worked out
+
+**Status**: Resolved → DEC-107 (Option C chosen: typed in and out times — **not** the recommended
+option)
+
+**Question**: Nothing in the library says where a DJ mixes in or out of a track.
+
+- **Option A — Track lengths minus a per-Set mix length in bars** (default 32, at each track's BPM),
+  shown beside the full-length total and marked as an estimate.
+- **Option B — Full lengths only**, labelled as an upper bound.
+- **Option C — Planned in and out times typed per entry.**
+
+**Recommendation**: **A**. Close enough to plan chapters against, with no typing.
+
+**Chosen**: **C**. The user plans with real times rather than an estimate. See Q-112 for what an
+entry without times means.
+
+---
+
+### Q-110 — How a Set uses the player
+
+**Status**: Resolved → DEC-108 (Option B chosen: play the Set only — **not** the recommended option)
+
+**Question**: The player is one decoder with a queue (DEC-050, DEC-056).
+
+- **Option A — Play the Set as the queue, plus "Preview transition"**: the last ~30 s of A, then B
+  from the start, gapless.
+- **Option B — Play the Set as the queue.**
+- **Option C — Reopen crossfade** for a real overlapped preview, superseding DEC-056.
+
+**Recommendation**: **A**. The preview is a seek and a queue of two, inside DEC-056's contract.
+
+**Chosen**: **B**. The player gains no Set-specific mode, and DEC-056 stays closed.
+
+---
+
+### Q-111 — How a Set reaches Rekordbox
+
+**Status**: Resolved → DEC-109 (Option A chosen: one playlist per Set)
+
+**Question**: Phase 8 exports Collections and Smart Collections as playlists (DEC-078, DEC-081).
+
+- **Option A — Sets join the export dialog**, each as one ordered playlist, repeats kept, under
+  CuePoint's folder at its folder path. Chapters stay in CuePoint.
+- **Option B — A folder per Set** holding the whole-Set playlist and one playlist per chapter.
+- **Option C — Not exported in Phase 10.**
+
+**Recommendation**: **A**. A DJ plays from one list, and Rekordbox XML has no section marker, which
+is DEC-080's reason for keeping tags in CuePoint.
+
+---
+
+### Q-112 — An entry with no times, and whether playback uses them
+
+**Status**: Resolved → DEC-107 (Option C chosen: untimed entries are not counted, and playback plays
+whole tracks — **not** the recommended option). A follow-up to Q-109.
+
+**Question**: With typed times, what does an entry that has none count as, and does "Play Set" start
+and stop at the typed times?
+
+- **Option A — Full length, and playback honors the times.**
+- **Option B — Full length, and playback plays whole tracks.**
+- **Option C — Untimed entries are not counted**, the total says how many are missing, and playback
+  plays whole tracks.
+
+**Recommendation**: **A**. An untimed entry still takes time in a real set, and honoring the times is
+the only way to hear the Set as planned.
+
+**Chosen**: **C**. A running time is a sum of what the user has planned, and it says what it leaves
+out rather than guessing. Playback is unchanged, consistent with Q-110.
+
+---
+
+### Q-113 — Whether a Set can be written out as a set list
+
+**Status**: Resolved → DEC-110 (Option B chosen: text, CSV and M3U8 — **not** the recommended option)
+
+**Question**: DEC-085 kept Phase 8's output to one XML file. Does a Set leave CuePoint any other way?
+
+- **Option A — A plain set list**, as `.txt` or `.csv` through a save dialog, or copied.
+- **Option B — The same, plus an M3U8 playlist** for other players or a USB stick.
+- **Option C — Rekordbox only.**
+
+**Recommendation**: **A**. A tracklist to post or print is the common need.
+
+**Chosen**: **B**. The user wants the Set usable outside Rekordbox as well.
+
+---
+
+### Q-114 — How the Set view shows shape and energy
+
+**Status**: Resolved → DEC-111 (Option A chosen: tempo and key flow, no energy field)
+
+**Question**: Set planning is often drawn as an energy curve, and CuePoint has no energy value.
+
+- **Option A — The Set view draws its tempo curve and key path** from existing values. Energy is not
+  a field; tags with an "Energy" category already express it, and measured energy is Phase 12's.
+- **Option B — A, plus charting a numeric tag category.**
+- **Option C — A first-class 1–10 energy field** in DEC-057's layer.
+
+**Recommendation**: **A**. B reads numbers out of tag names. C adds a field to the rule vocabulary,
+the Inspector and batch editing that Phase 12 may make redundant.
+
+---
+
+### Q-115 — How Prepare is laid out
+
+**Status**: Resolved → DEC-112 (Option A chosen: side by side)
+
+**Question**: At the default scale in a laptop-height window the Library already shows few whole rows
+(Phase 8's macOS pass). The Set Builder has two lists.
+
+- **Option A — The Set and the source panel side by side**, with an end-to-end test that holds the
+  visible row count at the default window size. The double-click that the table's own scroll defeats
+  is fixed in `TrackTable` as a bug. The Library's height item stays recorded.
+- **Option B — A compact row density**, app-wide.
+- **Option C — Stacked panes** with a divider.
+
+**Recommendation**: **A**. Stacking two tables halves a height that is already too small, and B
+reaches back into Phases 4 and 6 for a problem that is not Phase 10's alone.

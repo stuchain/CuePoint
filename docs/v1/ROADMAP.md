@@ -1,6 +1,8 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–12 resolved (DEC-001…DEC-112).**
+Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
+(DEC-102…DEC-112); no step is implemented.
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
 (DEC-090…DEC-101); all twelve steps are implemented and DISCOVER-01's spike is recorded. Phase 9's
 acceptance is met on Windows; the macOS packaged checks and one manual pass through the app
@@ -539,11 +541,31 @@ and a manual pass through the app against the live API are owed.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 
-## Phase 10 — Prepare (PREP-01 … PREP-12)
+## Phase 10 — Prepare (PREP-01 … PREP-12) — specified
 
 Entirely greenfield (Sets/Chapters/Set Builder). Depends on Player (Phase 5) being solid first,
 per the target vision's own layering. Tracks may repeat within a Set; warnings (BPM jumps, etc.)
 are always advisory and never block export (DEC-017).
+
+Decision Round 12 settled the shape (DEC-102…DEC-112), and the steps are specified in
+`PHASE10_PREPARE.md`, twelve as the placeholder had. Reading the code found that DEC-058 had already
+made a Collection structurally a Set, so a Set is a fourth kind of node in the Collections tree
+(DEC-102). Widening that kind means rebuilding the table, and a naive rebuild under
+`foreign_keys=ON` would delete every Collection entry, so the migration sets the rows aside first. It
+also found that CuePoint has no mix points to plan from, that DEC-096's rule scores against one seed,
+and that the Library's Collection scope lists a repeated track once. So a Set's running order is read
+from its entries and never through the browse query.
+
+A Set is divided into contiguous chapters that can carry a target length and BPM range (DEC-103). It
+is built on its own Prepare page and also shown in the Library's tree (DEC-104). Suggestions fit the
+tracks on both sides of a gap (DEC-105). Transitions, entries and chapters are checked by DEC-096's own
+rule, and a transition warning can be acknowledged (DEC-106). The running time is the sum of typed in
+and out times and says how many entries are untimed (DEC-107, against the recommendation of an
+estimate). A Set plays as the queue with the player unchanged (DEC-108, against the recommendation of
+a transition preview). It exports to Rekordbox as one playlist (DEC-109), and saves as a text, CSV or
+M3U8 set list (DEC-110, M3U8 against the recommendation). It shows its tempo and key as lanes, with no
+energy field (DEC-111), and the page is laid out side by side (DEC-112). Phase 5's acceptance and
+Phase 9's macOS and live checks are owed before PREP-10 wires playback.
 
 ## Phase 11 — Waveforms (WAVE-01 … WAVE-07)
 
