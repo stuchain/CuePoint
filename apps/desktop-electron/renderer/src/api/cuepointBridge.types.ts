@@ -289,61 +289,6 @@ export interface JobResultsResponse {
 /** The file type the save dialog filters on; Clean's export names Excel `xlsx` here. */
 export type ExportFormat = "csv" | "json" | "xlsx";
 
-export interface IncrateInventoryRow {
-  id: number;
-  track_id?: string;
-  artist: string;
-  title: string;
-  label?: string;
-  beatport_url?: string | null;
-}
-
-export interface IncrateInventoryResponse {
-  stats: { total: number; with_label?: number };
-  rows: IncrateInventoryRow[];
-  limit?: number;
-  search?: string;
-  demo?: boolean;
-}
-
-export interface IncrateDiscoverTrack {
-  beatport_track_id: number;
-  beatport_url: string;
-  title: string;
-  artists: string;
-  source_type: string;
-  source_name: string;
-  source_label_name?: string | null;
-  source_url?: string | null;
-}
-
-export interface IncrateDiscoverOptions {
-  inventory_stats: { total: number; with_label?: number };
-  artists: { name: string }[];
-  labels: { name: string }[];
-  genres: { id: number; name: string; slug: string }[];
-  token_configured: boolean;
-  defaults: {
-    charts_from: string;
-    charts_to: string;
-    new_releases_days: number;
-  };
-}
-
-export interface IncrateDiscoverResponse {
-  tracks: IncrateDiscoverTrack[];
-  count: number;
-  demo?: boolean;
-}
-
-export interface IncratePlaylistResponse {
-  success: boolean;
-  playlist_url?: string | null;
-  playlist_id?: string | null;
-  added_count: number;
-  error?: string | null;
-}
-
 export type OpenXmlDialogResult =
   | { canceled: true }
   | { canceled: false; filePath: string };
@@ -2215,30 +2160,6 @@ export interface CuePointBridge {
   restartEngine?: () => Promise<EngineStatus>;
   getJob: (jobId: string) => Promise<JobStatus>;
   getJobResults: (jobId: string) => Promise<JobResultsResponse>;
-  getIncrateInventory: (params?: {
-    limit?: number;
-    search?: string;
-    demo?: boolean;
-  }) => Promise<IncrateInventoryResponse>;
-  importIncrateXml: (body: {
-    xml_path: string;
-    enrich?: boolean;
-  }) => Promise<{ imported: number; enriched: number; errors: string[] }>;
-  resetIncrateInventory: () => Promise<{ ok: boolean; stats: { total: number; with_label?: number } }>;
-  getIncrateDiscoverOptions: () => Promise<IncrateDiscoverOptions>;
-  runIncrateDiscover: (body: {
-    demo?: boolean;
-    genre_ids?: number[];
-    charts_from?: string;
-    charts_to?: string;
-    new_releases_days?: number;
-    artist_names?: string[];
-    label_names?: string[];
-  }) => Promise<IncrateDiscoverResponse>;
-  createIncratePlaylist: (body: {
-    name: string;
-    tracks: IncrateDiscoverTrack[];
-  }) => Promise<IncratePlaylistResponse>;
   /**
    * Ask a running job to stop — any job, not only a match (ORG-13).
    *

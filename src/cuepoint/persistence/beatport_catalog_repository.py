@@ -79,7 +79,7 @@ from typing import (
 )
 
 from cuepoint.core.entity_names import name_key
-from cuepoint.incrate.beatport_api_models import CatalogTrack
+from cuepoint.services.beatport_api_models import CatalogTrack
 from cuepoint.models.beatport_cache import (
     CachedBeatportCredit,
     CachedBeatportTrack,

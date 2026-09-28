@@ -44,7 +44,7 @@ import pytest
 from cuepoint.engine import discover_api as api
 from cuepoint.engine.discovery_jobs import JOB_TYPE_DISCOVERY
 from cuepoint.engine.jobs import JobState, JobStore
-from cuepoint.incrate.playlist_name import default_playlist_name
+from cuepoint.services.playlist_name import default_playlist_name
 from cuepoint.models.library_track import LibraryTrack
 from tests.fixtures.beatport_world import BeatportWorld
 

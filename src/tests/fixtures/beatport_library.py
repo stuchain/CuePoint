@@ -118,7 +118,7 @@ def catalog_track(
     release_date: Optional[str] = None,
 ):
     """A DISCOVER-01 ``CatalogTrack``, with ``(id, name)`` credits and label."""
-    from cuepoint.incrate.beatport_api_models import CatalogArtist, CatalogTrack
+    from cuepoint.services.beatport_api_models import CatalogArtist, CatalogTrack
 
     def credits(pairs: Iterable[tuple]) -> tuple:
         return tuple(CatalogArtist(id=i, name=n) for i, n in pairs)

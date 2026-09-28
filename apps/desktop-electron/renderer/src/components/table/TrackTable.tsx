@@ -6,7 +6,7 @@
  * rows are on screen — and nothing else. The query, the sort, the selection
  * and the persistence are all somebody else's state, passed in and handed
  * back, which is what lets one component serve the library table (LIBUI-10),
- * the match review (Phase 7) and inCrate (Phase 9) without learning about any
+ * the match review (Phase 7) and Discover (Phase 9) without learning about any
  * of them.
  *
  * It was extracted from the Results screen's table rather than refactored out

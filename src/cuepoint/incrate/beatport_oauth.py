@@ -1,4 +1,10 @@
-"""Beatport OAuth helpers: client credentials from env/file, token via password grant."""
+"""Beatport OAuth helpers: client credentials from env/file, token via password grant.
+
+Nothing in the product calls this module. It is left where it was, untouched,
+when inCrate retired (DEC-098, DISCOVER-12): the Beatport token is pasted into
+Settings and read from ``incrate.beatport_access_token`` or
+``BEATPORT_ACCESS_TOKEN``, never obtained here.
+"""
 
 import logging
 import os

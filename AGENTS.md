@@ -26,7 +26,7 @@ test material and must not enter core, engine, CLI, or services.
 | Rekordbox, Beatport, tags | `src/cuepoint/data/` |
 | Orchestration | `src/cuepoint/services/` |
 | Engine API/jobs | `src/cuepoint/engine/` |
-| inCrate | `src/cuepoint/incrate/` |
+| Discover (Beatport catalog, runs, pages, similarity) | `src/cuepoint/services/` (`discovery_*`, `beatport_*`, `entity_page_*`, `similarity_*`), `src/cuepoint/core/similarity.py`, `src/cuepoint/engine/discover_api.py` |
 | Shared models | `src/cuepoint/models/`, `src/cuepoint/compat/gui_types.py` |
 | Electron main/preload | `apps/desktop-electron/electron/` |
 | React UI | `apps/desktop-electron/renderer/src/` |

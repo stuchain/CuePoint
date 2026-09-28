@@ -45,7 +45,7 @@ from typing import Any, Dict, Iterable, List, Set
 
 import pytest
 
-from cuepoint.incrate.beatport_api_models import CatalogTrack
+from cuepoint.services.beatport_api_models import CatalogTrack
 from cuepoint.migrations import discover_migrations, split_sql_statements
 from cuepoint.models.beatport_cache import (
     ENTITY_ARTIST,

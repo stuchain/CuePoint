@@ -19,12 +19,10 @@ if logging_yaml.exists():
     datas.append((str(logging_yaml), "config"))
 
 # Package data files must be listed explicitly; PyInstaller only follows the
-# module graph. inCrate reads this at runtime to create its inventory tables,
-# so omitting it makes inCrate fail in packaged builds only.
+# module graph, so a file a package reads at runtime but does not list here
+# fails in packaged builds only. The cuepoint package has none today — its
+# last, inCrate's inventory schema, retired with inCrate (DISCOVER-12).
 # src/tests/unit/scripts/test_engine_sidecar_datas.py guards this.
-incrate_schema = src_root / "cuepoint" / "incrate" / "schema.sql"
-if incrate_schema.exists():
-    datas.append((str(incrate_schema), "cuepoint/incrate"))
 
 try:
     datas.extend(collect_data_files("fake_useragent"))

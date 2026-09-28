@@ -25,9 +25,11 @@ are not shown at all rather than appearing and doing nothing.
 
 **Library** is where your Rekordbox collection lives — see
 [Your library](library.md). **Clean** is where it is matched on Beatport and
-kept tidy — see [Clean](clean.md). Under **Tools**, **inCrate** discovers new
-music; the older **inKey** and **Results** pages became Clean, and a link to
-either opens Clean. Double-clicking a track there plays it; the bar
+kept tidy — see [Clean](clean.md). **Discover** finds new music on Beatport — see
+[Discover](discover.md). The older **inKey** and **Results** pages became Clean,
+and **inCrate** became Discover; a link to any of them opens the page that
+replaced it. There is no **Tools** group any more: when CuePoint has no page to
+reopen, it opens on the Library. Double-clicking a track there plays it; the bar
 along the bottom of the window is the player, and it appears the first time you
 play something — see [Playing music](player.md).
 

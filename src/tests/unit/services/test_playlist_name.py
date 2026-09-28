@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from cuepoint.incrate.playlist_name import default_playlist_name
+from cuepoint.services.playlist_name import default_playlist_name
 
 
 class TestShortFormat:

@@ -1,19 +1,17 @@
 # Beatport API v4: Obtaining an Access Token
 
-CuePoint’s **inCrate** feature (Discover, charts, label releases) uses the [Beatport API v4](https://api.beatport.com/v4/docs/) with **OAuth2**. You need an **access token** and can optionally use a **refresh token** to get new access tokens when they expire.
+CuePoint’s **Discover** page (runs over charts and label releases, artist and label pages, Beatport playlists) uses the [Beatport API v4](https://api.beatport.com/v4/docs/) with **OAuth2**. You need an **access token** and can optionally use a **refresh token** to get new access tokens when they expire.
 
-**Where to set the token in CuePoint:** **Settings → inCrate → Beatport API token**, or the environment variable `BEATPORT_ACCESS_TOKEN` (overrides Settings).
+**Where to set the token in CuePoint:** **Settings → Beatport token**, or the environment variable `BEATPORT_ACCESS_TOKEN` (overrides Settings). It is stored in `~/.cuepoint/config.yaml` as `incrate.beatport_access_token`; the `incrate.` prefix is historical.
 
 ---
 
 ## When do I know the token works?
 
-- **In CuePoint:** The token is working when inCrate uses it successfully:
-  - **Genres load** – On the inCrate page, the **Discover** section shows a list of genres (e.g. House, Techno). If the list is empty and you've set a token, the token may be missing, wrong, or expired.
-  - **Discover returns results** – After you click **Discover** (with at least one genre selected and an imported inventory), the **Results** table fills with tracks from charts and new releases. If you get no results and your inventory has artists/labels, try checking the token or trying again later.
-- **Quick check in Settings:** Use **Settings → inCrate → Test connection** (if available). It calls the API once (e.g. list genres or introspect) and shows "Token OK" or an error message so you don't have to run a full Discover to verify.
+- **In CuePoint:** The **Discover** page says so at the top when it cannot use the token — **Beatport is not connected** (none set), **Beatport rejected the token** (wrong or expired) or **Beatport refused this token** (not allowed to do this) — with a button that opens the token field. With a working token, **New run** lists Beatport's genres.
+- **Quick check in Settings:** **Settings → Test connection** calls the API once and says whether Beatport accepted the token, so you don't have to start a run to find out.
 
-If the token is invalid or expired, you'll typically see empty genres, no Discover results, or an error in the UI or logs. Get a new token (or refresh it) and update Settings or `BEATPORT_ACCESS_TOKEN`.
+If the token is invalid or expired, get a new one (or refresh it) and update Settings or `BEATPORT_ACCESS_TOKEN`. See [Discover](../user-guide/discover.md#a-beatport-token).
 
 ---
 
@@ -41,7 +39,7 @@ After you have **Client ID** (and **Client secret** if they gave you one), use o
 ### 3. Put the token in CuePoint
 
 - Copy the **`access_token`** value from the JSON response (the long string).
-- In CuePoint: **Settings → inCrate → Beatport API token** → paste it there and save.
+- In CuePoint: **Settings → Beatport token** → paste it there and save.
 - Or set the environment variable **`BEATPORT_ACCESS_TOKEN`** to that value.
 
 The token usually expires after a while (e.g. `expires_in` in the response). When it stops working, repeat step 2 (or use the refresh token if you have one) and update CuePoint again.
@@ -127,7 +125,7 @@ A successful token response looks like:
 }
 ```
 
-Use the **`access_token`** value in CuePoint (Settings → inCrate → Beatport API token, or `BEATPORT_ACCESS_TOKEN`).
+Use the **`access_token`** value in CuePoint (Settings → Beatport token, or `BEATPORT_ACCESS_TOKEN`).
 
 ---
 
@@ -186,4 +184,5 @@ http -f POST "https://api.beatport.com/v4/auth/o/revoke/?client_id=$CLIENT_ID&to
 ## References
 
 - [Beatport API v4 docs](https://api.beatport.com/v4/docs/)
-- inCrate design: [incrate-02-beatport-api.md](incrate-02-beatport-api.md)
+- Discover: [the user guide](../user-guide/discover.md)
+- inCrate's original design (historical): [incrate-02-beatport-api.md](incrate-02-beatport-api.md)

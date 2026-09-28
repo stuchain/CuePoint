@@ -70,7 +70,7 @@ from typing import (
 )
 
 from cuepoint.core.entity_names import name_key
-from cuepoint.incrate.beatport_api_models import CatalogChart, CatalogTrack
+from cuepoint.services.beatport_api_models import CatalogChart, CatalogTrack
 from cuepoint.models.beatport_cache import ENTITY_LABEL, BeatportNameLookup
 from cuepoint.models.discovery_run import (
     OWNED_HIDE,

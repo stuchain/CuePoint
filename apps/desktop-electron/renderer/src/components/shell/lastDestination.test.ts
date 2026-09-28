@@ -46,6 +46,11 @@ describe("resolveLaunchDestination", () => {
     expect(resolveLaunchDestination(null).id).toBe(HOME_DESTINATION_ID);
   });
 
+  it("opens the Library when nothing is stored (DEC-100)", () => {
+    // Home was Tools' landing page until DISCOVER-12.
+    expect(resolveLaunchDestination(null).id).toBe("library");
+  });
+
   it("falls back to home when the stored destination no longer exists", () => {
     expect(resolveLaunchDestination("a-page-that-was-removed").id).toBe(HOME_DESTINATION_ID);
   });
@@ -63,7 +68,7 @@ describe("resolveLaunchDestination", () => {
   });
 });
 
-describe("a page that was retired (DEC-071)", () => {
+describe("a page that was retired (DEC-071, DEC-100)", () => {
   it("reopens on Clean for someone who was last on inKey", () => {
     expect(resolveLaunchDestination("match").id).toBe("clean");
   });
@@ -72,12 +77,22 @@ describe("a page that was retired (DEC-071)", () => {
     expect(resolveLaunchDestination("results").id).toBe("clean");
   });
 
-  it("resolves every retired id to an enabled page of its own", () => {
+  it("reopens on Discover for someone who was last on inCrate", () => {
+    expect(resolveLaunchDestination("incrate").id).toBe("discover");
+  });
+
+  it("reopens on the Library for someone who was last on Tools", () => {
+    expect(resolveLaunchDestination("tools").id).toBe("library");
+  });
+
+  it("resolves every retired id to the enabled page that replaced it", () => {
+    // Its replacement, not merely home: Tools' happens to be home, and the
+    // others must not fall through to it.
     for (const retired of RETIRED_DESTINATIONS) {
       const page = resolveLaunchDestination(retired.id);
       expect(page.enabled).toBe(true);
       expect(page.pageId).toBeUndefined();
-      expect(page.id).not.toBe(HOME_DESTINATION_ID);
+      expect(page.id).toBe(retired.replacedBy);
     }
   });
 
@@ -85,17 +100,27 @@ describe("a page that was retired (DEC-071)", () => {
     // The router sends /match on to /clean, and /clean is what gets stored.
     expect(destinationToRemember("/match")).toBeNull();
     expect(destinationToRemember("/results")).toBeNull();
+    expect(destinationToRemember("/incrate")).toBeNull();
+    expect(destinationToRemember("/")).toBeNull();
   });
 
   it("reads a retired id from storage and still lands on Clean", () => {
     localStorage.setItem(LAST_DESTINATION_STORAGE_KEY, "match");
     expect(resolveLaunchDestination(loadLastDestinationId()).id).toBe("clean");
   });
+
+  it.each([
+    ["incrate", "discover"],
+    ["tools", "library"],
+  ])("reads a remembered %s from storage and lands on %s", (stored, page) => {
+    localStorage.setItem(LAST_DESTINATION_STORAGE_KEY, stored);
+    expect(resolveLaunchDestination(loadLastDestinationId()).id).toBe(page);
+  });
 });
 
 describe("destinationToRemember", () => {
   it("remembers a known destination", () => {
-    expect(destinationToRemember("/incrate")?.id).toBe("incrate");
+    expect(destinationToRemember("/settings")?.id).toBe("settings");
   });
 
   it("does not remember an unmatched path", () => {
@@ -159,9 +184,9 @@ describe("one page, not two ids (DEC-062)", () => {
 
 describe("storage", () => {
   it("round-trips the stored id", () => {
-    saveLastDestinationId("incrate");
-    expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("incrate");
-    expect(loadLastDestinationId()).toBe("incrate");
+    saveLastDestinationId("discover");
+    expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("discover");
+    expect(loadLastDestinationId()).toBe("discover");
   });
 
   it("returns null when nothing is stored", () => {
@@ -177,7 +202,7 @@ describe("storage", () => {
       throw new Error("denied");
     });
 
-    expect(() => saveLastDestinationId("incrate")).not.toThrow();
+    expect(() => saveLastDestinationId("discover")).not.toThrow();
     expect(loadLastDestinationId()).toBeNull();
     expect(resolveLaunchDestination(loadLastDestinationId()).id).toBe(HOME_DESTINATION_ID);
   });

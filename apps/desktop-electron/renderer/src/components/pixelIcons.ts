@@ -407,25 +407,6 @@ const match = [
 ];
 
 /**
- * inCrate: records standing in a crate. The first attempt was a plain box with
- * a slot, which read as a minus sign; the dividers are what make it a crate.
- */
-const incrate = [
-  "............",
-  "............",
-  "############",
-  "#..........#",
-  "#.##.##.##.#",
-  "#.##.##.##.#",
-  "#.##.##.##.#",
-  "#.##.##.##.#",
-  "#..........#",
-  "############",
-  "............",
-  "............",
-];
-
-/**
  * Folder: the classic tab-and-body shape (LIBUI-07).
  *
  * Drawn now for the same reason SHELL-09 drew the concept icons — there is a
@@ -532,7 +513,6 @@ export const PIXEL_ICONS = {
   discover,
   prepare,
   match,
-  incrate,
   // LIBUI-07: the playlist pane tells a folder from a set list at a glance.
   folder,
   playlist,

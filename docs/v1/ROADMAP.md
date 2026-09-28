@@ -2,7 +2,9 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–11 resolved (DEC-001…DEC-101).**
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
-(DEC-090…DEC-101); DISCOVER-01 to DISCOVER-11 are implemented, and DISCOVER-01's spike is recorded.
+(DEC-090…DEC-101); all twelve steps are implemented and DISCOVER-01's spike is recorded. Phase 9's
+acceptance is met on Windows; the macOS packaged checks and one manual pass through the app
+against the live API are owed.
 Phase 2's ten steps are implemented and recorded in `PHASE2_SHELL.md`. Phase 3's twelve steps are
 implemented and recorded in `PHASE3_LIBRARY.md` (LIBRARY-01…LIBRARY-12), unblocked by Decision
 Round 5 (DEC-030…DEC-037). Phase 4's ten steps are specified in `PHASE4_LIBUI.md`
@@ -365,7 +367,7 @@ the recommendation to pin classic — the importer reads `Tonality` verbatim, so
 re-imported leaves CuePoint's own key column holding two notations; the default and a preview
 warning are the mitigations).
 
-## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — DISCOVER-01 to DISCOVER-11 implemented
+## Phase 9 — Discover (DISCOVER-01 … DISCOVER-12) — implemented; acceptance met on Windows
 
 Migrates the existing inCrate discovery logic (charts/label-releases, already working) behind a
 proper Discover shell; adds Artist/Label pages and Similar Tracks, which don't exist today.
@@ -520,6 +522,20 @@ Similar tracks shows DISCOVER-08's suggestions as library rows with a Reasons co
 words. The end-to-end journey (Library track, artist page, play, Similar tracks, queue a
 suggestion) passes in a packaged build; its checks found the Beatport half blanking while it
 re-asked and Similar tracks' reasons out of sight on a narrow pane, both fixed.
+
+DISCOVER-12 is implemented, and with it the phase: inCrate, its inventory, its six routes and
+bridge methods, the Tools group and its landing page are gone, each deletion after a caller
+search recorded in the step's outcome. The Library is home; `/incrate` and a remembered `incrate`
+open Discover, and `/` and a remembered `tools` open the Library. inCrate's inventory database and
+past results stay on disk, read by nothing, and the user guide says where they are and which five
+`incrate.` settings nothing reads. The legacy catalog parsers went too, and `beatport_api.py`
+joined the strict type gate. ADR-007 records the design. The whole-phase journey — match and
+accept two tracks, resolve, a run hiding them as owned, the wantlist and a push, an artist page by
+id and a label page by name, play, Similar tracks, relaunch onto the Library — passes three times
+in a row in a packaged Windows build, over one Beatport fixture for Clean's matcher and the v4 API.
+Its checks found the new fixture git-ignored and a fixture that would have aged out of the artist
+page's window; both were fixed. The phase acceptance is met on Windows; the macOS packaged checks
+and a manual pass through the app against the live API are owed.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 

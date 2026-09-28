@@ -1,8 +1,8 @@
-# inCrate: inventory and discovery for CuePoint.
-# Public API re-exported as needed by services.
+"""What is left of inCrate: ``beatport_oauth.py`` alone (DISCOVER-12).
 
-from cuepoint.incrate.beatport_api_models import DiscoveredTrack
-from cuepoint.incrate.models import CollectionTrack, InventoryRecord
-from cuepoint.incrate.playlist_writer import PlaylistResult
-
-__all__ = ["CollectionTrack", "DiscoveredTrack", "InventoryRecord", "PlaylistResult"]
+inCrate's inventory, enrichment, discovery and playlist code retired into
+Discover (DEC-090, DEC-099). The catalog models moved to
+``services/beatport_api_models.py`` and the playlist name to
+``services/playlist_name.py``. ``beatport_oauth.py`` stays where it is,
+untouched, per DEC-098.
+"""

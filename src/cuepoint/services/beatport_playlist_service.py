@@ -46,7 +46,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence, Tuple
 
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
-from cuepoint.incrate.playlist_name import default_playlist_name
+from cuepoint.services.playlist_name import default_playlist_name
 from cuepoint.services.beatport_api_client import (
     ERROR_FORBIDDEN,
     ERROR_NO_TOKEN,

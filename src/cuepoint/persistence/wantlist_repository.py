@@ -30,7 +30,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Dict, List, Optional, Sequence, Set, Tuple
 
-from cuepoint.incrate.beatport_api_models import CatalogTrack
+from cuepoint.services.beatport_api_models import CatalogTrack
 from cuepoint.models.beatport_cache import CachedBeatportTrack
 from cuepoint.models.discovery_run import (
     OWNED_ALL,

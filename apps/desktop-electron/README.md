@@ -46,16 +46,17 @@ the repository and starts the engine automatically.
 
 | Route | Screen |
 |-------|--------|
-| `/` | Home (Tools) |
-| `/library` | Library: the imported collection |
+| `/library` | Library: the imported collection, and home |
 | `/collections` | The Library page, aimed at Collections |
 | `/clean` | Clean: matching, review, missing files, duplicates, Health |
-| `/incrate` | inCrate workflow |
+| `/discover` | Discover: runs, the wantlist, and under it the Artist, Label and Similar tracks pages |
 | `/settings` | Settings |
 
 `/match` and `/results`, inKey's and Results' old addresses, redirect to
-`/clean` (DEC-071); `renderer/src/components/shell/navRegistry.ts` declares
-every destination and every retired one.
+`/clean` (DEC-071); `/incrate` redirects to `/discover`, and `/` — Tools'
+landing page — to `/library` (DEC-100). A path that matches nothing redirects to
+the Library too. `renderer/src/components/shell/navRegistry.ts` declares every
+destination and every retired one.
 
 ## Docs
 

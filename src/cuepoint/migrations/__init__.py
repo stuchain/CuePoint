@@ -16,7 +16,7 @@ defining:
 Migrations are **Python modules rather than .sql data files** on purpose: a
 module can be validated at import, and a data file must be listed in the
 PyInstaller spec by hand — something this repository has already missed once
-(``incrate/schema.sql``), which breaks the database in exactly the situation
+(inCrate's ``schema.sql``, since retired), which breaks the database in exactly the situation
 hardest to debug, a shipped build on a user's machine.
 
 That choice does **not** make them free. ``discover_migrations`` finds them with

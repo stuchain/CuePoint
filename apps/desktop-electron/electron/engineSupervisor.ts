@@ -815,48 +815,6 @@ export class EngineSupervisor {
     return (await this.readyClient()).getJobResults(jobId);
   }
 
-  async getIncrateInventory(params?: {
-    limit?: number;
-    search?: string;
-    demo?: boolean;
-  }): Promise<Record<string, unknown>> {
-    return (await this.readyClient()).getIncrateInventory(params);
-  }
-
-  async importIncrateXml(body: {
-    xml_path: string;
-    enrich?: boolean;
-  }): Promise<Record<string, unknown>> {
-    return (await this.readyClient()).importIncrateXml(body);
-  }
-
-  async resetIncrateInventory() {
-    return (await this.readyClient()).resetIncrateInventory();
-  }
-
-  async getIncrateDiscoverOptions(): Promise<Record<string, unknown>> {
-    return (await this.readyClient()).getIncrateDiscoverOptions();
-  }
-
-  async runIncrateDiscover(body: {
-    demo?: boolean;
-    genre_ids?: number[];
-    charts_from?: string;
-    charts_to?: string;
-    new_releases_days?: number;
-    artist_names?: string[];
-    label_names?: string[];
-  }): Promise<{ tracks: Record<string, unknown>[]; count: number; demo?: boolean }> {
-    return (await this.readyClient()).runIncrateDiscover(body);
-  }
-
-  async createIncratePlaylist(body: {
-    name: string;
-    tracks: Record<string, unknown>[];
-  }): Promise<Record<string, unknown>> {
-    return (await this.readyClient()).createIncratePlaylist(body);
-  }
-
   async cancelJob(jobId: string): Promise<{ id: string; state: string }> {
     return (await this.readyClient()).cancelJob(jobId);
   }

@@ -15,7 +15,7 @@ npm run build
 
 - `src/tokens/` — CSS design tokens, integer scale helper
 - `src/components/` — Phase 1 component library + Storybook stories
-- `src/screens/` — The pages: home, Library, Clean, inCrate and Settings
+- `src/screens/` — The pages: Library (home), Clean, Discover and Settings
 - `src/api/` — The bridge types and the pure helpers the pages share
 
 Design sign-off checklist: [../docs/design-signoff.md](../docs/design-signoff.md)

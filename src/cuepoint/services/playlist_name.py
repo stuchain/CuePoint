@@ -1,4 +1,9 @@
-"""Playlist name generation for inCrate (Phase 4): short (e.g. feb26) or ISO date."""
+"""A Beatport playlist's default name: short (e.g. feb26) or ISO date.
+
+Written for inCrate and kept when it retired (DISCOVER-12): the playlist push
+(``beatport_playlist_service.py``) names a playlist this way unless the user
+gives a name, in the format ``incrate.playlist_name_format`` chooses.
+"""
 
 from datetime import date
 from typing import Optional

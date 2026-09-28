@@ -16,7 +16,6 @@ import pytest
 
 from cuepoint.services.checkpoint_service import CheckpointService
 from cuepoint.services.database_service import DatabaseService
-from cuepoint.services.incrate_discovery_service import IncrateDiscoveryService
 from cuepoint.services.interfaces import (
     IActivityRepository,
     IActivityService,
@@ -27,8 +26,6 @@ from cuepoint.services.interfaces import (
     IConfigService,
     IDatabaseService,
     IExportService,
-    IIncrateDiscoveryService,
-    IInventoryService,
     IJobRepository,
     ILoggingService,
     IMatcherService,
@@ -40,7 +37,6 @@ from cuepoint.services.interfaces import (
     ITelemetryService,
     ITrackRepository,
 )
-from cuepoint.services.inventory_service import InventoryService
 from cuepoint.services.onboarding_service import OnboardingService
 from cuepoint.services.privacy_service import PrivacyService
 from cuepoint.services.security_service import SecurityService
@@ -49,8 +45,6 @@ from cuepoint.services.security_service import SecurityService
 _NEW_INTERFACE_PAIRS = [
     (PrivacyService, IPrivacyService),
     (OnboardingService, IOnboardingService),
-    (InventoryService, IInventoryService),
-    (IncrateDiscoveryService, IIncrateDiscoveryService),
     (SecurityService, ISecurityService),
     (CheckpointService, ICheckpointService),
     (DatabaseService, IDatabaseService),
@@ -141,8 +135,6 @@ class TestBootstrapRegistration:
             IProcessorService,
             IExportService,
             ITelemetryService,
-            IInventoryService,
-            IIncrateDiscoveryService,
             IPrivacyService,
             IOnboardingService,
             IDatabaseService,
@@ -232,39 +224,8 @@ class TestBootstrapRegistration:
             == configured
         )
 
-    @pytest.fixture
-    def container_with_temp_inventory(self, container, tmp_path):
-        """Point the inventory DB at a temp file, never the user's real one."""
-        container.resolve(IConfigService).set(
-            "incrate.inventory_db_path", str(tmp_path / "inventory.sqlite")
-        )
-        return container
-
-    @pytest.mark.parametrize(
-        "concrete",
-        [InventoryService, IncrateDiscoveryService],
-        ids=lambda v: v.__name__,
-    )
-    def test_concrete_registration_preserved(self, container, concrete):
-        """engine/incrate_api.py resolves these by concrete class."""
-        assert container.is_registered(concrete)
-
     def test_privacy_service_resolves_to_implementation(self, container):
         assert isinstance(container.resolve(IPrivacyService), PrivacyService)
 
     def test_onboarding_service_resolves_to_implementation(self, container):
         assert isinstance(container.resolve(IOnboardingService), OnboardingService)
-
-    def test_inventory_resolves_via_both_keys(self, container_with_temp_inventory):
-        container = container_with_temp_inventory
-        assert isinstance(container.resolve(IInventoryService), InventoryService)
-        assert isinstance(container.resolve(InventoryService), InventoryService)
-
-    def test_discovery_resolves_via_both_keys(self, container_with_temp_inventory):
-        container = container_with_temp_inventory
-        assert isinstance(
-            container.resolve(IIncrateDiscoveryService), IncrateDiscoveryService
-        )
-        assert isinstance(
-            container.resolve(IncrateDiscoveryService), IncrateDiscoveryService
-        )

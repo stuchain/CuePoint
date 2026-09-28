@@ -29,67 +29,19 @@ See [Troubleshooting](../user-guide/troubleshooting.md) for common errors and fi
 
 They became **Clean** (DEC-071). Import your collection once in the Library, then match a playlist, a Collection or the whole library from Clean, and review there. Past searches' CSV files stay where they were saved; CuePoint no longer lists them. See [Where inKey and Results went](../user-guide/clean.md#where-inkey-and-results-went). The command-line tool is unchanged.
 
-### Does inCrate find tracks on Beatport the same way as Clean?
+### Where did inCrate go?
 
-Yes. When inCrate enriches your inventory (fills in missing labels from Beatport), it uses the **same matching pipeline** as Clean and the CLI:
+It became **Discover** (DEC-090, DEC-100), and the **Tools** group it sat in is gone; the app opens on the Library when it has no page to reopen, and an old inCrate link opens Discover. Discover works on the collection you imported in the Library, so there is no second import, and it knows which tracks you own from Clean's matches. inCrate's inventory file and its past results stay on your computer, read by nothing; see [Where inCrate went](../user-guide/discover.md#where-incrate-went) for where they are and which settings you may delete.
 
-- **Same processing:** `IProcessorService.process_track(idx, track)` — same query generation (`make_search_queries`), matcher (`best_beatport_match`), scoring, guards, and early exit.
-- **Same parallelism:** Worker count comes from **processing.track_workers** (capped by **performance.max_workers**). With more than one worker, enrichment runs in a `ThreadPoolExecutor`, as a Clean match does.
+### What does a Discover run do?
 
-So track search, matching, and parallel workers are identical.
+A run is a background job, shown in the status strip, that you can stop:
 
-### Where can I see inCrate import progress logs?
+1. **Charts.** For each genre you chose, it lists Beatport's charts in the date range and keeps those made by an artist in your library — by Beatport id where CuePoint knows it, otherwise by name.
+2. **New releases.** For each label in your library, it reads the label's tracks released in the last few days (30 unless you choose otherwise). A label is found on Beatport once and remembered, so a second run makes no label searches.
+3. **Every reason, kept.** A track found in two charts and a release keeps all three reasons. The run is stored with its tracks, so you can reopen it after a relaunch.
 
-During XML import, the app logs each phase (parsing, DB write, enrichment). To see them:
-
-- **Log file:** Open the app’s log file (e.g. **Help → Open logs folder**, then open `cuepoint.log`). Search for `inCrate import:` to see lines like:
-  - `inCrate import: starting streaming parse of …`
-  - `inCrate import: parsing progress — N tracks so far`
-  - `inCrate import: parse complete — N tracks`
-  - `inCrate import: progress_cb(total=-1) -> Parsing XML... (N tracks)`
-  - `inCrate import: done — imported=…, enriched=…`
-- **Log level:** If you don’t see these, ensure logging level is **Info** or **Debug** in Settings.
-
-### What happens when I click Discover?
-
-When you click **Discover** in inCrate, the app does the following (in a background thread so the UI stays responsive):
-
-1. **Your choices**
-   It uses the **genres you selected** in “Genres (multi-select)” and a fixed date range: **charts** = past month (roughly 31 days to today), **new releases** = last 30 days.
-
-2. **Charts branch**
-   - Reads **library artists** from your inventory (the Rekordbox collection you imported).
-   - For **each selected genre**, calls the Beatport API to list charts in that date range.
-   - For each chart, checks if the **chart author** is one of your library artists.
-   - If yes, fetches that chart’s detail and adds **every track** on the chart to the result.
-   So you only get chart tracks from DJs who are already in your collection.
-
-3. **New releases branch**
-   - Reads **library labels** from your inventory (labels that were filled in during import/enrichment).
-   - For each label, looks up the **Beatport label ID** (search by name), then asks the API for **releases in the last 30 days**.
-   - For each release, adds all its **tracks** to the result.
-   So you get new releases only from labels that appear in your collection.
-
-4. **Combine and dedupe**
-   Chart tracks and new-release tracks are merged, then **deduplicated by Beatport track ID** (each track appears once). Chart tracks are listed first, then new releases.
-
-5. **Show results**
-   The resulting list is shown in the **Results** table. You can **Export CSV** or **Add to playlist** (Beatport) from there.
-
-**Requirements:** You need an **inventory** (Import a Rekordbox XML first) and a valid **Beatport API token** in Settings → inCrate. If you select no genres, the charts branch returns 0 tracks; new releases still run for all your library labels.
-
-### Where can I see inCrate Discover progress and logs?
-
-When you click **Discover**, the UI shows a progress bar and status text (e.g. “Charts: 2/5 genres”, “New releases: 1/3 labels”). Full logs are written to the same log file as import:
-
-- **Log file:** Help → Open logs folder, then open `cuepoint.log`. Search for `inCrate discovery:` to see:
-  - `inCrate discovery: user clicked Discover — genres=…, from=…, to=…`
-  - `inCrate discovery: thread run() started — genres=…, from=…, to=…, days=…`
-  - `inCrate discovery: charts branch — N genres, …`
-  - `inCrate discovery: progress_cb -> Charts: 2/5 genres` (and similar for releases)
-  - `inCrate discovery: done — charts=…, releases=…, combined=…, deduped=…`
-  - `inCrate discovery: finished — N tracks`
-- **Log level:** Use **Info** or **Debug** (Debug shows per-genre/per-label steps).
+Tracks you already own — ones with an accepted Beatport match in Clean — are hidden and counted. Nothing a run does changes your library or your files. See [Discover](../user-guide/discover.md).
 
 ### What formats can I export?
 

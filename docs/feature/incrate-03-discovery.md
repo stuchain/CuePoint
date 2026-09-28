@@ -1,8 +1,12 @@
 # inCrate implementation design 03: Discovery flow (Phase 3)
 
-**Implementation order:** Phase 3 — build after Phase 1 (Inventory) and Phase 2 (Beatport API).  
-**Spec:** [../incrate-spec.md](../incrate-spec.md)  
-**Previous:** [incrate-01-inventory.md](incrate-01-inventory.md), [incrate-02-beatport-api.md](incrate-02-beatport-api.md)  
+> **Status: historical.** inCrate retired into Discover in DISCOVER-12 (DEC-090,
+> DEC-100). This page describes inCrate as it was built, and is kept as a record;
+> for how discovery works now, see [Discover](../user-guide/discover.md).
+
+**Implementation order:** Phase 3 — build after Phase 1 (Inventory) and Phase 2 (Beatport API).\
+**Spec:** [../incrate-spec.md](../incrate-spec.md)\
+**Previous:** [incrate-01-inventory.md](incrate-01-inventory.md), [incrate-02-beatport-api.md](incrate-02-beatport-api.md)\
 **Next:** [incrate-04-playlist-and-auth.md](incrate-04-playlist-and-auth.md).
 
 ---

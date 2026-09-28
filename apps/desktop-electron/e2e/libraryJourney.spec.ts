@@ -133,6 +133,11 @@ async function importCollection(window: Page, xmlPath: string) {
   expect(finished!.state).toBe("succeeded");
   // The import really did run as a job, and the job store knows what kind.
   expect(finished!.type).toBe("library_import");
+  // The Library is home (DEC-100), so it is already open, and it reads the
+  // library when it loads: an import made behind its back, through the bridge,
+  // is seen on the next load — as it would be after a relaunch.
+  await window.reload();
+  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
   return started.job_id;
 }
 
@@ -237,7 +242,7 @@ test.describe("Phase 3 end to end (LIBRARY-12)", () => {
       // ---------------------------------------------------------------- 6
       // The status strip reports library work from anywhere in the app, so this
       // is asserted from a different page than the one that started it.
-      await window.getByRole("link", { name: "Tools" }).click();
+      await window.getByRole("link", { name: "Settings" }).click();
       // Large enough to outlive the strip's two-second discovery poll
       // (`JOB_POLL_MS`) on the fastest machine we know of. 60,000 was sized on
       // Windows and an M5 imports it between two polls, so the strip never saw

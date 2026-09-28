@@ -7,8 +7,7 @@ DISCOVER-04 to DISCOVER-08 built ownership and identity, discovery runs, the
 wantlist and the playlist push, Artist and Label pages, and Similar Tracks.
 This module is how the renderer reaches all of them. Every route lives under
 ``/api/v1/discover/``, and nothing here is called ``incrate``: inCrate's routes
-stay where they are until DISCOVER-12 retires them, so both screens work in
-every build between.
+stayed beside these until DISCOVER-12 retired them, and now answer 404.
 
 The routes
 ----------

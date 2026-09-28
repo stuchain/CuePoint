@@ -96,6 +96,10 @@ GUARDED = (
     "cuepoint/services/review_export_service.py",
     "cuepoint/services/beatport_api_client.py",
     "cuepoint/services/beatport_catalog.py",
+    # DISCOVER-12: inCrate's legacy parsers retired, and the rest is clean.
+    "cuepoint/services/beatport_api.py",
+    "cuepoint/services/beatport_api_models.py",
+    "cuepoint/services/playlist_name.py",
     "cuepoint/data/beatport_fixture.py",
     "cuepoint/services/track_credit_links.py",
     "cuepoint/services/match_comparison.py",

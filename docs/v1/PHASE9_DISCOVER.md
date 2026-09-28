@@ -1,7 +1,9 @@
 # CuePoint v1.0.0 — Phase 9: Discover, Detailed Step Specifications
 
-Status: **DISCOVER-01 to DISCOVER-11 implemented, and DISCOVER-01's spike recorded against the
-live API (2026-09-23; see its outcome). DISCOVER-12 not started.** The twelve steps below replace the
+Status: **DISCOVER-01 to DISCOVER-12 implemented, and DISCOVER-01's spike recorded against the
+live API (2026-09-23; see its outcome). The phase-level acceptance is met on Windows (checked point
+by point below, 2026-09-28); the macOS packaged checks and one manual pass through the app against
+the live API are owed.** The twelve steps below replace the
 roadmap's placeholder
 inventory (DISCOVER-01…DISCOVER-09, which Round 11's answers came in three over).
 Per the process, no implementation happens from this document — each step needs an explicit
@@ -2812,6 +2814,162 @@ what CLEAN-14 found. The redirects exist so no remembered state lands on a blank
 
 **Complexity**: **L**
 
+**Outcome** (2026-09-28): **Implemented.** inCrate, its inventory, its routes and the Tools group
+are gone; the Library is home; `/incrate` and a remembered `incrate` open Discover, and `/` and a
+remembered `tools` open the Library. The phase's journey passes end to end in a packaged Windows
+build, three times in a row, over one Beatport fixture that answers Clean's matcher and the v4 API.
+
+**What was deleted**, each after a search for its callers (recorded below): 30 files, about 8,000
+lines.
+
+- **Engine**: `incrate/enrichment.py`, `inventory_db.py`, `collection_parser.py`, `schema.sql`,
+  `discovery.py`, `past_results_storage.py`, `playlist_writer.py` (the whole module: the push job
+  never used its API path, and nothing else called it), `beatport_playlist_browser.py` and
+  `models.py`; `services/inventory_service.py` and `incrate_discovery_service.py`, with
+  `IInventoryService`, `IIncrateDiscoveryService` and their four DI registrations;
+  `engine/incrate_api.py` and its six routes in `server.py`; `scripts/create_incrate_playlist.py`
+  (DEC-099); the `schema.sql` entry in `build/engine-sidecar.spec`; and each module's tests.
+- **The legacy catalog reads**: `BeatportApi.list_genres`, `list_charts`, `get_chart` and
+  `get_label_releases`, the six parsers that guessed between nestings, `api_track_url_to_web`, their
+  four caches, and the models only they built (`ChartSummary`, `ChartTrack`, `ChartDetail`,
+  `LabelRelease`, `LabelReleaseTrack`, `DiscoveredTrack`). DISCOVER-01 said they would go here; with
+  them went the 14 known type errors, so `beatport_api.py` joined the strict mypy gate once its label
+  search's three were fixed.
+- **`data/rekordbox.py::parse_collection`**, not in the specification's list: the caller search found
+  that its only caller was `incrate/collection_parser.py`, and its comment's claim that it "serves
+  the matching pipeline" was not true. It went with its 12 tests; the library's own parser is now the
+  only COLLECTION parser.
+- **Renderer**: `InCrateMainScreen`, `ToolSelectionScreen` and its test, and `hooks/useFileDrop.ts`,
+  whose only user was inCrate's import; the CSS rules only those screens drew, and the `incrate`
+  pixel icon.
+- **The six contract files** lose `getIncrateInventory`, `importIncrateXml`, `resetIncrateInventory`,
+  `getIncrateDiscoverOptions`, `runIncrateDiscover` and `createIncratePlaylist`, and the six
+  `Incrate*` types. The Beatport token methods stay (DEC-098), and a test holds them.
+
+**What moved.** The catalog models to `services/beatport_api_models.py`, beside the API and the
+parsers that build them, and `playlist_name.py` to `services/`, beside the push that names a
+playlist with it; both joined the strict mypy gate. `incrate/` now holds `beatport_oauth.py` alone,
+untouched but for a docstring saying that nothing in the product calls it (DEC-098), and an
+`__init__.py` saying where everything else went.
+
+**The caller searches** (code, scripts and build files; generated PyInstaller output and the tests
+that assert these names are absent excluded). Each returned nothing after the deletion:
+
+| Searched for | Found |
+| --- | --- |
+| `InventoryService`, `IncrateDiscoveryService`, `incrate_api`, `enrich_labels_for_empty` | 0 |
+| `inventory_db`, `collection_parser`, `past_results_storage`, `playlist_writer`, `beatport_playlist_browser` | 0 in code; `incrate.inventory_db_path` is a config key and stays |
+| `create_incrate_playlist`, `schema.sql` | 0 in code, scripts and the sidecar spec |
+| `InCrateMainScreen`, `ToolSelectionScreen`, `useFileDrop` | 0 |
+| the six bridge methods, `/api/v1/incrate` | 0 |
+| `list_genres`, `list_charts`, `get_chart(`, `get_label_releases`, the six legacy models, `parse_collection(` | 0 in code; two docstrings say they retired |
+
+The specification's own check, `grep -rn "incrate_api\|InventoryService\|enrich_labels_for_empty"
+src/`, is `test_retired_incrate.py::test_the_steps_own_search_finds_nothing`, which builds the names
+from parts so it does not match itself.
+
+**Navigation** (DEC-100): `HOME_DESTINATION_ID` is `library`; `NAV_GROUPS` is `workspace` and
+`system`; `incrate` (→ Discover) and `tools` (→ the Library, at `/`) joined `RETIRED_DESTINATIONS`, so
+the router redirects both paths and launch memory resolves both ids to the page that replaced
+them. A path that matches nothing now **redirects** to the Library rather than rendering it in place,
+so the address, the sidebar and launch memory agree on where the user is. Settings needed no change:
+its token field never named inCrate, and its behavior is DEC-098's.
+
+**Documentation.** Discover's user guide gains "Where inCrate went" — what replaced what, the two
+files left behind and where each is on Windows, macOS and Linux, that nothing reads them and they can
+be deleted by hand, and which five `incrate.` settings are read by nothing — and a paragraph on why
+"not owned" depends on Clean's matches. The Library guide's DEC-030 note that two collection imports
+can disagree is gone; there is one. The FAQ's four inCrate answers became "Where did inCrate go?" and
+"What does a Discover run do?". `docs/features/incrate.md`, `docs/incrate-spec.md` and the five
+`docs/feature/incrate-*` designs are marked historical and point to Discover; the Beatport token page
+names Settings and Discover. ADR-007 (`007-discover-on-the-library.md`) records why discovery reads
+the library, why ownership is computed, why an artist is a Beatport id or a name, and why similarity
+is local. The changelog records the retirement and the removed routes as a breaking engine-API
+change. The READMEs, the docs index, `AGENTS.md`'s map and the window guide say Discover and Library
+home. `IncrateConfig`'s docstring says which of its keys are read and which are not.
+
+**Where it differs from the specification, and why.**
+
+- **`parse_collection` was deleted too**, as above: the caller search is the list, not the other way
+  round.
+- **The unmatched-path route redirects** rather than rendering home in place. Rendering in place was
+  harmless while home was a landing page nobody stayed on; with the Library as home it would have
+  shown the Library under a wrong address, with no sidebar entry lit and nothing remembered.
+- **The parity test's answer is kept.** The specification deletes the parity test with inCrate. Its
+  finding — the seven tracks inCrate found, in its order, in 19 requests — is now two values in
+  `test_discovery_service.py`, measured against HEAD's inCrate before it went, so the port still
+  cannot drift.
+- **The chart regression test was rewritten, not deleted.** It imported inCrate's internals; it now
+  holds `parse_catalog_chart`, `BeatportApi.charts` and `chart_curator` to the same recorded page and
+  the same two bugs.
+- **`test_beatport_genres.py`'s cache test stays**: a cache can still hold inCrate's first-page genre
+  answer, and `genres()` must never read it as the whole listing.
+
+**The journey** (`e2e/discoverPages.spec.ts`, "the whole of Phase 9"), in a packaged build, with
+Beatport answered by `src/tests/fixtures/beatport/phase/`: import a four-track library with a
+two-track playlist; match that playlist on the Clean page, both accepted automatically; resolve
+Beatport identities from Discover's banner; run discovery over House and see the four tracks of Mara
+Veil's chart with the two accepted hidden and counted ("2 owned tracks hidden"), then shown as Owned;
+add one to the wantlist and push the two not owned to a new Beatport playlist ("Added 2 tracks to
+“Journey push” on Beatport", with the playlist's link); open Mara Veil from the Inspector and land on
+her page **by id** (`bp:301001`), "Beatport artist", with her two tracks and "4 tracks released since
+…, 2 owned"; open Cold Room from the Inspector and land on its page **by name**, "Grouped by name" and
+"Not found on Beatport"; play Signal from it; open Similar tracks for Signal and queue a suggestion
+without interrupting; follow an old `/incrate` address to Discover and `/` to the Library; relaunch,
+land on the Library, and reopen the kept run with the same tracks and why each was found.
+`test_phase_journey_fixture.py` runs the same engine half on every build — offline, every
+connection refused — and holds the fixture to it, including that nothing in the library's tables was
+written (acceptance 10).
+
+**Found and fixed on the way.**
+
+- **The new fixture would never have been committed.** `.gitignore` ignores `*.json`;
+  `test_regression_fixtures_not_ignored.py` caught it in the full suite, and it now has its
+  exception beside DISCOVER-10's.
+- **A fixture that ages.** An artist page keeps only tracks dated inside its window, so a fixture with
+  fixed dates would stop passing as the calendar moved. The fixture loader now answers a body string
+  `{{today-N}}` as that day's date, counted when the answer is sent, with its own tests.
+- **Nineteen end-to-end tests assumed the app opened elsewhere.** With the Library as home it is
+  already open when a test imports through the bridge, and it reads the library when it loads.
+  Nothing in the product imports behind the page — only the Library page starts an import or a
+  refresh, and it reloads itself after — so the tests, not the product, changed: each bridge import
+  helper reloads the window afterwards, as a relaunch would, and says why.
+- **One packaged run of the journey failed once**, at the push: the playlist notice never appeared.
+  It did not happen again in ten more packaged runs, alone or beside the other specs. The step had
+  one real race — adding to the wantlist reloads the run's table, and the next Ctrl-click could land
+  mid-reload — so the journey now waits for the row to read "Wanted" before selecting again, checks
+  the dialog names "the 2 selected tracks", and asserts the dialog closes, so a refusal would fail
+  there, saying why, rather than as a missing notice.
+- **The contract test's `\b`.** The new block's first draft wrote a word boundary a Python edit had
+  turned into a backspace — the failure CLEAN-14's comment warns of, where a check silently matches
+  nothing. It was caught before the test ran; the block carries the same comment.
+
+**Tests.**
+
+- Python: `test_retired_incrate.py` (35: every retired route answers as an unknown path does, with
+  and without the token; every retired module is gone and every moved one answers only at its new
+  address; `incrate/` holds only the OAuth helpers; the schema and script are gone; the step's search;
+  nothing in the product names inCrate's files; a running engine leaves both files byte for byte and
+  with their times; every `incrate.` key still loads), `test_phase_journey_fixture.py` (1, the
+  journey's engine half), `TestRelativeDays` (9), the pinned parity values (2), the rewritten chart
+  regression (5), the sidecar's "no retired schema" (1).
+- Renderer: the registry (Library home, no Tools group, the four redirects), launch memory (a
+  remembered `incrate`, `tools` or nothing, from storage too, and every retired id reaching its own
+  replacement), the App (Library on first launch, `/incrate`, `/` and an unknown path redirected, a
+  remembered `incrate` or `tools`, the redirect's page remembered), the sidebar, the contract test's
+  DISCOVER-12 block (8), `retiredModules.test.ts` with the three modules and six methods, and the
+  pixel-icon test now checking every registry icon exists.
+- End to end: the phase journey; `shell.spec.ts` gains a relaunch with a remembered `tools` and
+  `incrate` and now expects the Library on first paint and Discover remembered.
+- **Deliberate breakages**: 16, each caught by its test — home back on Tools, the `incrate` or `tools`
+  redirect removed or pointed elsewhere, an unknown path rendered in place, a Tools group restored,
+  an inCrate method left in the preload, an inCrate interface declared, a relative day counted the
+  wrong way or not at all, an unused key no longer loaded, the schema bundled again, a chart by an
+  account counting for nobody, a chart's artist dropped, the journey's chart answering nothing, and a
+  wantlist add writing to the library's tracks.
+
+**Checks run**: see the phase acceptance below for the full list and numbers.
+
 ---
 
 ## Phase-level acceptance
@@ -2847,6 +3005,65 @@ pass against the real API with the developer's token is recorded.
     page's library half, a discovery run's library reads, and a Similar tracks list for the densest
     tempo band.
 14. `/api/v1/incrate/*` answers 404, and the changelog says so.
+
+## Phase 9 acceptance, checked (2026-09-28)
+
+In a packaged Windows build unless said otherwise; the macOS packaged checks are owed, as for Phases 5,
+7 and 8. Every automated check uses a mocked Beatport. The live API was recorded by DISCOVER-01's
+spike (2026-09-23) with the developer's token; **one manual pass through the app against the live
+API is owed** — this step does not read the developer's token, by rule.
+
+1. **Met.** A run's artists and labels are the library's effective values: a label set by an override
+   is in scope and a label it replaced is not (DISCOVER-05's tests). Nothing reads inCrate's inventory:
+   the code is deleted, nothing in the product names its file, and a running engine leaves the file
+   byte for byte (`test_retired_incrate.py`).
+2. **Met.** A run is a job in the status strip, stoppable, and keeps what it found when stopped
+   (DISCOVER-05, DISCOVER-10). The phase journey relaunches and reopens the run with the same tracks
+   and the chart each was found in.
+3. **Met.** A second run over the same labels makes no label searches (DISCOVER-05: 2,708 requests
+   first, 1,108 second, none of them label searches).
+4. **Met.** The journey's run hides its two accepted tracks, says "2 owned tracks hidden", and shows
+   them marked Owned on the toggle. Ownership is computed on read, so a track accepted after a run
+   reads as owned when the run is reopened (DISCOVER-04's and DISCOVER-05's tests).
+5. **Met.** The journey's wantlist entry is there after the relaunch. Bought and owned are separate
+   filters, and nothing removes an entry on its own (DISCOVER-06, DISCOVER-10).
+6. **Met.** The journey pushes two tracks: "Added 2 tracks", owned tracks left out by default, and the
+   playlist's real URL (`test_phase_journey_fixture.py` holds it:
+   `https://www.beatport.com/library/playlists/5550101`). A token without playlist scope is refused
+   with that reason (DISCOVER-06, DISCOVER-09).
+7. **Met.** The journey opens Mara Veil's page by id and Cold Room's by name. Each shows the library
+   half, which plays as the queue, and the Beatport half, marked owned or not; the name page says
+   "Grouped by name". Save as Smart Collection saves the page's own rules (DISCOVER-11's tests).
+8. **Met.** With no token and with a rejected token, Discover, a page's Beatport half and the push
+   each show an explained state pointing to Settings, and the library halves and Similar tracks work
+   (DISCOVER-10's journey, DISCOVER-11's tests).
+9. **Met.** Similar tracks gives the same list for the same library, every suggestion states its
+   reasons, and the seed and its duplicates are absent (DISCOVER-08's tests; the journey's list).
+10. **Met.** No discovery, wantlist, page or similarity action writes a library table:
+    `test_phase_journey_fixture.py` snapshots eleven of them before resolution and compares after the
+    run, the wantlist, the push, both pages and Similar tracks. Nothing here writes audio or XML: the
+    file-write boundary test (CLEAN-10) names every module that can, and none of Phase 9's is one.
+11. **Met.** No Tools group and no inCrate in the sidebar; `/incrate` opens Discover and `/` the
+    Library (the journey); a remembered `tools` or `incrate` opens the Library or Discover, and a
+    launch with nothing remembered opens the Library (`shell.spec.ts`).
+12. **Met** (against a running engine, not a packaged build). Both files are where they were, with the
+    same bytes and times, after the engine has started and been asked every retired route and two
+    Discover reads (`test_retired_incrate.py`).
+13. **Met**, measured at 50,000 tracks in the steps that built each: the credit backfill 0.94–1.34 s
+    and the artist and label facets 93 and 97 ms (DISCOVER-03); a run's library reads 47–229 ms
+    (DISCOVER-05); an Artist and a Label page's library half 25–29 and 43–47 ms (DISCOVER-07); a
+    Similar tracks list for the densest tempo band 327 ms (DISCOVER-08).
+14. **Met.** Every `/api/v1/incrate/*` route answers 404 exactly as an unknown path does
+    (`test_retired_incrate.py`), and the changelog records it as a breaking engine-API change.
+
+**Checks run** (2026-09-28): the full Python suite (9,920 passed, 62 skipped, after the one failure
+it found — the ignored fixture — was fixed); ruff 0.14.0 check and format; the strict mypy gate with
+three more modules; the Qt guard; version coupling; the renderer's type-check, lint (the 8 existing
+warnings) and 3,186 tests; the Electron type-check and 490 tests; the whole end-to-end suite on the
+development build (55 passed, 1 skipped); and, against a freshly packaged
+`release/win-unpacked/CuePoint.exe`, `discoverPages.spec.ts` (both journeys), `discover.spec.ts` and
+`shell.spec.ts` — 12 tests — three times in a row after the push step's fix; 16 deliberate
+breakages, each caught.
 
 ## Deferred, with reasons
 

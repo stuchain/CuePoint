@@ -68,10 +68,17 @@ describe("navRegistry", () => {
     expect(homeDestination().enabled).toBe(true);
   });
 
+  it("makes the Library home (DEC-100)", () => {
+    // Tools' landing page put a click between the user and their library on
+    // every launch that fell back to it.
+    expect(HOME_DESTINATION_ID).toBe("library");
+    expect(homeDestination().path).toBe("/library");
+  });
+
   it("throws when the home destination is missing", () => {
     // A shell that cannot resolve home renders nothing; better to fail loudly.
     const withoutHome: NavDestination[] = [
-      { id: "x", label: "X", path: "/x", group: "tools", glyph: "x", enabled: true },
+      { id: "x", label: "X", path: "/x", group: "workspace", glyph: "x", enabled: true },
     ];
     expect(() => homeDestination(withoutHome)).toThrow(/Home destination/);
   });
@@ -101,17 +108,9 @@ describe("navRegistry", () => {
   });
 
   it("renders exactly what has been built", () => {
-    // inCrate stays beside Discover until DISCOVER-12 retires it.
+    // Tools and inCrate retired in DISCOVER-12 (DEC-100).
     const enabled = enabledDestinations().map((d) => d.id);
-    expect(enabled).toEqual([
-      "library",
-      "collections",
-      "clean",
-      "discover",
-      "tools",
-      "incrate",
-      "settings",
-    ]);
+    expect(enabled).toEqual(["library", "collections", "clean", "discover", "settings"]);
   });
 
   describe("a destination that renders another's page (DEC-062)", () => {
@@ -124,7 +123,7 @@ describe("navRegistry", () => {
     });
 
     it("leaves a destination that is its own page alone", () => {
-      for (const id of ["library", "tools", "settings"]) {
+      for (const id of ["library", "clean", "discover", "settings"]) {
         const destination = findDestinationById(id)!;
         expect(destination.pageId).toBeUndefined();
         expect(pageDestination(destination).id).toBe(id);
@@ -170,10 +169,16 @@ describe("navRegistry", () => {
     expect(findDestinationById("collections")?.path).toBe("/collections");
   });
 
-  it("keeps today's remaining screens in the Tools group (DEC-021)", () => {
-    for (const id of ["tools", "incrate"]) {
-      expect(findDestinationById(id)?.group).toBe("tools");
-    }
+  it("has no Tools group and no inCrate (DEC-100)", () => {
+    expect(NAV_GROUPS).toEqual(["workspace", "system"]);
+    const declared = NAV_DESTINATIONS.map((d) => d.id);
+    expect(declared).not.toContain("tools");
+    expect(declared).not.toContain("incrate");
+    const labels = NAV_DESTINATIONS.map((d) => d.label);
+    expect(labels).not.toContain("Tools");
+    expect(labels).not.toContain("inCrate");
+    expect(findDestinationByPath("/")).toBeNull();
+    expect(findDestinationByPath("/incrate")).toBeNull();
   });
 
   it("no longer carries inKey or Results (DEC-071)", () => {
@@ -186,8 +191,8 @@ describe("navRegistry", () => {
   });
 
   it("looks destinations up by id and by path", () => {
-    expect(findDestinationById("incrate")?.path).toBe("/incrate");
-    expect(findDestinationByPath("/incrate")?.id).toBe("incrate");
+    expect(findDestinationById("discover")?.path).toBe("/discover");
+    expect(findDestinationByPath("/discover")?.id).toBe("discover");
   });
 
   it("returns null for unknown lookups", () => {
@@ -204,13 +209,23 @@ describe("navRegistry", () => {
   });
 });
 
-describe("retired destinations (DEC-071)", () => {
+describe("retired destinations (DEC-071, DEC-100)", () => {
   it("sends inKey and Results to Clean", () => {
     expect(replacementFor("match")?.id).toBe("clean");
     expect(replacementFor("results")?.id).toBe("clean");
+  });
+
+  it("sends inCrate to Discover, and Tools to the Library (DEC-100)", () => {
+    expect(replacementFor("incrate")?.id).toBe("discover");
+    expect(replacementFor("tools")?.id).toBe("library");
+  });
+
+  it("gives the router one redirect per retired path", () => {
     expect(retiredRedirects()).toEqual([
       { id: "match", from: "/match", to: "/clean" },
       { id: "results", from: "/results", to: "/clean" },
+      { id: "incrate", from: "/incrate", to: "/discover" },
+      { id: "tools", from: "/", to: "/library" },
     ]);
   });
 
@@ -241,7 +256,7 @@ describe("retired destinations (DEC-071)", () => {
     // a page nothing renders.
     const retired: RetiredDestination[] = [{ id: "old", path: "/old", replacedBy: "new" }];
     const destinations: NavDestination[] = [
-      { id: "tools", label: "Tools", path: "/", group: "tools", icon: "home", enabled: true },
+      { id: "library", label: "Library", path: "/library", group: "workspace", icon: "library", enabled: true },
       { id: "new", label: "New", path: "/new", group: "workspace", icon: "clean", enabled: false },
     ];
     expect(replacementFor("old", destinations, retired)).toBeNull();
@@ -263,10 +278,7 @@ describe("groupedDestinations", () => {
     const noWorkspace = NAV_DESTINATIONS.map((d) =>
       d.group === "workspace" ? { ...d, enabled: false } : d,
     );
-    expect(groupedDestinations(noWorkspace).map((entry) => entry.group)).toEqual([
-      "tools",
-      "system",
-    ]);
+    expect(groupedDestinations(noWorkspace).map((entry) => entry.group)).toEqual(["system"]);
   });
 
   it("contains only enabled destinations", () => {
@@ -297,7 +309,7 @@ describe("groupedDestinations", () => {
     );
     const entries = groupedDestinations(withLibrary);
 
-    expect(entries.map((entry) => entry.group)).toEqual(["workspace", "tools", "system"]);
+    expect(entries.map((entry) => entry.group)).toEqual(["workspace", "system"]);
     expect(entries[0]?.destinations.map((d) => d.id)).toEqual(["library"]);
   });
 });

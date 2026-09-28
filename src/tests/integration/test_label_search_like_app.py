@@ -206,7 +206,7 @@ class TestLabelSearchLiveLikeApp:
         Run: pytest src/tests/integration/test_label_search_like_app.py::TestLabelSearchLiveLikeApp::test_label_search_live_resolves_defected_and_nothing_but -v
         Re-run after each change until it passes.
         """
-        # Same call path as discovery._resolve_library_labels_to_ids -> beatport_api.search_label_by_name
+        # Same call path as Discover's label resolution -> beatport_api.search_label_by_name
         try:
             defected_id = api.search_label_by_name("Defected")
         except BeatportAPIError as e:

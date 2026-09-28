@@ -7,6 +7,7 @@ import {
   toPixelRuns,
   type PixelIconName,
 } from "./pixelIcons";
+import { NAV_DESTINATIONS } from "./shell/navRegistry";
 
 describe("pixel icon artwork", () => {
   it.each(PIXEL_ICON_NAMES)("%s is a square grid of the declared size", (name) => {
@@ -42,14 +43,11 @@ describe("pixel icon artwork", () => {
     // FOUNDATION-14 left the concept icons as Unicode glyphs "until there is a
     // screen to draw them against". There is one now.
     expect(PIXEL_ICON_NAMES).toEqual(
-      expect.arrayContaining([
-        "collections",
-        "clean",
-        "discover",
-        "prepare",
-        "incrate",
-      ]),
+      expect.arrayContaining(["collections", "clean", "discover", "prepare"]),
     );
+    for (const destination of NAV_DESTINATIONS) {
+      if (destination.icon) expect(PIXEL_ICON_NAMES).toContain(destination.icon);
+    }
   });
 
   it.each(PIXEL_ICON_NAMES)("%s uses at least one stroke two cells wide", (name) => {

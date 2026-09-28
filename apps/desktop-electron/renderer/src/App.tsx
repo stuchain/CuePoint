@@ -18,7 +18,7 @@ import {
   enabledDestinations,
   findDestinationById,
   GlobalSearch,
-  HOME_DESTINATION_ID,
+  homeDestination,
   Sidebar,
   StatusStrip,
   TrackInspector,
@@ -33,10 +33,8 @@ import { useRestorePlayerOrder } from "./components/player/playerOrderState";
 import {
   CleanScreen,
   DiscoverScreen,
-  InCrateMainScreen,
   LibraryScreen,
   SettingsExportScreen,
-  ToolSelectionScreen,
 } from "./screens";
 import { libraryOpening } from "./screens/library/libraryLink";
 import { EntityScreen } from "./screens/discover/EntityScreen";
@@ -138,8 +136,6 @@ function AppShell() {
    */
   const screenFor = (id: string) => {
     switch (id) {
-      case "tools":
-        return <ToolSelectionScreen />;
       case "library":
         // A Health count opens the Library on its rules (CLEAN-12, DEC-075);
         // they arrive in the location's state and are handed over as a prop.
@@ -177,15 +173,13 @@ function AppShell() {
             onOpenSimilar={openSimilar}
           />
         );
-      // DISCOVER-10. inCrate stays beside it, unchanged, until DISCOVER-12.
+      // DISCOVER-10. inCrate retired into it in DISCOVER-12 (DEC-100).
       case "discover":
         return <DiscoverScreen />;
-      case "incrate":
-        return <InCrateMainScreen />;
       case "settings":
         return <SettingsExportScreen />;
       default:
-        return <ToolSelectionScreen />;
+        return null;
     }
   };
 
@@ -241,8 +235,10 @@ function AppShell() {
             </>
           )}
           {/*
-            A retired page's path lands on the page that replaced it (DEC-071),
-            so a bookmark or an old link still arrives somewhere real.
+            A retired page's path lands on the page that replaced it (DEC-071,
+            DEC-100), so a bookmark or an old link still arrives somewhere
+            real: `/match` and `/results` on Clean, `/incrate` on Discover, and
+            `/` — Tools' landing page — on the Library.
           */}
           {retiredRedirects().map((redirect) => (
             <Route
@@ -252,13 +248,15 @@ function AppShell() {
             />
           ))}
           {/*
-            A path that matches no destination renders home rather than nothing.
-            This is the belt to the registry's braces: DEC-027's fallback keeps
-            a stale stored destination from landing here, and this keeps any
-            other unmatched path — a stray link, a future typo — from showing
-            an empty content area, which is the failure this step exists to fix.
+            A path that matches no destination goes home rather than showing
+            nothing. This is the belt to the registry's braces: DEC-027's
+            fallback keeps a stale stored destination from landing here, and
+            this keeps any other unmatched path — a stray link, a future typo —
+            from showing an empty content area. It redirects rather than
+            rendering home in place, so the address, the sidebar and launch
+            memory all agree on where the user is.
           */}
-          <Route path="*" element={screenFor(HOME_DESTINATION_ID)} />
+          <Route path="*" element={<Navigate to={homeDestination().path} replace />} />
         </Routes>
       </AppShellLayout>
       <SupportBundleDialog open={supportOpen} onClose={() => setSupportOpen(false)} />

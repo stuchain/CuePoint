@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from cuepoint.incrate.playlist_name import default_playlist_name
+from cuepoint.services.playlist_name import default_playlist_name
 from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.beatport_catalog_repository import BeatportCatalogRepository
 from cuepoint.persistence.track_repository import TrackRepository

@@ -1,7 +1,11 @@
 # inCrate implementation design 01: Inventory (Phase 1)
 
-**Implementation order:** Phase 1 — build this first. No inCrate dependencies.  
-**Spec:** [../incrate-spec.md](../incrate-spec.md)  
+> **Status: historical.** inCrate retired into Discover in DISCOVER-12 (DEC-090,
+> DEC-100). This page describes inCrate as it was built, and is kept as a record;
+> for how discovery works now, see [Discover](../user-guide/discover.md).
+
+**Implementation order:** Phase 1 — build this first. No inCrate dependencies.\
+**Spec:** [../incrate-spec.md](../incrate-spec.md)\
 **Next phase:** [incrate-02-beatport-api.md](incrate-02-beatport-api.md) (Beatport API client).
 
 ---

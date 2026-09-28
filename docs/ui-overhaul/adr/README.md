@@ -37,6 +37,7 @@ Suggested first commits:
 | ADR-004 | [004-player-backend.md](004-player-backend.md) | Bundled mpv sidecar over JSON IPC |
 | ADR-005 | [005-matching-on-the-library.md](005-matching-on-the-library.md) | Desktop matching runs on library tracks; inKey's file-based routes removed |
 | ADR-006 | [006-rekordbox-export-patches.md](006-rekordbox-export-patches.md) | The Rekordbox export patches a copy of the imported XML; it never generates one |
+| ADR-007 | [007-discover-on-the-library.md](007-discover-on-the-library.md) | Discovery reads the library; ownership is computed; an artist is a Beatport id or a name; similarity is local; inCrate's routes removed |
 
 ## ADR quality bar (analytical)
 

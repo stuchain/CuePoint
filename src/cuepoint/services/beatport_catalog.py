@@ -7,9 +7,8 @@ and list they keep, and answer None for anything they cannot use rather than
 guessing. Nothing here does I/O; :class:`~cuepoint.services.beatport_api.BeatportApi`
 makes the requests.
 
-The older parsers in ``beatport_api.py`` try several nestings for each answer.
-They stay as they are for inCrate and retire with it in DISCOVER-12; nothing
-new copies them.
+inCrate's parsers, which tried several nestings for each answer, retired with
+it in DISCOVER-12. Nothing here guesses a nesting.
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from cuepoint.incrate.beatport_api_models import (
+from cuepoint.services.beatport_api_models import (
     CatalogArtist,
     CatalogChart,
     CatalogLabel,

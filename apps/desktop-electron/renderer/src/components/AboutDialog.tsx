@@ -25,7 +25,7 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
     <Modal open={open} title="About CuePoint" onClose={onClose} secondaryAction={{ label: "Close", onClick: onClose }}>
       <div className="about-dialog">
         <p>
-          <strong>CuePoint</strong> — Rekordbox ↔ Beatport matching and inCrate discovery.
+          <strong>CuePoint</strong> — Rekordbox ↔ Beatport matching and discovery.
         </p>
         <ul>
           <li>Desktop shell: Electron lab ({DESKTOP_ENGINE_VERSION} target)</li>

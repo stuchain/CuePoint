@@ -87,7 +87,7 @@ it and simply will not be there:
 
 Both fail *only* in packaged builds, and usually silently — the build succeeds
 and the missing code or file surfaces as an unrelated error later. Two have
-happened here: inCrate's `schema.sql` (a data file), and `cuepoint.migrations`
+happened here: inCrate's `schema.sql` (a data file, since retired with inCrate), and `cuepoint.migrations`
 (dynamically imported, which shipped no migrations and would have created a
 database with no tables on a fresh install).
 

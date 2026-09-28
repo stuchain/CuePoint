@@ -7,9 +7,9 @@ Every test runs the real service over a real library database — tracks written
 through ``TrackRepository``, so the credit index and label keys are the ones an
 import writes — and DISCOVER-01's real ``BeatportApi`` over
 :class:`~tests.fixtures.beatport_world.BeatportWorld`, an in-memory Beatport
-that counts every request. The parity test runs inCrate's own
-``run_discovery`` against the same world, while both exist (DISCOVER-12
-deletes it with this test's parity class).
+that counts every request. inCrate's own ``run_discovery`` retired in
+DISCOVER-12; :class:`TestWhatParityWithInCrateEstablished` keeps what the
+parity test against it had shown, as values.
 """
 
 from __future__ import annotations
@@ -20,7 +20,6 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import pytest
 
-from cuepoint.incrate.discovery import run_discovery
 from cuepoint.models.discovery_run import (
     OWNED_ALL,
     OWNED_ONLY,
@@ -417,57 +416,41 @@ class TestARun:
         assert (run.outcome, run.tracks_found, world.requests) == (RUN_SUCCEEDED, 0, [])
 
 
-class TestParityWithInCrate:
-    """The same inputs give the tracks inCrate's run_discovery finds, in its
-    order — and the second reasons inCrate dropped."""
+#: What inCrate's ``run_discovery`` found in :func:`standard_world`, in its
+#: order, and how many requests it made — measured against it while both
+#: existed (DISCOVER-05), before it retired in DISCOVER-12.
+INCRATE_FOUND = [1, 2, 3, 4, 5, 7, 8]
+INCRATE_REQUESTS = 19
 
-    class Inventory:
-        def get_library_artists(self) -> List[str]:
-            return ["DJEFF", "Kiko", "Mara Veil"]
 
-        def get_library_labels(self) -> List[str]:
-            return ["Cold Room", "Nightfall Audio"]
+class TestWhatParityWithInCrateEstablished:
+    """The tracks inCrate found, in its order, plus the second reasons it
+    dropped — and fewer requests. The parity test ran both side by side; with
+    inCrate gone, its answer is held here so the port cannot drift."""
 
-    def test_the_same_tracks_in_the_same_order(self, db, library):
-        today = date.today()
-        world = standard_world(today)
-        clock = Clock(datetime.combine(today, time(12), tzinfo=timezone.utc))
-        incrate = run_discovery(
-            self.Inventory(),
-            BeatportApi(world),
-            [5, 6],
-            today - timedelta(days=30),
-            today,
-            new_releases_days=30,
-        )
+    def run(self, db, world):
+        clock = Clock(NOW)
         service = make(db, world, clock=clock)
-        run = service.run(
+        return service.run(
             service.request(
                 genre_ids=[5, 6],
-                charts_from=today - timedelta(days=30),
-                charts_to=today,
+                charts_from=TODAY - timedelta(days=30),
+                charts_to=TODAY,
                 new_releases_days=30,
             )
         )
-        assert found(db, run.id) == [t.beatport_track_id for t in incrate]
-        assert len(DiscoveryRepository(db).run_sources(run.id)) == len(incrate) + 2
 
-    def test_and_with_fewer_requests(self, db, library):
-        today = date.today()
-        world = standard_world(today)
-        run_discovery(
-            self.Inventory(),
-            BeatportApi(world),
-            [5, 6],
-            today - timedelta(days=30),
-            today,
+    def test_the_same_tracks_in_the_same_order(self, db, library, world):
+        run = self.run(db, world)
+        assert found(db, run.id) == INCRATE_FOUND
+        # Tracks 2 and 3 each have the second reason inCrate kept no room for.
+        assert (
+            len(DiscoveryRepository(db).run_sources(run.id)) == len(INCRATE_FOUND) + 2
         )
-        incrate_requests = len(world.requests)
-        world.requests.clear()
-        clock = Clock(datetime.combine(today, time(12), tzinfo=timezone.utc))
-        service = make(db, world, clock=clock)
-        service.run(service.request(genre_ids=[5, 6]))
-        assert len(world.requests) < incrate_requests
+
+    def test_and_with_fewer_requests(self, db, library, world):
+        self.run(db, world)
+        assert len(world.requests) < INCRATE_REQUESTS
 
 
 # ------------------------------------------------------------------- labels

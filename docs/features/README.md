@@ -35,4 +35,4 @@ processing and export pages now describe the CLI, which is unchanged.
 | CLI | [cli-and-arguments.md](cli-and-arguments.md) | CLI processor, all arguments, migrate |
 | Reliability | [reliability-and-performance.md](reliability-and-performance.md) | Retry, circuit breaker, guardrails |
 | Support | [support-and-diagnostics.md](support-and-diagnostics.md) | Support bundle, log viewer, crash handler |
-| inCrate | [incrate.md](incrate.md) | Inventory, discovery (charts + new releases), Beatport playlist |
+| inCrate (historical) | [incrate.md](incrate.md) | Retired into [Discover](../user-guide/discover.md) (DISCOVER-12) |

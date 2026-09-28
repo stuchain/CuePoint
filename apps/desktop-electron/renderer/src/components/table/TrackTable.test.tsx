@@ -10,7 +10,7 @@
  *
  * **It holds no query.** Sorting and widths are asked for, not decided: the
  * table calls back and renders what it is given next. That is what lets one
- * component serve the library, the match results and inCrate.
+ * component serve the library, the match results and Discover.
  *
  * **It renders a window, not a library.** Fifty thousand rows must put tens of
  * elements in the DOM, not fifty thousand.

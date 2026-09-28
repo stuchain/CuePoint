@@ -193,6 +193,11 @@ src/output/
 # nothing.
 !src/tests/fixtures/beatport/discover/fixture.json
 
+# Test fixture (exception to user-output *.json above). The Beatport the
+# whole-phase journey runs against (DISCOVER-12): Clean's search and track pages
+# and the v4 API in one file; without it the journey matches and finds nothing.
+!src/tests/fixtures/beatport/phase/fixture.json
+
 # Recorded engine responses (exception to user-output *.json above). These are
 # produced by a test that starts the real engine and asserted against by both
 # languages, so they are source: without them the renderer's empty states have

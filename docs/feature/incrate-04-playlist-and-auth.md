@@ -1,8 +1,12 @@
 # inCrate implementation design 04: Playlist and auth (Phase 4)
 
-**Implementation order:** Phase 4 — build after Phase 3 (Discovery).  
-**Spec:** [../incrate-spec.md](../incrate-spec.md)  
-**Previous:** [incrate-03-discovery.md](incrate-03-discovery.md)  
+> **Status: historical.** inCrate retired into Discover in DISCOVER-12 (DEC-090,
+> DEC-100). This page describes inCrate as it was built, and is kept as a record;
+> for how discovery works now, see [Discover](../user-guide/discover.md).
+
+**Implementation order:** Phase 4 — build after Phase 3 (Discovery).\
+**Spec:** [../incrate-spec.md](../incrate-spec.md)\
+**Previous:** [incrate-03-discovery.md](incrate-03-discovery.md)\
 **Next:** [incrate-05-ui-and-integration.md](incrate-05-ui-and-integration.md).
 
 ---

@@ -11,8 +11,9 @@ This is an architectural rule, so it is enforced rather than documented: adding
 a query somewhere new fails here with an explanation, instead of passing review
 unnoticed.
 
-Note this is about CuePoint's *library* database only. ``incrate/inventory_db``
-owns a separate inCrate inventory database and is deliberately out of scope.
+Note this is about CuePoint's *library* database only. inCrate's separate
+inventory database, and the module that owned it, retired in DISCOVER-12; the
+file is left on disk, and nothing opens it.
 """
 
 from __future__ import annotations

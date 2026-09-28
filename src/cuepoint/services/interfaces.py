@@ -37,7 +37,6 @@ if TYPE_CHECKING:
     # Imported for typing only: these modules import their interface from this
     # module, so a runtime import here would create a circular import.
     # Annotations referencing them are quoted forward references.
-    from cuepoint.incrate.beatport_api_models import DiscoveredTrack
     from cuepoint.migrations import Migration
     from cuepoint.models.duplicate_group import (
         DuplicateDismissal,
@@ -64,7 +63,7 @@ if TYPE_CHECKING:
     from cuepoint.models.track_metadata import TrackMetadata
     from cuepoint.models.track_credit import DerivedIndex, TrackCredit
     from cuepoint.services.credit_index_service import CreditIndexResult
-    from cuepoint.incrate.beatport_api_models import CatalogTrack
+    from cuepoint.services.beatport_api_models import CatalogTrack
     from cuepoint.models.beatport_cache import (
         CachedBeatportCredit,
         CachedBeatportTrack,
@@ -3455,84 +3454,6 @@ class IOnboardingService(ABC):
     @abstractmethod
     def reset_onboarding(self) -> None:
         """Reset onboarding state."""
-        ...
-
-
-class IInventoryService(ABC):
-    """Interface for the inCrate inventory facade (import, enrich, query)."""
-
-    @property
-    @abstractmethod
-    def db_path(self) -> str:
-        """Path to the SQLite inventory database."""
-        ...
-
-    @abstractmethod
-    def reset_database(self) -> None:
-        """Clear all inventory rows."""
-        ...
-
-    @abstractmethod
-    def import_from_xml(
-        self,
-        xml_path: str,
-        enrich: bool = True,
-        progress_callback: Optional[Any] = None,
-    ) -> Dict[str, Any]:
-        """Import COLLECTION from Rekordbox XML and optionally enrich empty labels.
-
-        Returns:
-            Dict with imported (int), enriched (int), errors (list).
-        """
-        ...
-
-    @abstractmethod
-    def get_library_artists(self) -> List[str]:
-        """Return distinct library artist names, sorted."""
-        ...
-
-    @abstractmethod
-    def get_library_labels(self) -> List[str]:
-        """Return distinct library labels, sorted."""
-        ...
-
-    @abstractmethod
-    def has_artist(self, name: str) -> bool:
-        """Return True if any track has the given artist (case-insensitive)."""
-        ...
-
-    @abstractmethod
-    def get_inventory_stats(self) -> Dict[str, int]:
-        """Return total and with_label counts."""
-        ...
-
-    @abstractmethod
-    def list_inventory(
-        self, limit: int = 5000, search: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
-        """Return inventory rows for UI."""
-        ...
-
-
-class IIncrateDiscoveryService(ABC):
-    """Interface for inCrate discovery (charts + label new releases)."""
-
-    @abstractmethod
-    def run_discovery(
-        self,
-        genre_ids: Optional[List[int]] = None,
-        charts_from_date: Optional[date] = None,
-        charts_to_date: Optional[date] = None,
-        new_releases_days: Optional[int] = None,
-        progress_callback: Optional[Callable[[str, int, int], None]] = None,
-        library_artist_names: Optional[List[str]] = None,
-        library_label_names: Optional[List[str]] = None,
-    ) -> List["DiscoveredTrack"]:
-        """Run discovery; use config for defaults when args are None.
-
-        Returns:
-            Deduplicated list of DiscoveredTrack.
-        """
         ...
 
 

@@ -13,7 +13,8 @@ reviewable. It provides an Electron desktop app and a Python CLI.
 - Fill key, BPM, label, genre, and release metadata
 - Flag uncertain matches for review
 - Export CSV and Excel results with an audit trail
-- Discover Beatport releases with inCrate
+- Discover new Beatport releases from your artists and labels, with artist and
+  label pages and similar tracks
 
 ## Install
 

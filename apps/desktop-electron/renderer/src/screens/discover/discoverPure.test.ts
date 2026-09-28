@@ -80,7 +80,7 @@ describe("the remembered tab", () => {
   });
 
   it("opens on Runs for anything stored that is not a tab", () => {
-    localStorage.setItem(DISCOVER_SECTION_STORAGE_KEY, "inCrate");
+    localStorage.setItem(DISCOVER_SECTION_STORAGE_KEY, "charts");
     expect(loadDiscoverSection()).toBe("runs");
   });
 });

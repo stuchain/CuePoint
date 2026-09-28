@@ -1,0 +1,766 @@
+{
+  "searches": [
+    {
+      "contains": "harbour lights",
+      "urls": [
+        "https://www.beatport.com/track/harbour-lights/19000001"
+      ]
+    },
+    {
+      "contains": "low tide",
+      "urls": [
+        "https://www.beatport.com/track/low-tide/19000002"
+      ]
+    }
+  ],
+  "pages": {
+    "https://www.beatport.com/track/harbour-lights/19000001": "pages/19000001.html",
+    "https://www.beatport.com/track/low-tide/19000002": "pages/19000002.html"
+  },
+  "api": [
+    {
+      "path": "catalog/genres",
+      "body": {
+        "count": 2,
+        "next": null,
+        "page": "1/1",
+        "per_page": 100,
+        "results": [
+          {
+            "id": 5,
+            "name": "House",
+            "slug": "house"
+          },
+          {
+            "id": 6,
+            "name": "Techno (Peak Time / Driving)",
+            "slug": "techno-peak-time-driving"
+          }
+        ]
+      }
+    },
+    {
+      "path": "catalog/tracks",
+      "params": {
+        "id": "19000001,19000002"
+      },
+      "body": {
+        "count": 2,
+        "next": null,
+        "page": "1/1",
+        "per_page": 100,
+        "results": [
+          {
+            "new_release_date": "{{today-100}}",
+            "publish_date": "{{today-100}}",
+            "id": 19000001,
+            "name": "Harbour Lights",
+            "mix_name": "Original Mix",
+            "slug": "harbour-lights",
+            "key": {
+              "id": 8,
+              "name": "A Minor",
+              "camelot_number": 8,
+              "camelot_letter": "A"
+            },
+            "bpm": 124,
+            "artists": [
+              {
+                "id": 301001,
+                "name": "Mara Veil",
+                "slug": "mara-veil"
+              },
+              {
+                "id": 301002,
+                "name": "Kiko",
+                "slug": "kiko"
+              }
+            ],
+            "remixers": [],
+            "genre": {
+              "id": 5,
+              "name": "House",
+              "slug": "house"
+            },
+            "release": {
+              "id": 4500001,
+              "name": "Harbour Lights",
+              "slug": "harbour-lights",
+              "label": {
+                "id": 40211,
+                "name": "Nightfall Audio",
+                "slug": "nightfall-audio"
+              }
+            }
+          },
+          {
+            "new_release_date": "{{today-40}}",
+            "publish_date": "{{today-40}}",
+            "id": 19000002,
+            "name": "Low Tide",
+            "mix_name": "Original Mix",
+            "slug": "low-tide",
+            "key": {
+              "id": 9,
+              "name": "E Minor",
+              "camelot_number": 9,
+              "camelot_letter": "A"
+            },
+            "bpm": 124,
+            "artists": [
+              {
+                "id": 301001,
+                "name": "Mara Veil",
+                "slug": "mara-veil"
+              }
+            ],
+            "remixers": [],
+            "genre": {
+              "id": 5,
+              "name": "House",
+              "slug": "house"
+            },
+            "release": {
+              "id": 4500002,
+              "name": "Tides EP",
+              "slug": "low-tide",
+              "label": {
+                "id": 40211,
+                "name": "Nightfall Audio",
+                "slug": "nightfall-audio"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "path": "catalog/tracks",
+      "params": {
+        "id": "19000002,19000001"
+      },
+      "body": {
+        "count": 2,
+        "next": null,
+        "page": "1/1",
+        "per_page": 100,
+        "results": [
+          {
+            "new_release_date": "{{today-40}}",
+            "publish_date": "{{today-40}}",
+            "id": 19000002,
+            "name": "Low Tide",
+            "mix_name": "Original Mix",
+            "slug": "low-tide",
+            "key": {
+              "id": 9,
+              "name": "E Minor",
+              "camelot_number": 9,
+              "camelot_letter": "A"
+            },
+            "bpm": 124,
+            "artists": [
+              {
+                "id": 301001,
+                "name": "Mara Veil",
+                "slug": "mara-veil"
+              }
+            ],
+            "remixers": [],
+            "genre": {
+              "id": 5,
+              "name": "House",
+              "slug": "house"
+            },
+            "release": {
+              "id": 4500002,
+              "name": "Tides EP",
+              "slug": "low-tide",
+              "label": {
+                "id": 40211,
+                "name": "Nightfall Audio",
+                "slug": "nightfall-audio"
+              }
+            }
+          },
+          {
+            "new_release_date": "{{today-100}}",
+            "publish_date": "{{today-100}}",
+            "id": 19000001,
+            "name": "Harbour Lights",
+            "mix_name": "Original Mix",
+            "slug": "harbour-lights",
+            "key": {
+              "id": 8,
+              "name": "A Minor",
+              "camelot_number": 8,
+              "camelot_letter": "A"
+            },
+            "bpm": 124,
+            "artists": [
+              {
+                "id": 301001,
+                "name": "Mara Veil",
+                "slug": "mara-veil"
+              },
+              {
+                "id": 301002,
+                "name": "Kiko",
+                "slug": "kiko"
+              }
+            ],
+            "remixers": [],
+            "genre": {
+              "id": 5,
+              "name": "House",
+              "slug": "house"
+            },
+            "release": {
+              "id": 4500001,
+              "name": "Harbour Lights",
+              "slug": "harbour-lights",
+              "label": {
+                "id": 40211,
+                "name": "Nightfall Audio",
+                "slug": "nightfall-audio"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "path": "catalog/tracks/19000001",
+      "body": {
+        "new_release_date": "{{today-100}}",
+        "publish_date": "{{today-100}}",
+        "id": 19000001,
+        "name": "Harbour Lights",
+        "mix_name": "Original Mix",
+        "slug": "harbour-lights",
+        "key": {
+          "id": 8,
+          "name": "A Minor",
+          "camelot_number": 8,
+          "camelot_letter": "A"
+        },
+        "bpm": 124,
+        "artists": [
+          {
+            "id": 301001,
+            "name": "Mara Veil",
+            "slug": "mara-veil"
+          },
+          {
+            "id": 301002,
+            "name": "Kiko",
+            "slug": "kiko"
+          }
+        ],
+        "remixers": [],
+        "genre": {
+          "id": 5,
+          "name": "House",
+          "slug": "house"
+        },
+        "release": {
+          "id": 4500001,
+          "name": "Harbour Lights",
+          "slug": "harbour-lights",
+          "label": {
+            "id": 40211,
+            "name": "Nightfall Audio",
+            "slug": "nightfall-audio"
+          }
+        }
+      }
+    },
+    {
+      "path": "catalog/tracks/19000002",
+      "body": {
+        "new_release_date": "{{today-40}}",
+        "publish_date": "{{today-40}}",
+        "id": 19000002,
+        "name": "Low Tide",
+        "mix_name": "Original Mix",
+        "slug": "low-tide",
+        "key": {
+          "id": 9,
+          "name": "E Minor",
+          "camelot_number": 9,
+          "camelot_letter": "A"
+        },
+        "bpm": 124,
+        "artists": [
+          {
+            "id": 301001,
+            "name": "Mara Veil",
+            "slug": "mara-veil"
+          }
+        ],
+        "remixers": [],
+        "genre": {
+          "id": 5,
+          "name": "House",
+          "slug": "house"
+        },
+        "release": {
+          "id": 4500002,
+          "name": "Tides EP",
+          "slug": "low-tide",
+          "label": {
+            "id": 40211,
+            "name": "Nightfall Audio",
+            "slug": "nightfall-audio"
+          }
+        }
+      }
+    },
+    {
+      "path": "catalog/charts",
+      "params": {
+        "genre_id": 5,
+        "page": 1
+      },
+      "body": {
+        "count": 1,
+        "next": null,
+        "page": "1/1",
+        "per_page": 100,
+        "results": [
+          {
+            "id": 880101,
+            "name": "Harbour Selects",
+            "slug": "harbour-selects",
+            "artist": {
+              "id": 301001,
+              "name": "Mara Veil",
+              "slug": "mara-veil"
+            },
+            "person": {
+              "id": 77001,
+              "owner_name": "Mara Veil",
+              "owner_type": "artist"
+            },
+            "genres": [
+              {
+                "id": 5,
+                "name": "House",
+                "slug": "house"
+              }
+            ],
+            "track_count": 4
+          }
+        ]
+      }
+    },
+    {
+      "path": "catalog/charts/880101/tracks",
+      "params": {
+        "page": 1
+      },
+      "delay_ms": 3000,
+      "body": {
+        "count": 4,
+        "next": null,
+        "page": "1/1",
+        "per_page": 100,
+        "results": [
+          {
+            "new_release_date": "{{today-12}}",
+            "publish_date": "{{today-12}}",
+            "id": 19000003,
+            "name": "Undertow",
+            "mix_name": "Original Mix",
+            "slug": "undertow",
+            "key": {
+              "id": 9,
+              "name": "E Minor",
+              "camelot_number": 9,
+              "camelot_letter": "A"
+            },
+            "bpm": 123,
+            "artists": [
+              {
+                "id": 301001,
+                "name": "Mara Veil",
+                "slug": "mara-veil"
+              }
+            ],
+            "remixers": [],
+            "genre": {
+              "id": 5,
+              "name": "House",
+              "slug": "house"
+            },
+            "release": {
+              "id": 4500002,
+              "name": "Tides EP",
+              "slug": "undertow",
+              "label": {
+                "id": 40211,
+                "name": "Nightfall Audio",
+                "slug": "nightfall-audio"
+              }
+            }
+          },
+          {
+            "new_release_date": "{{today-100}}",
+            "publish_date": "{{today-100}}",
+            "id": 19000001,
+            "name": "Harbour Lights",
+            "mix_name": "Original Mix",
+            "slug": "harbour-lights",
+            "key": {
+              "id": 8,
+              "name": "A Minor",
+              "camelot_number": 8,
+              "camelot_letter": "A"
+            },
+            "bpm": 124,
+            "artists": [
+              {
+                "id": 301001,
+                "name": "Mara Veil",
+                "slug": "mara-veil"
+              },
+              {
+                "id": 301002,
+                "name": "Kiko",
+                "slug": "kiko"
+              }
+            ],
+            "remixers": [],
+            "genre": {
+              "id": 5,
+              "name": "House",
+              "slug": "house"
+            },
+            "release": {
+              "id": 4500001,
+              "name": "Harbour Lights",
+              "slug": "harbour-lights",
+              "label": {
+                "id": 40211,
+                "name": "Nightfall Audio",
+                "slug": "nightfall-audio"
+              }
+            }
+          },
+          {
+            "new_release_date": "{{today-5}}",
+            "publish_date": "{{today-5}}",
+            "id": 19000004,
+            "name": "Salt Air",
+            "mix_name": "Extended Mix",
+            "slug": "salt-air",
+            "key": {
+              "id": 8,
+              "name": "A Minor",
+              "camelot_number": 8,
+              "camelot_letter": "A"
+            },
+            "bpm": 125,
+            "artists": [
+              {
+                "id": 301001,
+                "name": "Mara Veil",
+                "slug": "mara-veil"
+              },
+              {
+                "id": 301002,
+                "name": "Kiko",
+                "slug": "kiko"
+              }
+            ],
+            "remixers": [],
+            "genre": {
+              "id": 5,
+              "name": "House",
+              "slug": "house"
+            },
+            "release": {
+              "id": 4500003,
+              "name": "Salt Air",
+              "slug": "salt-air",
+              "label": {
+                "id": 40211,
+                "name": "Nightfall Audio",
+                "slug": "nightfall-audio"
+              }
+            }
+          },
+          {
+            "new_release_date": "{{today-40}}",
+            "publish_date": "{{today-40}}",
+            "id": 19000002,
+            "name": "Low Tide",
+            "mix_name": "Original Mix",
+            "slug": "low-tide",
+            "key": {
+              "id": 9,
+              "name": "E Minor",
+              "camelot_number": 9,
+              "camelot_letter": "A"
+            },
+            "bpm": 124,
+            "artists": [
+              {
+                "id": 301001,
+                "name": "Mara Veil",
+                "slug": "mara-veil"
+              }
+            ],
+            "remixers": [],
+            "genre": {
+              "id": 5,
+              "name": "House",
+              "slug": "house"
+            },
+            "release": {
+              "id": 4500002,
+              "name": "Tides EP",
+              "slug": "low-tide",
+              "label": {
+                "id": 40211,
+                "name": "Nightfall Audio",
+                "slug": "nightfall-audio"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "path": "catalog/tracks",
+      "params": {
+        "label_id": 40211,
+        "page": 1
+      },
+      "body": {
+        "count": 0,
+        "next": null,
+        "page": "1/1",
+        "per_page": 100,
+        "results": []
+      }
+    },
+    {
+      "path": "catalog/search",
+      "body": {
+        "labels": []
+      }
+    },
+    {
+      "path": "catalog/labels",
+      "body": {
+        "count": 0,
+        "next": null,
+        "page": "1/1",
+        "per_page": 100,
+        "results": []
+      }
+    },
+    {
+      "path": "catalog/tracks",
+      "params": {
+        "artist_id": 301001,
+        "page": 1
+      },
+      "body": {
+        "count": 4,
+        "next": null,
+        "page": "1/1",
+        "per_page": 100,
+        "results": [
+          {
+            "new_release_date": "{{today-5}}",
+            "publish_date": "{{today-5}}",
+            "id": 19000004,
+            "name": "Salt Air",
+            "mix_name": "Extended Mix",
+            "slug": "salt-air",
+            "key": {
+              "id": 8,
+              "name": "A Minor",
+              "camelot_number": 8,
+              "camelot_letter": "A"
+            },
+            "bpm": 125,
+            "artists": [
+              {
+                "id": 301001,
+                "name": "Mara Veil",
+                "slug": "mara-veil"
+              },
+              {
+                "id": 301002,
+                "name": "Kiko",
+                "slug": "kiko"
+              }
+            ],
+            "remixers": [],
+            "genre": {
+              "id": 5,
+              "name": "House",
+              "slug": "house"
+            },
+            "release": {
+              "id": 4500003,
+              "name": "Salt Air",
+              "slug": "salt-air",
+              "label": {
+                "id": 40211,
+                "name": "Nightfall Audio",
+                "slug": "nightfall-audio"
+              }
+            }
+          },
+          {
+            "new_release_date": "{{today-12}}",
+            "publish_date": "{{today-12}}",
+            "id": 19000003,
+            "name": "Undertow",
+            "mix_name": "Original Mix",
+            "slug": "undertow",
+            "key": {
+              "id": 9,
+              "name": "E Minor",
+              "camelot_number": 9,
+              "camelot_letter": "A"
+            },
+            "bpm": 123,
+            "artists": [
+              {
+                "id": 301001,
+                "name": "Mara Veil",
+                "slug": "mara-veil"
+              }
+            ],
+            "remixers": [],
+            "genre": {
+              "id": 5,
+              "name": "House",
+              "slug": "house"
+            },
+            "release": {
+              "id": 4500002,
+              "name": "Tides EP",
+              "slug": "undertow",
+              "label": {
+                "id": 40211,
+                "name": "Nightfall Audio",
+                "slug": "nightfall-audio"
+              }
+            }
+          },
+          {
+            "new_release_date": "{{today-40}}",
+            "publish_date": "{{today-40}}",
+            "id": 19000002,
+            "name": "Low Tide",
+            "mix_name": "Original Mix",
+            "slug": "low-tide",
+            "key": {
+              "id": 9,
+              "name": "E Minor",
+              "camelot_number": 9,
+              "camelot_letter": "A"
+            },
+            "bpm": 124,
+            "artists": [
+              {
+                "id": 301001,
+                "name": "Mara Veil",
+                "slug": "mara-veil"
+              }
+            ],
+            "remixers": [],
+            "genre": {
+              "id": 5,
+              "name": "House",
+              "slug": "house"
+            },
+            "release": {
+              "id": 4500002,
+              "name": "Tides EP",
+              "slug": "low-tide",
+              "label": {
+                "id": 40211,
+                "name": "Nightfall Audio",
+                "slug": "nightfall-audio"
+              }
+            }
+          },
+          {
+            "new_release_date": "{{today-100}}",
+            "publish_date": "{{today-100}}",
+            "id": 19000001,
+            "name": "Harbour Lights",
+            "mix_name": "Original Mix",
+            "slug": "harbour-lights",
+            "key": {
+              "id": 8,
+              "name": "A Minor",
+              "camelot_number": 8,
+              "camelot_letter": "A"
+            },
+            "bpm": 124,
+            "artists": [
+              {
+                "id": 301001,
+                "name": "Mara Veil",
+                "slug": "mara-veil"
+              },
+              {
+                "id": 301002,
+                "name": "Kiko",
+                "slug": "kiko"
+              }
+            ],
+            "remixers": [],
+            "genre": {
+              "id": 5,
+              "name": "House",
+              "slug": "house"
+            },
+            "release": {
+              "id": 4500001,
+              "name": "Harbour Lights",
+              "slug": "harbour-lights",
+              "label": {
+                "id": 40211,
+                "name": "Nightfall Audio",
+                "slug": "nightfall-audio"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "my/playlists",
+      "body": {
+        "id": 5550101,
+        "name": "Journey push"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "my/playlists/5550101/tracks",
+      "json": {
+        "track_id": 19000003
+      },
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "my/playlists/5550101/tracks",
+      "json": {
+        "track_id": 19000004
+      },
+      "body": {}
+    }
+  ]
+}

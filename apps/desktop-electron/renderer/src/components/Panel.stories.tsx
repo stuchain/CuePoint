@@ -21,7 +21,7 @@ export const Default: Story = {
 
 export const Alt: Story = {
   args: {
-    title: "inCrate",
+    title: "Discover",
     variant: "alt",
     children: <p>Secondary panel surface.</p>,
   },

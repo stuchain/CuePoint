@@ -1,6 +1,10 @@
 # inCrate Specification
 
-**Status:** Finalized (ready for implementation)  
+> **Status: historical.** inCrate retired into Discover in DISCOVER-12 (DEC-090,
+> DEC-100). This page describes inCrate as it was built, and is kept as a record;
+> for how discovery works now, see [Discover](user-guide/discover.md).
+
+**Status:** Finalized (ready for implementation)\
 **Last updated:** 2025-02
 
 ---

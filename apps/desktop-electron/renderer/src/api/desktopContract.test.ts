@@ -1092,7 +1092,7 @@ describe("desktop contract", () => {
       expect(engineClient).toContain("async function readDiscover<T>");
     });
 
-    it("names nothing incrate: those routes and methods retire in DISCOVER-12", () => {
+    it("names nothing incrate: those routes and methods retired in DISCOVER-12", () => {
       for (const method of methods) {
         expect(method.toLowerCase()).not.toContain("incrate");
         expect(clientMethod(method)).not.toContain("/api/v1/incrate/");
@@ -1308,6 +1308,49 @@ describe("desktop contract", () => {
     it("offers resuming a match on the bridge", () => {
       expect(invokedChannels(preload)).toContain("engine:resumeCleanMatch");
       expect(invokedChannels(preload)).toContain("engine:getResumableMatches");
+    });
+  });
+
+  describe("inCrate's routes are gone (DISCOVER-12, DEC-090)", () => {
+    // The same six-file sweep as CLEAN-14's: a method left in one file would
+    // let the renderer type-check against a bridge the engine answers with 404.
+    const RETIRED_METHODS = [
+      "getIncrateInventory",
+      "importIncrateXml",
+      "resetIncrateInventory",
+      "getIncrateDiscoverOptions",
+      "runIncrateDiscover",
+      "createIncratePlaylist",
+    ];
+    const FILES = { preload, main, engineClient, supervisor, bridgeTypes };
+
+    it.each(Object.entries(FILES))("%s names no retired inCrate method", (_name, source) => {
+      for (const method of RETIRED_METHODS) {
+        // `\\b` in the template, as above: `\b` would be a backspace.
+        expect(source).not.toMatch(new RegExp(`\\b${method}\\b`));
+      }
+    });
+
+    it("no channel for them is handled or invoked", () => {
+      const channels = [...handledChannels(main), ...invokedChannels(preload)];
+      for (const method of RETIRED_METHODS) {
+        expect(channels).not.toContain(`engine:${method}`);
+      }
+    });
+
+    // The engine's side is src/tests/unit/engine/test_retired_incrate.py.
+    it("the client names no inCrate route, and the types no inCrate shape", () => {
+      expect(engineClient).not.toContain("/api/v1/incrate/");
+      expect(bridgeTypes).not.toMatch(/\bIncrate[A-Z]/);
+    });
+
+    it("keeps the Beatport token methods where they were (DEC-098)", () => {
+      for (const method of ["getBeatportTokenStatus", "setBeatportToken"]) {
+        expect(preload).toContain(method);
+        expect(bridgeTypes).toContain(method);
+        expect(supervisorMethodsDeclared(supervisor)).toContain(method);
+        expect(handledChannels(main)).toContain(`engine:${method}`);
+      }
     });
   });
 });

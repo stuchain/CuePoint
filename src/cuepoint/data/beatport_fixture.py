@@ -52,14 +52,22 @@ can hold its answer back for ``delay_ms`` (at most :data:`MAX_DELAY_MS`), so a
 job asking it runs long enough to be watched. A request
 no entry answers is a 404, as an unknown path on Beatport is. With a fixture
 active, no API request reaches the network, whatever the file lists.
+
+A string in a ``body`` that is exactly ``{{today}}`` or ``{{today-N}}`` answers
+as that day's date, ``YYYY-MM-DD``, counted when the answer is sent
+(DISCOVER-12). A page of an artist's recent releases keeps only tracks dated
+inside its window, so a fixture with fixed dates would stop passing as the
+calendar moved; a relative one never does.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
@@ -91,6 +99,24 @@ _API_KEYS = frozenset(
     {"method", "path", "params", "json", "status", "body", "headers", "delay_ms"}
 )
 
+#: A body string naming a day relative to today: ``{{today}}``, ``{{today-10}}``.
+_RELATIVE_DAY = re.compile(r"^\{\{today(?:-(\d{1,4}))?\}\}$")
+
+
+def _dated(value: Any, today: date) -> Any:
+    """``value`` with every relative day in it written as that day's date."""
+    if isinstance(value, str):
+        found = _RELATIVE_DAY.match(value)
+        if found is None:
+            return value
+        return (today - timedelta(days=int(found.group(1) or 0))).isoformat()
+    if isinstance(value, list):
+        return [_dated(item, today) for item in value]
+    if isinstance(value, dict):
+        return {key: _dated(item, today) for key, item in value.items()}
+    return value
+
+
 #: The longest an answer may be held back. Long enough for an end-to-end
 #: test to watch a job run; short enough that a typo cannot hang one.
 MAX_DELAY_MS = 30_000
@@ -107,9 +133,9 @@ class ApiAnswer:
     #: while it runs rather than finishing faster than anything can look.
     delay_ms: int = 0
 
-    def content(self) -> bytes:
-        """The body as the wire carries it."""
-        return json.dumps(self.body).encode("utf-8")
+    def content(self, today: Optional[date] = None) -> bytes:
+        """The body as the wire carries it, relative days written as dates."""
+        return json.dumps(_dated(self.body, today or date.today())).encode("utf-8")
 
 
 @dataclass(frozen=True)

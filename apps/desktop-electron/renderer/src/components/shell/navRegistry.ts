@@ -11,9 +11,10 @@
  * flag — which is the property this file exists to buy, so enabling a page is
  * never a hunt through the sidebar, the router and the fallback rule.
  *
- * Today's screens keep their identity as the Tools group (DEC-021). Phase 7
- * retired inKey and Results into Clean (DEC-071), and Phase 9 re-homes inCrate
- * into Discover; until then it stays exactly where users expect it.
+ * The Tools group that held the pre-v1 screens is gone (DEC-021, DEC-100):
+ * Phase 7 retired inKey and Results into Clean (DEC-071), and Phase 9 inCrate
+ * into Discover. Their ids and paths live on in `RETIRED_DESTINATIONS`, so a
+ * remembered id or an old link still lands on the page that does the work.
  *
  * This is data, deliberately. It holds no elements and no callbacks: `App.tsx`
  * maps an id to the element to render, because that is where the props and
@@ -24,13 +25,13 @@ import type { PixelIconName } from "../pixelIcons";
 /**
  * Groups are rendered in this order, and the sidebar draws a divider between
  * them. `workspace` is unlabelled — it is the app itself, not a category.
+ * `tools` left with the Tools group (DEC-100).
  */
-export const NAV_GROUPS = ["workspace", "tools", "system"] as const;
+export const NAV_GROUPS = ["workspace", "system"] as const;
 export type NavGroup = (typeof NAV_GROUPS)[number];
 
 export const NAV_GROUP_LABELS: Record<NavGroup, string | null> = {
   workspace: null,
-  tools: "Tools",
   system: null,
 };
 
@@ -78,23 +79,22 @@ interface NavDestinationBase {
 export type NavDestination = NavDestinationBase &
   ({ icon: PixelIconName; glyph?: never } | { glyph: string; icon?: never });
 
-/** Where the app falls back to when a stored destination cannot be honored. */
-export const HOME_DESTINATION_ID = "tools";
+/**
+ * Where the app falls back to when a stored destination cannot be honored:
+ * the Library, since Tools and its landing page retired (DEC-100).
+ */
+export const HOME_DESTINATION_ID = "library";
 
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
   // Not built yet (DEC-020). Each is enabled by the phase that builds it.
   // Collections is enabled and points into Library's own page (DEC-062).
   // Clean is enabled by CLEAN-12 (DEC-072), Discover by DISCOVER-10 (DEC-021).
+  // The Library is home (DEC-100).
   { id: "library", label: "Library", path: "/library", group: "workspace", icon: "library", enabled: true },
   { id: "collections", label: "Collections", path: "/collections", group: "workspace", icon: "collections", enabled: true, pageId: "library" },
   { id: "clean", label: "Clean", path: "/clean", group: "workspace", icon: "clean", enabled: true },
   { id: "discover", label: "Discover", path: "/discover", group: "workspace", icon: "discover", enabled: true, nested: true },
   { id: "prepare", label: "Prepare", path: "/prepare", group: "workspace", icon: "prepare", enabled: false },
-
-  // Today's screens, kept intact as Tools (DEC-021). inKey and Results retired
-  // into Clean (DEC-071); see `RETIRED_DESTINATIONS`.
-  { id: "tools", label: "Tools", path: "/", group: "tools", icon: "home", enabled: true },
-  { id: "incrate", label: "inCrate", path: "/incrate", group: "tools", icon: "incrate", enabled: true },
 
   { id: "settings", label: "Settings", path: "/settings", group: "system", icon: "settings", enabled: true },
 ];
@@ -114,10 +114,16 @@ export interface RetiredDestination {
   replacedBy: string;
 }
 
-/** inKey and Results became Clean in Phase 7 (DEC-071). */
+/**
+ * inKey and Results became Clean in Phase 7 (DEC-071). In Phase 9 inCrate
+ * became Discover, and Tools — whose landing page was `/` — gave way to the
+ * Library as home (DEC-100).
+ */
 export const RETIRED_DESTINATIONS: readonly RetiredDestination[] = [
   { id: "match", path: "/match", replacedBy: "clean" },
   { id: "results", path: "/results", replacedBy: "clean" },
+  { id: "incrate", path: "/incrate", replacedBy: "discover" },
+  { id: "tools", path: "/", replacedBy: "library" },
 ];
 
 /**

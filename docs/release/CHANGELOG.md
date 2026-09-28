@@ -19,8 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when Beatport refuses it, the page says so with a link to the token in
   Settings, and past runs and the wantlist still open. **Resolve Beatport
   identities** reads your matched tracks' artists and labels from Beatport when
-  you ask. inCrate stays in Tools, unchanged, for now. See the new user guide
-  page, Discover
+  you ask. See the new user guide page, Discover
 - **Artist and label pages**, under Discover. An artist's page holds your own
   tracks by that artist — the Library's table, playable and queueable as there
   — and their recent releases on Beatport, marked owned or on your wantlist; a
@@ -189,8 +188,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clean is how matching is done.** The inKey and Results pages are gone from
   Tools; import your collection in the Library and match a playlist, a
   Collection or the whole library from Clean. A remembered page or a link to
-  inKey or Results opens Clean. Home's main button opens Clean. Settings no
-  longer has an Export panel: **Export review list…** on the Clean page does
+  inKey or Results opens Clean. Settings no longer has an Export panel: **Export review list…** on the Clean page does
   that. Past searches are no longer listed; their CSV files stay where they
   were saved. The command-line tool is unchanged
 - Scrolling deep into a Library sorted by anything but artist is about five
@@ -218,6 +216,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Removed
+- **inCrate and the Tools group** (DEC-090, DEC-100, ADR-007). Discover does
+  everything inCrate did, on the library you already imported, so there is no
+  second import. The app opens on the **Library** when it has no page to
+  reopen, rather than on Tools' landing page; a link to `/incrate`, or inCrate
+  as the page you were last on, opens Discover, and `/` or a remembered Tools
+  opens the Library. inCrate's inventory database and
+  `incrate_past_results.json` stay where they were — nothing reads them any
+  more, and they can be deleted by hand; see Discover's user guide page, "Where
+  inCrate went". The `incrate.` settings keep their names; five of them are read
+  by nothing now and may be removed from `config.yaml`
+  (`incrate.inventory_db_path`, `incrate.enrich_on_first_import`,
+  `incrate.enrichment_delay_seconds`, `incrate.beatport_username`,
+  `incrate.beatport_password`). The developer script
+  `scripts/create_incrate_playlist.py` is removed
+- **Breaking engine API change** (DEC-090, ADR-007). inCrate's routes and the
+  bridge methods behind them are removed: `GET /api/v1/incrate/inventory`
+  (`getIncrateInventory`), `POST /api/v1/incrate/import` (`importIncrateXml`),
+  `POST /api/v1/incrate/reset` (`resetIncrateInventory`),
+  `GET /api/v1/incrate/discover/options` (`getIncrateDiscoverOptions`),
+  `POST /api/v1/incrate/discover` (`runIncrateDiscover`) and
+  `POST /api/v1/incrate/playlist` (`createIncratePlaylist`). Use
+  `/api/v1/discover/*` instead. Every removed route answers 404 like any unknown
+  path, after the token check
 - **Breaking engine API change** (DEC-071, ADR-005). These routes and the
   bridge methods behind them are removed, with inKey and Results:
   `POST /api/v1/jobs/match` (`startMatchJob`), `GET /api/v1/history/recent`
@@ -233,17 +254,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
-- **inCrate's Create playlist on Beatport always failed**, saying the token
+- **Creating a playlist on Beatport always failed** (in inCrate, which Discover
+  replaced; Discover's push uses the corrected request), saying the token
   might lack playlist access whatever the token was. Beatport redirects the
   address CuePoint posted to, and the redirect turned the request into a read of
   your playlists, so no playlist was ever made. CuePoint now posts to the
   address Beatport expects, and the link it gives you opens the playlist on
   beatport.com rather than a page that did not exist. A request that Beatport
   redirects is now reported as an error instead of quietly doing something else
-- inCrate now reads the name of a Beatport chart's curator where Beatport's
-  current API puts it, so charts curated by artists in your collection can be
-  found; before, every chart's curator read as blank
-- **inCrate missed charts made by artists in your collection** whose Beatport
+- A Beatport chart's curator is read where Beatport's current API puts it, so
+  charts curated by artists in your collection can be found; inCrate read every
+  chart's curator as blank
+- **Charts made by artists in your collection were missed** whose Beatport
   account has a different name from the artist — DJEFF's charts, published by
   "OFFICIALDJEFFMUSIC", were never found for a library holding DJEFF. A chart
   an artist made is now credited to that artist. inCrate also read no chart's
@@ -428,10 +450,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CuePoint does not check that your track files are still on disk. A track whose
   file has moved or been deleted looks like any other until a later release adds
   the check
-- inCrate keeps its own separate inventory. Importing your collection on the
-  Library page does not import it into inCrate, and the two can drift apart —
-  see [Your library](../user-guide/library.md). A later release moves inCrate
-  onto the shared library
 
 ### Fixed
 - Tracks whose filename contains a `?` or a `#` can now be found on disk.

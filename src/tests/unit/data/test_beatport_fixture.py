@@ -409,3 +409,67 @@ class TestTheClientAnswersFromTheFile:
         with pytest.raises(AssertionError, match="stop here"):
             live.get("catalog/genres/")
         assert asked == [("GET", "https://api.beatport.com/v4/catalog/genres/")]
+
+
+@pytest.mark.unit
+class TestRelativeDays:
+    """A body's ``{{today-N}}`` is a date counted when it is sent (DISCOVER-12)."""
+
+    def answer(self, tmp_path, body):
+        path = write(tmp_path, {"api": [{"path": "catalog/tracks", "body": body}]})
+        return load(path).api_answer("GET", "catalog/tracks/")
+
+    def test_a_relative_day_answers_as_that_date(self, tmp_path):
+        from datetime import date
+
+        answer = self.answer(
+            tmp_path,
+            {"results": [{"new_release_date": "{{today-10}}"}, {"d": "{{today}}"}]},
+        )
+        sent = json.loads(answer.content(today=date(2026, 3, 5)))
+        assert sent == {
+            "results": [{"new_release_date": "2026-02-23"}, {"d": "2026-03-05"}]
+        }
+
+    def test_it_is_counted_when_sent_not_when_read(self, tmp_path):
+        from datetime import date
+
+        answer = self.answer(tmp_path, {"d": "{{today-1}}"})
+        assert json.loads(answer.content(today=date(2026, 1, 1))) == {"d": "2025-12-31"}
+        assert json.loads(answer.content(today=date(2027, 1, 1))) == {"d": "2026-12-31"}
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "today",
+            "{{today+1}}",
+            "{{ today }}",
+            "x {{today}}",
+            "{{today-}}",
+            "{{yesterday}}",
+        ],
+    )
+    def test_anything_else_is_left_as_written(self, tmp_path, text):
+        from datetime import date
+
+        answer = self.answer(tmp_path, {"d": text, "n": 5, "b": None})
+        sent = json.loads(answer.content(today=date(2026, 3, 5)))
+        assert sent == {"d": text, "n": 5, "b": None}
+
+    def test_the_client_reads_the_date(self, tmp_path, monkeypatch):
+        from datetime import date, timedelta
+
+        path = write(
+            tmp_path,
+            {
+                "api": [
+                    {
+                        "path": "catalog/tracks/1",
+                        "body": {"publish_date": "{{today-3}}"},
+                    }
+                ]
+            },
+        )
+        monkeypatch.setenv(ENV_VAR, str(path))
+        body = client().get("catalog/tracks/1/")
+        assert body == {"publish_date": (date.today() - timedelta(days=3)).isoformat()}

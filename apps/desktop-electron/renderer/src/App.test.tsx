@@ -18,6 +18,12 @@ import userEvent from "@testing-library/user-event";
 import App from "./App";
 import { LAST_DESTINATION_STORAGE_KEY } from "./components/shell";
 
+/**
+ * What home shows without an engine: the Library's import prompt. Home is the
+ * Library since Tools retired (DEC-100).
+ */
+const HOME = /No collection imported yet/i;
+
 /** Several screens also link to Settings, so navigation is driven from the nav. */
 function navLink(name: string): HTMLElement {
   return within(screen.getByRole("navigation", { name: /main navigation/i })).getByRole(
@@ -30,14 +36,13 @@ function navLink(name: string): HTMLElement {
  * nothing (or rendered the wrong screen) fails rather than passing on the mere
  * presence of a `.screen` element. */
 const ROUTES = [
-  { link: "Tools", marker: /Select a tool to get started/i },
   // Both of the workspace entries. Without `window.cuepoint` the Library page
   // is its import prompt, which is the same prompt either way in — and that
   // sameness is the point of DEC-062 (ORG-13).
   { link: "Library", marker: /No collection imported yet/i },
   { link: "Collections", marker: /No collection imported yet/i },
   { link: "Clean", marker: /^Clean$/ },
-  { link: "inCrate", marker: /CuePoint \/ inCrate/i },
+  { link: "Discover", marker: /Discover needs the desktop app/i },
   { link: "Settings", marker: /Beatport token/i },
 ];
 
@@ -153,10 +158,12 @@ describe("App shell", () => {
   });
 
   describe("launch destination (DEC-027)", () => {
-    it("opens on home when nothing is stored", async () => {
+    it("opens on the Library when nothing is stored (DEC-100)", async () => {
       render(<App />);
 
-      expect(await screen.findByText(/Select a tool to get started/i)).toBeInTheDocument();
+      expect(await screen.findByText(HOME)).toBeInTheDocument();
+      expect(window.location.hash).toBe("#/library");
+      expect(navLink("Library")).toHaveAttribute("aria-current", "page");
     });
 
     it("reopens on the last-visited destination", async () => {
@@ -182,7 +189,7 @@ describe("App shell", () => {
 
       const { container } = render(<App />);
 
-      expect(await screen.findByText(/Select a tool to get started/i)).toBeInTheDocument();
+      expect(await screen.findByText(HOME)).toBeInTheDocument();
       // The failure this step exists to fix is chrome with an empty content
       // area, which "did it render home" alone would not catch.
       expect(container.querySelector("main.app-main .screen")).not.toBeNull();
@@ -195,19 +202,19 @@ describe("App shell", () => {
       render(<App />);
       await screen.findByText(/Beatport token/i);
 
-      await user.click(navLink("inCrate"));
+      await user.click(navLink("Discover"));
 
-      expect(await screen.findByText(/CuePoint \/ inCrate/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Discover needs the desktop app/i)).toBeInTheDocument();
     });
 
     it("remembers the destination it navigated to", async () => {
       const user = userEvent.setup();
       render(<App />);
 
-      await user.click(navLink("inCrate"));
-      await screen.findByText(/CuePoint \/ inCrate/i);
+      await user.click(navLink("Discover"));
+      await screen.findByText(/Discover needs the desktop app/i);
 
-      expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("incrate");
+      expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("discover");
     });
 
     it("reopens on Clean for someone who was last on inKey (DEC-071)", async () => {
@@ -235,7 +242,7 @@ describe("App shell", () => {
 
     it.each(["#/match", "#/results"])("redirect %s to Clean", async (hash) => {
       const { container } = render(<App />);
-      await screen.findByText(/Select a tool to get started/i);
+      await screen.findByText(HOME);
 
       // After mounting: launch points the URL at the remembered page, so a
       // link followed inside the running app is what reaches the router.
@@ -246,13 +253,13 @@ describe("App shell", () => {
       await waitFor(() => expect(window.location.hash).toBe("#/clean"));
       const main = container.querySelector("main.app-main") as HTMLElement;
       expect(await within(main).findByText(/^Clean$/)).toBeInTheDocument();
-      expect(within(main).queryByText(/Select a tool to get started/i)).toBeNull();
+      expect(within(main).queryByText(HOME)).toBeNull();
       expect(consoleError).not.toHaveBeenCalled();
     });
 
     it("remembers Clean, not the retired page, after a redirect", async () => {
       render(<App />);
-      await screen.findByText(/Select a tool to get started/i);
+      await screen.findByText(HOME);
 
       act(() => {
         window.location.hash = "#/results";
@@ -260,6 +267,69 @@ describe("App shell", () => {
 
       await waitFor(() =>
         expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("clean"),
+      );
+    });
+  });
+
+  /**
+   * DEC-100: Tools and inCrate are gone from the sidebar. `/` was Tools'
+   * landing page and now lands on the Library; `/incrate` lands on Discover;
+   * a remembered `tools` or `incrate` does the same on launch.
+   */
+  describe("the retired Tools and inCrate pages (DISCOVER-12)", () => {
+    it("are not in the sidebar", () => {
+      render(<App />);
+      const nav = screen.getByRole("navigation", { name: /main navigation/i });
+      expect(within(nav).queryByRole("link", { name: "Tools" })).toBeNull();
+      expect(within(nav).queryByRole("link", { name: "inCrate" })).toBeNull();
+      expect(within(nav).queryByText("Tools")).toBeNull();
+    });
+
+    it.each([
+      ["#/incrate", "#/discover", /Discover needs the desktop app/i],
+      ["#/", "#/library", HOME],
+      ["#/not-a-page", "#/library", HOME],
+    ])("sends %s to %s", async (hash, target, marker) => {
+      const { container } = render(<App />);
+      await screen.findByText(HOME);
+      act(() => {
+        window.location.hash = "#/settings";
+      });
+      await screen.findByText(/Beatport token/i);
+
+      act(() => {
+        window.location.hash = hash;
+      });
+
+      await waitFor(() => expect(window.location.hash).toBe(target));
+      const main = container.querySelector("main.app-main") as HTMLElement;
+      expect(await within(main).findByText(marker)).toBeInTheDocument();
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["incrate", "#/discover", /Discover needs the desktop app/i],
+      ["tools", "#/library", HOME],
+    ])("reopens a remembered %s on %s", async (stored, target, marker) => {
+      localStorage.setItem(LAST_DESTINATION_STORAGE_KEY, stored);
+      const { container } = render(<App />);
+
+      await waitFor(() => expect(window.location.hash).toBe(target));
+      const main = container.querySelector("main.app-main") as HTMLElement;
+      expect(await within(main).findByText(marker)).toBeInTheDocument();
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it("remembers the page the redirect reached, not the retired id", async () => {
+      render(<App />);
+      await screen.findByText(HOME);
+
+      act(() => {
+        window.location.hash = "#/incrate";
+      });
+
+      await waitFor(() =>
+        expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("discover"),
       );
     });
   });
@@ -276,7 +346,7 @@ describe("App shell", () => {
       ["#/discover/similar/12", /Similar tracks could not open/],
     ])("routes %s to its page, with Discover lit", async (hash, marker) => {
       const { container } = render(<App />);
-      await screen.findByText(/Select a tool to get started/i);
+      await screen.findByText(HOME);
 
       act(() => {
         window.location.hash = hash;
@@ -284,7 +354,7 @@ describe("App shell", () => {
 
       const main = container.querySelector("main.app-main") as HTMLElement;
       expect(await within(main).findByText(marker)).toBeInTheDocument();
-      expect(within(main).queryByText(/Select a tool to get started/i)).toBeNull();
+      expect(within(main).queryByText(HOME)).toBeNull();
       expect(navLink("Discover")).toHaveAttribute("aria-current", "page");
       await waitFor(() =>
         expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("discover"),
@@ -294,7 +364,7 @@ describe("App shell", () => {
 
     it("reopens on Discover, not on the page", async () => {
       const first = render(<App />);
-      await screen.findByText(/Select a tool to get started/i);
+      await screen.findByText(HOME);
       act(() => {
         window.location.hash = "#/discover/artist/name%3AKiko";
       });

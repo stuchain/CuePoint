@@ -69,18 +69,6 @@ from cuepoint.persistence.track_query import (
     BROWSE_IDS_LIMIT_DEFAULT,
     BROWSE_LIMIT_DEFAULT,
 )
-from cuepoint.engine.incrate_api import (
-    demo_inventory_snapshot,
-    get_discover_options,
-    get_inventory_snapshot,
-    parse_discover_body,
-    parse_incrate_import_body,
-    parse_playlist_body,
-    run_discover,
-    run_incrate_import,
-    run_incrate_reset,
-    run_playlist_create,
-)
 from cuepoint.engine.discover_api import (
     handle_get as discover_get,
     handle_post as discover_post,
@@ -420,44 +408,6 @@ def make_handler(
                 self._send_json(500, error_payload("LIBRARY_REFRESH_FAILED", str(exc)))
                 return
             self._send_json(202, payload)
-
-        def _handle_incrate_get(self, path: str, query: str) -> None:
-            if not self._authorized():
-                self._send_json(
-                    401, error_payload("UNAUTHORIZED", "Missing or invalid token")
-                )
-                return
-            if path == "/api/v1/incrate/discover/options":
-                try:
-                    payload = get_discover_options()
-                except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("INCRATE_FAILED", str(exc)))
-                    return
-                self._send_json(200, payload)
-                return
-            if path != "/api/v1/incrate/inventory":
-                self._send_json(404, error_payload("NOT_FOUND", "Unknown path"))
-                return
-            params = parse_qs(query)
-            limit_raw = params.get("limit", ["100"])[0]
-            search = params.get("search", [""])[0] or None
-            demo = params.get("demo", ["false"])[0].lower() in ("1", "true", "yes")
-            try:
-                limit = int(limit_raw)
-            except ValueError:
-                self._send_json(
-                    400, error_payload("INVALID_REQUEST", "limit must be an integer")
-                )
-                return
-            try:
-                if demo:
-                    payload = demo_inventory_snapshot()
-                else:
-                    payload = get_inventory_snapshot(limit=limit, search=search)
-            except Exception as exc:  # noqa: BLE001 — surface to API client
-                self._send_json(500, error_payload("INCRATE_FAILED", str(exc)))
-                return
-            self._send_json(200, payload)
 
         def do_GET(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
@@ -813,9 +763,6 @@ def make_handler(
             if path.startswith("/api/v1/jobs/"):
                 self._handle_job_get(path)
                 return
-            if path.startswith("/api/v1/incrate/"):
-                self._handle_incrate_get(path, parsed.query)
-                return
             if path == "/api/v1/config/beatport-token":
                 if not self._authorized():
                     self._send_json(
@@ -954,72 +901,6 @@ def make_handler(
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_json(
                         500, error_payload("SUPPORT_BUNDLE_FAILED", str(exc))
-                    )
-                    return
-                self._send_json(200, payload)
-                return
-
-            if path == "/api/v1/incrate/import":
-                try:
-                    body = parse_incrate_import_body(self._read_body())
-                    payload = run_incrate_import(body)
-                except ValueError as exc:
-                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
-                    return
-                except FileNotFoundError as exc:
-                    self._send_json(404, error_payload("FILE_NOT_FOUND", str(exc)))
-                    return
-                except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(
-                        500, error_payload("INCRATE_IMPORT_FAILED", str(exc))
-                    )
-                    return
-                self._send_json(200, payload)
-                return
-
-            if path == "/api/v1/incrate/reset":
-                try:
-                    raw = self._read_body()
-                    body = json.loads(raw.decode("utf-8")) if raw else {}
-                    if not isinstance(body, dict):
-                        raise ValueError("JSON body must be an object")
-                    payload = run_incrate_reset(body)
-                except ValueError as exc:
-                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
-                    return
-                except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(
-                        500, error_payload("INCRATE_RESET_FAILED", str(exc))
-                    )
-                    return
-                self._send_json(200, payload)
-                return
-
-            if path == "/api/v1/incrate/discover":
-                try:
-                    body = parse_discover_body(self._read_body())
-                    payload = run_discover(body)
-                except ValueError as exc:
-                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
-                    return
-                except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(
-                        500, error_payload("INCRATE_DISCOVER_FAILED", str(exc))
-                    )
-                    return
-                self._send_json(200, payload)
-                return
-
-            if path == "/api/v1/incrate/playlist":
-                try:
-                    body = parse_playlist_body(self._read_body())
-                    payload = run_playlist_create(body)
-                except ValueError as exc:
-                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
-                    return
-                except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(
-                        500, error_payload("INCRATE_PLAYLIST_FAILED", str(exc))
                     )
                     return
                 self._send_json(200, payload)

@@ -150,9 +150,9 @@ Two more things follow from it:
 
 - Rekordbox playlists shown in the left pane are a mirror, and are read-only by
   every path. You cannot drag into them, and nothing here changes them.
-- If you also use inCrate, it still keeps its own separate copy of your
-  collection — see [Your library](library.md#incrate-keeps-a-separate-inventory).
-  Collections and tags are not shared with it.
+- [Discover](discover.md) reads this same library and changes none of it: an
+  Artist or Label page can be saved as a Smart Collection, and nothing Discover
+  does — a run, the wantlist, a page, a push — writes to your tracks.
 
 ## Where the data lives
 

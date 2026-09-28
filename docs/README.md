@@ -45,9 +45,9 @@ For contributors: setup, architecture, extending the codebase.
 | [Common Dev Errors](development/common-errors.md) | Dev environment troubleshooting |
 | [Coding Standards](development/coding-standards.md) | Formatting, linting, typing |
 | [Remediation notes](development/remediation-notes.md) | Archive of one-off fix notes |
-| [Feature designs (inCrate)](feature/README.md) | inCrate: inventory, discovery, Beatport playlists — spec and implementation order |
+| [Feature designs (inCrate, historical)](feature/README.md) | inCrate's original designs; inCrate retired into [Discover](user-guide/discover.md) |
 | [UI overhaul (lab → production)](ui-overhaul/README.md) | Layout, Results table, Settings scroll, rollout phases from UI Lab |
-| [inCrate spec](incrate-spec.md) | inCrate requirements and decisions |
+| [inCrate spec (historical)](incrate-spec.md) | inCrate's original requirements; see [Discover](user-guide/discover.md) |
 
 ---
 

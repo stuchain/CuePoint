@@ -1,8 +1,12 @@
 # inCrate implementation design 02: Beatport API client (Phase 2)
 
-**Implementation order:** Phase 2 — build after Phase 1 (Inventory). Depends on no other inCrate phases; existing BeatportService (search/fetch) remains separate.  
-**Spec:** [../incrate-spec.md](../incrate-spec.md)  
-**Previous phase:** [incrate-01-inventory.md](incrate-01-inventory.md)  
+> **Status: historical.** inCrate retired into Discover in DISCOVER-12 (DEC-090,
+> DEC-100). This page describes inCrate as it was built, and is kept as a record;
+> for how discovery works now, see [Discover](../user-guide/discover.md).
+
+**Implementation order:** Phase 2 — build after Phase 1 (Inventory). Depends on no other inCrate phases; existing BeatportService (search/fetch) remains separate.\
+**Spec:** [../incrate-spec.md](../incrate-spec.md)\
+**Previous phase:** [incrate-01-inventory.md](incrate-01-inventory.md)\
 **Next phase:** [incrate-03-discovery.md](incrate-03-discovery.md) (Discovery flow).
 
 ---

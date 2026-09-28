@@ -31,26 +31,27 @@ class TestBeatportApiLive:
     def api(self, client):
         return BeatportApi(client, cache_service=None)
 
-    def test_list_genres_live(self, api):
-        """Real API: list_genres() returns non-empty list."""
-        genres = api.list_genres()
+    def test_genres_live(self, api):
+        """Real API: genres() returns the whole listing, each with an id and name."""
+        genres = api.genres()
         assert isinstance(genres, list)
-        # API may return empty if endpoint differs; we only require no exception
-        if genres:
-            assert hasattr(genres[0], "id")
-            assert hasattr(genres[0], "name")
+        for genre in genres:
+            assert genre.id > 0 and genre.name
 
-    def test_list_charts_live(self, api):
-        """Real API: list_charts with genre and dates returns list (maybe empty)."""
+    def test_charts_live(self, api):
+        """Real API: charts() in a 30-day window stays inside it, newest first."""
         to_d = date.today()
         from_d = to_d - timedelta(days=30)
-        charts = api.list_charts(genre_id=5, from_date=from_d, to_date=to_d)
+        charts = api.charts(5, from_d, to_d)
         assert isinstance(charts, list)
+        dates = [c.publish_date for c in charts if c.publish_date]
+        assert all(from_d.isoformat() <= d <= to_d.isoformat() for d in dates)
+        assert dates == sorted(dates, reverse=True)
 
-    def test_get_chart_live(self, api):
-        """Real API: get_chart(known_id) returns ChartDetail or None."""
-        # Use a small chart id if API has one; otherwise we may get None
-        detail = api.get_chart(12345)
-        if detail is not None:
-            assert hasattr(detail, "id")
-            assert hasattr(detail, "tracks")
+    def test_chart_tracks_live(self, api):
+        """Real API: a listed chart's tracks carry their ids."""
+        to_d = date.today()
+        charts = api.charts(5, to_d - timedelta(days=30), to_d)
+        if charts:
+            for track in api.chart_tracks(charts[0].id, max_pages=1):
+                assert track.id > 0

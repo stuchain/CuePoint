@@ -16,9 +16,8 @@ used last. From any track in your library you can also open its
 [similar tracks](#similar-tracks); both are part of Discover, so the sidebar
 keeps **Discover** highlighted while you are on them.
 
-> inCrate is still in the sidebar under **Tools**, unchanged, while Discover
-> takes over its work. A later release retires it; nothing in Discover reads or
-> changes inCrate's own inventory.
+Discover replaces **inCrate**, which used to sit under **Tools** in the sidebar.
+See [Where inCrate went](#where-incrate-went) if you used it.
 
 ## Runs
 
@@ -57,6 +56,13 @@ you own it, and whether it is on your wantlist.
 tracks hidden". A track counts as owned when a track in your library has an
 accepted Beatport match to it (see [Clean](clean.md)). Tick **Show tracks you
 own** to see them too.
+
+**"Not owned" means CuePoint has no match for it, not that the file is
+missing.** Owned is worked out from your accepted matches every time a run is
+opened, so a track you own but have not matched in Clean reads as not owned —
+and reads as owned as soon as you accept its match, in every run, old ones
+included. If Discover shows you a track you know you have, match that track in
+Clean.
 
 Sort by title, artists, release date, or the order the run found them, by
 clicking a column's header. **Columns…** chooses which columns to show, and the
@@ -236,6 +242,36 @@ Suggestions are your own tracks: double-click one to play the list from there,
 and use the right-click menu to **Play next** or **Add to queue**. **Similar
 tracks** on a suggestion's menu makes it the next track to compare with. The
 Inspector shows the track you are comparing with until you select a suggestion.
+
+## Where inCrate went
+
+Discover does everything inCrate did, on the library you already imported:
+inCrate kept its own copy of your collection, filled in missing labels by
+matching on its own, ran as one long wait, kept nothing it found, and could not
+tell a track you own from one you do not. **Tools** and its landing page are
+gone too; the app opens on the **Library** when it has nowhere else to go, and
+an old `inCrate` bookmark or remembered page opens Discover.
+
+**What inCrate kept is still on your computer, and nothing reads it any more.**
+CuePoint does not delete your files, so these stay where they were until you
+remove them. Both are safe to delete by hand:
+
+| What | Where |
+| --- | --- |
+| inCrate's inventory (its copy of your collection) | Windows: `%APPDATA%\CuePoint\incrate\inventory.sqlite` · macOS: `~/Library/Application Support/CuePoint/incrate/inventory.sqlite` · Linux: `~/.local/share/CuePoint/incrate/inventory.sqlite` — or wherever `incrate.inventory_db_path` in `config.yaml` pointed |
+| inCrate's past results | Windows: `%LOCALAPPDATA%\CuePoint\incrate_past_results.json` · macOS: `~/Library/Application Support/CuePoint/incrate_past_results.json` · Linux: `~/.local/share/CuePoint/incrate_past_results.json` |
+
+Playlists inCrate made on your Beatport account are yours and stay there.
+
+**Settings keep their `incrate.` names.** The Beatport token is still stored as
+`incrate.beatport_access_token` in `~/.cuepoint/config.yaml`, and Discover's
+defaults as `incrate.new_releases_days`, `incrate.discovery_genre_ids` and
+`incrate.playlist_name_format`: the prefix is historical, and renaming it would
+break your existing file. These inCrate settings are read by nothing now, and
+you may delete them from the file: `incrate.inventory_db_path`,
+`incrate.enrich_on_first_import`, `incrate.enrichment_delay_seconds`,
+`incrate.beatport_username` and `incrate.beatport_password`. CuePoint does not
+edit the file to remove them, and still loads it with them in it.
 
 ## See also
 

@@ -7,8 +7,9 @@
 holds no genre listing, so the listing is read the way every recorded v4
 listing is — ``results`` pages, ``next`` null on the last — and the parser
 keeps only what it can use. The method reads every page, where inCrate's
-``list_genres`` reads the first; that one is left as it is for inCrate, and a
-test holds that the two never share a cached answer.
+``list_genres`` read the first. ``list_genres`` retired with inCrate
+(DISCOVER-12), but a cache can still hold its answer, so a test holds that the
+first page it kept is never read as the whole listing.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from typing import Any, Dict, Optional
 import pytest
 
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
-from cuepoint.incrate.beatport_api_models import Genre
+from cuepoint.services.beatport_api_models import Genre
 from cuepoint.services.beatport_api import MAX_LISTING_PAGES, BeatportApi
 from cuepoint.services.beatport_api_client import classify_beatport_error
 from cuepoint.services.beatport_catalog import MAX_TEXT_LENGTH, parse_catalog_genre

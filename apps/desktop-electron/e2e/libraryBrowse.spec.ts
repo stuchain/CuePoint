@@ -142,6 +142,11 @@ async function importCollection(window: Page, xmlPath: string) {
       { timeout: 90_000 },
     )
     .toBe("succeeded");
+  // The Library is home (DEC-100), so it is already open, and it reads the
+  // library when it loads: an import made behind its back, through the bridge,
+  // is seen on the next load — as it would be after a relaunch.
+  await window.reload();
+  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
 }
 
 /** The page's own search box — the shell has one too, on Ctrl+K. */

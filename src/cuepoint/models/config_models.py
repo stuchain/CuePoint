@@ -205,20 +205,31 @@ class TelemetryConfig:
 
 @dataclass
 class IncrateConfig:
-    """inCrate inventory, enrichment, Beatport API, and discovery configuration (Phase 1–3)."""
+    """The Beatport token and Discover's defaults, under their historical name.
 
-    inventory_db_path: Optional[str] = None  # None = use platform default
+    The section kept inCrate's name when inCrate retired into Discover
+    (DISCOVER-12): renaming it would be a config-key change, and nothing asks
+    for one. Discover reads the token, the API settings, the two discovery
+    defaults and the playlist name format. The inventory, enrichment and
+    browser-login keys are read by nothing any more; they are still accepted,
+    so an existing ``config.yaml`` loads, and a user may delete them (DEC-098).
+    """
+
+    # Read by nothing since DISCOVER-12 (inCrate's inventory and enrichment).
+    inventory_db_path: Optional[str] = None
     enrich_on_first_import: bool = True
     enrichment_delay_seconds: float = 0.5
-    # Phase 2: Beatport API client
+    # The Beatport API client (DISCOVER-01; DEC-098)
     beatport_api_base_url: str = "https://api.beatport.com/v4"
     beatport_access_token: str = ""
     beatport_api_timeout: int = 30
-    # Phase 3: Discovery
+    # A Discover run's defaults (DISCOVER-05)
     new_releases_days: int = 30
     discovery_genre_ids: List[int] = field(default_factory=list)
-    # Phase 4: Playlist and auth
+    # A Beatport playlist's default name (DISCOVER-06)
     playlist_name_format: str = "short"  # "short" | "iso"
+    # Read by nothing since DISCOVER-12: they fed the browser login DEC-099
+    # removed.
     beatport_username: str = ""
     beatport_password: str = ""
 

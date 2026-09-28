@@ -326,17 +326,12 @@ file that has none is an option when you
 [write tags to files](#writing-tags-to-files), and it never replaces a picture a
 file already has.
 
-### inCrate keeps a separate inventory
+### One import, for everything
 
-**inCrate has its own copy of your collection, and importing into one does not
-import into the other.** If you use inCrate, you will import your XML twice —
-once on the Library page and once in inCrate — and the two can drift apart if
-you refresh one and not the other.
-
-This is not an oversight; it is the cost of adding the library underneath a tool
-that already had one, without breaking inCrate while doing it. A later release
-moves inCrate onto the shared library and this duplication goes away. Until
-then, if inCrate's results look out of date, re-import there too.
+**Everything in CuePoint reads this one library**, so you import your collection
+once. [Discover](discover.md), which replaced inCrate, works on it directly;
+inCrate kept a separate copy of its own, which nothing reads any more — see
+[Where inCrate went](discover.md#where-incrate-went).
 
 ## Clean in the Library
 

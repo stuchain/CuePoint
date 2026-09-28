@@ -108,6 +108,11 @@ async function importCollection(window: Page, xmlPath: string) {
       { timeout: 60_000 },
     )
     .toBe("succeeded");
+  // The Library is home (DEC-100), so it is already open, and it reads the
+  // library when it loads: an import made behind its back, through the bridge,
+  // is seen on the next load — as it would be after a relaunch.
+  await window.reload();
+  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
 }
 
 test.describe("The Library page (LIBRARY-11)", () => {

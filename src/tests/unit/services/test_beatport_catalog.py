@@ -19,12 +19,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import pytest
 
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
-from cuepoint.incrate.beatport_api_models import (
+from cuepoint.services.beatport_api_models import (
     CatalogArtist,
     CatalogLabel,
     CatalogTrack,
-    ChartTrack,
-    LabelReleaseTrack,
 )
 from cuepoint.services.beatport_api import (
     MAX_LISTING_PAGES,
@@ -702,49 +700,6 @@ class TestChartTracks:
         api, client = api_with()
         assert api.chart_tracks(0) == []
         assert client.calls == []
-
-
-class TestLegacyShapesGainTheCatalog:
-    """inCrate's models carry the catalog track without anything inCrate reads changing."""
-
-    def test_chart_tracks_carry_the_catalog_and_the_curator_is_read(self) -> None:
-        api, _ = api_with(
-            **{
-                "/catalog/charts/880001": load("chart.json"),
-                "/catalog/charts/880001/tracks": load("chart_tracks.json"),
-            }
-        )
-        detail = api.get_chart(880001)
-        assert detail is not None
-        assert detail.author_name == "Mara Veil"
-        assert [t.track_id for t in detail.tracks] == [19000010, 19000001]
-        catalog = detail.tracks[1].catalog
-        assert catalog is not None and catalog.remixers[0].name == "Dub Phizix Jr"
-
-    def test_chart_summary_reads_the_curator(self) -> None:
-        api, _ = api_with(**{"/catalog/charts": load("charts_page.json")})
-        charts = api.list_charts(5, date(2026, 9, 1), date(2026, 9, 30))
-        assert [c.author_name for c in charts] == ["Mara Veil"]
-
-    def test_label_release_tracks_carry_the_catalog(self) -> None:
-        api, _ = api_with(
-            **{
-                "/catalog/labels/40211/releases": load("label_releases.json"),
-                "/catalog/releases/4500010/tracks": listing(
-                    [load("artist_tracks_page1.json")["results"][0]]
-                ),
-                "/catalog/releases/4500020/tracks": load("release_tracks.json"),
-            }
-        )
-        releases = api.get_label_releases(40211, date(2026, 8, 1), date(2026, 9, 30))
-        by_id = {r.release_id: r for r in releases}
-        white = by_id[4500020].tracks[0].catalog
-        assert white is not None and white.label_id is None
-        assert by_id[4500010].tracks[0].catalog is not None
-
-    def test_old_constructors_still_work_without_the_catalog(self) -> None:
-        assert ChartTrack(1, "T", "A", "u", 1).catalog is None
-        assert LabelReleaseTrack(1, "T", "A", "u", "2026-01-01").catalog is None
 
 
 class TestPlaylists:

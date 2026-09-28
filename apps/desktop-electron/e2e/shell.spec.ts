@@ -69,9 +69,15 @@ test.describe("Application shell navigation", () => {
       // Attachment, not visibility: on a first run the onboarding dialog covers
       // the screen, and what failed before was that no screen existed at all.
       await expect(window.locator("main.app-main .screen")).toBeAttached({ timeout: 30_000 });
-      await expect(window.locator("main.app-main")).toContainText(
-        /Select a tool to get started/i,
-      );
+      // With nothing remembered, home is the Library (DEC-100), not Tools'
+      // landing page.
+      await expect(
+        window.getByRole("navigation", { name: /main navigation/i }).getByRole("link", {
+          name: "Library",
+          exact: true,
+        }),
+      ).toHaveAttribute("aria-current", "page");
+      expect(new URL(window.url()).hash).toBe("#/library");
     } finally {
       await app.close();
     }
@@ -202,7 +208,7 @@ test.describe("Application shell navigation", () => {
 
       // Every destination is still reachable with labels hidden — the state
       // DEC-022 chose, where an icon is all there is to go on.
-      for (const label of ["Library", "Collections", "Clean", "Discover", "Tools", "inCrate", "Settings"]) {
+      for (const label of ["Library", "Collections", "Clean", "Discover", "Settings"]) {
         await expect(nav.getByRole("link", { name: label, exact: true })).toBeVisible();
       }
     } finally {
@@ -272,9 +278,13 @@ test.describe("Application shell navigation", () => {
       const window = await first.firstWindow({ timeout: 60_000 });
       await dismissOnboarding(window);
       await window.getByRole("navigation", { name: /main navigation/i })
-        .getByRole("link", { name: "inCrate" })
+        .getByRole("link", { name: "Discover" })
         .click();
-      await expect(window.getByText(/CuePoint \/ inCrate/i)).toBeVisible({ timeout: 15_000 });
+      await expect(
+        window.getByRole("navigation", { name: /main navigation/i }).getByRole("link", {
+          name: "Discover",
+        }),
+      ).toHaveAttribute("aria-current", "page", { timeout: 15_000 });
     } finally {
       await first.close();
     }
@@ -284,9 +294,45 @@ test.describe("Application shell navigation", () => {
     const second = await launch(userDataDir);
     try {
       const window = await second.firstWindow({ timeout: 60_000 });
-      await expect(window.getByText(/CuePoint \/ inCrate/i)).toBeVisible({ timeout: 30_000 });
+      await expect(
+        window.getByRole("navigation", { name: /main navigation/i }).getByRole("link", {
+          name: "Discover",
+        }),
+      ).toHaveAttribute("aria-current", "page", { timeout: 30_000 });
+      expect(new URL(window.url()).hash).toBe("#/discover");
     } finally {
       await second.close();
+    }
+  });
+
+  test("reopens a remembered Tools or inCrate on the page that replaced it (DEC-100)", async () => {
+    // What an older build left stored: its home, Tools, or inCrate.
+    for (const [stored, hash] of [
+      ["incrate", "#/discover"],
+      ["tools", "#/library"],
+    ] as const) {
+      const first = await launch(userDataDir);
+      try {
+        const window = await first.firstWindow({ timeout: 60_000 });
+        await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+        await window.evaluate((id) => {
+          localStorage.setItem("cuepoint-onboarding-complete", "1");
+          localStorage.setItem("cuepoint-ui-shell-last-destination", id);
+        }, stored);
+      } finally {
+        await first.close();
+      }
+
+      const second = await launch(userDataDir);
+      try {
+        const window = await second.firstWindow({ timeout: 60_000 });
+        await expect
+          .poll(() => new URL(window.url()).hash, { timeout: 30_000 })
+          .toBe(hash);
+        await expect(window.locator("main.app-main .screen")).toBeAttached();
+      } finally {
+        await second.close();
+      }
     }
   });
 });

@@ -15,11 +15,6 @@ from cuepoint.services.beatport_api import BeatportApi
 from cuepoint.services.beatport_api_client import BeatportApiClient
 from cuepoint.services.beatport_service import BeatportService
 from cuepoint.services.cache_service import CacheService
-from cuepoint.services.incrate_discovery_service import IncrateDiscoveryService
-from cuepoint.services.inventory_service import (
-    InventoryService,
-    default_inventory_db_path,
-)
 from cuepoint.services.config_service import ConfigService
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.export_service import ExportService
@@ -59,13 +54,11 @@ from cuepoint.services.interfaces import (
     IDuplicateService,
     IFileCheckService,
     IFileStatusRepository,
-    IIncrateDiscoveryService,
     IJobRepository,
     ILibraryService,
     IMetadataService,
     ITagRepository,
     ITagService,
-    IInventoryService,
     ILoggingService,
     IMatcherService,
     IMatchApplyService,
@@ -164,7 +157,7 @@ def bootstrap_services() -> None:
 
     **Calling this twice must not replace what the first call registered.**
     Four callers say "make sure the services exist" — the engine's launch
-    backup, its job runner, and the config and inCrate routes — and each one
+    backup, its job runner, and the config and (then) inCrate routes — and each one
     used to register a *new* ``DatabaseService`` over the last. Anything
     resolved before that point kept the old one, so two objects in the same
     process held two SQLite connections to the same file. That is not a
@@ -669,7 +662,7 @@ def bootstrap_services() -> None:
 
     container.register_factory(IBeatportService, create_beatport_service)
 
-    # inCrate Phase 2: Beatport API client for charts/labels (discovery)
+    # The Beatport v4 catalog and playlists Discover reads (DISCOVER-01)
     def create_beatport_api() -> BeatportApi:
         cfg = config_service
         base_url = (
@@ -796,38 +789,6 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(ISimilarityService, create_similarity_service)
-
-    # inCrate Phase 1: Inventory service (import from XML, enrich via shared matching pipeline + workers)
-    def create_inventory_service() -> InventoryService:
-        raw = config_service.get("incrate.inventory_db_path")
-        db_path = (raw and str(raw).strip()) or default_inventory_db_path()
-        return InventoryService(
-            db_path=db_path,
-            config_service=config_service,
-            beatport_service=container.resolve(IBeatportService),
-            logging_service=container.resolve(ILoggingService),
-            processor_service=container.resolve(IProcessorService),
-        )
-
-    # Registered under both the interface and the concrete class: existing
-    # callers (e.g. engine/incrate_api.py) resolve by concrete class.
-    container.register_factory(InventoryService, create_inventory_service)
-    container.register_factory(IInventoryService, create_inventory_service)
-
-    # inCrate Phase 3: Discovery (charts + label releases)
-    def create_incrate_discovery_service() -> IncrateDiscoveryService:
-        return IncrateDiscoveryService(
-            inventory_service=container.resolve(InventoryService),
-            beatport_api=container.resolve(BeatportApi),
-            config_service=config_service,
-        )
-
-    container.register_factory(
-        IncrateDiscoveryService, create_incrate_discovery_service
-    )
-    container.register_factory(
-        IIncrateDiscoveryService, create_incrate_discovery_service
-    )
 
     # Register processor service (depends on beatport, matcher, logging, config)
     def create_processor_service() -> IProcessorService:

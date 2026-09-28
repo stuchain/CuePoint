@@ -4,17 +4,14 @@
 """A small Beatport, in memory, for Discover's discovery tests (DISCOVER-05).
 
 ``BeatportWorld`` stands in for ``BeatportApiClient``: it answers ``get`` for
-every path both discovery implementations ask, from one set of charts, labels
-and tracks, in the v4 shapes DISCOVER-01 recorded.
+every path Discover asks, from one set of charts, labels and tracks, in the v4
+shapes DISCOVER-01 recorded.
 
 - **The routes DISCOVER-05 reads**: ``catalog/charts/`` (a listing honouring
   ``publish_date`` and ``genre_id``), ``catalog/charts/{id}/tracks/``,
   ``catalog/tracks/?label_id=`` (a dated, newest-first listing), and the
   label search ``search_label_by_name`` makes (``catalog/search``, then
   ``catalog/labels``).
-- **The routes inCrate reads**: ``catalog/charts`` without its slash, a chart
-  by id, ``catalog/labels/{id}/releases`` and ``catalog/releases/{id}/tracks``.
-
 - **The route an Artist page adds** (DISCOVER-07): ``catalog/tracks/?artist_id=``,
   the same dated listing, of the tracks crediting an artist.
 - **The playlist routes DISCOVER-06 writes**: ``post`` to ``my/playlists/``
@@ -23,8 +20,9 @@ and tracks, in the v4 shapes DISCOVER-01 recorded.
 - **The genre listing a "New run" panel reads** (DISCOVER-09):
   ``catalog/genres/``, paged like every other listing.
 
-So inCrate's ``run_discovery`` and the new service can be run against the same
-world and held to the same answer, and every request either makes is counted.
+Every request is counted. (It once answered inCrate's release routes too, so
+inCrate's ``run_discovery`` and the new service could be held to the same
+answer; those retired with inCrate in DISCOVER-12.)
 No test reaches the network.
 """
 
@@ -182,18 +180,6 @@ class BeatportWorld:
             return self._page(
                 [label for label in self._labels() if _named(label, query)], params
             )
-        if parts[:2] == ["catalog", "labels"] and parts[-1] == "releases":
-            return self._releases(int(parts[2]), params)
-        if parts[:2] == ["catalog", "releases"] and parts[-1] == "tracks":
-            release_id = int(parts[2])
-            return self._page(
-                [
-                    self._track_json(t)
-                    for t in self._by_date(self.tracks.values())
-                    if t.release[0] == release_id
-                ],
-                params,
-            )
         return None
 
     # ------------------------------------------------------------- shapes
@@ -307,34 +293,6 @@ class BeatportWorld:
             if wanted(t) and first <= t.released.isoformat() <= last
         ]
         return self._page([self._track_json(t) for t in tracks], params)
-
-    def _releases(self, label_id: int, params: Dict[str, Any]) -> Dict[str, Any]:
-        first, last = self._window(params)
-        releases: Dict[int, Tuple[str, date, List[int]]] = {}
-        for track in self._by_date(self.tracks.values()):
-            if track.label[0] != label_id:
-                continue
-            if not first <= track.released.isoformat() <= last:
-                continue
-            name, released, ids = releases.setdefault(
-                track.release[0], (track.release[1], track.released, [])
-            )
-            ids.append(track.id)
-        return self._page(
-            [
-                {
-                    "id": rid,
-                    "name": name,
-                    "slug": "release",
-                    "track_count": len(ids),
-                    "tracks": [
-                        f"https://api.beatport.com/v4/catalog/tracks/{t}/" for t in ids
-                    ],
-                }
-                for rid, (name, _, ids) in releases.items()
-            ],
-            {**params, "per_page": 100},
-        )
 
 
 def _named(label: Dict[str, Any], query: str) -> bool:

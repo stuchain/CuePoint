@@ -51,7 +51,7 @@ from typing import (
     Tuple,
 )
 
-from cuepoint.incrate.beatport_api_models import CatalogTrack
+from cuepoint.services.beatport_api_models import CatalogTrack
 from cuepoint.models.discovery_run import OWNED_ALL
 from cuepoint.models.wantlist import (
     BOUGHT_ALL,

@@ -144,6 +144,11 @@ async function importCollection(window: Page, xmlPath: string) {
   );
   const finished = await settle(window, started.job_id);
   expect(finished!.state).toBe("succeeded");
+  // The Library is home (DEC-100), so it is already open, and it reads the
+  // library when it loads: an import made behind its back, through the bridge,
+  // is seen on the next load — as it would be after a relaunch.
+  await window.reload();
+  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
 }
 
 /** Rename the row that is waiting for a name, which a create leaves open. */

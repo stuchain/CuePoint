@@ -320,8 +320,9 @@ class TestTheRoutes:
         # ``runs/start`` read as a run: its id is refused, not guessed at.
         refused(get(engine, api.RUN_START_PATH), 400, "INVALID_REQUEST", "'start'")
 
-    def test_incrates_routes_are_left_to_incrate(self):
-        # They go in DISCOVER-12, and until then inCrate's screen needs them.
+    def test_incrates_retired_routes_are_not_taken_over(self):
+        # They retired in DISCOVER-12 and answer 404 as any unknown path does
+        # (test_retired_incrate.py); Discover does not answer them instead.
         for path in (
             "/api/v1/incrate/discover/options",
             "/api/v1/incrate/inventory",

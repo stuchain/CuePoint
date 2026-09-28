@@ -1,5 +1,6 @@
 /**
- * inKey, Results and past searches are gone, and stay gone (CLEAN-14, DEC-071).
+ * inKey, Results and past searches are gone, and stay gone (CLEAN-14, DEC-071),
+ * as are inCrate and the Tools landing page (DISCOVER-12, DEC-090, DEC-100).
  *
  * The build already fails on an import of a deleted file. This records the
  * search the retirement was made against, so a later change that brings one of
@@ -43,6 +44,11 @@ const RETIRED_MODULES = [
   "resultsColumns",
   "fixtures",
   "types",
+  // DISCOVER-12: inCrate's screen, the Tools landing page, and the file-drop
+  // hook only inCrate's import used.
+  "InCrateMainScreen",
+  "ToolSelectionScreen",
+  "useFileDrop",
 ];
 
 /** Bridge methods whose engine routes were removed with them. */
@@ -55,6 +61,13 @@ const RETIRED_BRIDGE_METHODS = [
   "syncTags",
   "openCsvFileDialog",
   "openM3uFileDialog",
+  // DISCOVER-12 (DEC-090)
+  "getIncrateInventory",
+  "importIncrateXml",
+  "resetIncrateInventory",
+  "getIncrateDiscoverOptions",
+  "runIncrateDiscover",
+  "createIncratePlaylist",
 ];
 
 const THIS_FILE = "./retiredModules.test.ts";

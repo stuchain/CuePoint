@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from cuepoint.incrate.beatport_api_models import CatalogArtist, CatalogChart
+from cuepoint.services.beatport_api_models import CatalogArtist, CatalogChart
 from cuepoint.services.beatport_api import MAX_LISTING_PAGES, BeatportApi
 from cuepoint.services.beatport_catalog import chart_web_url, parse_catalog_chart
 

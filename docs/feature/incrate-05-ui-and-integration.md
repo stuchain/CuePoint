@@ -1,7 +1,11 @@
 # inCrate implementation design 05: UI and integration (Phase 5)
 
-**Implementation order:** Phase 5 — build after Phases 1–4. Integrates all previous phases.  
-**Spec:** [../incrate-spec.md](../incrate-spec.md)  
+> **Status: historical.** inCrate retired into Discover in DISCOVER-12 (DEC-090,
+> DEC-100). This page describes inCrate as it was built, and is kept as a record;
+> for how discovery works now, see [Discover](../user-guide/discover.md).
+
+**Implementation order:** Phase 5 — build after Phases 1–4. Integrates all previous phases.\
+**Spec:** [../incrate-spec.md](../incrate-spec.md)\
 **Previous:** [incrate-04-playlist-and-auth.md](incrate-04-playlist-and-auth.md).
 
 ---

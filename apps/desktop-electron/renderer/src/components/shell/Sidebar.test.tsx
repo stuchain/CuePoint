@@ -49,14 +49,12 @@ describe("Sidebar", () => {
     }
   });
 
-  it("offers Discover in the workspace, before Tools (DISCOVER-10)", () => {
+  it("offers Discover in the workspace, after Clean (DISCOVER-10)", () => {
     renderSidebar("/discover");
     const discover = within(nav()).getByRole("link", { name: "Discover" });
     expect(discover).toHaveAttribute("href", "/discover");
     expect(discover).toHaveAttribute("aria-current", "page");
-    // inCrate stays beside it until DISCOVER-12.
     const links = within(nav()).getAllByRole("link").map((link) => link.textContent);
-    expect(links.indexOf("Discover")).toBeLessThan(links.indexOf("inCrate"));
     expect(links.indexOf("Clean")).toBeLessThan(links.indexOf("Discover"));
   });
 
@@ -75,9 +73,12 @@ describe("Sidebar", () => {
     }
   });
 
-  it("groups today's screens under a Tools heading (DEC-021)", () => {
+  it("has no Tools group and no inCrate (DEC-100)", () => {
     renderSidebar();
-    expect(within(nav()).getByText("Tools", { selector: "p" })).toBeInTheDocument();
+    expect(within(nav()).queryByText("Tools")).not.toBeInTheDocument();
+    expect(within(nav()).queryByRole("link", { name: "inCrate" })).not.toBeInTheDocument();
+    const links = within(nav()).getAllByRole("link").map((link) => link.textContent);
+    expect(links).toEqual(["Library", "Collections", "Clean", "Discover", "Settings"]);
   });
 
   it("marks the active destination with aria-current", () => {
@@ -87,7 +88,7 @@ describe("Sidebar", () => {
       "aria-current",
       "page",
     );
-    expect(within(nav()).getByRole("link", { name: "inCrate" })).not.toHaveAttribute(
+    expect(within(nav()).getByRole("link", { name: "Library" })).not.toHaveAttribute(
       "aria-current",
     );
   });

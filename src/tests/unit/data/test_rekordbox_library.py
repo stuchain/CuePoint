@@ -39,7 +39,6 @@ from cuepoint.data import rekordbox
 from cuepoint.data.rekordbox import (
     iter_collection_tracks,
     location_to_path,
-    parse_collection,
 )
 
 # Every attribute a real Rekordbox 6.8.6 export writes on a COLLECTION TRACK.
@@ -499,7 +498,7 @@ class TestCollectionScope:
         assert [t.rekordbox_track_id for t in iter_collection_tracks(path)] == ["2"]
 
     def test_track_without_a_title_is_kept(self, tmp_path):
-        """Deliberately unlike parse_collection, which skips it.
+        """Deliberately unlike a matcher, which could not match it.
 
         The library mirrors Rekordbox; dropping a track the user can see there
         would make it vanish from CuePoint with no explanation, and DEC-003 then
@@ -652,30 +651,3 @@ class TestStreaming:
         count, peak = self._peak_bytes(path)
         assert count == 50_000
         assert peak < 8 * 1024 * 1024, f"peak {peak} bytes for 50,000 tracks"
-
-
-@pytest.mark.unit
-class TestExistingParserIsUntouched:
-    """DEC-036: the matching pipeline keeps its own parse, unchanged."""
-
-    def test_parse_collection_still_reads_the_same_file(self, tmp_path):
-        path = write_collection(tmp_path, [FULL_TRACK])
-        rows = list(parse_collection(path))
-        assert len(rows) == 1
-        track_id, title, artist, remix, label = rows[0]
-        assert (track_id, title, artist, label) == (
-            "94682670",
-            "Tataki (Original Mix)",
-            "Argy",
-            "Anjunadeep",
-        )
-        assert remix == "Some Remixer"
-
-    def test_both_parsers_agree_on_which_tracks_exist(self, tmp_path):
-        rows = [
-            {"TrackID": str(i), "Name": f"T{i}", "Artist": "A"} for i in range(1, 6)
-        ]
-        path = write_collection(tmp_path, rows)
-        assert [r[0] for r in parse_collection(path)] == [
-            t.rekordbox_track_id for t in iter_collection_tracks(path)
-        ]

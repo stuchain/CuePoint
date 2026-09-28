@@ -42,7 +42,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol
 
-from cuepoint.incrate.beatport_api_models import CatalogTrack
+from cuepoint.services.beatport_api_models import CatalogTrack
 from cuepoint.services.beatport_api_client import (
     ERROR_FORBIDDEN,
     ERROR_NO_TOKEN,

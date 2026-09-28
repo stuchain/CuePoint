@@ -6,6 +6,10 @@ This folder contains **analytical implementation designs** for CuePoint features
 
 ## Implementation order (inCrate)
 
+> **Status: historical.** inCrate retired into Discover in DISCOVER-12 (DEC-090,
+> DEC-100). These designs record how inCrate was built; see
+> [Discover](../user-guide/discover.md) for how discovery works now.
+
 | Phase | Doc | Scope | Build after |
 |-------|-----|--------|-------------|
 | **1** | [01 – Inventory](incrate-01-inventory.md) | Rekordbox full-collection parse, SQLite schema, label enrichment on first import | — (first) |

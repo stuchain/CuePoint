@@ -1,5 +1,9 @@
 # inCrate
 
+> **Status: historical.** inCrate retired into Discover in DISCOVER-12 (DEC-090,
+> DEC-100). This page describes inCrate as it was built, and is kept as a record;
+> for how discovery works now, see [Discover](../user-guide/discover.md).
+
 inCrate is CuePoint’s second tool: a music-digging workflow that uses your Rekordbox collection to discover new music on Beatport and build a Beatport playlist.
 
 ## What inCrate does

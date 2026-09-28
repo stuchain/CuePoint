@@ -62,7 +62,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
 from cuepoint.core.entity_names import ENTITY_NAMES_VERSION, name_key
-from cuepoint.incrate.beatport_api_models import CatalogTrack
+from cuepoint.services.beatport_api_models import CatalogTrack
 from cuepoint.models.beatport_cache import (
     ENTITY_ARTIST,
     ENTITY_LABEL,
