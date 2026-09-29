@@ -3582,6 +3582,20 @@ place in it, which is DEC-080's reason for keeping tags in CuePoint.
 
 **Decided with**: User · **Date**: 2026-09-28
 
+### Implemented (2026-09-29, PREP-07) — a Set through Phase 8's path
+
+- **As decided.** A chosen Set is written as one ordered playlist, with its repeats, at its folder path
+  under CuePoint's folder, and recorded as `set` with no rules. Chapters, times, notes and
+  acknowledgements are not written, and its warnings are neither mentioned nor able to stop an export.
+- **Precision: there is no Set branch in the export.** A Set's entries are read by the same call from
+  the same table as a Collection's, so a Set is appended exactly as a Collection is. A test holds that
+  a planned Set and a Collection with the same folder, name and entries give byte-identical files.
+- **Precision: the dialog names a Set** as "Set · N" in its tree and "Set, in its running order" in the
+  preview, as it names a Smart Collection.
+
+**Why the decision stands**: the export writes what was decided, through the path Phase 8 already
+proved.
+
 ---
 
 ## DEC-110 — A Set List Can Be Saved as Text, CSV or M3U8, or Copied

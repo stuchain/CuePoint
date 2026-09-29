@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
-Status: **Specified 2026-09-28. PREP-01 to PREP-06 are implemented (2026-09-28).** The twelve steps below replace the roadmap's
+Status: **Specified 2026-09-28. PREP-01 to PREP-07 are implemented (2026-09-28 to 2026-09-29).** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -1536,7 +1536,7 @@ for `src/tests/fixtures/set_lists/*.csv` with its reason, beside the other test 
 
 ---
 
-## PREP-07 — Sets in the Rekordbox Export
+## PREP-07 — Sets in the Rekordbox Export ✅ IMPLEMENTED 2026-09-29
 
 **Objective**: DEC-109: a Set is one of the things the Phase 8 export can append.
 
@@ -1571,7 +1571,101 @@ as DEC-082 does for Collections.
 
 **Complexity**: **S**
 
-**Outcome**: Not started.
+**Outcome**: Implemented (2026-09-29). A Set is one of the things the Rekordbox export appends. It is
+written as one playlist of its entries in running order, repeats included, at its folder path under
+CuePoint's folder. The record stores it as `set`, and its chapters, times, notes, acknowledgements and
+warnings never reach the file, the preview or the record. The export dialog names a Set in its tree and
+in the preview. Sets reach that tree once PREP-09 draws them in the Library.
+
+**What was built.**
+
+- **The engine needed no new branch, and none was added.** PREP-02 left the export's "not a folder,
+  not smart" path reading a Set's entries through `CollectionRepository.track_ids`. That is the same
+  call and the same table as a Collection's, ordered by position with repeats. PREP-01's model already
+  accepted `set` in `EXPORTED_KINDS` and refused rules beside it. A dedicated Set branch would have been
+  a second copy of the Collection path to keep in step, so the step proves the shared path instead.
+  `_entries`, `PlaylistPreview` and the route and job docstrings now say so.
+- **The renderer's two labels** (`screens/library/rekordboxExport.ts`):
+  - `playlistKindNote` gives a Set "Set, in its running order", beside the Smart Collection's "as it
+    matches now".
+  - The new `exportNodeLabel` is what the dialog's tree prints beside a name: "folder", "Smart
+    Collection" (or "— broken"), "Set · N", or a Collection's plain count. It replaces an inline ternary
+    in `RekordboxExportDialog.tsx` that would have drawn a Set as a Collection.
+- **The engine-produced dialog fixture** gains `chosen_set`: a Set in a folder with three chapters, a
+  planned time, a note, a reprise and a track the file lacks, chosen beside a Collection. The renderer's
+  tests read it.
+
+**Where the specification was open, and what was done.**
+
+1. **"Everything else in the file is byte-identical" is proved against a Collection.** The same folder,
+   name and entries, exported once as a fully planned Set and once as a Collection, give identical
+   files. So every byte-level guarantee EXPORT-02 holds of a Collection holds of a Set, without
+   restating them. A second test holds that every byte before the playlist tree is the source's own.
+2. **"Warnings are not mentioned" is held structurally.** A Set's preview has exactly the keys a
+   Collection's has, and differs only in the playlist's identity (id, kind, name, path). A Set whose
+   checks find a tempo jump and a missing file, one of them acknowledged, exports as any other.
+3. **The tree's label is part of this step,** as PREP-09 hands it here. Fact 2 asks "is this a
+   crate?" of the dialog's label, and a Set must answer no, so it is named rather than drawn as a count.
+4. **The empty-choice sentences are unchanged.** "Tick a Collection…" and "holds no Collections" still
+   read correctly with Sets in the tree. PREP-09's audit may reword them once Sets are drawn there.
+
+**Handed on.**
+
+- **PREP-08:** nothing. The export's routes already accept a Set's id.
+- **PREP-09:** Sets in the Library tree, which is where the export dialog's tree comes from. The
+  context menu's "Export to Rekordbox…" on a Set pre-ticks it, which `initialIds` already does.
+- **PREP-12:** `rekordbox-export.md` says a Set exports as one playlist and its plan stays in CuePoint.
+
+**Tests**: 28 new.
+
+- **`src/tests/unit/services/rekordbox_export/test_rekordbox_export_sets.py` (17):**
+  - What is written:
+    - the running order with the reprise, read back through the importer's own reader;
+    - three chapters make one playlist and no folder;
+    - no chapter name, note, planned time or acknowledgement reaches the file;
+    - the file is byte-identical to a Collection's with the same entries;
+    - every byte before the playlist tree is the source's;
+    - a Set in a nested folder lands at its path;
+    - a folder holding a Set and Collections writes all of them;
+    - an empty Set is still a playlist.
+  - The record:
+    - the row says `set` and keeps no rules, stored as `set` in the table;
+    - the record outlives the Set's deletion;
+    - the preview and the export agree, with a Set among the choices and a dropped track (DEC-084);
+    - the preview's playlist names its kind.
+  - What the file cannot hold: tracks the source lacks are dropped per appearance and counted, and a
+    Set the file holds nothing of is an empty playlist (DEC-082).
+  - Nothing stops it: a Set with warnings exports; the preview says nothing of its checks; `validate`
+    runs no rules for it.
+- **`test_rekordbox_export_dialog_fixture.py`:** the `chosen_set` state.
+- **`test_rekordbox_export_jobs.py`:** a planned Set in a folder, exported by a real job through the
+  bootstrapped container, is written in order with its repeat and recorded as `set`.
+- **Renderer (9):**
+  - `rekordboxExport.test.ts`: the Set's note and count over the engine's answer, with no word of its
+    plan in it; a Set sent and covered as a Collection is; the tree's labels.
+  - `RekordboxExportDialog.test.tsx`: a Set in the tree as "Set · 4", ticked from its menu, previewed at
+    its path with its note, and covered by its folder.
+
+Eight deliberate breakages, each caught:
+
+- a Set read as a Smart Collection;
+- its repeat written once;
+- it recorded as a Collection;
+- it previewed as a Collection;
+- a Set under a chosen folder skipped;
+- `validate` running rules for it;
+- the preview giving it no label;
+- the tree drawing it as a Collection.
+
+Every existing test passes unmodified. The renderer test that lists the fixture's states gains
+`chosen_set`.
+
+**Checks run**: - The full Python suite: 10,845 passed, 62 skipped. That is PREP-06's 10,826 and the 19 new tests.
+- The renderer: 115 files and 3,240 tests passed. Type-check clean, and lint clean, with only the
+  warnings that were already there.
+- Clean: ruff check and format, the Qt guard, version coupling, the engine smoke test and
+  `git diff --check`.
+- The Electron suite was not run, because no Electron file changed.
 
 ---
 

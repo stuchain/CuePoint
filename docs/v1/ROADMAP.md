@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–12 resolved (DEC-001…DEC-112).**
 Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
-(DEC-102…DEC-112); PREP-01 to PREP-06 are implemented.
+(DEC-102…DEC-112); PREP-01 to PREP-07 are implemented.
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
 (DEC-090…DEC-101); all twelve steps are implemented and DISCOVER-01's spike is recorded. Phase 9's
 acceptance is met on Windows; the macOS packaged checks and one manual pass through the app
@@ -595,6 +595,10 @@ renderer already has words for every warning. A 1,000-entry Set is checked in 57
 PREP-06 is implemented: a Set can be copied as a plain-text tracklist, or saved as text, CSV or M3U8 to
 a path the engine checks and writes atomically. The CSV is safe to open in a spreadsheet, the M3U8 lists
 every file, missing ones included, and no audio file is opened.
+
+PREP-07 is implemented: a Set exports to Rekordbox as one playlist of its running order, repeats kept,
+at its folder path, and is recorded as a Set. Its chapters, times, notes and warnings stay in CuePoint,
+and the file is byte-identical to a Collection's with the same entries.
 
 ## Phase 11 — Waveforms (WAVE-01 … WAVE-07)
 

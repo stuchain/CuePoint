@@ -210,9 +210,23 @@ export function playlistCount(playlist: RekordboxExportPlaylistPreview): string 
   return `${written} of ${playlist.requested_count.toLocaleString()}`;
 }
 
-/** What kind of playlist it becomes, when that is not obvious. */
+/**
+ * What kind of playlist it becomes, when that is not obvious.
+ *
+ * A Smart Collection is its membership now (DEC-081). A Set is its entries in
+ * their running order, repeats included, and nothing of its plan: chapters,
+ * times and notes stay in CuePoint (DEC-109). Its warnings are not mentioned,
+ * because nothing about a Set can stop an export (DEC-017).
+ */
 export function playlistKindNote(playlist: RekordboxExportPlaylistPreview): string | null {
-  return playlist.kind === "smart" ? "Smart Collection, as it matches now" : null;
+  switch (playlist.kind) {
+    case "smart":
+      return "Smart Collection, as it matches now";
+    case "set":
+      return "Set, in its running order";
+    default:
+      return null;
+  }
 }
 
 // ---------------------------------------------------------------- the warnings
@@ -420,6 +434,28 @@ export const OPEN_IN_REKORDBOX =
   "View → Layout if it is hidden), beside your collection rather than merged into it.";
 
 // ------------------------------------------------------------- what is chosen
+
+/**
+ * What the tree says beside a node's name.
+ *
+ * A Collection is the plain case and shows only its count. Everything else
+ * says what it is. A Set is stored as a Collection is (DEC-102) and exports as
+ * one playlist like one (DEC-109), but it is not a crate, so it is named.
+ */
+export function exportNodeLabel(
+  node: Pick<CollectionTreeNode, "kind" | "broken" | "entry_count">,
+): string {
+  switch (node.kind) {
+    case "folder":
+      return "folder";
+    case "smart":
+      return node.broken ? "Smart Collection — broken" : "Smart Collection";
+    case "set":
+      return `Set · ${node.entry_count.toLocaleString()}`;
+    default:
+      return node.entry_count.toLocaleString();
+  }
+}
 
 /**
  * The ids to send for what is ticked, in tree order.

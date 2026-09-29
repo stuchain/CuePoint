@@ -44,6 +44,7 @@ import {
   copyLine,
   coveredByFolder,
   exportChoice,
+  exportNodeLabel,
   exportWarnings,
   fieldLines,
   keyFormatConsequence,
@@ -520,15 +521,7 @@ export function RekordboxExportDialog({
                           onChange={(event) => toggle(node.id, event.target.checked)}
                         />
                         <span>{node.name}</span>
-                        <span className="rekordbox-export__kind">
-                          {node.kind === "folder"
-                            ? "folder"
-                            : node.kind === "smart"
-                              ? node.broken
-                                ? "Smart Collection — broken"
-                                : "Smart Collection"
-                              : node.entry_count.toLocaleString()}
-                        </span>
+                        <span className="rekordbox-export__kind">{exportNodeLabel(node)}</span>
                       </label>
                     );
                   })}

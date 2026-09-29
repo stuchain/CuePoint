@@ -284,6 +284,70 @@ describe("choosing what to send", () => {
   });
 });
 
+describe("a Set (PREP-07, DEC-109)", () => {
+  /** The fixture's library with a Set filed under Gigs, as the tree answers it. */
+  const WITH_SET: CollectionTreeNode[] = buildCollectionTree([
+    node(1, "folder", "Gigs"),
+    node(2, "collection", "Saturday", 1),
+    node(10, "set", "Friday", 1, { entry_count: 4, track_count: 3 }),
+    node(7, "collection", "Loose"),
+  ]);
+
+  beforeEach(() => {
+    bridge.previewRekordboxExport.mockImplementation(
+      async ({ collection_ids }: { collection_ids: number[] }) =>
+        answer(collection_ids.includes(10) ? "chosen_set" : "whole_library"),
+    );
+  });
+
+  it("is in the tree, named as a Set with its entries counted", async () => {
+    renderDialog({ tree: WITH_SET });
+    await previewed();
+
+    expect(box("Friday").closest("label")).toHaveTextContent("FridaySet · 4");
+    expect(box("Saturday").closest("label")).toHaveTextContent("Saturday2");
+  });
+
+  it("opens from a Set's menu with it ticked, and sends it as a Collection is sent", async () => {
+    renderDialog({ tree: WITH_SET, initialIds: [10, 7] });
+    await previewed();
+
+    expect(box("Friday")).toBeChecked();
+    expect(bridge.previewRekordboxExport).toHaveBeenLastCalledWith({
+      collection_ids: [10, 7],
+      key_format: "normal",
+    });
+  });
+
+  it("previews one playlist at its folder path, in its running order", async () => {
+    renderDialog({ tree: WITH_SET, initialIds: [10, 7] });
+    await previewed();
+
+    const list = within(dialog()).getByRole("list", { name: "Playlists to add" });
+    expect(within(list).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "CuePoint/Gigs/Friday3 tracks of 4 · Set, in its running order",
+      "CuePoint/Loose1 track",
+    ]);
+    expect(within(dialog()).queryByText(/chapter/i)).toBeNull();
+  });
+
+  it("is covered by its ticked folder, and the folder is sent once", async () => {
+    const user = userEvent.setup();
+    renderDialog({ tree: WITH_SET });
+    await previewed();
+
+    await user.click(box("Gigs"));
+    await waitFor(() =>
+      expect(bridge.previewRekordboxExport).toHaveBeenLastCalledWith({
+        collection_ids: [1],
+        key_format: "normal",
+      }),
+    );
+    expect(box("Friday")).toBeChecked();
+    expect(box("Friday")).toBeDisabled();
+  });
+});
+
 describe("numbers only for the question on screen", () => {
   it("takes the old numbers away while a changed choice is being previewed", async () => {
     const user = userEvent.setup();

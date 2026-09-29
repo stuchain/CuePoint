@@ -150,7 +150,8 @@ def start_rekordbox_export(
 
     Args:
         store: The engine's job store.
-        collection_ids: The chosen Collections, Smart Collections and folders.
+        collection_ids: The chosen Collections, Smart Collections, Sets and
+            folders.
         key_format: One of ``KEY_FORMATS``.
         destination_path: The file a person chose in the save dialog.
         service: The export service. Resolved from the container when not

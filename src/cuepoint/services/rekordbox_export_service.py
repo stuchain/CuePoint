@@ -259,9 +259,9 @@ class PlaylistPreview:
     """One playlist an export would append, with the numbers it would report.
 
     Attributes:
-        collection_id: The Collection or Smart Collection this came from.
-        kind: ``collection`` or ``smart``. A folder is structure in the written
-            tree and never one of these.
+        collection_id: The Collection, Smart Collection or Set this came from.
+        kind: ``collection``, ``smart`` or ``set``. A folder is structure in the
+            written tree and never one of these.
         name: What it is called, as it would be written.
         path: Where it would land, the parent folder included:
             ``CuePoint/Gigs/Saturday``.
@@ -1141,8 +1141,13 @@ class RekordboxExportService(IRekordboxExportService):
     ) -> Tuple[str, ...]:
         """The track ids one playlist would carry, in export order.
 
-        A Collection's own order, repeats included (DEC-058); a Smart
+        A Collection's own order, repeats included (DEC-058); a Set's running
+        order, repeats included and nothing of its plan (DEC-109); a Smart
         Collection's current membership in its saved sort (DEC-061, DEC-081).
+        A Set's entries are a Collection's entries, stored in the same table and
+        read by the same call, which is why it needs no case of its own here:
+        its chapters, times, notes and acknowledgements live beside them and are
+        never read by an export.
         Library ids become the ``TrackID``s the file speaks, and a track the
         library no longer holds contributes nothing — it is not CuePoint's to
         export, and the file's own reference count is the writer's business.

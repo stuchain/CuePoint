@@ -145,6 +145,53 @@
     },
     "refusal": null
   },
+  "chosen_set": {
+    "preview": {
+      "absent_track_count": 1,
+      "changed_fields": [],
+      "changed_track_count": 0,
+      "changes_nothing": false,
+      "dropped_reference_count": 1,
+      "fields_changed": {},
+      "file_check_known": false,
+      "key_format": "normal",
+      "missing_file_count": null,
+      "playlist_folder": "CuePoint",
+      "playlist_folder_renamed": false,
+      "playlists": [
+        {
+          "collection_id": 8,
+          "dropped_count": 1,
+          "entry_count": 3,
+          "kind": "set",
+          "name": "Friday",
+          "path": "CuePoint/Gigs/Friday",
+          "requested_count": 4
+        },
+        {
+          "collection_id": 7,
+          "dropped_count": 0,
+          "entry_count": 1,
+          "kind": "collection",
+          "name": "Loose",
+          "path": "CuePoint/Loose",
+          "requested_count": 1
+        }
+      ],
+      "source": {
+        "actual_modified_at": "2026-09-03T09:00:00+00:00",
+        "actual_size_bytes": 821,
+        "path": "C:\\Users\\dj\\Music\\collection.xml",
+        "recorded_modified_at": "2026-09-03T09:00:00+00:00",
+        "recorded_size_bytes": 821,
+        "signals": [],
+        "stale": false
+      },
+      "track_count": 4,
+      "unknown_track_count": 1
+    },
+    "refusal": null
+  },
   "chosen_short": {
     "preview": {
       "absent_track_count": 1,

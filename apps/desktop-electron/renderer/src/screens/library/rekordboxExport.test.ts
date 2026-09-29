@@ -32,6 +32,7 @@ import {
   copyLine,
   coveredByFolder,
   exportChoice,
+  exportNodeLabel,
   exportWarnings,
   fieldLines,
   formatSize,
@@ -80,6 +81,7 @@ describe("the fixture is the engine's", () => {
       [
         "chosen",
         "chosen_camelot",
+        "chosen_set",
         "chosen_short",
         "collision",
         "destination_is_source",
@@ -258,6 +260,20 @@ describe("the playlists", () => {
     const fast = CHOSEN.playlists.find((playlist) => playlist.kind === "smart")!;
     expect(playlistKindNote(fast)).toBe("Smart Collection, as it matches now");
     expect(playlistKindNote(CHOSEN.playlists[0]!)).toBeNull();
+  });
+
+  it("marks a Set as its running order, and says nothing of its plan (DEC-109)", () => {
+    const answer = preview("chosen_set");
+    const friday = answer.playlists.find((playlist) => playlist.kind === "set")!;
+    expect(friday.path).toBe("CuePoint/Gigs/Friday");
+    expect(playlistKindNote(friday)).toBe("Set, in its running order");
+    // The reprise is written twice and the track the file lacks is counted.
+    expect(playlistCount(friday)).toBe("3 tracks of 4");
+    const loose = answer.playlists.find((playlist) => playlist.kind === "collection")!;
+    expect(playlistKindNote(loose)).toBeNull();
+    expect(playlistHeadline(answer, 2)).toBe("2 playlists added, in a folder called “CuePoint”");
+    // Chapters, times, notes and warnings have no place in the preview.
+    expect(JSON.stringify(answer)).not.toMatch(/chapter|Peak time|Closing|Reprise|warning/i);
   });
 });
 
@@ -486,6 +502,33 @@ describe("what is chosen", () => {
     expect([...coveredByFolder(TREE, new Set([1]))].sort()).toEqual([2, 3, 4]);
     expect([...coveredByFolder(TREE, new Set([3]))]).toEqual([4]);
     expect(coveredByFolder(TREE, new Set([2, 5])).size).toBe(0);
+  });
+
+  it("sends a Set as it sends a Collection, and covers it under a ticked folder", () => {
+    const withSet = [node(1, "folder", [node(2, "collection"), node(6, "set")]), node(7, "set")];
+    expect(exportChoice(withSet, new Set([7, 6]))).toEqual([6, 7]);
+    expect(exportChoice(withSet, new Set([1, 6]))).toEqual([1]);
+    expect([...coveredByFolder(withSet, new Set([1]))].sort()).toEqual([2, 6]);
+  });
+});
+
+describe("what the tree says beside a name", () => {
+  const label = (kind: CollectionTreeNode["kind"], entry_count = 0, broken = false) =>
+    exportNodeLabel({ kind, entry_count, broken });
+
+  it("gives a Collection its count and nothing else", () => {
+    expect(label("collection", 1234)).toBe((1234).toLocaleString());
+  });
+
+  it("names a Set, with its entries counted as a Collection's are", () => {
+    expect(label("set", 4)).toBe("Set · 4");
+    expect(label("set", 0)).toBe("Set · 0");
+  });
+
+  it("names a folder and a Smart Collection, and a broken one as broken", () => {
+    expect(label("folder")).toBe("folder");
+    expect(label("smart")).toBe("Smart Collection");
+    expect(label("smart", 0, true)).toBe("Smart Collection — broken");
   });
 });
 

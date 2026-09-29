@@ -25,7 +25,7 @@ Three routes
 What a body may say
 -------------------
 ``collection_ids`` is a list of whole numbers: the Collections, Smart
-Collections and folders chosen. An export's unit is a Collection, not a track
+Collections, Sets and folders chosen. An export's unit is a Collection, not a track
 selection, so ``parse_selection`` is not used here; a set of tracks becomes an
 exported playlist by being added to a Collection first (DEC-087).
 ``key_format`` is one of ``KEY_FORMATS``. Both are optional, and ``null`` is

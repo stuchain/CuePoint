@@ -293,6 +293,56 @@ class TestAnExportJob:
         )
         assert count == 1
 
+    def test_a_set_is_written_as_one_playlist_and_recorded_as_a_set(
+        self, store, imported, destination
+    ):
+        """PREP-07 through the bootstrapped container and a real job (DEC-109)."""
+        from cuepoint.data.rekordbox import iter_playlist_nodes
+        from cuepoint.models.rekordbox_playlist import KIND_PLAYLIST
+        from cuepoint.services.interfaces import (
+            ICollectionRepository,
+            ICollectionService,
+            IRekordboxExportRepository,
+            ISetService,
+        )
+
+        collections = resolve(ICollectionService)
+        folder = collections.create_folder("Gigs")
+        gig = collections.create_set("Friday", folder.id)
+        ids = [
+            int(row["id"])
+            for row in database().connect().execute("SELECT id FROM tracks ORDER BY id")
+        ]
+        collections.add_tracks(gig.id, ids)
+        collections.insert_track(gig.id, ids[0], 3)
+        entries = resolve(ICollectionRepository).entries(int(gig.id))
+        resolve(ISetService).split_chapter_at(int(entries[2].id), "Closing")
+
+        job = finished(
+            store,
+            start_rekordbox_export(
+                store, [int(folder.id)], "normal", str(destination)
+            ).job,
+        )
+
+        assert job.state is JobState.SUCCEEDED
+        (reported,) = job.result["report"]["playlists"]
+        assert (reported["kind"], reported["path"], reported["entry_count"]) == (
+            "set",
+            "CuePoint/Gigs/Friday",
+            4,
+        )
+        written = [
+            node.track_refs
+            for node in iter_playlist_nodes(str(destination))
+            if node.kind == KIND_PLAYLIST
+        ]
+        assert written == [["1", "2", "3", "1"]]
+        assert b"Closing" not in destination.read_bytes()
+        exports = resolve(IRekordboxExportRepository)
+        (row,) = exports.playlists_for(int(job.result["export_id"]))
+        assert (row.kind, row.collection_id, row.rules_json) == ("set", gig.id, None)
+
     def test_it_reports_progress_in_its_two_phases(self, store, imported, destination):
         seen: List[str] = []
         real = store.report_progress

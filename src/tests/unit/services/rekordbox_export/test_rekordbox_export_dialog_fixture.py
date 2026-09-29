@@ -44,7 +44,10 @@ from cuepoint.models.file_status import FILE_MISSING, FILE_PRESENT, TrackFileSta
 from cuepoint.models.filter_rule import FilterRule, RuleSet
 from cuepoint.models.library_source import LibrarySource
 from cuepoint.models.library_track import utc_now_iso
+from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.rekordbox_export_repository import RekordboxExportRepository
+from cuepoint.persistence.set_repository import SetRepository
+from cuepoint.services.set_service import SetService
 from cuepoint.services.rekordbox_export_service import (
     ExportDestinationError,
     ExportSourceError,
@@ -239,6 +242,27 @@ def chosen(ctx: "Situation") -> Any:
     return _preview(ctx, _chosen(ctx))
 
 
+def chosen_set(ctx: "Situation") -> Any:
+    """A Set filed in a folder, beside a Collection (PREP-07, DEC-109).
+
+    Three chapters, a planned time, a note and a closing reprise, and one
+    track the file lacks: the preview carries none of the plan, only the one
+    playlist and its count.
+    """
+    ids, tree = ctx.ids, ctx.tree
+    repository = CollectionRepository(ctx.db)
+    sets = SetService(repository, SetRepository(ctx.db), ctx.db)
+    gig = ctx.collection_service.create_set("Friday", tree["gigs"])
+    ctx.collection_service.add_tracks(gig.id, [ids["1"], ids["2"], ids["4"]])
+    ctx.collection_service.insert_track(gig.id, ids["1"], 3)
+    entries = [int(entry.id) for entry in repository.entries(int(gig.id))]
+    sets.split_chapter_at(entries[1], "Peak time")
+    sets.split_chapter_at(entries[3], "Closing")
+    sets.set_entry_times(entries[0], "0:30", "5:00")
+    sets.set_entry_note(entries[3], "Reprise the opener")
+    return _preview(ctx, [int(gig.id), tree["loose"]])
+
+
 def chosen_camelot(ctx: "Situation") -> Any:
     return _preview(ctx, _chosen(ctx), "camelot")
 
@@ -380,6 +404,7 @@ STATES: Dict[str, Callable[["Situation"], Any]] = {
     "whole_library": whole_library,
     "chosen": chosen,
     "chosen_camelot": chosen_camelot,
+    "chosen_set": chosen_set,
     "chosen_short": chosen_short,
     "stale": stale,
     "stale_unknown": stale_unknown,
