@@ -163,6 +163,32 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   getEntityPage: (params) => ipcRenderer.invoke("engine:getEntityPage", params),
   getEntityBeatport: (params) => ipcRenderer.invoke("engine:getEntityBeatport", params),
   getSimilarTracks: (params) => ipcRenderer.invoke("engine:getSimilarTracks", params),
+  // A Set (PREP-08): every answer is { value, refusal }. Adding and removing
+  // entries stays on the Collection methods above.
+  sets: {
+    plan: (params) => ipcRenderer.invoke("engine:getSetPlan", params),
+    entries: (params) => ipcRenderer.invoke("engine:getSetEntries", params),
+    analysis: (params) => ipcRenderer.invoke("engine:getSetAnalysis", params),
+    suggestions: (params) => ipcRenderer.invoke("engine:getSetSuggestions", params),
+    setListText: (params) => ipcRenderer.invoke("engine:getSetListText", params),
+    create: (params) => ipcRenderer.invoke("engine:createSet", params),
+    createFrom: (params) => ipcRenderer.invoke("engine:createSetFrom", params),
+    duplicate: (params) => ipcRenderer.invoke("engine:duplicateSet", params),
+    setNotes: (params) => ipcRenderer.invoke("engine:setSetNotes", params),
+    createChapter: (params) => ipcRenderer.invoke("engine:createSetChapter", params),
+    updateChapter: (params) => ipcRenderer.invoke("engine:updateSetChapter", params),
+    moveChapter: (params) => ipcRenderer.invoke("engine:moveSetChapter", params),
+    deleteChapter: (params) => ipcRenderer.invoke("engine:deleteSetChapter", params),
+    splitChapter: (params) => ipcRenderer.invoke("engine:splitSetChapter", params),
+    moveEntry: (params) => ipcRenderer.invoke("engine:moveSetEntry", params),
+    setEntryTimes: (params) => ipcRenderer.invoke("engine:setSetEntryTimes", params),
+    setEntryNote: (params) => ipcRenderer.invoke("engine:setSetEntryNote", params),
+    acknowledge: (params) => ipcRenderer.invoke("engine:acknowledgeSetWarning", params),
+    unacknowledge: (params) => ipcRenderer.invoke("engine:unacknowledgeSetWarning", params),
+    saveSetList: (params) => ipcRenderer.invoke("engine:saveSetList", params),
+    chooseSetListDestination: (request) =>
+      ipcRenderer.invoke("dialog:saveSetList", request),
+  },
   startLibraryImport: (params) =>
     ipcRenderer.invoke("engine:startLibraryImport", params),
   startLibraryRefreshPreview: (params) =>

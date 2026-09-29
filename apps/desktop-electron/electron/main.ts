@@ -11,8 +11,16 @@ import type { PlayerNotice } from "./playbackFailures";
 import { PlaybackController } from "./playbackController";
 import { queueTruncationMessage, resolveQueueFromView } from "./queueResolver";
 import { chooseRekordboxExportDestination } from "./rekordboxExportDialog";
+import { MAIN_SETTINGS_FILE, MainSettingsStore } from "./mainSettings";
+import {
+  chooseSetListDestination,
+  isFolder,
+  rememberSetListFolder,
+  setListFolderStore,
+  type SetListFolderStore,
+} from "./setListDialog";
 import type { QueueItemInput, RepeatMode } from "./playbackQueue";
-import type { LibraryBrowseParams } from "./engineClient";
+import type { LibraryBrowseParams, SetListDialogRequest } from "./engineClient";
 import { PlayerSupervisor } from "./playerSupervisor";
 import { quitAfter } from "./quitAfter";
 
@@ -169,6 +177,18 @@ function pushPlayerNotice(notice: unknown): void {
     noticeUnsubscribe = null;
   }
 }
+
+/**
+ * Main's own settings, read when first needed: the user-data folder is the
+ * app's to name, and nothing reads the file until a set list is saved.
+ */
+let mainSettings: MainSettingsStore | null = null;
+
+function setListFolders(): SetListFolderStore {
+  mainSettings ??= new MainSettingsStore(path.join(app.getPath("userData"), MAIN_SETTINGS_FILE));
+  return setListFolderStore(mainSettings);
+}
+
 let privacyExitPrefs = {
   clearCacheOnExit: false,
   clearLogsOnExit: false,
@@ -416,6 +436,68 @@ function registerIpcHandlers(): void {
   );
   ipcMain.handle("engine:getSimilarTracks", (_event, params) =>
     engine.getSimilarTracks(params),
+  );
+  // A Set (PREP-08): every answer is { value, refusal }. A saved set list's
+  // folder is where the next set list dialog opens.
+  ipcMain.handle("engine:getSetPlan", (_event, params) =>
+    engine.getSetPlan(params),
+  );
+  ipcMain.handle("engine:getSetEntries", (_event, params) =>
+    engine.getSetEntries(params),
+  );
+  ipcMain.handle("engine:getSetAnalysis", (_event, params) =>
+    engine.getSetAnalysis(params),
+  );
+  ipcMain.handle("engine:getSetSuggestions", (_event, params) =>
+    engine.getSetSuggestions(params),
+  );
+  ipcMain.handle("engine:getSetListText", (_event, params) =>
+    engine.getSetListText(params),
+  );
+  ipcMain.handle("engine:createSet", (_event, params) =>
+    engine.createSet(params),
+  );
+  ipcMain.handle("engine:createSetFrom", (_event, params) =>
+    engine.createSetFrom(params),
+  );
+  ipcMain.handle("engine:duplicateSet", (_event, params) =>
+    engine.duplicateSet(params),
+  );
+  ipcMain.handle("engine:setSetNotes", (_event, params) =>
+    engine.setSetNotes(params),
+  );
+  ipcMain.handle("engine:createSetChapter", (_event, params) =>
+    engine.createSetChapter(params),
+  );
+  ipcMain.handle("engine:updateSetChapter", (_event, params) =>
+    engine.updateSetChapter(params),
+  );
+  ipcMain.handle("engine:moveSetChapter", (_event, params) =>
+    engine.moveSetChapter(params),
+  );
+  ipcMain.handle("engine:deleteSetChapter", (_event, params) =>
+    engine.deleteSetChapter(params),
+  );
+  ipcMain.handle("engine:splitSetChapter", (_event, params) =>
+    engine.splitSetChapter(params),
+  );
+  ipcMain.handle("engine:moveSetEntry", (_event, params) =>
+    engine.moveSetEntry(params),
+  );
+  ipcMain.handle("engine:setSetEntryTimes", (_event, params) =>
+    engine.setSetEntryTimes(params),
+  );
+  ipcMain.handle("engine:setSetEntryNote", (_event, params) =>
+    engine.setSetEntryNote(params),
+  );
+  ipcMain.handle("engine:acknowledgeSetWarning", (_event, params) =>
+    engine.acknowledgeSetWarning(params),
+  );
+  ipcMain.handle("engine:unacknowledgeSetWarning", (_event, params) =>
+    engine.unacknowledgeSetWarning(params),
+  );
+  ipcMain.handle("engine:saveSetList", (_event, params) =>
+    rememberSetListFolder(engine.saveSetList(params), setListFolders()),
   );
   ipcMain.handle("engine:startLibraryImport", (_event, params) =>
     engine.startLibraryImport(params),
@@ -724,6 +806,24 @@ function registerIpcHandlers(): void {
         },
         request,
       ),
+  );
+  /**
+   * Where a set list goes (PREP-08, DEC-110). As the export's dialog: it
+   * chooses a file and nothing else. The engine judges the path when it saves,
+   * and nothing here saves; a cancelled dialog is simply an answer.
+   */
+  ipcMain.handle("dialog:saveSetList", (_event, request?: SetListDialogRequest) =>
+    chooseSetListDestination(
+      {
+        store: setListFolders(),
+        folderExists: isFolder,
+        fallbackFolder: () => app.getPath("documents"),
+        showSaveDialog: (options) =>
+          showSaveDialogFor(BrowserWindow.getFocusedWindow(), options),
+        now: () => new Date(),
+      },
+      request,
+    ),
   );
   ipcMain.handle(
     "dialog:saveExport",

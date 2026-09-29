@@ -44,7 +44,7 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from cuepoint.core.set_timing import (
     MAX_TIME_SECONDS,
@@ -69,6 +69,33 @@ from cuepoint.services.interfaces import (
     ISetRepository,
     ISetService,
 )
+
+
+#: What :meth:`SetService.update_chapter` may change.
+CHAPTER_FIELDS: Tuple[str, ...] = (
+    "name",
+    "notes",
+    "target_seconds",
+    "bpm_min",
+    "bpm_max",
+)
+
+
+def _check_target(target_seconds: Any) -> None:
+    """Refuse a target past the longest time a person can type (PREP-03).
+
+    Anything that is not a whole number is left to the model, which says so.
+    """
+    if (
+        target_seconds is not None
+        and not isinstance(target_seconds, bool)
+        and isinstance(target_seconds, int)
+        and target_seconds > MAX_TIME_SECONDS
+    ):
+        raise ValueError(
+            f"A chapter's target is at most {format_time(MAX_TIME_SECONDS)}, "
+            f"got {format_time(target_seconds)}"
+        )
 
 
 def running_time_to_dict(value: RunningTime) -> Dict[str, int]:
@@ -272,22 +299,35 @@ class SetService(ISetService):
                 :data:`~cuepoint.core.set_timing.MAX_TIME_SECONDS`, a tempo is
                 not above zero, or the range runs downwards.
         """
-        if (
-            target_seconds is not None
-            and not isinstance(target_seconds, bool)
-            and isinstance(target_seconds, int)
-            and target_seconds > MAX_TIME_SECONDS
-        ):
-            raise ValueError(
-                f"A chapter's target is at most {format_time(MAX_TIME_SECONDS)}, "
-                f"got {format_time(target_seconds)}"
-            )
+        _check_target(target_seconds)
         return self._update_chapter(
             chapter_id,
             target_seconds=target_seconds,
             bpm_min=bpm_min,
             bpm_max=bpm_max,
         )
+
+    def update_chapter(self, chapter_id: int, changes: Mapping[str, Any]) -> SetChapter:
+        """Change any of a chapter's name, notes and targets, in one write.
+
+        What PREP-10's heading dialog sends: every field it shows, checked
+        together, so a refused BPM range does not leave the new name written.
+        A field left out keeps its value; ``None`` clears one, and an empty
+        name makes the chapter unnamed.
+
+        Raises:
+            ValueError: If there is no such chapter, a field is not one of
+                :data:`CHAPTER_FIELDS`, or any value is refused as the single
+                edits refuse it.
+        """
+        unknown = sorted(str(key) for key in changes if key not in CHAPTER_FIELDS)
+        if unknown:
+            raise ValueError(
+                f"A chapter has no field {', '.join(unknown)}; it has "
+                + ", ".join(CHAPTER_FIELDS)
+            )
+        _check_target(changes.get("target_seconds"))
+        return self._update_chapter(chapter_id, **dict(changes))
 
     def move_chapter(self, chapter_id: int, position: int) -> SetChapter:
         """Move a chapter among its Set's chapters, its entries with it.

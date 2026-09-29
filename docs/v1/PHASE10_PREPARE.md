@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
-Status: **Specified 2026-09-28. PREP-01 to PREP-07 are implemented (2026-09-28 to 2026-09-29).** The twelve steps below replace the roadmap's
+Status: **Specified 2026-09-28. PREP-01 to PREP-08 are implemented (2026-09-28 to 2026-09-29).** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -1671,7 +1671,7 @@ Every existing test passes unmodified. The renderer test that lists the fixture'
 
 ---
 
-## PREP-08 — The Sets API and the Desktop Contract
+## PREP-08 — The Sets API and the Desktop Contract ✅ IMPLEMENTED 2026-09-29
 
 **Objective**: PREP-02 to PREP-07 on the wire, through all six contract files, with the save dialog for
 set lists.
@@ -1713,7 +1713,225 @@ phases.
 
 **Complexity**: **M**
 
-**Outcome**: Not started.
+**Outcome**: Implemented (2026-09-29). Everything PREP-02 to PREP-06 built for a Set can be reached from
+the renderer: twenty methods on `window.cuepoint.sets`, through all six contract files, and a save dialog
+for set lists. Each method answers its value or the refusal standing in for it, with a code and, where
+there is more than one kind, a reason. Nothing a user can reach changes yet: the Library draws Sets in
+PREP-09, and the Prepare page is PREP-10's.
+
+**What was built.**
+
+- **`engine/sets_api.py`**, every route under `/api/v1/sets/`:
+  - Reads (GET), each named by `set_id` in the query:
+    - `plan`: PREP-03's `SetPlan`.
+    - `entries`: the running order, repeats included. Each entry's plan sits beside the Library's own
+      row for its track (`track_to_dict`, with CuePoint's layer, effective values, Clean's answers and
+      the file's last check), plus `limit`, `MAX_SET_ENTRIES`.
+    - `analysis`: PREP-05's report.
+    - `suggestions`: the gap as `before_entry_id` and `after_entry_id`, `chapter_id`, `against`,
+      `limit`, and the pool as the Library's own `q`, `playlist_id`, `filters`, `scope` and
+      `collection_id`, read as Similar Tracks reads its scope.
+    - `set-list/text`: the plain-text set list.
+  - Actions (POST):
+    - The Set: `create`, `create-from`, `duplicate` and `notes`.
+    - Chapters: `chapters/create`, `update`, `move`, `delete` and `split`.
+    - Entries: `entries/move`, `times` and `note`.
+    - Warnings: `acknowledge` and `unacknowledge`.
+    - Set lists: `set-list/save`.
+
+  Every handler validates and delegates. A key a route does not take is refused by name, and a query
+  parameter given twice is refused. Field lists on the way out are explicit.
+- **Typed refusals**, answered as values over IPC:
+  - `SET_NOT_FOUND` (404) with `reason` `set`, `chapter` or `entry`: the thing named has gone, and the
+    view should reload.
+  - `SET_INSERTION_POINT_REFUSED` with PREP-04's `reason`: `stale` (409), `empty_set` (409) or
+    `no_neighbour` (400).
+  - `SET_LIST_DESTINATION_REFUSED` (400) with PREP-06's `reason` and the `path`.
+  - `SET_LIST_WRITE_FAILED` (500) with the `path`.
+  - `INVALID_REQUEST` (400): a body, a parameter, or a value a service refuses, in its words.
+
+  503 and anything unrecognized still throw, because nobody can act on them.
+- **The six files.**
+  - `server.py` dispatches the module, as it does Discover's.
+  - `engineClient.ts` has the twenty methods and `readSetAnswer`, which keeps a refusal's code, reason
+    and path, and reads a reason the engine never sends as none. It also carries every Set wire type,
+    PREP-05's included.
+  - `engineSupervisor.ts` forwards all twenty, one by one.
+  - `main.ts` handles the twenty channels and the `dialog:saveSetList` channel.
+  - `preload.cjs` exposes them as one namespace, `sets`, as `player` is one.
+  - `cuepointBridge.types.ts` has the same types and `SetsBridge`, and `CuePointBridge` gains an
+    optional `sets`.
+- **The save dialog**, `electron/setListDialog.ts`, modeled on the export's:
+  - It suggests `<Set name> <date>.txt`, dated in local time. Characters a file name cannot hold are
+    replaced, a name Windows reserves is prefixed, and a long name is cut to 100 characters.
+  - It offers the three forms as filters, text first, and reopens at a choice the engine refused.
+  - It never judges the path and cannot save.
+- **Main's own settings**, `electron/mainSettings.ts`: one JSON file in the user-data folder.
+  - Reading never fails; anything unreadable reads as the defaults.
+  - Writing replaces the file whole through a temporary file beside it.
+  - Its one setting is the folder the last set list was saved to.
+- **`SetService.update_chapter`** (and on `ISetService`): a chapter's name, notes and targets in one
+  write, as PREP-10's heading dialog sends them. It changes only the fields it is given, refuses a field
+  a chapter does not have, and applies the single edits' rules together.
+- **`/api/v1/collections/tracks/insert` takes an optional `chapter_id`**, which the service already did
+  (PREP-02). The client and bridge types say so.
+- `engine/sets_api.py` joins the strict mypy gate.
+
+**Where the specification was open, and what was done.**
+
+1. **The routes are named by query and body ids, not path segments.** `/api/v1/sets/plan?set_id=7`
+   follows `/api/v1/collections/entries?collection_id=`. Every path is fixed, so the module needs no
+   pattern matching and the client names each route as a constant.
+2. **`entries` carries the Library's own row for each track.** "The track fields the table shows" is
+   read as the whole browse row, from the same serializer. The Prepare table and the Library table then
+   show one track the same way, and PREP-10's ordinary track operations and the Inspector take the row
+   they already take. The plan is read in one transaction and the rows after it. An entry whose track
+   a refresh deleted in between is left out, as a second read would leave it: the refresh deletes its
+   entries too.
+3. **`SET_NOT_FOUND` is its own code.** PREP-10 opens `/prepare/:setId`, and "that Set was deleted" is a
+   different next step from "that time is not a time". The route checks that the Set, chapter or entry
+   it names exists before it asks the service anything. A node that exists but is not a Set is refused
+   by the service, in its words, as a 400.
+4. **A chapter is updated in one write.** The specification lists `chapters/update`. PREP-03 has three
+   separate edits (rename, notes, targets). One route calling three would leave the new name written
+   when the BPM range is refused. `update_chapter` validates and writes everything together; fields left
+   out keep their values and `null` clears one.
+5. **A chapter's target is typed, as an entry's times are.** PREP-03 left this open. `target` is read
+   with `parse_optional_time` where it arrives, so `45:00` is 2,700 seconds, a blank clears it, and a
+   refusal is in `set_timing`'s words.
+6. **A write that clears must be asked for.** `notes`, `entries/times` (both times) and `entries/note`
+   need their keys, and `null` clears. A body that left `in_time` out would otherwise clear it, because
+   times are written as a pair (PREP-03).
+7. **A file system that will not write is a refusal.** `SET_LIST_WRITE_FAILED` carries the path. The
+   destination passed the engine's check, and the next step is another place, so it crosses as a value
+   rather than a bare failure. Nothing is left behind (PREP-06).
+8. **An insert can name its chapter on the wire.** "Adding and removing entries keep using
+   `/api/v1/collections/tracks/*`." A drop at the top of a chapter (PREP-10) and "Insert here" on a
+   chapter boundary (PREP-11) need the chapter named. The service took it already. The route now does,
+   so there is still one path to write an entry.
+9. **The folder is remembered from a save, not from the dialog.** "The folder a set list was last saved
+   to" is recorded when the engine answers that it wrote the file (`rememberSetListFolder` around
+   `engine:saveSetList`). A path the engine refused is not where set lists go.
+10. **Main's settings are a file of their own.** Main had no persisted settings. `mainSettings.ts` is
+    small and general, so the next thing main remembers for itself has somewhere to go that is not the
+    database.
+11. **"New Set from…" a selection takes its tracks, not a query.** A Set is an order and a query has
+    none, so the renderer resolves the selection once, in the table's order, as DEC-063 says. It can
+    read the ids through the browse route's id projection. More than 1,000 is refused whole, with the
+    numbers.
+12. **PREP-05's types now live in both processes.** They were in the bridge only, because nothing
+    crossed yet. The contract test holds the two copies of every Set type together, and a Python test
+    holds the client's copy to real engine answers.
+
+**Handed on.**
+
+- **PREP-09:**
+  - "New Set", "New Set from…", "Duplicate", "Copy set list" and "Save set list…" call these methods.
+  - "Add to Set…" stays on `addTracksToCollection`.
+  - "Save set list…" opens `sets.chooseSetListDestination({ setName })`. On
+    `SET_LIST_DESTINATION_REFUSED` it reopens at `refusal.path` via `currentPath`.
+- **PREP-10:** the page reads `sets.plan`, `sets.entries` and `sets.analysis`, and edits through the
+  rest. It reloads on `SET_NOT_FOUND` and on a `stale` insertion point. A drop on a heading row passes
+  `chapter_id` to `sets.moveEntry`, or to `insertTrackInCollection` for a new track. The heading dialog
+  sends `sets.updateChapter` once.
+- **PREP-11:** the source panel reads `sets.suggestions` with the Library's pool parameters.
+
+**Tests**: 391 new: 156 in Python, 78 in Electron and 157 in the renderer's contract test.
+
+- **`src/tests/unit/engine/test_sets_api.py` (109)**, through a real engine on a free port:
+  - The routes: exactly the specified twenty, all under `/api/v1/sets/`, none adding or removing an
+    entry, a read not answered to a POST, and every one refused without the token.
+  - What a read may say: the id required and whole, an unknown or repeated parameter refused, a Set that
+    is gone as `SET_NOT_FOUND`, and a Collection refused as not a Set.
+  - Making a Set: `create`, filed in a folder, and its refusals. `create-from` a Collection with its
+    repeat, a playlist in its order and a selection in the order sent, eight malformed sources, the
+    service's refusals in its words, and 1,001 tracks refused with nothing written. `duplicate` with its
+    chapters and its refusals.
+  - The reads:
+    - the plan's shape;
+    - the running order with its repeat, each row equal to the Library's own browse row;
+    - the plan's times and note beside an override's effective BPM;
+    - a missing file's last check;
+    - an empty Set;
+    - the analysis;
+    - the set list's text.
+  - Suggestions: both sides, the end of the Set, the pool as a query and as a Collection, one side
+    only, `stale`, `no_neighbour` and `empty_set` with their statuses, and seven malformed requests.
+  - The Set's notes.
+  - Chapters: create at each place; update as one write, keeping unsent fields, clearing with a blank
+    target and nulls; nine refused updates each changing nothing; move, delete and split with their
+    refusals, including a Collection's entry as not found.
+  - Entries: a move onto a chapter boundary keeping its chapter unless one is named; move refusals; an
+    insert naming its chapter on the Collection route; times as a pair; seven refused times each
+    changing nothing; a note.
+  - Warnings: acknowledging a tempo jump and withdrawing it twice, and the refusals.
+  - Set lists: saved where the dialog chose, each form by its extension, each destination refusal with
+    its reason and path and nothing written, a missing destination, a file system that refuses, and
+    other refusals.
+  - `status_for` on its own.
+- **`src/tests/unit/engine/test_sets_contract.py` (37):** every TypeScript shape held to a real
+  answer, and every nested object to its own type, the Library row included. Also held: the refusal's
+  fields to every extra any refusal sends; each method's parameters to the route's fields; the
+  vocabularies (codes, reasons, sides, key relations, transition warnings, forms, the twenty warning
+  kinds) to the engine's; and every route to a client call.
+- **`src/tests/unit/services/test_set_service.py` (+10):** `update_chapter` writes every field it is
+  given together, keeps the rest, writes none of a refused update (seven cases), and refuses a chapter
+  that is gone.
+- **Electron (78):**
+  - `engineClient.sets.test.ts` (32): each read's path and query, the suggestions' pool, each action's
+    route and body, a chapter field left out when not sent, the insert's chapter, each refusal as a
+    value with its reason and path, an unknown reason read as none, and what still throws.
+  - `setListDialog.test.ts` (34): the dated name and fourteen unsafe names, the filters, where the
+    dialog opens, a previous choice, what it answers, and the folder remembered only from a save the
+    engine answered, through main's settings, never failing the save.
+  - `mainSettings.test.ts` (12): defaults, unreadable files, the write whole through a temporary file,
+    and the old settings kept when a write fails.
+- **`desktopContract.test.ts` (+157):**
+  - All twenty methods in each of the six files: on `sets` in the preload on their own channels,
+    handled, forwarded, and declared with the client's own answer. Nothing else on `sets` but the
+    dialog, and none of them flat on the bridge.
+  - Reads by GET, actions by POST, every answer a `SetAnswer`.
+  - The dialog neither saves nor judges a path, and the folder is remembered only through the save.
+  - Thirty-five interfaces and thirteen types identical in both processes.
+
+Eighteen deliberate breakages, each caught:
+
+- a Set that is gone not looked for;
+- the running order losing its repeats;
+- the row missing CuePoint's layer;
+- a stale gap flattened into a plain 400;
+- a destination refusal losing its reason;
+- a refused write answered as a bare failure;
+- a chapter's fields written one at a time;
+- a time left out cleared;
+- an insert ignoring its chapter;
+- any field of a chapter allowed to change;
+- a chapter sent with a field the client does not declare;
+- the supervisor dropping a method;
+- the preload sending a method down another's channel;
+- a Set that is gone thrown rather than answered;
+- a refused save remembering its folder;
+- a slash left in the suggested name;
+- the bridge's copy of a chapter drifting;
+- main's settings written in place.
+
+Every existing test passes unmodified. The strict mypy gate's list gains `sets_api.py`.
+
+**Checks run**:
+
+- **Python:**
+  - The full suite: 11,001 passed and 62 skipped on eight workers (PREP-07's 10,845 and the 156 new
+    tests). The first run had one failure, `test_step6_logging.py::test_log_timing_success`, which
+    asserts on shared logging state. It passed three times alone and in a second full run, and this step
+    touches no logging.
+  - `ruff check` and `ruff format --check` on `src/`.
+  - The strict mypy gate, with `sets_api.py` in it.
+  - `check_no_qt_in_core.py`, the desktop version coupling and the engine health smoke test.
+- **Electron:** the type-check, 24 files and 568 tests (490 before), and the main process bundled with
+  esbuild.
+- **Renderer:** the type-check, lint (exit 0, with only the 8 warnings that were already there) and 115
+  files and 3,397 tests (3,240 before).
+- `git diff --check`.
 
 ---
 

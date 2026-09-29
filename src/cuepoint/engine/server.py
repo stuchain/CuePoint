@@ -97,6 +97,13 @@ from cuepoint.engine.rekordbox_export_api import (
     handles_post as rekordbox_export_handles_post,
     status_for as rekordbox_export_status,
 )
+from cuepoint.engine.sets_api import (
+    handle_get as sets_get,
+    handle_post as sets_post,
+    handles_get as sets_handles_get,
+    handles_post as sets_handles_post,
+    status_for as sets_status,
+)
 from cuepoint.engine.jobs import JobStore, JobTypeBusyError
 from cuepoint.version import __version__
 
@@ -664,6 +671,11 @@ def make_handler(
                     discover_status,
                 )
                 return
+            if sets_handles_get(path):
+                self._handle_routed(
+                    lambda: sets_get(path, parse_qs(parsed.query)), sets_status
+                )
+                return
             if organization_handles_get(path):
                 # Before the prefix below, which would read the whole of
                 # "7/history" as a track id and refuse it as one.
@@ -946,6 +958,13 @@ def make_handler(
                 self._handle_routed(
                     lambda: discover_post(path, raw, job_store=job_store),
                     discover_status,
+                )
+                return
+
+            if sets_handles_post(path):
+                raw = self._read_body()
+                self._handle_routed(
+                    lambda: sets_post(path, raw, job_store=job_store), sets_status
                 )
                 return
 

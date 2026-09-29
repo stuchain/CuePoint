@@ -140,6 +140,68 @@ function discoverQuery(
   return text ? `?${text}` : "";
 }
 
+/**
+ * The refusal codes a Set route answers as a value (PREP-08).
+ *
+ * `INVALID_REQUEST` is among them, as it is among Discover's: a typed time the
+ * Set refuses, a full Set or a warning that has gone is said beside the field
+ * that sent it, in the engine's words. What is left to throw — an unreachable
+ * library, a bug — is nothing a person can act on.
+ */
+export const SET_REFUSAL_CODES: readonly SetRefusalCode[] = [
+  "INVALID_REQUEST",
+  "SET_NOT_FOUND",
+  "SET_INSERTION_POINT_REFUSED",
+  "SET_LIST_DESTINATION_REFUSED",
+  "SET_LIST_WRITE_FAILED",
+];
+
+/** Every reason a Set refusal names, so one the engine never sends reads as none. */
+export const SET_REFUSAL_REASONS: readonly NonNullable<SetRefusal["reason"]>[] = [
+  "set",
+  "chapter",
+  "entry",
+  "empty_set",
+  "no_neighbour",
+  "stale",
+  "destination_blank",
+  "destination_not_set_list",
+  "destination_is_folder",
+  "destination_folder_missing",
+];
+
+/**
+ * Read a Set answer: the value, or a refusal as a value. Any other failure is
+ * thrown, as `readJson` throws it.
+ */
+async function readSetAnswer<T>(res: Response): Promise<SetAnswer<T>> {
+  let body: T & { error?: Record<string, unknown> };
+  try {
+    body = (await res.json()) as T & { error?: Record<string, unknown> };
+  } catch {
+    throw new Error(`Engine request failed (${res.status})`);
+  }
+  if (res.ok) return { value: body, refusal: null };
+  const error = body?.error;
+  const code = textOrNull(error?.code);
+  if (error && code !== null && (SET_REFUSAL_CODES as readonly string[]).includes(code)) {
+    const reason = textOrNull(error.reason);
+    return {
+      value: null,
+      refusal: {
+        code: code as SetRefusalCode,
+        message: textOrNull(error.message) ?? `Engine request failed (${res.status})`,
+        reason:
+          reason !== null && (SET_REFUSAL_REASONS as readonly string[]).includes(reason)
+            ? (reason as NonNullable<SetRefusal["reason"]>)
+            : null,
+        path: textOrNull(error.path),
+      },
+    };
+  }
+  throw new Error(textOrNull(error?.message) ?? `Engine request failed (${res.status})`);
+}
+
 export interface LibraryTrackRow {
   id: number | null;
   rekordbox_track_id: string;
@@ -1682,6 +1744,454 @@ export interface SimilarTracksRequest {
   collection_id?: number | null;
 }
 
+// ---------------------------------------------------------------------------
+// A Set's checks (PREP-05), which PREP-08 puts on the wire
+// ---------------------------------------------------------------------------
+
+/** How far a planned time or a target is, in whole seconds (DEC-107). */
+export type SetSeconds = number;
+
+/**
+ * One thing a Set's checks found (PREP-05, DEC-106), as the engine serializes
+ * it. Keys are in the library's notation; BPMs to two decimals; times in whole
+ * seconds. Only a transition's warnings can be `acknowledged`.
+ */
+export type SetWarning =
+  | {
+      kind: "tempo_jump";
+      /** How the next track is heard against this one, the closest way. */
+      detail: "faster" | "slower";
+      compared: { from: number; to: number; percent: number };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "key_clash";
+      detail: "no_relation";
+      compared: { from: string; to: string };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "tempo_unknown";
+      /** Which side has no BPM: the track before, this one, or both. */
+      detail: "from" | "to" | "both";
+      compared: { from: number | null; to: number | null };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "key_unknown";
+      detail: "from" | "to" | "both";
+      compared: { from: string | null; to: string | null };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "file_missing";
+      /** A drive that was not there is not the same as a file that is gone. */
+      detail: "not_found" | "drive_unavailable";
+      compared: { checked_at: string | null };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "file_unreadable";
+      detail: "unreadable";
+      compared: { checked_at: string | null };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "time_outside_track";
+      /** Which planned time is past the track's end. */
+      detail: "out" | "in";
+      compared: { length: SetSeconds; in: SetSeconds | null; out: SetSeconds | null };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "over_target" | "under_target";
+      /** Over is reported with untimed entries still to add; under never is. */
+      detail: "all_timed" | "partly_timed";
+      compared: { target: SetSeconds; planned: SetSeconds; untimed: number };
+      acknowledged: boolean;
+    }
+  | {
+      kind: "bpm_outside_range";
+      detail: "below" | "above" | "both";
+      compared: {
+        min: number | null;
+        max: number | null;
+        entries: { entry_id: number; bpm: number }[];
+      };
+      acknowledged: boolean;
+    };
+
+/** Something worth knowing that is not a problem: a track played again (DEC-017). */
+export interface SetNotice {
+  kind: "repeat";
+  detail: "track";
+  /** The Set positions, from 0, of the track's other entries. */
+  compared: { others: number[] };
+}
+
+/** What the file checks say about a Set's tracks (DEC-073, DEC-088). */
+export interface SetFileCheck {
+  tracks: number;
+  checked: number;
+  unchecked: number;
+  missing: number;
+  unreadable: number;
+  /** No track in a non-empty Set has been checked: say so, never "none missing". */
+  never_checked: boolean;
+  last_checked_at: string | null;
+}
+
+/** A running time: the timed entries' sum, and how many are left out (DEC-107). */
+export interface SetRunningTime {
+  seconds: SetSeconds;
+  timed: number;
+  untimed: number;
+}
+
+/** A Set's checks (PREP-05). Transitions and entries appear only when something was found. */
+export interface SetAnalysis {
+  set_id: number;
+  notation: SimilarKeyNotation;
+  running_time: SetRunningTime;
+  /** Warnings not acknowledged, by kind; a kind with none is absent. */
+  counts: Partial<Record<SetWarning["kind"], number>>;
+  acknowledged: number;
+  notices: Partial<Record<SetNotice["kind"], number>>;
+  files: SetFileCheck;
+  transitions: { from_entry_id: number; to_entry_id: number; warnings: SetWarning[] }[];
+  entries: { entry_id: number; warnings: SetWarning[]; notices: SetNotice[] }[];
+  chapters: { chapter_id: number; running_time: SetRunningTime; warnings: SetWarning[] }[];
+}
+
+// ---------------------------------------------------------------------------
+// A Set over the wire (PREP-08)
+//
+// Mirrors `sets_api.py` and the models it serializes, declared in both
+// processes because neither can import the other's: `desktopContract.test.ts`
+// holds the two copies together, and `test_sets_contract.py` holds them to what
+// the engine actually sends. Every Set method answers a `SetAnswer`: a refusal
+// a person can act on keeps its code and reason across IPC.
+// ---------------------------------------------------------------------------
+
+/** The codes a Set refusal can carry; any other failure throws. */
+export type SetRefusalCode =
+  | "INVALID_REQUEST"
+  | "SET_NOT_FOUND"
+  | "SET_INSERTION_POINT_REFUSED"
+  | "SET_LIST_DESTINATION_REFUSED"
+  | "SET_LIST_WRITE_FAILED";
+
+/** What a `SET_NOT_FOUND` names: gone in another window, or by a refresh. */
+export type SetNotFoundReason = "set" | "chapter" | "entry";
+
+/** Why a gap cannot be fitted as named (PREP-04); `stale` is the cue to reload. */
+export type SetInsertionPointReason = "empty_set" | "no_neighbour" | "stale";
+
+/** Why a set list cannot be saved where the dialog chose (PREP-06). */
+export type SetListDestinationReason =
+  | "destination_blank"
+  | "destination_not_set_list"
+  | "destination_is_folder"
+  | "destination_folder_missing";
+
+export interface SetRefusal {
+  code: SetRefusalCode;
+  message: string;
+  /** Which kind of refusal, for the three codes that have more than one. */
+  reason: SetNotFoundReason | SetInsertionPointReason | SetListDestinationReason | null;
+  /** For a set list: the file refused, or not written. */
+  path: string | null;
+}
+
+/** An answer, or the refusal standing in for it. */
+export type SetAnswer<T> =
+  | { value: T; refusal: null }
+  | { value: null; refusal: SetRefusal };
+
+/** A chapter as a plan reads it: its targets, its entries and how long they run. */
+export interface SetChapterPlan {
+  id: number;
+  position: number;
+  /** Empty for an unnamed chapter, drawn without a heading (DEC-103). */
+  name: string;
+  notes: string | null;
+  target_seconds: SetSeconds | null;
+  bpm_min: number | null;
+  bpm_max: number | null;
+  entry_ids: number[];
+  running_time: SetRunningTime;
+  /** When it starts, from the Set's start; null after an untimed entry. */
+  starts_at: SetSeconds | null;
+}
+
+/** An entry as a plan reads it: its place, chapter, times and note (DEC-107). */
+export interface SetPlannedEntry {
+  entry_id: number;
+  track_id: number;
+  position: number;
+  chapter_id: number;
+  in_seconds: SetSeconds | null;
+  out_seconds: SetSeconds | null;
+  note: string | null;
+  planned_seconds: SetSeconds | null;
+  starts_at: SetSeconds | null;
+  length_seconds: SetSeconds | null;
+}
+
+/** A Set's whole plan (PREP-03). */
+export interface SetPlan {
+  set_id: number;
+  name: string;
+  notes: string | null;
+  chapters: SetChapterPlan[];
+  entries: SetPlannedEntry[];
+  running_time: SetRunningTime;
+}
+
+/** One entry of the running order, beside the Library's own row for its track. */
+export interface SetEntry extends SetPlannedEntry {
+  track: LibraryTrackRow;
+}
+
+/** The whole Set in its running order, repeats included. */
+export interface SetEntries {
+  set_id: number;
+  name: string;
+  entries: SetEntry[];
+  /** The most entries a Set holds (PREP-02). */
+  limit: number;
+}
+
+/** Which neighbour of a gap a suggestion is fitted against. */
+export type SetSuggestionSideName = "before" | "after";
+
+/** A suggestion against one neighbour: DEC-096's score, and its reasons. */
+export interface SetSuggestionSide {
+  score: number;
+  reasons: SimilarReason[];
+}
+
+export interface SetSuggestion {
+  track_id: number;
+  /** The mean of the fitted sides' scores. */
+  score: number;
+  /** How many times the track is already in the Set; 0 when it is not. */
+  in_set: number;
+  before: SetSuggestionSide | null;
+  after: SetSuggestionSide | null;
+}
+
+/** How two keys relate on the wheel, in the words the warnings use. */
+export type SetKeyRelation = "same" | "adjacent" | "relative";
+
+/** Why nothing fits a gap: its neighbours' tempos are too far apart. */
+export interface SetNoFit {
+  tempo: { from: number; to: number; gap_percent: number };
+  /** Null when either key is unknown; `relation` is null when they clash. */
+  key: { from: string; to: string; relation: SetKeyRelation | null } | null;
+}
+
+/** The chapter's BPM range that narrowed the pool, inclusive, open at either end. */
+export interface SetBpmRange {
+  chapter_id: number;
+  min: number | null;
+  max: number | null;
+}
+
+/** What fits at one gap of a Set, best first (PREP-04, DEC-105). */
+export interface SetSuggestions {
+  set_id: number;
+  before_entry_id: number | null;
+  after_entry_id: number | null;
+  sides: SetSuggestionSideName[];
+  chapter_id: number;
+  bpm_range: SetBpmRange | null;
+  notation: SimilarKeyNotation;
+  unused: Partial<Record<SetSuggestionSideName, SimilarComponent[]>>;
+  considered: number;
+  duplicates_excluded: number;
+  index_current: boolean;
+  no_fit: SetNoFit | null;
+  suggestions: SetSuggestion[];
+}
+
+/** A gap, named by the entries either side, and the Library's own pool parameters. */
+export interface SetSuggestionsRequest {
+  set_id: number;
+  before_entry_id?: number | null;
+  after_entry_id?: number | null;
+  chapter_id?: number | null;
+  against?: SetSuggestionSideName | null;
+  limit?: number;
+  q?: string;
+  playlist_id?: number | null;
+  filters?: FilterRuleSet | null;
+  scope?: "collection" | "smart" | null;
+  collection_id?: number | null;
+}
+
+/** The plain-text set list, for the clipboard (DEC-110). */
+export interface SetListText {
+  set_id: number;
+  text: string;
+}
+
+/** What "New Set from…" copies (PREP-02): a selection in the table's order. */
+export type SetSource =
+  | { kind: "collection"; id: number }
+  | { kind: "playlist"; id: number }
+  | { kind: "selection"; track_ids: number[] };
+
+/** A Set made, or a copy of one: the node as the tree draws it. */
+export interface SetCreated {
+  set: CollectionNode;
+}
+
+/** What a source was called when "New Set from…" copied it. */
+export interface SetSourceUsed {
+  kind: SetSource["kind"];
+  id: number | null;
+  name: string | null;
+}
+
+export interface SetCreatedFrom {
+  set: CollectionNode;
+  source: SetSourceUsed;
+  /** How many entries the Set was given, repeats counted. */
+  track_count: number;
+}
+
+/** A Set's notes, and when they last changed. */
+export interface SetDetails {
+  set_id: number;
+  notes: string | null;
+  updated_at: string;
+}
+
+export interface SetNotesChanged {
+  details: SetDetails;
+}
+
+/** A chapter as it is stored. */
+export interface SetChapter {
+  id: number;
+  set_id: number;
+  position: number;
+  name: string;
+  notes: string | null;
+  target_seconds: SetSeconds | null;
+  bpm_min: number | null;
+  bpm_max: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SetChapterChanged {
+  chapter: SetChapter;
+}
+
+/** A chapter deleted, and the neighbour its entries joined. */
+export interface SetChapterDeleted {
+  deleted_chapter_id: number;
+  joined: SetChapter;
+}
+
+/**
+ * What PREP-10's heading dialog changes, in one write. Only the fields sent
+ * change, and null clears one; `target` is typed as `m:ss` or `h:mm:ss`.
+ */
+export interface SetChapterUpdate {
+  chapter_id: number;
+  name?: string | null;
+  notes?: string | null;
+  target?: string | null;
+  bpm_min?: number | null;
+  bpm_max?: number | null;
+}
+
+/** An entry moved, and the chapter it is now in. */
+export interface SetEntryMoved {
+  entry: CollectionEntry;
+  chapter_id: number;
+}
+
+/** An entry's chapter, planned times and note. */
+export interface SetEntryPlan {
+  entry_id: number;
+  set_id: number;
+  chapter_id: number;
+  in_seconds: SetSeconds | null;
+  out_seconds: SetSeconds | null;
+  planned_seconds: SetSeconds | null;
+  note: string | null;
+}
+
+export interface SetEntryPlanChanged {
+  plan: SetEntryPlan;
+}
+
+/** The warnings between two entries, which are the only ones a person accepts. */
+export type SetTransitionWarningKind = "tempo_jump" | "key_clash" | "tempo_unknown" | "key_unknown";
+
+/** One transition's warning, named by its two entries (DEC-106). */
+export interface SetTransitionWarningRef {
+  from_entry_id: number;
+  to_entry_id: number;
+  warning: SetTransitionWarningKind;
+}
+
+/** A warning accepted, with the values it accepted: it lapses when they change. */
+export interface SetAcknowledgement {
+  id: number;
+  set_id: number;
+  from_entry_id: number;
+  to_entry_id: number;
+  warning: SetTransitionWarningKind;
+  compared: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface SetAcknowledged {
+  acknowledgement: SetAcknowledgement;
+}
+
+export interface SetUnacknowledged {
+  /** False when there was nothing to withdraw. */
+  removed: boolean;
+}
+
+/** The three forms a set list is saved in, named by the file's extension. */
+export type SetListFormat = "text" | "csv" | "m3u8";
+
+/** What a set list save wrote. */
+export interface SetListSaved {
+  set_id: number;
+  /** The file written, absolute. */
+  path: string;
+  format: SetListFormat;
+  entries: number;
+  missing_files: number;
+  untimed: number;
+  bytes_written: number;
+}
+
+export interface SetListSave {
+  saved: SetListSaved;
+}
+
+/** What the set list save dialog is opened with. */
+export interface SetListDialogRequest {
+  /** The Set's name, which the suggested file is named after. */
+  setName: string;
+  /** A file chosen before, to reopen at after a refusal. */
+  currentPath?: string | null;
+}
+
+/** What the set list save dialog answers: a file, or that none was chosen. */
+export type SetListDestinationChoice =
+  | { canceled: true }
+  | { canceled: false; filePath: string };
+
 export class EngineClient {
   constructor(
     private readonly port: number,
@@ -2085,6 +2595,151 @@ export class EngineClient {
     );
   }
 
+  // -------------------------------------------------------------------------
+  // A Set (PREP-08)
+  //
+  // Reads are GETs named by `set_id`; actions are POSTs. Each answers a
+  // `SetAnswer`, so a refusal keeps its code and reason across IPC. Adding and
+  // removing entries stays on the Collection methods below (PREP-02).
+  // -------------------------------------------------------------------------
+
+  private async setsGet<T>(path: string): Promise<SetAnswer<T>> {
+    const res = await fetch(this.url(path), { headers: this.headers() });
+    return readSetAnswer<T>(res);
+  }
+
+  private async setsPost<T>(path: string, body: unknown): Promise<SetAnswer<T>> {
+    const res = await fetch(this.url(path), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(body ?? {}),
+    });
+    return readSetAnswer<T>(res);
+  }
+
+  /** A Set's notes, chapters, entries' plans and running times (PREP-03). */
+  async getSetPlan(params: { set_id: number }): Promise<SetAnswer<SetPlan>> {
+    return this.setsGet(`/api/v1/sets/plan${discoverQuery({ set_id: params.set_id })}`);
+  }
+
+  /** The running order, each entry beside the Library's own row for its track. */
+  async getSetEntries(params: { set_id: number }): Promise<SetAnswer<SetEntries>> {
+    return this.setsGet(`/api/v1/sets/entries${discoverQuery({ set_id: params.set_id })}`);
+  }
+
+  /** Every transition, entry and chapter checked (PREP-05). */
+  async getSetAnalysis(params: { set_id: number }): Promise<SetAnswer<SetAnalysis>> {
+    return this.setsGet(`/api/v1/sets/analysis${discoverQuery({ set_id: params.set_id })}`);
+  }
+
+  /** What fits at a gap, over a pool of the Library's own parameters (PREP-04). */
+  async getSetSuggestions(params: SetSuggestionsRequest): Promise<SetAnswer<SetSuggestions>> {
+    const { filters, ...rest } = params;
+    return this.setsGet(
+      `/api/v1/sets/suggestions${discoverQuery({
+        ...rest,
+        filters: filters && filters.rules.length > 0 ? JSON.stringify(filters) : undefined,
+      })}`,
+    );
+  }
+
+  /** The plain-text set list, for the clipboard (PREP-06). */
+  async getSetListText(params: { set_id: number }): Promise<SetAnswer<SetListText>> {
+    return this.setsGet(`/api/v1/sets/set-list/text${discoverQuery({ set_id: params.set_id })}`);
+  }
+
+  /** An empty Set with one unnamed chapter. */
+  async createSet(params: { name: string; parent_id?: number | null }): Promise<SetAnswer<SetCreated>> {
+    return this.setsPost("/api/v1/sets/create", params);
+  }
+
+  /** "New Set from…" a Collection, a playlist or a selection (DEC-104). */
+  async createSetFrom(params: {
+    source: SetSource;
+    name?: string | null;
+    parent_id?: number | null;
+  }): Promise<SetAnswer<SetCreatedFrom>> {
+    return this.setsPost("/api/v1/sets/create-from", params);
+  }
+
+  /** A copy of a Set, chapters, plan and acknowledgements included. */
+  async duplicateSet(params: { set_id: number; name?: string | null }): Promise<SetAnswer<SetCreated>> {
+    return this.setsPost("/api/v1/sets/duplicate", params);
+  }
+
+  /** Write a Set's notes; null clears them. */
+  async setSetNotes(params: { set_id: number; notes: string | null }): Promise<SetAnswer<SetNotesChanged>> {
+    return this.setsPost("/api/v1/sets/notes", params);
+  }
+
+  /** An empty chapter at a place, after a chapter, or at the end. */
+  async createSetChapter(params: {
+    set_id: number;
+    name?: string;
+    position?: number | null;
+    after_chapter_id?: number | null;
+  }): Promise<SetAnswer<SetChapterChanged>> {
+    return this.setsPost("/api/v1/sets/chapters/create", params);
+  }
+
+  /** A chapter's name, notes and targets, in one write. */
+  async updateSetChapter(params: SetChapterUpdate): Promise<SetAnswer<SetChapterChanged>> {
+    return this.setsPost("/api/v1/sets/chapters/update", params);
+  }
+
+  /** Move a chapter, its entries with it. */
+  async moveSetChapter(params: { chapter_id: number; position: number }): Promise<SetAnswer<SetChapterChanged>> {
+    return this.setsPost("/api/v1/sets/chapters/move", params);
+  }
+
+  /** Delete a chapter; its entries join a neighbour. */
+  async deleteSetChapter(params: { chapter_id: number }): Promise<SetAnswer<SetChapterDeleted>> {
+    return this.setsPost("/api/v1/sets/chapters/delete", params);
+  }
+
+  /** Start a chapter at an entry. */
+  async splitSetChapter(params: { entry_id: number; name?: string }): Promise<SetAnswer<SetChapterChanged>> {
+    return this.setsPost("/api/v1/sets/chapters/split", params);
+  }
+
+  /** Move an entry, into a chapter that reaches its new place. */
+  async moveSetEntry(params: {
+    entry_id: number;
+    position: number;
+    chapter_id?: number | null;
+  }): Promise<SetAnswer<SetEntryMoved>> {
+    return this.setsPost("/api/v1/sets/entries/move", params);
+  }
+
+  /** Plan an entry's times, typed; both are written, and null or blank clears one. */
+  async setSetEntryTimes(params: {
+    entry_id: number;
+    in_time: string | null;
+    out_time: string | null;
+  }): Promise<SetAnswer<SetEntryPlanChanged>> {
+    return this.setsPost("/api/v1/sets/entries/times", params);
+  }
+
+  /** Write an entry's note; null clears it. */
+  async setSetEntryNote(params: { entry_id: number; note: string | null }): Promise<SetAnswer<SetEntryPlanChanged>> {
+    return this.setsPost("/api/v1/sets/entries/note", params);
+  }
+
+  /** Accept a transition warning that is there now (DEC-106). */
+  async acknowledgeSetWarning(params: SetTransitionWarningRef): Promise<SetAnswer<SetAcknowledged>> {
+    return this.setsPost("/api/v1/sets/acknowledge", params);
+  }
+
+  /** Withdraw an acknowledgement. */
+  async unacknowledgeSetWarning(params: SetTransitionWarningRef): Promise<SetAnswer<SetUnacknowledged>> {
+    return this.setsPost("/api/v1/sets/unacknowledge", params);
+  }
+
+  /** Save a set list where the dialog chose; the engine judges the path. */
+  async saveSetList(params: { set_id: number; destination_path: string }): Promise<SetAnswer<SetListSave>> {
+    return this.setsPost("/api/v1/sets/set-list/save", params);
+  }
+
   /** The whole Collection tree, with counts and broken-rule state (ORG-04). */
   async getCollections(): Promise<CollectionTree> {
     return this.getJson("/api/v1/collections");
@@ -2151,6 +2806,8 @@ export class EngineClient {
     collection_id: number;
     track_id: number;
     position: number;
+    /** In a Set, the chapter for a place on a boundary (PREP-08). */
+    chapter_id?: number | null;
   }): Promise<{ entry: CollectionEntry }> {
     return this.postJson("/api/v1/collections/tracks/insert", params);
   }

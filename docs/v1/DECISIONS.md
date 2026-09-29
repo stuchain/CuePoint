@@ -3638,6 +3638,22 @@ Set to other players or a USB stick. The recommendation left M3U8 out.
 - **Precision: a Set that never used chapters is written as a plain list**, as DEC-103 draws it.
 
 **Why the decision stands**: the forms are as decided, and each precision keeps a file from being
+
+### Implemented (2026-09-29, PREP-08) — the save dialog and the copy
+
+- **As decided.** "Save set list…" opens a save dialog that the main process owns. The dialog only
+  chooses a file; the engine judges it and writes it. "Copy set list" reads the text from the engine,
+  and the renderer puts it on the clipboard (PREP-11).
+- **Precision: the dialog suggests `<Set name> <date>.txt`** in local time, with the three forms as its
+  filters. Characters no file name may hold are replaced, so a Set called "Friday 2/10" is saved as
+  "Friday 2-10 …", not refused.
+- **Precision: the folder is remembered only from a save the engine wrote.** It is kept in main's own
+  settings file, not the database, because nothing but the activity event records a save.
+- **Precision: a file system that refuses the write is a refusal with the path.** The next step is
+  another place, so it crosses to the renderer as a value.
+
+**Why the decision stands**: the dialog chooses, and the engine judges and writes, as DEC-083 has it for
+the export.
 misread by the program it is opened in.
 
 ---

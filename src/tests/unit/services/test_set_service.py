@@ -334,6 +334,70 @@ class TestChapterFields:
         )
         refused(db, lambda: service.set_chapter_targets(999_999, 60), "No such chapter")
 
+    def test_update_writes_every_field_it_is_given_together(self, service, three):
+        # PREP-08: the heading dialog's one write.
+        _, _, chapters = three
+        made = service.update_chapter(
+            chapters[1],
+            {
+                "name": " Peak time ",
+                "notes": " Hands up ",
+                "target_seconds": 2400,
+                "bpm_min": 126,
+                "bpm_max": 130,
+            },
+        )
+        assert (
+            made.name,
+            made.notes,
+            made.target_seconds,
+            made.bpm_min,
+            made.bpm_max,
+        ) == ("Peak time", "Hands up", 2400, 126.0, 130.0)
+
+    def test_update_keeps_what_it_is_not_given(self, service, three):
+        _, _, chapters = three
+        service.update_chapter(chapters[1], {"notes": "keep", "target_seconds": 600})
+        made = service.update_chapter(
+            chapters[1], {"bpm_max": 128, "target_seconds": None}
+        )
+        assert (made.name, made.notes, made.target_seconds, made.bpm_max) == (
+            "Peak",
+            "keep",
+            None,
+            128.0,
+        )
+        assert service.update_chapter(chapters[1], {}).name == "Peak"
+
+    @pytest.mark.parametrize(
+        ("changes", "match"),
+        [
+            ({"bpm_min": 130, "bpm_max": 120}, "run upwards"),
+            ({"target_seconds": MAX_TIME_SECONDS + 1}, "at most 99:59:59"),
+            ({"target_seconds": 0}, "more than zero"),
+            ({"notes": "x" * (MAX_NOTES_LENGTH + 1)}, "at most"),
+            ({"colour": "red"}, "no field colour"),
+            ({"collection_id": 7}, "no field collection_id"),
+            ({"position": 0}, "no field position"),
+        ],
+    )
+    def test_a_refused_update_writes_none_of_it(
+        self, service, db, three, changes, match
+    ):
+        _, _, chapters = three
+        refused(
+            db,
+            lambda: service.update_chapter(chapters[1], {"name": "Renamed", **changes}),
+            match,
+        )
+
+    def test_update_of_a_chapter_that_is_gone(self, service, db, three):
+        refused(
+            db,
+            lambda: service.update_chapter(999_999, {"name": "x"}),
+            "No such chapter",
+        )
+
     def test_fields_never_move_a_chapter(self, service, repo, three):
         gig, _, chapters = three
         before = layout(service, gig)

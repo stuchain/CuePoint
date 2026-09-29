@@ -1210,6 +1210,318 @@ describe("desktop contract", () => {
     });
   });
 
+  describe("a Set (PREP-08)", () => {
+    // Twenty engine methods across all six files, on `window.cuepoint.sets`,
+    // named here as Discover's are: the generic checks compare the files with
+    // each other, so a method missing from all of them passes every one. The
+    // supervisor has dropped a method in four earlier phases.
+    type Method = { client: string; route: string; answer: string };
+    const READS: Record<string, Method> = {
+      plan: { client: "getSetPlan", route: "/api/v1/sets/plan", answer: "SetPlan" },
+      entries: { client: "getSetEntries", route: "/api/v1/sets/entries", answer: "SetEntries" },
+      analysis: { client: "getSetAnalysis", route: "/api/v1/sets/analysis", answer: "SetAnalysis" },
+      suggestions: {
+        client: "getSetSuggestions",
+        route: "/api/v1/sets/suggestions",
+        answer: "SetSuggestions",
+      },
+      setListText: {
+        client: "getSetListText",
+        route: "/api/v1/sets/set-list/text",
+        answer: "SetListText",
+      },
+    };
+    const ACTIONS: Record<string, Method> = {
+      create: { client: "createSet", route: '"/api/v1/sets/create"', answer: "SetCreated" },
+      createFrom: {
+        client: "createSetFrom",
+        route: '"/api/v1/sets/create-from"',
+        answer: "SetCreatedFrom",
+      },
+      duplicate: { client: "duplicateSet", route: '"/api/v1/sets/duplicate"', answer: "SetCreated" },
+      setNotes: { client: "setSetNotes", route: '"/api/v1/sets/notes"', answer: "SetNotesChanged" },
+      createChapter: {
+        client: "createSetChapter",
+        route: '"/api/v1/sets/chapters/create"',
+        answer: "SetChapterChanged",
+      },
+      updateChapter: {
+        client: "updateSetChapter",
+        route: '"/api/v1/sets/chapters/update"',
+        answer: "SetChapterChanged",
+      },
+      moveChapter: {
+        client: "moveSetChapter",
+        route: '"/api/v1/sets/chapters/move"',
+        answer: "SetChapterChanged",
+      },
+      deleteChapter: {
+        client: "deleteSetChapter",
+        route: '"/api/v1/sets/chapters/delete"',
+        answer: "SetChapterDeleted",
+      },
+      splitChapter: {
+        client: "splitSetChapter",
+        route: '"/api/v1/sets/chapters/split"',
+        answer: "SetChapterChanged",
+      },
+      moveEntry: {
+        client: "moveSetEntry",
+        route: '"/api/v1/sets/entries/move"',
+        answer: "SetEntryMoved",
+      },
+      setEntryTimes: {
+        client: "setSetEntryTimes",
+        route: '"/api/v1/sets/entries/times"',
+        answer: "SetEntryPlanChanged",
+      },
+      setEntryNote: {
+        client: "setSetEntryNote",
+        route: '"/api/v1/sets/entries/note"',
+        answer: "SetEntryPlanChanged",
+      },
+      acknowledge: {
+        client: "acknowledgeSetWarning",
+        route: '"/api/v1/sets/acknowledge"',
+        answer: "SetAcknowledged",
+      },
+      unacknowledge: {
+        client: "unacknowledgeSetWarning",
+        route: '"/api/v1/sets/unacknowledge"',
+        answer: "SetUnacknowledged",
+      },
+      saveSetList: {
+        client: "saveSetList",
+        route: '"/api/v1/sets/set-list/save"',
+        answer: "SetListSave",
+      },
+    };
+    const ALL = { ...READS, ...ACTIONS };
+    const methods = Object.values(ALL).map((m) => m.client);
+
+    const clientMethod = (name: string) => {
+      const start = engineClient.indexOf(`  async ${name}(`);
+      expect(start, name).toBeGreaterThan(-1);
+      const next = engineClient.indexOf("\n  async ", start + 1);
+      return engineClient.slice(start, next === -1 ? undefined : next);
+    };
+
+    /** The preload's `sets: { … }` block, and only it. */
+    const setsBlock = () => {
+      const start = preload.indexOf("  sets: {\n");
+      expect(start).toBeGreaterThan(-1);
+      return preload.slice(start, preload.indexOf("\n  },\n", start));
+    };
+
+    /** The bridge's `SetsBridge` interface, and only it. */
+    const bridgeInterface = () => {
+      const start = bridgeTypes.indexOf("export interface SetsBridge {");
+      expect(start).toBeGreaterThan(-1);
+      return bridgeTypes.slice(start, bridgeTypes.indexOf("\n}\n", start));
+    };
+
+    const handlerOf = (channel: string) => {
+      const start = main.indexOf(`ipcMain.handle("${channel}"`);
+      expect(start, channel).toBeGreaterThan(-1);
+      return main.slice(start, main.indexOf("\n  );\n", start));
+    };
+
+    it("has twenty of them", () => {
+      expect(new Set(methods).size).toBe(20);
+      expect(Object.keys(ALL)).toHaveLength(20);
+    });
+
+    it.each(Object.entries(ALL))(
+      "exposes sets.%s on the preload, on its own channel",
+      (key, { client }) => {
+        expect(setsBlock()).toContain(
+          `    ${key}: (params) => ipcRenderer.invoke("engine:${client}", params),\n`,
+        );
+      },
+    );
+
+    it("exposes nothing else on sets but the save dialog", () => {
+      const keys = [...setsBlock().matchAll(/^ {4}([A-Za-z]+):/gm)].map((m) => m[1]);
+      expect(keys.sort()).toEqual([...Object.keys(ALL), "chooseSetListDestination"].sort());
+    });
+
+    it.each(methods)("handles engine:%s in the main process", (method) => {
+      expect(handledChannels(main)).toContain(`engine:${method}`);
+      expect(handlerOf(`engine:${method}`)).toContain(`engine.${method}(params)`);
+    });
+
+    it.each(methods)("forwards %s through the supervisor", (method) => {
+      expect(supervisorMethodsDeclared(supervisor)).toContain(method);
+      expect(supervisor).toContain(`(await this.readyClient()).${method}(params);`);
+    });
+
+    it.each(Object.entries(READS))("sets.%s reads with GET on its own route", (_key, m) => {
+      const body = clientMethod(m.client);
+      expect(body).toContain(m.route);
+      expect(body).toContain("this.setsGet(");
+      expect(body).not.toContain("setsPost");
+    });
+
+    it.each(Object.entries(ACTIONS))("sets.%s acts with POST on its own route", (_key, m) => {
+      // A GET that changed a Set would be repeated by anything that retries GETs.
+      const body = clientMethod(m.client);
+      expect(body).toContain(m.route);
+      expect(body).toContain("this.setsPost(");
+    });
+
+    it.each(Object.entries(ALL))(
+      "declares sets.%s on the bridge with the client's own answer",
+      (key, m) => {
+        const block = bridgeInterface();
+        const start = block.indexOf(`\n  ${key}: (`);
+        expect(start, key).toBeGreaterThan(-1);
+        const declaration = block.slice(start, block.indexOf(">>;", start) + 3);
+        expect(declaration.endsWith(`=> Promise<SetAnswer<${m.answer}>>;`)).toBe(true);
+        // One method read, not this one and the next.
+        expect(declaration.match(/\n {2}[A-Za-z]+: \(/g)).toHaveLength(1);
+        expect(clientMethod(m.client)).toContain(`Promise<SetAnswer<${m.answer}>>`);
+      },
+    );
+
+    it("answers every refusal as a value, because a rejection loses its reason over IPC", () => {
+      for (const method of methods) {
+        expect(clientMethod(method), method).toContain("Promise<SetAnswer<");
+      }
+      expect(engineClient).toContain("async function readSetAnswer<T>");
+    });
+
+    it("hangs off the bridge as one optional namespace", () => {
+      expect(bridgeTypes).toContain("  sets?: SetsBridge;\n");
+      for (const method of methods) {
+        // Flat on the bridge would be a second way in.
+        expect(bridgeTypes).not.toMatch(new RegExp(`\\n  ${method}\\?: `));
+      }
+    });
+
+    it("adds and removes entries only through the Collection methods (PREP-02)", () => {
+      for (const route of Object.values(ALL).map((m) => m.route)) {
+        expect(route).not.toMatch(/\/(add|insert|remove)"?$/);
+      }
+      expect(clientMethod("insertTrackInCollection")).toContain("chapter_id?: number | null;");
+      expect(bridgeTypes).toMatch(
+        /insertTrackInCollection\?: \(params: \{[^}]*chapter_id\?: number \| null;[^}]*\}\)/,
+      );
+    });
+
+    it("gets a set list's destination from a dialog the main process opens", () => {
+      expect(handledChannels(main)).toContain("dialog:saveSetList");
+      expect(invokedChannels(preload)).toContain("dialog:saveSetList");
+      expect(setsBlock()).toContain("chooseSetListDestination: (request) =>");
+      expect(bridgeInterface()).toContain(
+        "chooseSetListDestination: (request: SetListDialogRequest) => Promise<SetListDestinationChoice>;",
+      );
+    });
+
+    it("never saves from the dialog, and never judges its path there", () => {
+      const dialog = handlerOf("dialog:saveSetList");
+      expect(dialog).toContain("chooseSetListDestination(");
+      expect(dialog).not.toContain("saveSetList(");
+      expect(dialog).not.toMatch(/existsSync|statSync|\.txt|\.csv|\.m3u8/);
+      expect(main).toContain('from "./setListDialog";');
+    });
+
+    it("remembers the folder only from a save the engine answered", () => {
+      expect(handlerOf("engine:saveSetList")).toContain(
+        "rememberSetListFolder(engine.saveSetList(params), setListFolders())",
+      );
+      expect(main.match(/rememberSetListFolder\(/g)).toHaveLength(1);
+    });
+
+    it.each([
+      "SetRefusal",
+      "SetChapterPlan",
+      "SetPlannedEntry",
+      "SetPlan",
+      "SetEntry",
+      "SetEntries",
+      "SetSuggestionSide",
+      "SetSuggestion",
+      "SetNoFit",
+      "SetBpmRange",
+      "SetSuggestions",
+      "SetSuggestionsRequest",
+      "SetListText",
+      "SetCreated",
+      "SetSourceUsed",
+      "SetCreatedFrom",
+      "SetDetails",
+      "SetNotesChanged",
+      "SetChapter",
+      "SetChapterChanged",
+      "SetChapterDeleted",
+      "SetChapterUpdate",
+      "SetEntryMoved",
+      "SetEntryPlan",
+      "SetEntryPlanChanged",
+      "SetTransitionWarningRef",
+      "SetAcknowledgement",
+      "SetAcknowledged",
+      "SetUnacknowledged",
+      "SetListSaved",
+      "SetListSave",
+      "SetNotice",
+      "SetFileCheck",
+      "SetRunningTime",
+      "SetAnalysis",
+    ])("keeps the engine and the renderer agreeing about %s", (shape) => {
+      const read = (source: string) => {
+        const start = source.indexOf(`export interface ${shape} `);
+        expect(start, shape).toBeGreaterThan(-1);
+        const body = source.slice(start, source.indexOf("\n}", start));
+        return {
+          heading: body.slice(0, body.indexOf("{")).trim(),
+          fields: [...body.matchAll(/^ {2}([a-z_]+)\??: (.*);$/gm)]
+            .map((match) => `${match[1]}: ${match[2]}`)
+            .sort(),
+        };
+      };
+
+      expect(read(bridgeTypes).fields.length).toBeGreaterThan(0);
+      expect(read(bridgeTypes)).toEqual(read(engineClient));
+    });
+
+    it.each([
+      "SetRefusalCode",
+      "SetNotFoundReason",
+      "SetInsertionPointReason",
+      "SetListDestinationReason",
+      "SetAnswer<T>",
+      "SetSuggestionSideName",
+      "SetKeyRelation",
+      "SetSource",
+      "SetTransitionWarningKind",
+      "SetListFormat",
+      "SetListDestinationChoice",
+      "SetSeconds",
+      "SetWarning",
+    ])("keeps the engine and the renderer agreeing about the type %s", (name) => {
+      const declaration = (source: string) => {
+        const start = source.indexOf(`export type ${name} =`);
+        expect(start, name).toBeGreaterThan(-1);
+        return source.slice(start, source.indexOf(";\n\n", start)).replace(/\s+/g, " ");
+      };
+
+      expect(declaration(bridgeTypes)).toEqual(declaration(engineClient));
+    });
+
+    it("keeps the dialog's request the same in both processes", () => {
+      // Its fields are camelCase, as the export dialog's are, so it is
+      // compared as text rather than through the field reader above.
+      const declaration = (source: string) => {
+        const start = source.indexOf("export interface SetListDialogRequest {");
+        expect(start).toBeGreaterThan(-1);
+        return source.slice(start, source.indexOf("\n}", start));
+      };
+
+      expect(declaration(bridgeTypes)).toEqual(declaration(engineClient));
+    });
+  });
+
   describe("the Discover page (DISCOVER-10)", () => {
     /** The body of the handler for one channel, as text. */
     const handlerOf = (channel: string) => {

@@ -581,12 +581,18 @@ def add_tracks(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def insert_track(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Put one track at a position, duplicate or not (DEC-058)."""
+    """Put one track at a position, duplicate or not (DEC-058).
+
+    In a Set, ``chapter_id`` names the chapter when the position is on a
+    boundary, as a drop at the top of a chapter is (PREP-08). Without it, the
+    entry joins the chapter of the entry before it (PREP-02).
+    """
     service = resolve_collection_service()
     entry = service.insert_track(
         _require_int(data, "collection_id"),
         _require_int(data, "track_id"),
         _require_int(data, "position"),
+        _optional_int(data, "chapter_id"),
     )
     return {"entry": entry_to_dict(entry)}
 

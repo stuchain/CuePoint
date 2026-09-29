@@ -2245,6 +2245,335 @@ export interface SetAnalysis {
   chapters: { chapter_id: number; running_time: SetRunningTime; warnings: SetWarning[] }[];
 }
 
+// ---------------------------------------------------------------------------
+// A Set over the wire (PREP-08)
+//
+// Mirrors `sets_api.py` and the models it serializes, declared in both
+// processes because neither can import the other's: `desktopContract.test.ts`
+// holds the two copies together, and `test_sets_contract.py` holds them to what
+// the engine actually sends. Every Set method answers a `SetAnswer`: a refusal
+// a person can act on keeps its code and reason across IPC.
+// ---------------------------------------------------------------------------
+
+/** The codes a Set refusal can carry; any other failure throws. */
+export type SetRefusalCode =
+  | "INVALID_REQUEST"
+  | "SET_NOT_FOUND"
+  | "SET_INSERTION_POINT_REFUSED"
+  | "SET_LIST_DESTINATION_REFUSED"
+  | "SET_LIST_WRITE_FAILED";
+
+/** What a `SET_NOT_FOUND` names: gone in another window, or by a refresh. */
+export type SetNotFoundReason = "set" | "chapter" | "entry";
+
+/** Why a gap cannot be fitted as named (PREP-04); `stale` is the cue to reload. */
+export type SetInsertionPointReason = "empty_set" | "no_neighbour" | "stale";
+
+/** Why a set list cannot be saved where the dialog chose (PREP-06). */
+export type SetListDestinationReason =
+  | "destination_blank"
+  | "destination_not_set_list"
+  | "destination_is_folder"
+  | "destination_folder_missing";
+
+export interface SetRefusal {
+  code: SetRefusalCode;
+  message: string;
+  /** Which kind of refusal, for the three codes that have more than one. */
+  reason: SetNotFoundReason | SetInsertionPointReason | SetListDestinationReason | null;
+  /** For a set list: the file refused, or not written. */
+  path: string | null;
+}
+
+/** An answer, or the refusal standing in for it. */
+export type SetAnswer<T> =
+  | { value: T; refusal: null }
+  | { value: null; refusal: SetRefusal };
+
+/** A chapter as a plan reads it: its targets, its entries and how long they run. */
+export interface SetChapterPlan {
+  id: number;
+  position: number;
+  /** Empty for an unnamed chapter, drawn without a heading (DEC-103). */
+  name: string;
+  notes: string | null;
+  target_seconds: SetSeconds | null;
+  bpm_min: number | null;
+  bpm_max: number | null;
+  entry_ids: number[];
+  running_time: SetRunningTime;
+  /** When it starts, from the Set's start; null after an untimed entry. */
+  starts_at: SetSeconds | null;
+}
+
+/** An entry as a plan reads it: its place, chapter, times and note (DEC-107). */
+export interface SetPlannedEntry {
+  entry_id: number;
+  track_id: number;
+  position: number;
+  chapter_id: number;
+  in_seconds: SetSeconds | null;
+  out_seconds: SetSeconds | null;
+  note: string | null;
+  planned_seconds: SetSeconds | null;
+  starts_at: SetSeconds | null;
+  length_seconds: SetSeconds | null;
+}
+
+/** A Set's whole plan (PREP-03). */
+export interface SetPlan {
+  set_id: number;
+  name: string;
+  notes: string | null;
+  chapters: SetChapterPlan[];
+  entries: SetPlannedEntry[];
+  running_time: SetRunningTime;
+}
+
+/** One entry of the running order, beside the Library's own row for its track. */
+export interface SetEntry extends SetPlannedEntry {
+  track: LibraryTrackRow;
+}
+
+/** The whole Set in its running order, repeats included. */
+export interface SetEntries {
+  set_id: number;
+  name: string;
+  entries: SetEntry[];
+  /** The most entries a Set holds (PREP-02). */
+  limit: number;
+}
+
+/** Which neighbour of a gap a suggestion is fitted against. */
+export type SetSuggestionSideName = "before" | "after";
+
+/** A suggestion against one neighbour: DEC-096's score, and its reasons. */
+export interface SetSuggestionSide {
+  score: number;
+  reasons: SimilarReason[];
+}
+
+export interface SetSuggestion {
+  track_id: number;
+  /** The mean of the fitted sides' scores. */
+  score: number;
+  /** How many times the track is already in the Set; 0 when it is not. */
+  in_set: number;
+  before: SetSuggestionSide | null;
+  after: SetSuggestionSide | null;
+}
+
+/** How two keys relate on the wheel, in the words the warnings use. */
+export type SetKeyRelation = "same" | "adjacent" | "relative";
+
+/** Why nothing fits a gap: its neighbours' tempos are too far apart. */
+export interface SetNoFit {
+  tempo: { from: number; to: number; gap_percent: number };
+  /** Null when either key is unknown; `relation` is null when they clash. */
+  key: { from: string; to: string; relation: SetKeyRelation | null } | null;
+}
+
+/** The chapter's BPM range that narrowed the pool, inclusive, open at either end. */
+export interface SetBpmRange {
+  chapter_id: number;
+  min: number | null;
+  max: number | null;
+}
+
+/** What fits at one gap of a Set, best first (PREP-04, DEC-105). */
+export interface SetSuggestions {
+  set_id: number;
+  before_entry_id: number | null;
+  after_entry_id: number | null;
+  sides: SetSuggestionSideName[];
+  chapter_id: number;
+  bpm_range: SetBpmRange | null;
+  notation: SimilarKeyNotation;
+  unused: Partial<Record<SetSuggestionSideName, SimilarComponent[]>>;
+  considered: number;
+  duplicates_excluded: number;
+  index_current: boolean;
+  no_fit: SetNoFit | null;
+  suggestions: SetSuggestion[];
+}
+
+/** A gap, named by the entries either side, and the Library's own pool parameters. */
+export interface SetSuggestionsRequest {
+  set_id: number;
+  before_entry_id?: number | null;
+  after_entry_id?: number | null;
+  chapter_id?: number | null;
+  against?: SetSuggestionSideName | null;
+  limit?: number;
+  q?: string;
+  playlist_id?: number | null;
+  filters?: FilterRuleSet | null;
+  scope?: "collection" | "smart" | null;
+  collection_id?: number | null;
+}
+
+/** The plain-text set list, for the clipboard (DEC-110). */
+export interface SetListText {
+  set_id: number;
+  text: string;
+}
+
+/** What "New Set from…" copies (PREP-02): a selection in the table's order. */
+export type SetSource =
+  | { kind: "collection"; id: number }
+  | { kind: "playlist"; id: number }
+  | { kind: "selection"; track_ids: number[] };
+
+/** A Set made, or a copy of one: the node as the tree draws it. */
+export interface SetCreated {
+  set: CollectionNode;
+}
+
+/** What a source was called when "New Set from…" copied it. */
+export interface SetSourceUsed {
+  kind: SetSource["kind"];
+  id: number | null;
+  name: string | null;
+}
+
+export interface SetCreatedFrom {
+  set: CollectionNode;
+  source: SetSourceUsed;
+  /** How many entries the Set was given, repeats counted. */
+  track_count: number;
+}
+
+/** A Set's notes, and when they last changed. */
+export interface SetDetails {
+  set_id: number;
+  notes: string | null;
+  updated_at: string;
+}
+
+export interface SetNotesChanged {
+  details: SetDetails;
+}
+
+/** A chapter as it is stored. */
+export interface SetChapter {
+  id: number;
+  set_id: number;
+  position: number;
+  name: string;
+  notes: string | null;
+  target_seconds: SetSeconds | null;
+  bpm_min: number | null;
+  bpm_max: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SetChapterChanged {
+  chapter: SetChapter;
+}
+
+/** A chapter deleted, and the neighbour its entries joined. */
+export interface SetChapterDeleted {
+  deleted_chapter_id: number;
+  joined: SetChapter;
+}
+
+/**
+ * What PREP-10's heading dialog changes, in one write. Only the fields sent
+ * change, and null clears one; `target` is typed as `m:ss` or `h:mm:ss`.
+ */
+export interface SetChapterUpdate {
+  chapter_id: number;
+  name?: string | null;
+  notes?: string | null;
+  target?: string | null;
+  bpm_min?: number | null;
+  bpm_max?: number | null;
+}
+
+/** An entry moved, and the chapter it is now in. */
+export interface SetEntryMoved {
+  entry: CollectionEntry;
+  chapter_id: number;
+}
+
+/** An entry's chapter, planned times and note. */
+export interface SetEntryPlan {
+  entry_id: number;
+  set_id: number;
+  chapter_id: number;
+  in_seconds: SetSeconds | null;
+  out_seconds: SetSeconds | null;
+  planned_seconds: SetSeconds | null;
+  note: string | null;
+}
+
+export interface SetEntryPlanChanged {
+  plan: SetEntryPlan;
+}
+
+/** The warnings between two entries, which are the only ones a person accepts. */
+export type SetTransitionWarningKind = "tempo_jump" | "key_clash" | "tempo_unknown" | "key_unknown";
+
+/** One transition's warning, named by its two entries (DEC-106). */
+export interface SetTransitionWarningRef {
+  from_entry_id: number;
+  to_entry_id: number;
+  warning: SetTransitionWarningKind;
+}
+
+/** A warning accepted, with the values it accepted: it lapses when they change. */
+export interface SetAcknowledgement {
+  id: number;
+  set_id: number;
+  from_entry_id: number;
+  to_entry_id: number;
+  warning: SetTransitionWarningKind;
+  compared: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface SetAcknowledged {
+  acknowledgement: SetAcknowledgement;
+}
+
+export interface SetUnacknowledged {
+  /** False when there was nothing to withdraw. */
+  removed: boolean;
+}
+
+/** The three forms a set list is saved in, named by the file's extension. */
+export type SetListFormat = "text" | "csv" | "m3u8";
+
+/** What a set list save wrote. */
+export interface SetListSaved {
+  set_id: number;
+  /** The file written, absolute. */
+  path: string;
+  format: SetListFormat;
+  entries: number;
+  missing_files: number;
+  untimed: number;
+  bytes_written: number;
+}
+
+export interface SetListSave {
+  saved: SetListSaved;
+}
+
+/** What the set list save dialog is opened with. */
+export interface SetListDialogRequest {
+  /** The Set's name, which the suggested file is named after. */
+  setName: string;
+  /** A file chosen before, to reopen at after a refusal. */
+  currentPath?: string | null;
+}
+
+/** What the set list save dialog answers: a file, or that none was chosen. */
+export type SetListDestinationChoice =
+  | { canceled: true }
+  | { canceled: false; filePath: string };
+
 /** A run's request; anything left out takes the engine's default. */
 export interface DiscoverRunRequest {
   genre_ids?: number[];
@@ -2276,10 +2605,47 @@ export interface SimilarTracksRequest {
   collection_id?: number | null;
 }
 
+/**
+ * A Set's methods (PREP-08), on `window.cuepoint.sets`. Each answers its value
+ * or the refusal standing in for it. Adding and removing entries stays on the
+ * Collection methods (PREP-02).
+ */
+export interface SetsBridge {
+  plan: (params: { set_id: number }) => Promise<SetAnswer<SetPlan>>;
+  entries: (params: { set_id: number }) => Promise<SetAnswer<SetEntries>>;
+  analysis: (params: { set_id: number }) => Promise<SetAnswer<SetAnalysis>>;
+  suggestions: (params: SetSuggestionsRequest) => Promise<SetAnswer<SetSuggestions>>;
+  setListText: (params: { set_id: number }) => Promise<SetAnswer<SetListText>>;
+  create: (params: { name: string; parent_id?: number | null }) => Promise<SetAnswer<SetCreated>>;
+  createFrom: (params: { source: SetSource; name?: string | null; parent_id?: number | null }) => Promise<SetAnswer<SetCreatedFrom>>;
+  duplicate: (params: { set_id: number; name?: string | null }) => Promise<SetAnswer<SetCreated>>;
+  setNotes: (params: { set_id: number; notes: string | null }) => Promise<SetAnswer<SetNotesChanged>>;
+  createChapter: (params: {
+    set_id: number;
+    name?: string;
+    position?: number | null;
+    after_chapter_id?: number | null;
+  }) => Promise<SetAnswer<SetChapterChanged>>;
+  updateChapter: (params: SetChapterUpdate) => Promise<SetAnswer<SetChapterChanged>>;
+  moveChapter: (params: { chapter_id: number; position: number }) => Promise<SetAnswer<SetChapterChanged>>;
+  deleteChapter: (params: { chapter_id: number }) => Promise<SetAnswer<SetChapterDeleted>>;
+  splitChapter: (params: { entry_id: number; name?: string }) => Promise<SetAnswer<SetChapterChanged>>;
+  moveEntry: (params: { entry_id: number; position: number; chapter_id?: number | null }) => Promise<SetAnswer<SetEntryMoved>>;
+  setEntryTimes: (params: { entry_id: number; in_time: string | null; out_time: string | null }) => Promise<SetAnswer<SetEntryPlanChanged>>;
+  setEntryNote: (params: { entry_id: number; note: string | null }) => Promise<SetAnswer<SetEntryPlanChanged>>;
+  acknowledge: (params: SetTransitionWarningRef) => Promise<SetAnswer<SetAcknowledged>>;
+  unacknowledge: (params: SetTransitionWarningRef) => Promise<SetAnswer<SetUnacknowledged>>;
+  saveSetList: (params: { set_id: number; destination_path: string }) => Promise<SetAnswer<SetListSave>>;
+  /** Where to save a set list: the dialog only chooses, the engine judges. */
+  chooseSetListDestination: (request: SetListDialogRequest) => Promise<SetListDestinationChoice>;
+}
+
 export interface CuePointBridge {
   getEngineStatus: () => Promise<EngineStatus>;
   /** Absent when running in a browser tab, or in an older shell. */
   player?: PlayerBridge;
+  /** A Set's reads and edits (PREP-08). Absent in a browser tab, or in an older shell. */
+  sets?: SetsBridge;
   restartEngine?: () => Promise<EngineStatus>;
   getJob: (jobId: string) => Promise<JobStatus>;
   getJobResults: (jobId: string) => Promise<JobResultsResponse>;
@@ -2370,6 +2736,8 @@ export interface CuePointBridge {
     collection_id: number;
     track_id: number;
     position: number;
+    /** In a Set, the chapter for a place on a boundary (PREP-08). */
+    chapter_id?: number | null;
   }) => Promise<{ entry: CollectionEntry }>;
   removeCollectionEntries?: (params: {
     entry_ids: number[];

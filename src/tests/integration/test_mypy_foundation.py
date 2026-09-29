@@ -129,6 +129,8 @@ GUARDED = (
     # PREP-06: set lists.
     "cuepoint/data/set_list_file.py",
     "cuepoint/services/set_list_service.py",
+    # PREP-08: a Set over the wire.
+    "cuepoint/engine/sets_api.py",
 )
 
 

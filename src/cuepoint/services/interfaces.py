@@ -3181,6 +3181,13 @@ class ISetService(ABC):
         ...
 
     @abstractmethod
+    def update_chapter(
+        self, chapter_id: int, changes: Mapping[str, Any]
+    ) -> "SetChapter":
+        """Change any of a chapter's name, notes and targets, in one write."""
+        ...
+
+    @abstractmethod
     def move_chapter(self, chapter_id: int, position: int) -> "SetChapter":
         """Move a chapter, its entries moving with it as one block."""
         ...

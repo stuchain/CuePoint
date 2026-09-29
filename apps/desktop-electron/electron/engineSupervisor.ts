@@ -49,6 +49,22 @@ import {
   type EntityBeatportHalf,
   type EntityPage,
   type SimilarTracks,
+  type SetAcknowledged,
+  type SetAnalysis,
+  type SetAnswer,
+  type SetChapterChanged,
+  type SetChapterDeleted,
+  type SetCreated,
+  type SetCreatedFrom,
+  type SetEntries,
+  type SetEntryMoved,
+  type SetEntryPlanChanged,
+  type SetListSave,
+  type SetListText,
+  type SetNotesChanged,
+  type SetPlan,
+  type SetSuggestions,
+  type SetUnacknowledged,
   type WantlistChange,
   type WantlistPage,
   type DuplicateGroup,
@@ -476,7 +492,9 @@ export class EngineSupervisor {
     return (await this.readyClient()).addTracksToCollection(params);
   }
 
-  async insertTrackInCollection(params: { collection_id: number; track_id: number; position: number }): Promise<{ entry: CollectionEntry }> {
+  async insertTrackInCollection(
+    params: Parameters<EngineClient["insertTrackInCollection"]>[0],
+  ): Promise<{ entry: CollectionEntry }> {
     return (await this.readyClient()).insertTrackInCollection(params);
   }
 
@@ -762,6 +780,127 @@ export class EngineSupervisor {
     params: Parameters<EngineClient["getSimilarTracks"]>[0],
   ): Promise<DiscoverAnswer<SimilarTracks>> {
     return (await this.readyClient()).getSimilarTracks(params);
+  }
+
+  // A Set (PREP-08): forwarded one by one, as every method is.
+  async getSetPlan(
+    params: Parameters<EngineClient["getSetPlan"]>[0],
+  ): Promise<SetAnswer<SetPlan>> {
+    return (await this.readyClient()).getSetPlan(params);
+  }
+
+  async getSetEntries(
+    params: Parameters<EngineClient["getSetEntries"]>[0],
+  ): Promise<SetAnswer<SetEntries>> {
+    return (await this.readyClient()).getSetEntries(params);
+  }
+
+  async getSetAnalysis(
+    params: Parameters<EngineClient["getSetAnalysis"]>[0],
+  ): Promise<SetAnswer<SetAnalysis>> {
+    return (await this.readyClient()).getSetAnalysis(params);
+  }
+
+  async getSetSuggestions(
+    params: Parameters<EngineClient["getSetSuggestions"]>[0],
+  ): Promise<SetAnswer<SetSuggestions>> {
+    return (await this.readyClient()).getSetSuggestions(params);
+  }
+
+  async getSetListText(
+    params: Parameters<EngineClient["getSetListText"]>[0],
+  ): Promise<SetAnswer<SetListText>> {
+    return (await this.readyClient()).getSetListText(params);
+  }
+
+  async createSet(
+    params: Parameters<EngineClient["createSet"]>[0],
+  ): Promise<SetAnswer<SetCreated>> {
+    return (await this.readyClient()).createSet(params);
+  }
+
+  async createSetFrom(
+    params: Parameters<EngineClient["createSetFrom"]>[0],
+  ): Promise<SetAnswer<SetCreatedFrom>> {
+    return (await this.readyClient()).createSetFrom(params);
+  }
+
+  async duplicateSet(
+    params: Parameters<EngineClient["duplicateSet"]>[0],
+  ): Promise<SetAnswer<SetCreated>> {
+    return (await this.readyClient()).duplicateSet(params);
+  }
+
+  async setSetNotes(
+    params: Parameters<EngineClient["setSetNotes"]>[0],
+  ): Promise<SetAnswer<SetNotesChanged>> {
+    return (await this.readyClient()).setSetNotes(params);
+  }
+
+  async createSetChapter(
+    params: Parameters<EngineClient["createSetChapter"]>[0],
+  ): Promise<SetAnswer<SetChapterChanged>> {
+    return (await this.readyClient()).createSetChapter(params);
+  }
+
+  async updateSetChapter(
+    params: Parameters<EngineClient["updateSetChapter"]>[0],
+  ): Promise<SetAnswer<SetChapterChanged>> {
+    return (await this.readyClient()).updateSetChapter(params);
+  }
+
+  async moveSetChapter(
+    params: Parameters<EngineClient["moveSetChapter"]>[0],
+  ): Promise<SetAnswer<SetChapterChanged>> {
+    return (await this.readyClient()).moveSetChapter(params);
+  }
+
+  async deleteSetChapter(
+    params: Parameters<EngineClient["deleteSetChapter"]>[0],
+  ): Promise<SetAnswer<SetChapterDeleted>> {
+    return (await this.readyClient()).deleteSetChapter(params);
+  }
+
+  async splitSetChapter(
+    params: Parameters<EngineClient["splitSetChapter"]>[0],
+  ): Promise<SetAnswer<SetChapterChanged>> {
+    return (await this.readyClient()).splitSetChapter(params);
+  }
+
+  async moveSetEntry(
+    params: Parameters<EngineClient["moveSetEntry"]>[0],
+  ): Promise<SetAnswer<SetEntryMoved>> {
+    return (await this.readyClient()).moveSetEntry(params);
+  }
+
+  async setSetEntryTimes(
+    params: Parameters<EngineClient["setSetEntryTimes"]>[0],
+  ): Promise<SetAnswer<SetEntryPlanChanged>> {
+    return (await this.readyClient()).setSetEntryTimes(params);
+  }
+
+  async setSetEntryNote(
+    params: Parameters<EngineClient["setSetEntryNote"]>[0],
+  ): Promise<SetAnswer<SetEntryPlanChanged>> {
+    return (await this.readyClient()).setSetEntryNote(params);
+  }
+
+  async acknowledgeSetWarning(
+    params: Parameters<EngineClient["acknowledgeSetWarning"]>[0],
+  ): Promise<SetAnswer<SetAcknowledged>> {
+    return (await this.readyClient()).acknowledgeSetWarning(params);
+  }
+
+  async unacknowledgeSetWarning(
+    params: Parameters<EngineClient["unacknowledgeSetWarning"]>[0],
+  ): Promise<SetAnswer<SetUnacknowledged>> {
+    return (await this.readyClient()).unacknowledgeSetWarning(params);
+  }
+
+  async saveSetList(
+    params: Parameters<EngineClient["saveSetList"]>[0],
+  ): Promise<SetAnswer<SetListSave>> {
+    return (await this.readyClient()).saveSetList(params);
   }
 
   async startLibraryImport(params: {
