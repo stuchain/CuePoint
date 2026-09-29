@@ -7,7 +7,13 @@
 import { describe, expect, it } from "vitest";
 
 import type { FilterRuleSet } from "../../api/cuepointBridge.types";
-import { libraryOpening, libraryRulesState, rulesFromLocationState } from "./libraryLink";
+import {
+  libraryOpening,
+  libraryRefreshState,
+  libraryRulesState,
+  refreshOpening,
+  rulesFromLocationState,
+} from "./libraryLink";
 
 const RULES: FilterRuleSet = {
   match: "all",
@@ -49,5 +55,14 @@ describe("rules carried by a navigation", () => {
     expect(first).toEqual({ rules: RULES, token: "a" });
     expect(again?.token).toBe("b");
     expect(libraryOpening({ state: null, key: "c" })).toBeNull();
+  });
+});
+
+describe("a refresh asked for by another page (PREP-10)", () => {
+  it("names the navigation that asked, and nothing else", () => {
+    expect(refreshOpening({ state: libraryRefreshState(), key: "k1" })).toBe("k1");
+    expect(refreshOpening({ state: null, key: "k2" })).toBeNull();
+    expect(refreshOpening({ state: { cuepointLibraryRefresh: "yes" }, key: "k3" })).toBeNull();
+    expect(refreshOpening({ state: "refresh", key: "k4" })).toBeNull();
   });
 });

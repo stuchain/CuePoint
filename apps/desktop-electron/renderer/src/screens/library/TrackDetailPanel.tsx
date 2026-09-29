@@ -25,7 +25,7 @@
  * why LIBRARY-01 made those columns nullable (DEC-034): unrated and rated-zero
  * are different facts, and so are "never played" and "no play count recorded".
  */
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
 import type {
@@ -87,6 +87,12 @@ export interface TrackDetailPanelProps {
    * the label are text, as they always were.
    */
   onOpenEntity?: (kind: EntityKind, ref: string) => void;
+  /**
+   * A page's own zone, drawn above "Yours": the Prepare page's "In this Set"
+   * (PREP-10), which is about the entry rather than the track. Absent on
+   * every other page.
+   */
+  leadZone?: ReactNode;
 }
 
 /** Absent is absent: an em dash, never a zero. */
@@ -152,6 +158,7 @@ export function TrackDetailPanel({
   onOpenInClean,
   onMessage,
   onOpenEntity,
+  leadZone,
 }: TrackDetailPanelProps) {
   // Bumped by every accepted write, which is what makes the History section
   // re-read. A local append would show entries the engine did not write:
@@ -261,6 +268,8 @@ export function TrackDetailPanel({
           </p>
         )}
       </header>
+
+      {leadZone}
 
       {/* A track with no id is not editable, and there is nothing to say
           about that: the id is what every write is addressed to. */}

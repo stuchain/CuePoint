@@ -43,6 +43,7 @@ const ROUTES = [
   { link: "Collections", marker: /No collection imported yet/i },
   { link: "Clean", marker: /^Clean$/ },
   { link: "Discover", marker: /Discover needs the desktop app/i },
+  { link: "Prepare", marker: /Prepare needs the desktop app/i },
   { link: "Settings", marker: /Beatport token/i },
 ];
 
@@ -377,6 +378,47 @@ describe("App shell", () => {
       render(<App />);
 
       expect(window.location.hash).toBe("#/discover");
+    });
+  });
+
+  /**
+   * PREP-10: a Set is a page of Prepare (DEC-104), as an Artist page is of
+   * Discover: Prepare stays lit on it, and the app remembers Prepare, which
+   * reopens its own last Set.
+   */
+  describe("a Set on the Prepare page (PREP-10)", () => {
+    it("routes a Set's address to Prepare, with Prepare lit and remembered", async () => {
+      const { container } = render(<App />);
+      await screen.findByText(HOME);
+
+      act(() => {
+        window.location.hash = "#/prepare/12";
+      });
+
+      const main = container.querySelector("main.app-main") as HTMLElement;
+      expect(await within(main).findByText(/Prepare needs the desktop app/i)).toBeInTheDocument();
+      expect(navLink("Prepare")).toHaveAttribute("aria-current", "page");
+      await waitFor(() =>
+        expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("prepare"),
+      );
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it("reopens on Prepare, not on the Set", async () => {
+      const first = render(<App />);
+      await screen.findByText(HOME);
+      act(() => {
+        window.location.hash = "#/prepare/12";
+      });
+      await waitFor(() =>
+        expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("prepare"),
+      );
+      first.unmount();
+      window.location.hash = "";
+
+      render(<App />);
+
+      expect(window.location.hash).toBe("#/prepare");
     });
   });
 

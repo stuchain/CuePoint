@@ -78,7 +78,7 @@ describe("Sidebar", () => {
     expect(within(nav()).queryByText("Tools")).not.toBeInTheDocument();
     expect(within(nav()).queryByRole("link", { name: "inCrate" })).not.toBeInTheDocument();
     const links = within(nav()).getAllByRole("link").map((link) => link.textContent);
-    expect(links).toEqual(["Library", "Collections", "Clean", "Discover", "Settings"]);
+    expect(links).toEqual(["Library", "Collections", "Clean", "Discover", "Prepare", "Settings"]);
   });
 
   it("marks the active destination with aria-current", () => {

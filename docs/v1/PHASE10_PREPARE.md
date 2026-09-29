@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
-Status: **Specified 2026-09-28. PREP-01 to PREP-09 are implemented (2026-09-28 to 2026-09-29).** The twelve steps below replace the roadmap's
+Status: **Specified 2026-09-28. PREP-01 to PREP-10 are implemented (2026-09-28 to 2026-09-29).** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -2216,7 +2216,7 @@ Every existing test passes, and all but the five export-wording assertions (deci
 
 ---
 
-## PREP-10 — The Prepare Page
+## PREP-10 — The Prepare Page ✅ IMPLEMENTED 2026-09-29
 
 **Objective**: DEC-104's Set Builder: the Set with its chapters, times, notes and warnings, playable, laid
 out side by side (DEC-112).
@@ -2275,7 +2275,236 @@ sidebar as a rail and as expanded.
 
 **Complexity**: **L**
 
-**Outcome**: Not started.
+**Outcome**: Implemented (2026-09-29). Prepare is in the sidebar. `/prepare/:setId` opens a Set with its
+chapters as heading rows, its entries' planned times, notes and warnings, and the entry selected planned
+in the Inspector. Drag, the entry and heading menus, the chapter dialog and the Inspector's fields each
+make one engine call and re-read the Set. "Play Set" and a double-click hand the entries, repeats
+included, to `playQueue`. At the default 1,280 × 800 window and `--scale: 2` the Set shows **7 whole
+rows** with the sidebar expanded and as a rail, and 4 with the player's bar on screen. "Open in Prepare"
+now leads there from the Library's tree, its Inspector and its Set scope.
+
+**What was built.**
+
+- **Navigation** (`navRegistry.ts`, `App.tsx`, `prepareLink.ts`):
+  - `prepare` is enabled and `nested`, so `/prepare/:setId` keeps Prepare lit, and DEC-027 remembers
+    `prepare`, never a Set.
+  - The page keeps its own memory of the last Set. `/prepare` opens that Set while it exists, else the
+    first Set in the tree. A Set that is gone (`SET_NOT_FOUND`) is said, forgotten, and another opens.
+  - With no Sets, the page says what a Set is and offers "New Set" (a name and a folder) and "New Set
+    from…". The second asks for a source first, then opens PREP-09's own dialog.
+  - `App.tsx` passes `onOpenInPrepare` to the Library on both of its routes, which lights up PREP-09's
+    three links.
+- **The layout** (`PrepareLayout.tsx`): the Set, and beside it the source panel with a divider that is
+  dragged or moved with the arrow keys. Its width is stored as chosen and clamped when read, as the
+  Inspector's is. The Inspector is unchanged, still where DEC-018 put it and still hideable.
+- **The header**: the Set picker (the tree's Sets and the folders leading to them), "Play Set" and
+  "Export ▾" (Save set list…, Copy set list, Export to Rekordbox…). Below them is one line: the entry
+  count, the running time ("9:00 planned · 4 untimed"), the warnings ("5 warnings · 1 accepted", each
+  kind in its title) and what the file checks leave unknown. The line ends with "Columns…".
+- **The Set table** (`prepareColumns.tsx`, `prepareRows.ts`) is a `TrackTable` over rows of its own type,
+  an entry or a chapter heading.
+  - Columns: position, starts at, in, out, planned, title, artist, BPM, key, transition and note.
+  - Title, artist, BPM and key are the Library's own cells.
+  - A heading puts each fact about its chapter under its column: the name under Title, its time against
+    its target under Planned, its BPM range under BPM, its warnings under Transition and its notes under
+    Note.
+  - One unnamed chapter draws no heading (DEC-103).
+  - A repeat is marked beside its place, and an entry's own warnings beside its title.
+- **Editing**:
+  - Drag reorders entries. A drop on a heading goes to that chapter's start. A drop on an entry goes
+    before or after it, in that entry's chapter.
+  - An entry's menu: "Play Set from here", "Play next", "Add to queue", "Start a chapter here" (greyed
+    where one starts), "Insert a repeat after", "Remove from Set", then Similar tracks and the track's
+    pages. On several entries, playing, queueing and removing.
+  - A heading's menu: "Rename, targets and notes…" (one dialog, one `updateChapter`), "Move chapter up",
+    "Move chapter down" and "Delete chapter…". A double-click on a heading opens its dialog.
+- **"In this Set"** (`SetEntryZone.tsx`), above "Yours" through a new `leadZone` on `TrackDetailPanel`.
+  It shows the entry's place and start, its in and out times (saved together when a field is left or
+  Enter is pressed), its note, and its chapter. It also lists the transition's and the entry's own
+  warnings, each transition warning with "Acknowledge" or "Withdraw", and a repeat's other places.
+- **Playing** (DEC-108): "Play Set" plays from the start. A double-click on an entry, or Enter on it,
+  plays from that entry. Both send the entries in order, repeats included, to `playQueue`. Nothing about
+  the player changed.
+- **The double-click fix** (DEC-112):
+  - `TrackTable` gives itself focus on a mouse press with `preventScroll`, so the press's own focus
+    moves nothing. A component test reproduced the defect first.
+  - The Windows run found a second cause, described in decision 6.
+- **Three generic additions to `TrackTable`**: `rowClassName`, `canDragRow`, and the row a drop landed
+  on as a third argument to `onRowDrop`. None of them means anything to the table.
+
+**Where the specification was open, and what was done.**
+
+1. **The header is compact, because the specified one cost five rows.**
+   - Built as specified (the picker, the name, "Play Set", "Set list ▾" and "Export to Rekordbox…"), the
+     header wrapped to three lines in the 620px the Set has with the sidebar and Inspector open. The
+     Set then showed **2** whole rows, and the page scrolled.
+   - Every control is the design system's 44px hit target doubled, so they cannot shrink. The picker is
+     now the page's title, and the `<h1>` stays for assistive technology.
+   - "Set list ▾" and "Export to Rekordbox…" are one menu, "Export ▾": all three entries take the Set out
+     of CuePoint (DEC-109, DEC-110), as the Library's "Collection file ▾" holds its import and export.
+   - The strip that was under the table is gone: its count is in the header's line, and "Columns…" is a
+     link at the line's end.
+2. **The row count, measured and held** (`e2e/prepare.spec.ts`):
+   - **7** whole rows as the page opens, with the sidebar expanded and as a rail. This is DEC-112's
+     measurement, above its floor of five, and `WHOLE_ROWS` holds it.
+   - **4** with the player's bar on screen, held as `WHOLE_ROWS_PLAYING` so it cannot quietly get worse.
+     That is below five, and it is recorded rather than hidden. The bar takes 116px at scale 2, and a
+     fifth row would need a smaller control or scale, which DEC-112 leaves alone.
+   - The page itself does not scroll in any of the four states.
+3. **The Set's floor is 100px × scale**, lower than the Library's 140. With the Library's floor, the
+   player's bar made the page scroll and the header slide away for no extra row.
+4. **The source panel's place is built and empty.** The layout, the divider and its remembered width are
+   PREP-10's and are tested with a panel in them. The page passes none until PREP-11 has one, because a
+   divider beside an empty pane moves nothing. So the width check here is without the panel: nothing
+   spills sideways and every header control is on screen, sidebar expanded and as a rail. PREP-11 re-runs
+   it with the panel.
+5. **The set list actions are in the header now.** PREP-09 handed "Set list ▾" to PREP-11, but the header
+   is PREP-10's, so `useSetList` is wired here and PREP-11's set list item is done.
+6. **On Windows the double-click was defeated by something else, and both causes are fixed.**
+   - Phase 8's macOS pass saw the browser scroll a partly visible row into view. On Windows, the spec
+     passes with the focus fix removed, so Chromium there does not scroll on a mouse focus. The component
+     test holds that fix, and its end-to-end proof is owed on macOS.
+   - What defeated it on Windows was the selection strip. It did not wrap, so the buttons a first click
+     brings ran past the Library's scrolling column and gave it a horizontal scrollbar. The scrollbar
+     appeared under the rows, over the row that had been clicked, and the second click landed on it.
+   - `.cp-selection-actions` now wraps. The end-to-end test double-clicks a Library row the column cuts,
+     and fails without the fix.
+   - Neither fix changes the Library's height, floor or scale (DEC-112).
+7. **The Inspector's chapter picker moves an entry the least distance**: to the start of a later chapter,
+   or the end of an earlier one.
+8. **Deleting a chapter asks first**, and says which chapter its entries join. A chapter's name, notes and
+   targets cannot be recovered, though its entries and their times stay.
+9. **Headings are rows, not entries.** A heading cannot be selected, dragged or played. Its double-click
+   and its menu open its dialog.
+10. **"Refresh first" from Prepare opens the Library and starts "Check for changes"**, through a location
+    state as a Health count opens its rules (`libraryRefreshState`). DEC-082's one click holds wherever
+    the export was opened.
+11. **"New Set from…" on Prepare offers Collections, Smart Collections and Rekordbox playlists.** A Set
+    is not offered, because "Duplicate" copies one whole, chapters and times included.
+12. **The registry has no disabled destination left.** The launch-memory tests that used Prepare as the
+    disabled case now run against the real registry with Prepare turned off, rather than against an
+    invented list.
+
+**Handed on.**
+
+- **PREP-11:**
+  - Pass the source panel to `PrepareLayout` as `source`, and re-run `prepare.spec.ts`'s width check
+    with it present.
+  - The insertion point is the entry the page calls `focused`.
+  - The Set table accepts only its own entry drag (`SET_ENTRY_MIME`). A library row dropped on it needs
+    `insertTrackInCollection` with the place and chapter `dropMove` would give.
+- **PREP-12:**
+  - The user guide's Prepare page.
+  - The macOS pass owes the focus-scroll half of the double-click fix, and a look at the player-bar row
+    count there.
+
+**Still owed from before this step.** This document's opening asks for Phase 5's owed acceptance to be
+closed, or deferred by the user, before "Play Set" is wired. That acceptance is a notarization
+submission, the rows that need a real audio interface or a listener, and the DEC-055 amendment. It is
+not closed yet. "Play Set" only calls the existing `playQueue` and changes nothing in the player, so this
+step adds no player risk. Those items still stand, and were raised with the user when this step was
+reported.
+
+**Tests**: 123 new: 13 in Python, 109 in the renderer and one end-to-end spec.
+
+- **`src/tests/unit/engine/test_prepare_fixture.py` (13)** produces `prepare.fixture.json` from a real
+  engine:
+  - Friday, six entries in three named chapters, track 1 twice, a target and a BPM range crossed, two
+    timed entries, a note, a tempo jump left standing and a key clash acknowledged.
+  - Plain, one unnamed chapter with a track that has no BPM or key.
+  - The answer to each edit the page makes, and the four refusals it acts on.
+  - The file must equal a fresh capture, and twelve tests hold each state to what it claims.
+- **Renderer (109)**, over that fixture:
+  - `prepare.test.ts` (42): the rows and their headings, what a drop and a chapter change ask of the
+    engine, where a chapter starts and a repeat goes, the page's words and the header's line, both
+    menus, the chapter dialog's form, "New Set from…"'s sources, where `/prepare` goes and the divider's
+    width.
+  - `PrepareScreen.test.tsx` (50):
+    - With no Sets: making one, a refusal, and making one from a source it asks for.
+    - Which Set opens: the last one, the first one, the picker, a gone Set, a bad address, a failed
+      read, and a shell without the bridge.
+    - The header and the rows, with and without headings.
+    - Playing, and every edit: the drag, both menus, the dialog and its refusal, the Inspector's times,
+      a refused time, the note, the chapter and "Acknowledge".
+    - The set lists and the export.
+  - `PrepareLayout.test.tsx` (4): no divider without a source panel; the remembered width; the arrow
+    keys; a drag that stops at the floor.
+  - `trackTableClick.test.tsx` (3): a press focuses the table without a scroll. It failed on the
+    unfixed table.
+  - `trackTableRowKinds.test.tsx` (3): a row's class, and rows that cannot be picked up.
+  - The rest:
+    - `App.test.tsx` (+3): Prepare in the sidebar, a Set's address lit and remembered as Prepare, and
+      reopened on Prepare.
+    - `lastDestination.test.ts` (+1) and `navRegistry.test.ts` (+1): Prepare remembered, never its Set;
+      nothing left disabled.
+    - `LibraryScreen.test.tsx` (+1): a refresh another page asked for starts once, in StrictMode.
+    - `libraryLink.test.ts` (+1).
+- **`e2e/prepare.spec.ts`**, at the default 1,280 × 800 window and `--scale: 2`, measures the whole rows,
+  the width and the page's own scroll, sidebar expanded and as a rail, with and without the player's
+  bar. It double-clicks a partly visible row on the Prepare page, and one on the Library page, where
+  the pointer would be. It failed on the Library without the selection strip's fix.
+
+Thirty deliberate breakages, each caught:
+
+- one unnamed chapter drawn with a heading;
+- a drop on a heading taken as a drop between rows;
+- a move down the list not counted without the entry;
+- a drop's chapter taken from the moving entry;
+- an earlier chapter joined at its start;
+- a chapter started where one starts;
+- a repeat inserted before its entry;
+- a transition drawn on the entry it leaves;
+- the running time silent about untimed entries;
+- accepted warnings left out of the count;
+- an accepted warning drawn as open;
+- the header forgetting what the file checks leave unknown;
+- "Play Set" starting past the first entry;
+- the queue dropping the repeat;
+- a double-click playing the row's place, headings counted;
+- an acknowledgement naming the wrong entry before;
+- a heading selectable;
+- a chapter deleted without asking;
+- a refused chapter edit sent to a toast;
+- a gone Set remembered;
+- `/prepare` ignoring the last Set;
+- the chapter dialog sending only the name;
+- the export not ticking the Set;
+- a heading's row picked up;
+- the table ignoring which rows can be dragged;
+- a mouse press focusing the table with a scroll;
+- the divider moving the wrong way;
+- Prepare left disabled;
+- a Set's address not routed;
+- the Library starting a second refresh for one "Refresh first" (StrictMode).
+
+The last was missed at first, because the test rendered without StrictMode, where the effect runs once.
+It renders as the app does now, and catches it. The two breakages behind the double-click were also
+held end to end. With the selection strip unwrapped, `prepare.spec.ts` fails on the Library. With the
+focus fix removed it passes on Windows, as decision 6 says.
+
+The existing tests pass. Seven were changed:
+
+- the registry, launch-memory and sidebar tests, whose "disabled" example was Prepare (decision 12);
+- one `TrackTable` drop assertion, which pins the new third argument.
+
+**Checks run**:
+- **Python:**
+  - The full suite: 11,030 passed and 62 skipped (11,017 before, and the 13 new).
+  - `ruff check` and `ruff format --check` on `src/`, the mypy gate, `check_no_qt_in_core.py`, the
+    desktop version coupling and the engine health smoke test. No Python outside the new test changed.
+- **Renderer:** the type-check, lint (exit 0, with only the 8 warnings that were already there) and
+  125 files and 3,601 tests (3,492 before).
+- **Electron:** the type-check and 24 files, 568 tests.
+- **End to end:**
+  - `prepare.spec.ts` passes three times in a row against the packaged Windows build
+    (`release/win-unpacked`, rebuilt with a fresh engine sidecar). It measured 7, 7, 4 and 4 whole
+    rows each time.
+  - On the development build, `libraryPlayback.spec.ts` and `playback.spec.ts`, the two Phase 8 reported
+    failing on macOS at `rows.nth(1)`, pass unweakened on Windows, with `shell.spec.ts` and
+    `libraryPage.spec.ts`: 19 of 19. They are owed on macOS.
+  - The rest of the suite: 57 passed on the development build. The opt-in 50,000-track memory
+    measurement was skipped, as it is without `CUEPOINT_E2E_MEMORY`.
+- `git diff --check`.
 
 ---
 

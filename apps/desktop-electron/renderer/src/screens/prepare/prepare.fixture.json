@@ -1,0 +1,1077 @@
+{
+  "_comment": "Real engine responses, produced by src/tests/unit/engine/test_prepare_fixture.py. Do not hand-edit: regenerate with CUEPOINT_WRITE_FIXTURES=1 and read the diff.",
+  "edits": {
+    "acknowledged": {
+      "acknowledgement": {
+        "compared": {
+          "from": "8A",
+          "to": "3B"
+        },
+        "from_entry_id": 3,
+        "id": 1,
+        "set_id": 2,
+        "to_entry_id": 4,
+        "warning": "key_clash"
+      }
+    },
+    "chapter_deleted": {
+      "deleted_chapter_id": 6,
+      "joined": {
+        "bpm_max": 123.0,
+        "bpm_min": 120.0,
+        "id": 5,
+        "name": "Warm-up",
+        "notes": "Keep it low",
+        "position": 1,
+        "set_id": 4,
+        "target_seconds": 480
+      }
+    },
+    "chapter_moved": {
+      "chapter": {
+        "bpm_max": null,
+        "bpm_min": null,
+        "id": 7,
+        "name": "Close",
+        "notes": null,
+        "position": 0,
+        "set_id": 4,
+        "target_seconds": null
+      }
+    },
+    "chapter_updated": {
+      "chapter": {
+        "bpm_max": 123.0,
+        "bpm_min": 120.0,
+        "id": 1,
+        "name": "Warm-up",
+        "notes": "Keep it low",
+        "position": 0,
+        "set_id": 2,
+        "target_seconds": 480
+      }
+    },
+    "moved": {
+      "chapter_id": 6,
+      "entry": {
+        "collection_id": 4,
+        "id": 12,
+        "position": 2,
+        "track_id": 4
+      }
+    },
+    "note": {
+      "plan": {
+        "chapter_id": 2,
+        "entry_id": 3,
+        "in_seconds": null,
+        "note": "Let the break run",
+        "out_seconds": null,
+        "planned_seconds": null,
+        "set_id": 2
+      }
+    },
+    "removed": {
+      "removed": 1
+    },
+    "repeat_inserted": {
+      "entry": {
+        "collection_id": 4,
+        "id": 15,
+        "position": 2,
+        "track_id": 2
+      }
+    },
+    "split": {
+      "chapter": {
+        "bpm_max": null,
+        "bpm_min": null,
+        "id": 2,
+        "name": "Peak",
+        "notes": null,
+        "position": 1,
+        "set_id": 2,
+        "target_seconds": null
+      }
+    },
+    "times": {
+      "plan": {
+        "chapter_id": 1,
+        "entry_id": 1,
+        "in_seconds": 30,
+        "note": null,
+        "out_seconds": 270,
+        "planned_seconds": 240,
+        "set_id": 2
+      }
+    },
+    "unacknowledged": {
+      "removed": false
+    }
+  },
+  "friday": {
+    "analysis": {
+      "acknowledged": 1,
+      "chapters": [
+        {
+          "chapter_id": 1,
+          "running_time": {
+            "seconds": 540,
+            "timed": 2,
+            "untimed": 0
+          },
+          "warnings": [
+            {
+              "acknowledged": false,
+              "compared": {
+                "planned": 540,
+                "target": 480,
+                "untimed": 0
+              },
+              "detail": "all_timed",
+              "kind": "over_target"
+            },
+            {
+              "acknowledged": false,
+              "compared": {
+                "entries": [
+                  {
+                    "bpm": 124.0,
+                    "entry_id": 2
+                  }
+                ],
+                "max": 123.0,
+                "min": 120.0
+              },
+              "detail": "above",
+              "kind": "bpm_outside_range"
+            }
+          ]
+        },
+        {
+          "chapter_id": 2,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 2
+          },
+          "warnings": []
+        },
+        {
+          "chapter_id": 3,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 2
+          },
+          "warnings": []
+        }
+      ],
+      "counts": {
+        "bpm_outside_range": 1,
+        "key_clash": 1,
+        "over_target": 1,
+        "tempo_jump": 2
+      },
+      "entries": [
+        {
+          "entry_id": 1,
+          "notices": [
+            {
+              "compared": {
+                "others": [
+                  4
+                ]
+              },
+              "detail": "track",
+              "kind": "repeat"
+            }
+          ],
+          "warnings": []
+        },
+        {
+          "entry_id": 6,
+          "notices": [
+            {
+              "compared": {
+                "others": [
+                  0
+                ]
+              },
+              "detail": "track",
+              "kind": "repeat"
+            }
+          ],
+          "warnings": []
+        }
+      ],
+      "files": {
+        "checked": 0,
+        "last_checked_at": null,
+        "missing": 0,
+        "never_checked": true,
+        "tracks": 5,
+        "unchecked": 5,
+        "unreadable": 0
+      },
+      "notation": "camelot",
+      "notices": {
+        "repeat": 2
+      },
+      "running_time": {
+        "seconds": 540,
+        "timed": 2,
+        "untimed": 4
+      },
+      "set_id": 2,
+      "transitions": [
+        {
+          "from_entry_id": 3,
+          "to_entry_id": 4,
+          "warnings": [
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": 128.0,
+                "percent": 9.4,
+                "to": 140.0
+              },
+              "detail": "faster",
+              "kind": "tempo_jump"
+            },
+            {
+              "acknowledged": true,
+              "compared": {
+                "from": "8A",
+                "to": "3B"
+              },
+              "detail": "no_relation",
+              "kind": "key_clash"
+            }
+          ]
+        },
+        {
+          "from_entry_id": 4,
+          "to_entry_id": 6,
+          "warnings": [
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": 140.0,
+                "percent": 12.9,
+                "to": 122.0
+              },
+              "detail": "slower",
+              "kind": "tempo_jump"
+            },
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": "3B",
+                "to": "8A"
+              },
+              "detail": "no_relation",
+              "kind": "key_clash"
+            }
+          ]
+        }
+      ]
+    },
+    "entries": {
+      "entries": [
+        {
+          "chapter_id": 1,
+          "entry_id": 1,
+          "in_seconds": 30,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": 270,
+          "planned_seconds": 240,
+          "position": 0,
+          "starts_at": 0,
+          "track": {
+            "album": null,
+            "artist": "Ada",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 122.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 122.0,
+            "effective_genre": null,
+            "effective_key": "8A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/1.mp3",
+            "file_status": "not_checked",
+            "genre": null,
+            "id": 1,
+            "key": "8A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "1",
+            "remixer": null,
+            "title": "Warm One",
+            "year": null
+          },
+          "track_id": 1
+        },
+        {
+          "chapter_id": 1,
+          "entry_id": 2,
+          "in_seconds": null,
+          "length_seconds": 320,
+          "note": null,
+          "out_seconds": 300,
+          "planned_seconds": 300,
+          "position": 1,
+          "starts_at": 240,
+          "track": {
+            "album": null,
+            "artist": "Bea",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 124.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 320,
+            "effective_bpm": 124.0,
+            "effective_genre": null,
+            "effective_key": "9A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/2.mp3",
+            "file_status": "not_checked",
+            "genre": null,
+            "id": 2,
+            "key": "9A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "2",
+            "remixer": null,
+            "title": "Warm Two",
+            "year": null
+          },
+          "track_id": 2
+        },
+        {
+          "chapter_id": 2,
+          "entry_id": 3,
+          "in_seconds": null,
+          "length_seconds": 360,
+          "note": "Let the break run",
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 2,
+          "starts_at": 540,
+          "track": {
+            "album": null,
+            "artist": "Cal",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 128.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 360,
+            "effective_bpm": 128.0,
+            "effective_genre": null,
+            "effective_key": "8A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/3.mp3",
+            "file_status": "not_checked",
+            "genre": null,
+            "id": 3,
+            "key": "8A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "3",
+            "remixer": null,
+            "title": "Peak One",
+            "year": null
+          },
+          "track_id": 3
+        },
+        {
+          "chapter_id": 2,
+          "entry_id": 4,
+          "in_seconds": null,
+          "length_seconds": 280,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 3,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Dee",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 140.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 280,
+            "effective_bpm": 140.0,
+            "effective_genre": null,
+            "effective_key": "3B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/4.mp3",
+            "file_status": "not_checked",
+            "genre": null,
+            "id": 4,
+            "key": "3B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "4",
+            "remixer": null,
+            "title": "Peak Two",
+            "year": null
+          },
+          "track_id": 4
+        },
+        {
+          "chapter_id": 3,
+          "entry_id": 6,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 4,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Ada",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 122.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 122.0,
+            "effective_genre": null,
+            "effective_key": "8A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/1.mp3",
+            "file_status": "not_checked",
+            "genre": null,
+            "id": 1,
+            "key": "8A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "1",
+            "remixer": null,
+            "title": "Warm One",
+            "year": null
+          },
+          "track_id": 1
+        },
+        {
+          "chapter_id": 3,
+          "entry_id": 5,
+          "in_seconds": null,
+          "length_seconds": 400,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 5,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Ada",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 125.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 400,
+            "effective_bpm": 125.0,
+            "effective_genre": null,
+            "effective_key": "8B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/5.mp3",
+            "file_status": "not_checked",
+            "genre": null,
+            "id": 5,
+            "key": "8B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "5",
+            "remixer": null,
+            "title": "Close",
+            "year": null
+          },
+          "track_id": 5
+        }
+      ],
+      "limit": 1000,
+      "name": "Friday",
+      "set_id": 2
+    },
+    "plan": {
+      "chapters": [
+        {
+          "bpm_max": 123.0,
+          "bpm_min": 120.0,
+          "entry_ids": [
+            1,
+            2
+          ],
+          "id": 1,
+          "name": "Warm-up",
+          "notes": "Keep it low",
+          "position": 0,
+          "running_time": {
+            "seconds": 540,
+            "timed": 2,
+            "untimed": 0
+          },
+          "starts_at": 0,
+          "target_seconds": 480
+        },
+        {
+          "bpm_max": null,
+          "bpm_min": null,
+          "entry_ids": [
+            3,
+            4
+          ],
+          "id": 2,
+          "name": "Peak",
+          "notes": null,
+          "position": 1,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 2
+          },
+          "starts_at": 540,
+          "target_seconds": null
+        },
+        {
+          "bpm_max": null,
+          "bpm_min": null,
+          "entry_ids": [
+            6,
+            5
+          ],
+          "id": 3,
+          "name": "Close",
+          "notes": null,
+          "position": 2,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 2
+          },
+          "starts_at": null,
+          "target_seconds": null
+        }
+      ],
+      "entries": [
+        {
+          "chapter_id": 1,
+          "entry_id": 1,
+          "in_seconds": 30,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": 270,
+          "planned_seconds": 240,
+          "position": 0,
+          "starts_at": 0,
+          "track_id": 1
+        },
+        {
+          "chapter_id": 1,
+          "entry_id": 2,
+          "in_seconds": null,
+          "length_seconds": 320,
+          "note": null,
+          "out_seconds": 300,
+          "planned_seconds": 300,
+          "position": 1,
+          "starts_at": 240,
+          "track_id": 2
+        },
+        {
+          "chapter_id": 2,
+          "entry_id": 3,
+          "in_seconds": null,
+          "length_seconds": 360,
+          "note": "Let the break run",
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 2,
+          "starts_at": 540,
+          "track_id": 3
+        },
+        {
+          "chapter_id": 2,
+          "entry_id": 4,
+          "in_seconds": null,
+          "length_seconds": 280,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 3,
+          "starts_at": null,
+          "track_id": 4
+        },
+        {
+          "chapter_id": 3,
+          "entry_id": 6,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 4,
+          "starts_at": null,
+          "track_id": 1
+        },
+        {
+          "chapter_id": 3,
+          "entry_id": 5,
+          "in_seconds": null,
+          "length_seconds": 400,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 5,
+          "starts_at": null,
+          "track_id": 5
+        }
+      ],
+      "name": "Friday",
+      "notes": null,
+      "running_time": {
+        "seconds": 540,
+        "timed": 2,
+        "untimed": 4
+      },
+      "set_id": 2
+    }
+  },
+  "ids": {
+    "friday": 2,
+    "friday_entries": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      5
+    ],
+    "gigs": 1,
+    "plain": 3,
+    "scratch": 4,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "plain": {
+    "analysis": {
+      "acknowledged": 0,
+      "chapters": [
+        {
+          "chapter_id": 4,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 2
+          },
+          "warnings": []
+        }
+      ],
+      "counts": {
+        "key_unknown": 1,
+        "tempo_unknown": 1
+      },
+      "entries": [],
+      "files": {
+        "checked": 0,
+        "last_checked_at": null,
+        "missing": 0,
+        "never_checked": true,
+        "tracks": 2,
+        "unchecked": 2,
+        "unreadable": 0
+      },
+      "notation": "camelot",
+      "notices": {},
+      "running_time": {
+        "seconds": 0,
+        "timed": 0,
+        "untimed": 2
+      },
+      "set_id": 3,
+      "transitions": [
+        {
+          "from_entry_id": 7,
+          "to_entry_id": 8,
+          "warnings": [
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": 122.0,
+                "to": null
+              },
+              "detail": "to",
+              "kind": "tempo_unknown"
+            },
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": "8A",
+                "to": null
+              },
+              "detail": "to",
+              "kind": "key_unknown"
+            }
+          ]
+        }
+      ]
+    },
+    "entries": {
+      "entries": [
+        {
+          "chapter_id": 4,
+          "entry_id": 7,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 0,
+          "starts_at": 0,
+          "track": {
+            "album": null,
+            "artist": "Ada",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 122.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 122.0,
+            "effective_genre": null,
+            "effective_key": "8A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/1.mp3",
+            "file_status": "not_checked",
+            "genre": null,
+            "id": 1,
+            "key": "8A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "1",
+            "remixer": null,
+            "title": "Warm One",
+            "year": null
+          },
+          "track_id": 1
+        },
+        {
+          "chapter_id": 4,
+          "entry_id": 8,
+          "in_seconds": null,
+          "length_seconds": null,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 1,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Eve",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": null,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": null,
+            "effective_bpm": null,
+            "effective_genre": null,
+            "effective_key": null,
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/6.mp3",
+            "file_status": "not_checked",
+            "genre": null,
+            "id": 6,
+            "key": null,
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "6",
+            "remixer": null,
+            "title": "Unknown",
+            "year": null
+          },
+          "track_id": 6
+        }
+      ],
+      "limit": 1000,
+      "name": "Plain",
+      "set_id": 3
+    },
+    "plan": {
+      "chapters": [
+        {
+          "bpm_max": null,
+          "bpm_min": null,
+          "entry_ids": [
+            7,
+            8
+          ],
+          "id": 4,
+          "name": "",
+          "notes": null,
+          "position": 0,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 2
+          },
+          "starts_at": 0,
+          "target_seconds": null
+        }
+      ],
+      "entries": [
+        {
+          "chapter_id": 4,
+          "entry_id": 7,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 0,
+          "starts_at": 0,
+          "track_id": 1
+        },
+        {
+          "chapter_id": 4,
+          "entry_id": 8,
+          "in_seconds": null,
+          "length_seconds": null,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 1,
+          "starts_at": null,
+          "track_id": 6
+        }
+      ],
+      "name": "Plain",
+      "notes": null,
+      "running_time": {
+        "seconds": 0,
+        "timed": 0,
+        "untimed": 2
+      },
+      "set_id": 3
+    }
+  },
+  "refusals": {
+    "bad_time": {
+      "payload": {
+        "error": {
+          "code": "INVALID_REQUEST",
+          "message": "An entry must come in before it goes out: in 4:30, out 0:30"
+        }
+      },
+      "status": 400
+    },
+    "last_chapter": {
+      "payload": {
+        "error": {
+          "code": "INVALID_REQUEST",
+          "message": "chapter 1 is the only chapter of 'Plain', and a Set always has one"
+        }
+      },
+      "status": 400
+    },
+    "set_gone": {
+      "payload": {
+        "error": {
+          "code": "SET_NOT_FOUND",
+          "message": "There is no Set 999999",
+          "reason": "set"
+        }
+      },
+      "status": 404
+    },
+    "split_at_start": {
+      "payload": {
+        "error": {
+          "code": "INVALID_REQUEST",
+          "message": "'Peak' already starts at this entry: rename it rather than start another chapter here"
+        }
+      },
+      "status": 400
+    }
+  },
+  "tree": {
+    "collections": [
+      {
+        "broken": false,
+        "depth": 0,
+        "dir": null,
+        "entry_count": 0,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 1,
+        "kind": "folder",
+        "name": "Gigs",
+        "parent_id": null,
+        "position": 0,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 0
+      },
+      {
+        "broken": false,
+        "depth": 0,
+        "dir": null,
+        "entry_count": 2,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 3,
+        "kind": "set",
+        "name": "Plain",
+        "parent_id": null,
+        "position": 1,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 2
+      },
+      {
+        "broken": false,
+        "depth": 1,
+        "dir": null,
+        "entry_count": 6,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 2,
+        "kind": "set",
+        "name": "Friday",
+        "parent_id": 1,
+        "position": 0,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 5
+      },
+      {
+        "broken": false,
+        "depth": 1,
+        "dir": null,
+        "entry_count": 6,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 4,
+        "kind": "set",
+        "name": "Scratch",
+        "parent_id": 1,
+        "position": 1,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 4
+      }
+    ],
+    "total": 4
+  }
+}

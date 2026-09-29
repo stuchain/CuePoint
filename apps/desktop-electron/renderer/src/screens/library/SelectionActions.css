@@ -1,7 +1,12 @@
 /* What can be done with a selection (LIBUI-09). A strip, not a dialog. */
 
+/* It wraps rather than running past its column (DEC-112, PREP-10). Unwrapped,
+   the buttons a first click brings grew a horizontal scrollbar on the Library's
+   scrolling column under the rows, so the second click of a double-click on a
+   row the column cut landed on the scrollbar and the track never played. */
 .cp-selection-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-sm);

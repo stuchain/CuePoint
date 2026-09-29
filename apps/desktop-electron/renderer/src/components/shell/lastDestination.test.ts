@@ -19,18 +19,18 @@ import {
 import { HOME_DESTINATION_ID, NAV_DESTINATIONS, RETIRED_DESTINATIONS } from "./navRegistry";
 
 /**
- * The real registry now declares not-yet-built destinations (DEC-020), so the
- * disabled cases below run against real data rather than a fixture.
+ * The disabled cases, against the real registry with one flag turned off.
  *
- * Prepare, not Discover: DISCOVER-10 enabled Discover, exactly as CLEAN-12
- * enabled Clean, ORG-13 Collections and LIBRARY-11 Library before it, and a
- * test whose "disabled" example is enabled proves nothing while still passing
- * its neighbours. Phase 10 will have to move this along again, which is the
- * cost of testing against the real registry and worth paying — the
- * alternative is a fixture that cannot go stale because it is not describing
- * anything real.
+ * They ran against the real registry's own disabled destinations while there
+ * were any: Discover until DISCOVER-10, then Prepare. PREP-10 enabled Prepare,
+ * the last of DEC-020's pages, so nothing is disabled any more. The case is
+ * still real, a downgrade or a phase's flag turned off, so it is the real
+ * registry with Prepare turned off rather than a list invented for the test.
  */
 const DISABLED_ID = "prepare";
+const WITH_DISABLED = NAV_DESTINATIONS.map((destination) =>
+  destination.id === DISABLED_ID ? { ...destination, enabled: false } : destination,
+);
 
 afterEach(() => {
   localStorage.clear();
@@ -58,7 +58,7 @@ describe("resolveLaunchDestination", () => {
   it("falls back to home when the stored destination exists but is disabled", () => {
     // The case that actually happens: a downgrade, or a phase's flag turned
     // off, leaving a valid id pointing at something unreachable.
-    expect(resolveLaunchDestination(DISABLED_ID).id).toBe(HOME_DESTINATION_ID);
+    expect(resolveLaunchDestination(DISABLED_ID, WITH_DISABLED).id).toBe(HOME_DESTINATION_ID);
   });
 
   it("never returns a destination that is not enabled", () => {
@@ -130,7 +130,16 @@ describe("destinationToRemember", () => {
   });
 
   it("does not remember a disabled destination", () => {
-    expect(destinationToRemember("/prepare")).toBeNull();
+    expect(destinationToRemember("/prepare", WITH_DISABLED)).toBeNull();
+    expect(destinationToRemember("/prepare/12", WITH_DISABLED)).toBeNull();
+  });
+
+  it("remembers Prepare, never the Set open on it (PREP-10)", () => {
+    // A Set is a page of the destination, as an Artist page is of Discover:
+    // the app reopens on Prepare, and Prepare reopens its own last Set.
+    expect(destinationToRemember("/prepare")?.id).toBe("prepare");
+    expect(destinationToRemember("/prepare/12")?.id).toBe("prepare");
+    expect(resolveLaunchDestination("prepare").id).toBe("prepare");
   });
 
   it("remembers Discover now that it is a page (DISCOVER-10)", () => {

@@ -92,10 +92,21 @@ describe("navRegistry", () => {
     }
   });
 
-  it("still has the not-yet-built destinations turned off", () => {
-    // Library came on in LIBRARY-11, Collections in ORG-13, Clean in CLEAN-12
-    // and Discover in DISCOVER-10; Prepare waits for its phase.
-    expect(findDestinationById("prepare")?.enabled).toBe(false);
+  it("has every declared destination built (PREP-10)", () => {
+    // Library came on in LIBRARY-11, Collections in ORG-13, Clean in CLEAN-12,
+    // Discover in DISCOVER-10 and Prepare, the last, in PREP-10.
+    expect(NAV_DESTINATIONS.filter((d) => !d.enabled)).toEqual([]);
+  });
+
+  it("has Prepare enabled, in the workspace, with its Sets as its pages (PREP-10)", () => {
+    const prepare = findDestinationById("prepare")!;
+    expect(prepare.enabled).toBe(true);
+    expect(prepare.group).toBe("workspace");
+    expect(prepare.path).toBe("/prepare");
+    expect(prepare.icon).toBe("prepare");
+    // `/prepare/:setId` keeps Prepare lit and is remembered as Prepare.
+    expect(prepare.nested).toBe(true);
+    expect(pageDestination(prepare).id).toBe("prepare");
   });
 
   it("has Discover enabled, in the workspace, as its own page (DISCOVER-10)", () => {
@@ -110,7 +121,7 @@ describe("navRegistry", () => {
   it("renders exactly what has been built", () => {
     // Tools and inCrate retired in DISCOVER-12 (DEC-100).
     const enabled = enabledDestinations().map((d) => d.id);
-    expect(enabled).toEqual(["library", "collections", "clean", "discover", "settings"]);
+    expect(enabled).toEqual(["library", "collections", "clean", "discover", "prepare", "settings"]);
   });
 
   describe("a destination that renders another's page (DEC-062)", () => {

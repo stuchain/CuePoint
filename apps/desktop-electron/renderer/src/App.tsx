@@ -34,9 +34,11 @@ import {
   CleanScreen,
   DiscoverScreen,
   LibraryScreen,
+  PrepareScreen,
   SettingsExportScreen,
 } from "./screens";
-import { libraryOpening } from "./screens/library/libraryLink";
+import { libraryOpening, libraryRefreshState, refreshOpening } from "./screens/library/libraryLink";
+import { PREPARE_SET_ROUTE, preparePath } from "./screens/prepare/prepareLink";
 import { EntityScreen } from "./screens/discover/EntityScreen";
 import { SimilarScreen } from "./screens/discover/SimilarScreen";
 import {
@@ -120,6 +122,24 @@ function AppShell() {
     (trackId: number) => navigate("/clean", { state: cleanTrackState(trackId) }),
     [navigate],
   );
+  // PREP-10: a Set opens on the Prepare page, from the tree, the Inspector
+  // and the Set scope's note (DEC-104).
+  const openInPrepare = useCallback(
+    (setId: number) => navigate(preparePath(setId)),
+    [navigate],
+  );
+  const openMissingFiles = useCallback(
+    () => navigate("/clean", { state: cleanSectionState("missing") }),
+    [navigate],
+  );
+  const prepareScreen = (
+    <PrepareScreen
+      onOpenInClean={openInClean}
+      onOpenMissingFiles={openMissingFiles}
+      // The export's "Refresh first" (DEC-082): the Library's own refresh.
+      onRefreshLibrary={() => navigate("/library", { state: libraryRefreshState() })}
+    />
+  );
   // Shuffle and repeat are remembered across sessions (PLAYER-07). Restored
   // here rather than in the bar, which does not exist until the first play —
   // by then the queue has already been built and ordered.
@@ -142,11 +162,13 @@ function AppShell() {
         return (
           <LibraryScreen
             openWith={libraryOpening(location)}
+            refreshWith={refreshOpening(location)}
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
             onOpenInClean={openInClean}
-            onOpenMissingFiles={() => navigate("/clean", { state: cleanSectionState("missing") })}
+            onOpenMissingFiles={openMissingFiles}
             onOpenEntity={openEntity}
             onOpenSimilar={openSimilar}
+            onOpenInPrepare={openInPrepare}
           />
         );
       case "clean":
@@ -168,14 +190,19 @@ function AppShell() {
             focus="collections"
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
             onOpenInClean={openInClean}
-            onOpenMissingFiles={() => navigate("/clean", { state: cleanSectionState("missing") })}
+            onOpenMissingFiles={openMissingFiles}
             onOpenEntity={openEntity}
             onOpenSimilar={openSimilar}
+            onOpenInPrepare={openInPrepare}
           />
         );
       // DISCOVER-10. inCrate retired into it in DISCOVER-12 (DEC-100).
       case "discover":
         return <DiscoverScreen />;
+      // PREP-10 (DEC-104). `/prepare` reopens the last Set; each Set is a page
+      // of the destination, as Discover's Artist pages are (DEC-094).
+      case "prepare":
+        return prepareScreen;
       case "settings":
         return <SettingsExportScreen />;
       default:
@@ -233,6 +260,9 @@ function AppShell() {
               />
               <Route path={SIMILAR_ROUTE} element={<SimilarScreen onOpenInClean={openInClean} />} />
             </>
+          )}
+          {findDestinationById("prepare")?.enabled && (
+            <Route path={PREPARE_SET_ROUTE} element={prepareScreen} />
           )}
           {/*
             A retired page's path lands on the page that replaced it (DEC-071,

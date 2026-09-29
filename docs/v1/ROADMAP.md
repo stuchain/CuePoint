@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–12 resolved (DEC-001…DEC-112).**
 Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
-(DEC-102…DEC-112); PREP-01 to PREP-09 are implemented.
+(DEC-102…DEC-112); PREP-01 to PREP-10 are implemented.
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
 (DEC-090…DEC-101); all twelve steps are implemented and DISCOVER-01's spike is recorded. Phase 9's
 acceptance is met on Windows; the macOS packaged checks and one manual pass through the app
@@ -610,6 +610,11 @@ copied from a Collection, a Smart Collection or a Rekordbox playlist, duplicated
 "Add to Set…", and opened as the table's scope, which says it lists each track once. Its set list is
 saved or copied from its menu. The Inspector, the rule editor, Clean's scope, the delete confirmation
 and the refresh warning all name Sets as their own kind. "Open in Prepare" waits for PREP-10.
+
+PREP-10 is implemented: Prepare is in the sidebar. A Set opens with its chapters as heading rows and
+its entries' times, notes and warnings. Each is edited by drag, menu, one chapter dialog or the
+Inspector's "In this Set", and plays as the queue with its repeats. At the default window and scale it
+shows seven whole rows. A double-click on a partly visible row now plays that row, in the Library too.
 
 ## Phase 11 — Waveforms (WAVE-01 … WAVE-07)
 

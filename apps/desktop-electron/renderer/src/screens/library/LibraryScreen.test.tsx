@@ -19,6 +19,7 @@
  * here. The browse fake echoes back what it was asked (LIBUI-03), because a
  * response that does not is one the page is right to throw away.
  */
+import { StrictMode } from "react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -486,6 +487,7 @@ function renderScreen(
     onOpenRekordboxInstructions?: () => void;
     focus?: "collections";
     openWith?: { rules: FilterRuleSet; token: string } | null;
+    refreshWith?: string | null;
   } = {},
 ) {
   return render(
@@ -696,6 +698,26 @@ describe("the refresh preview (DEC-032)", () => {
       state: "succeeded",
       result: diff(),
     });
+  });
+
+  it("starts once when another page asks for it (PREP-10's \"Refresh first\")", async () => {
+    // StrictMode, as the app renders: it runs a mount's effects twice, and one
+    // navigation must still start one check.
+    const page = (
+      <StrictMode>
+        <ScaleProvider>
+          <ToastProvider>
+            <LibraryScreen refreshWith="navigation-1" />
+          </ToastProvider>
+        </ScaleProvider>
+      </StrictMode>
+    );
+    const { rerender } = render(page);
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(bridge.startLibraryRefreshPreview).toHaveBeenCalledTimes(1);
+    // A later render of the same navigation does not start it again.
+    rerender(page);
+    await waitFor(() => expect(bridge.startLibraryRefreshPreview).toHaveBeenCalledTimes(1));
   });
 
   async function openPreview() {

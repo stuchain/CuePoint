@@ -77,6 +77,25 @@ export interface LibraryOpening {
   names?: Record<string, string>;
 }
 
+const REFRESH_KEY = "cuepointLibraryRefresh";
+
+/**
+ * The location state that opens the Library and starts "Check for changes"
+ * (PREP-10): the Rekordbox export's "Refresh first" from a page that has no
+ * refresh of its own. DEC-082 makes that one click to the recommended path,
+ * wherever the export was opened.
+ */
+export function libraryRefreshState(): Record<string, unknown> {
+  return { [REFRESH_KEY]: true };
+}
+
+/** The navigation that asked for a refresh, as a token, or null when none did. */
+export function refreshOpening(location: { state: unknown; key: string }): string | null {
+  const state = location.state;
+  if (!state || typeof state !== "object") return null;
+  return (state as Record<string, unknown>)[REFRESH_KEY] === true ? location.key : null;
+}
+
 export function libraryOpening(location: { state: unknown; key: string }): LibraryOpening | null {
   const rules = rulesFromLocationState(location.state);
   if (!rules) return null;

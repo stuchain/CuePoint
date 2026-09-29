@@ -151,9 +151,24 @@ export interface TrackTableProps<Row> {
    * A drop the table accepted, at the index the rows should take.
    *
    * The index is an insertion point, so it runs from 0 to the row count: the
-   * upper half of a row means "before it", the lower half "after it".
+   * upper half of a row means "before it", the lower half "after it". `over`
+   * is the row the drop landed on, for a caller whose rows are not all alike:
+   * the end of one row and the start of the next are the same insertion
+   * point, and only the row says which was meant (PREP-10's chapter headings).
    */
-  onRowDrop?: (toIndex: number, transfer: DataTransfer) => void;
+  onRowDrop?: (toIndex: number, transfer: DataTransfer, over: number) => void;
+
+  /**
+   * Whether a row can be picked up at all. Absent, every row that has arrived
+   * can be, when `onRowDragStart` is given.
+   */
+  canDragRow?: (row: Row) => boolean;
+
+  /**
+   * An extra class for a row, for a caller whose rows are of more than one
+   * kind (PREP-10's chapter headings). The table gives it no meaning.
+   */
+  rowClassName?: (row: Row) => string | undefined;
 
   /** Shown instead of rows when the query matched nothing. */
   emptyState?: ReactNode;
@@ -195,6 +210,8 @@ export function TrackTable<Row>({
   onRowDragStart,
   acceptsRowDrop,
   onRowDrop,
+  canDragRow,
+  rowClassName,
   activeIndex = null,
   scrollToIndex = null,
   getRowKey,
@@ -355,6 +372,24 @@ export function TrackTable<Row>({
 
   const empty = source.total === 0;
 
+  /**
+   * A mouse press gives the table focus without scrolling it into view
+   * (DEC-112).
+   *
+   * The table is focusable so the keyboard can reach it, and a browser scrolls
+   * an element into view as it takes focus. When the page around the table
+   * scrolls and a row is only partly visible, that moved the rows under the
+   * pointer between the two clicks of a double-click, and the second landed on
+   * another row. Focused here first, the press's own focus finds nothing to
+   * do. The keyboard's scrolling (`scrollToIndex`) is untouched.
+   */
+  const focusWithoutScroll = (event: React.MouseEvent) => {
+    if (event.button !== 0) return;
+    const element = scrollRef.current;
+    if (!element || document.activeElement === element) return;
+    element.focus({ preventScroll: true });
+  };
+
   return (
     <div className="track-table" style={style} data-testid="track-table">
       {/* The rows, headers and cells below are ARIA table parts, so something
@@ -448,10 +483,12 @@ export function TrackTable<Row>({
               const row = source.getRow(item.index);
               const key = row && getRowKey ? getRowKey(row, item.index) : item.index;
               const selected = selectedKeys?.has(key) ?? false;
+              const extra = row && rowClassName ? rowClassName(row) : undefined;
+              const draggable = Boolean(row && onRowDragStart && (!canDragRow || canDragRow(row)));
               return (
                 <div
                   key={key}
-                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${selected ? " track-table__row--selected" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}`}
+                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${selected ? " track-table__row--selected" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}`}
                   style={{
                     transform: `translateY(${item.start}px)`,
                     height: `${item.size}px`,
@@ -463,9 +500,9 @@ export function TrackTable<Row>({
                   aria-selected={selected}
                   data-index={item.index}
                   data-placeholder={row ? undefined : "true"}
-                  draggable={Boolean(row && onRowDragStart)}
+                  draggable={draggable}
                   onDragStart={(event) => {
-                    if (!row || !onRowDragStart || !event.dataTransfer) return;
+                    if (!row || !draggable || !onRowDragStart || !event.dataTransfer) return;
                     onRowDragStart(row, item.index, event.dataTransfer);
                   }}
                   onDragOver={(event) => {
@@ -492,7 +529,7 @@ export function TrackTable<Row>({
                     if (!onRowDrop || at === null || !event.dataTransfer) return;
                     if (acceptsRowDrop && !acceptsRowDrop(event.dataTransfer)) return;
                     event.preventDefault();
-                    onRowDrop(at, event.dataTransfer);
+                    onRowDrop(at, event.dataTransfer, item.index);
                   }}
                   onDragEnd={() => setDropIndex(null)}
                   data-drop={
@@ -502,6 +539,7 @@ export function TrackTable<Row>({
                         ? "after"
                         : undefined
                   }
+                  onMouseDown={focusWithoutScroll}
                   onClick={(event) => row && onSelect?.(row, item.index, event)}
                   onDoubleClick={() => row && onRowActivate?.(row, item.index)}
                   onContextMenu={(event) => {

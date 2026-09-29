@@ -88,13 +88,14 @@ export const HOME_DESTINATION_ID = "library";
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
   // Not built yet (DEC-020). Each is enabled by the phase that builds it.
   // Collections is enabled and points into Library's own page (DEC-062).
-  // Clean is enabled by CLEAN-12 (DEC-072), Discover by DISCOVER-10 (DEC-021).
+  // Clean is enabled by CLEAN-12 (DEC-072), Discover by DISCOVER-10 (DEC-021),
+  // Prepare by PREP-10 (DEC-104), its Sets pages under it (`/prepare/:setId`).
   // The Library is home (DEC-100).
   { id: "library", label: "Library", path: "/library", group: "workspace", icon: "library", enabled: true },
   { id: "collections", label: "Collections", path: "/collections", group: "workspace", icon: "collections", enabled: true, pageId: "library" },
   { id: "clean", label: "Clean", path: "/clean", group: "workspace", icon: "clean", enabled: true },
   { id: "discover", label: "Discover", path: "/discover", group: "workspace", icon: "discover", enabled: true, nested: true },
-  { id: "prepare", label: "Prepare", path: "/prepare", group: "workspace", icon: "prepare", enabled: false },
+  { id: "prepare", label: "Prepare", path: "/prepare", group: "workspace", icon: "prepare", enabled: true, nested: true },
 
   { id: "settings", label: "Settings", path: "/settings", group: "system", icon: "settings", enabled: true },
 ];

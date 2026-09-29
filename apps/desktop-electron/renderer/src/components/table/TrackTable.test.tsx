@@ -811,7 +811,8 @@ describe("dragging rows (ORG-11)", () => {
     drag("dragover", renderedRows()[2]!, dataTransfer, 5);
     drag("drop", renderedRows()[2]!, dataTransfer, 5);
 
-    expect(onRowDrop).toHaveBeenCalledWith(3, dataTransfer);
+    // The row it landed on, too: row 2, whose lower half is the gap before 3.
+    expect(onRowDrop).toHaveBeenCalledWith(3, dataTransfer, 2);
   });
 
   it("marks nothing and accepts nothing when the drag is refused", () => {

@@ -161,6 +161,11 @@ export interface LibraryScreenProps {
    */
   openWith?: LibraryOpening | null;
   /**
+   * Start "Check for changes" once, for the navigation this token names
+   * (PREP-10): the Rekordbox export's "Refresh first" from the Prepare page.
+   */
+  refreshWith?: string | null;
+  /**
    * Open a track on the Clean page (CLEAN-13). A prop for `focus`'s reason:
    * routing stays in `App.tsx`. Absent, the Inspector offers no link.
    */
@@ -181,7 +186,7 @@ export interface LibraryScreenProps {
   /**
    * Open a Set on the Prepare page (DEC-104): the tree's "Open in Prepare",
    * the Inspector's Sets and the Set scope's note. A prop for `focus`'s
-   * reason; absent until PREP-10 enables that page, and then nothing offers it.
+   * reason. Absent, nothing offers it.
    */
   onOpenInPrepare?: (setId: number) => void;
 }
@@ -190,6 +195,7 @@ export function LibraryScreen({
   onOpenRekordboxInstructions,
   focus,
   openWith,
+  refreshWith,
   onOpenInClean,
   onOpenMissingFiles,
   onOpenEntity,
@@ -1259,6 +1265,14 @@ export function LibraryScreen({
       push(error instanceof Error ? error.message : "Could not read the preview", "warning");
     }
   }, [push, run]);
+
+  // Once per navigation that asked, as `openWith` is applied once.
+  const refreshedWith = useRef<string | null>(null);
+  useEffect(() => {
+    if (!refreshWith || refreshedWith.current === refreshWith) return;
+    refreshedWith.current = refreshWith;
+    void handleCheck();
+  }, [handleCheck, refreshWith]);
 
   const handleApply = useCallback(
     async ({ confirmReferences }: { confirmReferences: boolean }) => {

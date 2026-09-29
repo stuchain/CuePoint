@@ -3406,6 +3406,19 @@ a user filing Sets in folders beside Collections sees them where they filed them
 **Why the decision stands**: the tree is where a user files things (DEC-062), and a Set filed there is
 found there; the running order, which the Library's browse cannot show, stays Prepare's (DEC-072).
 
+### Implemented (2026-09-29, PREP-10) — the page
+
+- **As decided.** `prepare` is enabled as the Set Builder: a Set, its chapters as heading rows, its
+  entries' times, notes and warnings, and the entry selected planned in the Inspector. "Open in Prepare"
+  leads there from the Library's tree, Inspector and Set scope.
+- **Precision: a Set is a page of Prepare.** `/prepare/:setId` keeps Prepare lit and is remembered as
+  Prepare (DEC-027). The page reopens its own last Set, and says so when that Set has gone.
+- **Precision: with no Sets, the page makes one.** It says what a Set is and offers "New Set" and "New
+  Set from…". The second asks for the source first.
+
+**Why the decision stands**: a running order beside what can go into it is its own page (DEC-072). The
+Library still shows where a Set is filed.
+
 ---
 
 ## DEC-105 — Suggestions Fit Both Neighbours
@@ -3578,6 +3591,14 @@ built from a seek and a queue of two, inside DEC-056's contract.
 
 **Decided with**: User · **Date**: 2026-09-28
 
+### Implemented (2026-09-29, PREP-10)
+
+- **As decided.** "Play Set" plays from the start. A double-click or Enter on an entry plays from that
+  entry. Both send the entries in order, repeats included, to `playQueue`. Nothing about the player
+  changed, and it is not told it is playing a Set.
+
+**Why the decision stands**: the queue is the player's list, and a Set's running order is a list.
+
 ---
 
 ## DEC-109 — A Set Exports as One Rekordbox Playlist
@@ -3711,3 +3732,19 @@ compact density app-wide would reach back into Phases 4 and 6 for a problem that
 - The `TrackTable` fix benefits every table, and is tested where it is made.
 
 **Decided with**: User · **Date**: 2026-09-28
+### Implemented (2026-09-29, PREP-10)
+
+- **As decided**, with the source panel's place and its remembered divider built and PREP-11's panel
+  still to come.
+- **Precision: the header is two short lines.** As first specified it wrapped to three and left the Set
+  two whole rows. The Set picker is the title, the two export actions are one "Export ▾" menu, and the
+  counts and "Columns…" share one line.
+- **Measured**: 7 whole rows at 1,280 × 800 and scale 2, with the sidebar expanded and as a rail, above
+  the floor of five. With the player's bar on screen there are 4, held so they cannot get worse, and
+  recorded in PREP-10's outcome. The page itself never scrolls.
+- **Precision: the double-click had a second cause on Windows.** The selection strip did not wrap, so a
+  first click gave the Library's scrolling column a horizontal scrollbar over the row clicked. The
+  strip now wraps. `TrackTable` also focuses without a scroll, as decided. Neither changes the Library's
+  height, floor or scale.
+
+**Why the decision stands**: side by side is what leaves the Set its rows.

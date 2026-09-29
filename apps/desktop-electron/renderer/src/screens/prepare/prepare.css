@@ -1,0 +1,326 @@
+/* The Prepare page (PREP-10, DEC-112): a compact header, then the Set and the
+   source panel side by side, the Set taking the height that is left. Every
+   size is stated before scale and every colour is a theme token, so the five
+   themes and three scales read it alike. */
+
+.app-main .screen.prepare-screen {
+  max-width: none;
+}
+
+.prepare-screen {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  /* The Set's floor, as the Library's table has one: a window too short for
+     the header and the table scrolls the page rather than leaving a table zero
+     rows tall. Lower than the Library's, so that with the player's bar on
+     screen at the default size the header stays put and the rows still fit
+     (DEC-112, measured by e2e/prepare.spec.ts). */
+  grid-template-rows: auto minmax(calc(100px * var(--scale)), 1fr);
+  gap: 0;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.prepare-screen--waiting {
+  gap: var(--space-md);
+}
+
+.prepare-note {
+  margin: 0;
+  max-width: 80ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.prepare-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+/* ------------------------------------------------------------------ header */
+
+/* Two short lines, whatever the width: the controls, then the facts. Every
+   pixel here is a row the Set does not show at scale 2 (DEC-112). */
+.prepare-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: var(--border-width) solid var(--border-muted);
+}
+
+.prepare-header__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.prepare-header__picker {
+  display: flex;
+  flex: 1 1 calc(80px * var(--scale));
+  min-width: 0;
+}
+
+/* The picker is the page's title, so it reads as one. */
+.prepare-header__picker .cp-select__control {
+  width: 100%;
+  min-width: 0;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+}
+
+.prepare-header__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-xs);
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.prepare-header__warnings {
+  color: var(--fg-primary);
+  font-weight: 700;
+}
+
+.prepare-link {
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent-info);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.prepare-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------------ layout */
+
+.prepare-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(4px * var(--scale)) var(--prepare-source-width, 360px);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.prepare-layout--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.prepare-layout__set,
+.prepare-layout__source {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.prepare-layout__divider {
+  cursor: col-resize;
+  background: var(--border-muted);
+}
+
+.prepare-layout__divider:hover,
+.prepare-layout__divider:focus-visible,
+.prepare-layout__divider--active {
+  background: var(--accent-primary);
+  outline: none;
+}
+
+body.prepare-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* --------------------------------------------------------------- the Set */
+
+.prepare-set {
+  display: grid;
+  flex: 1;
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.prepare-set__rows {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.prepare-set__rows > .track-table {
+  flex: 1;
+}
+
+/* A chapter's heading is a row of the table (DEC-103), drawn as a band. */
+.track-table__row.prepare-heading {
+  background: var(--bg-panel-alt);
+  font-weight: 700;
+  cursor: default;
+}
+
+.prepare-heading__name {
+  text-transform: none;
+}
+
+.prepare-warning--open {
+  color: var(--fg-primary);
+  font-weight: 700;
+}
+
+.prepare-warning--accepted {
+  color: var(--fg-muted);
+}
+
+.prepare-repeat,
+.prepare-entry__flag {
+  color: var(--fg-muted);
+}
+
+/* ------------------------------------------------- "In this Set" (Inspector) */
+
+.prepare-entry-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-bottom: var(--space-sm);
+  border-bottom: var(--border-width) solid var(--border-muted);
+}
+
+.prepare-entry-zone__place,
+.prepare-entry-zone__planned,
+.prepare-entry-zone__refused {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.prepare-entry-zone__refused {
+  color: var(--accent-danger);
+}
+
+.prepare-entry-zone__times {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-sm);
+}
+
+.prepare-entry-zone__field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+}
+
+.prepare-entry-zone__times .cp-field__input {
+  width: calc(64px * var(--scale));
+}
+
+.prepare-entry-zone__times .cp-field__input[aria-invalid="true"] {
+  border-color: var(--accent-danger);
+}
+
+.prepare-entry-zone__note {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+}
+
+.prepare-entry-zone__note textarea,
+.prepare-dialog__notes textarea {
+  resize: vertical;
+  font: inherit;
+  color: var(--fg-primary);
+  background: var(--bg-input);
+  border: var(--border-width) solid var(--border-muted);
+}
+
+.prepare-entry-zone__warnings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-xs);
+}
+
+.prepare-entry-zone__warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  font-weight: 700;
+}
+
+.prepare-entry-zone__warning--accepted,
+.prepare-entry-zone__notice {
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+/* ----------------------------------------------------------------- dialogs */
+
+.prepare-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: calc(320px * var(--scale));
+  max-width: calc(420px * var(--scale));
+}
+
+.prepare-dialog__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+.prepare-dialog__notes {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+}
+
+.prepare-dialog__note {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.prepare-dialog__problem {
+  margin: 0;
+  color: var(--accent-danger);
+  font-size: var(--font-size-xs);
+}
+
+.prepare-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
