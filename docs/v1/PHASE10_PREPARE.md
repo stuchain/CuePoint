@@ -1660,7 +1660,9 @@ Eight deliberate breakages, each caught:
 Every existing test passes unmodified. The renderer test that lists the fixture's states gains
 `chosen_set`.
 
-**Checks run**: - The full Python suite: 10,845 passed, 62 skipped. That is PREP-06's 10,826 and the 19 new tests.
+**Checks run**:
+
+- The full Python suite: 10,845 passed, 62 skipped. That is PREP-06's 10,826 and the 19 new tests.
 - The renderer: 115 files and 3,240 tests passed. Type-check clean, and lint clean, with only the
   warnings that were already there.
 - Clean: ruff check and format, the Qt guard, version coupling, the engine smoke test and
