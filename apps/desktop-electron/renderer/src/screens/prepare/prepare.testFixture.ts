@@ -19,6 +19,7 @@ import type {
   SetEntries,
   SetEntryMoved,
   SetEntryPlanChanged,
+  SetNotesChanged,
   SetPlan,
   SetRefusal,
   SetUnacknowledged,
@@ -78,6 +79,9 @@ export const EDITS = {
   chapterUpdated: { chapter: stamped(raw.edits.chapter_updated.chapter) } as SetChapterChanged,
   times: raw.edits.times as SetEntryPlanChanged,
   note: raw.edits.note as SetEntryPlanChanged,
+  setNotes: {
+    details: { ...raw.edits.set_notes.details, updated_at: STAMP },
+  } as SetNotesChanged,
   acknowledged: {
     acknowledgement: stamped(raw.edits.acknowledged.acknowledgement),
   } as SetAcknowledged,

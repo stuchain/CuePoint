@@ -26,7 +26,10 @@ are not shown at all rather than appearing and doing nothing.
 **Library** is where your Rekordbox collection lives — see
 [Your library](library.md). **Clean** is where it is matched on Beatport and
 kept tidy — see [Clean](clean.md). **Discover** finds new music on Beatport — see
-[Discover](discover.md). The older **inKey** and **Results** pages became Clean,
+[Discover](discover.md). **Prepare** is where a set is planned as a running
+order, and it reopens on the Set you had open — see [Prepare](prepare.md). On
+Prepare, selecting an entry adds **In this Set** to the Inspector, above the
+track's own details. The older **inKey** and **Results** pages became Clean,
 and **inCrate** became Discover; a link to any of them opens the page that
 replaced it. There is no **Tools** group any more: when CuePoint has no page to
 reopen, it opens on the Library. Double-clicking a track there plays it; the bar

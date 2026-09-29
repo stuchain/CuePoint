@@ -173,8 +173,13 @@ test.describe("The Library page (LIBRARY-11)", () => {
       const xmlPath = writeExport(workspace, [0, 1, 2, 3, 4, 5]);
       await importCollection(window, xmlPath);
 
-      // The user re-exports from Rekordbox.
+      // The user re-exports from Rekordbox. The Library, already open as home,
+      // read the file's state when it loaded after the import; it reads it
+      // again on its next load, as at the next launch. Without the reload this
+      // raced that first read, and passed only when the rewrite won.
       writeExport(workspace, [0, 1, 2, 3, 4, 5, 6]);
+      await window.reload();
+      await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
       await openLibrary(window);
 
       await expect(window.getByText("Out of date")).toBeVisible();

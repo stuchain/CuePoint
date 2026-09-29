@@ -38,6 +38,24 @@ The same track can be in a Collection twice, if you put it there twice on
 purpose. Dropping a selection that is already partly there tells you what it
 skipped rather than quietly making duplicates.
 
+## Sets
+
+A **Set** is a running order you are preparing to play, and it lives in the
+same tree, filed in folders beside your Collections. It wears Prepare's flag and
+shows how many entries it has. **New Set** sits beside **New Collection**, and
+**New Set from…** on a Collection, a Smart Collection or a Rekordbox playlist
+copies its tracks into a new Set. **Add to Set…** and **New Set from the
+selection…** are on a selection's right-click menu, beside **Add to
+Collection…**.
+
+Selecting a Set scopes the table as a Collection does, listing each of its
+tracks once; the running order itself, with chapters, planned times, repeats and
+warnings, is edited on the [Prepare](prepare.md) page, which **Open in Prepare**
+opens. A Set's right-click menu also saves or copies its set list and exports it
+to Rekordbox. Everything else here — folders, drag, rename, delete, the refresh
+warning, rules that name a Collection — treats a Set as it treats a Collection,
+and says "Set" when it means one. See [Prepare](prepare.md).
+
 ## Smart Collections
 
 A Smart Collection is a saved filter. Build a filter in the bar above the
@@ -119,9 +137,10 @@ Refreshing re-reads your Rekordbox export. Tracks that are no longer in it are
 deleted, and **their ratings, tags, notes, history and Collection membership go
 with them.**
 
-If any of those tracks are filed in a Collection, the preview says so before
-anything happens — "3 tracks you are about to remove are used in 2 Collections"
-— and you have to tick a box to continue. This is the one place CuePoint asks
+If any of those tracks are filed in a Collection or a Set, the preview says so
+before anything happens — "3 tracks you are about to remove are used in 2
+Collections", with Sets counted on their own — and you have to tick a box to
+continue. This is the one place CuePoint asks
 twice, because it is the one place a refresh destroys work that exists nowhere
 else.
 
@@ -137,10 +156,10 @@ Rekordbox to open. CuePoint never modifies the XML you imported or your music
 files. See [Exporting to Rekordbox](rekordbox-export.md).
 
 - **Exported**: your key, BPM, genre, label, year and rating, and the
-  Collections and Smart Collections you choose, as playlists.
-- **Never exported**: tags, notes and favorites. Rekordbox's XML has nowhere to
-  put them. To send a tag, make a Smart Collection whose rule is that tag, and
-  export that.
+  Collections, Smart Collections and Sets you choose, as playlists.
+- **Never exported**: tags, notes and favorites, and a Set's chapters, planned
+  times and notes. Rekordbox's XML has nowhere to put them. To send a tag, make
+  a Smart Collection whose rule is that tag, and export that.
 
 That is deliberate: a tool that reads your library and writes only to its own
 database is one whose mistakes are recoverable, and an export is something you
@@ -161,14 +180,17 @@ In the same SQLite file as the rest of your library
 Windows). CuePoint backs it up on launch and keeps the last several backups.
 
 **Those backups are the only copy of this work.** A track can be re-imported
-from Rekordbox; a rating, a note, a tag and a Collection cannot be recovered
-from anything else. Restoring a backup brings all of it back together — the
-tree, the membership and its order, the tags with their colours and categories,
-the ratings, the notes, and the history behind them.
+from Rekordbox; a rating, a note, a tag, a Collection and a Set's plan cannot be
+recovered from anything else. Restoring a backup brings all of it back
+together — the tree, the membership and its order, the tags with their colours
+and categories, the ratings, the notes, the history behind them, and each Set's
+chapters, planned times, notes and accepted warnings.
 
 ## See also
 
 - [Your library](library.md) — importing, browsing and refreshing
+- [Prepare](prepare.md) — Sets: running orders with chapters, planned times and
+  checks
 - [Performance](performance.md#your-own-collections-tags-and-ratings) — measured
   timings for Collections, tags and large changes
 - [The CuePoint window](the-window.md) — navigation, search and the Inspector

@@ -267,7 +267,7 @@ def _capture(base: str, ids: list[int], folder: Path) -> dict:
         {"set_id": friday, "destination_path": str(folder / "Friday.mp3")},
     )
 
-    return {
+    answers = {
         "_comment": (
             "Real engine responses, produced by "
             "src/tests/unit/engine/test_library_sets_fixture.py. Do not "
@@ -297,6 +297,24 @@ def _capture(base: str, ids: list[int], folder: Path) -> dict:
         "set_list_saved": saved,
         "set_list_refused": refused_destination,
     }
+    # "New Set from the selection…" (PREP-12): tracks 5, 3 and 1, in the order
+    # the table showed them. Made after the tree above was read, so the tree
+    # every other test draws stays as it was.
+    answers["created_from_selection"] = _sets(
+        base,
+        "create-from",
+        {
+            "source": {"kind": "selection", "track_ids": [ids[4], ids[2], ids[0]]},
+            "name": "Picked",
+            "parent_id": gigs["id"],
+        },
+    )
+    answers["selection_entries"] = get_json(
+        base,
+        "/api/v1/sets/entries",
+        set_id=answers["created_from_selection"]["set"]["id"],
+    )
+    return answers
 
 
 def _sanitized(payload: dict, folder: Path) -> dict:
@@ -409,6 +427,16 @@ class TestEachStateIsWhatItClaims:
         assert got["created_from_playlist"]["set"]["name"] == "Sunday"
         assert got["created_from_playlist"]["track_count"] == 3
         assert got["created_from_playlist"]["set"]["parent_id"] is None
+
+    def test_a_selection_becomes_a_set_in_the_order_given(self, got):
+        made = got["created_from_selection"]
+        assert (made["set"]["kind"], made["set"]["name"]) == ("set", "Picked")
+        assert made["set"]["parent_id"] == got["ids"]["gigs"]
+        assert made["source"] == {"kind": "selection", "id": None, "name": None}
+        assert made["track_count"] == 3
+        tracks = got["ids"]["tracks"]
+        order = [entry["track"]["id"] for entry in got["selection_entries"]["entries"]]
+        assert order == [tracks[4], tracks[2], tracks[0]]
 
     def test_a_duplicate_is_a_second_set(self, got):
         copy = got["duplicated"]["set"]

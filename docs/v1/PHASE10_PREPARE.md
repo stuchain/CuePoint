@@ -1,6 +1,7 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
-Status: **Specified 2026-09-28. PREP-01 to PREP-11 are implemented (2026-09-28 to 2026-09-29).** The twelve steps below replace the roadmap's
+Status: **Specified 2026-09-28. PREP-01 to PREP-12 are implemented (2026-09-28 to 2026-09-29), and the
+phase acceptance is checked below: met on Linux, with the packaged Windows and macOS runs owed.** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -2848,7 +2849,7 @@ The existing tests pass. Four were changed, each for a reason this step gave:
 
 ---
 
-## PREP-12 — The Phase Comes Together
+## PREP-12 — The Phase Comes Together ✅ IMPLEMENTED 2026-09-29
 
 **Objective**: Documented, measured and proved end to end in a packaged build.
 
@@ -2887,7 +2888,219 @@ document.
 
 **Complexity**: **M**
 
-**Outcome**: Not started.
+**Outcome** (2026-09-29): **Implemented.** The phase is documented, measured at 50,000 tracks twice,
+proved end to end, and shown to survive a backup restore. The nine-step journey passes three times in a
+row in a **packaged Linux build** (`electron-builder --dir` with the PyInstaller engine sidecar), and on
+the development build. The packaged Windows and macOS runs are owed: this step ran in a Linux container,
+where neither can be built. Checking the phase's acceptance point by point found two gaps, and both
+were closed here: a Set could not be made from a selection in the app, and a Set's own notes had no
+field.
+
+**Documentation.**
+
+- `docs/user-guide/prepare.md`, new: Sets and how each is made, opening, adding and reordering; the page;
+  chapters; planned times and what the running time and "Starts" count; warnings and acknowledging;
+  Suggestions and the Library tab, the insertion point, "Insert here", the drag and each side's own
+  list; the lanes; playing; set lists and the export; a refresh; where Sets live. Its first lines say
+  plainly that chapters, times and notes stay in CuePoint and that playback plays whole tracks.
+- `organization.md` has Sets beside Collections, in the refresh warning, the export and the backups.
+  `rekordbox-export.md` lists Sets, one playlist each, and says what of a Set is not written. The
+  glossary gains Set, Chapter, Entry and Planned time. `features.md`, `workflows.md`, `the-window.md`,
+  `library.md`, `performance.md` (a Prepare section with both runs), the docs indexes and `AGENTS.md`'s
+  map name the page.
+- `docs/ui-overhaul/adr/008-sets-as-a-collection-kind.md` records DEC-102's design and m0025's
+  rebuild, with the options weighed and the signals to revisit, and the ADR index lists it.
+- `CHANGELOG.md` **Unreleased**: the Prepare page and Sets, Sets in the Library, and under Changed the
+  export taking Sets and the one-time database upgrade.
+- DEC-104 records the two gaps below as precisions.
+
+**The measurements** (`scripts/bench_sets.py`, new, kept runnable): a version-24 library built by SQL
+at the step's shape (500 nodes, 100,000 entries with repeats, 400 export records, 25.5 MB), upgraded on
+five copies, each checked for an unchanged row fingerprint and a clean foreign-key check; then a
+50,000-track library in DISCOVER-08's shape (70% between 120 and 130 BPM) holding a Set at its limit:
+1,000 entries in 10 chapters with targets and ranges, half timed, files checked, 100 warnings
+accepted. Two runs:
+
+| Measurement | Run 1 | Run 2 | Budget |
+| --- | --- | --- | --- |
+| m0025 on a version-24 library, median of 5 (max) | 323.5 ms (346.2) | 341.4 ms (364.4) | 1,000 ms |
+| The plan | 11.9 ms | 12.2 ms | |
+| The running order, as the route sends it | 61.6 ms | 55.4 ms | |
+| The checks | 41.7 ms | 37.0 ms | |
+| The checks, with their wire object (100 accepted) | 45.0 ms | 42.8 ms | 200 ms |
+| Suggestions at a dense gap, 30,832 scored | 305.4 ms | 305.0 ms | 500 ms |
+| The same, as the route sends it | 329.0 ms | 344.6 ms | |
+| The same, 200 suggestions | 310.9 ms | 345.3 ms | |
+| After the last entry | 33.2 ms | 30.2 ms | |
+| A gap nothing bridges | 31.0 ms | 29.8 ms | |
+
+The upgrade measured 785 ms in PREP-01 on another machine; the gap is the machine, since the migration
+is unchanged. `main` exits 1 when any budget is missed, so a release run can gate on it.
+`src/tests/performance/test_sets_scale.py` runs the same code at 5,000 tracks on every full suite
+(marked slow): every row taken, nothing over budget, the Set at its limit, the upgrade's library shaped
+as specified, and DISCOVER-08's bands. A measurement nobody runs rots; `bench_library.py` could not
+run at all for two phases before anyone noticed.
+
+**The phase journey**, twice over:
+
+- **`e2e/prepareJourney.spec.ts`**, the nine steps through the app against the real engine:
+  1. "New Set from…" on Prepare copies "Crate", which plays a track twice, into "Friday" in "Gigs".
+  2. Two "Start a chapter here", then the chapter dialog gives "Warm-up" 8:00 and 120–127, and the
+     heading reads "0:00 of 8:00". The Set's notes are typed into "Notes…".
+  3. In and out times typed in "In this Set": "4:00 planned · 5 untimed", then "9:00 planned · 4
+     untimed", "Starts" 4:00 and 9:00; Warm Two dragged above Warm One moves Warm One to 5:00.
+  4. Suggestions for the gap after Warm Two; the first row inserted with "Insert here"; the key clash
+     into Peak Jump acknowledged in the Inspector, "1 accepted".
+  5. A double-click on the third entry plays it, and the player's queue is the running order with
+     Warm One twice.
+  6. "Save set list…" three times, each to the path the save dialog answered, and "Copy set list",
+     whose clipboard text equals the text file. The M3U8 lists `1.mp3` twice.
+  7. "Export to Rekordbox…" with Friday ticked: one playlist of 7 tracks, and none of "Warm-up", "8:00",
+     "4:30" or the notes in the file. The source XML is byte for byte what it was.
+  8. A relaunch lands on `/prepare/<id>`, and the plan, entries and checks equal those before it.
+  9. The XML rewritten without one of Friday's tracks: "Check for changes" counts 1 removed, "1 in 1
+     Set" and "1 in 1 Collection".
+
+  Only the operating system's save dialog is answered in the main process, as `rekordboxExport.spec.ts`
+  does. Every step's outcome is read back from the engine, because what the page drew is not what was
+  written. A second test makes a Set from a Library selection clicked out of the table's order, and
+  holds the Set to the table's order.
+- **`src/tests/integration/test_prepare_phase_journey.py`**, the engine half on every build: the same
+  nine steps through the HTTP routes, with the same library. It also checks that the inserted
+  suggestion has no tempo warning on either side, that the export's history records a Set, that the
+  M3U8 reads back through `parse_m3u`, and that a restarted engine returns the same Set.
+
+**The backup** (`src/tests/unit/services/test_backup_restores_sets.py`, 9): a folder holding a
+Collection with a repeat and a Set made from it, with three chapters (one with notes, a target and a
+range), times and notes on an entry and on its repeat, the Set's notes and an accepted warning. It is
+backed up as the app does at launch, destroyed the way a real loss looks (the file still there, the tree
+gone, asserted before the restore), restored, and read back through the services. The tree, the
+Collection's order, the running order with its repeat, the whole plan, each repeat's own times and note,
+the chapters' targets, the accepted warning (still applied), the Set's notes, and the refresh
+warning's reference to the Set all come back.
+
+**Two gaps the acceptance check found, closed here.**
+
+1. **A Set could not be made from a selection in the app.** Acceptance 2 names a selection as a source.
+   PREP-02 built `SetSource.selection` and PREP-08 put it on the wire, but no gesture reached it. "New
+   Set from the selection…" now follows "Add to Set…" in the one operations list (the row menu and
+   Actions…).
+   - It takes the tracks in the order the table shows them, not the order they were clicked (DEC-063).
+     `useTrackSelection.gatherIds` reads them through the browse route's id projection, a whole
+     library per request.
+   - More than 1,000 is refused whole, with the numbers, before anything is read.
+     `SET_ENTRY_LIMIT` is held to the limit the engine sends.
+   - It opens PREP-09's dialog, titled by the count, with the name "New Set" and the folder of the
+     Collection the table shows.
+   - `librarySets.fixture.json` gains a Set the engine made from a selection. It was made after the
+     tree was read, so every other test draws the same tree.
+2. **A Set's own notes had no field.** PREP-03 built `set_notes` and PREP-08 wired it, and this
+   document's deferred list says a Set's notes hold anything a user wants to record. But PREP-10 drew
+   no field. "Notes…" on the header's facts line opens `SetNotesDialog`, which saves in one write and
+   re-reads the Set. The link's title is the notes themselves. A second link keeps the line to one
+   line, and `prepare.spec.ts` measured every row count unchanged, in both builds. `prepare.fixture.json`
+   gains Friday's notes and the answer to setting them.
+
+**Found and fixed on the way.**
+
+- **The Library's double-click check failed one run in three here**, and the posture is that a
+  failing test is never a flake. Instrumented, the double-click always reached the right row and started
+  the right track. But this container has no audio device, so mpv failed every track with "no audio
+  output", and DEC-054's ladder walked the queue about five tracks a second, repeat or not. The
+  spec's `setRepeat("one")` only holds where a track actually plays. Run with mpv given a null output
+  (`--ao=null` through a wrapper named by `CUEPOINT_MPV_PATH`), repeat held and the spec passed every
+  time. The product is right and the spec is right. The earlier steps' "failed on which track had
+  advanced" in `playback.spec.ts` was the same cause.
+- **`libraryPage.spec.ts`'s "Out of date" test raced itself.** The Library is home, so it read the
+  file's state when it reloaded after the import, while the test was rewriting that file. It passed
+  only when the rewrite won. It now reloads after the rewrite, as the next launch would. The other
+  tests in the file click "Check for changes", which reads the file at the click.
+- **A weak breakage was strengthened, not accepted.** The first M3U8 breakage dropped a repeat only
+  within a chapter, and the journey's repeat is in another chapter, so nothing failed. Dropped across
+  the whole Set, the journey catches it.
+
+**Where it differs from the specification, and why.**
+
+- **A packaged Linux build, not Windows.** The journey, `prepare.spec.ts` and `prepareSource.spec.ts`
+  ran against `release/linux-unpacked` three times in a row. It has the same renderer, main process
+  and PyInstaller engine as a Windows build, with a different shell and player. The Windows and macOS
+  runs, with their own row counts, are owed. `prepare.spec.ts` keeps holding each count at Linux's
+  measurement less one until Windows records its own.
+- **Playback is checked through the player's queue, not heard.** Step 5 reads the queue and the
+  current track, since nobody listens in a test. Phase 5's owed row that needs somebody to listen is
+  still owed.
+- **The measurements are a script, kept.** The earlier steps measured with scripts they did not keep.
+  This one is `scripts/bench_sets.py`, and a performance test runs it.
+
+**Tests.**
+
+- Python, 16 new: `test_backup_restores_sets.py` (9), `test_sets_scale.py` (5),
+  `test_prepare_phase_journey.py` (1), and `test_library_sets_fixture.py` (+1, a selection becomes a
+  Set in the order given). `test_prepare_fixture.py` asserts the Set's notes.
+- Renderer, 15 new: `newSetFrom.test.ts` (8: each source's wire shape, the fixture's order, the title,
+  the sentence, the limit held to the engine's, refusal above it and not at it), `trackMenu.test.ts`
+  (+1), `LibraryScreen.sets.test.tsx` (+3: the table's order not the clicks', one track, filed beside
+  the scope, and none of it in a shell without Sets), `PrepareScreen.test.tsx` (+3: the notes shown,
+  edited and trimmed; cleared and refused; the title with none).
+- End to end: `prepareJourney.spec.ts` (2), and `libraryPage.spec.ts`'s race removed.
+
+Nine deliberate breakages, each caught:
+
+- the selection gathered in click order;
+- the limit off by one;
+- notes sent untrimmed;
+- a selection's Set filed at the top level;
+- the notes link's title ignoring the notes;
+- a restore that loses the accepted warnings;
+- a restore that loses the planned times;
+- an M3U8 that drops a repeat (after the strengthening above);
+- a bench that never reports a missed budget.
+
+No existing assertion was changed or loosened. One existing test gained an assertion: a shell without
+the Sets bridge offers no "New Set from the selection…". `libraryPage.spec.ts` gained its reload,
+above. The two fixtures were regenerated: `librarySets.fixture.json` gained the selection's Set, and
+`prepare.fixture.json` gained Friday's notes and the answer to setting them. Nothing else in either
+changed.
+
+**Checks run** (on Linux, in a container with no audio device; Windows and macOS are owed, above):
+
+- **Python:**
+  - The full suite, on eight workers: 11,037 passed, 48 skipped, 8 failed, 3 errors in collection.
+    Ten of the eleven are PREP-11's list and fail the same way:
+    - PySide6 missing (3);
+    - the case-insensitive file system (1);
+    - the two Beatport merge counts (2);
+    - the support bundle and diagnostics (3);
+    - `test_step55_mypy_validation.py` (1).
+
+    The eleventh is `test_step6_paths.py::test_safe_filename`. It asserts Windows' character rules and
+    fails the same way run alone. Neither it nor `paths.py` is touched here. It passed in PREP-11's
+    run only through the order its worker ran it in.
+  - The strict mypy gate passed inside it.
+  - `ruff check` and `ruff format --check` on `src/` and `scripts/bench_sets.py`, with the pinned ruff
+    0.14.0.
+  - `check_no_qt_in_core.py`, the desktop version coupling and the engine health smoke test.
+- **Renderer:** the type-check, lint (exit 0, with the 8 warnings that were already there), and 133
+  files and 3,712 tests: 3,697 before and the 15 new. Two of three full runs passed whole. The first
+  failed one test that its summary did not name, the same count PREP-11's `StatusStrip` wait under
+  load gave.
+- **Electron:** the type-check, and 24 files and 532 tests, 36 skipped because no bundled mpv is
+  fetched here.
+- **End to end**, under Xvfb, with Debian's mpv given a null audio output:
+  - The development build:
+    - the whole suite: 58 passed, 1 skipped and 2 failed. One failure is `libraryPage.spec.ts`'s race,
+      fixed above; the fixed spec then passed 24 of 24, three times over.
+    - The other is `playerAudio.spec.ts`, which needs an audio device to take away. It is one of the
+      three player specs PREP-11 found failing here on the base commit. The other two now pass with
+      the null output.
+  - The packaged Linux build (`electron-builder --dir`, the engine built by `build_engine_sidecar.py`
+    in a clean virtualenv, since Debian's own `cryptography` cannot be bundled by PyInstaller):
+    - `prepareJourney.spec.ts` (both tests) three times in a row, 6 of 6;
+    - `prepare.spec.ts` and `prepareSource.spec.ts` three times in a row, 6 of 6, measuring the Set
+      at 8/8 whole rows, 5/5 with the player's bar and 5 with the lanes, and the panel at 4, as in
+      the development build.
+- `bench_sets.py` at 50,000 tracks, twice, each inside every budget (exit 0).
+- `git diff --check`, over the new files too.
 
 ---
 
@@ -2924,6 +3137,63 @@ In a packaged Windows build unless said otherwise, with the macOS packaged check
 14. No audio file and no source XML is written by any Phase 10 action. The file-write boundary test says
     so.
 15. A restored backup brings Sets back whole.
+
+## Phase 10 acceptance, checked (2026-09-29)
+
+On Linux, in the development build and a packaged one (`release/linux-unpacked`, with the PyInstaller
+engine), not in a packaged Windows build: this step ran in a Linux container. **The packaged Windows
+runs are owed**, with the macOS packaged checks owed alongside Phases 5, 7, 8 and 9, and with Phase 5's
+own acceptance, which this document asked to be closed before "Play Set" was wired.
+
+1. **Met.** m0025 was run on five copies of a version-24 library holding folders, Collections, Smart
+   Collections, a frozen Collection, repeats and 400 export records, at 50,000 tracks (500 nodes,
+   100,000 entries). Every row's fingerprint is unchanged and the foreign-key check is clean on each copy
+   (`bench_sets.py`, twice: 324 and 341 ms median against 1 s; PREP-01's `test_sets_schema.py` holds
+   ids, positions and sequences). The launch backup runs before any migration (FOUNDATION-11), and
+   `test_backup_restores_sets.py` takes it the way the app does.
+2. **Met.** A Set is created and filed (the journey, PREP-09's tests), duplicated and deleted (PREP-02,
+   PREP-09), and created from a Collection (the journey), a Smart Collection and a Rekordbox playlist
+   (`LibraryScreen.sets.test.tsx` over the engine's answers, `test_library_sets_fixture.py`) and a
+   selection (`prepareJourney.spec.ts`'s second test, and the fixture). The selection needed a gesture,
+   added in PREP-12. A Collection behaves as before: every Collection test from Phases 6 to 9 passes
+   unmodified, and the journey's "Crate" is unchanged by the Set made from it.
+3. **Met.** The journey plays Warm One twice, and the backup test restores the first time and the
+   repeat with different times and notes (PREP-03's tests too).
+4. **Met.** PREP-03's tests hold contiguity through every chapter and entry operation and refuse the last
+   chapter's deletion (the fixture's `last_chapter` refusal). `PrepareScreen.test.tsx` draws one unnamed
+   chapter with no heading.
+5. **Met.** `parse_time` refuses every malformed form with its reason (PREP-03). The journey sees "4:00
+   planned · 5 untimed" and then "9:00 planned · 4 untimed", with "Starts" stopping at the first untimed
+   entry and moving with a drag.
+6. **Met.** PREP-04's and PREP-11's tests: scored against both neighbours with each side's reasons, the
+   chapter's range, the in-Set mark, "Nothing fits between …" with each side's own list, and the same
+   list twice for the same library. The journey fills a gap from Suggestions in the app.
+7. **Met.** PREP-05's tests check transitions, entries and chapters, and return an acknowledgement when
+   either side or its values change. In the journey, two tempo jumps stay open while the Set is played,
+   saved three ways, copied and exported.
+8. **Met.** PREP-05's shared-rule test, and the engine journey: the suggestion inserted has no tempo
+   warning on either side.
+9. **Met.** The journey's double-click on the third entry plays it, with the queue equal to the running
+   order and its repeat. PREP-10's tests hold "Play Set" to `playQueue` with a repeat. The player is
+   unchanged.
+10. **Met.** The journey's file has one "Friday" playlist of 7 tracks and no chapter name, time or note,
+    and the export's history records a Set. PREP-07's tests hold the folder path, the byte-identity with
+    a Collection, and the record.
+11. **Met.** The journey saves each form to the path the save dialog answered. The M3U8 reads back
+    through `parse_m3u` with the repeat, and the clipboard equals the text file. PREP-06's tests refuse
+    every other destination and write nothing.
+12. **Met.** PREP-09's tests cover the tree, the scope, "Add to Set…", the rule editor and the
+    Inspector. The journey's refresh counts "1 in 1 Set" beside "1 in 1 Collection".
+13. **Met on Linux**, development and packaged, three runs each. The Set shows 8 whole rows with the
+    sidebar expanded and as a rail (held at 7, above the floor of 5), 5 with the player's bar (held at
+    4), and 5 with the lanes. A double-click on a partly cut row plays that row, on Prepare and in the
+    Library. The Windows counts, which `prepare.spec.ts` expects one lower, and the macOS focus-scroll
+    half are owed.
+14. **Met.** CLEAN-10's file-write boundary test names every module that can write, with
+    `data/set_list_file.py` as a text writer that opens no audio file. Both journeys assert the source
+    XML is byte for byte unchanged after every Phase 10 action.
+15. **Met.** `test_backup_restores_sets.py`, 9 tests, and two deliberate breakages of the restore, each
+    caught.
 
 ## Deferred, with reasons
 

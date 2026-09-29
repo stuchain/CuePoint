@@ -82,6 +82,12 @@
         "track_id": 2
       }
     },
+    "set_notes": {
+      "details": {
+        "notes": "The Loft, 23:00 to 01:00",
+        "set_id": 2
+      }
+    },
     "split": {
       "chapter": {
         "bpm_max": null,
@@ -798,7 +804,7 @@
         }
       ],
       "name": "Friday",
-      "notes": null,
+      "notes": "The Loft, 23:00 to 01:00",
       "running_time": {
         "seconds": 540,
         "timed": 2,

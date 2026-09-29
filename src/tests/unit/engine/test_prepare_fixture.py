@@ -200,6 +200,11 @@ def _capture(base: str, ids: list[int]) -> dict:
         },
     )
 
+    # The Set's own notes, typed from the header's "Notes…" (PREP-12).
+    set_notes = _sets(
+        base, "notes", {"set_id": friday, "notes": "The Loft, 23:00 to 01:00"}
+    )
+
     plain = _sets(base, "create", {"name": "Plain"})["set"]["id"]
     ok(
         base,
@@ -269,6 +274,7 @@ def _capture(base: str, ids: list[int]) -> dict:
             "chapter_updated": updated,
             "times": times,
             "note": note,
+            "set_notes": set_notes,
             "acknowledged": acknowledged,
             "unacknowledged": unacknowledged,
             "moved": moved,
@@ -405,6 +411,8 @@ class TestEachStateIsWhatItClaims:
         assert edits["chapter_updated"]["chapter"]["target_seconds"] == 480
         assert edits["times"]["plan"]["planned_seconds"] == 240
         assert edits["note"]["plan"]["note"] == "Let the break run"
+        assert edits["set_notes"]["details"]["notes"] == "The Loft, 23:00 to 01:00"
+        assert got["friday"]["plan"]["notes"] == "The Loft, 23:00 to 01:00"
         assert edits["acknowledged"]["acknowledgement"]["warning"] == "key_clash"
         assert edits["unacknowledged"] == {"removed": False}
         assert edits["moved"]["entry"]["position"] == 2

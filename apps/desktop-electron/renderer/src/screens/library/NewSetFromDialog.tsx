@@ -1,14 +1,15 @@
 /**
  * "New Set from…" (DEC-104, PREP-09).
  *
- * Offered on a Collection, a Smart Collection and a Rekordbox playlist. It
- * asks what a new node always asks — a name and a place in the tree, as "Save
+ * Offered on a Collection, a Smart Collection, a Rekordbox playlist and a
+ * selection of tracks (PREP-12). It asks what a new node always asks — a name and a place in the tree, as "Save
  * as Smart Collection" does — and says, before anything is written, that the
  * Set is a copy and what that means for this source. Nothing is converted in
  * place: the source is left exactly as it was (DEC-104).
  *
  * The name starts as the source's, which is what the engine would call it
- * anyway, so accepting the dialog as it opens is the one-click path.
+ * anyway, so accepting the dialog as it opens is the one-click path. A
+ * selection has no name of its own, so it starts as "New Set".
  */
 import { useEffect, useState } from "react";
 
@@ -16,7 +17,7 @@ import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
-import { newSetFromExplanation, type NewSetSource } from "./newSetFrom";
+import { newSetFromExplanation, newSetFromTitle, type NewSetSource } from "./newSetFrom";
 import type { FolderOption } from "./SaveSmartDialog";
 import { SMART_NAME_MAX_LENGTH, checkSmartName } from "./smartFilter";
 import "./NewSetFromDialog.css";
@@ -65,7 +66,7 @@ export function NewSetFromDialog({
   return (
     <Modal
       open={source !== null}
-      title={source ? `New Set from “${source.name}”` : "New Set"}
+      title={source ? newSetFromTitle(source) : "New Set"}
       onClose={onClose}
     >
       <div className="cp-new-set-from">

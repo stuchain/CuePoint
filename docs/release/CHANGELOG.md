@@ -8,6 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- The **Prepare** page, in the sidebar, and **Sets**. A Set is a running order
+  you are preparing to play: tracks in the order you will play them, repeats
+  allowed, divided into **chapters** with an optional name, notes, target length
+  and BPM range. Each entry can carry planned **in and out times** and a note;
+  the running time counts the entries you timed and says how many you did not,
+  and each entry shows when it **starts**. CuePoint checks every transition
+  (tempo jumps, key clashes, a BPM or key it cannot compare), every entry (a
+  missing file, a time past the track's end) and every chapter (over or under
+  its target, outside its range), explains each finding, and never blocks
+  anything; a transition warning you **Acknowledge** stays accepted until either
+  track or its values change. **Suggestions** fits a track to any gap, scored
+  against the tracks on both sides with each side's reasons, keeping to the
+  chapter's BPM range and saying plainly when nothing fits both; a **Library**
+  tab searches your library, and either inserts at the gap or by drag. Optional
+  **tempo and key lanes** draw the Set's shape. **Play Set**, or a double-click
+  on an entry, plays the entries in order, repeats included, through the
+  unchanged player — whole tracks, not the planned times. A Set saves as a
+  text, CSV or M3U8 **set list**, copies as text, and exports to Rekordbox as
+  one playlist in its running order. Chapters, planned times and notes stay in
+  CuePoint. See the new user guide page, Prepare
+- Sets in the Library's Collections tree, filed in folders beside Collections:
+  **New Set**; **New Set from…** a Collection, a Smart Collection or a Rekordbox
+  playlist; **New Set from the selection…** and **Add to Set…** on a selection;
+  **Open in Prepare**, **Duplicate**, **Save set list…**, **Copy set list** and
+  **Export to Rekordbox…** on a Set. Selecting a Set scopes the table to its
+  tracks, each listed once. The Inspector lists the Sets a track is in, rules
+  can name a Set, Clean can be scoped to one, and the refresh warning counts the
+  Sets a refresh would take tracks from
 - The **Discover** page, in the sidebar. **Runs** finds new music on Beatport
   from your library: charts your artists made in the genres you choose, and
   recent releases on your labels — every artist and label, or the ones you pick.
@@ -181,6 +209,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   files
 
 ### Changed
+- **Export to Rekordbox** takes Sets beside Collections: each ticked Set is
+  written as one playlist in its running order, repeats included, at its folder
+  path, and recorded as a Set. Its chapters, planned times, notes and accepted
+  warnings are not written
+- A library database is upgraded once, on the first launch of this version, to
+  hold Sets (ADR-008). The launch backup is taken first; every Collection, Smart
+  Collection, folder, entry and export record keeps its id, order and contents.
+  At 50,000 tracks with 100,000 Collection entries it takes about a third of a
+  second
 - **Import a different collection…** is in the Library header's new
   **Collection file** menu, beside **Export to Rekordbox…**. Three buttons did
   not fit the header at the default window size and pushed the track table

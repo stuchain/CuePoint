@@ -65,6 +65,19 @@ describe("what the menu offers", () => {
     expect(organizationMenuItems({ count: 0, collection: null }, handlers())).toEqual([]);
   });
 
+  it("offers the Set entries after Add to Collection, where a Set can be reached (PREP-09, PREP-12)", () => {
+    const withSets = { ...handlers(), onAddToSet: vi.fn(), onNewSetFromSelection: vi.fn() };
+    expect(labels(organizationMenuItems(IN_LIBRARY, withSets)).slice(0, 3)).toEqual([
+      "Add to Collection…",
+      "Add to Set…",
+      "New Set from the selection…",
+    ]);
+    organizationMenuItems(IN_LIBRARY, withSets)
+      .find((item) => item.id === "new-set-from-selection")!
+      .onSelect();
+    expect(withSets.onNewSetFromSelection).toHaveBeenCalled();
+  });
+
   it("separates itself from whatever is above it", () => {
     const [first] = organizationMenuItems(IN_LIBRARY, handlers());
     expect(first!.separatorBefore).toBe(true);

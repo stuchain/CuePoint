@@ -3419,6 +3419,18 @@ found there; the running order, which the Library's browse cannot show, stays Pr
 **Why the decision stands**: a running order beside what can go into it is its own page (DEC-072). The
 Library still shows where a Set is filed.
 
+### Implemented (2026-09-29, PREP-12) — two gaps the acceptance check found
+
+- **Precision: "New Set from the selection…"** joins ORG-11's list, after "Add to Set…". Phase
+  acceptance 2 names a selection as a source, and PREP-02 and PREP-08 had built it, but no gesture
+  reached it. It takes the selected tracks in the table's order, read once through the id projection
+  (DEC-063), not the order they were clicked; more than a Set holds is refused whole, with the numbers,
+  before anything is read.
+- **Precision: a Set's own notes have a place on the page.** PREP-03 built them and PREP-08 wired them,
+  and the phase's deferred list relies on them, but PREP-10 drew no field. "Notes…" on the header's
+  facts line opens one dialog and one write; its title is the notes themselves. The line stays one line,
+  and `prepare.spec.ts` measured every row count unchanged.
+
 ---
 
 ## DEC-105 — Suggestions Fit Both Neighbours

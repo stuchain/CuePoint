@@ -35,6 +35,9 @@ export const COPY_LIMIT = 5_000;
 /** Rows per request while gathering a selection. Matches the engine's cap. */
 const GATHER_PAGE = 500;
 
+/** Ids per request while gathering a selection's order: the engine's id-page cap. */
+const GATHER_ID_PAGE = 50_000;
+
 export interface TrackSelectionController {
   selection: Selection;
   count: number;
@@ -51,6 +54,12 @@ export interface TrackSelectionController {
    * `COPY_LIMIT`. Fetched, because a selection can name rows no window holds.
    */
   gatherRows: (limit?: number) => Promise<LibraryTrackRow[]>;
+  /**
+   * The selection's track ids, in the order the table shows them, up to
+   * `limit`. Read through the id projection, a whole library a page, so an
+   * order is found without fetching rows (PREP-12, DEC-063).
+   */
+  gatherIds: (limit: number) => Promise<number[]>;
 }
 
 async function fetchIds(
@@ -158,9 +167,25 @@ export function useTrackSelection(
     [query, selection, total],
   );
 
+  const gatherIds = useCallback(
+    async (limit: number): Promise<number[]> => {
+      const wanted = (id: number) =>
+        selection.all ? !selection.excluded.has(id) : selection.ids.has(id);
+      const gathered: number[] = [];
+      for (let offset = 0; offset < total && gathered.length < limit; offset += GATHER_ID_PAGE) {
+        // eslint-disable-next-line no-await-in-loop
+        const ids = await fetchIds(query, offset, GATHER_ID_PAGE);
+        gathered.push(...ids.filter(wanted));
+        if (ids.length === 0) break;
+      }
+      return gathered.slice(0, limit);
+    },
+    [query, selection, total],
+  );
+
   const count = selection.all
     ? Math.max(0, total - selection.excluded.size)
     : selection.ids.size;
 
-  return { selection, count, onRowClick, selectAllMatching, clear, gatherRows };
+  return { selection, count, onRowClick, selectAllMatching, clear, gatherRows, gatherIds };
 }

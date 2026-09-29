@@ -63,6 +63,7 @@ import { NewSetDialog, SetSourceDialog } from "./NewSetDialogs";
 import { PrepareLayout } from "./PrepareLayout";
 import { SetEntryZone } from "./SetEntryZone";
 import { SetLanes } from "./SetLanes";
+import { SetNotesDialog } from "./SetNotesDialog";
 import { SourcePanel } from "./SourcePanel";
 import { newSetSources } from "./newSetSources";
 import { PREPARE_COLUMNS, PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
@@ -72,6 +73,7 @@ import {
   WHAT_A_SET_IS,
   deletionLine,
   headerFacts,
+  notesLinkTitle,
 } from "./prepareFormat";
 import {
   PREPARE_PATH,
@@ -277,6 +279,22 @@ export function PrepareScreen({
     [edit],
   );
 
+  // The Set's own notes (PREP-03's `set_notes`): one dialog, one write.
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const shownId = shown?.setId ?? null;
+  const saveNotes = useCallback(
+    async (notes: string | null) => {
+      if (shownId === null) return;
+      setNotesError(null);
+      const done = await edit((sets) => sets.setNotes({ set_id: shownId, notes }), {
+        onRefused: setNotesError,
+      });
+      if (done) setNotesOpen(false);
+    },
+    [edit, shownId],
+  );
+
   const moveChapter = useCallback(
     (chapter: SetChapterPlan, delta: -1 | 1) =>
       void edit((sets) => sets.moveChapter({ chapter_id: chapter.id, position: chapter.position + delta })),
@@ -457,8 +475,9 @@ export function PrepareScreen({
 
   const [menu, setMenu] = useState<Menu | null>(null);
   const [exportMenu, setExportMenu] = useState<{ x: number; y: number } | null>(null);
-  // The facts line holds one link: the lanes and the columns share its menu,
-  // so the line stays one line and the Set keeps its rows (DEC-112).
+  // The facts line holds two links, the Set's notes and "View ▾": the lanes
+  // and the columns share the second's menu, so the line stays one line and
+  // the Set keeps its rows (DEC-112).
   const [viewMenu, setViewMenu] = useState<{ x: number; y: number } | null>(null);
 
   const openEntryMenu = useCallback(
@@ -833,6 +852,18 @@ export function PrepareScreen({
           <button
             type="button"
             className="prepare-link"
+            aria-haspopup="dialog"
+            title={notesLinkTitle(plan.notes)}
+            onClick={() => {
+              setNotesError(null);
+              setNotesOpen(true);
+            }}
+          >
+            Notes…
+          </button>
+          <button
+            type="button"
+            className="prepare-link"
             aria-haspopup="menu"
             aria-expanded={viewMenu !== null}
             onClick={(event) => {
@@ -920,6 +951,12 @@ export function PrepareScreen({
         />
       )}
 
+      <SetNotesDialog
+        set={notesOpen ? { name: setName, notes: plan.notes } : null}
+        error={notesError}
+        onSave={(notes) => void saveNotes(notes)}
+        onClose={() => setNotesOpen(false)}
+      />
       <ChapterDialog
         chapter={chapterEditing}
         error={chapterError}

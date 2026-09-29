@@ -8,7 +8,8 @@
  * - **"Add to Set…"** joins the operations list, with a picker of Sets, and
  *   says what it skipped. "Add to Collection" no longer offers a Set.
  * - **"New Set from…"** a Collection or a Rekordbox playlist asks a name and a
- *   place, makes the Set, and opens it.
+ *   place, makes the Set, and opens it; "New Set from the selection…" takes
+ *   the selected tracks in the table's order (PREP-12).
  * - **A Set's menu**: set lists saved and copied, the export with it ticked.
  * - **The Inspector** opens a Set in Prepare where there is one.
  * - **A refresh** that emptied a Set says so when the Set is opened.
@@ -36,6 +37,7 @@ import {
   ADDED_TO_SET,
   CREATED_FROM_COLLECTION,
   CREATED_FROM_PLAYLIST,
+  CREATED_FROM_SELECTION,
   DELETE_PREVIEW,
   FRIDAY,
   GIGS,
@@ -422,6 +424,64 @@ describe("New Set from… (DEC-104)", () => {
     expect(await screen.findByText("Made the Set “Sunday” with 3 entries.")).toBeInTheDocument();
   });
 
+  it("makes a Set from the selection, in the table's order and not the clicks' (PREP-12)", async () => {
+    sets!.createFrom.mockResolvedValue(answered(CREATED_FROM_SELECTION));
+    renderScreen();
+    await ready();
+    // The later row first, then the earlier one added to it.
+    fireEvent.click(await screen.findByText("Close"));
+    fireEvent.click(screen.getByText("Warm One"), { ctrlKey: true });
+    await userEvent.click(
+      within(await rowMenu("Close")).getByRole("menuitem", { name: "New Set from the selection…" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "New Set from the 2 selected tracks" });
+    expect(dialog).toHaveTextContent(/in the order the table shows them/);
+    const name = within(dialog).getByRole("textbox", { name: "Name" });
+    expect(name).toHaveValue("New Set");
+    await userEvent.clear(name);
+    await userEvent.type(name, "Picked");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+
+    const inTableOrder = TRACKS.filter((row) => row.title === "Warm One" || row.title === "Close").map(
+      (row) => row.id,
+    );
+    expect(sets!.createFrom).toHaveBeenCalledWith({
+      source: { kind: "selection", track_ids: inTableOrder },
+      name: "Picked",
+      parent_id: null,
+    });
+    expect(await screen.findByText("Made the Set “Picked” with 3 entries.")).toBeInTheDocument();
+  });
+
+  it("makes a Set of the one track a menu was opened on", async () => {
+    sets!.createFrom.mockResolvedValue(answered(CREATED_FROM_SELECTION));
+    renderScreen();
+    await ready();
+    await userEvent.click(
+      within(await rowMenu("Close")).getByRole("menuitem", { name: "New Set from the selection…" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "New Set from the 1 selected track" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+    expect(sets!.createFrom).toHaveBeenCalledWith({
+      source: { kind: "selection", track_ids: [5] },
+      name: "New Set",
+      parent_id: null,
+    });
+  });
+
+  it("files a selection's Set beside the Collection the table is showing", async () => {
+    sets!.createFrom.mockResolvedValue(answered(CREATED_FROM_SELECTION));
+    renderScreen();
+    await ready();
+    await userEvent.click(within(treeRow("Friday", "set")).getByText("Friday"));
+    await screen.findByRole("note");
+    await userEvent.click(
+      within(await rowMenu("Close")).getByRole("menuitem", { name: "New Set from the selection…" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "New Set from the 1 selected track" });
+    expect(within(dialog).getByRole("combobox", { name: "In" })).toHaveValue(String(GIGS.id));
+  });
+
   it("keeps the dialog open with the engine's refusal", async () => {
     sets!.createFrom.mockResolvedValue({
       value: null,
@@ -573,6 +633,7 @@ describe("a shell without the Sets bridge", () => {
     await ready();
     expect(screen.queryByRole("button", { name: "New Set" })).toBeNull();
     expect(labels(await rowMenu("Close"))).not.toContain("Add to Set…");
+    expect(labels(screen.getByRole("menu"))).not.toContain("New Set from the selection…");
     await userEvent.keyboard("{Escape}");
     fireEvent.contextMenu(treeRow("Friday", "set"));
     expect(labels(await screen.findByRole("menu"))).toEqual([

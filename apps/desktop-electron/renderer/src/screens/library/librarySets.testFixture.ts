@@ -19,6 +19,7 @@ import type {
   SetAnswer,
   SetCreated,
   SetCreatedFrom,
+  SetEntries,
   SetListSave,
   SetListText,
   SetRefusal,
@@ -83,6 +84,10 @@ export const CREATED = created(raw.created);
 export const CREATED_FROM_COLLECTION = createdFrom(raw.created_from_collection);
 export const CREATED_FROM_SMART = createdFrom(raw.created_from_smart);
 export const CREATED_FROM_PLAYLIST = createdFrom(raw.created_from_playlist);
+/** "Picked", made from tracks 5, 3 and 1 in that order, after the tree was read (PREP-12). */
+export const CREATED_FROM_SELECTION = createdFrom(raw.created_from_selection);
+/** "Picked"'s entries, with the most a Set holds as the engine sends it. */
+export const SELECTION_ENTRIES = raw.selection_entries as unknown as SetEntries;
 export const DUPLICATED = created(raw.duplicated);
 export const SET_GONE = refusal(raw.set_gone);
 

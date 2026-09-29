@@ -169,6 +169,17 @@ export function timeCell(seconds: number | null): string {
   return seconds == null ? "" : formatTime(seconds);
 }
 
+/** A Set's notes as typed, as they are sent: trimmed, and blank is none (PREP-12). */
+export function notesToSend(text: string): string | null {
+  const trimmed = text.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+/** The header's "Notes…" title: the notes themselves, or what the link is for. */
+export function notesLinkTitle(notes: string | null): string {
+  return notes ?? "Notes for the whole Set: the venue, the times, anything to remember";
+}
+
 /** What the page says with no Sets at all (DEC-104). */
 export const WHAT_A_SET_IS =
   "A Set is a running order: tracks in the order you will play them, in chapters, " +

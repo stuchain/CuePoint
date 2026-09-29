@@ -7,8 +7,8 @@
  *
  * - With no Sets the page says what a Set is and makes one, or one from a
  *   source; `/prepare` reopens the last Set, or the first.
- * - The Set: its header, its heading rows (none for one unnamed chapter), its
- *   entries with their warnings.
+ * - The Set: its header, its own notes (PREP-12), its heading rows (none for
+ *   one unnamed chapter), its entries with their warnings.
  * - Each edit is one engine call: a drag, a drop on a heading, the entry and
  *   heading menus, the chapter dialog, the Inspector's "In this Set" zone and
  *   "Acknowledge".
@@ -391,6 +391,49 @@ describe("the Set", () => {
     // The columns and the lanes share one link, so the line stays one line.
     fireEvent.click(screen.getByRole("button", { name: "View ▾" }));
     expect(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Columns…" })).toBeInTheDocument();
+  });
+
+  it("shows the Set's own notes and edits them in one write (PREP-12)", async () => {
+    sets.setNotes.mockResolvedValue(answered(EDITS.setNotes));
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    const link = within(screen.getByRole("status", { name: "" })).getByRole("button", { name: "Notes…" });
+    // The notes themselves are the link's title, so a glance does not open a dialog.
+    expect(link).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
+    fireEvent.click(link);
+    const dialog = await screen.findByRole("dialog", { name: "Notes for “Friday”" });
+    const field = within(dialog).getByLabelText("Notes");
+    expect(field).toHaveValue("The Loft, 23:00 to 01:00");
+
+    fireEvent.change(field, { target: { value: "  The Loft, 23:00 to 01:30  " } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(sets.setNotes).toHaveBeenCalledWith({ set_id: IDS.friday, notes: "The Loft, 23:00 to 01:30" });
+    // Every accepted edit re-reads the Set.
+    await waitFor(() => expect(sets.plan.mock.calls.length).toBeGreaterThan(1));
+  });
+
+  it("clears the notes with a blank field, and keeps the dialog open with a refusal", async () => {
+    sets.setNotes.mockResolvedValueOnce(
+      refused({ code: "INVALID_REQUEST", message: "A note may be at most 10000 characters, got 10001", reason: null, path: null }),
+    );
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(screen.getByRole("button", { name: "Notes…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Notes for “Friday”" });
+    fireEvent.change(within(dialog).getByLabelText("Notes"), { target: { value: "   " } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("at most 10000 characters");
+    expect(sets.setNotes).toHaveBeenCalledWith({ set_id: IDS.friday, notes: null });
+  });
+
+  it("says what the notes are for when there are none", async () => {
+    renderAt(preparePath(IDS.plain));
+    await opened("Plain");
+    expect(screen.getByRole("button", { name: "Notes…" })).toHaveAttribute(
+      "title",
+      expect.stringMatching(/^Notes for the whole Set/),
+    );
   });
 
   it("draws each chapter's heading as a row, with its time, target and range", async () => {

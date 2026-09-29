@@ -2,7 +2,9 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–12 resolved (DEC-001…DEC-112).**
 Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
-(DEC-102…DEC-112); PREP-01 to PREP-11 are implemented.
+(DEC-102…DEC-112); all twelve steps are implemented. Phase 10's acceptance is met on Linux, in the
+development build and a packaged one; the packaged Windows and macOS runs are owed, with Phase 5's
+acceptance.
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
 (DEC-090…DEC-101); all twelve steps are implemented and DISCOVER-01's spike is recorded. Phase 9's
 acceptance is met on Windows; the macOS packaged checks and one manual pass through the app
@@ -541,7 +543,7 @@ and a manual pass through the app against the live API are owed.
 
 Step specifications: `PHASE9_DISCOVER.md`.
 
-## Phase 10 — Prepare (PREP-01 … PREP-12) — specified
+## Phase 10 — Prepare (PREP-01 … PREP-12) — implemented
 
 Entirely greenfield (Sets/Chapters/Set Builder). Depends on Player (Phase 5) being solid first,
 per the target vision's own layering. Tracks may repeat within a Set; warnings (BPM jumps, etc.)
@@ -622,6 +624,20 @@ selected. Suggestions fit both neighbours, each side's reasons shown, and a gap 
 each side's own list. The Set's tempo and key are drawn as two pixel lanes from the engine's own
 reading, so a lane cannot disagree with a warning. The page as it opens keeps every row PREP-10
 measured.
+
+PREP-12 is implemented, and with it the phase. The user guide has a Prepare page, and the
+organization, export, glossary, features and performance pages name Sets. ADR-008 records DEC-102's
+design and m0025's rebuild, and the changelog has the phase. `scripts/bench_sets.py` measures the phase
+at 50,000 tracks and is run at 5,000 by every full suite: the upgrade takes about a third of a second,
+a 1,000-entry Set's plan, running order and checks each take under 70 ms, and Suggestions in the
+densest band 305 ms, inside every budget, twice. A restored launch backup brings a Set back whole. The
+nine-step journey — a Set from a Collection with a repeat, chapters with a target and a range, timed
+and reordered entries, a gap filled from Suggestions and a key warning accepted, played from the third
+entry, three set lists and a copy, exported to Rekordbox, relaunched onto, and counted in a refresh's
+warning — passes three times in a row in a packaged Linux build, and its engine half runs on every
+build. The acceptance check found two gaps and closed them: "New Set from the selection…" joined the
+Library's list, and a Set's own notes got a field on the page. The packaged Windows and macOS runs are
+owed.
 
 ## Phase 11 — Waveforms (WAVE-01 … WAVE-07)
 

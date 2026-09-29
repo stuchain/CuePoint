@@ -23,12 +23,18 @@ open in Rekordbox.
   order, and a track you put in it twice appears twice. A Smart Collection is
   exported as the tracks it matches at that moment. Folders you tick bring
   everything filed under them, in the same folder structure.
+- The **Sets you tick**, each as **one playlist** in its running order, repeats
+  included, at the folder path it has in CuePoint. See [Prepare](prepare.md).
 
 **Not exported:**
 
 - **Tags, notes and favorites.** Rekordbox's XML has nowhere to put them, so
   they stay in CuePoint. To get a tag into Rekordbox, make a Smart Collection
   whose rule is that tag and export it as a playlist.
+- **A Set's plan.** Its chapters, planned in and out times, notes and accepted
+  warnings stay in CuePoint: the playlist is the running order and nothing
+  else, and a Set with three chapters is still one playlist, not a folder. A
+  [set list](prepare.md#set-lists) carries the times as text or CSV.
 - **Your audio files.** An export writes one file — the XML you choose — and
   never opens an audio file. To put your values into the files themselves, use
   [Write tags to files](library.md#writing-tags-to-files).
@@ -39,14 +45,15 @@ open in Rekordbox.
 
 1. On the **Library** page, open **Collection file ▾** at the top — the menu
    that also holds **Import a different collection…** — and choose **Export to
-   Rekordbox…**. Or right-click a Collection, Smart Collection or folder in the
-   left pane and choose **Export to Rekordbox…** — it opens with that one
-   already ticked.
+   Rekordbox…**. Or right-click a Collection, Smart Collection, Set or folder in
+   the left pane and choose **Export to Rekordbox…** — it opens with that one
+   already ticked. On the Prepare page, **Export ▾ → Export to Rekordbox…**
+   opens it with the open Set ticked.
 2. **Choose…** where to save the file. The save dialog opens in the folder your
    last export went to and suggests a name with today's date. It never suggests
    the last file's name, so an export never quietly replaces the previous one.
-3. **Tick the Collections** you want as playlists, or none to export only your
-   values.
+3. **Tick the Collections and Sets** you want as playlists, or none to export
+   only your values.
 4. **Read the preview.** It is worked out from your library and the file as
    they are now, and it is exactly what the export will write:
    - where the file goes,
@@ -124,5 +131,6 @@ Library.
 ## See also
 
 - [Organizing your library](organization.md) — making the Collections you export
+- [Prepare](prepare.md) — Sets, and their set lists
 - [Your library](library.md) — importing and refreshing
 - [Clean](clean.md) — finding missing files before an export

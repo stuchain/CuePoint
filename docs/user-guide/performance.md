@@ -208,6 +208,35 @@ bar and a Cancel button, so the 11 seconds above are 11 seconds you can keep
 working through. CuePoint never sends fifty thousand track numbers anywhere: it
 sends the question, and the answer is worked out once, in the database.
 
+## Prepare
+
+Measured with `python scripts/bench_sets.py` on a 50,000-track library shaped as
+Similar tracks was measured (70% of it between 120 and 130 BPM), holding a Set
+at its largest: **1,000 entries in 10 chapters, each with a target and a BPM
+range, half of them timed, and 100 warnings accepted.** Two runs, the second
+figure in each pair from the second run.
+
+| What you did | Time |
+| --- | --- |
+| Upgrade a library to hold Sets (500 Collections and folders, 100,000 entries, 400 export records) | 324 / 341 ms, once |
+| Open the Set: its plan | 12 / 12 ms |
+| Its running order, as the page receives it | 62 / 55 ms |
+| Check every transition, entry and chapter, as the page receives it | 45 / 43 ms |
+| Suggestions for a gap in the busiest tempo band (30,832 tracks scored) | 329 / 345 ms |
+| Suggestions after the last entry | 33 / 30 ms |
+| Suggestions for a gap nothing bridges | 31 / 30 ms |
+
+**Suggestions in the busiest band are the one number you might notice**, for the
+same reason Similar tracks is: a gap between two tracks at 124 BPM has most of
+the library inside its tempo window, and every candidate is scored against both
+neighbours. It is well inside the half-second budget it is held to, and it only
+happens when you select a new gap. The end of the Set and a gap nothing bridges
+are each answered in about 30 ms.
+
+The upgrade runs once, on the first launch of the version that adds Sets, after
+the launch backup. It changes no row of any Collection, and `bench_sets.py`
+checks that on every copy it upgrades.
+
 ## Memory while browsing
 
 The numbers above are the engine's. This one is the window's, measured in the

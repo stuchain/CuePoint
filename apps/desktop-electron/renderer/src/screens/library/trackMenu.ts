@@ -38,6 +38,11 @@ export interface OrganizationMenuHandlers {
    * it already holds (DEC-058). Absent where no Set can be chosen.
    */
   onAddToSet?: () => void;
+  /**
+   * "New Set from the selection…" (PREP-12): a new Set holding these tracks in
+   * the table's order. Absent where no Set can be made.
+   */
+  onNewSetFromSelection?: () => void;
   onRemoveFromCollection: () => void;
   onAddTag: () => void;
   onRemoveTag: () => void;
@@ -74,6 +79,14 @@ export function organizationMenuItems(
 
   if (handlers.onAddToSet) {
     items.push({ id: "add-to-set", label: "Add to Set…", onSelect: handlers.onAddToSet });
+  }
+
+  if (handlers.onNewSetFromSelection) {
+    items.push({
+      id: "new-set-from-selection",
+      label: "New Set from the selection…",
+      onSelect: handlers.onNewSetFromSelection,
+    });
   }
 
   if (context.collection) {

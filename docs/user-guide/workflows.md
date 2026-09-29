@@ -38,6 +38,25 @@ Common workflows for using CuePoint effectively.
 3. Select destination folder
 4. Export and verify file
 
+## Preparing a Set
+
+See [Prepare](prepare.md) for each step in full.
+
+1. Right-click the Collection or playlist the night starts from and choose
+   **New Set from…**, or select tracks in the Library and choose **New Set from
+   the selection…**
+2. On **Prepare**, right-click where each section begins and choose **Start a
+   chapter here**; give a chapter a target length and a BPM range from its
+   heading's menu
+3. Select an entry and type its planned **In** and **Out** times in the
+   Inspector; the running time and **Starts** follow
+4. Select the entry before a gap and take a track from **Suggestions**, with
+   **Insert here** or a drag
+5. Read the **Transition** column; **Acknowledge** a warning you have heard and
+   are happy with
+6. **Play Set** to hear it through, then **Export ▾** to save a set list or
+   export it to Rekordbox as one playlist
+
 ## Troubleshooting Workflow
 
 1. Check [Troubleshooting Guide](troubleshooting.md)

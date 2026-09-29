@@ -71,7 +71,14 @@ import {
   setPickerNodes,
 } from "./collectionTree";
 import { NewSetFromDialog } from "./NewSetFromDialog";
-import { newSetMadeLine, setSourceOf, type NewSetSource } from "./newSetFrom";
+import {
+  SET_ENTRY_LIMIT,
+  newSetMadeLine,
+  selectionSource,
+  selectionTooLarge,
+  setSourceOf,
+  type NewSetSource,
+} from "./newSetFrom";
 import { setScopeNote } from "./setScope";
 import { useSetList } from "../prepare/useSetList";
 import {
@@ -777,6 +784,32 @@ export function LibraryScreen({
     [collections, detail, loadTags, push, window_],
   );
 
+  /**
+   * "New Set from the selection…" (PREP-12, DEC-063): the tracks the menu acts
+   * on, in the table's order, become a Set's one chapter. A Set is an order
+   * and a selection is a description, so the ids are read once, here, and the
+   * dialog shows how many before anything is written. Too many is refused
+   * whole, before any id is read. Filed beside the Collection the table is
+   * showing, as "New Set from…" files a Set beside its source.
+   */
+  const openNewSetFromSelection = useCallback(
+    async (target: BatchTarget) => {
+      const tooMany = selectionTooLarge(target.count);
+      if (tooMany) {
+        push(tooMany, "warning");
+        return;
+      }
+      const inSelection = target.count > 1 || target.trackId == null;
+      const ids = inSelection
+        ? await selection.gatherIds(SET_ENTRY_LIMIT)
+        : [target.trackId as number];
+      if (!mounted.current || ids.length === 0) return;
+      setNewSetError(null);
+      setNewSetFrom(selectionSource(ids, scopedCollection?.parent_id ?? null));
+    },
+    [push, scopedCollection, selection],
+  );
+
   /** The organization entries, for whichever surface asked for them. */
   const actionItems = useCallback(
     (target: BatchTarget, credits: TrackCreditLinks | null): TrackContextMenuItem[] => [
@@ -801,6 +834,9 @@ export function LibraryScreen({
         {
           onAddToCollection: () => openPicker("collection", target),
           onAddToSet: setList.available ? () => openPicker("set", target) : undefined,
+          onNewSetFromSelection: setList.available
+            ? () => void openNewSetFromSelection(target)
+            : undefined,
           onRemoveFromCollection: () =>
             scopedCollection &&
             runAction(
@@ -833,6 +869,7 @@ export function LibraryScreen({
       clean,
       onOpenEntity,
       onOpenSimilar,
+      openNewSetFromSelection,
       openPicker,
       runAction,
       scopedCollection,
