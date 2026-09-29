@@ -61,16 +61,23 @@ from cuepoint.core.set_analysis import (
     ChapterFacts,
     EntryFacts,
     SetWarning,
+    ShapePoint,
+    ShapeStep,
     analyse,
     camelot_code,
+    shape_of,
     transition_warning,
     transition_warnings,
 )
 from cuepoint.core.set_timing import RunningTime
 from cuepoint.core.similarity import (
     TEMPO_WINDOW_PERCENT,
+    KEY_ADJACENT,
+    KEY_RELATIVE,
+    KEY_SAME,
     MusicalKey,
     fit_tempo_ranges,
+    key_relation,
     tempo_relation,
 )
 
@@ -601,3 +608,59 @@ class TestOneRuleWithSuggestions:
 
         assert "6.0" not in open(module.__file__, encoding="utf-8").read()
         assert TEMPO_WINDOW_PERCENT == 6.0
+
+
+class TestTheShape:
+    """The values the lanes draw are the ones the checks read (DEC-111)."""
+
+    def test_each_entry_is_a_point_in_order(self):
+        entries = [
+            entry(1, bpm=124.004, k="8A"),
+            entry(2, chapter_id=2, bpm=None, k=None),
+            entry(3, chapter_id=2, bpm=62.0, k="8B"),
+        ]
+        shape = analyse(entries, [ChapterFacts(CHAPTER), ChapterFacts(2)]).shape
+        assert shape.points == (
+            ShapePoint(1, CHAPTER, 124.0, key("8A")),
+            ShapePoint(2, 2, None, None),
+            ShapePoint(3, 2, 62.0, key("8B")),
+        )
+
+    def test_each_transition_says_how_its_keys_relate(self):
+        codes = ["8A", "8A", "9A", "9B", "2A", None, "3A"]
+        entries = [entry(i + 1, k=code) for i, code in enumerate(codes)]
+        steps = shape_of(entries).steps
+        assert steps == (
+            ShapeStep(1, 2, KEY_SAME),
+            ShapeStep(2, 3, KEY_ADJACENT),
+            ShapeStep(3, 4, KEY_RELATIVE),
+            ShapeStep(4, 5, None),
+            ShapeStep(5, 6, None),
+            ShapeStep(6, 7, None),
+        )
+
+    def test_a_step_with_no_relation_is_exactly_a_key_clash(self):
+        wheel = [f"{n}{letter}" for n in range(1, 13) for letter in "AB"]
+        for first in wheel:
+            for second in wheel:
+                pair = [entry(1, k=first), entry(2, k=second)]
+                (step,) = shape_of(pair).steps
+                assert step.key_relation == key_relation(key(first), key(second))
+                clash = (KEY_CLASH, NO_RELATION) in between(*pair)
+                assert (step.key_relation is None) == clash, (first, second)
+
+    def test_an_empty_or_single_entry_set_has_no_steps(self):
+        assert shape_of([]).points == () and shape_of([]).steps == ()
+        (point,) = shape_of([entry(1)]).points
+        assert point.entry_id == 1 and shape_of([entry(1)]).steps == ()
+
+    def test_a_bpm_is_the_two_decimals_a_warning_compares(self):
+        before, after = entry(1, bpm=120.004), entry(2, bpm=140.126)
+        (jump,) = [
+            w for w in transition_warnings(before, after) if w.kind == TEMPO_JUMP
+        ]
+        points = shape_of([before, after]).points
+        assert (points[0].bpm, points[1].bpm) == (
+            jump.compared["from"],
+            jump.compared["to"],
+        )

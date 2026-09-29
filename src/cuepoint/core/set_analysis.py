@@ -46,6 +46,14 @@ The service writes keys in the library's notation for the wire. The canonical
 form is what an acknowledgement stores, so a library that changes notation does
 not make every acknowledgement stale.
 
+The shape
+---------
+**The values the checks read** (DEC-111, PREP-11): each entry's effective BPM
+and key, and how each transition's keys relate on DEC-096's wheel. The
+Prepare page draws its tempo and key lanes from these, so a lane and a warning
+can never disagree about a key: both were read here, once. A value the rule
+cannot use is none, and a lane draws it as a gap, never a zero.
+
 Acknowledgements
 ----------------
 Only a transition warning can be acknowledged; the others describe something
@@ -341,6 +349,47 @@ class FileCoverage:
 
 
 @dataclass(frozen=True)
+class ShapePoint:
+    """One entry as the lanes draw it: the values the checks compared.
+
+    Attributes:
+        entry_id: The entry.
+        chapter_id: Its chapter, where a lane marks a boundary.
+        bpm: Its effective tempo to two decimals, or None.
+        key: Its effective key, or None.
+    """
+
+    entry_id: int
+    chapter_id: int
+    bpm: Optional[float]
+    key: Optional[MusicalKey]
+
+
+@dataclass(frozen=True)
+class ShapeStep:
+    """How one transition's keys relate on DEC-096's wheel.
+
+    Attributes:
+        from_entry_id: The entry before.
+        to_entry_id: The entry after.
+        key_relation: ``same``, ``adjacent`` or ``relative``; None when the two
+            keys clash, or when either is unknown (its point says which).
+    """
+
+    from_entry_id: int
+    to_entry_id: int
+    key_relation: Optional[str]
+
+
+@dataclass(frozen=True)
+class SetShape:
+    """A Set's tempo and key, entry by entry (DEC-111)."""
+
+    points: Tuple[ShapePoint, ...] = ()
+    steps: Tuple[ShapeStep, ...] = ()
+
+
+@dataclass(frozen=True)
 class SetAnalysis:
     """Everything a Set's checks found.
 
@@ -354,6 +403,7 @@ class SetAnalysis:
             are absent.
         acknowledged: How many transition warnings an acknowledgement covers.
         notices: How many of each notice.
+        shape: The values the checks read, for the lanes.
     """
 
     transitions: Tuple[TransitionCheck, ...]
@@ -364,6 +414,7 @@ class SetAnalysis:
     counts: Mapping[str, int] = field(default_factory=dict)
     acknowledged: int = 0
     notices: Mapping[str, int] = field(default_factory=dict)
+    shape: SetShape = field(default_factory=SetShape)
 
     def warnings(self) -> Iterable[SetWarning]:
         """Every warning, transitions first, then entries, then chapters."""
@@ -545,6 +596,37 @@ def _applies(
     return compared is not None and dict(compared) == dict(warning.compared)
 
 
+def shape_of(entries: Sequence[EntryFacts]) -> SetShape:
+    """The Set's tempo and key, as its checks read them (DEC-111).
+
+    Each point is an entry's own values, BPMs to the two decimals a warning
+    compares, and each step is DEC-096's wheel between neighbours' keys: the
+    same ``key_relation`` a ``key_clash`` is found by.
+    """
+    points = tuple(
+        ShapePoint(
+            entry_id=entry.entry_id,
+            chapter_id=entry.chapter_id,
+            bpm=None if entry.bpm is None else _bpm(entry.bpm),
+            key=entry.key,
+        )
+        for entry in entries
+    )
+    steps = tuple(
+        ShapeStep(
+            from_entry_id=before.entry_id,
+            to_entry_id=after.entry_id,
+            key_relation=(
+                None
+                if before.key is None or after.key is None
+                else key_relation(before.key, after.key)
+            ),
+        )
+        for before, after in zip(entries, entries[1:])
+    )
+    return SetShape(points=points, steps=steps)
+
+
 def analyse(
     entries: Sequence[EntryFacts],
     chapters: Sequence[ChapterFacts],
@@ -623,6 +705,7 @@ def analyse(
         counts={kind: counts[kind] for kind in KINDS if counts[kind]},
         acknowledged=acknowledged,
         notices=dict(notices),
+        shape=shape_of(entries),
     )
 
 
@@ -712,13 +795,17 @@ __all__ = (
     "FileCoverage",
     "SetAnalysis",
     "SetNotice",
+    "SetShape",
     "SetWarning",
+    "ShapePoint",
+    "ShapeStep",
     "TransitionCheck",
     "analyse",
     "camelot_code",
     "chapter_warnings",
     "entry_warnings",
     "file_coverage",
+    "shape_of",
     "transition_warning",
     "transition_warnings",
 )

@@ -1467,6 +1467,10 @@ describe("desktop contract", () => {
       "SetNotice",
       "SetFileCheck",
       "SetRunningTime",
+      "SetCamelot",
+      "SetShapeEntry",
+      "SetShapeTransition",
+      "SetShape",
       "SetAnalysis",
     ])("keeps the engine and the renderer agreeing about %s", (shape) => {
       const read = (source: string) => {

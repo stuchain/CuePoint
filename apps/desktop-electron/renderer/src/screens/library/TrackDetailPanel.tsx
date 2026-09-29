@@ -25,7 +25,7 @@
  * why LIBRARY-01 made those columns nullable (DEC-034): unrated and rated-zero
  * are different facts, and so are "never played" and "no play count recorded".
  */
-import { useCallback, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useState, type ReactNode } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
 import type {
@@ -269,7 +269,10 @@ export function TrackDetailPanel({
         )}
       </header>
 
-      {leadZone}
+      {/* The caller's own slot: its key is the caller's (Prepare keys its zone
+          by entry id), and in the list beside TrackYours' track-id key two
+          different things could both be "3" and leave a stale zone behind. */}
+      <Fragment>{leadZone}</Fragment>
 
       {/* A track with no id is not editable, and there is nothing to say
           about that: the id is what every write is addressed to. */}

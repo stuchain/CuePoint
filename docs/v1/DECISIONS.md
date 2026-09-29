@@ -3470,6 +3470,19 @@ explained.
 **Why the decision stands**: the decided rule, written down, with the one gesture it named
 ("offers each side's own list") given a way to be asked for.
 
+### Implemented (2026-09-29, PREP-11) — the panel
+
+- **As decided.** The source panel's Suggestions tab asks for the gap after the selected entry, or
+  the end of the Set, over the pool the user picks, and draws each side's reasons and the "in this
+  Set" mark. A gap nothing bridges is explained from its tempo gap and key relation, with "Fit after"
+  and "Fit before" asking for each side's list through `against`. An empty Set says it has nothing to
+  fit against.
+- **Precision: the gap names its chapter.** A track inserted at the gap joins the chapter of the entry
+  before it (PREP-02), and the request names that chapter. The range that narrows the list is then the
+  one the track lands in.
+- **Precision: a suggestion carries its track's row.** The answer sets each suggestion beside the
+  Library's own row, as a Set's entries are set, so the panel needs no read per track.
+
 ---
 
 ## DEC-106 — Set Warnings Cover Transitions, Entries and Chapters, and Can Be Acknowledged
@@ -3712,6 +3725,21 @@ a hand-typed field added now might have to be reconciled with that.
 
 **Decided with**: User · **Date**: 2026-09-28
 
+### Implemented (2026-09-29, PREP-11)
+
+- **As decided.** Two lanes above the Set table, drawn as inline SVG rectangles in whole pixels, in
+  `currentColor` and theme tokens. Tempo is a stepped line, one column per entry. Key is each entry's
+  place on the wheel, and the line between neighbours is solid for the same key or one step, dashed for
+  the relative key and dotted for a clash. An unknown value is a gap. No energy field was added.
+- **Precision: the engine says what the lanes draw.** `SetAnalysis.shape` carries each entry's
+  effective BPM, its key in the library's notation and on the wheel, and each transition's relation.
+  It is read from the same facts and through the same `key_relation` the warnings use. The renderer
+  lays the shape out and parses no key, so a lane cannot disagree with a warning.
+- **Precision: the key lane has a row per code.** B sits above A, so the relative key is one row away
+  and a step on the wheel two. The line's style says the relation even where the wheel wraps (12A to
+  1A).
+- **Precision: the lanes start hidden** and are remembered once opened (DEC-112's rows).
+
 ---
 
 ## DEC-112 — Prepare Lays Out Side by Side
@@ -3748,3 +3776,18 @@ compact density app-wide would reach back into Phases 4 and 6 for a problem that
   height, floor or scale.
 
 **Why the decision stands**: side by side is what leaves the Set its rows.
+
+### Implemented (2026-09-29, PREP-11) — the panel beside the Set
+
+- **As decided**, with the source panel in its place. The width check runs with it present: every
+  control on screen, nothing spilling, and the Set the wider pane.
+- **Precision: the panel is clamped against the layout, not the window.** Measured against the
+  window, the panel could be wider than the Set with the sidebar and the Inspector open.
+- **Precision: the header's line holds one link, "View ▾".** It opens the lanes and "Columns…". A
+  second link wrapped the line and cost the Set a row.
+- **Precision: the panel's controls are a row's height**, not the doubled hit target. Otherwise its
+  table showed no whole row in the default window.
+- **Measured on Linux**: the Set's rows are unchanged as the page opens (8, and 5 with the player's
+  bar; PREP-10's Windows run measured 7 and 4). With the lanes open the Set shows 5, and the panel shows
+  4 whole Suggestions. `prepare.spec.ts` holds each at one less, the offset PREP-10's two platforms
+  showed, until the Windows run records its own numbers (PREP-12).

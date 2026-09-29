@@ -514,7 +514,9 @@ export function TrackTable<Row>({
                     }
                     // Without this the browser refuses the drop, silently.
                     event.preventDefault();
-                    transfer.dropEffect = "move";
+                    // A drag that only copies (a track into a Set, PREP-11) is
+                    // refused by a "move", silently too: answer what it allows.
+                    transfer.dropEffect = transfer.effectAllowed === "copy" ? "copy" : "move";
                     // The upper half means before this row, the lower half
                     // after it: an insertion point, so the last row can be
                     // dropped past.

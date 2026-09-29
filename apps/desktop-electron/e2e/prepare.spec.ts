@@ -8,8 +8,10 @@
  * This is that test. It measures the rows that are wholly inside the Set
  * table's viewport, at the default window size and scale, with the sidebar
  * expanded and as a rail, and with the player's bar on screen. It checks the
- * width in the same run: nothing spills sideways and every header control is
- * on screen.
+ * width in the same run, with PREP-11's source panel beside the Set: nothing
+ * spills sideways, every header and panel control is on screen, and the Set
+ * is the wider pane. It measures the rows again with the tempo and key lanes
+ * open, and the rows the panel's Suggestions show.
  *
  * It then double-clicks a partly visible row, on the Prepare page and on the
  * Library page where Phase 8 found the defect, with the pointer where a person
@@ -52,6 +54,23 @@ const FLOOR = 5;
  * outcome records it.
  */
 const WHOLE_ROWS_PLAYING = 4;
+
+/**
+ * The same with the tempo and key lanes open (PREP-11, DEC-111), sidebar
+ * expanded and as a rail: the lanes take their height from the rows, which is
+ * why they start hidden, and a person who opens them keeps them open.
+ *
+ * Measured 5 on Linux, where this spec measured every PREP-10 state one row
+ * above the packaged Windows build (8 against 7, 5 against 4). Held at 4, the
+ * Windows figure that offset gives, until the Windows run records its own.
+ */
+const WHOLE_ROWS_LANES = 4;
+
+/**
+ * The whole rows the source panel's Suggestions show beside the Set, the page
+ * as it opens (PREP-11). Measured 4 on Linux; held at 3 for the same reason.
+ */
+const SOURCE_ROWS = 3;
 
 /** Enough tracks that the Set is always taller than its pane. */
 const TRACKS = 36;
@@ -121,6 +140,10 @@ interface Measured {
   pageScrolls: boolean;
   overflowX: number;
   offscreenControls: string[];
+  /** The Set pane's and the source panel's widths. */
+  panes: { set: number; source: number };
+  /** How far the source panel's content spills past its own width. */
+  sourceOverflow: number;
   window: { width: number; height: number };
   scale: string;
 }
@@ -163,8 +186,14 @@ async function measure(win: Page, tableName: string): Promise<Measured> {
       }
     }
     const screenEl = document.querySelector<HTMLElement>("main.app-main .screen")!;
-    const controls = [...document.querySelectorAll<HTMLElement>(".prepare-header button, .prepare-header select")];
+    const controls = [
+      ...document.querySelectorAll<HTMLElement>(
+        ".prepare-header button, .prepare-header select, .prepare-source button, .prepare-source select, .prepare-source input",
+      ),
+    ];
     const offscreenControls = controls
+      // A table's own headers scroll inside it, by design.
+      .filter((control) => !control.closest(".track-table"))
       .filter((control) => {
         const r = control.getBoundingClientRect();
         return r.left < main.left - 0.5 || r.right > main.right + 0.5;
@@ -179,6 +208,14 @@ async function measure(win: Page, tableName: string): Promise<Measured> {
         screenEl.scrollWidth - screenEl.clientWidth,
       ),
       offscreenControls,
+      panes: {
+        set: document.querySelector<HTMLElement>(".prepare-layout__set")?.getBoundingClientRect().width ?? 0,
+        source: document.querySelector<HTMLElement>(".prepare-layout__source")?.getBoundingClientRect().width ?? 0,
+      },
+      sourceOverflow: (() => {
+        const source = document.querySelector<HTMLElement>(".prepare-source");
+        return source ? source.scrollWidth - source.clientWidth : 0;
+      })(),
       window: { width: window.innerWidth, height: window.innerHeight },
       scale: getComputedStyle(document.documentElement).getPropertyValue("--scale").trim(),
     };
@@ -270,8 +307,45 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         measured[collapsed ? "rail" : "expanded"] = m;
         expect(m.scale).toBe("2");
         expect(m.overflowX, "nothing spills sideways").toBeLessThanOrEqual(0);
-        expect(m.offscreenControls, "every header control is on screen").toEqual([]);
+        expect(m.offscreenControls, "every header and panel control is on screen").toEqual([]);
+        // PREP-11: the source panel is beside the Set, the narrower of the two
+        // (DEC-112), and nothing in it is wider than it.
+        expect(m.panes.source, "the source panel is there").toBeGreaterThan(0);
+        expect(m.panes.set, "the Set is the wider pane").toBeGreaterThan(m.panes.source);
+        expect(m.sourceOverflow, "the panel's content fits it").toBeLessThanOrEqual(0);
       }
+
+      // --- the source panel's rows, the page as it opens (PREP-11) -----------
+      await setSidebar(win, false);
+      await expect(win.getByRole("table", { name: "Suggestions" }).locator(".track-table__row").first()).toBeVisible({
+        timeout: 30_000,
+      });
+      const source = await measure(win, "Suggestions");
+      console.log("PREP-11 source panel whole rows:", source.whole);
+      expect(source.whole, "the Suggestions the panel shows").toBeGreaterThanOrEqual(SOURCE_ROWS);
+
+      // --- with the tempo and key lanes open (PREP-11) ------------------------
+      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("menuitem", { name: "Show tempo and key lanes" }).click();
+      await expect(win.getByRole("group", { name: "Tempo and key lanes" })).toBeVisible();
+      const lanes: Record<string, Measured> = {};
+      for (const collapsed of [false, true]) {
+        await setSidebar(win, collapsed);
+        const m = await measure(win, "Set entries");
+        lanes[collapsed ? "rail + lanes" : "expanded + lanes"] = m;
+        expect(m.overflowX, "nothing spills sideways with the lanes").toBeLessThanOrEqual(0);
+        expect(m.pageScrolls, "the page does not scroll with the lanes").toBe(false);
+      }
+      console.log(
+        "PREP-11 whole rows with the lanes:",
+        JSON.stringify(Object.fromEntries(Object.entries(lanes).map(([k, v]) => [k, v.whole]))),
+      );
+      for (const [state, m] of Object.entries(lanes)) {
+        expect(m.whole, `whole rows, ${state}`).toBeGreaterThanOrEqual(WHOLE_ROWS_LANES);
+      }
+      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("menuitem", { name: "Hide tempo and key lanes" }).click();
+      await expect(win.getByRole("group", { name: "Tempo and key lanes" })).toHaveCount(0);
 
       // --- the row double-clicked is the row that plays -----------------------
       await setSidebar(win, false);

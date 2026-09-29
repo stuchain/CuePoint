@@ -224,6 +224,97 @@
         "untimed": 4
       },
       "set_id": 2,
+      "shape": {
+        "entries": [
+          {
+            "bpm": 122.0,
+            "camelot": {
+              "letter": "A",
+              "number": 8
+            },
+            "chapter_id": 1,
+            "entry_id": 1,
+            "key": "8A"
+          },
+          {
+            "bpm": 124.0,
+            "camelot": {
+              "letter": "A",
+              "number": 9
+            },
+            "chapter_id": 1,
+            "entry_id": 2,
+            "key": "9A"
+          },
+          {
+            "bpm": 128.0,
+            "camelot": {
+              "letter": "A",
+              "number": 8
+            },
+            "chapter_id": 2,
+            "entry_id": 3,
+            "key": "8A"
+          },
+          {
+            "bpm": 140.0,
+            "camelot": {
+              "letter": "B",
+              "number": 3
+            },
+            "chapter_id": 2,
+            "entry_id": 4,
+            "key": "3B"
+          },
+          {
+            "bpm": 122.0,
+            "camelot": {
+              "letter": "A",
+              "number": 8
+            },
+            "chapter_id": 3,
+            "entry_id": 6,
+            "key": "8A"
+          },
+          {
+            "bpm": 125.0,
+            "camelot": {
+              "letter": "B",
+              "number": 8
+            },
+            "chapter_id": 3,
+            "entry_id": 5,
+            "key": "8B"
+          }
+        ],
+        "transitions": [
+          {
+            "from_entry_id": 1,
+            "key_relation": "adjacent",
+            "to_entry_id": 2
+          },
+          {
+            "from_entry_id": 2,
+            "key_relation": "adjacent",
+            "to_entry_id": 3
+          },
+          {
+            "from_entry_id": 3,
+            "key_relation": null,
+            "to_entry_id": 4
+          },
+          {
+            "from_entry_id": 4,
+            "key_relation": null,
+            "to_entry_id": 6
+          },
+          {
+            "from_entry_id": 6,
+            "key_relation": "relative",
+            "to_entry_id": 5
+          }
+        ]
+      },
       "transitions": [
         {
           "from_entry_id": 3,
@@ -774,6 +865,34 @@
         "untimed": 2
       },
       "set_id": 3,
+      "shape": {
+        "entries": [
+          {
+            "bpm": 122.0,
+            "camelot": {
+              "letter": "A",
+              "number": 8
+            },
+            "chapter_id": 4,
+            "entry_id": 7,
+            "key": "8A"
+          },
+          {
+            "bpm": null,
+            "camelot": null,
+            "chapter_id": 4,
+            "entry_id": 8,
+            "key": null
+          }
+        ],
+        "transitions": [
+          {
+            "from_entry_id": 7,
+            "key_relation": null,
+            "to_entry_id": 8
+          }
+        ]
+      },
       "transitions": [
         {
           "from_entry_id": 7,

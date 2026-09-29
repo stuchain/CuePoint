@@ -104,6 +104,10 @@
   text-decoration: underline;
 }
 
+.prepare-link--inline {
+  margin-left: 0;
+}
+
 .prepare-visually-hidden {
   position: absolute;
   width: 1px;
@@ -175,6 +179,99 @@ body.prepare-resizing {
 
 .prepare-set__rows > .track-table {
   flex: 1;
+}
+
+/* With the lanes open they sit above the rows, which keep the height left. */
+.prepare-set--lanes {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+/* An empty Set's note takes the first drop (PREP-11), so it fills the table. */
+.prepare-set__drop {
+  display: flex;
+  align-items: flex-start;
+  min-height: calc(var(--row-height) * 2);
+  padding: var(--space-sm);
+}
+
+/* --------------------------------------------------------------- the lanes */
+
+/* DEC-111: the Set's tempo and key in whole pixels. Every colour is a theme
+   token, so each of the five themes reads the lanes as its own. */
+.prepare-lanes {
+  display: flex;
+  min-width: 0;
+  padding: calc(2px * var(--scale)) var(--space-sm);
+  border-bottom: var(--border-width) solid var(--border-muted);
+  background: var(--bg-panel-alt);
+}
+
+.prepare-lanes__gutter {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1;
+}
+
+.prepare-lanes__name {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(2px * var(--scale));
+  overflow: hidden;
+  font-weight: 700;
+}
+
+.prepare-lanes__range {
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.prepare-lanes__plot {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.prepare-lanes__svg {
+  display: block;
+  color: var(--fg-primary);
+}
+
+.prepare-lanes__tempo,
+.prepare-lanes__key {
+  fill: currentColor;
+}
+
+.prepare-lanes__key {
+  color: var(--accent-info);
+}
+
+.prepare-lanes__link--clash {
+  color: var(--accent-danger);
+}
+
+.prepare-lanes__boundary {
+  fill: var(--fg-muted);
+  opacity: 0.6;
+}
+
+.prepare-lanes__selected {
+  fill: var(--accent-primary);
+  opacity: 0.25;
+}
+
+.prepare-lanes__hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.prepare-lanes__hit:hover {
+  fill: var(--fg-primary);
+  fill-opacity: 0.08;
 }
 
 /* A chapter's heading is a row of the table (DEC-103), drawn as a band. */
@@ -323,4 +420,165 @@ body.prepare-resizing {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-sm);
+}
+
+/* -------------------------------------------------------- the source panel */
+
+/* PREP-11: the tabs, the pool, where an insert goes, then the rows. At the
+   default window and scale the panel is a narrow column, so its controls are
+   compact, a row's height rather than the design system's doubled hit target
+   (PREP-10's header could not shrink; this chrome can, and every pixel of it
+   is a row the panel does not show). Nothing in it may be wider than it. */
+.prepare-source {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+  min-width: 0;
+  min-height: 0;
+  padding: calc(2px * var(--scale)) var(--space-xs);
+  overflow: hidden;
+}
+
+
+
+.prepare-source .cp-tabs {
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.prepare-source .cp-tabs__tab {
+  min-height: calc(20px * var(--scale));
+  padding: calc(2px * var(--scale)) var(--space-xs);
+  font-size: var(--font-size-xs);
+}
+
+/* The pool, and the panel's one action at the end of its line: the select
+   gives way, so the button always shows whole. */
+.prepare-source__controls,
+.prepare-source__search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.prepare-source__search {
+  flex: none;
+}
+
+.prepare-source__select,
+.prepare-source__input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: calc(20px * var(--scale));
+  padding: calc(2px * var(--scale)) var(--space-xs);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+}
+
+.prepare-source__select {
+  cursor: pointer;
+}
+
+.prepare-source__select:focus,
+.prepare-source__input:focus,
+.prepare-source__insert:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-info);
+}
+
+.prepare-source__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+  min-width: 0;
+  min-height: 0;
+}
+
+.prepare-source__point {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prepare-source__point em {
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* The panel's one action: compact, and the accent, so it reads as the verb. */
+.prepare-source__insert {
+  flex: none;
+  min-height: calc(20px * var(--scale));
+  padding: calc(2px * var(--scale)) var(--space-sm);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--accent-primary);
+  color: var(--fg-inverse);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.prepare-source__insert:hover:not(:disabled) {
+  background: var(--accent-primary-hover);
+}
+
+.prepare-source__insert:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.prepare-source__note {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.prepare-source__table {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.prepare-source__rows {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.prepare-source__rows > .track-table {
+  flex: 1;
+}
+
+.prepare-source__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+}
+
+.prepare-source__sides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.prepare-source__in-set {
+  color: var(--fg-muted);
 }

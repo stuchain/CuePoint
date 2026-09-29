@@ -583,6 +583,51 @@ class TestSuggestions:
         (spare,) = [s for s in answer["suggestions"] if s["track_id"] == ids[5]]
         assert spare["in_set"] == 0 and spare["before"] and spare["after"]
 
+    def test_each_suggestion_carries_the_librarys_own_row(
+        self,
+        engine,  # noqa: F811
+        friday,
+        ids,
+    ):
+        answer = read(
+            engine,
+            "suggestions",
+            set_id=friday["id"],
+            **self.gap(engine, friday["id"], 0),
+        )
+        assert answer["suggestions"]
+        browse = get_json(
+            engine, "/api/v1/library/search", mode="browse", q="", limit=100
+        )["tracks"]
+        by_id = {row["id"]: row for row in browse}
+        for suggestion in answer["suggestions"]:
+            assert suggestion["track"] == by_id[suggestion["track_id"]]
+
+    def test_a_suggestion_whose_track_has_gone_is_left_out(
+        self,
+        engine,  # noqa: F811
+        friday,
+        ids,
+        monkeypatch,
+    ):
+        from cuepoint.engine import sets_api
+
+        rows = sets_api._track_rows
+        # A refresh deleting the spare track between the scoring and the rows.
+        monkeypatch.setattr(
+            sets_api,
+            "_track_rows",
+            lambda track_ids: {k: v for k, v in rows(track_ids).items() if k != ids[5]},
+        )
+        answer = read(
+            engine,
+            "suggestions",
+            set_id=friday["id"],
+            **self.gap(engine, friday["id"], 0),
+        )
+        assert answer["suggestions"]
+        assert ids[5] not in {s["track_id"] for s in answer["suggestions"]}
+
     def test_after_the_last_entry(self, engine, friday):  # noqa: F811
         last = entry_ids(engine, friday["id"])[-1]
         answer = read(engine, "suggestions", set_id=friday["id"], before_entry_id=last)

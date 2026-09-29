@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–12 resolved (DEC-001…DEC-112).**
 Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
-(DEC-102…DEC-112); PREP-01 to PREP-10 are implemented.
+(DEC-102…DEC-112); PREP-01 to PREP-11 are implemented.
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
 (DEC-090…DEC-101); all twelve steps are implemented and DISCOVER-01's spike is recorded. Phase 9's
 acceptance is met on Windows; the macOS packaged checks and one manual pass through the app
@@ -615,6 +615,13 @@ PREP-10 is implemented: Prepare is in the sidebar. A Set opens with its chapters
 its entries' times, notes and warnings. Each is edited by drag, menu, one chapter dialog or the
 Inspector's "In this Set", and plays as the queue with its repeats. At the default window and scale it
 shows seven whole rows. A double-click on a partly visible row now plays that row, in the Library too.
+
+PREP-11 is implemented: the Prepare page fills a Set from Suggestions and the library beside it. A track
+goes in at the gap after the selected entry, by "Insert here" or a drag, and the new entry is
+selected. Suggestions fit both neighbours, each side's reasons shown, and a gap nothing bridges offers
+each side's own list. The Set's tempo and key are drawn as two pixel lanes from the engine's own
+reading, so a lane cannot disagree with a warning. The page as it opens keeps every row PREP-10
+measured.
 
 ## Phase 11 — Waveforms (WAVE-01 … WAVE-07)
 

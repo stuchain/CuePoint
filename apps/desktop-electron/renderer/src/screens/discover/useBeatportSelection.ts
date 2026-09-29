@@ -36,6 +36,8 @@ export interface BeatportSelection<Row> {
   onRowClick: (row: Row, index: number, event: React.MouseEvent) => void;
   /** A right-click on a row outside the selection selects that row first. */
   onRowMenu: (row: Row, index: number) => void;
+  /** Select this one row, as a plain click would, from outside the table. */
+  select: (row: Row, index: number) => void;
   clear: () => void;
 }
 
@@ -122,6 +124,12 @@ export function useBeatportSelection<Row>({
     [idOf],
   );
 
+  const select = useCallback(
+    (row: Row, index: number) =>
+      setState({ picked: new Map([[idOf(row), { row, index }]]), anchor: index }),
+    [idOf],
+  );
+
   const clear = useCallback(() => setState(NOTHING), []);
 
   const rows = useMemo(
@@ -140,6 +148,7 @@ export function useBeatportSelection<Row>({
     anchor: state.anchor,
     onRowClick,
     onRowMenu,
+    select,
     clear,
   };
 }

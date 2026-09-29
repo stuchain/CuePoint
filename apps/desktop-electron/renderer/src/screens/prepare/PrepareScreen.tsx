@@ -2,10 +2,12 @@
  * The Prepare page: DEC-104's Set Builder (PREP-10).
  *
  * One Set, with its chapters, planned times, notes and warnings, laid out side
- * by side with the source panel PREP-11 adds (DEC-112). A header names the Set
- * and says how long it is planned to run and what its checks found; the Set
- * table below is a `TrackTable` over its entries and its chapters' headings;
- * the entry selected is planned in the Inspector's "In this Set" zone.
+ * by side with the source panel (DEC-112). A header names the Set and says how
+ * long it is planned to run and what its checks found; the Set table below is a
+ * `TrackTable` over its entries and its chapters' headings; the entry selected
+ * is planned in the Inspector's "In this Set" zone. Beside the Set, the source
+ * panel fills it from Suggestions and the library; above it, the lanes draw
+ * its tempo and key (PREP-11).
  *
  * - **The address is the Set.** `/prepare/:setId` opens one; `/prepare`
  *   opens the Set last open, or the first, as DEC-027 reopens a page. With no
@@ -17,6 +19,11 @@
  *   is not told it is playing a Set.
  * - **Nothing blocks** (DEC-017, DEC-106): a warning is drawn, never a reason
  *   a button is greyed.
+ * - **One place to insert** (PREP-11): the gap after the selected entry, or the
+ *   end of the Set. "Insert here" puts tracks there and selects the last one
+ *   put in, so the next suggestion fits after it; a drop puts them where it
+ *   lands. Either way the tracks go in one at a time through the one path that
+ *   writes an entry (PREP-02).
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -24,6 +31,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import type {
   EntityKind,
   LibraryPlaylistNode,
+  LibraryTrackRow,
   SetChapterPlan,
   SetChapterUpdate,
   SetRefusal,
@@ -44,6 +52,7 @@ import { RekordboxExportDialog } from "../library/RekordboxExportDialog";
 import type { FolderOption } from "../library/SaveSmartDialog";
 import { TrackDetailPanel } from "../library/TrackDetailPanel";
 import { flattenCollections, isSet, setPickerNodes } from "../library/collectionTree";
+import { TRACK_IDS_MIME, draggedTrackIds } from "../library/collectionDrag";
 import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
 import { newSetMadeLine, setSourceOf, type NewSetSource } from "../library/newSetFrom";
 import { useCollectionTree } from "../library/useCollectionTree";
@@ -53,6 +62,8 @@ import { ChapterDialog } from "./ChapterDialog";
 import { NewSetDialog, SetSourceDialog } from "./NewSetDialogs";
 import { PrepareLayout } from "./PrepareLayout";
 import { SetEntryZone } from "./SetEntryZone";
+import { SetLanes } from "./SetLanes";
+import { SourcePanel } from "./SourcePanel";
 import { newSetSources } from "./newSetSources";
 import { PREPARE_COLUMNS, PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
 import {
@@ -78,6 +89,7 @@ import {
   chapterMove,
   chapterName,
   dropMove,
+  dropPlace,
   entriesOf,
   isEntryRow,
   repeatAfter,
@@ -86,6 +98,13 @@ import {
   type HeadingRow,
   type PrepareRow,
 } from "./prepareRows";
+import {
+  insertedLine,
+  insertionPoint,
+  roomFor,
+  type InsertPlace,
+} from "./prepareSource";
+import { loadLanesOpen, saveLanesOpen } from "./sourcePanelState";
 import { useSetList } from "./useSetList";
 import { usePreparedSet, type Tone } from "./usePreparedSet";
 import "../screens.css";
@@ -184,6 +203,30 @@ export function PrepareScreen({
     selected[selected.length - 1] ??
     null;
 
+  // Selecting an entry from outside the table: the lanes, or an insert that
+  // selects what it put in. The row may not be there until the Set is re-read.
+  const [toSelect, setToSelect] = useState<number | null>(null);
+  const [scrollTo, setScrollTo] = useState<number | null>(null);
+  const { select } = selection;
+  useEffect(() => {
+    if (toSelect === null) return;
+    const index = rows.findIndex((row) => isEntryRow(row) && row.entry.entry_id === toSelect);
+    if (index < 0) return;
+    select(rows[index], index);
+    setScrollTo(index);
+    setToSelect(null);
+  }, [rows, select, toSelect]);
+  // A scroll is asked for once: the next selection from outside asks again,
+  // even for the same row.
+  useEffect(() => {
+    if (scrollTo !== null) setScrollTo(null);
+  }, [scrollTo]);
+
+  const point = useMemo(
+    () => (shown ? insertionPoint(shown.plan, entries, focused ? focused.entry.entry_id : null) : null),
+    [entries, focused, shown],
+  );
+
   // --- playing (DEC-108)
 
   const player = window.cuepoint?.player;
@@ -278,15 +321,73 @@ export function PrepareScreen({
     [push, selection, shown, tree, write],
   );
 
+  /**
+   * Put tracks into the Set at a place, in order, one insert each: the one
+   * path that writes an entry, which plans each into its chapter (PREP-02).
+   * The room is checked first, so a Set too full for the gesture refuses it
+   * whole rather than part-way. Selects the last entry put in, so the
+   * insertion point follows it.
+   */
+  const insertTracks = useCallback(
+    async (trackIds: readonly number[], place: InsertPlace, titles: readonly (string | null)[]) => {
+      const insert = window.cuepoint?.insertTrackInCollection;
+      if (!insert || !shown || trackIds.length === 0) return;
+      const full = roomFor(trackIds.length, shown.entries.entries.length, shown.entries.limit);
+      if (full) {
+        push(full, "warning");
+        return;
+      }
+      const last = await write(async () => {
+        let made: { entry: { id: number } } | null = null;
+        for (const [offset, trackId] of trackIds.entries()) {
+          made = await insert({
+            collection_id: shown.setId,
+            track_id: trackId,
+            position: place.position + offset,
+            chapter_id: place.chapter_id,
+          });
+        }
+        return made;
+      });
+      if (!last) return;
+      setToSelect(last.entry.id);
+      tree.reload();
+      push(insertedLine(titles, shown.plan.name), "success");
+    },
+    [push, shown, tree, write],
+  );
+
+  /** "Insert here": the tracks, at the point. */
+  const insertRows = useCallback(
+    (tracks: LibraryTrackRow[]) => {
+      if (!point) return;
+      const chosen = tracks.filter((track) => track.id != null);
+      void insertTracks(
+        chosen.map((track) => track.id as number),
+        { position: point.position, chapter_id: point.chapter?.id ?? null },
+        chosen.map((track) => track.title),
+      );
+    },
+    [insertTracks, point],
+  );
+
   const moveByDrop = useCallback(
     (insertAt: number, transfer: DataTransfer, over: number) => {
+      if (!Array.from(transfer.types ?? []).includes(SET_ENTRY_MIME)) {
+        // Tracks from the source panel, where they land (PREP-11).
+        const place = dropPlace(rows, insertAt, over);
+        const ids = draggedTrackIds(transfer);
+        // A drag carries ids only, so the toast counts rather than names them.
+        if (place && ids.length > 0) void insertTracks(ids, place, ids.map(() => null));
+        return;
+      }
       const id = Number(transfer.getData(SET_ENTRY_MIME));
       const moving = entries.find((entry) => entry.entry_id === id);
       if (!moving) return;
       const move = dropMove(rows, moving, insertAt, over);
       if (move) void edit((sets) => sets.moveEntry(move));
     },
-    [edit, entries, rows],
+    [edit, entries, insertTracks, rows],
   );
 
   // --- the Inspector: the entry's plan above the track (PREP-10)
@@ -356,6 +457,9 @@ export function PrepareScreen({
 
   const [menu, setMenu] = useState<Menu | null>(null);
   const [exportMenu, setExportMenu] = useState<{ x: number; y: number } | null>(null);
+  // The facts line holds one link: the lanes and the columns share its menu,
+  // so the line stays one line and the Set keeps its rows (DEC-112).
+  const [viewMenu, setViewMenu] = useState<{ x: number; y: number } | null>(null);
 
   const openEntryMenu = useCallback(
     async (row: EntryRow, index: number, x: number, y: number) => {
@@ -424,13 +528,21 @@ export function PrepareScreen({
   const setList = useSetList({ onMessage: say, onGone });
   const [exporting, setExporting] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [lanesOpen, setLanesOpen] = useState(loadLanesOpen);
+  const toggleLanes = useCallback(() => {
+    const next = !lanesOpen;
+    setLanesOpen(next);
+    saveLanesOpen(next);
+  }, [lanesOpen]);
 
+  // Every node of the tree, flat: the pool picker lists folders' children too.
+  const allNodes = useMemo(() => flattenCollections(tree.tree), [tree.tree]);
   const folders = useMemo(
     (): FolderOption[] =>
-      flattenCollections(tree.tree)
+      allNodes
         .filter((node) => node.kind === "folder")
         .map((node) => ({ id: node.id, name: node.name, depth: node.depth })),
-    [tree.tree],
+    [allNodes],
   );
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -594,10 +706,26 @@ export function PrepareScreen({
   const { plan, analysis } = shown;
   const pickerNodes = setPickerNodes(tree.tree);
   const setName = plan.name;
+  const titles = new Map(entries.map((entry) => [entry.entry_id, entry.track.title]));
   const target = { id: shown.setId, name: setName };
 
+  const accepts = (transfer: DataTransfer) => {
+    const types = Array.from(transfer.types ?? []);
+    return types.includes(SET_ENTRY_MIME) || types.includes(TRACK_IDS_MIME);
+  };
+  const firstChapter = [...plan.chapters].sort((a, b) => a.position - b.position)[0];
+
   const table = (
-    <div className="prepare-set">
+    <div className={`prepare-set${lanesOpen ? " prepare-set--lanes" : ""}`}>
+      {lanesOpen && analysis.shape.entries.length > 0 && (
+        <SetLanes
+          shape={analysis.shape}
+          titles={titles}
+          chapters={plan.chapters}
+          selectedEntryId={focused ? focused.entry.entry_id : null}
+          onSelect={setToSelect}
+        />
+      )}
       <div className="prepare-set__rows">
         <TrackTable<PrepareRow>
           columns={columns.visible}
@@ -629,9 +757,29 @@ export function PrepareScreen({
             transfer.setData(SET_ENTRY_MIME, String(row.entry.entry_id));
             transfer.effectAllowed = "move";
           }}
-          acceptsRowDrop={(transfer) => Array.from(transfer.types ?? []).includes(SET_ENTRY_MIME)}
+          acceptsRowDrop={accepts}
           onRowDrop={moveByDrop}
-          emptyState={<p className="prepare-note">{EMPTY_SET}</p>}
+          scrollToIndex={scrollTo}
+          emptyState={
+            // An empty Set has no rows to drop on, so its note takes the drop:
+            // the first track goes to the start of the first chapter.
+            <div
+              className="prepare-set__drop"
+              onDragOver={(event) => {
+                if (!event.dataTransfer || !Array.from(event.dataTransfer.types ?? []).includes(TRACK_IDS_MIME)) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "copy";
+              }}
+              onDrop={(event) => {
+                const ids = draggedTrackIds(event.dataTransfer);
+                if (ids.length === 0) return;
+                event.preventDefault();
+                void insertTracks(ids, { position: 0, chapter_id: firstChapter?.id ?? null }, ids.map(() => null));
+              }}
+            >
+              <p className="prepare-note">{EMPTY_SET}</p>
+            </div>
+          }
           resetKey={String(shown.setId)}
           ariaLabel="Set entries"
         />
@@ -682,13 +830,44 @@ export function PrepareScreen({
               {fact.text}
             </span>
           ))}
-          <button type="button" className="prepare-link" onClick={() => setPicking(true)}>
-            Columns…
+          <button
+            type="button"
+            className="prepare-link"
+            aria-haspopup="menu"
+            aria-expanded={viewMenu !== null}
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              setViewMenu({ x: rect.left, y: rect.bottom });
+            }}
+          >
+            View ▾
           </button>
         </p>
       </header>
 
-      <PrepareLayout set={table} />
+      <PrepareLayout
+        set={table}
+        source={
+          point && (
+            <SourcePanel
+              setId={shown.setId}
+              chapters={plan.chapters}
+              point={point}
+              revision={shown}
+              collections={allNodes}
+              onInsert={insertRows}
+              onStale={(refusal) => {
+                push(refusal.message, "warning");
+                prepared.reload();
+              }}
+              onGone={onGone}
+              onMessage={(message, tone) => push(message, tone)}
+              onOpenSimilar={(trackId) => navigate(similarPath(trackId))}
+              onOpenEntity={openEntity}
+            />
+          )
+        }
+      />
 
       {menu && (
         <TrackContextMenu
@@ -720,6 +899,23 @@ export function PrepareScreen({
               onSelect: () => setExporting(true),
               separatorBefore: true,
             },
+          ]}
+        />
+      )}
+
+      {viewMenu && (
+        <TrackContextMenu
+          x={viewMenu.x}
+          y={viewMenu.y}
+          label="View"
+          onClose={() => setViewMenu(null)}
+          items={[
+            {
+              id: "lanes",
+              label: lanesOpen ? "Hide tempo and key lanes" : "Show tempo and key lanes",
+              onSelect: toggleLanes,
+            },
+            { id: "columns", label: "Columns…", onSelect: () => setPicking(true) },
           ]}
         />
       )}

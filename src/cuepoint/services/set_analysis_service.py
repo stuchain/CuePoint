@@ -16,6 +16,13 @@ acknowledgement stores those. The wire writes every key in the notation most of
 the library uses (``notation_from_counts``), as Similar Tracks' reasons are
 written, so a warning reads the way the user's key column does.
 
+The shape
+---------
+The answer also carries the values the checks read, entry by entry: each
+effective BPM, each key in the library's notation and as its place on the
+wheel, and how each transition's keys relate (DEC-111). The Prepare page's
+lanes draw them, so a lane says what a warning says.
+
 Acknowledging
 -------------
 :meth:`SetAnalysisService.acknowledge` accepts a transition warning that is
@@ -46,6 +53,7 @@ from cuepoint.core.set_analysis import (
     EntryFacts,
     SetAnalysis,
     SetNotice,
+    SetShape,
     SetWarning,
     analyse,
     transition_warning,
@@ -157,6 +165,45 @@ class SetAnalysisReport:
             "acknowledged": warning.acknowledged,
         }
 
+    def shape(self, shape: SetShape) -> Dict[str, Any]:
+        """The lanes' values on the wire (DEC-111).
+
+        Every entry is listed, in order, with its key twice: in the library's
+        notation, as the key column writes it, and as its place on the wheel,
+        which is what the key lane draws.
+        """
+        return {
+            "entries": [
+                {
+                    "entry_id": point.entry_id,
+                    "chapter_id": point.chapter_id,
+                    "bpm": point.bpm,
+                    "key": (
+                        None
+                        if point.key is None
+                        else format_key(point.key.pitch, point.key.minor, self.notation)
+                    ),
+                    "camelot": (
+                        None
+                        if point.key is None
+                        else {
+                            "number": point.key.camelot[0],
+                            "letter": point.key.camelot[1],
+                        }
+                    ),
+                }
+                for point in shape.points
+            ],
+            "transitions": [
+                {
+                    "from_entry_id": step.from_entry_id,
+                    "to_entry_id": step.to_entry_id,
+                    "key_relation": step.key_relation,
+                }
+                for step in shape.steps
+            ],
+        }
+
     @staticmethod
     def notice(notice: SetNotice) -> Dict[str, Any]:
         """One notice as its wire object."""
@@ -217,6 +264,7 @@ class SetAnalysisReport:
                 }
                 for c in found.chapters
             ],
+            "shape": self.shape(found.shape),
         }
 
 

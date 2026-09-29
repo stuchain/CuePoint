@@ -1848,6 +1848,37 @@ export interface SetRunningTime {
   untimed: number;
 }
 
+/** A place on the Camelot wheel: 1 to 12, and A (minor) or B (major). */
+export interface SetCamelot {
+  number: number;
+  letter: "A" | "B";
+}
+
+/** One entry as the lanes draw it: the values its checks read (DEC-111). */
+export interface SetShapeEntry {
+  entry_id: number;
+  chapter_id: number;
+  /** The effective tempo to two decimals; null is a gap, never a zero. */
+  bpm: number | null;
+  /** The effective key in the library's notation, or null. */
+  key: string | null;
+  camelot: SetCamelot | null;
+}
+
+/** How one transition's keys relate on the wheel. */
+export interface SetShapeTransition {
+  from_entry_id: number;
+  to_entry_id: number;
+  /** Null when the keys clash, or when either is unknown (its entry says which). */
+  key_relation: SetKeyRelation | null;
+}
+
+/** A Set's tempo and key, entry by entry, in order (PREP-11). */
+export interface SetShape {
+  entries: SetShapeEntry[];
+  transitions: SetShapeTransition[];
+}
+
 /** A Set's checks (PREP-05). Transitions and entries appear only when something was found. */
 export interface SetAnalysis {
   set_id: number;
@@ -1861,6 +1892,8 @@ export interface SetAnalysis {
   transitions: { from_entry_id: number; to_entry_id: number; warnings: SetWarning[] }[];
   entries: { entry_id: number; warnings: SetWarning[]; notices: SetNotice[] }[];
   chapters: { chapter_id: number; running_time: SetRunningTime; warnings: SetWarning[] }[];
+  /** The values the checks read, for the tempo and key lanes (PREP-11). */
+  shape: SetShape;
 }
 
 // ---------------------------------------------------------------------------
@@ -1979,6 +2012,8 @@ export interface SetSuggestion {
   in_set: number;
   before: SetSuggestionSide | null;
   after: SetSuggestionSide | null;
+  /** The Library's own row for the track (PREP-11), as an entry carries it. */
+  track: LibraryTrackRow;
 }
 
 /** How two keys relate on the wheel, in the words the warnings use. */

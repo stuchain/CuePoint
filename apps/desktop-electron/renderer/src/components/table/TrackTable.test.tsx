@@ -793,6 +793,22 @@ describe("dragging rows (ORG-11)", () => {
     expect(renderedRows()[2]).toHaveAttribute("data-drop", "before");
   });
 
+  it("answers a drag that only copies with a copy, and any other with a move (PREP-11)", () => {
+    renderTable({ onRowDrop: vi.fn() });
+
+    // Chromium drops nothing whose drop effect its drag does not allow, and
+    // says nothing about it: a track dragged into a Set is a copy.
+    const copy = transfer();
+    copy.effectAllowed = "copy";
+    drag("dragover", renderedRows()[2]!, copy, 0);
+    expect(copy.dropEffect).toBe("copy");
+
+    const move = transfer();
+    move.effectAllowed = "move";
+    drag("dragover", renderedRows()[2]!, move, 0);
+    expect(move.dropEffect).toBe("move");
+  });
+
   it("marks the gap below a row when the pointer is past its middle", () => {
     renderTable({ onRowDrop: vi.fn() });
 

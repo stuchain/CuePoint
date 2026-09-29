@@ -3,7 +3,7 @@
  * source panel with a divider whose width is remembered. Without a source
  * panel the Set takes the width and there is no divider to move.
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { PrepareLayout } from "./PrepareLayout";
@@ -40,6 +40,21 @@ describe("the layout", () => {
     fireEvent.keyDown(divider(), { key: "ArrowRight" });
     expect(divider()).toHaveAttribute("aria-valuenow", String(SOURCE_DEFAULT_WIDTH - 16));
     expect(localStorage.getItem(SOURCE_WIDTH_STORAGE_KEY)).toBe(String(SOURCE_DEFAULT_WIDTH - 16));
+  });
+
+  it("keeps the Set the wider pane, against the layout's own width, not the window's (PREP-11)", () => {
+    // The window is 1,200 wide here; with the sidebar and the Inspector open
+    // the two panes share far less. A remembered 500 is clamped to 45% of it.
+    localStorage.setItem(SOURCE_WIDTH_STORAGE_KEY, "500");
+    const spy = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(620);
+    try {
+      render(<PrepareLayout set={<p>the set</p>} source={<p>the source</p>} />);
+      expect(divider()).toHaveAttribute("aria-valuenow", String(Math.floor(620 * 0.45)));
+      // Remembered as chosen, so a wider layout gives it back.
+      expect(localStorage.getItem(SOURCE_WIDTH_STORAGE_KEY)).toBe("500");
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("follows a drag of the divider, never below the source panel's floor", () => {

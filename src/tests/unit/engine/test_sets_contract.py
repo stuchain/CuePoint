@@ -127,6 +127,16 @@ class TestReads:
         warning = first(transition["warnings"])
         assert set(warning) == {"kind", "detail", "compared", "acknowledged"}
         holds("SetNotice", first(entry["notices"]))
+        # The lanes' values (PREP-11): every entry, each transition.
+        holds("SetShape", answer["shape"])
+        assert len(answer["shape"]["entries"]) == len(friday["entries"])
+        point = first(answer["shape"]["entries"])
+        holds("SetShapeEntry", point)
+        holds("SetCamelot", point["camelot"])
+        step = first(answer["shape"]["transitions"])
+        holds("SetShapeTransition", step)
+        relations = {t["key_relation"] for t in answer["shape"]["transitions"]}
+        assert relations <= {*_union("SetKeyRelation"), None}
 
     def test_suggestions(self, friday):
         entries = friday["entries"]
@@ -141,6 +151,8 @@ class TestReads:
         suggestion = first(answer["suggestions"])
         holds("SetSuggestion", suggestion)
         holds("SetSuggestionSide", suggestion["before"])
+        # The Library's own row (PREP-11), every field the engine sends declared.
+        assert set(suggestion["track"]) == _fields("LibraryTrackRow")
         assert set(answer["unused"]) <= set(SIDES)
 
     def test_a_chapters_range_and_a_gap_nothing_bridges(self, friday):

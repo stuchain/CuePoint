@@ -300,6 +300,91 @@ class TestTimes:
 # ------------------------------------------------------------------ the wire
 
 
+class TestTheShape:
+    """Every entry's tempo and key as the checks read them (DEC-111)."""
+
+    def test_every_entry_in_order_with_effective_values(self, lib):
+        first = lib.add(bpm=124.0, key="8A")
+        unknown = lib.add(bpm=None, key="x")
+        overridden = lib.add(bpm=128.0, key="9A")
+        lib.meta.set_override(overridden, "bpm", 64.0)
+        lib.meta.set_override(overridden, "key", "8B")
+        set_id, entries = lib.make_set([first, unknown, overridden, first])
+        chapter = lib.collections.chapters(set_id)[0].id
+        shape = wire(lib, set_id)["shape"]
+        assert shape["entries"] == [
+            {
+                "entry_id": entries[0],
+                "chapter_id": chapter,
+                "bpm": 124.0,
+                "key": "8A",
+                "camelot": {"number": 8, "letter": "A"},
+            },
+            {
+                "entry_id": entries[1],
+                "chapter_id": chapter,
+                "bpm": None,
+                "key": None,
+                "camelot": None,
+            },
+            {
+                "entry_id": entries[2],
+                "chapter_id": chapter,
+                "bpm": 64.0,
+                "key": "8B",
+                "camelot": {"number": 8, "letter": "B"},
+            },
+            {
+                "entry_id": entries[3],
+                "chapter_id": chapter,
+                "bpm": 124.0,
+                "key": "8A",
+                "camelot": {"number": 8, "letter": "A"},
+            },
+        ]
+        assert shape["transitions"] == [
+            {
+                "from_entry_id": entries[0],
+                "to_entry_id": entries[1],
+                "key_relation": None,
+            },
+            {
+                "from_entry_id": entries[1],
+                "to_entry_id": entries[2],
+                "key_relation": None,
+            },
+            {
+                "from_entry_id": entries[2],
+                "to_entry_id": entries[3],
+                "key_relation": "relative",
+            },
+        ]
+
+    def test_a_key_is_written_in_the_librarys_notation_and_placed_on_the_wheel(
+        self, lib
+    ):
+        tracks = [lib.add(key="Am"), lib.add(key="Em"), lib.add(key="Am")]
+        set_id, _ = lib.make_set(tracks)
+        shape = wire(lib, set_id)["shape"]
+        assert [e["key"] for e in shape["entries"]] == ["Am", "Em", "Am"]
+        assert [e["camelot"] for e in shape["entries"]] == [
+            {"number": 8, "letter": "A"},
+            {"number": 9, "letter": "A"},
+            {"number": 8, "letter": "A"},
+        ]
+        assert [t["key_relation"] for t in shape["transitions"]] == [
+            "adjacent",
+            "adjacent",
+        ]
+
+    def test_a_clash_is_a_step_with_no_relation_and_a_warning(self, lib):
+        tracks = [lib.add(key="8A"), lib.add(key="3B")]
+        set_id, _ = lib.make_set(tracks)
+        report = wire(lib, set_id)
+        assert report["shape"]["transitions"][0]["key_relation"] is None
+        assert report["counts"] == {KEY_CLASH: 1}
+
+
 class TestTheWire:
     def test_the_shape(self, lib):
         tracks = [lib.add(bpm=120.0), lib.add(bpm=140.0), lib.add(bpm=140.0)]
@@ -316,6 +401,7 @@ class TestTheWire:
             "transitions",
             "entries",
             "chapters",
+            "shape",
         }
         # Only what found something is listed; every chapter is.
         assert [
@@ -344,6 +430,7 @@ class TestTheWire:
         set_id, _ = lib.make_set([])
         report = wire(lib, set_id)
         assert report["transitions"] == [] and report["entries"] == []
+        assert report["shape"] == {"entries": [], "transitions": []}
         assert report["files"]["never_checked"] is False
 
 

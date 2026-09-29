@@ -118,12 +118,44 @@ export function entriesOf(rows: readonly PrepareRow[]): SetEntry[] {
 }
 
 /** How many entries come before a row index: a place in the Set. */
-function entriesBefore(rows: readonly PrepareRow[], index: number): number {
+export function entriesBefore(rows: readonly PrepareRow[], index: number): number {
   let count = 0;
   for (let at = 0; at < index && at < rows.length; at += 1) {
     if (rows[at].kind === "entry") count += 1;
   }
   return count;
+}
+
+/** A place in the Set: the position an entry takes there, and its chapter. */
+export interface DropPlace {
+  position: number;
+  chapter_id: number;
+}
+
+/**
+ * Where a drop on the Set table lands, counted with nothing moving out of the
+ * way: the place a new track dropped there takes (PREP-11).
+ *
+ * `insertAt` is the table's insertion point among the rows and `over` the row
+ * the drop landed on. A drop on a heading goes to that chapter's start,
+ * whichever half it landed on. A drop on an entry goes before or after it, in
+ * that entry's chapter, which settles the one place two chapters could both
+ * claim: the end of one and the start of the next.
+ */
+export function dropPlace(
+  rows: readonly PrepareRow[],
+  insertAt: number,
+  over: number,
+): DropPlace | null {
+  const target = rows[over];
+  if (!target) return null;
+  if (target.kind === "heading") {
+    return { position: entriesBefore(rows, over), chapter_id: target.chapter.id };
+  }
+  return {
+    position: entriesBefore(rows, insertAt),
+    chapter_id: target.chapter?.id ?? target.entry.chapter_id,
+  };
 }
 
 /** What `sets.moveEntry` is asked: the entry's final place, and its chapter. */
@@ -134,13 +166,8 @@ export interface EntryMove {
 }
 
 /**
- * Where a dropped entry goes (PREP-10's drag).
- *
- * `insertAt` is the table's insertion point among the rows and `over` the row
- * the drop landed on. A drop on a heading puts the entry at that chapter's
- * start, whichever half it landed on. A drop on an entry goes before or after
- * it, in that entry's chapter, which settles the one place two chapters could
- * both claim: the end of one and the start of the next.
+ * Where a dropped entry goes (PREP-10's drag): `dropPlace`'s place, counted as
+ * the engine counts a move.
  *
  * The engine's position is where the entry ends up, counted without it, so a
  * move down the list lands one place earlier than the gap it was dropped in.
@@ -152,20 +179,11 @@ export function dropMove(
   insertAt: number,
   over: number,
 ): EntryMove | null {
-  const target = rows[over];
-  if (!target) return null;
-  let gap: number;
-  let chapterId: number | null;
-  if (target.kind === "heading") {
-    gap = entriesBefore(rows, over);
-    chapterId = target.chapter.id;
-  } else {
-    gap = entriesBefore(rows, insertAt);
-    chapterId = target.chapter?.id ?? target.entry.chapter_id;
-  }
-  const position = gap > moving.position ? gap - 1 : gap;
-  if (position === moving.position && chapterId === moving.chapter_id) return null;
-  return { entry_id: moving.entry_id, position, chapter_id: chapterId };
+  const place = dropPlace(rows, insertAt, over);
+  if (!place) return null;
+  const position = place.position > moving.position ? place.position - 1 : place.position;
+  if (position === moving.position && place.chapter_id === moving.chapter_id) return null;
+  return { entry_id: moving.entry_id, position, chapter_id: place.chapter_id };
 }
 
 /**

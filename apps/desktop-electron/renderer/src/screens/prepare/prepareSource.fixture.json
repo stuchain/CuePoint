@@ -1,0 +1,3937 @@
+{
+  "_comment": "Real engine responses, produced by src/tests/unit/engine/test_prepare_source_fixture.py. Do not hand-edit: regenerate with CUEPOINT_WRITE_FIXTURES=1 and read the diff.",
+  "blank": {
+    "analysis": {
+      "acknowledged": 0,
+      "chapters": [
+        {
+          "chapter_id": 5,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 0
+          },
+          "warnings": []
+        }
+      ],
+      "counts": {},
+      "entries": [],
+      "files": {
+        "checked": 0,
+        "last_checked_at": null,
+        "missing": 0,
+        "never_checked": false,
+        "tracks": 0,
+        "unchecked": 0,
+        "unreadable": 0
+      },
+      "notation": "camelot",
+      "notices": {},
+      "running_time": {
+        "seconds": 0,
+        "timed": 0,
+        "untimed": 0
+      },
+      "set_id": 6,
+      "shape": {
+        "entries": [],
+        "transitions": []
+      },
+      "transitions": []
+    },
+    "entries": {
+      "entries": [],
+      "limit": 1000,
+      "name": "Blank",
+      "set_id": 6
+    },
+    "plan": {
+      "chapters": [
+        {
+          "bpm_max": null,
+          "bpm_min": null,
+          "entry_ids": [],
+          "id": 5,
+          "name": "",
+          "notes": null,
+          "position": 0,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 0
+          },
+          "starts_at": 0,
+          "target_seconds": null
+        }
+      ],
+      "entries": [],
+      "name": "Blank",
+      "notes": null,
+      "running_time": {
+        "seconds": 0,
+        "timed": 0,
+        "untimed": 0
+      },
+      "set_id": 6
+    }
+  },
+  "browse": {
+    "crate": {
+      "collection_id": 3,
+      "collection_scope": "collection",
+      "dir": "asc",
+      "filters": {
+        "match": "all",
+        "rules": []
+      },
+      "filters_applied": {
+        "match": "all",
+        "rules": []
+      },
+      "library_empty": false,
+      "limit": 100,
+      "mode": "browse",
+      "offset": 0,
+      "query": "",
+      "scope": null,
+      "sort": "artist",
+      "total": 3,
+      "tracks": [
+        {
+          "album": null,
+          "artist": "Eve",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 125.5,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 330,
+          "effective_bpm": 125.5,
+          "effective_genre": "House",
+          "effective_key": "9A",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/5.mp3",
+          "file_status": "not_checked",
+          "genre": "House",
+          "id": 5,
+          "key": "9A",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "5",
+          "remixer": null,
+          "title": "Deep Spare",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Gus",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 63.0,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 290,
+          "effective_bpm": 63.0,
+          "effective_genre": "Dubstep",
+          "effective_key": "9A",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/7.mp3",
+          "file_status": "not_checked",
+          "genre": "Dubstep",
+          "id": 7,
+          "key": "9A",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "7",
+          "remixer": null,
+          "title": "Half Time",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Jo",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 174.0,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 300,
+          "effective_bpm": 174.0,
+          "effective_genre": "Drum & Bass",
+          "effective_key": "1A",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/10.mp3",
+          "file_status": "not_checked",
+          "genre": "Drum & Bass",
+          "id": 10,
+          "key": "1A",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "10",
+          "remixer": null,
+          "title": "Far Away",
+          "year": null
+        }
+      ]
+    },
+    "library": {
+      "collection_id": null,
+      "collection_scope": null,
+      "dir": "asc",
+      "filters": {
+        "match": "all",
+        "rules": []
+      },
+      "filters_applied": {
+        "match": "all",
+        "rules": []
+      },
+      "library_empty": false,
+      "limit": 100,
+      "mode": "browse",
+      "offset": 0,
+      "query": "",
+      "scope": null,
+      "sort": "artist",
+      "total": 11,
+      "tracks": [
+        {
+          "album": null,
+          "artist": "Ada",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 124.0,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 300,
+          "effective_bpm": 124.0,
+          "effective_genre": "House",
+          "effective_key": "8A",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/1.mp3",
+          "file_status": "not_checked",
+          "genre": "House",
+          "id": 1,
+          "key": "8A",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "1",
+          "remixer": null,
+          "title": "Open One",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Bea",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 126.0,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 320,
+          "effective_bpm": 126.0,
+          "effective_genre": "House",
+          "effective_key": "9A",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/2.mp3",
+          "file_status": "not_checked",
+          "genre": "House",
+          "id": 2,
+          "key": "9A",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "2",
+          "remixer": null,
+          "title": "Open Two",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Cal",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 145.0,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 280,
+          "effective_bpm": 145.0,
+          "effective_genre": "Techno",
+          "effective_key": "3B",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/3.mp3",
+          "file_status": "not_checked",
+          "genre": "Techno",
+          "id": 3,
+          "key": "3B",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "3",
+          "remixer": null,
+          "title": "Peak Loud",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Dee",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 125.0,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 310,
+          "effective_bpm": 125.0,
+          "effective_genre": "House",
+          "effective_key": "8A",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/4.mp3",
+          "file_status": "not_checked",
+          "genre": "House",
+          "id": 4,
+          "key": "8A",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "4",
+          "remixer": null,
+          "title": "Bridge Deep",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Eve",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 125.5,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 330,
+          "effective_bpm": 125.5,
+          "effective_genre": "House",
+          "effective_key": "9A",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/5.mp3",
+          "file_status": "not_checked",
+          "genre": "House",
+          "id": 5,
+          "key": "9A",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "5",
+          "remixer": null,
+          "title": "Deep Spare",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Fay",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 124.5,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 300,
+          "effective_bpm": 124.5,
+          "effective_genre": "House",
+          "effective_key": "8B",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/6.mp3",
+          "file_status": "not_checked",
+          "genre": "House",
+          "id": 6,
+          "key": "8B",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "6",
+          "remixer": null,
+          "title": "Deep Relative",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Gus",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 63.0,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 290,
+          "effective_bpm": 63.0,
+          "effective_genre": "Dubstep",
+          "effective_key": "9A",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/7.mp3",
+          "file_status": "not_checked",
+          "genre": "Dubstep",
+          "id": 7,
+          "key": "9A",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "7",
+          "remixer": null,
+          "title": "Half Time",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Hal",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 143.0,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 300,
+          "effective_bpm": 143.0,
+          "effective_genre": "Techno",
+          "effective_key": "3B",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/8.mp3",
+          "file_status": "not_checked",
+          "genre": "Techno",
+          "id": 8,
+          "key": "3B",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "8",
+          "remixer": null,
+          "title": "Fast Lane",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Ivy",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": null,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": null,
+          "effective_bpm": null,
+          "effective_genre": "Ambient",
+          "effective_key": null,
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/9.mp3",
+          "file_status": "not_checked",
+          "genre": "Ambient",
+          "id": 9,
+          "key": null,
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "9",
+          "remixer": null,
+          "title": "No Tempo",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Jo",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 174.0,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 300,
+          "effective_bpm": 174.0,
+          "effective_genre": "Drum & Bass",
+          "effective_key": "1A",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/10.mp3",
+          "file_status": "not_checked",
+          "genre": "Drum & Bass",
+          "id": 10,
+          "key": "1A",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "10",
+          "remixer": null,
+          "title": "Far Away",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Kai",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 146.0,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 300,
+          "effective_bpm": 146.0,
+          "effective_genre": "Techno",
+          "effective_key": "4B",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/11.mp3",
+          "file_status": "not_checked",
+          "genre": "Techno",
+          "id": 11,
+          "key": "4B",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "11",
+          "remixer": null,
+          "title": "Peak Two",
+          "year": null
+        }
+      ]
+    },
+    "search": {
+      "collection_id": null,
+      "collection_scope": null,
+      "dir": "asc",
+      "filters": {
+        "match": "all",
+        "rules": []
+      },
+      "filters_applied": {
+        "match": "all",
+        "rules": []
+      },
+      "library_empty": false,
+      "limit": 100,
+      "mode": "browse",
+      "offset": 0,
+      "query": "Deep",
+      "scope": null,
+      "sort": "artist",
+      "total": 3,
+      "tracks": [
+        {
+          "album": null,
+          "artist": "Dee",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 125.0,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 310,
+          "effective_bpm": 125.0,
+          "effective_genre": "House",
+          "effective_key": "8A",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/4.mp3",
+          "file_status": "not_checked",
+          "genre": "House",
+          "id": 4,
+          "key": "8A",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "4",
+          "remixer": null,
+          "title": "Bridge Deep",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Eve",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 125.5,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 330,
+          "effective_bpm": 125.5,
+          "effective_genre": "House",
+          "effective_key": "9A",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/5.mp3",
+          "file_status": "not_checked",
+          "genre": "House",
+          "id": 5,
+          "key": "9A",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "5",
+          "remixer": null,
+          "title": "Deep Spare",
+          "year": null
+        },
+        {
+          "album": null,
+          "artist": "Fay",
+          "artwork": "unknown",
+          "bitrate": null,
+          "bpm": 124.5,
+          "colour": null,
+          "comment": null,
+          "date_added": null,
+          "duration_seconds": 300,
+          "effective_bpm": 124.5,
+          "effective_genre": "House",
+          "effective_key": "8B",
+          "effective_label": null,
+          "effective_rating": null,
+          "effective_year": null,
+          "favorite": false,
+          "file_path": "/music/6.mp3",
+          "file_status": "not_checked",
+          "genre": "House",
+          "id": 6,
+          "key": "8B",
+          "label": null,
+          "match_disputed": false,
+          "match_score": null,
+          "match_state": "not_matched",
+          "overridden": [],
+          "override_sources": {},
+          "play_count": null,
+          "rating": null,
+          "rating_source": null,
+          "rekordbox_track_id": "6",
+          "remixer": null,
+          "title": "Deep Relative",
+          "year": null
+        }
+      ]
+    }
+  },
+  "build": {
+    "analysis": {
+      "acknowledged": 0,
+      "chapters": [
+        {
+          "chapter_id": 1,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 3
+          },
+          "warnings": []
+        },
+        {
+          "chapter_id": 2,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 2
+          },
+          "warnings": []
+        }
+      ],
+      "counts": {
+        "key_clash": 1,
+        "tempo_jump": 1
+      },
+      "entries": [],
+      "files": {
+        "checked": 0,
+        "last_checked_at": null,
+        "missing": 0,
+        "never_checked": true,
+        "tracks": 5,
+        "unchecked": 5,
+        "unreadable": 0
+      },
+      "notation": "camelot",
+      "notices": {},
+      "running_time": {
+        "seconds": 0,
+        "timed": 0,
+        "untimed": 5
+      },
+      "set_id": 2,
+      "shape": {
+        "entries": [
+          {
+            "bpm": 124.0,
+            "camelot": {
+              "letter": "A",
+              "number": 8
+            },
+            "chapter_id": 1,
+            "entry_id": 1,
+            "key": "8A"
+          },
+          {
+            "bpm": 126.0,
+            "camelot": {
+              "letter": "A",
+              "number": 9
+            },
+            "chapter_id": 1,
+            "entry_id": 2,
+            "key": "9A"
+          },
+          {
+            "bpm": 125.0,
+            "camelot": {
+              "letter": "A",
+              "number": 8
+            },
+            "chapter_id": 1,
+            "entry_id": 3,
+            "key": "8A"
+          },
+          {
+            "bpm": 145.0,
+            "camelot": {
+              "letter": "B",
+              "number": 3
+            },
+            "chapter_id": 2,
+            "entry_id": 4,
+            "key": "3B"
+          },
+          {
+            "bpm": 146.0,
+            "camelot": {
+              "letter": "B",
+              "number": 4
+            },
+            "chapter_id": 2,
+            "entry_id": 5,
+            "key": "4B"
+          }
+        ],
+        "transitions": [
+          {
+            "from_entry_id": 1,
+            "key_relation": "adjacent",
+            "to_entry_id": 2
+          },
+          {
+            "from_entry_id": 2,
+            "key_relation": "adjacent",
+            "to_entry_id": 3
+          },
+          {
+            "from_entry_id": 3,
+            "key_relation": null,
+            "to_entry_id": 4
+          },
+          {
+            "from_entry_id": 4,
+            "key_relation": "adjacent",
+            "to_entry_id": 5
+          }
+        ]
+      },
+      "transitions": [
+        {
+          "from_entry_id": 3,
+          "to_entry_id": 4,
+          "warnings": [
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": 125.0,
+                "percent": 16.0,
+                "to": 145.0
+              },
+              "detail": "faster",
+              "kind": "tempo_jump"
+            },
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": "8A",
+                "to": "3B"
+              },
+              "detail": "no_relation",
+              "kind": "key_clash"
+            }
+          ]
+        }
+      ]
+    },
+    "entries": {
+      "entries": [
+        {
+          "chapter_id": 1,
+          "entry_id": 1,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 0,
+          "starts_at": 0,
+          "track": {
+            "album": null,
+            "artist": "Ada",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 124.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 124.0,
+            "effective_genre": "House",
+            "effective_key": "8A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/1.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 1,
+            "key": "8A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "1",
+            "remixer": null,
+            "title": "Open One",
+            "year": null
+          },
+          "track_id": 1
+        },
+        {
+          "chapter_id": 1,
+          "entry_id": 2,
+          "in_seconds": null,
+          "length_seconds": 320,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 1,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Bea",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 126.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 320,
+            "effective_bpm": 126.0,
+            "effective_genre": "House",
+            "effective_key": "9A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/2.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 2,
+            "key": "9A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "2",
+            "remixer": null,
+            "title": "Open Two",
+            "year": null
+          },
+          "track_id": 2
+        },
+        {
+          "chapter_id": 1,
+          "entry_id": 3,
+          "in_seconds": null,
+          "length_seconds": 310,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 2,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Dee",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 125.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 310,
+            "effective_bpm": 125.0,
+            "effective_genre": "House",
+            "effective_key": "8A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/4.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 4,
+            "key": "8A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "4",
+            "remixer": null,
+            "title": "Bridge Deep",
+            "year": null
+          },
+          "track_id": 4
+        },
+        {
+          "chapter_id": 2,
+          "entry_id": 4,
+          "in_seconds": null,
+          "length_seconds": 280,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 3,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Cal",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 145.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 280,
+            "effective_bpm": 145.0,
+            "effective_genre": "Techno",
+            "effective_key": "3B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/3.mp3",
+            "file_status": "not_checked",
+            "genre": "Techno",
+            "id": 3,
+            "key": "3B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "3",
+            "remixer": null,
+            "title": "Peak Loud",
+            "year": null
+          },
+          "track_id": 3
+        },
+        {
+          "chapter_id": 2,
+          "entry_id": 5,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 4,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Kai",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 146.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 146.0,
+            "effective_genre": "Techno",
+            "effective_key": "4B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/11.mp3",
+            "file_status": "not_checked",
+            "genre": "Techno",
+            "id": 11,
+            "key": "4B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "11",
+            "remixer": null,
+            "title": "Peak Two",
+            "year": null
+          },
+          "track_id": 11
+        }
+      ],
+      "limit": 1000,
+      "name": "Build",
+      "set_id": 2
+    },
+    "plan": {
+      "chapters": [
+        {
+          "bpm_max": null,
+          "bpm_min": null,
+          "entry_ids": [
+            1,
+            2,
+            3
+          ],
+          "id": 1,
+          "name": "Open",
+          "notes": null,
+          "position": 0,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 3
+          },
+          "starts_at": 0,
+          "target_seconds": null
+        },
+        {
+          "bpm_max": 150.0,
+          "bpm_min": 140.0,
+          "entry_ids": [
+            4,
+            5
+          ],
+          "id": 2,
+          "name": "Peak",
+          "notes": null,
+          "position": 1,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 2
+          },
+          "starts_at": null,
+          "target_seconds": null
+        }
+      ],
+      "entries": [
+        {
+          "chapter_id": 1,
+          "entry_id": 1,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 0,
+          "starts_at": 0,
+          "track_id": 1
+        },
+        {
+          "chapter_id": 1,
+          "entry_id": 2,
+          "in_seconds": null,
+          "length_seconds": 320,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 1,
+          "starts_at": null,
+          "track_id": 2
+        },
+        {
+          "chapter_id": 1,
+          "entry_id": 3,
+          "in_seconds": null,
+          "length_seconds": 310,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 2,
+          "starts_at": null,
+          "track_id": 4
+        },
+        {
+          "chapter_id": 2,
+          "entry_id": 4,
+          "in_seconds": null,
+          "length_seconds": 280,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 3,
+          "starts_at": null,
+          "track_id": 3
+        },
+        {
+          "chapter_id": 2,
+          "entry_id": 5,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 4,
+          "starts_at": null,
+          "track_id": 11
+        }
+      ],
+      "name": "Build",
+      "notes": null,
+      "running_time": {
+        "seconds": 0,
+        "timed": 0,
+        "untimed": 5
+      },
+      "set_id": 2
+    }
+  },
+  "ids": {
+    "blank": 6,
+    "build": 2,
+    "build_chapters": [
+      1,
+      2
+    ],
+    "build_entries": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "crate": 3,
+    "gigs": 1,
+    "scratch": 7,
+    "shape": 5,
+    "smart": 4,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "warmers": 2
+  },
+  "inserted": {
+    "entry": {
+      "collection_id": 7,
+      "id": 21,
+      "position": 1,
+      "track_id": 5
+    }
+  },
+  "playlists": {
+    "playlists": [
+      {
+        "depth": 0,
+        "id": 1,
+        "kind": "folder",
+        "name": "CRATES",
+        "parent_id": null,
+        "path": "CRATES",
+        "position": 0,
+        "track_count": 0
+      },
+      {
+        "depth": 1,
+        "id": 2,
+        "kind": "playlist",
+        "name": "Warmers",
+        "parent_id": 1,
+        "path": "CRATES/Warmers",
+        "position": 0,
+        "track_count": 2
+      }
+    ],
+    "total": 2
+  },
+  "refusals": {
+    "empty_set": {
+      "payload": {
+        "error": {
+          "code": "SET_INSERTION_POINT_REFUSED",
+          "message": "'Blank' is empty: there is nothing to fit a track against",
+          "reason": "empty_set"
+        }
+      },
+      "status": 409
+    },
+    "set_gone": {
+      "payload": {
+        "error": {
+          "code": "SET_NOT_FOUND",
+          "message": "There is no Set 999999",
+          "reason": "set"
+        }
+      },
+      "status": 404
+    },
+    "stale": {
+      "payload": {
+        "error": {
+          "code": "SET_INSERTION_POINT_REFUSED",
+          "message": "'Build' has changed since this gap was chosen: reload it",
+          "reason": "stale"
+        }
+      },
+      "status": 409
+    }
+  },
+  "shape": {
+    "analysis": {
+      "acknowledged": 0,
+      "chapters": [
+        {
+          "chapter_id": 3,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 4
+          },
+          "warnings": []
+        },
+        {
+          "chapter_id": 4,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 3
+          },
+          "warnings": []
+        }
+      ],
+      "counts": {
+        "key_clash": 1,
+        "key_unknown": 2,
+        "tempo_jump": 1,
+        "tempo_unknown": 2
+      },
+      "entries": [
+        {
+          "entry_id": 9,
+          "notices": [
+            {
+              "compared": {
+                "others": [
+                  1,
+                  4
+                ]
+              },
+              "detail": "track",
+              "kind": "repeat"
+            }
+          ],
+          "warnings": []
+        },
+        {
+          "entry_id": 10,
+          "notices": [
+            {
+              "compared": {
+                "others": [
+                  0,
+                  4
+                ]
+              },
+              "detail": "track",
+              "kind": "repeat"
+            }
+          ],
+          "warnings": []
+        },
+        {
+          "entry_id": 13,
+          "notices": [
+            {
+              "compared": {
+                "others": [
+                  0,
+                  1
+                ]
+              },
+              "detail": "track",
+              "kind": "repeat"
+            }
+          ],
+          "warnings": []
+        }
+      ],
+      "files": {
+        "checked": 0,
+        "last_checked_at": null,
+        "missing": 0,
+        "never_checked": true,
+        "tracks": 5,
+        "unchecked": 5,
+        "unreadable": 0
+      },
+      "notation": "camelot",
+      "notices": {
+        "repeat": 3
+      },
+      "running_time": {
+        "seconds": 0,
+        "timed": 0,
+        "untimed": 7
+      },
+      "set_id": 5,
+      "shape": {
+        "entries": [
+          {
+            "bpm": 124.0,
+            "camelot": {
+              "letter": "A",
+              "number": 8
+            },
+            "chapter_id": 3,
+            "entry_id": 9,
+            "key": "8A"
+          },
+          {
+            "bpm": 124.0,
+            "camelot": {
+              "letter": "A",
+              "number": 8
+            },
+            "chapter_id": 3,
+            "entry_id": 10,
+            "key": "8A"
+          },
+          {
+            "bpm": 63.0,
+            "camelot": {
+              "letter": "A",
+              "number": 9
+            },
+            "chapter_id": 3,
+            "entry_id": 11,
+            "key": "9A"
+          },
+          {
+            "bpm": null,
+            "camelot": null,
+            "chapter_id": 3,
+            "entry_id": 12,
+            "key": null
+          },
+          {
+            "bpm": 124.0,
+            "camelot": {
+              "letter": "A",
+              "number": 8
+            },
+            "chapter_id": 4,
+            "entry_id": 13,
+            "key": "8A"
+          },
+          {
+            "bpm": 124.5,
+            "camelot": {
+              "letter": "B",
+              "number": 8
+            },
+            "chapter_id": 4,
+            "entry_id": 14,
+            "key": "8B"
+          },
+          {
+            "bpm": 145.0,
+            "camelot": {
+              "letter": "B",
+              "number": 3
+            },
+            "chapter_id": 4,
+            "entry_id": 15,
+            "key": "3B"
+          }
+        ],
+        "transitions": [
+          {
+            "from_entry_id": 9,
+            "key_relation": "same",
+            "to_entry_id": 10
+          },
+          {
+            "from_entry_id": 10,
+            "key_relation": "adjacent",
+            "to_entry_id": 11
+          },
+          {
+            "from_entry_id": 11,
+            "key_relation": null,
+            "to_entry_id": 12
+          },
+          {
+            "from_entry_id": 12,
+            "key_relation": null,
+            "to_entry_id": 13
+          },
+          {
+            "from_entry_id": 13,
+            "key_relation": "relative",
+            "to_entry_id": 14
+          },
+          {
+            "from_entry_id": 14,
+            "key_relation": null,
+            "to_entry_id": 15
+          }
+        ]
+      },
+      "transitions": [
+        {
+          "from_entry_id": 11,
+          "to_entry_id": 12,
+          "warnings": [
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": 63.0,
+                "to": null
+              },
+              "detail": "to",
+              "kind": "tempo_unknown"
+            },
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": "9A",
+                "to": null
+              },
+              "detail": "to",
+              "kind": "key_unknown"
+            }
+          ]
+        },
+        {
+          "from_entry_id": 12,
+          "to_entry_id": 13,
+          "warnings": [
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": null,
+                "to": 124.0
+              },
+              "detail": "from",
+              "kind": "tempo_unknown"
+            },
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": null,
+                "to": "8A"
+              },
+              "detail": "from",
+              "kind": "key_unknown"
+            }
+          ]
+        },
+        {
+          "from_entry_id": 14,
+          "to_entry_id": 15,
+          "warnings": [
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": 124.5,
+                "percent": 16.5,
+                "to": 145.0
+              },
+              "detail": "faster",
+              "kind": "tempo_jump"
+            },
+            {
+              "acknowledged": false,
+              "compared": {
+                "from": "8B",
+                "to": "3B"
+              },
+              "detail": "no_relation",
+              "kind": "key_clash"
+            }
+          ]
+        }
+      ]
+    },
+    "entries": {
+      "entries": [
+        {
+          "chapter_id": 3,
+          "entry_id": 9,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 0,
+          "starts_at": 0,
+          "track": {
+            "album": null,
+            "artist": "Ada",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 124.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 124.0,
+            "effective_genre": "House",
+            "effective_key": "8A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/1.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 1,
+            "key": "8A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "1",
+            "remixer": null,
+            "title": "Open One",
+            "year": null
+          },
+          "track_id": 1
+        },
+        {
+          "chapter_id": 3,
+          "entry_id": 10,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 1,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Ada",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 124.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 124.0,
+            "effective_genre": "House",
+            "effective_key": "8A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/1.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 1,
+            "key": "8A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "1",
+            "remixer": null,
+            "title": "Open One",
+            "year": null
+          },
+          "track_id": 1
+        },
+        {
+          "chapter_id": 3,
+          "entry_id": 11,
+          "in_seconds": null,
+          "length_seconds": 290,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 2,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Gus",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 63.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 290,
+            "effective_bpm": 63.0,
+            "effective_genre": "Dubstep",
+            "effective_key": "9A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/7.mp3",
+            "file_status": "not_checked",
+            "genre": "Dubstep",
+            "id": 7,
+            "key": "9A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "7",
+            "remixer": null,
+            "title": "Half Time",
+            "year": null
+          },
+          "track_id": 7
+        },
+        {
+          "chapter_id": 3,
+          "entry_id": 12,
+          "in_seconds": null,
+          "length_seconds": null,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 3,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Ivy",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": null,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": null,
+            "effective_bpm": null,
+            "effective_genre": "Ambient",
+            "effective_key": null,
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/9.mp3",
+            "file_status": "not_checked",
+            "genre": "Ambient",
+            "id": 9,
+            "key": null,
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "9",
+            "remixer": null,
+            "title": "No Tempo",
+            "year": null
+          },
+          "track_id": 9
+        },
+        {
+          "chapter_id": 4,
+          "entry_id": 13,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 4,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Ada",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 124.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 124.0,
+            "effective_genre": "House",
+            "effective_key": "8A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/1.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 1,
+            "key": "8A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "1",
+            "remixer": null,
+            "title": "Open One",
+            "year": null
+          },
+          "track_id": 1
+        },
+        {
+          "chapter_id": 4,
+          "entry_id": 14,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 5,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Fay",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 124.5,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 124.5,
+            "effective_genre": "House",
+            "effective_key": "8B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/6.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 6,
+            "key": "8B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "6",
+            "remixer": null,
+            "title": "Deep Relative",
+            "year": null
+          },
+          "track_id": 6
+        },
+        {
+          "chapter_id": 4,
+          "entry_id": 15,
+          "in_seconds": null,
+          "length_seconds": 280,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 6,
+          "starts_at": null,
+          "track": {
+            "album": null,
+            "artist": "Cal",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 145.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 280,
+            "effective_bpm": 145.0,
+            "effective_genre": "Techno",
+            "effective_key": "3B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/3.mp3",
+            "file_status": "not_checked",
+            "genre": "Techno",
+            "id": 3,
+            "key": "3B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "3",
+            "remixer": null,
+            "title": "Peak Loud",
+            "year": null
+          },
+          "track_id": 3
+        }
+      ],
+      "limit": 1000,
+      "name": "Shape",
+      "set_id": 5
+    },
+    "plan": {
+      "chapters": [
+        {
+          "bpm_max": null,
+          "bpm_min": null,
+          "entry_ids": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "id": 3,
+          "name": "",
+          "notes": null,
+          "position": 0,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 4
+          },
+          "starts_at": 0,
+          "target_seconds": null
+        },
+        {
+          "bpm_max": null,
+          "bpm_min": null,
+          "entry_ids": [
+            13,
+            14,
+            15
+          ],
+          "id": 4,
+          "name": "Second",
+          "notes": null,
+          "position": 1,
+          "running_time": {
+            "seconds": 0,
+            "timed": 0,
+            "untimed": 3
+          },
+          "starts_at": null,
+          "target_seconds": null
+        }
+      ],
+      "entries": [
+        {
+          "chapter_id": 3,
+          "entry_id": 9,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 0,
+          "starts_at": 0,
+          "track_id": 1
+        },
+        {
+          "chapter_id": 3,
+          "entry_id": 10,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 1,
+          "starts_at": null,
+          "track_id": 1
+        },
+        {
+          "chapter_id": 3,
+          "entry_id": 11,
+          "in_seconds": null,
+          "length_seconds": 290,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 2,
+          "starts_at": null,
+          "track_id": 7
+        },
+        {
+          "chapter_id": 3,
+          "entry_id": 12,
+          "in_seconds": null,
+          "length_seconds": null,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 3,
+          "starts_at": null,
+          "track_id": 9
+        },
+        {
+          "chapter_id": 4,
+          "entry_id": 13,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 4,
+          "starts_at": null,
+          "track_id": 1
+        },
+        {
+          "chapter_id": 4,
+          "entry_id": 14,
+          "in_seconds": null,
+          "length_seconds": 300,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 5,
+          "starts_at": null,
+          "track_id": 6
+        },
+        {
+          "chapter_id": 4,
+          "entry_id": 15,
+          "in_seconds": null,
+          "length_seconds": 280,
+          "note": null,
+          "out_seconds": null,
+          "planned_seconds": null,
+          "position": 6,
+          "starts_at": null,
+          "track_id": 3
+        }
+      ],
+      "name": "Shape",
+      "notes": null,
+      "running_time": {
+        "seconds": 0,
+        "timed": 0,
+        "untimed": 7
+      },
+      "set_id": 5
+    }
+  },
+  "suggestions": {
+    "both": {
+      "after_entry_id": 2,
+      "before_entry_id": 1,
+      "bpm_range": null,
+      "chapter_id": 1,
+      "considered": 4,
+      "duplicates_excluded": 0,
+      "index_current": false,
+      "no_fit": null,
+      "notation": "camelot",
+      "set_id": 2,
+      "sides": [
+        "before",
+        "after"
+      ],
+      "suggestions": [
+        {
+          "after": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 126.0,
+                "points": 27.4,
+                "to": 125.0
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "9A",
+                "points": 20.0,
+                "to": "8A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 67.4
+          },
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 124.0,
+                "points": 27.3,
+                "to": 125.0
+              },
+              {
+                "component": "key",
+                "detail": "same",
+                "from": "8A",
+                "points": 25.0,
+                "to": "8A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 72.3
+          },
+          "in_set": 1,
+          "score": 69.8,
+          "track": {
+            "album": null,
+            "artist": "Dee",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 125.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 310,
+            "effective_bpm": 125.0,
+            "effective_genre": "House",
+            "effective_key": "8A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/4.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 4,
+            "key": "8A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "4",
+            "remixer": null,
+            "title": "Bridge Deep",
+            "year": null
+          },
+          "track_id": 4
+        },
+        {
+          "after": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 126.0,
+                "points": 28.7,
+                "to": 125.5
+              },
+              {
+                "component": "key",
+                "detail": "same",
+                "from": "9A",
+                "points": 25.0,
+                "to": "9A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 73.7
+          },
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 124.0,
+                "points": 26.0,
+                "to": 125.5
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "8A",
+                "points": 20.0,
+                "to": "9A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 66.0
+          },
+          "in_set": 0,
+          "score": 69.8,
+          "track": {
+            "album": null,
+            "artist": "Eve",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 125.5,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 330,
+            "effective_bpm": 125.5,
+            "effective_genre": "House",
+            "effective_key": "9A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/5.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 5,
+            "key": "9A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "5",
+            "remixer": null,
+            "title": "Deep Spare",
+            "year": null
+          },
+          "track_id": 5
+        },
+        {
+          "after": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 126.0,
+                "points": 26.0,
+                "to": 124.5
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 46.0
+          },
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 124.0,
+                "points": 28.7,
+                "to": 124.5
+              },
+              {
+                "component": "key",
+                "detail": "relative",
+                "from": "8A",
+                "points": 20.0,
+                "to": "8B"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 68.7
+          },
+          "in_set": 0,
+          "score": 57.4,
+          "track": {
+            "album": null,
+            "artist": "Fay",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 124.5,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 124.5,
+            "effective_genre": "House",
+            "effective_key": "8B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/6.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 6,
+            "key": "8B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "6",
+            "remixer": null,
+            "title": "Deep Relative",
+            "year": null
+          },
+          "track_id": 6
+        },
+        {
+          "after": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "half",
+                "from": 126.0,
+                "points": 30.0,
+                "to": 63.0
+              },
+              {
+                "component": "key",
+                "detail": "same",
+                "from": "9A",
+                "points": 25.0,
+                "to": "9A"
+              }
+            ],
+            "score": 55.0
+          },
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "half",
+                "from": 124.0,
+                "points": 24.6,
+                "to": 63.0
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "8A",
+                "points": 20.0,
+                "to": "9A"
+              }
+            ],
+            "score": 44.6
+          },
+          "in_set": 0,
+          "score": 49.8,
+          "track": {
+            "album": null,
+            "artist": "Gus",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 63.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 290,
+            "effective_bpm": 63.0,
+            "effective_genre": "Dubstep",
+            "effective_key": "9A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/7.mp3",
+            "file_status": "not_checked",
+            "genre": "Dubstep",
+            "id": 7,
+            "key": "9A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "7",
+            "remixer": null,
+            "title": "Half Time",
+            "year": null
+          },
+          "track_id": 7
+        }
+      ],
+      "unused": {
+        "after": [
+          "label"
+        ],
+        "before": [
+          "label"
+        ]
+      }
+    },
+    "end": {
+      "after_entry_id": null,
+      "before_entry_id": 5,
+      "bpm_range": {
+        "chapter_id": 2,
+        "max": 150.0,
+        "min": 140.0
+      },
+      "chapter_id": 2,
+      "considered": 2,
+      "duplicates_excluded": 0,
+      "index_current": false,
+      "no_fit": null,
+      "notation": "camelot",
+      "set_id": 2,
+      "sides": [
+        "before"
+      ],
+      "suggestions": [
+        {
+          "after": null,
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 146.0,
+                "points": 27.7,
+                "to": 145.0
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "4B",
+                "points": 20.0,
+                "to": "3B"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "Techno",
+                "points": 20.0
+              }
+            ],
+            "score": 67.7
+          },
+          "in_set": 1,
+          "score": 67.7,
+          "track": {
+            "album": null,
+            "artist": "Cal",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 145.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 280,
+            "effective_bpm": 145.0,
+            "effective_genre": "Techno",
+            "effective_key": "3B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/3.mp3",
+            "file_status": "not_checked",
+            "genre": "Techno",
+            "id": 3,
+            "key": "3B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "3",
+            "remixer": null,
+            "title": "Peak Loud",
+            "year": null
+          },
+          "track_id": 3
+        },
+        {
+          "after": null,
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 146.0,
+                "points": 23.2,
+                "to": 143.0
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "4B",
+                "points": 20.0,
+                "to": "3B"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "Techno",
+                "points": 20.0
+              }
+            ],
+            "score": 63.2
+          },
+          "in_set": 0,
+          "score": 63.2,
+          "track": {
+            "album": null,
+            "artist": "Hal",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 143.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 143.0,
+            "effective_genre": "Techno",
+            "effective_key": "3B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/8.mp3",
+            "file_status": "not_checked",
+            "genre": "Techno",
+            "id": 8,
+            "key": "3B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "8",
+            "remixer": null,
+            "title": "Fast Lane",
+            "year": null
+          },
+          "track_id": 8
+        }
+      ],
+      "unused": {
+        "before": [
+          "label"
+        ]
+      }
+    },
+    "no_fit": {
+      "after_entry_id": 4,
+      "before_entry_id": 3,
+      "bpm_range": null,
+      "chapter_id": 1,
+      "considered": 0,
+      "duplicates_excluded": 0,
+      "index_current": false,
+      "no_fit": {
+        "key": {
+          "from": "8A",
+          "relation": null,
+          "to": "3B"
+        },
+        "tempo": {
+          "from": 125.0,
+          "gap_percent": 16.0,
+          "to": 145.0
+        }
+      },
+      "notation": "camelot",
+      "set_id": 2,
+      "sides": [
+        "before",
+        "after"
+      ],
+      "suggestions": [],
+      "unused": {
+        "after": [
+          "label"
+        ],
+        "before": [
+          "label"
+        ]
+      }
+    },
+    "no_fit_after": {
+      "after_entry_id": 4,
+      "before_entry_id": 3,
+      "bpm_range": null,
+      "chapter_id": 1,
+      "considered": 2,
+      "duplicates_excluded": 0,
+      "index_current": false,
+      "no_fit": null,
+      "notation": "camelot",
+      "set_id": 2,
+      "sides": [
+        "after"
+      ],
+      "suggestions": [
+        {
+          "after": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 145.0,
+                "points": 25.4,
+                "to": 143.0
+              },
+              {
+                "component": "key",
+                "detail": "same",
+                "from": "3B",
+                "points": 25.0,
+                "to": "3B"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "Techno",
+                "points": 20.0
+              }
+            ],
+            "score": 70.4
+          },
+          "before": null,
+          "in_set": 0,
+          "score": 70.4,
+          "track": {
+            "album": null,
+            "artist": "Hal",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 143.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 143.0,
+            "effective_genre": "Techno",
+            "effective_key": "3B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/8.mp3",
+            "file_status": "not_checked",
+            "genre": "Techno",
+            "id": 8,
+            "key": "3B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "8",
+            "remixer": null,
+            "title": "Fast Lane",
+            "year": null
+          },
+          "track_id": 8
+        },
+        {
+          "after": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 145.0,
+                "points": 27.7,
+                "to": 146.0
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "3B",
+                "points": 20.0,
+                "to": "4B"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "Techno",
+                "points": 20.0
+              }
+            ],
+            "score": 67.7
+          },
+          "before": null,
+          "in_set": 1,
+          "score": 67.7,
+          "track": {
+            "album": null,
+            "artist": "Kai",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 146.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 146.0,
+            "effective_genre": "Techno",
+            "effective_key": "4B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/11.mp3",
+            "file_status": "not_checked",
+            "genre": "Techno",
+            "id": 11,
+            "key": "4B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "11",
+            "remixer": null,
+            "title": "Peak Two",
+            "year": null
+          },
+          "track_id": 11
+        }
+      ],
+      "unused": {
+        "after": [
+          "label"
+        ]
+      }
+    },
+    "no_fit_before": {
+      "after_entry_id": 4,
+      "before_entry_id": 3,
+      "bpm_range": null,
+      "chapter_id": 1,
+      "considered": 5,
+      "duplicates_excluded": 0,
+      "index_current": false,
+      "no_fit": null,
+      "notation": "camelot",
+      "set_id": 2,
+      "sides": [
+        "before"
+      ],
+      "suggestions": [
+        {
+          "after": null,
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 125.0,
+                "points": 27.3,
+                "to": 124.0
+              },
+              {
+                "component": "key",
+                "detail": "same",
+                "from": "8A",
+                "points": 25.0,
+                "to": "8A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 72.3
+          },
+          "in_set": 1,
+          "score": 72.3,
+          "track": {
+            "album": null,
+            "artist": "Ada",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 124.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 124.0,
+            "effective_genre": "House",
+            "effective_key": "8A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/1.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 1,
+            "key": "8A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "1",
+            "remixer": null,
+            "title": "Open One",
+            "year": null
+          },
+          "track_id": 1
+        },
+        {
+          "after": null,
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 125.0,
+                "points": 28.7,
+                "to": 125.5
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "8A",
+                "points": 20.0,
+                "to": "9A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 68.7
+          },
+          "in_set": 0,
+          "score": 68.7,
+          "track": {
+            "album": null,
+            "artist": "Eve",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 125.5,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 330,
+            "effective_bpm": 125.5,
+            "effective_genre": "House",
+            "effective_key": "9A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/5.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 5,
+            "key": "9A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "5",
+            "remixer": null,
+            "title": "Deep Spare",
+            "year": null
+          },
+          "track_id": 5
+        },
+        {
+          "after": null,
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 125.0,
+                "points": 28.7,
+                "to": 124.5
+              },
+              {
+                "component": "key",
+                "detail": "relative",
+                "from": "8A",
+                "points": 20.0,
+                "to": "8B"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 68.7
+          },
+          "in_set": 0,
+          "score": 68.7,
+          "track": {
+            "album": null,
+            "artist": "Fay",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 124.5,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 124.5,
+            "effective_genre": "House",
+            "effective_key": "8B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/6.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 6,
+            "key": "8B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "6",
+            "remixer": null,
+            "title": "Deep Relative",
+            "year": null
+          },
+          "track_id": 6
+        },
+        {
+          "after": null,
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 125.0,
+                "points": 27.3,
+                "to": 126.0
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "8A",
+                "points": 20.0,
+                "to": "9A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 67.3
+          },
+          "in_set": 1,
+          "score": 67.3,
+          "track": {
+            "album": null,
+            "artist": "Bea",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 126.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 320,
+            "effective_bpm": 126.0,
+            "effective_genre": "House",
+            "effective_key": "9A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/2.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 2,
+            "key": "9A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "2",
+            "remixer": null,
+            "title": "Open Two",
+            "year": null
+          },
+          "track_id": 2
+        },
+        {
+          "after": null,
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "half",
+                "from": 125.0,
+                "points": 27.3,
+                "to": 63.0
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "8A",
+                "points": 20.0,
+                "to": "9A"
+              }
+            ],
+            "score": 47.3
+          },
+          "in_set": 0,
+          "score": 47.3,
+          "track": {
+            "album": null,
+            "artist": "Gus",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 63.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 290,
+            "effective_bpm": 63.0,
+            "effective_genre": "Dubstep",
+            "effective_key": "9A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/7.mp3",
+            "file_status": "not_checked",
+            "genre": "Dubstep",
+            "id": 7,
+            "key": "9A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "7",
+            "remixer": null,
+            "title": "Half Time",
+            "year": null
+          },
+          "track_id": 7
+        }
+      ],
+      "unused": {
+        "before": [
+          "label"
+        ]
+      }
+    },
+    "pool_collection": {
+      "after_entry_id": 2,
+      "before_entry_id": 1,
+      "bpm_range": null,
+      "chapter_id": 1,
+      "considered": 2,
+      "duplicates_excluded": 0,
+      "index_current": false,
+      "no_fit": null,
+      "notation": "camelot",
+      "set_id": 2,
+      "sides": [
+        "before",
+        "after"
+      ],
+      "suggestions": [
+        {
+          "after": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 126.0,
+                "points": 28.7,
+                "to": 125.5
+              },
+              {
+                "component": "key",
+                "detail": "same",
+                "from": "9A",
+                "points": 25.0,
+                "to": "9A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 73.7
+          },
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 124.0,
+                "points": 26.0,
+                "to": 125.5
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "8A",
+                "points": 20.0,
+                "to": "9A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 66.0
+          },
+          "in_set": 0,
+          "score": 69.8,
+          "track": {
+            "album": null,
+            "artist": "Eve",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 125.5,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 330,
+            "effective_bpm": 125.5,
+            "effective_genre": "House",
+            "effective_key": "9A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/5.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 5,
+            "key": "9A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "5",
+            "remixer": null,
+            "title": "Deep Spare",
+            "year": null
+          },
+          "track_id": 5
+        },
+        {
+          "after": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "half",
+                "from": 126.0,
+                "points": 30.0,
+                "to": 63.0
+              },
+              {
+                "component": "key",
+                "detail": "same",
+                "from": "9A",
+                "points": 25.0,
+                "to": "9A"
+              }
+            ],
+            "score": 55.0
+          },
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "half",
+                "from": 124.0,
+                "points": 24.6,
+                "to": 63.0
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "8A",
+                "points": 20.0,
+                "to": "9A"
+              }
+            ],
+            "score": 44.6
+          },
+          "in_set": 0,
+          "score": 49.8,
+          "track": {
+            "album": null,
+            "artist": "Gus",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 63.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 290,
+            "effective_bpm": 63.0,
+            "effective_genre": "Dubstep",
+            "effective_key": "9A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/7.mp3",
+            "file_status": "not_checked",
+            "genre": "Dubstep",
+            "id": 7,
+            "key": "9A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "7",
+            "remixer": null,
+            "title": "Half Time",
+            "year": null
+          },
+          "track_id": 7
+        }
+      ],
+      "unused": {
+        "after": [
+          "label"
+        ],
+        "before": [
+          "label"
+        ]
+      }
+    },
+    "pool_playlist": {
+      "after_entry_id": 2,
+      "before_entry_id": 1,
+      "bpm_range": null,
+      "chapter_id": 1,
+      "considered": 1,
+      "duplicates_excluded": 0,
+      "index_current": false,
+      "no_fit": null,
+      "notation": "camelot",
+      "set_id": 2,
+      "sides": [
+        "before",
+        "after"
+      ],
+      "suggestions": [
+        {
+          "after": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 126.0,
+                "points": 26.0,
+                "to": 124.5
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 46.0
+          },
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 124.0,
+                "points": 28.7,
+                "to": 124.5
+              },
+              {
+                "component": "key",
+                "detail": "relative",
+                "from": "8A",
+                "points": 20.0,
+                "to": "8B"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 68.7
+          },
+          "in_set": 0,
+          "score": 57.4,
+          "track": {
+            "album": null,
+            "artist": "Fay",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 124.5,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 124.5,
+            "effective_genre": "House",
+            "effective_key": "8B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/6.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 6,
+            "key": "8B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "6",
+            "remixer": null,
+            "title": "Deep Relative",
+            "year": null
+          },
+          "track_id": 6
+        }
+      ],
+      "unused": {
+        "after": [
+          "label"
+        ],
+        "before": [
+          "label"
+        ]
+      }
+    },
+    "pool_smart": {
+      "after_entry_id": 2,
+      "before_entry_id": 1,
+      "bpm_range": null,
+      "chapter_id": 1,
+      "considered": 3,
+      "duplicates_excluded": 0,
+      "index_current": false,
+      "no_fit": null,
+      "notation": "camelot",
+      "set_id": 2,
+      "sides": [
+        "before",
+        "after"
+      ],
+      "suggestions": [
+        {
+          "after": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 126.0,
+                "points": 27.4,
+                "to": 125.0
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "9A",
+                "points": 20.0,
+                "to": "8A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 67.4
+          },
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 124.0,
+                "points": 27.3,
+                "to": 125.0
+              },
+              {
+                "component": "key",
+                "detail": "same",
+                "from": "8A",
+                "points": 25.0,
+                "to": "8A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 72.3
+          },
+          "in_set": 1,
+          "score": 69.8,
+          "track": {
+            "album": null,
+            "artist": "Dee",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 125.0,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 310,
+            "effective_bpm": 125.0,
+            "effective_genre": "House",
+            "effective_key": "8A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/4.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 4,
+            "key": "8A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "4",
+            "remixer": null,
+            "title": "Bridge Deep",
+            "year": null
+          },
+          "track_id": 4
+        },
+        {
+          "after": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 126.0,
+                "points": 28.7,
+                "to": 125.5
+              },
+              {
+                "component": "key",
+                "detail": "same",
+                "from": "9A",
+                "points": 25.0,
+                "to": "9A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 73.7
+          },
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 124.0,
+                "points": 26.0,
+                "to": 125.5
+              },
+              {
+                "component": "key",
+                "detail": "adjacent",
+                "from": "8A",
+                "points": 20.0,
+                "to": "9A"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 66.0
+          },
+          "in_set": 0,
+          "score": 69.8,
+          "track": {
+            "album": null,
+            "artist": "Eve",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 125.5,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 330,
+            "effective_bpm": 125.5,
+            "effective_genre": "House",
+            "effective_key": "9A",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/5.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 5,
+            "key": "9A",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "5",
+            "remixer": null,
+            "title": "Deep Spare",
+            "year": null
+          },
+          "track_id": 5
+        },
+        {
+          "after": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 126.0,
+                "points": 26.0,
+                "to": 124.5
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 46.0
+          },
+          "before": {
+            "reasons": [
+              {
+                "component": "tempo",
+                "detail": "close",
+                "from": 124.0,
+                "points": 28.7,
+                "to": 124.5
+              },
+              {
+                "component": "key",
+                "detail": "relative",
+                "from": "8A",
+                "points": 20.0,
+                "to": "8B"
+              },
+              {
+                "component": "genre",
+                "detail": "same",
+                "name": "House",
+                "points": 20.0
+              }
+            ],
+            "score": 68.7
+          },
+          "in_set": 0,
+          "score": 57.4,
+          "track": {
+            "album": null,
+            "artist": "Fay",
+            "artwork": "unknown",
+            "bitrate": null,
+            "bpm": 124.5,
+            "colour": null,
+            "comment": null,
+            "date_added": null,
+            "duration_seconds": 300,
+            "effective_bpm": 124.5,
+            "effective_genre": "House",
+            "effective_key": "8B",
+            "effective_label": null,
+            "effective_rating": null,
+            "effective_year": null,
+            "favorite": false,
+            "file_path": "/music/6.mp3",
+            "file_status": "not_checked",
+            "genre": "House",
+            "id": 6,
+            "key": "8B",
+            "label": null,
+            "match_disputed": false,
+            "match_score": null,
+            "match_state": "not_matched",
+            "overridden": [],
+            "override_sources": {},
+            "play_count": null,
+            "rating": null,
+            "rating_source": null,
+            "rekordbox_track_id": "6",
+            "remixer": null,
+            "title": "Deep Relative",
+            "year": null
+          },
+          "track_id": 6
+        }
+      ],
+      "unused": {
+        "after": [
+          "label"
+        ],
+        "before": [
+          "label"
+        ]
+      }
+    }
+  },
+  "tree": {
+    "collections": [
+      {
+        "broken": false,
+        "depth": 0,
+        "dir": null,
+        "entry_count": 0,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 1,
+        "kind": "folder",
+        "name": "Gigs",
+        "parent_id": null,
+        "position": 0,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 0
+      },
+      {
+        "broken": false,
+        "depth": 0,
+        "dir": null,
+        "entry_count": 3,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 3,
+        "kind": "collection",
+        "name": "Crate",
+        "parent_id": null,
+        "position": 1,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 3
+      },
+      {
+        "broken": false,
+        "depth": 0,
+        "dir": null,
+        "entry_count": 0,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 4,
+        "kind": "smart",
+        "name": "House",
+        "parent_id": null,
+        "position": 2,
+        "problem": null,
+        "rules": {
+          "match": "all",
+          "rules": [
+            {
+              "field": "genre",
+              "operator": "is",
+              "value": "House"
+            }
+          ]
+        },
+        "sort": null,
+        "track_count": 0
+      },
+      {
+        "broken": false,
+        "depth": 0,
+        "dir": null,
+        "entry_count": 7,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 5,
+        "kind": "set",
+        "name": "Shape",
+        "parent_id": null,
+        "position": 3,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 5
+      },
+      {
+        "broken": false,
+        "depth": 0,
+        "dir": null,
+        "entry_count": 0,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 6,
+        "kind": "set",
+        "name": "Blank",
+        "parent_id": null,
+        "position": 4,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 0
+      },
+      {
+        "broken": false,
+        "depth": 1,
+        "dir": null,
+        "entry_count": 5,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 2,
+        "kind": "set",
+        "name": "Build",
+        "parent_id": 1,
+        "position": 0,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 5
+      },
+      {
+        "broken": false,
+        "depth": 1,
+        "dir": null,
+        "entry_count": 6,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 7,
+        "kind": "set",
+        "name": "Scratch",
+        "parent_id": 1,
+        "position": 1,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 6
+      }
+    ],
+    "total": 7
+  }
+}

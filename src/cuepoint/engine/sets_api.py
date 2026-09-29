@@ -22,7 +22,8 @@ redrawing itself can repeat one safely:
   ``MAX_SET_ENTRIES``, which a Set cannot pass.
 - ``analysis``: the Set's warnings and notices (PREP-05).
 - ``suggestions``: what fits at a gap, named by the entries on either side,
-  over a pool given as the Library's own query parameters (PREP-04).
+  over a pool given as the Library's own query parameters (PREP-04), each
+  suggestion beside the Library's own row for its track (PREP-11).
 - ``set-list/text``: the plain-text set list, for the clipboard (PREP-06).
 
 Everything that changes something is a POST to an action path, as
@@ -80,7 +81,17 @@ from __future__ import annotations
 import logging
 import os
 import re
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 from cuepoint.engine.api_errors import ApiError, bad_request, error_payload, not_found
 from cuepoint.models.filter_rule import FilterRuleError
@@ -440,24 +451,18 @@ def plan(params: Dict[str, List[str]]) -> Dict[str, Any]:
     return result
 
 
-def entries(params: Dict[str, List[str]]) -> Dict[str, Any]:
-    """The Set in its running order, each entry beside its track's row.
+def _track_rows(track_ids: Iterable[int]) -> Dict[int, Dict[str, Any]]:
+    """The Library's own row for each track that still exists, by id.
 
-    The row is the Library's own (``track_to_dict``), read the way a browse
-    window reads it, so the Prepare table and the Library table show one
-    track the same way: effective values, CuePoint's rating, the file's last
-    check. The plan is read in one transaction (PREP-03); the rows after it.
-    A track a refresh deletes between the two takes its entries with it, so
-    an entry whose row has gone is left out, as a second read would leave it.
+    Read the way a browse window reads it (``track_to_dict``), so a track on
+    the Prepare page reads the same as in the Library table: effective values,
+    CuePoint's rating, the file's last check. A track a refresh deleted is
+    simply absent, and the caller leaves out whatever named it.
     """
     from cuepoint.engine.library_api import track_to_dict
-    from cuepoint.models.set_plan import MAX_SET_ENTRIES
     from cuepoint.persistence.id_chunks import unique_ids
 
-    set_id = _query_id(_params(params, SET_PARAMS), "set_id")
-    _require_set(set_id)
-    read = _resolve("ISetService").plan(set_id)
-    ids = unique_ids(entry.track_id for entry in read.entries)
+    ids = unique_ids(track_ids)
     tracks = {
         int(track.id): track for track in _resolve("ITrackRepository").get_many(ids)
     }
@@ -465,16 +470,33 @@ def entries(params: Dict[str, List[str]]) -> Dict[str, Any]:
     library = _resolve("ILibraryService")
     clean = library.clean_states(ids)
     sources = library.override_sources(ids)
+    return {
+        track_id: track_to_dict(
+            track,
+            metadata.get(track_id),
+            clean.get(track_id),
+            sources.get(track_id),
+        )
+        for track_id, track in tracks.items()
+    }
+
+
+def entries(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """The Set in its running order, each entry beside its track's row.
+
+    The row is the Library's own (``_track_rows``). The plan is read in one
+    transaction (PREP-03); the rows after it. A track a refresh deletes between
+    the two takes its entries with it, so an entry whose row has gone is left
+    out, as a second read would leave it.
+    """
+    from cuepoint.models.set_plan import MAX_SET_ENTRIES
+
+    set_id = _query_id(_params(params, SET_PARAMS), "set_id")
+    _require_set(set_id)
+    read = _resolve("ISetService").plan(set_id)
+    tracks = _track_rows(entry.track_id for entry in read.entries)
     rows = [
-        {
-            **entry.to_dict(),
-            "track": track_to_dict(
-                tracks[entry.track_id],
-                metadata.get(entry.track_id),
-                clean.get(entry.track_id),
-                sources.get(entry.track_id),
-            ),
-        }
+        {**entry.to_dict(), "track": tracks[entry.track_id]}
         for entry in read.entries
         if entry.track_id in tracks
     ]
@@ -546,6 +568,15 @@ def suggestions(params: Dict[str, List[str]]) -> Dict[str, Any]:
         limit=limit,
     )
     result: Dict[str, Any] = answer.to_dict()
+    # Each suggestion beside the Library's own row for its track (PREP-11), as
+    # an entry is: the source panel draws, drags and inserts it with no second
+    # read per track. A track deleted since it was scored is left out.
+    tracks = _track_rows(s["track_id"] for s in result["suggestions"])
+    result["suggestions"] = [
+        {**s, "track": tracks[s["track_id"]]}
+        for s in result["suggestions"]
+        if s["track_id"] in tracks
+    ]
     return result
 
 

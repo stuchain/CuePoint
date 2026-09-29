@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
-Status: **Specified 2026-09-28. PREP-01 to PREP-10 are implemented (2026-09-28 to 2026-09-29).** The twelve steps below replace the roadmap's
+Status: **Specified 2026-09-28. PREP-01 to PREP-11 are implemented (2026-09-28 to 2026-09-29).** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -2508,7 +2508,7 @@ The existing tests pass. Seven were changed:
 
 ---
 
-## PREP-11 — The Source Panel and the Shape Lanes
+## PREP-11 — The Source Panel and the Shape Lanes ✅ IMPLEMENTED 2026-09-29
 
 **Objective**: Where tracks come from on the Prepare page (suggestions and the library), and the Set's
 tempo and key drawn as lanes (DEC-105, DEC-111).
@@ -2552,7 +2552,299 @@ columns and gaps and wheel relations, a click selecting an entry, and both set-l
 
 **Complexity**: **M**
 
-**Outcome**: Not started.
+**Outcome**: Implemented (2026-09-29). The Prepare page fills a Set from two places beside it,
+Suggestions and the library, and draws the Set's tempo and key as two lanes above its table. A track
+goes in at one place, the gap after the selected entry or the end of the Set, by "Insert here", by a
+row's menu or by a drag to where it should land. After an insert the new entry is selected, so the next
+suggestion fits after it. Each suggestion shows its score and its reasons against each neighbour, and
+is marked when the track is already in the Set. A gap nothing bridges says how far apart its
+neighbours are and offers each side's own list. At the default 1,280 × 800 window and `--scale: 2`
+the Set keeps every row PREP-10 measured, and the panel shows 4 whole Suggestions on Linux.
+
+**What was built.**
+
+- **The engine, two additions to answers that already crossed** (no new route, no new method):
+  - `sets/suggestions` sets each suggestion beside the Library's own row for its track, as
+    `sets/entries` sets each entry (`_track_rows`, one serializer for both). The panel draws, drags and
+    inserts a suggestion with no read per track. A suggestion whose track a refresh deleted in between
+    is left out, as an entry is.
+  - `sets/analysis` gains `shape`: every entry in order with its effective BPM (to the two decimals a
+    warning compares), its key in the library's notation and its place on the Camelot wheel, and every
+    transition with how its keys relate (`same`, `adjacent`, `relative`, or `null` for a clash or an
+    unknown key). It is `core.set_analysis.shape_of`, read from the same `EntryFacts` the checks read,
+    through the same `key_relation`. A lane therefore cannot disagree with a warning.
+  - `SetSuggestion.track`, `SetAnalysis.shape`, `SetShape`, `SetShapeEntry`, `SetShapeTransition` and
+    `SetCamelot` are in both TypeScript copies. `desktopContract.test.ts` and `test_sets_contract.py`
+    hold them together and to real answers.
+- **The insertion point** (`prepareSource.ts`): the gap after the selected entry (the one the page
+  calls `focused`), or after the last entry with nothing selected. A track put there joins the chapter
+  of the entry before it, as the engine places an insert (PREP-02). Suggestions names that chapter in
+  its request, so the range that narrows the list is the chapter the track will land in. The panel says
+  the point in words: "Between “Open One” and “Open Two”, in Open", or "After “Peak Two”, at the end
+  of the Set, in Peak". It names no chapter in a Set that draws no headings (DEC-103).
+- **The source panel** (`SourcePanel.tsx`, `SourceTable.tsx`, `sourceColumns.tsx`,
+  `useSetSuggestions.ts`), passed to `PrepareLayout` as `source`:
+  - Two tabs, Suggestions and Library, remembered.
+  - One pool picker for both: the whole library, a Rekordbox playlist or folder, a Collection, a Smart
+    Collection or a Set, as Clean's scope offers them (`scopeOptions`). It is remembered, and a pool that
+    has gone reads as the library. It crosses as the Library's own parameters (DEC-023).
+  - **Suggestions** asks `sets.suggestions` for the point, 150 ms after the selection stops moving, and
+    again after every re-read of the Set. Only the answer to the gap asked about now is drawn. The table
+    shows the title (marked ↻ when the track is already in the Set), each side's reasons in words
+    (`similarReasons.ts`), the score, BPM, key and artist. A list fitted to one side has no column for
+    the other.
+  - Notes, as asked: the chapter's range that narrowed the list, a neighbour with no BPM or key to
+    compare, and an index still building. A gap nothing bridges is explained, and "Fit after “A”" and
+    "Fit before “B”" ask for each side's list through `against`. "Fit both sides" goes back, and a new
+    gap forgets the side. An empty Set says it has nothing to fit against and offers the Library tab.
+  - **Library** searches the pool through the one browse route (`useTrackWindow`), and sorts by any
+    column the engine sorts by.
+  - Every row inserts at the point ("Insert here", and first in its menu). A row drags as track ids, a
+    copy. A double-click or Enter plays it, as a library row plays everywhere (DEC-012). Its menu also
+    offers play next, add to queue, Similar tracks and its pages.
+- **Inserting** (`PrepareScreen.tsx`):
+  - Tracks go in one insert each, in the table's order, through `insertTrackInCollection`, the one
+    path that writes an entry, with the place and chapter named.
+  - The room is checked first (`roomFor`), so a Set too full for the gesture refuses it whole rather
+    than part-way.
+  - The last entry put in is selected once the Set is re-read, and a toast says what went in.
+- **Drops on the Set** take track ids as well as its own entries:
+  - `dropPlace` (in `prepareRows.ts`) is the place a drop names: a heading's chapter start, or before
+    or after an entry, in that entry's chapter. `dropMove` is now that place, counted as the engine
+    counts a move.
+  - An empty Set's note takes the first drop.
+- **The lanes** (`prepareLanes.ts`, `SetLanes.tsx`):
+  - A strip above the Set table, drawn as inline SVG rectangles in whole pixels with `crispEdges`,
+    `currentColor` and theme tokens, and no chart library.
+  - Tempo: one column per entry, a flat mark at its BPM's height, joined to the next by a vertical
+    step. Half time is drawn as the step it is.
+  - Key: 24 rows, 1A at the bottom to 12B at the top, so the relative key is one row away and a step on
+    the wheel two. Lines are solid for the same key or one step, dashed for the relative key, and
+    dotted in the danger token for a clash.
+  - An unknown value is a gap with no line into or out of it (DEC-111). A chapter boundary is a line
+    across both lanes. The selected entry's column is lit.
+  - Clicking a column selects its entry, which moves the insertion point there. Each column's title says
+    what it draws: "3 · Half Time · 63 BPM · 9A".
+  - The lanes open and close from "View ▾" and are remembered.
+- **Generic changes, each tested where it is made:**
+  - `TrackTable` answers a drag that only copies with a `copy` drop effect. Chromium refuses a drop
+    whose effect its drag does not allow, and says nothing.
+  - `useBeatportSelection` gains `select`, one row picked from outside the table.
+  - `PrepareLayout` clamps the source panel against its own width (below).
+
+**Where the specification was open, and what was done.**
+
+1. **A suggestion carries its track's row.** Similar Tracks reads each suggestion's row with
+   `getLibraryTrack`, one full detail read per track. At every gap the selection passes, that is fifty
+   reads. The route now answers with the rows, from the serializer `entries` uses. The field is
+   additive, so no caller had to change.
+2. **The lanes draw the engine's reading, not a second one.** Drawing the key lane needs each key's
+   place on the wheel, and the lines need the relation between neighbours. Both are the business rule
+   (AGENTS.md: rules stay in Python). A renderer parser of key text would have been a second reading of
+   keys the engine already parses, and it could disagree with a warning. So `analysis` carries the
+   shape, and the renderer only lays it out. It is in the answer the page already reads after every
+   edit, rather than a twenty-first route and a fourth read per edit.
+3. **The lanes start hidden.**
+   - DEC-112 holds the Set's whole rows as the page opens. With the lanes open, the Set shows 5 whole
+     rows on Linux instead of 8.
+   - They open from the header and stay open once opened, which keeps them visible to anyone who uses
+     them. The page as it opens keeps every row PREP-10 measured.
+   - The lanes are as compact as their content allows: a 20-row tempo lane, a 24-row key lane (one row
+     per wheel code) and a 2-unit gap.
+4. **"View ▾" replaces "Columns…" in the header's line.** A second link ("Show lanes") wrapped the
+   facts line onto a second line at the default width, which cost the Set a row. The lanes and the
+   columns now share one menu, and the line stays one line.
+5. **The panel's controls are compact.** In the default window the panel is about 290 px wide and
+   390 px tall, and the table's own header takes 70 of them. With the design system's doubled hit
+   targets, the tabs, the pool and a footer button left the table no whole row. The tabs, the pool
+   select and "Insert here" are now a row's height. "Insert here" sits at the end of the pool's line,
+   where the select gives way and the button never does. The point is one line of text, and a
+   suggestion's title carries every reason as its tooltip, because the reason columns are off to the
+   right at this width. Result: 4 whole Suggestions rows on Linux.
+6. **The source panel is clamped against the layout, not the window.** PREP-10 limited the panel to 45%
+   of the window. With the sidebar and the Inspector open, that let it be wider than the Set, against
+   DEC-112 ("the Set stays the wider pane"). The layout now measures itself. The stored width is still
+   the one chosen, so it comes back on a wider window.
+7. **A double-click on a source row plays it.** DEC-012 gives a library row's double-click its meaning
+   everywhere, and hearing a candidate before it goes in is what the panel is for. Inserting is one
+   click on "Insert here", or a drag.
+8. **An insert selects what it made**, so filling a Set runs forward: suggest, insert, and the next gap
+   is after the new entry.
+9. **A gesture is refused whole when the Set has no room.** A Set holds 1,000 entries (PREP-02). The
+   inserts are one call each, and a refusal half-way would leave part of a selection in.
+10. **Missing genre, label or artist is a tooltip, not a note.** A neighbour with no BPM or key changes
+    what can be suggested, and says so on the panel. A missing label is ordinary in a library, and a
+    line about it on every gap would cost the panel a row.
+11. **Set lists needed nothing here**: PREP-10 wired "Save…" and "Copy" into the header's "Export ▾".
+
+**A defect found and fixed: a stale "In this Set" zone (PREP-10).**
+
+- `TrackDetailPanel` drew the caller's lead zone, keyed by entry id, in the same list of children as
+  its own editor, keyed by track id.
+- In a Set made from the library in order, entry 3 is often track 3. Both children were then keyed
+  "3", and React left the old zone beside the new one when the selection moved: "Entry 3" under the
+  track at entry 4.
+- Found by the end-to-end run of an insert. The zone now has a slot of its own, and
+  `TrackDetailPanel.leadZone.test.tsx` failed on the unfixed panel.
+
+**Handed on.**
+
+- **PREP-12:**
+  - The user guide's Prepare page covers the source panel, the insertion point, "Insert here", the
+    drag, each side's own list and the lanes.
+  - The packaged Windows run records its own numbers for the Set with the lanes open and for the
+    panel's rows. `prepare.spec.ts` holds each at Linux's measurement less one, the offset every
+    PREP-10 state showed, until then.
+  - The phase journey's step 4 ("Fill a gap from Suggestions") is `prepareSource.spec.ts`'s first half.
+  - The CHANGELOG entry for the phase.
+- **The macOS pass** owes both specs, with PREP-10's items.
+
+**Tests**: 120 new: 23 in Python, 96 in the renderer and one end-to-end spec.
+
+- **`src/tests/unit/engine/test_prepare_source_fixture.py` (13)** produces
+  `prepareSource.fixture.json` from a real engine:
+  - Build, in two chapters, with a range on Peak, fitted at a gap on both sides, at a gap nothing
+    bridges and at each side of it, at the end, and over a Collection, a Smart Collection and a
+    Rekordbox playlist.
+  - Shape, with every lane case; Blank, empty.
+  - The Library tab's three reads, an insert naming its chapter, and the three refusals the panel acts
+    on.
+  - The file must equal a fresh capture, and twelve tests hold each state to what it claims.
+- **Python, beside it (10):**
+  - `test_sets_api.py` (+2): each suggestion's row is the Library's browse row, and a suggestion whose
+    track has gone is left out.
+  - `test_set_analysis.py` (+5): every entry is a point, each transition relates as `key_relation`
+    says, no relation is exactly a clash (all 576 pairs), an empty Set, and the BPM a warning compares.
+  - `test_set_analysis_service.py` (+3): the wire's shape with effective values and overrides, keys in
+    the library's notation and on the wheel, and a clash.
+  - `test_sets_contract.py` holds `SetSuggestion.track`, `SetShape` and its parts to real answers.
+- **Renderer (96):**
+  - `prepareSource.test.ts` (31): the point for each selection, chapters and an empty Set; its words;
+    the pool's parameters and fallback; the request; the no-fit sentence and the side buttons; the range
+    note; the unused notes; the words for key relations; the in-Set mark; room; the button's label and
+    the toast; `dropPlace` and `dropMove` agreeing.
+  - `prepareLanes.test.ts` (16): columns and their widths, the tempo marks, steps and gaps, the wheel's
+    rows, each relation's style and pattern, the chapter boundary, and whole pixels at every scale and
+    width.
+  - `PrepareSource.test.tsx` (30), over the fixture:
+    - The point and its request, one request per stop.
+    - Both sides' reasons and the score, the in-Set mark and the tooltip, the range, no fit and each
+      side, a new gap forgetting the side, stale and other refusals, an empty Set, and playing.
+    - Inserting one, several in order, the entry selected after, the row menu, a Set with no room, the
+      drag's payload, drops on a heading, an entry and an empty Set.
+    - The pool's options, parameters, memory and fallback.
+    - The Library tab's memory, search, insert, scope, sort and playing.
+    - The lanes' memory, their drawing and a column's click.
+    - A shell without playlists.
+  - `useSetSuggestions.test.ts` (7): the wait, the re-read, no gap, nothing drawn for a new gap until it
+    answers, a late answer dropped, each refusal, and retry.
+  - The rest:
+    - `sourcePanelState.test.ts` (4).
+    - `TrackDetailPanel.leadZone.test.tsx` (1), the regression above.
+    - `useBeatportSelection.test.ts` (1).
+    - `TrackTable.test.tsx` (+1), the copy drop.
+    - `PrepareLayout.test.tsx` (+1), the clamp.
+    - `desktopContract.test.ts` (+4), the new shapes in both copies.
+- **`e2e/prepareSource.spec.ts`**, through the real engine:
+  - The end of the Set named with nothing selected.
+  - A gap filled from Suggestions and read back from the engine, with the selection following.
+  - A gap nothing bridges, and each side.
+  - A search and a drag from the Library tab, landing where it was dropped.
+  - The lanes opened, a clash drawn, and a column selecting its entry.
+  - A reload keeping the tab and the lanes.
+- **`e2e/prepare.spec.ts`**, extended:
+  - The width check with the panel beside the Set: every panel control on screen, the Set the wider
+    pane, nothing in the panel wider than it.
+  - The panel's whole Suggestions rows.
+  - The Set's whole rows with the lanes open, sidebar expanded and as a rail, with the page never
+    scrolling.
+
+Thirty-six deliberate breakages, each caught:
+
+- In the renderer:
+  - a gap joining the chapter after;
+  - an insert before the selected entry;
+  - a request without its chapter;
+  - a playlist sent as a Collection;
+  - the last gap's answer drawn under the new gap;
+  - no wait before asking;
+  - a stale gap said instead of re-read;
+  - several tracks inserted at one place;
+  - no room check;
+  - a drag as a move;
+  - a table that always answers "move";
+  - a heading's drop joining the chapter before;
+  - key lines ignoring the engine's relation;
+  - an unknown BPM drawn as a zero;
+  - B drawn below A;
+  - the lead zone sharing the panel's keys;
+  - the layout clamped by the window;
+  - both reason columns always drawn;
+  - one side's list kept across gaps;
+  - the inserted entry not selected;
+  - a gone pool kept;
+  - the tab not remembered;
+  - a missing label drawn as a note;
+  - a folder's children left out of the pool;
+  - the lanes open by default;
+  - a lane's click selecting nothing;
+  - an empty Set's drop ignored;
+  - the in-Set mark dropped.
+- In the engine:
+  - suggestions without their rows;
+  - a gone track's suggestion kept;
+  - every step the same key;
+  - an unknown BPM as zero;
+  - a BPM unrounded;
+  - keys always in Camelot on the wire;
+  - the wheel's letter swapped;
+  - no shape on the wire.
+
+Two of them were missed at first: the last gap's answer drawn while the next was loading, and asking
+with no wait. The hook's tests now check what shows while a new gap loads, and advance the clock to
+just short of the wait. Both are caught.
+
+The existing tests pass. Four were changed, each for a reason this step gave:
+
+- PREP-10's harness answers `sets.suggestions`, which the real bridge always does.
+- "Ignores a drag that is not an entry" used a track drag as its example of a foreign one. PREP-10
+  handed track drops to this step, so it now uses text.
+- The header test opens "View ▾" to find "Columns…".
+- `prepare.fixture.json` was regenerated: its analyses gained `shape` and nothing else changed.
+
+**Checks run** (on Linux, in a container with no audio device; Windows and macOS are owed, above):
+
+- **Python:**
+  - The full suite, on eight workers: 11,021 passed, 49 skipped, 7 failed, 3 errors in collection.
+    The ten fail identically on the base commit, with this step's changes set aside:
+    - three files need PySide6, the optional Qt material, which is not installed here;
+    - one test expects a case-insensitive file system (Windows, macOS);
+    - two Beatport search tests about how many merged results come back;
+    - three about the support-bundle command and diagnostics;
+    - `test_step55_mypy_validation.py`, which its workflow calls a debt record rather than a gate.
+  - The strict mypy gate (`test_mypy_foundation.py`), which covers `sets_api.py`, `set_analysis.py`
+    and `set_analysis_service.py`, passed.
+  - `ruff check` and `ruff format --check` on `src/` with the pinned ruff 0.14.0.
+  - `check_no_qt_in_core.py`, the desktop version coupling and the engine health smoke test.
+- **Renderer:** the type-check, lint (exit 0, with only the 8 warnings that were already there), and
+  132 files and 3,697 tests (3,601 before, and the 96 new).
+  - Two of three full runs passed whole. The third failed one test this step does not touch:
+    `StatusStrip.test.tsx`'s "follows progress over SSE", at 1,062 ms against Testing Library's 1 s
+    wait under the load of the full suite.
+- **Electron:**
+  - The type-check, and 22 files and 532 tests, with 36 skipped because no bundled mpv is fetched here.
+  - Pointed at Debian's mpv 0.37, the mpv files run too. One fails: it asserts which platforms the
+    *pinned bundled* build has the SoX resampler on (DEC-055), and Debian's is a different build.
+- **End to end**, on the development build under Xvfb, with Debian's mpv:
+  - `prepare.spec.ts` and `prepareSource.spec.ts` together passed 15 times in 16 runs, and
+    `prepare.spec.ts` alone 5 of 5. The one failure came after every row measurement had passed, in
+    PREP-10's Library double-click, which waits 30 s for mpv to report the track playing. Its error
+    was not kept.
+  - The whole suite: 54 passed, 1 skipped, 4 failed. Three are player specs that fail the same way on
+    the base commit here: their queue rows are marked failed, since this mpv has no audio device.
+    The fourth, `playback.spec.ts`, failed once on which track had advanced, and passed twice alone
+    afterwards. None of the four touches anything this step changed.
+- `git diff --check`.
 
 ---
 

@@ -60,7 +60,24 @@ function install(tree: CollectionNode[] = TREE) {
     plan: read("plan"),
     entries: read("entries"),
     analysis: read("analysis"),
-    suggestions: vi.fn(),
+    // What fits at a gap: nothing, in PREP-10's tests; PREP-11's are the panel's.
+    suggestions: vi.fn(async ({ set_id, before_entry_id, after_entry_id }: Record<string, number | null>) =>
+      answered({
+        set_id: set_id as number,
+        before_entry_id: before_entry_id ?? null,
+        after_entry_id: after_entry_id ?? null,
+        sides: after_entry_id ? ["before", "after"] : ["before"],
+        chapter_id: 0,
+        bpm_range: null,
+        notation: "camelot",
+        unused: {},
+        considered: 0,
+        duplicates_excluded: 0,
+        index_current: true,
+        no_fit: null,
+        suggestions: [],
+      }),
+    ),
     setListText: vi.fn().mockResolvedValue(answered({ set_id: IDS.friday, text: "Friday\n" })),
     create: vi.fn(async ({ name }: { name: string }) =>
       answered({ set: { ...TREE[1], id: 50, name } }),
@@ -371,7 +388,9 @@ describe("the Set", () => {
     );
     // The picker is the title; the name is the page's heading for assistive technology.
     expect(screen.getByLabelText("Set")).toHaveValue(String(IDS.friday));
-    expect(screen.queryByText("Columns…")).toBeInTheDocument();
+    // The columns and the lanes share one link, so the line stays one line.
+    fireEvent.click(screen.getByRole("button", { name: "View ▾" }));
+    expect(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Columns…" })).toBeInTheDocument();
   });
 
   it("draws each chapter's heading as a row, with its time, target and range", async () => {
@@ -503,11 +522,12 @@ describe("dragging an entry", () => {
     );
   });
 
-  it("ignores a drag that is not an entry, and a drop where it already is", async () => {
+  it("ignores a drag that is neither an entry nor tracks, and a drop where it already is", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    const tracks = transfer({ "application/x-cuepoint-track-ids": "[1]" });
-    drag("dragover", rowAt(2), tracks, 0);
+    // Tracks are PREP-11's to drop here (PrepareSource.test.tsx); text is nobody's.
+    const text = transfer({ "text/plain": "Warm One" });
+    drag("dragover", rowAt(2), text, 0);
     expect(rowAt(2)).not.toHaveAttribute("data-drop");
     const same = transfer({ [SET_ENTRY_MIME]: String(E2) });
     drag("dragover", rowAt(2), same, 0);
