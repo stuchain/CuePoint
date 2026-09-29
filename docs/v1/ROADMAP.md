@@ -1,6 +1,9 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–12 resolved (DEC-001…DEC-112).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–13 resolved (DEC-001…DEC-123).**
+Phase 11 is specified in `PHASE11_WAVEFORMS.md` (WAVE-01…WAVE-07), unblocked by Decision Round 13
+(DEC-113…DEC-123); no step is implemented yet. It starts with Phase 5's manual acceptance still owed,
+as the user decided (DEC-119).
 Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
 (DEC-102…DEC-112); all twelve steps are implemented. Phase 10's acceptance is met on Linux, in the
 development build and a packaged one; the packaged Windows and macOS runs are owed, with Phase 5's
@@ -639,9 +642,33 @@ build. The acceptance check found two gaps and closed them: "New Set from the se
 Library's list, and a Set's own notes got a field on the page. The packaged Windows and macOS runs are
 owed.
 
-## Phase 11 — Waveforms (WAVE-01 … WAVE-07)
+## Phase 11 — Waveforms (WAVE-01 … WAVE-07) — specified
 
-Only after Player is solid. Entirely greenfield.
+The roadmap's gate was "only after Player is solid". Phase 5's code is complete, and the user decided
+the phase starts with its manual acceptance still owed and recorded (DEC-119).
+
+Round 13 settled the shape:
+- **Source:** CuePoint computes each waveform from the audio, through the `mpv` it already ships. It
+  reads none of Rekordbox's analysis files and adds no decoder (DEC-113, DEC-123).
+- **Where:** the player bar, where the waveform is the seek control; the Inspector; a Library column,
+  hidden by default; and a transition strip on the Prepare page, which shows the selected entry beside
+  the next one with their planned times (DEC-114, DEC-120).
+- **What:** an overview only, with no zoomed detail view (DEC-115). Three frequency bands are stored,
+  and Settings draws them in colour or as one colour (DEC-117).
+- **When:** the whole library is analysed automatically after each import. The job runs at low
+  priority, can be paused and resumed, continues after a restart, and steps aside for anything that
+  rewrites the library (DEC-116).
+- **Marks:** cue points and beat grids are imported from the XML and drawn read-only. The export
+  still never writes one (DEC-118).
+- **Scope:** no loudness or other measurement; those are Phase 12's (DEC-121).
+- **Storage:** waveform data is its own store beside the library, keyed by file, and outside backups
+  and "Clear cache", because it takes hours to rebuild (DEC-122).
+
+Writing the specification found two traps in `mpv`, both now requirements of WAVE-01:
+- its encode mode pads output with silence, so the pipeline uses the exact `--ao=pcm` path;
+- a four-channel join does not keep its channel order, so the order is proven with tones in CI.
+
+Step specifications: `PHASE11_WAVEFORMS.md`.
 
 ## Phase 12 — Audio Intelligence (AUDIO-01 … AUDIO-10)
 

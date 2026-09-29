@@ -3803,3 +3803,290 @@ compact density app-wide would reach back into Phases 4 and 6 for a problem that
   bar; PREP-10's Windows run measured 7 and 4). With the lanes open the Set shows 5, and the panel shows
   4 whole Suggestions. `prepare.spec.ts` holds each at one less, the offset PREP-10's two platforms
   showed, until the Windows run records its own numbers (PREP-12).
+
+---
+
+## DEC-113 — CuePoint Computes Waveforms From the Audio
+
+**Status**: Approved · **Related**: DEC-005, DEC-049, DEC-123
+
+**Decision**: CuePoint computes each track's waveform from its audio file, through the decoder it
+already ships, the player's `mpv`. It reads none of Rekordbox's analysis (ANLZ) files, and adds no
+second decoder.
+
+**Reason**:
+- **Coverage:** one pipeline covers every track CuePoint can play, whether or not Rekordbox analysed
+  it and wherever Rekordbox keeps its data.
+- **Control:** the format is CuePoint's own, so a change in a vendor's undocumented layout can never
+  break it.
+- **Nothing new to ship:** the decoder is already fetched, verified, licensed and packaged per OS
+  (PLAYER-01).
+
+**Implications**:
+- A CuePoint waveform will not match Rekordbox's pixel for pixel. It is drawn from the same audio.
+- Where there is no `mpv` (Linux without `CUEPOINT_MPV_PATH`, the CLI), there are no waveforms, and the
+  app says so in words.
+- The format is proved in CI on the pinned binaries, as playback's formats are (WAVE-01).
+
+**Decided with**: User · **Date**: 2026-09-29
+
+---
+
+## DEC-114 — Waveforms Appear in the Bar, the Inspector, Prepare and a Library Column
+
+**Status**: Approved · **Related**: DEC-052, DEC-042, DEC-112
+
+**Decision**: Four places draw a waveform.
+
+| Where | What it does |
+| --- | --- |
+| The player bar | Its waveform is the seek control. |
+| The Inspector | Draws the selected track's waveform. |
+| The Prepare page | Draws a transition strip (DEC-120). |
+| The Library | Offers a "Waveform" column. |
+
+**Reason**: Each is where a DJ reads a track's shape for a different purpose: while listening, while
+inspecting, while planning a transition, and while scanning a crate.
+
+**Implications**:
+- **The bar keeps its height and its control.** The range input stays the element a keyboard and a
+  screen reader use, and the waveform is its picture.
+- **The column is hidden by default,** as artwork's is, and never asks for analysis. Only what a user
+  is looking at jumps the queue.
+- **No surface is the only place a fact appears.** Cues are listed in words in the Inspector, and planned
+  times are text in the strip.
+
+**Decided with**: User · **Date**: 2026-09-29
+
+---
+
+## DEC-115 — An Overview Only
+
+**Status**: Approved · **Related**: DEC-114
+
+**Decision**: A waveform is the whole track at once, with a playhead moving across it. There is no
+zoomed, scrolling detail view.
+
+**Reason**: The overview serves all four surfaces. A detail view needs another, much denser resolution,
+scrolling kept in time with `mpv`'s position, and zoom controls: close to a phase of its own, for a
+performance view CuePoint does not otherwise have.
+
+**Implications**:
+- **Fixed width:** one stored resolution, 1,200 columns per track, from which every smaller width is
+  derived.
+- **The detail view is deferred,** not rejected. Nothing stored would stop a later one from being
+  computed beside the overview.
+
+**Decided with**: User · **Date**: 2026-09-29
+
+---
+
+## DEC-116 — The Whole Library Is Analysed Automatically, in the Background
+
+**Status**: Approved · **Against recommendation** (on demand plus a batch on request) · **Related**:
+DEC-007, DEC-050, DEC-073, DEC-076
+
+**Decision**: After every import and refresh, once the file check has found what is present, CuePoint
+analyses every present track that has no current waveform, without being asked.
+
+- **Low priority:** a bounded number of workers, at lowered OS priority.
+- **Visible:** its progress is in the status strip.
+- **Pausable:** it can be paused and resumed from the strip, Settings and the Health view.
+- **Resumes:** after a restart it continues where it stopped, unless paused.
+
+**Reason**: The user wants waveforms to simply be there, not to be asked for. Q-122 settled the cost
+that brings: the work is spread out and yields, rather than competing with the user.
+
+**Implications**:
+- **Hours on a first run.** A 50,000-track library takes hours. The measured rate is recorded
+  (WAVE-01, WAVE-03), and Settings states the time left.
+- **It never delays playback.** Since the engine is not told about playback (DEC-050), the means is OS
+  priority and a worker bound, and an acceptance test plays music during a run.
+- **It steps aside for any library rewrite.** Import, refresh apply and the file check never wait for
+  it, and it returns after the check that follows them.
+- **Starting at launch reverses nothing in DEC-073.** That decision declined *checking* files at launch.
+  This reads only files the last check found present.
+- **Pausing** is remembered and stops background work. A track the user is looking at is still analysed
+  on its own.
+- **One activity event per run,** never one per track.
+
+**Decided with**: User (Q-119 and Q-122) · **Date**: 2026-09-29
+
+---
+
+## DEC-117 — Three Bands Are Stored; the Colour Is a Setting
+
+**Status**: Approved · **Against recommendation** (three bands only) · **Related**: DEC-115
+
+**Decision**: Every waveform stores four values per column: the full band and three frequency bands,
+low, mid and high. Settings chooses how they are drawn: "Three bands", in colour and layered, or "One
+colour", the full band only. The default is three bands.
+
+**Reason**: The bands are the costly part and are stored either way, so offering one colour costs a
+setting and a drawing mode, not a second analysis.
+
+**Implications**:
+- **The crossovers are CuePoint's own,** named constants: 200 Hz and 2 kHz. Changing them changes the
+  analysis version, and the library is analysed again over time.
+- **The colours are theme tokens,** in all five themes and derived for custom themes, and are held to a
+  minimum contrast against the panel.
+- **The choice is a display preference,** remembered by the renderer, not library data.
+
+**Decided with**: User · **Date**: 2026-09-29
+
+---
+
+## DEC-118 — Cue Points and Beat Grids Are Imported and Drawn, Read-Only
+
+**Status**: Approved · **Related**: DEC-077, DEC-032, DEC-035
+
+**Decision**: The importer reads each track's `POSITION_MARK` and `TEMPO` elements from the Rekordbox
+XML on import and refresh. That covers hot cues, memory cues, loops and the beat grid. They are stored
+beside the track and drawn on its waveform. Nothing in CuePoint edits them, and nothing writes them
+anywhere.
+
+**Reason**: A waveform without its cues answers half of what a DJ reads one for. Reading is safe;
+writing is the loss DEC-077 was written to prevent.
+
+**Implications**:
+- **DEC-077's premise changes and its rule stands.** CuePoint now parses cues and grids, but the export
+  still patches the source and never writes a mark. A test holds the export byte-identical.
+- **Replaced whole.** A refresh replaces a track's marks, and its preview counts the tracks whose marks
+  changed, in one line. Marks are copies of Rekordbox's, not something a user would refuse.
+- **Older libraries** get their marks from their recorded source, once, when it has not changed (DEC-035).
+  Otherwise the marks arrive with the next refresh, and the Inspector says so.
+- **Guarded vocabulary.** A mark type CuePoint does not know is skipped and counted, never stored under a
+  guess.
+
+**Decided with**: User · **Date**: 2026-09-29
+
+---
+
+## DEC-119 — Phase 11 Starts With Phase 5's Manual Acceptance Owed
+
+**Status**: Approved · **Related**: the roadmap's Phase 11 gate, DEC-055
+
+**Decision**: Phase 11 is specified and built before Phase 5's remaining manual acceptance is closed.
+That acceptance is a notarization submission, the rows that need a real audio interface, the row that
+needs somebody to listen, and the DEC-055 amendment. It stays recorded as owed.
+
+**Reason**: All twelve player steps are implemented and tested. Phases 9 and 10 proceeded the same way,
+recording what was owed rather than waiting on hardware. Nothing in Phase 11 changes how the player
+plays: the bar gains a picture, and its seeking logic is PLAYER-06's.
+
+**Implications**:
+- **Phase 5's tests stay unchanged.** Any Phase 11 step that touches the bar must leave PLAYER-06's seek
+  tests passing unchanged.
+- **The roadmap still lists the owed items.** Phase 5 is not marked complete by this decision.
+
+**Decided with**: User · **Date**: 2026-09-29
+
+---
+
+## DEC-120 — Prepare Shows a Transition Strip
+
+**Status**: Approved · **Related**: DEC-107, DEC-111, DEC-112
+
+**Decision**: The Prepare page shows the selected entry's waveform beside the next entry's, each with
+its planned in and out times, in a strip under the Set's header.
+
+**Reason**: The strip shows the one thing the table cannot: how one track ends and the next begins. A
+waveform in every row would be too thin to read at a row's height.
+
+**Implications**:
+- **Opened from "View ▾," as the lanes are, and remembered.** The first time the page opens the strip
+  is closed, so PREP-10's page-open row counts hold. With it open, the Set's rows are measured and held,
+  as the lanes' are.
+- **A precision on the option as asked:** its description said rows keep their height and seven stay on
+  screen. The rows keep their height, and the seven hold as the page opens. With the strip open, the
+  Set shows fewer, a count recorded when WAVE-07 measures it.
+- **Planned times are text** as well as shading, because no picture is the only place a fact appears.
+
+**Decided with**: User · **Date**: 2026-09-29
+
+---
+
+## DEC-121 — Phase 11 Is Waveforms Only
+
+**Status**: Approved · **Related**: the Phase 12 audio-analysis item
+
+**Decision**: The analysis measures nothing but the waveform. Loudness, BPM, key and every other
+measurement from audio wait for Phase 12.
+
+**Reason**: Measuring loudness now would take a Phase 12 decision early, before that phase has asked
+what it is for.
+
+**Implications**:
+- **Phase 12 extends this job rather than starting another.** Its decoder and job are built to be
+  extended.
+- **The cost is one more pass over the library,** accepted.
+
+**Decided with**: User · **Date**: 2026-09-29
+
+---
+
+## DEC-122 — Waveform Data Is Its Own Store, Keyed by File
+
+**Status**: Approved · **Related**: DEC-009, DEC-076
+
+**Decision**: Waveforms are kept in `waveforms.db`, a SQLite file in CuePoint's home beside
+`cuepoint.db`.
+- **Keyed by the file's path,** with its size, modified time and the analysis version recorded.
+- **Kept out of** the launch backup, the support bundle and "Clear cache".
+- **Rebuilt, never migrated:** a schema it does not know, or a store it cannot open, is set aside and
+  rebuilt.
+- **"Delete waveform data"** in Settings empties it.
+
+**Reason**:
+- **Not in the library database.** Every launch backup copies that database whole (DEC-009), and up to
+  250 MB of data that can be rebuilt would multiply every backup's size.
+- **Not in the cache folder,** where DEC-076 put artwork. "Clear cache on exit" would erase it at every
+  exit, and an analysis takes hours rather than seconds to rebuild.
+- **Keyed by file, not by track id.** A restored backup or a fresh import keeps every waveform, because
+  the files did not change.
+- **A cache needs no migrations.** When its schema changes it is rebuilt, so a later build can never
+  get one wrong.
+
+**Implications**:
+- **The two databases can disagree.** A track whose file has no row is waiting. A row whose path no
+  track has is pruned at the end of a full run.
+- **A moved file is analysed again.** On a case-insensitive filesystem, two spellings of one path are
+  two rows, which is harmless.
+- **Deleting the data says what it costs:** its size and the time a new analysis takes.
+
+**Decided with**: User (delegated: "take the most professional and better long term decisions") ·
+**Date**: 2026-09-29
+
+---
+
+## DEC-123 — The Engine Decodes Through the Player's `mpv`, and FFmpeg Splits the Bands
+
+**Status**: Approved · **Related**: DEC-049, DEC-113, the Phase 12 audio-analysis item
+
+**Decision**: Electron main passes the `mpv` path it resolved for the player to the engine as
+`CUEPOINT_DECODER_PATH`. For each file, the engine runs one `mpv` child at lowered OS priority, with
+the user's configuration and scripts turned off. FFmpeg's filters inside it downmix, split the bands,
+rectify and reduce the audio to a small envelope, which the engine reduces again to 1,200 columns.
+`numpy` is not added.
+
+**Reason**:
+- **The decoder is already shipped and licensed.** Adding FFmpeg or a Python audio stack would be a
+  second decoder to fetch, verify and license.
+- **The heavy work stays out of the engine.** Reducing inside FFmpeg keeps full-rate samples off the
+  engine's CPU and out of its memory, and the lowered priority covers all of it.
+- **Startup stays fast.** The engine ships as one file that unpacks at every launch, and `numpy` would
+  add to that on every launch, for a job that does not need it.
+
+**Implications**:
+- **The exact-length path is required.** `mpv`'s encode mode pads its output, so the pipeline uses
+  `--ao=pcm`. The channel order is proven with tones in CI, never assumed. Both were measured while the
+  phase was specified.
+- **Every argument is fixed.** The file path goes after `--`, as a local path only, and a playlist file
+  is never opened.
+- **WAVE-01 settles two details and records them in ADR-009:** how the samples leave `mpv` on Windows,
+  and whether the final reduction stays in FFmpeg.
+- **Phase 12 decides its own dependencies.** If it needs `numpy`, it brings that case with its own
+  measurements.
+
+**Decided with**: User (delegated: "take the most professional and better long term decisions") ·
+**Date**: 2026-09-29

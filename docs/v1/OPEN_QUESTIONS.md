@@ -2486,3 +2486,190 @@ the Inspector and batch editing that Phase 12 may make redundant.
 
 **Recommendation**: **A**. Stacking two tables halves a height that is already too small, and B
 reaches back into Phases 4 and 6 for a problem that is not Phase 10's alone.
+
+---
+
+## DECISION ROUND 13 — WAVEFORMS ✅ Resolved 2026-09-29
+
+Asked before writing Phase 11's step specifications. The roadmap gave this phase two lines: "Only
+after Player is solid. Entirely greenfield." No earlier round decided anything about waveforms beyond
+Q-051's note that they are Phase 11's.
+
+Six facts came from reading the code and running the decoder rather than from the roadmap:
+
+- **The engine has no decoder.** Its only audio library is `mutagen`, which reads tags. There is no
+  FFmpeg and no `numpy`. The only decoder CuePoint ships is the player's `mpv`, and only Electron main
+  knows where it is (`resolvePlayerBinary`). Linux bundles none (PLAYER-01).
+- **`mpv` can do the work itself.** FFmpeg's filters inside `mpv` split a file into bands and reduce it
+  to an envelope, in about 2 s for a 6-minute FLAC here.
+- **Two `mpv` traps.** Its encode mode pads output with silence to a frame boundary (4.46 s for a 3.10 s
+  file), while `--ao=pcm` is exact. A four-channel join does not keep the channel order it was given.
+- **CuePoint has never read a cue or a beat grid** (DEC-077), so drawing them means importing them first.
+- **"Clear cache on exit" exists.** Anything kept in the cache folder can be emptied at every exit,
+  which rules that folder out for data that takes hours to rebuild.
+- **Rows and the bar are measured.** PREP-10 and PREP-11 hold Prepare's whole rows as the page opens,
+  with and without the player's bar. Anything this phase adds must not quietly cost one.
+
+Outcomes are DEC-113…DEC-121 in `DECISIONS.md`. Two answers went against the recommendation — Q-119
+and Q-120 — and are noted below. Q-122 was asked because of Q-119's answer and is recorded with it in
+DEC-116. Q-124 and Q-125 were follow-ups raised by the first answers. DEC-122 and DEC-123 were
+decided under the user's standing instruction to take the most professional, long-term choice on
+technical questions, and each says so.
+
+---
+
+### Q-116 — Where waveform data comes from
+
+**Status**: Resolved → DEC-113 (Option A chosen: CuePoint analyses the audio)
+
+**Question**: Rekordbox already draws waveforms, and CuePoint ships a decoder. Which source does
+CuePoint draw from?
+
+- **Option A — CuePoint analyses the audio** through the bundled `mpv`. Works for every playable track,
+  needs no Rekordbox installation, adds no decoder.
+- **Option B — Read Rekordbox's analysis files** (ANLZ). They look exactly like Rekordbox's, but exist
+  only for tracks Rekordbox analysed, need its data folder, and use an undocumented format.
+- **Option C — Rekordbox first, CuePoint as the fallback.** The widest coverage, two pipelines to build
+  and test, and two looks side by side.
+
+**Recommendation**: **A**. One pipeline that covers every track, over a format CuePoint controls.
+
+---
+
+### Q-117 — Where waveforms appear
+
+**Status**: Resolved → DEC-114 (all four chosen: the bar, the Inspector, Prepare and a Library column)
+
+**Question**: Which surfaces draw a waveform? (More than one could be chosen.)
+
+- **The player bar**, as the seek control.
+- **The Inspector**, for the selected track.
+- **The Prepare page.**
+- **A Library column**, the costliest: 50,000 rows and scroll performance.
+
+**Recommendation**: None given; each was described with its cost.
+
+---
+
+### Q-118 — What kind of view
+
+**Status**: Resolved → DEC-115 (Option A chosen: an overview only)
+
+**Question**: An overview of the whole track, or a zoomed, scrolling detail view as well?
+
+- **Option A — Overview only**: the whole track, click to seek, a playhead across it.
+- **Option B — Overview plus a zoomed detail view** like a CDJ's: a second, dense resolution, scrolling
+  in time with `mpv`, and zoom controls.
+
+**Recommendation**: **A**. It serves every surface in Q-117. B is much of a phase on its own.
+
+---
+
+### Q-119 — When tracks are analysed
+
+**Status**: Resolved → DEC-116 (Option B chosen: the whole library, automatically) · **Against
+recommendation**
+
+**Question**: When does a file get analysed?
+
+- **Option A — On demand, plus a batch on request**: a track is analysed when first shown or played
+  and cached. "Analyse waveforms" over a Collection, a Set or the library runs as a job.
+- **Option B — The whole library, automatically**, as a background job after each import. Ready
+  without asking, but it reads every audio file, and 50,000 tracks take hours.
+- **Option C — On demand only.**
+
+**Recommendation**: **A**, for the cost of reading a whole library unasked. The user chose B:
+waveforms should simply be there.
+
+---
+
+### Q-120 — How the waveform is coloured
+
+**Status**: Resolved → DEC-117 (Option C chosen: both, with a setting) · **Against recommendation**
+
+**Question**: Three frequency bands in colour, as Rekordbox's RGB view does, or one colour for height
+only?
+
+- **Option A — Three bands in colour**: lows, mids and highs visible at a glance.
+- **Option B — One colour**: the plainest fit with the pixel style, and the cheapest.
+- **Option C — Both**, stored as bands, with a setting to draw one colour.
+
+**Recommendation**: **A**. The user chose C: the bands are stored either way, so the choice costs a
+setting.
+
+---
+
+### Q-121 — Cue points and beat grids on the waveform
+
+**Status**: Resolved → DEC-118 (Option A chosen: cues and beat grid, read-only)
+
+**Question**: The XML carries each track's cues and beat grid, and CuePoint does not import them. Does
+Phase 11 draw them?
+
+- **Option A — Cues and beat grid, read-only**: imported on the next refresh and drawn; editing stays
+  in Rekordbox.
+- **Option B — Cues only.**
+- **Option C — Neither**, leaving them to Phase 13.
+
+**Recommendation**: **A**. A waveform without its cues answers half of what a DJ reads it for.
+
+---
+
+### Q-122 — How the automatic analysis behaves
+
+**Status**: Resolved → DEC-116 (Option A chosen: low priority, pausable, resuming)
+
+**Question**: Asked because of Q-119's answer. How does a job that runs for hours behave while the app
+is in use?
+
+- **Option A — Low priority and pausable**: one or two cores, never delays playback, progress in the
+  status strip, pause and resume, continues after a restart.
+- **Option B — Full speed**, every core.
+- **Option C — Only when idle**: nothing playing and the app untouched. The gentlest, but a large
+  library could take days.
+
+**Recommendation**: **A**.
+
+---
+
+### Q-123 — The gate on Phase 5
+
+**Status**: Resolved → DEC-119 (Option A chosen: start now)
+
+**Question**: The roadmap says Phase 11 starts only after Player is solid. Phase 5's code is complete;
+its manual acceptance is owed.
+
+- **Option A — Start now**, recording Phase 5's manual acceptance as still owed, as Phases 9 and 10
+  did.
+- **Option B — Close Phase 5 first**, on real hardware.
+
+**Recommendation**: **A**. Nothing in this phase changes how the player plays.
+
+---
+
+### Q-124 — Waveforms on the Prepare page
+
+**Status**: Resolved → DEC-120 (Option A chosen: a transition strip)
+
+**Question**: What form do Prepare's waveforms take?
+
+- **Option A — A transition strip**: the selected entry's waveform beside the next one's, so the outro
+  meets the intro.
+- **Option B — A small waveform in every row.**
+- **Option C — Both.**
+
+**Recommendation**: **A**. It shows the one thing the table cannot, and leaves the rows alone.
+
+---
+
+### Q-125 — Whether the same pass measures loudness
+
+**Status**: Resolved → DEC-121 (Option A chosen: waveforms only)
+
+**Question**: Decoding every file is the expensive part. Does the same pass also measure loudness for
+Phase 12?
+
+- **Option A — Waveforms only.** Phase 12 extends the job later, at the cost of one more pass.
+- **Option B — Also measure loudness** (integrated LUFS and peak), shown read-only.
+
+**Recommendation**: **A**. Measuring loudness now would take a Phase 12 decision early.
