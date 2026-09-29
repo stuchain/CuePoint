@@ -1,0 +1,663 @@
+{
+  "_comment": "Real engine responses, produced by src/tests/unit/engine/test_library_sets_fixture.py. Do not hand-edit: regenerate with CUEPOINT_WRITE_FIXTURES=1 and read the diff.",
+  "added_to_set": {
+    "applied": {
+      "cancelled": false,
+      "changed": 1,
+      "failed": 0,
+      "operation": "add_to_collection",
+      "target": "Friday",
+      "total": 2,
+      "unchanged": 1
+    }
+  },
+  "created": {
+    "set": {
+      "broken": false,
+      "depth": 1,
+      "dir": null,
+      "entry_count": 0,
+      "frozen_at": null,
+      "frozen_from_id": null,
+      "id": 4,
+      "kind": "set",
+      "name": "Friday",
+      "parent_id": 1,
+      "position": 0,
+      "problem": null,
+      "rules": null,
+      "sort": null,
+      "track_count": 0
+    }
+  },
+  "created_from_collection": {
+    "set": {
+      "broken": false,
+      "depth": 1,
+      "dir": null,
+      "entry_count": 3,
+      "frozen_at": null,
+      "frozen_from_id": null,
+      "id": 6,
+      "kind": "set",
+      "name": "Warm-up",
+      "parent_id": 1,
+      "position": 1,
+      "problem": null,
+      "rules": null,
+      "sort": null,
+      "track_count": 2
+    },
+    "source": {
+      "id": 2,
+      "kind": "collection",
+      "name": "Warm-up"
+    },
+    "track_count": 3
+  },
+  "created_from_playlist": {
+    "set": {
+      "broken": false,
+      "depth": 0,
+      "dir": null,
+      "entry_count": 3,
+      "frozen_at": null,
+      "frozen_from_id": null,
+      "id": 8,
+      "kind": "set",
+      "name": "Sunday",
+      "parent_id": null,
+      "position": 4,
+      "problem": null,
+      "rules": null,
+      "sort": null,
+      "track_count": 2
+    },
+    "source": {
+      "id": 2,
+      "kind": "playlist",
+      "name": "Sunday"
+    },
+    "track_count": 3
+  },
+  "created_from_smart": {
+    "set": {
+      "broken": false,
+      "depth": 1,
+      "dir": null,
+      "entry_count": 2,
+      "frozen_at": null,
+      "frozen_from_id": null,
+      "id": 7,
+      "kind": "set",
+      "name": "Ada",
+      "parent_id": 1,
+      "position": 2,
+      "problem": null,
+      "rules": null,
+      "sort": null,
+      "track_count": 2
+    },
+    "source": {
+      "id": 3,
+      "kind": "collection",
+      "name": "Ada"
+    },
+    "track_count": 2
+  },
+  "delete_preview": {
+    "removes": {
+      "collections": 0,
+      "entries": 17,
+      "folders": 1,
+      "nodes": 5,
+      "sets": 4,
+      "smart_collections": 0
+    }
+  },
+  "duplicated": {
+    "set": {
+      "broken": false,
+      "depth": 1,
+      "dir": null,
+      "entry_count": 6,
+      "frozen_at": null,
+      "frozen_from_id": null,
+      "id": 9,
+      "kind": "set",
+      "name": "Friday copy",
+      "parent_id": 1,
+      "position": 3,
+      "problem": null,
+      "rules": null,
+      "sort": null,
+      "track_count": 5
+    }
+  },
+  "ids": {
+    "friday": 4,
+    "gigs": 1,
+    "smart": 3,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "warmup": 2
+  },
+  "references": {
+    "collection_count": 1,
+    "collection_ids": [
+      2
+    ],
+    "collection_track_count": 1,
+    "edited_track_count": 0,
+    "has_references": true,
+    "rated_track_count": 0,
+    "referenced_track_count": 1,
+    "referenced_track_ids": [
+      1
+    ],
+    "reviewed_track_count": 0,
+    "set_count": 1,
+    "set_ids": [
+      4
+    ],
+    "set_track_count": 1,
+    "tagged_track_count": 0
+  },
+  "set_browse": {
+    "collection_id": 4,
+    "collection_scope": "collection",
+    "dir": "asc",
+    "filters": {
+      "match": "all",
+      "rules": []
+    },
+    "filters_applied": {
+      "match": "all",
+      "rules": []
+    },
+    "library_empty": false,
+    "limit": 100,
+    "mode": "browse",
+    "offset": 0,
+    "query": "",
+    "scope": null,
+    "sort": "collection_position",
+    "total": 5,
+    "tracks": [
+      {
+        "album": null,
+        "artist": "Ada",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 122.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": 300,
+        "effective_bpm": 122.0,
+        "effective_genre": null,
+        "effective_key": "8A",
+        "effective_label": null,
+        "effective_rating": null,
+        "effective_year": null,
+        "favorite": false,
+        "file_path": "/music/1.mp3",
+        "file_status": "not_checked",
+        "genre": null,
+        "id": 1,
+        "key": "8A",
+        "label": null,
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "not_matched",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "1",
+        "remixer": null,
+        "title": "Warm One",
+        "year": null
+      },
+      {
+        "album": null,
+        "artist": "Bea",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 124.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": 320,
+        "effective_bpm": 124.0,
+        "effective_genre": null,
+        "effective_key": "9A",
+        "effective_label": null,
+        "effective_rating": null,
+        "effective_year": null,
+        "favorite": false,
+        "file_path": "/music/2.mp3",
+        "file_status": "not_checked",
+        "genre": null,
+        "id": 2,
+        "key": "9A",
+        "label": null,
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "not_matched",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "2",
+        "remixer": null,
+        "title": "Warm Two",
+        "year": null
+      },
+      {
+        "album": null,
+        "artist": "Cal",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 128.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": 360,
+        "effective_bpm": 128.0,
+        "effective_genre": null,
+        "effective_key": "8A",
+        "effective_label": null,
+        "effective_rating": null,
+        "effective_year": null,
+        "favorite": false,
+        "file_path": "/music/3.mp3",
+        "file_status": "not_checked",
+        "genre": null,
+        "id": 3,
+        "key": "8A",
+        "label": null,
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "not_matched",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "3",
+        "remixer": null,
+        "title": "Peak One",
+        "year": null
+      },
+      {
+        "album": null,
+        "artist": "Dee",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 130.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": 280,
+        "effective_bpm": 130.0,
+        "effective_genre": null,
+        "effective_key": "9A",
+        "effective_label": null,
+        "effective_rating": null,
+        "effective_year": null,
+        "favorite": false,
+        "file_path": "/music/4.mp3",
+        "file_status": "not_checked",
+        "genre": null,
+        "id": 4,
+        "key": "9A",
+        "label": null,
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "not_matched",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "4",
+        "remixer": null,
+        "title": "Peak Two",
+        "year": null
+      },
+      {
+        "album": null,
+        "artist": "Ada",
+        "artwork": "unknown",
+        "bitrate": null,
+        "bpm": 125.0,
+        "colour": null,
+        "comment": null,
+        "date_added": null,
+        "duration_seconds": 400,
+        "effective_bpm": 125.0,
+        "effective_genre": null,
+        "effective_key": "8B",
+        "effective_label": null,
+        "effective_rating": null,
+        "effective_year": null,
+        "favorite": false,
+        "file_path": "/music/5.mp3",
+        "file_status": "not_checked",
+        "genre": null,
+        "id": 5,
+        "key": "8B",
+        "label": null,
+        "match_disputed": false,
+        "match_score": null,
+        "match_state": "not_matched",
+        "overridden": [],
+        "override_sources": {},
+        "play_count": null,
+        "rating": null,
+        "rating_source": null,
+        "rekordbox_track_id": "5",
+        "remixer": null,
+        "title": "Close",
+        "year": null
+      }
+    ]
+  },
+  "set_gone": {
+    "payload": {
+      "error": {
+        "code": "SET_NOT_FOUND",
+        "message": "There is no Set 999999",
+        "reason": "set"
+      }
+    },
+    "status": 404
+  },
+  "set_list_refused": {
+    "payload": {
+      "error": {
+        "code": "SET_LIST_DESTINATION_REFUSED",
+        "message": "A set list is saved as a .txt, .csv or .m3u8 file: /music/set lists/Friday.mp3",
+        "path": "/music/set lists/Friday.mp3",
+        "reason": "destination_not_set_list"
+      }
+    },
+    "status": 400
+  },
+  "set_list_saved": {
+    "saved": {
+      "bytes_written": 486,
+      "entries": 6,
+      "format": "csv",
+      "missing_files": 0,
+      "path": "/music/set lists/Friday.csv",
+      "set_id": 4,
+      "untimed": 6
+    }
+  },
+  "set_list_text": {
+    "set_id": 4,
+    "text": "Friday\nRunning time 0:00 (6 untimed entries not counted)\n\n01. [0:00]  Ada – Warm One\n02. Bea – Warm Two\n03. Cal – Peak One\n04. Dee – Peak Two\n05. Ada – Warm One\n06. Ada – Close\n"
+  },
+  "track_detail": {
+    "collections": [
+      {
+        "id": 2,
+        "kind": "collection",
+        "name": "Warm-up"
+      },
+      {
+        "id": 4,
+        "kind": "set",
+        "name": "Friday"
+      }
+    ],
+    "credits": {
+      "artists": [
+        {
+          "identity": "name",
+          "kind": "artist",
+          "name": "Ada",
+          "ref": "name:ada",
+          "role": "artist"
+        }
+      ],
+      "label": null,
+      "remixers": []
+    },
+    "metadata": {
+      "effective_rating": null,
+      "favorite": false,
+      "notes": null,
+      "rating": null,
+      "rating_source": null,
+      "rekordbox_rating": null,
+      "track_id": 1
+    },
+    "playlist_count": 1,
+    "playlists": [
+      {
+        "depth": 1,
+        "id": 2,
+        "kind": "playlist",
+        "name": "Sunday",
+        "parent_id": 1,
+        "path": "SETS/Sunday",
+        "position": 0,
+        "track_count": 3
+      }
+    ],
+    "tags": [],
+    "track": {
+      "album": null,
+      "artist": "Ada",
+      "artwork": "unknown",
+      "bitrate": null,
+      "bpm": 122.0,
+      "colour": null,
+      "comment": null,
+      "date_added": null,
+      "duration_seconds": 300,
+      "effective_bpm": 122.0,
+      "effective_genre": null,
+      "effective_key": "8A",
+      "effective_label": null,
+      "effective_rating": null,
+      "effective_year": null,
+      "favorite": false,
+      "file_path": "/music/1.mp3",
+      "file_status": "not_checked",
+      "genre": null,
+      "id": 1,
+      "key": "8A",
+      "label": null,
+      "match_disputed": false,
+      "match_score": null,
+      "match_state": "not_matched",
+      "overridden": [],
+      "override_sources": {},
+      "play_count": null,
+      "rating": null,
+      "rating_source": null,
+      "rekordbox_track_id": "1",
+      "remixer": null,
+      "title": "Warm One",
+      "year": null
+    }
+  },
+  "tree": {
+    "collections": [
+      {
+        "broken": false,
+        "depth": 0,
+        "dir": null,
+        "entry_count": 0,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 1,
+        "kind": "folder",
+        "name": "Gigs",
+        "parent_id": null,
+        "position": 0,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 0
+      },
+      {
+        "broken": false,
+        "depth": 0,
+        "dir": null,
+        "entry_count": 3,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 2,
+        "kind": "collection",
+        "name": "Warm-up",
+        "parent_id": null,
+        "position": 1,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 2
+      },
+      {
+        "broken": false,
+        "depth": 0,
+        "dir": null,
+        "entry_count": 0,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 3,
+        "kind": "smart",
+        "name": "Ada",
+        "parent_id": null,
+        "position": 2,
+        "problem": null,
+        "rules": {
+          "match": "all",
+          "rules": [
+            {
+              "field": "artist",
+              "operator": "is",
+              "value": "Ada"
+            }
+          ]
+        },
+        "sort": null,
+        "track_count": 0
+      },
+      {
+        "broken": false,
+        "depth": 0,
+        "dir": null,
+        "entry_count": 0,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 5,
+        "kind": "set",
+        "name": "Empty",
+        "parent_id": null,
+        "position": 3,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 0
+      },
+      {
+        "broken": false,
+        "depth": 0,
+        "dir": null,
+        "entry_count": 3,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 8,
+        "kind": "set",
+        "name": "Sunday",
+        "parent_id": null,
+        "position": 4,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 2
+      },
+      {
+        "broken": false,
+        "depth": 1,
+        "dir": null,
+        "entry_count": 6,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 4,
+        "kind": "set",
+        "name": "Friday",
+        "parent_id": 1,
+        "position": 0,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 5
+      },
+      {
+        "broken": false,
+        "depth": 1,
+        "dir": null,
+        "entry_count": 3,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 6,
+        "kind": "set",
+        "name": "Warm-up",
+        "parent_id": 1,
+        "position": 1,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 2
+      },
+      {
+        "broken": false,
+        "depth": 1,
+        "dir": null,
+        "entry_count": 2,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 7,
+        "kind": "set",
+        "name": "Ada",
+        "parent_id": 1,
+        "position": 2,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 2
+      },
+      {
+        "broken": false,
+        "depth": 1,
+        "dir": null,
+        "entry_count": 6,
+        "frozen_at": null,
+        "frozen_from_id": null,
+        "id": 9,
+        "kind": "set",
+        "name": "Friday copy",
+        "parent_id": 1,
+        "position": 3,
+        "problem": null,
+        "rules": null,
+        "sort": null,
+        "track_count": 5
+      }
+    ],
+    "total": 9
+  }
+}

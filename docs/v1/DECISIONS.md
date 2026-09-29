@@ -3390,6 +3390,22 @@ a user filing Sets in folders beside Collections sees them where they filed them
 
 **Decided with**: User · **Date**: 2026-09-28
 
+### Implemented (2026-09-29, PREP-09) — the Library half
+
+- **As decided.** Sets are nodes of the CuePoint tree, made and filed beside Collections. Selecting one
+  scopes the table as a Collection does. "New Set from…" is on a Collection, a Smart Collection and a
+  Rekordbox playlist, and copies; "Add to Set…" is in ORG-11's list.
+- **Precision: the Library says what its Set scope is.** A line under the filter bar says the rows are
+  the Set's tracks once each, with the numbers when a track plays twice. A Set's order and removal are
+  Prepare's, so the Library offers no row drop and no "Remove from" inside a Set.
+- **Precision: "Open in Prepare" waits for Prepare.** It is built on the tree's menu, the Inspector's
+  Sets and the scope's line, behind one page prop that PREP-10 passes when it enables the page.
+- **Precision: "New Set from…" asks.** A name and a folder, with a sentence on what a copy of this
+  source means, before anything is written. The source's name is filled in.
+
+**Why the decision stands**: the tree is where a user files things (DEC-062), and a Set filed there is
+found there; the running order, which the Library's browse cannot show, stays Prepare's (DEC-072).
+
 ---
 
 ## DEC-105 — Suggestions Fit Both Neighbours

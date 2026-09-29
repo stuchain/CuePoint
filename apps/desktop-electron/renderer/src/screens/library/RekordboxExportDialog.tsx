@@ -496,15 +496,15 @@ export function RekordboxExportDialog({
               <h3 className="rekordbox-export__heading">Playlists</h3>
               {rows.length === 0 ? (
                 <p className="clean-dialog__note">
-                  You have no Collections yet, so no playlists are added. To send tracks to
-                  Rekordbox as a playlist, add them to a Collection first.
+                  You have no Collections or Sets yet, so no playlists are added. To send
+                  tracks to Rekordbox as a playlist, add them to a Collection or a Set first.
                 </p>
               ) : (
                 <fieldset
                   className="rekordbox-export__choose"
                   disabled={phase === "exporting"}
                 >
-                  <legend>Collections to add as playlists</legend>
+                  <legend>Collections and Sets to add as playlists</legend>
                   {rows.map(({ node, depth }) => {
                     const implied = covered.has(node.id);
                     return (

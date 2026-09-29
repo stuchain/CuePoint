@@ -144,7 +144,17 @@ export function referenceWarning(diff: RefreshDiff): string | null {
     const holders = pluralize(references.collection_count, "Collection");
     kinds.push(`${formatCount(references.collection_track_count)} in ${holders}`);
   }
-  if (references.set_count > 0) kinds.push(`in ${pluralize(references.set_count, "Set")}`);
+  if (references.set_count > 0) {
+    // Sets as their own kind, counted as the Collections are: "4 in 1 Set",
+    // the engine's own refusal wording (PREP-02). An engine older than
+    // `set_track_count` sends none, and the holders alone are still true.
+    const holders = pluralize(references.set_count, "Set");
+    kinds.push(
+      references.set_track_count > 0
+        ? `${formatCount(references.set_track_count)} in ${holders}`
+        : `in ${holders}`,
+    );
+  }
   const counted: Array<[number, string]> = [
     [references.rated_track_count, "rated or noted"],
     [references.tagged_track_count, "tagged"],

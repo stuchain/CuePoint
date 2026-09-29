@@ -1,0 +1,28 @@
+/* "New Set from…" (PREP-09): what the Set starts with, its name and its place.
+   The same short form as saving a Smart Collection. */
+
+.cp-new-set-from {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: calc(320px * var(--scale));
+  max-width: calc(420px * var(--scale));
+}
+
+.cp-new-set-from__note {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-new-set-from__problem {
+  margin: 0;
+  color: var(--accent-danger);
+  font-size: var(--font-size-xs);
+}
+
+.cp-new-set-from__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}

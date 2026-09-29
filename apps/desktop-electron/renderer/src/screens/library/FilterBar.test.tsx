@@ -800,6 +800,26 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
       expect(onFiltersChange).not.toHaveBeenCalled();
       expect(screen.getByRole("alert")).toHaveTextContent("Choose a collection");
     });
+
+    it("lists a Set, labelled as one, and names it by id like any other (PREP-09)", () => {
+      const { onFiltersChange } = openOn("collection", {
+        collections: [...COLLECTIONS, { id: 9, name: "Friday", depth: 1, selectable: true, isSet: true }],
+      });
+      const options = within(screen.getByLabelText("Collection")).getAllByRole("option");
+      expect(options.map((option) => option.textContent?.trim())).toEqual([
+        "Choose…",
+        "Sets",
+        "Closers",
+        "Friday (Set)",
+      ]);
+      expect(options[3]).not.toBeDisabled();
+      fireEvent.change(screen.getByLabelText("Collection"), { target: { value: "9" } });
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      expect(onFiltersChange).toHaveBeenCalledWith({
+        match: "all",
+        rules: [{ field: "collection", operator: "in_collection", value: 9 }],
+      });
+    });
   });
 
   describe("a rating", () => {

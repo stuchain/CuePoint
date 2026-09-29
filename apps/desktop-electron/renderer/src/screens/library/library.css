@@ -277,6 +277,29 @@
   min-width: 0;
 }
 
+/* A Set's note (PREP-09): its rows are its tracks once each, not its running
+   order. One quiet line under the bar, so the table keeps its height. */
+.library-screen__scope-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-xs) var(--space-sm);
+  margin: 0;
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.library-screen__scope-link {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent-info);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .library-screen__columns {
   display: flex;
   align-items: center;

@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
-Status: **Specified 2026-09-28. PREP-01 to PREP-08 are implemented (2026-09-28 to 2026-09-29).** The twelve steps below replace the roadmap's
+Status: **Specified 2026-09-28. PREP-01 to PREP-09 are implemented (2026-09-28 to 2026-09-29).** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -1935,7 +1935,7 @@ Every existing test passes unmodified. The strict mypy gate's list gains `sets_a
 
 ---
 
-## PREP-09 — Sets in the Library
+## PREP-09 — Sets in the Library ✅ IMPLEMENTED 2026-09-29
 
 **Objective**: DEC-104's Library half: Sets in the CuePoint tree, scoping the table, reachable from every
 place a Collection is.
@@ -1979,7 +1979,240 @@ outcome.
 
 **Complexity**: **M**
 
-**Outcome**: Not started.
+**Outcome**: Implemented (2026-09-29). Sets are in the Library's CuePoint tree. A user can make one, file
+it in a folder, copy one from a Collection, a Smart Collection or a Rekordbox playlist, duplicate it, add
+tracks to it by drop or "Add to Set…", open it as the table's scope, and save or copy its set list. The
+Inspector lists the Sets a track is in. A delete and a refresh name Sets as their own kind. "Open in
+Prepare" is built and waits for PREP-10 to enable the page it opens.
+
+**What was built.**
+
+- **The tree** (`CollectionsPane.tsx`, `collectionTree.ts`, `useCollectionTree.ts`):
+  - A Set is drawn with Prepare's flag and its entry count, repeats counted.
+  - "New Set" sits beside "New Collection". It files the Set in the selected folder and goes straight
+    into its name, through `sets.create`. The empty tree offers "Create your first Set" beside "Create
+    your first Collection", and says what each is.
+  - A Set's menu: "Open in Prepare", "Duplicate", "Rename", "Delete…", "Save set list…", "Copy set
+    list" and "Export to Rekordbox…", which pre-ticks it (PREP-07).
+  - A Collection and a Smart Collection gain "New Set from…". So does a Rekordbox playlist, in a
+    context menu the mirror had not had; a folder has none, and the mirror still writes nothing.
+  - A Set takes dropped tracks as a Collection does.
+  - The hook gains `createSetFrom` and `duplicateSet`, and `create("set")`. A refusal becomes the
+    engine's sentence, and `SET_NOT_FOUND` re-reads the tree.
+- **"New Set from…"** (`NewSetFromDialog.tsx`, `newSetFrom.ts`): a dialog with a name and a folder,
+  as "Save as Smart Collection" has, and a sentence saying what the copy means for this source. It
+  names the Set after its source and files it beside a CuePoint source, or at the top level for a
+  playlist. The new Set is opened, and a toast says how many entries it got.
+- **The scope** (`LibraryScreen.tsx`, `setScope.ts`):
+  - Selecting a Set scopes the table as a Collection does, in its running order.
+  - A line under the filter bar says the rows are its tracks once each: "“Friday” is a Set of 6
+    entries. The table lists each of its 5 tracks once, in the order they first play." It offers "Open
+    in Prepare" once there is a Prepare.
+  - Inside a Set there is no row drop and no "Remove from". `canReorder` also refuses a Set, with
+    the reason.
+- **"Add to Set…"** joins the operations list, after "Add to Collection…". Its picker offers the Sets
+  and the folders on the way to them. It runs as the batch "add to collection" with the Set's id, so the
+  engine appends to the last chapter, skips what the Set holds and counts it (DEC-058). The toast and
+  the confirmation say "Set", not "Collection".
+- **The rule editor** lists Sets in the `collection` field's picker as "Friday (Set)", and a chip names
+  one the same way.
+- **The Inspector** (`TrackDetailPanel.tsx`) lists "In 1 Set" as its own section, drawn only when there
+  is one. Each Set opens Prepare where there is one, and otherwise scopes the table.
+- **The refresh preview** counts a Set's tracks: "1 in 1 Collection, 1 in 1 Set", the engine's own
+  wording (PREP-02). A Set a refresh emptied says so when opened, read from `set_ids`.
+- **The delete confirmation** names Sets and what goes with them: "This removes 1 folder and 4 Sets,
+  with 17 track entries filed in them. Each Set's chapters, planned times and notes go with it. No
+  tracks are deleted."
+- **The export dialog** names Sets in its legend and its empty sentences.
+- **Set lists** (`screens/prepare/useSetList.ts`, `setList.ts`): "Save set list…" opens PREP-08's
+  dialog, saves, and says what the engine's activity event says. A refused destination or a failed
+  write reopens the dialog at the file refused, with the reason. "Copy set list" puts the engine's text
+  on the clipboard. Both live under `prepare/`, because PREP-11's header uses them too.
+- **Clean's scope picker** offers a Set as a scope, labelled.
+
+**The kind audit, renderer side.** Each place in `renderer/src` that asks what kind a node of
+CuePoint's tree is, and what it now answers for a Set. `CollectionKind` already held `"set"` in both
+type files (PREP-01). The Rekordbox mirror's `kind` (`playlistTree.ts`, `PlaylistPane.tsx`) is another
+tree's and is not listed; nor are `kind` fields of other things (Activity offers, entity pages,
+warnings, tag dialogs, batch operations).
+
+| Where | The question | A Set |
+| --- | --- | --- |
+| `collectionTree.ts` `holdsTracks` | Does it hold entries? | **Yes** (widened) |
+| `collectionTree.ts` `isCollection` (new) | Is it a crate? | No |
+| `collectionTree.ts` `isSet` (new) | Is it a Set? | Yes |
+| `collectionTree.ts` `canMoveInto` | May it be a parent? | No: only a folder |
+| `collectionTree.ts` `canReorder` | May its rows be dragged into a new order? | **No**, with the reason |
+| `collectionTree.ts` `iconForKind` | Which icon? | **Prepare's flag** |
+| `collectionTree.ts` `kindLabel` (new) | What is it called? | "Set" |
+| `collectionTree.ts` `setPickerNodes` (new) | Does "Add to Set" offer it? | Yes, with the folders on the way |
+| `collectionTree.ts` `defaultSortForCollection` | Which sort does its scope open on? | Its order, as a Collection's (unchanged) |
+| `collectionTree.ts` `rulesOf` | Does it carry rules? | No (unchanged) |
+| `collectionTree.ts` `describeDeletion` | What would a delete take? | Counted as Sets, their plans named |
+| `CollectionsPane.tsx` `create`, `UNTITLED` | What do the buttons make? | "New Set", in the selected folder |
+| `CollectionsPane.tsx` `create`'s parent | Is the selection a folder? | No: a Set is not a parent (unchanged) |
+| `CollectionsPane.tsx` `dropKind` | Does a track drop land on it? | **Yes**, through `holdsTracks` |
+| `CollectionsPane.tsx` the row's count | Is a count drawn? | **Yes**: its entries |
+| `CollectionsPane.tsx` `menuItems` | Which menu? | A Set's (above) |
+| `CollectionsPane.tsx` "New Set from…" | Is it a source? | No: a Set is duplicated |
+| `CollectionsPane.tsx` `duplicate` | Which copy? | The Set's, with its plan |
+| `CollectionsPane.tsx` the row buttons | Duplicate and freeze a saved question? | No (unchanged, smart only) |
+| `useCollectionTree.ts` `create` | Which route makes it? | `sets.create` |
+| `LibraryScreen.tsx` `scopedCollection` | Does the scope hold rows? | Yes |
+| `LibraryScreen.tsx` `scopedSet` (new) | Is the scope a Set? | Yes: the note, no removal, no row drop |
+| `LibraryScreen.tsx` `scopeToCollection` | A folder is no scope; a Smart Collection brings rules | Scopes as a Collection |
+| `LibraryScreen.tsx` `acceptsRowDrop` | May a row be dropped to reorder? | **No** |
+| `LibraryScreen.tsx` the operations list's scope | Is "Remove from" offered? | **No** |
+| `LibraryScreen.tsx` the "Add to Collection" picker | Can it be chosen? | **No** (was `holdsTracks`, now `isCollection`) |
+| `LibraryScreen.tsx` the "Add to Set" picker (new) | Can it be chosen? | Yes |
+| `LibraryScreen.tsx` `filterCollections`, `ruleNames` | Can a rule name it? | Yes, labelled "(Set)" |
+| `LibraryScreen.tsx` `folders` | May it hold a new node? | No (unchanged) |
+| `LibraryScreen.tsx` `dropTracks` (a whole query) | Which words for the batch? | A Set's |
+| `LibraryScreen.tsx` `handleApply` | Did the refresh empty it? | Read from `set_ids` too |
+| `LibraryScreen.tsx` `openNewSetFrom` | Collection or Smart Collection words? | Not offered on a Set |
+| `TrackDetailPanel.tsx` `collectionIcon` | Which icon? | Prepare's flag |
+| `TrackDetailPanel.tsx` the Collections list | Is it one of the Collections? | **No**: a section of its own |
+| `libraryEmpty.ts` `emptyStateFor` | What is empty? | "This Set is empty." |
+| `libraryFormat.ts` `referenceWarning` | How is it counted? | "1 in 1 Set" |
+| `libraryBatch.ts` `batchSummary`, `batchConsequence` | Whose changes have no undo? | A Set's |
+| `trackMenu.ts` `organizationMenuItems` | Is removal offered? | No: the page passes no Collection for a Set |
+| `rekordboxExport.ts` `playlistKindNote`, `exportNodeLabel` | What is it in the export? | "Set, in its running order", "Set · N" (PREP-07) |
+| `rekordboxExport.ts` `playlistHeadline` | What can be ticked? | Named: "a Collection or a Set" |
+| `RekordboxExportDialog.tsx` the legend and empty note | What is listed? | "Collections and Sets" |
+| `cleanRules.ts` `scopeOptions` | May it scope Clean? | **Yes** (was drawn as unchoosable), labelled |
+| `cleanRules.ts` `parseScope` | Which scope does `collection:` mean? | Its own id (unchanged) |
+| `ReviewView.tsx` the Inspector's scope | Smart or collection? | `collection:` (unchanged) |
+| `DuplicatesView.tsx` the "Add to Collection" picker | Can it be chosen? | **No** (was `holdsTracks`, now `isCollection`) |
+| `EntityScreen.tsx` the folders for a saved filter | May it hold a new node? | No (unchanged) |
+| `activityActions.ts` `MEMBERSHIP_REVERT_REASON` | Whose membership cannot be reverted? | Both are named |
+| `PaneTree.tsx` `data-kind` | Passed through | `set` |
+
+The final search matched `kind ===`, `kind !==`, `.kind ===`, `holdsTracks(`, `isCollection(`, `isSet(`,
+`iconForKind(` and `kind: "collection" | "set"` across `renderer/src`, tests aside, and found nothing that
+is not in the table or excluded above.
+
+**PREP-02's three items handed on**, done: `describeDeletion` names Sets; `referenceWarning` gives the
+count ("4 in 1 Set"); the refresh's emptied marking reads `set_ids` beside `collection_ids`.
+
+**Where the specification was open, and what was done.**
+
+1. **"Open in Prepare" is built, and offered once there is a Prepare.** The tree's menu, the
+   Inspector's Sets and the scope's note all take one page prop, `onOpenInPrepare`. `App.tsx` does not
+   pass it yet, because `prepare` is still a disabled destination (SHELL-09). An entry that leads to a
+   page that is not there would be a broken link, and passing the prop in PREP-10 lights up all three.
+   Until then, a Set in the Inspector scopes the table, as a Collection does.
+2. **Every Set affordance is offered by a shell that can do it.** "New Set", "Duplicate", the set lists,
+   "New Set from…" and "Add to Set…" appear when the shell has the `sets` bridge. Without it, the Sets
+   the engine sends are still drawn, scoped and exported, and nothing is offered that cannot work. This
+   also leaves every existing Library test unchanged, since their bridges have no `sets`.
+3. **"New Set from…" is a dialog.** The ellipsis promises one, and the dialog does two jobs. It asks a
+   name and a folder, as a new saved filter does. It also says what "a copy" means for this source (a
+   Smart Collection's copy stops matching), as the freeze confirmation does, before anything is written.
+   The engine's default name, the source's, is filled in, so accepting it as it opens is one click.
+4. **The scope's note sits in the filter bar's row.** The page's grid rows are positional, and a new
+   row would have taken the table's growing one. It is one line, so the Library's table keeps its
+   height (DEC-112).
+5. **"Add to Set" offers the Sets and their folders; "Add to Collection" still offers the whole tree.**
+   The Collection picker is ORG-11's, unchanged except that a Set is drawn and cannot be chosen there. A
+   Set picker full of greyed Collections would hide the rows that matter, so it keeps only the folders
+   on the way to a Set. With no Set at all, it says how to make one.
+6. **The Inspector lists Sets apart, and only when there is one.** "In no Sets" on every track would be
+   a line about a feature, not about the track.
+7. **A Set's menu has no row button.** The spec puts its entries in the menu. The row already carries
+   rename and delete, and a Smart Collection's two extra buttons are for its own gestures.
+8. **The set list actions live under `screens/prepare/`.** PREP-11's header is their second caller, and
+   the loop they share (the dialog reopening after a refusal) should be written once.
+9. **"Add to Set" from Duplicates is not offered.** Clean's duplicate groups offer "Add to Collection"
+   to gather copies for review. Copies of one track side by side in a running order is not a Set anyone
+   makes, and the Library's list offers "Add to Set" wherever it is needed.
+10. **Six sentences were reworded, because they became untrue or incomplete.** They are: the export
+    dialog's two empty sentences, its legend and its no-Collections note; the tree's empty text, whose
+    example "a set you are building" is now what a Set is; and Activity's membership revert reason,
+    which cannot tell a Set's batch from a Collection's. The five renderer test assertions that pinned
+    the export wording were updated with it. The Activity tests read the constant.
+
+**Handed on.**
+
+- **PREP-10:** pass `onOpenInPrepare` to `LibraryScreen` in `App.tsx`, on both the Library and
+  Collections routes, navigating to `/prepare/:setId`. The empty state's "New Set" and "New Set
+  from…" can reuse `collections.create("set", …)`, `createSetFrom` and `NewSetFromDialog`, with a source
+  picker in front of it.
+- **PREP-11:** the header's "Set list ▾" uses `useSetList` (`save`, `copy`).
+- **PREP-12:** `organization.md` says Sets are in the tree beside Collections; the CHANGELOG entry.
+
+**Tests**: 111 new: 16 in Python and 95 in the renderer.
+
+- **`src/tests/unit/engine/test_library_sets_fixture.py` (16)** produces `librarySets.fixture.json`
+  from a real engine: a folder holding a Set that plays a track twice, a Collection with a repeat, a
+  Smart Collection, an empty Set, a Rekordbox playlist, each copied into a Set, a duplicate, a Set that
+  is gone, a batch "Add to Set" with a skip, a track's detail, a refresh's references, a folder's
+  delete preview, and a set list copied, saved and refused. The file must equal a fresh capture, with
+  no timestamps, batch ids or machine paths in it. Fourteen tests hold each state to what it claims, on
+  a fresh capture, so a fixture regenerated from a broken engine cannot become the expectation.
+- **Renderer (95)**, over that fixture:
+  - `librarySets.test.ts` (26): the kind audit's functions for each kind, the Set picker's tree, the
+    delete sentence, the scope's note, the empty state, the refresh warning, the batch's words, the
+    operations list, "New Set from…"'s source and words, and Clean's scope picker.
+  - `CollectionsPane.sets.test.tsx` (27): a Set's icon, count and folder; a drop onto it; "New Set" in
+    the selected folder and into its name, offered only where it can be made; a Set's menu, with and
+    without "Open in Prepare", and each entry; "New Set from…" on a Collection, a Smart Collection and
+    a Rekordbox playlist, and not on a folder or a Set; the dialog; and the hook's three Set writes,
+    their refusals, the re-read after `SET_NOT_FOUND`, and a shell without the bridge.
+  - `LibraryScreen.sets.test.tsx` (22): the scope, its note and link; no removal and no row drop inside
+    a Set, beside a Collection that still has both; "Add to Set…" with its picker, its skip and a Set's "no undo"; "Add to
+    Collection" refusing a Set; "New Set from…" a Collection and a playlist, opened, and a refusal kept
+    in the dialog; saving and copying a set list; the export pre-ticking a Set; "Open in Prepare"; a
+    folder's delete; the Inspector's Set; a Set a refresh emptied; and a shell without the bridge.
+  - `TrackDetailPanel.sets.test.tsx` (4): Sets apart from Collections, opening Prepare or scoping the
+    table, and nothing about Sets for a track in none.
+  - `useSetList.test.ts` (15): the saved and copied lines, M3U8's untimed count, which refusals reopen
+    the dialog, a save, a cancel, a refused destination and a failed write reopened at the file, a gone
+    Set ending it, a copy, a clipboard that refuses, and a shell without the bridge.
+  - `FilterBar.test.tsx` (+1): a Set in the rule editor's picker, labelled, sent by id.
+
+Twenty-eight deliberate breakages, each caught:
+
+- a Set no longer holding tracks;
+- a Set counted as a crate;
+- a Set drawn as a crate;
+- a Set rearranged from the Library;
+- the Set picker offering Collections;
+- a delete forgetting its Sets;
+- a row drop taken inside a Set;
+- removal offered inside a Set;
+- a Set the refresh emptied read as filled;
+- "Add to Set" sent without its holder;
+- the scope's note swapping entries and tracks;
+- a Smart Collection sent as its own kind;
+- "New Set from…" offered on a Set;
+- "New Set" offered by a shell that cannot make one;
+- a Set duplicated as a Smart Collection;
+- a Rekordbox folder offering "New Set from…";
+- the Inspector counting Sets as Collections;
+- the Inspector's Set not opening Prepare;
+- the refresh warning dropping a Set's track count;
+- the empty state calling a Set a Collection;
+- the batch saying "Collection" for a Set;
+- a refused set list not reopening the dialog;
+- a gone Set reopening the save dialog;
+- an M3U8 counting untimed entries;
+- a Set that is gone left in the tree;
+- Clean refusing a Set as a scope;
+- the rule editor not naming a Set;
+- the fixture keeping this machine's path.
+
+Every existing test passes, and all but the five export-wording assertions (decision 10) unmodified.
+
+**Checks run**:
+- **Python:**
+  - The full suite: 11,017 passed and 62 skipped (11,001 before, and the 16 new).
+  - `ruff check` and `ruff format --check` on `src/`.
+  - The strict mypy gate, `check_no_qt_in_core.py`, the desktop version coupling and the engine health
+    smoke test.
+- **Renderer:** the type-check, lint (exit 0, with only the 8 warnings that were already there) and
+  120 files and 3,492 tests (3,397 before).
+- **Electron:** the type-check and 24 files, 568 tests, since the contract test's copy of the bridge types is the renderer's.
+- `git diff --check`.
 
 ---
 

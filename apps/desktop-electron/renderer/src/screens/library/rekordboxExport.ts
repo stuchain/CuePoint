@@ -197,10 +197,12 @@ export function playlistHeadline(preview: RekordboxExportPreview, chosen: number
   if (count > 0) {
     return `${pluralize(count, "playlist")} added, in a folder called “${preview.playlist_folder}”`;
   }
+  // A Set exports as one playlist as a Collection does (DEC-109), so both are
+  // named: with Sets in the tree, "tick a Collection" is half the answer.
   if (chosen === 0) {
-    return "No playlists are added. Tick a Collection to send it to Rekordbox as a playlist.";
+    return "No playlists are added. Tick a Collection or a Set to send it to Rekordbox as a playlist.";
   }
-  return "What you ticked holds no Collections, so no playlists are added.";
+  return "What you ticked holds no Collections or Sets, so no playlists are added.";
 }
 
 /** One playlist's count: what is written, and what the file cannot hold. */

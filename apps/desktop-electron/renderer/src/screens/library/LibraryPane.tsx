@@ -59,6 +59,16 @@ export interface LibraryPaneProps {
   collectionsFocusToken?: number;
   /** A Collection's "Export to Rekordbox…" (EXPORT-07, DEC-087). */
   onExportCollection?: (node: CollectionNode) => void;
+  /**
+   * A Set's menu (DEC-104, DEC-110), and "New Set from…" on a Collection, a
+   * Smart Collection or a Rekordbox playlist. Each is offered only when given.
+   */
+  onOpenInPrepare?: (node: CollectionNode) => void;
+  onSaveSetList?: (node: CollectionNode) => void;
+  onCopySetList?: (node: CollectionNode) => void;
+  onNewSetFrom?: (source: CollectionNode | PlaylistTreeNode) => void;
+  /** Whether the shell can make a Set, so "New Set" is offered (PREP-09). */
+  canMakeSets?: boolean;
 }
 
 export function LibraryPane({
@@ -72,6 +82,11 @@ export function LibraryPane({
   onNotify,
   collectionsFocusToken = 0,
   onExportCollection,
+  onOpenInPrepare,
+  onSaveSetList,
+  onCopySetList,
+  onNewSetFrom,
+  canMakeSets = false,
 }: LibraryPaneProps) {
   return (
     <div className="cp-library-pane">
@@ -125,6 +140,12 @@ export function LibraryPane({
         onDropTracks={onDropTracks}
         onNotify={onNotify}
         onExport={onExportCollection}
+        onOpenInPrepare={onOpenInPrepare}
+        onDuplicateSet={canMakeSets ? collections.duplicateSet : undefined}
+        canMakeSets={canMakeSets}
+        onSaveSetList={onSaveSetList}
+        onCopySetList={onCopySetList}
+        onNewSetFrom={onNewSetFrom}
       />
 
       <PlaylistPane
@@ -138,6 +159,7 @@ export function LibraryPane({
         error={playlists.error}
         showAllTracks={false}
         onRefuseDrop={(message) => onNotify?.(message, "warning")}
+        onNewSetFrom={onNewSetFrom}
       />
     </div>
   );

@@ -144,7 +144,9 @@ const INDENT = "  ";
  *
  * A Rekordbox folder is a scope, as it is in the Library (DEC-044). A
  * Collection folder is drawn and cannot be chosen: it holds nodes, not tracks
- * and not a question (DEC-061).
+ * and not a question (DEC-061). A Set is a scope as a Collection is, and the
+ * engine scopes the two alike (DEC-104); it is labelled, since a Set and a
+ * Collection may share a name.
  */
 export function scopeOptions(
   playlists: readonly LibraryPlaylistNode[],
@@ -162,10 +164,16 @@ export function scopeOptions(
     options.push({ value: "collections", label: "CuePoint Collections", disabled: true });
   }
   for (const node of ordered) {
-    const kind = node.kind === "smart" ? "smart" : node.kind === "collection" ? "collection" : null;
+    const kind =
+      node.kind === "smart"
+        ? "smart"
+        : node.kind === "collection" || node.kind === "set"
+          ? "collection"
+          : null;
+    const label = node.kind === "set" ? `${node.name} (Set)` : node.name;
     options.push({
       value: kind ? `${kind}:${node.id}` : `folder:${node.id}`,
-      label: `${INDENT.repeat(node.depth + 1)}${node.name}`,
+      label: `${INDENT.repeat(node.depth + 1)}${label}`,
       disabled: kind === null,
     });
   }

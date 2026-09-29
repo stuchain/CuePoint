@@ -20,6 +20,8 @@ import type {
   CollectionNode,
   CollectionSubtree,
   FilterRuleSet,
+  SetAnswer,
+  SetSource,
 } from "../../api/cuepointBridge.types";
 import {
   COLLECTIONS_PANE_STORAGE_KEY,
@@ -55,7 +57,20 @@ export interface CollectionTreeController {
   select: (node: CollectionNode | null) => void;
   expand: (id: number, expanded: boolean) => void;
   reload: () => void;
-  create: (kind: "folder" | "collection", name: string, parentId: number | null) => Promise<WriteResult>;
+  /** A folder, a Collection, or a Set with its one unnamed chapter (PREP-02). */
+  create: (kind: CreatableKind, name: string, parentId: number | null) => Promise<WriteResult>;
+  /**
+   * "New Set from…" (DEC-104): a copy of a Collection's entries, a Smart
+   * Collection's answer now, a Rekordbox playlist or a selection, in its
+   * order. Nothing is converted in place, so the source is left as it was.
+   */
+  createSetFrom: (
+    source: SetSource,
+    name: string | null,
+    parentId: number | null,
+  ) => Promise<WriteResult & { trackCount?: number }>;
+  /** A Set copied whole: chapters, times, notes and acknowledgements (PREP-02). */
+  duplicateSet: (id: number, name?: string | null) => Promise<WriteResult>
   rename: (id: number, name: string) => Promise<WriteResult>;
   move: (id: number, parentId: number | null) => Promise<WriteResult>;
   previewDelete: (id: number) => Promise<CollectionSubtree | null>;
@@ -97,8 +112,39 @@ export interface CollectionTreeController {
   ) => Promise<WriteResult & { frozen?: number }>;
 }
 
+/** What the pane's "new" buttons make. A Smart Collection is saved from rules. */
+export type CreatableKind = "folder" | "collection" | "set";
+
+/** Said when the shell has no `sets` namespace: a browser tab, an older shell. */
+export const NO_SETS_BRIDGE = "This build cannot make Sets.";
+
 function messageOf(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
+}
+
+/**
+ * A Set's answer as a write's result (PREP-08, DISCOVER-09).
+ *
+ * A refusal is the engine's sentence, as every other write here reports. The
+ * one worth more than a sentence is `SET_NOT_FOUND`: the node is gone, deleted
+ * in another window, so the tree is re-read and stops drawing it.
+ */
+async function answerOf<T>(
+  run: () => Promise<SetAnswer<T>>,
+  reload: () => void,
+  read: (value: T) => WriteResult & { trackCount?: number },
+): Promise<WriteResult & { trackCount?: number }> {
+  try {
+    const answer = await run();
+    if (answer.refusal) {
+      if (answer.refusal.code === "SET_NOT_FOUND") reload();
+      return { ok: false, error: answer.refusal.message };
+    }
+    reload();
+    return read(answer.value);
+  } catch (cause) {
+    return { ok: false, error: messageOf(cause) };
+  }
 }
 
 export function useCollectionTree(
@@ -224,14 +270,52 @@ export function useCollectionTree(
   );
 
   const create = useCallback(
-    (kind: "folder" | "collection", name: string, parentId: number | null) => {
+    (kind: CreatableKind, name: string, parentId: number | null) => {
+      if (kind === "set") {
+        // Through the Sets route rather than the Collection one with a kind:
+        // it answers a refusal as a value, and it is the route PREP-10's empty
+        // state calls too, so there is one way a Set comes into being.
+        const sets = window.cuepoint?.sets;
+        if (!sets) return Promise.resolve({ ok: false, error: NO_SETS_BRIDGE });
+        return answerOf(
+          () => sets.create({ name, parent_id: parentId }),
+          reload,
+          (value) => ({ ok: true, node: value.set }),
+        );
+      }
       const bridge = window.cuepoint?.createCollection;
       return write(
         bridge ? () => bridge({ kind, name, parent_id: parentId }) : undefined,
         (payload) => ({ ok: true, node: payload.collection }),
       );
     },
-    [write],
+    [reload, write],
+  );
+
+  const createSetFrom = useCallback(
+    (source: SetSource, name: string | null, parentId: number | null) => {
+      const sets = window.cuepoint?.sets;
+      if (!sets) return Promise.resolve({ ok: false, error: NO_SETS_BRIDGE });
+      return answerOf(
+        () => sets.createFrom({ source, name, parent_id: parentId }),
+        reload,
+        (value) => ({ ok: true, node: value.set, trackCount: value.track_count }),
+      );
+    },
+    [reload],
+  );
+
+  const duplicateSet = useCallback(
+    (id: number, name?: string | null) => {
+      const sets = window.cuepoint?.sets;
+      if (!sets) return Promise.resolve({ ok: false, error: NO_SETS_BRIDGE });
+      return answerOf(
+        () => sets.duplicate({ set_id: id, name: name ?? null }),
+        reload,
+        (value) => ({ ok: true, node: value.set }),
+      );
+    },
+    [reload],
   );
 
   const rename = useCallback(
@@ -363,6 +447,8 @@ export function useCollectionTree(
     expand,
     reload,
     create,
+    createSetFrom,
+    duplicateSet,
     rename,
     move,
     previewDelete,

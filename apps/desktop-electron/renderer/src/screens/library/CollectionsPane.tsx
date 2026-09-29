@@ -26,6 +26,14 @@
  * "Export to Rekordbox…" (DEC-087), which opens the export with that node
  * ticked. The buttons stay, because a menu is not a thing a first-time user
  * finds; the menu is where an action with no button of its own can live.
+ *
+ * **A Set is a node here too** (DEC-102, DEC-104). It is made beside a
+ * Collection, filed in folders, takes dropped tracks and scopes the table —
+ * everything a node that holds tracks does. What it is not is a crate: it
+ * wears Prepare's flag, and its menu is a Set's — "Open in Prepare",
+ * "Duplicate", the set list — while a Collection, a Smart Collection and a
+ * Rekordbox playlist gain "New Set from…". Each of those is offered only when
+ * the page passes its handler, so a build without them draws none.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -43,9 +51,11 @@ import {
   findCollection,
   holdsTracks,
   iconForKind,
+  isSet,
   type CollectionRow,
   type CollectionTreeNode,
 } from "./collectionTree";
+import type { CreatableKind } from "./useCollectionTree";
 import {
   COLLECTION_NODE_MIME,
   draggedNodeId,
@@ -81,7 +91,7 @@ export interface CollectionsPaneProps {
   onSelect: (node: CollectionNode | null) => void;
   onExpand: (id: number, expanded: boolean) => void;
   onCreate: (
-    kind: "folder" | "collection",
+    kind: CreatableKind,
     name: string,
     parentId: number | null,
   ) => Promise<{ ok: boolean; error?: string; node?: CollectionNode }>;
@@ -127,10 +137,33 @@ export interface CollectionsPaneProps {
    * under it, as the export reads it — and absent when the page cannot export.
    */
   onExport?: (node: CollectionNode) => void;
+  /**
+   * A Set's "Open in Prepare" (DEC-104). Absent until the page it opens is
+   * enabled (PREP-10), so the menu never offers a destination that is not
+   * there.
+   */
+  onOpenInPrepare?: (node: CollectionNode) => void;
+  /** A Set's "Duplicate": chapters, times, notes and all (PREP-02). */
+  onDuplicateSet?: (id: number) => Promise<{ ok: boolean; error?: string }>;
+  /** A Set's "Save set list…" and "Copy set list" (DEC-110). */
+  onSaveSetList?: (node: CollectionNode) => void;
+  onCopySetList?: (node: CollectionNode) => void;
+  /** "New Set from…" a Collection or a Smart Collection (DEC-104). */
+  onNewSetFrom?: (node: CollectionNode) => void;
+  /**
+   * Whether "New Set" is offered (PREP-09): true when the shell can make one.
+   * A shell without the Sets bridge still draws the Sets the engine sends, and
+   * offers nothing it cannot do.
+   */
+  canMakeSets?: boolean;
 }
 
 /** A new node's name before the user has typed one. */
-const UNTITLED = { folder: "New folder", collection: "New Collection" } as const;
+const UNTITLED: Record<CreatableKind, string> = {
+  folder: "New folder",
+  collection: "New Collection",
+  set: "New Set",
+};
 
 export function CollectionsPane({
   tree,
@@ -153,6 +186,12 @@ export function CollectionsPane({
   onDropTracks,
   onNotify,
   onExport,
+  onOpenInPrepare,
+  onDuplicateSet,
+  onSaveSetList,
+  onCopySetList,
+  onNewSetFrom,
+  canMakeSets = false,
 }: CollectionsPaneProps) {
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
@@ -208,7 +247,7 @@ export function CollectionsPane({
 
   const nodeFor = (key: string) => findCollection(tree, Number(key));
 
-  const create = async (kind: "folder" | "collection") => {
+  const create = async (kind: CreatableKind) => {
     // Made inside the selected folder when one is selected, which is what a
     // user pressing "new" while looking at a folder means.
     const parentId = selected?.kind === "folder" ? selected.id : null;
@@ -244,8 +283,10 @@ export function CollectionsPane({
   };
 
   const duplicate = async (node: CollectionTreeNode) => {
-    if (!onDuplicateSmart) return;
-    const result = await onDuplicateSmart(node.id);
+    // A Set's copy is its plan too; a Smart Collection's is its question.
+    const run = isSet(node) ? onDuplicateSet : onDuplicateSmart;
+    if (!run) return;
+    const result = await run(node.id);
     if (!result.ok) say(result.error ?? "Could not duplicate that.", "warning");
     else say(`Copied ${node.name}. The two are separate from now on.`, "info");
   };
@@ -354,6 +395,16 @@ export function CollectionsPane({
   /** One row's menu: what its buttons do, and what has no button (DEC-087). */
   const menuItems = (node: CollectionTreeNode): TrackContextMenuItem[] => {
     const items: TrackContextMenuItem[] = [];
+    if (isSet(node) && onOpenInPrepare) {
+      items.push({
+        id: "open-in-prepare",
+        label: "Open in Prepare",
+        onSelect: () => onOpenInPrepare(node),
+      });
+    }
+    if (isSet(node) && onDuplicateSet) {
+      items.push({ id: "duplicate", label: "Duplicate", onSelect: () => void duplicate(node) });
+    }
     if (node.kind === "smart" && onDuplicateSmart) {
       items.push({ id: "duplicate", label: "Duplicate", onSelect: () => void duplicate(node) });
     }
@@ -364,10 +415,33 @@ export function CollectionsPane({
         onSelect: () => setFreezing(node),
       });
     }
+    if ((node.kind === "collection" || node.kind === "smart") && onNewSetFrom) {
+      items.push({
+        id: "new-set-from",
+        label: "New Set from…",
+        onSelect: () => onNewSetFrom(node),
+      });
+    }
     items.push(
       { id: "rename", label: "Rename", onSelect: () => setRenamingId(node.id) },
       { id: "delete", label: "Delete…", onSelect: () => void askToDelete(node) },
     );
+    if (isSet(node) && onSaveSetList) {
+      items.push({
+        id: "save-set-list",
+        label: "Save set list…",
+        onSelect: () => onSaveSetList(node),
+        separatorBefore: true,
+      });
+    }
+    if (isSet(node) && onCopySetList) {
+      items.push({
+        id: "copy-set-list",
+        label: "Copy set list",
+        onSelect: () => onCopySetList(node),
+        separatorBefore: !onSaveSetList,
+      });
+    }
     if (onExport) {
       items.push({
         id: "export",
@@ -389,7 +463,9 @@ export function CollectionsPane({
     hasChildren: row.hasChildren,
     kind: row.node.kind,
     draggable: renamingId !== row.node.id,
-    count: row.node.kind === "collection" ? row.node.entry_count : null,
+    // Entries, repeats counted: a Set's count is how many it plays, which is
+    // the number a running order is judged by (DEC-058, DEC-104).
+    count: holdsTracks(row.node) ? row.node.entry_count : null,
     badge: row.node.broken ? (
       <span
         className="cp-collections__broken"
@@ -429,6 +505,20 @@ export function CollectionsPane({
             <PixelIcon name="collections" />
             <span aria-hidden>+</span>
           </button>
+          {/* Beside "New Collection", and made the same way: in the selected
+              folder, straight into its name (DEC-104). */}
+          {canMakeSets && (
+            <button
+              type="button"
+              className="cp-collections__action"
+              aria-label="New Set"
+              title="New Set"
+              onClick={() => void create("set")}
+            >
+              <PixelIcon name="prepare" />
+              <span aria-hidden>+</span>
+            </button>
+          )}
           <button
             type="button"
             className="cp-collections__action"
@@ -553,14 +643,23 @@ export function CollectionsPane({
         >
           {status === "ready" && rows.length === 0 && (
             <div className="cp-collections__empty">
+              {/* "A set you are building" used to be one of a Collection's
+                  examples. Since DEC-102 that is what a Set is, so the two are
+                  told apart here, where a user first meets both. */}
               <p>
-                A Collection is your own list of tracks — a set you are building, a
-                shortlist, anything Rekordbox has no folder for. It lives in CuePoint
-                and nothing outside it can change it.
+                A Collection is your own list of tracks — a shortlist, a crate for a
+                gig, anything Rekordbox has no folder for. A Set is a running order you
+                are preparing to play. Both live in CuePoint, and nothing outside it can
+                change them.
               </p>
               <button type="button" onClick={() => void create("collection")}>
                 Create your first Collection
               </button>
+              {canMakeSets && (
+                <button type="button" onClick={() => void create("set")}>
+                  Create your first Set
+                </button>
+              )}
             </div>
           )}
         </PaneTree>

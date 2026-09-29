@@ -56,7 +56,7 @@ import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
 import { SelectionActions } from "./SelectionActions";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
 import { TrackDetailPanel } from "./TrackDetailPanel";
-import { defaultSortForScope, findByPath } from "./playlistTree";
+import { defaultSortForScope, findByPath, type PlaylistTreeNode } from "./playlistTree";
 import {
   canReorder,
   defaultSortForCollection,
@@ -64,9 +64,16 @@ import {
   flattenCollections,
   holdsTracks,
   iconForKind,
+  isCollection,
+  isSet,
   movedPosition,
   rulesOf,
+  setPickerNodes,
 } from "./collectionTree";
+import { NewSetFromDialog } from "./NewSetFromDialog";
+import { newSetMadeLine, setSourceOf, type NewSetSource } from "./newSetFrom";
+import { setScopeNote } from "./setScope";
+import { useSetList } from "../prepare/useSetList";
 import {
   draggedTracks,
   isTrackDrag,
@@ -122,6 +129,9 @@ interface BatchTarget {
   trackId?: number | null;
 }
 
+/** What the page's picker chooses: a Collection, a Set, or a tag to add or remove. */
+type PickerKind = "collection" | "set" | "tag-add" | "tag-remove";
+
 /** What the header's export opens with ticked: nothing (DEC-087). */
 const NOTHING_TICKED: readonly number[] = [];
 
@@ -168,6 +178,12 @@ export interface LibraryScreenProps {
   onOpenEntity?: (kind: EntityKind, ref: string) => void;
   /** Open Similar tracks for one track (DISCOVER-11). Absent, not offered. */
   onOpenSimilar?: (trackId: number) => void;
+  /**
+   * Open a Set on the Prepare page (DEC-104): the tree's "Open in Prepare",
+   * the Inspector's Sets and the Set scope's note. A prop for `focus`'s
+   * reason; absent until PREP-10 enables that page, and then nothing offers it.
+   */
+  onOpenInPrepare?: (setId: number) => void;
 }
 
 export function LibraryScreen({
@@ -178,6 +194,7 @@ export function LibraryScreen({
   onOpenMissingFiles,
   onOpenEntity,
   onOpenSimilar,
+  onOpenInPrepare,
 }: LibraryScreenProps) {
   const { push } = useToast();
   const [summary, setSummary] = useState<LibrarySummary | null>(null);
@@ -235,6 +252,15 @@ export function LibraryScreen({
 
   const playlists = usePlaylistTree();
   const collections = useCollectionTree();
+  /**
+   * "Save set list…" and "Copy set list" (DEC-110), shared with Prepare. Its
+   * `available` is also whether this shell can do anything with a Set at all,
+   * which every Set affordance on the page is offered by (PREP-09).
+   */
+  const setList = useSetList({
+    onMessage: (message, tone) => push(message, tone),
+    onGone: collections.reload,
+  });
   const { vocabulary } = useFilterVocabulary();
   const facet = useFacet(query);
   const columns = useColumnLayout<LibraryTrackRow>(
@@ -259,9 +285,13 @@ export function LibraryScreen({
     credits: TrackCreditLinks | null;
   } | null>(null);
   const [picker, setPicker] = useState<{
-    kind: "collection" | "tag-add" | "tag-remove";
+    kind: PickerKind;
     target: BatchTarget;
   } | null>(null);
+  /** "New Set from…" open on a source, and the engine's last refusal (DEC-104). */
+  const [newSetFrom, setNewSetFrom] = useState<NewSetSource | null>(null);
+  const [newSetBusy, setNewSetBusy] = useState(false);
+  const [newSetError, setNewSetError] = useState<string | null>(null);
   const [tags, setTags] = useState<TagUsage[]>([]);
   /**
    * The rules the bar is showing, which are not always the query's (ORG-12).
@@ -334,6 +364,13 @@ export function LibraryScreen({
     const node = findCollection(collections.tree, query.collectionId);
     return node && holdsTracks(node) ? node : null;
   }, [collections.tree, query.collectionId, query.scope]);
+
+  /**
+   * The Set the table is showing, when it is one (PREP-09). The Library lists
+   * each of its tracks once (fact 3), so order and removal are Prepare's: no
+   * row drag and no "Remove from" here, and a note says what the rows are.
+   */
+  const scopedSet = scopedCollection && isSet(scopedCollection) ? scopedCollection : null;
 
   const batch = useLibraryBatch({
     onMessage: (message, tone) => push(message, tone),
@@ -488,6 +525,7 @@ export function LibraryScreen({
       onSelectCollection={(collection) =>
         scopeToCollection(findCollection(collections.tree, collection.id))
       }
+      onOpenInPrepare={onOpenInPrepare ? (set) => onOpenInPrepare(set.id) : undefined}
       onReveal={(path) => reveal(detail.detail?.track.id, path)}
       onError={(message) => push(message, "warning")}
       onTrackChanged={() => {
@@ -692,9 +730,9 @@ export function LibraryScreen({
   }, []);
 
   const openPicker = useCallback(
-    (kind: "collection" | "tag-add" | "tag-remove", target: BatchTarget) => {
+    (kind: PickerKind, target: BatchTarget) => {
       setPicker({ kind, target });
-      if (kind !== "collection") void loadTags();
+      if (kind === "tag-add" || kind === "tag-remove") void loadTags();
     },
     [loadTags],
   );
@@ -749,12 +787,14 @@ export function LibraryScreen({
       ...organizationMenuItems(
         {
           count: target.count,
-          collection: scopedCollection
-            ? { id: scopedCollection.id, name: scopedCollection.name }
-            : null,
+          collection:
+            scopedCollection && !scopedSet
+              ? { id: scopedCollection.id, name: scopedCollection.name }
+              : null,
         },
         {
           onAddToCollection: () => openPicker("collection", target),
+          onAddToSet: setList.available ? () => openPicker("set", target) : undefined,
           onRemoveFromCollection: () =>
             scopedCollection &&
             runAction(
@@ -783,7 +823,16 @@ export function LibraryScreen({
       // Clean's entries (CLEAN-13), in the same list both surfaces render.
       ...cleanMenuItems({ count: target.count }, clean.handlersFor(target)),
     ],
-    [clean, onOpenEntity, onOpenSimilar, openPicker, runAction, scopedCollection],
+    [
+      clean,
+      onOpenEntity,
+      onOpenSimilar,
+      openPicker,
+      runAction,
+      scopedCollection,
+      scopedSet,
+      setList.available,
+    ],
   );
 
   const menuItems = useMemo((): TrackContextMenuItem[] => {
@@ -852,11 +901,13 @@ export function LibraryScreen({
       if ("ids" in carried) return collections.addTracks(collectionId, carried.ids);
 
       const node = findCollection(collections.tree, collectionId);
+      const set = node !== null && isSet(node);
       await batch.start({
         action: {
           kind: "add_to_collection",
           value: collectionId,
-          target: node?.name ?? "the Collection",
+          target: node?.name ?? (set ? "the Set" : "the Collection"),
+          ...(set ? { holder: "set" as const } : {}),
         },
         selection: batchSelection(selection.selection, query),
         count: selection.count,
@@ -970,6 +1021,7 @@ export function LibraryScreen({
         name: node.name,
         depth: node.depth,
         selectable: holdsTracks(node),
+        isSet: isSet(node),
       })),
     [collections.tree],
   );
@@ -993,8 +1045,13 @@ export function LibraryScreen({
   const ruleNames = useMemo(
     (): ValueNames => ({
       tag: new Map(tags.map((tag) => [tag.id, tag.name])),
+      // A Set's chip says so, as its picker entry does (PREP-09): "in Set X"
+      // and "in Collection X" are one field and one rule (PREP-02).
       collection: new Map(
-        flattenCollections(collections.tree).map((node) => [node.id, node.name]),
+        flattenCollections(collections.tree).map((node) => [
+          node.id,
+          isSet(node) ? `${node.name} (Set)` : node.name,
+        ]),
       ),
       beatport: new Map(Object.entries(openedNames)),
     }),
@@ -1012,9 +1069,21 @@ export function LibraryScreen({
         icon: iconForKind(node.kind),
         // A folder holds nodes and a Smart Collection holds a question
         // (DEC-061). Both are drawn and neither can be chosen, because a tree
-        // with its folders taken out is a list whose indentation lies.
-        disabled: !holdsTracks(node),
-        hint: holdsTracks(node) ? node.entry_count.toLocaleString() : undefined,
+        // with its folders taken out is a list whose indentation lies. A Set
+        // holds tracks but is not a crate (fact 2): it has its own entry.
+        disabled: !isCollection(node),
+        hint: isCollection(node) ? node.entry_count.toLocaleString() : undefined,
+      }));
+    }
+    if (picker.kind === "set") {
+      // The Sets and the folders on the way to them (`setPickerNodes`).
+      return setPickerNodes(collections.tree).map((node) => ({
+        id: node.id,
+        label: node.name,
+        depth: node.depth,
+        icon: iconForKind(node.kind),
+        disabled: !isSet(node),
+        hint: isSet(node) ? node.entry_count.toLocaleString() : undefined,
       }));
     }
     return tags.map((tag) => ({
@@ -1030,6 +1099,15 @@ export function LibraryScreen({
       const current = picker;
       setPicker(null);
       if (!current) return;
+      if (current.kind === "set") {
+        // The same operation as a Collection's (DEC-102): the engine appends
+        // to the Set's last chapter and skips what it already holds (DEC-058).
+        runAction(
+          { kind: "add_to_collection", value: item.id, target: item.label, holder: "set" },
+          current.target,
+        );
+        return;
+      }
       const kind =
         current.kind === "collection"
           ? "add_to_collection"
@@ -1191,7 +1269,12 @@ export function LibraryScreen({
       // Read before the apply clears it: after this the diff is gone, and it
       // is the only thing that knows which Collections were about to lose
       // tracks (DEC-011).
-      const emptied = new Set(diff.references?.collection_ids ?? []);
+      // Sets as well as Collections: PREP-02 counts them apart, so a Set a
+      // refresh emptied is only known by its own list.
+      const emptied = new Set([
+        ...(diff.references?.collection_ids ?? []),
+        ...(diff.references?.set_ids ?? []),
+      ]);
       const done = await run("applying", () =>
         start({ diff_id: diff.diff_id, confirm_references: confirmReferences }),
       );
@@ -1232,6 +1315,48 @@ export function LibraryScreen({
       setExporting({ ids });
     },
     [push],
+  );
+
+  // ------------------------------------------------------------------- Sets
+
+  /**
+   * "New Set from…" a Collection, a Smart Collection or a Rekordbox playlist
+   * (DEC-104): the dialog asks a name and a folder, and says what copying
+   * means for this source before anything is written.
+   */
+  const openNewSetFrom = useCallback((node: CollectionNode | PlaylistTreeNode) => {
+    setNewSetError(null);
+    if ("path" in node) {
+      setNewSetFrom({ kind: "playlist", id: node.id, name: node.name, parentId: null });
+      return;
+    }
+    setNewSetFrom({
+      kind: node.kind === "smart" ? "smart" : "collection",
+      id: node.id,
+      name: node.name,
+      parentId: node.parent_id,
+    });
+  }, []);
+
+  const makeSetFrom = useCallback(
+    async (name: string, parentId: number | null) => {
+      if (!newSetFrom) return;
+      setNewSetBusy(true);
+      setNewSetError(null);
+      const result = await collections.createSetFrom(setSourceOf(newSetFrom), name, parentId);
+      if (!mounted.current) return;
+      setNewSetBusy(false);
+      if (!result.ok || !result.node) {
+        setNewSetError(result.error ?? "Could not make that Set.");
+        return;
+      }
+      setNewSetFrom(null);
+      // Made and opened, as a saved Smart Collection is: what was just made is
+      // what the table shows, and the tree reveals it.
+      scopeToCollection(result.node);
+      push(newSetMadeLine(result.node.name, result.trackCount ?? 0), "success");
+    },
+    [collections, newSetFrom, push, scopeToCollection],
   );
 
   const exportDialog = (
@@ -1278,6 +1403,7 @@ export function LibraryScreen({
         ),
         emptiedByRefresh:
           query.collectionId != null && emptiedByRefresh.has(query.collectionId),
+        isSet: scopedSet !== null,
       }),
     [
       barRules,
@@ -1287,6 +1413,7 @@ export function LibraryScreen({
       query.playlistId,
       query.scope,
       ruleNames,
+      scopedSet,
       smart,
       vocabulary,
       window_.error,
@@ -1402,6 +1529,11 @@ export function LibraryScreen({
           onNotify={(message, tone) => push(message, tone === "warning" ? "warning" : "success")}
           collectionsFocusToken={collectionsFocus}
           onExportCollection={(node) => openExport([node.id])}
+          onOpenInPrepare={onOpenInPrepare ? (node) => onOpenInPrepare(node.id) : undefined}
+          onSaveSetList={setList.available ? (node) => void setList.save(node) : undefined}
+          onCopySetList={setList.available ? (node) => void setList.copy(node) : undefined}
+          onNewSetFrom={setList.available ? openNewSetFrom : undefined}
+          canMakeSets={setList.available}
         />
 
         <div className="library-screen__main">
@@ -1438,6 +1570,23 @@ export function LibraryScreen({
                 onOpenEntity ? (page) => onOpenEntity(page.kind, page.ref) : undefined
               }
             />
+            {/* Inside the bar's grid row rather than a row of its own: the
+                page's rows are positional, and the table must keep the one
+                that grows. */}
+            {scopedSet && (
+              <p className="library-screen__scope-note" role="note">
+                {setScopeNote(scopedSet)}
+                {onOpenInPrepare && (
+                  <button
+                    type="button"
+                    className="library-screen__scope-link"
+                    onClick={() => onOpenInPrepare(scopedSet.id)}
+                  >
+                    Open in Prepare
+                  </button>
+                )}
+              </p>
+            )}
           </div>
 
           <div className="library-screen__table">
@@ -1490,6 +1639,9 @@ export function LibraryScreen({
               acceptsRowDrop={(transfer) =>
                 query.scope === "collection" &&
                 query.collectionId != null &&
+                // A Set's rows are its tracks once each, not its entries
+                // (fact 3): its order is Prepare's to change (PREP-09).
+                scopedSet === null &&
                 isTrackDrag(transfer)
               }
               onRowDrop={(toIndex, transfer) => void reorderTo(toIndex, transfer)}
@@ -1520,9 +1672,11 @@ export function LibraryScreen({
             title={
               picker?.kind === "collection"
                 ? "Add to Collection"
-                : picker?.kind === "tag-remove"
-                  ? "Remove a tag"
-                  : "Add a tag"
+                : picker?.kind === "set"
+                  ? "Add to Set"
+                  : picker?.kind === "tag-remove"
+                    ? "Remove a tag"
+                    : "Add a tag"
             }
             items={pickerItems}
             onChoose={choosePicked}
@@ -1533,7 +1687,9 @@ export function LibraryScreen({
             emptyText={
               picker?.kind === "collection"
                 ? "There are no Collections yet — make one in the pane on the left."
-                : "No tags yet."
+                : picker?.kind === "set"
+                  ? "There are no Sets yet — make one with New Set in the pane on the left."
+                  : "No tags yet."
             }
           />
 
@@ -1549,7 +1705,9 @@ export function LibraryScreen({
             secondaryAction={{ label: "Cancel", onClick: batch.cancel }}
           >
             <p>{batch.question}</p>
-            {batch.pending && <p>{batchConsequence(batch.pending.action.kind)}</p>}
+            {batch.pending && (
+              <p>{batchConsequence(batch.pending.action.kind, batch.pending.action.holder)}</p>
+            )}
           </Modal>
 
           <SelectionActions
@@ -1632,6 +1790,15 @@ export function LibraryScreen({
       />
 
       {clean.dialogs}
+
+      <NewSetFromDialog
+        source={newSetFrom}
+        folders={folders}
+        busy={newSetBusy}
+        error={newSetError}
+        onCreate={(name, parentId) => void makeSetFrom(name, parentId)}
+        onClose={() => setNewSetFrom(null)}
+      />
 
       <TagManagerDialog
         open={tagsOpen}

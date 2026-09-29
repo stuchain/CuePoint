@@ -164,9 +164,26 @@ export function canMoveInto(
   return !subtreeIds(moving).includes(target.id);
 }
 
-/** True when this node holds tracks rather than nodes or a question. */
-export function holdsTracks(node: CollectionTreeNode | CollectionNode): boolean {
+/**
+ * True when this node holds tracks rather than nodes or a question.
+ *
+ * A Collection or a Set (DEC-102, PREP-02's `holds_tracks`): both hold
+ * entries, so both take a drop, scope the table, count what they hold and may
+ * be named by a rule. Where the question is "is this a crate?" instead, ask
+ * :func:`isCollection`; the two differ exactly by a Set (PREP-09's audit).
+ */
+export function holdsTracks(node: Pick<CollectionNode, "kind">): boolean {
+  return node.kind === "collection" || node.kind === "set";
+}
+
+/** True for a plain Collection, a crate: what "Add to Collection" offers. */
+export function isCollection(node: Pick<CollectionNode, "kind">): boolean {
   return node.kind === "collection";
+}
+
+/** True for a Set: a running order in chapters, arranged in Prepare (DEC-102). */
+export function isSet(node: Pick<CollectionNode, "kind">): boolean {
+  return node.kind === "set";
 }
 
 /**
@@ -220,6 +237,15 @@ export function canReorder(
   if (view.scope !== "collection" || view.collectionId == null || !node) {
     return { ok: false, why: "Open a Collection to put its tracks in order." };
   }
+  if (isSet(node)) {
+    // The Library lists each of a Set's tracks once (PREP-09, fact 3), so a
+    // row here is not an entry: a reprise has no row of its own to move. The
+    // running order is arranged where its entries are shown, one by one.
+    return {
+      ok: false,
+      why: `“${node.name}” is a Set: its running order is arranged in Prepare, where each entry has its own row.`,
+    };
+  }
   if (view.sort !== "collection_position" || view.dir !== "asc") {
     return {
       ok: false,
@@ -241,11 +267,62 @@ export function canReorder(
   return { ok: true };
 }
 
-/** The icon a node is drawn with. */
-export function iconForKind(kind: CollectionKind): "folder" | "collections" | "smart" {
+/**
+ * The icon a node is drawn with. A Set wears Prepare's flag (SHELL-09), the
+ * page it is arranged on, so it never reads as a crate in the tree (fact 2).
+ */
+export function iconForKind(
+  kind: CollectionKind,
+): "folder" | "collections" | "smart" | "prepare" {
   if (kind === "folder") return "folder";
   if (kind === "smart") return "smart";
+  if (kind === "set") return "prepare";
   return "collections";
+}
+
+/** What a node is called, as a word beside its name. */
+export function kindLabel(kind: CollectionKind): string {
+  switch (kind) {
+    case "folder":
+      return "folder";
+    case "smart":
+      return "Smart Collection";
+    case "set":
+      return "Set";
+    default:
+      return "Collection";
+  }
+}
+
+/**
+ * The tree an "Add to Set" picker offers: the Sets, and the folders on the
+ * way to them (PREP-09).
+ *
+ * A folder stays, drawn and unchoosable, so the indentation still tells the
+ * truth about where a Set is filed; a branch with no Set anywhere under it is
+ * left out, because a picker for Sets full of Collections nobody can choose
+ * hides the one row that matters. With no Set at all the answer is empty, so
+ * the picker can say how to make one instead of drawing a wall of greyed rows.
+ */
+export function setPickerNodes(
+  nodes: readonly CollectionTreeNode[],
+): CollectionTreeNode[] {
+  const out: CollectionTreeNode[] = [];
+  const walk = (list: readonly CollectionTreeNode[]): void => {
+    for (const node of list) {
+      if (isSet(node)) {
+        out.push(node);
+      } else if (
+        node.kind === "folder" &&
+        flattenCollections(node.children).some((child) => isSet(child))
+      ) {
+        out.push(node);
+        walk(node.children);
+      }
+    }
+  };
+  walk(nodes);
+  return out;
 }
 
 /**
@@ -327,17 +404,24 @@ export function pruneCollectionIds(
  * this?" over a folder holding nine Collections is a question the user cannot
  * answer. Says nothing about tracks: deleting a Collection removes rows about
  * tracks and never a track, and the confirmation says that too.
+ *
+ * Sets are their own kind (PREP-02's `sets`), and what a Set holds beyond its
+ * entries — chapters, planned times, notes — is named, because that is the
+ * part of a deleted Set nothing can rebuild from the library.
  */
 export function describeDeletion(summary: {
   folders: number;
   collections: number;
   smart_collections: number;
+  /** Absent from an engine older than Sets, which reads as none. */
+  sets?: number;
   entries: number;
   nodes: number;
 }): string {
   const parts: string[] = [];
   const plural = (count: number, one: string, many: string) =>
     `${count} ${count === 1 ? one : many}`;
+  const sets = summary.sets ?? 0;
   if (summary.folders) parts.push(plural(summary.folders, "folder", "folders"));
   if (summary.collections)
     parts.push(plural(summary.collections, "Collection", "Collections"));
@@ -345,6 +429,7 @@ export function describeDeletion(summary: {
     parts.push(
       plural(summary.smart_collections, "Smart Collection", "Smart Collections"),
     );
+  if (sets) parts.push(plural(sets, "Set", "Sets"));
   if (parts.length === 0) return "This removes nothing.";
 
   const listed =
@@ -354,5 +439,8 @@ export function describeDeletion(summary: {
   const entries = summary.entries
     ? `, with ${plural(summary.entries, "track entry", "track entries")} filed in them`
     : "";
-  return `This removes ${listed}${entries}. No tracks are deleted.`;
+  const plan = sets
+    ? ` ${sets === 1 ? "The Set's" : "Each Set's"} chapters, planned times and notes go with it.`
+    : "";
+  return `This removes ${listed}${entries}.${plan} No tracks are deleted.`;
 }

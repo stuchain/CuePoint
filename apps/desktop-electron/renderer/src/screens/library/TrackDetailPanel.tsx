@@ -62,6 +62,12 @@ export interface TrackDetailPanelProps {
   onSelectPlaylist?: (playlist: LibraryPlaylistNode) => void;
   /** Scope the table to a Collection holding it (ORG-09). */
   onSelectCollection?: (collection: TrackCollectionRef) => void;
+  /**
+   * Open a Set holding it on the Prepare page (DEC-104). Absent — before that
+   * page exists, or where a page has no way there — a Set scopes the table as
+   * a Collection does, through `onSelectCollection`.
+   */
+  onOpenInPrepare?: (set: TrackCollectionRef) => void;
   /** Show the file in the OS file manager. */
   onReveal?: (filePath: string) => void;
   /** Where a refused edit goes. Without it the zone still works and stays quiet. */
@@ -121,10 +127,14 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-/** The pixel icon for a Collection's kind — a saved question looks like one. */
+/**
+ * The pixel icon for a Collection's kind — a saved question looks like one,
+ * and a Set wears Prepare's flag, as it does in the tree (PREP-09).
+ */
 function collectionIcon(kind: TrackCollectionRef["kind"]) {
   if (kind === "smart") return "smart" as const;
   if (kind === "folder") return "folder" as const;
+  if (kind === "set") return "prepare" as const;
   return "collections" as const;
 }
 
@@ -135,6 +145,7 @@ export function TrackDetailPanel({
   selectionCount = 0,
   onSelectPlaylist,
   onSelectCollection,
+  onOpenInPrepare,
   onReveal,
   onError,
   onTrackChanged,
@@ -214,7 +225,13 @@ export function TrackDetailPanel({
     );
   }
 
-  const { track, playlists, collections, credits } = detail;
+  const { track, playlists, credits } = detail;
+  // The engine lists every node holding the track, Sets with their kind
+  // (PREP-02). A Set is not a Collection to a reader (fact 2), so the two are
+  // counted and listed apart, and a Set's list is drawn only when there is one:
+  // "In no Sets" on every track would be a line about a feature, not the track.
+  const collections = detail.collections.filter((node) => node.kind !== "set");
+  const sets = detail.collections.filter((node) => node.kind === "set");
 
   return (
     <div className="cp-track-detail">
@@ -344,6 +361,31 @@ export function TrackDetailPanel({
           ))}
         </ul>
       </section>
+
+      {sets.length > 0 && (
+        <section className="cp-track-detail__playlists" aria-label="Sets">
+          <h3 className="cp-track-detail__subtitle">
+            {`In ${sets.length} ${sets.length === 1 ? "Set" : "Sets"}`}
+          </h3>
+          <ul>
+            {sets.map((set) => (
+              <li key={set.id}>
+                <button
+                  type="button"
+                  className="cp-track-detail__playlist"
+                  title={onOpenInPrepare ? `Open ${set.name} in Prepare` : undefined}
+                  onClick={() =>
+                    onOpenInPrepare ? onOpenInPrepare(set) : onSelectCollection?.(set)
+                  }
+                >
+                  <PixelIcon name={collectionIcon(set.kind)} className="cp-track-detail__icon" />
+                  {set.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="cp-track-detail__playlists">
         <h3 className="cp-track-detail__subtitle">

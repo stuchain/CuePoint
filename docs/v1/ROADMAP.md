@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–12 resolved (DEC-001…DEC-112).**
 Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
-(DEC-102…DEC-112); PREP-01 to PREP-08 are implemented.
+(DEC-102…DEC-112); PREP-01 to PREP-09 are implemented.
 Phase 9 is specified in `PHASE9_DISCOVER.md` (DISCOVER-01…DISCOVER-12), unblocked by Decision Round 11
 (DEC-090…DEC-101); all twelve steps are implemented and DISCOVER-01's spike is recorded. Phase 9's
 acceptance is met on Windows; the macOS packaged checks and one manual pass through the app
@@ -604,6 +604,12 @@ PREP-08 is implemented: a Set's plan, running order, checks, suggestions and set
 They are twenty methods on `window.cuepoint.sets`, and each answers its value or a typed refusal. A
 save dialog for set lists opens where the last one was saved. A Python test and the desktop contract
 test hold all six contract files to one another and to the engine's answers.
+
+PREP-09 is implemented: Sets are in the Library's CuePoint tree. A Set is made beside a Collection,
+copied from a Collection, a Smart Collection or a Rekordbox playlist, duplicated, filled by drop or
+"Add to Set…", and opened as the table's scope, which says it lists each track once. Its set list is
+saved or copied from its menu. The Inspector, the rule editor, Clean's scope, the delete confirmation
+and the refresh warning all name Sets as their own kind. "Open in Prepare" waits for PREP-10.
 
 ## Phase 11 — Waveforms (WAVE-01 … WAVE-07)
 

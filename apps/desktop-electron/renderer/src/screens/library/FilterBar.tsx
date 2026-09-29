@@ -60,6 +60,11 @@ export interface FilterCollectionOption {
   name: string;
   depth: number;
   selectable: boolean;
+  /**
+   * True for a Set (PREP-09). "In Set X" is the same membership rule as "in
+   * Collection X" (PREP-02), and the picker says which one is being chosen.
+   */
+  isSet?: boolean;
 }
 
 export interface FilterBarProps {
@@ -213,7 +218,7 @@ export function FilterBar({
               // A folder is drawn and cannot be chosen, for the same reason
               // ORG-11's picker draws them: a tree with its folders taken out
               // is a list whose indentation lies.
-              label: `${"　".repeat(node.depth)}${node.name}`,
+              label: `${"　".repeat(node.depth)}${node.name}${node.isSet ? " (Set)" : ""}`,
               disabled: !node.selectable,
             })),
           ]}

@@ -25,13 +25,19 @@ export interface OrganizationMenuContext {
    * Null for the library, for a Rekordbox playlist and for a Smart Collection
    * — the last because a Smart Collection holds a question, and ORG-06 refuses
    * membership operations on one. The UI does not offer what the engine will
-   * not do (DEC-061).
+   * not do (DEC-061). Null for a Set as well: a Set's entries are removed on
+   * the Prepare page, where each has its own row (PREP-09, fact 3).
    */
   collection: { id: number; name: string } | null;
 }
 
 export interface OrganizationMenuHandlers {
   onAddToCollection: () => void;
+  /**
+   * "Add to Set…" (DEC-104): appends to the Set's last chapter, skipping what
+   * it already holds (DEC-058). Absent where no Set can be chosen.
+   */
+  onAddToSet?: () => void;
   onRemoveFromCollection: () => void;
   onAddTag: () => void;
   onRemoveTag: () => void;
@@ -65,6 +71,10 @@ export function organizationMenuItems(
       onSelect: handlers.onAddToCollection,
     },
   ];
+
+  if (handlers.onAddToSet) {
+    items.push({ id: "add-to-set", label: "Add to Set…", onSelect: handlers.onAddToSet });
+  }
 
   if (context.collection) {
     items.push({

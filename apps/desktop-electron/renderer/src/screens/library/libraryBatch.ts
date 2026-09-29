@@ -60,6 +60,14 @@ export interface BatchAction {
   value?: number | boolean | null | OverrideField[] | OverrideEdit;
   /** A tag's name, a Collection's name, the fields, or the value itself. */
   target: string;
+  /**
+   * What a membership batch's target is, when it is a Set (PREP-09).
+   *
+   * The engine's operation is the same — a Set is a node that holds tracks
+   * (DEC-102) — so this changes words only: "no undo for Set changes" is the
+   * true sentence about a Set, and "Collection changes" would not be.
+   */
+  holder?: "set";
 }
 
 /** Whether reverting a batch of this kind is offered (CLEAN-06): all but membership. */
@@ -253,7 +261,7 @@ export function batchSummary(action: BatchAction, result: BatchResult): string {
   if (result.changed <= 1) return opened;
   return canRevertKind(action.kind)
     ? `${opened} Each change is in the track's History, and the whole batch can be reverted from Activity.`
-    : `${opened} There is no undo for Collection changes.`;
+    : `${opened} There is no undo for ${action.holder === "set" ? "Set" : "Collection"} changes.`;
 }
 
 /**
@@ -262,8 +270,10 @@ export function batchSummary(action: BatchAction, result: BatchResult): string {
  * The same distinction the toast draws: most batches can be reverted from
  * Activity, and Collection membership cannot.
  */
-export function batchConsequence(kind: LibraryBatchKind): string {
-  return canRevertKind(kind)
-    ? "It runs in the background. Every change is recorded in each track’s History, and the whole batch can be reverted from Activity."
-    : "It runs in the background, and there is no undo: adding tracks to or removing them from a Collection cannot be reverted.";
+export function batchConsequence(kind: LibraryBatchKind, holder?: "set"): string {
+  if (canRevertKind(kind)) {
+    return "It runs in the background. Every change is recorded in each track’s History, and the whole batch can be reverted from Activity.";
+  }
+  const node = holder === "set" ? "a Set" : "a Collection";
+  return `It runs in the background, and there is no undo: adding tracks to or removing them from ${node} cannot be reverted.`;
 }

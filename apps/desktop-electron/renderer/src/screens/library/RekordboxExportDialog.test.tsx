@@ -178,7 +178,7 @@ describe("the two ways in (DEC-087)", () => {
       key_format: "normal",
     });
     expect(within(dialog()).getByTestId("export-playlist-headline")).toHaveTextContent(
-      "No playlists are added. Tick a Collection to send it to Rekordbox as a playlist.",
+      "No playlists are added. Tick a Collection or a Set to send it to Rekordbox as a playlist.",
     );
   });
 
@@ -250,7 +250,7 @@ describe("choosing what to send", () => {
   it("says what to do when there are no Collections at all", async () => {
     renderDialog({ tree: [] });
     await previewed();
-    expect(within(dialog()).getByText(/You have no Collections yet/)).toBeInTheDocument();
+    expect(within(dialog()).getByText(/You have no Collections or Sets yet/)).toBeInTheDocument();
     expect(within(dialog()).queryByRole("checkbox")).toBeNull();
   });
 
@@ -259,7 +259,7 @@ describe("choosing what to send", () => {
     renderDialog({ initialIds: [3] });
     await previewed();
     expect(within(dialog()).getByTestId("export-playlist-headline")).toHaveTextContent(
-      "What you ticked holds no Collections, so no playlists are added.",
+      "What you ticked holds no Collections or Sets, so no playlists are added.",
     );
   });
 

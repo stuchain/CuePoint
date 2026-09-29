@@ -233,12 +233,12 @@ describe("the playlists", () => {
 
   it("tells nothing chosen from a choice that holds nothing", () => {
     expect(playlistHeadline(WHOLE, 0)).toBe(
-      "No playlists are added. Tick a Collection to send it to Rekordbox as a playlist.",
+      "No playlists are added. Tick a Collection or a Set to send it to Rekordbox as a playlist.",
     );
     const empty = preview("empty_folder");
     expect(empty.playlists).toEqual([]);
     expect(playlistHeadline(empty, 1)).toBe(
-      "What you ticked holds no Collections, so no playlists are added.",
+      "What you ticked holds no Collections or Sets, so no playlists are added.",
     );
   });
 

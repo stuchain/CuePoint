@@ -34,6 +34,12 @@ export interface EmptyStateInput {
   rules: string[];
   /** True when this session's last refresh deleted tracks this Collection held. */
   emptiedByRefresh: boolean;
+  /**
+   * True when the Collection scope is a Set (PREP-09). The engine scopes the
+   * two alike (DEC-104); the words name which one is empty, and how a Set is
+   * filled from here.
+   */
+  isSet?: boolean;
 }
 
 export interface EmptyStateView {
@@ -83,12 +89,13 @@ export function emptyStateFor(input: EmptyStateInput): EmptyStateView {
   }
 
   if (input.scope === "collection") {
+    const kind = input.isSet ? "Set" : "Collection";
     // A Collection a refresh emptied is not a Collection nobody has filled,
     // and "drop tracks onto it" would be an invitation to someone who has just
-    // lost the tracks they put there (DEC-011).
+    // lost the tracks they put there (DEC-011). A Set likewise (PREP-02).
     if (input.emptiedByRefresh) {
       return {
-        headline: "This Collection is empty.",
+        headline: `This ${kind} is empty.`,
         rules: [],
         hint:
           "The tracks it held are no longer in your Rekordbox export, so the " +
@@ -96,9 +103,9 @@ export function emptyStateFor(input: EmptyStateInput): EmptyStateView {
       };
     }
     return {
-      headline: "This Collection is empty.",
+      headline: `This ${kind} is empty.`,
       rules: [],
-      hint: "Drop tracks onto it, or use Add to Collection from the track menu.",
+      hint: `Drop tracks onto it, or use Add to ${kind} from the track menu.`,
     };
   }
 

@@ -21,8 +21,13 @@ export const MEMBERSHIP_OPERATIONS: ReadonlySet<string> = new Set([
   "remove_from_collection",
 ]);
 
+/**
+ * Said for both kinds of node that hold tracks: the batch operation is the
+ * same for a Collection and a Set (DEC-102), and the feed does not record
+ * which one it was, so the sentence names both rather than guessing.
+ */
 export const MEMBERSHIP_REVERT_REASON =
-  "Adding tracks to or removing them from a Collection cannot be reverted: tracks hold positions that later edits move. Add or remove them again instead.";
+  "Adding tracks to or removing them from a Collection or a Set cannot be reverted: tracks hold positions that later edits move. Add or remove them again instead.";
 
 /** The activity events a batch records: one applied, one reverted (DEC-063). */
 export const BATCH_EVENTS: ReadonlySet<string> = new Set(["library.batch", "library.batch_reverted"]);

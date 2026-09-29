@@ -16,9 +16,15 @@
  * comment. The one exception is a *refused* drop — a target that silently does
  * nothing teaches nothing (DEC-031), so a selection dropped here is turned
  * away with a reason.
+ *
+ * **A playlist can start a Set** (DEC-104): "New Set from…" on its context
+ * menu copies it into CuePoint. That reads the mirror and writes nothing to
+ * it, so the section stays read-only; the menu exists only when the page
+ * passes the handler, and only on a playlist, since a folder holds no order.
  */
 import { useState } from "react";
 
+import { TrackContextMenu } from "../../components/TrackContextMenu";
 import type { PlaylistTreeNode, VisibleRow } from "./playlistTree";
 import { PaneTree, type PaneTreeRow } from "./PaneTree";
 import { isCuePointDrag } from "./collectionDrag";
@@ -47,6 +53,8 @@ export interface PlaylistPaneProps {
   showAllTracks?: boolean;
   /** Said out loud when a drag is turned away (DEC-031). */
   onRefuseDrop?: (message: string) => void;
+  /** "New Set from…" a playlist (DEC-104). Absent, rows have no menu. */
+  onNewSetFrom?: (node: PlaylistTreeNode) => void;
 }
 
 const ALL_TRACKS_KEY = "__all__";
@@ -66,8 +74,12 @@ export function PlaylistPane({
   error = null,
   showAllTracks = true,
   onRefuseDrop,
+  onNewSetFrom,
 }: PlaylistPaneProps) {
   const [refusing, setRefusing] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ node: PlaylistTreeNode; x: number; y: number } | null>(
+    null,
+  );
 
   const byKey = new Map(rows.map((row) => [row.node.path, row.node] as const));
   const treeRows: PaneTreeRow[] = rows.map((row) => ({
@@ -121,6 +133,14 @@ export function PlaylistPane({
           onSelect(key === ALL_TRACKS_KEY ? null : (byKey.get(key) ?? null))
         }
         onExpand={onExpand}
+        onRowContextMenu={
+          onNewSetFrom
+            ? (key, anchor) => {
+                const node = byKey.get(key);
+                if (node && node.kind === "playlist") setMenu({ node, ...anchor });
+              }
+            : undefined
+        }
         leadingRow={
           showAllTracks
             ? {
@@ -153,6 +173,22 @@ export function PlaylistPane({
           <p className="cp-playlist-pane__note">Your export has no playlists in it.</p>
         )}
       </PaneTree>
+
+      {menu && onNewSetFrom && (
+        <TrackContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={[
+            {
+              id: "new-set-from",
+              label: "New Set from…",
+              onSelect: () => onNewSetFrom(menu.node),
+            },
+          ]}
+          onClose={() => setMenu(null)}
+          label={`Actions for ${menu.node.name}`}
+        />
+      )}
     </nav>
   );
 }

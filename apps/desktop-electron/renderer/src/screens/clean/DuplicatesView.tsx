@@ -26,8 +26,8 @@ import { PickerDialog, type PickerItem } from "../library/PickerDialog";
 import {
   buildCollectionTree,
   flattenCollections,
-  holdsTracks,
   iconForKind,
+  isCollection,
 } from "../library/collectionTree";
 import { formatDuration } from "../library/trackValues";
 import { batchConsequence } from "../library/libraryBatch";
@@ -244,8 +244,11 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
         label: node.name,
         depth: node.depth,
         icon: iconForKind(node.kind),
-        disabled: !holdsTracks(node),
-        hint: holdsTracks(node) ? node.entry_count.toLocaleString() : undefined,
+        // "Add to Collection" offers crates only. A Set holds tracks too, but
+        // it is not a crate (fact 2), and copies of one track have no place
+        // side by side in a running order.
+        disabled: !isCollection(node),
+        hint: isCollection(node) ? node.entry_count.toLocaleString() : undefined,
       }));
     }
     return tags.map((tag) => ({
