@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–13 resolved (DEC-001…DEC-123).**
 Phase 11 is specified in `PHASE11_WAVEFORMS.md` (WAVE-01…WAVE-07), unblocked by Decision Round 13
-(DEC-113…DEC-123); no step is implemented yet. It starts with Phase 5's manual acceptance still owed,
+(DEC-113…DEC-123); WAVE-01 is implemented. It starts with Phase 5's manual acceptance still owed,
 as the user decided (DEC-119).
 Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
 (DEC-102…DEC-112); all twelve steps are implemented. Phase 10's acceptance is met on Linux, in the
@@ -667,6 +667,16 @@ Round 13 settled the shape:
 Writing the specification found two traps in `mpv`, both now requirements of WAVE-01:
 - its encode mode pads output with silence, so the pipeline uses the exact `--ao=pcm` path;
 - a four-channel join does not keep its channel order, so the order is proven with tones in CI.
+
+WAVE-01 is implemented: the player's `mpv` decodes any shipped format into a four-band RMS envelope
+of exact length, with FFmpeg doing every calculation in a child at lowered priority. Its log must
+prove the output format, since `mpv` exits 0 when it drops a filter and writes messages where the
+samples go. Electron names the decoder to the engine, and every child ends with the engine.
+- **Linux measurements:** 1.0–1.8 s per 6-minute track, and the engine's search stays within 1.25× of
+  idle with four analyses running. The design not chosen measured up to 3.7×.
+- **CI:** it proves the length, band separation and channel order on the pinned Windows and macOS
+  builds with tones (`--check-analysis`).
+- **ADR-009** records the design.
 
 Step specifications: `PHASE11_WAVEFORMS.md`.
 

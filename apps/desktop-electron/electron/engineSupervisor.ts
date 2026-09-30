@@ -88,6 +88,7 @@ import {
   type TrackMatches,
 } from "./engineClient";
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
+import { withDecoderPath } from "./playerLaunch";
 import { stopProcessTree } from "./processTree";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -165,7 +166,51 @@ export const HEALTH_POLL_MS = 250;
 export const MAX_RESTART_ATTEMPTS = 3;
 export const RESTART_BACKOFF_MS = [1000, 2000, 4000];
 
+export interface EngineSupervisorOptions {
+  /**
+   * The mpv the engine analyses audio with, resolved at each launch, or null
+   * when there is none (WAVE-01, DEC-123). Resolved per launch rather than
+   * once, as the player resolves its own binary, so a fetch mid-session is
+   * noticed at the next restart.
+   */
+  decoderPath?: () => string | null;
+}
+
+export interface EngineEnvironmentInput {
+  port: number;
+  token: string;
+  sessionId: string;
+  parentPid: number;
+  decoderPath: string | null;
+  env?: NodeJS.ProcessEnv;
+}
+
+/**
+ * Everything the engine is spawned with in its environment.
+ *
+ * Pure, so what the engine is told can be checked without spawning it.
+ */
+export function engineEnvironment(input: EngineEnvironmentInput): NodeJS.ProcessEnv {
+  return withDecoderPath(
+    {
+      ...(input.env ?? process.env),
+      CUEPOINT_HOST: "127.0.0.1",
+      CUEPOINT_PORT: String(input.port),
+      CUEPOINT_TOKEN: input.token,
+      CUEPOINT_SESSION_ID: input.sessionId,
+      CUEPOINT_HEADLESS: "1",
+      // This process, not the engine's parent: a packaged engine's parent is
+      // its own bootloader. The engine ends itself when this process has gone,
+      // however it went (EXPORT-07, `parent_watch.py`).
+      CUEPOINT_PARENT_PID: String(input.parentPid),
+    },
+    input.decoderPath,
+  );
+}
+
 export class EngineSupervisor {
+  constructor(private readonly options: EngineSupervisorOptions = {}) {}
+
   private child: ChildProcess | null = null;
   private port: number | null = null;
   private token: string | null = null;
@@ -237,18 +282,13 @@ export class EngineSupervisor {
     this.port = await this.pickPort();
     this.token = crypto.randomBytes(24).toString("hex");
 
-    const baseEnv = {
-      ...process.env,
-      CUEPOINT_HOST: "127.0.0.1",
-      CUEPOINT_PORT: String(this.port),
-      CUEPOINT_TOKEN: this.token,
-      CUEPOINT_SESSION_ID: this.sessionId,
-      CUEPOINT_HEADLESS: "1",
-      // This process, not the engine's parent: a packaged engine's parent is
-      // its own bootloader. The engine ends itself when this process has gone,
-      // however it went (EXPORT-07, `parent_watch.py`).
-      CUEPOINT_PARENT_PID: String(process.pid),
-    };
+    const baseEnv = engineEnvironment({
+      port: this.port,
+      token: this.token,
+      sessionId: this.sessionId,
+      parentPid: process.pid,
+      decoderPath: this.options.decoderPath?.() ?? null,
+    });
 
     if (shouldUseBundledEngine()) {
       const enginePath = getBundledEnginePath();

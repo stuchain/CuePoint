@@ -21,6 +21,7 @@ import {
 } from "./setListDialog";
 import type { QueueItemInput, RepeatMode } from "./playbackQueue";
 import type { LibraryBrowseParams, SetListDialogRequest } from "./engineClient";
+import { resolvePlayerBinary } from "./playerLaunch";
 import { PlayerSupervisor } from "./playerSupervisor";
 import { quitAfter } from "./quitAfter";
 
@@ -28,7 +29,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === "development";
 const DEV_URL = process.env.CUEPOINT_RENDERER_URL ?? "http://localhost:5173";
 
-const engine = new EngineSupervisor();
+/**
+ * The engine, told where the player's mpv is so it can analyse audio with it
+ * (WAVE-01, DEC-123). The same resolution the player uses, so the two can never
+ * disagree about which binary is CuePoint's decoder.
+ */
+const engine: EngineSupervisor = new EngineSupervisor({
+  decoderPath: (): string | null =>
+    resolvePlayerBinary({
+      packaged: app.isPackaged,
+      resourcesPath: process.resourcesPath,
+      repoRoot: engine.getRepoRoot(),
+    })?.path ?? null,
+});
 
 /**
  * The audio player (PLAYER-03, DEC-050).

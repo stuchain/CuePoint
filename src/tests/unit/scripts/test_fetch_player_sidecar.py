@@ -783,3 +783,147 @@ class TestCli:
         monkeypatch.setattr(fps, "load_manifest", boom)
         assert fps.main(["--target", "win32-x64"]) == 1
         assert "something specific went wrong" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# The waveform analysis check (WAVE-01)
+# ---------------------------------------------------------------------------
+
+
+def _decode_module():
+    """The decoder module as the check loads it, by file."""
+    return fps._load_audio_decode()
+
+
+def _flat_or_banded(module, frames: int, banded: bool):
+    """An envelope of three equal sections, each in its own band or in none."""
+    from array import array
+
+    third = frames // 3
+    bands = {name: array("f", [0.0] * frames) for name in module.BANDS}
+    for index, name in enumerate(("low", "mid", "high")):
+        for i in range(index * third, (index + 1) * third):
+            bands["full"][i] = 0.4
+            if banded:
+                bands[name][i] = 0.4
+            else:
+                for each in ("low", "mid", "high"):
+                    bands[each][i] = 0.2
+    return module.Envelope(rate_hz=module.ENVELOPE_RATE_HZ, **bands)
+
+
+class TestAnalysisCheck:
+    FIXTURE = fps.FIXTURE_DIR / fps.ANALYSIS_FIXTURE
+
+    def _expected_frames(self) -> int:
+        return round(fps.flac_duration_seconds(self.FIXTURE) * 150)
+
+    def _patched(self, monkeypatch, module, decode):
+        """The check, made to use ``module`` with ``decode`` in it.
+
+        One module object throughout: each load makes new exception classes,
+        and the check catches only its own module's.
+        """
+        monkeypatch.setattr(module, "decode_envelope", decode)
+        monkeypatch.setattr(fps, "_load_audio_decode", lambda: module)
+        return module
+
+    def test_the_flac_length_is_read_from_streaminfo(self):
+        import mutagen
+
+        expected = mutagen.File(self.FIXTURE).info.length
+        assert fps.flac_duration_seconds(self.FIXTURE) == pytest.approx(expected)
+
+    def test_a_file_that_is_not_flac_is_refused(self, tmp_path):
+        other = tmp_path / "x.flac"
+        other.write_bytes(b"RIFF" + b"\x00" * 60)
+        with pytest.raises(fps.SmokeTestError, match="STREAMINFO"):
+            fps.flac_duration_seconds(other)
+
+    def test_every_option_analysis_uses_is_named_and_required(self):
+        """The list the smoke test enforces is the list the decoder passes."""
+        from cuepoint.data import audio_decode
+
+        arguments = audio_decode.decoder_arguments(
+            "mpv", "/a.flac", output="/dev/stdout", log_file="/x.log"
+        )
+        used = {
+            a[2:].split("=", 1)[0]
+            for a in arguments[1:]
+            if a.startswith("--") and a != "--"
+        } - {"no-config"}
+        assert used == set(fps.ANALYSIS_OPTIONS)
+        required = set(fps.load_manifest().required_options)
+        assert set(fps.ANALYSIS_OPTIONS) <= required
+        assert set(fps.PLAYBACK_OPTIONS) <= required
+
+    def test_bands_in_their_places_pass(self, monkeypatch, tmp_path):
+        module = _decode_module()
+        frames = self._expected_frames()
+        seen = []
+
+        def decode(source, binary, transport=None, **_):
+            seen.append(transport)
+            if Path(source).name == fps.ANALYSIS_FIXTURE:
+                return _flat_or_banded(module, frames, banded=True)
+            return _flat_or_banded(module, 60, banded=True)
+
+        self._patched(monkeypatch, module, decode)
+        lines = fps.check_analysis(tmp_path / "mpv", quiet=True)
+        assert any("bands at least" in line for line in lines)
+        assert module.TRANSPORT_FILE in seen
+
+    def test_bands_that_are_not_split_fail(self, monkeypatch, tmp_path):
+        """A dropped or reordered split must fail the check, not ship."""
+        frames = self._expected_frames()
+        module = _decode_module()
+        self._patched(
+            monkeypatch,
+            module,
+            lambda *a, **k: _flat_or_banded(module, frames, banded=False),
+        )
+        with pytest.raises(fps.SmokeTestError, match="wrong order"):
+            fps.check_analysis(tmp_path / "mpv", quiet=True)
+
+    def test_a_padded_envelope_fails(self, monkeypatch, tmp_path):
+        module = _decode_module()
+        frames = self._expected_frames() + 60
+        self._patched(
+            monkeypatch,
+            module,
+            lambda *a, **k: _flat_or_banded(module, frames, banded=True),
+        )
+        with pytest.raises(fps.SmokeTestError, match="padded"):
+            fps.check_analysis(tmp_path / "mpv", quiet=True)
+
+    def test_a_pipeline_failure_fails(self, monkeypatch, tmp_path):
+        module = _decode_module()
+
+        def decode(*_a, **_k):
+            raise module.DecoderUnavailable("the analysis filters did not run")
+
+        self._patched(monkeypatch, module, decode)
+        with pytest.raises(fps.SmokeTestError, match="did not run"):
+            fps.check_analysis(tmp_path / "mpv", quiet=True)
+
+    def test_a_named_mpv_that_does_not_exist_is_refused(self, tmp_path, capsys):
+        assert fps.main(["--mpv", str(tmp_path / "no-mpv"), "--check-analysis"]) == 2
+        assert "No mpv" in capsys.readouterr().err
+
+    def test_a_named_mpv_is_checked_without_the_manifest(self, tmp_path, monkeypatch):
+        binary = tmp_path / "mpv"
+        binary.write_bytes(b"x")
+        checked = []
+        monkeypatch.setattr(
+            fps, "check_analysis", lambda b, **k: checked.append(("analysis", b))
+        )
+        monkeypatch.setattr(
+            fps, "check_formats", lambda b, **k: checked.append(("formats", b))
+        )
+
+        def refuse(*_a, **_k):
+            raise AssertionError("the manifest must not be read")
+
+        monkeypatch.setattr(fps, "load_manifest", refuse)
+        assert fps.main(["--mpv", str(binary), "--check-analysis"]) == 0
+        assert checked == [("analysis", binary)]

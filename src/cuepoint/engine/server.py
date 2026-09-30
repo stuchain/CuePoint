@@ -1105,11 +1105,28 @@ def _stop_with_parent(server: ThreadingHTTPServer) -> None:
 
     def gone() -> None:
         threading.Thread(target=server.shutdown, daemon=True).start()
-        timer = threading.Timer(PARENT_GONE_GRACE_SECONDS, lambda: os._exit(0))
+        timer = threading.Timer(PARENT_GONE_GRACE_SECONDS, _exit_now)
         timer.daemon = True
         timer.start()
 
     watch_parent(pid, gone)
+
+
+def _exit_now() -> None:
+    """End the process, and every decoder child it started (WAVE-01).
+
+    ``os._exit`` skips ``atexit``, where the decoder's own clean-up is
+    registered, so the children are ended here first: a waveform analysis must
+    not outlive the engine that started it.
+    """
+    try:
+        from cuepoint.data.audio_decode import terminate_children
+
+        terminate_children()
+    finally:
+        # Whatever happened above, the engine still ends: an engine left
+        # running with nobody to serve is the failure this exit exists to stop.
+        os._exit(0)
 
 
 def start_engine_thread(

@@ -41,6 +41,7 @@ Usage::
     python scripts/fetch_player_sidecar.py --target all    # every pinned target
     python scripts/fetch_player_sidecar.py --verify-only   # re-check an install
     python scripts/fetch_player_sidecar.py --check-formats # decode the fixtures
+    python scripts/fetch_player_sidecar.py --check-analysis # the waveform pipeline
     python scripts/fetch_player_sidecar.py --print-path    # where the binary is
     python scripts/fetch_player_sidecar.py --update-manifest
 """
@@ -73,6 +74,36 @@ DEFAULT_DEST = PROJECT_ROOT / "apps" / "desktop-electron" / "resources" / "playe
 DEFAULT_CACHE = PROJECT_ROOT / ".cache" / "player-sidecar"
 LICENSE_DIR = PROJECT_ROOT / "third_party" / "mpv"
 FIXTURE_DIR = PROJECT_ROOT / "src" / "tests" / "fixtures" / "audio"
+
+#: Options playback drives mpv with (Phase 5).
+PLAYBACK_OPTIONS: Tuple[str, ...] = (
+    "input-ipc-server",
+    "gapless-audio",
+    "audio-exclusive",
+    "audio-device",
+    "idle",
+)
+#: Options waveform analysis drives mpv with (WAVE-01). A test holds this to the
+#: arguments ``cuepoint.data.audio_decode`` actually passes.
+ANALYSIS_OPTIONS: Tuple[str, ...] = (
+    "ao",
+    "ao-pcm-file",
+    "ao-pcm-waveheader",
+    "af",
+    "audio-format",
+    "terminal",
+    "log-file",
+    "load-scripts",
+    "ytdl",
+    "osc",
+    "resume-playback",
+    "save-position-on-quit",
+    "input-default-bindings",
+    "input-terminal",
+    "vid",
+    "sid",
+    "audio-display",
+)
 
 #: Written beside the installed binary so ``--verify-only`` can tell a good
 #: install from a half-finished or corrupted one without re-downloading.
@@ -679,7 +710,8 @@ def smoke_test(manifest: Manifest, binary: Path, *, quiet: bool = False) -> None
 
     1. Is it the version the manifest pinned?
     2. Does it carry every decoder DEC-005 promised?
-    3. Does it expose every option Phase 5 drives it with?
+    3. Does it expose every option CuePoint drives it with, for playback
+       (Phase 5) and for waveform analysis (WAVE-01)?
     """
     if not binary.exists():
         raise SmokeTestError(f"Player binary not found: {binary}")
@@ -704,7 +736,7 @@ def smoke_test(manifest: Manifest, binary: Path, *, quiet: bool = False) -> None
     missing_opts = [o for o in manifest.required_options if f"--{o}" not in options]
     if missing_opts:
         raise SmokeTestError(
-            "Installed mpv is missing options Phase 5 drives it with: "
+            "Installed mpv is missing options CuePoint drives it with: "
             + ", ".join(f"--{o}" for o in missing_opts)
         )
 
@@ -810,6 +842,156 @@ def check_formats(
                 print(
                     f"  decode {label:24s} {duration:.2f}s @ {rate} Hz  RMS {rms:.0f}"
                 )
+    return checked
+
+
+#: The analysis fixture: 60 Hz, 1 kHz and 6 kHz, two seconds each, one tone
+#: inside each band after the full one (scripts/make_audio_fixtures.py).
+ANALYSIS_FIXTURE = "bands.flac"
+#: Which band each of its sections belongs to, in order.
+ANALYSIS_SECTIONS: Tuple[str, ...] = ("low", "mid", "high")
+#: How far a section's own band must stand above the other two, in decibels.
+MIN_BAND_SEPARATION_DB = 12.0
+#: Envelope samples left out at each edge of a section, where filters settle.
+SECTION_MARGIN_SAMPLES = 15
+
+
+def _load_audio_decode() -> Any:
+    """``cuepoint.data.audio_decode``, loaded from its file.
+
+    Loaded by path rather than imported, so the check needs nothing but the
+    standard library: importing the package would run ``cuepoint.data``'s own
+    imports, which this script has no business depending on.
+    """
+    import importlib.util
+
+    path = PROJECT_ROOT / "src" / "cuepoint" / "data" / "audio_decode.py"
+    spec = importlib.util.spec_from_file_location("cuepoint_audio_decode", path)
+    if spec is None or spec.loader is None:
+        raise SmokeTestError(f"Could not load the decoder module: {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def flac_duration_seconds(path: Path) -> float:
+    """A FLAC file's length, from its STREAMINFO block.
+
+    Read by hand, because the check must not depend on a tag library: after
+    the ``fLaC`` marker and a four-byte block header, STREAMINFO holds the
+    sample rate in 20 bits and the total sample count in 36.
+    """
+    data = path.read_bytes()[:42]
+    if len(data) < 42 or data[:4] != b"fLaC" or (data[4] & 0x7F) != 0:
+        raise SmokeTestError(f"{path.name} does not start with a STREAMINFO block")
+    info = int.from_bytes(data[18:26], "big")
+    rate = info >> 44
+    total = info & ((1 << 36) - 1)
+    if rate == 0 or total == 0:
+        raise SmokeTestError(f"{path.name} declares no length")
+    return total / rate
+
+
+def _db(value: float, reference: float) -> float:
+    """``value`` over ``reference`` in decibels; silence counts as far below."""
+    import math
+
+    if reference <= 0.0:
+        return math.inf
+    if value <= 0.0:
+        return -math.inf
+    return 20.0 * math.log10(value / reference)
+
+
+def check_analysis(
+    binary: Path, fixture_dir: Path = FIXTURE_DIR, *, quiet: bool = False
+) -> List[str]:
+    """Run the waveform pipeline on the fixtures and assert what it promises.
+
+    On ``bands.flac``, through every transport this platform uses:
+
+    - the envelope's length matches the file's own within one envelope sample,
+      so nothing is padded (encode mode pads; the pipeline must not);
+    - each section peaks in its own band, ``MIN_BAND_SEPARATION_DB`` above the
+      other two, which also proves the channel order.
+
+    Then every format fixture decodes to an envelope, with signal where the
+    fixture holds a tone. A decoder that cannot run the filters fails here
+    rather than filling a library with wrong waveforms.
+    """
+    decode = _load_audio_decode()
+    fixture = fixture_dir / ANALYSIS_FIXTURE
+    if not fixture.exists():
+        raise SmokeTestError(f"Missing analysis fixture: {fixture}")
+    expected = flac_duration_seconds(fixture) * decode.ENVELOPE_RATE_HZ
+    transports = [decode.default_transport()]
+    if decode.TRANSPORT_FILE not in transports:
+        transports.append(decode.TRANSPORT_FILE)
+
+    checked: List[str] = []
+    for transport in transports:
+        try:
+            envelope = decode.decode_envelope(
+                fixture.resolve(), binary, transport=transport
+            )
+        except decode.DecodeError as exc:
+            raise SmokeTestError(
+                f"The analysis pipeline failed on {fixture.name} ({transport}): {exc}"
+            ) from exc
+        if abs(envelope.frames - expected) > 1:
+            raise SmokeTestError(
+                f"{fixture.name} ({transport}) gave {envelope.frames} envelope "
+                f"samples; its own length is {expected:.2f}. The output is padded "
+                "or cut short."
+            )
+        count = envelope.frames
+        sections = len(ANALYSIS_SECTIONS)
+        worst = float("inf")
+        for index, band in enumerate(ANALYSIS_SECTIONS):
+            start = index * count // sections + SECTION_MARGIN_SAMPLES
+            end = (index + 1) * count // sections - SECTION_MARGIN_SAMPLES
+            peaks = {
+                name: max(envelope.band(name)[start:end]) for name in ANALYSIS_SECTIONS
+            }
+            for other in ANALYSIS_SECTIONS:
+                if other == band:
+                    continue
+                separation = _db(peaks[band], peaks[other])
+                worst = min(worst, separation)
+                if separation < MIN_BAND_SEPARATION_DB:
+                    raise SmokeTestError(
+                        f"{fixture.name} ({transport}): section {index + 1} should "
+                        f"be in the {band} band, but {other} is only "
+                        f"{separation:.1f} dB below it. The bands are wrong or "
+                        "in the wrong order."
+                    )
+        line = (
+            f"analysis ({transport}): {count} samples for {expected:.2f} expected, "
+            f"bands at least {worst:.1f} dB apart"
+        )
+        checked.append(line)
+        if not quiet:
+            print(f"  {line}")
+
+    for name, label, tonal in FORMAT_FIXTURES:
+        source = (fixture_dir / name).resolve()
+        try:
+            envelope = decode.decode_envelope(source, binary)
+        except decode.DecodeError as exc:
+            raise SmokeTestError(
+                f"The analysis pipeline failed on {label} ({name}): {exc}"
+            ) from exc
+        loudest = max(envelope.full) if envelope.frames else 0.0
+        if envelope.frames == 0 or (tonal and loudest < 0.05):
+            raise SmokeTestError(
+                f"{label} ({name}) analysed to {envelope.frames} samples with a "
+                f"peak of {loudest:.3f}; the fixture holds a tone"
+            )
+        line = f"analysis {label}: {envelope.duration_ms} ms, peak {loudest:.3f}"
+        checked.append(line)
+        if not quiet:
+            print(f"  {line}")
     return checked
 
 
@@ -1065,16 +1247,7 @@ def update_manifest(
         "required_decoders",
         ["flac", "alac", "mp3", "pcm_s16be", "wavpack", "ape", "aac"],
     )
-    updated.setdefault(
-        "required_options",
-        [
-            "input-ipc-server",
-            "gapless-audio",
-            "audio-exclusive",
-            "audio-device",
-            "idle",
-        ],
-    )
+    updated.setdefault("required_options", [*PLAYBACK_OPTIONS, *ANALYSIS_OPTIONS])
     license_block = dict(existing.get("license", {}))
     license_block.setdefault("spdx", "GPL-2.0-or-later")
     license_block["files"] = sorted(LICENSE_SOURCES)
@@ -1164,6 +1337,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Decode the audio fixtures with the installed binary",
     )
     parser.add_argument(
+        "--check-analysis",
+        action="store_true",
+        help="Run the waveform analysis pipeline on the fixtures (WAVE-01)",
+    )
+    parser.add_argument(
+        "--mpv",
+        type=Path,
+        help="Check this mpv instead of the bundled one (formats and analysis only)",
+    )
+    parser.add_argument(
         "--update-manifest", action="store_true", help="Re-pin the manifest"
     )
     parser.add_argument("-q", "--quiet", action="store_true")
@@ -1183,6 +1366,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     try:
         if args.update_manifest:
             update_manifest(args.manifest, cache_dir=args.cache_dir, quiet=args.quiet)
+            return 0
+
+        if args.mpv is not None:
+            # A named mpv, as CUEPOINT_MPV_PATH names one: on Linux, which pins
+            # none, this is how a contributor checks the pipeline at all.
+            if not args.mpv.is_file():
+                print(f"No mpv at {args.mpv}", file=sys.stderr)
+                return 2
+            if args.check_formats:
+                check_formats(args.mpv, quiet=args.quiet)
+            if args.check_analysis:
+                check_analysis(args.mpv, quiet=args.quiet)
             return 0
 
         manifest = load_manifest(args.manifest)
@@ -1242,6 +1437,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     print("  (format check skipped: not the host platform)")
                 else:
                     check_formats(binary, quiet=args.quiet)
+            if args.check_analysis:
+                if not is_host:
+                    print("  (analysis check skipped: not the host platform)")
+                else:
+                    check_analysis(binary, quiet=args.quiet)
         return 0
 
     except PlayerSidecarError as exc:

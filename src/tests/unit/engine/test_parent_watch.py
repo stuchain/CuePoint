@@ -241,3 +241,41 @@ class TestTheEngine:
             assert engine.poll() is None
         finally:
             stop_tree(engine)
+
+
+class TestDecoderChildrenEndWithTheEngine:
+    """WAVE-01: a waveform decode must not outlive the engine that started it.
+
+    The engine ends with ``os._exit`` once its app has gone, which skips
+    ``atexit``, where the decoder registers its own clean-up. So the exit ends
+    the decoder's children itself, before it leaves.
+    """
+
+    def test_the_exit_ends_every_decoder_child_first(self, monkeypatch):
+        from cuepoint.data import audio_decode
+        from cuepoint.engine import server
+
+        calls = []
+        monkeypatch.setattr(
+            audio_decode, "terminate_children", lambda: calls.append("children") or 0
+        )
+        monkeypatch.setattr(
+            server.os, "_exit", lambda code: calls.append(("exit", code))
+        )
+        server._exit_now()
+        assert calls == ["children", ("exit", 0)]
+
+    def test_the_engine_still_exits_if_ending_the_children_fails(self, monkeypatch):
+        from cuepoint.data import audio_decode
+        from cuepoint.engine import server
+
+        exits = []
+
+        def broken() -> int:
+            raise RuntimeError("could not end them")
+
+        monkeypatch.setattr(audio_decode, "terminate_children", broken)
+        monkeypatch.setattr(server.os, "_exit", lambda code: exits.append(code))
+        with pytest.raises(RuntimeError):
+            server._exit_now()
+        assert exits == [0]

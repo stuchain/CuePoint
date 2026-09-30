@@ -131,6 +131,8 @@ GUARDED = (
     "cuepoint/services/set_list_service.py",
     # PREP-08: a Set over the wire.
     "cuepoint/engine/sets_api.py",
+    # WAVE-01: decoding audio into a waveform's envelope.
+    "cuepoint/data/audio_decode.py",
 )
 
 

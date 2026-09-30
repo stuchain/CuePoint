@@ -4090,3 +4090,33 @@ rectify and reduce the audio to a small envelope, which the engine reduces again
 
 **Decided with**: User (delegated: "take the most professional and better long term decisions") ·
 **Date**: 2026-09-29
+
+### Implemented (2026-09-30, WAVE-01) — the pipeline, and what `mpv` turned out to do
+
+- **As decided,** with FFmpeg doing every calculation in the child and the engine taking square
+  roots of a 150 Hz envelope. ADR-009 records the pipeline and the measurements, and `PHASE11_WAVEFORMS.md`
+  records the step.
+- **Precision: squared, not rectified.** `amultiply` measured twice as fast as `aeval=abs()`, and
+  gives RMS once the engine takes the root. The values stay linear amplitude.
+- **Precision: the log proves the output.** `mpv` writes info messages to standard output and exits 0
+  when it drops a filter. So standard output carries only samples (`--terminal=no`), and `--log-file`
+  must show `AO: [pcm] 150Hz quad 4ch float`, or the decoder is `decoder_missing` and no file is
+  blamed.
+- **Precision: `quad`, not `4.0`.** The `4.0` layout came out reordered, while `quad` keeps its order.
+  CI proves the order with tones on the pinned builds (`--check-analysis`).
+- **Precision: the downmix is normalised to unit gain,** since FFmpeg's default adds 3 dB to
+  correlated stereo.
+- **Precision: the transport.** A pipe on macOS and Linux, and a file in a private temporary folder on
+  Windows. No named pipe is needed.
+- **Precision: more isolation than `--no-config`.** It turns off resuming, saving, scripts,
+  `youtube-dl` and the controller. The manifest names all seventeen options, and a test holds that
+  list to the arguments passed.
+- **Measured on Linux** (`mpv` 0.37, four cores):
+  - 1.0–1.8 s per 6-minute track, and 67–94 MB per child;
+  - the engine's search p95 with four analyses running stays within 0.98–1.25× idle;
+  - the design not chosen measured 2.3–3.7× idle, and 1.4–2.8 s of the engine's own CPU per track.
+
+  The pinned Windows and macOS timings are owed.
+
+**Why the decision stands**: every measurement favoured decoding and reducing in the child, and none
+needed `numpy`.

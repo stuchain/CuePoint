@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 11: Waveforms, Detailed Step Specifications
 
-Status: **Specified 2026-09-29. No step is implemented yet.** The seven steps below replace the
+Status: **Specified 2026-09-29. WAVE-01 is implemented (2026-09-30); WAVE-02 to WAVE-07 are not.** The seven steps below replace the
 roadmap's placeholder inventory (WAVE-01…WAVE-07), keeping its count. Per the process, no
 implementation happens from this document: each step needs an explicit "Implement WAVE-NN"
 instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
@@ -234,7 +234,7 @@ never writes a mark, and a test holds its output byte-identical before and after
 
 ---
 
-## WAVE-01 — The Decoder Pipeline, Proven
+## WAVE-01 — The Decoder Pipeline, Proven ✅ IMPLEMENTED 2026-09-30
 
 **Objective**: Prove, on the pinned `mpv` for each shipped OS, a pipeline that decodes a local file
 into a four-band envelope of exact length, and record it in ADR-009.
@@ -353,7 +353,114 @@ into a four-band envelope of exact length, and record it in ADR-009.
 
 **Complexity**: **M**
 
-**Outcome**: Not implemented yet.
+**Outcome**: Implemented (2026-09-30). `data/audio_decode.py` decodes any shipped format into a
+four-band RMS envelope of exact length, through the player's `mpv`, with FFmpeg doing every
+calculation. ADR-009 records the pipeline, the design it beat, and the measurements. Nothing reaches
+a user yet: WAVE-02 is the first caller.
+
+**What was built.**
+
+- **`data/audio_decode.py`,** in the strict mypy gate. It holds:
+  - the named constants, `ANALYSIS_VERSION = 1` among them;
+  - the filter graph and the argument list;
+  - the log reader and the envelope parser;
+  - `decode_envelope()`;
+  - the registry of live children, which `terminate_children()` ends.
+
+  Its outcomes are an `Envelope` or one of `FileGone`, `DecodeFailed` (`undecodable`, `no_audio`,
+  `timeout`), `DecoderUnavailable` (`decoder_missing`) and `DecodeCancelled`.
+- **The engine is told where the decoder is.** `engineEnvironment()` in `engineSupervisor.ts` builds
+  the engine's whole environment. `withDecoderPath()` in `playerLaunch.ts` sets `CUEPOINT_DECODER_PATH`
+  to the `mpv` the player resolves, or removes an inherited one when there is none. `main.ts` passes
+  the same resolution the player uses, re-run at each launch.
+- **Children end with the engine.** At an ordinary exit an `atexit` hook ends them. When its app has
+  gone, the engine leaves through `os._exit`, which skips `atexit`, so `server._exit_now()` ends them
+  first, and still exits if that fails. A decode the engine ended reads as `DecodeCancelled`, never as
+  a file's failure.
+- **The manifest and the release check.**
+  - `required_options` gains the seventeen options the pipeline passes. A test holds that list to the
+    arguments the module actually builds, and `ao` was the one it found missing.
+  - `fetch_player_sidecar.py --check-analysis` runs the pipeline over every transport the platform
+    uses. On `bands.flac` it checks the length against the file's own FLAC header, read with the
+    standard library, and requires 12 dB of separation per section. It also decodes every format
+    fixture.
+  - `--mpv PATH` checks a named binary, which is how Linux runs it.
+  - Desktop CI runs the check on Windows and macOS beside `--check-formats`, and runs the new tests
+    with the pinned binaries.
+- **The fixture.** `bands.flac` (70.5 KB, mono, 22,050 Hz) holds 60 Hz, 1 kHz and 6 kHz, two seconds
+  each. `make_audio_fixtures.py` writes it, and gains `--mpv` for a build with no pinned binary. FLAC is
+  lossless, so the encoder's build does not change the samples.
+- **The measurement.** `scripts/bench_decoder.py` measures:
+  - each format's time and the child's own peak memory;
+  - the design not chosen;
+  - the Library search's p95 with four analyses running, against a budget of 1.5× idle.
+- **Tests.**
+  - `test_audio_decode.py`: 93 unit tests. A stub decoder, a script that does what each test asks,
+    makes the timeout, cancel, shutdown, exit and priority deterministic.
+  - `test_audio_decode_binary.py`: 33 tests against a real decoder, skipped where there is none. Two
+    of them give a real `mpv` a graph it drops, and require `decoder_missing` rather than a waveform.
+  - Nine analysis-check tests in the fetch script's suite, and the fixture script's and bench's own.
+  - `engineEnvironment.test.ts`: 10 tests.
+  - Two engine-exit tests.
+  - **Eight deliberate breakages, each caught:** a `4.0` layout, the default downmix gain, messages on
+    standard output, no format proof, normal priority, no `atexit` clean-up, resumed positions, and
+    an exit that leaves children. The first four are caught by real audio as well as by the unit
+    tests. The format proof was at first caught only by the stub; the two dropped-graph tests were
+    added so a real decoder catches it too.
+
+**Measured** (Linux x86_64, 4 cores, the distribution's `mpv` 0.37 / FFmpeg 6.1.1; three runs):
+
+| Measure | Result |
+| --- | --- |
+| A 6-minute track | 1.0–1.8 s by format (FLAC fastest, MP3 slowest) |
+| The child's peak memory | 67–94 MB |
+| Search p95 over 10,000 tracks, four analyses running | 0.98×, 1.14× and 1.25× idle, against a budget of 1.5× |
+| The design not chosen (engine-side reduction) | 2.1–3.9 s, 1.4–2.8 s of the engine's own CPU per track, search p95 2.3–3.7× idle |
+| Envelope length against each fixture's own | within one envelope sample |
+| `bands.flac`'s bands | at least 23.7 dB apart |
+
+Timings of the pinned Windows and macOS builds are owed; their correctness is checked in CI.
+
+**Where the specification was wrong, and what was done instead.** Each was settled the most durable
+way and is recorded here and in ADR-009.
+
+1. **The envelope is squared, not rectified.** The specification rectified with an absolute value.
+   `aeval=abs()` is an expression evaluated per sample and cost more than the whole decode. Squaring
+   with `amultiply` measured twice as fast: 1.02 s against 2.31 s for FLAC. With the engine's square
+   root it gives RMS, the standard measure of how loud a passage is, and separates the bands more
+   cleanly. The values stay linear amplitude, as WAVE-02 expects.
+2. **The order is fixed by the layout, not recorded as found.** The specification had a constant for
+   "the channel order, as `mpv` delivers it". A `4.0` layout came out reordered (low, mid, full, high);
+   `quad` comes out exactly as joined. A fixed order that CI proves with tones is stronger than an order
+   remembered per build.
+3. **The downmix is normalised.** FFmpeg's default mono downmix adds 3 dB to correlated stereo, so a
+   full-scale track would read above 1.0. `rematrix_maxval=1` makes it unit gain, and a test holds the
+   fixtures' tone at its expected RMS.
+4. **`mpv` writes info messages to standard output, and exits 0 when it drops a filter.** Found by
+   testing: a message corrupted the piped samples, and a graph that failed to configure played on
+   unfiltered, as a waveform of nonsense. So `--terminal=no` keeps standard output for samples, and
+   `--log-file` records what was negotiated. The log must show exactly `AO: [pcm] 150Hz quad 4ch
+   float`, or the decoder is `decoder_missing` and no file is blamed. The specification had assumed
+   the exit code and standard error would say.
+5. **`--no-config` is not isolation enough.** The built-in scripts still load, and a `watch_later`
+   position would start a file part-way through. Resuming, saving, scripts, `youtube-dl`, the
+   controller, input bindings, subtitles and cover art are all turned off.
+6. **The transport differs by platform, as allowed.** macOS and Linux use a pipe, and a child whose
+   engine is killed dies within about 2 s of a broken pipe. Windows writes a file in a private
+   temporary folder, which also holds the log on every platform. A named pipe was not needed, and a
+   folder a killed engine leaves is swept after an hour.
+7. **Two outcomes the vocabulary had to place.**
+   - An empty WAV fails to load without logging an error. A failed load that says nothing found
+     nothing to decode, so it is `no_audio`, not `undecodable`.
+   - A truncated file decodes part-way with exit 0. It is an envelope of what decoded, carrying the
+     decoder's error count. Refusing it would also refuse every real file with one damaged frame.
+8. **The engine's exit had to end the children itself.** The specification said the parent watch
+   would, but the engine leaves through `os._exit`, which skips the `atexit` clean-up. `_exit_now()`
+   ends them first, in a `try` whose `finally` still exits.
+9. **The fixture runs 6.06 s, not 6.** Encode mode padded it, the trap fact 3 records. The checks read
+   its length from its own header and leave a margin at each section's edge, so nothing depends on the
+   round number.
+
 
 ---
 

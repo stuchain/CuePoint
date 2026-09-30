@@ -80,6 +80,12 @@ jobs:
       - name: Player sidecar format decode check
         run: python scripts/fetch_player_sidecar.py --check-formats
 
+      # WAVE-01 (DEC-123): the waveform pipeline on the pinned binary. Exact
+      # length, band separation and channel order, proved with tones, because
+      # the macOS and Windows builds carry different FFmpeg versions.
+      - name: Player sidecar waveform analysis check
+        run: python scripts/fetch_player_sidecar.py --check-analysis
+
       - name: Bundled component licences
         run: python scripts/check_bundled_licenses.py
 
@@ -96,7 +102,7 @@ jobs:
         env:
           PYTHONPATH: src
         run: |
-          python -m pytest src/tests/unit/scripts/test_fetch_player_sidecar.py src/tests/unit/scripts/test_check_bundled_licenses.py src/tests/integration/test_player_sidecar_binary.py -q --tb=short
+          python -m pytest src/tests/unit/scripts/test_fetch_player_sidecar.py src/tests/unit/scripts/test_check_bundled_licenses.py src/tests/integration/test_player_sidecar_binary.py src/tests/unit/data/test_audio_decode.py src/tests/integration/test_audio_decode_binary.py -q --tb=short
 
       - name: Engine unit tests (HTTP API)
         env:

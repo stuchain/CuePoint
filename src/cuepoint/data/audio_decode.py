@@ -1,0 +1,785 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""Decoding an audio file into a four-band loudness envelope (WAVE-01).
+
+CuePoint draws waveforms from the audio itself (DEC-113), through the one
+decoder it ships: the player's ``mpv`` (DEC-049). Electron main knows where that
+binary is and passes it to the engine as ``CUEPOINT_DECODER_PATH`` (DEC-123).
+This module is the only place that runs it for analysis. ADR-009 records the
+design and the measurements behind it.
+
+The pipeline
+------------
+One ``mpv`` child per file. FFmpeg's filters, inside it, do all the heavy work:
+
+1. Downmix to mono at unit gain, and resample to ``DECODE_RATE_HZ``. The
+   downmix is normalised (``rematrix_maxval=1``): FFmpeg's default adds 3 dB to
+   a correlated stereo signal, which would push a full-scale track over 1.0.
+2. Split into four streams: the full band, and the low, mid and high bands at
+   ``LOW_CROSSOVER_HZ`` and ``HIGH_CROSSOVER_HZ``. Each band edge is fourth
+   order, two cascaded two-pole sections.
+3. Join them as one ``quad`` stream. ``quad``'s channels are written in the
+   order they are joined; a ``4.0`` layout was measured to come out reordered.
+4. Square every sample, by multiplying the stream by itself.
+5. Resample to ``ENVELOPE_RATE_HZ``. The resampler's low-pass averages the
+   squares, so each output sample is a mean square.
+
+The engine takes the square root, so the envelope is RMS amplitude: a
+full-scale sine reads 0.707. Squaring was measured at twice the speed of an
+``aeval`` absolute value. Reducing a full-rate stream in the engine instead
+cost more wall time, more than a second of the engine's own CPU per track, and
+127 MB through the pipe. ADR-009 has the numbers.
+
+Four things ``mpv`` does that this module is built around
+---------------------------------------------------------
+- **Encode mode pads.** ``--o`` pads the output with silence to a frame
+  boundary, so a waveform would run long and every mark would land late. This
+  uses ``--ao=pcm``, which writes exactly the decoded length, as fast as it can.
+- **Info messages go to standard output.** With samples on standard output,
+  any message would corrupt them. ``--terminal=no`` silences the terminal, and
+  ``--log-file`` keeps what the decode said in a file beside it.
+- **A filter graph that fails is dropped, and playback continues.** ``mpv``
+  exits 0 and writes the unfiltered audio, which would read as a waveform of
+  nonsense. So the log must show the output format this pipeline negotiates
+  (:data:`EXPECTED_OUTPUT`), or the decoder is declared unable to analyse.
+- **``--no-config`` does not stop everything a user's ``mpv`` does.** A saved
+  ``watch_later`` position would start a file part-way through, so resuming and
+  saving are turned off, as are scripts, ``youtube-dl`` and the on-screen
+  controller.
+
+How samples leave the child
+---------------------------
+On macOS and Linux, through a pipe: ``--ao-pcm-file=/dev/stdout``. Nothing
+touches the disk, and a child whose engine has died fails its next write. On
+Windows, which has no such path, through a small file in a private temporary
+folder, removed as soon as it is read. ``--ao-pcm-file=-`` is not standard
+output: it writes a file named ``-``.
+
+The child process
+-----------------
+Lowered priority: nice +10 on macOS and Linux, ``BELOW_NORMAL_PRIORITY_CLASS``
+on Windows. A wall-clock cap of ``FILE_TIMEOUT_SECONDS``, after which it is
+killed and the file recorded as ``timeout``. A caller's cancel kills it too.
+Every live child is registered, so the engine can end them all when it stops
+(:func:`terminate_children`).
+
+What a caller is told
+---------------------
+An :class:`Envelope`, or one of four exceptions:
+
+- :class:`FileGone`: the file is not there now. Not a failure: a disconnected
+  drive is not a broken file (WAVE-03 skips it).
+- :class:`DecodeFailed`: this file could not be analysed, with a reason from
+  :data:`FILE_FAILURE_REASONS`.
+- :class:`DecoderUnavailable`: the decoder cannot analyse anything, so the whole
+  analysis is unavailable (``decoder_missing``), not the file.
+- :class:`DecodeCancelled`: the caller asked it to stop, or the engine is
+  stopping (:func:`terminate_children`).
+
+A file that decodes part-way, as a truncated download does, is an envelope of
+what decoded, with the decoder's error count on it. Rejecting it would also
+reject the many real files with one damaged frame.
+"""
+
+from __future__ import annotations
+
+import atexit
+import logging
+import math
+import os
+import re
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+from array import array
+from dataclasses import dataclass
+from pathlib import Path
+from typing import (
+    IO,
+    Callable,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
+
+_logger = logging.getLogger(__name__)
+
+#: Changes whenever a change here changes what an envelope holds. WAVE-02
+#: stores it with every waveform, and a stored one of another version is
+#: analysed again.
+ANALYSIS_VERSION = 1
+
+#: The rate the audio is decoded to before it is split.
+DECODE_RATE_HZ = 22_050
+#: Envelope samples per second.
+ENVELOPE_RATE_HZ = 150
+#: The low band is below this; the mid band starts here.
+LOW_CROSSOVER_HZ = 200
+#: The mid band ends here; the high band is above it.
+HIGH_CROSSOVER_HZ = 2_000
+#: Two-pole sections per band edge: two is fourth order.
+FILTER_SECTIONS = 2
+
+#: The envelope's channels, in the order the child writes them.
+BANDS: Tuple[str, ...] = ("full", "low", "mid", "high")
+#: The layout the bands are joined in. Its order is the order written.
+CHANNEL_LAYOUT = "quad"
+
+#: What the decoder's log says when this pipeline's output was negotiated. Any
+#: other output format means the filter graph did not run as built.
+EXPECTED_OUTPUT = (
+    f"AO: [pcm] {ENVELOPE_RATE_HZ}Hz {CHANNEL_LAYOUT} {len(BANDS)}ch float"
+)
+
+#: The environment variable Electron main names the decoder in.
+DECODER_PATH_ENV = "CUEPOINT_DECODER_PATH"
+
+#: How long one file may take before its child is killed.
+FILE_TIMEOUT_SECONDS = 300.0
+
+#: How much the child's priority is lowered on macOS and Linux.
+NICE_INCREMENT = 10
+
+#: File extensions whose formats the pinned build's decoders cover (the
+#: manifest's ``required_decoders``). Anything else is never handed to the
+#: decoder, which would, for example, expand a playlist file.
+AUDIO_EXTENSIONS = frozenset(
+    {".mp3", ".m4a", ".aac", ".mp4", ".flac", ".wav", ".aif", ".aiff", ".wv", ".ape"}
+)
+
+#: A file's failure: the decoder ran and could not read it.
+REASON_UNDECODABLE = "undecodable"
+#: A file's failure: no audio stream, or nothing decoded.
+REASON_NO_AUDIO = "no_audio"
+#: A file's failure: it took longer than ``FILE_TIMEOUT_SECONDS``.
+REASON_TIMEOUT = "timeout"
+#: The decoder's failure, never a file's: there is no decoder that can analyse.
+REASON_DECODER_MISSING = "decoder_missing"
+
+#: What a file can be recorded as failing with.
+FILE_FAILURE_REASONS: Tuple[str, ...] = (
+    REASON_UNDECODABLE,
+    REASON_NO_AUDIO,
+    REASON_TIMEOUT,
+)
+
+#: How samples leave the child.
+TRANSPORT_PIPE = "pipe"
+TRANSPORT_FILE = "file"
+TRANSPORTS: Tuple[str, ...] = (TRANSPORT_PIPE, TRANSPORT_FILE)
+
+#: The prefix of each decode's private temporary folder.
+WORKDIR_PREFIX = "cuepoint-decode-"
+#: A folder older than this, left by an engine that was killed, is removed.
+STALE_WORKDIR_SECONDS = 3600.0
+
+#: How often the watchdog looks for a cancel.
+_POLL_SECONDS = 0.05
+#: Bytes per envelope frame: four 32-bit floats.
+_FRAME_BYTES = 4 * len(BANDS)
+
+_ENVELOPE_FILE = "envelope.f32"
+_LOG_FILE = "decode.log"
+
+# `[   0.055][i][cplayer] AO: [pcm] 150Hz quad 4ch float`
+_LOG_LINE = re.compile(
+    r"^\[\s*[\d.]+\]\[(?P<level>[a-z])\]\[(?P<module>[^\]]+)\]\s?(?P<text>.*)$"
+)
+# What the decoder says when a filter it was given did not run.
+_FILTER_FAILED = (
+    "Audio filter initialized failed",
+    "Disabling filter",
+    "parsing the filter graph failed",
+)
+
+
+class DecodeError(Exception):
+    """Something kept a file from becoming an envelope."""
+
+
+class FileGone(DecodeError):
+    """The file is not at its path now. Not a failure of the file."""
+
+
+class DecodeCancelled(DecodeError):
+    """The caller asked the decode to stop."""
+
+
+class DecodeFailed(DecodeError):
+    """This file could not be analysed.
+
+    Attributes:
+        reason: One of :data:`FILE_FAILURE_REASONS`.
+        detail: What the decoder said, for the log and the Inspector's title.
+    """
+
+    def __init__(self, reason: str, detail: str) -> None:
+        if reason not in FILE_FAILURE_REASONS:
+            raise ValueError(f"Not a file failure reason: {reason!r}")
+        super().__init__(f"{reason}: {detail}")
+        self.reason = reason
+        self.detail = detail
+
+
+class DecoderUnavailable(DecodeError):
+    """The decoder cannot analyse any file: missing, not runnable, or wrong build."""
+
+    reason = REASON_DECODER_MISSING
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(f"{REASON_DECODER_MISSING}: {detail}")
+        self.detail = detail
+
+
+@dataclass(frozen=True)
+class Envelope:
+    """A file's loudness over time, in four bands.
+
+    Each band holds RMS amplitude, linear, at ``rate_hz`` samples a second; a
+    full-scale sine reads 0.707. All four bands have the same length.
+
+    Attributes:
+        rate_hz: Samples a second.
+        full: The whole signal.
+        low: Below ``LOW_CROSSOVER_HZ``.
+        mid: Between the crossovers.
+        high: Above ``HIGH_CROSSOVER_HZ``.
+        decode_errors: Errors the decoder logged. Non-zero for a file that
+            decoded part-way or has damaged frames.
+    """
+
+    rate_hz: int
+    full: "array[float]"
+    low: "array[float]"
+    mid: "array[float]"
+    high: "array[float]"
+    decode_errors: int = 0
+
+    @property
+    def frames(self) -> int:
+        """Samples per band."""
+        return len(self.full)
+
+    @property
+    def duration_ms(self) -> int:
+        """The decoded length, from the envelope's own sample count."""
+        return round(self.frames * 1000 / self.rate_hz)
+
+    def band(self, name: str) -> "array[float]":
+        """One band by its name in :data:`BANDS`."""
+        if name not in BANDS:
+            raise KeyError(name)
+        values: "array[float]" = getattr(self, name)
+        return values
+
+
+# ---------------------------------------------------------------------------
+# Building the command. Pure.
+# ---------------------------------------------------------------------------
+
+
+def _edge(kind: str, frequency: int) -> str:
+    """One band edge: ``FILTER_SECTIONS`` two-pole filters in a row."""
+    return ",".join(f"{kind}=f={frequency}:p=2" for _ in range(FILTER_SECTIONS))
+
+
+def filter_graph() -> str:
+    """The FFmpeg filter graph, built from the constants above."""
+    low = _edge("lowpass", LOW_CROSSOVER_HZ)
+    mid = ",".join(
+        (_edge("highpass", LOW_CROSSOVER_HZ), _edge("lowpass", HIGH_CROSSOVER_HZ))
+    )
+    high = _edge("highpass", HIGH_CROSSOVER_HZ)
+    return (
+        f"aresample={DECODE_RATE_HZ}:ochl=mono:rematrix_maxval=1,"
+        "aformat=sample_fmts=flt:channel_layouts=mono,"
+        "asplit=4[full][l][m][h];"
+        f"[l]{low}[low];"
+        f"[m]{mid}[mid];"
+        f"[h]{high}[high];"
+        f"[full][low][mid][high]join=inputs=4:channel_layout={CHANNEL_LAYOUT},"
+        "asplit=2[x][y];[x][y]amultiply,"
+        f"aresample={ENVELOPE_RATE_HZ}"
+    )
+
+
+def decoder_arguments(
+    decoder: Union[str, Path],
+    source: Union[str, Path],
+    *,
+    output: str,
+    log_file: Union[str, Path],
+) -> List[str]:
+    """The decoder's full argument list for one file.
+
+    The source is last, after ``--``, so a file whose name begins with ``-`` is
+    never read as an option. Nothing in the list comes from the file's name but
+    that last argument.
+    """
+    return [
+        str(decoder),
+        # Isolated from the user's own mpv: no config, scripts, saved positions,
+        # online lookups or controller.
+        "--no-config",
+        "--load-scripts=no",
+        "--ytdl=no",
+        "--osc=no",
+        "--resume-playback=no",
+        "--save-position-on-quit=no",
+        "--input-default-bindings=no",
+        "--input-terminal=no",
+        # Audio only, no picture from cover art.
+        "--vid=no",
+        "--sid=no",
+        "--audio-display=no",
+        # Samples out, messages to a file.
+        "--terminal=no",
+        f"--log-file={log_file}",
+        "--ao=pcm",
+        "--ao-pcm-waveheader=no",
+        f"--ao-pcm-file={output}",
+        "--audio-format=float",
+        f"--af=lavfi=[{filter_graph()}]",
+        "--",
+        str(source),
+    ]
+
+
+def default_transport(platform: str = sys.platform) -> str:
+    """How samples leave the child on this platform."""
+    return TRANSPORT_FILE if platform == "win32" else TRANSPORT_PIPE
+
+
+def is_decodable_path(path: Union[str, Path]) -> bool:
+    """True when the file's extension is a format the decoder is pinned for."""
+    return Path(path).suffix.lower() in AUDIO_EXTENSIONS
+
+
+def decoder_from_env(environ: Optional[Mapping[str, str]] = None) -> Optional[Path]:
+    """The decoder Electron named, or ``None`` when there is none to use.
+
+    ``None`` is an ordinary answer: a Linux build bundles no ``mpv``, and the CLI
+    and a hand-started engine are given none.
+    """
+    raw = (os.environ if environ is None else environ).get(DECODER_PATH_ENV, "")
+    raw = raw.strip()
+    if not raw:
+        return None
+    path = Path(raw)
+    return path if path.is_file() else None
+
+
+# ---------------------------------------------------------------------------
+# Reading what came back. Pure.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DecoderLog:
+    """What a decode's log says, reduced to what the outcome depends on."""
+
+    outputs: Tuple[str, ...]
+    errors: Tuple[str, ...]
+    filter_failed: bool
+
+    @property
+    def negotiated(self) -> bool:
+        """True when every output the decoder opened is this pipeline's."""
+        return bool(self.outputs) and all(o == EXPECTED_OUTPUT for o in self.outputs)
+
+    def first_error(self) -> str:
+        """The decoder's first error, or a plain sentence when it gave none."""
+        return self.errors[0] if self.errors else "the decoder gave no reason"
+
+
+def read_decoder_log(text: str) -> DecoderLog:
+    """Reduce a decoder log to its outputs, its errors and any dropped filter."""
+    outputs: List[str] = []
+    errors: List[str] = []
+    filter_failed = False
+    for line in text.splitlines():
+        match = _LOG_LINE.match(line)
+        if match is None:
+            continue
+        message = match.group("text").strip()
+        if message.startswith("AO: ["):
+            outputs.append(message)
+        if match.group("level") in ("e", "f"):
+            errors.append(message)
+        if any(marker in message for marker in _FILTER_FAILED):
+            filter_failed = True
+    return DecoderLog(tuple(outputs), tuple(errors), filter_failed)
+
+
+def _rms(mean_square: float) -> float:
+    """RMS from a mean square. The resampler's ringing can dip below zero."""
+    if not math.isfinite(mean_square) or mean_square <= 0.0:
+        return 0.0
+    return math.sqrt(mean_square)
+
+
+def parse_envelope(
+    raw: bytes, *, rate_hz: int = ENVELOPE_RATE_HZ, decode_errors: int = 0
+) -> Envelope:
+    """Turn the child's interleaved mean squares into an :class:`Envelope`.
+
+    Native-endian 32-bit floats, one frame of four per envelope sample. A
+    trailing partial frame, which only a killed child could leave, is dropped.
+    """
+    usable = len(raw) - (len(raw) % _FRAME_BYTES)
+    samples: "array[float]" = array("f")
+    samples.frombytes(raw[:usable])
+    channels = len(BANDS)
+    bands = [
+        array("f", (_rms(v) for v in samples[i::channels])) for i in range(channels)
+    ]
+    return Envelope(
+        rate_hz=rate_hz,
+        full=bands[0],
+        low=bands[1],
+        mid=bands[2],
+        high=bands[3],
+        decode_errors=decode_errors,
+    )
+
+
+# ---------------------------------------------------------------------------
+# The child processes.
+# ---------------------------------------------------------------------------
+
+_LIVE: Set["subprocess.Popen[bytes]"] = set()
+# Children `terminate_children` ended, so their decode reads as cancelled.
+_ENDED: Set["subprocess.Popen[bytes]"] = set()
+_LIVE_LOCK = threading.Lock()
+_SWEPT = threading.Event()
+
+
+def live_children() -> int:
+    """How many decoder children are running now."""
+    with _LIVE_LOCK:
+        return len(_LIVE)
+
+
+def terminate_children() -> int:
+    """Kill every decoder child still running, and say how many there were.
+
+    Called as the engine stops, whether it was asked to or its app has gone, so
+    no decode outlives the engine that started it.
+    """
+    with _LIVE_LOCK:
+        children = list(_LIVE)
+        _ENDED.update(children)
+    for child in children:
+        try:
+            child.kill()
+        except OSError:
+            pass
+    return len(children)
+
+
+atexit.register(terminate_children)
+
+
+def _spawn_flags(platform: str = sys.platform) -> int:
+    """Windows creation flags: below-normal priority, and no console window."""
+    if platform != "win32":
+        return 0
+    below_normal = getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0x00004000)
+    no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+    return int(below_normal) | int(no_window)
+
+
+def _lower_priority(pid: int) -> None:
+    """Lower a child's priority on macOS and Linux; Windows did it at spawn."""
+    if sys.platform == "win32":
+        return
+    try:
+        current = os.getpriority(os.PRIO_PROCESS, pid)
+        os.setpriority(os.PRIO_PROCESS, pid, min(19, current + NICE_INCREMENT))
+    except OSError:
+        # Gone already, or not ours to change: priority is a courtesy.
+        pass
+
+
+def sweep_stale_workdirs(
+    root: Optional[Path] = None,
+    *,
+    older_than_seconds: float = STALE_WORKDIR_SECONDS,
+    now: Optional[float] = None,
+) -> int:
+    """Remove decode folders an engine left when it was killed. Say how many."""
+    base = Path(root) if root is not None else Path(tempfile.gettempdir())
+    cutoff = (time.time() if now is None else now) - older_than_seconds
+    removed = 0
+    try:
+        candidates = list(base.glob(f"{WORKDIR_PREFIX}*"))
+    except OSError:
+        return 0
+    for folder in candidates:
+        try:
+            if folder.is_dir() and folder.stat().st_mtime < cutoff:
+                shutil.rmtree(folder, ignore_errors=True)
+                removed += 1
+        except OSError:
+            continue
+    return removed
+
+
+def _check_source(source: Path) -> None:
+    """Refuse what must never reach the decoder, before a child exists."""
+    if not source.is_absolute():
+        raise DecodeFailed(REASON_UNDECODABLE, "not an absolute path")
+    try:
+        status = source.stat()
+    except FileNotFoundError as exc:
+        raise FileGone(str(source)) from exc
+    except NotADirectoryError as exc:
+        raise FileGone(str(source)) from exc
+    except OSError as exc:
+        raise DecodeFailed(REASON_UNDECODABLE, f"could not be opened: {exc}") from exc
+    if not stat.S_ISREG(status.st_mode):
+        raise DecodeFailed(REASON_UNDECODABLE, "not a file")
+    if not is_decodable_path(source):
+        raise DecodeFailed(
+            REASON_UNDECODABLE,
+            f"{source.suffix or 'no extension'} is not an audio format CuePoint decodes",
+        )
+
+
+def _read_text(path: Path) -> Optional[str]:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+
+def _watch(
+    child: "subprocess.Popen[bytes]",
+    finished: threading.Event,
+    stopped: List[str],
+    cancel: Optional[Callable[[], bool]],
+    timeout_seconds: float,
+) -> None:
+    """Kill the child on a cancel or at its deadline, and say which."""
+    deadline = time.monotonic() + timeout_seconds
+    while not finished.is_set():
+        why: Optional[str] = None
+        if cancel is not None and cancel():
+            why = "cancelled"
+        elif time.monotonic() >= deadline:
+            why = REASON_TIMEOUT
+        if why is not None:
+            stopped.append(why)
+            try:
+                child.kill()
+            except OSError:
+                pass
+            return
+        finished.wait(_POLL_SECONDS)
+
+
+def decode_envelope(
+    source: Union[str, Path],
+    decoder: Union[str, Path],
+    *,
+    cancel: Optional[Callable[[], bool]] = None,
+    timeout_seconds: float = FILE_TIMEOUT_SECONDS,
+    transport: Optional[str] = None,
+    workdir_root: Optional[Path] = None,
+) -> Envelope:
+    """Decode one file into its :class:`Envelope`.
+
+    Args:
+        source: The file, as an absolute local path.
+        decoder: The ``mpv`` executable.
+        cancel: Polled while the child runs; when it answers True the child is
+            killed and :class:`DecodeCancelled` raised.
+        timeout_seconds: The wall-clock cap.
+        transport: ``pipe`` or ``file``; the platform's default when omitted.
+        workdir_root: Where the private temporary folder is made.
+
+    Raises:
+        FileGone: The file is not there now.
+        DecodeFailed: The file could not be analysed.
+        DecoderUnavailable: The decoder cannot analyse anything.
+        DecodeCancelled: ``cancel`` answered True.
+    """
+    source_path = Path(source)
+    decoder_path = Path(decoder)
+    mode = transport or default_transport()
+    if mode not in TRANSPORTS:
+        raise ValueError(f"Unknown transport: {mode!r}")
+    if cancel is not None and cancel():
+        raise DecodeCancelled(str(source_path))
+    if not decoder_path.is_file():
+        raise DecoderUnavailable(f"no decoder at {decoder_path}")
+    _check_source(source_path)
+
+    if not _SWEPT.is_set():
+        _SWEPT.set()
+        sweep_stale_workdirs(workdir_root)
+
+    workdir = Path(tempfile.mkdtemp(prefix=WORKDIR_PREFIX, dir=workdir_root))
+    try:
+        return _decode_in(
+            workdir, source_path, decoder_path, mode, cancel, timeout_seconds
+        )
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
+def _decode_in(
+    workdir: Path,
+    source: Path,
+    decoder: Path,
+    mode: str,
+    cancel: Optional[Callable[[], bool]],
+    timeout_seconds: float,
+) -> Envelope:
+    log_path = workdir / _LOG_FILE
+    envelope_path = workdir / _ENVELOPE_FILE
+    output = "/dev/stdout" if mode == TRANSPORT_PIPE else str(envelope_path)
+    arguments = decoder_arguments(decoder, source, output=output, log_file=log_path)
+    stdout: Union[int, IO[bytes]] = (
+        subprocess.PIPE if mode == TRANSPORT_PIPE else subprocess.DEVNULL
+    )
+    try:
+        child = subprocess.Popen(
+            arguments,
+            stdin=subprocess.DEVNULL,
+            stdout=stdout,
+            stderr=subprocess.PIPE,
+            close_fds=True,
+            creationflags=_spawn_flags(),
+        )
+    except OSError as exc:
+        raise DecoderUnavailable(f"could not run {decoder}: {exc}") from exc
+
+    with _LIVE_LOCK:
+        _LIVE.add(child)
+    finished = threading.Event()
+    stopped: List[str] = []
+    watchdog = threading.Thread(
+        target=_watch,
+        args=(child, finished, stopped, cancel, timeout_seconds),
+        name="cuepoint-decode-watch",
+        daemon=True,
+    )
+    try:
+        _lower_priority(child.pid)
+        watchdog.start()
+        raw, err = child.communicate()
+    finally:
+        finished.set()
+        if watchdog.is_alive():
+            watchdog.join()
+        with _LIVE_LOCK:
+            _LIVE.discard(child)
+            ended = child in _ENDED
+            _ENDED.discard(child)
+
+    if ended:
+        # The engine is stopping; this decode was not the file's to fail.
+        raise DecodeCancelled(str(source))
+    if stopped:
+        if stopped[0] == REASON_TIMEOUT:
+            raise DecodeFailed(
+                REASON_TIMEOUT, f"took longer than {timeout_seconds:g} seconds"
+            )
+        raise DecodeCancelled(str(source))
+
+    if mode == TRANSPORT_FILE:
+        try:
+            raw = envelope_path.read_bytes()
+        except FileNotFoundError:
+            raw = b""
+        except OSError as exc:
+            raise DecoderUnavailable(
+                f"could not read the decoder's output: {exc}"
+            ) from exc
+
+    return _outcome(
+        source, child.returncode, raw or b"", err or b"", _read_text(log_path)
+    )
+
+
+def _outcome(
+    source: Path,
+    returncode: int,
+    raw: bytes,
+    err: bytes,
+    log_text: Optional[str],
+) -> Envelope:
+    """Decide what one finished decode means."""
+    if log_text is None:
+        said = err.decode("utf-8", errors="replace").strip()
+        raise DecoderUnavailable(
+            "the decoder wrote no log" + (f": {said[:200]}" if said else "")
+        )
+    log = read_decoder_log(log_text)
+    if log.filter_failed or (log.outputs and not log.negotiated):
+        found = ", ".join(log.outputs) or "none"
+        raise DecoderUnavailable(
+            f"the analysis filters did not run as built (output {found}; "
+            f"expected {EXPECTED_OUTPUT})"
+        )
+    if returncode != 0:
+        if not source.exists():
+            raise FileGone(str(source))
+        if not log.errors:
+            # A failed load that logged no error found nothing to decode: a
+            # valid container with no samples, such as an empty WAV.
+            raise DecodeFailed(REASON_NO_AUDIO, "the file holds no audio to decode")
+        raise DecodeFailed(REASON_UNDECODABLE, log.first_error())
+    if not log.outputs or len(raw) < _FRAME_BYTES:
+        raise DecodeFailed(REASON_NO_AUDIO, "no audio was decoded")
+    return parse_envelope(raw, decode_errors=len(log.errors))
+
+
+__all__ = [
+    "ANALYSIS_VERSION",
+    "AUDIO_EXTENSIONS",
+    "BANDS",
+    "CHANNEL_LAYOUT",
+    "DECODER_PATH_ENV",
+    "DECODE_RATE_HZ",
+    "ENVELOPE_RATE_HZ",
+    "EXPECTED_OUTPUT",
+    "FILE_FAILURE_REASONS",
+    "FILE_TIMEOUT_SECONDS",
+    "HIGH_CROSSOVER_HZ",
+    "LOW_CROSSOVER_HZ",
+    "REASON_DECODER_MISSING",
+    "REASON_NO_AUDIO",
+    "REASON_TIMEOUT",
+    "REASON_UNDECODABLE",
+    "TRANSPORTS",
+    "TRANSPORT_FILE",
+    "TRANSPORT_PIPE",
+    "DecodeCancelled",
+    "DecodeError",
+    "DecodeFailed",
+    "DecoderLog",
+    "DecoderUnavailable",
+    "Envelope",
+    "FileGone",
+    "decode_envelope",
+    "decoder_arguments",
+    "decoder_from_env",
+    "default_transport",
+    "filter_graph",
+    "is_decodable_path",
+    "live_children",
+    "parse_envelope",
+    "read_decoder_log",
+    "sweep_stale_workdirs",
+    "terminate_children",
+]

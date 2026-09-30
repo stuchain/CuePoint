@@ -118,6 +118,36 @@ export function resolvePlayerBinary(
   return null;
 }
 
+/**
+ * The environment variable the engine reads its decoder from (WAVE-01, DEC-123).
+ *
+ * The engine has no decoder of its own. Waveform analysis runs the player's
+ * mpv, and only this process knows where that is, so it names it to the engine
+ * when it spawns it. Kept in step with `DECODER_PATH_ENV` in
+ * `src/cuepoint/data/audio_decode.py`; a test reads both.
+ */
+export const DECODER_PATH_ENV = "CUEPOINT_DECODER_PATH";
+
+/**
+ * The environment an engine is spawned with, naming the decoder or not.
+ *
+ * With no decoder the variable is removed rather than left as inherited: the
+ * engine must analyse with the binary this process resolved, or with nothing,
+ * never with one a parent environment happened to carry.
+ */
+export function withDecoderPath(
+  env: NodeJS.ProcessEnv,
+  decoderPath: string | null,
+): NodeJS.ProcessEnv {
+  const next: NodeJS.ProcessEnv = { ...env };
+  if (decoderPath && decoderPath.trim()) {
+    next[DECODER_PATH_ENV] = decoderPath;
+  } else {
+    delete next[DECODER_PATH_ENV];
+  }
+  return next;
+}
+
 /** Why no player is available, phrased for a human. */
 export function playerUnavailableReason(
   options: ResolvePlayerBinaryOptions,
