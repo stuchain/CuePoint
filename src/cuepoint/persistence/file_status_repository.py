@@ -24,6 +24,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from cuepoint.models.file_status import (
     FILE_MISSING,
+    CurrentFile,
     REASON_ROOT_UNAVAILABLE,
     TrackFileStatus,
 )
@@ -90,6 +91,36 @@ class FileStatusRepository(IFileStatusRepository):
             ):
                 found[int(row["id"])] = str(row["file_path"] or "")
         return [(track_id, found[track_id]) for track_id in wanted if track_id in found]
+
+    def current_files(self, track_ids: Iterable[int]) -> List[CurrentFile]:
+        """Each track's current path and the check made at that path, if any.
+
+        In the order given, once each; ids that are not tracks are left out. A
+        check of another path is not this path's check, so it reads as none
+        (CLEAN-07's staleness rule), and a track with no location has an empty
+        path and no check.
+        """
+        wanted = unique_ids(track_ids)
+        found: Dict[int, CurrentFile] = {}
+        connection = self._db.connect()
+        for chunk in chunked(wanted, CHUNK_SIZE):
+            placeholders = ", ".join("?" for _ in chunk)
+            for row in connection.execute(
+                "SELECT t.id AS id, t.file_path AS file_path,"
+                " f.status AS status, f.reason AS reason FROM tracks AS t"
+                " LEFT JOIN track_files AS f ON f.track_id = t.id"
+                " AND f.checked_path = t.file_path"
+                f" WHERE t.id IN ({placeholders})",
+                chunk,
+            ):
+                track_id = int(row["id"])
+                found[track_id] = CurrentFile(
+                    track_id=track_id,
+                    path=str(row["file_path"] or ""),
+                    status=None if row["status"] is None else str(row["status"]),
+                    reason=None if row["reason"] is None else str(row["reason"]),
+                )
+        return [found[track_id] for track_id in wanted if track_id in found]
 
     def record(self, checks: Sequence[TrackFileStatus]) -> Set[int]:
         """Store each check, replacing the track's last one.

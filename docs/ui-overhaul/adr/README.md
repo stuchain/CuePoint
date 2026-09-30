@@ -40,6 +40,7 @@ Suggested first commits:
 | ADR-007 | [007-discover-on-the-library.md](007-discover-on-the-library.md) | Discovery reads the library; ownership is computed; an artist is a Beatport id or a name; similarity is local; inCrate's routes removed |
 | ADR-008 | [008-sets-as-a-collection-kind.md](008-sets-as-a-collection-kind.md) | A Set is a kind of Collection node with side tables; m0025 rebuilds the tree without cascading; a Set's plan stays in CuePoint |
 | ADR-009 | [009-waveform-decoder.md](009-waveform-decoder.md) | Waveforms are decoded by the player's mpv; FFmpeg splits, squares and reduces the bands; the log proves the output; no numpy |
+| ADR-010 | [010-waveform-store.md](010-waveform-store.md) | Waveforms live in `waveforms.db` beside the library, keyed by file path, outside backups and "Clear cache"; rebuilt, never migrated |
 
 ## ADR quality bar (analytical)
 

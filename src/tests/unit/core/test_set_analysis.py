@@ -570,7 +570,9 @@ class TestAcknowledgements:
 class TestOneRuleWithSuggestions:
     """PREP's fact 6: a tempo Suggestions offer for a slot never jumps there."""
 
-    @settings(max_examples=1500)
+    # No deadline: these assert a rule, not a speed. Under a parallel full run
+    # one example took 300 ms, and 0.09 ms when replayed (WAVE-02 found it).
+    @settings(max_examples=1500, deadline=None)
     @given(
         st.floats(min_value=50.0, max_value=200.0),
         st.floats(min_value=50.0, max_value=200.0),
@@ -586,7 +588,7 @@ class TestOneRuleWithSuggestions:
         found = analyse(inserted, [ChapterFacts(CHAPTER)])
         assert TEMPO_JUMP not in found.counts
 
-    @settings(max_examples=500)
+    @settings(max_examples=500, deadline=None)
     @given(
         st.floats(min_value=50.0, max_value=200.0),
         st.floats(min_value=50.0, max_value=200.0),

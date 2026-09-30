@@ -4057,6 +4057,28 @@ what it is for.
 **Decided with**: User (delegated: "take the most professional and better long term decisions") ·
 **Date**: 2026-09-29
 
+
+### Implemented (2026-09-30, WAVE-02) — the store, and one file's analysis
+
+- **As decided,** keyed by the file's path, with its size, modified time and analysis version, and
+  outside the launch backup, the support bundle and "Clear cache". Tests hold all three.
+  - ADR-010 records the store; `PHASE11_WAVEFORMS.md` records the step.
+  - "Delete waveform data" is a later step's.
+- **Precision: an ordinary table, not `WITHOUT ROWID`.** It measured 10% smaller at 50,000 rows and
+  three times as fast to read 200. The picture is the last column, so a state never reads it.
+- **Precision: 16 KB pages.** At SQLite's 4 KB a page holds one picture, and 50,000 of them measured
+  just over the 250 MB budget; 16 KB pages cut the waste from up to 46% to 19%.
+- **Precision: beside the library database, wherever it is.** The store follows `database.path`, not
+  only `CUEPOINT_HOME`.
+- **Precision: corruption found in use is set aside at the next launch.** The store cannot be renamed
+  under other threads' connections on Windows, so a marker condemns it. The WAL sidecars go aside
+  with it, and only the newest copy is kept. A lock is never taken for corruption.
+- **Precision: a stored picture answers first.** A track whose drive is unplugged still shows its
+  picture. `missing` carries the file check's reason: `missing`, `unreadable`, `root_unavailable` or
+  `no_path`.
+- **Measured at 50,000 waveforms:** the store is 240.7 MB against a budget of 250 MB, and 200
+  pictures take under 38 ms at p95 against 50 ms. `PHASE11_WAVEFORMS.md` has the full table.
+
 ---
 
 ## DEC-123 — The Engine Decodes Through the Player's `mpv`, and FFmpeg Splits the Bands

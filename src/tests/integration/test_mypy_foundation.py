@@ -133,6 +133,11 @@ GUARDED = (
     "cuepoint/engine/sets_api.py",
     # WAVE-01: decoding audio into a waveform's envelope.
     "cuepoint/data/audio_decode.py",
+    # WAVE-02: a waveform's shape, its store (under persistence/, above) and
+    # one file's analysis.
+    "cuepoint/core/waveform.py",
+    "cuepoint/models/waveform.py",
+    "cuepoint/services/waveform_service.py",
 )
 
 

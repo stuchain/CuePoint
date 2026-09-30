@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 11: Waveforms, Detailed Step Specifications
 
-Status: **Specified 2026-09-29. WAVE-01 is implemented (2026-09-30); WAVE-02 to WAVE-07 are not.** The seven steps below replace the
+Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30); WAVE-03 to WAVE-07 are not.** The seven steps below replace the
 roadmap's placeholder inventory (WAVE-01…WAVE-07), keeping its count. Per the process, no
 implementation happens from this document: each step needs an explicit "Implement WAVE-NN"
 instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
@@ -464,7 +464,7 @@ way and is recorded here and in ADR-009.
 
 ---
 
-## WAVE-02 — The Waveform Store and One File's Analysis
+## WAVE-02 — The Waveform Store and One File's Analysis ✅ IMPLEMENTED 2026-09-30
 
 **Objective**: Analyse one file into a stored waveform, and answer any track's waveform state from the
 store.
@@ -608,7 +608,126 @@ store.
 
 **Complexity**: **M**
 
-**Outcome**: Not implemented yet.
+**Outcome**: Implemented (2026-09-30). One file analyses into a stored waveform, and any track's
+waveform state, or its picture at any width from 16 to 1,200, is answered from the library database
+and `waveforms.db` without touching a file. ADR-010 records the store and the measurements its layout
+was chosen on. Nothing reaches a user yet: WAVE-03 is the first caller.
+
+**What was built.**
+
+- **`core/waveform.py`,** pure and in the strict mypy gate:
+  - `reduce()`: an envelope to 1,200 columns of four bytes, each the maximum of its span, companded as
+    `round(255 × √v)`;
+  - `downsample()`: to any width from 16 to 1,200, never losing a peak;
+  - `encode()` and `decode()`: the 12-byte header and the compressed body. `decode()` refuses a short,
+    foreign, re-versioned, mis-sized, corrupted or over-long blob whole.
+
+  `FORMAT_VERSION` names the rules, and a test pins a digest of a fixed envelope's picture to it.
+- **`persistence/waveform_store.py`:** `waveforms.db` beside the library database.
+  - Connections are one per thread, in WAL mode. The file is opened on first use, never at startup.
+  - `summaries()` reads without the picture; `get_many()` and `get()` read with it.
+  - `put()` writes a row, `ready` or `failed`, in one statement; `delete()` and `count()` complete it.
+  - A store in another schema, unreadable, or foreign is set aside with its WAL sidecars, and one
+    set-aside copy is kept. Corruption found in use leaves a marker, and the next launch sets the
+    store aside. A lock is never mistaken for corruption.
+- **`models/waveform.py`:** the stored row, with and without its picture; a track's `WaveformState`;
+  an `AnalysisOutcome`; and a `WaveformAnswer`.
+- **`services/waveform_service.py`,** behind `IWaveformService`, wired in `bootstrap.py` with one
+  store per process:
+  - `analyse(track_id)` answers every outcome of WAVE-01's vocabulary. It raises only for a store it
+    cannot write.
+  - `states(track_ids)`, `waveforms(track_ids, width)` and `waveform(track_id, width)` answer.
+
+  A batch of up to 200 tracks costs one library query and one store query.
+- **`FileStatusRepository.current_files()`:** the one shared read of a track's current path and the
+  check made at that path. The store is keyed by the path it answers.
+- **`scripts/bench_waveform_store.py`:** the acceptance's measurements, with a worst-case mode.
+- **Tests:**
+
+  | File | Tests | Covers |
+  | --- | --- | --- |
+  | `test_waveform.py` | 64 | The core, including every width from 16 to 1,200 against the maximum rule, and lanes of 0 beside 255 |
+  | `test_waveform_store.py` | 55 | Schema, each `CHECK`, the page size, setting aside, corruption at launch and in use, a lock, and the three places the store must not be |
+  | `test_waveform_models.py` | 35 | The row and state types |
+  | `test_waveform_service.py` | 50 | Every outcome with an injected decoder; the file check's rule; when a row counts; states under a filesystem that raises on every look; the query count per 200; a restored library with new ids |
+  | `test_waveform_service_binary.py` | 8 | Every shipped format through a real `mpv`, the band order on `bands.flac`, and a broken file. Desktop CI runs it with the pinned builds |
+  | `test_current_files.py` | 3 | The shared path read |
+  | `test_bench_waveform_store.py` | 6 | The bench's budgets and model, run end to end at a small size |
+  | `test_row_values_whole_number.py` | 14 | The shared validator's fix (precision 12) |
+
+  The file-write boundary test also lists the store as a writer of CuePoint's own data only, and holds
+  it to reaching no writer of user files. A filesystem test holds it to files named after itself.
+
+**Measured** (Linux x86_64, SQLite 3.45.1, `scripts/bench_waveform_store.py`, 50,000 waveforms, two
+runs; each timing is over 30 random batches after a warm-up):
+
+| Measure | Result | Budget |
+| --- | --- | --- |
+| The store, synthetic pictures (mean 3.94 KB) | 240.7 MB in both runs | 250 MB |
+| The store, music-sized pictures (mean 2.9 KB, the layout measurement) | 172 MB | 250 MB |
+| The store, pictures `zlib` cannot compress (`--worst-case`) | 278.1 MB | reported, not budgeted |
+| 200 states | p95 3.4 and 4.8 ms | 50 ms |
+| 200 pictures at width 120 | p95 37.5 and 23.9 ms | 50 ms |
+| One picture at 1,200 columns | p95 0.16 ms | 20 ms |
+
+- **The synthetic pictures are deliberately pessimistic.** They model a dance track's sections and
+  beat, with noise in every band, which compresses worse than the music modelled. Tracks synthesised
+  as audio and analysed through the real decoder gave pictures of 2.3–2.9 KB.
+- **The first run missed the size budget,** at 251.6 MB with 4 KB pages. Precision 2 records the fix.
+- **The worst case fits within 12%** even when nothing compresses.
+
+**Where the specification was wrong, and what was done instead.** Each was settled the most durable
+way and is recorded here and in ADR-010.
+
+1. **An ordinary table, not `WITHOUT ROWID`.** Measured at 50,000 rows of about 3.5 KB, the ordinary
+   table with a unique `path` was 10% smaller (210 MB against 234 MB) and read 200 rows three times as
+   fast (1.1 ms against 3.6 ms). A `WITHOUT ROWID` row keeps only about 1 KB in its page and spills
+   the rest to an overflow page of its own.
+2. **Pages of 16 KB, not SQLite's 4 KB.** The first run at 50,000 measured 251.6 MB against the
+   250 MB budget, with 197 MB of pictures. At 4 KB a page holds one picture, and a row just over its
+   local limit takes a second page, so 28% to 46% of the file was waste. At 16 KB the waste is 18% to
+   19%, and reads measured the same. 8 KB was worse for pictures just under 4 KB, and 32 KB saved a
+   further 5% for twice the bytes read per row. Only a new store takes the size.
+3. **The picture is the last column.** The specification put `analysed_at` after `data`. SQLite reads
+   a row's columns in order, so a state would have walked the picture's overflow pages to reach it.
+4. **The body stores each band in turn.** The four bands of one column were stored together in the
+   specification. Stored band by band, the body is 11% smaller on tracks measured through the real
+   decoder, since neighbouring values within a band are alike. `decode()` returns the specified
+   column layout, so nothing else sees the difference.
+5. **Downsampling had to be rewritten to meet the budget.** A loop per span took 0.23 ms per picture,
+   and 200 pictures at width 120 measured 66 ms at p95 against 50 ms. The maximum is now taken over
+   all of a picture's bytes at once: each byte gets a 16-bit lane of one Python integer, and a
+   lane-wise maximum is a few big-integer operations. That is about 50 µs at width 120, with no
+   `numpy`. A test compares every width against the maximum rule, and another sets lanes of 0 beside
+   255, where a borrow between lanes would show.
+6. **The store follows the library database, not only `CUEPOINT_HOME`.** It sits beside `cuepoint.db`
+   wherever `database.path` puts that, so a test or a second profile never shares a store with the
+   user's.
+7. **Corruption found in use waits for the next launch.** The specification set a corrupt store aside
+   on sight. Found by a read while other threads hold connections, it cannot be: Windows refuses to
+   rename an open file. That call fails, a marker is written beside the store, and the next launch
+   sets it aside before opening. The WAL sidecars go aside with it, so the copy kept is whole, and
+   only the newest copy is kept.
+8. **`missing` carries a reason.** The file check has more answers than the state table:
+   - `missing`;
+   - `unreadable`;
+   - `root_unavailable`;
+   - and, for a track Rekordbox gave no location, never checked at all.
+
+   All four are `missing`, with the reason, rather than new states or a false `unchecked`.
+9. **A stored picture answers first.** A track whose drive is unplugged, or whose decoder has gone,
+   still shows the picture made from its file. Without one, the file check says why, and
+   `unavailable` replaces only `waiting`.
+10. **`analyse()` holds fact 6 itself.** A file the check did not find present at the current path
+    is never opened (`not_present`, with the reason), whoever calls. A row that already counts for
+    the file's size and modified time is `current`, and the file is not decoded again. So a request
+    for a track already analysed costs a `stat`, as WAVE-03 needs.
+11. **A picture that does not decode is deleted.** Its row goes, and the next analysis makes it again,
+    rather than the refusal repeating at every display.
+12. **A bug in a shared validator.** `row_values.whole_number()` tested exactness through `float()`,
+    which refuses any integer above 2⁵³. That includes a modified time in nanoseconds. It now takes an
+    `int` as it is, and a unit test that failed on the old code pins it.
+
 
 ---
 

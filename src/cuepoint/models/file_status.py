@@ -136,3 +136,32 @@ class TrackFileStatus:
             checked_at=data["checked_at"],
             reason=data.get("reason"),
         )
+
+
+@dataclass(frozen=True)
+class CurrentFile:
+    """A track's current path, and what the last check found at that path.
+
+    The one answer to "which file is this track, and may it be opened": the
+    path is the library's, exactly as the file check records it, and the
+    check is only one made at that same path (CLEAN-07's staleness rule).
+    Phase 11 keys its waveforms by this path (WAVE-02).
+
+    Attributes:
+        track_id: The library track.
+        path: Its file path, exactly as the library holds it; empty when
+            Rekordbox gave it no location.
+        status: What the check at this path found, one of
+            :data:`FILE_STATUSES`, or ``None`` when nobody has checked it.
+        reason: Why a missing file is missing, when known.
+    """
+
+    track_id: int
+    path: str
+    status: Optional[str] = None
+    reason: Optional[str] = None
+
+    @property
+    def is_present(self) -> bool:
+        """True when the check at the current path found the file there."""
+        return self.status == FILE_PRESENT

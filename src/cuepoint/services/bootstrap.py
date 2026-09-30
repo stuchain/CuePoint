@@ -33,6 +33,7 @@ from cuepoint.services.interfaces import (
     IExportService,
     IArtworkRepository,
     IArtworkService,
+    IWaveformService,
     IFileWriteRepository,
     IHealthService,
     IRekordboxExportRepository,
@@ -107,6 +108,10 @@ from cuepoint.services.similarity_service import SimilarityService
 from cuepoint.persistence.similarity_repository import SimilarityRepository
 from cuepoint.services.credit_index_service import CreditIndexService
 from cuepoint.persistence.file_status_repository import FileStatusRepository
+from cuepoint.persistence.waveform_store import (
+    WaveformStore,
+    default_waveform_store_path,
+)
 from cuepoint.persistence.job_repository import JobRepository
 from cuepoint.persistence.library_source_repository import (
     LibrarySourceRepository,
@@ -135,6 +140,7 @@ from cuepoint.services.set_service import SetService
 from cuepoint.services.set_suggestion_service import SetSuggestionService
 from cuepoint.services.artwork_cache import ArtworkCache, default_artwork_cache_dir
 from cuepoint.services.artwork_service import ArtworkService, FetchGate
+from cuepoint.services.waveform_service import WaveformService
 from cuepoint.services.duplicate_service import DuplicateService
 from cuepoint.services.file_check_service import FileCheckService
 from cuepoint.services.library_service import LibraryService
@@ -622,6 +628,30 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IArtworkService, create_artwork_service)
+
+    # Waveforms (WAVE-02, DEC-122): their own store, beside the library
+    # database and following it, one per process so its connections and its
+    # one look at the file at first use are shared by every thread. Nothing is
+    # opened until something asks.
+    waveform_stores: list[WaveformStore] = []
+    waveform_store_lock = threading.Lock()
+
+    def waveform_store() -> WaveformStore:
+        path = default_waveform_store_path(container.resolve(IDatabaseService).db_path)
+        with waveform_store_lock:
+            if not waveform_stores or waveform_stores[0].path != path:
+                waveform_stores[:] = [WaveformStore(path)]
+            return waveform_stores[0]
+
+    container.register_factory(WaveformStore, waveform_store)
+
+    def create_waveform_service() -> IWaveformService:
+        return WaveformService(
+            file_status_repository=container.resolve(IFileStatusRepository),
+            store=waveform_store(),
+        )
+
+    container.register_factory(IWaveformService, create_waveform_service)
 
     # Writing tags to files, with a record (CLEAN-10, DEC-070). The one service
     # that writes audio files; the boundary test holds it to that.

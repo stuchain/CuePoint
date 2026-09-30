@@ -45,6 +45,10 @@ def whole_number(value: Any, name: str) -> int:
     """
     if isinstance(value, bool):
         raise ValueError(f"{name} must be a whole number, got {value!r}")
+    if isinstance(value, int):
+        # Exact already. Comparing through float() would refuse any integer
+        # above 2**53, such as a file's modified time in nanoseconds.
+        return value
     try:
         number = int(value)
     except (TypeError, ValueError):

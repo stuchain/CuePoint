@@ -78,6 +78,17 @@ PROBES: Dict[str, FrozenSet[str]] = {
     "cuepoint.data.rekordbox": frozenset({"is_writable"}),
 }
 
+#: Modules that write files, but only CuePoint's own derived data in CuePoint's
+#: own folder, never a file a user chose or an audio file. Phase 11's waveform
+#: store writes ``waveforms.db``, its SQLite sidecars, one set-aside copy and a
+#: marker, all named after its own path (WAVE-02, fact 6); its own tests hold
+#: it to those names. Listed here so that such a module is a decision recorded
+#: beside the boundary, and held to reaching no writer of user files.
+OWN_DATA_WRITERS: Dict[str, str] = {
+    "cuepoint.persistence.waveform_store": "waveforms.db and its sidecars",
+    "cuepoint.services.waveform_service": "through the waveform store only",
+}
+
 #: The only modules, by repository path, that may reach each module's writers.
 ALLOWED_IMPORTERS: Dict[str, Set[str]] = {
     "cuepoint.data.tag_writer": {
@@ -319,6 +330,27 @@ class TestTheBoundary:
                 f"{sorted(allowed - found[module])} no longer reach {module};"
                 " remove them from ALLOWED_IMPORTERS"
             )
+
+    def test_own_data_writers_reach_no_writer_of_user_files(self):
+        for module in OWN_DATA_WRITERS:
+            path = _module_path(module)
+            source = path.read_text(encoding="utf-8")
+            assert (
+                modules_reaching_writers(source, WRITING_FUNCTIONS, module) == set()
+            ), (
+                f"{module} writes CuePoint's own data; it must not reach a writer"
+                " of audio or user files"
+            )
+            # And opens nothing for writing by hand.
+            tree = ast.parse(source)
+            assert not [
+                node
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "open"
+                and _opens_for_writing(node)
+            ], module
 
     def test_the_scan_covers_the_runtime_and_the_scripts(self):
         files = {path.relative_to(_REPO).as_posix() for path in _scanned_files()}

@@ -44,7 +44,12 @@ if TYPE_CHECKING:
         ScannedGroup,
     )
     from cuepoint.models.artwork import TrackArtwork
-    from cuepoint.models.file_status import TrackFileStatus
+    from cuepoint.models.file_status import CurrentFile, TrackFileStatus
+    from cuepoint.models.waveform import (
+        AnalysisOutcome,
+        WaveformAnswer,
+        WaveformState,
+    )
     from cuepoint.persistence.artwork_repository import EmbeddedRecord
     from cuepoint.models.file_write import FileWrite
     from cuepoint.persistence.file_write_repository import (
@@ -2226,6 +2231,11 @@ class IFileStatusRepository(ABC):
         ...
 
     @abstractmethod
+    def current_files(self, track_ids: Iterable[int]) -> List["CurrentFile"]:
+        """Return each track's current path and the check at that path (WAVE-02)."""
+        ...
+
+    @abstractmethod
     def record(self, checks: Sequence["TrackFileStatus"]) -> Set[int]:
         """Store checks, skipping tracks that are gone; return the ids written."""
         ...
@@ -2386,6 +2396,45 @@ class IArtworkService(ABC):
     @abstractmethod
     def embeddable_artwork(self, track_id: int) -> "EmbeddableArtwork":
         """Beatport's image for a track, fetched, guarded and re-encoded to embed."""
+        ...
+
+
+class IWaveformService(ABC):
+    """Interface for analysing files into waveforms and answering from them (WAVE-02).
+
+    Reads the library's paths and file checks and ``waveforms.db``; writes only
+    the store. See ``services/waveform_service.py``.
+    """
+
+    @abstractmethod
+    def decoder_available(self) -> bool:
+        """True when there is a decoder to analyse with."""
+        ...
+
+    @abstractmethod
+    def analyse(
+        self,
+        track_id: int,
+        *,
+        cancel: Optional[Callable[[], bool]] = None,
+        force: bool = False,
+    ) -> "AnalysisOutcome":
+        """Analyse one track's file into the store; raise only for the store."""
+        ...
+
+    @abstractmethod
+    def states(self, track_ids: Iterable[int]) -> List["WaveformState"]:
+        """Each track's waveform state, touching no file."""
+        ...
+
+    @abstractmethod
+    def waveforms(self, track_ids: Iterable[int], width: int) -> List["WaveformAnswer"]:
+        """Each track's picture at a width, or the state explaining its absence."""
+        ...
+
+    @abstractmethod
+    def waveform(self, track_id: int, width: int) -> Optional["WaveformAnswer"]:
+        """One track's picture at a width, or None when it is not a track."""
         ...
 
 
