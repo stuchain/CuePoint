@@ -94,11 +94,13 @@ class TestLastRuns:
             ("files", "file_check", "clean.files.checked"),
             ("duplicates", "duplicate_scan", "clean.duplicates.scanned"),
             ("artwork", "artwork_scan", "clean.artwork.scanned"),
+            # WAVE-03: the waveform analysis, paused and resumed from the panel.
+            ("waveforms", "waveform_analysis", "waveforms.analysed"),
         ]
 
     def test_without_a_feed_nothing_is_claimed(self):
         report = HealthService(Tracks()).report().to_dict()
-        assert [run["last_run_at"] for run in report["detections"]] == [None] * 3
+        assert [run["last_run_at"] for run in report["detections"]] == [None] * 4
         assert report["unavailable_roots"] == []
 
     def test_the_shape(self):

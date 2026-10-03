@@ -3912,6 +3912,29 @@ that brings: the work is spread out and yields, rather than competing with the u
 
 **Decided with**: User (Q-119 and Q-122) · **Date**: 2026-09-29
 
+### Implemented (2026-10-03, WAVE-03) — the library analysis job
+
+- **As decided:** after every whole-library check and at launch, unless paused. It is bounded to
+  `min(2, cpu_count // 4)` workers at lowered priority, and is shown in the status strip.
+  - Pause and Resume are in the Health view and the strip; Settings follows in WAVE-05.
+  - A pause persists across restarts as `waveforms.analysis_paused`.
+  - The tracks of Sets come first, then those of Collections, then the newest.
+- **Precision: the strip's Stop is a Pause.** A cancel the setting did not record would be undone
+  by the next start, so a cancel of this job, from any route, pauses it.
+- **Precision: it steps aside for tag writes and restores too,** beside imports, refresh applies
+  and file checks. It comes back when the last of them ends, however it ended. A failed import
+  starts no check, so "returns after the check" alone could have left it stopped.
+- **Precision: requests run while paused,** and jump the queue at once, not at the next chunk.
+- **Precision: staleness without a `stat` of every file at every start.** A row counts only at the
+  size the file check recorded. The run that follows a whole-library check also `stat`s every
+  analysed file, for a file rewritten at the same size.
+- **Measured on Windows** (16 cores, the pinned `mpv`, two workers):
+  - about 8,400 six-minute tracks an hour, so about 6 hours for 50,000;
+  - the Library search's p95 at 1.35–1.38× idle while it runs;
+  - no underrun in a queue played on the audio device meanwhile.
+
+  `PHASE11_WAVEFORMS.md` has the full table. macOS and Linux are owed.
+
 ---
 
 ## DEC-117 — Three Bands Are Stored; the Colour Is a Setting
@@ -4142,3 +4165,14 @@ rectify and reduce the audio to a small envelope, which the engine reduces again
 
 **Why the decision stands**: every measurement favoured decoding and reducing in the child, and none
 needed `numpy`.
+
+### Amended (2026-10-03, WAVE-03) — the pinned Windows build
+
+- **The graph ends in the output's own format.** The pinned Windows `mpv` remixed the high band into
+  the full and low bands when it converted FFmpeg's planar samples itself. `ANALYSIS_VERSION` is 2, so
+  no waveform such a build stored counts again. ADR-009's amendment has the evidence.
+- **The pipe transport is refused on Windows,** where it cannot work, rather than failing as the
+  file's fault.
+- **The engine's share is halved:** the parse runs at C level, bit-identical, still with no `numpy`.
+  On Windows the engine asks for a 1 ms timer, so a request does not wait for the interpreter's lock
+  in 15.6 ms steps while the analysis computes.

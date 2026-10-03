@@ -2645,6 +2645,59 @@ export interface SimilarTracksRequest {
  * or the refusal standing in for it. Adding and removing entries stays on the
  * Collection methods (PREP-02).
  */
+/**
+ * The waveform analysis (WAVE-03).
+ *
+ * Mirrors `waveforms_api.py` and `AnalysisStatus.to_dict`, and
+ * `engineClient.ts`'s copy of both; `desktopContract.test.ts` holds the three
+ * together. WAVE-05 adds the waveforms themselves.
+ */
+export type WaveformAnalysisState = "running" | "paused" | "idle" | "unavailable";
+
+export interface WaveformAnalysisStatus {
+  state: WaveformAnalysisState;
+  /** The persisted setting; a requested track is still analysed while it is set. */
+  paused: boolean;
+  /** The running job, followed on the status strip. */
+  job_id: string | null;
+  /** Tracks whose file the last check found present. */
+  present: number;
+  /** Of those, tracks with a waveform for the file as it is. */
+  analysed: number;
+  /** Of those, tracks whose file could not be read; not retried until it changes. */
+  failed: number;
+  /** Present tracks with neither. */
+  remaining: number;
+  /** Files an hour over the last ten minutes, while a run goes and there is enough to say. */
+  rate_per_hour: number | null;
+  eta_seconds: number | null;
+  /** Why it is unavailable: `decoder_missing`. */
+  reason: string | null;
+}
+
+/** The codes a waveform refusal can carry; any other failure throws. */
+export type WaveformRefusalCode = "INVALID_REQUEST" | "WAVEFORMS_SETTING_FAILED";
+
+export interface WaveformRefusal {
+  code: WaveformRefusalCode;
+  message: string;
+}
+
+/** An answer, or the refusal standing in for it. */
+export type WaveformAnswer<T> =
+  | { value: T; refusal: null }
+  | { value: null; refusal: WaveformRefusal };
+
+/** `window.cuepoint.waveforms`: every method answers `{ value, refusal }`. */
+export interface WaveformsBridge {
+  /** The analysis as a whole: its state, counts and rate. */
+  analysis: () => Promise<WaveformAnswer<WaveformAnalysisStatus>>;
+  /** Pause, persisted across a restart, and stop a running run. */
+  pause: () => Promise<WaveformAnswer<WaveformAnalysisStatus>>;
+  /** Clear the pause and start a run. */
+  resume: () => Promise<WaveformAnswer<WaveformAnalysisStatus>>;
+}
+
 export interface SetsBridge {
   plan: (params: { set_id: number }) => Promise<SetAnswer<SetPlan>>;
   entries: (params: { set_id: number }) => Promise<SetAnswer<SetEntries>>;
@@ -2681,6 +2734,8 @@ export interface CuePointBridge {
   player?: PlayerBridge;
   /** A Set's reads and edits (PREP-08). Absent in a browser tab, or in an older shell. */
   sets?: SetsBridge;
+  /** The waveform analysis (WAVE-03). Absent in a browser tab, or in an older shell. */
+  waveforms?: WaveformsBridge;
   restartEngine?: () => Promise<EngineStatus>;
   getJob: (jobId: string) => Promise<JobStatus>;
   getJobResults: (jobId: string) => Promise<JobResultsResponse>;

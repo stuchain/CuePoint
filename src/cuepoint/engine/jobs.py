@@ -148,6 +148,44 @@ class JobStore:
         self._repository_provider = job_repository_provider
         self._repository_resolved = job_repository is not None
         self._last_progress_persist: Dict[str, float] = {}
+        self._start_listeners: List[Callable[[Job], None]] = []
+        self._end_listeners: List[Callable[[Job], None]] = []
+
+    def add_listeners(
+        self,
+        *,
+        started: Optional[Callable[[Job], None]] = None,
+        ended: Optional[Callable[[Job], None]] = None,
+    ) -> None:
+        """Be told when any job is created, and when any job has ended.
+
+        For work that must give way to other jobs without each of them knowing
+        it exists: the waveform analysis steps aside for every job that
+        rewrites the library or its files, and comes back when the last of them
+        ends, however it ended (WAVE-03).
+
+        ``started`` is called once the job is registered and before its runner
+        starts; ``ended`` once its terminal state is set. Both on the thread
+        that got there, outside the store's lock, and an exception from either
+        is logged and never reaches the job.
+        """
+        with self._lock:
+            if started is not None and started not in self._start_listeners:
+                self._start_listeners.append(started)
+            if ended is not None and ended not in self._end_listeners:
+                self._end_listeners.append(ended)
+
+    def _notify(self, listeners: Sequence[Callable[[Job], None]], job: Job) -> None:
+        for listener in listeners:
+            try:
+                listener(job)
+            except Exception:  # noqa: BLE001 — a listener must not fail a job
+                _logger.warning(
+                    "[jobs] a listener failed for %s job %s",
+                    job.type,
+                    job.id,
+                    exc_info=True,
+                )
 
     def _get_repository(self) -> Optional[Any]:
         """Return the repository, resolving it once if a provider was given."""
@@ -281,7 +319,9 @@ class JobStore:
                     ):
                         raise JobTypeBusyError(existing.type, existing.id)
             self._jobs[job.id] = job
+            started = list(self._start_listeners)
         self._persist(job, force=True)
+        self._notify(started, job)
 
         thread = threading.Thread(
             target=self._run_job,
@@ -341,6 +381,9 @@ class JobStore:
             )
         finally:
             self.unregister_controller(job.id)
+            with self._lock:
+                end_listeners = list(self._end_listeners)
+            self._notify(end_listeners, job)
 
     def report_progress(self, job: Job, progress: ProgressInfo) -> None:
         """Record a progress tick from a runner.

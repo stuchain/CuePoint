@@ -1095,7 +1095,8 @@ describe("Health", () => {
     bridge.getLibraryHealth!.mockResolvedValue(UNTOUCHED);
     renderClean("health");
     const checks = await screen.findByRole("list", { name: "Checks" });
-    expect(within(checks).getAllByText("Never run")).toHaveLength(3);
+    // Files, duplicates, artwork and the waveform analysis (WAVE-03).
+    expect(within(checks).getAllByText("Never run")).toHaveLength(4);
 
     const before = bridge.getLibraryHealth!.mock.calls.length;
     fireEvent.click(within(checks).getByRole("button", { name: "Read artwork" }));

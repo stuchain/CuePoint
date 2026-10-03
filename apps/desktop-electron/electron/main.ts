@@ -512,6 +512,10 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:saveSetList", (_event, params) =>
     rememberSetListFolder(engine.saveSetList(params), setListFolders()),
   );
+  // The waveform analysis (WAVE-03): each answers { value, refusal }.
+  ipcMain.handle("engine:getWaveformAnalysis", () => engine.getWaveformAnalysis());
+  ipcMain.handle("engine:pauseWaveformAnalysis", () => engine.pauseWaveformAnalysis());
+  ipcMain.handle("engine:resumeWaveformAnalysis", () => engine.resumeWaveformAnalysis());
   ipcMain.handle("engine:startLibraryImport", (_event, params) =>
     engine.startLibraryImport(params),
   );

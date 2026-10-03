@@ -82,6 +82,22 @@ The store at 50,000 waveforms, and the reads the acceptance times, are recorded 
 - **`FORMAT_VERSION` names the picture's rules;** `ANALYSIS_VERSION` names the envelope's. A test
   pins a digest of a fixed envelope's picture, so a rule change that forgets the version fails.
 
+## Amendment (WAVE-03, 2026-10-03): the work list's index
+
+The library analysis compares every present file with the store once per 200 files it
+analyses. It needs each current row's path, size and state. Rows are kept in their
+pages beside their pictures, so reading them means scanning the whole file.
+
+- **`waveforms_work`** is a covering index on `(analysis_version, path, size_bytes,
+  state)`. `current_files()` reads it alone, with `INDEXED BY` and a test that the
+  plan says `COVERING INDEX`.
+- **It is created with `IF NOT EXISTS` at every first open,** so a store made before
+  it gains it without a schema version and without losing a row.
+- **Pruning reads the path's own index** (`paths()`), and `delete_paths()` removes a
+  run's dead rows in one transaction. A run never prunes while the library has no
+  tracks: an empty library is far likelier a new or reset database than a decision
+  to discard hours of analysis.
+
 ## Signals to revisit
 
 - **The store outgrows its budget:** a real library's mean picture exceeds about 5 KB, which would put

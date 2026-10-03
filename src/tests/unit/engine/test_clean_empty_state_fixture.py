@@ -205,7 +205,13 @@ class TestEachStateIsTheOneItClaims:
         state = captured["untouched"]
         assert self.counts(state)["not_matched"] == state["health"]["track_count"] == 3
         assert state["needs_review"]["total"] == 0
-        assert self.runs(state) == {"files": None, "duplicates": None, "artwork": None}
+        assert self.runs(state) == {
+            "files": None,
+            "duplicates": None,
+            "artwork": None,
+            # No decoder in the suite, so the analysis never runs (WAVE-03).
+            "waveforms": None,
+        }
         assert state["missing_files"]["total"] == 0
         assert state["duplicates"]["groups"] == []
 

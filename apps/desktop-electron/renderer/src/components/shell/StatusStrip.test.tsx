@@ -428,6 +428,31 @@ describe("stopping a job", () => {
     expect(await screen.findByText("Updating 3/10")).toBeInTheDocument();
   });
 
+  it("pauses the waveform analysis rather than stopping it (WAVE-03)", async () => {
+    listJobs.mockResolvedValue({
+      jobs: [
+        job({
+          id: "job-9",
+          type: "waveform_analysis",
+          progress: { completed_tracks: 1234, total_tracks: 50000, eta_seconds: 6 * 3600 },
+        }),
+      ],
+      active_count: 1,
+    });
+    bridge({ cancelJob });
+    render(<StatusStrip />);
+
+    const label = await screen.findByText("Analysing waveforms · 1,234 of 50,000");
+    const pause = screen.getByRole("button", {
+      name: "Pause analysing waveforms · 1,234 of 50,000",
+    });
+    expect(pause).toHaveTextContent("Pause");
+    expect(label).toHaveAttribute("title", "About 8,128 an hour · about 6 hours left");
+    pause.click();
+
+    await waitFor(() => expect(cancelJob).toHaveBeenCalledWith("job-9"));
+  });
+
   it("asks the engine to stop that job", async () => {
     listJobs.mockResolvedValue({ jobs: [job({ id: "job-7" })], active_count: 1 });
     bridge({ cancelJob });

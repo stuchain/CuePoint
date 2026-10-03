@@ -6,7 +6,9 @@ Accepted (WAVE-01, 2026-09-30). Records DEC-113 and DEC-123 as implemented, with
 the measurements they were decided on. Linux was measured against the
 distribution's `mpv` 0.37 (FFmpeg 6.1.1). The pinned Windows and macOS builds are
 checked in desktop CI by `fetch_player_sidecar.py --check-analysis`; their timings
-with `scripts/bench_decoder.py` are owed.
+with `scripts/bench_decoder.py` are owed. Amended by WAVE-03 (2026-10-03): the
+graph ends in the output's format, which the pinned Windows build needed, and
+`ANALYSIS_VERSION` is 2.
 
 ## Context
 
@@ -155,6 +157,41 @@ run three times. The ranges are across those runs.
   crossovers, filter order, squaring or layout changes it. WAVE-02 stores it
   with every waveform, and the library is analysed again over time.
 - **Linux has waveforms only with a named `mpv`,** as it has playback.
+
+## Amendment (WAVE-03, 2026-10-03): the pinned Windows build, and the engine's share
+
+WAVE-03's acceptance ran the pipeline on the pinned Windows build for the first time
+outside CI, and found two defects that CI had been reporting as failures since WAVE-01.
+
+- **The pinned Windows `mpv` (0.41-dev, FFmpeg 8) remixed the bands.** The graph ended
+  in planar float, and `mpv` converted it to the interleaved float its output takes.
+  That conversion mixed the fourth channel into the first two, at −3 dB, as a centre
+  channel is downmixed. The high band read silent, and its tone appeared in the full
+  and low bands. Inside FFmpeg every stage was right; the log showed `quad` throughout.
+  - **The graph now ends in the output's own format,**
+    `aformat=sample_fmts=flt:channel_layouts=quad`, so `mpv` converts nothing.
+  - On a build that was right the values are the same.
+  - `ANALYSIS_VERSION` is 2 regardless, so no waveform a remixing build stored can
+    count again. Phase 11 has not shipped, so this costs nobody a re-analysis.
+  - `--check-analysis` passes on the pinned Windows build: the bands are at least
+    23.7 dB apart, as on Linux.
+- **The pipe transport was offered on Windows,** where `/dev/stdout` does not exist,
+  and a decode through it failed as the file's fault (`undecodable`).
+  `platform_transports()` names the transports a platform has. `decode_envelope`
+  refuses any other as a programming error, before any file can be blamed.
+- **The engine's share of the work is halved.** The parse took the square root of
+  216,000 values a track in a Python loop: about 60 ms holding the interpreter's lock.
+  With two workers that cost the Library search 1.5× its idle p95 on Windows.
+  - It now runs at C level (`max(0.0, v)` then `sqrt`, through `map`), about 27 ms a
+    track, and is bit-identical to the per-value rule, NaN and infinity included.
+  - Moving the root into FFmpeg (`aeval` at 150 Hz) was measured and declined: it was
+    not bit-identical on the pinned build.
+- **On Windows the engine asks for a 1 ms timer** (`server.fine_timer_resolution`). A
+  thread that gives up the lock for SQLite waits on a timed condition, and Windows
+  times those waits at 15.6 ms by default. Every engine request therefore paid for
+  any background computation in 15.6 ms steps. With both changes, search p95 with
+  the analysis running measured 1.35× and 1.38× idle on Windows, against the 1.5×
+  budget, where it had measured 1.52× and 1.54×.
 
 ## Signals to revisit
 

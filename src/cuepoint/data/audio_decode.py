@@ -24,6 +24,11 @@ One ``mpv`` child per file. FFmpeg's filters, inside it, do all the heavy work:
 4. Square every sample, by multiplying the stream by itself.
 5. Resample to ``ENVELOPE_RATE_HZ``. The resampler's low-pass averages the
    squares, so each output sample is a mean square.
+6. Hand ``mpv`` interleaved float ``quad``: exactly what its output takes, so
+   ``mpv`` converts nothing. The pinned Windows build (mpv 0.41, FFmpeg 8)
+   remixed the fourth band into the first two when it converted FFmpeg's planar
+   samples itself, as a centre channel is downmixed: the high band read silent
+   and its tone appeared, 3 dB down, in the full and low bands (WAVE-03).
 
 The engine takes the square root, so the envelope is RMS amplitude: a
 full-scale sine reads 0.707. Squaring was measured at twice the speed of an
@@ -98,6 +103,7 @@ import threading
 import time
 from array import array
 from dataclasses import dataclass
+from itertools import repeat
 from pathlib import Path
 from typing import (
     IO,
@@ -115,7 +121,12 @@ _logger = logging.getLogger(__name__)
 #: Changes whenever a change here changes what an envelope holds. WAVE-02
 #: stores it with every waveform, and a stored one of another version is
 #: analysed again.
-ANALYSIS_VERSION = 1
+#:
+#: 2 (WAVE-03): the graph ends in the output's own format. A build that remixed
+#: the bands on its own conversion (the pinned Windows one) stored waveforms
+#: with no high band, and none of them may count again. Elsewhere the values
+#: are the same, and the cost is one re-analysis of an unreleased store.
+ANALYSIS_VERSION = 2
 
 #: The rate the audio is decoded to before it is split.
 DECODE_RATE_HZ = 22_050
@@ -307,7 +318,8 @@ def filter_graph() -> str:
         f"[h]{high}[high];"
         f"[full][low][mid][high]join=inputs=4:channel_layout={CHANNEL_LAYOUT},"
         "asplit=2[x][y];[x][y]amultiply,"
-        f"aresample={ENVELOPE_RATE_HZ}"
+        f"aresample={ENVELOPE_RATE_HZ},"
+        f"aformat=sample_fmts=flt:channel_layouts={CHANNEL_LAYOUT}"
     )
 
 
@@ -356,6 +368,11 @@ def decoder_arguments(
 def default_transport(platform: str = sys.platform) -> str:
     """How samples leave the child on this platform."""
     return TRANSPORT_FILE if platform == "win32" else TRANSPORT_PIPE
+
+
+def platform_transports(platform: str = sys.platform) -> Tuple[str, ...]:
+    """Every transport this platform can use: Windows has no ``/dev/stdout``."""
+    return (TRANSPORT_FILE,) if platform == "win32" else TRANSPORTS
 
 
 def is_decodable_path(path: Union[str, Path]) -> bool:
@@ -426,6 +443,23 @@ def _rms(mean_square: float) -> float:
     return math.sqrt(mean_square)
 
 
+def _rms_band(mean_squares: "array[float]") -> "array[float]":
+    """:func:`_rms` over a whole band, without a Python loop (WAVE-03).
+
+    A six-minute track is 216,000 values. Read one at a time, the parse held the
+    engine's interpreter lock for some 60 ms a track, and with the library
+    analysis running that tripled the Library search's p95: every query that
+    released the lock to SQLite waited to have it back. Here the work is C's:
+    ``max(0.0, v)`` is 0.0 for a negative, a zero and a NaN alike, since every
+    comparison with a NaN is false, and ``sqrt`` follows. An infinity, which no
+    decoder has been seen to write, takes the per-value rule, so the answer is
+    :func:`_rms`'s exactly.
+    """
+    if any(map(math.isinf, mean_squares)):
+        return array("f", map(_rms, mean_squares))
+    return array("f", map(math.sqrt, map(max, repeat(0.0), mean_squares)))
+
+
 def parse_envelope(
     raw: bytes, *, rate_hz: int = ENVELOPE_RATE_HZ, decode_errors: int = 0
 ) -> Envelope:
@@ -438,9 +472,7 @@ def parse_envelope(
     samples: "array[float]" = array("f")
     samples.frombytes(raw[:usable])
     channels = len(BANDS)
-    bands = [
-        array("f", (_rms(v) for v in samples[i::channels])) for i in range(channels)
-    ]
+    bands = [_rms_band(samples[i::channels]) for i in range(channels)]
     return Envelope(
         rate_hz=rate_hz,
         full=bands[0],
@@ -617,6 +649,10 @@ def decode_envelope(
     mode = transport or default_transport()
     if mode not in TRANSPORTS:
         raise ValueError(f"Unknown transport: {mode!r}")
+    if mode not in platform_transports():
+        # Asked for by a caller, never chosen here. Run, it would fail as the
+        # file's fault, and a file would be stored as undecodable for it.
+        raise ValueError(f"The {mode} transport does not work on {sys.platform}")
     if cancel is not None and cancel():
         raise DecodeCancelled(str(source_path))
     if not decoder_path.is_file():
@@ -779,6 +815,7 @@ __all__ = [
     "is_decodable_path",
     "live_children",
     "parse_envelope",
+    "platform_transports",
     "read_decoder_log",
     "sweep_stale_workdirs",
     "terminate_children",

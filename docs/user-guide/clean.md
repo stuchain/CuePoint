@@ -136,6 +136,17 @@ Collection.
 **Checks** says when files were last checked, duplicates last looked for and
 artwork last read, with a button to run each again.
 
+**Waveforms analysed** is the one check that runs on its own. After every file
+check, CuePoint works out a waveform for each file the check found, in the
+background and at low priority: the tracks in your Sets first, then those in your
+Collections, then the newest. It says how far it has got ("Analysing · 1,234 of
+50,000 · about 6 hours left") and offers **Pause** while it runs, **Resume** while
+it is paused, and **Analyse waveforms** when it has nothing left to do. A paused
+analysis stays paused, after a restart too, until you resume it. A file that
+could not be read is not tried again until it changes; a file on a drive that is
+not connected is not counted against it. On a build without the player's decoder
+it says so, and nothing is analysed.
+
 Health gives no overall score. A library with 40 tracks without a genre is not
 "92% healthy"; it has 40 tracks without a genre.
 

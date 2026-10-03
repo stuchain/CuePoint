@@ -142,6 +142,18 @@ class PrivacyConfig:
 
 
 @dataclass
+class WaveformsConfig:
+    """The library's waveform analysis (WAVE-03, DEC-116).
+
+    ``analysis_paused`` is set by Pause, and by the status strip's Stop, and
+    cleared by Resume. It persists, so a paused analysis stays paused across a
+    restart; a requested track is still analysed while it is set.
+    """
+
+    analysis_paused: bool = False
+
+
+@dataclass
 class RunSummaryConfig:
     """Run summary configuration."""
 
@@ -253,6 +265,7 @@ class AppConfig:
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     backup: BackupConfig = field(default_factory=BackupConfig)
     privacy: PrivacyConfig = field(default_factory=PrivacyConfig)
+    waveforms: WaveformsConfig = field(default_factory=WaveformsConfig)
     run_summary: RunSummaryConfig = field(default_factory=RunSummaryConfig)
     matching: MatchingConfig = field(default_factory=MatchingConfig)
     reliability: ReliabilityConfig = field(default_factory=ReliabilityConfig)
@@ -351,6 +364,9 @@ class AppConfig:
             "privacy": {
                 "clear_cache_on_exit": self.privacy.clear_cache_on_exit,
                 "clear_logs_on_exit": self.privacy.clear_logs_on_exit,
+            },
+            "waveforms": {
+                "analysis_paused": self.waveforms.analysis_paused,
             },
             "run_summary": {
                 "write_json": self.run_summary.write_json,
@@ -591,6 +607,16 @@ class AppConfig:
                 ),
                 clear_logs_on_exit=privacy_data.get(
                     "clear_logs_on_exit", config.privacy.clear_logs_on_exit
+                ),
+            )
+
+        if "waveforms" in data:
+            waveforms_data = data["waveforms"] or {}
+            config.waveforms = WaveformsConfig(
+                analysis_paused=bool(
+                    waveforms_data.get(
+                        "analysis_paused", config.waveforms.analysis_paused
+                    )
                 ),
             )
 

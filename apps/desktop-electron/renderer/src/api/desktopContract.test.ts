@@ -21,11 +21,24 @@ import { describe, expect, it } from "vitest";
 // Read as text through Vite rather than `node:fs`: the renderer deliberately
 // has no Node types, because renderer code must not reach for Node APIs, and
 // adding them for one test would remove the compiler's ability to say so.
-import preload from "../../../electron/preload.cjs?raw";
-import main from "../../../electron/main.ts?raw";
-import engineClient from "../../../electron/engineClient.ts?raw";
-import supervisor from "../../../electron/engineSupervisor.ts?raw";
-import bridgeTypes from "./cuepointBridge.types.ts?raw";
+import preloadSource from "../../../electron/preload.cjs?raw";
+import mainSource from "../../../electron/main.ts?raw";
+import engineClientSource from "../../../electron/engineClient.ts?raw";
+import supervisorSource from "../../../electron/engineSupervisor.ts?raw";
+import bridgeTypesSource from "./cuepointBridge.types.ts?raw";
+
+/**
+ * The sources with the line endings the repository stores. A Windows checkout
+ * with `core.autocrlf` writes CRLF, and every pattern here is written with a
+ * bare newline: read as checked out, 74 of these failed on Windows CI and
+ * passed everywhere else, about files that were right.
+ */
+const lf = (source: string): string => source.replace(/\r\n/g, "\n");
+const preload = lf(preloadSource);
+const main = lf(mainSource);
+const engineClient = lf(engineClientSource);
+const supervisor = lf(supervisorSource);
+const bridgeTypes = lf(bridgeTypesSource);
 
 /** Every channel the preload invokes. */
 function invokedChannels(source: string): string[] {
@@ -1523,6 +1536,136 @@ describe("desktop contract", () => {
       };
 
       expect(declaration(bridgeTypes)).toEqual(declaration(engineClient));
+    });
+  });
+
+  describe("the waveform analysis (WAVE-03)", () => {
+    // Three engine methods on `window.cuepoint.waveforms`, named here because
+    // the generic checks compare the files with each other, and a method
+    // missing from all six passes every one of them.
+    type Method = { client: string; route: string; post: boolean };
+    const METHODS: Record<string, Method> = {
+      analysis: {
+        client: "getWaveformAnalysis",
+        route: '"/api/v1/waveforms/analysis"',
+        post: false,
+      },
+      pause: {
+        client: "pauseWaveformAnalysis",
+        route: '"/api/v1/waveforms/analysis/pause"',
+        post: true,
+      },
+      resume: {
+        client: "resumeWaveformAnalysis",
+        route: '"/api/v1/waveforms/analysis/resume"',
+        post: true,
+      },
+    };
+    const methods = Object.values(METHODS).map((m) => m.client);
+
+    const clientMethod = (name: string) => {
+      const start = engineClient.indexOf(`  async ${name}(`);
+      expect(start, name).toBeGreaterThan(-1);
+      const next = engineClient.indexOf("\n  async ", start + 1);
+      return engineClient.slice(start, next === -1 ? undefined : next);
+    };
+
+    /** The preload's `waveforms: { … }` block, and only it. */
+    const waveformsBlock = () => {
+      const start = preload.indexOf("  waveforms: {\n");
+      expect(start).toBeGreaterThan(-1);
+      // Through the last method's own line ending.
+      return preload.slice(start, preload.indexOf("\n  },\n", start) + 1);
+    };
+
+    /** The bridge's `WaveformsBridge` interface, and only it. */
+    const bridgeInterface = () => {
+      const start = bridgeTypes.indexOf("export interface WaveformsBridge {");
+      expect(start).toBeGreaterThan(-1);
+      return bridgeTypes.slice(start, bridgeTypes.indexOf("\n}", start));
+    };
+
+    it.each(Object.entries(METHODS))(
+      "exposes waveforms.%s on the preload, on its own channel",
+      (key, { client }) => {
+        expect(waveformsBlock()).toContain(
+          `    ${key}: () => ipcRenderer.invoke("engine:${client}"),\n`,
+        );
+      },
+    );
+
+    it("exposes nothing else on waveforms yet (WAVE-05 adds the rest)", () => {
+      const keys = [...waveformsBlock().matchAll(/^ {4}([A-Za-z]+):/gm)].map((m) => m[1]);
+      expect(keys.sort()).toEqual(Object.keys(METHODS).sort());
+    });
+
+    it.each(methods)("handles engine:%s in the main process", (method) => {
+      expect(handledChannels(main)).toContain(`engine:${method}`);
+      expect(main).toContain(`ipcMain.handle("engine:${method}", () => engine.${method}());`);
+    });
+
+    it.each(methods)("forwards %s through the supervisor", (method) => {
+      expect(supervisorMethodsDeclared(supervisor)).toContain(method);
+      expect(supervisor).toContain(`(await this.readyClient()).${method}();`);
+    });
+
+    it.each(Object.entries(METHODS))("waveforms.%s uses its own route and verb", (_key, m) => {
+      // A GET that paused the analysis would be repeated by anything that retries GETs.
+      const body = clientMethod(m.client);
+      expect(body).toContain(m.route);
+      if (m.post) {
+        expect(body).toContain("this.waveformsPost(");
+      } else {
+        expect(body).not.toContain('method: "POST"');
+        expect(body).not.toContain("waveformsPost");
+      }
+    });
+
+    it.each(Object.keys(METHODS))(
+      "declares waveforms.%s on the bridge with the client's own answer",
+      (key) => {
+        expect(bridgeInterface()).toContain(
+          `  ${key}: () => Promise<WaveformAnswer<WaveformAnalysisStatus>>;`,
+        );
+      },
+    );
+
+    it("answers every refusal as a value, because a rejection loses its code over IPC", () => {
+      for (const method of methods) {
+        expect(clientMethod(method), method).toContain(
+          "Promise<WaveformAnswer<WaveformAnalysisStatus>>",
+        );
+      }
+      expect(engineClient).toContain("async function readWaveformAnswer<T>");
+    });
+
+    it("hangs off the bridge as one optional namespace", () => {
+      expect(bridgeTypes).toMatch(/\n {2}waveforms\?: WaveformsBridge;\r?\n/);
+      for (const method of methods) {
+        expect(bridgeTypes).not.toMatch(new RegExp(`\\n  ${method}\\?: `));
+      }
+    });
+
+    it("declares the same status and refusal codes in both processes", () => {
+      const fields = (source: string, start: string) => {
+        const at = source.indexOf(start);
+        expect(at, start).toBeGreaterThan(-1);
+        return source
+          .slice(at, source.indexOf("\n}", at))
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => /^[a-z_]+\??:/.test(line));
+      };
+      expect(fields(bridgeTypes, "export interface WaveformAnalysisStatus {")).toEqual(
+        fields(engineClient, "export interface WaveformAnalysisStatus {"),
+      );
+      for (const declaration of [
+        'export type WaveformAnalysisState = "running" | "paused" | "idle" | "unavailable";',
+        'export type WaveformRefusalCode = "INVALID_REQUEST" | "WAVEFORMS_SETTING_FAILED";',
+      ]) {
+        expect(bridgeTypes).toContain(declaration);
+        expect(engineClient).toContain(declaration);
+      }
     });
   });
 

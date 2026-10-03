@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityPanel } from "./ActivityPanel";
-import { jobLabel, jobPercent, useActiveJob } from "./useActiveJob";
+import { jobLabel, jobPercent, jobStopLabel, jobTitle, useActiveJob } from "./useActiveJob";
 import { useEngineStatus } from "./useEngineStatus";
 import { usePlayerStatusMessage } from "./usePlayerStatus";
 import "./StatusStrip.css";
@@ -149,7 +149,9 @@ export function StatusStrip() {
 
         {job ? (
           <span className="cp-status__job">
-            <span className="cp-status__job-label">{jobLabel(job)}</span>
+            <span className="cp-status__job-label" title={jobTitle(job)}>
+              {jobLabel(job)}
+            </span>
             {percent !== null && (
               <>
                 {/*
@@ -176,10 +178,16 @@ export function StatusStrip() {
                 onClick={() => void cancel()}
                 disabled={cancelling}
                 // Named, because the strip can be reporting any of four kinds
-                // of work and "Cancel" alone would not say which stops.
-                aria-label={`Stop ${jobLabel(job).toLowerCase()}`}
+                // of work and "Cancel" alone would not say which stops. The
+                // waveform analysis's Stop is a Pause, kept across a restart
+                // (WAVE-03), and says so.
+                aria-label={`${jobStopLabel(job)} ${jobLabel(job).toLowerCase()}`}
               >
-                {cancelling ? "Stopping…" : "Stop"}
+                {cancelling
+                  ? jobStopLabel(job) === "Pause"
+                    ? "Pausing…"
+                    : "Stopping…"
+                  : jobStopLabel(job)}
               </button>
             )}
           </span>

@@ -82,6 +82,13 @@ While a job is running — matching a playlist, for example — the strip shows 
 progress from wherever you are in the app, including a job that was already
 running before the window was reloaded.
 
+The waveform analysis shows as **Analysing waveforms · 1,234 of 50,000**, counting
+your whole library; hover over it for the rate and the time left. Its button is
+**Pause** rather than Stop, because that is what it does: the analysis stays
+paused, after a restart too, until you resume it from Clean → Health. It also
+steps aside on its own for an import, a refresh, a file check or a tag write,
+and carries on after them.
+
 ## Activity
 
 Click **Activity** in the status strip, or press **Ctrl+Shift+A**, for a list of

@@ -138,6 +138,12 @@ GUARDED = (
     "cuepoint/core/waveform.py",
     "cuepoint/models/waveform.py",
     "cuepoint/services/waveform_service.py",
+    # WAVE-03: the library's analysis, its job and its routes (its work list's
+    # repository is under persistence/, above).
+    "cuepoint/models/waveform_analysis.py",
+    "cuepoint/services/waveform_analysis_service.py",
+    "cuepoint/engine/waveform_jobs.py",
+    "cuepoint/engine/waveforms_api.py",
 )
 
 

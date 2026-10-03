@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import math
+import random
 import os
 import re
 import sys
@@ -75,7 +76,27 @@ class TestFilterGraph:
         assert f"lowpass=f={ad.LOW_CROSSOVER_HZ}:p=2" in graph
         assert f"highpass=f={ad.HIGH_CROSSOVER_HZ}:p=2" in graph
         assert f"join=inputs=4:channel_layout={ad.CHANNEL_LAYOUT}" in graph
-        assert graph.endswith(f"aresample={ad.ENVELOPE_RATE_HZ}")
+        assert f"aresample={ad.ENVELOPE_RATE_HZ}," in graph
+
+    def test_it_hands_the_decoder_its_outputs_own_format(self):
+        """WAVE-03: mpv must convert nothing after the graph.
+
+        The pinned Windows build remixed the fourth band into the first two
+        when it converted FFmpeg's planar samples itself, so the graph ends in
+        exactly what the output takes: interleaved float, in the joined layout.
+        """
+        graph = ad.filter_graph()
+        assert graph.endswith(
+            f"aresample={ad.ENVELOPE_RATE_HZ},"
+            f"aformat=sample_fmts=flt:channel_layouts={ad.CHANNEL_LAYOUT}"
+        )
+        assert "--audio-format=float" in ad.decoder_arguments(
+            "/bin/mpv", "/m/a.flac", output="/dev/stdout", log_file="/tmp/l"
+        )
+        assert ad.EXPECTED_OUTPUT.endswith(f"{ad.CHANNEL_LAYOUT} 4ch float")
+
+    def test_the_version_names_the_graph_that_fixed_the_bands(self):
+        assert ad.ANALYSIS_VERSION == 2
 
     def test_the_bands_are_joined_in_the_order_they_are_named(self):
         graph = ad.filter_graph()
@@ -106,6 +127,29 @@ class TestFilterGraph:
 
     def test_the_expected_output_names_the_rate_layout_and_format(self):
         assert ad.EXPECTED_OUTPUT == "AO: [pcm] 150Hz quad 4ch float"
+
+
+class TestTransports:
+    def test_windows_writes_a_file_and_has_no_pipe(self):
+        assert ad.platform_transports("win32") == (ad.TRANSPORT_FILE,)
+        assert ad.default_transport("win32") == ad.TRANSPORT_FILE
+
+    @pytest.mark.parametrize("platform", ["linux", "darwin"])
+    def test_elsewhere_both_and_a_pipe_by_default(self, platform):
+        assert ad.platform_transports(platform) == ad.TRANSPORTS
+        assert ad.default_transport(platform) == ad.TRANSPORT_PIPE
+
+    def test_a_transport_the_platform_lacks_is_refused_before_any_file_is_blamed(
+        self, monkeypatch, tmp_path
+    ):
+        """A pipe on Windows failed as ``undecodable``, the file's fault (WAVE-03)."""
+        monkeypatch.setattr(ad, "platform_transports", lambda: (ad.TRANSPORT_FILE,))
+        decoder = tmp_path / "mpv"
+        decoder.write_bytes(b"")
+        with pytest.raises(ValueError, match="does not work"):
+            ad.decode_envelope(
+                tmp_path / "a.flac", decoder, transport=ad.TRANSPORT_PIPE
+            )
 
 
 class TestDecoderArguments:
@@ -306,6 +350,27 @@ class TestParseEnvelope:
     def test_an_unknown_band_is_refused(self):
         with pytest.raises(KeyError):
             ad.parse_envelope(b"").band("sub")
+
+    def test_the_band_at_once_is_the_rule_value_by_value(self):
+        """WAVE-03 read the bands without a Python loop; not one bit may change.
+
+        Every awkward value a mean square can be, among ordinary ones: zeros of
+        both signs, ringing below zero, both NaNs, the extremes and a denormal.
+        """
+        rng = random.Random(3)
+        awkward = [0.0, -0.0, -1e-9, 1e-12, math.nan, -math.nan, 3.4e38, -3.4e38, 1e-45]
+        values = array(
+            "f", awkward * 20 + [rng.uniform(-0.01, 2.0) for _ in range(5000)]
+        )
+
+        fast = ad._rms_band(values)
+
+        assert fast.tobytes() == array("f", map(ad._rms, values)).tobytes()
+
+    def test_an_infinity_takes_the_rule_value_by_value(self):
+        values = array("f", [1.0, math.inf, -math.inf, math.nan, 4.0])
+
+        assert list(ad._rms_band(values)) == [1.0, 0.0, 0.0, 0.0, 2.0]
 
 
 class TestFailureVocabulary:

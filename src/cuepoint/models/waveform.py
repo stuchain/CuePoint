@@ -19,7 +19,7 @@ Two types:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, NamedTuple, Optional
 
 from cuepoint.models.row_values import (
     non_negative,
@@ -133,6 +133,18 @@ class WaveformSummary:
         analysis replaces a changed file's row.
         """
         return self.size_bytes == int(size_bytes) and self.mtime_ns == int(mtime_ns)
+
+
+class StoredFile(NamedTuple):
+    """A current row reduced to what the analysis job's work list compares.
+
+    Attributes:
+        size_bytes: The file's size when it was analysed.
+        state: One of :data:`STORED_STATES`.
+    """
+
+    size_bytes: int
+    state: str
 
 
 @dataclass(frozen=True)
@@ -316,6 +328,7 @@ __all__ = (
     "STORED_FAILED",
     "STORED_READY",
     "STORED_STATES",
+    "StoredFile",
     "StoredWaveform",
     "WAVEFORM_STATES",
     "WaveformAnswer",

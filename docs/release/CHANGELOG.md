@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Waveform analysis.** After every file check, CuePoint works out a waveform
+  for each file the check found, in the background, at low priority, through the
+  player's own decoder: your Sets' tracks first, then your Collections', then the
+  newest. The status strip counts it through the library ("Analysing waveforms ·
+  1,234 of 50,000", with the rate and time left on hover), and its button is
+  **Pause**. Clean → Health shows how far it has got, with **Pause**, **Resume**
+  and **Analyse waveforms**. A pause is kept across restarts; an unpaused
+  analysis carries on after a restart where it stopped. It steps aside for an
+  import, a refresh, a file check or a tag write, which never wait for it. A file
+  that could not be read is not retried until it changes, and a file on a
+  disconnected drive is never counted as failed. The waveforms are drawn in a
+  later release
 - The **Prepare** page, in the sidebar, and **Sets**. A Set is a running order
   you are preparing to play: tracks in the order you will play them, repeats
   allowed, divided into **chapters** with an optional name, notes, target length

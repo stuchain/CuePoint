@@ -52,6 +52,7 @@ from cuepoint.services.file_check_service import (
     UnavailableRoot,
     path_root,
 )
+from cuepoint.services.waveform_analysis_service import EVENT_WAVEFORMS_ANALYSED
 from cuepoint.services.interfaces import (
     IActivityRepository,
     IFileStatusRepository,
@@ -151,6 +152,14 @@ HEALTH_DETECTIONS: Tuple[HealthDetection, ...] = (
         EVENT_DUPLICATES_SCANNED,
     ),
     HealthDetection("artwork", "Artwork read", "artwork_scan", EVENT_ARTWORK_SCANNED),
+    # WAVE-03: the waveform analysis, which runs on its own after every check
+    # and can be paused; the panel offers Pause and Resume for it.
+    HealthDetection(
+        "waveforms",
+        "Waveforms analysed",
+        "waveform_analysis",
+        EVENT_WAVEFORMS_ANALYSED,
+    ),
 )
 
 

@@ -189,6 +189,13 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
     chooseSetListDestination: (request) =>
       ipcRenderer.invoke("dialog:saveSetList", request),
   },
+  // The waveform analysis (WAVE-03): every answer is { value, refusal }.
+  // WAVE-05 adds the waveforms themselves to the same namespace.
+  waveforms: {
+    analysis: () => ipcRenderer.invoke("engine:getWaveformAnalysis"),
+    pause: () => ipcRenderer.invoke("engine:pauseWaveformAnalysis"),
+    resume: () => ipcRenderer.invoke("engine:resumeWaveformAnalysis"),
+  },
   startLibraryImport: (params) =>
     ipcRenderer.invoke("engine:startLibraryImport", params),
   startLibraryRefreshPreview: (params) =>

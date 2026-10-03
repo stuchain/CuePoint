@@ -200,6 +200,13 @@ def _run(
         from cuepoint.engine.artwork_jobs import artwork_scan_after
 
         artwork_scan_after(store, trigger)
+        # WAVE-03: and by the waveform analysis, which opens only the files this
+        # check found present, and this once also ``stat``s every file already
+        # analysed: the check records sizes, not modified times. Imported here
+        # because the analysis module imports this one.
+        from cuepoint.engine.waveform_jobs import analysis_after_file_check
+
+        analysis_after_file_check(store, trigger)
 
 
 def _create(store: JobStore, track_ids: Optional[Sequence[int]], trigger: str) -> Job:

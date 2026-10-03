@@ -10,12 +10,23 @@
  * Below the counts, when each detection behind them last ran, with a button to
  * run it again. "No missing files" from a check an hour ago and from no check
  * at all are different facts, and this is where a person can tell which.
+ *
+ * The waveform analysis (WAVE-03) is a detection of another kind: it runs on
+ * its own after every check and can take hours, so its row says how far it has
+ * got and offers Pause, Resume, or "Analyse waveforms" when it is idle, rather
+ * than a button that starts it once.
  */
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { CleanJobStarted, HealthDetection, LibraryHealth } from "../../api/cuepointBridge.types";
 import { Button, useToast } from "../../components";
+import {
+  ACTION_LABELS,
+  analysisAction,
+  analysisWords,
+} from "../../components/waveform/analysisWords";
+import { useWaveformAnalysis } from "../../components/waveform/useWaveformAnalysis";
 import { libraryRulesState } from "../library/libraryLink";
 import { formatWhen, trackCount } from "./cleanFormat";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
@@ -26,6 +37,9 @@ const RUN_LABELS: Record<string, string> = {
   duplicate_scan: "Find duplicates",
   artwork_scan: "Read artwork",
 };
+
+/** The detection the waveform analysis's own controls stand in for. */
+const WAVEFORM_ANALYSIS = "waveform_analysis";
 
 const FINISHED_LINES: Record<string, string> = {
   file_check: "Finished checking files.",
@@ -48,6 +62,23 @@ export function HealthView({ health, error, loading, onHealthChanged }: HealthVi
     [push],
   );
   const jobs = useCleanJob(message);
+  const waveforms = useWaveformAnalysis();
+
+  const waveformStatus = waveforms.status;
+  const waveformAction = waveformStatus ? analysisAction(waveformStatus) : null;
+  const pressWaveforms = useCallback(async () => {
+    if (waveformAction === null) return;
+    const refusal =
+      waveformAction === "pause" ? await waveforms.pause() : await waveforms.resume();
+    if (refusal) {
+      push(refusal.message, "warning");
+    } else if (waveformAction === "pause") {
+      push(
+        "Waveform analysis paused. It stays paused, after a restart too, until you resume it.",
+        "info",
+      );
+    }
+  }, [push, waveformAction, waveforms]);
 
   const run = useCallback(
     (detection: HealthDetection) => {
@@ -133,7 +164,23 @@ export function HealthView({ health, error, loading, onHealthChanged }: HealthVi
               {detection.last_summary && (
                 <span className="clean-health__detection-summary">{detection.last_summary}</span>
               )}
+              {detection.job_type === WAVEFORM_ANALYSIS && waveforms.supported && (
+                <span className="clean-health__detection-summary" role="status">
+                  {waveformStatus
+                    ? analysisWords(waveformStatus)
+                    : (waveforms.error ?? "Reading the analysis…")}
+                </span>
+              )}
             </div>
+            {detection.job_type === WAVEFORM_ANALYSIS && waveformAction !== null && (
+              <Button
+                variant="secondary"
+                loading={waveforms.busy}
+                onClick={() => void pressWaveforms()}
+              >
+                {ACTION_LABELS[waveformAction]}
+              </Button>
+            )}
             {RUN_LABELS[detection.job_type] && (
               <Button
                 variant="secondary"

@@ -50,6 +50,13 @@ if TYPE_CHECKING:
         WaveformAnswer,
         WaveformState,
     )
+    from cuepoint.models.waveform_analysis import (
+        AnalysisRunResult,
+        PresentFile,
+        RunProgress,
+        WorkPlan,
+    )
+    from cuepoint.services.waveform_analysis_service import AnalysisControl
     from cuepoint.persistence.artwork_repository import EmbeddedRecord
     from cuepoint.models.file_write import FileWrite
     from cuepoint.persistence.file_write_repository import (
@@ -2435,6 +2442,66 @@ class IWaveformService(ABC):
     @abstractmethod
     def waveform(self, track_id: int, width: int) -> Optional["WaveformAnswer"]:
         """One track's picture at a width, or None when it is not a track."""
+        ...
+
+
+class IWaveformWorkRepository(ABC):
+    """Interface for what the library analysis may open, and in which order (WAVE-03).
+
+    Reads the library database only. See ``persistence/waveform_work_repository.py``.
+    """
+
+    @abstractmethod
+    def present_files(self, *, ordered: bool = True) -> List["PresentFile"]:
+        """Every track the last check found present, in the analysis's order."""
+        ...
+
+    @abstractmethod
+    def library_paths(self) -> Set[str]:
+        """Every path a library track has, present or not."""
+        ...
+
+
+class IWaveformAnalysisService(ABC):
+    """Interface for analysing the whole library into waveforms (WAVE-03).
+
+    Decides what a run analyses and in which order, runs it on its workers, and
+    records it. Where it runs, and when, is ``engine/waveform_jobs.py``'s. See
+    ``services/waveform_analysis_service.py``.
+    """
+
+    @abstractmethod
+    def decoder_available(self) -> bool:
+        """True when there is a decoder to analyse with."""
+        ...
+
+    @abstractmethod
+    def plan(
+        self, exclude: Iterable[str] = (), limit: int = 200, *, ordered: bool = True
+    ) -> "WorkPlan":
+        """The library's present files against the store, and what to analyse next."""
+        ...
+
+    @abstractmethod
+    def run(
+        self,
+        control: "AnalysisControl",
+        *,
+        trigger: str,
+        on_progress: Optional[Callable[["RunProgress"], None]] = None,
+        workers: Optional[int] = None,
+    ) -> "AnalysisRunResult":
+        """Run until the work, or the requests, run out, or ``control`` stops it."""
+        ...
+
+    @abstractmethod
+    def prune(self) -> int:
+        """Delete the store rows no track's path has; how many went."""
+        ...
+
+    @abstractmethod
+    def record_run(self, result: "AnalysisRunResult") -> None:
+        """Record one run in Activity, once."""
         ...
 
 

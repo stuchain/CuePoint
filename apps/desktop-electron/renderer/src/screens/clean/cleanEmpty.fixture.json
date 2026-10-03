@@ -160,6 +160,13 @@
           "label": "Artwork read",
           "last_run_at": null,
           "last_summary": null
+        },
+        {
+          "id": "waveforms",
+          "job_type": "waveform_analysis",
+          "label": "Waveforms analysed",
+          "last_run_at": null,
+          "last_summary": null
         }
       ],
       "track_count": 3,
@@ -364,6 +371,13 @@
           "id": "artwork",
           "job_type": "artwork_scan",
           "label": "Artwork read",
+          "last_run_at": null,
+          "last_summary": null
+        },
+        {
+          "id": "waveforms",
+          "job_type": "waveform_analysis",
+          "label": "Waveforms analysed",
           "last_run_at": null,
           "last_summary": null
         }
@@ -597,6 +611,13 @@
           "label": "Artwork read",
           "last_run_at": null,
           "last_summary": null
+        },
+        {
+          "id": "waveforms",
+          "job_type": "waveform_analysis",
+          "label": "Waveforms analysed",
+          "last_run_at": null,
+          "last_summary": null
         }
       ],
       "track_count": 3,
@@ -767,6 +788,13 @@
           "id": "artwork",
           "job_type": "artwork_scan",
           "label": "Artwork read",
+          "last_run_at": null,
+          "last_summary": null
+        },
+        {
+          "id": "waveforms",
+          "job_type": "waveform_analysis",
+          "label": "Waveforms analysed",
           "last_run_at": null,
           "last_summary": null
         }

@@ -86,6 +86,8 @@ import {
   type TagWriteStarted,
   type TrackFolder,
   type TrackMatches,
+  type WaveformAnalysisStatus,
+  type WaveformAnswer,
 } from "./engineClient";
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
 import { withDecoderPath } from "./playerLaunch";
@@ -941,6 +943,19 @@ export class EngineSupervisor {
     params: Parameters<EngineClient["saveSetList"]>[0],
   ): Promise<SetAnswer<SetListSave>> {
     return (await this.readyClient()).saveSetList(params);
+  }
+
+  // The waveform analysis (WAVE-03).
+  async getWaveformAnalysis(): Promise<WaveformAnswer<WaveformAnalysisStatus>> {
+    return (await this.readyClient()).getWaveformAnalysis();
+  }
+
+  async pauseWaveformAnalysis(): Promise<WaveformAnswer<WaveformAnalysisStatus>> {
+    return (await this.readyClient()).pauseWaveformAnalysis();
+  }
+
+  async resumeWaveformAnalysis(): Promise<WaveformAnswer<WaveformAnalysisStatus>> {
+    return (await this.readyClient()).resumeWaveformAnalysis();
   }
 
   async startLibraryImport(params: {

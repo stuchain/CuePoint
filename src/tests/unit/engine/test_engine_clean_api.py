@@ -1855,6 +1855,7 @@ class TestHealth:
             "files",
             "duplicates",
             "artwork",
+            "waveforms",
         ]
 
     def test_an_empty_library_counts_nothing(self, engine):
@@ -1862,7 +1863,7 @@ class TestHealth:
         assert report["track_count"] == 0
         assert {count["count"] for count in report["counts"]} == {0}
         assert report["unavailable_roots"] == []
-        assert [d["last_run_at"] for d in report["detections"]] == [None] * 3
+        assert [d["last_run_at"] for d in report["detections"]] == [None] * 4
 
     def test_each_detection_says_when_it_last_ran(self, engine, store):
         ids = add_tracks(track("Checked"), track("Also checked"))

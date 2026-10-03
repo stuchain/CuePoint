@@ -33,7 +33,9 @@ from cuepoint.services.interfaces import (
     IExportService,
     IArtworkRepository,
     IArtworkService,
+    IWaveformAnalysisService,
     IWaveformService,
+    IWaveformWorkRepository,
     IFileWriteRepository,
     IHealthService,
     IRekordboxExportRepository,
@@ -108,6 +110,7 @@ from cuepoint.services.similarity_service import SimilarityService
 from cuepoint.persistence.similarity_repository import SimilarityRepository
 from cuepoint.services.credit_index_service import CreditIndexService
 from cuepoint.persistence.file_status_repository import FileStatusRepository
+from cuepoint.persistence.waveform_work_repository import WaveformWorkRepository
 from cuepoint.persistence.waveform_store import (
     WaveformStore,
     default_waveform_store_path,
@@ -140,6 +143,7 @@ from cuepoint.services.set_service import SetService
 from cuepoint.services.set_suggestion_service import SetSuggestionService
 from cuepoint.services.artwork_cache import ArtworkCache, default_artwork_cache_dir
 from cuepoint.services.artwork_service import ArtworkService, FetchGate
+from cuepoint.services.waveform_analysis_service import WaveformAnalysisService
 from cuepoint.services.waveform_service import WaveformService
 from cuepoint.services.duplicate_service import DuplicateService
 from cuepoint.services.file_check_service import FileCheckService
@@ -652,6 +656,28 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IWaveformService, create_waveform_service)
+
+    # The library's analysis (WAVE-03, DEC-116): what a run analyses, in which
+    # order, and its record. Where and when it runs is engine/waveform_jobs.py's.
+    def create_waveform_work_repository() -> IWaveformWorkRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return WaveformWorkRepository(
+            database_service=container.resolve(IDatabaseService)
+        )
+
+    container.register_factory(IWaveformWorkRepository, create_waveform_work_repository)
+
+    def create_waveform_analysis_service() -> IWaveformAnalysisService:
+        return WaveformAnalysisService(
+            work_repository=container.resolve(IWaveformWorkRepository),
+            store=waveform_store(),
+            waveform_service=container.resolve(IWaveformService),
+            activity_service=container.resolve(IActivityService),
+        )
+
+    container.register_factory(
+        IWaveformAnalysisService, create_waveform_analysis_service
+    )
 
     # Writing tags to files, with a record (CLEAN-10, DEC-070). The one service
     # that writes audio files; the boundary test holds it to that.

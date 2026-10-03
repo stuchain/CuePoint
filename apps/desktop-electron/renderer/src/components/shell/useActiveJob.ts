@@ -99,7 +99,27 @@ const JOB_VERBS: Record<string, string> = {
   discovery: "Discovering on Beatport",
   beatport_playlist: "Pushing to Beatport",
   beatport_resolve: "Resolving Beatport identities",
+  // WAVE-03's waveform analysis, which starts on its own after every file
+  // check and can run for hours on a large library.
+  waveform_analysis: "Analysing waveforms",
 };
+
+/**
+ * Jobs whose count is the library's, read in words: "1,234 of 50,000".
+ *
+ * The waveform analysis counts every present track, analysed before it
+ * started or not, so its count is how much of the library has a waveform —
+ * and at 50,000 tracks "1234/50000" is a number nobody can read at a glance.
+ */
+const COUNTED_IN_WORDS: ReadonlySet<string> = new Set(["waveform_analysis"]);
+
+/**
+ * Jobs whose Stop is a Pause (WAVE-03).
+ *
+ * Stopping the waveform analysis records that it is paused, so it stays paused
+ * across a restart; a button that said "Stop" would promise less than it does.
+ */
+const PAUSED_BY_STOP: ReadonlySet<string> = new Set(["waveform_analysis"]);
 
 /**
  * Jobs whose progress names the stage they are in, in the engine's words.
@@ -118,7 +138,9 @@ export function jobLabel(job: EngineJobSummary | null): string {
   const total = job.progress?.total_tracks;
   const counted =
     typeof done === "number" && typeof total === "number" && total > 0
-      ? ` ${done}/${total}`
+      ? COUNTED_IN_WORDS.has(job.type)
+        ? ` · ${done.toLocaleString()} of ${total.toLocaleString()}`
+        : ` ${done}/${total}`
       : "";
   const stage = job.progress?.status_message;
   // An unknown type falls back to "Working" rather than to "Matching": a job
@@ -131,6 +153,41 @@ export function jobLabel(job: EngineJobSummary | null): string {
         ? stage.trim()
         : (JOB_VERBS[job.type] ?? "Working");
   return `${verb}${counted}`;
+}
+
+/** What the strip's stop button says for a job: "Pause" where stopping pauses. */
+export function jobStopLabel(job: EngineJobSummary | null): string {
+  return job && PAUSED_BY_STOP.has(job.type) ? "Pause" : "Stop";
+}
+
+/** A length of time in the words the strip uses: "about 6 hours". */
+export function aboutDuration(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 1) return "under a minute";
+  if (minutes < 60) return `about ${minutes} minute${minutes === 1 ? "" : "s"}`;
+  const hours = Math.round(minutes / 60);
+  return `about ${hours} hour${hours === 1 ? "" : "s"}`;
+}
+
+/**
+ * The strip's title for a job, where there is more to say than its label.
+ *
+ * For the waveform analysis, its rate and the time left (WAVE-03). The engine
+ * computes the time left as the remaining tracks at the rate over the last ten
+ * minutes, so the rate is that ratio read back, not a second estimate.
+ */
+export function jobTitle(job: EngineJobSummary | null): string | undefined {
+  if (!job || job.type !== "waveform_analysis") return undefined;
+  const done = job.progress?.completed_tracks;
+  const total = job.progress?.total_tracks;
+  const eta = job.progress?.eta_seconds;
+  if (typeof done !== "number" || typeof total !== "number" || typeof eta !== "number") {
+    return undefined;
+  }
+  const remaining = total - done;
+  if (!(eta > 0) || remaining <= 0) return undefined;
+  const perHour = Math.round((remaining * 3600) / eta);
+  return `About ${perHour.toLocaleString()} an hour · ${aboutDuration(eta)} left`;
 }
 
 /**

@@ -90,7 +90,7 @@ def _section_peaks(envelope: ad.Envelope, index: int, sections: int = 3):
 
 
 class TestEveryFormat:
-    @pytest.mark.parametrize("transport", ad.TRANSPORTS)
+    @pytest.mark.parametrize("transport", ad.platform_transports())
     @pytest.mark.parametrize("name", FORMAT_FIXTURES)
     def test_its_envelope_is_its_own_length(self, decoder, name, transport):
         """Within one envelope sample of the container: nothing padded or cut."""
@@ -111,6 +111,9 @@ class TestEveryFormat:
         assert loudest == pytest.approx(0.61 / 2**0.5, abs=0.03)
         assert envelope.decode_errors == 0
 
+    @pytest.mark.skipif(
+        len(ad.platform_transports()) < 2, reason="this platform has one transport"
+    )
     def test_the_transports_agree(self, decoder):
         source = (_FIXTURES / "bands.flac").resolve()
         piped = ad.decode_envelope(source, decoder, transport=ad.TRANSPORT_PIPE)
@@ -206,7 +209,7 @@ class TestPaths:
     def test_nothing_is_left_in_the_temporary_folder(self, decoder, tmp_path):
         work = tmp_path / "work"
         work.mkdir()
-        for transport in ad.TRANSPORTS:
+        for transport in ad.platform_transports():
             ad.decode_envelope(
                 (_FIXTURES / "tone.wav").resolve(),
                 decoder,

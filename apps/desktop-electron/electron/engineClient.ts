@@ -202,6 +202,40 @@ async function readSetAnswer<T>(res: Response): Promise<SetAnswer<T>> {
   throw new Error(textOrNull(error?.message) ?? `Engine request failed (${res.status})`);
 }
 
+/**
+ * The refusal codes a waveform route answers as a value (WAVE-03).
+ *
+ * `WAVEFORMS_SETTING_FAILED` is among them: a pause that could not be saved
+ * changed nothing, and the words say so rather than an error dialog.
+ */
+export const WAVEFORM_REFUSAL_CODES: readonly WaveformRefusalCode[] = [
+  "INVALID_REQUEST",
+  "WAVEFORMS_SETTING_FAILED",
+];
+
+/** Read a waveform answer: the value, or a refusal as a value. Anything else throws. */
+async function readWaveformAnswer<T>(res: Response): Promise<WaveformAnswer<T>> {
+  let body: T & { error?: Record<string, unknown> };
+  try {
+    body = (await res.json()) as T & { error?: Record<string, unknown> };
+  } catch {
+    throw new Error(`Engine request failed (${res.status})`);
+  }
+  if (res.ok) return { value: body, refusal: null };
+  const error = body?.error;
+  const code = textOrNull(error?.code);
+  if (error && code !== null && (WAVEFORM_REFUSAL_CODES as readonly string[]).includes(code)) {
+    return {
+      value: null,
+      refusal: {
+        code: code as WaveformRefusalCode,
+        message: textOrNull(error.message) ?? `Engine request failed (${res.status})`,
+      },
+    };
+  }
+  throw new Error(textOrNull(error?.message) ?? `Engine request failed (${res.status})`);
+}
+
 export interface LibraryTrackRow {
   id: number | null;
   rekordbox_track_id: string;
@@ -1897,6 +1931,51 @@ export interface SetAnalysis {
 }
 
 // ---------------------------------------------------------------------------
+// The waveform analysis over the wire (WAVE-03)
+//
+// Mirrors `waveforms_api.py` and `AnalysisStatus.to_dict`. WAVE-05 adds the
+// waveforms themselves; these three are what the status strip's Pause and the
+// Health view need.
+// ---------------------------------------------------------------------------
+
+/** The analysis as a whole: unavailable first, then paused, then running. */
+export type WaveformAnalysisState = "running" | "paused" | "idle" | "unavailable";
+
+export interface WaveformAnalysisStatus {
+  state: WaveformAnalysisState;
+  /** The persisted setting; a requested track is still analysed while it is set. */
+  paused: boolean;
+  /** The running job, followed on the status strip. */
+  job_id: string | null;
+  /** Tracks whose file the last check found present. */
+  present: number;
+  /** Of those, tracks with a waveform for the file as it is. */
+  analysed: number;
+  /** Of those, tracks whose file could not be read; not retried until it changes. */
+  failed: number;
+  /** Present tracks with neither. */
+  remaining: number;
+  /** Files an hour over the last ten minutes, while a run goes and there is enough to say. */
+  rate_per_hour: number | null;
+  eta_seconds: number | null;
+  /** Why it is unavailable: `decoder_missing`. */
+  reason: string | null;
+}
+
+/** The codes a waveform refusal can carry; any other failure throws. */
+export type WaveformRefusalCode = "INVALID_REQUEST" | "WAVEFORMS_SETTING_FAILED";
+
+export interface WaveformRefusal {
+  code: WaveformRefusalCode;
+  message: string;
+}
+
+/** An answer, or the refusal standing in for it. */
+export type WaveformAnswer<T> =
+  | { value: T; refusal: null }
+  | { value: null; refusal: WaveformRefusal };
+
+// ---------------------------------------------------------------------------
 // A Set over the wire (PREP-08)
 //
 // Mirrors `sets_api.py` and the models it serializes, declared in both
@@ -2773,6 +2852,37 @@ export class EngineClient {
   /** Save a set list where the dialog chose; the engine judges the path. */
   async saveSetList(params: { set_id: number; destination_path: string }): Promise<SetAnswer<SetListSave>> {
     return this.setsPost("/api/v1/sets/set-list/save", params);
+  }
+
+  // -------------------------------------------------------------------------
+  // The waveform analysis (WAVE-03)
+  //
+  // One read and two actions, each answering a `WaveformAnswer`.
+  // -------------------------------------------------------------------------
+
+  private async waveformsPost<T>(path: string): Promise<WaveformAnswer<T>> {
+    const res = await fetch(this.url(path), {
+      method: "POST",
+      headers: this.headers(),
+      body: "{}",
+    });
+    return readWaveformAnswer<T>(res);
+  }
+
+  /** The analysis as a whole: its state, counts and rate. */
+  async getWaveformAnalysis(): Promise<WaveformAnswer<WaveformAnalysisStatus>> {
+    const res = await fetch(this.url("/api/v1/waveforms/analysis"), { headers: this.headers() });
+    return readWaveformAnswer<WaveformAnalysisStatus>(res);
+  }
+
+  /** Pause, persisted across a restart, and stop a running run. */
+  async pauseWaveformAnalysis(): Promise<WaveformAnswer<WaveformAnalysisStatus>> {
+    return this.waveformsPost("/api/v1/waveforms/analysis/pause");
+  }
+
+  /** Clear the pause and start a run. */
+  async resumeWaveformAnalysis(): Promise<WaveformAnswer<WaveformAnalysisStatus>> {
+    return this.waveformsPost("/api/v1/waveforms/analysis/resume");
   }
 
   /** The whole Collection tree, with counts and broken-rule state (ORG-04). */

@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 11: Waveforms, Detailed Step Specifications
 
-Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30); WAVE-03 to WAVE-07 are not.** The seven steps below replace the
+Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30), and WAVE-03 (2026-10-03); WAVE-04 to WAVE-07 are not.** The seven steps below replace the
 roadmap's placeholder inventory (WAVE-01…WAVE-07), keeping its count. Per the process, no
 implementation happens from this document: each step needs an explicit "Implement WAVE-NN"
 instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
@@ -731,7 +731,7 @@ way and is recorded here and in ADR-010.
 
 ---
 
-## WAVE-03 — The Library Analysis Job
+## WAVE-03 — The Library Analysis Job ✅ IMPLEMENTED 2026-10-03
 
 **Objective**: Analyse the whole library automatically, in the background, at low priority. The job
 can be paused and resumed, continues after a restart, and steps aside for anything that rewrites the
@@ -842,7 +842,153 @@ library.
 
 **Complexity**: **L**
 
-**Outcome**: Not implemented yet.
+**Outcome**: Implemented (2026-10-03). The whole library is analysed in the background, at low
+priority, after every file check and at launch, in the order the specification gives. It steps
+aside for every job that rewrites the library or its files, comes back when the last of them ends,
+and can be paused from the status strip and the Health view, across restarts. A requested track
+jumps the queue at once, even while paused. WAVE-03's acceptance also found two defects in WAVE-01's
+pipeline on the pinned Windows build, and both are fixed here (below).
+
+**What was built.**
+
+- **`services/waveform_analysis_service.py`,** in the strict mypy gate. It holds what a run does:
+  - **the plan:** every present track against the store, counted, with what to analyse next;
+  - **the drain:** workers ask for one file at a time. A requested track comes first, then the
+    library's work, 200 files at a time, counted again between, leaving out every path the run has
+    taken;
+  - **verify:** after a whole-library check, every analysed file is `stat`ed;
+  - **pruning:** once a whole-library run has drained;
+  - **the rate:** files an hour over the last ten minutes;
+  - **progress:** at most every half second;
+  - **one activity event per run** (`waveforms.analysed`).
+- **`persistence/waveform_work_repository.py`:** the present files in order (Sets' entries, then
+  Collections', then the newest by Rekordbox's date added and then the newest import), and every
+  track's path, for pruning.
+- **The store's work index,** `waveforms_work`, and `current_files()`, `paths()` and
+  `delete_paths()`. ADR-010's amendment records them.
+- **`engine/waveform_jobs.py`,** in the strict mypy gate: one `AnalysisCoordinator` per job store.
+  - **Starting:** after a whole-library check (with `verify`), when a job it gave way to ends, at
+    launch 30 s after the engine serves, on Resume, and on a request.
+  - **Stepping aside:** for an import, a refresh apply, a file check, a tag write and a tag restore.
+  - **Pause:** `waveforms.analysis_paused` in `config.yaml`. The strip's Stop, and any cancel of
+    this job, is a Pause.
+  - **The request queue:** 200 at most, the oldest dropped, a repeat moved to the front.
+- **`JobStore.add_listeners`:** told when any job starts and when any job has ended. The analysis
+  observes the store, so no job it gives way to needs to know it exists.
+- **Three routes,** `engine/waveforms_api.py`, through all six contract files as
+  `window.cuepoint.waveforms`: the analysis's state, Pause and Resume. Each answers
+  `{ value, refusal }`.
+- **The renderer:**
+  - **The strip** reads "Analysing waveforms · 1,234 of 50,000", gives the rate and the time left
+    in its title, and its button reads Pause.
+  - **The Health view** gains "Waveforms analysed": the state in words, and Pause, Resume or
+    "Analyse waveforms".
+  - `components/waveform/` gains the words and the `useWaveformAnalysis` hook, for WAVE-05's
+    Settings panel to reuse.
+- **`scripts/bench_waveform_analysis.py`:** the acceptance on the real job, the real decoder and an
+  imported library: throughput, the rate on 6-minute tracks extrapolated, the search p95, and
+  (`--play`) a queue played on the audio device with its log read for underruns.
+- **The user guide's** Clean and The Window pages, and the changelog.
+
+**Tests.**
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `test_waveform_analysis_service.py` | 51 | The plan, the drain (tracks added mid-run, refills, two workers at once), the order, requests, every stop, a decoder that cannot analyse, a store that cannot be written, failed and gone files, verify, pruning, progress, the rate, the worker count and Activity |
+| `test_waveform_jobs.py` | 41 | Starting after a check and beside each job it gives way to; the step-aside and the check after an import bringing it back; a failed import bringing it back; pause stopping a run, persisting across a new engine and its settings, and refusing when unsaveable; resume; Stop as Pause; requests while paused and mid-run; the queue cap; the three launch conditions; one event per run; the decoder refusing; the status |
+| `test_waveforms_api.py` | 11 | Each route's shape, pause and resume over HTTP, the cancel route pausing, refusals, the token |
+| `test_waveforms_contract.py` | 4 | The client's types against the engine's real answers |
+| `test_job_listeners.py` | 6 | The listeners' timing, outcomes and isolation |
+| `test_waveform_work_repository.py` | 10 | What is work, and the order |
+| `test_waveform_store.py` | +8 | The index, an old store gaining it, the reads and the prune |
+| `test_waveforms_config.py` | 5 | The setting's round trip and an old config |
+| `test_waveform_analysis_binary.py` | 2 | Every shipped format through a real job and a real `mpv`, and a second run that decodes nothing |
+| `test_audio_decode.py` | +8 | The graph's end, the version, the transports, the parse against the per-value rule |
+| `test_bench_waveform_analysis.py` | 13 | The budgets, the underrun reading, and a whole run at a small size |
+| `waveformAnalysis.spec.ts` (Electron end to end) | 1 | In the real app with the bundled `mpv`: an import of 301 real files followed, without a click, by the check and the analysis; the strip counting it; its Pause; a relaunch keeping the pause and the analysed files; Health's Resume finishing with 300 analysed and one unreadable; the runs' Activity |
+| `engineChildren.integration.test.ts` | 1 | A real decoder ends when the app stops the engine. It fails when only the engine is killed |
+| `desktopContract.test.ts` | +19 | The three methods across the six files |
+| `useActiveJob.test.ts`, `StatusStrip.test.tsx` | +13 | The label, the title, Pause |
+| `analysisWords.test.ts`, `useWaveformAnalysis.test.ts`, `HealthView.test.tsx` | 26 | The words, the hook, the Health view's row |
+
+**Measured** (Windows 11 x86_64, 16 cores, the pinned `mpv` 0.41-dev / FFmpeg 8; two workers, the
+job's default here; `scripts/bench_waveform_analysis.py --play`, two runs on a quiet machine):
+
+| Measure | Run 1 | Run 2 | Budget |
+| --- | --- | --- | --- |
+| 5,000 fixture copies, end to end | all 5,000 in 430 s | all 5,000 in 386 s | every file analysed |
+| 48 six-minute tracks | 20.7 s, 8,332 an hour | 20.5 s, 8,434 an hour | — |
+| 50,000 six-minute tracks, extrapolated | about 6.0 hours | about 5.9 hours | recorded |
+| Library search p95 over 10,000 tracks, analysing / idle | 38.5 / 28.0 ms, 1.38× | 38.1 / 28.2 ms, 1.35× | 1.5× |
+| A three-track queue on the audio device (WASAPI) during the run | 0 underruns | 0 underruns | 0 |
+
+- **Before the engine's share was cut,** the same search measured 1.52× and 1.54× (item 11 below).
+- **The work list at 50,000 present tracks:** a refill of 200 takes 285 ms and a count 264 ms. The
+  store's index read alone is 77 ms, and the index adds 5.3 MB to the store. A refill comes once
+  per 200 files, about every 85 s; the status route counts at most every 5 s.
+- **The workers:** `min(2, max(1, cpu_count // 4))` stands. Two on this machine meet the search
+  budget, and one would double the hours.
+- **Owed:** the same run on macOS, and on Linux with a named `mpv`. The playback check needs an
+  audio device, so CI does not run it.
+
+**Where the specification was wrong, and what was done instead.** Each was settled the most durable
+way.
+
+1. **Three of WAVE-05's routes are built here.** WAVE-03's own result is Pause and Resume in the
+   Health view, which needs the analysis's state, Pause and Resume on the wire. WAVE-05 adds the
+   waveforms themselves, requests and "Delete waveform data" to the same module and namespace. The
+   strip's label and Pause, also listed under WAVE-05, are here for the same reason.
+2. **It steps aside for tag writes and restores too.** They rewrite the files it reads, and on
+   Windows a file `mpv` holds open is one a tag write may fail to replace. A tag preview only reads,
+   so the analysis does not give way to it.
+3. **It comes back when any job it gave way to ends, however it ended.** The specification had the
+   check that follows a rewrite bring it back. But a failed import starts no check, and a tag write
+   is followed by none, so either would have left it stopped until the next launch. Each such job
+   ends through the job store's listener. The start is refused while another of them runs, so the
+   last to end is the one that starts it.
+4. **Staleness is found in two passes.** The file check records each file's size but not its
+   modified time.
+   - The work list counts a row only at the size the check found, so a file rewritten at another
+     size is analysed again without any `stat`.
+   - The run that follows a whole-library check also `stat`s every analysed file, which finds a
+     file rewritten at the same size. Other runs do not, so a launch does not `stat` a whole network
+     library.
+5. **A request jumps the queue at once,** not at the next chunk. Workers take one file at a time
+   and ask for a request before each, so a requested track waits for the files already decoding,
+   about a second.
+6. **A start asked for during a run is kept until a later count satisfies it.** A run counts the
+   library again before every 200 files. A start that arrives after the run's last count, such as a
+   check finishing as the run ends, starts the analysis again as the run ends, so it is never lost.
+7. **Pruning never empties the store for an empty library.** "Rows whose path no track has" is
+   every row when the library is empty, which is far likelier a new or reset database than a
+   decision to throw away hours of analysis.
+8. **A requests-only run that only looked records nothing.** A track that already has its waveform
+   costs a `stat`, and WAVE-06's Inspector requests every track it shows. One event per such look
+   would fill Activity.
+9. **The strip's rate is read back from the time left,** which the engine computes as the remaining
+   tracks at the rate. The job's progress shape is shared by every job, and widening it for one
+   number was not worth a contract change.
+10. **Two WAVE-01 defects on the pinned Windows build,** found when this step's acceptance ran
+    there. Desktop CI had been failing on both since WAVE-01. ADR-009's amendment records them.
+    - **The bands were remixed.** `mpv`'s own conversion from planar to interleaved float mixed the
+      high band into the full and low bands, as a centre channel is downmixed. The high band read
+      silent. The graph now ends in the output's own format, so `mpv` converts nothing, and
+      `ANALYSIS_VERSION` is 2. `--check-analysis` passes there: the bands are at least 23.7 dB apart.
+    - **The pipe transport was offered on Windows,** where it cannot work, and failed as the file's
+      fault. It is now refused before any file is opened, and the tests use the transports each
+      platform has.
+11. **The search budget needed the engine's own work cut.** With two workers, the Library search's
+    p95 measured 1.52× idle on Windows. Isolated, `mpv` cost 1.0–1.2×; the engine's Python parse of
+    each envelope, about 60 ms holding the interpreter's lock, cost the rest.
+    - **The parse runs at C level,** bit-identical, in about 27 ms.
+    - **On Windows the engine asks for a 1 ms timer.** A thread that gives up the lock for SQLite
+      waits to have it back on a timed condition that Windows times at 15.6 ms.
+    - A shorter interpreter switch interval was measured and made no difference. Moving the square
+      root into FFmpeg was measured and was not bit-identical.
+12. **The contract test failed 74 times on Windows CI** against files that were right. A Windows
+    checkout writes CRLF, and its patterns are written with `\n`. It now reads the sources with the
+    line endings the repository stores.
+
 
 ---
 

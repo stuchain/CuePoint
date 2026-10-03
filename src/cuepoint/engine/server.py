@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+import sys
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -103,6 +104,13 @@ from cuepoint.engine.sets_api import (
     handles_get as sets_handles_get,
     handles_post as sets_handles_post,
     status_for as sets_status,
+)
+from cuepoint.engine.waveforms_api import (
+    handle_get as waveforms_get,
+    handle_post as waveforms_post,
+    handles_get as waveforms_handles_get,
+    handles_post as waveforms_handles_post,
+    status_for as waveforms_status,
 )
 from cuepoint.engine.jobs import JobStore, JobTypeBusyError
 from cuepoint.version import __version__
@@ -676,6 +684,14 @@ def make_handler(
                     lambda: sets_get(path, parse_qs(parsed.query)), sets_status
                 )
                 return
+            if waveforms_handles_get(path):
+                self._handle_routed(
+                    lambda: waveforms_get(
+                        path, parse_qs(parsed.query), job_store=job_store
+                    ),
+                    waveforms_status,
+                )
+                return
             if organization_handles_get(path):
                 # Before the prefix below, which would read the whole of
                 # "7/history" as a track id and refuse it as one.
@@ -968,6 +984,14 @@ def make_handler(
                 )
                 return
 
+            if waveforms_handles_post(path):
+                raw = self._read_body()
+                self._handle_routed(
+                    lambda: waveforms_post(path, raw, job_store=job_store),
+                    waveforms_status,
+                )
+                return
+
             if organization_handles_post(path):
                 body = self._read_body()
                 self._handle_organization(
@@ -1034,10 +1058,35 @@ def record_activity(
         _logger.debug("[activity] could not record %s: %s", event_type, exc)
 
 
+def fine_timer_resolution(platform: str = sys.platform) -> bool:
+    """On Windows, ask for a 1 ms timer for this process; True when granted.
+
+    Measured in WAVE-03: while the waveform analysis ran, the Library's search
+    p95 rose 40% on Windows against 27% with this. A thread that gives up the
+    interpreter's lock for a SQLite call waits to have it back on a timed
+    condition, and Windows times those waits at its default 15.6 ms, not the
+    lock's 5 ms interval, so every engine request paid for any background job's
+    computing in 15.6 ms steps. Since Windows 10 2004 the request is the calling
+    process's alone, and the engine spends its life blocked on sockets, so it
+    costs no measurable power. Elsewhere waits are already fine-grained.
+    """
+    if platform != "win32":
+        return False
+    try:
+        import ctypes
+
+        winmm = ctypes.WinDLL("winmm")
+        return int(winmm.timeBeginPeriod(1)) == 0
+    except Exception as exc:  # noqa: BLE001 — a slower engine, never a stopped one
+        _logger.debug("[engine] the timer resolution was not raised: %s", exc)
+        return False
+
+
 def run_engine(config: Optional[EngineConfig] = None) -> None:
     cfg = config or EngineConfig.from_env()
     if cfg.host not in ALLOWED_HOSTS:
         raise ValueError(f"Refusing to bind engine to non-loopback host: {cfg.host}")
+    fine_timer_resolution()
     # Synchronous and before the server exists: a backup running concurrently
     # with the first migration would lose the ordering guarantee above. It is
     # skipped entirely when nothing changed since the last one, so the usual
@@ -1076,6 +1125,15 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
 
     close_interrupted_discovery_runs()
     server = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg))
+    # WAVE-03: an analysis the last engine left unfinished continues, unless it
+    # was paused, once this one has been serving for a while, so a launch is
+    # never slowed by it. The engine is serving from the line below.
+    from cuepoint.engine.waveform_jobs import schedule_launch_analysis
+
+    try:
+        schedule_launch_analysis(_JOB_STORE)
+    except Exception as exc:  # noqa: BLE001 — never a reason not to start
+        _logger.warning("[waveforms] the launch analysis was not scheduled: %s", exc)
     _stop_with_parent(server)
     try:
         server.serve_forever()

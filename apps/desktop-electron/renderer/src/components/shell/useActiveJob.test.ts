@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
-import { jobLabel, jobPercent } from "./useActiveJob";
+import { aboutDuration, jobLabel, jobPercent, jobStopLabel, jobTitle } from "./useActiveJob";
 
 /**
  * The status strip is shared by every kind of background job (DEC-026), and
@@ -146,7 +146,7 @@ describe("jobLabel", () => {
   it("falls back to a neutral verb for a type it does not know", () => {
     // Not "Matching": a job this build has not heard of is not necessarily a
     // match, and guessing wrong tells the user something untrue.
-    expect(jobLabel(job({ type: "waveform_analysis" }))).toBe("Working 3/10");
+    expect(jobLabel(job({ type: "a_job_from_a_later_build" }))).toBe("Working 3/10");
   });
 
   it("omits the count when the total is not known yet", () => {
@@ -191,5 +191,67 @@ describe("jobPercent", () => {
     expect(
       jobPercent(job({ progress: { completed_tracks: 5000, total_tracks: 3880 } })),
     ).toBe(100);
+  });
+});
+
+/**
+ * The waveform analysis (WAVE-03) starts on its own after every file check and
+ * can run for hours, so the strip counts the library in words, gives its rate
+ * in the title, and calls its Stop what it is: a Pause, kept across a restart.
+ */
+describe("the waveform analysis on the strip", () => {
+  const analysis = (progress: EngineJobSummary["progress"]) =>
+    job({ type: "waveform_analysis", progress });
+
+  it("counts the library in words", () => {
+    expect(jobLabel(analysis({ completed_tracks: 1234, total_tracks: 50000 }))).toBe(
+      "Analysing waveforms · 1,234 of 50,000",
+    );
+  });
+
+  it("is named before its first count", () => {
+    expect(jobLabel(analysis(undefined))).toBe("Analysing waveforms");
+  });
+
+  it("leaves every other job's count as it was", () => {
+    expect(jobLabel(job({ progress: { completed_tracks: 1234, total_tracks: 5000 } }))).toBe(
+      "Matching on Beatport 1234/5000",
+    );
+  });
+
+  it("gives the rate and the time left in its title", () => {
+    // 48,766 to go at 8,127.67 an hour is six hours.
+    const title = jobTitle(
+      analysis({ completed_tracks: 1234, total_tracks: 50000, eta_seconds: 6 * 3600 }),
+    );
+    expect(title).toBe("About 8,128 an hour · about 6 hours left");
+  });
+
+  it("has no title until there is a rate", () => {
+    expect(jobTitle(analysis({ completed_tracks: 3, total_tracks: 10 }))).toBeUndefined();
+    expect(
+      jobTitle(analysis({ completed_tracks: 10, total_tracks: 10, eta_seconds: 5 })),
+    ).toBeUndefined();
+    expect(jobTitle(job({ progress: { completed_tracks: 1, total_tracks: 2, eta_seconds: 60 } })))
+      .toBeUndefined();
+  });
+
+  it("says Pause, and every other job Stop", () => {
+    expect(jobStopLabel(analysis(undefined))).toBe("Pause");
+    expect(jobStopLabel(job())).toBe("Stop");
+    expect(jobStopLabel(null)).toBe("Stop");
+  });
+});
+
+describe("aboutDuration", () => {
+  it.each([
+    [20, "under a minute"],
+    [60, "about 1 minute"],
+    [45 * 60, "about 45 minutes"],
+    [90 * 60, "about 2 hours"],
+    [3600, "about 1 hour"],
+    [26 * 3600, "about 26 hours"],
+  ])("reads %s seconds as %s", (seconds, words) => {
+    expect(aboutDuration(seconds)).toBe(words);
   });
 });

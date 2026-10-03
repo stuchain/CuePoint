@@ -48,6 +48,13 @@ page and spills the rest to an overflow page of its own; an ordinary row keeps
 up to 4 KB in place. The picture is the last column, so reading a state never
 reads it.
 
+The analysis job (WAVE-03) asks for every current row's path, size and state,
+once per 200 files it analyses. Rows are kept in their pages with the picture,
+so a scan of the table reads the whole file: a covering index,
+``waveforms_work``, answers it from 5.3 MB at 50,000 rows instead (77 ms). It is
+created with ``IF NOT EXISTS`` at every first open, so a store made before it
+gains it without a new schema version, and without losing a waveform.
+
 Connections are one per thread, as the library database's are, and a thread
 that has ended has its connection closed when the next one is opened.
 """
@@ -61,7 +68,7 @@ from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
-from cuepoint.models.waveform import StoredWaveform, WaveformSummary
+from cuepoint.models.waveform import StoredFile, StoredWaveform, WaveformSummary
 
 _logger = logging.getLogger(__name__)
 
@@ -114,6 +121,8 @@ CREATE TABLE IF NOT EXISTS waveforms (
     CHECK ((state = 'ready') = (data IS NOT NULL AND duration_ms IS NOT NULL)),
     CHECK ((state = 'failed') = (reason IS NOT NULL))
 );
+CREATE INDEX IF NOT EXISTS waveforms_work
+    ON waveforms (analysis_version, path, size_bytes, state);
 INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '{SCHEMA_VERSION}');
 """
 
@@ -507,6 +516,34 @@ class WaveformStore:
         """One path's current row, or ``None``."""
         return self.get_many([path], analysis_version).get(str(path))
 
+    def current_files(self, analysis_version: int) -> Dict[str, StoredFile]:
+        """Every path's current row, as its size and state only.
+
+        What the analysis job's work list compares with the file check. Read
+        from the ``waveforms_work`` index alone, never from the rows: at 50,000
+        waveforms that is 5.3 MB, where the table is 200 MB.
+        """
+        try:
+            rows = self.connect().execute(
+                "SELECT path, size_bytes, state FROM waveforms"
+                " INDEXED BY waveforms_work WHERE analysis_version = ?",
+                (int(analysis_version),),
+            )
+            return {
+                str(path): StoredFile(int(size), str(state))
+                for path, size, state in rows
+            }
+        except sqlite3.Error as exc:
+            raise self._failed("read", exc) from exc
+
+    def paths(self) -> List[str]:
+        """Every stored path, of any version, from the path's own index."""
+        try:
+            rows = self.connect().execute("SELECT path FROM waveforms")
+            return [str(row[0]) for row in rows]
+        except sqlite3.Error as exc:
+            raise self._failed("read", exc) from exc
+
     def count(self) -> int:
         """How many rows, of any version."""
         try:
@@ -544,6 +581,31 @@ class WaveformStore:
         except sqlite3.Error as exc:
             raise self._failed("write", exc) from exc
         return cursor.rowcount == 1
+
+    def delete_paths(self, paths: Iterable[str]) -> int:
+        """Delete every row of these paths, in one transaction; how many went."""
+        wanted = list(dict.fromkeys(str(path) for path in paths))
+        if not wanted:
+            return 0
+        deleted = 0
+        connection = self.connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                for start in range(0, len(wanted), PATH_CHUNK):
+                    chunk = wanted[start : start + PATH_CHUNK]
+                    placeholders = ", ".join("?" for _ in chunk)
+                    cursor = connection.execute(
+                        f"DELETE FROM waveforms WHERE path IN ({placeholders})", chunk
+                    )
+                    deleted += max(0, cursor.rowcount)
+            except BaseException:
+                connection.execute("ROLLBACK")
+                raise
+            connection.execute("COMMIT")
+        except sqlite3.Error as exc:
+            raise self._failed("write", exc) from exc
+        return deleted
 
 
 __all__: Sequence[str] = (

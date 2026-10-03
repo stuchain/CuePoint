@@ -31,6 +31,7 @@ import pytest
 from cuepoint.models.waveform import (
     STORED_FAILED,
     STORED_READY,
+    StoredFile,
     StoredWaveform,
     WaveformSummary,
 )
@@ -400,6 +401,102 @@ class TestReadingAndWriting:
         store.close_all()
 
         assert store.get("/music/a.flac", 1) == ready()
+
+
+class TestTheAnalysisJobsReads:
+    """WAVE-03: the work list's read, the prune's read, and the prune."""
+
+    def test_a_fresh_store_has_the_work_index(self, store, store_path):
+        store.count()
+        connection = raw(store_path)
+        columns = [
+            row[2] for row in connection.execute("PRAGMA index_info(waveforms_work)")
+        ]
+        connection.close()
+
+        assert columns == ["analysis_version", "path", "size_bytes", "state"]
+
+    def test_a_store_made_before_the_index_gains_it_and_keeps_its_rows(
+        self, store, store_path
+    ):
+        store.put(ready("/music/kept.flac"))
+        store.close_all()
+        connection = raw(store_path)
+        connection.execute("DROP INDEX waveforms_work")
+        connection.commit()
+        connection.close()
+
+        reopened = WaveformStore(store_path)
+        found = reopened.current_files(1)
+        connection = raw(store_path)
+        names = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'index'"
+            )
+        }
+        connection.close()
+        reopened.close_all()
+
+        assert "waveforms_work" in names
+        assert found == {"/music/kept.flac": StoredFile(1_000, STORED_READY)}
+
+    def test_current_files_answers_size_and_state_of_this_version_only(self, store):
+        store.put(ready("/music/a.flac", size_bytes=11))
+        store.put(failed("/music/b.mp3"))
+        store.put(ready("/music/old.flac", version=2))
+
+        assert store.current_files(1) == {
+            "/music/a.flac": StoredFile(11, STORED_READY),
+            "/music/b.mp3": StoredFile(10, STORED_FAILED),
+        }
+        assert store.current_files(2) == {
+            "/music/old.flac": StoredFile(1_000, STORED_READY)
+        }
+
+    def test_current_files_reads_the_index_alone(self, store, store_path):
+        store.count()
+        connection = raw(store_path)
+        plan = " ".join(
+            str(row[-1])
+            for row in connection.execute(
+                "EXPLAIN QUERY PLAN SELECT path, size_bytes, state FROM waveforms"
+                " INDEXED BY waveforms_work WHERE analysis_version = ?",
+                (1,),
+            )
+        )
+        connection.close()
+
+        assert "COVERING INDEX waveforms_work" in plan
+
+    def test_paths_answers_every_version(self, store):
+        store.put(ready("/music/a.flac"))
+        store.put(ready("/music/b.flac", version=7))
+
+        assert sorted(store.paths()) == ["/music/a.flac", "/music/b.flac"]
+
+    def test_delete_paths_deletes_exactly_those(self, store):
+        for name in ("a", "b", "c"):
+            store.put(ready(f"/music/{name}.flac"))
+
+        deleted = store.delete_paths(["/music/a.flac", "/music/c.flac", "/nope"])
+
+        assert deleted == 2
+        assert store.paths() == ["/music/b.flac"]
+
+    def test_delete_paths_over_many_chunks_in_one_transaction(self, store):
+        paths = [f"/music/{index}.flac" for index in range(PATH_CHUNK * 2 + 3)]
+        for path in paths:
+            store.put(ready(path))
+
+        assert store.delete_paths(paths + paths[:5]) == len(paths)
+        assert store.count() == 0
+
+    def test_delete_paths_of_nothing_writes_nothing(self, store):
+        store.put(ready())
+
+        assert store.delete_paths([]) == 0
+        assert store.count() == 1
 
 
 def write_foreign(path: Path, script: str) -> None:
