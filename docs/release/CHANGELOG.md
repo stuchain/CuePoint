@@ -323,6 +323,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **CuePoint would not start when the browser storage it keeps display
+  preferences in refused to be read** (disabled, or full): the scale and theme
+  were read without a fallback, and the window stayed empty. Both now read as
+  their defaults, and a scale or theme chosen then applies for the session even
+  though it cannot be remembered
 - **Creating a playlist on Beatport always failed** (in inCrate, which Discover
   replaced; Discover's push uses the corrected request), saying the token
   might lack playlist access whatever the token was. Beatport redirects the

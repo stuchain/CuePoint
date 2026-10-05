@@ -59,8 +59,17 @@ export function getAllThemeOptions(): ThemeOption[] {
   return [...builtIn, ...custom];
 }
 
+/**
+ * The remembered theme. Storage that throws — disabled, or a private window —
+ * reads as the default: the app must start without it.
+ */
 export function getStoredThemeId(): ThemeId {
-  const raw = localStorage.getItem(STORAGE_KEY);
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return DEFAULT_THEME;
+  }
   if (!raw) return DEFAULT_THEME;
   if (isBuiltInThemeId(raw)) return raw;
   if (isCustomThemeId(raw)) {
@@ -70,8 +79,13 @@ export function getStoredThemeId(): ThemeId {
   return DEFAULT_THEME;
 }
 
+/** Remember the theme where storage allows; `setTheme` applies it either way. */
 export function persistThemeId(themeId: ThemeId): void {
-  localStorage.setItem(STORAGE_KEY, themeId);
+  try {
+    localStorage.setItem(STORAGE_KEY, themeId);
+  } catch {
+    // Not remembered across a restart; still applied for this session.
+  }
 }
 
 export function applyBuiltInTheme(themeId: BuiltInThemeId): void {

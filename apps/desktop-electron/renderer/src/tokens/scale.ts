@@ -9,15 +9,31 @@ export function isScaleFactor(value: number): value is ScaleFactor {
   return SCALE_OPTIONS.includes(value as ScaleFactor);
 }
 
+const DEFAULT_SCALE: ScaleFactor = 2;
+
+/**
+ * The remembered scale. Storage that throws — disabled, or a private window —
+ * reads as the default: the app must start without it.
+ */
 export function getStoredScale(): ScaleFactor {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  const parsed = raw ? Number.parseInt(raw, 10) : 2;
-  return isScaleFactor(parsed) ? parsed : 2;
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return DEFAULT_SCALE;
+  }
+  const parsed = raw ? Number.parseInt(raw, 10) : DEFAULT_SCALE;
+  return isScaleFactor(parsed) ? parsed : DEFAULT_SCALE;
 }
 
+/** Apply a scale, and remember it where storage allows. */
 export function setStoredScale(scale: ScaleFactor): void {
-  localStorage.setItem(STORAGE_KEY, String(scale));
   applyScale(scale);
+  try {
+    localStorage.setItem(STORAGE_KEY, String(scale));
+  } catch {
+    // Not remembered across a restart; still applied for this session.
+  }
 }
 
 export function applyScale(scale: ScaleFactor): void {
