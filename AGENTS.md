@@ -27,7 +27,7 @@ test material and must not enter core, engine, CLI, or services.
 | Orchestration | `src/cuepoint/services/` |
 | Engine API/jobs | `src/cuepoint/engine/` |
 | Prepare (Sets: chapters, times, checks, suggestions, set lists) | `src/cuepoint/core/set_*.py`, `src/cuepoint/services/set_*`, `src/cuepoint/persistence/set_*`, `src/cuepoint/data/set_list_file.py`, `src/cuepoint/engine/sets_api.py`, `renderer/src/screens/prepare/`; a Set is a Collection kind (ADR-008) |
-| Waveforms (Phase 11: decoding, the store and the library job now; drawing follows) | `src/cuepoint/data/audio_decode.py` (the player's mpv decodes, FFmpeg reduces; ADR-009), `core/waveform.py`, `persistence/waveform_store.py` (`waveforms.db`, a cache beside the library; ADR-010), `services/waveform_service.py`, `services/waveform_analysis_service.py` and `engine/waveform_jobs.py` (the job: steps aside, pause, requests), `engine/waveforms_api.py`, `scripts/bench_decoder.py`, `scripts/bench_waveform_store.py`, `scripts/bench_waveform_analysis.py`, `fetch_player_sidecar.py --check-analysis` |
+| Waveforms (Phase 11) | `src/cuepoint/*/waveform*` and `data/audio_decode.py` (the player's mpv decodes, FFmpeg reduces; ADR-009); `waveforms.db` is a rebuildable cache beside the library (ADR-010); `scripts/bench_*`; release check `fetch_player_sidecar.py --check-analysis` |
 | Discover (Beatport catalog, runs, pages, similarity) | `src/cuepoint/services/` (`discovery_*`, `beatport_*`, `entity_page_*`, `similarity_*`), `src/cuepoint/core/similarity.py`, `src/cuepoint/engine/discover_api.py` |
 | Shared models | `src/cuepoint/models/`, `src/cuepoint/compat/gui_types.py` |
 | Electron main/preload | `apps/desktop-electron/electron/` |
@@ -55,7 +55,7 @@ python scripts/run_tests.py --unit --no-slow
 python scripts/run_tests.py --all --no-slow
 ruff check src/
 ruff format --check src/
-mypy src/
+python -m pytest src/tests/integration/test_mypy_foundation.py -q -p no:pytest-qt  # the mypy gate; bare `mypy src/` reports legacy debt
 python scripts/check_no_qt_in_core.py
 
 # Renderer (from apps/desktop-electron/renderer)
@@ -129,7 +129,7 @@ re-staging. mypy is excluded from it deliberately; `.pre-commit-config.yaml` exp
   dependency commands.
 - Update user docs for visible behavior, ADRs for architecture, and
   `docs/release/CHANGELOG.md` under `Unreleased` for notable changes.
-- Use Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `build:`, `chore:`).
+- Use Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `build:`, `chore:`, `ci:`).
 - Do not commit, tag, push, publish, sign, or release unless explicitly requested.
 
 Before finishing, run `git diff --check` and inspect `git status --short`. Report the change,
