@@ -700,13 +700,13 @@ class TestAnUntouchedFileIsNotRead:
         from cuepoint.services import library_import_service as module
 
         reads = []
-        real = module.iter_collection_tracks
+        real = module.iter_collection_entries
 
         def counting(path, *args, **kwargs):
             reads.append(path)
             return real(path, *args, **kwargs)
 
-        monkeypatch.setattr(module, "iter_collection_tracks", counting)
+        monkeypatch.setattr(module, "iter_collection_entries", counting)
         return reads
 
     def test_it_does_not_open_the_file_at_all(self, service, imported, monkeypatch):
@@ -921,6 +921,7 @@ class TestReportingShape:
             "removed",
             "relinked",
             "notable_changed_count",
+            "marks_changed",
         }
         assert set(payload["playlists"]) == {"added", "changed", "removed"}
         assert set(payload["tracks"]["changed"]) == {"count", "items", "truncated"}

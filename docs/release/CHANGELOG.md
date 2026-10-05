@@ -20,6 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that could not be read is not retried until it changes, and a file on a
   disconnected drive is never counted as failed. The waveforms are drawn in a
   later release
+- **Cue points and beat grids from Rekordbox.** An import and a refresh read
+  each track's hot cues, memory cues, loops, fades, load points and beat grid
+  from the export, and the Inspector lists them under **From Rekordbox**, one
+  line each ("A · 1:04.0 · Drop"), with the grid's tempo, or "variable" with its
+  range. They are read-only: nothing in CuePoint edits them, and an export to
+  Rekordbox still leaves every cue in the file exactly as it was. A refresh's
+  preview counts the tracks whose cues or grid changed, in one line. A mark
+  CuePoint does not recognise is skipped, never guessed at, and the import says
+  how many. A library imported before this release has its cues read once from
+  the file it was imported from, at the first start, when that file is
+  unchanged ("Reading cue points"); otherwise they arrive with the next refresh,
+  and the Inspector says so
 - The **Prepare** page, in the sidebar, and **Sets**. A Set is a running order
   you are preparing to play: tracks in the order you will play them, repeats
   allowed, divided into **chapters** with an optional name, notes, target length

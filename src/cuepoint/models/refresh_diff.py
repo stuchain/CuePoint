@@ -206,6 +206,10 @@ class RefreshDiff:
         references: Which Collections or Sets hold the removed tracks, and how
             many (DEC-011). ORG-04 filled the seam DEC-032 built empty, so this
             is a real answer from Phase 6 onward rather than a standing zero.
+        marks_changed: Kept tracks whose cue points or beat grid differ from
+            the stored ones (WAVE-04). One count, not a per-field change: marks
+            are read-only copies of Rekordbox's, and a preview lists what a user
+            might refuse (DEC-118). Still a change to apply on its own.
     """
 
     xml_path: str
@@ -218,6 +222,7 @@ class RefreshDiff:
     playlists_removed: Category = field(default_factory=Category)
     references: Optional[Any] = None
     duration_seconds: float = 0.0
+    marks_changed: int = 0
     #: Whether the export was actually read. False when the diff was answered
     #: from the file's recorded state alone (LIBRARY-12) — see
     #: ``LibraryImportService.compute_refresh_diff``. Only ever False on an
@@ -240,6 +245,7 @@ class RefreshDiff:
                 self.playlists_added.count,
                 self.playlists_changed.count,
                 self.playlists_removed.count,
+                self.marks_changed,
             )
         )
 
@@ -265,6 +271,7 @@ class RefreshDiff:
                 "removed": self.removed.to_dict(),
                 "relinked": self.relinked.to_dict(),
                 "notable_changed_count": self.notable_changed_count,
+                "marks_changed": self.marks_changed,
             },
             "playlists": {
                 "added": self.playlists_added.to_dict(),

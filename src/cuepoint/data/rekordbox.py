@@ -32,6 +32,7 @@ from urllib.parse import unquote
 
 import os
 
+from cuepoint.data.rekordbox_marks import read_track_marks  # noqa: E402
 from cuepoint.models.compat import track_from_rbtrack  # noqa: E402
 from cuepoint.models.library_track import LibraryTrack  # noqa: E402
 from cuepoint.models.rekordbox_playlist import (  # noqa: E402
@@ -42,6 +43,7 @@ from cuepoint.models.rekordbox_playlist import (  # noqa: E402
 )
 from cuepoint.models.playlist import Playlist  # noqa: E402
 from cuepoint.models.track import Track  # noqa: E402
+from cuepoint.models.track_marks import ReadMarks  # noqa: E402
 from cuepoint.utils.errors import error_xml_parsing  # noqa: E402
 
 _logger = logging.getLogger(__name__)
@@ -902,18 +904,72 @@ def iter_collection_tracks(xml_path: str) -> Iterator[LibraryTrack]:
     target is a 50,000-track library: building the whole tree would hold tens of
     megabytes of elements for a job that needs one track at a time.
 
-    Two details do the actual work. Each ``TRACK`` is cleared **and detached from
-    its parent** once yielded — clearing alone frees a track's attributes and cue
-    points but leaves an empty element behind, so the parent's child list still
-    grows once per track. And parsing stops at the end of ``COLLECTION`` rather
-    than reading on: the playlist tree is a separate concern (LIBRARY-03), and
-    its ``<TRACK Key="..."/>`` references are not tracks.
+    Cue points and beat grids are not read here. :func:`iter_collection_entries`
+    reads each track with its marks, for the import and the refresh; every
+    other reader of tracks pays nothing for them.
 
     Args:
         xml_path: Path to a Rekordbox XML export.
 
     Yields:
         A :class:`LibraryTrack` per collection entry, in document order.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`.
+        ET.ParseError: If the XML is malformed.
+    """
+    yielded = 0
+    for elem in _iter_collection_elements(xml_path):
+        track = _library_track_from_element(elem)
+        if track is not None:
+            yielded += 1
+            yield track
+
+    _logger.info(
+        "[library] Parsed %s tracks from the collection in %s", yielded, xml_path
+    )
+
+
+def iter_collection_entries(
+    xml_path: str,
+) -> Iterator[Tuple[LibraryTrack, ReadMarks]]:
+    """Yield every track in the ``COLLECTION`` with its cue points and grid.
+
+    :func:`iter_collection_tracks` with the track's ``POSITION_MARK`` and
+    ``TEMPO`` children read beside it (WAVE-04, DEC-118). The marks come back
+    next to the :class:`LibraryTrack`, not inside it, so the model and every
+    caller that reads only tracks are unchanged. A track with no marks carries
+    the shared :data:`~cuepoint.models.track_marks.NO_MARKS`.
+
+    Raises:
+        As :func:`iter_collection_tracks`. A mark CuePoint cannot read is
+        skipped and counted in the marks it returns, never raised.
+    """
+    yielded = 0
+    for elem in _iter_collection_elements(xml_path):
+        track = _library_track_from_element(elem)
+        if track is not None:
+            yielded += 1
+            yield track, read_track_marks(elem)
+
+    _logger.info(
+        "[library] Parsed %s tracks and their marks from the collection in %s",
+        yielded,
+        xml_path,
+    )
+
+
+def _iter_collection_elements(xml_path: str) -> Iterator[ET.Element]:
+    """Yield every ``COLLECTION/TRACK`` element, complete, then free it.
+
+    Each element is yielded at its end event, when its cue points and grid are
+    parsed too, and is cleared **and detached from its parent** once the caller
+    asks for the next — clearing alone frees a track's attributes and cue
+    points but leaves an empty element behind, so the parent's child list still
+    grows once per track. Parsing stops at the end of ``COLLECTION`` rather than
+    reading on: the playlist tree is a separate concern (LIBRARY-03), and its
+    ``<TRACK Key="..."/>`` references are not tracks.
 
     Raises:
         FileNotFoundError: If the file does not exist.
@@ -930,7 +986,6 @@ def iter_collection_tracks(xml_path: str) -> Iterator[LibraryTrack]:
             "Refusing to parse to prevent resource exhaustion."
         )
 
-    yielded = 0
     # Opened here rather than left to iterparse so the handle is closed even
     # though this generator stops early, at the end of COLLECTION.
     with open(xml_path, "rb") as handle:
@@ -945,17 +1000,10 @@ def iter_collection_tracks(xml_path: str) -> Iterator[LibraryTrack]:
             if elem.tag != "TRACK" or collection is None:
                 continue
 
-            track = _library_track_from_element(elem)
-            if track is not None:
-                yielded += 1
-                yield track
+            yield elem
 
             elem.clear()
             del collection[:]
-
-    _logger.info(
-        "[library] Parsed %s tracks from the collection in %s", yielded, xml_path
-    )
 
 
 def iter_playlist_nodes(xml_path: str) -> Iterator[RekordboxPlaylist]:

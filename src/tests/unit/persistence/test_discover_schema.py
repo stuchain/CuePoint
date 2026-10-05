@@ -2068,7 +2068,9 @@ class TestOneModuleRunsEachTablesSQL:
     #: here has no reader or writer yet.
     OWNERS = {
         "track_credits": "persistence/track_credit_repository.py",
-        "derived_indexes": "persistence/track_credit_repository.py",
+        # Its records are written by the name index (DISCOVER-03) and the
+        # marks (WAVE-04), both through the one module that owns its SQL.
+        "derived_indexes": "persistence/derived_indexes.py",
         "beatport_tracks": "persistence/beatport_catalog_repository.py",
         "beatport_track_artists": "persistence/beatport_catalog_repository.py",
         "beatport_name_lookups": "persistence/discovery_repository.py",

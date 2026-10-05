@@ -544,6 +544,7 @@ def refresh_summary_to_dict(summary: RefreshSummary, diff_id: str) -> Dict[str, 
             "entries": summary.playlists.entries,
         },
         "references": summary.references.to_dict(),
+        "marks": summary.marks.to_dict(),
         "duration_seconds": round(summary.duration_seconds, 3),
         "summary_line": summary.summary_line(),
     }

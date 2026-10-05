@@ -137,6 +137,50 @@
 }
 
 /*
+ * Cue points and the beat grid (WAVE-04). Rekordbox's records, read-only, in
+ * the imported zone's type. The swatch is the one colour here that is not a
+ * token: it is the cue's own, as Rekordbox shows it, and a memory cue without
+ * one has an outline instead.
+ */
+
+.cp-track-detail__marks-note,
+.cp-track-detail__grid {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-detail__marks-note {
+  color: var(--fg-muted);
+}
+
+.cp-track-detail__cues {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+  margin: 0 0 var(--space-xs);
+  padding: 0;
+  list-style: none;
+}
+
+.cp-track-detail__cue {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  word-break: break-word;
+}
+
+.cp-track-detail__cue-colour {
+  flex: none;
+  width: calc(6px * var(--scale));
+  height: calc(6px * var(--scale));
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+}
+
+/*
  * The editable zone (ORG-10, DEC-057).
  *
  * Visibly a different zone from the imported fields below it, because they are

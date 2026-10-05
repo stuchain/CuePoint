@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<DJ_PLAYLISTS Version="1.0.0">
+  <PRODUCT Name="rekordbox" Version="6.8.5" Company="AlphaTheta"/>
+  <COLLECTION Entries="5">
+    <TRACK TrackID="101" Name="Every Mark" Artist="Cue Tester" Composer="" Album="Marks" Grouping=""
+           Genre="Peak Time Techno" Kind="MP3 File" Size="9437184" TotalTime="372" DiscNumber="0"
+           TrackNumber="1" Year="2024" AverageBpm="128.00" DateAdded="2024-03-01" BitRate="320"
+           SampleRate="44100" Comments="" PlayCount="3" Rating="204" Location="file://localhost/C:/Music/Marks/every%20mark.mp3"
+           Remixer="" Tonality="Am" Label="Grid Records" Mix="">
+      <TEMPO Inizio="0.025" Bpm="128.00" Metro="4/4" Battito="1"/>
+      <POSITION_MARK Name="Intro" Type="0" Start="0.025" Num="-1"/>
+      <POSITION_MARK Name="Drop" Type="0" Start="64.025" Num="0" Red="40" Green="226" Blue="20"/>
+      <POSITION_MARK Name="" Type="0" Start="96.025" Num="1" Red="230" Green="40" Blue="40"/>
+      <POSITION_MARK Name="Build loop" Type="4" Start="120.025" End="127.525" Num="2" Red="255" Green="140" Blue="0"/>
+      <POSITION_MARK Name="" Type="4" Start="180.0254" End="181.9996" Num="-1"/>
+      <POSITION_MARK Name="Fade in" Type="1" Start="1.5" Num="-1"/>
+      <POSITION_MARK Name="Fade out" Type="2" Start="360.250" Num="-1"/>
+      <POSITION_MARK Name="Load here" Type="3" Start="32.0005" Num="-1"/>
+      <POSITION_MARK Name="H cue" Type="0" Start="300.000" Num="7" Red="200" Green="200"/>
+    </TRACK>
+    <TRACK TrackID="102" Name="Variable Grid" Artist="Tempo Drift" Composer="" Album="" Grouping=""
+           Genre="House" Kind="FLAC File" Size="31457280" TotalTime="410" DiscNumber="0"
+           TrackNumber="0" Year="0" AverageBpm="122.50" DateAdded="2024-03-02" BitRate="1411"
+           SampleRate="44100" Comments="Live drummer" PlayCount="0" Rating="0"
+           Location="file://localhost/C:/Music/Marks/variable.flac" Remixer="" Tonality="Fm" Label="" Mix="">
+      <TEMPO Inizio="0.120" Bpm="121.00" Metro="4/4" Battito="1"/>
+      <TEMPO Inizio="60.120" Bpm="122.50" Metro="4/4" Battito="3"/>
+      <TEMPO Inizio="120.120" Bpm="124.00" Metro="4/4" Battito="1"/>
+      <POSITION_MARK Name="Groove" Type="0" Start="15.000" Num="3"/>
+    </TRACK>
+    <TRACK TrackID="103" Name="Malformed Marks" Artist="Broken Tools" Composer="" Album="" Grouping=""
+           Genre="Electro" Kind="WAV File" Size="52428800" TotalTime="298" DiscNumber="0"
+           TrackNumber="0" Year="2019" AverageBpm="130.00" DateAdded="2024-03-03" BitRate="1411"
+           SampleRate="44100" Comments="" PlayCount="12" Rating="102"
+           Location="file://localhost/C:/Music/Marks/malformed.wav" Remixer="Fixer" Tonality="Am" Label="Glitch" Mix="">
+      <TEMPO Inizio="0.050" Bpm="0" Metro="4/4" Battito="1"/>
+      <TEMPO Inizio="0.050" Bpm="" Metro="4/4" Battito="1"/>
+      <TEMPO Inizio="0.050" Bpm="130.00" Metro="4/4" Battito="1"/>
+      <POSITION_MARK Name="Unknown type" Type="9" Start="10.000" Num="-1"/>
+      <POSITION_MARK Name="No start" Type="0" Num="-1"/>
+      <POSITION_MARK Name="Negative" Type="0" Start="-1.000" Num="-1"/>
+      <POSITION_MARK Name="Backwards loop" Type="4" Start="50.000" End="40.000" Num="-1"/>
+      <POSITION_MARK Name="Kept" Type="0" Start="20.000" Num="-1"/>
+    </TRACK>
+    <TRACK TrackID="104" Name="No Marks" Artist="Plain" Composer="" Album="" Grouping=""
+           Genre="Ambient" Kind="MP3 File" Size="4194304" TotalTime="200" DiscNumber="0"
+           TrackNumber="0" Year="2020" AverageBpm="90.00" DateAdded="2024-03-04" BitRate="256"
+           SampleRate="44100" Comments="" PlayCount="0" Rating="0"
+           Location="file://localhost/C:/Music/Marks/no%20marks.mp3" Remixer="" Tonality="Dm" Label="" Mix="">
+    </TRACK>
+    <TRACK TrackID="105" Name="Grid Only" Artist="Metronome" Composer="" Album="" Grouping=""
+           Genre="Techno" Kind="MP3 File" Size="8388608" TotalTime="330" DiscNumber="0"
+           TrackNumber="0" Year="2023" AverageBpm="132.00" DateAdded="2024-03-05" BitRate="320"
+           SampleRate="44100" Comments="" PlayCount="1" Rating="51"
+           Location="file://localhost/C:/Music/Marks/grid%20only.mp3" Remixer="" Tonality="Cm" Label="" Mix="">
+      <TEMPO Inizio="0.000" Bpm="132.00" Metro="4/4" Battito="1"/>
+    </TRACK>
+  </COLLECTION>
+  <PLAYLISTS>
+    <NODE Type="0" Name="ROOT" Count="2">
+      <NODE Name="Marked" Type="1" KeyType="0" Entries="3">
+        <TRACK Key="101"/>
+        <TRACK Key="102"/>
+        <TRACK Key="103"/>
+      </NODE>
+      <NODE Name="CuePoint" Type="0" Count="2">
+        <NODE Name="Gigs" Type="0" Count="1">
+          <NODE Name="Friday" Type="1" KeyType="0" Entries="3">
+            <TRACK Key="103"/>
+            <TRACK Key="101"/>
+            <TRACK Key="105"/>
+          </NODE>
+        </NODE>
+        <NODE Name="Warm-up" Type="1" KeyType="0" Entries="2">
+          <TRACK Key="102"/>
+          <TRACK Key="104"/>
+        </NODE>
+      </NODE>
+    </NODE>
+  </PLAYLISTS>
+</DJ_PLAYLISTS>

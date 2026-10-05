@@ -693,6 +693,14 @@ def library_track_detail(track_id: int) -> Dict[str, Any]:
     DISCOVER-11 adds ``credits``: its artists, remixers and label as links to
     their pages. Additive, as every change to this shape has been.
 
+    WAVE-04 adds ``marks``: its cue points listed and its beat grid summed up
+    (:meth:`~cuepoint.models.track_marks.TrackMarks.summary`), with whether the
+    library's marks have been read at all, so a track without cues can be told
+    from one whose cues arrive with the next refresh. Every cue is listed,
+    since a track has a handful and the Inspector shows each; the grid is a
+    summary, since a variable grid can hold hundreds of markers and they travel
+    with the waveform (WAVE-05).
+
     The Inspector's content: everything imported, read-only, plus where the
     track sits in the collection. Membership comes from
     ``playlist_ids_for_track``, which LIBRARY-03 built an index for to answer
@@ -747,7 +755,15 @@ def library_track_detail(track_id: int) -> Dict[str, Any]:
         "tags": tags_on(int(track_id)),
         "collections": collections_holding(int(track_id)),
         "credits": credits.to_dict(),
+        "marks": track_marks_summary(int(track_id)),
     }
+
+
+def track_marks_summary(track_id: int) -> Dict[str, Any]:
+    """One track's ``marks`` as the track detail carries them (WAVE-04)."""
+    marks = _resolve_track_marks_repository()
+    summary: Dict[str, Any] = marks.get(int(track_id)).summary(read=marks.is_read())
+    return summary
 
 
 # ---------------------------------------------------------------------------
@@ -848,6 +864,17 @@ def _resolve_track_credit_repository() -> Any:
         from cuepoint.utils.di_container import get_container
 
         return get_container().resolve(ITrackCreditRepository)
+    except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
+        raise LibraryUnavailableError(str(exc)) from exc
+
+
+def _resolve_track_marks_repository() -> Any:
+    """Resolve ``ITrackMarksRepository``, or raise :class:`LibraryUnavailableError`."""
+    try:
+        from cuepoint.services.interfaces import ITrackMarksRepository
+        from cuepoint.utils.di_container import get_container
+
+        return get_container().resolve(ITrackMarksRepository)  # type: ignore[type-abstract]
     except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
         raise LibraryUnavailableError(str(exc)) from exc
 

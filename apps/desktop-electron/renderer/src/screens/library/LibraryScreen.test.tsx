@@ -101,6 +101,7 @@ function diff(overrides: Partial<RefreshDiff> = {}): RefreshDiff {
       ]),
       relinked: category(),
       notable_changed_count: 10,
+      marks_changed: 0,
     },
     playlists: { added: category(), changed: category(4), removed: category() },
     references: {
@@ -807,6 +808,7 @@ describe("the refresh preview (DEC-032)", () => {
           removed: category(),
           relinked: category(),
           notable_changed_count: 0,
+          marks_changed: 0,
         },
         playlists: { added: category(), changed: category(), removed: category() },
       }),

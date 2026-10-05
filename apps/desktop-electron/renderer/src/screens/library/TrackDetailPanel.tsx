@@ -21,6 +21,9 @@
  * CuePoint's own changes and Restore for tags written to the file. The
  * imported record stays read-only, field for field.
  *
+ * WAVE-04 completes the imported record with the track's cue points and beat
+ * grid (`TrackMarksSection`), read-only like the rest of it (DEC-118).
+ *
  * **A field Rekordbox did not supply reads as absent, not as zero.** That is
  * why LIBRARY-01 made those columns nullable (DEC-034): unrated and rated-zero
  * are different facts, and so are "never played" and "no play count recorded".
@@ -44,6 +47,7 @@ import { jobErrorMessage } from "./libraryFormat";
 import { TrackArtwork } from "./TrackArtwork";
 import { TrackBeatportSection } from "./TrackBeatportSection";
 import { TrackHistorySection } from "./TrackHistorySection";
+import { TrackMarksSection } from "./TrackMarksSection";
 import { TrackYours } from "./TrackYours";
 import { useTrackHistory } from "./useTrackHistory";
 import { useTrackWrites } from "./useTrackWrites";
@@ -346,6 +350,9 @@ export function TrackDetailPanel({
           }
         />
       </dl>
+
+      {/* The rest of Rekordbox's record: its cues and grid (WAVE-04). */}
+      <TrackMarksSection marks={detail.marks} />
 
       <section className="cp-track-detail__playlists">
         <h3 className="cp-track-detail__subtitle">

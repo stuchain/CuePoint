@@ -74,7 +74,9 @@ if TYPE_CHECKING:
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
     from cuepoint.models.track_credit import DerivedIndex, TrackCredit
+    from cuepoint.models.track_marks import TrackMarks
     from cuepoint.services.credit_index_service import CreditIndexResult
+    from cuepoint.services.marks_backfill_service import MarksBackfillResult
     from cuepoint.services.beatport_api_models import CatalogTrack
     from cuepoint.models.beatport_cache import (
         CachedBeatportCredit,
@@ -1201,6 +1203,11 @@ class ITrackRepository(ABC):
         self, tracks: Iterable["LibraryTrack"], batch_size: int = 1000
     ) -> "BulkUpsertResult":
         """Insert or update a whole collection in one transaction (DEC-002)."""
+        ...
+
+    @abstractmethod
+    def ids_by_rekordbox_id(self, rekordbox_track_ids: Iterable[str]) -> Dict[str, int]:
+        """Map each stored Rekordbox TrackID to its library id (WAVE-04)."""
         ...
 
     @abstractmethod
@@ -3784,6 +3791,60 @@ class ILibrarySourceRepository(ABC):
     @abstractmethod
     def clear(self) -> None:
         """Forget where the library came from."""
+        ...
+
+
+class ITrackMarksRepository(ABC):
+    """Interface for each track's cue points and beat grid (WAVE-04, DEC-118).
+
+    Copies of Rekordbox's marks, replaced whole by an import, a refresh apply
+    and the backfill, and never edited.
+    """
+
+    @abstractmethod
+    def replace_many(
+        self,
+        entries: Iterable[Tuple[int, Sequence[Any], Sequence[Any]]],
+    ) -> Tuple[int, int]:
+        """Replace each ``(track_id, cues, grid)``'s marks, joining a transaction."""
+        ...
+
+    @abstractmethod
+    def mark_read(self, read_at: str) -> None:
+        """Record ``library.marks_read``, joining a transaction."""
+        ...
+
+    @abstractmethod
+    def get(self, track_id: int) -> "TrackMarks":
+        """One track's marks, in order."""
+        ...
+
+    @abstractmethod
+    def fingerprints(self) -> Dict[int, bytes]:
+        """Every track with marks, to the digest of its marks."""
+        ...
+
+    @abstractmethod
+    def is_read(self) -> bool:
+        """True when this version of the reader has read the library's marks."""
+        ...
+
+
+class IMarksBackfillService(ABC):
+    """Interface for reading a pre-WAVE-04 library's marks from its source, once."""
+
+    @abstractmethod
+    def needed(self) -> bool:
+        """True when the marks are unread and the source is unchanged."""
+        ...
+
+    @abstractmethod
+    def backfill(
+        self,
+        on_progress: Optional[Callable[[int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "MarksBackfillResult":
+        """Read every track's marks from the unchanged source."""
         ...
 
 

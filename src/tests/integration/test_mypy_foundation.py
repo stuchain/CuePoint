@@ -144,6 +144,12 @@ GUARDED = (
     "cuepoint/services/waveform_analysis_service.py",
     "cuepoint/engine/waveform_jobs.py",
     "cuepoint/engine/waveforms_api.py",
+    # WAVE-04: each track's cue points and beat grid, how they are read, and
+    # the backfill (the repositories are under persistence/, above).
+    "cuepoint/models/track_marks.py",
+    "cuepoint/data/rekordbox_marks.py",
+    "cuepoint/services/marks_backfill_service.py",
+    "cuepoint/engine/marks_backfill_jobs.py",
 )
 
 

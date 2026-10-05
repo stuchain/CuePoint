@@ -595,6 +595,7 @@ describe("a Set a refresh emptied (DEC-011, PREP-02)", () => {
         removed: category(1),
         relinked: category(),
         notable_changed_count: 0,
+        marks_changed: 0,
       },
       playlists: { added: category(), changed: category(), removed: category() },
       references: REFERENCES,

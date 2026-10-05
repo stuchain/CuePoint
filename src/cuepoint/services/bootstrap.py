@@ -82,6 +82,8 @@ from cuepoint.services.interfaces import (
     ITelemetryService,
     ILibraryImportService,
     ILibrarySourceRepository,
+    ITrackMarksRepository,
+    IMarksBackfillService,
     IPlaylistRepository,
     ITrackMetadataRepository,
     ITrackCreditRepository,
@@ -275,6 +277,31 @@ def bootstrap_services() -> None:
         ILibrarySourceRepository, create_library_source_repository
     )
 
+    def create_track_marks_repository() -> ITrackMarksRepository:
+        """Build the repository of each track's cues and grid, migrating first."""
+        from cuepoint.persistence.track_marks_repository import TrackMarksRepository
+
+        container.resolve(IMigrationRunner).migrate()
+        return TrackMarksRepository(
+            database_service=container.resolve(IDatabaseService)
+        )
+
+    container.register_factory(ITrackMarksRepository, create_track_marks_repository)
+
+    def create_marks_backfill_service() -> IMarksBackfillService:
+        """Build the one-time read of a pre-WAVE-04 library's marks."""
+        from cuepoint.services.marks_backfill_service import MarksBackfillService
+
+        return MarksBackfillService(
+            marks_repository=container.resolve(ITrackMarksRepository),
+            track_repository=container.resolve(ITrackRepository),
+            source_repository=container.resolve(ILibrarySourceRepository),
+            database_service=container.resolve(IDatabaseService),
+            activity_service=container.resolve(IActivityService),
+        )
+
+    container.register_factory(IMarksBackfillService, create_marks_backfill_service)
+
     def create_library_import_service() -> ILibraryImportService:
         """Build the Rekordbox import service."""
         from cuepoint.services.library_import_service import (
@@ -285,6 +312,9 @@ def bootstrap_services() -> None:
             track_repository=container.resolve(ITrackRepository),
             playlist_repository=container.resolve(IPlaylistRepository),
             source_repository=container.resolve(ILibrarySourceRepository),
+            # Each track's cue points and beat grid (WAVE-04), written in the
+            # same transaction as the tracks.
+            marks_repository=container.resolve(ITrackMarksRepository),
             # The transaction boundary an import or a refresh runs inside. The
             # same singleton the repositories hold, which is what lets them
             # join it rather than open one of their own.

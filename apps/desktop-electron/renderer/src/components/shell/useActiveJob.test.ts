@@ -79,6 +79,10 @@ describe("jobLabel", () => {
     );
   });
 
+  it("says what the unasked-for read of an older library's cues is doing (WAVE-04)", () => {
+    expect(jobLabel(job({ type: "marks_backfill" }))).toBe("Reading cue points 3/10");
+  });
+
   it("names Discover's three Beatport jobs (DISCOVER-09)", () => {
     expect(jobLabel(job({ type: "discovery", progress: undefined }))).toBe(
       "Discovering on Beatport",

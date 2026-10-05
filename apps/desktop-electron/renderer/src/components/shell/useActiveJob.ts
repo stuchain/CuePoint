@@ -93,6 +93,10 @@ const JOB_VERBS: Record<string, string> = {
   // library predates it or its rule changed. Unasked-for, so it says plainly
   // what it is doing rather than falling through to "Working".
   credit_index: "Indexing artists and labels",
+  // WAVE-04's one-time read of a library's cue points and beat grids, which
+  // the engine starts on its own the first time it opens a library imported
+  // before they were read.
+  marks_backfill: "Reading cue points",
   // Discover's three Beatport jobs (DISCOVER-04 to DISCOVER-06, started over
   // DISCOVER-09's routes). Each spends requests on the user's token, so the
   // strip says Beatport, as the match does.

@@ -953,6 +953,19 @@ class TrackRepository(ITrackRepository):
             unclaimed_track_ids=tuple(sorted(unclaimed)),
         )
 
+    def ids_by_rekordbox_id(self, rekordbox_track_ids: Iterable[str]) -> Dict[str, int]:
+        """Map each of these Rekordbox TrackIDs that is stored to its library id.
+
+        Read through the open transaction when there is one, so an import sees
+        the rows it has just inserted. One scan of the unique index rather than
+        a lookup per id: an import asks about every track it wrote.
+        """
+        wanted = set(rekordbox_track_ids)
+        if not wanted:
+            return {}
+        rows = self._db.connect().execute("SELECT id, rekordbox_track_id FROM tracks")
+        return {str(row[1]): int(row[0]) for row in rows if str(row[1]) in wanted}
+
     def identity_snapshot(self) -> tuple:
         """Return ``(by_rekordbox_id, by_normalized_path)`` for the whole library.
 

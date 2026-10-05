@@ -139,6 +139,10 @@ Selecting one track fills the Inspector. From the top:
   genre, key, BPM, year, length, rating, plays, colour, comment, bitrate, when
   it was added and where the file is. **This part is read-only.** It is what
   Rekordbox sent, and a refresh replaces it.
+- **Cues and beat grid**, also from Rekordbox and also read-only: every hot cue,
+  memory cue, loop, fade and load point, one line each in the order the track
+  plays them, and the beat grid's tempo. See
+  [Cue points and beat grids](#cue-points-and-beat-grids-come-from-rekordbox--and-stay-there).
 - The Collections and playlists the track is in. Click one to jump to it.
 - **History** — every change to the track, and who made it.
 
@@ -177,6 +181,7 @@ your last import — that is what **Out of date** means next to the file name.
 | Updated tracks | In both, with something different in Rekordbox |
 | **Tracks removed from Rekordbox** | In CuePoint, no longer in the export — **these get deleted** |
 | Re-linked after renumbering | Rekordbox gave the track a new ID; CuePoint recognised the file and kept everything |
+| Tracks whose cues or beat grid changed | Tracks you kept whose cue points or grid are different in Rekordbox |
 | New / edited / deleted playlists | The same, for your playlist tree |
 
 Nothing happens until you press the confirm button. **Cancel changes nothing** —
@@ -325,6 +330,41 @@ copies are made again as they are needed.
 file that has none is an option when you
 [write tags to files](#writing-tags-to-files), and it never replaces a picture a
 file already has.
+
+### Cue points and beat grids come from Rekordbox — and stay there
+
+An import and a refresh read each track's cue points and beat grid from the
+export, the ones you set in Rekordbox. The Inspector lists them under **From
+Rekordbox**:
+
+```
+Cues · 2 hot, 3 memory
+■ Memory · 0:00.0 · Intro
+■ A · 1:04.0 · Drop
+■ C · 2:00.0–2:07.5 · Loop · Build loop
+Beat grid · 128.00 BPM
+```
+
+- A hot cue is its letter, **A** to **H**; a memory cue says **Memory**. A
+  loop shows where it starts and ends; a fade-in, fade-out or load point says
+  which it is. Times are to a tenth of a second, and the square is the cue's
+  colour in Rekordbox.
+- A grid that changes tempo says **variable**, with the range.
+- **They are read-only.** Nothing in CuePoint edits a cue or a grid, and an
+  [export to Rekordbox](rekordbox-export.md) never writes one: it leaves every
+  cue in your collection exactly as it was. To change a cue, change it in
+  Rekordbox, export, and refresh.
+- A refresh replaces a track's cues and grid with the export's, and the preview
+  counts the tracks whose cues or grid changed, in one line.
+- A mark CuePoint does not recognise, or one Rekordbox wrote incompletely, is
+  skipped rather than guessed at, and the import says how many it skipped.
+
+**A library imported before this release** has its cues read once from the
+collection file it was imported from, the first time CuePoint starts, if that
+file is still exactly as it was. The status strip shows **Reading cue points**
+while it does, and Activity records it. If the file has changed since, the
+Inspector says *Cues and the beat grid arrive with the next refresh*, and they
+do.
 
 ### One import, for everything
 

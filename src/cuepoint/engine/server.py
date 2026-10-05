@@ -1118,6 +1118,13 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     from cuepoint.engine.credit_index_jobs import start_credit_index_if_stale
 
     start_credit_index_if_stale(_JOB_STORE)
+    # WAVE-04: a library imported before cue points and beat grids were read
+    # has them read once from its source, when that file is still exactly the
+    # one imported. Otherwise they arrive with the next refresh. Never a reason
+    # not to start.
+    from cuepoint.engine.marks_backfill_jobs import start_marks_backfill_if_needed
+
+    start_marks_backfill_if_needed(_JOB_STORE)
     # DISCOVER-05: a discovery run the last engine left open is ended as
     # failed, keeping what it found, before any new run can start. Never a
     # reason not to start.

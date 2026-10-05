@@ -10,7 +10,8 @@ Three things are derived from a track's own columns by
   one row per credited name, with its key (migration 0021).
 - **``tracks.label_key``** and **``track_metadata.label_key``** — the key of each
   layer of a track's label (migration 0022).
-- **``derived_indexes``** — which version of the rule built them.
+- **``derived_indexes``** — which version of the rule built them, through
+  :mod:`cuepoint.persistence.derived_indexes`, which owns that table's SQL.
 
 Written where the tracks are written
 ------------------------------------
@@ -70,6 +71,10 @@ from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple, TypeVar
 
 from cuepoint.core.entity_names import name_key, split_credit
 from cuepoint.models.beatport_cache import ENTITY_ARTIST, ENTITY_LABEL
+from cuepoint.persistence.derived_indexes import (
+    read_derived_indexes,
+    record_derived_indexes,
+)
 from cuepoint.models.track_credit import (
     NAME_INDEXES,
     ROLE_ARTIST,
@@ -460,17 +465,7 @@ class TrackCreditRepository(ITrackCreditRepository):
 
     def built(self) -> List[DerivedIndex]:
         """The name indexes that have been built, and by which version."""
-        placeholders = ", ".join("?" for _ in NAME_INDEXES)
-        rows = (
-            self._db.connect()
-            .execute(
-                "SELECT name, version, built_at FROM derived_indexes"
-                f" WHERE name IN ({placeholders}) ORDER BY name",
-                NAME_INDEXES,
-            )
-            .fetchall()
-        )
-        return [DerivedIndex.from_row(row) for row in rows]
+        return read_derived_indexes(self._db.connect(), NAME_INDEXES)
 
     def is_current(self, version: int) -> bool:
         """True when every name index was built by exactly this rule version."""
@@ -747,10 +742,4 @@ class TrackCreditRepository(ITrackCreditRepository):
             for name in NAME_INDEXES
         ]
         with self._db.transaction() as conn:
-            conn.executemany(
-                "INSERT INTO derived_indexes (name, version, built_at)"
-                " VALUES (?, ?, ?)"
-                " ON CONFLICT (name) DO UPDATE SET"
-                " version = excluded.version, built_at = excluded.built_at",
-                [(r.name, r.version, r.built_at) for r in records],
-            )
+            record_derived_indexes(conn, records)

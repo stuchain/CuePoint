@@ -19,8 +19,10 @@ What writing an export does, in order:
 2. Upsert every track, applying DEC-002 identity and reporting re-links.
 3. Delete the library rows the export no longer claimed — **refresh only**
    (DEC-003), and only once DEC-011's reference check has been consulted.
-4. Replace the mirrored playlist tree (DEC-031).
-5. Record where the library came from (DEC-035).
+4. Replace each track's cue points and beat grid, and record that the
+   library's marks have been read (WAVE-04, DEC-118).
+5. Replace the mirrored playlist tree (DEC-031).
+6. Record where the library came from (DEC-035).
 
 An import and a refresh are the same pass differing only in step 3, and they run
 the same code (:meth:`LibraryImportService._write_export`) rather than two
@@ -41,11 +43,11 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable, Iterator, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, Iterator, Optional, Tuple
 
 from cuepoint.data.rekordbox import (
     collection_entry_count,
-    iter_collection_tracks,
+    iter_collection_entries,
     iter_playlist_nodes,
 )
 from cuepoint.exceptions.cuepoint_exceptions import ValidationError
@@ -61,6 +63,7 @@ from cuepoint.models.refresh_diff import (
     summarize,
 )
 from cuepoint.models.references import NO_REFERENCES, ReferenceSummary
+from cuepoint.models.track_marks import EMPTY_FINGERPRINT, ReadMarks, marks_fingerprint
 from cuepoint.models.rekordbox_playlist import PlaylistTreeWriteResult
 from cuepoint.persistence.track_repository import (
     BulkUpsertResult,
@@ -73,6 +76,7 @@ from cuepoint.services.interfaces import (
     ILibraryService,
     ILibrarySourceRepository,
     IPlaylistRepository,
+    ITrackMarksRepository,
     ITrackRepository,
 )
 
@@ -111,6 +115,35 @@ CancelCheck = Callable[[], bool]
 
 
 @dataclass(frozen=True)
+class MarksWritten:
+    """What one import or refresh wrote of the tracks' marks (WAVE-04).
+
+    Attributes:
+        cues: ``track_cues`` rows written.
+        markers: ``track_beat_grid`` rows written.
+        skipped: Marks the reader refused as unknown or malformed, counted and
+            never stored (DEC-118).
+    """
+
+    cues: int = 0
+    markers: int = 0
+    skipped: int = 0
+
+    def to_dict(self) -> Dict[str, int]:
+        """Serialize for the API and the activity feed."""
+        return {"cues": self.cues, "markers": self.markers, "skipped": self.skipped}
+
+
+#: Nothing written, for a summary built without marks.
+NO_MARKS_WRITTEN = MarksWritten()
+
+
+def _skipped_phrase(count: int) -> str:
+    """``1 unreadable mark skipped``, ``3 unreadable marks skipped``."""
+    return f"{_counted(count, 'unreadable mark')} skipped"
+
+
+@dataclass(frozen=True)
 class ImportSummary:
     """What one import did.
 
@@ -123,6 +156,8 @@ class ImportSummary:
             reported rather than applied silently.
         playlists: What the mirrored playlist tree write produced.
         duration_seconds: Wall-clock time for the whole import.
+        marks: The cue points and beat grid markers written (WAVE-04), and
+            the marks skipped as unknown or malformed.
     """
 
     source: LibrarySource
@@ -131,6 +166,7 @@ class ImportSummary:
     relinked: Tuple[RelinkedTrack, ...]
     playlists: PlaylistTreeWriteResult
     duration_seconds: float
+    marks: MarksWritten = NO_MARKS_WRITTEN
 
     @property
     def track_count(self) -> int:
@@ -153,6 +189,8 @@ class ImportSummary:
             parts.append(f"{self.relinked_count} re-linked")
         if self.playlists.playlists:
             parts.append(f"{self.playlists.playlists} playlists")
+        if self.marks.skipped:
+            parts.append(_skipped_phrase(self.marks.skipped))
         return "Library imported — " + ", ".join(parts)
 
 
@@ -169,6 +207,7 @@ class ExportWriteResult:
     source: LibrarySource
     deleted: int = 0
     references: ReferenceSummary = NO_REFERENCES
+    marks: MarksWritten = NO_MARKS_WRITTEN
 
 
 @dataclass(frozen=True)
@@ -191,6 +230,8 @@ class RefreshSummary:
         references: What DEC-011's seam said about the deleted tracks, asked at
             the moment they were deleted rather than when the diff was computed.
         duration_seconds: Wall-clock time for the whole refresh.
+        marks: The cue points and beat grid markers written (WAVE-04), and
+            the marks skipped as unknown or malformed.
     """
 
     source: LibrarySource
@@ -201,6 +242,7 @@ class RefreshSummary:
     playlists: PlaylistTreeWriteResult
     references: ReferenceSummary
     duration_seconds: float
+    marks: MarksWritten = NO_MARKS_WRITTEN
 
     @property
     def track_count(self) -> int:
@@ -224,6 +266,8 @@ class RefreshSummary:
         if self.relinked_count:
             parts.append(f"{self.relinked_count} re-linked")
         parts.append(f"{self.track_count} tracks now")
+        if self.marks.skipped:
+            parts.append(_skipped_phrase(self.marks.skipped))
         return "Library refreshed — " + ", ".join(parts)
 
 
@@ -270,6 +314,7 @@ class LibraryImportService(ILibraryImportService):
         database_service: IDatabaseService,
         activity_service: Optional[IActivityService] = None,
         library_service: Optional[ILibraryService] = None,
+        marks_repository: Optional[ITrackMarksRepository] = None,
     ) -> None:
         """Initialize the service.
 
@@ -292,6 +337,10 @@ class LibraryImportService(ILibraryImportService):
                 diff *is* computed without it, the summary is the same
                 ``NO_REFERENCES`` the real seam returns today, so the shape a
                 caller sees never changes.
+            marks_repository: Owns each track's cue points and beat grid
+                (WAVE-04). Defaults to one over ``database_service``: the marks
+                live in the same database and are written in the same
+                transaction, so there is no import that may leave them out.
         """
         self._tracks = track_repository
         self._playlists = playlist_repository
@@ -299,6 +348,13 @@ class LibraryImportService(ILibraryImportService):
         self._db = database_service
         self._activity = activity_service
         self._library = library_service
+        if marks_repository is None:
+            from cuepoint.persistence.track_marks_repository import (
+                TrackMarksRepository,
+            )
+
+            marks_repository = TrackMarksRepository(database_service)
+        self._marks = marks_repository
 
     # ----------------------------------------------------------------- import
 
@@ -356,6 +412,7 @@ class LibraryImportService(ILibraryImportService):
             relinked=written.tracks.relinked,
             playlists=written.playlists,
             duration_seconds=time.perf_counter() - started,
+            marks=written.marks,
         )
         self._record_activity(summary)
         _logger.info(
@@ -397,11 +454,19 @@ class LibraryImportService(ILibraryImportService):
         file declared: ``Entries`` is Rekordbox's claim, and a progress bar that
         reads 104% is a worse bug than one that finishes early. It is written
         back so the caller's phase-transition tick reports the same total.
+
+        Each track's cue points and grid are read in the same pass and kept in
+        ``observed["marks"]`` by Rekordbox TrackID, every track's, so a track
+        whose marks Rekordbox removed has them removed here too. A track with
+        none shares one empty value.
         """
         total = observed["total"]
-        for completed, track in enumerate(iter_collection_tracks(xml_path), start=1):
+        marks: Dict[str, ReadMarks] = observed["marks"]
+        entries = iter_collection_entries(xml_path)
+        for completed, (track, track_marks) in enumerate(entries, start=1):
             if should_cancel is not None and should_cancel():
                 raise ImportCancelled(f"Cancelled after reading {completed - 1} tracks")
+            marks[track.rekordbox_track_id] = track_marks
             yield track
             if completed > total:
                 total = completed
@@ -507,6 +572,7 @@ class LibraryImportService(ILibraryImportService):
             playlists=written.playlists,
             references=written.references,
             duration_seconds=time.perf_counter() - started,
+            marks=written.marks,
         )
         self._record_refresh_activity(summary)
         _logger.info(
@@ -555,7 +621,7 @@ class LibraryImportService(ILibraryImportService):
         # the total the track pass actually reached. Reporting `declared` here
         # made a file that under-declares its Entries count jump backwards —
         # 5/5 tracks, then 2/2 playlists.
-        observed = {"total": declared}
+        observed: Dict[str, Any] = {"total": declared, "marks": {}}
 
         with self._db.transaction():
             tracks = self._tracks.upsert_many_from_rekordbox(
@@ -569,6 +635,8 @@ class LibraryImportService(ILibraryImportService):
                     tracks.unclaimed_track_ids, confirm_references
                 )
                 deleted = self._tracks.delete_many(tracks.unclaimed_track_ids)
+
+            marks = self._write_marks(observed["marks"])
 
             if on_progress is not None:
                 on_progress(observed["total"], observed["total"], PHASE_PLAYLISTS)
@@ -589,7 +657,32 @@ class LibraryImportService(ILibraryImportService):
             source=source,
             deleted=deleted,
             references=references,
+            marks=marks,
         )
+
+    def _write_marks(self, marks: Dict[str, ReadMarks]) -> MarksWritten:
+        """Replace every imported track's marks, and record them read.
+
+        Inside the export's transaction, after the tracks: every track the
+        file holds now has the row the file's TrackID names, re-linked ones
+        included, because the upsert wrote that id. A track the file does not
+        hold keeps its marks on an import and has lost them by cascade on a
+        refresh, which deleted it.
+        """
+        ids = self._tracks.ids_by_rekordbox_id(marks)
+        skipped = sum(read.skipped for read in marks.values())
+        cues, markers = self._marks.replace_many(
+            (ids[rekordbox_id], read.cues, read.grid)
+            for rekordbox_id, read in marks.items()
+            if rekordbox_id in ids
+        )
+        self._marks.mark_read(utc_now_iso())
+        if skipped:
+            _logger.info(
+                "[library] Skipped %s cue points or grid markers CuePoint cannot read",
+                skipped,
+            )
+        return MarksWritten(cues=cues, markers=markers, skipped=skipped)
 
     def _check_references(
         self, track_ids: Iterable[int], confirmed: bool
@@ -719,7 +812,9 @@ class LibraryImportService(ILibraryImportService):
             category.limit = detail_limit
 
         snapshot = self._tracks.identity_snapshot()
-        rows_for_refs = self._diff_tracks(path, diff, snapshot, should_cancel)
+        rows_for_refs = self._diff_tracks(
+            path, diff, snapshot, self._marks.fingerprints(), should_cancel
+        )
         self._diff_playlists(path, diff, rows_for_refs)
         diff.references = self._references_for_removed(diff)
         diff.duration_seconds = time.perf_counter() - started
@@ -819,6 +914,7 @@ class LibraryImportService(ILibraryImportService):
         xml_path: str,
         diff: RefreshDiff,
         snapshot: Tuple[dict, dict],
+        fingerprints: Dict[int, bytes],
         should_cancel: Optional[CancelCheck],
     ) -> dict:
         """Classify every track, and return where each of its ids will land.
@@ -834,13 +930,18 @@ class LibraryImportService(ILibraryImportService):
         refresh would add, so a playlist holding it has genuinely changed.
 
         Whatever the export never claimed is what a refresh would delete.
+
+        A kept track whose cue points or grid differ from the stored ones is
+        counted in ``diff.marks_changed`` (WAVE-04), by comparing the digest of
+        each list of values. It is one count, not a per-field change: marks are
+        copies of Rekordbox's, not something a user would refuse (DEC-118).
         """
         by_rekordbox_id, by_path = snapshot
         unclaimed = {track.id: track for track in by_rekordbox_id.values()}
         claimed: set = set()
         rows_for_refs: dict = {}
 
-        for incoming in iter_collection_tracks(xml_path):
+        for incoming, incoming_marks in iter_collection_entries(xml_path):
             if should_cancel is not None and should_cancel():
                 raise ImportCancelled("Cancelled while computing the diff")
 
@@ -859,6 +960,16 @@ class LibraryImportService(ILibraryImportService):
             rows_for_refs[incoming.rekordbox_track_id] = stored.id
             claimed.add(stored.id)
             unclaimed.pop(stored.id, None)
+
+            stored_marks = (
+                EMPTY_FINGERPRINT
+                if stored.id is None
+                else fingerprints.get(stored.id, EMPTY_FINGERPRINT)
+            )
+            if stored_marks != marks_fingerprint(
+                incoming_marks.cues, incoming_marks.grid
+            ):
+                diff.marks_changed += 1
 
             if match.relinked:
                 diff.relinked.add(
@@ -995,6 +1106,7 @@ class LibraryImportService(ILibraryImportService):
                     "playlists": summary.playlists.playlists,
                     "folders": summary.playlists.folders,
                     "entries": summary.playlists.entries,
+                    "marks": summary.marks.to_dict(),
                     "duration_seconds": round(summary.duration_seconds, 3),
                 },
             )
@@ -1022,6 +1134,7 @@ class LibraryImportService(ILibraryImportService):
                     "folders": summary.playlists.folders,
                     "entries": summary.playlists.entries,
                     "missing_track_refs": summary.playlists.missing_count,
+                    "marks": summary.marks.to_dict(),
                     "duration_seconds": round(summary.duration_seconds, 3),
                 },
             )

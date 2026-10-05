@@ -91,6 +91,10 @@ export interface DiffLine {
  * Removals are kept even at zero, and are the only line that is: "0 removed" is
  * the reassurance a user is looking for before they press the button, and a
  * line that simply is not there does not reassure anybody.
+ *
+ * Changed cue points and grids are one line, counted in tracks (WAVE-04): they
+ * are read-only copies of Rekordbox's, so there is nothing in them to refuse,
+ * and a per-cue list would bury the lines that matter (DEC-118).
  */
 export function diffLines(diff: RefreshDiff): DiffLine[] {
   const lines: DiffLine[] = [
@@ -103,6 +107,11 @@ export function diffLines(diff: RefreshDiff): DiffLine[] {
       destructive: true,
     },
     { key: "relinked", label: "Re-linked after renumbering", count: diff.tracks.relinked.count },
+    {
+      key: "marks_changed",
+      label: "Tracks whose cues or beat grid changed",
+      count: diff.tracks.marks_changed ?? 0,
+    },
     { key: "playlists_added", label: "New playlists", count: diff.playlists.added.count },
     { key: "playlists_changed", label: "Edited playlists", count: diff.playlists.changed.count },
     { key: "playlists_removed", label: "Deleted playlists", count: diff.playlists.removed.count },
@@ -195,6 +204,9 @@ export function appliedLine(result: RefreshApplied): string {
   if (result.tracks_inserted > 0) parts.push(`${formatCount(result.tracks_inserted)} added`);
   if (result.tracks_deleted > 0) parts.push(`${formatCount(result.tracks_deleted)} removed`);
   if (result.relinked_count > 0) parts.push(`${formatCount(result.relinked_count)} re-linked`);
+  // Marks CuePoint cannot read are skipped and counted, never stored (DEC-118).
+  const skipped = result.marks?.skipped ?? 0;
+  if (skipped > 0) parts.push(`${pluralize(skipped, "unreadable mark")} skipped`);
   return parts.join(" · ");
 }
 

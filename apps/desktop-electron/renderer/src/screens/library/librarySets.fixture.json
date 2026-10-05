@@ -609,6 +609,13 @@
       "label": null,
       "remixers": []
     },
+    "marks": {
+      "beat_grid": null,
+      "cues": [],
+      "hot_cues": 0,
+      "memory_cues": 0,
+      "read": false
+    },
     "metadata": {
       "effective_rating": null,
       "favorite": false,

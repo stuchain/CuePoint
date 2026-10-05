@@ -337,7 +337,11 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await menu(win, "Copy set list");
       await expect(win.getByText("Copied the set list for “Friday”.")).toBeVisible({ timeout: 15_000 });
       const copied = await app.evaluate(({ clipboard }) => clipboard.readText());
-      expect(copied).toBe(readFileSync(path.join(lists, "Friday.txt"), "utf-8"));
+      // Windows' clipboard holds text with CRLF line ends, which Chromium writes
+      // for any text put on it; the lines are what must match the file.
+      expect(copied.replace(/\r\n/g, "\n")).toBe(
+        readFileSync(path.join(lists, "Friday.txt"), "utf-8"),
+      );
 
       // --- 7. exported to Rekordbox with the Set ticked ---------------------------------
       const exported = path.join(workspace, "out", "CuePoint Export.xml");

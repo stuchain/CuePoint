@@ -578,12 +578,58 @@ export interface LibraryFilterVocabulary {
   sortable: string[];
 }
 
+/** Rekordbox's kinds of mark, from its `Type` 0–4 (WAVE-04). */
+export type TrackCueKind = "cue" | "fade_in" | "fade_out" | "load" | "loop";
+
+/** One cue point, loop, fade or load point, read-only from Rekordbox (DEC-118). */
+export interface TrackCue {
+  kind: TrackCueKind;
+  /** The hot cue slot, 0–7 for A–H; null for a memory cue. */
+  hot_cue: number | null;
+  start_ms: number;
+  /** Where a loop ends; null for anything else. */
+  end_ms: number | null;
+  name: string | null;
+  /** `#rrggbb`, or null when Rekordbox gave no colour. */
+  color: string | null;
+}
+
+/** A track's beat grid, summed up; the markers travel with its waveform. */
+export interface TrackBeatGridSummary {
+  markers: number;
+  /** The first marker's tempo. */
+  bpm: number;
+  min_bpm: number;
+  max_bpm: number;
+  /** True when the grid changes tempo, not merely when it has several markers. */
+  variable: boolean;
+}
+
+/** A track's cue points and beat grid, as the track detail carries them (WAVE-04). */
+export interface TrackMarksSummary {
+  /**
+   * Whether the library's marks have been read. False on a library imported
+   * before WAVE-04 whose source has changed since: its marks arrive with the
+   * next refresh, which is not the same as having none.
+   */
+  read: boolean;
+  hot_cues: number;
+  memory_cues: number;
+  cues: TrackCue[];
+  beat_grid: TrackBeatGridSummary | null;
+}
+
 export interface LibraryTrackDetail {
   track: LibraryTrackRow;
   playlists: LibraryPlaylistNode[];
   playlist_count: number;
   /** Its artists and label as links to their pages (DISCOVER-11). */
   credits?: TrackCreditLinks;
+  /**
+   * Its cue points and beat grid, read-only from Rekordbox (WAVE-04). Absent
+   * from an engine older than them, which the Inspector shows as nothing.
+   */
+  marks?: TrackMarksSummary;
 }
 
 export interface LibrarySearchResponse {

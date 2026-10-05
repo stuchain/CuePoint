@@ -53,6 +53,7 @@ function removing(references: Partial<RefreshReferences>, diffId = "d1"): Refres
       ]),
       relinked: category(),
       notable_changed_count: 0,
+      marks_changed: 0,
     },
     playlists: { added: category(), changed: category(), removed: category() },
     references: { ...NO_REFERENCES, ...references },
@@ -125,5 +126,21 @@ describe("RefreshPreviewDialog", () => {
     );
     expect(screen.getByRole("checkbox")).not.toBeChecked();
     expect(screen.getByRole("button", { name: applyLabel(next) })).toBeDisabled();
+  });
+
+  it("offers to apply a refresh that changes only cues and grids (WAVE-04)", () => {
+    // The engine counts such a diff as not empty: the marks it would write are
+    // a change, and one line says so rather than a list of cues.
+    const marksOnly: RefreshDiff = {
+      ...removing({}),
+      tracks: { ...removing({}).tracks, removed: category(), marks_changed: 12 },
+    };
+    const { onApply, apply } = renderDialog(marksOnly);
+
+    expect(screen.getByText("Tracks whose cues or beat grid changed")).toBeInTheDocument();
+    expect(screen.getByTestId("count-marks_changed")).toHaveTextContent("12");
+    expect(screen.queryByText(/already matches this export/)).not.toBeInTheDocument();
+    fireEvent.click(apply());
+    expect(onApply).toHaveBeenCalledWith({ confirmReferences: false });
   });
 });

@@ -1,0 +1,4 @@
+# Compared byte for byte by test_export_unchanged_by_marks.py: a checkout must
+# not convert their line endings.
+src/tests/fixtures/rekordbox/marks.xml -text
+src/tests/fixtures/rekordbox/marks_export.xml -text

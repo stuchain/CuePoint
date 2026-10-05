@@ -125,6 +125,11 @@ _ALLOWED = {
     # The one retry loop for a write that finds the database busy: it opens
     # the transaction it retries, and runs no SQL of its own.
     "services/busy_wait.py",
+    # WAVE-04's marks backfill writes a chunk of tracks' marks per transaction,
+    # each after checking, in that transaction, that no import or refresh has
+    # read them since it started, so it never writes over what one did. The SQL
+    # is the marks, track and source repositories'; no SQL is run there.
+    "services/marks_backfill_service.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 

@@ -48,6 +48,7 @@ function diff(overrides: Partial<RefreshDiff> = {}): RefreshDiff {
       removed: category(),
       relinked: category(),
       notable_changed_count: 0,
+      marks_changed: 0,
     },
     playlists: {
       added: category(),
@@ -190,6 +191,28 @@ describe("diffLines", () => {
       "playlists_changed",
       "playlists_removed",
     ]);
+  });
+
+  it("counts the tracks whose cues or grid changed as one line (WAVE-04, DEC-118)", () => {
+    const withMarks = diff({ tracks: { ...diff().tracks, marks_changed: 12 } });
+    const lines = diffLines(withMarks);
+    expect(lines.map((line) => line.key)).toEqual(["removed", "marks_changed"]);
+    const marks = lines.find((line) => line.key === "marks_changed");
+    expect(marks).toEqual({
+      key: "marks_changed",
+      label: "Tracks whose cues or beat grid changed",
+      count: 12,
+    });
+  });
+
+  it("leaves the marks line out at zero, and out of an engine that sends none", () => {
+    expect(diffLines(diff()).map((line) => line.key)).not.toContain("marks_changed");
+    const { marks_changed: _omitted, ...older } = diff().tracks;
+    expect(
+      diffLines(diff({ tracks: older as ReturnType<typeof diff>["tracks"] })).map(
+        (line) => line.key,
+      ),
+    ).not.toContain("marks_changed");
   });
 });
 
@@ -362,6 +385,7 @@ describe("appliedLine", () => {
         set_track_count: 0,
         set_ids: [],
       },
+      marks: { cues: 0, markers: 0, skipped: 0 },
       duration_seconds: 0.6,
       summary_line: "Library refreshed",
       ...overrides,
@@ -383,6 +407,16 @@ describe("appliedLine", () => {
     expect(quiet).not.toContain("added");
     expect(quiet).not.toContain("removed");
     expect(quiet).not.toContain("re-linked");
+    expect(quiet).not.toContain("skipped");
+  });
+
+  it("says how many marks it could not read (WAVE-04)", () => {
+    expect(appliedLine(applied({ marks: { cues: 9, markers: 1, skipped: 3 } }))).toContain(
+      "3 unreadable marks skipped",
+    );
+    expect(appliedLine(applied({ marks: { cues: 9, markers: 1, skipped: 1 } }))).toContain(
+      "1 unreadable mark skipped",
+    );
   });
 });
 

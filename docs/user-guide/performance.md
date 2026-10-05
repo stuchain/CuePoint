@@ -237,6 +237,27 @@ The upgrade runs once, on the first launch of the version that adds Sets, after
 the launch backup. It changes no row of any Collection, and `bench_sets.py`
 checks that on every copy it upgrades.
 
+## Cue points and beat grids
+
+Measured with `python scripts/bench_marks.py` on a generated 50,000-track
+collection, in two shapes: a **typical** one (every track analysed with a grid,
+40% of them prepared with five cues, 3.3 marks a track) and one where **every
+track is prepared** with a grid and seven cues. Two runs, the second figure in
+each pair from the second run.
+
+| What you did | Time |
+| --- | --- |
+| Read a typical collection, with its cues and grids | 2.38 / 2.39 s (1.97 s without them) |
+| Read a collection where every track is prepared | 3.37 / 3.39 s (2.64 s without them) |
+| Import it: 350,000 cues and 50,000 grid markers | 9.6 / 9.5 s (6.4 s without them) |
+| Check for changes after one cue moved in Rekordbox | 7.6 / 7.5 s |
+| Read the cues of a library imported before this release | 6.7 / 6.6 s, once, in the background |
+
+**Reading cues adds about a fifth to reading a typical collection**, and a little
+over a quarter when every track carries eight marks. Most of the rest of an
+import's extra time is writing them, once. A refresh compares each track's cues
+with the stored ones without holding them all in memory.
+
 ## Memory while browsing
 
 The numbers above are the engine's. This one is the window's, measured in the

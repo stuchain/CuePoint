@@ -27,6 +27,13 @@
       },
       "remixers": []
     },
+    "marks": {
+      "beat_grid": null,
+      "cues": [],
+      "hot_cues": 0,
+      "memory_cues": 0,
+      "read": false
+    },
     "metadata": {
       "created_at": null,
       "effective_rating": null,
@@ -106,6 +113,13 @@
           "role": "remixer"
         }
       ]
+    },
+    "marks": {
+      "beat_grid": null,
+      "cues": [],
+      "hot_cues": 0,
+      "memory_cues": 0,
+      "read": false
     },
     "metadata": {
       "created_at": null,
@@ -1605,6 +1619,13 @@
         },
         "remixers": []
       },
+      "marks": {
+        "beat_grid": null,
+        "cues": [],
+        "hot_cues": 0,
+        "memory_cues": 0,
+        "read": false
+      },
       "metadata": {
         "created_at": null,
         "effective_rating": null,
@@ -1685,6 +1706,13 @@
           }
         ]
       },
+      "marks": {
+        "beat_grid": null,
+        "cues": [],
+        "hot_cues": 0,
+        "memory_cues": 0,
+        "read": false
+      },
       "metadata": {
         "created_at": null,
         "effective_rating": null,
@@ -1756,6 +1784,13 @@
           "role": null
         },
         "remixers": []
+      },
+      "marks": {
+        "beat_grid": null,
+        "cues": [],
+        "hot_cues": 0,
+        "memory_cues": 0,
+        "read": false
       },
       "metadata": {
         "created_at": null,
@@ -1829,6 +1864,13 @@
         },
         "remixers": []
       },
+      "marks": {
+        "beat_grid": null,
+        "cues": [],
+        "hot_cues": 0,
+        "memory_cues": 0,
+        "read": false
+      },
       "metadata": {
         "created_at": null,
         "effective_rating": null,
@@ -1900,6 +1942,13 @@
           "role": null
         },
         "remixers": []
+      },
+      "marks": {
+        "beat_grid": null,
+        "cues": [],
+        "hot_cues": 0,
+        "memory_cues": 0,
+        "read": false
       },
       "metadata": {
         "created_at": null,
