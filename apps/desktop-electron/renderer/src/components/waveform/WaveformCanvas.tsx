@@ -12,12 +12,16 @@
  * root's inline tokens rather than its `data-theme`.
  *
  * `aria-hidden`: whatever holds it carries the meaning in words.
+ *
+ * Its box, the pixel ratio and the theme are watched once for every canvas on
+ * screen (`waveformEnvironment.ts`), since the Library's column may show forty.
  */
-import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useLayoutEffect, useMemo } from "react";
 
 import type { BeatGridMarker, TrackCue } from "../../api/cuepointBridge.types";
-import { useScale } from "../../tokens/ScaleContext";
+import { useScaleFactor } from "../../tokens/ScaleContext";
 import { useWaveformColour } from "./waveformColour";
+import { useBoxSize, useDevicePixelRatio, useThemeRevision } from "./waveformEnvironment";
 import { layoutWaveform, type WaveformColourMode } from "./waveformLayout";
 import { paintLayout } from "./waveformPaint";
 import "./WaveformCanvas.css";
@@ -37,34 +41,6 @@ export interface WaveformCanvasProps {
   className?: string;
 }
 
-/** The display's pixel ratio, followed as it changes. */
-function useDevicePixelRatio(): number {
-  const [ratio, setRatio] = useState(() => window.devicePixelRatio || 1);
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return undefined;
-    const query = window.matchMedia(`(resolution: ${ratio}dppx)`);
-    const changed = () => setRatio(window.devicePixelRatio || 1);
-    query.addEventListener?.("change", changed);
-    return () => query.removeEventListener?.("change", changed);
-  }, [ratio]);
-  return ratio;
-}
-
-/** A number that changes whenever the theme's tokens may have. */
-function useThemeRevision(): number {
-  const [revision, bump] = useReducer((n: number) => n + 1, 0);
-  useEffect(() => {
-    if (typeof MutationObserver === "undefined") return undefined;
-    const observer = new MutationObserver(bump);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme", "style"],
-    });
-    return () => observer.disconnect();
-  }, []);
-  return revision;
-}
-
 export function WaveformCanvas({
   data,
   durationMs,
@@ -77,31 +53,12 @@ export function WaveformCanvas({
   cueLabels = true,
   className,
 }: WaveformCanvasProps) {
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const [box, setBox] = useState({ width: 0, height: 0 });
-  const { scale } = useScale();
+  const [canvas, box] = useBoxSize<HTMLCanvasElement>();
+  const scale = useScaleFactor();
   const ratio = useDevicePixelRatio();
   const theme = useThemeRevision();
   const [preferred] = useWaveformColour();
   const colourMode = mode ?? preferred;
-
-  useEffect(() => {
-    const element = canvas.current;
-    if (!element) return undefined;
-    const measure = () => {
-      const rect = element.getBoundingClientRect();
-      setBox((previous) =>
-        previous.width === rect.width && previous.height === rect.height
-          ? previous
-          : { width: rect.width, height: rect.height },
-      );
-    };
-    measure();
-    if (typeof ResizeObserver === "undefined") return undefined;
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
 
   const layout = useMemo(
     () =>
@@ -131,7 +88,7 @@ export function WaveformCanvas({
     const context = element.getContext("2d");
     if (!context) return;
     paintLayout(context, layout, getComputedStyle(element));
-  }, [layout, theme]);
+  }, [canvas, layout, theme]);
 
   return (
     <canvas

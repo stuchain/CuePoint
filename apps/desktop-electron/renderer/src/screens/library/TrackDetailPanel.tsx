@@ -22,7 +22,8 @@
  * imported record stays read-only, field for field.
  *
  * WAVE-04 completes the imported record with the track's cue points and beat
- * grid (`TrackMarksSection`), read-only like the rest of it (DEC-118).
+ * grid (`TrackMarksSection`), read-only like the rest of it (DEC-118). WAVE-06
+ * draws them on the track's waveform under the header (`TrackWaveform`).
  *
  * **A field Rekordbox did not supply reads as absent, not as zero.** That is
  * why LIBRARY-01 made those columns nullable (DEC-034): unrated and rated-zero
@@ -48,6 +49,7 @@ import { TrackArtwork } from "./TrackArtwork";
 import { TrackBeatportSection } from "./TrackBeatportSection";
 import { TrackHistorySection } from "./TrackHistorySection";
 import { TrackMarksSection } from "./TrackMarksSection";
+import { TrackWaveform } from "./TrackWaveform";
 import { TrackYours } from "./TrackYours";
 import { useTrackHistory } from "./useTrackHistory";
 import { useTrackWrites } from "./useTrackWrites";
@@ -272,6 +274,14 @@ export function TrackDetailPanel({
           </p>
         )}
       </header>
+
+      {/* The whole track, its marks on it (WAVE-06): under the header, the
+          panel's full width. Keyed by track, so a new track never shows the
+          last one's picture while its own is read; the key is its own, since
+          TrackYours' sits in the same list keyed by the bare track id. */}
+      {track.id != null && window.cuepoint?.waveforms && (
+        <TrackWaveform key={`waveform-${track.id}`} trackId={track.id} />
+      )}
 
       {/* The caller's own slot: its key is the caller's (Prepare keys its zone
           by entry id), and in the list beside TrackYours' track-id key two

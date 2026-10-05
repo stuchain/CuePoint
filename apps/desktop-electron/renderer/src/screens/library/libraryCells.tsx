@@ -3,10 +3,17 @@
  *
  * An overridden value carries a small marker whose tooltip names its source,
  * and the artwork column draws a thumbnail through CLEAN-09's guarded route.
+ * The waveform column draws each row's waveform (WAVE-06).
  */
 import { useEffect, useState } from "react";
 
 import type { LibraryTrackRow, OverrideField } from "../../api/cuepointBridge.types";
+import { waveformEntryWords, waveformStateWord } from "../../components/waveform/analysisWords";
+import { useWaveform } from "../../components/waveform/useWaveforms";
+import { WaveformCanvas } from "../../components/waveform/WaveformCanvas";
+import type { WaveformEntry } from "../../components/waveform/waveformCache";
+import { useWaveformBox } from "../../components/waveform/waveformEnvironment";
+import { useSettled } from "../../components/waveform/waveformSettle";
 import { artworkText, effectiveText, overrideMark } from "./libraryClean";
 
 /** A value CuePoint may override, marked when it does. */
@@ -98,4 +105,48 @@ export function RowArtwork({ row }: { row: LibraryTrackRow }) {
     return <img className="library-cell__artwork" src={url} alt={artworkText(row.artwork)} />;
   }
   return <span className="library-cell__artwork-none">{shown ? "" : artworkText(row.artwork)}</span>;
+}
+
+// ------------------------------------------------------------- waveform
+
+/** The one muted word a cell without a picture shows; empty while it loads. */
+function waveformWord(entry: WaveformEntry | null): string {
+  if (!entry || entry.kind === "loading" || entry.kind === "unknown") return "";
+  if (entry.kind === "error") return "Error";
+  return waveformStateWord(entry.track, entry.paused);
+}
+
+/**
+ * A row's waveform, at the cell's width (WAVE-06).
+ *
+ * The picture asked for is the cell's columns rounded up to a multiple of 16,
+ * so dragging the column wider asks again every 16 columns, and every row of
+ * the column asks at one width, in one batch. A row asks only once it has
+ * been on screen for 100 ms (`useSettled`), so a fast scroll asks for nothing
+ * it passes; a picture already held is drawn at once. The column never puts a
+ * track first in the analysis: forty rows are not a person looking at forty
+ * tracks. A cell without a picture shows one muted word, its title the
+ * sentence.
+ */
+export function RowWaveform({ row }: { row: LibraryTrackRow }) {
+  const trackId = row.id ?? null;
+  const settled = useSettled(trackId);
+  const { box, width } = useWaveformBox<HTMLSpanElement>();
+  const entry = useWaveform(trackId, width, { ask: settled });
+  const track = entry?.kind === "track" ? entry.track : null;
+  const picture = track?.state === "ready" ? track.data : null;
+
+  return (
+    <span
+      ref={box}
+      className="library-cell__waveform"
+      title={picture ? undefined : (waveformEntryWords(entry) ?? undefined)}
+    >
+      {picture && track ? (
+        <WaveformCanvas data={picture} durationMs={track.duration_ms ?? 0} cueLabels={false} />
+      ) : (
+        <span className="library-cell__waveform-word">{waveformWord(entry)}</span>
+      )}
+    </span>
+  );
 }

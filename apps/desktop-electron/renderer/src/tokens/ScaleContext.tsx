@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  DEFAULT_SCALE,
   SCALE_OPTIONS,
   initScale,
   setStoredScale,
@@ -41,4 +42,12 @@ export function useScale(): ScaleContextValue {
   const ctx = useContext(ScaleContext);
   if (!ctx) throw new Error("useScale must be used within ScaleProvider");
   return ctx;
+}
+
+/**
+ * The scale alone, and the default outside a provider: for a part that draws
+ * in scale pixels wherever it is rendered, such as a waveform (WAVE-06).
+ */
+export function useScaleFactor(): ScaleFactor {
+  return useContext(ScaleContext)?.scale ?? DEFAULT_SCALE;
 }

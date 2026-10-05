@@ -99,6 +99,33 @@ restart CuePoint, and it is used again.
 
 ## Waveforms
 
+**In the bar.** Once the playing track's waveform is ready, it fills the space
+between the two times: the part already played is dimmed, and a line marks
+where playback is. Click anywhere on it to jump there, or drag across it to
+find a place and let go to jump once, exactly as with the slider. The slider is
+still underneath, so the keyboard and screen readers seek as before, and the
+focus outline is drawn around the waveform. Until the waveform is ready, or for
+a file CuePoint could not read, the bar shows the plain slider, and hovering it
+says why ("Waiting for analysis", "File missing"). The bar does not get taller.
+
+A track you start playing that is still waiting for the analysis is analysed
+next, ahead of the rest of the library, even while the analysis is paused.
+
+**In the Inspector.** The selected track's waveform sits under its title, the
+width of the panel, with its cue points (hot cues with their letter), loops
+and beat grid on it, as Rekordbox sent them. When the selected track is the one
+playing, the playhead is drawn and a click seeks; any other track's waveform is
+only a picture, and clicking it does not start playback (double-click the row
+for that). A track without a waveform says why in words. Selecting a track
+that is still waiting puts it next in the analysis.
+
+**In the Library.** **Columns…** offers a **Waveform** column, hidden until you
+choose it. Each row draws its track's waveform at the column's width; drag the
+column wider for more detail. A row without one shows a single muted word
+("Waiting", "Paused", "Missing", "Unreadable", "Unchecked"), with the full
+reason on hover. Rows you scroll quickly past are not read, and the column
+never moves a track ahead in the analysis: only playing or selecting one does.
+
 **Settings → Waveforms.**
 
 CuePoint works out a waveform for every track whose file it found, in the

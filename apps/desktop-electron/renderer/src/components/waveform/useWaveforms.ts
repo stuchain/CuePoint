@@ -13,6 +13,11 @@ import { waveformCache, type WaveformCache, type WaveformEntry } from "./wavefor
 export interface UseWaveformsOptions {
   /** Ask for each track's cues and grid too. */
   marks?: boolean;
+  /**
+   * Ask the engine for what the cache does not hold; true unless said. False
+   * reads only what is held, as a row does before it settles (WAVE-06).
+   */
+  ask?: boolean;
   /** The cache to read; the app's own unless a test gives one. */
   cache?: WaveformCache;
 }
@@ -21,7 +26,7 @@ export interface UseWaveformsOptions {
 export function useWaveforms(
   trackIds: readonly number[],
   width: number,
-  { marks = false, cache = waveformCache }: UseWaveformsOptions = {},
+  { marks = false, ask = true, cache = waveformCache }: UseWaveformsOptions = {},
 ): ReadonlyMap<number, WaveformEntry> {
   const [version, changed] = useReducer((n: number) => n + 1, 0);
   // A new array of the same ids is the same request.
@@ -34,9 +39,9 @@ export function useWaveforms(
 
   useEffect(() => cache.subscribe(changed), [cache]);
   useEffect(() => {
-    if (!valid || ids.length === 0) return undefined;
+    if (!ask || !valid || ids.length === 0) return undefined;
     return cache.show(ids, { width, marks });
-  }, [cache, ids, marks, valid, width]);
+  }, [ask, cache, ids, marks, valid, width]);
 
   return useMemo(() => {
     const answers = new Map<number, WaveformEntry>();

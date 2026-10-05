@@ -59,7 +59,7 @@
 
 /* Two rows of the table tall, the Inspector's waveform height (WAVE-06). */
 .cp-waveform-settings__canvas {
-  height: calc(var(--hit-min) * 2);
+  height: calc(var(--row-height) * 2);
   max-width: 100%;
   border: var(--border-width) solid var(--border-outline);
   background: var(--bg-panel);

@@ -17,6 +17,7 @@ import {
   layoutWaveform,
   paintOrder,
   requestWidth,
+  secondsAtOffset,
   waveformColumns,
   waveformUnit,
   type PaintRect,
@@ -129,9 +130,32 @@ describe("the grid of scale pixels", () => {
   });
 
   it("asks for the columns a box draws, within the engine's 16 to 1,200", () => {
-    expect(requestWidth(300, 2, 1)).toBe(150);
+    expect(requestWidth(320, 2, 1)).toBe(160);
     expect(requestWidth(10, 3, 1)).toBe(16);
     expect(requestWidth(5_000, 1, 2)).toBe(1_200);
+  });
+
+  it("rounds a width up to a multiple of 16 columns, so a resize asks again only every 16", () => {
+    // 150 columns at scale 2: 160.
+    expect(requestWidth(300, 2, 1)).toBe(160);
+    // Every width from 290 to 321 CSS pixels (145 to 160 columns) asks for one picture.
+    const widths = new Set<number>();
+    for (let css = 290; css <= 321; css += 1) widths.add(requestWidth(css, 2, 1));
+    expect([...widths]).toEqual([160]);
+    // 1.5 device pixels per CSS pixel at scale 2: a unit of 3, so 100 columns.
+    expect(requestWidth(200, 2, 1.5)).toBe(112);
+    for (const css of [48, 120, 333, 999, 2_400]) {
+      for (const scale of [1, 2, 3]) {
+        for (const ratio of [1, 1.25, 2]) {
+          const width = requestWidth(css, scale, ratio);
+          expect(width % 16).toBe(0);
+          expect(width).toBeGreaterThanOrEqual(
+            Math.min(1_200, waveformColumns(css, scale, ratio)),
+          );
+          expect(width - waveformColumns(css, scale, ratio)).toBeLessThan(16);
+        }
+      }
+    }
   });
 
   it("draws nothing in a box with no room, or from no picture", () => {
@@ -460,5 +484,40 @@ describe("the order a canvas paints", () => {
       "playhead",
     ]);
     expect(order.map((step) => step.translucent)).toEqual([false, false, true, false, false, false, false]);
+  });
+});
+
+describe("the time under a pointer (WAVE-06)", () => {
+  it("is the fraction of the width, of the duration", () => {
+    expect(secondsAtOffset(0, 600, 6)).toBe(0);
+    expect(secondsAtOffset(200, 600, 6)).toBe(2);
+    expect(secondsAtOffset(600, 600, 6)).toBe(6);
+  });
+
+  it("is held within the drawing", () => {
+    expect(secondsAtOffset(-5, 600, 6)).toBe(0);
+    expect(secondsAtOffset(700, 600, 6)).toBe(6);
+  });
+
+  it("is 0 for a drawing with no width or no duration", () => {
+    expect(secondsAtOffset(10, 0, 6)).toBe(0);
+    expect(secondsAtOffset(10, 600, 0)).toBe(0);
+    expect(secondsAtOffset(10, 600, Number.NaN)).toBe(0);
+  });
+
+  it("lands in the column whose time it names, at every scale and ratio", () => {
+    for (const scale of [1, 2, 3]) {
+      for (const ratio of [1, 1.5, 2]) {
+        const cssWidth = 500;
+        const columns = waveformColumns(cssWidth, scale, ratio);
+        const unit = scale * ratio;
+        for (const column of [0, 1, Math.floor(columns / 3), columns - 1]) {
+          // The middle of the column, in CSS pixels.
+          const offset = ((column + 0.5) * Math.round(unit)) / ratio;
+          const seconds = secondsAtOffset(offset, (columns * Math.round(unit)) / ratio, 300);
+          expect(columnAt(seconds * 1000, 300_000, columns)).toBe(column);
+        }
+      }
+    }
   });
 });

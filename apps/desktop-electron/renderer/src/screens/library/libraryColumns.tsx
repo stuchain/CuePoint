@@ -17,7 +17,7 @@ import { fileStatusLabel } from "../clean/cleanFormat";
 import { matchCell } from "../clean/cleanColumns";
 import { starsFor } from "./filterText";
 import { artworkText, effectiveText, formatScore } from "./libraryClean";
-import { OverriddenValue, RowArtwork } from "./libraryCells";
+import { OverriddenValue, RowArtwork, RowWaveform } from "./libraryCells";
 import { formatDuration } from "./trackValues";
 
 export { effective, formatBpm, formatDuration } from "./trackValues";
@@ -222,6 +222,17 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     defaultWidthPx: 64,
     render: (track) => <RowArtwork row={track} />,
     text: (track) => artworkText(track.artwork),
+  },
+  // WAVE-06: hidden until asked for, so the table opens on the rows it did.
+  // Not sortable, and nothing to copy: a picture has no text.
+  {
+    id: "waveform",
+    hiddenByDefault: true,
+    header: "Waveform",
+    minWidthPx: 48,
+    defaultWidthPx: 120,
+    render: (track) => <RowWaveform row={track} />,
+    text: () => "",
   },
 ];
 

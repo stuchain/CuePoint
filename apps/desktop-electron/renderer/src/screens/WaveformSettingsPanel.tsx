@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { Button, Modal, Panel } from "../components";
 import { selectCurrentItem, selectPosition } from "../components/player/playerFormat";
@@ -6,6 +6,7 @@ import { usePlayerValue } from "../components/player/playerStore";
 import {
   ACTION_LABELS,
   PREVIEW_EMPTY_WORDS,
+  WAVEFORM_LOADING_WORDS,
   analysisAction,
   analysisWords,
   deleteDataWords,
@@ -17,26 +18,8 @@ import { useWaveform } from "../components/waveform/useWaveforms";
 import { useWaveformAnalysis } from "../components/waveform/useWaveformAnalysis";
 import { WaveformCanvas } from "../components/waveform/WaveformCanvas";
 import { WAVEFORM_COLOUR_OPTIONS, useWaveformColour } from "../components/waveform/waveformColour";
-import { requestWidth } from "../components/waveform/waveformLayout";
-import { useScale } from "../tokens/ScaleContext";
+import { useWaveformBox } from "../components/waveform/waveformEnvironment";
 import "./waveform-settings.css";
-
-/** The width of a box, followed as it changes. */
-function useBoxWidth(): [React.RefObject<HTMLDivElement | null>, number] {
-  const box = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(0);
-  useEffect(() => {
-    const element = box.current;
-    if (!element) return undefined;
-    const measure = () => setWidth(element.getBoundingClientRect().width);
-    measure();
-    if (typeof ResizeObserver === "undefined") return undefined;
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return [box, width];
-}
 
 /**
  * The colour choice, shown on the track in the player: the waveform a person
@@ -45,16 +28,14 @@ function useBoxWidth(): [React.RefObject<HTMLDivElement | null>, number] {
 function WaveformPreview() {
   const item = usePlayerValue(selectCurrentItem);
   const position = usePlayerValue(selectPosition);
-  const { scale } = useScale();
-  const [box, cssWidth] = useBoxWidth();
-  const width = requestWidth(cssWidth, scale, window.devicePixelRatio || 1);
+  const { box, width } = useWaveformBox<HTMLDivElement>();
   const trackId = item?.trackId ?? null;
   const entry = useWaveform(trackId, width, { marks: true });
 
   let words: string | null = null;
   if (!item) words = PREVIEW_EMPTY_WORDS;
   else if (trackId === null) words = "The track in the player is not in the library.";
-  else if (!entry || entry.kind === "loading") words = "Reading its waveform…";
+  else if (!entry || entry.kind === "loading") words = WAVEFORM_LOADING_WORDS;
   else if (entry.kind === "unknown") words = "The track in the player is not in the library.";
   else if (entry.kind === "error") words = `Its waveform could not be read: ${entry.message}`;
   else if (entry.track.state !== "ready" || !entry.track.data) {

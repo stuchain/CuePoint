@@ -26,8 +26,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   beat grid and playhead; and **Delete waveform data…**, which first says how
   much disk the waveforms take and that the whole library will be analysed
   again. Every theme, and every custom theme, has waveform colours kept readable
-  against its panels. Waveforms are drawn in the player bar, the Inspector and
-  the Library in a later release
+  against its panels
+- **Waveforms in the player bar, the Inspector and the Library.** The playing
+  track's waveform fills the bar's seek control, the part already played dimmed,
+  the playhead moving across it; click or drag on it to seek, exactly as on the
+  slider, which is still there for the keyboard and screen readers and still
+  shows until the waveform is ready (its tooltip says why). The bar is no
+  taller. The Inspector draws the selected track's waveform under its header,
+  with its cue points, loops and beat grid; when that track is the one playing
+  it shows the playhead and a click seeks, otherwise it is a picture and a click
+  does nothing. A track you play or select that is still waiting is analysed
+  next. The Library offers a **Waveform** column (Columns…), hidden until you
+  choose it: each row draws its track's waveform, or one muted word ("Waiting",
+  "Missing") when it has none, and rows that scroll quickly past are not read
 - **Cue points and beat grids from Rekordbox.** An import and a refresh read
   each track's hot cues, memory cues, loops, fades, load points and beat grid
   from the export, and the Inspector lists them under **From Rekordbox**, one

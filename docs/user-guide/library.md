@@ -87,11 +87,12 @@ else and then going back to **All tracks** does not carry that sort over.
 ### Choosing columns
 
 **Columns…** opens the list. Nine are shown to start with — the ones a DJ reads —
-and twelve more are there if you want them: remixer, year, plays, date added,
-colour, bitrate, comment, the file path, and four from
+and thirteen more are there if you want them: remixer, year, plays, date added,
+colour, bitrate, comment, the file path, four from
 [Clean](#clean-in-the-library) — **Match**, **Score**, **File status** and
-**Artwork**. Turn them on and off, drag a heading to move a column, drag its
-edge to resize it. CuePoint remembers all of it.
+**Artwork** — and **Waveform**, which draws each track's waveform (see
+[Waveforms](player.md#waveforms)). Turn them on and off, drag a heading to move
+a column, drag its edge to resize it. CuePoint remembers all of it.
 
 Key, BPM, genre, label and year show **your** value when you have set one. A
 small mark beside the value says so — **B** when it was applied from Beatport,
@@ -127,6 +128,8 @@ Selecting one track fills the Inspector. From the top:
 - **The track's artwork**, or *No artwork* when it has none, its title, and its
   artists and label. Each artist in the credit, and the label, is a link to
   their page (see [Discover](discover.md#artist-and-label-pages)).
+- **Its waveform**, with its cue points, loops and beat grid; when the track is
+  the one playing, a click on it seeks. See [Waveforms](player.md#waveforms).
 - **Yours** — what you have added in CuePoint: your rating, favorite, notes,
   tags, and your key, BPM, genre, label and year. See
   [Organizing your library](organization.md) and

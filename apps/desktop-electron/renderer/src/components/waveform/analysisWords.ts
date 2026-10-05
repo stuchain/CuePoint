@@ -12,6 +12,7 @@ import type {
   WaveformTrack,
 } from "../../api/cuepointBridge.types";
 import { aboutDuration } from "../shell/useActiveJob";
+import type { WaveformEntry } from "./waveformCache";
 
 /** What the one button beside the analysis does, if there is one. */
 export type WaveformAnalysisAction = "pause" | "resume" | "start" | null;
@@ -113,6 +114,52 @@ export function waveformStateWords(
     default:
       return DECODER_MISSING_WORDS;
   }
+}
+
+/**
+ * A track's state as one word, for a cell of the Library's "Waveform" column
+ * (WAVE-06); empty for a ready one. The cell's title says it in full.
+ */
+export function waveformStateWord(
+  track: Pick<WaveformTrack, "state" | "reason">,
+  paused: boolean,
+): string {
+  switch (track.state) {
+    case "ready":
+      return "";
+    case "waiting":
+      return paused ? "Paused" : "Waiting";
+    case "failed":
+      return "Unreadable";
+    case "missing":
+      return "Missing";
+    case "unchecked":
+      return "Unchecked";
+    case "unavailable":
+    default:
+      return "Unavailable";
+  }
+}
+
+/** The Inspector's title over a waveform that is a picture only (WAVE-06). */
+export const INSPECTOR_PICTURE_TITLE = "The track's waveform. Play the track to seek in it here.";
+
+/** The Inspector's title over the playing track's waveform. */
+export const INSPECTOR_SEEK_TITLE = "Click to seek";
+
+/** The words a view shows for an answer that loads, while it loads. */
+export const WAVEFORM_LOADING_WORDS = "Reading its waveform…";
+
+/**
+ * Why an answer draws no picture, in words (WAVE-06); null when it draws one,
+ * and while it loads, which each view says its own way.
+ */
+export function waveformEntryWords(entry: WaveformEntry | null | undefined): string | null {
+  if (!entry || entry.kind === "loading") return null;
+  if (entry.kind === "unknown") return "This track is no longer in the library";
+  if (entry.kind === "error") return `Its waveform could not be read: ${entry.message}`;
+  if (entry.track.state === "ready" && entry.track.data) return null;
+  return waveformStateWords(entry.track, entry.paused) || "No waveform yet";
 }
 
 /** A size on disk in words: bytes, KB, MB or GB, one decimal above a kilobyte. */

@@ -1,5 +1,10 @@
 import { useCallback, useRef, useState } from "react";
 import { PixelIcon } from "../PixelIcon";
+import { waveformEntryWords } from "../waveform/analysisWords";
+import { useWaveform } from "../waveform/useWaveforms";
+import { useWaveformRequest } from "../waveform/useWaveformRequest";
+import { WaveformCanvas } from "../waveform/WaveformCanvas";
+import { useWaveformBox } from "../waveform/waveformEnvironment";
 import {
   formatTime,
   formatTrackMeta,
@@ -34,6 +39,17 @@ import "./PlayerBar.css";
  *
  * Shuffle, repeat and the queue panel are deliberately absent: they are
  * PLAYER-07's and PLAYER-08's, and the queue model behind them already exists.
+ *
+ * **The waveform is the seek control's picture (WAVE-06, DEC-114).** Once the
+ * playing track's waveform is ready it fills the seek region, laid across the
+ * duration the player reports, with the played part dimmed and the playhead
+ * where main says playback is (or where a drag previews). The range input
+ * stays the control: it lies over the waveform, transparent, so keyboard,
+ * screen reader and pointer all still go through it and the logic above, and
+ * its focus ring is drawn around the waveform. Until the waveform is ready, or
+ * when there is none, the slider shows exactly as before, and the region's
+ * title says why in words. A track that starts playing and waits for the
+ * analysis is put first in its queue.
  */
 
 const bridge = () => window.cuepoint?.player;
@@ -61,6 +77,16 @@ export function PlayerBar({ queueOpen = false, onToggleQueue }: PlayerBarProps =
 
   const shownPosition = scrubSeconds ?? position ?? 0;
   const seekMax = duration && duration > 0 ? duration : 0;
+
+  const trackId = item?.trackId ?? null;
+  const wave = useWaveformBox<HTMLDivElement>();
+  const waveform = useWaveform(trackId, wave.width);
+  useWaveformRequest(trackId, waveform);
+  const picture =
+    seekMax > 0 && waveform?.kind === "track" && waveform.track.state === "ready"
+      ? waveform.track.data
+      : null;
+  const waveformWords = waveformEntryWords(waveform);
 
   const onScrub = useCallback((value: number) => {
     scrubbing.current = true;
@@ -142,25 +168,44 @@ export function PlayerBar({ queueOpen = false, onToggleQueue }: PlayerBarProps =
         </span>
       </div>
 
-      <div className="cp-player-bar__seek">
+      <div
+        className="cp-player-bar__seek"
+        // Why there is no waveform, in the title and never in the region's
+        // space, so the bar never shows an empty box (WAVE-06).
+        title={picture ? undefined : (waveformWords ?? undefined)}
+      >
         {/* `--font-data` (DEC-048): these are dense numerals that change every
             second, which is the case that token exists for. */}
         <span className="cp-player-bar__time">{formatTime(shownPosition)}</span>
-        <input
-          type="range"
-          className="cp-player-bar__slider"
-          min={0}
-          max={seekMax || 1}
-          step={0.5}
-          value={Math.min(shownPosition, seekMax || 1)}
-          disabled={seekMax === 0}
-          onChange={(event) => onScrub(Number(event.target.value))}
-          onPointerUp={commitScrub}
-          onKeyUp={commitScrub}
-          onBlur={commitScrub}
-          aria-label="Seek"
-          aria-valuetext={`${formatTime(shownPosition)} of ${formatTime(duration)}`}
-        />
+        <div
+          ref={wave.box}
+          className={`cp-player-bar__wave${picture ? " cp-player-bar__wave--drawn" : ""}`}
+          data-testid="player-waveform"
+        >
+          {picture && (
+            <WaveformCanvas
+              data={picture}
+              durationMs={seekMax * 1000}
+              playheadMs={shownPosition * 1000}
+              className="cp-player-bar__waveform"
+            />
+          )}
+          <input
+            type="range"
+            className="cp-player-bar__slider"
+            min={0}
+            max={seekMax || 1}
+            step={0.5}
+            value={Math.min(shownPosition, seekMax || 1)}
+            disabled={seekMax === 0}
+            onChange={(event) => onScrub(Number(event.target.value))}
+            onPointerUp={commitScrub}
+            onKeyUp={commitScrub}
+            onBlur={commitScrub}
+            aria-label="Seek"
+            aria-valuetext={`${formatTime(shownPosition)} of ${formatTime(duration)}`}
+          />
+        </div>
         <span className="cp-player-bar__time">{formatTime(duration)}</span>
       </div>
 

@@ -270,6 +270,37 @@ describe("the colour choice", () => {
 });
 
 describe("the preview", () => {
+  // jsdom lays nothing out; the preview asks for a picture only once its box
+  // has a width (WAVE-06), so each test gives it one.
+  beforeEach(() => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 320,
+      height: 66,
+    } as DOMRect);
+  });
+
+  it("asks for nothing until its box has a width", async () => {
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue({
+      width: 0,
+      height: 0,
+    } as DOMRect);
+    const bridge = install({ current: item() });
+    renderPanel();
+
+    expect(await screen.findByText("Reading its waveform…")).toBeInTheDocument();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+    expect(bridge.get).not.toHaveBeenCalled();
+  });
+
+  it("asks at its box's columns, rounded up to a multiple of 16", async () => {
+    const bridge = install({ current: item() });
+    renderPanel();
+
+    // 320 CSS pixels at the default scale of 2: 160 columns.
+    await waitFor(() => expect(bridge.get).toHaveBeenCalled());
+    expect(bridge.get).toHaveBeenCalledWith(expect.objectContaining({ width: 160 * (window.devicePixelRatio || 1) }));
+  });
+
   it("asks for a track to be played when nothing is in the player", async () => {
     install();
     renderPanel();

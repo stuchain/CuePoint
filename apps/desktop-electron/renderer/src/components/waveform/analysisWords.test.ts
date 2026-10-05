@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { WaveformAnalysisStatus } from "../../api/cuepointBridge.types";
+import type {
+  WaveformAnalysisStatus,
+  WaveformTrack,
+  WaveformTrackState,
+} from "../../api/cuepointBridge.types";
 import {
   ACTION_LABELS,
   DECODER_MISSING_WORDS,
@@ -9,6 +13,8 @@ import {
   deleteDataWords,
   deletedWords,
   sizeWords,
+  waveformEntryWords,
+  waveformStateWord,
   waveformStateWords,
 } from "./analysisWords";
 
@@ -176,5 +182,65 @@ describe("what Delete waveform data asks first", () => {
     expect(deletedWords(1_234, 252_000_000)).toBe("Deleted 1,234 waveforms, freeing 240.3 MB.");
     expect(deletedWords(1, 2_048)).toBe("Deleted 1 waveform, freeing 2.0 KB.");
     expect(deletedWords(0, 0)).toBe("There was no waveform data to delete.");
+  });
+});
+
+describe("a track's waveform in one word (WAVE-06)", () => {
+  it.each<[WaveformTrackState, boolean, string]>([
+    ["ready", false, ""],
+    ["waiting", false, "Waiting"],
+    ["waiting", true, "Paused"],
+    ["failed", false, "Unreadable"],
+    ["missing", false, "Missing"],
+    ["unchecked", false, "Unchecked"],
+    ["unavailable", false, "Unavailable"],
+  ])("says %s (paused: %s) as %j", (state, paused, word) => {
+    expect(waveformStateWord({ state, reason: null }, paused)).toBe(word);
+  });
+
+  it("is one word for every state", () => {
+    for (const state of ["waiting", "failed", "missing", "unchecked", "unavailable"] as const) {
+      expect(waveformStateWord({ state, reason: "x" }, false)).toMatch(/^\w+$/);
+    }
+  });
+});
+
+describe("why an answer draws no picture (WAVE-06)", () => {
+  function track(state: WaveformTrackState, overrides: Partial<WaveformTrack> = {}): WaveformTrack {
+    return {
+      track_id: 1,
+      state,
+      reason: null,
+      duration_ms: state === "ready" ? 1_000 : null,
+      data: state === "ready" ? new Uint8Array(64) : null,
+      marks: null,
+      ...overrides,
+    };
+  }
+
+  it("says nothing for a picture, nothing while it loads, and nothing without an answer", () => {
+    expect(waveformEntryWords({ kind: "track", paused: false, track: track("ready") })).toBeNull();
+    expect(waveformEntryWords({ kind: "loading" })).toBeNull();
+    expect(waveformEntryWords(null)).toBeNull();
+  });
+
+  it("says a track's state as its sentence, a paused analysis included", () => {
+    expect(waveformEntryWords({ kind: "track", paused: true, track: track("waiting") })).toBe("Analysis paused");
+    expect(
+      waveformEntryWords({ kind: "track", paused: false, track: track("failed", { reason: "timeout" }) }),
+    ).toBe("This file could not be read (timeout)");
+  });
+
+  it("says a failed read, and a track that is gone", () => {
+    expect(waveformEntryWords({ kind: "error", message: "engine unreachable" })).toBe(
+      "Its waveform could not be read: engine unreachable",
+    );
+    expect(waveformEntryWords({ kind: "unknown" })).toBe("This track is no longer in the library");
+  });
+
+  it("never says nothing for a ready answer without its picture", () => {
+    expect(waveformEntryWords({ kind: "track", paused: false, track: track("ready", { data: null }) })).toBe(
+      "No waveform yet",
+    );
   });
 });

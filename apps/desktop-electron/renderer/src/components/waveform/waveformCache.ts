@@ -12,7 +12,10 @@
  * **Refreshed.** While a view shows a track that is waiting for the analysis,
  * the analysis is read every 2 seconds, and when its count of finished files
  * moves, the waiting tracks being shown are asked for again, at most once
- * every 2 seconds. That is how a waveform appears while someone watches.
+ * every 2 seconds. That is how a waveform appears while someone watches. The
+ * first read after the following starts asks again too: a track requested the
+ * moment it was shown is analysed in about a second, before that read, and a
+ * count first noted after it would never move for it (WAVE-06).
  *
  * **Emptied** by "Delete waveform data" and by a finished refresh, which can
  * move a track to another file (`forgetWaveforms`).
@@ -286,10 +289,14 @@ export class WaveformCache {
     } else if (!needed && this.poller !== null) {
       this.stopInterval(this.poller);
       this.poller = null;
+      this.lastFinished = null;
     }
   }
 
-  /** Read the analysis; when its finished count moved, refresh the waiting tracks shown. */
+  /**
+   * Read the analysis; on the first read, and whenever its finished count
+   * moved, refresh the waiting tracks shown.
+   */
   async poll(): Promise<void> {
     const analysis = this.bridge()?.analysis;
     if (!analysis) return;
@@ -302,7 +309,7 @@ export class WaveformCache {
       return;
     }
     const finished = status.analysed + status.failed;
-    const moved = this.lastFinished !== null && finished !== this.lastFinished;
+    const moved = this.lastFinished === null || finished !== this.lastFinished;
     this.lastFinished = finished;
     if (!moved || this.now() - this.lastRefresh < REFRESH_MS) return;
     this.lastRefresh = this.now();

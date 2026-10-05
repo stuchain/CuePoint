@@ -167,12 +167,19 @@ export function waveformColumns(cssWidth: number, scale: number, devicePixelRati
 export const MIN_REQUEST_WIDTH = 16;
 export const MAX_REQUEST_WIDTH = 1200;
 
-/** The picture to ask for to fill a box: its columns, within the engine's range. */
+/** Request widths are whole multiples of this many columns (WAVE-06). */
+export const REQUEST_WIDTH_STEP = 16;
+
+/**
+ * The picture to ask for to fill a box: its columns rounded up to a multiple of
+ * 16, within the engine's range. Rounded so that dragging a column, the
+ * Inspector or the window wider asks again every 16 columns rather than at
+ * every pixel; the layout draws the few extra columns by their peaks.
+ */
 export function requestWidth(cssWidth: number, scale: number, devicePixelRatio: number): number {
-  return Math.min(
-    MAX_REQUEST_WIDTH,
-    Math.max(MIN_REQUEST_WIDTH, waveformColumns(cssWidth, scale, devicePixelRatio)),
-  );
+  const columns = waveformColumns(cssWidth, scale, devicePixelRatio);
+  const rounded = Math.ceil(columns / REQUEST_WIDTH_STEP) * REQUEST_WIDTH_STEP;
+  return Math.min(MAX_REQUEST_WIDTH, Math.max(MIN_REQUEST_WIDTH, rounded));
 }
 
 /** The units a byte reaches from the centre line: 0 only for silence. */
@@ -244,6 +251,17 @@ export function columnAt(ms: number, durationMs: number, columns: number): numbe
   if (!(durationMs > 0)) return 0;
   const column = Math.floor((ms / durationMs) * columns);
   return Math.min(columns - 1, Math.max(0, column));
+}
+
+/**
+ * The time a pointer `offsetX` CSS pixels into a drawing `width` wide means,
+ * in seconds of `durationSeconds`: the inverse of `columnAt`, for a click that
+ * seeks (WAVE-06). 0 for a drawing with no width or no duration.
+ */
+export function secondsAtOffset(offsetX: number, width: number, durationSeconds: number): number {
+  if (!(width > 0) || !(durationSeconds > 0)) return 0;
+  const fraction = Math.min(1, Math.max(0, offsetX / width));
+  return fraction * durationSeconds;
 }
 
 /** Black or white, whichever reads on `hex`. */

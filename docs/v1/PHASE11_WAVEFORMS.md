@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 11: Waveforms, Detailed Step Specifications
 
-Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30), WAVE-03 (2026-10-03), WAVE-04 and WAVE-05 (2026-10-05); WAVE-06 and WAVE-07 are not.** The seven steps below replace the
+Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30), WAVE-03 (2026-10-03), WAVE-04, WAVE-05 and WAVE-06 (2026-10-05); WAVE-07 is not.** The seven steps below replace the
 roadmap's placeholder inventory (WAVE-01…WAVE-07), keeping its count. Per the process, no
 implementation happens from this document: each step needs an explicit "Implement WAVE-NN"
 instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
@@ -1486,7 +1486,7 @@ way.
 
 ---
 
-## WAVE-06 — Waveforms in the Player Bar, the Inspector and the Library
+## WAVE-06 — Waveforms in the Player Bar, the Inspector and the Library ✅ IMPLEMENTED 2026-10-05
 
 **Objective**: Draw the waveform where DEC-114 places it: as the bar's seek control, in the Inspector
 and in a Library column.
@@ -1571,7 +1571,104 @@ and in a Library column.
 
 **Complexity**: **M**
 
-**Outcome**: Not implemented yet.
+**Outcome**: Implemented (2026-10-05). The playing track's waveform is the bar's seek control, the
+Inspector draws the selected track with its marks and seeks the playing one, and the Library offers a
+"Waveform" column. PLAYER-06's tests pass unchanged, the bar is no taller, and scrolling 5,000 rows
+with the column shown records no long task. Only Prepare's strip is left, which is WAVE-07's.
+
+**What was built.**
+
+- **The bar** (`PlayerBar.tsx`): the slider sits in a holder that takes the row's height, which the
+  transport's hit targets already set. Once the playing track's waveform is ready and the player
+  knows the duration, the holder draws it under the slider:
+  - laid across the player's duration, the played part dimmed, the playhead at main's position or a
+    drag's preview;
+  - the range input over it, transparent, the picture's size, with a thumb of no width, so its whole
+    width is its travel and a click at a column means that column's time;
+  - its focus ring drawn around the picture (`:has(:focus-visible)`).
+
+  Without a picture the slider is laid out exactly as before, and the region's `title` says why.
+- **The Inspector** (`screens/library/TrackWaveform.tsx`): under the header, the panel's full width,
+  two table rows tall, with cues, loops and grid. For the playing track it draws the playhead, lays
+  the picture across the player's duration, and a click seeks once; for any other track its title
+  says it is a picture, and a click does nothing. Each state in words; keyed by track, so a new
+  selection never shows the last one's picture.
+- **The column** (`libraryColumns.tsx`, `RowWaveform` in `libraryCells.tsx`): "Waveform", hidden by
+  default, unsortable, 48 and 120 CSS pixels, empty text. One muted word without a picture, the
+  sentence in its title.
+- **Shared pieces** in `components/waveform/`:
+  - `waveformEnvironment.ts`: one `ResizeObserver` for every box, one media query for the pixel
+    ratio and one `MutationObserver` for the theme, each made with its first user and dropped with
+    its last, since the column may show forty canvases; and `useWaveformBox`, a box's request width;
+  - `waveformSettle.ts`: rows settle for 100 ms before they ask;
+  - `useWaveformRequest.ts`: the bar's and the Inspector's request;
+  - `requestWidth` rounds up to a multiple of 16; `secondsAtOffset` is the inverse of `columnAt`;
+  - `analysisWords.ts` gains a state in one word and an answer's sentence;
+  - `useWaveforms` gains `ask`: false reads what the cache holds without asking.
+- **`useScaleFactor`** (`ScaleContext.tsx`): the scale, and the default outside a provider, so the
+  bar and the Inspector draw wherever they are rendered.
+- **The user guide's** player and Library pages, and the changelog.
+
+**Tests.**
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `PlayerBar.waveform.test.tsx` | 19 | The input's role, label, value text, bounds and step over the picture; a drag previews and seeks once; keyboard seeking; the request width; laid across the player's duration (590 s of picture under a 600 s player); the playhead following a drag; the slider and the title for each of six states, a failed read and a read in flight; no duration; a file outside the library; a waiting track requested, each new one, once while it plays; no request for any other state |
+| `TrackWaveform.test.tsx` | 18 | The picture with its hot cue at its column; a picture only for another track, no seek and no playback on a click; the playing track's playhead and a click's time; laid across the player's duration; no seek without a duration; loading, six states and a failed read in words; a request while waiting and none when ready; its place under the header; absent without the bridge; a new selection never showing the last picture |
+| `RowWaveform.test.tsx` | 16 | The declaration; one batch for every row at 64 for 120 CSS pixels; one request per 16 columns while the column widens; nothing for a row gone within 100 ms, nor for rows scrolled past; a held picture drawn at once; never a request; six words with their titles; nothing while settling or loading |
+| `waveformSettle.test.ts`, `useWaveformRequest.test.ts`, `waveformEnvironment.test.tsx` | 8, 7, 5 | One timer and one task per group, cancelling, each callback once; a request only while waiting, once per showing, again for a track shown again, quiet on failure; one observer for every box, the request width, outside the provider, one media query and one theme observer for every reader |
+| `waveformLayout.test.ts`, `analysisWords.test.ts`, `waveformCache.test.ts`, `WaveformSettingsPanel.test.tsx` | +5, +12, +2, +2 | Rounding to 16 at every scale and ratio; a click's time lands in its column; one word and the sentences; the cache's first read; the preview asking at its width and nothing before |
+| `waveformPlaces.spec.ts` (Electron end to end) | 2 | Every shipped format lasts what the player says, within one of the bar's columns; `bands.flac` painted in the bar in its three bands; the bar's height unchanged from the plain slider; a click at 2/6 of the picture seeks to within one column of 2.0 s; the Inspector's hot cue within one column of 2.0 s, and a click there seeking the playing track; 5,000 rows scrolled with the column shown, 29 canvases painted, no long task over 50 ms, the observer proven by a task made long on purpose |
+
+**Where the specification was wrong, and what was done instead.** Each was settled the most durable
+way.
+
+1. **A track is requested only while it waits.** The specification requests every track that starts
+   playing or is shown in the Inspector. A request with no run going starts one (WAVE-03), so every
+   selection of an analysed track would start a job, flash the status strip and record nothing. The
+   bar and the Inspector request once their answer says the track waits, paused or not, once per
+   showing.
+2. **The request width is the drawing's columns, not its device pixels,** rounded up to a multiple of
+   16 and kept within 16–1,200. The layout draws one column per scale pixel (WAVE-05), so a
+   device-pixel width asked for two to six times what is drawn. The rounding applies to every
+   surface, Settings' preview included, so dragging a column, the Inspector or the window wider asks
+   again every 16 columns, and every row of the column asks at one width, in one batch.
+3. **Rows settle one by one, and together.** A row asks once it has been on screen for 100 ms; rows
+   mounted in one task share one timer and ask in one task, so the cache sends them as one batch. A
+   picture the cache already holds is drawn at once, so scrolling back never blanks a row.
+4. **The duration check allows one envelope sample.** The tone fixtures last 0.26 s, where one of the
+   bar's columns is 3 ms and the waveform's own sample 6.7 ms; MP3 differs by one sample. The check
+   is one column or one sample, whichever is larger; for `bands.flac`, and any real track, that is
+   one column.
+5. **WAVE-05's cache waited for ever after a fast analysis.** It noted the analysis's count on its
+   first read and refreshed waiting tracks only when the count moved. A track requested as it is
+   shown is analysed in about a second, before that read, so its count never moved and it stayed
+   "Waiting". The first read after following starts now refreshes too; a regression test holds it.
+6. **The bar draws the waveform and the playhead, not the marks.** The specification lists the
+   Inspector's marks and not the bar's; at the bar's size a hot cue's flag would cover the picture,
+   and the Inspector is a click away.
+7. **The Inspector's seek is a pointer target only.** The bar's input is the keyboard's and the
+   screen reader's seek control; a second "Seek" slider in the Inspector would read as a duplicate.
+8. **Settings' preview is two table rows tall,** as its comment and this step's Inspector say; it was
+   two hit targets.
+
+**Row counts.** `prepare.spec.ts` was measured on this step's build and on the commit before it, on
+Windows, every assertion turned into a reading. Every count is the same:
+
+| State | Before | After | Held |
+| --- | --- | --- | --- |
+| Sidebar expanded / rail | 6 / 7 | 6 / 7 | 7 |
+| With the player's bar, expanded / rail | 3 / 4 | 3 / 4 | 4 |
+| With the lanes, expanded / rail | 3 / 4 | 3 / 4 | 4 |
+| The source panel's Suggestions | 3 | 3 | 3 |
+
+The expanded sidebar's counts sit one below the held values on Windows, as the lanes' did at WAVE-05:
+the held values are Linux's figures less one, and Windows measures one lower again. That is PREP-10's
+owed Windows run, not this step. The Library's specs pass unchanged.
+
+**Acceptance.** All three surfaces work in the Windows development build, proven end to end. The
+packaged Linux run with `CUEPOINT_MPV_PATH` is owed with the phase's other packaged runs:
+`waveformPlaces.spec.ts` takes `CUEPOINT_E2E_EXECUTABLE` for it, as `prepare.spec.ts` does.
 
 ---
 

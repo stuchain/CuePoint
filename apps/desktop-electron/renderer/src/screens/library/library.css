@@ -398,3 +398,22 @@
 .library-cell__artwork-none {
   color: var(--fg-muted);
 }
+
+/*
+ * A row's waveform (WAVE-06): the cell's width, the row's height less a scale
+ * pixel above and below, so neighbouring rows' pictures never touch. Without a
+ * picture, one muted word.
+ */
+.library-cell__waveform {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: calc(var(--row-height) - 2px * var(--scale));
+  min-width: 0;
+}
+
+.library-cell__waveform-word {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fg-muted);
+}

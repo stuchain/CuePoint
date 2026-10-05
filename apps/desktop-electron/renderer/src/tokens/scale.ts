@@ -9,7 +9,7 @@ export function isScaleFactor(value: number): value is ScaleFactor {
   return SCALE_OPTIONS.includes(value as ScaleFactor);
 }
 
-const DEFAULT_SCALE: ScaleFactor = 2;
+export const DEFAULT_SCALE: ScaleFactor = 2;
 
 /**
  * The remembered scale. Storage that throws — disabled, or a private window —

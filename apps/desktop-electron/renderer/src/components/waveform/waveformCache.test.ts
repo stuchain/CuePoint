@@ -272,35 +272,80 @@ describe("the waveform cache", () => {
       await flush();
       expect(get).toHaveBeenCalledTimes(1);
 
-      await cache.poll(); // the first read only notes the count
+      await cache.poll(); // the first read notes the count, and asks once
       await flush();
-      expect(get).toHaveBeenCalledTimes(1);
+      expect(get).toHaveBeenCalledTimes(2);
 
       tick(REFRESH_MS);
       await cache.poll(); // nothing moved
       await flush();
-      expect(get).toHaveBeenCalledTimes(1);
+      expect(get).toHaveBeenCalledTimes(2);
 
       analysed.value = 1;
       await cache.poll();
       await flush();
-      expect(get).toHaveBeenCalledTimes(2);
+      expect(get).toHaveBeenCalledTimes(3);
       expect(get).toHaveBeenLastCalledWith({ track_ids: [1, 2], width: 120, marks: false });
 
       analysed.value = 2;
       tick(REFRESH_MS - 1);
       await cache.poll();
       await flush();
-      expect(get).toHaveBeenCalledTimes(2);
+      expect(get).toHaveBeenCalledTimes(3);
 
       state = "ready";
       analysed.value = 3;
       tick(REFRESH_MS);
       await cache.poll();
       await flush();
-      expect(get).toHaveBeenCalledTimes(3);
+      expect(get).toHaveBeenCalledTimes(4);
       expect(cache.read(1, QUERY)).toMatchObject({ kind: "track", track: { state: "ready" } });
       hide();
+    });
+
+    it("asks again on its first read, for a track the analysis reached before it was followed", async () => {
+      // Requested as it was shown, the track is analysed before the first
+      // read of the analysis; that read notes a count which will never move
+      // for it. Regression: it waited until something else was analysed.
+      let state: WaveformTrackState = "waiting";
+      const { cache, get, analysed, intervals, flush } = setup(() => state);
+      const hide = cache.show([1], QUERY);
+      await flush();
+      expect(intervals.size).toBe(1);
+
+      state = "ready";
+      analysed.value = 10;
+      await cache.poll();
+      await flush();
+
+      expect(get).toHaveBeenCalledTimes(2);
+      expect(cache.read(1, QUERY)).toMatchObject({ kind: "track", track: { state: "ready" } });
+      expect(intervals.size).toBe(0);
+      hide();
+    });
+
+    it("starts afresh each time it follows the analysis again", async () => {
+      let state: WaveformTrackState = "waiting";
+      const { cache, get, flush, tick } = setup(() => state);
+      const hide = cache.show([1], QUERY);
+      await flush();
+      await cache.poll();
+      await flush();
+      expect(get).toHaveBeenCalledTimes(2);
+      hide();
+
+      // Stopped following; a waiting track shown again is asked for on the
+      // first read, though the count has not moved.
+      tick(REFRESH_MS);
+      cache.forget();
+      state = "waiting";
+      const again = cache.show([1], QUERY);
+      await flush();
+      const before = get.mock.calls.length;
+      await cache.poll();
+      await flush();
+      expect(get.mock.calls.length).toBe(before + 1);
+      again();
     });
 
     it("keeps showing the old answer while the new one is on its way", async () => {
