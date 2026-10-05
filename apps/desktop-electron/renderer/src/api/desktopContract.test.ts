@@ -26,6 +26,7 @@ import mainSource from "../../../electron/main.ts?raw";
 import engineClientSource from "../../../electron/engineClient.ts?raw";
 import supervisorSource from "../../../electron/engineSupervisor.ts?raw";
 import bridgeTypesSource from "./cuepointBridge.types.ts?raw";
+import waveformsFixture from "../components/waveform/waveforms.fixture.json";
 
 /**
  * The sources with the line endings the repository stores. A Windows checkout
@@ -1543,26 +1544,61 @@ describe("desktop contract", () => {
     });
   });
 
-  describe("the waveform analysis (WAVE-03)", () => {
-    // Three engine methods on `window.cuepoint.waveforms`, named here because
+  describe("waveforms and their analysis (WAVE-03, WAVE-05)", () => {
+    // Six engine methods on `window.cuepoint.waveforms`, named here because
     // the generic checks compare the files with each other, and a method
     // missing from all six passes every one of them.
-    type Method = { client: string; route: string; post: boolean };
+    type Method = {
+      client: string;
+      route: string;
+      post: boolean;
+      /** Whether the method takes one params object. */
+      params: boolean;
+      /** The answer's type, as both processes name it. */
+      answer: string;
+    };
     const METHODS: Record<string, Method> = {
       analysis: {
         client: "getWaveformAnalysis",
         route: '"/api/v1/waveforms/analysis"',
         post: false,
+        params: false,
+        answer: "WaveformAnalysisStatus",
       },
       pause: {
         client: "pauseWaveformAnalysis",
         route: '"/api/v1/waveforms/analysis/pause"',
         post: true,
+        params: false,
+        answer: "WaveformAnalysisStatus",
       },
       resume: {
         client: "resumeWaveformAnalysis",
         route: '"/api/v1/waveforms/analysis/resume"',
         post: true,
+        params: false,
+        answer: "WaveformAnalysisStatus",
+      },
+      get: {
+        client: "getWaveforms",
+        route: "`/api/v1/waveforms?${query}`",
+        post: false,
+        params: true,
+        answer: "WaveformBatch",
+      },
+      request: {
+        client: "requestWaveforms",
+        route: '"/api/v1/waveforms/request"',
+        post: true,
+        params: true,
+        answer: "WaveformsRequested",
+      },
+      deleteData: {
+        client: "deleteWaveformData",
+        route: '"/api/v1/waveforms/delete-data"',
+        post: true,
+        params: false,
+        answer: "WaveformDataDeletion",
       },
     };
     const methods = Object.values(METHODS).map((m) => m.client);
@@ -1591,30 +1627,39 @@ describe("desktop contract", () => {
 
     it.each(Object.entries(METHODS))(
       "exposes waveforms.%s on the preload, on its own channel",
-      (key, { client }) => {
+      (key, { client, params }) => {
         expect(waveformsBlock()).toContain(
-          `    ${key}: () => ipcRenderer.invoke("engine:${client}"),\n`,
+          params
+            ? `    ${key}: (params) => ipcRenderer.invoke("engine:${client}", params),\n`
+            : `    ${key}: () => ipcRenderer.invoke("engine:${client}"),\n`,
         );
       },
     );
 
-    it("exposes nothing else on waveforms yet (WAVE-05 adds the rest)", () => {
+    it("exposes exactly these six on waveforms", () => {
       const keys = [...waveformsBlock().matchAll(/^ {4}([A-Za-z]+):/gm)].map((m) => m[1]);
       expect(keys.sort()).toEqual(Object.keys(METHODS).sort());
     });
 
-    it.each(methods)("handles engine:%s in the main process", (method) => {
-      expect(handledChannels(main)).toContain(`engine:${method}`);
-      expect(main).toContain(`ipcMain.handle("engine:${method}", () => engine.${method}());`);
+    it.each(Object.values(METHODS))("handles engine:$client in the main process", (m) => {
+      expect(handledChannels(main)).toContain(`engine:${m.client}`);
+      expect(main).toContain(
+        m.params
+          ? `ipcMain.handle("engine:${m.client}", (_event, params) => engine.${m.client}(params));`
+          : `ipcMain.handle("engine:${m.client}", () => engine.${m.client}());`,
+      );
     });
 
-    it.each(methods)("forwards %s through the supervisor", (method) => {
-      expect(supervisorMethodsDeclared(supervisor)).toContain(method);
-      expect(supervisor).toContain(`(await this.readyClient()).${method}();`);
+    it.each(Object.values(METHODS))("forwards $client through the supervisor", (m) => {
+      expect(supervisorMethodsDeclared(supervisor)).toContain(m.client);
+      expect(supervisor).toContain(
+        `(await this.readyClient()).${m.client}(${m.params ? "params" : ""});`,
+      );
     });
 
     it.each(Object.entries(METHODS))("waveforms.%s uses its own route and verb", (_key, m) => {
-      // A GET that paused the analysis would be repeated by anything that retries GETs.
+      // A GET that paused the analysis or deleted its data would be repeated
+      // by anything that retries GETs.
       const body = clientMethod(m.client);
       expect(body).toContain(m.route);
       if (m.post) {
@@ -1625,22 +1670,35 @@ describe("desktop contract", () => {
       }
     });
 
-    it.each(Object.keys(METHODS))(
+    it.each(Object.entries(METHODS))(
       "declares waveforms.%s on the bridge with the client's own answer",
-      (key) => {
-        expect(bridgeInterface()).toContain(
-          `  ${key}: () => Promise<WaveformAnswer<WaveformAnalysisStatus>>;`,
-        );
+      (key, m) => {
+        const iface = bridgeInterface();
+        const at = iface.indexOf(`  ${key}: (`);
+        expect(at, key).toBeGreaterThan(-1);
+        const declaration = iface.slice(at, iface.indexOf(">>;", at) + 3);
+        expect(declaration).toContain(`Promise<WaveformAnswer<${m.answer}>>`);
+        expect(declaration.startsWith(`  ${key}: ()`)).toBe(!m.params);
       },
     );
 
     it("answers every refusal as a value, because a rejection loses its code over IPC", () => {
-      for (const method of methods) {
-        expect(clientMethod(method), method).toContain(
-          "Promise<WaveformAnswer<WaveformAnalysisStatus>>",
+      for (const m of Object.values(METHODS)) {
+        expect(clientMethod(m.client), m.client).toContain(
+          `Promise<WaveformAnswer<${m.answer}>>`,
         );
       }
       expect(engineClient).toContain("async function readWaveformAnswer<T>");
+    });
+
+    it("decodes a picture once, in main, into bytes of its own", () => {
+      // The renderer never parses base64, and a view on Node's pool would
+      // carry the whole pool across IPC for every track.
+      expect(clientMethod("getWaveforms")).toContain("data: waveformBytes(track.data)");
+      expect(engineClient).toContain(
+        'return data === null ? null : new Uint8Array(Buffer.from(data, "base64"));',
+      );
+      expect(waveformsBlock()).not.toMatch(/atob|base64|Buffer/);
     });
 
     it("hangs off the bridge as one optional namespace", () => {
@@ -1650,26 +1708,97 @@ describe("desktop contract", () => {
       }
     });
 
-    it("declares the same status and refusal codes in both processes", () => {
-      const fields = (source: string, start: string) => {
-        const at = source.indexOf(start);
-        expect(at, start).toBeGreaterThan(-1);
-        return source
-          .slice(at, source.indexOf("\n}", at))
-          .split("\n")
-          .map((line) => line.trim())
-          .filter((line) => /^[a-z_]+\??:/.test(line));
-      };
-      expect(fields(bridgeTypes, "export interface WaveformAnalysisStatus {")).toEqual(
-        fields(engineClient, "export interface WaveformAnalysisStatus {"),
-      );
-      for (const declaration of [
-        'export type WaveformAnalysisState = "running" | "paused" | "idle" | "unavailable";',
-        'export type WaveformRefusalCode = "INVALID_REQUEST" | "WAVEFORMS_SETTING_FAILED";',
-      ]) {
-        expect(bridgeTypes).toContain(declaration);
-        expect(engineClient).toContain(declaration);
-      }
+    const fields = (source: string, start: string) => {
+      const at = source.indexOf(start);
+      expect(at, start).toBeGreaterThan(-1);
+      return source
+        .slice(at, source.indexOf("\n}", at))
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => /^[a-z_]+\??:/.test(line));
+    };
+
+    it.each([
+      "WaveformAnalysisStatus",
+      "BeatGridMarker",
+      "WaveformMarks",
+      "WaveformTrack",
+      "WaveformBatch",
+      "WaveformsRequested",
+      "WaveformDataDeleted",
+      "WaveformDataDeletion",
+    ])("declares %s the same in both processes", (name) => {
+      const start = `export interface ${name} {`;
+      expect(fields(bridgeTypes, start).length).toBeGreaterThan(0);
+      expect(fields(bridgeTypes, start)).toEqual(fields(engineClient, start));
+    });
+
+    it.each(["WaveformAnalysisState", "WaveformRefusalCode", "WaveformTrackState"])(
+      "declares the type %s the same in both processes",
+      (name) => {
+        const declaration = (source: string) => {
+          const start = source.indexOf(`export type ${name} =`);
+          expect(start, name).toBeGreaterThan(-1);
+          return source.slice(start, source.indexOf(";", start)).replace(/\s+/g, " ");
+        };
+        expect(declaration(bridgeTypes)).toEqual(declaration(engineClient));
+      },
+    );
+
+    describe("against the engine's own answers (waveforms.fixture.json)", () => {
+      /** The engine's answers, written by `test_waveforms_fixture.py`. */
+      const fixture = waveformsFixture as Record<string, unknown>;
+
+      const names = (source: string, start: string) =>
+        fields(source, start)
+          .map((line) => line.split(/\??:/)[0])
+          .sort();
+
+      const keys = (value: unknown) => Object.keys(value as object).sort();
+
+      const batch = fixture.batch as { waveforms: Record<string, unknown>[] };
+      const withMarks = fixture.batch_with_marks as { waveforms: Record<string, unknown>[] };
+
+      it.each([
+        ["WaveformAnalysisStatus", () => fixture.analysis],
+        ["WaveformBatch", () => batch],
+        ["WaveformTrack", () => batch.waveforms[0]],
+        ["WaveformMarks", () => withMarks.waveforms[0].marks],
+        ["BeatGridMarker", () => (withMarks.waveforms[0].marks as { grid: unknown[] }).grid[0]],
+        ["TrackCue", () => (withMarks.waveforms[0].marks as { cues: unknown[] }).cues[0]],
+        ["WaveformsRequested", () => fixture.requested],
+        ["WaveformDataDeletion", () => fixture.deleted],
+        ["WaveformDataDeleted", () => (fixture.deleted as { deleted: unknown }).deleted],
+      ])("%s names exactly the fields the engine sends", (name, read) => {
+        const answer = read();
+        expect(answer, name).toBeTruthy();
+        const declared = `export interface ${name} {`;
+        expect(names(bridgeTypes, declared)).toEqual(keys(answer));
+        expect(names(engineClient, declared)).toEqual(keys(answer));
+      });
+
+      it("covers every track state, each as the bridge types it", () => {
+        const union = (source: string) => {
+          const start = source.indexOf("export type WaveformTrackState =");
+          return [...source.slice(start, source.indexOf(";", start)).matchAll(/"([a-z]+)"/g)]
+            .map((m) => m[1])
+            .sort();
+        };
+        const without = fixture.batch_without_decoder as { waveforms: { state: string }[] };
+        const states = [
+          ...new Set([...batch.waveforms, ...without.waveforms].map((t) => t.state as string)),
+        ].sort();
+        expect(states).toEqual(union(bridgeTypes));
+      });
+
+      it("refuses with codes both processes declare", () => {
+        const refusals = fixture.refusals as { code: string }[];
+        expect(refusals.length).toBeGreaterThan(0);
+        for (const refusal of refusals) {
+          expect(bridgeTypes).toContain(`"${refusal.code}"`);
+          expect(engineClient).toContain(`"${refusal.code}"`);
+        }
+      });
     });
   });
 

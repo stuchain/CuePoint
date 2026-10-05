@@ -1,0 +1,100 @@
+/*
+ * Settings → Waveforms (WAVE-05). Built from the audio panel's pieces: a state
+ * line with its one button, a choice, a preview two rows tall, and the one
+ * destructive action, apart from the rest.
+ */
+
+.cp-waveform-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.cp-waveform-settings__state,
+.cp-waveform-settings__delete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.cp-waveform-settings__status {
+  margin: 0;
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+}
+
+.cp-waveform-settings__label {
+  font-size: var(--font-size-sm);
+  color: var(--fg-primary);
+}
+
+.cp-waveform-settings__track {
+  color: var(--fg-muted);
+}
+
+.cp-waveform-settings__choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.cp-waveform-settings__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--hit-min);
+  font-size: var(--font-size-sm);
+  color: var(--fg-primary);
+}
+
+.cp-waveform-settings__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* Two rows of the table tall, the Inspector's waveform height (WAVE-06). */
+.cp-waveform-settings__canvas {
+  height: calc(var(--hit-min) * 2);
+  max-width: 100%;
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel);
+}
+
+.cp-waveform-settings__words {
+  margin: 0;
+  padding: var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-waveform-settings__hint,
+.cp-waveform-settings__confirm {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.cp-waveform-settings__confirm {
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+}
+
+.cp-waveform-settings__confirm + .cp-waveform-settings__confirm {
+  margin-top: var(--space-sm);
+}
+
+.cp-waveform-settings__message {
+  margin: 0;
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel-alt);
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+}

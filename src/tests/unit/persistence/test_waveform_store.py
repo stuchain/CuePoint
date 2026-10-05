@@ -887,3 +887,97 @@ class TestTheStoreIsNotTheLibrary:
             text = b"".join(archive.read(name) for name in names)
         assert not any("waveform" in name for name in names)
         assert b"CPWF" not in text
+
+
+@pytest.mark.unit
+class TestDeletingTheData:
+    """ "Delete waveform data" empties the store and gives its space back (WAVE-05)."""
+
+    @staticmethod
+    def big(path: str) -> StoredWaveform:
+        # Pictures that do not compress, as the store would hold for real music.
+        return ready(path, data=b"CPWF" + bytes(range(256)) * 16)
+
+    def test_a_store_never_opened_takes_nothing(self, store, store_path):
+        assert store.disk_bytes() == 0
+        assert not store_path.exists()
+
+    def test_the_size_counts_the_file_and_its_sidecars(self, store, store_path):
+        store.put(ready())
+        files = [
+            store_path.with_name(store_path.name + suffix)
+            for suffix in ("", "-wal", "-shm")
+        ]
+
+        assert store.disk_bytes() == sum(f.stat().st_size for f in files if f.exists())
+        assert store.disk_bytes() > 0
+
+    def test_a_set_aside_copy_counts_and_is_deleted(self, store, store_path):
+        aside = store_path.with_name(store_path.name + SET_ASIDE_SUFFIX)
+        aside.parent.mkdir(parents=True, exist_ok=True)
+        aside.write_bytes(b"x" * 50_000)
+        store.put(ready())
+        with_copy = store.disk_bytes()
+
+        store.clear()
+
+        assert with_copy >= 50_000
+        assert not aside.exists()
+
+    def test_clear_deletes_every_row_of_every_version(self, store):
+        store.put(ready("/music/a.flac"))
+        store.put(ready("/music/b.flac", version=2))
+        store.put(failed("/music/c.mp3"))
+
+        deleted = store.clear()
+
+        assert deleted == 3
+        assert store.count() == 0
+        assert store.paths() == []
+
+    def test_clear_gives_the_space_back(self, store):
+        for index in range(300):
+            store.put(self.big(f"/music/{index:03}.flac"))
+        store.connect().execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        full = store.disk_bytes()
+
+        store.clear()
+
+        assert full > 1_000_000
+        assert store.disk_bytes() < full // 10
+
+    def test_the_store_works_after_it_is_cleared(self, store):
+        store.put(ready("/music/a.flac"))
+        store.clear()
+        store.put(ready("/music/b.flac"))
+
+        assert store.paths() == ["/music/b.flac"]
+        assert store.get("/music/b.flac", 1) is not None
+
+    def test_another_thread_reading_does_not_stop_the_deletion(self, store):
+        store.put(ready("/music/a.flac"))
+        read = threading.Event()
+
+        def reader():
+            store.summaries(["/music/a.flac"], 1)
+            read.set()
+
+        thread = threading.Thread(target=reader)
+        thread.start()
+        thread.join(5)
+
+        assert read.is_set()
+        assert store.clear() == 1
+        assert store.count() == 0
+
+    def test_a_store_that_cannot_be_written_raises(self, store, monkeypatch):
+        store.put(ready())
+
+        class Refusing:
+            def execute(self, sql, *args):
+                raise sqlite3.OperationalError("disk I/O error")
+
+        monkeypatch.setattr(store, "connect", lambda: Refusing())
+
+        with pytest.raises(WaveformStoreError):
+            store.clear()

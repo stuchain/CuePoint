@@ -1,0 +1,171 @@
+{
+  "analysis": {
+    "analysed": 1,
+    "eta_seconds": null,
+    "failed": 1,
+    "job_id": null,
+    "paused": true,
+    "present": 3,
+    "rate_per_hour": null,
+    "reason": null,
+    "remaining": 1,
+    "state": "paused",
+    "store_bytes": 1048576
+  },
+  "batch": {
+    "paused": false,
+    "unknown": [
+      999999
+    ],
+    "waveforms": [
+      {
+        "data": "5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm",
+        "duration_ms": 20000,
+        "marks": null,
+        "reason": null,
+        "state": "ready",
+        "track_id": 1
+      },
+      {
+        "data": null,
+        "duration_ms": null,
+        "marks": null,
+        "reason": "undecodable",
+        "state": "failed",
+        "track_id": 2
+      },
+      {
+        "data": null,
+        "duration_ms": null,
+        "marks": null,
+        "reason": "missing",
+        "state": "missing",
+        "track_id": 3
+      },
+      {
+        "data": null,
+        "duration_ms": null,
+        "marks": null,
+        "reason": null,
+        "state": "unchecked",
+        "track_id": 5
+      },
+      {
+        "data": null,
+        "duration_ms": null,
+        "marks": null,
+        "reason": null,
+        "state": "waiting",
+        "track_id": 4
+      }
+    ],
+    "width": 120
+  },
+  "batch_with_marks": {
+    "paused": false,
+    "unknown": [],
+    "waveforms": [
+      {
+        "data": "5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm",
+        "duration_ms": 20000,
+        "marks": {
+          "cues": [
+            {
+              "color": "#28e214",
+              "end_ms": null,
+              "hot_cue": 0,
+              "kind": "cue",
+              "name": "Mid",
+              "start_ms": 5000
+            },
+            {
+              "color": null,
+              "end_ms": null,
+              "hot_cue": null,
+              "kind": "cue",
+              "name": "High",
+              "start_ms": 10000
+            },
+            {
+              "color": "#ff8c00",
+              "end_ms": 17500,
+              "hot_cue": 1,
+              "kind": "loop",
+              "name": "Loop",
+              "start_ms": 15000
+            }
+          ],
+          "grid": [
+            {
+              "beat": 1,
+              "bpm": 120.0,
+              "meter": "4/4",
+              "start_ms": 0
+            },
+            {
+              "beat": 1,
+              "bpm": 126.0,
+              "meter": "4/4",
+              "start_ms": 10000
+            }
+          ],
+          "read": true
+        },
+        "reason": null,
+        "state": "ready",
+        "track_id": 1
+      }
+    ],
+    "width": 120
+  },
+  "batch_without_decoder": {
+    "paused": false,
+    "unknown": [],
+    "waveforms": [
+      {
+        "data": null,
+        "duration_ms": null,
+        "marks": null,
+        "reason": null,
+        "state": "unavailable",
+        "track_id": 4
+      }
+    ],
+    "width": 120
+  },
+  "deleted": {
+    "analysis": {
+      "analysed": 0,
+      "eta_seconds": null,
+      "failed": 0,
+      "job_id": null,
+      "paused": true,
+      "present": 3,
+      "rate_per_hour": null,
+      "reason": null,
+      "remaining": 3,
+      "state": "paused",
+      "store_bytes": 1048576
+    },
+    "deleted": {
+      "freed_bytes": 1048576,
+      "waveforms": 3
+    }
+  },
+  "refusals": [
+    {
+      "code": "INVALID_REQUEST",
+      "message": "width must be a whole number from 16 to 1200"
+    },
+    {
+      "code": "WAVEFORMS_STORE_FAILED",
+      "message": "The waveform data could not be deleted"
+    }
+  ],
+  "requested": {
+    "job_id": "job-id",
+    "requested": [
+      4
+    ]
+  }
+}

@@ -6,6 +6,10 @@ import {
   DECODER_MISSING_WORDS,
   analysisAction,
   analysisWords,
+  deleteDataWords,
+  deletedWords,
+  sizeWords,
+  waveformStateWords,
 } from "./analysisWords";
 
 /**
@@ -25,6 +29,7 @@ function status(overrides: Partial<WaveformAnalysisStatus> = {}): WaveformAnalys
     rate_per_hour: null,
     eta_seconds: null,
     reason: null,
+    store_bytes: 0,
   };
   const merged = { ...base, ...overrides };
   return { ...merged, remaining: merged.present - merged.analysed - merged.failed };
@@ -97,5 +102,79 @@ describe("analysisAction", () => {
 
   it("offers nothing without a decoder", () => {
     expect(analysisAction(status({ state: "unavailable", reason: "decoder_missing" }))).toBeNull();
+  });
+});
+
+describe("a track's waveform in words (WAVE-05)", () => {
+  it.each([
+    ["ready", null, false, ""],
+    ["waiting", null, false, "Waiting for analysis"],
+    ["waiting", null, true, "Analysis paused"],
+    ["failed", "undecodable", false, "This file could not be read (undecodable)"],
+    ["missing", "missing", false, "File missing"],
+    ["missing", "no_path", false, "No file for this track"],
+    ["missing", "unreadable", false, "File could not be opened"],
+    ["missing", "root_unavailable", false, "The drive or folder holding this file is not available"],
+    ["unchecked", null, false, "Not checked yet"],
+    ["unavailable", null, false, DECODER_MISSING_WORDS],
+  ] as const)("%s (%s, paused %s) reads %j", (state, reason, paused, words) => {
+    expect(waveformStateWords({ state, reason }, paused)).toBe(words);
+  });
+
+  it("says a ready track is ready only while it is not paused-waiting", () => {
+    expect(waveformStateWords({ state: "ready", reason: null }, true)).toBe("");
+  });
+});
+
+describe("sizes on disk", () => {
+  it.each([
+    [0, "0 bytes"],
+    [1_023, "1,023 bytes"],
+    [1_024, "1.0 KB"],
+    [1_048_576, "1.0 MB"],
+    [252_000_000, "240.3 MB"],
+    [3 * 1024 ** 3, "3.0 GB"],
+  ])("%i bytes reads %s", (bytes, words) => {
+    expect(sizeWords(bytes)).toBe(words);
+  });
+});
+
+describe("what Delete waveform data asks first", () => {
+  it("states the size on disk, and that the library is analysed again", () => {
+    const lines = deleteDataWords(status({ store_bytes: 252_000_000 }));
+    expect(lines[0]).toContain("240.3 MB on disk");
+    expect(lines[0]).toContain("Cue points and beat grids come from Rekordbox and are not affected");
+    expect(lines[1]).toBe("The whole library will be analysed again.");
+  });
+
+  it("says how long that takes when the analysis has a rate", () => {
+    const lines = deleteDataWords(
+      status({ state: "running", present: 50_000, rate_per_hour: 8_000, store_bytes: 1 }),
+    );
+    expect(lines[1]).toBe(
+      "The whole library will be analysed again, which takes about 6 hours at the current rate.",
+    );
+  });
+
+  it("says it waits for Resume while paused", () => {
+    expect(deleteDataWords(status({ state: "paused", paused: true }))[1]).toBe(
+      "The whole library will be analysed again when the analysis is resumed.",
+    );
+  });
+
+  it("says nothing can be made again without a decoder", () => {
+    expect(deleteDataWords(status({ state: "unavailable", reason: "decoder_missing" }))[1]).toContain(
+      "cannot be made again",
+    );
+  });
+
+  it("still asks before the size is known", () => {
+    expect(deleteDataWords(null)[0]).toContain("an unknown amount on disk");
+  });
+
+  it("says what it did", () => {
+    expect(deletedWords(1_234, 252_000_000)).toBe("Deleted 1,234 waveforms, freeing 240.3 MB.");
+    expect(deletedWords(1, 2_048)).toBe("Deleted 1 waveform, freeing 2.0 KB.");
+    expect(deletedWords(0, 0)).toBe("There was no waveform data to delete.");
   });
 });

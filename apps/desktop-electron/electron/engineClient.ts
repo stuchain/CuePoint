@@ -211,7 +211,18 @@ async function readSetAnswer<T>(res: Response): Promise<SetAnswer<T>> {
 export const WAVEFORM_REFUSAL_CODES: readonly WaveformRefusalCode[] = [
   "INVALID_REQUEST",
   "WAVEFORMS_SETTING_FAILED",
+  "WAVEFORMS_STORE_FAILED",
 ];
+
+/**
+ * A waveform's bytes from the engine's base64, as an array of exactly them.
+ *
+ * Copied out of the `Buffer`: a small one is a view on Node's shared pool,
+ * and IPC would carry the whole pool for every track.
+ */
+export function waveformBytes(data: string | null): Uint8Array | null {
+  return data === null ? null : new Uint8Array(Buffer.from(data, "base64"));
+}
 
 /** Read a waveform answer: the value, or a refusal as a value. Anything else throws. */
 async function readWaveformAnswer<T>(res: Response): Promise<WaveformAnswer<T>> {
@@ -594,7 +605,7 @@ export interface TrackCue {
   color: string | null;
 }
 
-/** A track's beat grid, summed up; the markers travel with its waveform. */
+/** A track's beat grid, summed up; every marker travels with its waveform (WAVE-05). */
 export interface TrackBeatGridSummary {
   markers: number;
   /** The first marker's tempo. */
@@ -1979,9 +1990,10 @@ export interface SetAnalysis {
 // ---------------------------------------------------------------------------
 // The waveform analysis over the wire (WAVE-03)
 //
-// Mirrors `waveforms_api.py` and `AnalysisStatus.to_dict`. WAVE-05 adds the
-// waveforms themselves; these three are what the status strip's Pause and the
-// Health view need.
+// Mirrors `waveforms_api.py`, `AnalysisStatus.to_dict` and the waveform answer
+// (WAVE-05). The analysis's state, Pause and Resume came first, for the status
+// strip and the Health view; WAVE-05 adds the waveforms themselves, requests
+// and "Delete waveform data".
 // ---------------------------------------------------------------------------
 
 /** The analysis as a whole: unavailable first, then paused, then running. */
@@ -2006,10 +2018,15 @@ export interface WaveformAnalysisStatus {
   eta_seconds: number | null;
   /** Why it is unavailable: `decoder_missing`. */
   reason: string | null;
+  /** What the waveform data takes on disk; "Delete waveform data" says it first. */
+  store_bytes: number;
 }
 
 /** The codes a waveform refusal can carry; any other failure throws. */
-export type WaveformRefusalCode = "INVALID_REQUEST" | "WAVEFORMS_SETTING_FAILED";
+export type WaveformRefusalCode =
+  | "INVALID_REQUEST"
+  | "WAVEFORMS_SETTING_FAILED"
+  | "WAVEFORMS_STORE_FAILED";
 
 export interface WaveformRefusal {
   code: WaveformRefusalCode;
@@ -2020,6 +2037,84 @@ export interface WaveformRefusal {
 export type WaveformAnswer<T> =
   | { value: T; refusal: null }
   | { value: null; refusal: WaveformRefusal };
+
+/**
+ * A track's waveform state: a picture, or why there is none (WAVE-02).
+ * `paused` is not among them: it is the analysis's, and travels beside.
+ */
+export type WaveformTrackState =
+  | "ready"
+  | "failed"
+  | "missing"
+  | "unchecked"
+  | "waiting"
+  | "unavailable";
+
+/** One beat grid marker, as Rekordbox wrote it (WAVE-04). */
+export interface BeatGridMarker {
+  start_ms: number;
+  bpm: number;
+  /** The time signature as written, such as `4/4`. */
+  meter: string | null;
+  /** Which beat of the bar the marker is, 1–4. */
+  beat: number | null;
+}
+
+/** A track's marks as a drawing needs them: every cue, and every grid marker. */
+export interface WaveformMarks {
+  /** Whether the library's marks have been read at all. */
+  read: boolean;
+  cues: TrackCue[];
+  grid: BeatGridMarker[];
+}
+
+/** One track's answer from `waveforms.get`. */
+export interface WaveformTrack {
+  track_id: number;
+  state: WaveformTrackState;
+  /** Why it failed, or why it is missing. */
+  reason: string | null;
+  /** A ready waveform's own length. */
+  duration_ms: number | null;
+  /**
+   * A ready waveform at the width asked: `width × 4` bytes, each column's full,
+   * low, mid and high band, 0–255. Decoded from the engine's base64 in main, so
+   * the renderer never parses a string. Null unless ready.
+   */
+  data: Uint8Array | null;
+  /** The track's cues and grid, when asked for; null otherwise. */
+  marks: WaveformMarks | null;
+}
+
+/** A batch of waveforms at one width (`GET /api/v1/waveforms`). */
+export interface WaveformBatch {
+  width: number;
+  /** The analysis's pause: a `waiting` track waits for a paused analysis. */
+  paused: boolean;
+  /** In the order asked, each once; ids that are no track are left out. */
+  waveforms: WaveformTrack[];
+  /** Ids asked for that are no track, so a caller stops asking. */
+  unknown: number[];
+}
+
+/** What a request queued (`POST /api/v1/waveforms/request`). */
+export interface WaveformsRequested {
+  requested: number[];
+  /** The job analysing them, or null when nothing can (no decoder). */
+  job_id: string | null;
+}
+
+/** What "Delete waveform data" deleted. */
+export interface WaveformDataDeleted {
+  waveforms: number;
+  freed_bytes: number;
+}
+
+/** "Delete waveform data"'s answer: what went, and the analysis after. */
+export interface WaveformDataDeletion {
+  deleted: WaveformDataDeleted;
+  analysis: WaveformAnalysisStatus;
+}
 
 // ---------------------------------------------------------------------------
 // A Set over the wire (PREP-08)
@@ -2901,18 +2996,59 @@ export class EngineClient {
   }
 
   // -------------------------------------------------------------------------
-  // The waveform analysis (WAVE-03)
+  // Waveforms and their analysis (WAVE-03, WAVE-05)
   //
-  // One read and two actions, each answering a `WaveformAnswer`.
+  // Two reads and four actions, each answering a `WaveformAnswer`.
   // -------------------------------------------------------------------------
 
-  private async waveformsPost<T>(path: string): Promise<WaveformAnswer<T>> {
+  private async waveformsPost<T>(path: string, body: object = {}): Promise<WaveformAnswer<T>> {
     const res = await fetch(this.url(path), {
       method: "POST",
       headers: this.headers(),
-      body: "{}",
+      body: JSON.stringify(body),
     });
     return readWaveformAnswer<T>(res);
+  }
+
+  /** Each track's state and, when ready, its picture at `width`; with `marks`, its cues and grid. */
+  async getWaveforms(params: {
+    track_ids: number[];
+    width: number;
+    marks?: boolean;
+  }): Promise<WaveformAnswer<WaveformBatch>> {
+    const query = new URLSearchParams({
+      track_ids: params.track_ids.join(","),
+      width: String(params.width),
+      marks: params.marks ? "1" : "0",
+    });
+    const res = await fetch(this.url(`/api/v1/waveforms?${query}`), { headers: this.headers() });
+    type Wire = Omit<WaveformBatch, "waveforms"> & {
+      waveforms: (Omit<WaveformTrack, "data"> & { data: string | null })[];
+    };
+    const answer = await readWaveformAnswer<Wire>(res);
+    if (answer.refusal) return answer;
+    return {
+      value: {
+        ...answer.value,
+        waveforms: answer.value.waveforms.map((track) => ({
+          ...track,
+          data: waveformBytes(track.data),
+        })),
+      },
+      refusal: null,
+    };
+  }
+
+  /** Analyse these tracks first, at most 50, even while the analysis is paused. */
+  async requestWaveforms(params: {
+    track_ids: number[];
+  }): Promise<WaveformAnswer<WaveformsRequested>> {
+    return this.waveformsPost("/api/v1/waveforms/request", { track_ids: params.track_ids });
+  }
+
+  /** Empty the waveform data; the analysis starts again unless paused. */
+  async deleteWaveformData(): Promise<WaveformAnswer<WaveformDataDeletion>> {
+    return this.waveformsPost("/api/v1/waveforms/delete-data");
   }
 
   /** The analysis as a whole: its state, counts and rate. */

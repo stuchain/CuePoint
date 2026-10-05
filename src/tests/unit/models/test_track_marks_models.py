@@ -192,3 +192,23 @@ class TestTrackMarks:
             "cues": [],
             "beat_grid": None,
         }
+
+    def test_its_drawing_carries_every_cue_and_every_marker(self):
+        """What a waveform answer carries (WAVE-05): the grid is not summed up."""
+        marks = TrackMarks.from_values(7, VALUES_CUES, VALUES_GRID)
+
+        drawing = marks.drawing(read=True)
+
+        assert drawing["read"] is True
+        assert drawing["cues"] == [cue.to_dict() for cue in marks.cues]
+        assert drawing["grid"] == [
+            {"start_ms": 120, "bpm": 121.0, "meter": "4/4", "beat": 1},
+            {"start_ms": 60120, "bpm": 122.5, "meter": "4/4", "beat": 3},
+        ]
+
+    def test_a_drawing_without_marks(self):
+        assert TrackMarks(track_id=1).drawing(read=False) == {
+            "read": False,
+            "cues": [],
+            "grid": [],
+        }

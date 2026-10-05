@@ -104,6 +104,7 @@ import { useLibraryBatch } from "./useLibraryBatch";
 import { useLibraryClean } from "./useLibraryClean";
 import { useLibraryChanges } from "../../api/libraryChanges";
 import { revealTrack } from "../clean/revealTrack";
+import { forgetWaveforms } from "../../components/waveform/waveformCache";
 import { useCollectionTree } from "./useCollectionTree";
 import { followJob } from "./followJob";
 import { appliedLine, jobErrorMessage } from "./libraryFormat";
@@ -1350,6 +1351,8 @@ export function LibraryScreen({
       // counts beside its name are stale the moment it lands.
       collections.reload();
       if (mounted.current) setEmptiedByRefresh(emptied);
+      // A refresh can move a track to another file, whose waveform is another.
+      forgetWaveforms();
       push("Library refreshed.", "success");
     },
     [collections, diff, loadSummary, playlists, push, run, window_],

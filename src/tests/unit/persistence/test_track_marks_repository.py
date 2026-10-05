@@ -160,3 +160,47 @@ class TestMarksRead:
         repo.mark_read("2026-10-05T00:00:00+00:00")
         assert credits.is_current(1)
         assert {r.name for r in credits.built()} == {"label_keys", "track_credits"}
+
+
+class TestManyTracks:
+    """A waveform batch reads 200 tracks' marks at once (WAVE-05)."""
+
+    def test_each_track_s_marks_as_one_read_gives_them(self, repo, ids):
+        repo.replace_many([(ids[0], CUES, GRID), (ids[2], CUES[:1], ())])
+
+        found = repo.get_many(ids)
+
+        assert set(found) == set(ids)
+        for track_id in ids:
+            assert found[track_id] == repo.get(track_id)
+        assert found[ids[1]] == TrackMarks(track_id=ids[1])
+
+    def test_unknown_and_repeated_ids_answer_once_each(self, repo, ids):
+        repo.replace_many([(ids[0], CUES, GRID)])
+
+        found = repo.get_many([ids[0], 999_999, ids[0]])
+
+        assert list(found) == [ids[0], 999_999]
+        assert found[999_999] == TrackMarks(track_id=999_999)
+
+    def test_nothing_asked_reads_nothing(self, repo):
+        assert repo.get_many([]) == {}
+
+    def test_more_tracks_than_one_query_takes(self, repo, db):
+        TrackRepository(db).add_many(
+            LibraryTrack(
+                rekordbox_track_id=f"m{n}",
+                file_path=f"/m/m{n}.mp3",
+                title=f"m{n}",
+                artist="A",
+            )
+            for n in range(1_100)
+        )
+        every = [int(r[0]) for r in db.connect().execute("SELECT id FROM tracks")]
+        repo.replace_many((track_id, CUES[:1], GRID[:1]) for track_id in every)
+
+        found = repo.get_many(every)
+
+        assert len(found) == len(every)
+        assert all(len(marks.cues) == 1 for marks in found.values())
+        assert all(len(marks.grid) == 1 for marks in found.values())

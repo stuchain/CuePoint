@@ -48,6 +48,7 @@ from cuepoint.models.waveform_analysis import (
 from cuepoint.persistence.waveform_store import WaveformStoreError
 from cuepoint.services import waveform_analysis_service as module
 from cuepoint.services.waveform_analysis_service import (
+    EVENT_WAVEFORM_DATA_DELETED,
     EVENT_WAVEFORMS_ANALYSED,
     REFILL,
     RateWindow,
@@ -679,3 +680,70 @@ def test_the_failure_state_is_stored_as_failed(lib):
     run(lib)
 
     assert lib.stored() == {"a": STORED_FAILED}
+
+
+class TestDeletingTheData:
+    """ "Delete waveform data" (WAVE-05): the store, its size and one event."""
+
+    def test_it_empties_the_store_and_says_what_went(self, lib):
+        lib.add("a")
+        lib.add("b")
+        lib.decoder.answers[str(lib.path("b"))] = DecodeFailed("undecodable", "stub")
+        run(lib)
+        before = lib.analysis.store_bytes()
+
+        result = lib.analysis.delete_data()
+
+        assert result.waveforms == 2
+        assert lib.stored() == {}
+        # Two small rows leave the file at its least pages; the store's own
+        # test shows a full one shrinking.
+        assert result.freed_bytes == before - lib.analysis.store_bytes()
+        assert result.freed_bytes >= 0
+
+    def test_it_is_recorded_once(self, lib):
+        lib.add("a")
+        run(lib)
+
+        lib.analysis.delete_data()
+
+        events = lib.activity.recent_events(
+            limit=10, event_type=EVENT_WAVEFORM_DATA_DELETED
+        )
+        assert len(events) == 1
+        assert events[0].summary == (
+            "Deleted 1 waveform; the library will be analysed again."
+        )
+        assert events[0].detail["waveforms"] == 1
+
+    def test_an_empty_store_says_so(self, lib):
+        result = lib.analysis.delete_data()
+
+        assert result.waveforms == 0
+        events = lib.activity.recent_events(
+            limit=10, event_type=EVENT_WAVEFORM_DATA_DELETED
+        )
+        assert events[0].summary == (
+            "Deleted the waveform data; there were no waveforms to delete."
+        )
+
+    def test_a_feed_that_cannot_be_written_does_not_undo_it(self, lib):
+        lib.add("a")
+        run(lib)
+
+        class Broken:
+            def record_event(self, *args, **kwargs):
+                raise RuntimeError("database locked")
+
+        service = WaveformAnalysisService(lib.work, lib.store, lib.waveforms, Broken())
+
+        with own_records(module.__name__) as records:
+            result = service.delete_data()
+
+        assert result.waveforms == 1
+        assert lib.stored() == {}
+        assert any("could not record the deletion" in r.getMessage() for r in records)
+
+    def test_the_store_s_size_never_opens_it(self, lib):
+        assert lib.analysis.store_bytes() == 0
+        assert not lib.store.path.exists()

@@ -28,6 +28,7 @@ import { LibraryScreen } from "./LibraryScreen";
 import { ToastProvider } from "../../components";
 import { InspectorSlotProvider, useInspectorContent } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
+import { waveformCache } from "../../components/waveform/waveformCache";
 import type {
   CollectionNode,
   FilterRuleSet,
@@ -773,6 +774,18 @@ describe("the refresh preview (DEC-032)", () => {
       }),
     );
     expect(await screen.findByText(/3,881 tracks in your library/)).toBeInTheDocument();
+  });
+
+  it("empties the waveforms held, since a refresh can move a track to another file", async () => {
+    const forget = vi.spyOn(waveformCache, "forget");
+    const dialog = await openPreview();
+    bridge.getJobResults.mockResolvedValue({ id: "job-apply", state: "succeeded", result: APPLIED });
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Remove 2 tracks and refresh/i }),
+    );
+
+    await waitFor(() => expect(forget).toHaveBeenCalledTimes(1));
   });
 
   it("changes nothing when the preview is cancelled", async () => {

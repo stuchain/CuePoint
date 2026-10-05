@@ -2736,10 +2736,15 @@ export interface WaveformAnalysisStatus {
   eta_seconds: number | null;
   /** Why it is unavailable: `decoder_missing`. */
   reason: string | null;
+  /** What the waveform data takes on disk; "Delete waveform data" says it first. */
+  store_bytes: number;
 }
 
 /** The codes a waveform refusal can carry; any other failure throws. */
-export type WaveformRefusalCode = "INVALID_REQUEST" | "WAVEFORMS_SETTING_FAILED";
+export type WaveformRefusalCode =
+  | "INVALID_REQUEST"
+  | "WAVEFORMS_SETTING_FAILED"
+  | "WAVEFORMS_STORE_FAILED";
 
 export interface WaveformRefusal {
   code: WaveformRefusalCode;
@@ -2751,6 +2756,84 @@ export type WaveformAnswer<T> =
   | { value: T; refusal: null }
   | { value: null; refusal: WaveformRefusal };
 
+/**
+ * A track's waveform state: a picture, or why there is none (WAVE-02).
+ * `paused` is not among them: it is the analysis's, and travels beside.
+ */
+export type WaveformTrackState =
+  | "ready"
+  | "failed"
+  | "missing"
+  | "unchecked"
+  | "waiting"
+  | "unavailable";
+
+/** One beat grid marker, as Rekordbox wrote it (WAVE-04). */
+export interface BeatGridMarker {
+  start_ms: number;
+  bpm: number;
+  /** The time signature as written, such as `4/4`. */
+  meter: string | null;
+  /** Which beat of the bar the marker is, 1–4. */
+  beat: number | null;
+}
+
+/** A track's marks as a drawing needs them: every cue, and every grid marker. */
+export interface WaveformMarks {
+  /** Whether the library's marks have been read at all. */
+  read: boolean;
+  cues: TrackCue[];
+  grid: BeatGridMarker[];
+}
+
+/** One track's answer from `waveforms.get`. */
+export interface WaveformTrack {
+  track_id: number;
+  state: WaveformTrackState;
+  /** Why it failed, or why it is missing. */
+  reason: string | null;
+  /** A ready waveform's own length. */
+  duration_ms: number | null;
+  /**
+   * A ready waveform at the width asked: `width × 4` bytes, each column's full,
+   * low, mid and high band, 0–255. Decoded from the engine's base64 in main, so
+   * the renderer never parses a string. Null unless ready.
+   */
+  data: Uint8Array | null;
+  /** The track's cues and grid, when asked for; null otherwise. */
+  marks: WaveformMarks | null;
+}
+
+/** A batch of waveforms at one width (`GET /api/v1/waveforms`). */
+export interface WaveformBatch {
+  width: number;
+  /** The analysis's pause: a `waiting` track waits for a paused analysis. */
+  paused: boolean;
+  /** In the order asked, each once; ids that are no track are left out. */
+  waveforms: WaveformTrack[];
+  /** Ids asked for that are no track, so a caller stops asking. */
+  unknown: number[];
+}
+
+/** What a request queued (`POST /api/v1/waveforms/request`). */
+export interface WaveformsRequested {
+  requested: number[];
+  /** The job analysing them, or null when nothing can (no decoder). */
+  job_id: string | null;
+}
+
+/** What "Delete waveform data" deleted. */
+export interface WaveformDataDeleted {
+  waveforms: number;
+  freed_bytes: number;
+}
+
+/** "Delete waveform data"'s answer: what went, and the analysis after. */
+export interface WaveformDataDeletion {
+  deleted: WaveformDataDeleted;
+  analysis: WaveformAnalysisStatus;
+}
+
 /** `window.cuepoint.waveforms`: every method answers `{ value, refusal }`. */
 export interface WaveformsBridge {
   /** The analysis as a whole: its state, counts and rate. */
@@ -2759,6 +2842,16 @@ export interface WaveformsBridge {
   pause: () => Promise<WaveformAnswer<WaveformAnalysisStatus>>;
   /** Clear the pause and start a run. */
   resume: () => Promise<WaveformAnswer<WaveformAnalysisStatus>>;
+  /** At most 200 tracks' states and pictures at a width of 16–1,200; with `marks`, their cues and grid. */
+  get: (params: {
+    track_ids: number[];
+    width: number;
+    marks?: boolean;
+  }) => Promise<WaveformAnswer<WaveformBatch>>;
+  /** Analyse these tracks first, at most 50, even while paused. */
+  request: (params: { track_ids: number[] }) => Promise<WaveformAnswer<WaveformsRequested>>;
+  /** Empty the waveform data; the analysis starts again unless paused. */
+  deleteData: () => Promise<WaveformAnswer<WaveformDataDeletion>>;
 }
 
 export interface SetsBridge {

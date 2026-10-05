@@ -32,6 +32,7 @@ function status(overrides: Partial<WaveformAnalysisStatus> = {}): WaveformAnalys
     rate_per_hour: null,
     eta_seconds: null,
     reason: null,
+    store_bytes: 0,
     ...overrides,
   };
   return { ...merged, remaining: merged.present - merged.analysed - merged.failed };
@@ -90,6 +91,9 @@ beforeEach(() => {
     analysis: vi.fn().mockResolvedValue(answer(status())),
     pause: vi.fn().mockResolvedValue(answer(status({ state: "paused", paused: true }))),
     resume: vi.fn().mockResolvedValue(answer(status({ state: "running", job_id: "job-1" }))),
+    get: vi.fn(),
+    request: vi.fn(),
+    deleteData: vi.fn(),
   };
   install({ waveforms: waveforms as unknown as WaveformsBridge });
 });

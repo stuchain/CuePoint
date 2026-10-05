@@ -98,6 +98,24 @@ pages beside their pictures, so reading them means scanning the whole file.
   tracks: an empty library is far likelier a new or reset database than a decision
   to discard hours of analysis.
 
+## Amendment (WAVE-05, 2026-10-05): "Delete waveform data"
+
+"Delete waveform data" empties the store and gives its space back without
+replacing the file.
+
+- **The file stays.** Other threads hold connections to it, and Windows refuses
+  to delete or rename an open file. So `clear()` deletes every row in one
+  statement, then `VACUUM` rewrites the file at its new size and the WAL is
+  truncated. A store emptied of 250 MB that kept its pages would say it was
+  deleted and take the same disk.
+- **Compacting is best effort** once the rows have gone: a reader holding the
+  file delays it to the next `VACUUM`, never the deletion.
+- **A copy set aside earlier is deleted too,** and counted in the size the
+  confirmation states (`disk_bytes()`, which never opens the store).
+- **Nothing lands after it.** The engine stops a running analysis with the
+  reason `data_deleted`, waits for the files it is decoding, empties the store,
+  and only then lets a run start again: unless paused, at once.
+
 ## Signals to revisit
 
 - **The store outgrows its budget:** a real library's mean picture exceeds about 5 KB, which would put

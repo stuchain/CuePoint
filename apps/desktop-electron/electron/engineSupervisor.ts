@@ -88,6 +88,9 @@ import {
   type TrackMatches,
   type WaveformAnalysisStatus,
   type WaveformAnswer,
+  type WaveformBatch,
+  type WaveformDataDeletion,
+  type WaveformsRequested,
 } from "./engineClient";
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
 import { withDecoderPath } from "./playerLaunch";
@@ -956,6 +959,23 @@ export class EngineSupervisor {
 
   async resumeWaveformAnalysis(): Promise<WaveformAnswer<WaveformAnalysisStatus>> {
     return (await this.readyClient()).resumeWaveformAnalysis();
+  }
+
+  // The waveforms themselves, requests and "Delete waveform data" (WAVE-05).
+  async getWaveforms(
+    params: Parameters<EngineClient["getWaveforms"]>[0],
+  ): Promise<WaveformAnswer<WaveformBatch>> {
+    return (await this.readyClient()).getWaveforms(params);
+  }
+
+  async requestWaveforms(
+    params: Parameters<EngineClient["requestWaveforms"]>[0],
+  ): Promise<WaveformAnswer<WaveformsRequested>> {
+    return (await this.readyClient()).requestWaveforms(params);
+  }
+
+  async deleteWaveformData(): Promise<WaveformAnswer<WaveformDataDeletion>> {
+    return (await this.readyClient()).deleteWaveformData();
   }
 
   async startLibraryImport(params: {

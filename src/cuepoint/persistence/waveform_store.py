@@ -544,6 +544,22 @@ class WaveformStore:
         except sqlite3.Error as exc:
             raise self._failed("read", exc) from exc
 
+    def disk_bytes(self) -> int:
+        """The bytes the store takes on disk.
+
+        Its file and WAL sidecars, and a set-aside copy's, since "Delete
+        waveform data" gives those back too. A file that is not there is
+        nothing; this never opens the store.
+        """
+        total = 0
+        for base in (self.path, self.set_aside_path):
+            for suffix in _SIDECARS:
+                try:
+                    total += _sibling(base, suffix).stat().st_size
+                except OSError:
+                    continue
+        return total
+
     def count(self) -> int:
         """How many rows, of any version."""
         try:
@@ -605,6 +621,43 @@ class WaveformStore:
             connection.execute("COMMIT")
         except sqlite3.Error as exc:
             raise self._failed("write", exc) from exc
+        return deleted
+
+    def clear(self) -> int:
+        """Delete every waveform and give the space back; how many rows went.
+
+        The rows go in one statement, then ``VACUUM`` rewrites the file at its
+        new size and the WAL is truncated: a store emptied of 250 MB that kept
+        its pages would say it was deleted and take the same disk. The file
+        stays where it is, with its schema, because other threads hold
+        connections to it and Windows refuses to delete an open file. A copy
+        set aside earlier is deleted too.
+
+        Raises:
+            WaveformStoreError: If the rows cannot be deleted. Giving the space
+                back is best effort once they have gone: a reader holding the
+                file open delays it to the next ``VACUUM``, never the deletion.
+        """
+        connection = self.connect()
+        try:
+            cursor = connection.execute("DELETE FROM waveforms")
+        except sqlite3.Error as exc:
+            raise self._failed("write", exc) from exc
+        deleted = max(0, cursor.rowcount)
+        try:
+            connection.execute("VACUUM")
+            connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except sqlite3.Error as exc:
+            _logger.warning(
+                "[waveforms] The emptied store could not be compacted: %s", exc
+            )
+        for suffix in _SIDECARS:
+            try:
+                _sibling(self.set_aside_path, suffix).unlink(missing_ok=True)
+            except OSError as exc:
+                _logger.warning(
+                    "[waveforms] A set-aside store could not be deleted: %s", exc
+                )
         return deleted
 
 

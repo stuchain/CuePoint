@@ -2,7 +2,7 @@
 
 Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–13 resolved (DEC-001…DEC-123).**
 Phase 11 is specified in `PHASE11_WAVEFORMS.md` (WAVE-01…WAVE-07), unblocked by Decision Round 13
-(DEC-113…DEC-123); WAVE-01 to WAVE-04 are implemented. It starts with Phase 5's manual acceptance still owed,
+(DEC-113…DEC-123); WAVE-01 to WAVE-05 are implemented. It starts with Phase 5's manual acceptance still owed,
 as the user decided (DEC-119).
 Phase 10 is specified in `PHASE10_PREPARE.md` (PREP-01…PREP-12), unblocked by Decision Round 12
 (DEC-102…DEC-112); all twelve steps are implemented. Phase 10's acceptance is met on Linux, in the
@@ -707,6 +707,18 @@ WAVE-04 is implemented: each track's cue points and beat grid are read from the 
 - **The export is unchanged,** held byte for byte by a test over a fixture full of marks.
 - **Measured at 50,000 tracks:** reading the marks costs 21% of reading the tracks alone in a typical
   collection and 28% with eight marks on every track, over the 10% the specification aimed for.
+
+WAVE-05 is implemented: waveforms are on the wire, and the renderer draws them.
+- **The contract:** each track's picture at any width from 16 to 1,200, with its cues and grid when
+  asked; requests; and "Delete waveform data", through all six contract files.
+- **The drawing:** the renderer's first canvas, laid out by a pure function in whole scale pixels,
+  in three bands or one colour, with the played part dimmed, cues, loops, the grid and the
+  playhead. Every theme's bands are held at 3:1 against its panel, custom themes included.
+- **Settings → Waveforms:** the analysis with Pause or Resume, the colour choice with a preview on
+  the track in the player, and "Delete waveform data…", which states the size on disk and that the
+  library will be analysed again.
+- **Proven in the app:** `bands.flac` analysed and painted, each section in its band's colour, in
+  two themes.
 
 Step specifications: `PHASE11_WAVEFORMS.md`.
 

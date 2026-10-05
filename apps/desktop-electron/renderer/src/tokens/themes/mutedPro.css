@@ -31,4 +31,13 @@
 
   --overlay-header: rgba(0, 0, 0, 0.18);
   --overlay-backdrop: rgba(0, 0, 0, 0.7);
+
+  /* Waveforms (WAVE-05): each band at 3:1 or more against --bg-panel. */
+  --waveform-low: #60a5fa;
+  --waveform-mid: #f59e0b;
+  --waveform-high: #e8eaed;
+  --waveform-mono: #fbbf24;
+  --waveform-played: rgba(42, 49, 64, 0.6);
+  --waveform-grid: rgba(232, 234, 237, 0.16);
+  --waveform-memory-cue: #d1d5db;
 }

@@ -54,6 +54,7 @@ if TYPE_CHECKING:
         AnalysisRunResult,
         PresentFile,
         RunProgress,
+        WaveformDataDeleted,
         WorkPlan,
     )
     from cuepoint.services.waveform_analysis_service import AnalysisControl
@@ -2511,6 +2512,16 @@ class IWaveformAnalysisService(ABC):
         """Record one run in Activity, once."""
         ...
 
+    @abstractmethod
+    def store_bytes(self) -> int:
+        """What ``waveforms.db`` takes on disk now; never opens it."""
+        ...
+
+    @abstractmethod
+    def delete_data(self) -> "WaveformDataDeleted":
+        """Empty the store, give its space back, and record it once (WAVE-05)."""
+        ...
+
 
 class IFileWriteRepository(ABC):
     """Interface for what a tag write reads and records (CLEAN-10, DEC-070).
@@ -3817,6 +3828,11 @@ class ITrackMarksRepository(ABC):
     @abstractmethod
     def get(self, track_id: int) -> "TrackMarks":
         """One track's marks, in order."""
+        ...
+
+    @abstractmethod
+    def get_many(self, track_ids: Iterable[int]) -> Dict[int, "TrackMarks"]:
+        """Each track's marks, keyed by id, in two queries per chunk."""
         ...
 
     @abstractmethod

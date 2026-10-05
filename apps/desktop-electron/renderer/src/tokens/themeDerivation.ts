@@ -31,6 +31,13 @@ const TOKEN_KEYS = [
   "overlay-header",
   "overlay-backdrop",
   "row-unmatched-bg",
+  "waveform-low",
+  "waveform-mid",
+  "waveform-high",
+  "waveform-mono",
+  "waveform-played",
+  "waveform-grid",
+  "waveform-memory-cue",
 ] as const;
 
 export const DERIVED_THEME_TOKEN_KEYS = TOKEN_KEYS;
@@ -72,7 +79,7 @@ export function lighten(hex: string, amount: number): string {
   return rgbToHex(r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount);
 }
 
-function relativeLuminance(hex: string): number {
+export function relativeLuminance(hex: string): number {
   const { r, g, b } = hexToRgb(hex);
   const [rs, gs, bs] = [r, g, b].map((c) => {
     const s = c / 255;
@@ -83,6 +90,59 @@ function relativeLuminance(hex: string): number {
 
 export function pickContrastText(bgHex: string): string {
   return relativeLuminance(bgHex) > 0.45 ? "#000000" : "#ffffff";
+}
+
+/** WCAG's contrast ratio between two colours, from 1 to 21. */
+export function contrastRatio(a: string, b: string): number {
+  const [light, dark] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+/** The least contrast a waveform band keeps against the panel it is drawn on. */
+export const WAVEFORM_MIN_CONTRAST = 3;
+
+/**
+ * `hex`, moved towards white or black until it stands at `min` against
+ * `background`: towards whichever end the background is further from. A colour
+ * already there is kept, so a custom theme's waveform keeps the hue it was
+ * given wherever it can.
+ */
+export function withContrast(hex: string, background: string, min = WAVEFORM_MIN_CONTRAST): string {
+  const colour = normalizeHex(hex);
+  const towardsWhite = relativeLuminance(background) < 0.18;
+  for (let step = 0; step <= 20; step += 1) {
+    const candidate = towardsWhite ? lighten(colour, step / 20) : darken(colour, step / 20);
+    if (contrastRatio(candidate, background) >= min) return candidate;
+  }
+  return towardsWhite ? "#ffffff" : "#000000";
+}
+
+function rgba(hex: string, alpha: number): string {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * The waveform's colours for a custom theme (WAVE-05): Rekordbox's three-band
+ * hues and the theme's accent, each held at 3:1 against the panel; the played
+ * part dimmed by the panel itself; the grid a faint line of the text colour.
+ */
+export function deriveWaveformTokens(colors: {
+  bgPanel: string;
+  fgPrimary: string;
+  fgMuted: string;
+  accentPrimary: string;
+}): ThemeTokenMap {
+  const panel = normalizeHex(colors.bgPanel);
+  return {
+    "waveform-low": withContrast("#3b82f6", panel),
+    "waveform-mid": withContrast("#f59e0b", panel),
+    "waveform-high": withContrast(normalizeHex(colors.fgPrimary), panel),
+    "waveform-mono": withContrast(normalizeHex(colors.accentPrimary), panel),
+    "waveform-played": rgba(panel, 0.6),
+    "waveform-grid": rgba(normalizeHex(colors.fgPrimary), 0.16),
+    "waveform-memory-cue": withContrast(normalizeHex(colors.fgMuted), panel),
+  };
 }
 
 export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
@@ -129,6 +189,7 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "overlay-header": "rgba(0, 0, 0, 0.25)",
     "overlay-backdrop": "rgba(0, 0, 0, 0.72)",
     "row-unmatched-bg": darken(normalizeHex(colors.accentDanger), 0.35),
+    ...deriveWaveformTokens(colors),
   };
 }
 

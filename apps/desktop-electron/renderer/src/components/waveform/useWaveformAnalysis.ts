@@ -1,5 +1,5 @@
 /**
- * The waveform analysis, followed while a view shows it (WAVE-03).
+ * The waveform analysis, followed while a view shows it (WAVE-03, WAVE-05).
  *
  * Read every two seconds while mounted, as the status strip discovers jobs: the
  * analysis starts on its own after every file check, at launch and on a
@@ -7,17 +7,24 @@
  * them, which replaces the last read at once, so the button changes as it is
  * pressed rather than at the next poll.
  *
+ * "Delete waveform data" (WAVE-05) answers what it deleted and the state
+ * after, which replaces the last read the same way, and empties the waveforms
+ * every view holds.
+ *
  * Every answer is `{ value, refusal }`. A refusal — the pause could not be
- * saved — is returned to the caller to say in its own words; anything else
- * that fails is an error the view shows in place of the state.
+ * saved, or the data could not be deleted — is returned to the caller to say
+ * in its own words; anything else that fails is an error the view shows in
+ * place of the state.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
   WaveformAnalysisStatus,
   WaveformAnswer,
+  WaveformDataDeleted,
   WaveformRefusal,
 } from "../../api/cuepointBridge.types";
+import { forgetWaveforms } from "./waveformCache";
 
 /** How often the analysis is read while a view shows it. */
 export const ANALYSIS_POLL_MS = 2000;
@@ -35,6 +42,8 @@ export interface WaveformAnalysis {
   pause: () => Promise<WaveformRefusal | null>;
   /** Resume, or start; answers the refusal standing in for the new state, if any. */
   resume: () => Promise<WaveformRefusal | null>;
+  /** Delete the waveform data: what went, or the refusal; null when it could not ask. */
+  deleteData: () => Promise<WaveformAnswer<WaveformDataDeleted> | null>;
 }
 
 type Call = () => Promise<WaveformAnswer<WaveformAnalysisStatus>>;
@@ -111,5 +120,31 @@ export function useWaveformAnalysis(pollMs: number = ANALYSIS_POLL_MS): Waveform
   const pause = useCallback(() => act(bridge?.pause), [act, bridge]);
   const resume = useCallback(() => act(bridge?.resume), [act, bridge]);
 
-  return { status, error, supported: Boolean(bridge?.analysis), busy, pause, resume };
+  const deleteData = useCallback(async (): Promise<WaveformAnswer<WaveformDataDeleted> | null> => {
+    const call = bridge?.deleteData;
+    if (!call) return null;
+    setBusy(true);
+    try {
+      const answer = await call();
+      if (answer.refusal) return { value: null, refusal: answer.refusal };
+      forgetWaveforms();
+      take({ value: answer.value.analysis, refusal: null });
+      return { value: answer.value.deleted, refusal: null };
+    } catch (cause) {
+      if (alive.current) setError(messageOf(cause));
+      return null;
+    } finally {
+      if (alive.current) setBusy(false);
+    }
+  }, [bridge, take]);
+
+  return {
+    status,
+    error,
+    supported: Boolean(bridge?.analysis),
+    busy,
+    pause,
+    resume,
+    deleteData,
+  };
 }

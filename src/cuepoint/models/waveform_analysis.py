@@ -45,8 +45,17 @@ STOP_STEPPED_ASIDE = "stepped_aside"
 STOP_UNAVAILABLE = "unavailable"
 #: The engine is closing, and ended the decoder mid-file.
 STOP_CANCELLED = "cancelled"
+#: "Delete waveform data" emptied the store. The run stops so nothing it has in
+#: flight lands after the deletion, and a new run starts after it unless paused.
+STOP_DATA_DELETED = "data_deleted"
 
-STOP_REASONS = (STOP_PAUSED, STOP_STEPPED_ASIDE, STOP_UNAVAILABLE, STOP_CANCELLED)
+STOP_REASONS = (
+    STOP_PAUSED,
+    STOP_STEPPED_ASIDE,
+    STOP_UNAVAILABLE,
+    STOP_CANCELLED,
+    STOP_DATA_DELETED,
+)
 
 #: The analysis as a whole (``GET /api/v1/waveforms/analysis``).
 #: A run is going, and the analysis is not paused.
@@ -252,6 +261,8 @@ class AnalysisRunResult:
             return f"{line}. Stopped: the decoder could not analyse audio."
         if self.stopped == STOP_CANCELLED:
             return f"{line}. Stopped as the engine closed."
+        if self.stopped == STOP_DATA_DELETED:
+            return f"{line}. Stopped to delete the waveform data."
         return f"{line}." if not self.whole_library else f"{line}. Finished."
 
     def to_dict(self) -> Dict[str, Any]:
@@ -289,6 +300,8 @@ class AnalysisStatus:
             a run is going and there is enough to say.
         eta_seconds: ``remaining`` at that rate.
         reason: Why it is unavailable: ``decoder_missing``.
+        store_bytes: What ``waveforms.db`` takes on disk, which "Delete
+            waveform data" says before it deletes it (WAVE-05).
     """
 
     state: str
@@ -300,11 +313,12 @@ class AnalysisStatus:
     rate_per_hour: Optional[float] = None
     eta_seconds: Optional[float] = None
     reason: Optional[str] = None
+    store_bytes: int = 0
 
     def __post_init__(self) -> None:
         """Validate the status."""
         one_of(self.state, ANALYSIS_STATES, "state")
-        for name in ("present", "analysed", "failed"):
+        for name in ("present", "analysed", "failed", "store_bytes"):
             object.__setattr__(self, name, non_negative(getattr(self, name), name))
         optional_text(self.job_id, "job_id")
         optional_text(self.reason, "reason")
@@ -329,7 +343,39 @@ class AnalysisStatus:
             "rate_per_hour": self.rate_per_hour,
             "eta_seconds": self.eta_seconds,
             "reason": self.reason,
+            "store_bytes": self.store_bytes,
         }
+
+
+@dataclass(frozen=True)
+class WaveformDataDeleted:
+    """What "Delete waveform data" did (WAVE-05). Activity records it once.
+
+    Attributes:
+        waveforms: Rows deleted, ready and failed alike.
+        freed_bytes: What the store took on disk before, less what it takes now.
+    """
+
+    waveforms: int
+    freed_bytes: int
+
+    def __post_init__(self) -> None:
+        """Validate the result."""
+        for name in ("waveforms", "freed_bytes"):
+            object.__setattr__(self, name, non_negative(getattr(self, name), name))
+
+    def summary_line(self) -> str:
+        """One sentence for Activity."""
+        if not self.waveforms:
+            return "Deleted the waveform data; there were no waveforms to delete."
+        return (
+            f"Deleted {_plural(self.waveforms, 'waveform', 'waveforms')};"
+            " the library will be analysed again."
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """The result as the route answers it, and as the event's detail."""
+        return {"waveforms": self.waveforms, "freed_bytes": self.freed_bytes}
 
 
 __all__ = (
@@ -343,10 +389,12 @@ __all__ = (
     "PresentFile",
     "RunProgress",
     "STOP_CANCELLED",
+    "STOP_DATA_DELETED",
     "STOP_PAUSED",
     "STOP_REASONS",
     "STOP_STEPPED_ASIDE",
     "STOP_UNAVAILABLE",
+    "WaveformDataDeleted",
     "WorkItem",
     "WorkPlan",
 )

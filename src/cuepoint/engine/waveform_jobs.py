@@ -20,6 +20,7 @@ When a run starts
   only what that check found; it checks nothing, so DEC-073's refusal to check
   at launch stands.
 - **On Resume.**
+- **After "Delete waveform data",** unless paused (WAVE-05).
 - **On a request** (:func:`request_analysis`), even while paused: a run of the
   requested tracks only. A request while a run goes joins its queue at the
   front.
@@ -37,6 +38,10 @@ What stops it
   stops a running job with the reason ``paused``. The setting persists, so a
   paused analysis stays paused across a restart; Resume clears it and starts
   a run.
+- **"Delete waveform data"** stops a running job with the reason
+  ``data_deleted``, waits for the files in flight, empties the store, and
+  starts a run again unless paused. Nothing starts while it deletes, so no
+  row lands after the store was emptied.
 - **The status strip's Stop is Pause.** A cancel the settings did not record
   would leave a job the next start resumes anyway, so a cancel of this job,
   from any route, is a pause and is named for what it does.
@@ -68,11 +73,13 @@ from cuepoint.models.waveform_analysis import (
     ANALYSIS_PAUSED,
     ANALYSIS_RUNNING,
     ANALYSIS_UNAVAILABLE,
+    STOP_DATA_DELETED,
     STOP_PAUSED,
     STOP_STEPPED_ASIDE,
     STOP_UNAVAILABLE,
     AnalysisStatus,
     RunProgress,
+    WaveformDataDeleted,
     WorkPlan,
 )
 
@@ -116,6 +123,12 @@ TRIGGER_FILE_CHECK = "file_check"
 TRIGGER_LAUNCH = "launch"
 TRIGGER_RESUME = "resume"
 TRIGGER_REQUEST = "request"
+TRIGGER_DATA_DELETED = "data_deleted"
+
+#: How long "Delete waveform data" waits for a running job to finish the files
+#: it is decoding. A file takes a second or two; past this, the store is
+#: emptied anyway, and a file finishing later is a correct waveform of it.
+DELETE_WAIT_SECONDS = 30.0
 
 #: Why a cancel ended the job, beside ``JOB_CANCELLED``.
 ERROR_DECODER_UNAVAILABLE = "WAVEFORM_DECODER_UNAVAILABLE"
@@ -171,6 +184,8 @@ class _Control:
         self.verify_files = verify
         self.trigger = trigger
         self.job: Optional[Job] = None
+        #: Set once the run has ended and the coordinator has let it go.
+        self.ended = threading.Event()
         #: Why it must stop; set under the coordinator's lock.
         self.stop: Optional[str] = None
         #: A whole-library run asked for while this one goes, not yet satisfied.
@@ -241,6 +256,8 @@ class AnalysisCoordinator:
         self._control: Optional[_Control] = None
         self._restart_for_requests = False
         self._decoder_refused = False
+        #: "Delete waveform data" calls under way; nothing starts while any is.
+        self._deleting = 0
         self._progress: Optional[RunProgress] = None
         self._count: Optional[Tuple[float, WorkPlan]] = None
         store.add_listeners(started=self._job_started, ended=self._job_ended)
@@ -268,6 +285,9 @@ class AnalysisCoordinator:
         if self._settings.paused() or not self.decoder_available():
             return None
         with self._lock:
+            if self._deleting:
+                # The deletion starts a run itself once the store is empty.
+                return None
             control = self._control
             if self._job is None or control is None:
                 return self._start_locked(True, verify, trigger)
@@ -303,6 +323,8 @@ class AnalysisCoordinator:
                 self._requests.move_to_end(track_id, last=False)
             while len(self._requests) > MAX_REQUESTS:
                 self._requests.popitem(last=True)
+            if self._deleting:
+                return None
             if self._job is None:
                 return self._start_locked(False, False, TRIGGER_REQUEST)
             if self._control is not None and self._control.stop is not None:
@@ -351,6 +373,59 @@ class AnalysisCoordinator:
         self.start(TRIGGER_RESUME)
         return self.status()
 
+    def delete_data(
+        self, *, wait_seconds: float = DELETE_WAIT_SECONDS
+    ) -> WaveformDataDeleted:
+        """Empty the store, and start the analysis again unless paused.
+
+        A running job is stopped with the reason ``data_deleted`` and waited
+        for, so nothing it has in flight is written after the store is
+        emptied. Nothing starts while the store is being emptied. Requests
+        stay queued: a track a person is looking at is still wanted.
+
+        Raises:
+            WaveformStoreError: If the store cannot be emptied. The analysis
+                then starts again as it would have.
+        """
+        with self._lock:
+            self._deleting += 1
+            job, control = self._job, self._control
+            self._restart_for_requests = False
+            if control is not None:
+                control.owed = None
+                if control.stop is None:
+                    control.stop = STOP_DATA_DELETED
+        try:
+            if job is not None and control is not None:
+                self._request_cancel(job)
+                if not control.ended.wait(wait_seconds):
+                    _logger.warning(
+                        "[waveforms] the analysis had not stopped after %.0f s;"
+                        " deleting the waveform data anyway",
+                        wait_seconds,
+                    )
+            result = self._service().delete_data()
+        finally:
+            with self._lock:
+                self._deleting -= 1
+                self._count = None
+            self._start_after_deletion()
+        return result
+
+    def _start_after_deletion(self) -> None:
+        """A whole-library run unless paused; otherwise the requests, if any."""
+        if self.start(TRIGGER_DATA_DELETED) is not None:
+            return
+        if not self.decoder_available():
+            return
+        with self._lock:
+            if self._job is None and not self._deleting and self._requests:
+                self._start_locked(False, False, TRIGGER_REQUEST)
+
+    def paused(self) -> bool:
+        """True when the analysis is paused, as the setting says."""
+        return self._settings.paused()
+
     def start_at_launch(self) -> Optional[Job]:
         """The launch run: only unpaused, with a decoder, and with work waiting."""
         if self._settings.paused() or not self.decoder_available():
@@ -394,6 +469,11 @@ class AnalysisCoordinator:
         else:
             state, reason = ANALYSIS_IDLE, None
         whole = progress is not None and progress.whole_library
+        try:
+            store_bytes = int(self._service().store_bytes())
+        except Exception as exc:  # noqa: BLE001 — a status must answer
+            _logger.warning("[waveforms] the store's size could not be read: %s", exc)
+            store_bytes = 0
         return AnalysisStatus(
             state=state,
             paused=paused,
@@ -404,6 +484,7 @@ class AnalysisCoordinator:
             rate_per_hour=progress.rate_per_hour if whole and progress else None,
             eta_seconds=progress.eta_seconds if whole and progress else None,
             reason=reason,
+            store_bytes=store_bytes,
         )
 
     # ------------------------------------------------------- the job store
@@ -527,7 +608,10 @@ class AnalysisCoordinator:
                     result=payload,
                 )
         finally:
-            self._finished(job, control)
+            try:
+                self._finished(job, control)
+            finally:
+                control.ended.set()
 
     def _finished(self, job: Job, control: _Control) -> None:
         """Start what was owed once the job has ended."""
@@ -541,6 +625,9 @@ class AnalysisCoordinator:
             self._restart_for_requests = False
             if self._decoder_refused:
                 self._requests.clear()
+                return
+            if self._deleting:
+                # The deletion starts what comes next once the store is empty.
                 return
             if owed is not None and not self._settings.paused():
                 self._start_locked(True, owed.verify, owed.trigger)
@@ -684,6 +771,16 @@ def resume_analysis(store: JobStore) -> AnalysisStatus:
     return coordinator(store).resume()
 
 
+def delete_waveform_data(store: JobStore) -> WaveformDataDeleted:
+    """Empty the store; see :meth:`AnalysisCoordinator.delete_data`."""
+    return coordinator(store).delete_data()
+
+
+def analysis_paused(store: JobStore) -> bool:
+    """True when the analysis is paused; see :meth:`AnalysisCoordinator.paused`."""
+    return coordinator(store).paused()
+
+
 def analysis_status(store: JobStore) -> AnalysisStatus:
     """The analysis as a whole; see :meth:`AnalysisCoordinator.status`."""
     return coordinator(store).status()
@@ -715,6 +812,7 @@ def schedule_launch_analysis(
 __all__ = (
     "AnalysisCoordinator",
     "AnalysisSettings",
+    "DELETE_WAIT_SECONDS",
     "ERROR_ANALYSIS_FAILED",
     "ERROR_DECODER_UNAVAILABLE",
     "JOB_TYPE_WAVEFORM_ANALYSIS",
@@ -723,14 +821,17 @@ __all__ = (
     "PROGRESS_MESSAGE",
     "SETTING_PAUSED",
     "STEPS_ASIDE_FOR",
+    "TRIGGER_DATA_DELETED",
     "TRIGGER_FILE_CHECK",
     "TRIGGER_LAUNCH",
     "TRIGGER_REQUEST",
     "TRIGGER_RESUME",
     "analysis_after_file_check",
+    "analysis_paused",
     "analysis_status",
     "bind",
     "coordinator",
+    "delete_waveform_data",
     "pause_analysis",
     "request_analysis",
     "resume_analysis",

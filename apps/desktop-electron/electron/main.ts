@@ -516,6 +516,10 @@ function registerIpcHandlers(): void {
   ipcMain.handle("engine:getWaveformAnalysis", () => engine.getWaveformAnalysis());
   ipcMain.handle("engine:pauseWaveformAnalysis", () => engine.pauseWaveformAnalysis());
   ipcMain.handle("engine:resumeWaveformAnalysis", () => engine.resumeWaveformAnalysis());
+  // The waveforms themselves (WAVE-05); the engine validates every parameter.
+  ipcMain.handle("engine:getWaveforms", (_event, params) => engine.getWaveforms(params));
+  ipcMain.handle("engine:requestWaveforms", (_event, params) => engine.requestWaveforms(params));
+  ipcMain.handle("engine:deleteWaveformData", () => engine.deleteWaveformData());
   ipcMain.handle("engine:startLibraryImport", (_event, params) =>
     engine.startLibraryImport(params),
   );

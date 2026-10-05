@@ -18,8 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   analysis carries on after a restart where it stopped. It steps aside for an
   import, a refresh, a file check or a tag write, which never wait for it. A file
   that could not be read is not retried until it changes, and a file on a
-  disconnected drive is never counted as failed. The waveforms are drawn in a
-  later release
+  disconnected drive is never counted as failed
+- **Settings → Waveforms.** The analysis's progress with **Pause** or
+  **Resume**; the colour choice, **Three bands** (lows, mids and highs in colours
+  of their own, as Rekordbox draws them) or **One colour**, remembered on this
+  computer and shown on a preview of the track in the player, with its cues,
+  beat grid and playhead; and **Delete waveform data…**, which first says how
+  much disk the waveforms take and that the whole library will be analysed
+  again. Every theme, and every custom theme, has waveform colours kept readable
+  against its panels. Waveforms are drawn in the player bar, the Inspector and
+  the Library in a later release
 - **Cue points and beat grids from Rekordbox.** An import and a refresh read
   each track's hot cues, memory cues, loops, fades, load points and beat grid
   from the export, and the Inspector lists them under **From Rekordbox**, one

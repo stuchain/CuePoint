@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 11: Waveforms, Detailed Step Specifications
 
-Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30), WAVE-03 (2026-10-03) and WAVE-04 (2026-10-05); WAVE-05 to WAVE-07 are not.** The seven steps below replace the
+Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30), WAVE-03 (2026-10-03), WAVE-04 and WAVE-05 (2026-10-05); WAVE-06 and WAVE-07 are not.** The seven steps below replace the
 roadmap's placeholder inventory (WAVE-01…WAVE-07), keeping its count. Per the process, no
 implementation happens from this document: each step needs an explicit "Implement WAVE-NN"
 instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
@@ -1245,7 +1245,7 @@ way.
 
 ---
 
-## WAVE-05 — The Waveforms API, the Contract and the Drawing
+## WAVE-05 — The Waveforms API, the Contract and the Drawing ✅ IMPLEMENTED 2026-10-05
 
 **Objective**: Put waveforms, their marks and the analysis's state on the wire, and draw a waveform in
 the pixel style.
@@ -1367,7 +1367,122 @@ the pixel style.
 
 **Complexity**: **L**
 
-**Outcome**: Not implemented yet.
+**Outcome**: Implemented (2026-10-05). Waveforms, their marks and the analysis's state are on the
+wire through all six contract files, and the renderer draws a waveform on its first canvas, in
+whole scale pixels, in three bands or one colour, in every theme. Settings → Waveforms shows the
+analysis live with Pause or Resume, the colour choice, a preview on the track in the player, and
+"Delete waveform data…", which says what it costs first. Nothing else draws a waveform yet: WAVE-06
+places it in the bar, the Inspector and the Library.
+
+**What was built.**
+
+- **Three routes,** in `engine/waveforms_api.py`, beside WAVE-03's three (both in the strict mypy
+  gate):
+  - `GET /api/v1/waveforms`: up to 200 tracks' states and pictures at a width of 16–1,200, as
+    base64, with the analysis's `paused`; with `marks=1`, every cue and every grid marker
+    (`TrackMarks.drawing`, read for the whole batch in two queries by `get_many`);
+  - `POST /api/v1/waveforms/request`: up to 50 ids to the front of WAVE-03's queue;
+  - `POST /api/v1/waveforms/delete-data`: empties the store, and answers what went and the
+    analysis after.
+- **Deleting the data:**
+  - `WaveformStore.clear()` deletes every row, `VACUUM`s and truncates the WAL, and deletes a
+    set-aside copy; `disk_bytes()` says what the store takes, never opening it (ADR-010's
+    amendment);
+  - `WaveformAnalysisService.delete_data()` records it once in Activity
+    (`waveforms.data_deleted`);
+  - `AnalysisCoordinator.delete_data()` stops a running analysis with the new reason
+    `data_deleted`, waits for its files in flight, empties the store, then starts a run unless
+    paused. Nothing starts while it deletes, and queued requests survive it.
+  - The analysis's status gains `store_bytes`, which the confirmation states.
+- **The contract:** `getWaveforms`, `requestWaveforms` and `deleteWaveformData` through
+  `engineClient.ts`, the supervisor, `main.ts`, `preload.cjs` and the bridge types, as
+  `window.cuepoint.waveforms.get`, `.request` and `.deleteData`. Main decodes each picture once
+  into a `Uint8Array` of exactly its bytes.
+- **`components/waveform/`:**
+  - `waveformLayout.ts`, pure: columns of one scale pixel, heights in whole scale pixels, the
+    bands layered or one colour, the played part and the planned times dimmed, loops tinted,
+    each cue's line with a hot cue's lettered flag, the grid thinned to every 1, 4, 8, 16 or 32
+    bars, and the playhead;
+  - `waveformPaint.ts` fills a layout from the theme's tokens, and `WaveformCanvas.tsx` sizes the
+    canvas in device pixels and repaints on a resize, a pixel-ratio change, a scale change and any
+    theme change, a custom theme's preview included;
+  - `waveformColour.ts`: the preference (`cuepoint-waveform-colour`) through one hook;
+  - `waveformCache.ts` and `useWaveforms.ts`: the shared data hook;
+  - `analysisWords.ts` gains a track's state in words (WAVE-06's states), sizes, and the
+    deletion's words; `useWaveformAnalysis` gains the deletion.
+- **Tokens:** seven `--waveform-*` colours in all five themes, and derived for custom themes by
+  `deriveThemeTokens`, each band moved towards white or black only as far as 3:1 against the
+  panel needs.
+- **`screens/WaveformSettingsPanel.tsx`** in Settings, after Audio. A finished refresh empties the
+  renderer's waveforms.
+- **The user guide's** player and Clean pages, ADR-010's amendment and the changelog.
+
+**Tests.**
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `test_waveforms_api.py` | 61 (+50) | Each route's shape over HTTP: every state, every width's byte count, a failed and a missing file's reason, the paused flag, unknown and repeated ids, 200 ids, marks with and without a reading, 15 refusals of the read, 9 of a request, more than 200 and 50; requests while paused; the deletion emptying the store and the analysis making it again, staying empty while paused, a store that cannot be emptied, the token, an unreachable library |
+| `test_waveform_jobs.py` | 51 (+10) | The deletion with a run going (it waits, the run ends `data_deleted`, nothing lands after), nothing starting while it deletes, requests surviving it while paused, a store that fails, the status's size |
+| `test_waveforms_fixture.py` | 4 | Writes `waveforms.fixture.json` from a real engine: every state, marks, a request, a deletion and two refusals; its picture's four sections |
+| `test_waveforms_contract.py` | 6 (+2) | Every state and cue kind typed, every field of every answer declared |
+| `test_waveform_store.py`, `test_waveform_analysis_service.py` | +8, +5 | The size, clearing every version, giving 90% of the space back, a set-aside copy, a reader beside it, the event once |
+| `test_track_marks_repository.py`, `test_track_marks_models.py` | +4, +2 | Many tracks' marks at once, beyond one query; the drawing's shape |
+| `waveformLayout.test.ts` | 67 | Column count and positions at scales 1–3 and ratios 1, 1.5 and 2; heights snapped; layering; one colour; a peak kept when narrowing; repeating when widening; played dimming; planned times; cue, loop and flag positions from milliseconds; the grid's downbeats, density thresholds, variable grids and no grid; the engine's own picture |
+| `waveformPaint.test.ts`, `WaveformCanvas.test.tsx` | 3, 7 | The paint order and tokens; device-pixel size, repainting on a theme change, the remembered choice |
+| `waveformCache.test.ts`, `useWaveforms.test.tsx` | 17, 5 | Batching per task and per 200, widths and marks apart, the bound, unknown ids, errors and their retry, refreshing waiting tracks when the count moves and at most every 2 s, emptying, a late answer dropped |
+| `waveformColour.test.ts` | 7 | The default, a reload, every reader at once, storage that throws either way, another window |
+| `waveformTokens.test.ts` | 17 | Every theme declares the tokens; each band at 3:1 in five themes and three derived ones |
+| `WaveformSettingsPanel.test.tsx` | 18 | The states in words, Pause and Resume, the confirmation's words, cancel, delete and its refusal, the preview's states, the choice across a reload and through storage that throws |
+| `analysisWords.test.ts`, `useWaveformAnalysis.test.ts`, `LibraryScreen.test.tsx` | +23, +2, +1 | A track's state, sizes and the deletion in words; the deletion's hook; a refresh emptying the waveforms |
+| `desktopContract.test.ts` | 56 in its section | The six methods across the six files, the decode in main, every type alike in both processes and against the engine's answers in `waveforms.fixture.json` |
+| `engineClient.waveforms.test.ts` | 9 | The query, the bytes copied out of Node's pool, refusals as values |
+| `waveformSettings.spec.ts` (Electron end to end) | 3 | `bands.flac` analysed by the bundled `mpv` and painted: each section's topmost pixel in its band's colour in `neoDark` and `retro16`, the mono colour with "One colour", kept across a relaunch; "Delete waveform data" emptying the store and the analysis making it again; Pause in Settings kept across a relaunch, and Resume to the end |
+
+**Run on Windows 11** (the pinned `mpv`): the Python suite (11,938 passed), the renderer (4,011),
+Electron (588), and the whole end-to-end suite, 64 passed and one skipped. The one failure is
+`prepare.spec.ts`'s lanes row count, 3 whole rows against the 4 held, which WAVE-04 found and showed
+to be independent of this phase; it is owed to Phase 10's Windows run. A screenshot of the preview
+was looked at in two themes: lows blue, mids amber, highs white, each section in its own band.
+
+**Where the specification was wrong, and what was done instead.** Each was settled the most durable
+way.
+
+1. **Main decodes the pictures, not the preload.** Node's `Buffer` decodes base64 natively in main,
+   and IPC carries a `Uint8Array` as it is, so the preload stays a list of narrow forwards and the
+   renderer still never parses a string. The bytes are copied out of the `Buffer`: a small one is a
+   view on Node's 8 KB pool, which IPC would carry whole for every track.
+2. **An id that is no track is listed, not refused.** A batch of 200 visible rows in which one track
+   was deleted a moment ago would otherwise fail for all 200. It answers under `unknown`, and the
+   renderer holds it as such and stops asking.
+3. **"Delete waveform data" stops the analysis first, and gives the space back.** The specification
+   said it empties the store. A run going at the time would write the files it was decoding after
+   the deletion, so the run stops with its own reason and is waited for. And a store emptied without
+   `VACUUM` keeps its pages: it would say it was deleted and take the same disk. The confirmation
+   states the size, which the status now carries (`store_bytes`). It is recorded in Activity, as
+   every other deletion of user-visible data is.
+4. **Settings draws a preview.** "Nothing else draws a waveform yet" holds outside Settings. A colour
+   choice without a picture asks a person to imagine it, and the specification's end-to-end check
+   needs a waveform painted somewhere: the preview draws the track in the player, which a person
+   knows, with its cues, grid and playhead.
+5. **A hot cue's letter is drawn in pixels.** A canvas's text is smoothed whatever the canvas says,
+   so the letters A–H are 3 × 5 scale-pixel glyphs in the layout, in a flag of the cue's colour,
+   black or white whichever reads. A hot cue Rekordbox gave no colour is Rekordbox's own green. A
+   flag is drawn only where the drawing is at least 14 scale pixels tall.
+6. **"Dimmer" is an overlay of the panel over the bands only.** `--waveform-played` is the panel's
+   colour at 60%, painted over each played column as tall as its tallest band, so the background
+   is not shaded too. The planned in and out times use the same token over the whole height.
+7. **Anything above silence is at least one scale pixel tall,** so a quiet passage is a line rather
+   than nothing, as Rekordbox draws it.
+8. **The analysis is read, not taken from the event stream.** WAVE-03 made `useWaveformAnalysis`
+   read every 2 seconds while a view shows it, as the strip discovers jobs, and Settings reuses it.
+   `useWaveforms` reads the analysis only while a track it shows is waiting.
+9. **Two refusals more.** `WAVEFORMS_STORE_FAILED` when the store cannot be emptied, a refusal the
+   panel says in words; and 503 `WAVEFORMS_UNAVAILABLE` when the library cannot be reached, which
+   is thrown, since nobody can act on it.
+10. **The renderer's tests read the theme files.** Vitest stubs CSS out, which made a contrast test
+    of the real files impossible; `vite.config.ts` lets the theme files through.
+11. **The strip's label and Pause were WAVE-03's** already (its deviation 1).
+
 
 ---
 

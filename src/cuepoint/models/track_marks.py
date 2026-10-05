@@ -383,6 +383,22 @@ class TrackMarks:
             ),
         }
 
+    def drawing(self, read: bool) -> Dict[str, Any]:
+        """What a waveform answer carries as ``marks`` (WAVE-05).
+
+        Every cue, as the summary lists them, and every grid marker rather than
+        the grid summed up: a drawing places a line at each bar, and a variable
+        grid's bars come from all of its markers.
+
+        Args:
+            read: Whether the library's marks have been read at all.
+        """
+        return {
+            "read": read,
+            "cues": [cue.to_dict() for cue in self.cues],
+            "grid": [marker.to_dict() for marker in self.grid],
+        }
+
     @classmethod
     def from_values(
         cls,

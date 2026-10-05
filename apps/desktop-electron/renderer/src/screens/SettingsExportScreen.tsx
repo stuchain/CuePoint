@@ -7,6 +7,7 @@ import { useBeatportToken } from "../hooks/useBeatportToken";
 import { AudioSettingsPanel } from "./AudioSettingsPanel";
 import { RekordboxExportSettingsPanel } from "./RekordboxExportSettingsPanel";
 import { ThemeSettingsPanel } from "./ThemeSettingsPanel";
+import { WaveformSettingsPanel } from "./WaveformSettingsPanel";
 import { settingsFocus } from "./settingsLink";
 import "./screens.css";
 
@@ -61,6 +62,8 @@ export function SettingsExportScreen() {
       <ThemeSettingsPanel />
 
       <AudioSettingsPanel />
+
+      <WaveformSettingsPanel />
 
       <RekordboxExportSettingsPanel />
 

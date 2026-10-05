@@ -68,6 +68,7 @@ from cuepoint.models.waveform_analysis import (
     STOP_UNAVAILABLE,
     AnalysisRunResult,
     RunProgress,
+    WaveformDataDeleted,
     WorkItem,
     WorkPlan,
 )
@@ -96,6 +97,9 @@ PROGRESS_INTERVAL_SECONDS = 0.5
 
 #: The activity event every run records, once, whatever started it.
 EVENT_WAVEFORMS_ANALYSED = "waveforms.analysed"
+
+#: The activity event "Delete waveform data" records (WAVE-05).
+EVENT_WAVEFORM_DATA_DELETED = "waveforms.data_deleted"
 
 
 def default_workers(cpu_count: Optional[int] = None) -> int:
@@ -305,6 +309,43 @@ class WaveformAnalysisService(IWaveformAnalysisService):
             return 0
         dead = [path for path in self._store.paths() if path not in library]
         return self._store.delete_paths(dead)
+
+    # ------------------------------------------------------- the store's data
+
+    def store_bytes(self) -> int:
+        """What ``waveforms.db`` takes on disk now; never opens it."""
+        return self._store.disk_bytes()
+
+    def delete_data(self) -> WaveformDataDeleted:
+        """Empty the store, give its space back, and record it in Activity once.
+
+        Every waveform goes, ready and failed alike, so a file refused before is
+        tried again. Stopping a run first, and starting the next, is the
+        engine's (``engine/waveform_jobs.py``).
+
+        Raises:
+            WaveformStoreError: If the rows cannot be deleted.
+        """
+        before = self._store.disk_bytes()
+        deleted = self._store.clear()
+        result = WaveformDataDeleted(
+            waveforms=deleted, freed_bytes=max(0, before - self._store.disk_bytes())
+        )
+        _logger.info(
+            "[waveforms] deleted %d waveforms, freeing %d bytes",
+            result.waveforms,
+            result.freed_bytes,
+        )
+        if self._activity is not None:
+            try:
+                self._activity.record_event(
+                    EVENT_WAVEFORM_DATA_DELETED,
+                    result.summary_line(),
+                    result.to_dict(),
+                )
+            except Exception as exc:  # noqa: BLE001 — the feed is best-effort
+                _logger.warning("[waveforms] could not record the deletion: %s", exc)
+        return result
 
     # ------------------------------------------------------------- record
 
@@ -523,6 +564,7 @@ class _Run:
 __all__ = (
     "AnalysisControl",
     "EVENT_WAVEFORMS_ANALYSED",
+    "EVENT_WAVEFORM_DATA_DELETED",
     "PROGRESS_INTERVAL_SECONDS",
     "RATE_WINDOW_SECONDS",
     "REFILL",

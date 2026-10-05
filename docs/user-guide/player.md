@@ -97,6 +97,34 @@ the interface you chose is unplugged, it falls back to your system default and
 says that. In both cases **your choice is kept**: plug the interface back in,
 restart CuePoint, and it is used again.
 
+## Waveforms
+
+**Settings → Waveforms.**
+
+CuePoint works out a waveform for every track whose file it found, in the
+background (see **Clean → Health**). This panel shows how far that has got, in
+the same words, with **Pause** or **Resume** beside it. A pause is kept across
+restarts.
+
+**Colours.** **Three bands** draws the lows, mids and highs in colours of their
+own, layered as Rekordbox's three-band view is: the lows in blue, the mids in
+amber over them, the highs in white over those. **One colour** draws the whole
+sound in one. Every theme has its own versions of these colours, each kept
+readable against its panels, and a custom theme gets them worked out from its
+colours. The choice is remembered on this computer.
+
+**Preview.** The waveform of the track in the player, with its cue points, beat
+grid and playhead, so you can see the choice on music you know. With nothing in
+the player it says so; a track not analysed yet says why ("Waiting for
+analysis", "Analysis paused", "File missing" and so on).
+
+**Delete waveform data…** deletes every waveform CuePoint has made, and asks
+first, saying how much space they take on disk and that the whole library will
+then be analysed again. Unless the analysis is paused, that starts at once; a
+large library takes hours. Cue points and beat grids come from Rekordbox and
+are not affected, and neither is anything else in your library. You never need
+this to fix a changed file: a file that changes is analysed again by itself.
+
 ## When a track will not play
 
 Files move, drives get unplugged, and CuePoint finds out when it tries to play

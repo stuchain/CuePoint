@@ -22,5 +22,9 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     // Each test file gets a fresh jsdom document.
     restoreMocks: true,
+    // CSS is stubbed out in tests, except the theme files, which
+    // `waveformTokens.test.ts` reads as text to hold every theme's waveform
+    // colours to their contrast (WAVE-05).
+    css: { include: [/\/tokens\/themes\/[^/]+\.css/] },
   },
 });

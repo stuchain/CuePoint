@@ -54,8 +54,10 @@ from cuepoint.models.waveform_analysis import (
     ANALYSIS_PAUSED,
     ANALYSIS_RUNNING,
     ANALYSIS_UNAVAILABLE,
+    STOP_DATA_DELETED,
     STOP_PAUSED,
     STOP_STEPPED_ASIDE,
+    AnalysisRunResult,
 )
 from cuepoint.persistence.waveform_store import WaveformStoreError
 from cuepoint.services.config_service import ConfigService
@@ -739,3 +741,178 @@ def test_the_engine_binds_one_analysis_per_store(lib):
     first = bind(store, service=lambda: lib.analysis)
 
     assert waveform_jobs.coordinator(store) is first
+
+
+class TestDeletingTheData:
+    """ "Delete waveform data" (WAVE-05): the store empties, and the analysis
+    starts again unless paused, with nothing landing after the deletion."""
+
+    def analysed(self, lib, engine, *names: str) -> None:
+        store, analysis = engine
+        for name in names:
+            lib.add(name)
+        analysis.start("test")
+        settle(store)
+        assert lib.stored() == {name: STORED_READY for name in names}
+
+    def test_it_empties_the_store_and_the_library_is_analysed_again(self, lib, engine):
+        store, analysis = engine
+        self.analysed(lib, engine, "a", "b")
+
+        result = analysis.delete_data()
+        settle(store)
+
+        assert result.waveforms == 2
+        assert lib.stored() == {"a": STORED_READY, "b": STORED_READY}
+        assert sorted(lib.decoder.names()) == ["a", "a", "b", "b"]
+        runs = analysis_jobs(store)
+        assert runs[-1].state == JobState.SUCCEEDED
+
+    def test_while_paused_the_store_stays_empty(self, lib, engine):
+        store, analysis = engine
+        self.analysed(lib, engine, "a")
+        analysis.pause()
+        jobs_before = len(analysis_jobs(store))
+
+        analysis.delete_data()
+        settle(store)
+
+        assert lib.stored() == {}
+        assert len(analysis_jobs(store)) == jobs_before
+        assert analysis.status().state == ANALYSIS_PAUSED
+
+    def test_a_running_job_stops_first_and_nothing_lands_after(self, lib, engine):
+        store, analysis = engine
+        lib.add("a")
+        lib.add("b")
+        gate = Gate()
+        lib.decoder.default = gate
+        job = analysis.start("test")
+        assert gate.entered.wait(TIMEOUT)
+        # Paused in the settings only, so the run is not stopped by a pause and
+        # nothing starts after the deletion: what the store holds afterwards is
+        # only what landed after it.
+        analysis._settings.set_paused(True)
+        results: List[object] = []
+        deleting = threading.Thread(
+            target=lambda: results.append(analysis.delete_data())
+        )
+        deleting.start()
+        time.sleep(0.2)
+        waiting = deleting.is_alive()
+        gate.release.set()
+        deleting.join(TIMEOUT)
+        settle(store)
+
+        assert waiting, "the deletion did not wait for the file in flight"
+        assert results and results[0].waveforms == 1
+        assert lib.stored() == {}
+        finished = store.get(job.id)
+        assert finished.state == JobState.CANCELLED
+        assert finished.error["reason"] == STOP_DATA_DELETED
+        assert finished.result["stopped"] == STOP_DATA_DELETED
+
+    def test_nothing_starts_while_the_store_is_emptied(self, lib, engine, monkeypatch):
+        store, analysis = engine
+        lib.add("a")
+        inside, release = threading.Event(), threading.Event()
+        clear = lib.store.clear
+
+        def slow_clear():
+            inside.set()
+            assert release.wait(TIMEOUT)
+            return clear()
+
+        monkeypatch.setattr(lib.store, "clear", slow_clear)
+        deleting = threading.Thread(target=analysis.delete_data)
+        deleting.start()
+        assert inside.wait(TIMEOUT)
+
+        started = analysis.start("test")
+        requested = analysis.request([lib.id("a")])
+        empty_jobs = analysis_jobs(store)
+        release.set()
+        deleting.join(TIMEOUT)
+        settle(store)
+
+        assert started is None and requested is None
+        assert empty_jobs == []
+        assert lib.stored() == {"a": STORED_READY}
+
+    def test_requests_survive_a_deletion_while_paused(self, lib, engine, monkeypatch):
+        store, analysis = engine
+        self.analysed(lib, engine, "a", "b")
+        analysis.pause()
+        inside, release = threading.Event(), threading.Event()
+        clear = lib.store.clear
+
+        def slow_clear():
+            inside.set()
+            assert release.wait(TIMEOUT)
+            return clear()
+
+        monkeypatch.setattr(lib.store, "clear", slow_clear)
+        deleting = threading.Thread(target=analysis.delete_data)
+        deleting.start()
+        assert inside.wait(TIMEOUT)
+        analysis.request([lib.id("b")])
+        release.set()
+        deleting.join(TIMEOUT)
+        settle(store)
+
+        assert lib.stored() == {"b": STORED_READY}
+        assert analysis.status().state == ANALYSIS_PAUSED
+
+    def test_a_store_that_cannot_be_emptied_raises_and_the_analysis_carries_on(
+        self, lib, engine, monkeypatch
+    ):
+        store, analysis = engine
+        lib.add("a")
+
+        def broken():
+            raise WaveformStoreError(message="disk full", error_code="X")
+
+        monkeypatch.setattr(lib.store, "clear", broken)
+
+        with pytest.raises(WaveformStoreError):
+            analysis.delete_data()
+        settle(store)
+
+        assert lib.stored() == {"a": STORED_READY}
+
+    def test_the_status_says_what_the_store_takes_on_disk(self, lib, engine):
+        _, analysis = engine
+        self.analysed(lib, engine, "a")
+
+        size = analysis.status().store_bytes
+
+        assert size == lib.store.disk_bytes() > 0
+        assert analysis.status().to_dict()["store_bytes"] == size
+
+    def test_a_status_whose_size_cannot_be_read_still_answers(
+        self, lib, engine, monkeypatch
+    ):
+        _, analysis = engine
+
+        def broken():
+            raise OSError("gone")
+
+        monkeypatch.setattr(lib.store, "disk_bytes", broken)
+
+        assert analysis.status().store_bytes == 0
+
+    def test_the_run_it_stopped_says_why_in_activity(self):
+        result = AnalysisRunResult(
+            trigger="launch", whole_library=True, analysed=3, stopped=STOP_DATA_DELETED
+        )
+
+        assert result.summary_line() == (
+            "Analysed 3 waveforms. Stopped to delete the waveform data."
+        )
+
+
+def test_the_paused_setting_is_read_through_the_coordinator(lib, engine):
+    _, analysis = engine
+    assert analysis.paused() is False
+    analysis.pause()
+    assert analysis.paused() is True

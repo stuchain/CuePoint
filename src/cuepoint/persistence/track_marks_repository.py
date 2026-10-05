@@ -38,7 +38,7 @@ from cuepoint.persistence.derived_indexes import (
     read_derived_indexes,
     record_derived_indexes,
 )
-from cuepoint.persistence.id_chunks import CHUNK_SIZE
+from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
 from cuepoint.services.interfaces import IDatabaseService, ITrackMarksRepository
 
 #: One track's marks as a write takes them: ``(track_id, cues, grid)``.
@@ -148,6 +148,38 @@ class TrackMarksRepository(ITrackMarksRepository):
             (int(track_id),),
         ).fetchall()
         return TrackMarks.from_rows(int(track_id), cues, grid)
+
+    def get_many(self, track_ids: Iterable[int]) -> Dict[int, TrackMarks]:
+        """Each track's marks, keyed by id; a track with none has empty ones.
+
+        Two queries per :data:`CHUNK_SIZE` ids, so a waveform batch of 200
+        tracks costs two queries rather than four hundred. An id that is not a
+        track answers empty marks, as :meth:`get` does.
+        """
+        wanted = unique_ids(track_ids)
+        cue_rows: Dict[int, List[Any]] = {track_id: [] for track_id in wanted}
+        grid_rows: Dict[int, List[Any]] = {track_id: [] for track_id in wanted}
+        conn = self._db.connect()
+        for chunk in chunked(wanted):
+            placeholders = ", ".join("?" for _ in chunk)
+            for row in conn.execute(
+                f"SELECT track_id, position, {_CUE_COLUMNS} FROM track_cues"
+                f" WHERE track_id IN ({placeholders})",
+                chunk,
+            ):
+                cue_rows[int(row["track_id"])].append(row)
+            for row in conn.execute(
+                f"SELECT track_id, position, {_MARKER_COLUMNS} FROM track_beat_grid"
+                f" WHERE track_id IN ({placeholders})",
+                chunk,
+            ):
+                grid_rows[int(row["track_id"])].append(row)
+        return {
+            track_id: TrackMarks.from_rows(
+                track_id, cue_rows[track_id], grid_rows[track_id]
+            )
+            for track_id in wanted
+        }
 
     def fingerprints(self) -> Dict[int, bytes]:
         """Every track with marks, to the digest of its marks in order.

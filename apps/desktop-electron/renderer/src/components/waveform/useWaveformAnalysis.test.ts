@@ -8,6 +8,7 @@ import type {
   WaveformsBridge,
 } from "../../api/cuepointBridge.types";
 import { useWaveformAnalysis } from "./useWaveformAnalysis";
+import { waveformCache } from "./waveformCache";
 
 /**
  * Following the waveform analysis (WAVE-03): read while mounted, replaced at
@@ -26,6 +27,7 @@ function status(overrides: Partial<WaveformAnalysisStatus> = {}): WaveformAnalys
     rate_per_hour: null,
     eta_seconds: null,
     reason: null,
+    store_bytes: 0,
     ...overrides,
   };
 }
@@ -46,6 +48,9 @@ beforeEach(() => {
     analysis: vi.fn().mockResolvedValue(answer(status())),
     pause: vi.fn().mockResolvedValue(answer(status({ state: "paused", paused: true }))),
     resume: vi.fn().mockResolvedValue(answer(status({ state: "running", job_id: "job-1" }))),
+    get: vi.fn(),
+    request: vi.fn(),
+    deleteData: vi.fn(),
   };
   install({ waveforms: waveforms as unknown as WaveformsBridge });
 });
@@ -131,5 +136,46 @@ describe("useWaveformAnalysis", () => {
       expect(await result.current.pause()).toBeNull();
     });
     expect(result.current.status).toBeNull();
+  });
+
+  it("deletes the data, takes the state after it, and empties every view's waveforms", async () => {
+    const forget = vi.spyOn(waveformCache, "forget");
+    waveforms.deleteData.mockResolvedValue({
+      value: {
+        deleted: { waveforms: 10, freed_bytes: 4_096 },
+        analysis: status({ state: "running", analysed: 0, remaining: 10, job_id: "job-2" }),
+      },
+      refusal: null,
+    });
+    const { result } = renderHook(() => useWaveformAnalysis());
+    await waitFor(() => expect(result.current.status).not.toBeNull());
+
+    let answer: unknown = null;
+    await act(async () => {
+      answer = await result.current.deleteData();
+    });
+
+    expect(answer).toEqual({ value: { waveforms: 10, freed_bytes: 4_096 }, refusal: null });
+    expect(result.current.status?.state).toBe("running");
+    expect(forget).toHaveBeenCalledTimes(1);
+  });
+
+  it("hands back a deletion's refusal and keeps every waveform", async () => {
+    const forget = vi.spyOn(waveformCache, "forget");
+    waveforms.deleteData.mockResolvedValue({
+      value: null,
+      refusal: { code: "WAVEFORMS_STORE_FAILED", message: "The waveform data could not be deleted" },
+    });
+    const { result } = renderHook(() => useWaveformAnalysis());
+    await waitFor(() => expect(result.current.status).not.toBeNull());
+
+    let answer: { refusal: { code: string } | null } | null = null;
+    await act(async () => {
+      answer = await result.current.deleteData();
+    });
+
+    expect(answer!.refusal).toMatchObject({ code: "WAVEFORMS_STORE_FAILED" });
+    expect(forget).not.toHaveBeenCalled();
+    expect(result.current.status?.state).toBe("idle");
   });
 });

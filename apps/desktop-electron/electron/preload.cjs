@@ -189,12 +189,15 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
     chooseSetListDestination: (request) =>
       ipcRenderer.invoke("dialog:saveSetList", request),
   },
-  // The waveform analysis (WAVE-03): every answer is { value, refusal }.
-  // WAVE-05 adds the waveforms themselves to the same namespace.
+  // Waveforms and their analysis (WAVE-03, WAVE-05): every answer is
+  // { value, refusal }. A picture arrives as a Uint8Array, decoded in main.
   waveforms: {
     analysis: () => ipcRenderer.invoke("engine:getWaveformAnalysis"),
     pause: () => ipcRenderer.invoke("engine:pauseWaveformAnalysis"),
     resume: () => ipcRenderer.invoke("engine:resumeWaveformAnalysis"),
+    get: (params) => ipcRenderer.invoke("engine:getWaveforms", params),
+    request: (params) => ipcRenderer.invoke("engine:requestWaveforms", params),
+    deleteData: () => ipcRenderer.invoke("engine:deleteWaveformData"),
   },
   startLibraryImport: (params) =>
     ipcRenderer.invoke("engine:startLibraryImport", params),
