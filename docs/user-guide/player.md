@@ -111,46 +111,9 @@ says why ("Waiting for analysis", "File missing"). The bar does not get taller.
 A track you start playing that is still waiting for the analysis is analysed
 next, ahead of the rest of the library, even while the analysis is paused.
 
-**In the Inspector.** The selected track's waveform sits under its title, the
-width of the panel, with its cue points (hot cues with their letter), loops
-and beat grid on it, as Rekordbox sent them. When the selected track is the one
-playing, the playhead is drawn and a click seeks; any other track's waveform is
-only a picture, and clicking it does not start playback (double-click the row
-for that). A track without a waveform says why in words. Selecting a track
-that is still waiting puts it next in the analysis.
-
-**In the Library.** **Columns…** offers a **Waveform** column, hidden until you
-choose it. Each row draws its track's waveform at the column's width; drag the
-column wider for more detail. A row without one shows a single muted word
-("Waiting", "Paused", "Missing", "Unreadable", "Unchecked"), with the full
-reason on hover. Rows you scroll quickly past are not read, and the column
-never moves a track ahead in the analysis: only playing or selecting one does.
-
-**Settings → Waveforms.**
-
-CuePoint works out a waveform for every track whose file it found, in the
-background (see **Clean → Health**). This panel shows how far that has got, in
-the same words, with **Pause** or **Resume** beside it. A pause is kept across
-restarts.
-
-**Colours.** **Three bands** draws the lows, mids and highs in colours of their
-own, layered as Rekordbox's three-band view is: the lows in blue, the mids in
-amber over them, the highs in white over those. **One colour** draws the whole
-sound in one. Every theme has its own versions of these colours, each kept
-readable against its panels, and a custom theme gets them worked out from its
-colours. The choice is remembered on this computer.
-
-**Preview.** The waveform of the track in the player, with its cue points, beat
-grid and playhead, so you can see the choice on music you know. With nothing in
-the player it says so; a track not analysed yet says why ("Waiting for
-analysis", "Analysis paused", "File missing" and so on).
-
-**Delete waveform data…** deletes every waveform CuePoint has made, and asks
-first, saying how much space they take on disk and that the whole library will
-then be analysed again. Unless the analysis is paused, that starts at once; a
-large library takes hours. Cue points and beat grids come from Rekordbox and
-are not affected, and neither is anything else in your library. You never need
-this to fix a changed file: a file that changes is analysed again by itself.
+Waveforms also appear in the Inspector, in a Library column and in Prepare's
+transition strip. [Waveforms](waveforms.md) covers all four, what the colours
+mean, how the analysis runs and how to pause it, and **Settings → Waveforms**.
 
 ## When a track will not play
 

@@ -146,7 +146,7 @@ analysis stays paused, after a restart too, until you resume it. A file that
 could not be read is not tried again until it changes; a file on a drive that is
 not connected is not counted against it. On a build without the player's decoder
 it says so, and nothing is analysed. **Settings → Waveforms** shows the same and
-chooses how waveforms are coloured.
+chooses how waveforms are coloured. See [Waveforms](waveforms.md).
 
 Health gives no overall score. A library with 40 tracks without a genre is not
 "92% healthy"; it has 40 tracks without a genre.

@@ -15,8 +15,10 @@
      the header and the table scrolls the page rather than leaving a table zero
      rows tall. Lower than the Library's, so that with the player's bar on
      screen at the default size the header stays put and the rows still fit
-     (DEC-112, measured by e2e/prepare.spec.ts). */
-  grid-template-rows: auto minmax(calc(100px * var(--scale)), 1fr);
+     (DEC-112, measured by e2e/prepare.spec.ts). With the lanes or the
+     transition strip open the floor rises to keep two whole rows under them
+     (`setAreaFloor.ts`, WAVE-07). */
+  grid-template-rows: auto minmax(max(calc(100px * var(--scale)), var(--prepare-set-floor, 0px)), 1fr);
   gap: 0;
   width: 100%;
   min-height: 0;
@@ -162,28 +164,31 @@ body.prepare-resizing {
 
 /* --------------------------------------------------------------- the Set */
 
+/* The lanes and the transition strip, when open, sit above the rows, which
+   keep the height left. */
 .prepare-set {
-  display: grid;
+  display: flex;
   flex: 1;
-  grid-template-rows: minmax(0, 1fr);
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
 
+.prepare-set > .prepare-lanes,
+.prepare-set > .prepare-transition {
+  flex: none;
+}
+
 .prepare-set__rows {
   display: flex;
+  flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
 .prepare-set__rows > .track-table {
   flex: 1;
-}
-
-/* With the lanes open they sit above the rows, which keep the height left. */
-.prepare-set--lanes {
-  grid-template-rows: auto minmax(0, 1fr);
 }
 
 /* An empty Set's note takes the first drop (PREP-11), so it fills the table. */
@@ -272,6 +277,109 @@ body.prepare-resizing {
 .prepare-lanes__hit:hover {
   fill: var(--fg-primary);
   fill-opacity: 0.08;
+}
+
+/* ---------------------------------------------------- the transition strip */
+
+/* WAVE-07, DEC-120: one row of titles, then the two waveforms two rows tall
+   with the words between them. Three of the Set's rows in all, which is why
+   it starts hidden. The rows' heights are the Set table's, set inline. */
+.prepare-transition {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  column-gap: var(--space-sm);
+  min-width: 0;
+  padding: 0 var(--space-sm) calc(2px * var(--scale));
+  border-bottom: var(--border-width) solid var(--border-muted);
+  background: var(--bg-panel-alt);
+}
+
+/* The name over its times, both inside the one row, so a narrow Set pane
+   shortens each rather than losing either. */
+.prepare-transition__title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-xs);
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.prepare-transition__name,
+.prepare-transition__times {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prepare-transition__name {
+  font-weight: 700;
+}
+
+.prepare-transition__times {
+  color: var(--fg-muted);
+}
+
+.prepare-transition__half,
+.prepare-transition__end {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: calc(1px * var(--scale)) solid var(--border-muted);
+  background: var(--bg-panel);
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-align: left;
+}
+
+.prepare-transition__half {
+  cursor: pointer;
+}
+
+.prepare-transition__half:hover {
+  border-color: var(--fg-muted);
+}
+
+.prepare-transition__half:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline-offset: calc(-1px * var(--scale));
+}
+
+.prepare-transition__state,
+.prepare-transition__end {
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.prepare-transition__state {
+  display: block;
+}
+
+/* The words stack between the halves, so they take a narrow column. */
+.prepare-transition__words {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.prepare-transition__none {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  align-self: center;
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
 }
 
 /* A chapter's heading is a row of the table (DEC-103), drawn as a band. */

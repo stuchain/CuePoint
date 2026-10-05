@@ -8,7 +8,8 @@ distribution's `mpv` 0.37 (FFmpeg 6.1.1). The pinned Windows and macOS builds ar
 checked in desktop CI by `fetch_player_sidecar.py --check-analysis`; their timings
 with `scripts/bench_decoder.py` are owed. Amended by WAVE-03 (2026-10-03): the
 graph ends in the output's format, which the pinned Windows build needed, and
-`ANALYSIS_VERSION` is 2.
+`ANALYSIS_VERSION` is 2. Outcome recorded at WAVE-07 (2026-10-05), when the phase
+closed: the decision held, unchanged, through every place a waveform is drawn.
 
 ## Context
 
@@ -192,6 +193,35 @@ outside CI, and found two defects that CI had been reporting as failures since W
   any background computation in 15.6 ms steps. With both changes, search p95 with
   the analysis running measured 1.35× and 1.38× idle on Windows, against the 1.5×
   budget, where it had measured 1.52× and 1.54×.
+
+## Outcome (WAVE-07, 2026-10-05): the phase in use
+
+Phase 11 closed on this pipeline as decided and amended. Nothing in WAVE-04 to
+WAVE-07 needed it changed: the store (ADR-010), the library job, the wire, the
+four places a waveform is drawn and the transition strip all read the envelope
+this decision produces.
+
+- **In the running app, end to end.** `e2e/waveformJourney.spec.ts` imports real
+  audio with Rekordbox cues, follows the analysis to the end, draws every place,
+  seeks by the bar, pauses across a relaunch, re-analyses one changed file and no
+  other, reads Prepare's strip and rebuilds the store after a deletion. It passed
+  three times in a row on Windows with the pinned `mpv`.
+- **The engine half on every build.** `test_waveform_phase_journey.py` takes the
+  same steps through the engine's routes, with a real `mpv` where one is found and
+  the decode stood in for where none is, so a build without a decoder still
+  proves everything around it.
+- **Exact length held where it is seen.** Every shipped format's waveform lasts
+  what the player reports, within one of the bar's columns (WAVE-06), so a click
+  on the bar seeks to the time drawn there.
+- **The rate it was decided on.** About 8,400 six-minute tracks an hour with two
+  workers on the Windows machine WAVE-03 measured, about six hours for 50,000
+  tracks, with the Library search inside its 1.5× budget and no underrun.
+- **`tone.mp3` is silence, by construction.** Its waveform is flat, correctly:
+  `make_audio_fixtures.py` writes it as silence because no MP3 encoder is pinned.
+  The journey's pictures are read from `bands.flac` and the other tones.
+- **Still owed:** `scripts/bench_decoder.py` timings on the pinned macOS build,
+  and the journey in packaged builds (Linux with `CUEPOINT_MPV_PATH`, Windows and
+  macOS), recorded with the phase's other packaged runs.
 
 ## Signals to revisit
 

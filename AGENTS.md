@@ -27,7 +27,7 @@ test material and must not enter core, engine, CLI, or services.
 | Orchestration | `src/cuepoint/services/` |
 | Engine API/jobs | `src/cuepoint/engine/` |
 | Prepare (Sets: chapters, times, checks, suggestions, set lists) | `src/cuepoint/core/set_*.py`, `src/cuepoint/services/set_*`, `src/cuepoint/persistence/set_*`, `src/cuepoint/data/set_list_file.py`, `src/cuepoint/engine/sets_api.py`, `renderer/src/screens/prepare/`; a Set is a Collection kind (ADR-008) |
-| Waveforms (Phase 11) | `src/cuepoint/*/waveform*` and `data/audio_decode.py` (the player's mpv decodes, FFmpeg reduces; ADR-009); `waveforms.db` is a rebuildable cache beside the library (ADR-010); `scripts/bench_*`; release check `fetch_player_sidecar.py --check-analysis` |
+| Waveforms (Phase 11) | `src/cuepoint/*/waveform*` and `data/audio_decode.py` (the player's mpv decodes, FFmpeg reduces; ADR-009); `waveforms.db` is a rebuildable cache beside the library (ADR-010); drawn by `renderer/src/components/waveform/`, Prepare's strip in `screens/prepare/SetTransition.tsx`; `scripts/bench_waveforms.py` measures the phase; release check `fetch_player_sidecar.py --check-analysis` |
 | Discover (Beatport catalog, runs, pages, similarity) | `src/cuepoint/services/` (`discovery_*`, `beatport_*`, `entity_page_*`, `similarity_*`), `src/cuepoint/core/similarity.py`, `src/cuepoint/engine/discover_api.py` |
 | Shared models | `src/cuepoint/models/`, `src/cuepoint/compat/gui_types.py` |
 | Electron main/preload | `apps/desktop-electron/electron/` |

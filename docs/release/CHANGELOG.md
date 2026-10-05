@@ -39,6 +39,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   next. The Library offers a **Waveform** column (Columns…), hidden until you
   choose it: each row draws its track's waveform, or one muted word ("Waiting",
   "Missing") when it has none, and rows that scroll quickly past are not read
+- **Prepare's transition strip.** **View ▾ → Show transition strip** shows the
+  selected entry's waveform beside the next one's, with their cue points, the
+  part before each planned in and after each planned out dimmed, each entry's
+  times over it ("In 0:16 · Out 5:42") and the transition between them in words
+  ("Out 5:42 → In 0:16", "untimed" where nothing is planned, **End of Set** after
+  the last). Clicking a half selects that entry. It starts hidden and is
+  remembered, like the tempo and key lanes. With either open, the Set now keeps
+  two whole rows however crowded the window: a window too short for that
+  scrolls the page instead
+- **A Waveforms page in the user guide**: where waveforms appear, what the
+  colours and marks mean, how long a first analysis takes, how to pause it, and
+  where the data lives
 - **Cue points and beat grids from Rekordbox.** An import and a refresh read
   each track's hot cues, memory cues, loops, fades, load points and beat grid
   from the export, and the Inspector lists them under **From Rekordbox**, one

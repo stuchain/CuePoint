@@ -1,5 +1,6 @@
 /**
- * What the Prepare page remembers about its source panel and lanes (PREP-11).
+ * What the Prepare page remembers about its source panel, lanes (PREP-11) and
+ * transition strip (WAVE-07).
  * A value that cannot be read is the default, and storage that refuses is not
  * the page's problem.
  */
@@ -8,15 +9,19 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_LANES_OPEN,
   DEFAULT_SOURCE_TAB,
+  DEFAULT_TRANSITION_OPEN,
   LANES_STORAGE_KEY,
   SOURCE_POOL_STORAGE_KEY,
   SOURCE_TAB_STORAGE_KEY,
+  TRANSITION_STORAGE_KEY,
   loadLanesOpen,
   loadSourcePool,
   loadSourceTab,
+  loadTransitionOpen,
   saveLanesOpen,
   saveSourcePool,
   saveSourceTab,
+  saveTransitionOpen,
 } from "./sourcePanelState";
 
 afterEach(() => {
@@ -31,6 +36,8 @@ describe("the remembered source panel", () => {
     expect(loadSourcePool()).toBe("library");
     expect(loadLanesOpen()).toBe(DEFAULT_LANES_OPEN);
     expect(DEFAULT_LANES_OPEN).toBe(false);
+    expect(loadTransitionOpen()).toBe(DEFAULT_TRANSITION_OPEN);
+    expect(DEFAULT_TRANSITION_OPEN).toBe(false);
   });
 
   it("gives back what was saved", () => {
@@ -40,15 +47,21 @@ describe("the remembered source panel", () => {
     expect([loadSourceTab(), loadSourcePool(), loadLanesOpen()]).toEqual(["library", "smart:4", true]);
     saveLanesOpen(false);
     expect(loadLanesOpen()).toBe(false);
+    saveTransitionOpen(true);
+    expect([loadTransitionOpen(), loadLanesOpen()]).toEqual([true, false]);
+    saveTransitionOpen(false);
+    expect(loadTransitionOpen()).toBe(false);
   });
 
   it("reads anything else as the default", () => {
     localStorage.setItem(SOURCE_TAB_STORAGE_KEY, "wantlist");
     localStorage.setItem(SOURCE_POOL_STORAGE_KEY, "folder:1");
     localStorage.setItem(LANES_STORAGE_KEY, "yes");
+    localStorage.setItem(TRANSITION_STORAGE_KEY, "true");
     expect(loadSourceTab()).toBe("suggestions");
     expect(loadSourcePool()).toBe("library");
     expect(loadLanesOpen()).toBe(false);
+    expect(loadTransitionOpen()).toBe(false);
     for (const pool of ["playlist:12", "collection:3", "library"]) {
       localStorage.setItem(SOURCE_POOL_STORAGE_KEY, pool);
       expect(loadSourcePool()).toBe(pool);
@@ -65,6 +78,12 @@ describe("the remembered source panel", () => {
     expect(() => saveSourceTab("library")).not.toThrow();
     expect(() => saveSourcePool("collection:3")).not.toThrow();
     expect(() => saveLanesOpen(true)).not.toThrow();
-    expect([loadSourceTab(), loadSourcePool(), loadLanesOpen()]).toEqual(["suggestions", "library", false]);
+    expect(() => saveTransitionOpen(true)).not.toThrow();
+    expect([loadSourceTab(), loadSourcePool(), loadLanesOpen(), loadTransitionOpen()]).toEqual([
+      "suggestions",
+      "library",
+      false,
+      false,
+    ]);
   });
 });

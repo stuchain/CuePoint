@@ -96,8 +96,8 @@ The header's picker names the Set open. Beside it are **Play Set** and
 planned running time, how many warnings its checks found and how many you
 accepted, and — when it applies — that its files have never been checked.
 **Notes…** holds notes for the whole Set: the venue, the set times, anything you
-want to remember. **View ▾** shows or hides the tempo and key lanes and chooses
-the table's columns.
+want to remember. **View ▾** shows or hides the tempo and key lanes and the
+transition strip, and chooses the table's columns.
 
 The Set's table has one row per entry: its number, when it **Starts**, its
 planned **In** and **Out** times, how long it is **Planned** to play, the track,
@@ -235,6 +235,30 @@ A track with no BPM or key is a gap in its lane, never a zero. A line across bot
 lanes marks where a chapter starts. Clicking a column selects its entry, which
 moves the insertion point there. The lanes are a picture of what the table says
 in words; they add no fact of their own.
+
+## The transition strip
+
+**View ▾ → Show transition strip** shows the entry you select beside the one
+after it, so you can see how one track ends and the next begins:
+
+- **A row of titles**: each entry's track and its planned times, "In 0:16 ·
+  Out 5:42", or "Untimed" for one without an out time.
+- **Two waveforms**, each the whole track with its cue points, the part before
+  its planned in and after its planned out dimmed.
+- **Between them**, in words, how the one goes out and the next comes in:
+  "Out 5:42 → In 0:16". "Untimed" stands for an out time not typed yet, and
+  "untimed" for a next entry with no times at all.
+
+With nothing selected the strip says to select an entry; with the last entry
+selected, its second half reads **End of Set**. Clicking a half selects that
+entry, so clicking the second one walks the Set one transition at a time. Both
+tracks are put first in the waveform analysis if they are still waiting for it.
+See [Waveforms](waveforms.md).
+
+The lanes and the strip start hidden, because each takes about three of the
+Set's rows at the default window size, and each is remembered once you open it.
+However crowded the window, the Set keeps two whole rows under them: if the
+window is too short for that, the page scrolls instead.
 
 ## Playing a Set
 

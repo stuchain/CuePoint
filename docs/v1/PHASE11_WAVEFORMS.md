@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 11: Waveforms, Detailed Step Specifications
 
-Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30), WAVE-03 (2026-10-03), WAVE-04, WAVE-05 and WAVE-06 (2026-10-05); WAVE-07 is not.** The seven steps below replace the
+Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30), WAVE-03 (2026-10-03), WAVE-04 to WAVE-07 (2026-10-05). The phase's acceptance is met on Windows in the development build; its packaged runs are owed (see the end of WAVE-07).** The seven steps below replace the
 roadmap's placeholder inventory (WAVE-01…WAVE-07), keeping its count. Per the process, no
 implementation happens from this document: each step needs an explicit "Implement WAVE-NN"
 instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
@@ -1672,7 +1672,7 @@ packaged Linux run with `CUEPOINT_MPV_PATH` is owed with the phase's other packa
 
 ---
 
-## WAVE-07 — The Transition Strip, and the Phase Comes Together
+## WAVE-07 — The Transition Strip, and the Phase Comes Together ✅ IMPLEMENTED 2026-10-05
 
 **Objective**: Draw Prepare's transition strip. Document, measure and prove the phase end to end.
 
@@ -1748,41 +1748,188 @@ under this step.
 
 **Complexity**: **M**
 
-**Outcome**: Not implemented yet.
+**Outcome**: Implemented (2026-10-05), and the phase closes on it. Prepare's "View ▾" shows the
+transition strip; the user guide has a Waveforms page; the phase is measured at 50,000 tracks twice,
+inside every budget; and its journey passes three times in a row in the running app on Windows, with
+its engine half on every build. The packaged runs and the macOS decoder timings are owed, recorded
+below.
+
+**What was built.**
+
+- **The strip** (`screens/prepare/SetTransition.tsx`, its words in `transitionStrip.ts`), under the
+  Set's header beside the lanes:
+  - one row of titles, each entry's track over its planned times, "In 0:16 · Out 5:42";
+  - two waveforms two rows tall, the selected entry and the next, each the whole track with its cues,
+    dimmed before the planned in and after the planned out, through WAVE-05's canvas;
+  - the words between them, stacked in a narrow column: "Out 5:42 → In 0:16";
+  - "Select an entry to see its transition" with nothing selected, and **End of Set** as the second
+    half of the last entry;
+  - a click on a half selects its entry, the lanes' way, so the strip walks the Set;
+  - both tracks requested while they wait for the analysis (WAVE-06's rule).
+- **Opened from "View ▾"** ("Show transition strip" / "Hide transition strip"), closed the first time,
+  remembered in `cuepoint-prepare-transition` beside the lanes' key (`sourcePanelState.ts`). An empty
+  Set draws none, as it draws no lanes.
+- **The Set keeps two whole rows** (`setAreaFloor.ts`). With the lanes or the strip open, the Set
+  area's floor is what sits above the rows, the table's header and edges, and two rows; a window too
+  short for that scrolls the page. Nothing changes with both closed.
+- **`scripts/bench_waveforms.py`**: the phase's measurements in one command, twice by default, built
+  on `bench_waveform_store` and `bench_marks`.
+- **The journey**: `e2e/waveformJourney.spec.ts` in the app, and `test_waveform_phase_journey.py`, its
+  engine half.
+- **Docs**: `docs/user-guide/waveforms.md`; the player, Library and Inspector, Prepare, Clean,
+  glossary, features, performance and the-window pages; ADR-009's outcome; the changelog; AGENTS.md's
+  Waveforms row; the roadmap; the docs' indexes.
+
+**Tests.**
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `transitionStrip.test.ts` | 12 | The selected entry and the next, a repeat as its own entry, the last entry, no selection or a stale one; the words, "Untimed" and "untimed", an empty in time read as the start; each half's times; the shading in milliseconds |
+| `SetTransition.test.tsx` | 11 | Both halves drawn with their hot cue at its column, asked for in one batch; titles, times and words; the shading before the in and after the out, pixel by pixel; untimed; End of Set; no selection; a click selecting a half, a repeat included; following the selection; one row and two of the table's; both tracks requested while they wait and not once analysed; a half's state in words |
+| `PrepareSource.test.tsx`, `PrepareScreen.test.tsx`, `sourcePanelState.test.ts` | +5, ~1, ~4 | The toggle and its memory, apart from the lanes'; under the lanes and above the rows; the table's selection shown and a half's click selecting the next and moving the insertion point; End of Set across a chapter; none for an empty Set; the View menu's three items; the stored value read back, refused storage, anything else read as closed |
+| `setAreaFloor.test.ts` | 3 | The floor: nothing above, what is above with the table's chrome and two rows, rounding |
+| `test_waveform_jobs.py` | +1 | Regression: a run counts the library afresh as it starts (item 6 below); fails on the unfixed code |
+| `test_backup_restores_waveforms.py` | 3 | A launch backup taken after an import, a check and an analysis, the library lost and restored: the marks back with their tracks, every waveform found by its path with nothing decoded, the store untouched and absent from the backup |
+| `test_waveform_phase_journey.py` (integration) | 1 | The journey's engine half over the engine's routes, nine steps, with a real `mpv` where found and a stand-in decode where not; the refresh after a changed file decodes that file alone |
+| `test_bench_waveforms.py`, `test_waveforms_scale.py` (slow) | 4, 4 | The budgets are the phase's, the marks per track, a missed budget named with its run, the report; the whole bench at 5,000 on every full suite |
+| `waveformJourney.spec.ts` (Electron end to end) | 1 | The nine steps in the running app; passed three times in a row (`--repeat-each=3`) |
+| `prepare.spec.ts` | +2 states | The strip's whole rows, its rows being the table's, nothing sideways and no page scroll; the crowded case (the player's bar with the lanes, then the strip) keeping two whole rows |
+
+**Measured** (Windows 11 x86_64, 16 cores, SQLite 3.50.4; `python scripts/bench_waveforms.py`, 50,000
+tracks, two runs on a quiet machine; timings are p95 over 30 runs, 10 for the work list):
+
+| Measure | Run 1 | Run 2 | Budget |
+| --- | --- | --- | --- |
+| The store, 50,000 waveforms (mean picture 3.9 KB) | 246.6 MB | 246.6 MB | 250 MB (WAVE-02) |
+| 200 states | 3.75 ms | 3.67 ms | 50 ms (WAVE-02) |
+| 200 pictures at width 120 | 22.4 ms | 22.0 ms | 50 ms (WAVE-02) |
+| One picture at 1,200 | 0.16 ms | 0.18 ms | 20 ms (WAVE-02) |
+| One picture at 1,200 with its marks | 0.26 ms | 0.29 ms | 20 ms (WAVE-02's) |
+| The work list, a refill of 200 | 350 ms | 335 ms | 500 ms (set here) |
+| The work list, a count | 352 ms | 323 ms | 500 ms (set here) |
+| The marks read, typical (3.3 marks a track) | 1.21× | 1.22× | 1.30× (WAVE-04) |
+| The marks read, prepared (8 marks a track) | 1.28× | 1.28× | 1.40× (WAVE-04) |
+
+- **The store is 246.6 MB against WAVE-02's 240.7 MB** on Linux: the work list's index, which WAVE-03
+  added at 5.3 MB, is in it now. It is inside the budget by 1.4%, with pictures that compress worse
+  than music; music-sized pictures measured 172 MB at WAVE-02.
+- **A run beside other work** (the end-to-end suite running at the same time) measured a refill at
+  411 and 433 ms p95, still inside its budget.
+- **At 5,000 tracks** the store is 24.7 MB against its 25 MB share, held exactly by the slow suite
+  since the waveforms are seeded.
+
+**Where the specification was wrong, and what was done instead.** Each was settled the most durable
+way.
+
+1. **"Rows" are the Set table's, not the row token.** The table lays its rows out at its own height,
+   36 CSS pixels at scale 2, while `--row-height` is 66. Sized by the token, the strip took six of
+   the Set's rows and left none whole on Windows. It reads the height the table uses, as the table
+   does, so it costs three rows at every scale, what the lanes cost: 3 whole rows with the sidebar
+   expanded and 4 as a rail, the same as the lanes.
+2. **The Set keeps two rows under the lanes and the strip.** With the player's bar on screen as well,
+   either left the Set no whole row at the default window: the journey could not click one. The
+   area's floor now keeps two, and the page scrolls, which is what DEC-112's floor was for. It is
+   measured, not assumed: the table's chrome (its header, its border, a horizontal scrollbar) is read
+   from the page, since a scrollbar covers part of a row. The page-open counts are unchanged.
+3. **The words for times not typed.** The out side says "Untimed" when the entry has no out time,
+   which is what makes an entry untimed (DEC-107). The in side says "untimed" only for an entry with
+   no times at all: an empty in time on a timed entry is the start of its track, so it reads
+   "In 0:00", as DEC-107 defines it. The last entry's words are its out alone, beside **End of Set**.
+4. **The menu says what it does.** "Show transition strip" and "Hide transition strip", as the lanes'
+   item reads, rather than a bare "Transition" that does not say whether it is showing.
+5. **Pause is offered while a run is going.** Settings, the strip and Health offer Pause only while
+   the analysis runs (WAVE-03, WAVE-05); idle, they offer to start one. So the journey pauses its
+   first analysis mid-run and resumes it after the relaunch: steps 2 and 6 interleave. Its refresh
+   edits the export too, as a re-export does: a refresh of an unchanged export applies nothing.
+6. **The status counted nothing at the start of a run.** The status's count is kept for five
+   seconds. One taken before an import's file check survived into the analysis that followed, so a
+   fresh import's status read "0 present" while every file waited, and a pause then read as nothing
+   left to do. A run now counts afresh as it starts, as it already did as it ended; a regression test
+   holds it. The strip's own label, which reads the job's progress, was never wrong.
+7. **The bench composes the phase's benches and sets one budget.** `bench_waveforms.py` reuses
+   WAVE-02's store bench and WAVE-04's marks bench rather than repeating them. The work list had no
+   budget (WAVE-03 recorded 285 and 264 ms); it has 500 ms, a tenth of the status's five-second
+   counting interval. The Inspector's read, a picture with its marks, is measured too, against the
+   one-picture budget. The size is held as a rate, 5 KB a track, so the 5,000-track run is held to
+   its share.
+8. **The engine half runs everywhere.** Linux CI has no `mpv`, so the integration test stands in
+   for the decode itself there and uses a real one where found, recording every decode either way.
+9. **`tone.mp3` draws nothing, correctly.** It is constructed silence (`make_audio_fixtures.py`,
+   since no MP3 encoder is pinned), so its waveform is flat. The journey reads its pictures from
+   `bands.flac` and the other tones.
+
+**Row counts.** `prepare.spec.ts` measured on Windows with every assertion turned into a reading:
+
+| State | WAVE-06 | WAVE-07 | Held |
+| --- | --- | --- | --- |
+| Sidebar expanded / rail | 6 / 7 | 6 / 7 | 7 |
+| With the player's bar, expanded / rail | 3 / 4 | 3 / 4 | 4 |
+| With the lanes, expanded / rail | 3 / 4 | 3 / 4 | 4 |
+| With the strip, expanded / rail | — | 3 / 4 | 3 |
+| The player's bar with the lanes / the strip, expanded | — | 2 / 2 | 2 |
+| The source panel's Suggestions | 3 | 3 | 3 |
+
+The expanded counts held at 7 and 4 still sit one below on Windows, as recorded since WAVE-04: that
+is PREP-10's owed Windows run. The strip's count is held at the Windows figure, which Linux exceeds.
+
+**Run on Windows 11** (the pinned `mpv`): the Python suite (11,896 passed, slow tests apart; the slow
+`test_waveforms_scale.py` passed on its own), the renderer (4,139), Electron (594), and the whole
+end-to-end suite: 67 passed, one skipped, and one failed, `prepare.spec.ts` at the lanes' held count
+above, which stops before the strip's checks; those were read as above.
+
+**Acceptance.** The phase-level acceptance below, checked point by point. Met on Windows in the
+development build; the packaged runs are owed.
 
 ---
 
 ## Phase-level acceptance
 
-1. Every track whose file is present gets a waveform without anyone asking. It is computed by CuePoint
-   from the audio through the bundled decoder, and no Rekordbox analysis file is read.
-2. A new import is followed, without a click, by the file check and then the analysis. The status
+Checked at WAVE-07 (2026-10-05). ✅ is met and proven where it says; **owed** is recorded with its
+reason.
+
+1. ✅ Every track whose file is present gets a waveform without anyone asking. It is computed by CuePoint
+   from the audio through the bundled decoder, and no Rekordbox analysis file is read. *WAVE-01,
+   WAVE-03; the journey's step 2.*
+2. ✅ A new import is followed, without a click, by the file check and then the analysis. The status
    strip counts it down, and it can be paused and resumed from the strip, Settings and the Health view.
-3. A paused analysis stays paused across a relaunch. An unpaused one resumes on its own, and continues
-   where it stopped rather than from the start.
-4. While the analysis runs, playback has no underrun, and the Library stays within its responsiveness
-   budget.
-5. An import, a refresh or a file check never waits for the analysis. The analysis steps aside and
-   returns after the check.
-6. A changed file is analysed again. A failed file is not retried until it changes. A missing file is
-   never recorded as a failure.
-7. The player bar shows the playing track's waveform, at its old height. A click or drag seeks, and
-   keyboard and screen-reader seeking are unchanged.
-8. The Inspector shows the selected track's waveform with its hot cues, memory cues, loops and beat
-   grid, and lists the cues in words.
-9. The Library's "Waveform" column, hidden by default, draws while 5,000 rows scroll without a long
-   task over 50 ms.
-10. Prepare's transition strip shows the selected entry beside the next, with their planned times. As
-    the page opens, it keeps PREP-10's rows.
-11. "Three bands" and "One colour" both draw correctly in all five themes and a custom theme, and the
-    choice is remembered.
-12. Cues and beat grids are imported on import and refresh, and for older libraries from their recorded
-    source. The export's output is byte-identical to before.
-13. Waveform data is outside the launch backup, the support bundle and "Clear cache", and is kept
-    across a restored backup. "Delete waveform data" empties it and says what that costs.
-14. A build without a decoder says once, in words, that waveforms need it, and nothing errors.
-15. The measurements are inside budget at 50,000 tracks, twice. The journey passes three times in a
-    row in a packaged build. The packaged Windows and macOS runs are recorded, or recorded as owed.
+   *WAVE-03 (`waveformAnalysis.spec.ts`: the strip's Pause, Health's Resume), WAVE-05 (Settings); the
+   journey.*
+3. ✅ A paused analysis stays paused across a relaunch. An unpaused one resumes on its own, and continues
+   where it stopped rather than from the start. *WAVE-03's tests; the journey's relaunch keeps the pause
+   and what was analysed.*
+4. ✅ While the analysis runs, playback has no underrun, and the Library stays within its responsiveness
+   budget. *WAVE-03 on Windows: 0 underruns on the audio device, search 1.35× and 1.38× idle against
+   1.5×.* **Owed:** the same on macOS and on Linux with a named `mpv`.
+5. ✅ An import, a refresh or a file check never waits for the analysis. The analysis steps aside and
+   returns after the check. *WAVE-03's tests; the journey's refresh.*
+6. ✅ A changed file is analysed again. A failed file is not retried until it changes. A missing file is
+   never recorded as a failure. *WAVE-02 and WAVE-03's tests; the journey's step 7 analyses the changed
+   file and no other, in the app and through the engine.*
+7. ✅ The player bar shows the playing track's waveform, at its old height. A click or drag seeks, and
+   keyboard and screen-reader seeking are unchanged. *WAVE-06; the journey's step 5.*
+8. ✅ The Inspector shows the selected track's waveform with its hot cues, memory cues, loops and beat
+   grid, and lists the cues in words. *WAVE-04 (the list), WAVE-06; the journey's step 4.*
+9. ✅ The Library's "Waveform" column, hidden by default, draws while 5,000 rows scroll without a long
+   task over 50 ms. *WAVE-06 (`waveformPlaces.spec.ts`); the journey's step 3.*
+10. ✅ Prepare's transition strip shows the selected entry beside the next, with their planned times. As
+    the page opens, it keeps PREP-10's rows. *This step; `prepare.spec.ts`, the journey's step 8.*
+11. ✅ "Three bands" and "One colour" both draw correctly in all five themes and a custom theme, and the
+    choice is remembered. *WAVE-05: every band at 3:1 against its panel in the five themes and three
+    derived ones (`waveformTokens.test.ts`), the pixels read in two themes and the choice kept across
+    a relaunch (`waveformSettings.spec.ts`).*
+12. ✅ Cues and beat grids are imported on import and refresh, and for older libraries from their recorded
+    source. The export's output is byte-identical to before. *WAVE-04 (`test_export_unchanged_by_marks.py`).*
+13. ✅ Waveform data is outside the launch backup, the support bundle and "Clear cache", and is kept
+    across a restored backup. "Delete waveform data" empties it and says what that costs. *WAVE-02,
+    WAVE-05; `test_backup_restores_waveforms.py`; the journey's step 9.*
+14. ✅ A build without a decoder says once, in words, that waveforms need it, and nothing errors.
+    *WAVE-03 (the unavailable state), WAVE-05 and WAVE-06 (the decoder sentence in Settings, the bar's
+    title and the Inspector).*
+15. ✅ The measurements are inside budget at 50,000 tracks, twice (above). The journey passes three times
+    in a row in the development build on Windows. **Owed:** the journey three times in a packaged Linux
+    build with `CUEPOINT_MPV_PATH` (both journey specs take `CUEPOINT_E2E_EXECUTABLE`), the packaged
+    Windows and macOS runs, and `bench_decoder.py` on the pinned macOS build, recorded with Phase 5's
+    and Phase 10's owed runs.
 
 ## Deferred, with reasons
 

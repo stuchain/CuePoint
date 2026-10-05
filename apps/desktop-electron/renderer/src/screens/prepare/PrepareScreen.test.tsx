@@ -388,9 +388,14 @@ describe("the Set", () => {
     );
     // The picker is the title; the name is the page's heading for assistive technology.
     expect(screen.getByLabelText("Set")).toHaveValue(String(IDS.friday));
-    // The columns and the lanes share one link, so the line stays one line.
+    // The columns, the lanes and the transition strip share one link, so the
+    // line stays one line.
     fireEvent.click(screen.getByRole("button", { name: "View ▾" }));
-    expect(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Columns…" })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("menu"))
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Show tempo and key lanes", "Show transition strip", "Columns…"]);
   });
 
   it("shows the Set's own notes and edits them in one write (PREP-12)", async () => {

@@ -1,7 +1,9 @@
 /**
- * What the Prepare page remembers about its source panel and lanes (PREP-11).
+ * What the Prepare page remembers about its source panel, lanes and strip
+ * (PREP-11, WAVE-07).
  *
- * The tab open, the pool chosen and whether the lanes are showing, each kept
+ * The tab open, the pool chosen, and whether the lanes and the transition
+ * strip are showing, each kept
  * in this window's storage as the source panel's width is (PREP-10). A value
  * that cannot be read is the default: remembering is a convenience, and a
  * page that will not open because of it would be a poor trade.
@@ -67,4 +69,22 @@ export function loadLanesOpen(): boolean {
 
 export function saveLanesOpen(open: boolean): void {
   write(LANES_STORAGE_KEY, open ? "1" : "0");
+}
+
+export const TRANSITION_STORAGE_KEY = "cuepoint-prepare-transition";
+
+/**
+ * The transition strip starts hidden too (WAVE-07, DEC-120), for the same
+ * reason: it takes three of the Set's rows, and PREP-10's rows hold as the
+ * page opens.
+ */
+export const DEFAULT_TRANSITION_OPEN = false;
+
+export function loadTransitionOpen(): boolean {
+  const value = read(TRANSITION_STORAGE_KEY);
+  return value === null ? DEFAULT_TRANSITION_OPEN : value === "1";
+}
+
+export function saveTransitionOpen(open: boolean): void {
+  write(TRANSITION_STORAGE_KEY, open ? "1" : "0");
 }

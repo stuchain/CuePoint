@@ -258,6 +258,33 @@ over a quarter when every track carries eight marks. Most of the rest of an
 import's extra time is writing them, once. A refresh compares each track's cues
 with the stored ones without holding them all in memory.
 
+## Waveforms
+
+Measured with `python scripts/bench_waveforms.py` on Windows 11, over a
+50,000-track library whose every file has a waveform and eight cue points and
+grid markers. Two runs, the second figure in each pair from the second run; the
+time is the slowest of the common case (p95).
+
+| What you did | Time |
+| --- | --- |
+| Waveforms kept on disk for 50,000 tracks | 246.6 MB (about 5 KB a track) |
+| Scroll the Library with the **Waveform** column: 200 rows' pictures | 22.4 / 22.0 ms |
+| Play a track: its picture for the player bar | 0.16 / 0.18 ms |
+| Select a track: its picture and its cues for the Inspector | 0.26 / 0.29 ms |
+| The analysis picks its next 200 files | 350 / 335 ms, once every 200 files |
+| The analysis counts the library for the status strip | 352 / 323 ms, at most every 5 seconds |
+
+**Drawing waveforms costs nothing you would notice.** The Library's busiest
+case, a screen of rows asking at once, is answered in about 20 ms, and the
+column reads only rows that stay on screen. Scrolling 5,000 rows with the column
+shown records no task long enough to make the window stutter.
+
+**The analysis itself takes hours, once.** About 8,000 six-minute tracks an hour
+with two workers on a 16-core Windows desktop, so about six hours for 50,000
+tracks. It runs at low priority: while it ran, the Library's search stayed
+within 1.4 times its idle speed and the player had no dropouts. After that only
+new and changed files are analysed. See [Waveforms](waveforms.md).
+
 ## Memory while browsing
 
 The numbers above are the engine's. This one is the window's, measured in the

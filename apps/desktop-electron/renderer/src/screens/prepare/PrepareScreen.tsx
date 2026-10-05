@@ -7,7 +7,8 @@
  * `TrackTable` over its entries and its chapters' headings; the entry selected
  * is planned in the Inspector's "In this Set" zone. Beside the Set, the source
  * panel fills it from Suggestions and the library; above it, the lanes draw
- * its tempo and key (PREP-11).
+ * its tempo and key (PREP-11), and the transition strip draws the selected
+ * entry's waveform beside the next one's (WAVE-07).
  *
  * - **The address is the Set.** `/prepare/:setId` opens one; `/prepare`
  *   opens the Set last open, or the first, as DEC-027 reopens a page. With no
@@ -25,7 +26,7 @@
  *   lands. Either way the tracks go in one at a time through the one path that
  *   writes an entry (PREP-02).
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import type {
@@ -45,6 +46,8 @@ import { TrackContextMenu } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { ColumnPicker, TrackTable, inMemorySource, useColumnLayout } from "../../components/table";
+import { readRowHeight } from "../../components/table/trackTableLayout";
+import { useScaleFactor } from "../../tokens/ScaleContext";
 import { entityPath, similarPath } from "../discover/discoverLinks";
 import { useBeatportSelection } from "../discover/useBeatportSelection";
 import { NewSetFromDialog } from "../library/NewSetFromDialog";
@@ -64,6 +67,8 @@ import { PrepareLayout } from "./PrepareLayout";
 import { SetEntryZone } from "./SetEntryZone";
 import { SetLanes } from "./SetLanes";
 import { SetNotesDialog } from "./SetNotesDialog";
+import { SetTransition } from "./SetTransition";
+import { useSetAreaFloor } from "./setAreaFloor";
 import { SourcePanel } from "./SourcePanel";
 import { newSetSources } from "./newSetSources";
 import { PREPARE_COLUMNS, PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
@@ -106,7 +111,7 @@ import {
   roomFor,
   type InsertPlace,
 } from "./prepareSource";
-import { loadLanesOpen, saveLanesOpen } from "./sourcePanelState";
+import { loadLanesOpen, loadTransitionOpen, saveLanesOpen, saveTransitionOpen } from "./sourcePanelState";
 import { useSetList } from "./useSetList";
 import { usePreparedSet, type Tone } from "./usePreparedSet";
 import "../screens.css";
@@ -475,9 +480,9 @@ export function PrepareScreen({
 
   const [menu, setMenu] = useState<Menu | null>(null);
   const [exportMenu, setExportMenu] = useState<{ x: number; y: number } | null>(null);
-  // The facts line holds two links, the Set's notes and "View ▾": the lanes
-  // and the columns share the second's menu, so the line stays one line and
-  // the Set keeps its rows (DEC-112).
+  // The facts line holds two links, the Set's notes and "View ▾": the lanes,
+  // the transition strip and the columns share the second's menu, so the line
+  // stays one line and the Set keeps its rows (DEC-112).
   const [viewMenu, setViewMenu] = useState<{ x: number; y: number } | null>(null);
 
   const openEntryMenu = useCallback(
@@ -553,6 +558,25 @@ export function PrepareScreen({
     setLanesOpen(next);
     saveLanesOpen(next);
   }, [lanesOpen]);
+  const [transitionOpen, setTransitionOpen] = useState(loadTransitionOpen);
+  const toggleTransition = useCallback(() => {
+    const next = !transitionOpen;
+    setTransitionOpen(next);
+    saveTransitionOpen(next);
+  }, [transitionOpen]);
+  const lanesShown = lanesOpen && (shown?.analysis.shape.entries.length ?? 0) > 0;
+  const transitionShown = transitionOpen && entries.length > 0;
+
+  // The Set keeps two whole rows under the lanes and the strip (WAVE-07).
+  const setBox = useRef<HTMLDivElement>(null);
+  const scale = useScaleFactor();
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  const rowHeight = useMemo(() => readRowHeight(), [scale]);
+  const setFloor = useSetAreaFloor(
+    setBox,
+    rowHeight,
+    [shown?.setId ?? "none", lanesShown, transitionShown, scale].join(":"),
+  );
 
   // Every node of the tree, flat: the pool picker lists folders' children too.
   const allNodes = useMemo(() => flattenCollections(tree.tree), [tree.tree]);
@@ -735,12 +759,19 @@ export function PrepareScreen({
   const firstChapter = [...plan.chapters].sort((a, b) => a.position - b.position)[0];
 
   const table = (
-    <div className={`prepare-set${lanesOpen ? " prepare-set--lanes" : ""}`}>
-      {lanesOpen && analysis.shape.entries.length > 0 && (
+    <div className="prepare-set" ref={setBox}>
+      {lanesShown && (
         <SetLanes
           shape={analysis.shape}
           titles={titles}
           chapters={plan.chapters}
+          selectedEntryId={focused ? focused.entry.entry_id : null}
+          onSelect={setToSelect}
+        />
+      )}
+      {transitionShown && (
+        <SetTransition
+          entries={entries}
           selectedEntryId={focused ? focused.entry.entry_id : null}
           onSelect={setToSelect}
         />
@@ -807,7 +838,10 @@ export function PrepareScreen({
   );
 
   return (
-    <div className="screen prepare-screen">
+    <div
+      className="screen prepare-screen"
+      style={setFloor === null ? undefined : ({ "--prepare-set-floor": `${setFloor}px` } as CSSProperties)}
+    >
       <header className="prepare-header">
         {/* The picker is the page's title: it names the Set open and opens
             another, so the name is not drawn twice (DEC-112's height). */}
@@ -945,6 +979,11 @@ export function PrepareScreen({
               id: "lanes",
               label: lanesOpen ? "Hide tempo and key lanes" : "Show tempo and key lanes",
               onSelect: toggleLanes,
+            },
+            {
+              id: "transition",
+              label: transitionOpen ? "Hide transition strip" : "Show transition strip",
+              onSelect: toggleTransition,
             },
             { id: "columns", label: "Columns…", onSelect: () => setPicking(true) },
           ]}

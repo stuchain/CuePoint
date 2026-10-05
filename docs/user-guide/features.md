@@ -85,6 +85,15 @@ between any two, the Set plays as the queue, and it saves as a text, CSV or
 M3U8 set list or exports to Rekordbox as one playlist. Chapters, times and notes
 stay in CuePoint. See [Prepare](prepare.md).
 
+### See every track's waveform
+
+CuePoint works out a waveform for every track whose file it finds, in the
+background, and draws it in the player bar (where a click seeks), the
+Inspector, a Library column and Prepare's transition strip, in three frequency
+bands or one colour, with Rekordbox's cue points and beat grid on it. The
+analysis can be paused and carries on after a restart. See
+[Waveforms](waveforms.md).
+
 ## What CuePoint never does
 
 - It never writes to the Rekordbox XML you imported, or to Rekordbox's

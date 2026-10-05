@@ -532,6 +532,10 @@ class AnalysisCoordinator:
         control.job = job
         self._job, self._control = job, control
         self._progress = None
+        # A count from before the run may predate the file check that started
+        # it, which is what decides what is present: count again, as a run's
+        # end does.
+        self._count = None
         return job
 
     def _run(self, job: Job, control: _Control) -> None:

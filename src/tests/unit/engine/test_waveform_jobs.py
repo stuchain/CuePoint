@@ -716,6 +716,30 @@ class TestStatus:
         assert status.state == ANALYSIS_RUNNING and status.job_id == job.id
         assert status.remaining == 1
 
+    def test_a_run_counts_the_library_afresh_when_it_starts(self, lib, engine):
+        """Regression (WAVE-07): a count taken before an import's file check
+        was kept for five seconds into the run that followed it, so a fresh
+        import's status said nothing was present while every file waited, and
+        a pause in that window read as nothing left to do."""
+        store, analysis = engine
+        assert analysis.status().present == 0  # counted before the files are checked
+        lib.add("a")
+        lib.add("b")
+        gate = Gate()
+        lib.decoder.default = gate
+        analysis.start("file_check")
+        assert gate.entered.wait(TIMEOUT)
+
+        status = analysis.status()
+        gate.release.set()
+        settle(store)
+
+        assert (status.state, status.present, status.remaining) == (
+            ANALYSIS_RUNNING,
+            2,
+            2,
+        )
+
     def test_unavailable_says_why(self, lib, engine):
         _, analysis = engine
         lib.decoder_path = None

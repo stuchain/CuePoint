@@ -20,6 +20,7 @@ For end users: installation, usage, troubleshooting.
 | [Your library](user-guide/library.md) | Importing and refreshing a Rekordbox collection, and what a refresh deletes |
 | [Organizing your library](user-guide/organization.md) | Collections, Smart Collections, tags, ratings and changing many tracks at once |
 | [Prepare](user-guide/prepare.md) | Sets: running orders in chapters, planned times, transition checks, suggestions, playing, set lists |
+| [Waveforms](user-guide/waveforms.md) | Waveforms in the player bar, the Inspector, a Library column and Prepare's transition strip; the analysis and where its data lives |
 | [Exporting to Rekordbox](user-guide/rekordbox-export.md) | Carrying your values and Collections back to Rekordbox, with cue points and beat grids kept |
 | [Workflows](user-guide/workflows.md) | Common workflows |
 | [Troubleshooting](user-guide/troubleshooting.md) | Common errors and fixes |

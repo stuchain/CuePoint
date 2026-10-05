@@ -18,3 +18,12 @@
   `m:ss` or `h:mm:ss`. An entry with an out time is timed, and plays for its out
   time less its in time. A Set's running time counts timed entries only, and
   says how many are not.
+- **Waveform**: A picture of a track's loudness from start to end, worked out by
+  CuePoint from the audio file, in three frequency bands or one colour. See
+  [Waveforms](waveforms.md).
+- **Waveform analysis**: The background job that makes a waveform for every
+  track whose file was found. It can be paused, and carries on where it stopped.
+- **Hot cue**, **memory cue**, **beat grid**: Rekordbox's marks on a track, read
+  from your export and drawn on its waveform. CuePoint never changes them.
+- **Transition strip**: The view on the Prepare page that shows the selected
+  entry's waveform beside the next one's, with their planned times.

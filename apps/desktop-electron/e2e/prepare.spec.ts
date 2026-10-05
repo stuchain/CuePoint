@@ -11,7 +11,8 @@
  * width in the same run, with PREP-11's source panel beside the Set: nothing
  * spills sideways, every header and panel control is on screen, and the Set
  * is the wider pane. It measures the rows again with the tempo and key lanes
- * open, and the rows the panel's Suggestions show.
+ * open, with the transition strip open (WAVE-07), and the rows the panel's
+ * Suggestions show.
  *
  * It then double-clicks a partly visible row, on the Prepare page and on the
  * Library page where Phase 8 found the defect, with the pointer where a person
@@ -65,6 +66,26 @@ const WHOLE_ROWS_PLAYING = 4;
  * Windows figure that offset gives, until the Windows run records its own.
  */
 const WHOLE_ROWS_LANES = 4;
+
+/**
+ * The same with the transition strip open (WAVE-07, DEC-120), sidebar expanded
+ * and as a rail: one row of titles and a waveform two rows tall take three of
+ * the rows, which is why it starts hidden too.
+ *
+ * Measured at WAVE-07 on Windows: 3 with the sidebar expanded and 4 as a rail,
+ * what the lanes measure there, since both take three of the Set's rows. Every
+ * count above sits one lower on Windows than on Linux, so Linux holds this
+ * with a row to spare; held at the Windows figure until the Linux run records
+ * its own.
+ */
+const WHOLE_ROWS_TRANSITION = 3;
+
+/**
+ * The rows the Set keeps under the lanes or the strip whatever else is on
+ * screen (WAVE-07, `setAreaFloor.ts`): with the player's bar as well they
+ * would otherwise take every row, so the page scrolls to keep these.
+ */
+const ROWS_KEPT = 2;
 
 /**
  * The whole rows the source panel's Suggestions show beside the Set, the page
@@ -347,6 +368,37 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       await win.getByRole("menuitem", { name: "Hide tempo and key lanes" }).click();
       await expect(win.getByRole("group", { name: "Tempo and key lanes" })).toHaveCount(0);
 
+      // --- with the transition strip open (WAVE-07) ---------------------------
+      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("menuitem", { name: "Show transition strip" }).click();
+      const strip = win.getByRole("region", { name: "Transition" });
+      await expect(strip).toBeVisible();
+      // One row of titles and a waveform two rows tall, in the Set's own rows.
+      const geometry = await win.evaluate(() => {
+        const shown = document.querySelector<HTMLElement>(".prepare-transition")!;
+        const row = document.querySelector<HTMLElement>('[aria-label="Set entries"] .track-table__row')!;
+        return { rows: getComputedStyle(shown).gridTemplateRows, row: row.getBoundingClientRect().height };
+      });
+      expect(geometry.rows).toBe(`${geometry.row}px ${geometry.row * 2}px`);
+      const transition: Record<string, Measured> = {};
+      for (const collapsed of [false, true]) {
+        await setSidebar(win, collapsed);
+        const m = await measure(win, "Set entries");
+        transition[collapsed ? "rail + transition" : "expanded + transition"] = m;
+        expect(m.overflowX, "nothing spills sideways with the strip").toBeLessThanOrEqual(0);
+        expect(m.pageScrolls, "the page does not scroll with the strip").toBe(false);
+      }
+      console.log(
+        "WAVE-07 whole rows with the transition strip:",
+        JSON.stringify(Object.fromEntries(Object.entries(transition).map(([k, v]) => [k, v.whole]))),
+      );
+      for (const [state, m] of Object.entries(transition)) {
+        expect(m.whole, `whole rows, ${state}`).toBeGreaterThanOrEqual(WHOLE_ROWS_TRANSITION);
+      }
+      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("menuitem", { name: "Hide transition strip" }).click();
+      await expect(strip).toHaveCount(0);
+
       // --- the row double-clicked is the row that plays -----------------------
       await setSidebar(win, false);
       const before = await measure(win, "Set entries");
@@ -375,6 +427,33 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         // The header stays on screen: the page itself does not scroll.
         expect(m.pageScrolls, `the page scrolls, sidebar ${state}`).toBe(false);
       }
+
+      // --- the crowded case: the player's bar and the lanes or the strip -----
+      // WAVE-07: they took every row the Set had left here. The Set keeps two
+      // whole rows under them, and the page scrolls to show them.
+      await setSidebar(win, false);
+      const crowded: Record<string, number> = {};
+      for (const [show, hide, name] of [
+        ["Show tempo and key lanes", "Hide tempo and key lanes", "lanes"],
+        ["Show transition strip", "Hide transition strip", "transition"],
+      ] as const) {
+        await win.getByRole("button", { name: "View ▾" }).click();
+        await win.getByRole("menuitem", { name: show }).click();
+        await win.evaluate(() => {
+          const screen = document.querySelector<HTMLElement>("main.app-main .screen")!;
+          screen.scrollTop = screen.scrollHeight;
+        });
+        const m = await measure(win, "Set entries");
+        crowded[`expanded + player + ${name}`] = m.whole;
+        expect(m.overflowX, `nothing spills sideways, player and ${name}`).toBeLessThanOrEqual(0);
+        expect(m.whole, `whole rows under the ${name}, with the player`).toBeGreaterThanOrEqual(ROWS_KEPT);
+        await win.evaluate(() => {
+          document.querySelector<HTMLElement>("main.app-main .screen")!.scrollTop = 0;
+        });
+        await win.getByRole("button", { name: "View ▾" }).click();
+        await win.getByRole("menuitem", { name: hide }).click();
+      }
+      console.log("WAVE-07 whole rows, crowded:", JSON.stringify(crowded));
 
       // --- the Library, where Phase 8 found a double-click defeated -----------
       await win.getByRole("link", { name: "Library", exact: true }).click();

@@ -17,6 +17,8 @@
  * - **The pool** and **the Library tab**: remembered, sent as the Library's own
  *   parameters, searched through the one browse route.
  * - **The lanes**: from the View menu, remembered, and a column selects its entry.
+ * - **The transition strip** (WAVE-07): from the View menu, remembered, the
+ *   selected entry beside the next, and a half selects its entry.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -51,7 +53,13 @@ import {
 } from "./prepareSource.testFixture";
 import { PREPARE_PATH, PREPARE_SET_ROUTE, preparePath } from "./prepareLink";
 import { EMPTY_SET_SUGGESTIONS } from "./SourcePanel";
-import { LANES_STORAGE_KEY, SOURCE_POOL_STORAGE_KEY, SOURCE_TAB_STORAGE_KEY } from "./sourcePanelState";
+import {
+  LANES_STORAGE_KEY,
+  SOURCE_POOL_STORAGE_KEY,
+  SOURCE_TAB_STORAGE_KEY,
+  TRANSITION_STORAGE_KEY,
+} from "./sourcePanelState";
+import { END_OF_SET, NO_SELECTION_WORDS } from "./transitionStrip";
 
 const LOADED = { timeout: 3000 };
 const [OPEN_ONE, OPEN_TWO, BRIDGE, PEAK_LOUD, PEAK_TWO] = SOURCE_IDS.build_entries;
@@ -717,6 +725,107 @@ describe("the lanes", () => {
     const inspector = screen.getByRole("complementary", { name: "Inspector" });
     expect(await within(inspector).findByText(/Entry 2/, {}, LOADED)).toBeInTheDocument();
     expect(container.querySelector(".prepare-lanes__selected")).not.toBeNull();
+  });
+});
+
+describe("the transition strip (WAVE-07)", () => {
+  function toggleStrip(label: "Show transition strip" | "Hide transition strip") {
+    fireEvent.click(screen.getByRole("button", { name: "View ▾" }));
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: label }));
+  }
+
+  const strip = () => screen.queryByRole("region", { name: "Transition" });
+
+  beforeEach(() => {
+    bridge.waveforms = {
+      get: vi.fn(async ({ track_ids, width }: { track_ids: number[]; width: number }) => ({
+        value: {
+          width,
+          paused: false,
+          waveforms: track_ids.map((track_id) => ({
+            track_id,
+            state: "waiting",
+            reason: null,
+            duration_ms: null,
+            data: null,
+            marks: null,
+          })),
+          unknown: [],
+        },
+        refusal: null,
+      })),
+      request: vi.fn().mockResolvedValue({ value: { requested: [], job_id: "job" }, refusal: null }),
+      analysis: vi.fn().mockResolvedValue({ value: null, refusal: { code: "x", message: "x" } }),
+    };
+  });
+
+  it("starts hidden, opens from the View menu, and is remembered", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    expect(strip()).toBeNull();
+
+    toggleStrip("Show transition strip");
+    expect(strip()).toHaveTextContent(NO_SELECTION_WORDS);
+    expect(localStorage.getItem(TRANSITION_STORAGE_KEY)).toBe("1");
+    // The lanes keep their own memory.
+    expect(localStorage.getItem(LANES_STORAGE_KEY)).toBeNull();
+
+    toggleStrip("Hide transition strip");
+    expect(strip()).toBeNull();
+    expect(localStorage.getItem(TRANSITION_STORAGE_KEY)).toBe("0");
+  });
+
+  it("opens as it was left, under the lanes and above the Set's rows", async () => {
+    localStorage.setItem(TRANSITION_STORAGE_KEY, "1");
+    localStorage.setItem(LANES_STORAGE_KEY, "1");
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+
+    const shown = strip()!;
+    const lanes = screen.getByRole("group", { name: "Tempo and key lanes" });
+    const table = screen.getByRole("table", { name: "Set entries" });
+    expect(lanes.compareDocumentPosition(shown) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(shown.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("shows the entry selected in the table beside the next, and a click on the next selects it", async () => {
+    localStorage.setItem(TRANSITION_STORAGE_KEY, "1");
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+
+    fireEvent.click(setRow(OPEN_ONE));
+    await waitFor(() => expect(screen.getByTestId("transition-from")).toHaveAttribute("data-entry", String(OPEN_ONE)));
+    expect(screen.getByTestId("transition-to")).toHaveAttribute("data-entry", String(OPEN_TWO));
+    expect(within(strip()!).getByText("Open One")).toBeInTheDocument();
+    expect(within(strip()!).getByText("Open Two")).toBeInTheDocument();
+    expect(screen.getByTestId("transition-words")).toHaveTextContent("Untimed → untimed");
+
+    fireEvent.click(screen.getByTestId("transition-to"));
+    await waitFor(() => expect(setRow(OPEN_TWO)).toHaveAttribute("aria-selected", "true"));
+    expect(setRow(OPEN_ONE)).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByTestId("transition-from")).toHaveAttribute("data-entry", String(OPEN_TWO));
+    expect(screen.getByTestId("transition-to")).toHaveAttribute("data-entry", String(BRIDGE));
+    // The insertion point follows the selection, as a lane's column moves it.
+    await waitFor(() => expect(point()).toHaveAccessibleName("Insert: Between “Open Two” and “Bridge Deep”, in Open"));
+  });
+
+  it("reads End of Set for the last entry, across a chapter", async () => {
+    localStorage.setItem(TRANSITION_STORAGE_KEY, "1");
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+
+    fireEvent.click(setRow(BRIDGE));
+    // The next entry is the first of the next chapter.
+    await waitFor(() => expect(screen.getByTestId("transition-to")).toHaveAttribute("data-entry", String(PEAK_LOUD)));
+    fireEvent.click(setRow(PEAK_TWO));
+    await waitFor(() => expect(screen.getByTestId("transition-to")).toHaveTextContent(END_OF_SET));
+  });
+
+  it("is not drawn for an empty Set", async () => {
+    localStorage.setItem(TRANSITION_STORAGE_KEY, "1");
+    renderAt(preparePath(SOURCE_IDS.blank));
+    await opened("Blank");
+    expect(strip()).toBeNull();
   });
 });
 
