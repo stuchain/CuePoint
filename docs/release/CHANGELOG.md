@@ -346,6 +346,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **Waveform decoders could outlive an engine that was killed** on Windows (End
+  Task, a crash, or a process-tree kill that listed the processes before a
+  decode began), and were found idle hours later. Each decoder now joins a job
+  that Windows ends with the engine, however the engine ends
 - **CuePoint would not start when the browser storage it keeps display
   preferences in refused to be read** (disabled, or full): the scale and theme
   were read without a fallback, and the window stayed empty. Both now read as

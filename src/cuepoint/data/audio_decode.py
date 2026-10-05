@@ -67,7 +67,8 @@ Lowered priority: nice +10 on macOS and Linux, ``BELOW_NORMAL_PRIORITY_CLASS``
 on Windows. A wall-clock cap of ``FILE_TIMEOUT_SECONDS``, after which it is
 killed and the file recorded as ``timeout``. A caller's cancel kills it too.
 Every live child is registered, so the engine can end them all when it stops
-(:func:`terminate_children`).
+(:func:`terminate_children`). On Windows each child also joins a job that ends
+it when the engine ends in any way, killed included (:func:`_engine_job`).
 
 What a caller is told
 ---------------------
@@ -529,6 +530,137 @@ def _spawn_flags(platform: str = sys.platform) -> int:
     return int(below_normal) | int(no_window)
 
 
+#: ``JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE``: the job's processes end with its last handle.
+_KILL_ON_JOB_CLOSE = 0x2000
+#: ``JobObjectExtendedLimitInformation``.
+_EXTENDED_LIMIT_INFORMATION = 9
+
+_JOB_LOCK = threading.Lock()
+_JOB: List[Optional[int]] = []
+
+
+def _engine_job() -> Optional[int]:
+    """Windows: the job every decoder child joins, ended with the engine.
+
+    ``terminate_children`` ends the children when the engine stops, or is
+    stopped because its app has gone. Neither runs when the engine itself is
+    killed: by a tree kill that listed the processes before a child started,
+    by End Task, by a crash. Such children were found hours later, idle, after
+    end-to-end runs. A job made to kill on close is the operating system's own
+    guarantee: its one handle is the engine's, and when the engine ends in any
+    way the handle closes and every child in the job ends with it.
+
+    Made once, on the first decode. ``None`` off Windows, or when the job could
+    not be made; the decode goes ahead either way, as it did before.
+    """
+    if sys.platform != "win32":
+        return None
+    with _JOB_LOCK:
+        if _JOB:
+            return _JOB[0]
+        _JOB.append(_make_kill_on_close_job())
+        return _JOB[0]
+
+
+def _make_kill_on_close_job() -> Optional[int]:
+    import ctypes
+    from ctypes import wintypes
+
+    class _BasicLimits(ctypes.Structure):
+        _fields_ = [
+            ("PerProcessUserTimeLimit", ctypes.c_int64),
+            ("PerJobUserTimeLimit", ctypes.c_int64),
+            ("LimitFlags", wintypes.DWORD),
+            ("MinimumWorkingSetSize", ctypes.c_size_t),
+            ("MaximumWorkingSetSize", ctypes.c_size_t),
+            ("ActiveProcessLimit", wintypes.DWORD),
+            ("Affinity", ctypes.c_size_t),
+            ("PriorityClass", wintypes.DWORD),
+            ("SchedulingClass", wintypes.DWORD),
+        ]
+
+    class _IoCounters(ctypes.Structure):
+        _fields_ = [
+            (name, ctypes.c_uint64)
+            for name in (
+                "ReadOperationCount",
+                "WriteOperationCount",
+                "OtherOperationCount",
+                "ReadTransferCount",
+                "WriteTransferCount",
+                "OtherTransferCount",
+            )
+        ]
+
+    class _ExtendedLimits(ctypes.Structure):
+        _fields_ = [
+            ("BasicLimitInformation", _BasicLimits),
+            ("IoInfo", _IoCounters),
+            ("ProcessMemoryLimit", ctypes.c_size_t),
+            ("JobMemoryLimit", ctypes.c_size_t),
+            ("PeakProcessMemoryUsed", ctypes.c_size_t),
+            ("PeakJobMemoryUsed", ctypes.c_size_t),
+        ]
+
+    # Looked up rather than named: ``WinDLL`` exists only on Windows, and the
+    # type check runs everywhere.
+    kernel32 = getattr(ctypes, "WinDLL")("kernel32", use_last_error=True)
+    kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+    kernel32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+    kernel32.SetInformationJobObject.restype = wintypes.BOOL
+    kernel32.SetInformationJobObject.argtypes = [
+        wintypes.HANDLE,
+        ctypes.c_int,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+    ]
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    job = kernel32.CreateJobObjectW(None, None)
+    if not job:
+        _logger.warning(
+            "[waveforms] no job for the decoders (error %s); they end with the "
+            "engine only when it stops itself",
+            ctypes.get_last_error(),
+        )
+        return None
+    limits = _ExtendedLimits()
+    limits.BasicLimitInformation.LimitFlags = _KILL_ON_JOB_CLOSE
+    if not kernel32.SetInformationJobObject(
+        job,
+        _EXTENDED_LIMIT_INFORMATION,
+        ctypes.byref(limits),
+        ctypes.sizeof(limits),
+    ):
+        _logger.warning(
+            "[waveforms] the decoders' job could not be set to end them (error %s)",
+            ctypes.get_last_error(),
+        )
+        kernel32.CloseHandle(job)
+        return None
+    return int(job)
+
+
+def _join_engine_job(child: "subprocess.Popen[bytes]") -> None:
+    """Put a decoder child in :func:`_engine_job`, so it cannot outlive the engine."""
+    job = _engine_job()
+    if job is None:
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = getattr(ctypes, "WinDLL")("kernel32", use_last_error=True)
+    kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
+    kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+    handle = getattr(child, "_handle", None)
+    if handle is None or not kernel32.AssignProcessToJobObject(job, int(handle)):
+        # Gone already, or refused by a job the engine runs in that allows no
+        # nesting: the decode still runs, and the engine's own stop still ends it.
+        _logger.debug(
+            "[waveforms] a decoder child was not put in the engine's job (error %s)",
+            ctypes.get_last_error(),
+        )
+
+
 def _lower_priority(pid: int) -> None:
     """Lower a child's priority on macOS and Linux; Windows did it at spawn."""
     if sys.platform == "win32":
@@ -710,6 +842,7 @@ def _decode_in(
         daemon=True,
     )
     try:
+        _join_engine_job(child)
         _lower_priority(child.pid)
         watchdog.start()
         raw, err = child.communicate()

@@ -522,6 +522,61 @@ class TestSpawnFlags:
         assert ad._spawn_flags("darwin") == 0
 
 
+# A stand-in engine: it starts a child as a decode does, puts it in the job,
+# says the child's id, and waits to be killed.
+_ENGINE = """
+import subprocess, sys, time
+sys.path.insert(0, sys.argv[1])
+from cuepoint.data import audio_decode as ad
+child = subprocess.Popen(
+    [sys.executable, "-c", "import time; time.sleep(60)"],
+    stdin=subprocess.DEVNULL,
+    creationflags=ad._spawn_flags(),
+)
+ad._join_engine_job(child)
+print(child.pid, flush=True)
+time.sleep(60)
+"""
+
+
+class TestEngineJob:
+    def test_there_is_no_job_off_windows(self, monkeypatch):
+        monkeypatch.setattr(ad.sys, "platform", "linux")
+        assert ad._engine_job() is None
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="a Windows job object")
+    def test_a_killed_engine_takes_its_decoders_with_it(self, tmp_path):
+        """Regression: decoders were found idle hours after their engine was killed."""
+        import subprocess
+
+        from cuepoint.engine.parent_watch import is_alive
+
+        script = tmp_path / "engine.py"
+        script.write_text(_ENGINE, encoding="utf-8")
+        src = str(_REPO / "src")
+        engine = subprocess.Popen(
+            [sys.executable, str(script), src], stdout=subprocess.PIPE, text=True
+        )
+        try:
+            assert engine.stdout is not None
+            child = int(engine.stdout.readline())
+            assert is_alive(child)
+            engine.kill()
+            engine.wait(10)
+            deadline = time.monotonic() + 5
+            while is_alive(child) and time.monotonic() < deadline:
+                time.sleep(0.05)
+            alive = is_alive(child)
+            if alive:
+                os.kill(child, 9)
+            assert not alive, "the decoder outlived the engine that started it"
+        finally:
+            if engine.poll() is None:
+                engine.kill()
+            if engine.stdout is not None:
+                engine.stdout.close()
+
+
 # ---------------------------------------------------------------------------
 # The child, played by a stub
 # ---------------------------------------------------------------------------
