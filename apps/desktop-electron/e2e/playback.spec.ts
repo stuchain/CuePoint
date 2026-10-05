@@ -259,6 +259,13 @@ test.describe("Phase 5 end to end", () => {
       // why it failed on the first macOS run of the phase. What is actually
       // required is that the keys are held *when the OS allows it*, and that
       // CuePoint knows the difference rather than silently holding nothing.
+      //
+      // The suite shows its windows without focus (`playwright.config.ts`),
+      // so the window's focus event is raised here, through main's own
+      // handler, rather than focus taken from whatever the machine is doing.
+      await app.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0]!.emit("focus");
+      });
       const keys = await app.evaluate(({ globalShortcut, systemPreferences }) => ({
         held: {
           playPause: globalShortcut.isRegistered("MediaPlayPause"),

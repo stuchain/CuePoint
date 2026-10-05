@@ -1,7 +1,7 @@
 /**
  * Electron main process — Spike S1: spawn engine and expose status to renderer.
  */
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, screen, shell, systemPreferences } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
@@ -24,6 +24,7 @@ import type { LibraryBrowseParams, SetListDialogRequest } from "./engineClient";
 import { resolvePlayerBinary } from "./playerLaunch";
 import { PlayerSupervisor } from "./playerSupervisor";
 import { quitAfter } from "./quitAfter";
+import { E2E_DISPLAY_ENV, displayChoice, testWindowPlacement } from "./testWindowPlacement";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === "development";
@@ -893,9 +894,17 @@ async function createWindow(): Promise<void> {
     // rejection here would otherwise be an unhandled one.
   });
 
+  const size = { width: 1280, height: 800 };
+  // An end-to-end run's window goes where it asks and is shown without focus
+  // (`testWindowPlacement.ts`); a person's opens as it always has.
+  const testDisplay = displayChoice(process.env[E2E_DISPLAY_ENV]);
+  const placement = testDisplay
+    ? testWindowPlacement(testDisplay, screen.getAllDisplays(), screen.getPrimaryDisplay(), size)
+    : null;
+
   const win = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    ...size,
+    ...(placement ? { ...placement, show: false } : {}),
     webPreferences: {
       preload: resolvePreloadPath(),
       contextIsolation: true,
@@ -921,6 +930,7 @@ async function createWindow(): Promise<void> {
   win.on("blur", () => mediaKeys.release());
   win.on("closed", () => mediaKeys.release());
   if (win.isFocused()) mediaKeys.acquire();
+  if (placement) win.showInactive();
 
   if (isDev) {
     // The `engine`/`engineVersion` query parameters this once carried were

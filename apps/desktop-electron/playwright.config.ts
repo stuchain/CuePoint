@@ -1,5 +1,14 @@
 import { defineConfig } from "@playwright/test";
 
+/**
+ * Every launch's window opens on the leftmost display and is shown without
+ * taking focus (`electron/testWindowPlacement.ts`), so a run does not pull the
+ * person at the machine out of what they are doing, or take its media keys.
+ * Each spec passes `process.env` to the app it launches. Set it to `primary`
+ * or `right` to choose another display.
+ */
+process.env.CUEPOINT_E2E_DISPLAY ??= "left";
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 120_000,
