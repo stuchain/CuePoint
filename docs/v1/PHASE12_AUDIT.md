@@ -20,12 +20,12 @@ struck, or approved except named items. A later step deletes only what its group
 | B — The old updater | `update/` deleted, after its one live piece (`security.py`) moves beside `services/security_service.py` | PRUNE-03 | *pending* |
 | C — Legacy Python | 25 unreached modules deleted; the 3 root shims deleted after their importers are repointed; `src/__init__.py` kept | PRUNE-03 | *pending* |
 | D — Tests | Tests of removed code deleted; 18 stray files at `src/tests/`'s root deleted, 1 moved | PRUNE-02, PRUNE-03 | *pending* |
-| E — Scripts | 46 keep, 1 update, 81 delete (of 128) | PRUNE-04 | *pending* |
+| E — Scripts | 37 keep, 1 update, 90 delete (of 128) | PRUNE-04 | *pending* |
 | F — Workflows | `build-macos.yml`, `build-windows.yml`, `release.yml` deleted; `release-gates.yml` and `test.yml` lose their Qt and feed steps | PRUNE-04 | *pending* |
 | G — Electron and renderer | 6 files deleted; unused exports made private or removed; unused CSS rules deleted | PRUNE-05 | *pending* |
 | H — The repository root | `collection_incrate_playlist.xml`, `run_gui.*`, `src/gui_app.py`, `requirements-qt.txt`, `Makefile` and `.pylintrc` deleted; `config/` and `third_party/` kept | PRUNE-02, PRUNE-04 | *pending* |
-| I — Dependencies | 57 keep, 14 delete | PRUNE-06 | *pending* |
-| J — Docs | 103 keep, 29 update, 36 merge, 82 delete (`docs/v1/` and the ADRs kept) | PRUNE-07 | *pending* |
+| I — Dependencies | 55 keep, 16 delete | PRUNE-06 | *pending* |
+| J — Docs | 102 keep, 30 update, 36 merge, 82 delete (`docs/v1/` and the ADRs kept) | PRUNE-07 | *pending* |
 
 ## How this was made
 
@@ -365,7 +365,7 @@ tool is listed in `scripts/README.md` by PRUNE-04.
 | `analyze_coverage_gaps.py` | 148 | unreferenced | none | **delete**. Nothing names it. |
 | `analyze_licenses.py` | 122 | run-by-script | doc 1; script 2 | **keep**. Run by `generate_licenses.py` and `validate_licenses.py`. |
 | `audit_dead_code.py` | 2466 | dev-docs | doc 1 | **keep**. This audit; PRUNE-08 keeps it as the guard. |
-| `beatport_v4_spike.py` | 411 | not-run | doc 3; test 1 | **keep**. Uncertain. A spike, but `src/tests/fixtures/beatport_v4/README.md` names it as the tool that re-records the Beatport v4 fixtures. |
+| `beatport_v4_spike.py` | 411 | not-run | doc 3; test 1 | **delete** (user, 2026-10-06). A spike; the Beatport v4 fixtures it recorded stand as recorded, and the fixture README stops naming it. |
 | `bench.py` | 283 | not-run | doc 1 | **keep**. Developer tool: the CLI pipeline bench (user guide, performance). |
 | `bench_clean.py` | 460 | not-run | doc 2 | **keep**. Developer tool; PHASE7 and the user guide quote it. |
 | `bench_decoder.py` | 423 | not-run | doc 2; script 1; test 1 | **keep**. Developer tool, tested; ADR-009 quotes it. |
@@ -387,14 +387,14 @@ tool is listed in `scripts/README.md` by PRUNE-04.
 | `check_large_files.py` | 162 | run | doc 3; script 1; workflow 2 | **keep**. `test.yml`, `large-file-check.yml`. |
 | `check_no_qt_in_core.py` | 67 | run | doc 16; hook 1; test 2; workflow 2 | **update**. Widened and renamed `check_no_qt.py` in PRUNE-02. |
 | `check_performance.py` | 165 | run-by-script | doc 1; script 1 | **delete**. Run only by `step10_release_readiness.py`. |
-| `check_release_readiness.py` | 225 | dev-docs | doc 3 | **keep**. Undecided: the release skill uses it. |
+| `check_release_readiness.py` | 225 | dev-docs | doc 3 | **delete** (user, 2026-10-06). Release tooling for the retired app; Phase 16 writes the new pipeline and can restore one from git history. |
 | `check_repo_health.py` | 123 | unreferenced | none | **delete**. Nothing names it. |
 | `check_step13_ops.py` | 124 | unreferenced | none | **delete**. A one-off step script; its finding is recorded in its step. |
 | `compare_build_environments.py` | 86 | unreferenced | none | **delete**. Nothing names it. |
 | `compare_builds.py` | 124 | unreferenced | none | **delete**. Nothing names it. |
 | `create_dmg.sh` | 331 | retired-pipeline | doc 2; workflow 1 | **delete**. Run only by the retired app's pipeline (group F). |
-| `create_release_tag.sh` | 69 | dev-docs | doc 2 | **keep**. Undecided: the release skill uses it. Does Phase 16 keep tag-driven releases? |
-| `debug_beatport_search_page.py` | 46 | not-run | test 1 | **keep**. Uncertain. It writes the page a regression test reads (`test_regression_fixtures_not_ignored.py`), which skips without it. |
+| `create_release_tag.sh` | 69 | dev-docs | doc 2 | **delete** (user, 2026-10-06). Release tooling for the retired app; Phase 16 writes the new pipeline and can restore one from git history. |
+| `debug_beatport_search_page.py` | 46 | not-run | test 1 | **delete** (user, 2026-10-06). It writes the page a regression test reads (`test_regression_fixtures_not_ignored.py`), which already skips without it. |
 | `debug_sync_to_split_test.py` | 117 | not-run | test 1 | **delete**. A debugging script. `test_file_write_boundary.py` lists it as an allowed writer; that entry goes with it. |
 | `detect_pitfalls.py` | 291 | not-run | script 1 | **delete**. Run only by `test_step3_validation.py`. |
 | `detect_windows_pitfalls.py` | 243 | not-run | script 1 | **delete**. Run only by `test_step4_validation.py`. |
@@ -408,7 +408,7 @@ tool is listed in `scripts/README.md` by PRUNE-04.
 | `generate_checksums.py` | 115 | dev-docs | doc 5; workflow 3 | **delete**. Run only by the retired app's pipeline (group F). The desktop workflow uses `generate_sha256_sums.py`. |
 | `generate_icons.py` | 203 | run-by-script | build 1; doc 1; script 1; source 1; workflow 2 | **delete**. Makes the retired app's icons (`build/pyinstaller.spec`). Electron's icons are electron-builder's. |
 | `generate_licenses.py` | 90 | run | doc 4; script 2; test 1; workflow 5 | **keep**. Licence and release-gate workflows. |
-| `generate_release_notes.py` | 205 | dev-docs | doc 2; workflow 1 | **keep**. Undecided: run by `release.yml` (going); release notes from the changelog may serve Phase 16. |
+| `generate_release_notes.py` | 205 | dev-docs | doc 2; workflow 1 | **delete** (user, 2026-10-06). Release tooling for the retired app; Phase 16 writes the new pipeline and can restore one from git history. |
 | `generate_requirements_hashes.py` | 93 | run | doc 4; source 1; workflow 3 | **keep**. `release-gates.yml`'s deterministic-install check. |
 | `generate_sbom.py` | 228 | run | doc 2; test 1; workflow 2 | **keep**. `release-gates.yml`. |
 | `generate_sha256_sums.py` | 51 | run | workflow 1 | **keep**. Desktop workflow's checksums. |
@@ -427,21 +427,21 @@ tool is listed in `scripts/README.md` by PRUNE-04.
 | `organize_root_files.bat` | 54 | unreferenced | none | **delete**. Nothing names it. |
 | `organize_root_files.sh` | 53 | unreferenced | none | **delete**. Nothing names it. |
 | `player_sidecar_manifest.json` | 95 | dev-docs | doc 5; script 1; source 1; test 1 | **keep**. Read by `fetch_player_sidecar.py`. |
-| `prepare_release.py` | 227 | dev-docs | doc 2 | **keep**. Undecided: the release skill uses it. |
+| `prepare_release.py` | 227 | dev-docs | doc 2 | **delete** (user, 2026-10-06). Release tooling for the retired app; Phase 16 writes the new pipeline and can restore one from git history. |
 | `process_info_plist.py` | 56 | retired-pipeline | workflow 1 | **delete**. Run only by the retired app's pipeline (group F). |
 | `publish_feeds.py` | 675 | run | doc 6; script 1; workflow 2 | **keep**. **Correction to PRUNE-04:** `publish-gh-pages-site.yml`, which stays until Phase 17, runs it with `--site-only`. Its feed half can go in PRUNE-04; the script stays. |
-| `release_readiness.py` | 362 | dev-docs | doc 4; script 2 | **keep**. Undecided: the release skill uses it; it calls the Qt-era step-10 script. |
+| `release_readiness.py` | 362 | dev-docs | doc 4; script 2 | **delete** (user, 2026-10-06). Release tooling for the retired app; Phase 16 writes the new pipeline and can restore one from git history. |
 | `run_tests.py` | 121 | run | doc 17; script 1; test 4; workflow 1 | **keep**. `test.yml` and AGENTS.md. |
 | `save_beatport_docs_state.py` | 26 | not-run | doc 1 | **delete**. As `download_beatport_docs.py`. |
 | `set_build_info.py` | 161 | run-by-script | doc 1; script 2; source 1; workflow 2 | **delete**. Run only by the retired app's pipeline (group F). |
 | `set_wav_unwritten_tags_to_one.py` | 65 | unreferenced | none | **delete**. Nothing names it. |
 | `setup/install_requirements.sh` | 71 | dev-docs | doc 2 | **keep**. scripts/README.md; PRUNE-06 updates it with the requirements. |
-| `sign_checksums.py` | 121 | dev-docs | doc 3; workflow 1 | **keep**. Undecided: run by `release.yml` (going); GPG-signed checksums may serve Phase 16. |
+| `sign_checksums.py` | 121 | dev-docs | doc 3; workflow 1 | **delete** (user, 2026-10-06). Release tooling for the retired app; Phase 16 writes the new pipeline and can restore one from git history. |
 | `sign_macos.sh` | 93 | retired-pipeline | doc 1; script 1; workflow 1 | **delete**. Run only by the retired app's pipeline (group F). Electron signs in `build/signNestedBinaries.cjs`. |
 | `sign_windows.ps1` | 123 | not-run | script 1 | **delete**. Run only by `build_windows_installer.ps1`. |
 | `smoke_engine_health.py` | 44 | run | doc 10; workflow 1 | **keep**. Desktop workflow and AGENTS.md. |
 | `step10_release_readiness.py` | 686 | dev-docs | doc 4 | **delete**. A one-off step script; its finding is recorded in its step. It runs `build_pyinstaller.py`. |
-| `sync_version.py` | 251 | dev-docs | doc 6; script 1; workflow 3 | **keep**. Undecided: run by `release.yml` and the build workflows (going); tag-to-version sync may serve Phase 16. |
+| `sync_version.py` | 251 | dev-docs | doc 6; script 1; workflow 3 | **delete** (user, 2026-10-06). Release tooling for the retired app; Phase 16 writes the new pipeline and can restore one from git history. |
 | `test_appcast_url.py` | 247 | unreferenced | none | **delete**. Sparkle feeds, retired with `release.yml` (DEC-145, DEC-147). Nothing names it. |
 | `test_build_and_executable.py` | 203 | not-run | doc 3 | **delete**. Tests the retired PyInstaller executable. |
 | `test_generate_version_info.py` | 100 | unreferenced | none | **delete**. Tests `generate_version_info.py`. Nothing names it. |
@@ -496,8 +496,11 @@ tool is listed in `scripts/README.md` by PRUNE-04.
    pipeline. Keep them for Phase 16, or delete them now and let Phase 16 write its own?
    - `create_release_tag.sh`, `generate_release_notes.py`, `sign_checksums.py`, `sync_version.py`;
    - `prepare_release.py`, `release_readiness.py`, `check_release_readiness.py`.
+   *Answered 2026-10-06: delete all seven now; Phase 16 writes its own and can restore one from
+   git history.*
 2. **Two spike scripts.** `beatport_v4_spike.py` and `debug_beatport_search_page.py` regenerate test
    fixtures. Keep them as fixture tools, or delete them and let the fixtures stand as recorded?
+   *Answered 2026-10-06: delete both; the fixtures stand as recorded.*
 
 ## Group F — Workflows
 
@@ -842,7 +845,7 @@ Each requirement and npm package, with what imports it:
 | `black` | `requirements-dev.txt` | none | `Makefile`, `docs/development/coding-standards.md` +3 | **delete**. Named by the Makefile, `pyproject.toml`'s `[tool.black]` and three developer docs; nothing runs it. ruff formats (AGENTS.md, pre-commit). The docs are updated in J. |
 | `coverage` | `requirements-dev.txt`, `requirements.txt` | none | `.agents/skills/cuepoint-matching-pipeline/SKILL.md`, `.claude/skills/cuepoint-matching-pipeline/SKILL.md` +9 | **keep**. `release-gates.yml` and pytest-cov. |
 | `ddgs` | `requirements-build.txt`, `requirements.txt` | script 2, shipped 2 | — | **keep** |
-| `flake8` | `requirements-dev.txt` | none | `Makefile`, `docs/development/coding-standards.md` +1 | **keep**. Uncertain: only the Makefile and `check_release_readiness.py` run it, and that script is undecided (group E). It goes if that script goes. |
+| `flake8` | `requirements-dev.txt` | none | `Makefile`, `docs/development/coding-standards.md` +1 | **delete**. Only the Makefile and `check_release_readiness.py` run it, and both go (user, 2026-10-06, on the release tooling). |
 | `hypothesis` | `requirements-dev.txt` | test 7 | — | **keep**. Tests. |
 | `isort` | `requirements-dev.txt` | none | `Makefile`, `docs/development/coding-standards.md` +1 | **delete**. Only the Makefile and `pyproject.toml`'s `[tool.isort]` name it; ruff sorts imports. |
 | `mutagen` | `requirements-build.txt`, `requirements.txt` | script 2, shipped 4, test 11 | — | **keep** |
@@ -871,7 +874,7 @@ Each requirement and npm package, with what imports it:
 | `requests-cache` | `requirements-build.txt`, `requirements.txt` | shipped 2 | — | **keep** |
 | `ruff` | `requirements-dev.txt` | none | `.claude/hooks/lint-touched.sh`, `.github/workflows/release-gates.yml` +7 | **keep** |
 | `selenium` | `requirements-build.txt`, `requirements.txt`, `requirements_optional.txt` | shipped 1 | — | **keep**. Uncertain: one shipped module imports it (Beatport fallback); PRUNE-06 confirms the path is live. |
-| `sentry-sdk` | `requirements-build.txt`, `requirements.txt` | dead 2 | — | **keep**. Uncertain: only dead modules import it today, and Phase 13 brings Sentry back. Remove now and re-add in Phase 13, or keep? |
+| `sentry-sdk` | `requirements-build.txt`, `requirements.txt` | dead 2 | — | **delete** (user, 2026-10-06). Only dead modules import it, and the sidecar does not contain it. Phase 13 re-adds Sentry with the versions its spec chooses (DEC-126). |
 | `tqdm` | `requirements-build.txt`, `requirements.txt` | shipped 1 | — | **keep** |
 | `types-psutil` | `requirements-dev.txt` | dead 1, script 1, shipped 3 | — | **keep**. Uncertain: `psutil` is an optional import the requirements do not declare (the sidecar's PyInstaller warnings list it missing). |
 | `types-pyyaml` | `requirements-dev.txt` | shipped 4, test 5 | — | **keep** |
@@ -911,6 +914,7 @@ Each requirement and npm package, with what imports it:
 
 **Questions for the user (group I):** `sentry-sdk` is imported only by dead modules today, and
 Phase 13 brings Sentry back. Remove it now and re-add it in Phase 13, or keep it?
+*Answered 2026-10-06: remove it now; Phase 13 re-adds it.*
 
 ## Group J — Docs
 
@@ -1319,7 +1323,7 @@ when nothing replaces it, so that the link check stays clean. The record's text 
 
 | Doc | Lines | Last changed | Linked or named by | Signals | Proposal |
 | --- | --- | --- | --- | --- | --- |
-| `README.md` | 65 | 2026-09-23 | 2 | incrate 1 | **keep** |
+| `README.md` | 65 | 2026-09-23 | 2 | incrate 1 | **update**. Stops naming `beatport_v4_spike.py` (user, 2026-10-06): the fixtures stand as recorded. |
 
 #### `src/tests/regression/` — 1 file
 
