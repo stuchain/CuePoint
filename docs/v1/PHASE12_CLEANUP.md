@@ -1,6 +1,7 @@
 # CuePoint v1.0.0 — Phase 12: Cleanup, Detailed Step Specifications
 
-Status: **Specified 2026-10-06. No step is implemented.** Eight steps, PRUNE-01…PRUNE-08. Per the
+Status: **Specified 2026-10-06. PRUNE-01 is implemented (2026-10-06); the user's marks on its audit
+(`PHASE12_AUDIT.md`) are owed and gate the rest.** Eight steps, PRUNE-01…PRUNE-08. Per the
 process, no implementation happens from this document. Each step needs an explicit "Implement
 PRUNE-NN" instruction, scoped to exactly that step, and its outcome is recorded under the step
 afterwards. There are no open points. The measurements taken while writing it are in cross-cutting
@@ -278,6 +279,101 @@ user can approve or strike it. Delete nothing.
 **Risks**: Low. The audit writes nothing but a report and a script.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented (2026-10-06). The audit is `docs/v1/PHASE12_AUDIT.md`. It lists groups A to
+J with their evidence and a proposed verdict for every item, and nothing is deleted. The user's marks
+are owed: its table of marks is the gate for PRUNE-02 onwards, and every group reads *pending*.
+
+**What was built.**
+
+- **`scripts/audit_dead_code.py`.** It reads tracked files only and writes a Markdown or JSON report;
+  it changes nothing.
+  - **Python:** the import graph from the shipped entry points, with fact 2's dynamic loads (literal
+    `importlib`, `pkgutil.iter_modules(__path__)`, the sidecar spec's `hiddenimports` and
+    `collect_submodules`, `pyproject.toml` entry points). Migrations are never candidates. Live
+    scripts count as roots. Each module's importers and tests are listed, and each unreached module's
+    every other mention is listed for a person to check.
+  - **Scripts:** every reference by kind (workflow, npm, hook, `pre-commit`, build, developer doc,
+    test, script, doc), carried through the scripts that run each other. What only the retired app's
+    pipeline runs is marked so.
+  - **The rest:** workflows (what they run, Qt, the retired app, missing paths); the Electron and
+    renderer graph from `main.ts`, `preload.cjs` and `index.html`, with exports and CSS classes; every
+    Markdown file's links and retired subjects; Python and npm dependencies with their importers and
+    tool uses; fact 6's counts.
+  - **Not counted as references:** the files that list candidates (this spec, the audit, the script
+    and its test).
+- **`scripts/bench_engine_start.py`.** Times the engine from launch to a healthy `/health`, from
+  source or packaged. Every run starts in an empty temporary home, so it never touches the user's
+  data. PRUNE-08 repeats it.
+- **Tests.** `test_audit_dead_code.py` (55 tests) builds a fixture tree holding every case the spec
+  names, plus the Electron, CSS, docs, dependency and git cases; it also runs over this repository.
+  `test_bench_engine_start.py` (12) runs a stand-in engine, and the real one once. Both scripts are
+  listed in `scripts/README.md`.
+
+**Every scan finding confirmed or reclassified.** None of the 27 unreached modules is reclassified as
+alive:
+- no dynamic load names one;
+- the sidecar's archive, read after the baseline build, contains none;
+- their only other mentions are `mypy.ini` sections.
+
+`src/__init__.py` is kept as uncertain, since pytest names test modules through it. The scan's
+script statuses were corrected by hand in two places:
+- `maintenance_report.py` is run by the CLI's `--maintenance-report`;
+- `publish_feeds.py` is run by the website's workflow, which stays.
+
+The audit's "What the audit found beyond the specification" lists these, and eight more.
+
+**Corrections to this specification**, recorded in the audit:
+- PRUNE-04 deletes `publish_feeds.py`'s feed half, not the script.
+- Fact 5 has a second live shim, `duckduckgo_search`. Its question is answered: the packaged engine
+  contains both shims, so nothing failed silently.
+- PRUNE-03's sidecar spec has five stale `cuepoint.ui.*` names.
+- `update/` is reached only through `security_service.py`'s import of `update.security`.
+
+**Fixed on the way, each in its own commit before this step's.** The baseline needed them, and the
+user asked that bugs found be fixed:
+- **Desktop CI.** The desktop lockfile was out of step with `package.json` (vitest 4's vite 8 wants
+  esbuild 0.27 or later), so `npm ci` failed on every OS. It is re-synced with npm 10, CI's npm.
+- **`npm run dist` outside CI.** It failed after writing the installer because electron-builder could
+  not name the repository. `package.json` now names it, and a test holds it.
+- **The mypy gate.** It failed in Linux and macOS CI on `ctypes.get_last_error`, which exists only in
+  Windows' stubs. `audio_decode.py` looks it up as it already did `WinDLL`, and the gate now checks
+  all three platforms on any machine. It reproduced the failure on Windows before the fix.
+- **Vulnerable pins.** pip-audit's 85 known vulnerabilities: Pillow 12.1.1 → 12.3.0 (shipped in the
+  engine), aiohttp 3.13.3 → 3.13.4, pytest 9.0.2 → 9.0.3. Artwork's 281 tests pass on the new
+  Pillow.
+- **An order-dependent test.** A test's `LoggingService` turned the `cuepoint` logger's propagation
+  off for every later test, so a `caplog` assertion failed in the full suite and passed alone.
+  `conftest.py` now restores the logger after each test, and a regression test failed before the fix.
+- **An engine bug the baseline run exposed.** The engine answered a POST it did not route (an unknown
+  path, a missing token) without reading its body, and on Windows the close then reset the
+  connection. `test_retired_incrate.py` failed once that way, with "connection aborted" instead of
+  its 404. The engine now reads every request's body before answering, bounded at 16 MB. A test that
+  sends the body after the answer reproduced `WinError 10053` every time before the fix.
+
+**The baseline** is in the audit. It was taken on the commit before this step's own, which is this
+step's code with the fixes above. It records:
+- fact 6 again;
+- every suite;
+- the engine's start from source and packaged;
+- the sidecar's, installer's and unpacked app's sizes;
+- CI's state per workflow.
+
+**Checks run:**
+- the full Python suite, with Qt installed and as CI runs it without;
+- the renderer's tests, lint and typecheck;
+- Electron main's tests and typecheck, and `noUnusedLocals`;
+- the Electron end-to-end suite;
+- the mypy gate for three platforms;
+- the engine smoke, the no-Qt guard and the version coupling;
+- the sidecar build and its smoke;
+- `npm run dist`, and the two new scripts' tests.
+
+**Owed:**
+- The user's marks.
+- CI's green runs of the fixed workflows, on the next push (nothing was pushed).
+- The Linux and macOS runs of the baseline, which this Windows-only step could not take. PRUNE-08
+  compares like with like on Windows.
 
 ---
 

@@ -10,7 +10,8 @@ Phase numbers follow the order of implementation (DEC-146):
 - **Phase 18,** Production Hardening, is v1's last phase.
 - **Phases 19 and 20** are future releases (DEC-125).
 
-Phase 12 is specified (`PHASE12_CLEANUP.md`); Phases 13 to 18 are not yet.
+Phase 12 is specified (`PHASE12_CLEANUP.md`); Phases 13 to 18 are not yet. PRUNE-01 is implemented
+(2026-10-06): the audit is `PHASE12_AUDIT.md`, and its marks gate PRUNE-02 onwards.
 Phase 11 is specified in `PHASE11_WAVEFORMS.md` (WAVE-01…WAVE-08), unblocked by Decision Round 13
 (DEC-113…DEC-123); WAVE-01 to WAVE-08 are implemented, WAVE-08 (loudness, DEC-124, which
 supersedes DEC-121) the last. Phase 11's acceptance is met on Windows, in the
@@ -795,10 +796,11 @@ Why this order:
 - **Distribution comes before the website,** so that the site's download offers each build. The site
   comes last among these phases, so that its pictures show the revisited pages.
 
-## Phase 12 — Cleanup: Repository, Dead Code and Docs (PRUNE-01 … PRUNE-08) — specified
+## Phase 12 — Cleanup: Repository, Dead Code and Docs (PRUNE-01 … PRUNE-08) — in progress
 
 Specified 2026-10-06 in `PHASE12_CLEANUP.md`, in eight steps:
-- **PRUNE-01:** the audit, approved by group before anything goes.
+- **PRUNE-01:** the audit, approved by group before anything goes. *Implemented 2026-10-06;
+  awaiting the user's marks in `PHASE12_AUDIT.md`.*
 - **PRUNE-02:** Qt.
 - **PRUNE-03:** legacy Python modules.
 - **PRUNE-04:** the old release pipeline and scripts nothing runs.
