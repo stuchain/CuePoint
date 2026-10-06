@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 12: Cleanup, Detailed Step Specifications
 
-Status: **Specified 2026-10-06. PRUNE-01 is implemented (2026-10-06); the user's marks on its audit
-(`PHASE12_AUDIT.md`) are owed and gate the rest.** Eight steps, PRUNE-01…PRUNE-08. Per the
+Status: **Specified 2026-10-06. PRUNE-01 is implemented (2026-10-06), and the user approved every
+group of its audit (`PHASE12_AUDIT.md`) the same day. PRUNE-02 is next.** Eight steps, PRUNE-01…PRUNE-08. Per the
 process, no implementation happens from this document. Each step needs an explicit "Implement
 PRUNE-NN" instruction, scoped to exactly that step, and its outcome is recorded under the step
 afterwards. There are no open points. The measurements taken while writing it are in cross-cutting
@@ -281,8 +281,9 @@ user can approve or strike it. Delete nothing.
 **Complexity**: **M**
 
 **Outcome**: Implemented (2026-10-06). The audit is `docs/v1/PHASE12_AUDIT.md`. It lists groups A to
-J with their evidence and a proposed verdict for every item, and nothing is deleted. The user's marks
-are owed: its table of marks is the gate for PRUNE-02 onwards, and every group reads *pending*.
+J with their evidence and a proposed verdict for every item, and nothing is deleted. The user approved
+all ten groups on 2026-10-06, after answering the audit's three questions: the release tooling and the
+two fixture-regenerating scripts are deleted, and `sentry-sdk` is removed for Phase 13 to re-add.
 
 **What was built.**
 
@@ -370,7 +371,6 @@ step's code with the fixes above. It records:
 - `npm run dist`, and the two new scripts' tests.
 
 **Owed:**
-- The user's marks.
 - CI's green runs of the fixed workflows, on the next push (nothing was pushed).
 - The Linux and macOS runs of the baseline, which this Windows-only step could not take. PRUNE-08
   compares like with like on Windows.

@@ -1,6 +1,7 @@
 # CuePoint v1.0.0 — Phase 12 Audit
 
-Status: **Written 2026-10-06 by PRUNE-01. Awaiting the user's marks. Nothing has been deleted.**
+Status: **Written 2026-10-06 by PRUNE-01. Every group approved by the user on 2026-10-06, with the
+three questions in groups E and I answered. Nothing has been deleted yet.**
 
 This is the audit `PHASE12_CLEANUP.md` asks for (PRUNE-01, DEC-147). It lists every candidate this
 phase could remove, with its evidence, grouped A to J, and proposes a verdict for each:
@@ -16,16 +17,16 @@ struck, or approved except named items. A later step deletes only what its group
 
 | Group | What it proposes | Removed in | Mark |
 | --- | --- | --- | --- |
-| A — Qt | 5 modules and the Qt tests deleted; `paths.py` and `diagnostics.py` rewritten to their headless paths; `requirements-qt.txt`, Qt CI steps and AGENTS.md's Qt rows go; the guard widens | PRUNE-02 | *pending* |
-| B — The old updater | `update/` deleted, after its one live piece (`security.py`) moves beside `services/security_service.py` | PRUNE-03 | *pending* |
-| C — Legacy Python | 25 unreached modules deleted; the 3 root shims deleted after their importers are repointed; `src/__init__.py` kept | PRUNE-03 | *pending* |
-| D — Tests | Tests of removed code deleted; 18 stray files at `src/tests/`'s root deleted, 1 moved | PRUNE-02, PRUNE-03 | *pending* |
-| E — Scripts | 37 keep, 1 update, 90 delete (of 128) | PRUNE-04 | *pending* |
-| F — Workflows | `build-macos.yml`, `build-windows.yml`, `release.yml` deleted; `release-gates.yml` and `test.yml` lose their Qt and feed steps | PRUNE-04 | *pending* |
-| G — Electron and renderer | 6 files deleted; unused exports made private or removed; unused CSS rules deleted | PRUNE-05 | *pending* |
-| H — The repository root | `collection_incrate_playlist.xml`, `run_gui.*`, `src/gui_app.py`, `requirements-qt.txt`, `Makefile` and `.pylintrc` deleted; `config/` and `third_party/` kept | PRUNE-02, PRUNE-04 | *pending* |
-| I — Dependencies | 55 keep, 16 delete | PRUNE-06 | *pending* |
-| J — Docs | 102 keep, 30 update, 36 merge, 82 delete (`docs/v1/` and the ADRs kept) | PRUNE-07 | *pending* |
+| A — Qt | 5 modules and the Qt tests deleted; `paths.py` and `diagnostics.py` rewritten to their headless paths; `requirements-qt.txt`, Qt CI steps and AGENTS.md's Qt rows go; the guard widens | PRUNE-02 | **Approved** (2026-10-06) |
+| B — The old updater | `update/` deleted, after its one live piece (`security.py`) moves beside `services/security_service.py` | PRUNE-03 | **Approved** (2026-10-06) |
+| C — Legacy Python | 25 unreached modules deleted; the 3 root shims deleted after their importers are repointed; `src/__init__.py` kept | PRUNE-03 | **Approved** (2026-10-06) |
+| D — Tests | Tests of removed code deleted; 18 stray files at `src/tests/`'s root deleted, 1 moved | PRUNE-02, PRUNE-03 | **Approved** (2026-10-06) |
+| E — Scripts | 37 keep, 1 update, 90 delete (of 128) | PRUNE-04 | **Approved** (2026-10-06) |
+| F — Workflows | `build-macos.yml`, `build-windows.yml`, `release.yml` deleted; `release-gates.yml` and `test.yml` lose their Qt and feed steps | PRUNE-04 | **Approved** (2026-10-06) |
+| G — Electron and renderer | 6 files deleted; unused exports made private or removed; unused CSS rules deleted | PRUNE-05 | **Approved** (2026-10-06) |
+| H — The repository root | `collection_incrate_playlist.xml`, `run_gui.*`, `src/gui_app.py`, `requirements-qt.txt`, `Makefile` and `.pylintrc` deleted; `config/` and `third_party/` kept | PRUNE-02, PRUNE-04 | **Approved** (2026-10-06) |
+| I — Dependencies | 55 keep, 16 delete | PRUNE-06 | **Approved** (2026-10-06) |
+| J — Docs | 102 keep, 30 update, 36 merge, 82 delete (`docs/v1/` and the ADRs kept) | PRUNE-07 | **Approved** (2026-10-06) |
 
 ## How this was made
 
@@ -1358,4 +1359,6 @@ when nothing replaces it, so that the link check stays clean. The record's text 
 
 ## Outcome
 
-Recorded under PRUNE-01 in `PHASE12_CLEANUP.md`. The user's marks go in the table at the top.
+Recorded under PRUNE-01 in `PHASE12_CLEANUP.md`. The user approved all ten groups on 2026-10-06
+(the table at the top), after answering the three questions in groups E and I. PRUNE-02 to PRUNE-07
+delete what each group holds, as marked; each still needs its own instruction.
