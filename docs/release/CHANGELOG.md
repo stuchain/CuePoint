@@ -358,6 +358,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **The engine's image library carried known vulnerabilities.** Pillow, which
+  reads artwork, is raised from 12.1.1 to 12.3.0, past the 35 advisories
+  published against it; aiohttp and pytest, used only in development, are raised
+  past theirs too
+- **A desktop build made outside CI stopped with an error** after writing the
+  installer (electron-builder could not name the repository). It now finishes
 - **Waveform decoders could outlive an engine that was killed** on Windows (End
   Task, a crash, or a process-tree kill that listed the processes before a
   decode began), and were found idle hours later. Each decoder now joins a job
