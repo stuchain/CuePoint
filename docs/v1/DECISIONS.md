@@ -1347,7 +1347,7 @@ real rather than nominal.
 - Device lists change while the app runs; a disappeared device must not wedge playback.
 - Settings persist through FOUNDATION-09's settings architecture, not a new store.
 - Volume normalization and ReplayGain are explicitly excluded: they need scan data the library does
-  not have, which is Phase 12's scope.
+  not have, which is Phase 19's scope.
 
 **Decided with**: User · **Date**: 2026-09-05
 
@@ -2202,7 +2202,7 @@ file.
 
 **Reason**: The path signal catches one file imported twice, the Beatport id catches the same
 release under different metadata, and the text signal catches the rest. Hashing audio would read
-every file, and acoustic fingerprinting belongs to Phase 12. Deleting is out because a refresh
+every file, and acoustic fingerprinting belongs to Phase 19. Deleting is out because a refresh
 re-adds a deleted track (DEC-003) and the file is user data.
 
 **Implications**:
@@ -3722,13 +3722,13 @@ misread by the program it is opened in.
 
 ## DEC-111 — A Set's Shape Is Its Tempo and Key, and There Is No Energy Field
 
-**Status**: Approved · **Related**: DEC-015, DEC-057, the Phase 12 audio-analysis item
+**Status**: Approved · **Related**: DEC-015, DEC-057, the Phase 19 audio-analysis item
 
 **Decision**: The Set view draws the Set's tempo curve and its key path on the Camelot wheel from the
 entries' effective values. CuePoint gains no energy field in this phase.
 
 **Reason**: Both lanes come from data every library already has. Tags with an "Energy" category already
-let a user record energy by hand (DEC-015). A measured energy is audio analysis, which is Phase 12's, and
+let a user record energy by hand (DEC-015). A measured energy is audio analysis, which is Phase 19's, and
 a hand-typed field added now might have to be reconciled with that.
 
 **Implications**:
@@ -4032,16 +4032,16 @@ waveform in every row would be too thin to read at a row's height.
 ## DEC-121 — Phase 11 Is Waveforms Only
 
 **Status**: Approved, then **superseded by DEC-124** (2026-10-05): the analysis also measures each
-track's loudness. · **Related**: the Phase 12 audio-analysis item
+track's loudness. · **Related**: the Phase 19 audio-analysis item
 
 **Decision**: The analysis measures nothing but the waveform. Loudness, BPM, key and every other
-measurement from audio wait for Phase 12.
+measurement from audio wait for Phase 19.
 
-**Reason**: Measuring loudness now would take a Phase 12 decision early, before that phase has asked
+**Reason**: Measuring loudness now would take a Phase 19 decision early, before that phase has asked
 what it is for.
 
 **Implications**:
-- **Phase 12 extends this job rather than starting another.** Its decoder and job are built to be
+- **Phase 19 extends this job rather than starting another.** Its decoder and job are built to be
   extended.
 - **The cost is one more pass over the library,** accepted.
 
@@ -4107,7 +4107,7 @@ what it is for.
 
 ## DEC-123 — The Engine Decodes Through the Player's `mpv`, and FFmpeg Splits the Bands
 
-**Status**: Approved · **Related**: DEC-049, DEC-113, the Phase 12 audio-analysis item
+**Status**: Approved · **Related**: DEC-049, DEC-113, the Phase 19 audio-analysis item
 
 **Decision**: Electron main passes the `mpv` path it resolved for the player to the engine as
 `CUEPOINT_DECODER_PATH`. For each file, the engine runs one `mpv` child at lowered OS priority, with
@@ -4131,7 +4131,7 @@ rectify and reduce the audio to a small envelope, which the engine reduces again
   is never opened.
 - **WAVE-01 settles two details and records them in ADR-009:** how the samples leave `mpv` on Windows,
   and whether the final reduction stays in FFmpeg.
-- **Phase 12 decides its own dependencies.** If it needs `numpy`, it brings that case with its own
+- **Phase 19 decides its own dependencies.** If it needs `numpy`, it brings that case with its own
   measurements.
 
 **Decided with**: User (delegated: "take the most professional and better long term decisions") ·
@@ -4212,7 +4212,7 @@ whole library anyway.
   for a file shorter than its 400 ms measuring block, and a peak of -inf for silence. Each is stored
   as no value with its reason, never as a level.
 - **Measured, never applied.** The player does not change a track's gain: DEC-055 left volume
-  normalisation to Phase 12 for want of exactly this data, and this decision measures it without
+  normalisation to Phase 19 for want of exactly this data, and this decision measures it without
   taking that one. Nothing is written to Rekordbox, which has no field for it.
 - **Kept in the waveform store,** in a table of its own created beside the waveforms, as the work
   list's index was (WAVE-03): an existing store gains it without a schema change and without
@@ -4222,7 +4222,601 @@ whole library anyway.
   is about 8.7 hours for 50,000 tracks, once. *As built:* the library's rate measured 5,712 and
   5,977 six-minute tracks an hour, about 8.4 to 8.8 hours for 50,000, against about 8,400 an hour
   for the waveforms alone.
-- **Phase 12** keeps BPM, key and every other measurement from audio, and the true peak and the
+- **Phase 19** keeps BPM, key and every other measurement from audio, and the true peak and the
   loudness range if it wants them; it extends this job as DEC-121 intended.
 
 **Decided with**: User · **Date**: 2026-10-05
+
+---
+
+## DEC-125 — Phases 19 and 20 Move to Future Releases
+
+**Status**: Approved · Amended by DEC-146 (renumbered) · **Related**: DEC-019, DEC-055, DEC-074,
+DEC-111, DEC-121, DEC-124, the roadmap's "not yet asked" audio-analysis item
+
+**Decision**: Audio Intelligence (AUDIO-01…AUDIO-10) and Advanced Preparation (ADV-01…ADV-08) are
+taken out of v1 and moved to future releases. Production Hardening is v1's final phase. *As
+renumbered by DEC-146:* these are Phase 19, Phase 20 and Phase 18. Until then they were Phases 12,
+13 and 14, and this decision said so.
+
+**Reason**: v1 already covers the library, the player, organization, Clean, export, Discover,
+Prepare and waveforms with loudness. What stands between that and a release is hardening, not more
+features: packaged runs owed on Windows, macOS and Linux, Phase 5's manual acceptance, and the
+cross-platform, recovery and scale checks Phase 18 lists. Neither moved phase has been specified, so
+nothing designed or built is lost.
+
+**Implications**:
+- **The step IDs are kept.** The AUDIO and ADV IDs stay reserved for those phases. *Amended by
+  DEC-146:* the numbers were at first kept too. They now follow the order of implementation, and
+  every reference in the design docs was updated with them.
+- **What was deferred to them moves with them.** "Phase 19's" in earlier decisions, specifications
+  and ADRs now means a future release. That covers BPM and key from the audio (DEC-121, DEC-124),
+  measured energy (DEC-111), volume normalisation (DEC-055, DEC-124), the true peak and loudness
+  range (DEC-124), and acoustic fingerprinting (DEC-074). Those records stay as they were written;
+  this decision is the pointer.
+- **The audio-analysis scope question is not asked for v1.** It stays on the "not yet asked" list,
+  to be asked in the decision round that opens Phase 19.
+- **Nothing implemented changes.** WAVE-08's loudness stays measured and read-only, and the waveform
+  analysis job stays built to be extended, as DEC-121 intended.
+- **Owed acceptance items** from Phases 5 and 8 to 11 are still recorded where they are.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-126 — Sentry Captures Every Error, Everywhere
+
+**Status**: Approved · **Related**: Q-126, DEC-127, DEC-128, Phase 13
+
+**Decision**: Error reporting covers every part of the app that can fail:
+- uncaught errors and crashes in the engine, Electron main and the renderer;
+- the engine and the player exiting or restarting;
+- every failed job;
+- every logged error.
+
+Each report carries the steps that led to it. There are no performance traces and no session
+replay.
+
+**Reason**: The user wants to see and fix everything that goes wrong. Errors with their steps
+answer that. Traces add volume without errors, and replay would send the user's library as
+pictures.
+
+**Implications**:
+- **One reporting setup per process,** all tagged with the same release and environment, so that an
+  error that crosses the bridge reads as one story.
+- **The renderer and main ship source maps** to Sentry at release, so that their stack traces read as
+  source.
+- **The Qt-era `utils/sentry_init.py` and `utils/error_reporting_prefs.py` are replaced,** not
+  revived. They read consent through `QSettings`, and they send local variables.
+- **Expected refusals are not errors.** A refusal the engine answers on purpose, such as a
+  validation failure or a missing token, is not reported. Only failures the code did not mean to
+  have are reported.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-127 — Reports Are Scrubbed Before They Leave the Machine
+
+**Status**: Approved · **Related**: Q-127, DEC-126, DEC-128
+
+**Decision**: Before a report is sent, the following are replaced:
+- file paths;
+- the user's name and home folder;
+- track, artist, label and playlist names;
+- notes and tags;
+- tokens.
+
+The code, the stack, the app's state and its settings are kept. Local variables are not sent.
+
+**Reason**: Almost every error can be fixed from the stack and the state. Reporting on by default
+(DEC-128) is only defensible if a report carries nothing personal.
+
+**Implications**:
+- **Scrubbing happens in each process before sending,** in one rule per language, held by tests over
+  reports built from real failures.
+- **A path keeps its shape.** Its extension and its depth stay, so "a `.flac` four folders deep"
+  still helps debugging.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-128 — Reporting Is On by Default, Said in Settings and the Privacy Notice
+
+**Status**: Approved · **Related**: Q-128, DEC-126, DEC-127
+
+**Decision**: Error reporting is on from the first launch. A switch in Settings turns it off at once,
+in every process. The privacy notice and `docs/policy/` say what is sent and how to turn it off.
+There is no first-run notice. This goes against the recommendation of one.
+
+**Reason**: The user's choice. With reports scrubbed (DEC-127), what is sent by default carries
+nothing personal, and the switch and the notice say so.
+
+**Implications**:
+- **`PRIVACY_NOTICE.md` and `docs/policy/`** stop saying that v1.0 collects nothing, in the same
+  step that turns reporting on.
+- **Turned off means nothing is sent.** Reports are never queued for later, and a crash at start-up
+  respects the stored choice.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-129 — macOS Ships as Two Downloads, Apple Silicon and Intel
+
+**Status**: Approved · **Related**: Q-130, PLAYER-01, Phase 16
+
+**Decision**: The Mac app is built, signed and notarized twice, once for Apple Silicon (arm64) and
+once for Intel (x64). It is not a Universal build.
+
+**Reason**: Many DJs still play from Intel MacBooks, and the Intel `mpv` is already pinned. Separate
+builds avoid having to make the Python engine and every compiled dependency universal.
+
+**Implications**:
+- **CI builds on an Intel runner too.** The Intel build is checked there, since no Intel Mac is at
+  hand.
+- **The user guide's claim is corrected now.** `features.md` and `support-policy.md` say Apple
+  Silicon only until the Intel build ships.
+- **The download and the updater name the chip,** so that neither offers the wrong build.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-130 — Discover Is Revisited as a Review of the Page
+
+**Status**: Approved · **Related**: Q-131, DEC-131, Phase 14
+
+**Decision**: "Find what I like and what not" means a review. The Discover page is walked through
+with the user, and each part is kept, changed or removed. No like or dislike feature is added.
+
+**Reason**: The user's meaning.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-131 — Each Page Is Reviewed in Writing, Proposal by Proposal
+
+**Status**: Approved · **Related**: Q-132, DEC-130, DEC-132
+
+**Decision**: Each page gets a written review that covers:
+- what the page does;
+- what a new or non-technical user would not understand;
+- proposed changes, each with a screenshot.
+
+The user marks each proposal yes or no. Discover is reviewed this way too. The pages are:
+- the Library, Clean, Discover, Prepare and Settings;
+- the Inspector, the player bar, the status strip and the sidebar.
+
+**Reason**: It turns "revisit" into decisions the user can make one at a time, as the rounds have
+done.
+
+**Implications**: The reviews go in Phase 14's specification. Only the accepted proposals become
+steps.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-132 — The App Is Made Clear to New Users, as Well as the Site
+
+**Status**: Approved · **Related**: Q-133, DEC-131, Phase 14, Phase 17
+
+**Decision**: Clarity for new and non-technical users applies to the app and to the website. The app
+gets:
+- plain words throughout;
+- empty states that say what to do next;
+- background work explained as it happens;
+- a short first-run guide.
+
+**Reason**: The site brings people in, and the app has to keep them.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-133 — A Camelot Wheel in the Header, Lit and Filtering
+
+**Status**: Approved · **Related**: Q-134, DEC-096, Phase 14
+
+**Decision**: A pixel-art Camelot wheel opens from a button in the header beside global search, on
+every page.
+- It lights the selected or playing track's key, and the keys compatible with it by DEC-096's rule
+  (the same key, one step either way, and the relative key).
+- A key, clicked, filters the Library to it.
+
+**Reason**: The header is on every page. Lighting the track's key makes the wheel a tool rather than
+a poster.
+
+**Implications**:
+- **Compatibility comes from the engine's rule,** not a second copy in the renderer.
+- **The filter is the Library's own** key rule.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-134 — Every Kind of Motion Is Built, Each Behind Its Own Switch
+
+**Status**: Approved · **Related**: Q-135, DEC-135, Phase 14
+
+**Decision**: All ten kinds of motion on the user's list are built:
+- microinteractions;
+- interaction animations;
+- state transitions;
+- page transitions;
+- entrance and exit;
+- hover and focus;
+- scroll animations;
+- loading;
+- shared-element transitions.
+
+Each kind has its own switch in Settings. The user tests them all and picks what stays on by
+default. The recommendation was to leave out scroll animations and shared-element transitions.
+
+**Reason**: The user's choice: judge the motion in the running app, not on paper.
+
+**Implications**:
+- **Every kind honors `prefers-reduced-motion`** and the switches, and no motion ever delays a click
+  or a keypress.
+- **The defaults are decided after testing,** and are recorded as an amendment here.
+- **Motion runs on the compositor,** using transform and opacity only, so that scrolling 50,000 rows
+  stays smooth. Phase 6's and WAVE-06's scroll checks are re-run with every kind on.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-135 — Motion Moves in Pixel Steps; Fades Stay Smooth
+
+**Status**: Approved · **Related**: Q-136, DEC-010, DEC-134
+
+**Decision**: Movement and scaling go in whole pixels and stepped frames, like a sprite's, short and
+snappy. Opacity fades are smooth.
+
+**Reason**: Stepped movement matches the pixel style (DEC-010), and a stepped fade looks broken.
+
+**Implications**: Duration and step tokens join `tokens.css`, beside the integer scale, so that every
+animation steps in the same pixels at 1×, 2× and 3×.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-136 — Statistics Shows Plays, Artists and Labels, the Never Played, Spreads and Health
+
+**Status**: Approved · **Related**: Q-137, DEC-137, DEC-138, Phase 15
+
+**Decision**: The Statistics page shows:
+- **most played**, as a top 10, 25, 50, 100 or 200;
+- **top artists and labels**, by the plays of their tracks;
+- **tracks never played**;
+- **how the library spreads** by genre, key (on the Camelot wheel), tempo, year, date added, rating
+  and loudness;
+- **library health**: missing files, matched to Beatport, and analysed.
+
+**Reason**: The user's choice. Each is a query over data CuePoint already holds.
+
+**Implications**:
+- **Artists and labels use DISCOVER-03's credit index,** so "B" means B.
+- **Loudness comes from the waveform store**, which is read beside the library, as WAVE-08's column
+  does.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-137 — CuePoint Keeps the Play Count at Each Refresh
+
+**Status**: Approved · **Related**: Q-138, DEC-136, LIBRARY-08
+
+**Decision**: Every import and refresh stores each track's `PlayCount` with the date it was read, so
+that Statistics can show the most played since a date. History starts with the first refresh after
+the step. It cannot be recovered for earlier.
+
+**Reason**: "What have I been playing lately" is the question a DJ asks most, and the XML holds only
+a running total.
+
+**Implications**:
+- **Only changes are stored,** one row per track whose count moved, so that a refresh where nothing
+  was played adds nothing.
+- **A count that goes down is kept as it was read,** since Rekordbox can reset one. "Played since a
+  date" never goes below zero.
+- **It is user data.** It is in the backup, and a track's history goes with the track.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-138 — Statistics Is Its Own Destination
+
+**Status**: Approved · **Related**: Q-139, DEC-020
+
+**Decision**: Statistics is a sidebar destination after Prepare, added through DEC-020's registry.
+
+**Reason**: The page is large enough to be its own, and the registry adds a destination without
+moving any other.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-139 — The Website: This Repository, Astro and Three.js, the App's Pixel Style in 3D
+
+**Status**: Approved · **Related**: Q-140, DEC-132, Phase 17
+
+**Decision**:
+- **Where:** `apps/website/` in this repository, deployed to GitHub Pages by a workflow.
+- **Built with:** Astro, with Three.js and scroll-driven WebGL scenes.
+- **Look:** the app's pixel style in 3D, with voxels, pixel textures and the app's palettes.
+- **Pages:**
+  - home, features and download;
+  - guide and FAQ;
+  - changelog and privacy;
+  - a blog.
+- **Language:** English only.
+- **Address:** GitHub Pages' own, with a custom domain added once one is bought.
+
+**Reason**: The user asked for whatever gets the strongest "how did he make this" reaction. That
+reaction comes from the WebGL scenes: custom shaders, voxel worlds and motion tied to scroll.
+Three.js is the most capable way to build them. Astro serves every page as static HTML, so search
+engines read all of it and it loads fast, and the 3D loads only where it is shown. Keeping the site
+in this repository lets it use the app's palettes and the user guide's text without copying them.
+The user left the build choice open, so it was decided under the standing instruction to take the
+most professional, long-term choice.
+
+**Implications**:
+- **The site's address is one setting.** The canonical links, `sitemap.xml` and `robots.txt` all
+  come from it, so moving to a custom domain loses no search standing.
+- **Every 3D scene has a still fallback** for slow phones, for no WebGL and for reduced motion.
+- **The guide is built from `docs/user-guide/`,** not rewritten beside it.
+- **`gh-pages-root/` retires** when the new site is first deployed.
+
+**Decided with**: User (the build choice under the standing instruction) · **Date**: 2026-10-06
+
+---
+
+## DEC-140 — Phases 13 to 17 Run One at a Time, Then Phase 18
+
+**Status**: Approved · Amended by DEC-146 (renumbered; Phase 12, the cleanup, runs first) ·
+**Related**: Q-141, DEC-125
+
+**Decision**: The order is:
+1. Phase 13, Error Reporting;
+2. Phase 14, the Pages Revisited;
+3. Phase 15, Statistics;
+4. Phase 16, Distribution;
+5. Phase 17, Website;
+6. Phase 18, Production Hardening.
+
+Each opens with its specification, as every phase has.
+
+**Reason**: One phase at a time, as every phase so far has gone.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-141 — The Website's Release Checklist, Each Item Held by a Check
+
+**Status**: Approved · **Related**: DEC-139, Q-145, Phase 17
+
+**Decision**: The site does not launch until every item below holds. Wherever a machine can check an
+item, CI checks it on every build.
+
+| Item | How it holds |
+| --- | --- |
+| `sitemap.xml`, `robots.txt` | Generated from the pages at build; `robots.txt` names the sitemap |
+| `noindex` | Only on the 404, form thank-you pages and preview builds; CI fails if a content page carries it (Q-145) |
+| Meta title, meta description, canonical tag | Required by every page's layout, so a page without them does not build; titles and descriptions unique, checked in CI |
+| One `h1`, heading hierarchy | Checked on every built page in CI |
+| Alt text | Required on every image by the image component; decorative images marked as such |
+| Schema markup | JSON-LD: `SoftwareApplication`, `Organization`, `WebSite`, `FAQPage`, `BlogPosting`, `BreadcrumbList`, validated in CI |
+| Internal links, broken links | Related pages linked from each page; every link, internal and external, checked in CI and weekly |
+| Core Web Vitals, performance | Budgets of LCP ≤ 2.5 s, INP ≤ 200 ms and CLS ≤ 0.1 on a mid-range phone, held by Lighthouse CI. The 3D loads after the page is usable, never in the way of the first paint |
+| Mobile responsiveness | Every page checked at phone, tablet and desktop widths in CI |
+| HTTPS everywhere | GitHub Pages' enforced HTTPS, and no `http://` link or asset, checked in CI |
+| OG image, social share | An image per page (generated at build) with Open Graph and X card tags; share links on blog posts |
+| Favicon | Every size and the web manifest, from the app's icon |
+| Verified with search engines | Google Search Console and Bing Webmaster Tools by meta tag, moved to DNS when a domain is bought; the user owns both accounts |
+| Backlink strategy | A written plan in the site's docs: where CuePoint belongs (DJ communities, directories, launch sites, GitHub) and what is offered there. The user carries it out |
+| Privacy policy, terms page | Pages of their own, naming the user (DEC-144), the analytics (DEC-142) and the form service (DEC-143) |
+| Cookie consent | DEC-142 |
+| Clear call to action | One primary action per page, "Download for <your system>", above the fold |
+| Custom 404 | In the site's style, with search and the main links |
+| Accessibility | WCAG 2.2 AA, checked by axe in CI and by keyboard and screen reader before launch |
+| Forms tested | DEC-143 |
+
+**Reason**: Each item is cheap when it is built in, and expensive when it is found missing after
+launch. A check in CI keeps an item true after the first release.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-142 — Cookieless Analytics, With Consent Built In
+
+**Status**: Approved · **Related**: Q-142, DEC-141
+
+**Decision**: The site counts visits, sources and downloads with privacy-friendly analytics that set
+no cookie. No consent banner is shown, since none is needed. A consent component is built anyway, and
+turns on by itself if anything ever sets a non-essential cookie.
+
+**Reason**: It answers what the backlink plan and the site need to know, with no banner in the way of
+the first impression, and keeps the privacy policy short and true.
+
+**Implications**: The service is chosen in Phase 17's specification, among Plausible, Umami and
+Cloudflare Web Analytics, and named in the privacy policy.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-143 — Two Forms: Contact and Bug Report
+
+**Status**: Approved · **Related**: Q-143, DEC-126, DEC-141
+
+**Decision**: The site has a contact and feedback form and a bug-report form. Both are sent through a
+form service, since GitHub Pages is static. There is no newsletter.
+
+**Reason**: The user's choice.
+
+**Implications**:
+- **Spam protection** without a puzzle where possible, through a hidden field and the service's own
+  filtering.
+- **Tested before launch and in CI:**
+  - each field's validation;
+  - the error states;
+  - the thank-you page;
+  - delivery, against the service's test mode.
+- **The bug form asks for the app version and system,** and says that the app also reports errors on
+  its own (DEC-126).
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-144 — The User Is the Publisher
+
+**Status**: Approved · **Related**: Q-144, DEC-141
+
+**Decision**: The privacy policy and the terms name the user, as an individual, as the publisher and
+the contact.
+
+**Reason**: The user's choice.
+
+**Implications**: The two pages are drafted in Phase 17 from what the app and the site actually do,
+and the user approves the final text before launch.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-145 — The Auto-Updater: A Test Build Takes the Newest Test or Normal Release; a Normal Build Only Normal
+
+**Status**: Approved · **Related**: Q-129, DEC-019, DEC-129, Phase 16 · **Supersedes**: the test-only
+track of `docs/release/design-two-appcast-feeds-test-stable.md`
+
+**Decision**: The installed build's own version decides what it may be offered.
+
+| Installed build | Offered | Never offered |
+| --- | --- | --- |
+| **Test** (e.g. `1.4.0-test.2`) | The highest version newer than itself, test or normal | Anything older or equal |
+| **Normal** (e.g. `1.4.0`) | The highest normal release newer than itself | Any test release |
+
+- **Versions are compared by SemVer precedence,** prerelease included. `1.4.0-test.2` is older than
+  `1.4.0-test.3`, and both are older than `1.4.0`. So a test of 1.4.0 is offered the real 1.4.0 when
+  it comes out.
+- **The highest version wins.** For example:
+  - on `1.4.0-test.2`, with `1.4.0` and `1.5.0-test.1` out, `1.5.0-test.1` is offered;
+  - with `1.4.0-test.3` and `1.4.0` out, `1.4.0` is offered.
+- **A test user who takes a normal release becomes a normal user.** That build is normal, so it is
+  offered only normal releases from then on. Testing again means installing a test build by hand.
+- **A test build is only ever installed by hand.** Test releases are GitHub pre-releases. The website
+  offers only normal releases, and no setting lets a normal build receive tests.
+- **Test versions are named `X.Y.Z-test.N`,** with a dot, so that `test.10` follows `test.9`.
+- **Updates download in the background.** Then "Update ready" shows that version's release notes
+  with **Restart now**, and otherwise the update installs at the next quit.
+- **The app checks** at launch, every 4 hours while open, and from a **Check for updates** button in
+  Settings.
+- **There is no switch to turn updates off,** and no skipping a version.
+- **Windows and macOS only.** Each Mac gets its own chip's build (DEC-129). Windows updates ship
+  unsigned for now, with SmartScreen's warning accepted. Linux AppImages are updated by hand.
+
+**Reason**: The user's rules:
+- a test build can move up to a newer test or to a normal release;
+- a normal build never moves to a test.
+
+The old design kept test builds on the test feed alone. It compared only `X.Y.Z`, so `1.0.0-test1`
+was never offered `1.0.0-test2`, or `1.0.0` itself.
+
+**Implications**:
+- **The rule is one pure function** of the installed version and the published releases, with a
+  test for every row above. It runs in Electron main, which owns installs.
+- **Every download is verified before it runs:** HTTPS only, with the checksum the release
+  publishes (the old verifier's two properties). An update never goes to a lower version.
+- **The release workflow publishes both kinds.** A tag `vX.Y.Z-test.N` makes a pre-release, and
+  `vX.Y.Z` a normal release. Normal releases are published so that test builds can see them too,
+  and a normal build's check never reads a test entry.
+- **`src/cuepoint/version.py`'s `1.0.0-feb1` and `1.0.0-test1.0`** are renamed to the scheme in the
+  same phase. `version_utils`' base-only comparison is not reused.
+- **The mechanism** (for example `electron-updater`'s channels, or the existing Sparkle appcasts) is
+  chosen in Phase 16's specification, held to this table.
+
+**Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-146 — Phase Numbers Follow the Order of Implementation; Cleanup Is Phase 12
+
+**Status**: Approved · **Amends**: DEC-125, DEC-140 · **Related**: Q-146…
+
+**Decision**: Phases are numbered in the order they are built, and a cleanup phase comes first.
+
+| Phase | Was | Is |
+| --- | --- | --- |
+| 12 | (new) | Cleanup: repository, dead code and docs |
+| 13 | 15 | Error Reporting |
+| 14 | 16 | The Pages Revisited |
+| 15 | 17 | Statistics |
+| 16 | 18 | Distribution |
+| 17 | 19 | Website |
+| 18 | 14 | Production Hardening, v1's last phase |
+| 19 | 12 | Audio Intelligence, a future release |
+| 20 | 13 | Advanced Preparation, a future release |
+
+**Reason**: The user asked for numbers that read as the order of work. Cleanup goes first:
+- every later phase then works in a smaller codebase and a smaller set of docs;
+- the Qt-era Sentry and consent modules are removed before Phase 13 replaces them;
+- the docs each later phase updates are already the ones that will remain.
+
+**Implications**:
+- **Every phase number in the design record was rewritten in one pass:** `docs/v1/`, ADR-009 and the
+  decisions above. "Phase 19's" in DEC-055, DEC-074, DEC-111, DEC-121 and DEC-124 now names Audio
+  Intelligence, which those decisions had called Phase 12. DEC-125 is amended to say so.
+- **Step IDs do not change.** AUDIO and ADV stay reserved, and the new phases' IDs are chosen in
+  their specifications.
+- **DEC-140's order holds,** with Phase 12 before it: 12, 13, 14, 15, 16, 17, then 18.
+
+**Decided with**: User (the renumbering, and adding the cleanup); the cleanup's place, under the
+standing instruction · **Date**: 2026-10-06
+
+---
+
+## DEC-147 — How the Cleanup Decides What Goes
+
+**Status**: Approved · **Related**: Q-146…Q-150, DEC-146, Phase 12
+
+**Decision**:
+- **An audit comes first, approved by group** (Q-146). Every candidate is listed with its evidence:
+  - its callers (none);
+  - its tests;
+  - what replaced it.
+
+  Candidates are grouped: Qt, `update/`, `incrate/`, scripts, workflows, tests, the repository root
+  and docs. The user approves or strikes a group or a single item, and only then is anything
+  deleted.
+- **The design record stays** (Q-147). `docs/v1/` and the ADRs are kept. `docs/ui-overhaul/tracking/`,
+  `docs/development/archive/` and other superseded plans are deleted, and git history keeps them.
+- **Qt goes entirely** (Q-148). Every PySide6 import goes, along with `compat/`, `src/gui_app.py`,
+  the Qt tests, `requirements-qt.txt` and the Qt rows of AGENTS.md. *Corrected while specifying
+  (PHASE12_CLEANUP.md, fact 4):* `src/gui_app.py` launches Electron and is not Qt, so whether it
+  stays is the audit's repository question. `check_no_qt_in_core.py`
+  widens to the whole of `src/` and stays, so that Qt cannot return. The CLI is kept.
+- **The old release workflows go if the audit confirms they are dead** (Q-149):
+  `build-macos.yml`, `build-windows.yml`, `release.yml`, and the Sparkle feed scripts that only they
+  call. Until Phase 16, releases are built by `desktop-electron.yml`.
+- **Untracked local files are left alone** (Q-150). The cleanup covers only what git tracks.
+
+**Reason**: The user's answers. Each keeps a deletion reviewable, which is how AGENTS.md asks for
+removals: a caller search first, and the evidence recorded.
+
+**Implications**:
+- **Every check runs before and after,** and nothing a user relies on changes: the CLI and its
+  flags, the engine API, config keys and user data.
+- **Docs that remain are updated in the same phase** to describe the app as it is. That includes
+  README, AGENTS.md's map, the developer setup, the user guide's index and the release runbooks.
+
+**Decided with**: User · **Date**: 2026-10-06

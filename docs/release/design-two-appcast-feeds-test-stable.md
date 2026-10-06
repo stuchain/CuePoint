@@ -1,6 +1,7 @@
 # Design: Two Appcast Feeds (Stable vs Test)
 
-**Status:** Design  
+**Status:** Superseded by DEC-145 (`docs/v1/DECISIONS.md`, 2026-10-06): a test build is now offered the newest test **or** normal release, compared by SemVer precedence including the prerelease part; a normal build is still offered only normal releases. Kept as the history of the Qt-era design.
+
 **Goal:** Test builds receive updates only from the test feed; stable builds only from the stable feed. Website continues to offer only normal (stable) releases for download.
 
 ---
@@ -156,7 +157,7 @@ HTTP GET → appcast.xml (single feed per channel; no cross-channel request)
 
 ### Phase A: Scripts and channel support
 
-**Precondition:** Current scripts support `--channel stable|beta` and output to `updates/{platform}/{channel}/appcast.xml`.  
+**Precondition:** Current scripts support `--channel stable|beta` and output to `updates/{platform}/{channel}/appcast.xml`.
 **Postcondition:** Scripts accept `--channel test` and can produce `updates/*/test/appcast.xml`; validate and publish remain path-agnostic.
 
 #### Step A.1 – Add `test` to macOS appcast generator
@@ -198,7 +199,7 @@ HTTP GET → appcast.xml (single feed per channel; no cross-channel request)
 
 ### Phase B: App – effective channel from version
 
-**Precondition:** UpdateManager uses `preferences.get_channel()` for UpdateChecker; UpdateChecker builds URL from `channel`.  
+**Precondition:** UpdateManager uses `preferences.get_channel()` for UpdateChecker; UpdateChecker builds URL from `channel`.
 **Postcondition:** UpdateChecker receives `effective_channel` as defined in §2.3; test builds use `"test"` regardless of preference.
 
 #### Step B.1 – Compute effective channel in UpdateManager
@@ -223,7 +224,7 @@ HTTP GET → appcast.xml (single feed per channel; no cross-channel request)
 
 ### Phase C: Release workflow – normal vs test branches
 
-**Precondition:** Only one appcast branch exists (stable, on normal tag).  
+**Precondition:** Only one appcast branch exists (stable, on normal tag).
 **Postcondition:** Two mutually exclusive branches; each tag updates only the appcasts for its channel; index updated only on normal tag (I3, I4).
 
 #### Step C.1 – Normal tag (unchanged)

@@ -1,6 +1,16 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–13 resolved (DEC-001…DEC-123), and DEC-124.**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–15 resolved (DEC-001…DEC-147).**
+
+Phase numbers follow the order of implementation (DEC-146):
+- **Phases 0–11** are implemented.
+- **Phase 12** is the cleanup.
+- **Phases 13–17** are error reporting, the pages revisited, statistics, distribution and the
+  website.
+- **Phase 18,** Production Hardening, is v1's last phase.
+- **Phases 19 and 20** are future releases (DEC-125).
+
+Phase 12 is specified (`PHASE12_CLEANUP.md`); Phases 13 to 18 are not yet.
 Phase 11 is specified in `PHASE11_WAVEFORMS.md` (WAVE-01…WAVE-08), unblocked by Decision Round 13
 (DEC-113…DEC-123); WAVE-01 to WAVE-08 are implemented, WAVE-08 (loudness, DEC-124, which
 supersedes DEC-121) the last. Phase 11's acceptance is met on Windows, in the
@@ -29,8 +39,8 @@ are specified in `PHASE7_CLEAN.md` (CLEAN-01…CLEAN-14), unblocked by Decision 
 (DEC-065…DEC-076); all fourteen are implemented and the phase-level acceptance is met in a packaged
 Windows build, and the macOS packaged checks were run on 2026-09-23. The two open
 points that document raised are settled as amendments to DEC-011 and DEC-076.
-Audio-analysis scope is the one remaining deferred item, to be resolved before the phase it affects
-starts; crossfade was resolved by DEC-056 in Round 7, Smart Collection duplication by DEC-061 in
+Audio-analysis scope is the one remaining deferred item, moved with Phase 19 to a future release
+(DEC-125); crossfade was resolved by DEC-056 in Round 7, Smart Collection duplication by DEC-061 in
 Round 8, and its direct export by DEC-081 in Round 10. This roadmap shows the shape of what's ahead;
 it is not a commitment to implement anything without an explicit "Implement <STEP-ID>" instruction.
 
@@ -663,7 +673,7 @@ Round 13 settled the shape:
   rewrites the library (DEC-116).
 - **Marks:** cue points and beat grids are imported from the XML and drawn read-only. The export
   still never writes one (DEC-118).
-- **Scope:** no loudness or other measurement; those are Phase 12's (DEC-121). Revisited after the
+- **Scope:** no loudness or other measurement; those are Phase 19's (DEC-121). Revisited after the
   phase closed: loudness is measured in the same pass (DEC-124, WAVE-08).
 - **Storage:** waveform data is its own store beside the library, keyed by file, and outside backups
   and "Clear cache", because it takes hours to rebuild (DEC-122).
@@ -768,16 +778,239 @@ WAVE-08 is implemented (2026-10-05): loudness, measured in the same pass (DEC-12
 
 Step specifications: `PHASE11_WAVEFORMS.md`.
 
-## Phase 12 — Audio Intelligence (AUDIO-01 … AUDIO-10)
+## Phases 12 to 17 — before hardening (added 2026-10-06; Decision Rounds 14 and 15 resolved)
 
-Entirely greenfield, latest-phase by design — no premature investment.
+The user asked for these to be built before v1's hardening. Phase numbers follow the order of
+implementation (DEC-146). Each phase runs alone, and Phase 18 follows them. Decision Round 14
+settled the shape of Phases 13 to 17 (DEC-126…DEC-145), and Decision Round 15 settled Phase 12's
+(DEC-147). Phase 12 is specified, and the rest are not yet. Items marked *proposed* are suggestions that have not been accepted.
 
-## Phase 13 — Advanced Preparation (ADV-01 … ADV-08)
+Why this order:
+- **Cleanup comes first,** so that every later phase works in a smaller codebase and a smaller set of
+  docs. It also clears the Qt-era error-reporting modules before Phase 13 replaces them.
+- **Error reporting comes next,** so that bugs from every later phase reach Sentry from the first
+  build that has it.
+- **The pages are revisited before Statistics is added,** so the new page is built in the revisited
+  style and motion.
+- **Distribution comes before the website,** so that the site's download offers each build. The site
+  comes last among these phases, so that its pictures show the revisited pages.
 
-## Phase 14 — Production Hardening
+## Phase 12 — Cleanup: Repository, Dead Code and Docs (PRUNE-01 … PRUNE-08) — specified
+
+Specified 2026-10-06 in `PHASE12_CLEANUP.md`, in eight steps:
+- **PRUNE-01:** the audit, approved by group before anything goes.
+- **PRUNE-02:** Qt.
+- **PRUNE-03:** legacy Python modules.
+- **PRUNE-04:** the old release pipeline and scripts nothing runs.
+- **PRUNE-05:** dead Electron and renderer code.
+- **PRUNE-06:** dependencies.
+- **PRUNE-07:** the docs.
+- **PRUNE-08:** a dead-code guard in CI, and the phase comes together.
+
+The prefix is PRUNE because CLEAN is Phase 7's.
+
+An audit comes first, listing every candidate with its evidence, and the user approves it by group
+before anything is deleted (DEC-147). Qt goes entirely. `docs/v1/` and the ADRs stay, and trackers
+and archives go. Untracked local files are left alone.
+
+- **The repository.** Tracked files that nothing uses go:
+  - `collection_incrate_playlist.xml`, since inCrate is retired;
+  - the `run_gui.*` launchers;
+  - `requirements-qt.txt`;
+  - the scripts written for one past step, among the 127 in `scripts/` (spikes, `debug_*`, the
+    `step10`/`step13` scripts, `organize_root_files.*`).
+
+  The Qt-era release workflows (`build-macos.yml`, `build-windows.yml`, `release.yml`) build and
+  publish the PyInstaller app and its Sparkle feeds. They go if the audit confirms it, and Electron
+  builds come from `desktop-electron.yml` until Phase 16 (DEC-147).
+- **Dead code.** Every deletion comes after a caller search, and the evidence is recorded:
+  - Qt: 11 non-test modules still import PySide6:
+    - in `utils/`, `crash_handler`, `diagnostics`, `error_reporting_prefs`, `i18n`, `paths`,
+      `performance_workers`, `platform` and `sentry_init`;
+    - in `services/`, `onboarding_service` and `privacy_service`;
+    - `update/__init__`.
+
+    With them go `compat/` and `src/gui_app.py`, as far as the CLI and the tests allow.
+  - The rest of `update/`: DEC-145 does not reuse its version comparison.
+  - The two files left in `incrate/`.
+  - The stray `verify_*` and `test_step_5_2` files at the root of `src/tests/`.
+  - Whatever a dead-code report and coverage find, each checked by hand.
+- **The docs.** 228 tracked files in more than 20 folders. Too much and irrelevant goes, and what
+  remains is brought up to date:
+  - duplicates (`docs/feature/` beside `docs/features/`, `docs/roadmap.md` beside this one);
+  - retired subjects (`incrate-spec.md`, Qt-era guides and how-tos);
+  - the 38 release documents, folded into what the Electron release actually does.
+
+  What stays, kept true:
+  - the user guide;
+  - the developer docs;
+  - the ADRs;
+  - the release runbooks;
+  - the policies;
+  - this design record.
+- **Nothing a user relies on goes.** The CLI and its flags, the engine API, config keys, user data,
+  and the design record in `docs/v1/` stay (AGENTS.md's invariants). Every check is run before and
+  after.
+
+## Phase 13 — Error Reporting
+
+- **Sentry, on by default, catching every error everywhere** (DEC-126). It covers:
+  - crashes and uncaught errors in the engine, Electron main and the renderer;
+  - the engine and the player exiting or restarting;
+  - every failed job;
+  - every logged error.
+
+  Each report carries the steps that led to it. Expected refusals are not reported, and there are
+  no performance traces and no replay. Releases are tagged and source maps uploaded.
+- **Scrubbed before sending** (DEC-127). Paths, names, notes, tags and tokens are replaced, and no
+  local variables are sent.
+- **A Settings switch turns it off,** at once, in every process. The privacy notice says what is
+  sent. There is no first-run notice (DEC-128).
+- **Found in the code:**
+  - `utils/sentry_init.py` and `utils/error_reporting_prefs.py` belong to the retired Qt app. They
+    read consent through `QSettings`, nothing in the Electron app calls them, and they send local
+    variables. They are replaced, not revived.
+  - Electron main and the renderer have no Sentry.
+  - `PRIVACY_NOTICE.md` and `docs/policy/` promise that v1.0 collects nothing, and change in the
+    same step.
+- *Proposed:* a "Report a problem" action that sends a note with the error's id.
+
+## Phase 14 — The Pages Revisited
+
+- **Every page reviewed in writing, proposal by proposal** (DEC-130, DEC-131). Each review covers:
+  - what the page does;
+  - what a new user would not understand;
+  - proposed changes, each with a screenshot.
+
+  The user marks each proposal yes or no. The pages are:
+  - Discover, the Library, Clean, Prepare and Settings;
+  - the Inspector, the player bar, the status strip and the sidebar.
+- **Clear to new and non-technical users** (DEC-132):
+  - plain words throughout;
+  - empty states that say what to do next;
+  - background work explained as it happens;
+  - a short first-run guide.
+- **A pixel-art Camelot wheel** behind a button in the header, beside search (DEC-133). It lights
+  the selected or playing track's key and its compatible keys by DEC-096's rule, and a key,
+  clicked, filters the Library.
+- **Motion, all ten kinds, each behind its own Settings switch,** so the user can test them and
+  pick the defaults (DEC-134).
+  - It moves in pixel steps, and fades are smooth (DEC-135).
+  - It honors reduced motion, and never delays a click.
+  - Today the renderer has three motion rules in all.
+
+## Phase 15 — Statistics
+
+- **Its own destination** in the sidebar, after Prepare (DEC-138).
+- **The page shows** (DEC-136):
+  - most played, as a top 10, 25, 50, 100 or 200;
+  - top artists and labels by their tracks' plays;
+  - tracks never played;
+  - how the library spreads by genre, key, tempo, year, date added, rating and loudness;
+  - library health.
+- **Play history** (DEC-137). Each import and refresh keeps the play counts that changed, with the
+  date, so the page can show the most played since a date. History starts with the first refresh
+  after the step.
+- **Found in the code:** `PlayCount` is already imported (m0005), and it is a filter field and a
+  sort. The XML holds only a running total.
+- *Proposed:* a top list saved as a Collection.
+
+## Phase 16 — Distribution
+
+- **An auto-updater** (DEC-145). DEC-019 left it as a future item, and this schedules it.
+  - **A test build** (`X.Y.Z-test.N`) updates to the highest newer release, test or normal.
+  - **A normal build** updates only to a newer normal release.
+  - **Downloads in the background,** then shows "Update ready" with the release notes and
+    **Restart now**, and otherwise installs at quit.
+  - **Checks** at launch, every 4 hours, and from a button in Settings.
+  - **Windows and macOS only.** Windows ships unsigned for now.
+- **macOS as two downloads, Apple Silicon and Intel** (DEC-129).
+  - **Today only Apple Silicon (arm64) is built.** The build passes no architecture, so it gets the
+    machine's own. CI's `macos-latest` is arm64, and the macOS checks ran on an M5 Pro. An Intel
+    `mpv` is pinned and fetched, but nothing packages it.
+  - The user guide's Intel claim was corrected on 2026-10-06.
+  - The Intel build is checked on CI's Intel runner.
+- *Proposed:* "What's new" shown once after an update.
+
+## Phase 17 — Website
+
+- **A full remake** (DEC-139). Today the site is `gh-pages-root/`, one 639-line page.
+  - **Where and how:** `apps/website/` in this repository, built with Astro and Three.js, with
+    scroll-driven WebGL scenes in the app's pixel style in 3D.
+  - **Search and speed:** static pages for search engines, and a still fallback for every scene.
+  - **Hosting:** English only, on GitHub Pages until a domain is bought. The address is one
+    setting, so moving to a custom domain later loses no search standing.
+- **Pages:**
+  - home, features and download;
+  - guide (built from `docs/user-guide/`) and FAQ;
+  - changelog and privacy;
+  - a blog.
+- **Clear to new and non-technical users** what the app does (DEC-132).
+- **The user will install skills for it.**
+- *Proposed:* the download detects the visitor's system and chip.
+- **The release checklist,** each item held by a check in CI where a machine can check it (DEC-141).
+  Cookieless analytics, so no banner is needed (DEC-142). Contact and bug-report forms (DEC-143). The
+  user is the publisher (DEC-144).
+  - **Search:**
+    - `sitemap.xml` and `robots.txt`;
+    - `noindex` where intended and nowhere else;
+    - a meta title, meta description and canonical tag on every page;
+    - schema markup;
+    - internal links;
+    - verification with search engines;
+    - a backlink strategy.
+  - **Structure:**
+    - one `h1` per page and a correct heading hierarchy;
+    - alt text on every image;
+    - no broken links;
+    - a custom 404.
+  - **Speed and reach:**
+    - Core Web Vitals;
+    - optimized performance;
+    - mobile responsiveness;
+    - HTTPS everywhere.
+  - **Sharing:**
+    - an OG image;
+    - social share;
+    - a favicon.
+  - **Trust:**
+    - a privacy policy and a terms page;
+    - cookie consent;
+    - a clear call to action.
+  - **Checks:**
+    - accessibility;
+    - forms tested.
+
+## Phase 18 — Production Hardening — v1's final phase, not yet specified
 
 50k-track testing, full migration/backup/restore testing, cross-platform packaging validation,
 accessibility, crash recovery, Unicode/path edge cases.
+
+Phases 12 to 17 run before it (DEC-140, DEC-146).
+
+---
+
+## Future releases (beyond v1)
+
+Moved out of v1 by DEC-125, and numbered after v1 by DEC-146. Neither phase is specified, and their
+step IDs stay reserved for them. Each starts with a decision round of its own.
+
+### Phase 19 — Audio Intelligence (AUDIO-01 … AUDIO-10)
+
+Entirely greenfield, latest-phase by design — no premature investment. Earlier decisions deferred to
+it, and these move with it:
+- BPM and key measured from the audio (DEC-121, DEC-124).
+- A measured energy value (DEC-111).
+- Volume normalisation in the player, from WAVE-08's loudness (DEC-055, DEC-124).
+- The true peak and the loudness range (DEC-124).
+- Acoustic fingerprinting for duplicates (DEC-074).
+
+The audio-analysis scope question is asked in its decision round. It extends the waveform analysis job
+rather than starting a second pass (DEC-121).
+
+### Phase 20 — Advanced Preparation (ADV-01 … ADV-08)
+
+Not yet scoped. It follows Phase 19, whose measurements it would build on.
 
 ---
 
@@ -785,4 +1018,4 @@ accessibility, crash recovery, Unicode/path edge cases.
 
 Per DEC-019, the orphaned Qt/Sparkle updater (`src/cuepoint/update/`) is being removed (see
 FOUNDATION-15), not rebuilt. A real Electron-native auto-updater is deferred to a future roadmap
-item beyond Phase 14, not scheduled here.
+item beyond Phase 18, not scheduled here.

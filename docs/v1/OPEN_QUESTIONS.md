@@ -1008,7 +1008,8 @@ Per the spec's own guidance not to dump every question at once — these are rea
 surfaced by the audit but held back until the decisions they depend on are locked:
 
 - ~~Crossfade support~~ — asked as Q-055 in Round 7 and resolved by DEC-056 (no crossfade in v1)
-- Audio analysis scope (which features are worth building at all — likely a Phase 12 conversation)
+- Audio analysis scope (which features are worth building at all — a Phase 19 conversation; Phase 19
+  moved to a future release by DEC-125, so this is not asked for v1)
 - ~~Smart Collection export/duplication behavior~~ — asked as Q-060 in Round 8 and resolved by
   DEC-061 (live, duplicable, freezable), and the direct-export half it left to Phase 8 asked as
   Q-082 in Round 10 and resolved by DEC-081 (exports as its membership at export time)
@@ -1163,7 +1164,7 @@ playing to the wrong device at the system mixer's sample rate does not deliver t
 
 **Recommendation**: **A**. C leaves a DJ with an audio interface unable to route CuePoint to it,
 which is a plausible day-one complaint. D needs scan data the library does not have and drags
-Phase 12's analysis scope forward.
+Phase 19's analysis scope forward.
 
 ---
 
@@ -1583,7 +1584,7 @@ front of startup on a disconnected drive.
 - **Option C — Identical normalized artist and title only.**
 
 **Recommendation**: **A**. B reads every file in the library; acoustic fingerprinting belongs to
-Phase 12. C misses both the strongest signal (the same Beatport release) and the most common real
+Phase 19. C misses both the strongest signal (the same Beatport release) and the most common real
 duplicate (one file imported twice). Deleting is out because a refresh re-adds the track and the
 file is user data.
 
@@ -2462,12 +2463,12 @@ out rather than guessing. Playback is unchanged, consistent with Q-110.
 **Question**: Set planning is often drawn as an energy curve, and CuePoint has no energy value.
 
 - **Option A — The Set view draws its tempo curve and key path** from existing values. Energy is not
-  a field; tags with an "Energy" category already express it, and measured energy is Phase 12's.
+  a field; tags with an "Energy" category already express it, and measured energy is Phase 19's.
 - **Option B — A, plus charting a numeric tag category.**
 - **Option C — A first-class 1–10 energy field** in DEC-057's layer.
 
 **Recommendation**: **A**. B reads numbers out of tag names. C adds a field to the rule vocabulary,
-the Inspector and batch editing that Phase 12 may make redundant.
+the Inspector and batch editing that Phase 19 may make redundant.
 
 ---
 
@@ -2609,7 +2610,7 @@ Phase 11 draw them?
 - **Option A — Cues and beat grid, read-only**: imported on the next refresh and drawn; editing stays
   in Rekordbox.
 - **Option B — Cues only.**
-- **Option C — Neither**, leaving them to Phase 13.
+- **Option C — Neither**, leaving them to Phase 20.
 
 **Recommendation**: **A**. A waveform without its cues answers half of what a DJ reads it for.
 
@@ -2668,9 +2669,418 @@ its manual acceptance is owed.
 DEC-124 (Option B chosen: loudness measured in the same pass)
 
 **Question**: Decoding every file is the expensive part. Does the same pass also measure loudness for
-Phase 12?
+Phase 19?
 
-- **Option A — Waveforms only.** Phase 12 extends the job later, at the cost of one more pass.
+- **Option A — Waveforms only.** Phase 19 extends the job later, at the cost of one more pass.
 - **Option B — Also measure loudness** (integrated LUFS and peak), shown read-only.
 
-**Recommendation**: **A**. Measuring loudness now would take a Phase 12 decision early.
+**Recommendation**: **A**. Measuring loudness now would take a Phase 19 decision early.
+
+---
+
+## DECISION ROUND 14 — BEFORE HARDENING (Phases 13–17) ✅ Resolved 2026-10-06
+
+Asked after the user listed what they want built before Phase 18. The user's list:
+- an auto-updater, which the user will describe;
+- Sentry error reporting, on by default, of every error, with a switch in Settings;
+- a full remake of the website, 3D and built for search, and clear to new and non-technical users;
+- whether the Mac app is for Intel or Apple Silicon;
+- Discover revisited, and the other pages too;
+- a pixel-art Camelot wheel behind a button;
+- a Statistics page that includes most played from the XML, with those tracks' artists and labels,
+  and a top 10/25/50/100/200;
+- a choice among ten kinds of motion.
+
+The roadmap groups these into Phases 13 to 17.
+
+Six facts came from reading the code rather than from the list:
+- **Sentry code exists and is dead.** `utils/sentry_init.py` and `utils/error_reporting_prefs.py`
+  are the Qt app's. They read consent through `QSettings`, and nothing in the Electron app calls
+  them. As written, they send local variables, which hold track names and file paths. Electron main
+  and the renderer have no Sentry.
+- **The privacy notice promises nothing is collected.** `PRIVACY_NOTICE.md` and
+  `docs/policy/privacy-notice.md` both say v1.0 has no telemetry. Reporting by default changes
+  that promise, and the documents with it.
+- **The Mac app is Apple Silicon only.** `electron-builder` is given no architecture, so it builds
+  for the machine it runs on. CI's `macos-latest` is arm64, and the macOS checks ran on an M5 Pro.
+  An Intel `mpv` (`darwin-x64`) is pinned and fetched, but no Intel build is made. The user guide
+  says otherwise (`features.md`, `support-policy.md`).
+- **Play counts are already imported.** `play_count` is in `tracks` (m0005), and it is a filter
+  field and a sort. The XML's `PlayCount` is a running total with no dates, and a refresh counts a
+  change in it as incidental.
+- **The website is one page.** `gh-pages-root/` holds a 639-line `index.html`, a logo, `robots.txt`
+  and `sitemap.xml`, served by GitHub Pages.
+- **The app has almost no motion.** The renderer's stylesheets hold three motion rules, none of
+  which respects `prefers-reduced-motion`.
+
+---
+
+### Q-126 — How far "every error" reaches
+
+**Status**: Resolved → DEC-126 (Option A chosen: errors everywhere)
+
+**Question**: What does Sentry capture?
+
+- **Option A — Errors everywhere.** That covers:
+  - uncaught errors and crashes in the engine, Electron main and the renderer;
+  - the engine and the player exiting or restarting;
+  - every failed job;
+  - every logged error.
+
+  Each comes with the steps that led to it.
+- **Option B — A, and performance traces.** Slow requests and slow screens are reported too.
+- **Option C — B, and session replay.** A recording of the screen leading up to each error, which
+  would show the user's library.
+
+**Recommendation**: **A**, with B considered after the first release. A covers every error, and C
+sends the user's library as pictures.
+
+---
+
+### Q-127 — What a report may carry
+
+**Status**: Resolved → DEC-127 (Option A chosen: scrubbed)
+
+**Question**: How much of the user's data goes into a report?
+
+- **Option A — Scrubbed.** File paths, the user name, track, artist and label names, and tokens are
+  replaced before sending. The code, the stack and the app's state are kept.
+- **Option B — Everything.** Local variables, paths and names are sent as they are. This is the
+  easiest to debug, and it sends the user's library to Sentry.
+
+**Recommendation**: **A**. Almost every error can be fixed from the stack and the state, and
+reporting on by default is only defensible if a report carries nothing personal.
+
+---
+
+### Q-128 — How the user learns reporting is on
+
+**Status**: Resolved → DEC-128 (Option B chosen: Settings and the privacy notice only, against the recommendation)
+
+**Question**: Reporting is on by default. How is the user told?
+
+- **Option A — A first-run notice.** One screen at the first launch says what is sent, with the
+  switch on it, and the privacy notice is updated.
+- **Option B — Settings and the privacy notice only.**
+- **Option C — Ask first** (opt-in), against the stated "on by default".
+
+**Recommendation**: **A**. The project's Sentry stores data in the EU (`ingest.de`). Telling the
+user once, with the switch at hand, is what keeps "on by default" trustworthy.
+
+---
+
+### Q-129 — The auto-updater
+
+**Status**: Resolved → DEC-145. The user's rule: a test build updates to a newer test or normal release, and a normal build only to a normal one. Eight follow-ups were asked to confirm it. Windows builds ship unsigned for now.
+
+**Question**: What should the updater do? To be asked with the user's description:
+- where updates are published;
+- whether they install silently or ask;
+- whether there are channels (stable, beta);
+- whether the Windows installer can be code-signed. An unsigned update triggers SmartScreen.
+
+---
+
+### Q-130 — Intel Macs
+
+**Status**: Resolved → DEC-129 (Option B chosen: two downloads)
+
+**Question**: Does CuePoint ship for Intel Macs?
+
+- **Option A — Apple Silicon only.** The docs are corrected to say so. Apple has said macOS 26 is the
+  last release for Intel Macs.
+- **Option B — Two downloads, Apple Silicon and Intel.** Each gets its own CI build, signing and
+  notarization, using the Intel `mpv` already pinned.
+- **Option C — One Universal download.** It needs a universal Python engine and every compiled
+  dependency in both architectures, which is the most fragile choice.
+
+**Recommendation**: **B**. Many DJs still play from Intel MacBooks, and the decoder is already
+pinned. Separate builds are the dependable way to support them. With no Intel Mac at hand, the
+Intel build is checked by CI's Intel runner. Whatever is chosen, the docs' claim is corrected now.
+
+---
+
+### Q-131 — What revisiting Discover means
+
+**Status**: Resolved → DEC-130 (Option A chosen: a review of the page)
+
+**Question**: "Revisit the Discover page to find what I like and what not."
+
+- **Option A — A review of the page.** It is walked through with the user, and each part is kept,
+  changed or removed.
+- **Option B — A feature.** The user marks Beatport tracks liked or disliked, runs learn from those
+  marks, and disliked tracks are hidden.
+- **Option C — Both.**
+
+**Recommendation**: Needs the user's meaning. If B is meant, it is a rule over marks the user makes,
+deterministic and explained, like DEC-096, and not a trained model.
+
+---
+
+### Q-132 — How the other pages are revisited
+
+**Status**: Resolved → DEC-131 (Option A chosen: a written review per page)
+
+**Question**: How does the review of each page run?
+
+- **Option A — A written review per page.** For each page, a short write-up covers:
+  - what the page does;
+  - what a new user would not understand;
+  - proposed changes, with screenshots.
+
+  The user marks each proposal yes or no.
+- **Option B — The user lists what bothers them,** and each item is designed.
+
+**Recommendation**: **A**, starting with the Library and Discover, with anything the user already
+knows added to it.
+
+---
+
+### Q-133 — "Clear to new users": the website, or the app too
+
+**Status**: Resolved → DEC-132 (Option B chosen: the website and the app)
+
+**Question**: Does clarity for new and non-technical users apply to the app as well as the site?
+
+- **Option A — The website only.**
+- **Option B — The website and the app.** The app gets:
+  - plain words throughout;
+  - empty states that say what to do next;
+  - background work explained as it happens;
+  - a short first-run guide.
+
+**Recommendation**: **B**. The site brings people in, and the app has to keep them.
+
+---
+
+### Q-134 — The Camelot wheel
+
+**Status**: Resolved → DEC-133 (the header, lit and filtering)
+
+**Question**: Where is the button, and what does the wheel do?
+
+- **Where**:
+  - **(1)** the player bar;
+  - **(2)** the header beside global search;
+  - **(3)** the status strip.
+- **What**:
+  - **(a)** a picture of the wheel;
+  - **(b)** the selected or playing track's key lit, with its compatible keys (the same number one
+    step either way, and the relative key);
+  - **(c)** b, and a key clicked filters the Library to it.
+
+**Recommendation**: **(2) and (c)**. The header is on every page. Lighting the track's key is what
+makes the wheel more than a poster, and the filter reuses the Library's own.
+
+---
+
+### Q-135 — Which kinds of motion
+
+**Status**: Resolved → DEC-134 (all ten, each behind its own switch, against the recommendation)
+
+**Question**: Which of the ten does CuePoint get?
+
+**Recommendation**:
+- **Yes:**
+  - microinteractions;
+  - interaction animations;
+  - state transitions;
+  - entrance and exit (menus, dialogs, toasts, the Inspector);
+  - hover and focus;
+  - loading (skeleton rows, pixel spinners, progress);
+  - short page transitions.
+- **No:**
+  - scroll animations. Parallax and reveal-on-scroll slow down reading a table of thousands of
+    tracks.
+  - shared-element transitions, for now. They are the costliest kind, and few moves in this app
+    carry one object between two screens.
+
+Every kind of motion also:
+- respects the system's reduce-motion setting;
+- has a switch in Settings;
+- never delays a click.
+
+---
+
+### Q-136 — The style of motion
+
+**Status**: Resolved → DEC-135 (Option C chosen: pixel steps, smooth fades)
+
+**Question**: How does motion move?
+
+- **Option A — Pixel motion.** Movement in whole pixels and stepped frames, like a sprite's, short
+  and snappy.
+- **Option B — Smooth modern easing.**
+- **Option C — Mostly A, with B for fades.**
+
+**Recommendation**: **C**. Stepped movement matches the pixel style (DEC-010), and a stepped fade
+looks broken.
+
+---
+
+### Q-137 — Which statistics
+
+**Status**: Resolved → DEC-136 (all proposed)
+
+**Question**: Beyond most played, which statistics does the page show?
+
+**Proposed**:
+- **Most played:** top 10, 25, 50, 100 or 200 tracks.
+- **Top artists and labels** of those tracks, by their plays.
+- **Never played.**
+- **How the library spreads:** genre, key (on the Camelot wheel), tempo, year, date added, rating
+  and loudness.
+- **Library health:** missing files, matched to Beatport, analysed.
+
+Each list can be scoped to a Collection or a Rekordbox playlist, and opened in the Library or saved
+as a Collection.
+
+**Recommendation**: All of these. Each is a query over data CuePoint already holds.
+
+---
+
+### Q-138 — Play history over time
+
+**Status**: Resolved → DEC-137 (Option B chosen: the count kept at each refresh)
+
+**Question**: The XML gives a total with no dates. Does CuePoint keep history?
+
+- **Option A — Totals only.** "Most played ever", as Rekordbox says.
+- **Option B — Keep the count at each refresh,** so the page can say what was played most since a
+  date. History starts from the first refresh after the step.
+
+**Recommendation**: **B**. It costs a small table, and "what have I been playing lately" is the
+question a DJ asks most. It cannot be answered later for the time before it was kept.
+
+---
+
+### Q-139 — Where Statistics lives
+
+**Status**: Resolved → DEC-138 (Option A chosen: its own destination)
+
+**Question**: Is Statistics its own destination?
+
+- **Option A — Its own place in the sidebar**, after Prepare.
+- **Option B — A view inside the Library.**
+
+**Recommendation**: **A**. The page is large enough to be its own, and DEC-020's registry adds a
+destination without moving any other.
+
+---
+
+### Q-140 — The website
+
+**Status**: Resolved → DEC-139 (this repository, Astro and Three.js, pixel style in 3D, English, GitHub Pages until a domain is bought)
+
+**Questions**:
+- **Where it lives.**
+  - **(1)** In this repository, as `apps/website/`, deployed to GitHub Pages by a workflow.
+  - **(2)** A repository of its own.
+- **Built with.**
+  - **(a)** Astro with Three.js: static pages for search engines, 3D only where it is shown.
+  - **(b)** Next.js with React Three Fiber.
+- **Look.** Does the 3D follow the app's pixel style (voxels, pixel textures), or stand apart from
+  it?
+- **The domain,** and the languages.
+- **Pages:** home, features, download, guide, FAQ, changelog. What else?
+
+**Recommendation**: **(1) and (a)**, in the app's pixel style. A static site ranks best and loads
+fastest. The 3D comes in as each section is reached and falls back to a still picture on slow
+phones and with reduced motion.
+
+---
+
+### Q-141 — The order
+
+**Status**: Resolved → DEC-140 (Option A chosen: one at a time)
+
+**Question**: Do Phases 13 to 17 run in this order, one at a time?
+
+- **Option A — In order:** 15, 16, 17, 18, 19, then 14.
+- **Option B — The website alongside.** Phase 17 starts beside Phase 13, and its pictures are taken
+  after Phase 14.
+
+**Recommendation**: **A**, unless the site is wanted sooner. Running in order means one phase at a
+time, as every phase so far has gone.
+
+---
+
+### Q-142 — Analytics, and so cookie consent
+
+**Status**: Resolved → DEC-142 (Option A chosen: cookieless analytics, a consent component built in)
+
+**Question**: Cookie consent depends on what the site tracks. Which analytics?
+
+- **Option A — Cookieless analytics** (Plausible, Umami, Cloudflare). No banner is needed.
+- **Option B — Google Analytics 4, behind a consent banner.**
+- **Option C — None.**
+
+**Recommendation**: **A**.
+
+---
+
+### Q-143 — The website's forms
+
+**Status**: Resolved → DEC-143 (contact and feedback, and bug report)
+
+**Question**: Which forms? The choices were a newsletter, contact and feedback, a bug report, or
+none.
+
+---
+
+### Q-144 — The publisher named in the privacy policy and terms
+
+**Status**: Resolved → DEC-144 (the user, as an individual)
+
+---
+
+### Q-145 — What `noindex` covers
+
+**Status**: Resolved → DEC-141 (Option A chosen: only the 404, thank-you pages and previews, with a
+CI check)
+
+- **Option A — Only pages that are not content,** with a CI check that no content page carries it.
+- **Option B — The whole site until launch.**
+
+**Recommendation**: **A**.
+
+---
+
+## DECISION ROUND 15 — CLEANUP (Phase 12) ✅ Resolved 2026-10-06
+
+Asked after the user added a cleanup of the repository, dead code and docs, and asked for phase
+numbers that follow the order of implementation (DEC-146). Found while placing it:
+- 11 non-test modules still import PySide6;
+- 228 tracked doc files sit in more than 20 folders, with duplicates (`docs/feature/` and
+  `docs/features/`) and retired subjects;
+- `scripts/` holds 127 files;
+- the release workflows build the retired PyInstaller app.
+
+Outcomes are in DEC-147.
+
+### Q-146 — How deletions are approved
+
+**Status**: Resolved → DEC-147 (an audit with evidence, approved by group)
+
+- **Option A — An audit, approved by group or item.**
+- **Option B — Delete what is provably dead, listing it after.**
+- **Option C — Approve every item.**
+
+**Recommendation**: **A**.
+
+### Q-147 — The design history
+
+**Status**: Resolved → DEC-147 (keep `docs/v1/` and the ADRs; delete trackers and archives)
+
+### Q-148 — Qt
+
+**Status**: Resolved → DEC-147 (removed entirely; the guard widens to all of `src/`)
+
+### Q-149 — The old release workflows
+
+**Status**: Resolved → DEC-147 (deleted if the audit confirms they are dead; Phase 16 builds the new
+pipeline)
+
+### Q-150 — Untracked local files
+
+**Status**: Resolved → DEC-147 (left alone; the recommendation was to list them for the user)

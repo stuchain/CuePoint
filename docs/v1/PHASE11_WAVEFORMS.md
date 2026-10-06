@@ -44,7 +44,7 @@ This phase draws each track's waveform:
 - **No editing:** no cues or beat grid are edited or written anywhere (DEC-118). The export still
   patches the XML and never writes a mark (DEC-077).
 - **No Rekordbox analysis files:** it reads none of Rekordbox's own (ANLZ) data (DEC-113).
-- **No audio measurements but loudness:** no BPM or key, which are Phase 12's. Loudness was added by
+- **No audio measurements but loudness:** no BPM or key, which are Phase 19's. Loudness was added by
   WAVE-08 (DEC-124, superseding DEC-121), measured and shown, never applied.
 - **No change to playback:** it does not tell the engine when something is playing (DEC-050).
 - **No change to row counts:** it does not change the player bar's height or any page's row count as
@@ -96,7 +96,7 @@ Read this table before writing any of it again.
 | DEC-118 | Cue points and beat grids imported from the XML on import and refresh, drawn read-only. |
 | DEC-119 | Phase 11 starts with Phase 5's manual acceptance owed and recorded. |
 | DEC-120 | Prepare shows a transition strip: the selected entry beside the next one. |
-| DEC-121 | Waveforms only; loudness and other measurements wait for Phase 12. Superseded by DEC-124. |
+| DEC-121 | Waveforms only; loudness and other measurements wait for Phase 19. Superseded by DEC-124. |
 | DEC-122 | Waveform data lives in its own store beside the library, outside backups and "Clear cache", keyed by file. |
 | DEC-123 | The engine decodes through the `mpv` Electron names to it; FFmpeg's filters split the bands; no `numpy`. |
 | DEC-124 | The same pass measures integrated loudness and the sample peak, shown read-only (WAVE-08). |
@@ -2226,15 +2226,15 @@ Points 1 to 15 are the phase as specified; point 16 is WAVE-08's (DEC-124), chec
   exists to never do.
 - **Reading Rekordbox's analysis files** (DEC-113). The format is undocumented, and the files exist only
   for tracks Rekordbox has analysed, at a path CuePoint does not own.
-- **BPM and key from audio** (DEC-121, DEC-124). These are Phase 12's. Its job can extend
+- **BPM and key from audio** (DEC-121, DEC-124). These are Phase 19's. Its job can extend
   `waveform_analysis`'s decoder rather than start another.
 - **The true peak and the loudness range** (DEC-124). `ebur128` measures both, but the true peak's
-  oversampling made the pass 2.6 times as long, where the sample peak adds 45%. Phase 12 can add
+  oversampling made the pass 2.6 times as long, where the sample peak adds 45%. Phase 19 can add
   either when it asks what they are for.
 - **Sorting and filtering by loudness** (WAVE-08). The value lives in the waveform store, and the
   Library's query reads the library database; joining them is a decision of its own.
 - **Applying loudness to playback** (DEC-055, DEC-124). Measured, never applied: normalisation stays
-  Phase 12's.
+  Phase 19's.
 - **Pausing analysis while music plays** (DEC-050). The engine is not told about playback, and OS
   priority is the mechanism instead.
 - **A decoder for Linux.** PLAYER-01 pins none. Linux users name their own `mpv`, and get waveforms

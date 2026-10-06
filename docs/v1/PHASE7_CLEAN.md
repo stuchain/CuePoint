@@ -4219,7 +4219,7 @@ Phase 7 is complete when, in a **packaged build**:
 - **Relocating files from CuePoint** — declined by DEC-073, not deferred: the path is Rekordbox's.
 - **Deleting duplicates** — declined by DEC-074: a refresh re-adds the track and the file is user
   data.
-- **Audio-content hashing and acoustic fingerprinting** — Phase 12 (DEC-074).
+- **Audio-content hashing and acoustic fingerprinting** — Phase 19 (DEC-074).
 - **A health score** — declined by DEC-075.
 - **Automatic matching on import** — declined by DEC-065.
 - **Editing title, artist, remixer or album** — declined by DEC-069; matching and identity read

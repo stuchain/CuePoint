@@ -33,7 +33,7 @@ and the first real-time state stream in the app.
 
 **What this phase is not.** It writes nothing to the database (DEC-051) — no play counts, no
 history, no activity entries per play. It draws no waveform (Phase 11) and analyses no audio
-(Phase 12). It does not crossfade (DEC-056), does not resume position across restarts (DEC-014),
+(Phase 19). It does not crossfade (DEC-056), does not resume position across restarts (DEC-014),
 and does not check whether files exist ahead of time (DEC-037 — the player finds out by trying).
 It does not touch Sets or Chapters (Phase 10), and it does not make the Rekordbox `play_count`
 column mean anything new.
@@ -1125,7 +1125,7 @@ per-OS behavior, which is why it is its own step.
   next `loadfile` without requiring a restart.
 
 **Not in scope.** ReplayGain, volume normalization, DSP or EQ (DEC-055 excludes them explicitly;
-normalization needs scan data the library does not have, which is Phase 12).
+normalization needs scan data the library does not have, which is Phase 19).
 
 **Acceptance.**
 
@@ -1200,7 +1200,7 @@ macOS checklist below are where this step's acceptance is finished. This outcome
 verified, not what was assumed.
 
 **Not in scope, as specified**: ReplayGain, volume normalization, DSP and EQ — DEC-055 excludes
-them, and normalization needs scan data the library does not have until Phase 12.
+them, and normalization needs scan data the library does not have until Phase 19.
 
 ---
 
@@ -1453,7 +1453,7 @@ complete:
 | 11 | The whole run again with mpv deliberately removed from the bundle | Cross-cutting fact 4 — the app must still launch and browse |
 
 Record the result under PLAYER-12 with the macOS version and hardware used. A failure here is a
-Phase 5 bug, not a Phase 14 packaging item — Phase 14's cross-platform work assumes the phases
+Phase 5 bug, not a Phase 18 packaging item — Phase 18's cross-platform work assumes the phases
 before it already ran on both platforms.
 
 ---

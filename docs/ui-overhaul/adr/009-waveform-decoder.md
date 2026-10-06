@@ -276,10 +276,10 @@ engine has died fail its next write.
 - **Search slows:** the engine's search p95 with analyses running exceeds 1.5×
   idle on a supported platform. Lower the worker count before changing the
   design.
-- **Phase 12 needs samples:** it measures tempo or key and needs raw samples in
-  the engine. It then brings its own case for `numpy`, measured against the
-  engine's start-up, as DEC-123 requires. Loudness needs none: FFmpeg measures
-  it in this pass (WAVE-08).
+- **Phase 19 needs samples** (a future release, DEC-125): it measures tempo or
+  key and needs raw samples in the engine. It then brings its own case for
+  `numpy`, measured against the engine's start-up, as DEC-123 requires. Loudness
+  needs none: FFmpeg measures it in this pass (WAVE-08).
 - **The true peak or the loudness range is wanted:** `peak=true` costs about 2.6
   times the analysis's time on the pinned Windows build; measure it again on the
   then-pinned builds, and bump `LOUDNESS_VERSION`.

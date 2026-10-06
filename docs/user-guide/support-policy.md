@@ -15,7 +15,7 @@ For detailed triage and escalation procedures, see [Support SLA](../policy/suppo
 ## Supported Platforms
 
 - **Windows**: Windows 10+ (x64)
-- **macOS**: macOS 12+ (Intel and Apple Silicon)
+- **macOS**: macOS 12+ (Apple Silicon; an Intel build is planned)
 
 ## Rekordbox Export Expectations
 

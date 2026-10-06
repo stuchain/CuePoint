@@ -3209,7 +3209,7 @@ own acceptance, which this document asked to be closed before "Play Set" was wir
   recommendation. The player is unchanged.
 - **Crossfade** — DEC-056 stands. A later request supersedes it rather than amending it.
 - **Chapters, times and notes in Rekordbox** — DEC-109. The XML has no place for them.
-- **An energy field, or charting tags as numbers** — DEC-111. Phase 12 owns measured energy.
+- **An energy field, or charting tags as numbers** — DEC-111. Phase 19 owns measured energy.
 - **Reading cue points or mix points** to suggest in and out times — nothing parses `POSITION_MARK`
   (DEC-077). A later phase that parses them can offer them as defaults for DEC-107's fields.
 - **Performed history** (a Set marked as played, a date or a venue) — nothing asks for it yet. A Set's
