@@ -33,79 +33,6 @@ from cuepoint.services.interfaces import (  # noqa: E402
 )
 from cuepoint.utils.di_container import DIContainer, reset_container  # noqa: E402
 
-_QT_TEST_PATH_FRAGMENTS = (
-    "/tests/ui/",
-    "/tests/unit/ui/",
-    "test_step53_ui_controllers.py",
-    "test_playlist_integration.py",
-    "test_phase3_complete.py",
-    "test_export_integration.py",
-    "test_step8_ux_accessibility.py",
-    "test_advanced_filtering.py",
-    "test_step52_main_controller_di.py",
-    "test_step52_full_integration.py",
-    "test_export_dialog_import.py",
-    "verify_export_dialog.py",
-)
-
-
-def _normalize_path(path: str) -> str:
-    return path.replace("\\", "/")
-
-
-def _is_qt_legacy_test_path(path: str) -> bool:
-    normalized = _normalize_path(path)
-    return any(fragment in normalized for fragment in _QT_TEST_PATH_FRAGMENTS)
-
-
-def _cuepoint_ui_available() -> bool:
-    try:
-        import cuepoint.ui  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
-
-
-def _pyside6_available() -> bool:
-    try:
-        import PySide6  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
-
-
-def pytest_ignore_collect(collection_path, config):
-    """Skip legacy Qt test modules when the Qt UI package is unavailable."""
-    if _cuepoint_ui_available() and _pyside6_available():
-        return False
-    return _is_qt_legacy_test_path(str(collection_path))
-
-
-def pytest_collection_modifyitems(config, items):
-    """Tag legacy Qt tests and skip when Qt UI is unavailable."""
-    qt_ready = _cuepoint_ui_available() and _pyside6_available()
-    skip_qt = pytest.mark.skip(reason="Qt UI is not part of the current application")
-    for item in items:
-        if not _is_qt_legacy_test_path(str(item.path)):
-            continue
-        item.add_marker(pytest.mark.ui)
-        if not qt_ready:
-            item.add_marker(skip_qt)
-
-
-def pytest_sessionfinish(session, exitstatus):
-    """Quit QApplication on session end to prevent hang on Windows (event loop keeps process alive)."""
-    try:
-        from PySide6.QtWidgets import QApplication
-
-        app = QApplication.instance()
-        if app is not None:
-            app.quit()
-    except ImportError:
-        pass
-
 
 @pytest.fixture(autouse=True)
 def _restore_global_settings():
@@ -398,23 +325,6 @@ def sample_playlist() -> list[Track]:
         Track(track_id="2", title="Track 2", artist="Artist 2"),
         Track(track_id="3", title="Track 3", artist="Artist 3"),
     ]
-
-
-@pytest.fixture(scope="session")
-def qapp():
-    """Create QApplication for UI tests."""
-    try:
-        from PySide6.QtWidgets import QApplication
-
-        app = QApplication.instance()
-        if app is None:
-            app = QApplication([])
-        yield app
-        # Quit on teardown to prevent hang on Windows
-        if app is not None:
-            app.quit()
-    except ImportError:
-        pytest.skip("PySide6 not available for UI tests")
 
 
 # ============================================================================

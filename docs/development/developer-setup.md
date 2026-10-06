@@ -35,8 +35,6 @@ python -m venv .venv
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate      # macOS/Linux
 pip install -r requirements.txt -r requirements-dev.txt
-# Optional legacy Qt UI / Qt-specific tests only:
-# pip install -r requirements-qt.txt
 ```
 
 ## Verify Setup

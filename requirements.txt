@@ -1,10 +1,6 @@
 # CuePoint - Rekordbox → Beatport Metadata Enricher
 # Required dependencies for core functionality
 
-# Desktop UI note
-# Electron is the default desktop shell. Legacy Qt-specific dependencies live in
-# requirements-qt.txt for optional UI tests / fallback development only.
-
 # HTTP requests and web scraping
 requests==2.33.0
 aiohttp==3.13.4
@@ -52,7 +48,7 @@ Pillow==12.3.0
 # Error reporting (optional: set SENTRY_DSN to enable)
 sentry-sdk>=2.0.0,<3
 
-# Testing dependencies (Qt UI tests use requirements-qt.txt)
+# Testing dependencies
 pytest==9.0.3
 pytest-cov==7.0.0
 pytest-mock==3.15.1

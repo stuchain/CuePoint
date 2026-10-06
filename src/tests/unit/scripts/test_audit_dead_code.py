@@ -277,6 +277,17 @@ class TestPythonReach:
     def test_a_module_only_a_live_script_imports_is_reached_by_script(self, result):
         assert _modules(result)["src/app/script_only.py"].status == "script"
 
+    def test_a_module_only_a_launcher_reaches_is_reached_by_launcher(self, tree):
+        (tree / "src/app/launch.py").write_text("import app.tested_only\n")
+        layout = audit.Layout(python_launchers=(("src/app/launch.py", "a launcher"),))
+        modules = _modules(audit.run_audit(tree, layout=layout))
+        assert modules["src/app/launch.py"].status == "launcher"
+        assert modules["src/app/tested_only.py"].status == "launcher"
+        assert modules["src/app/tested_only.py"].via == [
+            "src/app/launch.py",
+            "src/app/tested_only.py",
+        ]
+
     def test_tests_are_not_modules(self, result):
         assert not [p for p in _modules(result) if p.startswith("src/tests/")]
 
@@ -779,7 +790,7 @@ class TestTheRealRepository:
 
     def test_the_guards_run(self, real):
         scripts = _scripts(real)
-        assert scripts["scripts/check_no_qt_in_core.py"].status == "run"
+        assert scripts["scripts/check_no_qt.py"].status == "run"
         assert scripts["scripts/audit_dead_code.py"].status == "dev-docs"
 
     def test_through_the_command_line(self):

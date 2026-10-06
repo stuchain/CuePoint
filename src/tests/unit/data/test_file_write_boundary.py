@@ -6,7 +6,7 @@
 "Nothing else in this phase may import a writing function from
 ``data/tag_writer.py`` or ``data/rekordbox.py``" is worth being a fact the suite
 checks rather than a sentence in a specification, in the spirit of
-``scripts/check_no_qt_in_core.py``. CLEAN-10's own module for putting values
+``scripts/check_no_qt.py``. CLEAN-10's own module for putting values
 back, ``data/tag_fields.py``, is held to the same rule.
 
 Two halves, so that neither can drift:

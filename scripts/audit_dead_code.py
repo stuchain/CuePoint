@@ -101,10 +101,9 @@ class Layout:
         ("src/main.py", "CLI"),
         ("src/cuepoint/engine/__main__.py", "engine"),
     )
-    #: Launchers that are run, but whose own future is an audit question.
-    python_launchers: tuple[tuple[str, str], ...] = (
-        ("src/gui_app.py", "run_gui.* launchers"),
-    )
+    #: Launchers that are run, but whose own future is an audit question. None
+    #: remain: ``src/gui_app.py`` and its ``run_gui`` scripts went in PRUNE-02.
+    python_launchers: tuple[tuple[str, str], ...] = ()
     sidecar_specs: tuple[str, ...] = ("build/engine-sidecar.spec",)
     pyproject: str = "pyproject.toml"
     #: What the Electron app loads first: main, the runtime preload, the page.

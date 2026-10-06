@@ -5,12 +5,11 @@
 Run test suites by layer. Design 3.34.
 
 Usage:
-    python scripts/run_tests.py              # run unit + integration (excludes legacy Qt UI)
+    python scripts/run_tests.py              # run unit + integration
     python scripts/run_tests.py --unit       # unit only
     python scripts/run_tests.py --integration
     python scripts/run_tests.py --system     # system/CLI smoke
     python scripts/run_tests.py --all        # unit, integration, system
-    python scripts/run_tests.py --with-qt    # include legacy Qt UI tests (requirements-qt.txt)
 """
 
 import argparse
@@ -54,16 +53,19 @@ def run_pytest(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run test suites by layer (3.34).")
     parser.add_argument("--unit", action="store_true", help="Run unit tests only")
-    parser.add_argument("--integration", action="store_true", help="Run integration tests only")
-    parser.add_argument("--system", action="store_true", help="Run system/CLI smoke tests only")
-    parser.add_argument("--all", action="store_true", help="Run unit, then integration, then system")
-    parser.add_argument("--coverage", action="store_true", help="Report coverage (with --unit or --all)")
-    parser.add_argument("--no-slow", action="store_true", help="Exclude @slow tests")
     parser.add_argument(
-        "--with-qt",
-        action="store_true",
-        help="Include legacy Qt UI tests (requires requirements-qt.txt)",
+        "--integration", action="store_true", help="Run integration tests only"
     )
+    parser.add_argument(
+        "--system", action="store_true", help="Run system/CLI smoke tests only"
+    )
+    parser.add_argument(
+        "--all", action="store_true", help="Run unit, then integration, then system"
+    )
+    parser.add_argument(
+        "--coverage", action="store_true", help="Report coverage (with --unit or --all)"
+    )
+    parser.add_argument("--no-slow", action="store_true", help="Exclude @slow tests")
     args = parser.parse_args()
 
     if not any([args.unit, args.integration, args.system, args.all]):
@@ -77,8 +79,6 @@ def main() -> None:
     marker_parts = []
     if args.no_slow:
         marker_parts.append("not slow")
-    if not args.with_qt:
-        marker_parts.append("not ui")
     if marker_parts:
         extra.extend(["-m", " and ".join(marker_parts)])
 
@@ -97,12 +97,12 @@ def main() -> None:
             marker_parts = []
             if args.no_slow:
                 marker_parts.append("not slow")
-            if not args.with_qt:
-                marker_parts.append("not ui")
             if marker_parts:
                 ex.extend(["-m", " and ".join(marker_parts)])
             if args.coverage and name == "unit":
-                ex.extend(["--cov=src/cuepoint", "--cov-report=term", "--cov-report=xml"])
+                ex.extend(
+                    ["--cov=src/cuepoint", "--cov-report=term", "--cov-report=xml"]
+                )
             exit_code = run_pytest(path, by_path=True, extra=ex)
             if exit_code != 0:
                 break

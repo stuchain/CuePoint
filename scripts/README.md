@@ -17,4 +17,5 @@ This folder collects helper scripts used for development, testing, and maintenan
 
 ## Notes
 
-- Scripts are grouped by intent; prefer `main.py` and `run_gui.*` for normal usage.
+- Scripts are grouped by intent. Run the CLI with `main.py`, and the desktop app with
+  `npm run electron:start` in `apps/desktop-electron`.

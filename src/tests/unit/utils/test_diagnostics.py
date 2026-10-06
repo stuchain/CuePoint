@@ -77,16 +77,33 @@ class TestDiagnosticCollector:
         assert "os_version" in system_info
         assert system_info["platform"] == "macos"
 
-    @patch("PySide6.QtCore.QSettings")
     @patch("cuepoint.utils.diagnostics.AppPaths")
-    def test_collect_config_info(self, mock_paths, mock_settings):
-        """Test collecting configuration information."""
-        mock_settings.return_value.value.return_value = ""
+    def test_collect_config_info(self, mock_paths):
+        """The settings block is the one the engine has always reported.
+
+        It was Qt's ``QSettings`` when Qt was installed and this otherwise;
+        the engine never had Qt, so support bundles always carried this.
+        """
         mock_paths.config_file.return_value.exists.return_value = False
 
         config_info = DiagnosticCollector.collect_config_info()
 
-        assert "settings" in config_info
+        assert config_info == {
+            "settings": {"source": "headless", "note": "Qt settings unavailable"}
+        }
+
+    @patch("cuepoint.utils.diagnostics.AppPaths")
+    def test_collect_config_info_reads_the_config_file_without_secrets(
+        self, mock_paths, tmp_path
+    ):
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("max_retries: 2\napi_keys: {beatport: x}\npassword: y\n")
+        mock_paths.config_file.return_value = config_file
+
+        config_info = DiagnosticCollector.collect_config_info()
+
+        assert config_info["file"] == {"max_retries": 2}
+        assert config_info["settings"]["source"] == "headless"
 
     @patch("cuepoint.utils.diagnostics.AppPaths")
     def test_collect_storage_info(self, mock_paths):

@@ -1,7 +1,8 @@
 # CuePoint v1.0.0 — Phase 12: Cleanup, Detailed Step Specifications
 
 Status: **Specified 2026-10-06. PRUNE-01 is implemented (2026-10-06), and the user approved every
-group of its audit (`PHASE12_AUDIT.md`) the same day. PRUNE-02 is next.** Eight steps, PRUNE-01…PRUNE-08. Per the
+group of its audit (`PHASE12_AUDIT.md`) the same day. PRUNE-02 is implemented (2026-10-06): Qt is
+removed. PRUNE-03 is next.** Eight steps, PRUNE-01…PRUNE-08. Per the
 process, no implementation happens from this document. Each step needs an explicit "Implement
 PRUNE-NN" instruction, scoped to exactly that step, and its outcome is recorded under the step
 afterwards. There are no open points. The measurements taken while writing it are in cross-cutting
@@ -422,6 +423,117 @@ and `diagnostics.py`.
 on a Qt fixture without saying so, which a run with no Qt installed exposes.
 
 **Complexity**: **S**
+
+**Outcome**: Implemented (2026-10-06). No code imports Qt, no requirements file declares it, no
+workflow or script installs it, and `scripts/check_no_qt.py` keeps it so. The full suite passes in a
+fresh virtual environment built from the requirements files alone, in which no Qt binding can be
+imported: 12,195 passed, 50 skipped, 0 failed.
+
+**Rewritten to their headless paths**, with the answers they always gave the engine:
+- **`utils/paths.py`.** `_standard_path` is the platform conventions alone. `_standard_path_fallback`
+  and the `CUEPOINT_HEADLESS` switch, which existed only to skip Qt, are gone.
+  - `test_paths_headless.py` holds every location on Windows, macOS and Linux, whatever machine runs
+    it (16 tests where there were 2).
+- **`utils/diagnostics.py`.** The `QSettings` branch is gone. The settings block is the headless one
+  the engine always reported, `{"source": "headless", "note": "Qt settings unavailable"}`, kept
+  word for word because support bundles carry it. Its test pins it.
+
+**Deleted:**
+- **The five modules dead with Qt:** `crash_handler`, `error_reporting_prefs`, `i18n`,
+  `performance_workers` and `sentry_init`, with their four test files. `sentry_init` had none.
+- **The Qt-only tests:**
+  - `test_export_integration`, `test_playlist_integration`, `test_step53_ui_controllers`,
+    `test_step52_full_integration`, `test_step52_main_controller_di` and `test_advanced_filtering`;
+  - `test_phase3_complete`, whose live checks were already covered elsewhere (the performance
+    collector and report, retries, cache hits, query classification);
+  - `test_step8_ux_accessibility`, after its two live classes moved to their layers as
+    `unit/utils/test_output_directory.py` and `unit/services/test_output_preview.py`;
+  - the root's `test_export_dialog_import.py` and `verify_export_dialog.py`, which were on
+    conftest's Qt list.
+- **`requirements-qt.txt`**, and its mentions in the requirements' comments.
+- **From `conftest.py`:** the Qt path list, `pytest_ignore_collect`, the Qt marking in
+  `pytest_collection_modifyitems`, `pytest_sessionfinish`'s Qt quit, and the `qapp` fixture.
+- **From `pytest.ini`:** the `ui` marker, and the coverage omits for `gui_app.py` and `ui/`.
+- **From `run_tests.py`:** `--with-qt` and its `not ui` deselection.
+- **From `mypy.ini`:** the `PySide6` and `PyQt6` sections, and every `cuepoint.ui` section and the
+  two deleted modules' sections.
+- **`-p no:pytest-qt`** from `test.yml`, `release-gates.yml` and AGENTS.md's mypy gate.
+- **From `release-gates.yml`:** both "Install Qt dependencies (Linux)" steps and both
+  `QT_QPA_PLATFORM` settings.
+- **`src/gui_app.py` and `run_gui.bat`, `.sh` and `.command`** (group H). AGENTS.md, `src/README.md`,
+  `scripts/README.md`, `docs/development/architecture.md` and `docs/how-to-run.md` now say to start
+  the app with `npm run electron:start`.
+
+**The guard.** `check_no_qt_in_core.py` is replaced by `scripts/check_no_qt.py`. It reads Python's
+syntax tree rather than lines:
+- **Python:** any import of a Qt binding under `src/` (tests included), `scripts/` or the root fails
+  it, in any form: `import`, `from`, inside a function or `try`, or a literal `import_module` or
+  `__import__`. A docstring, comment or string naming PySide6 passes.
+- **Requirements:** a Qt package in a root `requirements*.txt` or in `pyproject.toml` fails it.
+- **Installs:** a `pip install` of Qt in a workflow or a shell script under `scripts/` fails it.
+- **Its scope:** tracked files, plus new files git does not ignore, so a new file cannot slip past.
+
+It runs in `test.yml` and `desktop-electron.yml`. The `qt-guard.sh` hook now runs it after any edit
+to Python under `src/` or `scripts/`, not only `src/cuepoint/`. AGENTS.md, both skills and the hook
+table name it.
+
+Its tests (`test_check_no_qt.py`, 60) cover every import form and place, the docstring rule, the
+requirements, `pyproject.toml`, workflows and shell scripts, git's tracked and untracked files,
+the command line, and the hook itself, run through bash against a copy of the repository.
+
+**Found on the way, and fixed:**
+- **`utils/platform.py` held a Qt function the audit missed.** `apply_windows_dark_title_bar` set a
+  Qt window's title bar through its `winId()`. Nothing called it, and nothing tested it. The audit
+  had counted `platform.py` among the modules that name PySide6 only to state the rule; its mention
+  was this function's comment. It is removed.
+- **`scripts/setup/install_requirements.sh` never installed anything.** It changed into
+  `scripts/setup/` and ran `pip3 install -r requirements.txt` there, where no such file is. It
+  now runs from the repository root. Its PySide6 install and check went, and it asks for Python
+  3.11, not 3.7.
+- **Developer docs that told people to install `requirements-qt.txt`** (CONTRIBUTING,
+  `developer-setup.md`, `common-errors.md`) or to run `gui_app.py` were corrected with it.
+
+**Every changed test count is accounted for**, against PRUNE-01's baseline (12,152 passed and 75
+skipped, then 12,195 and 50):
+
+| File | Before | After | Why |
+| --- | --- | --- | --- |
+| `test_step6_crash_handler`, `test_error_reporting_prefs`, `test_i18n` | 9, 4, 7 | gone | Their modules went |
+| `test_step6_performance_workers` | 25 skipped | gone | Its module went |
+| `test_check_no_qt_in_core` → `test_check_no_qt` | 20 | 60 | The widened guard |
+| `test_paths_headless` | 2 | 16 | Every platform's answers |
+| `test_diagnostics` | 9 | 10 | The config file's secrets are dropped |
+| `test_output_directory`, `test_output_preview` | — | 4, 3 | Moved from `test_step8_ux_accessibility` |
+| `test_audit_dead_code` | 55 | 56 | A launcher's reach, now that the default has none |
+
+The Qt test files conftest ignored were never collected, so their deletion changes no count.
+
+**Checks run:**
+- the full Python suite, in the fresh no-Qt environment and in the local one (both 12,195 passed,
+  0 failed);
+- the mypy gate for three platforms, and the legacy mypy record;
+- `ruff check` and `ruff format --check` over `src/`;
+- the new guard and the version coupling;
+- the renderer's theme and waveform tests (one theme file's comment changed);
+- the sidecar build, its smoke and the engine smoke;
+- the packaged engine's start: median 2,571 ms, against the baseline's 2,573 ms.
+
+**What still names Qt, by design:**
+- the three docstrings that state the rule (`onboarding_service`, `privacy_service`,
+  `update/__init__`);
+- the guard and its tests, and the audit and its tests;
+- the sidecar spec's `PySide6`, `PyQt5` and `PyQt6` excludes, kept by the audit.
+
+**What still names Qt until a later step deletes it** (approved; editing a file one step from
+deletion would be churn, and none of them installs or imports Qt):
+- `build-macos.yml`, `build-windows.yml`, `build/pyinstaller.spec`, `release_readiness.py` and
+  `test_pre_release.py` (PRUNE-04);
+- `src/tests/test_comprehensive.py` (PRUNE-03);
+- the Markdown docs, rewritten or deleted in PRUNE-07.
+
+`CUEPOINT_HEADLESS` is now read by nothing in Python. Electron, `build_engine_sidecar.py` and
+`bench_engine_start.py` still set it, harmlessly; removing it touches Electron main, and is left to
+PRUNE-05.
 
 ---
 

@@ -69,8 +69,8 @@ jobs:
       - name: Build engine sidecar (packaged smoke)
         run: python scripts/build_engine_sidecar.py
 
-      - name: Verify no Qt imports in core packages
-        run: python scripts/check_no_qt_in_core.py
+      - name: Verify Qt has not come back
+        run: python scripts/check_no_qt.py
 
       # PLAYER-01 (DEC-049). Exits 0 with a notice on Linux, which pins no
       # binary, so the ubuntu leg of the matrix stays green.

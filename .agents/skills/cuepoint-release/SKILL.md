@@ -198,7 +198,7 @@ python scripts/validate_version.py
 python scripts/validate_changelog.py
 python scripts/check_desktop_version_coupling.py
 python scripts/check_release_readiness.py
-python scripts/check_no_qt_in_core.py
+python scripts/check_no_qt.py
 python scripts/check_large_files.py
 python scripts/validate_compliance.py
 cd apps/desktop-electron && npm run build

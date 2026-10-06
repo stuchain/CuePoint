@@ -346,7 +346,6 @@ class TestMypyValidation:
                 "sync_tags_dialog",
                 "logger_helper",
                 "security.py",
-                "sentry_init.py",
                 "tag_writer.py",
             ]
             # Filter out errors that match ignore patterns

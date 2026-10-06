@@ -24,17 +24,11 @@ playwright install chromium
 python main.py --xml collection.xml --playlist "My Playlist" --auto-research
 ```
 
-## Run the GUI directly
-
-- Windows: `run_gui.bat`
-- macOS: `run_gui.command`
-- Linux: `run_gui.sh`
-
-These scripts launch the Electron desktop shell via `src/gui_app.py`.
-
-Prerequisites for local Electron dev:
+## Run the desktop app from source
 
 ```bash
 cd apps/desktop-electron
 npm install
+npm install --prefix renderer
+npm run electron:start
 ```

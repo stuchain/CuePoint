@@ -27,15 +27,13 @@ source .venv/bin/activate # macOS/Linux
 python src/main.py --help
 ```
 
-### "No module named 'PySide6'" or missing deps
+### Missing dependencies
 
-**Cause**: You are trying to run legacy Qt-only code/tests without the optional Qt dependencies installed.
+**Cause**: The requirements are not installed in the active environment.
 
 **Fix**:
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-# Optional only for legacy Qt UI/tests:
-pip install -r requirements-qt.txt
 ```
 
 ### Import error for `ddgs` or `duckduckgo_search`
@@ -115,15 +113,6 @@ mypy src/ --ignore-missing-imports
 **Fix**: Use same Black version as in `requirements-dev.txt` (25.12.0). Run `black src/` before committing.
 
 ## GUI Errors
-
-### "Qt platform plugin" or "Could not find the Qt platform plugin"
-
-**Cause**: PySide6 not fully installed or wrong Qt env.
-
-**Fix**:
-```bash
-pip install --force-reinstall -r requirements-qt.txt
-```
 
 ### GUI crashes on launch
 

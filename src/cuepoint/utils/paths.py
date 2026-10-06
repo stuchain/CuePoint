@@ -4,7 +4,8 @@
 """
 Standard Application Paths Utility
 
-Provides consistent, platform-agnostic paths for application data using QStandardPaths.
+Provides consistent, platform-agnostic paths for application data, following each
+platform's conventions.
 Implements the "Reliability Outcome" from Step 1.4 - predictable storage locations.
 Implements Step 6.1 - File System Locations.
 """
@@ -49,30 +50,12 @@ def cuepoint_home() -> Path:
 
 
 def _standard_path(location: str) -> Path:
-    """Resolve a Qt QStandardPaths-style writable location (Qt optional).
+    """The platform's writable location for ``location``.
 
-    Prefer the headless fallback when ``CUEPOINT_HEADLESS`` is set (Electron
-    engine sidecar / CI) so path resolution never depends on PySide6.
+    The location names are Qt's ``QStandardPaths`` ones, kept from when the
+    desktop app was Qt; the answers are each operating system's conventions,
+    the same ones the Electron engine sidecar has always resolved.
     """
-    headless = os.environ.get("CUEPOINT_HEADLESS", "").strip().lower()
-    if headless in {"1", "true", "yes"}:
-        return _standard_path_fallback(location)
-    try:
-        from PySide6.QtCore import QStandardPaths
-
-        mapping = {
-            "AppConfigLocation": QStandardPaths.AppConfigLocation,  # type: ignore[attr-defined]
-            "AppLocalDataLocation": QStandardPaths.AppLocalDataLocation,  # type: ignore[attr-defined]
-            "CacheLocation": QStandardPaths.CacheLocation,  # type: ignore[attr-defined]
-            "DocumentsLocation": QStandardPaths.DocumentsLocation,  # type: ignore[attr-defined]
-        }
-        return Path(QStandardPaths.writableLocation(mapping[location]))
-    except ImportError:
-        return _standard_path_fallback(location)
-
-
-def _standard_path_fallback(location: str) -> Path:
-    """Headless fallback when PySide6 is unavailable (Electron engine sidecar)."""
     home = Path.home()
     if is_windows():
         appdata = Path(os.environ.get("APPDATA", home / "AppData" / "Roaming"))
@@ -108,7 +91,7 @@ def _standard_path_fallback(location: str) -> Path:
 
 
 class AppPaths:
-    """Standard application paths using QStandardPaths.
+    """Standard application paths, following each platform's conventions.
 
     Provides consistent paths across platforms:
     - macOS: Uses ~/Library/Application Support, ~/Library/Caches, etc.

@@ -30,8 +30,6 @@ See [Developer Setup](https://github.com/stuchain/CuePoint/blob/main/docs/develo
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt -r requirements-dev.txt
-# Optional legacy Qt UI / Qt-specific tests only:
-# pip install -r requirements-qt.txt
 ```
 
 ## Contributor Checklist (PR Quality Gates)

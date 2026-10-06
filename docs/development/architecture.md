@@ -134,7 +134,7 @@ Clean page (ReviewView) / Library actions
 
 ## Code Reading Guide
 
-1. **Entry points**: CLI is run from **project root** as `python main.py` (root `main.py` delegates to `src/main.py`). Desktop UI runs from `apps/desktop-electron/` via Electron. `src/gui_app.py` is legacy fallback only during Phase 10 transition.
+1. **Entry points**: CLI is run from **project root** as `python main.py` (root `main.py` delegates to `src/main.py`). Desktop UI runs from `apps/desktop-electron/` via Electron.
 2. Start at `src/main.py` (CLI) or `apps/desktop-electron/electron/main.ts` + `apps/desktop-electron/renderer/src/App.tsx` (desktop UI).
 3. Follow `CLIProcessor` (CLI) or `MatchService` (desktop) into `ProcessorService`.
 4. Trace `ProcessorService.process_track()` → `MatcherService.find_best_match()` → `core/matcher.best_beatport_match()`.

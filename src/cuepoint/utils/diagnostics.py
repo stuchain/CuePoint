@@ -143,20 +143,13 @@ class DiagnosticCollector:
         Returns:
             Dictionary with configuration information.
         """
-        settings_block: Dict[str, Any] = {}
-        try:
-            from PySide6.QtCore import QSettings
-
-            settings = QSettings()
-            settings_block = {
-                "output_directory": str(settings.value("output_directory", "")),
-                "cache_enabled": settings.value("cache_enabled", True, type=bool),
-                "auto_update_check": settings.value(
-                    "auto_update_check", True, type=bool
-                ),
-            }
-        except ImportError:
-            settings_block = {"source": "headless", "note": "Qt settings unavailable"}
+        # The Qt app kept settings in QSettings and reported them here. Qt is
+        # gone (PRUNE-02), and the engine always answered this block, which
+        # support bundles carry, so its answer stays the same.
+        settings_block: Dict[str, Any] = {
+            "source": "headless",
+            "note": "Qt settings unavailable",
+        }
 
         config_file = AppPaths.config_file()
         config: Dict[str, Any] = {"settings": settings_block}

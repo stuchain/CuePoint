@@ -12,6 +12,7 @@ Phase numbers follow the order of implementation (DEC-146):
 
 Phase 12 is specified (`PHASE12_CLEANUP.md`); Phases 13 to 18 are not yet. PRUNE-01 is implemented
 (2026-10-06): the audit is `PHASE12_AUDIT.md`, and the user approved every group of it the same day.
+PRUNE-02 is implemented (2026-10-06): Qt is removed, and `scripts/check_no_qt.py` keeps it out.
 Phase 11 is specified in `PHASE11_WAVEFORMS.md` (WAVE-01…WAVE-08), unblocked by Decision Round 13
 (DEC-113…DEC-123); WAVE-01 to WAVE-08 are implemented, WAVE-08 (loudness, DEC-124, which
 supersedes DEC-121) the last. Phase 11's acceptance is met on Windows, in the
@@ -801,7 +802,7 @@ Why this order:
 Specified 2026-10-06 in `PHASE12_CLEANUP.md`, in eight steps:
 - **PRUNE-01:** the audit, approved by group before anything goes. *Implemented 2026-10-06;
   every group of `PHASE12_AUDIT.md` approved the same day.*
-- **PRUNE-02:** Qt.
+- **PRUNE-02:** Qt. *Implemented 2026-10-06.*
 - **PRUNE-03:** legacy Python modules.
 - **PRUNE-04:** the old release pipeline and scripts nothing runs.
 - **PRUNE-05:** dead Electron and renderer code.

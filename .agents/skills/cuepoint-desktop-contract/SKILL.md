@@ -43,7 +43,7 @@ Update every affected layer and add tests at the narrowest meaningful boundary. 
 ```bash
 python -m pytest src/tests/unit/engine/ -q --tb=short
 python scripts/smoke_engine_health.py
-python scripts/check_no_qt_in_core.py
+python scripts/check_no_qt.py
 cd apps/desktop-electron/renderer && npm test && npm run build:check
 cd apps/desktop-electron && npm run build
 ```

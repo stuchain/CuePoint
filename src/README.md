@@ -1,7 +1,6 @@
 # Source
 
 - `main.py`: CLI entry point
-- `gui_app.py`: local Electron launcher
 - `cuepoint/`: Python application package
 - `tests/`: Python test suite
 

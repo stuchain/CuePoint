@@ -193,11 +193,11 @@ class TestGenerateSbom:
         parse_requirements_file = m.parse_requirements_file
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-            f.write("PySide6==6.10.1\nrequests>=2.0\n# comment\n")
+            f.write("Pillow==12.3.0\nrequests>=2.0\n# comment\n")
             path = Path(f.name)
         try:
             pkgs = parse_requirements_file(path)
-            assert any("pyside6" in p[0] for p in pkgs)
+            assert any("pillow" in p[0] for p in pkgs)
             assert any("requests" in p[0] for p in pkgs)
         finally:
             path.unlink(missing_ok=True)

@@ -17,8 +17,8 @@ Electron desktop app (`apps/desktop-electron/`) and Python CLI (root `main.py` -
 
 The desktop path is React renderer -> `window.cuepoint` preload bridge -> Electron IPC/main ->
 authenticated loopback HTTP/SSE -> `cuepoint.engine` -> Python services/core/data. Electron is
-the only supported desktop UI; `src/gui_app.py` only launches it. Qt is optional compatibility
-test material and must not enter core, engine, CLI, or services.
+the only desktop UI. Qt was removed (Phase 12) and must not come back: `scripts/check_no_qt.py`
+fails on any Qt import, requirement or CI install.
 
 | Concern | Source |
 | --- | --- |
@@ -55,8 +55,8 @@ python scripts/run_tests.py --unit --no-slow
 python scripts/run_tests.py --all --no-slow
 ruff check src/
 ruff format --check src/
-python -m pytest src/tests/integration/test_mypy_foundation.py -q -p no:pytest-qt  # the mypy gate; bare `mypy src/` reports legacy debt
-python scripts/check_no_qt_in_core.py
+python -m pytest src/tests/integration/test_mypy_foundation.py -q  # the mypy gate; bare `mypy src/` reports legacy debt
+python scripts/check_no_qt.py
 
 # Renderer (from apps/desktop-electron/renderer)
 npm test
@@ -83,7 +83,7 @@ payload with bash builtins, not `jq`, which is not a supported dependency.
 
 | Trigger | Hook | Effect |
 | --- | --- | --- |
-| Edit/Write `src/cuepoint/**.py` | `qt-guard.sh` | runs `check_no_qt_in_core.py` |
+| Edit/Write `.py` under `src/` or `scripts/` | `qt-guard.sh` | runs `check_no_qt.py` |
 | Edit/Write `.py` or renderer `.ts`/`.tsx` | `lint-touched.sh` | applies `ruff format`; reports `ruff check` and `oxlint -D correctness` |
 | Edit/Write `version.py` or desktop `package.json` | `version-coupling.sh` | runs `check_desktop_version_coupling.py` |
 | Bash `git commit`, `git tag`, `gh pr` | `commit-guard.sh` | denies AI attribution trailers, and non-Conventional or multi-line subjects |
