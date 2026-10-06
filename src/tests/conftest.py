@@ -1,5 +1,6 @@
 """Pytest configuration and shared fixtures."""
 
+import logging
 import os
 import sys
 
@@ -123,6 +124,26 @@ def _restore_global_settings():
     if SETTINGS != snapshot:
         SETTINGS.clear()
         SETTINGS.update(snapshot)
+
+
+@pytest.fixture(autouse=True)
+def _restore_cuepoint_logger():
+    """Undo what a test's ``LoggingService`` does to the ``cuepoint`` logger.
+
+    ``LoggingService`` replaces that logger's handlers, sets its level and turns
+    its propagation off, all process-wide. Every test that ran after one then had
+    ``cuepoint.*`` records stop short of the root logger, where ``caplog``
+    listens, so a test asserting a warning failed or passed depending on what
+    ran before it.
+    """
+    logger = logging.getLogger("cuepoint")
+    handlers = list(logger.handlers)
+    level = logger.level
+    propagate = logger.propagate
+    yield
+    logger.handlers[:] = handlers
+    logger.setLevel(level)
+    logger.propagate = propagate
 
 
 @pytest.fixture(scope="session")
