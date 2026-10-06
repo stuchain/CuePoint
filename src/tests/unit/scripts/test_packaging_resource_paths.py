@@ -178,3 +178,24 @@ class TestArchIsPartOfThePath:
         assert engine_build.platform_dir(
             "darwin", "arm64"
         ) != engine_build.platform_dir("darwin", "x86_64")
+
+
+class TestRepositoryIsNamed:
+    """`npm run dist` finished only in CI.
+
+    electron-builder writes `latest.yml` for a GitHub publish provider it builds
+    from the repository. It looks for that in `package.json`, then in
+    `apps/desktop-electron/.git/config` (which does not exist: the checkout's
+    `.git` is two levels up), then in CI variables such as `GITHUB_REPOSITORY`.
+    Outside CI it found nothing, built the installer, and then failed with
+    "Cannot read properties of null (reading 'provider')", so a local Windows
+    `npm run dist` exited 1 after writing the installer.
+    """
+
+    def test_the_desktop_package_names_its_repository(self):
+        config = json.loads(_PACKAGE_JSON.read_text(encoding="utf-8"))
+        repository = config.get("repository")
+        url = repository.get("url") if isinstance(repository, dict) else repository
+        assert isinstance(url, str) and re.search(
+            r"github\.com[/:]stuchain/CuePoint(\.git)?$", url
+        ), f"package.json names no GitHub repository: {repository!r}"

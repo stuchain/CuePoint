@@ -4,6 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "description": "CuePoint Electron shell workspace (renderer + main process)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stuchain/CuePoint.git"
+  },
   "cuepoint": {
     "engineVersion": "1.0.0-feb1"
   },
