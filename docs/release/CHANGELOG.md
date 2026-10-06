@@ -362,6 +362,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reads artwork, is raised from 12.1.1 to 12.3.0, past the 35 advisories
   published against it; aiohttp and pytest, used only in development, are raised
   past theirs too
+- **A request the engine refused could fail as a dropped connection** on
+  Windows instead of saying why: the engine answered before reading what was
+  sent, and closing with that unread made Windows reset the connection. The
+  engine now reads every request in full before it answers
 - **A desktop build made outside CI stopped with an error** after writing the
   installer (electron-builder could not name the repository). It now finishes
 - **Waveform decoders could outlive an engine that was killed** on Windows (End
