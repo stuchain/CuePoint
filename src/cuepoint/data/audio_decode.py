@@ -726,6 +726,17 @@ def _engine_job() -> Optional[int]:
         return _JOB[0]
 
 
+def _last_windows_error() -> int:
+    """``ctypes.get_last_error()``, looked up like ``WinDLL`` below.
+
+    It exists only on Windows, and the type check runs everywhere: named
+    directly, mypy on Linux and macOS reports the module has no such attribute.
+    """
+    import ctypes
+
+    return int(getattr(ctypes, "get_last_error")())
+
+
 def _make_kill_on_close_job() -> Optional[int]:
     import ctypes
     from ctypes import wintypes
@@ -784,7 +795,7 @@ def _make_kill_on_close_job() -> Optional[int]:
         _logger.warning(
             "[waveforms] no job for the decoders (error %s); they end with the "
             "engine only when it stops itself",
-            ctypes.get_last_error(),
+            _last_windows_error(),
         )
         return None
     limits = _ExtendedLimits()
@@ -797,7 +808,7 @@ def _make_kill_on_close_job() -> Optional[int]:
     ):
         _logger.warning(
             "[waveforms] the decoders' job could not be set to end them (error %s)",
-            ctypes.get_last_error(),
+            _last_windows_error(),
         )
         kernel32.CloseHandle(job)
         return None
@@ -821,7 +832,7 @@ def _join_engine_job(child: "subprocess.Popen[bytes]") -> None:
         # nesting: the decode still runs, and the engine's own stop still ends it.
         _logger.debug(
             "[waveforms] a decoder child was not put in the engine's job (error %s)",
-            ctypes.get_last_error(),
+            _last_windows_error(),
         )
 
 

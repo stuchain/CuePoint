@@ -169,8 +169,17 @@ def test_guarded_paths_all_exist():
     )
 
 
+#: Every platform the engine ships on. mypy checks for the platform it runs on
+#: unless told otherwise, and the standard library's stubs differ by platform:
+#: ``ctypes.get_last_error`` exists only on Windows, so a call to it passed this
+#: gate on Windows and failed it in Linux CI. Checking all three here makes a
+#: platform-only name fail on whichever machine runs the gate.
+PLATFORMS = ("linux", "darwin", "win32")
+
+
 @pytest.mark.integration
-def test_foundation_modules_have_no_type_errors():
+@pytest.mark.parametrize("platform", PLATFORMS)
+def test_foundation_modules_have_no_type_errors(platform: str):
     result = subprocess.run(
         [
             sys.executable,
@@ -180,6 +189,8 @@ def test_foundation_modules_have_no_type_errors():
             str(_REPO / "mypy.ini"),
             "--explicit-package-bases",
             "--namespace-packages",
+            "--platform",
+            platform,
             # Report on the guarded files only; legacy modules they import have
             # their own known errors and are not this gate's business.
             "--follow-imports=silent",
@@ -193,6 +204,7 @@ def test_foundation_modules_have_no_type_errors():
     output = result.stdout + result.stderr
     errors = [line for line in output.splitlines() if ": error:" in line]
 
-    assert not errors, "mypy found type errors in foundation modules:\n" + "\n".join(
-        errors
+    assert not errors, (
+        f"mypy found type errors in foundation modules (--platform {platform}):\n"
+        + "\n".join(errors)
     )
