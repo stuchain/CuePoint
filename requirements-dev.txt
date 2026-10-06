@@ -2,7 +2,7 @@
 # Install with: pip install -r requirements-dev.txt
 
 # Testing framework
-pytest==9.0.2
+pytest==9.0.3
 hypothesis==6.98.0  # Property-based tests (Design 3.15)
 pytest-cov==7.0.0
 pytest-mock==3.15.1

@@ -145,7 +145,7 @@ class TestEngineSidecarMakesThumbnails:
         build = (_REPO_ROOT / "requirements-build.txt").read_text(encoding="utf-8")
         pins = [line for line in runtime.splitlines() if line.startswith("Pillow")]
 
-        assert pins == ["Pillow==12.1.1"]
+        assert pins == ["Pillow==12.3.0"]
         assert [
             line for line in build.splitlines() if line.startswith("Pillow")
         ] == pins
