@@ -218,6 +218,11 @@ def get_job_store() -> JobStore:
     return _JOB_STORE
 
 
+#: The most of an unread request body read and dropped before an answer. The
+#: engine's bodies are small JSON; past this the connection is let reset.
+_MAX_DISCARDED_BODY = 16 * 1024 * 1024
+
+
 def make_handler(
     config: EngineConfig, store: Optional[JobStore] = None
 ) -> Type[BaseHTTPRequestHandler]:
@@ -291,11 +296,47 @@ def make_handler(
             expected = f"Bearer {config.token}"
             return auth == expected
 
+        #: The request's body once read; ``None`` until then. Reset per request.
+        _body: Optional[bytes] = None
+
+        def handle_one_request(self) -> None:
+            self._body = None
+            super().handle_one_request()
+
+        def _content_length(self) -> int:
+            try:
+                return max(0, int(self.headers.get("Content-Length", "0") or 0))
+            except ValueError:
+                return 0
+
         def _read_body(self) -> bytes:
-            length = int(self.headers.get("Content-Length", "0") or 0)
-            if length <= 0:
-                return b""
-            return self.rfile.read(length)
+            if self._body is None:
+                length = self._content_length()
+                self._body = self.rfile.read(length) if length else b""
+            return self._body
+
+        def _discard_unread_body(self) -> None:
+            """Read and drop a body no route read, before answering.
+
+            The server answers and closes (HTTP/1.0). Closing a socket with the
+            client's body still unread makes Windows reset the connection, and
+            the client then sees "connection aborted" instead of the answer:
+            a POST to an unknown path, or one refused for its token, failed
+            that way at random. Bounded, so a huge body is not read in full.
+            """
+            if self._body is not None or getattr(self, "headers", None) is None:
+                return
+            remaining = min(self._content_length(), _MAX_DISCARDED_BODY)
+            self._body = b""
+            while remaining > 0:
+                chunk = self.rfile.read(min(remaining, 65536))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
+
+        def send_response(self, code: int, message: Optional[str] = None) -> None:
+            self._discard_unread_body()
+            super().send_response(code, message)
 
         def _stream_job_events(self, job_id: str) -> None:
             job = job_store.get(job_id)
