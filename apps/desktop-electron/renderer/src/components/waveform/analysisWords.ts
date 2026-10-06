@@ -177,13 +177,14 @@ export function sizeWords(bytes: number): string {
 
 /**
  * What "Delete waveform data…" asks before it deletes (WAVE-05): the size on
- * disk, and that the whole library will be analysed again, with how long that
- * takes when the analysis has a rate to say it by.
+ * disk, the loudness measured with each waveform going with it (WAVE-08), and
+ * that the whole library will be analysed again, with how long that takes when
+ * the analysis has a rate to say it by.
  */
 export function deleteDataWords(status: WaveformAnalysisStatus | null): string[] {
   const size = status ? sizeWords(status.store_bytes) : "an unknown amount";
   const lines = [
-    `This deletes every waveform CuePoint has made, ${size} on disk. Cue points and beat grids come from Rekordbox and are not affected.`,
+    `This deletes every waveform CuePoint has made, and the loudness measured with each, ${size} on disk. Cue points and beat grids come from Rekordbox and are not affected.`,
   ];
   if (status?.state === "unavailable") {
     lines.push("Waveforms cannot be made again until this build has the player's decoder.");

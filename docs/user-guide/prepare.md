@@ -242,12 +242,16 @@ in words; they add no fact of their own.
 after it, so you can see how one track ends and the next begins:
 
 - **A row of titles**: each entry's track and its planned times, "In 0:16 ·
-  Out 5:42", or "Untimed" for one without an out time.
+  Out 5:42", or "Untimed" for one without an out time, then its loudness,
+  "−8.4 LUFS", once it is measured.
 - **Two waveforms**, each the whole track with its cue points, the part before
   its planned in and after its planned out dimmed.
 - **Between them**, in words, how the one goes out and the next comes in:
   "Out 5:42 → In 0:16". "Untimed" stands for an out time not typed yet, and
-  "untimed" for a next entry with no times at all.
+  "untimed" for a next entry with no times at all. When both tracks have a
+  loudness, the words end with how much louder or quieter the next one is:
+  "Out 5:42 → In 0:16 · +2.1 LU". CuePoint changes neither track's volume; see
+  [Loudness](waveforms.md#loudness).
 
 With nothing selected the strip says to select an entry; with the last entry
 selected, its second half reads **End of Set**. Clicking a half selects that

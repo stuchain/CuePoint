@@ -11,15 +11,17 @@ build proves them and each step's outcome is read back rather than assumed:
 1. A library with real audio files and Rekordbox cues, imported.
 2. The file check and then the analysis follow it without a call, until every
    file is analysed.
-3. The Library column's batch: every track's picture at width 120.
-4. The Inspector's read: the bar's width, with the hot cue at its time.
+3. The Library column's batch: every track's picture at width 120, each with
+   its loudness (WAVE-08).
+4. The Inspector's read: the bar's width, with the hot cue at its time, and
+   the loudness its line says.
 5. Playing and seeking are the player's, in Electron; the engine's part is a
    track put first in the analysis, which, analysed already, decodes nothing.
 6. A pause, kept across a relaunch, and a resume.
 7. A file changed on disk and a refresh: the check, then that file analysed
    again, and no other.
-8. A Set with planned times: the plan and the two pictures the transition
-   strip reads.
+8. A Set with planned times: the plan, and the two pictures and loudness
+   readings the transition strip reads.
 9. "Delete waveform data", and the whole library analysed again.
 
 The decoder is a real ``mpv`` when one is found, as the binary tests find it:
@@ -45,7 +47,7 @@ from typing import Callable, Dict, List, Optional
 import pytest
 
 from tests.fixtures.job_settling import wait_until_settled
-from tests.fixtures.waveform_library import envelope
+from tests.fixtures.waveform_library import LOUDNESS, envelope
 from tests.unit.engine.test_engine_library_refresh import (  # noqa: F401
     APPLY,
     PREVIEW,
@@ -101,9 +103,20 @@ def _real_mpv() -> Optional[Path]:
 class Decodes:
     """Every file the engine decoded, in order."""
 
-    def __init__(self) -> None:
+    def __init__(self, real: bool = False) -> None:
+        self.real = real
         self._lock = threading.Lock()
         self._opened: List[str] = []
+
+    def bands_loudness(self) -> dict:
+        """What ``bands.flac`` reads (WAVE-08): the pinned decoder's, or the stand-in's."""
+        if self.real:
+            return {"integrated_lufs": -3.5, "peak_dbfs": -4.3, "reason": None}
+        return {
+            "integrated_lufs": LOUDNESS.integrated_lufs,
+            "peak_dbfs": LOUDNESS.peak_dbfs,
+            "reason": LOUDNESS.reason,
+        }
 
     def add(self, source: str) -> None:
         with self._lock:
@@ -124,8 +137,8 @@ def decodes(tmp_path, monkeypatch) -> Decodes:
     from cuepoint.data import audio_decode
     from cuepoint.services import waveform_service
 
-    record = Decodes()
     real = _real_mpv()
+    record = Decodes(real=real is not None)
     if real is not None:
         monkeypatch.setenv(audio_decode.DECODER_PATH_ENV, str(real))
         decode: Callable[..., audio_decode.Envelope] = waveform_service.decode_envelope
@@ -270,6 +283,7 @@ def test_the_phase_journey(decodes, engine, library_db, tmp_path, monkeypatch): 
     batch = pictures(engine, list(ids.values()), 120)
     assert [answer["state"] for answer in batch] == ["ready"] * len(FILES)
     assert all(len(base64.b64decode(a["data"])) == 120 * 4 for a in batch)
+    assert all(answer["loudness"] is not None for answer in batch)
 
     # --- 4. the Inspector: the hot cue at its time --------------------------
     (bands,) = pictures(engine, [ids["Bands"]], 1_200, marks=True)
@@ -278,6 +292,7 @@ def test_the_phase_journey(decodes, engine, library_db, tmp_path, monkeypatch): 
     hot = [cue for cue in bands["marks"]["cues"] if cue["hot_cue"] == 0]
     assert [(cue["start_ms"], cue["color"]) for cue in hot] == [(HOT_CUE_MS, "#e62828")]
     assert bands["marks"]["grid"][0]["bpm"] == 120.0
+    assert bands["loudness"] == decodes.bands_loudness()
 
     # --- 5. a track played is put first; analysed already, nothing decoded -
     decodes.clear()
@@ -363,6 +378,10 @@ def test_the_phase_journey(decodes, engine, library_db, tmp_path, monkeypatch): 
         assert timed == [(1, 5), (0, 1)]
         strip = pictures(base, [first["track_id"], second["track_id"]], 160, marks=True)
         assert [answer["state"] for answer in strip] == ["ready", "ready"]
+        # Step 7 made the second a copy of bands.flac: the two sit level.
+        assert [answer["loudness"] for answer in strip] == [
+            decodes.bands_loudness()
+        ] * 2
 
         # --- 9. the data deleted, and the library analysed again ------------
         decodes.clear()

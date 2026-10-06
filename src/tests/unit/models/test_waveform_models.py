@@ -12,7 +12,12 @@ from __future__ import annotations
 
 import pytest
 
+from cuepoint.data import audio_decode
 from cuepoint.models.waveform import (
+    LOUDNESS_NOT_MEASURED,
+    LOUDNESS_REASONS,
+    LOUDNESS_SILENT,
+    LOUDNESS_TOO_QUIET,
     REASON_NO_PATH,
     STATE_FAILED,
     STATE_MISSING,
@@ -23,6 +28,8 @@ from cuepoint.models.waveform import (
     STORED_FAILED,
     STORED_READY,
     WAVEFORM_STATES,
+    StoredFile,
+    StoredLoudness,
     StoredWaveform,
     WaveformState,
     WaveformSummary,
@@ -136,6 +143,7 @@ class TestWaveformState:
             "state": state,
             "reason": reason,
             "duration_ms": duration,
+            "loudness": None,
         }
 
     @pytest.mark.parametrize(
@@ -157,3 +165,121 @@ class TestWaveformState:
     def test_a_track_id_is_required(self):
         with pytest.raises(ValueError):
             WaveformState(0, STATE_WAITING)
+
+    def test_a_ready_state_carries_its_loudness(self):
+        reading = StoredLoudness(1, -8.4, -0.3)
+        value = WaveformState(7, STATE_READY, duration_ms=5, loudness=reading)
+
+        assert value.to_dict()["loudness"] == {
+            "integrated_lufs": -8.4,
+            "peak_dbfs": -0.3,
+            "reason": None,
+        }
+
+    @pytest.mark.parametrize("state", [STATE_FAILED, STATE_WAITING])
+    def test_only_a_ready_state_has_a_loudness(self, state):
+        reason = "undecodable" if state == STATE_FAILED else None
+        with pytest.raises(ValueError):
+            WaveformState(7, state, reason, loudness=StoredLoudness(1, -8.4, -0.3))
+
+
+@pytest.mark.unit
+class TestStoredLoudness:
+    """WAVE-08: a value with its peak, or a reason (DEC-124)."""
+
+    def test_the_reasons_are_the_decoders(self):
+        assert LOUDNESS_REASONS == audio_decode.LOUDNESS_REASONS
+        assert (LOUDNESS_TOO_QUIET, LOUDNESS_SILENT, LOUDNESS_NOT_MEASURED) == (
+            audio_decode.LOUDNESS_TOO_QUIET,
+            audio_decode.LOUDNESS_SILENT,
+            audio_decode.LOUDNESS_NOT_MEASURED,
+        )
+
+    @pytest.mark.parametrize(
+        "lufs, peak, reason",
+        [
+            (-8.4, -0.3, None),
+            (-23, 0, None),
+            (None, -4.3, LOUDNESS_TOO_QUIET),
+            (None, None, LOUDNESS_TOO_QUIET),
+            (None, None, LOUDNESS_SILENT),
+            (None, None, LOUDNESS_NOT_MEASURED),
+        ],
+    )
+    def test_each_good_reading(self, lufs, peak, reason):
+        value = StoredLoudness(1, lufs, peak, reason)
+
+        assert value.to_dict() == {
+            "integrated_lufs": None if lufs is None else float(lufs),
+            "peak_dbfs": None if peak is None else float(peak),
+            "reason": reason,
+        }
+
+    @pytest.mark.parametrize(
+        "version, lufs, peak, reason, error",
+        [
+            (0, -8.4, -0.3, None, ValueError),
+            (1, None, -0.3, None, ValueError),
+            (1, -8.4, None, None, ValueError),
+            (1, -8.4, -0.3, LOUDNESS_TOO_QUIET, ValueError),
+            (1, None, -0.3, LOUDNESS_SILENT, ValueError),
+            (1, None, -0.3, LOUDNESS_NOT_MEASURED, ValueError),
+            (1, None, None, "loud", ValueError),
+            (1, float("nan"), -0.3, None, ValueError),
+            (1, -8.4, float("-inf"), None, ValueError),
+            (1, True, -0.3, None, TypeError),
+            (1, "-8.4", -0.3, None, TypeError),
+        ],
+    )
+    def test_an_impossible_reading_is_refused(self, version, lufs, peak, reason, error):
+        with pytest.raises(error):
+            StoredLoudness(version, lufs, peak, reason)
+
+    def test_only_a_ready_row_has_a_loudness(self):
+        with pytest.raises(ValueError):
+            row(
+                state=STORED_FAILED,
+                reason="undecodable",
+                duration_ms=None,
+                data=None,
+                loudness=StoredLoudness(1, -8.4, -0.3),
+            )
+
+    def test_the_summary_keeps_the_loudness(self):
+        reading = StoredLoudness(1, -8.4, -0.3)
+
+        assert row(loudness=reading).summary.loudness == reading
+
+    @pytest.mark.parametrize(
+        "stored, expected",
+        [
+            (dict(loudness=StoredLoudness(2, -8.4, -0.3)), True),
+            (dict(loudness=StoredLoudness(1, -8.4, -0.3)), False),
+            (dict(), False),
+            (
+                dict(
+                    state=STORED_FAILED,
+                    reason="undecodable",
+                    duration_ms=None,
+                    data=None,
+                ),
+                True,
+            ),
+        ],
+        ids=["current", "older", "none", "failed"],
+    )
+    def test_measured_at_a_version(self, stored, expected):
+        assert row(**stored).measured(2) is expected
+
+    @pytest.mark.parametrize(
+        "file, expected",
+        [
+            (StoredFile(1, STORED_READY, 2), True),
+            (StoredFile(1, STORED_READY, 1), False),
+            (StoredFile(1, STORED_READY), False),
+            (StoredFile(1, STORED_FAILED), True),
+        ],
+        ids=["current", "older", "none", "failed"],
+    )
+    def test_a_work_list_file_measured_at_a_version(self, file, expected):
+        assert file.measured(2) is expected

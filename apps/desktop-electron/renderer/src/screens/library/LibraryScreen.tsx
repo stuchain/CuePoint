@@ -109,7 +109,7 @@ import { useCollectionTree } from "./useCollectionTree";
 import { followJob } from "./followJob";
 import { appliedLine, jobErrorMessage } from "./libraryFormat";
 import { DEFAULT_LIBRARY_QUERY, type LibraryQuery, queryKey } from "./libraryQuery";
-import { copySummary, tracksAsText, writeClipboard } from "./trackClipboard";
+import { copySummary, gatherTracksAsText, writeClipboard } from "./trackClipboard";
 import { isSelected, onlySelectedId } from "./trackSelection";
 import { useFacet, useFilterVocabulary } from "./useFilterVocabulary";
 import { usePlaylistTree } from "./usePlaylistTree";
@@ -564,7 +564,7 @@ export function LibraryScreen({
       setCopying(true);
       try {
         const rows = await gather();
-        const text = tracksAsText(columns.visible, rows);
+        const text = await gatherTracksAsText(columns.visible, rows);
         const wrote = text === "" ? false : await writeClipboard(text);
         if (!mounted.current) return;
         push(

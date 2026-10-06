@@ -1,7 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { SetEntry, TrackCue, WaveformTrack, WaveformTrackState } from "../../api/cuepointBridge.types";
+import type {
+  SetEntry,
+  TrackCue,
+  WaveformLoudness,
+  WaveformTrack,
+  WaveformTrackState,
+  WaveformsQuery,
+} from "../../api/cuepointBridge.types";
 import { ROW_HEIGHT_FALLBACK, readRowHeight } from "../../components/table/trackTableLayout";
 import { forgetWaveforms } from "../../components/waveform/waveformCache";
 import { SetTransition } from "./SetTransition";
@@ -48,21 +55,27 @@ const ENTRIES = [
   entry(4, 40, "Close", 2, null),
 ];
 
-function waveform(trackId: number, state: WaveformTrackState = "ready"): WaveformTrack {
+function waveform(
+  trackId: number,
+  state: WaveformTrackState = "ready",
+  overrides: Partial<WaveformTrack> = {},
+): WaveformTrack {
   return {
     track_id: trackId,
     state,
     reason: null,
     duration_ms: state === "ready" ? 6_000 : null,
+    loudness: state === "ready" ? { integrated_lufs: -8.4, peak_dbfs: -0.3, reason: null } : null,
     data: state === "ready" ? new Uint8Array(160 * 4).fill(160) : null,
     marks: { read: true, cues: [HOT_CUE], grid: [] },
+    ...overrides,
   };
 }
 
 function install(answer: (id: number) => WaveformTrack = (id) => waveform(id)) {
   const waveforms = {
-    get: vi.fn(async ({ track_ids, width }: { track_ids: number[]; width: number; marks?: boolean }) => ({
-      value: { width, paused: false, waveforms: track_ids.map(answer), unknown: [] },
+    get: vi.fn(async ({ track_ids, width }: WaveformsQuery) => ({
+      value: { width: width ?? null, paused: false, waveforms: track_ids.map(answer), unknown: [] },
       refusal: null,
     })),
     request: vi.fn().mockResolvedValue({ value: { requested: [], job_id: "job" }, refusal: null }),
@@ -139,8 +152,10 @@ describe("the transition strip", () => {
     render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
     await drawn("from", "to");
 
-    expect(waveforms.get).toHaveBeenCalledTimes(1);
+    // The pictures, and the two tracks' loudness without them (WAVE-08).
+    expect(waveforms.get).toHaveBeenCalledTimes(2);
     expect(waveforms.get).toHaveBeenCalledWith({ track_ids: [10, 20], width: 160, marks: true });
+    expect(waveforms.get).toHaveBeenCalledWith({ track_ids: [10, 20], marks: false, data: false });
     // The hot cue at 3 s of 6, in its own colour: column 75 of 150, in both.
     for (const side of ["from", "to"] as const) {
       const cue = fillsOf(side).find((fill) => fill.colour === "#ff0000")!;
@@ -270,5 +285,55 @@ describe("the transition strip", () => {
     expect(screen.getByTestId("transition-to")).toHaveAttribute("title", "File missing");
     // The times are said whether or not there is a picture.
     expect(screen.getByTestId("transition-words")).toHaveTextContent("Out 0:04 → In 0:01");
+  });
+});
+
+describe("the strip's loudness (WAVE-08)", () => {
+  const measured = (lufs: number): WaveformLoudness => ({ integrated_lufs: lufs, peak_dbfs: -0.3, reason: null });
+
+  it("ends each title with its track's loudness, and says how far apart the two sit", async () => {
+    install((id) => waveform(id, "ready", { loudness: measured(id === 10 ? -10.5 : -8.4) }));
+    render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByTestId("transition-words")).toHaveTextContent("+2.1 LU"));
+    expect(screen.getByTestId("transition-words")).toHaveTextContent(/^Out 0:04 → In 0:01 · \+2\.1 LU$/);
+    const titles = screen.getAllByTestId("transition-loudness").map((each) => each.textContent);
+    expect(titles).toEqual([" · −10.5 LUFS", " · −8.4 LUFS"]);
+    expect(screen.getByText("Intro").parentElement).toHaveAttribute(
+      "title",
+      "Intro, In 0:00 · Out 0:04 · −10.5 LUFS",
+    );
+    await drawn("from", "to");
+  });
+
+  it("says no difference unless both are measured, and no loudness for a track without a value", async () => {
+    install((id) =>
+      waveform(id, "ready", {
+        loudness: id === 10 ? measured(-9) : { integrated_lufs: null, peak_dbfs: -40, reason: "too_quiet" },
+      }),
+    );
+    render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getAllByTestId("transition-loudness")).toHaveLength(1));
+    expect(screen.getByTestId("transition-words")).toHaveTextContent(/^Out 0:04 → In 0:01$/);
+    await drawn("from", "to");
+  });
+
+  it("says no difference for the last entry, which has no next", async () => {
+    install();
+    render(<SetTransition entries={ENTRIES} selectedEntryId={4} onSelect={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getAllByTestId("transition-loudness")).toHaveLength(1));
+    expect(screen.getByTestId("transition-words")).toHaveTextContent(/^Untimed$/);
+    await drawn("from");
+  });
+
+  it("puts a track whose loudness is still to be measured first in the analysis", async () => {
+    const waveforms = install((id) => waveform(id, "ready", { loudness: id === 20 ? null : measured(-8) }));
+    render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
+
+    await waitFor(() => expect(waveforms.request).toHaveBeenCalledWith({ track_ids: [20] }));
+    expect(waveforms.request).toHaveBeenCalledTimes(1);
+    await drawn("from", "to");
   });
 });

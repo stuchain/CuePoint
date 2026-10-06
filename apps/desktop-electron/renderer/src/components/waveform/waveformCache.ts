@@ -15,7 +15,13 @@
  * every 2 seconds. That is how a waveform appears while someone watches. The
  * first read after the following starts asks again too: a track requested the
  * moment it was shown is analysed in about a second, before that read, and a
- * count first noted after it would never move for it (WAVE-06).
+ * count first noted after it would never move for it (WAVE-06). A view that
+ * shows a loudness (WAVE-08) says so in its query, and a ready track it shows
+ * whose loudness is still to be measured waits the same way; a view that only
+ * draws does not ask again for a number it never shows.
+ *
+ * **Without pictures.** A query of no width asks for states and loudness alone
+ * (`data: false`), for a column that shows a number.
  *
  * **Emptied** by "Delete waveform data" and by a finished refresh, which can
  * move a track to another file (`forgetWaveforms`).
@@ -30,6 +36,7 @@ import type {
   WaveformBatch,
   WaveformTrack,
   WaveformsBridge,
+  WaveformsQuery,
 } from "../../api/cuepointBridge.types";
 
 /** Ids per request: the engine's own limit. */
@@ -57,22 +64,72 @@ export type WaveformEntry =
 const LOADING: WaveformEntry = { kind: "loading" };
 
 export interface WaveformQuery {
-  width: number;
+  /** The picture's columns; null asks for no picture, only states and loudness. */
+  width: number | null;
   marks: boolean;
+  /** The view shows each track's loudness, so it waits for one still to be measured. */
+  loudness?: boolean;
 }
 
 type Bridge = Pick<WaveformsBridge, "get" | "analysis">;
 
-function keyOf(trackId: number, { width, marks }: WaveformQuery): string {
-  return `${trackId}:${width}:${marks ? 1 : 0}`;
+function groupOf({ width, marks, loudness }: WaveformQuery): string {
+  return `${width ?? "-"}:${marks ? 1 : 0}${loudness ? ":L" : ""}`;
 }
 
-function groupOf({ width, marks }: WaveformQuery): string {
-  return `${width}:${marks ? 1 : 0}`;
+function keyOf(trackId: number, query: WaveformQuery): string {
+  return `${trackId}:${groupOf(query)}`;
 }
 
-function isWaiting(entry: WaveformEntry | undefined): boolean {
-  return entry?.kind === "track" && entry.track.state === "waiting";
+/** True when an answer waits for the analysis, as a view with this query sees it. */
+export function waitsInView(entry: WaveformEntry | undefined | null, query: Pick<WaveformQuery, "loudness">): boolean {
+  if (entry?.kind !== "track") return false;
+  if (entry.track.state === "waiting") return true;
+  return Boolean(query.loudness) && entry.track.state === "ready" && entry.track.loudness === null;
+}
+
+/** The request one query makes for these tracks. */
+function askFor(trackIds: number[], query: WaveformQuery): WaveformsQuery {
+  return query.width === null
+    ? { track_ids: trackIds, marks: query.marks, data: false }
+    : { track_ids: trackIds, width: query.width, marks: query.marks };
+}
+
+/**
+ * Every answer for these tracks, read now rather than through the cache's
+ * batches and without keeping them: what a copy of thousands of rows reads
+ * (WAVE-08). 200 to a request, one request at a time. A batch that fails or is
+ * refused answers as an error for each of its tracks, so a copy says nothing
+ * rather than something wrong.
+ */
+export async function readEntries(
+  bridge: Pick<WaveformsBridge, "get"> | undefined,
+  trackIds: readonly number[],
+  query: WaveformQuery,
+): Promise<Map<number, WaveformEntry>> {
+  const answers = new Map<number, WaveformEntry>();
+  const ids = [...new Set(trackIds)];
+  for (let start = 0; start < ids.length; start += BATCH_SIZE) {
+    const batch = ids.slice(start, start + BATCH_SIZE);
+    let message: string | null = null;
+    try {
+      const answer = bridge ? await bridge.get(askFor(batch, query)) : null;
+      if (!answer) message = "The engine is not available";
+      else if (answer.refusal) message = answer.refusal.message;
+      else {
+        for (const track of answer.value.waveforms) {
+          answers.set(track.track_id, { kind: "track", track, paused: answer.value.paused });
+        }
+        for (const trackId of answer.value.unknown) answers.set(trackId, { kind: "unknown" });
+      }
+    } catch (cause) {
+      message = cause instanceof Error ? cause.message : String(cause);
+    }
+    if (message !== null) {
+      for (const trackId of batch) answers.set(trackId, { kind: "error", message });
+    }
+  }
+  return answers;
 }
 
 export interface WaveformCacheOptions {
@@ -225,7 +282,7 @@ export class WaveformCache {
     keys.forEach((key) => this.inFlight.add(key));
     let answer: WaveformAnswer<WaveformBatch>;
     try {
-      answer = await get({ track_ids: trackIds, width: query.width, marks: query.marks });
+      answer = await get(askFor(trackIds, query));
     } catch (cause) {
       this.settleFailed(keys, generation, cause instanceof Error ? cause.message : String(cause));
       return;
@@ -277,7 +334,7 @@ export class WaveformCache {
 
   private waitingShown(): { trackId: number; query: WaveformQuery }[] {
     return [...this.shown.entries()]
-      .filter(([key]) => isWaiting(this.entries.get(key)))
+      .filter(([key, held]) => waitsInView(this.entries.get(key), held.query))
       .map(([, held]) => held);
   }
 

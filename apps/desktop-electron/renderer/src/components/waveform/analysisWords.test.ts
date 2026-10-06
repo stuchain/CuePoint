@@ -149,6 +149,7 @@ describe("what Delete waveform data asks first", () => {
   it("states the size on disk, and that the library is analysed again", () => {
     const lines = deleteDataWords(status({ store_bytes: 252_000_000 }));
     expect(lines[0]).toContain("240.3 MB on disk");
+    expect(lines[0]).toContain("and the loudness measured with each");
     expect(lines[0]).toContain("Cue points and beat grids come from Rekordbox and are not affected");
     expect(lines[1]).toBe("The whole library will be analysed again.");
   });
@@ -212,6 +213,7 @@ describe("why an answer draws no picture (WAVE-06)", () => {
       state,
       reason: null,
       duration_ms: state === "ready" ? 1_000 : null,
+      loudness: state === "ready" ? { integrated_lufs: -8.4, peak_dbfs: -0.3, reason: null } : null,
       data: state === "ready" ? new Uint8Array(64) : null,
       marks: null,
       ...overrides,

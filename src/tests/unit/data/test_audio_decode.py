@@ -128,6 +128,154 @@ class TestFilterGraph:
     def test_the_expected_output_names_the_rate_layout_and_format(self):
         assert ad.EXPECTED_OUTPUT == "AO: [pcm] 150Hz quad 4ch float"
 
+    def test_the_loudness_meter_heads_the_graph(self):
+        """WAVE-08: before the downmix, on the file's own channels and rate."""
+        graph = ad.filter_graph()
+        assert graph.startswith(ad.LOUDNESS_METER + ",aresample=")
+        assert graph.count("ebur128") == 1
+
+    def test_the_meter_measures_the_sample_peak_quietly(self):
+        """The true peak cost 2.6 times the analysis's time (DEC-124)."""
+        options = ad.LOUDNESS_METER.split("=", 1)[1].split(":")
+        assert options == ["peak=sample", "dualmono=true", "framelog=quiet"]
+
+    def test_the_versions(self):
+        assert ad.ANALYSIS_VERSION == 2
+        assert ad.LOUDNESS_VERSION == 1
+
+
+_LOGS = _REPO / "src" / "tests" / "fixtures" / "audio" / "ebur128"
+
+
+def _captured(name: str) -> str:
+    """A summary the pinned Windows build wrote, its other lines left out."""
+    return (_LOGS / f"ebur128-{name}.txt").read_text(encoding="utf-8")
+
+
+def _summary(lufs: str = "-8.4", peak: str = "-0.3") -> str:
+    return _log(
+        "[v][ffmpeg] Parsed_ebur128_0: Summary:",
+        "[v][ffmpeg]",
+        "[v][ffmpeg]   Integrated loudness:",
+        f"[v][ffmpeg]     I:         {lufs} LUFS",
+        "[v][ffmpeg]     Threshold: -18.4 LUFS",
+        "[v][ffmpeg]",
+        "[v][ffmpeg]   Loudness range:",
+        "[v][ffmpeg]     LRA:         4.1 LU",
+        "[v][ffmpeg]",
+        "[v][ffmpeg]   Sample peak:",
+        f"[v][ffmpeg]     Peak:       {peak} dBFS",
+    )
+
+
+class TestReadLoudness:
+    """WAVE-08: the meter's one summary, read strictly."""
+
+    @pytest.mark.parametrize(
+        "name, expected",
+        [
+            ("value", ad.Loudness(-3.5, -4.3, None)),
+            ("too_quiet", ad.Loudness(None, -4.3, ad.LOUDNESS_TOO_QUIET)),
+            ("silent", ad.Loudness(None, None, ad.LOUDNESS_SILENT)),
+        ],
+    )
+    def test_each_summary_the_pinned_build_wrote(self, name, expected):
+        assert ad.read_loudness(_captured(name)) == expected
+
+    def test_the_captured_logs_carry_no_path(self):
+        logs = sorted(_LOGS.glob("*.txt"))
+        assert [log.name for log in logs] == [
+            "ebur128-silent.txt",
+            "ebur128-too_quiet.txt",
+            "ebur128-value.txt",
+        ]
+        for log in logs:
+            text = log.read_text(encoding="utf-8")
+            assert "/" not in text.replace("AO: [pcm]", "") and "\\" not in text
+
+    def test_a_value(self):
+        assert ad.read_loudness(GOOD_LOG + _summary()) == ad.Loudness(-8.4, -0.3, None)
+
+    def test_the_floor_is_too_quiet_and_a_tenth_above_it_is_a_value(self):
+        floor = ad.read_loudness(_summary("-70.0", "-30.0"))
+        above = ad.read_loudness(_summary("-69.9", "-30.0"))
+
+        assert floor == ad.Loudness(None, -30.0, ad.LOUDNESS_TOO_QUIET)
+        assert above == ad.Loudness(-69.9, -30.0, None)
+
+    def test_a_peak_of_minus_infinity_is_silent(self):
+        assert ad.read_loudness(_summary("-70.0", "-inf")) == ad.Loudness(
+            None, None, ad.LOUDNESS_SILENT
+        )
+
+    def test_no_summary_is_not_measured(self):
+        assert ad.read_loudness(GOOD_LOG) == ad.NOT_MEASURED
+        assert ad.NOT_MEASURED.reason == ad.LOUDNESS_NOT_MEASURED
+
+    def test_a_second_summary_is_refused(self):
+        """A graph rebuilt part-way measured part of the file each time."""
+        assert ad.read_loudness(_summary() + _summary("-9.0")) == ad.NOT_MEASURED
+
+    @pytest.mark.parametrize(
+        "lufs, peak",
+        [("-8.4LUFS", "-0.3"), ("nan", "-0.3"), ("-8", "-0.3"), ("-8.4", "+inf")],
+    )
+    def test_a_malformed_line_is_not_measured(self, lufs, peak):
+        text = _summary().replace("-8.4 LUFS", f"{lufs} LUFS")
+        text = text.replace("-0.3 dBFS", f"{peak} dBFS")
+        assert ad.read_loudness(text) == ad.NOT_MEASURED
+
+    def test_a_summary_with_no_peak_is_not_measured(self):
+        text = "".join(
+            line + "\n" for line in _summary().splitlines() if "Peak:" not in line
+        )
+        assert ad.read_loudness(text) == ad.NOT_MEASURED
+
+    def test_the_meters_running_lines_are_not_its_summary(self):
+        running = _log(
+            "[v][ffmpeg] Parsed_ebur128_0: t: 0.399955   TARGET:-23 LUFS    M: -10.9"
+            " S:-120.7     I: -10.9 LUFS       LRA:   0.0 LU  SPK:  -4.3 dBFS"
+        )
+        assert ad.read_loudness(running) == ad.NOT_MEASURED
+        assert ad.read_loudness(running + _summary()) == ad.Loudness(-8.4, -0.3, None)
+
+    def test_the_true_peak_is_not_read_as_the_sample_peak(self):
+        text = _summary() + _log(
+            "[v][ffmpeg]",
+            "[v][ffmpeg]   True peak:",
+            "[v][ffmpeg]     Peak:        2.0 dBFS",
+        )
+        assert ad.read_loudness(text).peak_dbfs == -0.3
+
+    def test_another_modules_lines_inside_the_summary_are_passed_over(self):
+        lines = _summary().splitlines()
+        lines.insert(5, "[   0.010][v][lavfi] dropping request due to pin disconnect")
+        lines.insert(3, "[   0.010][v][ffmpeg/audio] I: -1.0 LUFS")
+        assert ad.read_loudness("\n".join(lines)) == ad.Loudness(-8.4, -0.3, None)
+
+
+class TestLoudnessReading:
+    @pytest.mark.parametrize(
+        "lufs, peak, reason",
+        [
+            (None, -0.3, None),
+            (-8.4, None, None),
+            (-8.4, -0.3, ad.LOUDNESS_TOO_QUIET),
+            (None, -0.3, ad.LOUDNESS_SILENT),
+            (None, -0.3, ad.LOUDNESS_NOT_MEASURED),
+            (None, None, "quiet"),
+            (math.inf, -0.3, None),
+            (-8.4, math.nan, None),
+        ],
+    )
+    def test_an_impossible_reading_is_refused(self, lufs, peak, reason):
+        with pytest.raises(ValueError):
+            ad.Loudness(lufs, peak, reason)
+
+    def test_an_envelope_is_not_measured_unless_told(self):
+        envelope = ad.parse_envelope(_frame_bytes([[0.0] * 4]))
+        assert envelope.loudness == ad.NOT_MEASURED
+
 
 class TestTransports:
     def test_windows_writes_a_file_and_has_no_pipe(self):
@@ -449,6 +597,27 @@ class TestOutcome:
         with pytest.raises(ad.DecodeFailed) as caught:
             self._outcome(tmp_path, raw=b"", log=log)
         assert caught.value.reason == "no_audio"
+
+    def test_a_good_decode_carries_its_loudness(self, tmp_path):
+        raw = _frame_bytes([[0.25, 0.04, 0.01, 0.0]] * 3)
+        envelope = self._outcome(tmp_path, raw=raw, log=GOOD_LOG + _summary())
+        assert envelope.loudness == ad.Loudness(-8.4, -0.3, None)
+
+    def test_a_decode_with_no_reading_keeps_its_waveform_and_says_so_once(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        """Loudness never costs a file its picture."""
+        monkeypatch.setattr(ad, "_UNREAD_LOGGED", threading.Event())
+        raw = _frame_bytes([[0.25, 0.04, 0.01, 0.0]] * 3)
+        with caplog.at_level("WARNING", logger=ad.__name__):
+            first = self._outcome(tmp_path / "a.flac", raw=raw)
+            second = self._outcome(tmp_path / "b.flac", raw=raw)
+
+        assert first.frames == second.frames == 3
+        assert first.loudness == second.loudness == ad.NOT_MEASURED
+        warnings = [r for r in caplog.records if "no loudness summary" in r.message]
+        assert len(warnings) == 1
+        assert "a.flac" in warnings[0].getMessage()
 
 
 # ---------------------------------------------------------------------------

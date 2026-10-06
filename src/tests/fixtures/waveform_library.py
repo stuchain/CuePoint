@@ -18,7 +18,7 @@ from array import array
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from cuepoint.data.audio_decode import Envelope
+from cuepoint.data.audio_decode import Envelope, Loudness
 from cuepoint.models.file_status import FILE_PRESENT, TrackFileStatus
 from cuepoint.models.library_track import LibraryTrack
 from cuepoint.persistence.activity_repository import ActivityRepository
@@ -39,13 +39,20 @@ NOW = "2026-10-03T12:00:00+00:00"
 DECODER = Path("/opt/cuepoint/mpv")
 
 
-def envelope(frames: int = 3_000, level: float = 0.25) -> Envelope:
-    """A plausible four-band envelope, 20 seconds at 150 Hz."""
+#: What the stand-in measures every file at, unless told otherwise (WAVE-08):
+#: a loud club master.
+LOUDNESS = Loudness(-8.4, -0.3, None)
+
+
+def envelope(
+    frames: int = 3_000, level: float = 0.25, loudness: Loudness = LOUDNESS
+) -> Envelope:
+    """A plausible four-band envelope, 20 seconds at 150 Hz, with its loudness."""
     bands = [
         array("f", [level * (1 + (i % 7) / 7) / (band + 1) for i in range(frames)])
         for band in range(4)
     ]
-    return Envelope(150, *bands)
+    return Envelope(150, *bands, loudness=loudness)
 
 
 class StubDecoder:

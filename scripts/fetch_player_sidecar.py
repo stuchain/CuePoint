@@ -904,6 +904,84 @@ def _db(value: float, reference: float) -> float:
     return 20.0 * math.log10(value / reference)
 
 
+#: EBU Tech 3341's first case (WAVE-08): a 1 kHz sine, the same in both
+#: channels, at this level for this long, reads this many LUFS integrated.
+EBU_3341_LEVEL_DBFS = -23.0
+EBU_3341_SECONDS = 20
+EBU_3341_RATE_HZ = 48_000
+EBU_3341_FREQUENCY_HZ = 1_000
+#: How far a reading may be from it: the case's own tolerance.
+EBU_3341_TOLERANCE = 0.1
+
+
+def write_ebu_3341_case(path: Path) -> None:
+    """Write EBU Tech 3341's first case as 24-bit stereo WAV.
+
+    Generated rather than shipped: 20 seconds of it is 5.8 MB. At 48 kHz a
+    1 kHz period is 48 samples, so one sample in each lands on the crest, and
+    the sample peak is the level exactly.
+    """
+    import math
+    import struct
+    import wave
+
+    amplitude = 10 ** (EBU_3341_LEVEL_DBFS / 20) * (2**23 - 1)
+    period = [
+        round(
+            amplitude
+            * math.sin(2 * math.pi * EBU_3341_FREQUENCY_HZ * i / EBU_3341_RATE_HZ)
+        )
+        for i in range(EBU_3341_RATE_HZ // EBU_3341_FREQUENCY_HZ)
+    ]
+    frame = b"".join(struct.pack("<i", value)[:3] * 2 for value in period)
+    with wave.open(str(path), "wb") as out:
+        out.setnchannels(2)
+        out.setsampwidth(3)
+        out.setframerate(EBU_3341_RATE_HZ)
+        out.writeframes(frame * (EBU_3341_SECONDS * EBU_3341_FREQUENCY_HZ))
+
+
+def check_loudness(binary: Path, *, quiet: bool = False) -> str:
+    """Hold the loudness meter to EBU Tech 3341's first case (WAVE-08).
+
+    The integrated loudness and the sample peak both read the level, within the
+    case's tolerance. A build whose meter is missing, or whose summary reads
+    differently, measures nothing here, and fails before it ships.
+    """
+    import tempfile
+
+    decode = _load_audio_decode()
+    with tempfile.TemporaryDirectory(prefix="cuepoint-ebu-3341-") as folder:
+        case = Path(folder) / "ebu-3341-case-1.wav"
+        write_ebu_3341_case(case)
+        try:
+            envelope = decode.decode_envelope(case.resolve(), binary)
+        except decode.DecodeError as exc:
+            raise SmokeTestError(
+                f"The analysis pipeline failed on EBU Tech 3341's first case: {exc}"
+            ) from exc
+    reading = envelope.loudness
+    for name, value in (
+        ("integrated loudness", reading.integrated_lufs),
+        ("sample peak", reading.peak_dbfs),
+    ):
+        # Rounded: the meter reports tenths, and -23.1 - -23.0 is 0.1000000001.
+        off = None if value is None else round(abs(value - EBU_3341_LEVEL_DBFS), 6)
+        if off is None or off > EBU_3341_TOLERANCE:
+            raise SmokeTestError(
+                f"EBU Tech 3341's first case should read {EBU_3341_LEVEL_DBFS} for "
+                f"its {name}, within {EBU_3341_TOLERANCE}; the meter read {reading}. "
+                "The loudness is not measured, or not read, on this build."
+            )
+    line = (
+        f"loudness: EBU Tech 3341 case 1 reads {reading.integrated_lufs} LUFS, "
+        f"peak {reading.peak_dbfs} dBFS"
+    )
+    if not quiet:
+        print(f"  {line}")
+    return line
+
+
 def check_analysis(
     binary: Path, fixture_dir: Path = FIXTURE_DIR, *, quiet: bool = False
 ) -> List[str]:
@@ -918,7 +996,8 @@ def check_analysis(
 
     Then every format fixture decodes to an envelope, with signal where the
     fixture holds a tone. A decoder that cannot run the filters fails here
-    rather than filling a library with wrong waveforms.
+    rather than filling a library with wrong waveforms. Last, the loudness
+    meter is held to EBU Tech 3341 (:func:`check_loudness`).
     """
     decode = _load_audio_decode()
     fixture = fixture_dir / ANALYSIS_FIXTURE
@@ -992,6 +1071,7 @@ def check_analysis(
         checked.append(line)
         if not quiet:
             print(f"  {line}")
+    checked.append(check_loudness(binary, quiet=quiet))
     return checked
 
 

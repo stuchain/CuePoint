@@ -10,13 +10,15 @@
  *    done: Pause is what a running analysis offers, so it is paused while it
  *    runs, and resumed after the relaunch);
  * 3. the Library's "Waveform" column draws each row's waveform;
- * 4. the Inspector draws the hot cue at its time;
+ * 4. the Inspector draws the hot cue at its time, and says the loudness under
+ *    it (WAVE-08);
  * 5. a track plays, and a click on the bar's waveform seeks;
  * 6. Settings' Pause holds across a relaunch, and Resume resumes;
  * 7. a file changed on disk and a refresh: the check, then that one file
  *    analysed again, and Activity says one;
- * 8. Prepare's transition strip reads the planned times, shades the picture
- *    outside them, and a click on the next half selects it;
+ * 8. Prepare's transition strip reads the planned times and each track's
+ *    loudness, says how far apart the two sit, shades the picture outside the
+ *    times, and a click on the next half selects it;
  * 9. "Delete waveform data", and the library analysed again.
  *
  * The acceptance runs it three times in a row (`--repeat-each=3`). Skips where
@@ -300,6 +302,8 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
         .not.toBeNull();
       const found = cue as unknown as { column: number; columns: number };
       expect(Math.abs(found.column - Math.floor((HOT_CUE_SECONDS / BANDS_SECONDS) * found.columns))).toBeLessThanOrEqual(1);
+      // Its loudness under it, as the pinned decoder measures bands.flac (WAVE-08).
+      await expect(window.getByTestId("inspector-loudness")).toHaveText("Loudness −3.5 LUFS · Peak −4.3 dBFS");
 
       // --- 5. play a track, and seek by clicking the bar's waveform ---------
       await window.evaluate(
@@ -373,9 +377,10 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       await expect(strip).toContainText("Select an entry to see its transition");
       const setTable = window.getByRole("table", { name: "Set entries" });
       await setTable.locator(".track-table__row").first().click({ position: { x: 60, y: 10 } });
-      await expect(window.getByTestId("transition-words")).toHaveText("Out 0:05 → In 0:00");
-      await expect(strip).toContainText("In 0:01 · Out 0:05");
-      await expect(strip).toContainText("In 0:00 · untimed");
+      // Step 7 made the second track a copy of bands.flac: the two sit level.
+      await expect(window.getByTestId("transition-words")).toHaveText("Out 0:05 → In 0:00 · 0.0 LU");
+      await expect(strip).toContainText("In 0:01 · Out 0:05 · −3.5 LUFS");
+      await expect(strip).toContainText("In 0:00 · untimed · −3.5 LUFS");
       const from = "[data-testid=transition-from] canvas";
       await expect(window.locator(from)).toBeVisible({ timeout: 20_000 });
       await expect(window.locator("[data-testid=transition-to] canvas")).toBeVisible({ timeout: 20_000 });

@@ -25,8 +25,15 @@ When a stored row counts
 ------------------------
 A row answers for a file when its path matches and its analysis version is the
 decoder's current one. :meth:`analyse` also compares the size and modified time
-with a fresh ``stat``: a row that matches is :data:`OUTCOME_CURRENT` and the
-file is not decoded again, whether the row is ready or failed. A failed row is
+with a fresh ``stat``: a row that matches, and has nothing left to measure, is
+:data:`OUTCOME_CURRENT` and the file is not decoded again, whether the row is
+ready or failed.
+
+A ready row has something left to measure when its loudness (WAVE-08) is
+missing or of another ``LOUDNESS_VERSION``: a store analysed before loudness
+was measured. Such a file is decoded again in full, and its picture written
+again, the same, with its loudness. Until then its waveform is drawn, and its
+state carries no loudness. A failed row is
 retried only when the file changes or the analysis version does, as DEC-076's
 refused pictures are. A display never calls ``stat``: it shows what the store
 holds for the current version, and the next analysis replaces a changed file's
@@ -65,6 +72,7 @@ from cuepoint.core.waveform import (
 )
 from cuepoint.data.audio_decode import (
     ANALYSIS_VERSION,
+    LOUDNESS_VERSION,
     REASON_DECODER_MISSING,
     REASON_NO_AUDIO,
     DecodeCancelled,
@@ -72,6 +80,7 @@ from cuepoint.data.audio_decode import (
     DecoderUnavailable,
     Envelope,
     FileGone,
+    Loudness,
     decode_envelope,
     decoder_from_env,
 )
@@ -95,6 +104,7 @@ from cuepoint.models.waveform import (
     STORED_FAILED,
     STORED_READY,
     AnalysisOutcome,
+    StoredLoudness,
     StoredWaveform,
     WaveformAnswer,
     WaveformState,
@@ -138,6 +148,7 @@ class WaveformService(IWaveformService):
         stat: Callable[[str], os.stat_result] = os.stat,
         clock: Callable[[], str] = utc_now_iso,
         analysis_version: int = ANALYSIS_VERSION,
+        loudness_version: int = LOUDNESS_VERSION,
     ) -> None:
         """Wire the service.
 
@@ -150,6 +161,7 @@ class WaveformService(IWaveformService):
             stat: ``os.stat``; a stand-in in tests.
             clock: The time an analysis is stamped with.
             analysis_version: The version rows are stored and read at.
+            loudness_version: The version loudness is stored and read at.
         """
         self._files = file_status_repository
         self._store = store
@@ -158,11 +170,17 @@ class WaveformService(IWaveformService):
         self._stat = stat
         self._clock = clock
         self._version = int(analysis_version)
+        self._loudness_version = int(loudness_version)
 
     @property
     def analysis_version(self) -> int:
         """The version this service stores and reads."""
         return self._version
+
+    @property
+    def loudness_version(self) -> int:
+        """The loudness version this service stores and reads (WAVE-08)."""
+        return self._loudness_version
 
     def decoder_available(self) -> bool:
         """True when there is a decoder to analyse with."""
@@ -184,9 +202,10 @@ class WaveformService(IWaveformService):
         2. ``stat`` it. A file missing now is :data:`OUTCOME_NOT_FOUND`, and
            nothing is written.
         3. Unless ``force``, a stored row of this version with the same size
-           and modified time already answers: :data:`OUTCOME_CURRENT`.
-        4. Decode, reduce, encode, and write the row, ready or failed, in one
-           statement.
+           and modified time, and nothing left to measure, already answers:
+           :data:`OUTCOME_CURRENT`.
+        4. Decode, reduce, encode, and write the row, ready or failed, with its
+           loudness, in one transaction.
 
         Args:
             track_id: The track.
@@ -228,7 +247,11 @@ class WaveformService(IWaveformService):
 
         if not force:
             stored = self._store.summaries([path], self._version).get(path)
-            if stored is not None and stored.counts_for(size, mtime_ns):
+            if (
+                stored is not None
+                and stored.counts_for(size, mtime_ns)
+                and stored.measured(self._loudness_version)
+            ):
                 return AnalysisOutcome(track_id, OUTCOME_CURRENT, stored.reason)
 
         try:
@@ -263,10 +286,19 @@ class WaveformService(IWaveformService):
                 analysed_at=self._clock(),
                 duration_ms=waveform.duration_ms,
                 data=encode(waveform),
+                loudness=self._reading(envelope.loudness),
             )
         )
         return AnalysisOutcome(
             track_id, OUTCOME_READY, decode_errors=envelope.decode_errors
+        )
+
+    def _reading(self, loudness: Loudness) -> StoredLoudness:
+        return StoredLoudness(
+            loudness_version=self._loudness_version,
+            integrated_lufs=loudness.integrated_lufs,
+            peak_dbfs=loudness.peak_dbfs,
+            reason=loudness.reason,
         )
 
     def _failed_row(
@@ -296,7 +328,12 @@ class WaveformService(IWaveformService):
             files = self._files.current_files(batch)
             stored = self._read(self._summaries, files)
             answers.extend(
-                _state(current, stored.get(current.path), available)
+                _state(
+                    current,
+                    stored.get(current.path),
+                    available,
+                    self._loudness_version,
+                )
                 for current in files
             )
         return answers
@@ -327,7 +364,7 @@ class WaveformService(IWaveformService):
                     data = self._picture(row, width)
                     if data is None:
                         row = None
-                state = _state(current, row, available)
+                state = _state(current, row, available, self._loudness_version)
                 answers.append(WaveformAnswer(state, width, data))
         return answers
 
@@ -383,7 +420,10 @@ def _batches(track_ids: Iterable[int]) -> Iterable[List[int]]:
 
 
 def _state(
-    current: CurrentFile, stored: Optional[WaveformSummary], available: bool
+    current: CurrentFile,
+    stored: Optional[WaveformSummary],
+    available: bool,
+    loudness_version: int,
 ) -> WaveformState:
     """A track's state from its file, its stored row and the decoder.
 
@@ -391,11 +431,21 @@ def _state(
     still that file's picture when its drive is unplugged or the decoder is
     gone. Without one, the file check says why there is none, and a present
     file without one is waiting, or unavailable when nothing can analyse it.
+
+    A ready row's loudness answers only at ``loudness_version``; one of another
+    version is measured again, and until then the track has none.
     """
     track_id = current.track_id
     if stored is not None:
         if stored.is_ready:
-            return WaveformState(track_id, STATE_READY, duration_ms=stored.duration_ms)
+            return WaveformState(
+                track_id,
+                STATE_READY,
+                duration_ms=stored.duration_ms,
+                loudness=(
+                    stored.loudness if stored.measured(loudness_version) else None
+                ),
+            )
         return WaveformState(track_id, STATE_FAILED, stored.reason)
     if not current.path.strip():
         return WaveformState(track_id, STATE_MISSING, REASON_NO_PATH)

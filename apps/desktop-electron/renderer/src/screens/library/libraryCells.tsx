@@ -3,18 +3,21 @@
  *
  * An overridden value carries a small marker whose tooltip names its source,
  * and the artwork column draws a thumbnail through CLEAN-09's guarded route.
- * The waveform column draws each row's waveform (WAVE-06).
+ * The waveform column draws each row's waveform (WAVE-06), and the loudness
+ * column says each row's loudness (WAVE-08).
  */
 import { useEffect, useState } from "react";
 
 import type { LibraryTrackRow, OverrideField } from "../../api/cuepointBridge.types";
 import { waveformEntryWords, waveformStateWord } from "../../components/waveform/analysisWords";
+import { loudnessCell } from "../../components/waveform/loudnessWords";
 import { useWaveform } from "../../components/waveform/useWaveforms";
 import { WaveformCanvas } from "../../components/waveform/WaveformCanvas";
 import type { WaveformEntry } from "../../components/waveform/waveformCache";
 import { useWaveformBox } from "../../components/waveform/waveformEnvironment";
 import { useSettled } from "../../components/waveform/waveformSettle";
 import { artworkText, effectiveText, overrideMark } from "./libraryClean";
+import { LOUDNESS_QUERY } from "./libraryLoudness";
 
 /** A value CuePoint may override, marked when it does. */
 export function OverriddenValue({ row, field }: { row: LibraryTrackRow; field: OverrideField }) {
@@ -147,6 +150,32 @@ export function RowWaveform({ row }: { row: LibraryTrackRow }) {
       ) : (
         <span className="library-cell__waveform-word">{waveformWord(entry)}</span>
       )}
+    </span>
+  );
+}
+
+// ------------------------------------------------------------- loudness
+
+/**
+ * A row's loudness (WAVE-08, DEC-124): the integrated value alone, "−8.4",
+ * the line in full in its title, "Loudness −8.4 LUFS · Peak −0.3 dBFS". A
+ * reason is one muted word. Read without a picture, so a table of forty rows
+ * reads forty numbers, not forty pictures.
+ *
+ * WAVE-06's rules for a column: a row asks once it has been on screen for
+ * 100 ms, and never puts its track first in the analysis.
+ */
+export function RowLoudness({ row }: { row: LibraryTrackRow }) {
+  const trackId = row.id ?? null;
+  const settled = useSettled(trackId);
+  const entry = useWaveform(trackId, LOUDNESS_QUERY.width, { ask: settled, loudness: true });
+  const cell = loudnessCell(entry);
+  return (
+    <span
+      className={`library-cell__loudness${cell.value ? "" : " library-cell__loudness--word"}`}
+      title={cell.title ?? waveformEntryWords(entry) ?? undefined}
+    >
+      {cell.text}
     </span>
   );
 }

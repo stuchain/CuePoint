@@ -25,6 +25,7 @@ function waveform(trackId: number, state: WaveformTrackState = "ready", reason: 
     state,
     reason,
     duration_ms: state === "ready" ? 6_000 : null,
+    loudness: state === "ready" ? { integrated_lufs: -8.4, peak_dbfs: -0.3, reason: null } : null,
     data: state === "ready" ? new Uint8Array(64 * 4).fill(100) : null,
     marks: null,
   };

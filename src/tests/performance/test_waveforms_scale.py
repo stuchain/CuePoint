@@ -72,7 +72,8 @@ def test_every_measurement_is_taken(result):
 
 def test_the_store_is_inside_its_budget_for_its_size(result):
     store = _rows(result)[f"The store, {TRACKS:,} waveforms"]
-    assert store["budget"] == pytest.approx(25.0)
+    # 5.2 KB a track: WAVE-02's 5 for the waveforms, and WAVE-08's loudness.
+    assert store["budget"] == pytest.approx(26.0)
     assert not store["over_budget"], store
 
 

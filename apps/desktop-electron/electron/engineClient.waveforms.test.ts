@@ -82,6 +82,25 @@ describe("getWaveforms", () => {
     expect(answer.value!.unknown).toEqual([9]);
   });
 
+  it("asks for states and loudness alone with data=0 and no width (WAVE-08)", async () => {
+    const loudness = { integrated_lufs: -8.4, peak_dbfs: -0.3, reason: null };
+    const calls = engineAnswering(200, {
+      width: null,
+      paused: false,
+      waveforms: [
+        { track_id: 3, state: "ready", reason: null, duration_ms: 1_000, loudness, data: null, marks: null },
+      ],
+      unknown: [],
+    });
+
+    const answer = await client().getWaveforms({ track_ids: [3], data: false });
+
+    expect(calls[0]!.url).toBe(`${BASE}/api/v1/waveforms?track_ids=3&data=0&marks=0`);
+    expect(answer.value!.width).toBeNull();
+    expect(answer.value!.waveforms[0]!.loudness).toEqual(loudness);
+    expect(answer.value!.waveforms[0]!.data).toBeNull();
+  });
+
   it("asks without marks unless told", async () => {
     const calls = engineAnswering(200, { width: 120, paused: false, waveforms: [], unknown: [] });
 

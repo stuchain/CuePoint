@@ -10,6 +10,8 @@ with `scripts/bench_decoder.py` are owed. Amended by WAVE-03 (2026-10-03): the
 graph ends in the output's format, which the pinned Windows build needed, and
 `ANALYSIS_VERSION` is 2. Outcome recorded at WAVE-07 (2026-10-05), when the phase
 closed: the decision held, unchanged, through every place a waveform is drawn.
+Amended by WAVE-08 (2026-10-05): the same pass measures loudness (DEC-124), and a
+decoder cannot outlive a killed engine on Windows.
 
 ## Context
 
@@ -223,6 +225,48 @@ this decision produces.
   and the journey in packaged builds (Linux with `CUEPOINT_MPV_PATH`, Windows and
   macOS), recorded with the phase's other packaged runs.
 
+## Amendment (WAVE-08, 2026-10-05): loudness, measured in the same pass
+
+DEC-124 measures each file's loudness where its waveform is decoded, so a library is never
+read twice for it.
+
+- **`ebur128` heads the graph** (`LOUDNESS_METER`), before the downmix, so it measures the
+  file's own channels at its own rate, as BS.1770 specifies, and passes the audio through.
+  - `peak=sample`: the true peak's 4× oversampling cost 2.6 times the analysis's own time on
+    the pinned Windows build, where the sample peak costs about 1.45 times (DEC-124).
+  - `dualmono=true`: a mono file is measured as it is played, on both sides, so it reads as
+    loud as the same music in stereo. `bands.flac`, a mono fixture, reads −3.5 LUFS, not −6.5.
+  - `framelog=quiet`: its line every 100 ms is silenced; mpv's log keeps its one summary.
+- **The summary is read strictly** (`read_loudness`): exactly one, with exactly one
+  integrated value and one sample peak, each to the tenth, or nothing is read. −70.0 LUFS,
+  the meter's floor, is "too quiet" (silence, or under one 400 ms block), and a peak of −inf
+  is "silent"; neither is stored as a level. A decode whose log held no summary keeps its
+  waveform, its loudness "not measured", and says so once an engine.
+- **Every stored waveform is unchanged, byte for byte.** The meter hands the next filter
+  doubles where the file's own format was handed before, so an envelope value can differ in
+  its last float bit (at most 7 × 10⁻⁷ over every fixture and a six-minute FLAC). The picture
+  stored from it, a byte a band, is the same for every one; a test holds it on the real
+  decoder. `ANALYSIS_VERSION` stays 2, and `LOUDNESS_VERSION` 1 names what a reading means.
+- **The release check holds it on each pinned build.** `--check-analysis` generates EBU Tech
+  3341's first case, a 1 kHz sine at −23 dBFS in both channels for 20 s, and fails unless it
+  reads −23.0 LUFS and a −23.0 dBFS peak, within 0.1. The pinned Windows build reads both
+  exactly. A new pin whose meter or wording changes fails there, before it ships.
+- **What it costs.** A six-minute FLAC decoded in 0.76 s without the meter and 1.08 s with it
+  (+42%); the engine's own work is unchanged. The library's rate, two workers on the Windows
+  machine WAVE-03 measured: 5,712 and 5,977 six-minute tracks an hour, against about 8,400
+  without it, so about 8.4 to 8.8 hours for 50,000 tracks. The Library search stayed inside its
+  1.5× budget (1.07× and 1.37× idle) and playback had no underrun.
+
+## Amendment (2026-10-05): a decoder cannot outlive its engine
+
+Decoders were found idle hours after end-to-end runs whose engines had been killed:
+`terminate_children()` runs when the engine stops itself, or is stopped because its app has
+gone, but not when the engine is killed (End Task, a crash, or a process-tree kill that
+listed the processes before a decode began). On Windows each decoder now joins a job object
+the engine holds, made to kill on close, so the operating system ends every decoder with the
+engine however the engine ends. Elsewhere the pipe transport already makes a decoder whose
+engine has died fail its next write.
+
 ## Signals to revisit
 
 - **A pinned build changes behaviour:** `--check-analysis` fails on a new pin,
@@ -232,9 +276,13 @@ this decision produces.
 - **Search slows:** the engine's search p95 with analyses running exceeds 1.5×
   idle on a supported platform. Lower the worker count before changing the
   design.
-- **Phase 12 needs samples:** it measures loudness, tempo or key and needs raw
-  samples in the engine. It then brings its own case for `numpy`, measured
-  against the engine's start-up, as DEC-123 requires.
+- **Phase 12 needs samples:** it measures tempo or key and needs raw samples in
+  the engine. It then brings its own case for `numpy`, measured against the
+  engine's start-up, as DEC-123 requires. Loudness needs none: FFmpeg measures
+  it in this pass (WAVE-08).
+- **The true peak or the loudness range is wanted:** `peak=true` costs about 2.6
+  times the analysis's time on the pinned Windows build; measure it again on the
+  then-pinned builds, and bump `LOUDNESS_VERSION`.
 - **A detail view arrives:** the overview's 150 Hz envelope is too coarse for a
   zoomed view (DEC-115). A second, denser pass would be added beside this one,
   not instead of it.

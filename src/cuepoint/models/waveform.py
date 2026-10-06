@@ -14,10 +14,14 @@ Two types:
 - :class:`WaveformState` answers one track's question, "is there a waveform,
   and if not, why", from the library database and the store together, without
   touching a file.
+
+A waveform's loudness (WAVE-08, DEC-124) is measured in the pass that draws it,
+and stored beside it as a :class:`StoredLoudness`.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any, Dict, NamedTuple, Optional
 
@@ -72,6 +76,80 @@ WAVEFORM_STATES = (
 #: file check has nothing to look at, so it never writes a row.
 REASON_NO_PATH = "no_path"
 
+#: Why a measured file has no loudness value (WAVE-08). The same words as
+#: ``data/audio_decode.py``'s, which measures; a test holds them together.
+#: Below the meter's floor: silence, or shorter than one 400 ms block.
+LOUDNESS_TOO_QUIET = "too_quiet"
+#: Not one sample above zero: no value and no peak.
+LOUDNESS_SILENT = "silent"
+#: The decoder's log held no reading.
+LOUDNESS_NOT_MEASURED = "not_measured"
+
+LOUDNESS_REASONS = (LOUDNESS_TOO_QUIET, LOUDNESS_SILENT, LOUDNESS_NOT_MEASURED)
+
+
+def _measure(value: Any, name: str) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError(f"{name} must be a number, not {value!r}")
+    if not math.isfinite(value):
+        raise ValueError(f"{name} must be finite, not {value!r}")
+    return float(value)
+
+
+@dataclass(frozen=True)
+class StoredLoudness:
+    """A file's loudness, as measured with its waveform (WAVE-08).
+
+    Read-only everywhere: shown, never applied to playback or written to a file
+    (DEC-124). Either a value with its peak, or a reason without a value; a
+    file too quiet to measure may still have a peak.
+
+    Attributes:
+        loudness_version: The decoder's ``LOUDNESS_VERSION`` that measured it.
+        integrated_lufs: The whole file's integrated loudness, in LUFS.
+        peak_dbfs: Its highest sample, in dBFS.
+        reason: Why there is no value; one of :data:`LOUDNESS_REASONS`.
+    """
+
+    loudness_version: int
+    integrated_lufs: Optional[float] = None
+    peak_dbfs: Optional[float] = None
+    reason: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        """Validate the reading, as ``audio_decode.Loudness`` does."""
+        object.__setattr__(
+            self,
+            "loudness_version",
+            required_id(self.loudness_version, "loudness_version"),
+        )
+        object.__setattr__(
+            self,
+            "integrated_lufs",
+            _measure(self.integrated_lufs, "integrated_lufs"),
+        )
+        object.__setattr__(self, "peak_dbfs", _measure(self.peak_dbfs, "peak_dbfs"))
+        if self.reason is not None:
+            one_of(self.reason, LOUDNESS_REASONS, "reason")
+        if (self.reason is None) != (self.integrated_lufs is not None):
+            raise ValueError("A loudness has a value or a reason, never both")
+        if self.reason is None and self.peak_dbfs is None:
+            raise ValueError("A loudness value has its peak")
+        if self.reason in (LOUDNESS_SILENT, LOUDNESS_NOT_MEASURED) and (
+            self.peak_dbfs is not None
+        ):
+            raise ValueError(f"A {self.reason} loudness has no peak")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """The reading as the wire carries it; its version stays in the engine."""
+        return {
+            "integrated_lufs": self.integrated_lufs,
+            "peak_dbfs": self.peak_dbfs,
+            "reason": self.reason,
+        }
+
 
 @dataclass(frozen=True)
 class WaveformSummary:
@@ -86,6 +164,8 @@ class WaveformSummary:
         analysed_at: When, as ISO-8601 text.
         reason: Why a failed analysis failed. Only a failed one has one.
         duration_ms: The decoded length. Only a ready one has one.
+        loudness: Its loudness, measured from the same file in the same pass,
+            of any version; ``None`` when it was not. Only a ready one has one.
     """
 
     path: str
@@ -96,6 +176,7 @@ class WaveformSummary:
     analysed_at: str
     reason: Optional[str] = None
     duration_ms: Optional[int] = None
+    loudness: Optional[StoredLoudness] = None
 
     def __post_init__(self) -> None:
         """Validate the row, as the table's checks would."""
@@ -119,6 +200,11 @@ class WaveformSummary:
             raise ValueError("A failed analysis, and only a failed one, has a reason")
         if (self.state == STORED_READY) != (self.duration_ms is not None):
             raise ValueError("A ready analysis, and only a ready one, has a duration")
+        if self.loudness is not None:
+            if not isinstance(self.loudness, StoredLoudness):
+                raise TypeError("loudness must be a StoredLoudness")
+            if self.state != STORED_READY:
+                raise ValueError("Only a ready analysis has a loudness")
 
     @property
     def is_ready(self) -> bool:
@@ -134,6 +220,18 @@ class WaveformSummary:
         """
         return self.size_bytes == int(size_bytes) and self.mtime_ns == int(mtime_ns)
 
+    def measured(self, loudness_version: int) -> bool:
+        """True when nothing is left to measure (WAVE-08).
+
+        A failed analysis has nothing to measure; a ready one has its loudness
+        at ``loudness_version``.
+        """
+        if self.state == STORED_FAILED:
+            return True
+        return self.loudness is not None and self.loudness.loudness_version == int(
+            loudness_version
+        )
+
 
 class StoredFile(NamedTuple):
     """A current row reduced to what the analysis job's work list compares.
@@ -141,10 +239,19 @@ class StoredFile(NamedTuple):
     Attributes:
         size_bytes: The file's size when it was analysed.
         state: One of :data:`STORED_STATES`.
+        loudness_version: The version of the loudness measured with it, from
+            a file of the same size; ``None`` when there is none (WAVE-08).
     """
 
     size_bytes: int
     state: str
+    loudness_version: Optional[int] = None
+
+    def measured(self, loudness_version: int) -> bool:
+        """As :meth:`WaveformSummary.measured`: failed, or measured at this version."""
+        if self.state == STORED_FAILED:
+            return True
+        return self.loudness_version == int(loudness_version)
 
 
 @dataclass(frozen=True)
@@ -180,6 +287,7 @@ class StoredWaveform(WaveformSummary):
             analysed_at=self.analysed_at,
             reason=self.reason,
             duration_ms=self.duration_ms,
+            loudness=self.loudness,
         )
 
 
@@ -192,12 +300,15 @@ class WaveformState:
         state: One of :data:`WAVEFORM_STATES`.
         reason: Why a failed analysis failed, or why a track is missing.
         duration_ms: A ready waveform's decoded length.
+        loudness: A ready waveform's loudness at the current version, or
+            ``None`` while it is still to be measured (WAVE-08).
     """
 
     track_id: int
     state: str
     reason: Optional[str] = None
     duration_ms: Optional[int] = None
+    loudness: Optional[StoredLoudness] = None
 
     def __post_init__(self) -> None:
         """Validate the state."""
@@ -213,14 +324,17 @@ class WaveformState:
             raise ValueError(f"A {self.state} waveform state has no reason")
         if (self.state == STATE_READY) != (self.duration_ms is not None):
             raise ValueError("A ready waveform, and only a ready one, has a duration")
+        if self.loudness is not None and self.state != STATE_READY:
+            raise ValueError("Only a ready waveform has a loudness")
 
     def to_dict(self) -> Dict[str, Any]:
-        """The state as the wire will carry it (WAVE-05)."""
+        """The state as the wire carries it (WAVE-05, WAVE-08)."""
         return {
             "track_id": self.track_id,
             "state": self.state,
             "reason": self.reason,
             "duration_ms": self.duration_ms,
+            "loudness": None if self.loudness is None else self.loudness.to_dict(),
         }
 
 
@@ -311,6 +425,10 @@ class WaveformAnswer:
 __all__ = (
     "ANALYSIS_OUTCOMES",
     "AnalysisOutcome",
+    "LOUDNESS_NOT_MEASURED",
+    "LOUDNESS_REASONS",
+    "LOUDNESS_SILENT",
+    "LOUDNESS_TOO_QUIET",
     "OUTCOME_CANCELLED",
     "OUTCOME_CURRENT",
     "OUTCOME_FAILED",
@@ -329,6 +447,7 @@ __all__ = (
     "STORED_READY",
     "STORED_STATES",
     "StoredFile",
+    "StoredLoudness",
     "StoredWaveform",
     "WAVEFORM_STATES",
     "WaveformAnswer",

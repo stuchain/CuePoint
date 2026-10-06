@@ -6,14 +6,16 @@
 WAVE-03 built the analysis's three routes; WAVE-05 adds the waveforms
 themselves, requests and "Delete waveform data".
 
-- ``GET /api/v1/waveforms?track_ids=1,2&width=120&marks=0|1``: each track's
-  state, and for a ready one its duration and its picture at ``width``
-  (16–1,200) as base64, ``width × 4`` bytes: each column's full, low, mid and
-  high band. At most 200 ids. With ``marks=1``, each track's cues and every
-  grid marker. ``paused`` is the analysis's, so a ``waiting`` track can be
-  said to wait for a paused analysis. An id that is no track is listed under
-  ``unknown`` rather than refused, so one track deleted mid-scroll does not
-  refuse the 199 beside it.
+- ``GET /api/v1/waveforms?track_ids=1,2&width=120&marks=0|1&data=0|1``: each
+  track's state, and for a ready one its duration, its loudness (WAVE-08) and
+  its picture at ``width`` (16–1,200) as base64, ``width × 4`` bytes: each
+  column's full, low, mid and high band. At most 200 ids. With ``marks=1``,
+  each track's cues and every grid marker. With ``data=0``, no picture is read
+  at all, and ``width`` is neither needed nor taken: the states and loudness
+  alone, for a column that shows a number. ``paused`` is the analysis's, so a
+  ``waiting`` track can be said to wait for a paused analysis. An id that is no
+  track is listed under ``unknown`` rather than refused, so one track deleted
+  mid-scroll does not refuse the 199 beside it.
 - ``GET /api/v1/waveforms/analysis``: the analysis as a whole: ``running``,
   ``paused``, ``idle`` or ``unavailable``, with the counts, the rate, the
   running job's id and the store's size on disk.
@@ -47,7 +49,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
-from typing import Any, Callable, Dict, List, Mapping, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from cuepoint.engine.api_errors import ApiError, bad_request, error_payload, not_found
 from cuepoint.engine.jobs import JobStore
@@ -193,42 +195,46 @@ def waveforms(params: Dict[str, List[str]], store: JobStore) -> Dict[str, Any]:
     """Each track's state, picture and, when asked, marks."""
     from cuepoint.engine.waveform_jobs import analysis_paused
 
-    query = _params(params, ("track_ids", "width", "marks"))
+    query = _params(params, ("track_ids", "width", "marks", "data"))
     if "track_ids" not in query:
         raise bad_request("track_ids is required")
-    if "width" not in query:
+    with_data = _flag(query.get("data", "1"), "data")
+    if with_data and "width" not in query:
         raise bad_request("width is required")
+    if not with_data and "width" in query:
+        raise bad_request("width is only taken with the picture: drop it, or data=0")
     ids = _query_ids(query["track_ids"])
-    width = _width(query["width"])
+    width = _width(query["width"]) if with_data else None
     with_marks = _flag(query.get("marks", "0"), "marks")
 
-    answers = _resolve("IWaveformService").waveforms(ids, width)
+    service = _resolve("IWaveformService")
+    answers: List[Tuple[Any, Optional[bytes]]] = (
+        [(answer.state, answer.data) for answer in service.waveforms(ids, width)]
+        if width is not None
+        else [(state, None) for state in service.states(ids)]
+    )
     marks: Dict[int, Any] = {}
     marks_read = False
     if with_marks:
         repository = _resolve("ITrackMarksRepository")
-        found = [answer.state.track_id for answer in answers]
+        found = [state.track_id for state, _ in answers]
         marks = repository.get_many(found) if found else {}
         marks_read = bool(repository.is_read())
-    answered = {answer.state.track_id for answer in answers}
+    answered = {state.track_id for state, _ in answers}
     return {
         "width": width,
         "paused": analysis_paused(store),
         "waveforms": [
             {
-                **answer.state.to_dict(),
+                **state.to_dict(),
                 "data": (
-                    base64.b64encode(answer.data).decode("ascii")
-                    if answer.data is not None
-                    else None
+                    base64.b64encode(data).decode("ascii") if data is not None else None
                 ),
                 "marks": (
-                    marks[answer.state.track_id].drawing(marks_read)
-                    if with_marks
-                    else None
+                    marks[state.track_id].drawing(marks_read) if with_marks else None
                 ),
             }
-            for answer in answers
+            for state, data in answers
         ],
         "unknown": [track_id for track_id in ids if track_id not in answered],
     }

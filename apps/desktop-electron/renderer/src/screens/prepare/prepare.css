@@ -322,6 +322,12 @@ body.prepare-resizing {
   color: var(--fg-muted);
 }
 
+/* The track's loudness, ending the times' line (WAVE-08): a reading. */
+.prepare-transition__loudness {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
 .prepare-transition__half,
 .prepare-transition__end {
   display: block;

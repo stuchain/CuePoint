@@ -91,6 +91,7 @@ function track(overrides: Partial<WaveformTrack> = {}): WaveformTrack {
     state: "ready",
     reason: null,
     duration_ms: 20_000,
+    loudness: null,
     data: new Uint8Array(480).fill(180),
     marks: { read: true, cues: [], grid: [] },
     ...overrides,

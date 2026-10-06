@@ -4,7 +4,8 @@
  * A view names the tracks it shows and the width it draws at; this asks the
  * cache for them, re-reads as answers arrive, and tells the cache when the
  * view stops showing them. Batching, the cache's bound, the refresh of
- * waiting tracks and its emptying are all `waveformCache.ts`'s.
+ * waiting tracks and its emptying are all `waveformCache.ts`'s. A width of
+ * null asks for no picture: states and loudness alone (WAVE-08).
  */
 import { useEffect, useMemo, useReducer } from "react";
 
@@ -13,6 +14,11 @@ import { waveformCache, type WaveformCache, type WaveformEntry } from "./wavefor
 export interface UseWaveformsOptions {
   /** Ask for each track's cues and grid too. */
   marks?: boolean;
+  /**
+   * The view shows each track's loudness (WAVE-08): a ready track whose
+   * loudness is still to be measured is followed until it is.
+   */
+  loudness?: boolean;
   /**
    * Ask the engine for what the cache does not hold; true unless said. False
    * reads only what is held, as a row does before it settles (WAVE-06).
@@ -25,8 +31,8 @@ export interface UseWaveformsOptions {
 /** Each track's answer at `width`, keyed by id; loading until it arrives. */
 export function useWaveforms(
   trackIds: readonly number[],
-  width: number,
-  { marks = false, ask = true, cache = waveformCache }: UseWaveformsOptions = {},
+  width: number | null,
+  { marks = false, loudness = false, ask = true, cache = waveformCache }: UseWaveformsOptions = {},
 ): ReadonlyMap<number, WaveformEntry> {
   const [version, changed] = useReducer((n: number) => n + 1, 0);
   // A new array of the same ids is the same request.
@@ -35,29 +41,32 @@ export function useWaveforms(
     () => (idsKey ? idsKey.split(",").map(Number) : []),
     [idsKey],
   );
-  const valid = width >= 16 && width <= 1200 && Number.isInteger(width);
+  const valid = width === null || (width >= 16 && width <= 1200 && Number.isInteger(width));
 
   useEffect(() => cache.subscribe(changed), [cache]);
   useEffect(() => {
     if (!ask || !valid || ids.length === 0) return undefined;
-    return cache.show(ids, { width, marks });
-  }, [ask, cache, ids, marks, valid, width]);
+    return cache.show(ids, { width, marks, loudness });
+  }, [ask, cache, ids, loudness, marks, valid, width]);
 
   return useMemo(() => {
     const answers = new Map<number, WaveformEntry>();
     for (const trackId of ids) {
-      answers.set(trackId, valid ? cache.read(trackId, { width, marks }) : { kind: "loading" });
+      answers.set(
+        trackId,
+        valid ? cache.read(trackId, { width, marks, loudness }) : { kind: "loading" },
+      );
     }
     return answers;
     // `version` is the signal that the cache answered.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [cache, ids, marks, valid, version, width]);
+  }, [cache, ids, loudness, marks, valid, version, width]);
 }
 
 /** One track's answer, or null when no track is shown. */
 export function useWaveform(
   trackId: number | null,
-  width: number,
+  width: number | null,
   options: UseWaveformsOptions = {},
 ): WaveformEntry | null {
   const ids = useMemo(() => (trackId === null ? [] : [trackId]), [trackId]);

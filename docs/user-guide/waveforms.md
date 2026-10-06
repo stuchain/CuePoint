@@ -34,6 +34,53 @@ for more detail. A row without one shows a single muted word ("Waiting",
 waveform beside the next one's, so you can see how one track ends and the next
 begins. See [Prepare](prepare.md#the-transition-strip).
 
+## Loudness
+
+The pass that draws a track's waveform also measures how loud the track is, as
+a single number for the whole track, the way mastering engineers and streaming
+services measure it. CuePoint shows it in three places:
+
+- **The Inspector**, on one line under the waveform: "Loudness −8.4 LUFS ·
+  Peak −0.3 dBFS".
+- **The Library**: **Columns…** offers a **Loudness** column, hidden until you
+  choose it. It shows the number alone ("−8.4"), with the whole line on hover. A
+  copy of the rows carries it with its unit ("−8.4 LUFS").
+- **Prepare's transition strip**: each track's loudness ends its title line, and
+  the words between the two halves say how much louder or quieter the next
+  track is: "+2.1 LU". See [Prepare](prepare.md#the-transition-strip).
+
+**Reading the numbers.**
+
+- **LUFS** is loudness as you hear it, over the whole track: closer to zero is
+  louder. A loud club master sits around −6 to −9 LUFS; a dynamic one, or an
+  older record, around −12 to −16.
+- **The peak, in dBFS,** is the single highest sample in the file. 0.0 dBFS is
+  the most a file can hold, so a peak at or next to 0.0 means the track was
+  mastered to the top.
+- **LU** is a difference in loudness: "+2.1 LU" means the next track is 2.1 LU
+  louder than the one before it, which you would hear when you mix from one to
+  the other.
+
+Some tracks have no number, and say why:
+
+- **"Too quiet or too short to measure"** (the column says "Quiet"): silence, or
+  a file shorter than four tenths of a second, which is the shortest stretch
+  the measurement works on.
+- **"Silent"**: not one sample above zero.
+- **"Loudness is measured with the next analysis"**: the waveform is there, and
+  the loudness is still to come (see below).
+
+**It changes nothing.** CuePoint never turns a track up or down for its
+loudness, in the player or anywhere else, and never writes it to your files or
+to Rekordbox. The number is there for you to read; gain is yours and the
+mixer's. The column cannot be sorted by, for now.
+
+**A library analysed before CuePoint measured loudness** keeps every waveform.
+Each track is measured once more, in the background, after any track that has
+no waveform yet; until then its waveform is drawn as before, and the Inspector
+says the loudness is still to come. A track you select or play while it waits
+is measured first.
+
 ## What the colours mean
 
 **Settings → Waveforms** chooses one of two looks; the choice is remembered on
@@ -73,9 +120,10 @@ priority, so playback and browsing are not held up. Tracks in your Sets come
 first, then tracks in your Collections, then the rest, newest first. A track
 you play or select while it waits jumps the queue.
 
-**How long it takes.** A first analysis reads every file once. On a recent
-desktop that is about 8,000 six-minute tracks an hour, so a 50,000-track
-library takes about six hours, and a few thousand tracks take minutes. The
+**How long it takes.** A first analysis reads every file once, measuring its
+loudness as it goes. On a recent desktop that is about 6,000 six-minute tracks
+an hour, so a 50,000-track library takes about eight and a half hours, and a few
+thousand tracks take minutes. The
 status strip counts it as **Analysing waveforms · 1,234 of 50,000**; hover over
 it for the rate and the time left. After that, only new and changed files are
 analysed, and a library that has not changed is checked in moments.
@@ -121,10 +169,13 @@ Waveforms are kept in `waveforms.db`, beside your library in CuePoint's folder
 - **"Clear cache" leaves it alone**, and so does clearing the cache on exit:
   making it again takes hours.
 - **It is not in the support bundle.**
-- **About 5 KB a track**: under 250 MB for 50,000 tracks.
+- **About 5 KB a track**, its loudness included: about 250 MB for 50,000
+  tracks, and less for real music, which packs tighter than the test data
+  this was measured with.
 
-**Settings → Waveforms → Delete waveform data…** deletes it, after saying how
-much space it takes and that the whole library will be analysed again; unless
+**Settings → Waveforms → Delete waveform data…** deletes it, the loudness
+measured with each waveform too, after saying how much space it takes and that
+the whole library will be analysed again; unless
 the analysis is paused, that starts at once. Your cue points, beat grids and
 everything else in your library are untouched. You never need this to fix a
 changed file.

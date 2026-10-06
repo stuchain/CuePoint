@@ -14,6 +14,11 @@
  *
  * Without a waveform the box says why in words. A track shown here that waits
  * for the analysis is put first in its queue.
+ *
+ * Under it, one line of loudness (WAVE-08): "Loudness −8.4 LUFS · Peak −0.3
+ * dBFS", or why there is none. Shown, never applied. A track whose waveform is
+ * stored but whose loudness is still to be measured waits for it here too, and
+ * is put first in the queue as a waiting track is.
  */
 import type { MouseEvent } from "react";
 
@@ -25,6 +30,7 @@ import {
   WAVEFORM_LOADING_WORDS,
   waveformEntryWords,
 } from "../../components/waveform/analysisWords";
+import { loudnessLine } from "../../components/waveform/loudnessWords";
 import { useWaveform } from "../../components/waveform/useWaveforms";
 import { useWaveformRequest } from "../../components/waveform/useWaveformRequest";
 import { WaveformCanvas } from "../../components/waveform/WaveformCanvas";
@@ -33,8 +39,8 @@ import { secondsAtOffset } from "../../components/waveform/waveformLayout";
 
 export function TrackWaveform({ trackId }: { trackId: number }) {
   const { box, width } = useWaveformBox<HTMLDivElement>();
-  const entry = useWaveform(trackId, width, { marks: true });
-  useWaveformRequest(trackId, entry);
+  const entry = useWaveform(trackId, width, { marks: true, loudness: true });
+  useWaveformRequest(trackId, entry, { loudness: true });
 
   const current = usePlayerValue(selectCurrentItem);
   const position = usePlayerValue(selectPosition);
@@ -46,6 +52,7 @@ export function TrackWaveform({ trackId }: { trackId: number }) {
   const picture = track?.state === "ready" ? track.data : null;
   const words = picture ? null : (waveformEntryWords(entry) ?? WAVEFORM_LOADING_WORDS);
   const durationMs = playing ? playerSeconds * 1000 : (track?.duration_ms ?? 0);
+  const loudness = loudnessLine(track);
 
   const seek = (event: MouseEvent<HTMLDivElement>) => {
     if (!playing || !picture) return;
@@ -77,6 +84,11 @@ export function TrackWaveform({ trackId }: { trackId: number }) {
           <p className="cp-track-waveform__words">{words}</p>
         )}
       </div>
+      {loudness ? (
+        <p className="cp-track-waveform__loudness" data-testid="inspector-loudness">
+          {loudness}
+        </p>
+      ) : null}
     </section>
   );
 }

@@ -6,8 +6,9 @@ Measure the waveform store at a large library's size (WAVE-02).
 
 Every number WAVE-02's acceptance asks for, taken rather than assumed:
 
-- **The store's size** holding ``--tracks`` waveforms (default 50,000),
-  checkpointed, against a budget of 250 MB. The waveforms are synthetic, one per
+- **The store's size** holding ``--tracks`` waveforms (default 50,000), each
+  with its loudness (WAVE-08), checkpointed, against a budget of 260 MB: 250
+  for the waveforms (WAVE-02) and 10 for the loudness table (WAVE-08). The waveforms are synthetic, one per
   track, made at the column level from a model of dance music: sections of
   different loudness, a beat the columns sample at varying phase, and noise in
   every band. The noise makes them compress worse than the music they model, so
@@ -50,10 +51,14 @@ _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT / "src"))
 
 from cuepoint.core.waveform import BAND_COUNT, COLUMNS, Waveform, compand, encode  # noqa: E402
-from cuepoint.data.audio_decode import ANALYSIS_VERSION  # noqa: E402
+from cuepoint.data.audio_decode import ANALYSIS_VERSION, LOUDNESS_VERSION  # noqa: E402
 from cuepoint.models.file_status import FILE_PRESENT, TrackFileStatus  # noqa: E402
 from cuepoint.models.library_track import LibraryTrack  # noqa: E402
-from cuepoint.models.waveform import STORED_READY, StoredWaveform  # noqa: E402
+from cuepoint.models.waveform import (  # noqa: E402
+    STORED_READY,
+    StoredLoudness,
+    StoredWaveform,
+)
 from cuepoint.persistence.file_status_repository import FileStatusRepository  # noqa: E402
 from cuepoint.persistence.track_repository import TrackRepository  # noqa: E402
 from cuepoint.persistence.waveform_store import (  # noqa: E402
@@ -69,7 +74,13 @@ BATCH = 200
 LIBRARY_WIDTH = 120
 REPEATS = 30
 
-SIZE_BUDGET_MB = 250.0
+#: WAVE-02's budget for the waveforms themselves.
+WAVEFORMS_BUDGET_MB = 250.0
+#: WAVE-08's loudness table (DEC-124), keyed by path as the waveforms are, so a
+#: reading costs what its path does: 5.9 MB measured at 50,000, budgeted at 10.
+LOUDNESS_BUDGET_MB = 10.0
+#: The whole store: 5.2 KB a track.
+SIZE_BUDGET_MB = WAVEFORMS_BUDGET_MB + LOUDNESS_BUDGET_MB
 BATCH_BUDGET_MS = 50.0
 ONE_BUDGET_MS = 20.0
 
@@ -167,6 +178,12 @@ def build(workspace: Path, total: int, worst_case: bool) -> Dict[str, Any]:
                     analysed_at=_NOW,
                     duration_ms=waveform.duration_ms,
                     data=blob,
+                    # A club master's reading, as every analysed file has one.
+                    loudness=StoredLoudness(
+                        LOUDNESS_VERSION,
+                        round(-14.0 + generator.random() * 8.0, 1),
+                        round(-2.0 + generator.random() * 2.0, 1),
+                    ),
                 )
             )
         connection.execute("COMMIT")

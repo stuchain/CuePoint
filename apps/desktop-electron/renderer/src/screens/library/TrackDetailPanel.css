@@ -165,6 +165,15 @@
   font-size: var(--font-size-xs);
 }
 
+/* The track's loudness, under its waveform (WAVE-08): a reading, in the data
+   face, muted like the marks' note. */
+.cp-track-waveform__loudness {
+  margin: var(--space-xs) 0 0;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+}
+
 /*
  * Cue points and the beat grid (WAVE-04). Rekordbox's records, read-only, in
  * the imported zone's type. The swatch is the one colour here that is not a

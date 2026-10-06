@@ -28,6 +28,10 @@ What is in it, and why:
   other state answers the same without a decoder.
 * **batch_with_marks**: the ready track with a hot cue, a memory cue, a loop
   and a grid that changes tempo, as ``marks=1`` sends them.
+* **batch_loudness** (WAVE-08): ``data=0``, states and loudness with no
+  picture, for a track measured, one too quiet to measure, one silent, one
+  whose waveform is stored but whose loudness is still to be measured, and one
+  waiting.
 * **analysis**, **requested** and **deleted**: the analysis paused, a request
   while paused, and "Delete waveform data" while paused, so nothing runs
   after it.
@@ -51,7 +55,13 @@ from typing import Any, Dict
 
 import pytest
 
-from cuepoint.data.audio_decode import DecodeFailed, Envelope
+from cuepoint.data.audio_decode import (
+    LOUDNESS_SILENT,
+    LOUDNESS_TOO_QUIET,
+    DecodeFailed,
+    Envelope,
+    Loudness,
+)
 from cuepoint.engine.waveforms_api import (
     ANALYSIS_PATH,
     DELETE_DATA_PATH,
@@ -62,6 +72,7 @@ from cuepoint.engine.waveforms_api import (
 from cuepoint.models.file_status import FILE_MISSING, TrackFileStatus
 from cuepoint.persistence.waveform_store import WaveformStoreError
 from tests.fixtures.job_settling import wait_until_settled
+from tests.fixtures.waveform_library import envelope
 from tests.unit.engine.test_waveforms_api import (  # noqa: F401 — fixtures by name
     engine,
     lib,
@@ -107,7 +118,7 @@ def sections() -> Envelope:
             values.extend([level] * SECTION)
         bands.append(array("f", values))
     full = array("f", (max(values) for values in zip(*bands)))
-    return Envelope(RATE, full, *bands)
+    return Envelope(RATE, full, *bands, loudness=Loudness(-7.9, -0.2, None))
 
 
 def stable(value: Any) -> Any:
@@ -144,10 +155,22 @@ def answers(lib, engine, services, monkeypatch):  # noqa: F811 — fixtures by n
     for name in ("ready", "failed", "missing", "waiting"):
         lib.add(name)
     lib.add("unchecked", checked=False)
+    for name in ("quiet", "silent", "unmeasured"):
+        lib.add(name)
     lib.decoder.answers[str(lib.path("ready"))] = sections()
     lib.decoder.answers[str(lib.path("failed"))] = DecodeFailed("undecodable", "stub")
-    for name in ("ready", "failed"):
+    lib.decoder.answers[str(lib.path("quiet"))] = envelope(
+        loudness=Loudness(None, -31.0, LOUDNESS_TOO_QUIET)
+    )
+    lib.decoder.answers[str(lib.path("silent"))] = envelope(
+        level=0.0, loudness=Loudness(None, None, LOUDNESS_SILENT)
+    )
+    for name in ("ready", "failed", "quiet", "silent", "unmeasured"):
         lib.waveforms.analyse(lib.id(name))
+    # A waveform stored before WAVE-08 measured loudness.
+    lib.store.connect().execute(
+        "DELETE FROM loudness WHERE path = ?", (str(lib.path("unmeasured")),)
+    )
     lib.files.record(
         [
             TrackFileStatus(
@@ -177,9 +200,17 @@ def answers(lib, engine, services, monkeypatch):  # noqa: F811 — fixtures by n
             engine.call(f"{WAVEFORMS_PATH}?track_ids={query}&width=120&marks={marks}")
         )
 
+    measured = [
+        lib.id(n) for n in ("ready", "quiet", "silent", "unmeasured", "waiting")
+    ]
     made: Dict[str, Any] = {
         "batch": read([*ids, 999_999]),
         "batch_with_marks": read([lib.id("ready")], marks=1),
+        "batch_loudness": ok(
+            engine.call(
+                f"{WAVEFORMS_PATH}?track_ids={','.join(map(str, measured))}&data=0"
+            )
+        ),
     }
     lib.decoder_path = None
     made["batch_without_decoder"] = read([lib.id("waiting")])
@@ -240,6 +271,20 @@ def test_its_ready_picture_is_the_four_sections(answers):
     assert set(loud[32:58]) == {2}
     assert set(loud[62:88]) == {3}
     assert all(min(column[1:]) > 200 for column in columns[92:118])
+
+
+def test_it_holds_each_loudness_without_a_picture(answers):
+    batch = answers["batch_loudness"]
+    assert batch["width"] is None
+    assert all(track["data"] is None for track in batch["waveforms"])
+    assert [(t["state"], t["loudness"]) for t in batch["waveforms"]] == [
+        ("ready", {"integrated_lufs": -7.9, "peak_dbfs": -0.2, "reason": None}),
+        ("ready", {"integrated_lufs": None, "peak_dbfs": -31.0, "reason": "too_quiet"}),
+        ("ready", {"integrated_lufs": None, "peak_dbfs": None, "reason": "silent"}),
+        ("ready", None),
+        ("waiting", None),
+    ]
+    assert answers["batch"]["waveforms"][0]["loudness"]["integrated_lufs"] == -7.9
 
 
 def test_its_refusals_are_named(answers):

@@ -9,9 +9,10 @@ numbers the docs record can be taken again rather than trusted. Each is the
 code the app runs, over a library and a waveform store built in a temporary
 folder; nothing touches ``~/.cuepoint`` and nothing decodes audio.
 
-- **The store's size** holding one waveform for each of ``--tracks`` tracks,
-  against WAVE-02's 250 MB at 50,000: 5 KB a track, so a smaller run is held
-  to the same rate. The waveforms are ``bench_waveform_store``'s synthetic
+- **The store's size** holding one waveform and its loudness for each of
+  ``--tracks`` tracks, against 260 MB at 50,000 (WAVE-02's 250 for the
+  waveforms, and 10 for WAVE-08's loudness table): 5.2 KB a track, so a
+  smaller run is held to the same rate. The waveforms are ``bench_waveform_store``'s synthetic
   ones, which compress worse than music.
 - **200 pictures at width 120** (the Library column's batch) and **200
   states**, against WAVE-02's 50 ms at p95.
@@ -81,7 +82,7 @@ REPEATS = 30
 #: Each work-list query reads the whole library; fewer repeats keep a run short.
 WORK_REPEATS = 10
 
-#: WAVE-02's 250 MB at 50,000 tracks, as a rate.
+#: The store's budget at 50,000 tracks (WAVE-02's, and WAVE-08's table), as a rate.
 SIZE_BUDGET_KB_PER_TRACK = bench_waveform_store.SIZE_BUDGET_MB * 1000 / 50_000
 BATCH_BUDGET_MS = bench_waveform_store.BATCH_BUDGET_MS
 ONE_BUDGET_MS = bench_waveform_store.ONE_BUDGET_MS

@@ -3189,6 +3189,14 @@ own acceptance, which this document asked to be closed before "Play Set" was wir
     4), and 5 with the lanes. A double-click on a partly cut row plays that row, on Prepare and in the
     Library. The Windows counts, which `prepare.spec.ts` expects one lower, and the macOS focus-scroll
     half are owed.
+    - **The Windows counts, recorded at WAVE-08 (2026-10-05)** in the development build: 6 whole rows
+      with the sidebar expanded and 7 as a rail (floor 5, met), 3 and 4 with the player's bar, 3 and 4
+      with the lanes. Expanded is two below Linux, not one: the Set pane is then 317 CSS pixels wide,
+      and at Windows' font metrics the header over the table wraps one line more (24 px), which is a
+      row. WAVE-06's commit measures the same, so nothing since Phase 10 cost it. `prepare.spec.ts`
+      now holds each platform's own counts (Linux's as before; Windows's, and macOS's until measured,
+      as above). It had been failing on Windows since PREP-11, on the lanes' count, which stopped it
+      before the rest were checked.
 14. **Met.** CLEAN-10's file-write boundary test names every module that can write, with
     `data/set_list_file.py` as a text writer that opens no audio file. Both journeys assert the source
     XML is byte for byte unchanged after every Phase 10 action.

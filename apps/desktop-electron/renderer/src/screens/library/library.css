@@ -417,3 +417,13 @@
   text-overflow: ellipsis;
   color: var(--fg-muted);
 }
+
+/* A row's loudness (WAVE-08): a number, in the data face, its tenths aligned. */
+.library-cell__loudness {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.library-cell__loudness--word {
+  color: var(--fg-muted);
+}

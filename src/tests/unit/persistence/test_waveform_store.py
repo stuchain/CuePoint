@@ -29,9 +29,12 @@ from pathlib import Path
 import pytest
 
 from cuepoint.models.waveform import (
+    LOUDNESS_SILENT,
+    LOUDNESS_TOO_QUIET,
     STORED_FAILED,
     STORED_READY,
     StoredFile,
+    StoredLoudness,
     StoredWaveform,
     WaveformSummary,
 )
@@ -191,7 +194,7 @@ class TestTheSchema:
         journal = connection.execute("PRAGMA journal_mode").fetchone()[0]
         connection.close()
 
-        assert tables == {"meta", "waveforms"}
+        assert tables == {"meta", "waveforms", "loudness"}
         assert version == (str(SCHEMA_VERSION),)
         assert columns == [
             "path",
@@ -468,6 +471,22 @@ class TestTheAnalysisJobsReads:
         connection.close()
 
         assert "COVERING INDEX waveforms_work" in plan
+
+    def test_current_files_with_its_loudness_still_reads_the_index_alone(
+        self, store, store_path
+    ):
+        store.count()
+        connection = raw(store_path)
+        plan = [
+            str(row[-1])
+            for row in connection.execute(
+                "EXPLAIN QUERY PLAN " + module._CURRENT_FILES, (1,)
+            )
+        ]
+        connection.close()
+
+        assert "COVERING INDEX waveforms_work" in plan[0]
+        assert "PRIMARY KEY" in plan[1]
 
     def test_paths_answers_every_version(self, store):
         store.put(ready("/music/a.flac"))
@@ -974,6 +993,8 @@ class TestDeletingTheData:
         store.put(ready())
 
         class Refusing:
+            in_transaction = False
+
             def execute(self, sql, *args):
                 raise sqlite3.OperationalError("disk I/O error")
 
@@ -981,3 +1002,248 @@ class TestDeletingTheData:
 
         with pytest.raises(WaveformStoreError):
             store.clear()
+
+
+def loud(version: int = 1, **overrides) -> StoredLoudness:
+    values = dict(
+        loudness_version=version, integrated_lufs=-8.4, peak_dbfs=-0.3, reason=None
+    )
+    values.update(overrides)
+    return StoredLoudness(**values)
+
+
+@pytest.mark.unit
+class TestLoudness:
+    """WAVE-08: each waveform's loudness, in a table beside it (DEC-124)."""
+
+    def test_its_table(self, store, store_path):
+        store.count()
+        connection = raw(store_path)
+        columns = [row[1] for row in connection.execute("PRAGMA table_info(loudness)")]
+        sql = connection.execute(
+            "SELECT sql FROM sqlite_master WHERE name = 'loudness'"
+        ).fetchone()[0]
+        connection.close()
+
+        assert columns == [
+            "path",
+            "size_bytes",
+            "mtime_ns",
+            "loudness_version",
+            "integrated_lufs",
+            "peak_dbfs",
+            "reason",
+        ]
+        assert "WITHOUT ROWID" in sql
+
+    def test_a_store_made_before_it_gains_it_and_keeps_every_waveform(
+        self, store, store_path
+    ):
+        for name in ("a", "b"):
+            store.put(ready(f"/music/{name}.flac"))
+        store.put(failed("/music/c.mp3"))
+        store.close_all()
+        connection = raw(store_path)
+        connection.execute("DROP TABLE loudness")
+        connection.commit()
+        connection.close()
+
+        reopened = WaveformStore(store_path)
+        try:
+            files = reopened.current_files(1)
+            reopened.put(ready("/music/a.flac", loudness=loud()))
+            kept = reopened.get("/music/b.flac", 1)
+            measured = reopened.get("/music/a.flac", 1)
+        finally:
+            reopened.close_all()
+
+        assert files == {
+            "/music/a.flac": StoredFile(1_000, STORED_READY),
+            "/music/b.flac": StoredFile(1_000, STORED_READY),
+            "/music/c.mp3": StoredFile(10, STORED_FAILED),
+        }
+        assert kept is not None and kept.data is not None and kept.loudness is None
+        assert measured is not None and measured.loudness == loud()
+
+    @pytest.mark.parametrize(
+        "reading",
+        [
+            loud(),
+            loud(integrated_lufs=None, peak_dbfs=-4.3, reason=LOUDNESS_TOO_QUIET),
+            loud(integrated_lufs=None, peak_dbfs=None, reason=LOUDNESS_SILENT),
+        ],
+        ids=["value", "too-quiet", "silent"],
+    )
+    def test_a_reading_round_trips_with_its_waveform(self, store, reading):
+        store.put(ready(loudness=reading))
+        path = "/music/a.flac"
+
+        assert store.get(path, 1).loudness == reading
+        assert store.summaries([path], 1)[path].loudness == reading
+        assert store.get_many([path], 1)[path].loudness == reading
+
+    def test_a_put_without_a_reading_deletes_the_old_one(self, store):
+        store.put(ready(loudness=loud()))
+        store.put(failed("/music/a.flac"))
+
+        assert store.loudness_count() == 0
+        store.put(ready(loudness=loud()))
+        store.put(ready())
+
+        assert store.loudness_count() == 0
+        assert store.get("/music/a.flac", 1).loudness is None
+
+    def test_a_reading_of_another_version_of_the_file_is_never_read(
+        self, store, store_path
+    ):
+        store.put(ready("/music/a.flac", loudness=loud()))
+        store.put(ready("/music/b.flac", loudness=loud()))
+        store.close_all()
+        connection = raw(store_path)
+        update = "UPDATE loudness SET {} = 1 WHERE path = ?"
+        connection.execute(update.format("size_bytes"), ("/music/a.flac",))
+        connection.execute(update.format("mtime_ns"), ("/music/b.flac",))
+        connection.commit()
+        connection.close()
+
+        summaries = store.summaries(["/music/a.flac", "/music/b.flac"], 1)
+        files = store.current_files(1)
+
+        assert summaries["/music/a.flac"].loudness is None
+        assert summaries["/music/b.flac"].loudness is None
+        # The work list joins on the size its index holds; the time is the
+        # analysis's to compare, with a fresh stat.
+        assert files["/music/a.flac"].loudness_version is None
+        assert files["/music/b.flac"].loudness_version == 1
+
+    def test_the_work_list_says_each_readings_version(self, store):
+        store.put(ready("/music/a.flac", loudness=loud()))
+        store.put(ready("/music/b.flac", loudness=loud(version=7)))
+        store.put(ready("/music/c.flac"))
+        store.put(failed("/music/d.mp3"))
+
+        assert store.current_files(1) == {
+            "/music/a.flac": StoredFile(1_000, STORED_READY, 1),
+            "/music/b.flac": StoredFile(1_000, STORED_READY, 7),
+            "/music/c.flac": StoredFile(1_000, STORED_READY, None),
+            "/music/d.mp3": StoredFile(10, STORED_FAILED, None),
+        }
+
+    def test_a_reading_is_written_with_its_waveform_or_not_at_all(
+        self, store, store_path
+    ):
+        store.put(ready("/music/a.flac", size_bytes=1, loudness=loud()))
+        store.close_all()
+        connection = raw(store_path)
+        connection.execute(
+            "CREATE TRIGGER refuse BEFORE UPDATE ON loudness"
+            " BEGIN SELECT RAISE(ABORT, 'refused'); END"
+        )
+        connection.commit()
+        connection.close()
+
+        with pytest.raises(WaveformStoreError):
+            store.put(ready("/music/a.flac", size_bytes=2, loudness=loud(version=2)))
+
+        kept = store.get("/music/a.flac", 1)
+        assert kept.size_bytes == 1
+        assert kept.loudness == loud()
+
+    def test_a_reading_the_model_refuses_reads_as_none(self, store, store_path, logs):
+        store.put(ready(loudness=loud()))
+        store.close_all()
+        connection = raw(store_path)
+        connection.execute(
+            "UPDATE loudness SET reason = 'loud', integrated_lufs = NULL"
+        )
+        connection.commit()
+        connection.close()
+
+        found = store.get("/music/a.flac", 1)
+
+        assert found is not None and found.data is not None
+        assert found.loudness is None
+        assert "A stored loudness was refused" in logs.text
+
+    @pytest.mark.parametrize(
+        "values",
+        [
+            ("/a", 1, 1, 0, -8.0, -1.0, None),
+            ("/a", 1, 1, 1, None, -1.0, None),
+            ("/a", 1, 1, 1, -8.0, -1.0, "too_quiet"),
+            ("/a", 1, 1, 1, -8.0, None, None),
+            ("/a", 1, 1, 1, None, None, ""),
+            ("", 1, 1, 1, -8.0, -1.0, None),
+        ],
+        ids=["version", "no-value", "both", "no-peak", "empty-reason", "empty-path"],
+    )
+    def test_each_check_refuses_what_it_should(self, store, store_path, values):
+        store.count()
+        connection = raw(store_path)
+        try:
+            with pytest.raises(sqlite3.IntegrityError):
+                connection.execute(
+                    "INSERT INTO loudness VALUES (?, ?, ?, ?, ?, ?, ?)", values
+                )
+        finally:
+            connection.close()
+
+    def test_writes_inside_a_callers_transaction_are_kept_by_its_commit(self, store):
+        """Regression: a bulk load wraps its writes in one transaction.
+
+        WAVE-08's writes became two statements in a transaction of their own,
+        and a ``BEGIN`` inside a caller's ``BEGIN`` is refused by SQLite: the
+        store bench, which loads 5,000 rows a transaction, stopped at its first.
+        """
+        connection = store.connect()
+        connection.execute("BEGIN")
+        store.put(ready("/music/a.flac", loudness=loud()))
+        store.put(ready("/music/b.flac", loudness=loud()))
+        store.delete("/music/b.flac")
+        store.delete_paths(["/music/none.flac"])
+        connection.execute("COMMIT")
+
+        assert store.paths() == ["/music/a.flac"]
+        assert store.loudness_count() == 1
+
+    def test_a_caller_rolling_back_takes_the_writes_with_it(self, store):
+        connection = store.connect()
+        connection.execute("BEGIN")
+        store.put(ready("/music/a.flac", loudness=loud()))
+        connection.execute("ROLLBACK")
+
+        assert store.count() == 0 and store.loudness_count() == 0
+
+    def test_a_failed_write_inside_a_callers_transaction_undoes_only_itself(
+        self, store, store_path
+    ):
+        store.put(ready("/music/kept.flac", size_bytes=1, loudness=loud()))
+        store.close_all()
+        connection = raw(store_path)
+        connection.execute(
+            "CREATE TRIGGER refuse BEFORE UPDATE ON loudness"
+            " BEGIN SELECT RAISE(ABORT, 'refused'); END"
+        )
+        connection.commit()
+        connection.close()
+
+        connection = store.connect()
+        connection.execute("BEGIN")
+        store.put(ready("/music/new.flac", loudness=loud()))
+        with pytest.raises(WaveformStoreError):
+            store.put(ready("/music/kept.flac", size_bytes=2, loudness=loud(version=2)))
+        connection.execute("COMMIT")
+
+        assert sorted(store.paths()) == ["/music/kept.flac", "/music/new.flac"]
+        assert store.get("/music/kept.flac", 1).size_bytes == 1
+
+    def test_deleting_a_waveform_deletes_its_reading(self, store):
+        for name in ("a", "b", "c", "d"):
+            store.put(ready(f"/music/{name}.flac", loudness=loud()))
+
+        store.delete("/music/a.flac")
+        store.delete_paths(["/music/b.flac", "/music/c.flac"])
+
+        assert store.loudness_count() == 1
+        store.clear()
+        assert store.loudness_count() == 0

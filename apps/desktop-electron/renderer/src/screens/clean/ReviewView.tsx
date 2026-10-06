@@ -35,7 +35,7 @@ import { SelectionActions } from "../library/SelectionActions";
 import { TrackDetailPanel } from "../library/TrackDetailPanel";
 import { batchSelection } from "../library/libraryBatch";
 import { queryKey, type SortDirection } from "../library/libraryQuery";
-import { copySummary, tracksAsText, writeClipboard } from "../library/trackClipboard";
+import { copySummary, gatherTracksAsText, writeClipboard } from "../library/trackClipboard";
 import { EMPTY_SELECTION, onlySelectedId, selectAll } from "../library/trackSelection";
 import { useTrackDetail } from "../library/useTrackDetail";
 import { useTrackSelection } from "../library/useTrackSelection";
@@ -427,7 +427,7 @@ export function ReviewView({
     setCopying(true);
     try {
       const rows = await selection.gatherRows();
-      const text = tracksAsText(columns.visible, rows);
+      const text = await gatherTracksAsText(columns.visible, rows);
       const wrote = text === "" ? false : await writeClipboard(text);
       push(
         wrote ? copySummary(rows.length, selection.count) : "Could not copy to the clipboard",

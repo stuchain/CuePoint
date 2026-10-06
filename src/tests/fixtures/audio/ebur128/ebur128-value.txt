@@ -1,0 +1,15 @@
+[   0.020][i][cplayer] AO: [pcm] 150Hz quad 4ch float
+[   0.031][v][ffmpeg] Parsed_ebur128_0: Summary:
+[   0.031][v][ffmpeg]
+[   0.031][v][ffmpeg]   Integrated loudness:
+[   0.031][v][ffmpeg]     I:          -3.5 LUFS
+[   0.031][v][ffmpeg]     Threshold: -13.5 LUFS
+[   0.031][v][ffmpeg]
+[   0.031][v][ffmpeg]   Loudness range:
+[   0.031][v][ffmpeg]     LRA:         4.1 LU
+[   0.031][v][ffmpeg]     Threshold: -23.7 LUFS
+[   0.031][v][ffmpeg]     LRA low:    -6.0 LUFS
+[   0.031][v][ffmpeg]     LRA high:   -1.9 LUFS
+[   0.031][v][ffmpeg]
+[   0.031][v][ffmpeg]   Sample peak:
+[   0.031][v][ffmpeg]     Peak:       -4.3 dBFS

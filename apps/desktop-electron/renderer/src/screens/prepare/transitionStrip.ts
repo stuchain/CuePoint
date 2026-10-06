@@ -15,6 +15,9 @@
  * - **Its shading:** the planned times in milliseconds, for the drawing's
  *   regions before the in and after the out. Planned times are text as well as
  *   shading, because no picture is the only place a fact appears (DEC-120).
+ * - **Its loudness** (WAVE-08): the words gain how much louder the next track
+ *   sits than the selected one, "+2.1 LU", when both are measured.
+ *   `loudnessWords.ts` says each number.
  */
 import type { SetEntry } from "../../api/cuepointBridge.types";
 import { formatTime } from "./setTime";
@@ -92,10 +95,15 @@ export function inWords(half: TransitionHalf): string {
   return `In ${formatTime(half.inSeconds ?? 0)}`;
 }
 
-/** The words between the halves, in reading order. */
-export function transitionWords(transition: Transition): string[] {
+/**
+ * The words between the halves, in reading order, ending with the loudness
+ * difference when there is one (WAVE-08): "Out 5:42 → In 0:16 · +2.1 LU".
+ */
+export function transitionWords(transition: Transition, difference: string | null = null): string[] {
   const out = outWords(transition.from);
-  return transition.to ? [out, "→", inWords(transition.to)] : [out];
+  if (!transition.to) return [out];
+  const words = [out, "→", inWords(transition.to)];
+  return difference ? [...words, "·", difference] : words;
 }
 
 /** The shading of a half: the planned in and out in milliseconds, or null where nothing is shaded. */

@@ -14,7 +14,10 @@ for the next file one at a time:
    counts, in the analysis's order (Sets, then Collections, then the newest),
    leaving out every path the run has already taken. So a track imported while
    the run goes is analysed in the same run, and a run asked for again while it
-   goes is already doing what was asked.
+   goes is already doing what was asked. After every file with no waveform
+   come the files whose waveform has no loudness yet (WAVE-08), in the same
+   order: a library analysed before loudness was measured has it measured in
+   the background, its waveforms drawn throughout.
 3. **Then, after a whole-library file check, every analysed file again**
    (``verify``), each only ``stat``ed unless it changed. The check records a
    size but no modified time, so a file rewritten at the same size is found
@@ -51,7 +54,7 @@ import time
 from collections import deque
 from typing import Callable, Deque, Iterable, List, Optional, Protocol, Set
 
-from cuepoint.data.audio_decode import ANALYSIS_VERSION
+from cuepoint.data.audio_decode import ANALYSIS_VERSION, LOUDNESS_VERSION
 from cuepoint.models.waveform import (
     OUTCOME_CANCELLED,
     OUTCOME_CURRENT,
@@ -190,6 +193,7 @@ class WaveformAnalysisService(IWaveformAnalysisService):
         activity_service: Optional[IActivityService] = None,
         *,
         analysis_version: int = ANALYSIS_VERSION,
+        loudness_version: int = LOUDNESS_VERSION,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         """Wire the service.
@@ -201,6 +205,8 @@ class WaveformAnalysisService(IWaveformAnalysisService):
             activity_service: Where each run is recorded. Without one, nothing
                 is.
             analysis_version: The version whose rows count.
+            loudness_version: The loudness version a ready row must have
+                measured to be done (WAVE-08).
             clock: Times the rate and the progress reports.
         """
         self._work = work_repository
@@ -208,6 +214,7 @@ class WaveformAnalysisService(IWaveformAnalysisService):
         self._waveforms = waveform_service
         self._activity = activity_service
         self._version = int(analysis_version)
+        self._loudness_version = int(loudness_version)
         self._clock = clock
 
     def decoder_available(self) -> bool:
@@ -226,6 +233,12 @@ class WaveformAnalysisService(IWaveformAnalysisService):
         the version. Tracks that share a path are counted each, and analysed
         once.
 
+        A file is done when its row counts and has nothing left to measure:
+        failed, or ready with its loudness at the current version (WAVE-08).
+        ``pending`` holds the files with no row that counts first, then those
+        whose row counts but whose loudness is still to be measured; both are
+        remaining.
+
         Args:
             exclude: Paths a run has already taken, left out of ``pending`` and
                 ``verify`` but still counted.
@@ -238,7 +251,8 @@ class WaveformAnalysisService(IWaveformAnalysisService):
         stored = self._store.current_files(self._version)
         skip: Set[str] = exclude if isinstance(exclude, set) else set(exclude)
         analysed = failed = pending_total = 0
-        pending: List[WorkItem] = []
+        unanalysed: List[WorkItem] = []
+        unmeasured: List[WorkItem] = []
         verify: List[WorkItem] = []
         seen: Set[str] = set()
         for found in present:
@@ -246,7 +260,8 @@ class WaveformAnalysisService(IWaveformAnalysisService):
             counts = row is not None and (
                 found.size_bytes is None or row.size_bytes == found.size_bytes
             )
-            if counts:
+            done = counts and row is not None and row.measured(self._loudness_version)
+            if done:
                 assert row is not None
                 if row.state == STORED_READY:
                     analysed += 1
@@ -256,18 +271,21 @@ class WaveformAnalysisService(IWaveformAnalysisService):
                 continue
             seen.add(found.path)
             item = WorkItem(found.track_id, found.path)
-            if counts:
+            if done:
                 if len(verify) < limit:
                     verify.append(item)
-            else:
-                pending_total += 1
-                if len(pending) < limit:
-                    pending.append(item)
+                continue
+            pending_total += 1
+            if not counts:
+                if len(unanalysed) < limit:
+                    unanalysed.append(item)
+            elif len(unanalysed) + len(unmeasured) < limit:
+                unmeasured.append(item)
         return WorkPlan(
             present=len(present),
             analysed=analysed,
             failed=failed,
-            pending=tuple(pending),
+            pending=tuple((unanalysed + unmeasured)[:limit]),
             verify=tuple(verify),
             pending_total=pending_total,
         )

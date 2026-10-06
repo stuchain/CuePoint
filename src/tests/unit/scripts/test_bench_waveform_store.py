@@ -34,7 +34,10 @@ bench = _load()
 
 
 def test_the_budgets_are_the_specifications():
-    assert bench.SIZE_BUDGET_MB == 250
+    assert bench.WAVEFORMS_BUDGET_MB == 250
+    # WAVE-08: the loudness table, 5.9 MB measured at 50,000.
+    assert bench.LOUDNESS_BUDGET_MB == 10
+    assert bench.SIZE_BUDGET_MB == 260
     assert bench.BATCH_BUDGET_MS == 50
     assert bench.ONE_BUDGET_MS == 20
     assert bench.DEFAULT_TRACKS == 50_000

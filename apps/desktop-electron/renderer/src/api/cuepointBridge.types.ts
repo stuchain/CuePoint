@@ -2786,6 +2786,22 @@ export interface WaveformMarks {
   grid: BeatGridMarker[];
 }
 
+/** Why a measured track has no loudness value (WAVE-08). */
+export type WaveformLoudnessReason = "too_quiet" | "silent" | "not_measured";
+
+/**
+ * A track's loudness, measured with its waveform (WAVE-08, DEC-124): shown,
+ * never applied. A value with its peak, or a reason; a track too quiet to
+ * measure may still have a peak.
+ */
+export interface WaveformLoudness {
+  /** The whole track's integrated loudness, in LUFS, to 0.1. */
+  integrated_lufs: number | null;
+  /** Its highest sample, in dBFS, to 0.1. */
+  peak_dbfs: number | null;
+  reason: WaveformLoudnessReason | null;
+}
+
 /** One track's answer from `waveforms.get`. */
 export interface WaveformTrack {
   track_id: number;
@@ -2794,6 +2810,8 @@ export interface WaveformTrack {
   reason: string | null;
   /** A ready waveform's own length. */
   duration_ms: number | null;
+  /** A ready waveform's loudness; null while it is still to be measured. */
+  loudness: WaveformLoudness | null;
   /**
    * A ready waveform at the width asked: `width × 4` bytes, each column's full,
    * low, mid and high band, 0–255. Decoded from the engine's base64 in main, so
@@ -2804,9 +2822,20 @@ export interface WaveformTrack {
   marks: WaveformMarks | null;
 }
 
+/**
+ * What `waveforms.get` asks for: each track's picture at a width, or with
+ * `data: false` its state and loudness alone, without reading a picture or
+ * taking a width (WAVE-08).
+ */
+export type WaveformsQuery = {
+  track_ids: number[];
+  marks?: boolean;
+} & ({ width: number; data?: true } | { width?: undefined; data: false });
+
 /** A batch of waveforms at one width (`GET /api/v1/waveforms`). */
 export interface WaveformBatch {
-  width: number;
+  /** The width asked for; null for a batch asked without pictures (`data: false`). */
+  width: number | null;
   /** The analysis's pause: a `waiting` track waits for a paused analysis. */
   paused: boolean;
   /** In the order asked, each once; ids that are no track are left out. */
@@ -2842,12 +2871,11 @@ export interface WaveformsBridge {
   pause: () => Promise<WaveformAnswer<WaveformAnalysisStatus>>;
   /** Clear the pause and start a run. */
   resume: () => Promise<WaveformAnswer<WaveformAnalysisStatus>>;
-  /** At most 200 tracks' states and pictures at a width of 16–1,200; with `marks`, their cues and grid. */
-  get: (params: {
-    track_ids: number[];
-    width: number;
-    marks?: boolean;
-  }) => Promise<WaveformAnswer<WaveformBatch>>;
+  /**
+   * At most 200 tracks' states, loudness and pictures at a width of 16–1,200;
+   * with `marks`, their cues and grid; with `data: false`, no pictures.
+   */
+  get: (params: WaveformsQuery) => Promise<WaveformAnswer<WaveformBatch>>;
   /** Analyse these tracks first, at most 50, even while paused. */
   request: (params: { track_ids: number[] }) => Promise<WaveformAnswer<WaveformsRequested>>;
   /** Empty the waveform data; the analysis starts again unless paused. */

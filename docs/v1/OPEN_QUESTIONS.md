@@ -2664,7 +2664,8 @@ its manual acceptance is owed.
 
 ### Q-125 — Whether the same pass measures loudness
 
-**Status**: Resolved → DEC-121 (Option A chosen: waveforms only)
+**Status**: Resolved → DEC-121 (Option A chosen: waveforms only), then revisited 2026-10-05 →
+DEC-124 (Option B chosen: loudness measured in the same pass)
 
 **Question**: Decoding every file is the expensive part. Does the same pass also measure loudness for
 Phase 12?

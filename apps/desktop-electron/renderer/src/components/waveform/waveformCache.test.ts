@@ -6,8 +6,9 @@ import type {
   WaveformBatch,
   WaveformTrack,
   WaveformTrackState,
+  WaveformsQuery,
 } from "../../api/cuepointBridge.types";
-import { BATCH_SIZE, REFRESH_MS, RETRY_MS, WaveformCache } from "./waveformCache";
+import { BATCH_SIZE, REFRESH_MS, RETRY_MS, WaveformCache, readEntries } from "./waveformCache";
 
 /**
  * The waveforms the renderer holds (WAVE-05): asked for in batches of at most
@@ -17,12 +18,18 @@ import { BATCH_SIZE, REFRESH_MS, RETRY_MS, WaveformCache } from "./waveformCache
 
 const QUERY = { width: 120, marks: false };
 
-function track(trackId: number, state: WaveformTrackState = "ready"): WaveformTrack {
+/** A track's state, or a ready one whose loudness is still to be measured (WAVE-08). */
+type Answered = WaveformTrackState | "unmeasured";
+
+function track(trackId: number, answered: Answered = "ready"): WaveformTrack {
+  const state = answered === "unmeasured" ? "ready" : answered;
   return {
     track_id: trackId,
     state,
     reason: null,
     duration_ms: state === "ready" ? 1_000 : null,
+    loudness:
+      answered === "ready" ? { integrated_lufs: -8.4, peak_dbfs: -0.3, reason: null } : null,
     data: state === "ready" ? new Uint8Array(480) : null,
     marks: null,
   };
@@ -45,20 +52,20 @@ function status(analysed: number): WaveformAnalysisStatus {
 }
 
 /** A cache over a fake bridge, a fake clock and timers a test runs by hand. */
-function setup(states: (id: number) => WaveformTrackState | "unknown" = () => "ready", limit?: number) {
+function setup(states: (id: number) => Answered | "unknown" = () => "ready", limit?: number) {
   let now = 0;
   const scheduled: (() => void)[] = [];
   const intervals = new Map<number, () => void>();
   let nextInterval = 1;
   const analysed = { value: 0 };
   const get = vi.fn(
-    async (params: { track_ids: number[]; width: number; marks?: boolean }): Promise<WaveformAnswer<WaveformBatch>> => ({
+    async (params: WaveformsQuery): Promise<WaveformAnswer<WaveformBatch>> => ({
       value: {
-        width: params.width,
+        width: params.width ?? null,
         paused: false,
         waveforms: params.track_ids
           .filter((id) => states(id) !== "unknown")
-          .map((id) => track(id, states(id) as WaveformTrackState)),
+          .map((id) => track(id, states(id) as Answered)),
         unknown: params.track_ids.filter((id) => states(id) === "unknown"),
       },
       refusal: null,
@@ -367,5 +374,97 @@ describe("the waveform cache", () => {
       await flush();
       expect(get).toHaveBeenCalledTimes(1);
     });
+  });
+
+  describe("loudness (WAVE-08)", () => {
+    const NUMBERS = { width: null, marks: false, loudness: true };
+
+    it("asks for no picture with no width, and holds it apart from pictures", async () => {
+      const { cache, get, flush } = setup();
+      cache.want([1], NUMBERS);
+      cache.want([1], QUERY);
+      await flush();
+
+      expect(get).toHaveBeenCalledWith({ track_ids: [1], marks: false, data: false });
+      expect(get).toHaveBeenCalledWith({ track_ids: [1], width: 120, marks: false });
+      expect(cache.read(1, NUMBERS)).toMatchObject({ kind: "track" });
+    });
+
+    it("follows a ready track still to be measured for a view that shows its loudness", async () => {
+      const { cache, get, analysed, intervals, flush, tick } = setup(() => "unmeasured");
+      const hide = cache.show([1], NUMBERS);
+      await flush();
+      expect(intervals.size).toBe(1);
+
+      await cache.poll();
+      await flush();
+      tick(REFRESH_MS);
+      analysed.value = 1;
+      await cache.poll();
+      await flush();
+      expect(get).toHaveBeenCalledTimes(3);
+      hide();
+      expect(intervals.size).toBe(0);
+    });
+
+    it("does not follow it for a view that only draws", async () => {
+      const { cache, intervals, flush } = setup(() => "unmeasured");
+      const hide = cache.show([1], QUERY);
+      await flush();
+
+      expect(intervals.size).toBe(0);
+      hide();
+    });
+
+    it("stops following once the loudness is measured", async () => {
+      let answered: Answered = "unmeasured";
+      const { cache, analysed, intervals, flush, tick } = setup(() => answered);
+      const hide = cache.show([1], { width: 120, marks: true, loudness: true });
+      await flush();
+      expect(intervals.size).toBe(1);
+
+      answered = "ready";
+      analysed.value = 1;
+      tick(REFRESH_MS);
+      await cache.poll();
+      await flush();
+      expect(intervals.size).toBe(0);
+      hide();
+    });
+  });
+});
+
+describe("reading entries for a copy (WAVE-08)", () => {
+  const NUMBERS = { width: null, marks: false };
+
+  it("reads every track 200 at a time, without pictures, keeping nothing", async () => {
+    const { cache, get } = setup((id) => (id === 3 ? "unknown" : "ready"));
+    const ids = Array.from({ length: 450 }, (_, i) => i + 1);
+
+    const answers = await readEntries({ get }, [...ids, 1], NUMBERS);
+
+    expect(get.mock.calls.map(([params]) => [params.track_ids.length, params.data])).toEqual([
+      [BATCH_SIZE, false],
+      [BATCH_SIZE, false],
+      [50, false],
+    ]);
+    expect(answers.size).toBe(450);
+    expect(answers.get(1)).toMatchObject({ kind: "track", track: { loudness: { integrated_lufs: -8.4 } } });
+    expect(answers.get(3)).toEqual({ kind: "unknown" });
+    expect(cache.size).toBe(0);
+  });
+
+  it("answers a batch that fails or is refused as an error for each of its tracks", async () => {
+    const failing = vi.fn().mockRejectedValueOnce(new Error("engine gone")).mockResolvedValueOnce({
+      value: null,
+      refusal: { code: "INVALID_REQUEST", message: "refused" },
+    });
+    const ids = Array.from({ length: 250 }, (_, i) => i + 1);
+
+    const answers = await readEntries({ get: failing }, ids, NUMBERS);
+
+    expect(answers.get(1)).toEqual({ kind: "error", message: "engine gone" });
+    expect(answers.get(250)).toEqual({ kind: "error", message: "refused" });
+    expect((await readEntries(undefined, [1], NUMBERS)).get(1)?.kind).toBe("error");
   });
 });

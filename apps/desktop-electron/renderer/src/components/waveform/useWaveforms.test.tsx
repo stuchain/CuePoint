@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { WaveformAnswer, WaveformBatch } from "../../api/cuepointBridge.types";
+import type { WaveformAnswer, WaveformBatch, WaveformsQuery } from "../../api/cuepointBridge.types";
 import { WaveformCache } from "./waveformCache";
 import { useWaveform, useWaveforms } from "./useWaveforms";
 
@@ -12,15 +12,16 @@ import { useWaveform, useWaveforms } from "./useWaveforms";
  */
 function setup() {
   const get = vi.fn(
-    async (params: { track_ids: number[]; width: number; marks?: boolean }): Promise<WaveformAnswer<WaveformBatch>> => ({
+    async (params: WaveformsQuery): Promise<WaveformAnswer<WaveformBatch>> => ({
       value: {
-        width: params.width,
+        width: params.width ?? null,
         paused: true,
         waveforms: params.track_ids.map((id) => ({
           track_id: id,
           state: "waiting" as const,
           reason: null,
           duration_ms: null,
+          loudness: null,
           data: null,
           marks: params.marks ? { read: true, cues: [], grid: [] } : null,
         })),
@@ -72,11 +73,20 @@ describe("useWaveforms", () => {
     const hide = vi.fn();
     const show = vi.spyOn(cache, "show").mockReturnValue(hide);
     const { unmount } = renderHook(() => useWaveforms([1], 120, { cache }));
-    expect(show).toHaveBeenCalledWith([1], { width: 120, marks: false });
+    expect(show).toHaveBeenCalledWith([1], { width: 120, marks: false, loudness: false });
 
     unmount();
 
     expect(hide).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks with no width for states and loudness alone (WAVE-08)", async () => {
+    const { cache, get } = setup();
+    const { result } = renderHook(() => useWaveforms([1, 2], null, { cache, loudness: true }));
+
+    await waitFor(() => expect(result.current.get(2)?.kind).toBe("track"));
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(get).toHaveBeenCalledWith({ track_ids: [1, 2], marks: false, data: false });
   });
 
   it("answers one track, or null when none is shown", async () => {

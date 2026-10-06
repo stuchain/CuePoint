@@ -117,11 +117,14 @@ class WorkPlan:
 
     Attributes:
         present: Tracks whose file the last check found present.
-        analysed: Of those, tracks with a ready row that counts.
+        analysed: Of those, tracks with a ready row that counts and its
+            loudness measured (WAVE-08).
         failed: Of those, tracks with a failed row that counts.
         pending: Files with no row that counts, in the order they are
-            analysed: Sets' entries, then Collections', then the newest. One
-            item per path, and none a run has already taken.
+            analysed: Sets' entries, then Collections', then the newest. Then
+            files whose ready row counts but whose loudness is still to be
+            measured, in the same order. One item per path, and none a run has
+            already taken.
         verify: Files whose row counts, to be ``stat``ed by a run that follows
             a whole-library check, in the same order.
         pending_total: How many files ``pending`` would hold without a limit.

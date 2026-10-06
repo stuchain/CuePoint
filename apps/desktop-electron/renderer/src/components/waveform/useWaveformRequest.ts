@@ -5,6 +5,8 @@
  * track it shows (WAVE-03's requests). Each asks only once its answer says the
  * track waits for the analysis: an analysed track, or one whose file is missing
  * or unread, has nothing to gain, and a request starts a run when none is going.
+ * A view that shows the loudness (WAVE-08) also asks for a ready track whose
+ * loudness is still to be measured; one that only draws does not.
  * A track is asked for once while it stays shown; showing another and coming
  * back asks again, which moves it to the front of the queue again.
  *
@@ -14,7 +16,7 @@
 import { useEffect, useRef } from "react";
 
 import type { WaveformsBridge } from "../../api/cuepointBridge.types";
-import type { WaveformEntry } from "./waveformCache";
+import { waitsInView, type WaveformEntry } from "./waveformCache";
 
 type RequestBridge = Pick<WaveformsBridge, "request">;
 
@@ -22,18 +24,25 @@ function appBridge(): RequestBridge | undefined {
   return typeof window === "undefined" ? undefined : window.cuepoint?.waveforms;
 }
 
-/** True when an answer says the track waits for the analysis. */
-export function waitsForAnalysis(entry: WaveformEntry | null | undefined): boolean {
-  return entry?.kind === "track" && entry.track.state === "waiting";
+/** True when an answer says the track waits for the analysis, for a view that shows `loudness` or not. */
+export function waitsForAnalysis(entry: WaveformEntry | null | undefined, loudness = false): boolean {
+  return waitsInView(entry, { loudness });
+}
+
+export interface WaveformRequestOptions {
+  /** The view shows the loudness, so a track still to be measured is asked for. */
+  loudness?: boolean;
+  /** The bridge's waveforms namespace; the app's own unless a test gives one. */
+  bridge?: () => RequestBridge | undefined;
 }
 
 export function useWaveformRequest(
   trackId: number | null,
   entry: WaveformEntry | null | undefined,
-  bridge: () => RequestBridge | undefined = appBridge,
+  { loudness = false, bridge = appBridge }: WaveformRequestOptions = {},
 ): void {
   const asked = useRef<number | null>(null);
-  const waiting = waitsForAnalysis(entry);
+  const waiting = waitsForAnalysis(entry, loudness);
 
   useEffect(() => {
     if (trackId === null) {

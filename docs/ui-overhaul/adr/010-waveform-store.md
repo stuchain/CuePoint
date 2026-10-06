@@ -3,7 +3,8 @@
 ## Status
 
 Accepted (WAVE-02, 2026-09-30). Records DEC-122 as implemented, with the measurements its layout
-was chosen on. Linux x86_64, SQLite 3.45.1.
+was chosen on. Linux x86_64, SQLite 3.45.1. Amended by WAVE-03 (the work list's index), WAVE-05
+("Delete waveform data") and WAVE-08 (loudness, in a table beside the waveforms).
 
 ## Context
 
@@ -115,6 +116,34 @@ replacing the file.
 - **Nothing lands after it.** The engine stops a running analysis with the
   reason `data_deleted`, waits for the files it is decoding, empties the store,
   and only then lets a run start again: unless paused, at once.
+
+## Amendment (WAVE-08, 2026-10-05): loudness, beside each waveform
+
+DEC-124 measures each file's loudness in the pass that draws its waveform. The reading is
+kept in this store, in a table of its own.
+
+- **`loudness`**, keyed by path as `waveforms` is: the file's size and modified time, the
+  `LOUDNESS_VERSION` that measured it, the integrated loudness and the peak (each nullable),
+  and the reason there is no value. `WITHOUT ROWID`: rows are some fifty bytes, so the table
+  is its own primary key's index.
+- **Created with `IF NOT EXISTS` at every first open,** as `waveforms_work` was: a store made
+  before it gains it, keeps every waveform, and has each file measured again in the
+  background. No schema version, so DEC-122's rebuild is not triggered.
+- **Written with its waveform, in one transaction.** A failed analysis has none, and the
+  path's stored one is deleted with it. Inside a transaction a caller already holds, as a bulk
+  load does, the write is a savepoint in it instead of a `BEGIN` SQLite would refuse.
+- **Read with its waveform,** joined on the path, size and modified time, so a reading of
+  another version of the file is never shown; its own version is the service's to judge.
+  The work list joins on the path and size alone, which `waveforms_work` holds, so it still
+  reads the index and one primary-key lookup a path, never the table's pages. The modified
+  time is compared when a file is analysed.
+- **Deleted with its waveform**: a refused picture, the prune and "Delete waveform data".
+- **Its size, measured at 50,000 tracks:** 5.9 MB on its own, the path it is keyed by being
+  most of it; the store went from 246.6 to 252.1 MB. The store's budget is now 260 MB: WAVE-02's
+  250 for the waveforms, which still hold inside it, and 10 for this table.
+- **Not keyed by the waveform's row id,** which would have saved 3.8 MB: `waveforms` is keyed by
+  text, so its row ids are SQLite's own, and `VACUUM`, which `clear()` runs, may renumber them.
+  A reading keyed by one could follow another file's row.
 
 ## Signals to revisit
 

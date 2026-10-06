@@ -14,15 +14,22 @@
  * Clicking a half selects its entry, as clicking a lane's column does, so the
  * strip walks the Set one transition at a time. Both tracks shown are put
  * first in the analysis while they wait for it, as the Inspector's is.
+ *
+ * Loudness (WAVE-08, DEC-124): each title ends with its track's, and the words
+ * between the halves gain the difference, "+2.1 LU", when both are measured.
+ * Read without pictures for the two tracks, so a title and the words agree
+ * whatever each half has drawn. Shown, never applied.
  */
 import { useMemo } from "react";
 
-import type { SetEntry } from "../../api/cuepointBridge.types";
+import type { SetEntry, WaveformLoudness } from "../../api/cuepointBridge.types";
 import { readRowHeight } from "../../components/table/trackTableLayout";
 import { WAVEFORM_LOADING_WORDS, waveformEntryWords } from "../../components/waveform/analysisWords";
-import { useWaveform } from "../../components/waveform/useWaveforms";
+import { loudnessDifference, loudnessShort } from "../../components/waveform/loudnessWords";
+import { useWaveform, useWaveforms } from "../../components/waveform/useWaveforms";
 import { useWaveformRequest } from "../../components/waveform/useWaveformRequest";
 import { WaveformCanvas } from "../../components/waveform/WaveformCanvas";
+import type { WaveformEntry } from "../../components/waveform/waveformCache";
 import { useWaveformBox } from "../../components/waveform/waveformEnvironment";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import {
@@ -44,8 +51,8 @@ export interface SetTransitionProps {
 
 function Half({ half, side, onSelect }: { half: TransitionHalf; side: "from" | "to"; onSelect: (entryId: number) => void }) {
   const { box, width } = useWaveformBox<HTMLButtonElement>();
-  const entry = useWaveform(half.trackId, width, { marks: true });
-  useWaveformRequest(half.trackId, entry);
+  const entry = useWaveform(half.trackId, width, { marks: true, loudness: true });
+  useWaveformRequest(half.trackId, entry, { loudness: true });
 
   const track = entry?.kind === "track" ? entry.track : null;
   const picture = track?.state === "ready" ? track.data : null;
@@ -78,12 +85,28 @@ function Half({ half, side, onSelect }: { half: TransitionHalf; side: "from" | "
   );
 }
 
-function Title({ half }: { half: TransitionHalf }) {
+/** A ready track's loudness from its answer; null when it has none to read. */
+function loudnessOf(entry: WaveformEntry | undefined): WaveformLoudness | null {
+  return entry?.kind === "track" && entry.track.state === "ready" ? entry.track.loudness : null;
+}
+
+function Title({ half, entry }: { half: TransitionHalf; entry: WaveformEntry | undefined }) {
+  const track = entry?.kind === "track" ? entry.track : null;
+  const loudness = loudnessShort(track);
+  const said = [halfTimesWords(half), loudness].filter(Boolean).join(" · ");
   return (
-    // Its title holds both, for a pane too narrow to show them whole.
-    <p className="prepare-transition__title" title={`${half.title}, ${halfTimesWords(half)}`}>
+    // Its title holds all of it, for a pane too narrow to show it whole.
+    <p className="prepare-transition__title" title={`${half.title}, ${said}`}>
       <span className="prepare-transition__name">{half.title}</span>{" "}
-      <span className="prepare-transition__times">{halfTimesWords(half)}</span>
+      <span className="prepare-transition__times">
+        {halfTimesWords(half)}
+        {/* The times' line ends with the loudness, so the title stays two lines. */}
+        {loudness ? (
+          <span className="prepare-transition__loudness" data-testid="transition-loudness">
+            {` · ${loudness}`}
+          </span>
+        ) : null}
+      </span>
     </p>
   );
 }
@@ -94,6 +117,15 @@ export function SetTransition({ entries, selectedEntryId, onSelect }: SetTransit
   // As the table reads it, and when: the row height derives from the scale.
   // oxlint-disable-next-line react-hooks/exhaustive-deps
   const rowHeight = useMemo(() => readRowHeight(), [scale]);
+  const trackIds = transition
+    ? transition.to
+      ? [transition.from.trackId, transition.to.trackId]
+      : [transition.from.trackId]
+    : [];
+  const numbers = useWaveforms(trackIds, null, { loudness: true });
+  const fromEntry = transition ? numbers.get(transition.from.trackId) : undefined;
+  const toEntry = transition?.to ? numbers.get(transition.to.trackId) : undefined;
+  const difference = loudnessDifference(loudnessOf(fromEntry), loudnessOf(toEntry));
 
   return (
     <section
@@ -103,12 +135,12 @@ export function SetTransition({ entries, selectedEntryId, onSelect }: SetTransit
     >
       {transition ? (
         <>
-          <Title half={transition.from} />
+          <Title half={transition.from} entry={fromEntry} />
           <span aria-hidden="true" />
-          {transition.to ? <Title half={transition.to} /> : <span aria-hidden="true" />}
+          {transition.to ? <Title half={transition.to} entry={toEntry} /> : <span aria-hidden="true" />}
           <Half key={transition.from.entryId} half={transition.from} side="from" onSelect={onSelect} />
           <p className="prepare-transition__words" data-testid="transition-words">
-            {transitionWords(transition).map((part, index) => (
+            {transitionWords(transition, difference).map((part, index) => (
               <span key={part + index}>
                 {index > 0 && " "}
                 {part}

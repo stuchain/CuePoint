@@ -1,14 +1,14 @@
 {
   "analysis": {
-    "analysed": 1,
+    "analysed": 3,
     "eta_seconds": null,
     "failed": 1,
     "job_id": null,
     "paused": true,
-    "present": 3,
+    "present": 6,
     "rate_per_hour": null,
     "reason": null,
-    "remaining": 1,
+    "remaining": 2,
     "state": "paused",
     "store_bytes": 1048576
   },
@@ -21,6 +21,11 @@
       {
         "data": "5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm",
         "duration_ms": 20000,
+        "loudness": {
+          "integrated_lufs": -7.9,
+          "peak_dbfs": -0.2,
+          "reason": null
+        },
         "marks": null,
         "reason": null,
         "state": "ready",
@@ -29,6 +34,7 @@
       {
         "data": null,
         "duration_ms": null,
+        "loudness": null,
         "marks": null,
         "reason": "undecodable",
         "state": "failed",
@@ -37,6 +43,7 @@
       {
         "data": null,
         "duration_ms": null,
+        "loudness": null,
         "marks": null,
         "reason": "missing",
         "state": "missing",
@@ -45,6 +52,7 @@
       {
         "data": null,
         "duration_ms": null,
+        "loudness": null,
         "marks": null,
         "reason": null,
         "state": "unchecked",
@@ -53,6 +61,7 @@
       {
         "data": null,
         "duration_ms": null,
+        "loudness": null,
         "marks": null,
         "reason": null,
         "state": "waiting",
@@ -61,6 +70,70 @@
     ],
     "width": 120
   },
+  "batch_loudness": {
+    "paused": false,
+    "unknown": [],
+    "waveforms": [
+      {
+        "data": null,
+        "duration_ms": 20000,
+        "loudness": {
+          "integrated_lufs": -7.9,
+          "peak_dbfs": -0.2,
+          "reason": null
+        },
+        "marks": null,
+        "reason": null,
+        "state": "ready",
+        "track_id": 1
+      },
+      {
+        "data": null,
+        "duration_ms": 20000,
+        "loudness": {
+          "integrated_lufs": null,
+          "peak_dbfs": -31.0,
+          "reason": "too_quiet"
+        },
+        "marks": null,
+        "reason": null,
+        "state": "ready",
+        "track_id": 6
+      },
+      {
+        "data": null,
+        "duration_ms": 20000,
+        "loudness": {
+          "integrated_lufs": null,
+          "peak_dbfs": null,
+          "reason": "silent"
+        },
+        "marks": null,
+        "reason": null,
+        "state": "ready",
+        "track_id": 7
+      },
+      {
+        "data": null,
+        "duration_ms": 20000,
+        "loudness": null,
+        "marks": null,
+        "reason": null,
+        "state": "ready",
+        "track_id": 8
+      },
+      {
+        "data": null,
+        "duration_ms": null,
+        "loudness": null,
+        "marks": null,
+        "reason": null,
+        "state": "waiting",
+        "track_id": 4
+      }
+    ],
+    "width": null
+  },
   "batch_with_marks": {
     "paused": false,
     "unknown": [],
@@ -68,6 +141,11 @@
       {
         "data": "5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gXmBeYF5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5gUF5uYFBebmBQXm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm",
         "duration_ms": 20000,
+        "loudness": {
+          "integrated_lufs": -7.9,
+          "peak_dbfs": -0.2,
+          "reason": null
+        },
         "marks": {
           "cues": [
             {
@@ -125,6 +203,7 @@
       {
         "data": null,
         "duration_ms": null,
+        "loudness": null,
         "marks": null,
         "reason": null,
         "state": "unavailable",
@@ -140,16 +219,16 @@
       "failed": 0,
       "job_id": null,
       "paused": true,
-      "present": 3,
+      "present": 6,
       "rate_per_hour": null,
       "reason": null,
-      "remaining": 3,
+      "remaining": 6,
       "state": "paused",
       "store_bytes": 1048576
     },
     "deleted": {
       "freed_bytes": 1048576,
-      "waveforms": 3
+      "waveforms": 6
     }
   },
   "refusals": [

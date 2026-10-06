@@ -48,6 +48,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   remembered, like the tempo and key lanes. With either open, the Set now keeps
   two whole rows however crowded the window: a window too short for that
   scrolls the page instead
+- **Loudness, measured with each waveform.** The pass that draws a track's
+  waveform also measures its integrated loudness and its peak (EBU R128, the
+  sample peak). The Inspector says it under the waveform ("Loudness −8.4 LUFS ·
+  Peak −0.3 dBFS"), the Library offers a **Loudness** column (Columns…, hidden
+  until you choose it, copied as "−8.4 LUFS"), and Prepare's transition strip
+  ends each title with its track's loudness and says how much louder the next
+  one is ("+2.1 LU"). A silent track, or one too short to measure, says so. It
+  is shown only: nothing turns a track up or down, and nothing is written to
+  your files or to Rekordbox. A library analysed before this keeps every
+  waveform, and each track is measured once more in the background, after any
+  track without a waveform; a track you select or play is measured first.
+  "Delete waveform data" deletes the loudness with the waveforms
 - **A Waveforms page in the user guide**: where waveforms appear, what the
   colours and marks mean, how long a first analysis takes, how to pause it, and
   where the data lives

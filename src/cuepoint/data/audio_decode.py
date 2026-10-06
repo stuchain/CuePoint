@@ -13,6 +13,11 @@ The pipeline
 ------------
 One ``mpv`` child per file. FFmpeg's filters, inside it, do all the heavy work:
 
+0. Measure the file's loudness (``LOUDNESS_METER``, WAVE-08), on its own
+   channels at its own rate, as BS.1770 specifies. The meter passes the audio
+   through untouched: the waveforms it feeds are the same, byte for byte, as
+   without it. Its one summary, at the end of the log, is read by
+   :func:`read_loudness`.
 1. Downmix to mono at unit gain, and resample to ``DECODE_RATE_HZ``. The
    downmix is normalised (``rematrix_maxval=1``): FFmpeg's default adds 3 dB to
    a correlated stereo signal, which would push a full-scale track over 1.0.
@@ -128,6 +133,36 @@ _logger = logging.getLogger(__name__)
 #: with no high band, and none of them may count again. Elsewhere the values
 #: are the same, and the cost is one re-analysis of an unreleased store.
 ANALYSIS_VERSION = 2
+
+#: Changes whenever a change here changes what a loudness reading means
+#: (WAVE-08). Stored with every reading; one of another version is measured
+#: again, and the waveform drawn meanwhile is kept.
+LOUDNESS_VERSION = 1
+
+#: The loudness meter at the head of the graph (WAVE-08, DEC-124): FFmpeg's
+#: EBU R128 meter, which passes the audio through untouched. The sample peak,
+#: not the true peak, which cost 2.6 times the analysis's own time where this
+#: costs 1.45. A mono file is measured as it is played, on both sides
+#: (``dualmono``), so it reads as loud as the same music in stereo. Its log of
+#: each 100 ms is silenced; its one summary, at the end, is what is read.
+LOUDNESS_METER = "ebur128=peak=sample:dualmono=true:framelog=quiet"
+
+#: What the meter reports when no 400 ms block passed its absolute gate: not a
+#: reading, but silence, or a file shorter than one block.
+LOUDNESS_FLOOR_LUFS = -70.0
+
+#: Why a decode has no loudness value: below the meter's floor.
+LOUDNESS_TOO_QUIET = "too_quiet"
+#: Why a decode has neither a value nor a peak: not one sample above zero.
+LOUDNESS_SILENT = "silent"
+#: Why a decode has no reading at all: the log held no summary to read.
+LOUDNESS_NOT_MEASURED = "not_measured"
+
+LOUDNESS_REASONS: Tuple[str, ...] = (
+    LOUDNESS_TOO_QUIET,
+    LOUDNESS_SILENT,
+    LOUDNESS_NOT_MEASURED,
+)
 
 #: The rate the audio is decoded to before it is split.
 DECODE_RATE_HZ = 22_050
@@ -252,6 +287,53 @@ class DecoderUnavailable(DecodeError):
 
 
 @dataclass(frozen=True)
+class Loudness:
+    """A file's integrated loudness and sample peak, or why it has none (WAVE-08).
+
+    To 0.1, as the meter reports them. Either a value with its peak and no
+    reason, or a reason:
+
+    - :data:`LOUDNESS_TOO_QUIET`: no value, and the peak when there was one;
+    - :data:`LOUDNESS_SILENT`: neither;
+    - :data:`LOUDNESS_NOT_MEASURED`: neither, because nothing was read.
+
+    Attributes:
+        integrated_lufs: The whole file's loudness, in LUFS.
+        peak_dbfs: The highest sample, in dBFS.
+        reason: Why there is no value.
+    """
+
+    integrated_lufs: Optional[float] = None
+    peak_dbfs: Optional[float] = None
+    reason: Optional[str] = LOUDNESS_NOT_MEASURED
+
+    def __post_init__(self) -> None:
+        """Hold the combinations above."""
+        for name in ("integrated_lufs", "peak_dbfs"):
+            value = getattr(self, name)
+            if value is not None and not (
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and math.isfinite(value)
+            ):
+                raise ValueError(f"{name} must be a finite number, not {value!r}")
+        if self.reason is not None and self.reason not in LOUDNESS_REASONS:
+            raise ValueError(f"Not a loudness reason: {self.reason!r}")
+        if (self.reason is None) != (self.integrated_lufs is not None):
+            raise ValueError("A loudness has a value or a reason, never both")
+        if self.reason is None and self.peak_dbfs is None:
+            raise ValueError("A loudness value has its peak")
+        if self.reason in (LOUDNESS_SILENT, LOUDNESS_NOT_MEASURED) and (
+            self.peak_dbfs is not None
+        ):
+            raise ValueError(f"A {self.reason} loudness has no peak")
+
+
+#: A decode whose loudness was not read.
+NOT_MEASURED = Loudness()
+
+
+@dataclass(frozen=True)
 class Envelope:
     """A file's loudness over time, in four bands.
 
@@ -266,6 +348,8 @@ class Envelope:
         high: Above ``HIGH_CROSSOVER_HZ``.
         decode_errors: Errors the decoder logged. Non-zero for a file that
             decoded part-way or has damaged frames.
+        loudness: The whole file's loudness, measured in the same pass
+            (WAVE-08).
     """
 
     rate_hz: int
@@ -274,6 +358,7 @@ class Envelope:
     mid: "array[float]"
     high: "array[float]"
     decode_errors: int = 0
+    loudness: Loudness = NOT_MEASURED
 
     @property
     def frames(self) -> int:
@@ -311,6 +396,7 @@ def filter_graph() -> str:
     )
     high = _edge("highpass", HIGH_CROSSOVER_HZ)
     return (
+        f"{LOUDNESS_METER},"
         f"aresample={DECODE_RATE_HZ}:ochl=mono:rematrix_maxval=1,"
         "aformat=sample_fmts=flt:channel_layouts=mono,"
         "asplit=4[full][l][m][h];"
@@ -437,6 +523,79 @@ def read_decoder_log(text: str) -> DecoderLog:
     return DecoderLog(tuple(outputs), tuple(errors), filter_failed)
 
 
+# The meter's summary, as FFmpeg 8 writes it on mpv's `ffmpeg` log:
+#
+#   Parsed_ebur128_0: Summary:
+#
+#     Integrated loudness:
+#       I:         -6.5 LUFS
+#       Threshold: -16.5 LUFS
+#     ...
+#     Sample peak:
+#       Peak:       -4.3 dBFS
+_SUMMARY = re.compile(r"^Parsed_ebur128_\d+: Summary:$")
+_INTEGRATED = re.compile(r"^I:\s+(?P<value>-?\d+\.\d) LUFS$")
+_PEAK = re.compile(r"^Peak:\s+(?P<value>-inf|-?\d+\.\d) dBFS$")
+_SECTIONS = {
+    "Integrated loudness:": "integrated",
+    "Loudness range:": "range",
+    "Sample peak:": "peak",
+    "True peak:": "true_peak",
+}
+
+_UNREAD_LOGGED = threading.Event()
+
+
+def read_loudness(text: str) -> Loudness:
+    """The loudness a decode's log reports, read strictly (WAVE-08).
+
+    FFmpeg's wording is not an interface, so anything but exactly one summary
+    holding exactly one integrated value and one sample peak is
+    :data:`NOT_MEASURED`: no summary (a build whose meter did not run), two (a
+    graph that was rebuilt part-way, each measuring part of the file), or a
+    line in either place that does not read as a number. The release check
+    (``fetch_player_sidecar.py --check-analysis``) fails a pinned build whose
+    wording changes before it ships.
+    """
+    summaries = 0
+    section: Optional[str] = None
+    integrated: List[str] = []
+    peaks: List[str] = []
+    malformed = False
+    for line in text.splitlines():
+        match = _LOG_LINE.match(line)
+        if match is None or match.group("module") != "ffmpeg":
+            continue
+        message = match.group("text").strip()
+        if _SUMMARY.match(message):
+            summaries += 1
+            section = None
+            continue
+        if not summaries or not message:
+            continue
+        if message in _SECTIONS:
+            section = _SECTIONS[message]
+        elif section == "integrated" and message.startswith("I:"):
+            found = _INTEGRATED.match(message)
+            malformed = malformed or found is None
+            if found is not None:
+                integrated.append(found.group("value"))
+        elif section == "peak" and message.startswith("Peak:"):
+            found = _PEAK.match(message)
+            malformed = malformed or found is None
+            if found is not None:
+                peaks.append(found.group("value"))
+    if summaries != 1 or malformed or len(integrated) != 1 or len(peaks) != 1:
+        return NOT_MEASURED
+    lufs = float(integrated[0])
+    peak = float(peaks[0])
+    if peak == -math.inf:
+        return Loudness(reason=LOUDNESS_SILENT)
+    if lufs <= LOUDNESS_FLOOR_LUFS:
+        return Loudness(peak_dbfs=peak, reason=LOUDNESS_TOO_QUIET)
+    return Loudness(integrated_lufs=lufs, peak_dbfs=peak, reason=None)
+
+
 def _rms(mean_square: float) -> float:
     """RMS from a mean square. The resampler's ringing can dip below zero."""
     if not math.isfinite(mean_square) or mean_square <= 0.0:
@@ -462,7 +621,11 @@ def _rms_band(mean_squares: "array[float]") -> "array[float]":
 
 
 def parse_envelope(
-    raw: bytes, *, rate_hz: int = ENVELOPE_RATE_HZ, decode_errors: int = 0
+    raw: bytes,
+    *,
+    rate_hz: int = ENVELOPE_RATE_HZ,
+    decode_errors: int = 0,
+    loudness: Loudness = NOT_MEASURED,
 ) -> Envelope:
     """Turn the child's interleaved mean squares into an :class:`Envelope`.
 
@@ -481,6 +644,7 @@ def parse_envelope(
         mid=bands[2],
         high=bands[3],
         decode_errors=decode_errors,
+        loudness=loudness,
     )
 
 
@@ -910,7 +1074,17 @@ def _outcome(
         raise DecodeFailed(REASON_UNDECODABLE, log.first_error())
     if not log.outputs or len(raw) < _FRAME_BYTES:
         raise DecodeFailed(REASON_NO_AUDIO, "no audio was decoded")
-    return parse_envelope(raw, decode_errors=len(log.errors))
+    loudness = read_loudness(log_text)
+    if loudness.reason == LOUDNESS_NOT_MEASURED and not _UNREAD_LOGGED.is_set():
+        # Once an engine: a build whose meter says nothing says it for every
+        # file. The waveform is kept; loudness never costs a file its picture.
+        _UNREAD_LOGGED.set()
+        _logger.warning(
+            "[waveforms] the decoder's log held no loudness summary to read"
+            " (first seen on %s); loudness is not measured",
+            source.name,
+        )
+    return parse_envelope(raw, decode_errors=len(log.errors), loudness=loudness)
 
 
 __all__ = [
@@ -925,7 +1099,15 @@ __all__ = [
     "FILE_FAILURE_REASONS",
     "FILE_TIMEOUT_SECONDS",
     "HIGH_CROSSOVER_HZ",
+    "LOUDNESS_FLOOR_LUFS",
+    "LOUDNESS_METER",
+    "LOUDNESS_NOT_MEASURED",
+    "LOUDNESS_REASONS",
+    "LOUDNESS_SILENT",
+    "LOUDNESS_TOO_QUIET",
+    "LOUDNESS_VERSION",
     "LOW_CROSSOVER_HZ",
+    "NOT_MEASURED",
     "REASON_DECODER_MISSING",
     "REASON_NO_AUDIO",
     "REASON_TIMEOUT",
@@ -940,6 +1122,7 @@ __all__ = [
     "DecoderUnavailable",
     "Envelope",
     "FileGone",
+    "Loudness",
     "decode_envelope",
     "decoder_arguments",
     "decoder_from_env",
@@ -950,6 +1133,7 @@ __all__ = [
     "parse_envelope",
     "platform_transports",
     "read_decoder_log",
+    "read_loudness",
     "sweep_stale_workdirs",
     "terminate_children",
 ]

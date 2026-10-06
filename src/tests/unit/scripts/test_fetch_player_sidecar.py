@@ -795,8 +795,12 @@ def _decode_module():
     return fps._load_audio_decode()
 
 
-def _flat_or_banded(module, frames: int, banded: bool):
-    """An envelope of three equal sections, each in its own band or in none."""
+def _flat_or_banded(module, frames: int, banded: bool, loudness=None):
+    """An envelope of three equal sections, each in its own band or in none.
+
+    Measured at EBU Tech 3341's level unless ``loudness`` says otherwise, so the
+    loudness check passes wherever a test is about something else.
+    """
     from array import array
 
     third = frames // 3
@@ -809,7 +813,10 @@ def _flat_or_banded(module, frames: int, banded: bool):
             else:
                 for each in ("low", "mid", "high"):
                     bands[each][i] = 0.2
-    return module.Envelope(rate_hz=module.ENVELOPE_RATE_HZ, **bands)
+    if loudness is None:
+        level = fps.EBU_3341_LEVEL_DBFS
+        loudness = module.Loudness(level, level, None)
+    return module.Envelope(rate_hz=module.ENVELOPE_RATE_HZ, loudness=loudness, **bands)
 
 
 class TestAnalysisCheck:
@@ -905,6 +912,66 @@ class TestAnalysisCheck:
         self._patched(monkeypatch, module, decode)
         with pytest.raises(fps.SmokeTestError, match="did not run"):
             fps.check_analysis(tmp_path / "mpv", quiet=True)
+
+    def test_the_ebu_3341_case_is_written_as_the_case_says(self, tmp_path):
+        import math
+        import wave
+
+        case = tmp_path / "case.wav"
+        fps.write_ebu_3341_case(case)
+
+        with wave.open(str(case), "rb") as read:
+            assert read.getnchannels() == 2
+            assert read.getsampwidth() == 3
+            assert read.getframerate() == 48_000
+            assert read.getnframes() == 20 * 48_000
+            first = read.readframes(48)
+        samples = [
+            int.from_bytes(first[i : i + 3], "little", signed=True)
+            for i in range(0, len(first), 3)
+        ]
+        left, right = samples[0::2], samples[1::2]
+        assert left == right
+        peak = 20 * math.log10(max(left) / (2**23 - 1))
+        assert peak == pytest.approx(-23.0, abs=1e-4)
+
+    @pytest.mark.parametrize(
+        "reading",
+        [
+            None,
+            (-23.2, -23.0, None),
+            (-23.0, -22.8, None),
+            (None, -23.0, "too_quiet"),
+        ],
+        ids=["not-measured", "lufs-off", "peak-off", "no-value"],
+    )
+    def test_a_meter_that_misreads_the_ebu_case_fails(
+        self, monkeypatch, tmp_path, reading
+    ):
+        module = _decode_module()
+        frames = self._expected_frames()
+        loudness = module.NOT_MEASURED if reading is None else module.Loudness(*reading)
+
+        def decode(source, binary, transport=None, **_):
+            if Path(source).name.startswith("ebu-3341"):
+                return _flat_or_banded(module, 60, True, loudness)
+            if Path(source).name == fps.ANALYSIS_FIXTURE:
+                return _flat_or_banded(module, frames, banded=True)
+            return _flat_or_banded(module, 60, banded=True)
+
+        self._patched(monkeypatch, module, decode)
+        with pytest.raises(fps.SmokeTestError, match="EBU Tech 3341"):
+            fps.check_analysis(tmp_path / "mpv", quiet=True)
+
+    def test_the_ebu_case_within_its_tolerance_passes(self, monkeypatch, tmp_path):
+        module = _decode_module()
+        reading = module.Loudness(-23.1, -22.9, None)
+        self._patched(
+            monkeypatch,
+            module,
+            lambda *a, **k: _flat_or_banded(module, 60, True, reading),
+        )
+        assert "-23.1 LUFS" in fps.check_loudness(tmp_path / "mpv", quiet=True)
 
     def test_a_named_mpv_that_does_not_exist_is_refused(self, tmp_path, capsys):
         assert fps.main(["--mpv", str(tmp_path / "no-mpv"), "--check-analysis"]) == 2

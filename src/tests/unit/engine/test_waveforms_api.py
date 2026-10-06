@@ -316,6 +316,7 @@ class TestTheWaveforms:
                 "state",
                 "reason",
                 "duration_ms",
+                "loudness",
                 "data",
                 "marks",
             }
@@ -472,6 +473,9 @@ class TestTheWaveforms:
             ("?track_ids=1&width=120&marks=2", "marks must be 0 or 1"),
             ("?track_ids=1&width=120&size=3", "size"),
             ("?track_ids=1&track_ids=2&width=120", "once"),
+            ("?track_ids=1&width=120&data=2", "data must be 0 or 1"),
+            ("?track_ids=1&data=1", "width is required"),
+            ("?track_ids=1&width=120&data=0", "width is only taken"),
         ],
     )
     def test_what_the_read_does_not_take_is_refused(self, engine, query, word):
@@ -480,6 +484,56 @@ class TestTheWaveforms:
         assert status == 400
         assert payload["error"]["code"] == "INVALID_REQUEST"
         assert word in payload["error"]["message"]
+
+    def test_a_ready_track_carries_its_loudness(self, lib, engine):
+        lib.add("a")
+        analysed(lib, "a")
+
+        _, body = read(engine, [lib.id("a")])
+
+        assert body["waveforms"][0]["loudness"] == {
+            "integrated_lufs": -8.4,
+            "peak_dbfs": -0.3,
+            "reason": None,
+        }
+
+    def test_data_0_answers_states_and_loudness_and_reads_no_picture(
+        self, lib, engine, monkeypatch
+    ):
+        """WAVE-08: the Library's Loudness column asks for a number, not a picture."""
+        lib.add("a")
+        lib.add("b")
+        analysed(lib, "a")
+
+        def no_pictures(*_args, **_kwargs):
+            raise AssertionError("data=0 read a picture")
+
+        monkeypatch.setattr(lib.store, "get_many", no_pictures)
+        status, body = engine.call(
+            f"{WAVEFORMS_PATH}?track_ids={lib.id('b')},{lib.id('a')},999&data=0"
+        )
+
+        assert status == 200
+        assert body["width"] is None
+        assert body["unknown"] == [999]
+        tracks = body["waveforms"]
+        assert [(t["track_id"], t["state"]) for t in tracks] == [
+            (lib.id("b"), "waiting"),
+            (lib.id("a"), "ready"),
+        ]
+        assert all(t["data"] is None and t["marks"] is None for t in tracks)
+        assert tracks[1]["loudness"]["integrated_lufs"] == -8.4
+        assert tracks[1]["duration_ms"] == 20_000
+
+    def test_data_0_still_carries_marks_when_asked(self, lib, engine):
+        lib.add("a")
+        analysed(lib, "a")
+
+        _, body = engine.call(
+            f"{WAVEFORMS_PATH}?track_ids={lib.id('a')}&data=0&marks=1"
+        )
+
+        assert body["waveforms"][0]["marks"] is not None
 
     def test_more_than_two_hundred_ids_are_refused(self, engine):
         status, payload = read(engine, range(1, MAX_TRACKS + 2))

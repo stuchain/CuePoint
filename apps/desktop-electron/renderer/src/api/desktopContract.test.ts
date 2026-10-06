@@ -1722,6 +1722,7 @@ describe("desktop contract", () => {
       "WaveformAnalysisStatus",
       "BeatGridMarker",
       "WaveformMarks",
+      "WaveformLoudness",
       "WaveformTrack",
       "WaveformBatch",
       "WaveformsRequested",
@@ -1733,7 +1734,13 @@ describe("desktop contract", () => {
       expect(fields(bridgeTypes, start)).toEqual(fields(engineClient, start));
     });
 
-    it.each(["WaveformAnalysisState", "WaveformRefusalCode", "WaveformTrackState"])(
+    it.each([
+      "WaveformAnalysisState",
+      "WaveformRefusalCode",
+      "WaveformTrackState",
+      "WaveformLoudnessReason",
+      "WaveformsQuery",
+    ])(
       "declares the type %s the same in both processes",
       (name) => {
         const declaration = (source: string) => {
@@ -1763,6 +1770,7 @@ describe("desktop contract", () => {
         ["WaveformAnalysisStatus", () => fixture.analysis],
         ["WaveformBatch", () => batch],
         ["WaveformTrack", () => batch.waveforms[0]],
+        ["WaveformLoudness", () => batch.waveforms[0].loudness],
         ["WaveformMarks", () => withMarks.waveforms[0].marks],
         ["BeatGridMarker", () => (withMarks.waveforms[0].marks as { grid: unknown[] }).grid[0]],
         ["TrackCue", () => (withMarks.waveforms[0].marks as { cues: unknown[] }).cues[0]],
@@ -1789,6 +1797,26 @@ describe("desktop contract", () => {
           ...new Set([...batch.waveforms, ...without.waveforms].map((t) => t.state as string)),
         ].sort();
         expect(states).toEqual(union(bridgeTypes));
+      });
+
+      it("covers every loudness reason, each as the bridge types it (WAVE-08)", () => {
+        const union = (source: string) => {
+          const start = source.indexOf("export type WaveformLoudnessReason =");
+          return [...source.slice(start, source.indexOf(";", start)).matchAll(/"([a-z_]+)"/g)]
+            .map((m) => m[1])
+            .sort();
+        };
+        const measured = fixture.batch_loudness as {
+          width: number | null;
+          waveforms: { loudness: { reason: string | null } | null }[];
+        };
+        const reasons = measured.waveforms
+          .map((t) => t.loudness?.reason)
+          .filter((r): r is string => typeof r === "string");
+        expect(measured.width).toBeNull();
+        expect(reasons.length).toBeGreaterThan(0);
+        for (const reason of reasons) expect(union(bridgeTypes)).toContain(reason);
+        expect(union(bridgeTypes)).toEqual(union(engineClient));
       });
 
       it("refuses with codes both processes declare", () => {

@@ -18,6 +18,11 @@ import {
   INSPECTOR_SEEK_TITLE,
   WAVEFORM_LOADING_WORDS,
 } from "../../components/waveform/analysisWords";
+import {
+  LOUDNESS_PENDING_WORDS,
+  LOUDNESS_SILENT_WORDS,
+  LOUDNESS_TOO_QUIET_WORDS,
+} from "../../components/waveform/loudnessWords";
 import { forgetWaveforms } from "../../components/waveform/waveformCache";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { TrackWaveform } from "./TrackWaveform";
@@ -50,6 +55,7 @@ function waveform(
     state,
     reason: null,
     duration_ms: state === "ready" ? 6_000 : null,
+    loudness: state === "ready" ? { integrated_lufs: -8.4, peak_dbfs: -0.3, reason: null } : null,
     data: state === "ready" ? new Uint8Array(160 * 4).fill(160) : null,
     marks: { read: true, cues: [HOT_CUE], grid: [] },
     ...overrides,
@@ -292,6 +298,46 @@ describe("the Inspector's waveform", () => {
     await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
 
     expect(waveforms.request).not.toHaveBeenCalled();
+  });
+});
+
+describe("its loudness (WAVE-08)", () => {
+  const line = () => screen.queryByTestId("inspector-loudness");
+
+  it("says the loudness and the peak under the waveform", async () => {
+    install();
+    render(<TrackWaveform trackId={7} />);
+    await drawn();
+
+    expect(line()).toHaveTextContent("Loudness −8.4 LUFS · Peak −0.3 dBFS");
+  });
+
+  it("says a loudness still to be measured, and puts the track first while it waits", async () => {
+    const { waveforms } = install({ answer: (id) => waveform(id, "ready", { loudness: null }) });
+    render(<TrackWaveform trackId={7} />);
+    await drawn();
+
+    expect(line()).toHaveTextContent(LOUDNESS_PENDING_WORDS);
+    await waitFor(() => expect(waveforms.request).toHaveBeenCalledWith({ track_ids: [7] }));
+  });
+
+  it.each([
+    [{ integrated_lufs: null, peak_dbfs: -4.3, reason: "too_quiet" as const }, `${LOUDNESS_TOO_QUIET_WORDS} · Peak −4.3 dBFS`],
+    [{ integrated_lufs: null, peak_dbfs: null, reason: "silent" as const }, LOUDNESS_SILENT_WORDS],
+  ])("says why there is no value (%j)", async (loudness, words) => {
+    install({ answer: (id) => waveform(id, "ready", { loudness }) });
+    render(<TrackWaveform trackId={7} />);
+    await drawn();
+
+    expect(line()).toHaveTextContent(words);
+  });
+
+  it("has no line for a track without a waveform, whose box says why", async () => {
+    install({ answer: (id) => waveform(id, "waiting") });
+    render(<TrackWaveform trackId={7} />);
+    await waitFor(() => expect(box()).toHaveTextContent("Waiting for analysis"));
+
+    expect(line()).toBeNull();
   });
 });
 

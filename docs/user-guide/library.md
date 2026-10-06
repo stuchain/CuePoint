@@ -87,11 +87,12 @@ else and then going back to **All tracks** does not carry that sort over.
 ### Choosing columns
 
 **Columns…** opens the list. Nine are shown to start with — the ones a DJ reads —
-and thirteen more are there if you want them: remixer, year, plays, date added,
+and fourteen more are there if you want them: remixer, year, plays, date added,
 colour, bitrate, comment, the file path, four from
 [Clean](#clean-in-the-library) — **Match**, **Score**, **File status** and
-**Artwork** — and **Waveform**, which draws each track's waveform (see
-[Waveforms](waveforms.md)). Turn them on and off, drag a heading to move
+**Artwork** — **Waveform**, which draws each track's waveform, and
+**Loudness**, which says how loud each track is, in LUFS (see
+[Waveforms](waveforms.md#loudness)). Turn them on and off, drag a heading to move
 a column, drag its edge to resize it. CuePoint remembers all of it.
 
 Key, BPM, genre, label and year show **your** value when you have set one. A
@@ -129,7 +130,8 @@ Selecting one track fills the Inspector. From the top:
   artists and label. Each artist in the credit, and the label, is a link to
   their page (see [Discover](discover.md#artist-and-label-pages)).
 - **Its waveform**, with its cue points, loops and beat grid; when the track is
-  the one playing, a click on it seeks. See [Waveforms](waveforms.md).
+  the one playing, a click on it seeks. Under it, its loudness: "Loudness
+  −8.4 LUFS · Peak −0.3 dBFS". See [Waveforms](waveforms.md).
 - **Yours** — what you have added in CuePoint: your rating, favorite, notes,
   tags, and your key, BPM, genre, label and year. See
   [Organizing your library](organization.md) and

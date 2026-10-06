@@ -17,7 +17,8 @@ import { fileStatusLabel } from "../clean/cleanFormat";
 import { matchCell } from "../clean/cleanColumns";
 import { starsFor } from "./filterText";
 import { artworkText, effectiveText, formatScore } from "./libraryClean";
-import { OverriddenValue, RowArtwork, RowWaveform } from "./libraryCells";
+import { OverriddenValue, RowArtwork, RowLoudness, RowWaveform } from "./libraryCells";
+import { gatherLoudnessText } from "./libraryLoudness";
 import { formatDuration } from "./trackValues";
 
 export { effective, formatBpm, formatDuration } from "./trackValues";
@@ -233,6 +234,21 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     defaultWidthPx: 120,
     render: (track) => <RowWaveform row={track} />,
     text: () => "",
+  },
+  // WAVE-08: measured with the waveform, shown, never applied (DEC-124).
+  // Hidden until asked for. Not sortable: the value lives in the waveform
+  // store, and the Library's query reads the library database. A copy reads
+  // each row's value with its unit, "−8.4 LUFS".
+  {
+    id: "loudness",
+    hiddenByDefault: true,
+    header: "Loudness",
+    minWidthPx: 48,
+    defaultWidthPx: 72,
+    align: "right",
+    render: (track) => <RowLoudness row={track} />,
+    text: () => "",
+    gatherText: gatherLoudnessText,
   },
 ];
 

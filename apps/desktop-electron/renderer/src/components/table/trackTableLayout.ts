@@ -69,6 +69,12 @@ export interface TrackColumnDef<Row> {
    * rendered text is the text.
    */
   text?: (row: Row) => string;
+  /**
+   * For a column whose text is not in the row (WAVE-08's loudness, read from
+   * the waveform store): read it for the rows a copy holds, and answer each
+   * row's text. A copy awaits it before it writes; `text` is not used then.
+   */
+  gatherText?: (rows: readonly Row[]) => Promise<(row: Row) => string>;
 }
 
 /** Column widths in CSS pixels, keyed by column id. */

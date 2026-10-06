@@ -1,7 +1,7 @@
 # CuePoint v1.0.0 — Phase 11: Waveforms, Detailed Step Specifications
 
-Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30), WAVE-03 (2026-10-03), WAVE-04 to WAVE-07 (2026-10-05). The phase's acceptance is met on Windows in the development build; its packaged runs are owed (see the end of WAVE-07).** The seven steps below replace the
-roadmap's placeholder inventory (WAVE-01…WAVE-07), keeping its count. Per the process, no
+Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30), WAVE-03 (2026-10-03), WAVE-04 to WAVE-07 (2026-10-05). WAVE-08, loudness, was added 2026-10-05 (DEC-124) and implemented the same day. Acceptance points 1–16 are met on Windows in the development build; their packaged runs are owed (see the end of WAVE-07).** The first seven steps below replace the
+roadmap's placeholder inventory (WAVE-01…WAVE-07), keeping its count; WAVE-08 was added after them. Per the process, no
 implementation happens from this document: each step needs an explicit "Implement WAVE-NN"
 instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
 There are no open points. Measurements taken while writing it are recorded in cross-cutting fact 3,
@@ -44,7 +44,8 @@ This phase draws each track's waveform:
 - **No editing:** no cues or beat grid are edited or written anywhere (DEC-118). The export still
   patches the XML and never writes a mark (DEC-077).
 - **No Rekordbox analysis files:** it reads none of Rekordbox's own (ANLZ) data (DEC-113).
-- **No audio measurements:** no loudness, BPM or key; those are Phase 12's (DEC-121).
+- **No audio measurements but loudness:** no BPM or key, which are Phase 12's. Loudness was added by
+  WAVE-08 (DEC-124, superseding DEC-121), measured and shown, never applied.
 - **No change to playback:** it does not tell the engine when something is playing (DEC-050).
 - **No change to row counts:** it does not change the player bar's height or any page's row count as
   that page opens.
@@ -95,9 +96,10 @@ Read this table before writing any of it again.
 | DEC-118 | Cue points and beat grids imported from the XML on import and refresh, drawn read-only. |
 | DEC-119 | Phase 11 starts with Phase 5's manual acceptance owed and recorded. |
 | DEC-120 | Prepare shows a transition strip: the selected entry beside the next one. |
-| DEC-121 | Waveforms only; loudness and other measurements wait for Phase 12. |
+| DEC-121 | Waveforms only; loudness and other measurements wait for Phase 12. Superseded by DEC-124. |
 | DEC-122 | Waveform data lives in its own store beside the library, outside backups and "Clear cache", keyed by file. |
 | DEC-123 | The engine decodes through the `mpv` Electron names to it; FFmpeg's filters split the bands; no `numpy`. |
+| DEC-124 | The same pass measures integrated loudness and the sample peak, shown read-only (WAVE-08). |
 
 ## Sequencing
 
@@ -106,7 +108,8 @@ step depends on the decoder being able to produce bands of the exact length, in 
 measured rate. WAVE-02 builds the store and the analysis of one file. WAVE-03 turns that into the
 library job. WAVE-04 imports cues and beat grids; it depends on nothing above and can be built in
 parallel with WAVE-02 and WAVE-03. WAVE-05 puts waveforms on the wire and draws them. WAVE-06 places
-them in the bar, the Inspector and the Library. WAVE-07 draws Prepare's strip and closes the phase.
+them in the bar, the Inspector and the Library. WAVE-07 draws Prepare's strip and closed the phase.
+WAVE-08, added after it (DEC-124), measures loudness in the same pass and reopens it.
 
 **Nothing is retired in this phase.** Every intermediate build keeps working. Until WAVE-06 the bar
 keeps its slider, and afterwards the slider is still what a keyboard and a screen reader use.
@@ -1882,10 +1885,284 @@ development build; the packaged runs are owed.
 
 ---
 
+## WAVE-08 — Loudness, Measured in the Same Pass ✅ IMPLEMENTED 2026-10-05
+
+Added 2026-10-05, after the phase closed, when the user revisited Q-125 and chose Option B (DEC-124,
+superseding DEC-121).
+
+**Objective**: Measure each track's integrated loudness and peak in the pass that already draws its
+waveform, and show both, read-only, wherever a waveform is read.
+
+**User-visible result**:
+- **The Inspector** says "Loudness −8.4 LUFS · Peak −0.3 dBFS" under the waveform.
+- **The Library** offers a "Loudness" column, hidden by default.
+- **Prepare's strip** shows each half's loudness and how far apart the two sit: "+2.1 LU".
+- **A library already analysed** is measured once more in the background, its waveforms drawing
+  throughout.
+
+**Dependencies**: WAVE-07.
+
+**Existing code reused**:
+- DEC-123's graph and the log the pipeline already reads (`data/audio_decode.py`).
+- The store's additive precedent: `waveforms_work` was created with `IF NOT EXISTS` (WAVE-03).
+- The work list, the job, its requests and its status (WAVE-03).
+- The waveforms route and its six contract files (WAVE-05).
+- The Inspector's waveform, the Library column's settle and no-request rules (WAVE-06), and the
+  strip's words (WAVE-07).
+
+**Measured while writing this** (Windows 11, the pinned `mpv` 0.41-dev / FFmpeg 8):
+
+| What | Result |
+| --- | --- |
+| A six-minute FLAC, the waveform alone | 0.92 s (median of 3) |
+| The same, `ebur128=peak=sample` at the head of the graph | 1.33 s, +45% |
+| The same, `ebur128=peak=true` | 2.40 s, +160% |
+| The envelope with `ebur128` in front | the same 54,011 frames |
+| `bands.flac` | I −6.5 LUFS, sample peak −4.3 dBFS, true peak −4.0 dBFS |
+| `tone.mp3` (silence) | I −70.0 LUFS, peak −inf |
+| `tone.flac` (0.26 s, under one 400 ms block) | I −70.0 LUFS, peak −4.3 dBFS |
+
+- **The summary is written once,** at the end of the decode, on mpv's `ffmpeg` log at verbose
+  level: `Integrated loudness: I: -6.5 LUFS`, then `Sample peak: Peak: -4.3 dBFS`.
+- **−70.0 LUFS is `ebur128`'s floor,** not a reading: no 400 ms block passed the absolute gate.
+
+**Design**:
+
+- **The pipeline** (`audio_decode.py`).
+  - `ebur128=peak=sample:framelog=quiet` heads the graph, before the downmix, so it measures the
+    file's own channels at its own rate, as BS.1770 specifies. It passes the audio through
+    untouched.
+  - The log is read for its one summary: the integrated value and the sample peak, to 0.1.
+  - **Outcomes:**
+    - a value: stored;
+    - −70.0 LUFS: no value, reason `too_quiet` (silence, or shorter than one block);
+    - a peak of −inf: no peak, reason `silent`;
+    - no summary in the log: no value, reason `not_measured`, logged once per run. The waveform is
+      still stored: loudness never costs a file its picture. `--check-analysis` makes this
+      impossible on a pinned build (below).
+  - **`ANALYSIS_VERSION` stays 2.** A test holds the envelope identical, value for value, with and
+    without `ebur128` in front, for every fixture. `LOUDNESS_VERSION` is 1, and names what a reading
+    means.
+- **The store** (`persistence/waveform_store.py`).
+  - A table `loudness`, keyed by path like `waveforms`: size, modified time, `LOUDNESS_VERSION`,
+    `integrated_lufs` and `peak_dbfs` (nullable), `reason`, `measured_at`. Created with
+    `IF NOT EXISTS` at every first open, so a store made by WAVE-02 to WAVE-07 gains it without a
+    new schema version and keeps every waveform (DEC-122 is not triggered).
+  - Written in the same transaction as the waveform row. A failed decode writes neither.
+  - "Delete waveform data" and the prune empty it with the waveforms; its size is in the size the
+    deletion states.
+- **The job** (WAVE-03's).
+  - A file counts as analysed when its waveform row and its loudness row both count.
+  - **Order:** files with no waveform first, in WAVE-03's order; then files with a waveform but no
+    loudness, in the same order. The status counts both as remaining, and the strip's words are
+    unchanged.
+  - A file whose waveform counts but whose loudness does not is decoded again in full. Its picture
+    is written again, identical; nothing is drawn from it before then that changes after.
+  - **Requests:** a track shown that lacks either is requested, as WAVE-06's rule says ("while it
+    waits"). A track with a waveform but no loudness reads as waiting for its loudness only.
+- **The wire** (the six contract files, fact 1).
+  - Each track's answer gains `loudness`: `{integrated_lufs, peak_dbfs, reason}`, or null while it
+    is not measured.
+  - `GET /api/v1/waveforms` gains `data=0`: states and loudness, no pictures, and no `width`. The
+    Library column asks this way: 200 states measured 3.7 ms at 50,000 (WAVE-07).
+- **The renderer**, every number in one place (`loudnessWords.ts`):
+  - **Format:** one decimal, a true minus sign: "−8.4 LUFS", "Peak −0.3 dBFS"; a difference as
+    "+2.1 LU" or "−2.1 LU"; "0.0 LU" when equal.
+  - **The Inspector:** one line under the waveform, "Loudness −8.4 LUFS · Peak −0.3 dBFS". Without a
+    value, words: "Loudness is measured with the next analysis", "Too quiet or too short to
+    measure", "Silent".
+  - **The Library column:** "Loudness", hidden by default, not sortable, minimum 48 and default 72
+    CSS pixels, "−8.4" with the peak in its title; "−8.4 LUFS" as its text for copy and export.
+    WAVE-06's rules: it reads rows that settle for 100 ms, and never requests.
+  - **Prepare's strip:** each half's title line ends with its loudness; the words between the halves
+    gain the difference, the next track against the selected one, when both are measured.
+  - **Settings → Waveforms:** "Delete waveform data…" says loudness goes with it.
+- **Not done here, each recorded in Deferred:** the true peak, the loudness range, sorting or
+  filtering by loudness (the value lives in the store, and the Library's query reads the library
+  database), and applying any gain.
+- **Docs:** `waveforms.md` gains "Loudness" (what LUFS and the peak mean, what −70 means, that
+  nothing is changed); the Library, Prepare, glossary and performance pages; the changelog; ADR-009
+  and ADR-010 get amendments; the roadmap.
+
+**Tests**:
+- **The pipeline:** the summary parse, against logs captured from the pinned builds: a value, −70.0,
+  −inf, a missing summary, a second summary (refused), a malformed line. The envelope identical with
+  and without `ebur128`, per fixture, with a real decoder. A real decode of every fixture with its
+  loudness, skipped without a decoder.
+- **The release check:** `fetch_player_sidecar.py --check-analysis` gains EBU Tech 3341's first case,
+  a 1 kHz stereo sine at −23 dBFS for 20 s, generated as the band tones are: −23.0 LUFS within 0.1,
+  sample peak −23.0 dBFS within 0.1. Desktop CI runs it on the pinned Windows and macOS builds.
+- **The store:** the table created on a WAVE-07 store with every waveform kept; written with its
+  waveform or not at all; emptied by the deletion and the prune; its reasons.
+- **The job:** the order (no waveform first, then no loudness); a waveform without loudness drawn
+  while it waits; the counts; a request for a track missing only its loudness; the decode again
+  writing the same picture.
+- **The wire:** `loudness` in each answer, `data=0`, and the contract test across the six files.
+- **The renderer:** the words and formats; the Inspector's line and its three states; the column's
+  declaration, settle, no request, text; the strip's titles and difference, and no difference
+  without both.
+- **End to end:** `bands.flac`'s Inspector line reads −6.5 LUFS and −4.3 dBFS; the column shows it;
+  the strip shows a difference; a store made before this step keeps its waveforms after the upgrade
+  and gains loudness as the analysis runs. The phase journey gains a loudness check in steps 4 and 8.
+- **Measurements:** `bench_waveform_analysis.py` re-run twice on Windows for the new rate, the
+  Library search's budget (1.5× idle) and no underrun; `bench_waveforms.py` for the store's size
+  with the table.
+
+**Acceptance criteria / DoD**:
+- Every analysed track shows its loudness, or says why it has none, in the three places.
+- A library analysed before this step keeps every waveform throughout and gains its loudness in the
+  background.
+- The analysis's rate falls by no more than half, and the search and playback budgets hold.
+- `--check-analysis` proves the loudness on the pinned Windows and macOS builds.
+- All suites clean.
+
+**Risks**: Medium.
+- **The summary is text.** FFmpeg's wording is not an interface. The parse is strict and tested
+  against captured logs, and the release check fails a new pin whose wording changes, before it
+  ships.
+- **The re-measure is hours of work for existing libraries,** once. It runs at the job's low
+  priority, after every unanalysed file, and the waveforms draw throughout.
+
+**Complexity**: **M**
+
+**Outcome**: Implemented (2026-10-05). The pass that draws each waveform measures its loudness, and
+the Inspector, a Library column and Prepare's strip show it, or why there is none. A store made
+before keeps every waveform and has each file measured in the background. Measured twice on Windows,
+inside every budget but one, the store's size, which was re-baselined for the table (item 5 below);
+the packaged runs are owed with the phase's.
+
+**What was built.**
+
+- **The pipeline** (`data/audio_decode.py`): `LOUDNESS_METER`,
+  `ebur128=peak=sample:dualmono=true:framelog=quiet`, heads the graph; `read_loudness()` reads its
+  one summary strictly; a `Loudness` reading travels on the `Envelope`. `LOUDNESS_VERSION` is 1 and
+  `ANALYSIS_VERSION` stays 2. A decode with no summary keeps its waveform, "not measured", logged
+  once an engine.
+- **The store** (`persistence/waveform_store.py`): a `loudness` table, `WITHOUT ROWID`, keyed by
+  path, created with `IF NOT EXISTS`. `put()` writes a row and its reading in one transaction, or a
+  savepoint in a caller's; reads join on path, size and modified time, the work list on path and size
+  through its index; the deletion, the prune and a refused picture take the reading with the row.
+- **The models** (`models/waveform.py`): `StoredLoudness`, a reading at a version; a summary's
+  `loudness` and `measured()`; the work list's `StoredFile.loudness_version`; `WaveformState.loudness`
+  on the wire.
+- **The service and the job**: a ready row with no reading at the current version is decoded again,
+  its picture rewritten the same; the plan puts every file with no waveform first and those missing
+  only their loudness after, both counted as remaining.
+- **The wire** (the six contract files): each answer's `loudness`, and `data=0` for states and
+  loudness with no picture and no width.
+- **The renderer**: `loudnessWords.ts` for every number and sentence; the Inspector's line; the
+  "Loudness" column (`RowLoudness`, `libraryLoudness.ts`), hidden, unsortable, 48 and 72 CSS pixels;
+  the strip's titles and difference; the cache's `width: null` and `loudness` query, which follows a
+  ready track still to be measured for a view that shows a number and not for one that only draws;
+  the request rule extended the same way; "Delete waveform data" naming the loudness.
+- **A copy reads what the row does not hold.** A column may declare `gatherText`; every table's copy
+  awaits it (`gatherTracksAsText`). The Loudness column reads its rows' readings without pictures,
+  200 at a time, so a copy of thousands of rows no view has shown carries each one.
+- **The release check**: `--check-analysis` generates EBU Tech 3341's first case and holds the meter
+  to it.
+- **Docs**: the Waveforms page's "Loudness"; the Library, Prepare, glossary and performance pages;
+  ADR-009's and ADR-010's amendments; DEC-124 as built; the changelog; AGENTS.md's Waveforms row; the
+  roadmap.
+
+**Tests.**
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `test_audio_decode.py` | +19 | The meter's place and options; the summary read from captured pinned-build logs (a value, too quiet, silent), the floor and a tenth above it, −inf, none, two, a malformed line, no peak, the running lines and another module's lines passed over, the true peak not taken for the sample peak; the reading's rules; a decode carrying its reading, and one without keeping its waveform and saying so once |
+| `test_audio_decode_binary.py` (real `mpv`) | +3 | Every fixture's stored picture identical with and without the meter; each fixture's reading on the pinned build; both transports |
+| `test_fetch_player_sidecar.py` | +3 | The EBU case written as the case says; a meter that misreads it fails the check; one within the tolerance passes |
+| `test_waveform_models.py` | +9 | `StoredLoudness`'s rules; the reasons the decoder's; a ready state's loudness on the wire, and only a ready one's; `measured()` for rows and work-list files |
+| `test_waveform_store.py` | +14 | The table and its checks; a store made before it keeping every waveform; a reading round-tripping with its waveform; one of another file version never read; written with its waveform or not at all; refused by the model read as none; deleted with its waveform; regression: writes inside a caller's transaction (item 4) |
+| `test_waveform_service.py` | +5 | Each reading stored and answered; a failed file with none; a waveform from before measured again, its picture the same; an older version measured again; a changed file's reading going with its failure |
+| `test_waveform_analysis_service.py` | +5 | The plan's order and counts; the limit; a failed file with nothing to measure; a run measuring an analysed library keeping every picture; a request for a track missing only its loudness |
+| `test_waveforms_api.py`, `test_waveforms_contract.py`, `test_waveforms_fixture.py` | +3, +2, +1 | `loudness` in each answer; `data=0`, with marks and refused with a width; the client's request and the reasons across the six files; the fixture's `batch_loudness` |
+| `test_waveform_phase_journey.py`, `test_waveforms_scale.py` | ~2 | The journey's engine half checks the loudness in steps 3, 4 and 8, with a real decoder and a stand-in; the scale test at the store's new share |
+| `loudnessWords.test.ts`, `RowLoudness.test.tsx`, `trackClipboard.test.ts` | 10, 9, 6 (new) | Every format and sentence, against the engine's fixture; the column's declaration, settle, no request, words and copy of rows never shown; the gathered copy |
+| `waveformCache.test.ts`, `useWaveforms.test.tsx`, `useWaveformRequest.test.ts` | +6, +1, +3 | No-picture queries apart from pictures; following a track still to be measured only for a view that shows its loudness; reading entries for a copy; the request rule |
+| `TrackWaveform.test.tsx`, `SetTransition.test.tsx`, `transitionStrip.test.ts` | +3, +4, +2 | The Inspector's line in each state; the strip's titles, its difference, none without two values or after the last entry, a track missing only its loudness requested |
+| `engineClient.waveforms.test.ts`, `desktopContract.test.ts` | +1, +1 (and 3 rows) | `data=0` and its query; `WaveformLoudness`, its reasons and `WaveformsQuery` the same in both processes and against the engine's answers |
+| `waveformLoudness.spec.ts` (Electron end to end) | 2 | Each fixture's reading in the Inspector and the column, a copy, the strip's difference; a store made before the step keeping every picture, measuring a track asked for while paused, the rest on resume |
+| `waveformJourney.spec.ts`, `prepare.spec.ts` | ~2 | The journey's steps 4 and 8 read the loudness; each platform's row counts (item 6) |
+
+**Measured** (Windows 11 x86_64, 16 cores, SQLite 3.50.4, the pinned `mpv` 0.41-dev / FFmpeg 8; two
+runs each on a quiet machine):
+
+| Measure | Run 1 | Run 2 | Budget |
+| --- | --- | --- | --- |
+| 5,000 fixture copies, end to end | all 5,000 in 409 s | all 5,000 in 426 s | every file analysed |
+| 48 six-minute tracks | 30.3 s, 5,712 an hour | 28.9 s, 5,977 an hour | the rate falls by no more than half |
+| 50,000 six-minute tracks, extrapolated | about 8.8 hours | about 8.4 hours | recorded |
+| Library search p95 over 10,000 tracks, analysing / idle | 40.0 / 37.5 ms, 1.07× | 38.1 / 27.9 ms, 1.37× | 1.5× |
+| A three-track queue on the audio device (WASAPI) during the run | 0 underruns | 0 underruns | 0 |
+| The store, 50,000 waveforms with their loudness | 252.05 MB | 252.05 MB | 260 MB (item 5) |
+| 200 states and readings | 5.05 ms | 5.15 ms | 50 ms |
+| 200 pictures at width 120 | 23.56 ms | 23.03 ms | 50 ms |
+| One picture at 1,200 / with its marks | 0.18 / 0.27 ms | 0.18 / 0.26 ms | 20 ms |
+| The work list, a refill of 200 / a count | 384 / 371 ms | 378 / 363 ms | 500 ms |
+| The marks read, typical / prepared | 1.21× / 1.28× | 1.21× / 1.28× | 1.30× / 1.40× |
+
+- **The rate fell by about a third,** from WAVE-03's 8,332 and 8,434 an hour: the meter's +42% on a
+  six-minute FLAC (0.76 s to 1.08 s), the engine's share unchanged. Run 1's idle search sample was
+  slow, which flatters its 1.07×; run 2's 1.37× is the honest figure.
+- **The work list's join costs about 10%,** 335–350 ms to 378–384 ms a refill: one primary-key
+  lookup a path beside the index, as its query plan says.
+- **EBU Tech 3341's first case** reads −23.0 LUFS and a −23.0 dBFS peak on the pinned Windows build.
+
+**Where the specification was wrong, and what was done instead.** Each was settled the most durable
+way.
+
+1. **"The envelope identical, value for value" is not quite so; the stored picture is.** The meter
+   hands the next filter doubles where the file's own format was handed before, so an envelope value
+   can differ in its last float bit: at most 7 × 10⁻⁷ over every fixture and a six-minute FLAC. Every
+   stored picture is the same byte for byte, which is what `ANALYSIS_VERSION` names, so it stays 2;
+   the real-decoder test holds the pictures equal and the values within 10⁻⁶.
+2. **A mono file is measured as it is played** (`dualmono=true`), on both sides, so it reads as loud
+   as the same music in stereo. `bands.flac`, mono, reads −3.5 LUFS where the specification's table
+   measured −6.5 without it.
+3. **No `measured_at` column.** A reading is written in the same transaction as its waveform, whose
+   `analysed_at` says when.
+4. **The store's writes nest.** Two statements in a `BEGIN` of their own broke the store bench, which
+   loads 5,000 rows a transaction: SQLite refuses a `BEGIN` inside one. A write now takes a savepoint
+   in a caller's transaction, its own otherwise; a regression test holds both.
+5. **The store's budget is re-baselined, not broken quietly.** The table is keyed by path, as the
+   store keys everything, so a reading costs what its path does: 5.9 MB at 50,000, and the store went
+   from 246.6 to 252.1 MB, over WAVE-02's 250. Keying by the waveform's row id would have saved
+   3.8 MB, but `waveforms` is keyed by text, so its row ids are SQLite's own and `VACUUM`, which
+   "Delete waveform data" runs, may renumber them, sending a reading to another file. The budget is
+   now 260 MB, 5.2 KB a track: WAVE-02's 250 for the waveforms, which still hold inside it, and 10 for
+   the table. The pictures measured are the bench's, which pack worse than music.
+6. **Prepare's held row counts were Linux's on every platform.** `prepare.spec.ts` had failed on
+   Windows since PREP-11 at the lanes' count, which stopped it before the rest; WAVE-07 recorded it.
+   Measured at WAVE-06's commit and now, the same: 6 / 7 whole rows as the page opens, 3 / 4 with the
+   player's bar, with the lanes and with the strip. The expanded counts are two below Linux, not one:
+   the Set pane is 317 CSS pixels wide there, and at Windows' font metrics its header wraps one line
+   more, 24 px, a row. Each platform now holds its own counts (Linux's as before), the floor of five
+   is met, and Phase 10's owed Windows counts are recorded in its acceptance.
+7. **A copy of the column could not have come from the cache.** The cache holds 2,000 answers and a
+   copy up to 5,000 rows, most never shown. A column now gathers its own text for a copy, so the
+   Loudness column reads every copied row's reading, and a row the engine cannot answer copies empty
+   rather than wrong.
+8. **A view that only draws does not follow a reading.** The player bar and the Waveform column ask
+   nothing again for a number they never show; the Inspector, the strip and the Loudness column do.
+
+**Also fixed on the way, and committed apart**: waveform decoders could outlive an engine that was
+killed on Windows; each now joins a job object that ends with the engine (ADR-009's amendment).
+
+**Run on Windows 11** (the pinned `mpv`): the Python suite (12,022 passed, slow tests apart; the slow
+`test_waveforms_scale.py` passed on its own), the renderer (4,209), Electron (595), the mypy gate, and
+the whole end-to-end suite, 70 passed and one skipped (the memory run, which takes
+`CUEPOINT_E2E_MEMORY`), `prepare.spec.ts` included. The journey and `waveformLoudness.spec.ts`
+passed three times in a row (`--repeat-each=3`).
+
+---
+
 ## Phase-level acceptance
 
 Checked at WAVE-07 (2026-10-05). ✅ is met and proven where it says; **owed** is recorded with its
 reason.
+
+Points 1 to 15 are the phase as specified; point 16 is WAVE-08's (DEC-124), checked at WAVE-08
+(2026-10-05).
 
 1. ✅ Every track whose file is present gets a waveform without anyone asking. It is computed by CuePoint
    from the audio through the bundled decoder, and no Rekordbox analysis file is read. *WAVE-01,
@@ -1930,6 +2207,14 @@ reason.
     build with `CUEPOINT_MPV_PATH` (both journey specs take `CUEPOINT_E2E_EXECUTABLE`), the packaged
     Windows and macOS runs, and `bench_decoder.py` on the pinned macOS build, recorded with Phase 5's
     and Phase 10's owed runs.
+16. ✅ Every analysed track's integrated loudness and peak are measured in the same pass and shown,
+    read-only, in the Inspector, a Library column and Prepare's strip, or the reason there is none. A
+    library analysed before keeps every waveform while it is measured. *WAVE-08:*
+    `waveformLoudness.spec.ts` in the running app, each fixture's reading in all three places and a
+    store from before upgraded with every picture kept; the release check's EBU Tech 3341 case on the
+    pinned Windows build; the analysis's rate a third lower, inside the half allowed, with the
+    search and playback budgets held. **Owed** with point 15: the release check on the pinned macOS
+    build in desktop CI, and the packaged runs.
 
 ## Deferred, with reasons
 
@@ -1941,8 +2226,15 @@ reason.
   exists to never do.
 - **Reading Rekordbox's analysis files** (DEC-113). The format is undocumented, and the files exist only
   for tracks Rekordbox has analysed, at a path CuePoint does not own.
-- **Loudness, BPM and key from audio** (DEC-121). These are Phase 12's. Its job can extend
+- **BPM and key from audio** (DEC-121, DEC-124). These are Phase 12's. Its job can extend
   `waveform_analysis`'s decoder rather than start another.
+- **The true peak and the loudness range** (DEC-124). `ebur128` measures both, but the true peak's
+  oversampling made the pass 2.6 times as long, where the sample peak adds 45%. Phase 12 can add
+  either when it asks what they are for.
+- **Sorting and filtering by loudness** (WAVE-08). The value lives in the waveform store, and the
+  Library's query reads the library database; joining them is a decision of its own.
+- **Applying loudness to playback** (DEC-055, DEC-124). Measured, never applied: normalisation stays
+  Phase 12's.
 - **Pausing analysis while music plays** (DEC-050). The engine is not told about playback, and OS
   priority is the mechanism instead.
 - **A decoder for Linux.** PLAYER-01 pins none. Linux users name their own `mpv`, and get waveforms

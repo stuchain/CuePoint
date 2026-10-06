@@ -13,8 +13,17 @@
  */
 import type { TrackColumnDef } from "../../components/table";
 
+/** Each gathered column's text, by column id (`gatherText`). */
+export type GatheredTexts<Row> = ReadonlyMap<string, (row: Row) => string>;
+
 /** What a cell contributes to a copy. */
-export function cellText<Row>(column: TrackColumnDef<Row>, row: Row): string {
+export function cellText<Row>(
+  column: TrackColumnDef<Row>,
+  row: Row,
+  gathered?: GatheredTexts<Row>,
+): string {
+  const read = gathered?.get(column.id);
+  if (read) return read(row);
   // A column that draws more than text says what its text is (CLEAN-13): an
   // overridden BPM copies as the BPM shown, not as the imported field.
   if (column.text) return column.text(row);
@@ -47,13 +56,30 @@ function clean(value: string): string {
 export function tracksAsText<Row>(
   columns: readonly TrackColumnDef<Row>[],
   rows: readonly Row[],
+  gathered?: GatheredTexts<Row>,
 ): string {
   if (rows.length === 0 || columns.length === 0) return "";
   const header = columns.map((column) => clean(column.header)).join("\t");
   const body = rows.map((row) =>
-    columns.map((column) => clean(cellText(column, row))).join("\t"),
+    columns.map((column) => clean(cellText(column, row, gathered))).join("\t"),
   );
   return [header, ...body].join("\n");
+}
+
+/**
+ * The selection as text, once every shown column whose text is not in the row
+ * has read it for these rows (`gatherText`, WAVE-08). What every copy of a
+ * table calls, so a column that needs a read gets it in each.
+ */
+export async function gatherTracksAsText<Row>(
+  columns: readonly TrackColumnDef<Row>[],
+  rows: readonly Row[],
+): Promise<string> {
+  if (rows.length === 0 || columns.length === 0) return "";
+  const gathering = columns.filter((column) => column.gatherText !== undefined);
+  const texts = await Promise.all(gathering.map((column) => column.gatherText!(rows)));
+  const gathered = new Map(gathering.map((column, index) => [column.id, texts[index]]));
+  return tracksAsText(columns, rows, gathered);
 }
 
 /** What to say after a copy, including when it could not be all of it. */

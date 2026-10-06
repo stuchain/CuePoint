@@ -127,3 +127,16 @@ describe("the shading", () => {
     expect(shadedTimes(half(0, null))).toEqual({ inMs: null, outMs: null });
   });
 });
+
+describe("the loudness difference (WAVE-08)", () => {
+  it("ends the words between the halves when there is one", () => {
+    const transition = transitionOf(ENTRIES, 1)!;
+    expect(transitionWords(transition, "+2.1 LU").join(" ")).toBe("Out 5:42 → In 0:16 · +2.1 LU");
+    expect(transitionWords(transition, null)).toEqual(["Out 5:42", "→", "In 0:16"]);
+  });
+
+  it("is never said after the last entry, which has no next", () => {
+    const last = transitionOf(ENTRIES, ENTRIES[ENTRIES.length - 1]!.entry_id)!;
+    expect(transitionWords(last, "+2.1 LU")).toEqual([outWords(last.from)]);
+  });
+});

@@ -4031,7 +4031,8 @@ waveform in every row would be too thin to read at a row's height.
 
 ## DEC-121 — Phase 11 Is Waveforms Only
 
-**Status**: Approved · **Related**: the Phase 12 audio-analysis item
+**Status**: Approved, then **superseded by DEC-124** (2026-10-05): the analysis also measures each
+track's loudness. · **Related**: the Phase 12 audio-analysis item
 
 **Decision**: The analysis measures nothing but the waveform. Loudness, BPM, key and every other
 measurement from audio wait for Phase 12.
@@ -4176,3 +4177,52 @@ needed `numpy`.
 - **The engine's share is halved:** the parse runs at C level, bit-identical, still with no `numpy`.
   On Windows the engine asks for a 1 ms timer, so a request does not wait for the interpreter's lock
   in 15.6 ms steps while the analysis computes.
+
+---
+
+## DEC-124 — The Analysis Also Measures Loudness
+
+**Status**: Approved · Implemented (WAVE-08, 2026-10-05) · **Supersedes**: DEC-121 · **Related**: DEC-116, DEC-122, DEC-123, Q-125
+
+**Decision**: The pass that draws each track's waveform also measures its loudness, as Q-125's
+Option B put it: the **integrated loudness** in LUFS (ITU-R BS.1770 with EBU R128's gating) and the
+**peak**, shown read-only in the Inspector, a Library column and Prepare's transition strip. The user
+revisited Q-125 after Phase 11 closed and chose B.
+
+**Reason**: Decoding every file is the expensive part of the analysis, and it is already paid. A
+DJ reads a track's loudness beside its shape: how hot a master is, and how far apart two tracks
+in a transition sit. Measuring it later, as DEC-121 decided, would have cost a second pass over the
+whole library anyway.
+
+**Implications**:
+- **Measured inside the same `mpv` child,** by FFmpeg's own `ebur128` filter at the head of
+  DEC-123's graph, on the file's own channels and rate, before the downmix. The engine reads its
+  one summary from the log the pipeline already reads. No new dependency, and the waveform is
+  unchanged: `ANALYSIS_VERSION` stays 2. *As built:* every stored picture is the same byte for
+  byte; an in-memory envelope value can differ in its last float bit (at most 7 × 10⁻⁷), since
+  the meter hands the next filter doubles. A mono file is measured as it is played, on both sides
+  (`dualmono`), so it reads as loud as the same music in stereo.
+- **Precision: the sample peak, not the true peak.** Measured on the pinned Windows build over a
+  six-minute track, the waveform alone took 0.92 s, with integrated loudness and the sample peak
+  1.33 s (+45%), with the true peak instead 2.40 s (+160%). True peak's 4× oversampling would turn a
+  50,000-track library's first analysis from about 6 hours into about 16. The sample peak says
+  what a DJ asks of a peak, whether a master is driven to the top, for a third of that cost. True
+  peak is deferred, recorded with its measured cost.
+- **"Not measurable" is not a number.** `ebur128` reports -70.0 LUFS, its floor, for silence and
+  for a file shorter than its 400 ms measuring block, and a peak of -inf for silence. Each is stored
+  as no value with its reason, never as a level.
+- **Measured, never applied.** The player does not change a track's gain: DEC-055 left volume
+  normalisation to Phase 12 for want of exactly this data, and this decision measures it without
+  taking that one. Nothing is written to Rekordbox, which has no field for it.
+- **Kept in the waveform store,** in a table of its own created beside the waveforms, as the work
+  list's index was (WAVE-03): an existing store gains it without a schema change and without
+  losing a waveform (DEC-122's "rebuilt, never migrated" is not triggered).
+- **Libraries already analysed are measured once more,** in the background: every waveform keeps
+  drawing meanwhile, and files with no waveform at all still come first. At the measured rate that
+  is about 8.7 hours for 50,000 tracks, once. *As built:* the library's rate measured 5,712 and
+  5,977 six-minute tracks an hour, about 8.4 to 8.8 hours for 50,000, against about 8,400 an hour
+  for the waveforms alone.
+- **Phase 12** keeps BPM, key and every other measurement from audio, and the true peak and the
+  loudness range if it wants them; it extends this job as DEC-121 intended.
+
+**Decided with**: User · **Date**: 2026-10-05

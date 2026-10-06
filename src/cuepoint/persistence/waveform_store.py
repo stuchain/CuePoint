@@ -55,6 +55,26 @@ so a scan of the table reads the whole file: a covering index,
 created with ``IF NOT EXISTS`` at every first open, so a store made before it
 gains it without a new schema version, and without losing a waveform.
 
+Loudness, beside each waveform
+------------------------------
+WAVE-08 measures each file's loudness in the pass that draws its waveform
+(DEC-124). It is kept in a table of its own, ``loudness``, keyed by path as
+``waveforms`` is, and created the way ``waveforms_work`` was: ``IF NOT EXISTS``
+at every first open. A store made before it gains it, keeps every waveform,
+and has each file measured again in the background.
+
+- **Written with its waveform,** in one transaction (:meth:`WaveformStore.put`).
+  A failed analysis has none, and a stored one for its path is deleted with it.
+- **Read with its waveform,** joined on the path, size and modified time, so a
+  reading of another version of the file is never shown. Its own version is
+  the service's to judge.
+- **Deleted with its waveform,** by a refused picture, the prune and "Delete
+  waveform data".
+
+``WITHOUT ROWID``, unlike ``waveforms``: its rows are some fifty bytes, so the
+table is its own primary key's index, and the work list's join on the path
+reads it with no second lookup.
+
 Connections are one per thread, as the library database's are, and a thread
 that has ended has its connection closed when the next one is opened.
 """
@@ -64,11 +84,27 @@ from __future__ import annotations
 import logging
 import sqlite3
 import threading
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
-from cuepoint.models.waveform import StoredFile, StoredWaveform, WaveformSummary
+from cuepoint.models.waveform import (
+    StoredFile,
+    StoredLoudness,
+    StoredWaveform,
+    WaveformSummary,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -123,6 +159,17 @@ CREATE TABLE IF NOT EXISTS waveforms (
 );
 CREATE INDEX IF NOT EXISTS waveforms_work
     ON waveforms (analysis_version, path, size_bytes, state);
+CREATE TABLE IF NOT EXISTS loudness (
+    path             TEXT    PRIMARY KEY NOT NULL CHECK (length(path) > 0),
+    size_bytes       INTEGER NOT NULL CHECK (size_bytes >= 0),
+    mtime_ns         INTEGER NOT NULL,
+    loudness_version INTEGER NOT NULL CHECK (loudness_version > 0),
+    integrated_lufs  REAL,
+    peak_dbfs        REAL,
+    reason           TEXT    CHECK (reason IS NULL OR length(reason) > 0),
+    CHECK ((reason IS NULL) = (integrated_lufs IS NOT NULL)),
+    CHECK (reason IS NOT NULL OR peak_dbfs IS NOT NULL)
+) WITHOUT ROWID;
 INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '{SCHEMA_VERSION}');
 """
 
@@ -144,6 +191,63 @@ _PUT = (
     " ON CONFLICT (path) DO UPDATE SET "
     + ", ".join(f"{column} = excluded.{column}" for column in _COLUMNS[1:])
 )
+
+_LOUDNESS_COLUMNS = (
+    "path",
+    "size_bytes",
+    "mtime_ns",
+    "loudness_version",
+    "integrated_lufs",
+    "peak_dbfs",
+    "reason",
+)
+
+_PUT_LOUDNESS = (
+    f"INSERT INTO loudness ({', '.join(_LOUDNESS_COLUMNS)})"
+    f" VALUES ({', '.join('?' for _ in _LOUDNESS_COLUMNS)})"
+    " ON CONFLICT (path) DO UPDATE SET "
+    + ", ".join(f"{column} = excluded.{column}" for column in _LOUDNESS_COLUMNS[1:])
+)
+
+# The work list's read: the index, and each path's loudness by its primary key.
+_CURRENT_FILES = (
+    "SELECT w.path, w.size_bytes, w.state, l.loudness_version"
+    " FROM waveforms AS w INDEXED BY waveforms_work"
+    " LEFT JOIN loudness AS l ON l.path = w.path AND l.size_bytes = w.size_bytes"
+    " WHERE w.analysis_version = ?"
+)
+
+# A waveform's loudness: measured from the same file, by path, size and time.
+_JOIN_LOUDNESS = (
+    " LEFT JOIN loudness AS l ON l.path = w.path"
+    " AND l.size_bytes = w.size_bytes AND l.mtime_ns = w.mtime_ns"
+)
+_LOUDNESS_SELECTED = (
+    "l.loudness_version AS l_version",
+    "l.integrated_lufs AS l_lufs",
+    "l.peak_dbfs AS l_peak",
+    "l.reason AS l_reason",
+)
+
+
+def _loudness(row: sqlite3.Row) -> Optional[StoredLoudness]:
+    """A joined row's loudness, or ``None``.
+
+    A reading the model refuses, which only an edit by hand could store, reads
+    as none: the file is measured again rather than its waveform refused.
+    """
+    if row["l_version"] is None:
+        return None
+    try:
+        return StoredLoudness(
+            loudness_version=row["l_version"],
+            integrated_lufs=row["l_lufs"],
+            peak_dbfs=row["l_peak"],
+            reason=row["l_reason"],
+        )
+    except (TypeError, ValueError) as exc:
+        _logger.warning("[waveforms] A stored loudness was refused: %s", exc)
+        return None
 
 
 class WaveformStoreError(DatabaseError):
@@ -172,6 +276,33 @@ def is_corruption(exc: BaseException) -> bool:
 
 def _sibling(path: Path, suffix: str) -> Path:
     return path.with_name(path.name + suffix)
+
+
+@contextmanager
+def _writing(connection: sqlite3.Connection) -> Iterator[None]:
+    """A write of several statements, all of it or none of it.
+
+    Its own transaction, taken at once (``IMMEDIATE``) so it never waits to
+    upgrade a read lock; or, inside a transaction a caller already holds, as a
+    bulk load does, a savepoint in it, so the caller's commit keeps it whole.
+    """
+    if connection.in_transaction:
+        connection.execute("SAVEPOINT waveform_store_write")
+        try:
+            yield
+        except BaseException:
+            connection.execute("ROLLBACK TO waveform_store_write")
+            connection.execute("RELEASE waveform_store_write")
+            raise
+        connection.execute("RELEASE waveform_store_write")
+        return
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        yield
+    except BaseException:
+        connection.execute("ROLLBACK")
+        raise
+    connection.execute("COMMIT")
 
 
 class WaveformStore:
@@ -475,6 +606,7 @@ class WaveformStore:
     ) -> List[sqlite3.Row]:
         wanted = list(dict.fromkeys(str(path) for path in paths))
         rows: List[sqlite3.Row] = []
+        selected = ", ".join((*(f"w.{c}" for c in columns), *_LOUDNESS_SELECTED))
         connection = self.connect()
         try:
             for start in range(0, len(wanted), PATH_CHUNK):
@@ -482,8 +614,9 @@ class WaveformStore:
                 placeholders = ", ".join("?" for _ in chunk)
                 rows.extend(
                     connection.execute(
-                        f"SELECT {', '.join(columns)} FROM waveforms"
-                        f" WHERE analysis_version = ? AND path IN ({placeholders})",
+                        f"SELECT {selected} FROM waveforms AS w{_JOIN_LOUDNESS}"
+                        " WHERE w.analysis_version = ?"
+                        f" AND w.path IN ({placeholders})",
                         (int(analysis_version), *chunk),
                     )
                 )
@@ -494,21 +627,27 @@ class WaveformStore:
     def summaries(
         self, paths: Iterable[str], analysis_version: int
     ) -> Dict[str, WaveformSummary]:
-        """Each path's current row, without its picture.
+        """Each path's current row, without its picture, with its loudness.
 
         Only rows of ``analysis_version`` answer; a path with none is absent.
         """
         return {
-            str(row["path"]): WaveformSummary(**dict(row))
+            str(row["path"]): WaveformSummary(
+                **{column: row[column] for column in _SUMMARY_COLUMNS},
+                loudness=_loudness(row) if row["state"] == "ready" else None,
+            )
             for row in self._select(_SUMMARY_COLUMNS, paths, analysis_version)
         }
 
     def get_many(
         self, paths: Iterable[str], analysis_version: int
     ) -> Dict[str, StoredWaveform]:
-        """Each path's current row, with its picture."""
+        """Each path's current row, with its picture and its loudness."""
         return {
-            str(row["path"]): StoredWaveform(**dict(row))
+            str(row["path"]): StoredWaveform(
+                **{column: row[column] for column in _COLUMNS},
+                loudness=_loudness(row) if row["state"] == "ready" else None,
+            )
             for row in self._select(_COLUMNS, paths, analysis_version)
         }
 
@@ -517,21 +656,21 @@ class WaveformStore:
         return self.get_many([path], analysis_version).get(str(path))
 
     def current_files(self, analysis_version: int) -> Dict[str, StoredFile]:
-        """Every path's current row, as its size and state only.
+        """Every path's current row, as its size, state and loudness's version.
 
         What the analysis job's work list compares with the file check. Read
         from the ``waveforms_work`` index alone, never from the rows: at 50,000
-        waveforms that is 5.3 MB, where the table is 200 MB.
+        waveforms that is 5.3 MB, where the table is 200 MB. The loudness is
+        joined on the path and size, which the index holds; the modified time,
+        which it does not, is compared when a file is analysed.
         """
         try:
-            rows = self.connect().execute(
-                "SELECT path, size_bytes, state FROM waveforms"
-                " INDEXED BY waveforms_work WHERE analysis_version = ?",
-                (int(analysis_version),),
-            )
+            rows = self.connect().execute(_CURRENT_FILES, (int(analysis_version),))
             return {
-                str(path): StoredFile(int(size), str(state))
-                for path, size, state in rows
+                str(path): StoredFile(
+                    int(size), str(state), None if version is None else int(version)
+                )
+                for path, size, state, version in rows
             }
         except sqlite3.Error as exc:
             raise self._failed("read", exc) from exc
@@ -568,10 +707,23 @@ class WaveformStore:
             raise self._failed("read", exc) from exc
         return int(row[0])
 
+    def loudness_count(self) -> int:
+        """How many loudness readings, of any version."""
+        try:
+            row = self.connect().execute("SELECT count(*) FROM loudness").fetchone()
+        except sqlite3.Error as exc:
+            raise self._failed("read", exc) from exc
+        return int(row[0])
+
     # ------------------------------------------------------------ writing
 
     def put(self, row: StoredWaveform) -> None:
-        """Store an analysis, replacing the path's row, in one statement."""
+        """Store an analysis and its loudness, replacing the path's, in one transaction.
+
+        A row without a loudness deletes the path's stored one: a failed
+        analysis, or a file whose reading was not taken, never keeps a reading
+        of the file it replaced.
+        """
         values = (
             row.path,
             row.size_bytes,
@@ -583,31 +735,56 @@ class WaveformStore:
             row.duration_ms,
             row.data,
         )
+        loudness = row.loudness
+        connection = self.connect()
         try:
-            self.connect().execute(_PUT, values)
+            with _writing(connection):
+                connection.execute(_PUT, values)
+                if loudness is None:
+                    connection.execute(
+                        "DELETE FROM loudness WHERE path = ?", (row.path,)
+                    )
+                else:
+                    connection.execute(
+                        _PUT_LOUDNESS,
+                        (
+                            row.path,
+                            row.size_bytes,
+                            row.mtime_ns,
+                            loudness.loudness_version,
+                            loudness.integrated_lufs,
+                            loudness.peak_dbfs,
+                            loudness.reason,
+                        ),
+                    )
         except sqlite3.Error as exc:
             raise self._failed("write", exc) from exc
 
     def delete(self, path: str) -> bool:
-        """Delete a path's row; True when there was one."""
+        """Delete a path's row and its loudness; True when there was a row."""
+        connection = self.connect()
         try:
-            cursor = self.connect().execute(
-                "DELETE FROM waveforms WHERE path = ?", (str(path),)
-            )
+            with _writing(connection):
+                cursor = connection.execute(
+                    "DELETE FROM waveforms WHERE path = ?", (str(path),)
+                )
+                connection.execute("DELETE FROM loudness WHERE path = ?", (str(path),))
         except sqlite3.Error as exc:
             raise self._failed("write", exc) from exc
         return cursor.rowcount == 1
 
     def delete_paths(self, paths: Iterable[str]) -> int:
-        """Delete every row of these paths, in one transaction; how many went."""
+        """Delete every row of these paths and their loudness, in one transaction.
+
+        Answers how many waveform rows went.
+        """
         wanted = list(dict.fromkeys(str(path) for path in paths))
         if not wanted:
             return 0
         deleted = 0
         connection = self.connect()
         try:
-            connection.execute("BEGIN IMMEDIATE")
-            try:
+            with _writing(connection):
                 for start in range(0, len(wanted), PATH_CHUNK):
                     chunk = wanted[start : start + PATH_CHUNK]
                     placeholders = ", ".join("?" for _ in chunk)
@@ -615,16 +792,17 @@ class WaveformStore:
                         f"DELETE FROM waveforms WHERE path IN ({placeholders})", chunk
                     )
                     deleted += max(0, cursor.rowcount)
-            except BaseException:
-                connection.execute("ROLLBACK")
-                raise
-            connection.execute("COMMIT")
+                    connection.execute(
+                        f"DELETE FROM loudness WHERE path IN ({placeholders})", chunk
+                    )
         except sqlite3.Error as exc:
             raise self._failed("write", exc) from exc
         return deleted
 
     def clear(self) -> int:
-        """Delete every waveform and give the space back; how many rows went.
+        """Delete every waveform and loudness, and give the space back.
+
+        Answers how many waveform rows went.
 
         The rows go in one statement, then ``VACUUM`` rewrites the file at its
         new size and the WAL is truncated: a store emptied of 250 MB that kept
@@ -640,7 +818,9 @@ class WaveformStore:
         """
         connection = self.connect()
         try:
-            cursor = connection.execute("DELETE FROM waveforms")
+            with _writing(connection):
+                cursor = connection.execute("DELETE FROM waveforms")
+                connection.execute("DELETE FROM loudness")
         except sqlite3.Error as exc:
             raise self._failed("write", exc) from exc
         deleted = max(0, cursor.rowcount)

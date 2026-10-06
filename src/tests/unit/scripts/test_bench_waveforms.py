@@ -35,8 +35,9 @@ bench = _load()
 
 
 def test_the_budgets_are_the_phases():
-    # WAVE-02: 250 MB at 50,000, 50 ms a batch, 20 ms a picture.
-    assert bench.SIZE_BUDGET_KB_PER_TRACK * 50_000 / 1000 == 250
+    # WAVE-02: 250 MB at 50,000 and WAVE-08's 10 for loudness; 50 ms a batch,
+    # 20 ms a picture.
+    assert bench.SIZE_BUDGET_KB_PER_TRACK * 50_000 / 1000 == 260
     assert bench.BATCH_BUDGET_MS == 50
     assert bench.ONE_BUDGET_MS == 20
     # WAVE-04's ratios, and the work list's, set by WAVE-07.

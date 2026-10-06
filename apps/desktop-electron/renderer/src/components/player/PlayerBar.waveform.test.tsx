@@ -81,6 +81,7 @@ function waveform(
     state,
     reason: null,
     duration_ms: state === "ready" ? 600_000 : null,
+    loudness: state === "ready" ? { integrated_lufs: -8.4, peak_dbfs: -0.3, reason: null } : null,
     data: state === "ready" ? new Uint8Array(304 * 4).fill(160) : null,
     marks: null,
     ...overrides,

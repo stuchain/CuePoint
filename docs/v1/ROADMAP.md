@@ -1,8 +1,9 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–13 resolved (DEC-001…DEC-123).**
-Phase 11 is specified in `PHASE11_WAVEFORMS.md` (WAVE-01…WAVE-07), unblocked by Decision Round 13
-(DEC-113…DEC-123); all seven steps are implemented. Phase 11's acceptance is met on Windows, in the
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–13 resolved (DEC-001…DEC-123), and DEC-124.**
+Phase 11 is specified in `PHASE11_WAVEFORMS.md` (WAVE-01…WAVE-08), unblocked by Decision Round 13
+(DEC-113…DEC-123); WAVE-01 to WAVE-08 are implemented, WAVE-08 (loudness, DEC-124, which
+supersedes DEC-121) the last. Phase 11's acceptance is met on Windows, in the
 development build; the packaged runs (Linux with `CUEPOINT_MPV_PATH`, Windows and macOS) and the macOS
 decoder timings are owed. It started with Phase 5's manual acceptance still owed, as the user decided
 (DEC-119).
@@ -644,7 +645,7 @@ build. The acceptance check found two gaps and closed them: "New Set from the se
 Library's list, and a Set's own notes got a field on the page. The packaged Windows and macOS runs are
 owed.
 
-## Phase 11 — Waveforms (WAVE-01 … WAVE-07) — implemented; acceptance met on Windows
+## Phase 11 — Waveforms (WAVE-01 … WAVE-08) — implemented, acceptance met on Windows
 
 The roadmap's gate was "only after Player is solid". Phase 5's code is complete, and the user decided
 the phase starts with its manual acceptance still owed and recorded (DEC-119).
@@ -662,7 +663,8 @@ Round 13 settled the shape:
   rewrites the library (DEC-116).
 - **Marks:** cue points and beat grids are imported from the XML and drawn read-only. The export
   still never writes one (DEC-118).
-- **Scope:** no loudness or other measurement; those are Phase 12's (DEC-121).
+- **Scope:** no loudness or other measurement; those are Phase 12's (DEC-121). Revisited after the
+  phase closed: loudness is measured in the same pass (DEC-124, WAVE-08).
 - **Storage:** waveform data is its own store beside the library, keyed by file, and outside backups
   and "Clear cache", because it takes hours to rebuild (DEC-122).
 
@@ -751,6 +753,18 @@ WAVE-07 is implemented, and closes the phase.
   seconds into the run, because its count predated the file check.
 - **Docs:** a Waveforms page in the user guide, and ADR-009's outcome.
 - **Owed:** the journey in packaged builds, and the macOS decoder timings.
+
+WAVE-08 is implemented (2026-10-05): loudness, measured in the same pass (DEC-124).
+- **What:** each track's integrated loudness (LUFS) and sample peak, from FFmpeg's `ebur128` at the
+  head of the existing graph; every stored waveform is unchanged, byte for byte.
+- **Where:** the Inspector, a "Loudness" Library column hidden by default, and Prepare's strip with
+  the difference between the two tracks. Read-only, never applied to playback.
+- **Cost, measured:** about 6,000 six-minute tracks an hour, a third below the waveforms alone, so
+  about 8.5 hours for 50,000; the search and playback budgets held. The true peak would have cost
+  2.6 times the analysis's time, and is deferred. A library already analysed is measured once more
+  in the background, keeping every waveform.
+- **Fixed on the way:** decoders could outlive a killed engine on Windows; Prepare's row-count test
+  held Linux's counts on Windows, where it had failed since PREP-11.
 
 Step specifications: `PHASE11_WAVEFORMS.md`.
 

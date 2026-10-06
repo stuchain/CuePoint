@@ -29,7 +29,7 @@ import { LIBRARY_COLUMNS } from "../library/libraryColumns";
 import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
 import { DEFAULT_LIBRARY_QUERY, queryKey, type LibraryQuery } from "../library/libraryQuery";
 import { SelectionActions } from "../library/SelectionActions";
-import { copySummary, tracksAsText, writeClipboard } from "../library/trackClipboard";
+import { copySummary, gatherTracksAsText, writeClipboard } from "../library/trackClipboard";
 import { isSelected, onlySelectedId } from "../library/trackSelection";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "../library/useLibraryPlayback";
 import { COPY_LIMIT, useTrackSelection } from "../library/useTrackSelection";
@@ -179,7 +179,7 @@ export function LibraryHalf({
     setCopying(true);
     try {
       const rows = await selection.gatherRows(COPY_LIMIT);
-      const text = tracksAsText(columns.visible, rows);
+      const text = await gatherTracksAsText(columns.visible, rows);
       const wrote = text === "" ? false : await writeClipboard(text);
       push(
         wrote ? copySummary(rows.length, selection.count) : "Could not copy to the clipboard",

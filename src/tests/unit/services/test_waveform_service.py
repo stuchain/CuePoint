@@ -36,11 +36,16 @@ import pytest
 from cuepoint.core.waveform import COLUMNS, decode, downsample, encode, reduce
 from cuepoint.data.audio_decode import (
     ANALYSIS_VERSION,
+    LOUDNESS_SILENT,
+    LOUDNESS_TOO_QUIET,
+    LOUDNESS_VERSION,
+    NOT_MEASURED,
     DecodeCancelled,
     DecodeFailed,
     DecoderUnavailable,
     Envelope,
     FileGone,
+    Loudness,
 )
 from cuepoint.models.file_status import (
     FILE_MISSING,
@@ -65,6 +70,7 @@ from cuepoint.models.waveform import (
     STATE_UNCHECKED,
     STATE_WAITING,
     STORED_READY,
+    StoredLoudness,
     StoredWaveform,
 )
 from cuepoint.persistence.file_status_repository import FileStatusRepository
@@ -79,12 +85,17 @@ NOW = "2026-09-30T12:00:00+00:00"
 DECODER = Path("/opt/cuepoint/mpv")
 
 
-def envelope(frames: int = 3_000, level: float = 0.25, errors: int = 0) -> Envelope:
+def envelope(
+    frames: int = 3_000,
+    level: float = 0.25,
+    errors: int = 0,
+    loudness: Loudness = NOT_MEASURED,
+) -> Envelope:
     bands = [
         array("f", [level * (1 + (i % 7) / 7) / (b + 1) for i in range(frames)])
         for b in range(4)
     ]
-    return Envelope(150, *bands, decode_errors=errors)
+    return Envelope(150, *bands, decode_errors=errors, loudness=loudness)
 
 
 class Decoder:
@@ -872,3 +883,104 @@ class TestTheWiring:
         # The service stores core's encoding, not one of its own.
         waveform = reduce([[0.5] * 1_200] * 4, 1_000)
         assert decode(encode(waveform)) == waveform
+
+
+MEASURED = Loudness(-8.4, -0.3, None)
+
+
+@pytest.mark.unit
+class TestLoudness:
+    """WAVE-08: measured in the same pass, stored and answered with the waveform."""
+
+    @pytest.mark.parametrize(
+        "reading",
+        [
+            MEASURED,
+            Loudness(None, -4.3, LOUDNESS_TOO_QUIET),
+            Loudness(None, None, LOUDNESS_SILENT),
+            NOT_MEASURED,
+        ],
+        ids=["value", "too-quiet", "silent", "not-measured"],
+    )
+    def test_each_reading_is_stored_and_answered(
+        self, service, decoder, store, tracks, db, files, music, reading
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        decoder.default = envelope(loudness=reading)
+
+        assert service.analyse(track).outcome == OUTCOME_READY
+
+        expected = StoredLoudness(
+            LOUDNESS_VERSION, reading.integrated_lufs, reading.peak_dbfs, reading.reason
+        )
+        assert store.get(str(music / "a.flac"), ANALYSIS_VERSION).loudness == expected
+        (state,) = service.states([track])
+        assert state.loudness == expected
+        (answer,) = service.waveforms([track], 120)
+        assert answer.state.loudness == expected
+        # A reading, even "not measured", is an answer: not decoded again.
+        assert service.analyse(track).outcome == OUTCOME_CURRENT
+        assert len(decoder.opened) == 1
+
+    def test_a_failed_file_has_none_and_nothing_left_to_measure(
+        self, service, decoder, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["bad.mp3"])
+        decoder.answers[str(music / "bad.mp3")] = DecodeFailed("undecodable", "x")
+        service.analyse(track)
+
+        assert store.loudness_count() == 0
+        assert service.states([track])[0].loudness is None
+        assert service.analyse(track).outcome == OUTCOME_CURRENT
+
+    def test_a_waveform_stored_before_loudness_is_drawn_and_measured_again(
+        self, make_service, decoder, store, tracks, db, files, music
+    ):
+        """A store from WAVE-02 to WAVE-07: every picture stays while it is measured."""
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        path = str(music / "a.flac")
+        make_service().analyse(track)
+        store.connect().execute("DELETE FROM loudness")
+        before = store.get(path, ANALYSIS_VERSION)
+
+        service = make_service()
+        waiting = service.states([track])[0]
+        (drawn,) = service.waveforms([track], 120)
+
+        assert (waiting.state, waiting.loudness) == (STATE_READY, None)
+        assert drawn.data is not None
+        decoder.default = envelope(loudness=MEASURED)
+
+        assert service.analyse(track).outcome == OUTCOME_READY
+        after = store.get(path, ANALYSIS_VERSION)
+        assert after.data == before.data
+        assert after.loudness == StoredLoudness(LOUDNESS_VERSION, -8.4, -0.3)
+        assert len(decoder.opened) == 2
+
+    def test_a_reading_of_an_older_version_is_measured_again(
+        self, make_service, decoder, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        decoder.default = envelope(loudness=MEASURED)
+        make_service(loudness_version=1).analyse(track)
+
+        newer = make_service(loudness_version=2)
+
+        assert newer.states([track])[0].loudness is None
+        assert newer.analyse(track).outcome == OUTCOME_READY
+        assert newer.states([track])[0].loudness == StoredLoudness(2, -8.4, -0.3)
+        assert newer.analyse(track).outcome == OUTCOME_CURRENT
+        assert len(decoder.opened) == 2
+
+    def test_a_changed_file_drops_its_old_reading_with_its_failure(
+        self, service, decoder, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        decoder.default = envelope(loudness=MEASURED)
+        service.analyse(track)
+        path = music / "a.flac"
+        path.write_bytes(b"a different, broken file")
+        decoder.answers[str(path)] = DecodeFailed("undecodable", "x")
+
+        assert service.analyse(track).outcome == OUTCOME_FAILED
+        assert store.loudness_count() == 0

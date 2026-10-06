@@ -22,7 +22,7 @@ from cuepoint.engine import waveforms_api as api
 from cuepoint.engine.jobs import JobStore
 from cuepoint.engine.waveform_jobs import AnalysisSettings, bind
 from cuepoint.models.track_marks import CUE_KINDS
-from cuepoint.models.waveform import WAVEFORM_STATES
+from cuepoint.models.waveform import LOUDNESS_REASONS, WAVEFORM_STATES
 from cuepoint.models.waveform_analysis import ANALYSIS_STATES
 from cuepoint.services.config_service import ConfigService
 from tests.fixtures.job_settling import wait_until_settled
@@ -78,6 +78,19 @@ def test_every_track_state_is_typed():
     assert _union("TrackCueKind") == set(CUE_KINDS)
 
 
+def test_every_loudness_reason_is_typed():
+    assert _union("WaveformLoudnessReason") == set(LOUDNESS_REASONS)
+
+
+def test_the_client_asks_without_a_picture_as_the_engine_takes_it():
+    """WAVE-08: ``data: false`` sends ``data=0`` and no width."""
+    text = _client()
+    start = text.index("async getWaveforms(")
+    body = text[start : text.index("\n  }\n", start)]
+    assert 'if (params.data === false) query.set("data", "0");' in body
+    assert 'else query.set("width", String(params.width));' in body
+
+
 def test_the_client_declares_every_field_of_every_waveform_answer():
     """Each against the engine's own answer, in ``waveforms.fixture.json``."""
     from tests.unit.engine.test_waveforms_fixture import FIXTURE
@@ -88,6 +101,8 @@ def test_the_client_declares_every_field_of_every_waveform_answer():
     for name, answer in (
         ("WaveformBatch", batch),
         ("WaveformTrack", batch["waveforms"][0]),
+        ("WaveformLoudness", batch["waveforms"][0]["loudness"]),
+        ("WaveformBatch", answers["batch_loudness"]),
         ("WaveformMarks", marks),
         ("BeatGridMarker", marks["grid"][0]),
         ("TrackCue", marks["cues"][0]),

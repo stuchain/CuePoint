@@ -36,13 +36,26 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const TONE = path.join(REPO_ROOT, "src", "tests", "fixtures", "audio", "tone.mp3");
 
 /**
+ * Each platform's counts are its own (WAVE-08). PREP-10 measured on Linux and
+ * expected Windows one row lower everywhere. The first Windows run measured
+ * every state as a rail one lower, but with the sidebar expanded two: the Set
+ * pane is then 317 CSS pixels wide, and at Windows' font metrics the header
+ * over the table wraps one line more (24 px), which is a row. So Linux holds
+ * its own measurements, and Windows, and macOS until it is measured, the
+ * Windows ones.
+ */
+const ON_LINUX = process.platform === "linux";
+
+/**
  * The whole rows the Set table shows at the default window and scale, as the
  * page opens: measured in PREP-10 (see the step's outcome) and held here, with
  * the sidebar expanded and as a rail. DEC-112's floor is five: a design that
  * cannot reach five stops the step rather than lowering the floor. A change
  * that loses a row fails here and has to say why.
+ *
+ * Linux measured 8, held at 7; Windows measured 6 expanded and 7 as a rail.
  */
-const WHOLE_ROWS = 7;
+const WHOLE_ROWS = ON_LINUX ? 7 : 6;
 const FLOOR = 5;
 
 /**
@@ -54,18 +67,19 @@ const FLOOR = 5;
  * smaller control or a smaller scale, which DEC-112 leaves alone. The step's
  * outcome records it.
  */
-const WHOLE_ROWS_PLAYING = 4;
+// Linux measured 5, held at 4; Windows 3 expanded and 4 as a rail.
+const WHOLE_ROWS_PLAYING = ON_LINUX ? 4 : 3;
 
 /**
  * The same with the tempo and key lanes open (PREP-11, DEC-111), sidebar
  * expanded and as a rail: the lanes take their height from the rows, which is
  * why they start hidden, and a person who opens them keeps them open.
  *
- * Measured 5 on Linux, where this spec measured every PREP-10 state one row
- * above the packaged Windows build (8 against 7, 5 against 4). Held at 4, the
- * Windows figure that offset gives, until the Windows run records its own.
+ * Measured 5 on Linux, held at 4. Windows measured 3 with the sidebar expanded
+ * and 4 as a rail (WAVE-08; WAVE-06's commit measures the same), as the
+ * transition strip does, since both take three of the Set's rows.
  */
-const WHOLE_ROWS_LANES = 4;
+const WHOLE_ROWS_LANES = ON_LINUX ? 4 : 3;
 
 /**
  * The same with the transition strip open (WAVE-07, DEC-120), sidebar expanded

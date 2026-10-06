@@ -206,6 +206,104 @@ class TestThePlan:
         assert newer.plan().remaining == 1
 
 
+def forget_loudness(lib, *names: str) -> None:
+    """Make the store one written before WAVE-08: waveforms, no loudness."""
+    connection = lib.store.connect()
+    if not names:
+        connection.execute("DELETE FROM loudness")
+    for name in names:
+        connection.execute(
+            "DELETE FROM loudness WHERE path = ?", (str(lib.path(name)),)
+        )
+
+
+class TestLoudnessIsMeasuredToo:
+    """WAVE-08: a file is done when its loudness is measured with its waveform."""
+
+    def test_a_waveform_without_loudness_is_remaining_after_every_unanalysed_file(
+        self, lib
+    ):
+        lib.add("old", added="2001-01-01")
+        lib.add("newer", added="2002-01-01")
+        lib.add("newest", added="2026-01-01")
+        lib.add("measured", added="2003-01-01")
+        for name in ("old", "newest", "measured"):
+            lib.waveforms.analyse(lib.id(name))
+        forget_loudness(lib, "old", "newest")
+
+        plan = lib.analysis.plan()
+
+        assert (plan.present, plan.analysed, plan.failed) == (4, 1, 0)
+        assert plan.remaining == 3 and plan.pending_total == 3
+        # "newer" has no waveform: first, though "newest" is newer.
+        assert [item.track_id for item in plan.pending] == [
+            lib.id("newer"),
+            lib.id("newest"),
+            lib.id("old"),
+        ]
+        assert [item.track_id for item in plan.verify] == [lib.id("measured")]
+
+    def test_the_limit_takes_unanalysed_files_first(self, lib):
+        for index in range(4):
+            lib.add(f"m{index}", added=f"2026-01-0{index + 1}")
+            lib.waveforms.analyse(lib.id(f"m{index}"))
+        forget_loudness(lib)
+        lib.add("new", added="2000-01-01")
+
+        plan = lib.analysis.plan(limit=2)
+
+        assert [item.track_id for item in plan.pending] == [
+            lib.id("new"),
+            lib.id("m3"),
+        ]
+        assert plan.pending_total == 5
+
+    def test_a_failed_file_has_nothing_left_to_measure(self, lib):
+        lib.add("bad")
+        lib.decoder.answers[str(lib.path("bad"))] = DecodeFailed("undecodable", "x")
+        lib.waveforms.analyse(lib.id("bad"))
+
+        plan = lib.analysis.plan()
+
+        assert (plan.failed, plan.remaining) == (1, 0)
+
+    def test_a_run_measures_an_analysed_library_keeping_every_waveform(self, lib):
+        for name in ("a", "b", "c"):
+            lib.add(name)
+        run(lib)
+        before = {
+            name: lib.store.get(str(lib.path(name)), ANALYSIS_VERSION).data
+            for name in ("a", "b", "c")
+        }
+        forget_loudness(lib)
+        lib.add("new")
+        lib.decoder.opened.clear()
+
+        result = run(lib)
+
+        assert lib.decoder.names()[0] == "new"
+        assert sorted(lib.decoder.names()) == ["a", "b", "c", "new"]
+        assert (result.analysed, result.remaining) == (4, 0) and result.drained
+        assert lib.store.loudness_count() == 4
+        for name, data in before.items():
+            assert lib.store.get(str(lib.path(name)), ANALYSIS_VERSION).data == data
+        lib.decoder.opened.clear()
+        assert run(lib).analysed == 0 and lib.decoder.opened == []
+
+    def test_a_request_for_a_track_missing_only_its_loudness_measures_it(self, lib):
+        lib.add("a")
+        lib.waveforms.analyse(lib.id("a"))
+        forget_loudness(lib)
+        lib.decoder.opened.clear()
+
+        result = run(lib, Control(whole=False, requests=[lib.id("a")]))
+
+        assert lib.decoder.names() == ["a"]
+        assert result.analysed == 1
+        (state,) = lib.waveforms.states([lib.id("a")])
+        assert state.loudness is not None and state.loudness.integrated_lufs == -8.4
+
+
 class TestTheDrain:
     def test_a_run_analyses_the_whole_library_and_says_so(self, lib):
         for name in ("a", "b", "c"):

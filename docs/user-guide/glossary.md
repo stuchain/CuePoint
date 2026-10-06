@@ -26,4 +26,12 @@
 - **Hot cue**, **memory cue**, **beat grid**: Rekordbox's marks on a track, read
   from your export and drawn on its waveform. CuePoint never changes them.
 - **Transition strip**: The view on the Prepare page that shows the selected
-  entry's waveform beside the next one's, with their planned times.
+  entry's waveform beside the next one's, with their planned times and
+  loudness.
+- **Loudness (LUFS)**: How loud a whole track sounds, measured in the pass that
+  draws its waveform: closer to zero is louder. Shown, never applied. See
+  [Loudness](waveforms.md#loudness).
+- **Peak (dBFS)**: A track's highest sample; 0.0 dBFS is the most a file can
+  hold.
+- **LU**: A difference in loudness between two tracks, as the transition strip
+  says it: "+2.1 LU" is the next track 2.1 LU louder.

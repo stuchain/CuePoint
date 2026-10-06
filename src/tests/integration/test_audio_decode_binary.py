@@ -224,6 +224,65 @@ class TestTheReleaseCheck:
     def test_the_analysis_check_passes_on_this_decoder(self, decoder):
         lines = fps.check_analysis(decoder, quiet=True)
         assert any("bands at least" in line for line in lines)
+        assert any("EBU Tech 3341" in line for line in lines)
+
+
+class TestLoudness:
+    """WAVE-08: the meter, measured on the pinned build, changes no waveform."""
+
+    @pytest.mark.parametrize("name", ("bands.flac", *FORMAT_FIXTURES))
+    def test_the_meter_leaves_every_stored_waveform_as_it_was(
+        self, decoder, name, monkeypatch
+    ):
+        """Why ``ANALYSIS_VERSION`` stays 2: the stored picture is the same.
+
+        The meter hands the next filter doubles where the file's own format was
+        handed before, so an envelope value can differ in its last float bit
+        (measured: at most 7e-7). The picture stored from it, a byte a band,
+        is the same byte for byte, which is what a stored waveform is.
+        """
+        from cuepoint.core.waveform import reduce
+
+        source = (_FIXTURES / name).resolve()
+        measured = ad.decode_envelope(source, decoder)
+        without = ad.filter_graph().removeprefix(ad.LOUDNESS_METER + ",")
+        monkeypatch.setattr(ad, "filter_graph", lambda: without)
+        plain = ad.decode_envelope(source, decoder)
+
+        assert measured.frames == plain.frames
+        for band in ad.BANDS:
+            assert measured.band(band) == pytest.approx(plain.band(band), abs=1e-6)
+
+        def picture(envelope: ad.Envelope) -> bytes:
+            bands = [envelope.band(band) for band in ad.BANDS]
+            return reduce(bands, envelope.duration_ms).data
+
+        assert picture(measured) == picture(plain)
+        assert plain.loudness == ad.NOT_MEASURED
+
+    @pytest.mark.parametrize(
+        "name, expected",
+        [
+            # A 22,050 Hz mono file, measured as played on both sides.
+            ("bands.flac", ad.Loudness(-3.5, -4.3, None)),
+            # 0.26 s: shorter than one 400 ms block.
+            ("tone.flac", ad.Loudness(None, -4.3, ad.LOUDNESS_TOO_QUIET)),
+            ("tone.wav", ad.Loudness(None, -4.3, ad.LOUDNESS_TOO_QUIET)),
+            ("tone.aiff", ad.Loudness(None, -4.3, ad.LOUDNESS_TOO_QUIET)),
+            ("tone.m4a", ad.Loudness(None, -4.3, ad.LOUDNESS_TOO_QUIET)),
+            # Constructed silence.
+            ("tone.mp3", ad.Loudness(None, None, ad.LOUDNESS_SILENT)),
+        ],
+    )
+    def test_each_fixture_is_measured(self, decoder, name, expected):
+        envelope = ad.decode_envelope((_FIXTURES / name).resolve(), decoder)
+        assert envelope.loudness == expected
+
+    @pytest.mark.parametrize("transport", ad.platform_transports())
+    def test_the_transports_agree(self, decoder, transport):
+        source = (_FIXTURES / "bands.flac").resolve()
+        envelope = ad.decode_envelope(source, decoder, transport=transport)
+        assert envelope.loudness == ad.Loudness(-3.5, -4.3, None)
 
 
 class TestADecoderThatCannotRunTheFilters:
