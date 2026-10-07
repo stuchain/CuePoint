@@ -2,6 +2,8 @@
  * Electron main process — Spike S1: spawn engine and expose status to renderer.
  */
 import { app, BrowserWindow, dialog, globalShortcut, ipcMain, screen, shell, systemPreferences } from "electron";
+import type { IpcMainInvokeEvent } from "electron";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
@@ -12,6 +14,15 @@ import { PlaybackController } from "./playbackController";
 import { queueTruncationMessage, resolveQueueFromView } from "./queueResolver";
 import { chooseRekordboxExportDestination } from "./rekordboxExportDialog";
 import { ErrorReportingChoice } from "./errorReporting";
+import {
+  breadcrumb,
+  mainReportingDsn,
+  markQuitting,
+  reportOnce,
+  reportProcessGone,
+  setupMainReporting,
+  wrapIpcHandler,
+} from "./reporting";
 import { MAIN_SETTINGS_FILE, MainSettingsStore } from "./mainSettings";
 import {
   chooseSetListDestination,
@@ -30,6 +41,69 @@ import { E2E_DISPLAY_ENV, displayChoice, testWindowPlacement } from "./testWindo
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === "development";
 const DEV_URL = process.env.CUEPOINT_RENDERER_URL ?? "http://localhost:5173";
+
+/**
+ * Main's own settings, read when first needed: the user-data folder is the
+ * app's to name. One store is shared by the set list folder and the
+ * error-reporting choice.
+ */
+let mainSettings: MainSettingsStore | null = null;
+
+function mainSettingsStore(): MainSettingsStore {
+  mainSettings ??= new MainSettingsStore(path.join(app.getPath("userData"), MAIN_SETTINGS_FILE));
+  return mainSettings;
+}
+
+function setListFolders(): SetListFolderStore {
+  return setListFolderStore(mainSettingsStore());
+}
+
+/**
+ * Whether error reports may be sent (REPORT-01, DEC-128). Written to the file
+ * first, then told to the engine, which also reads it from its environment at
+ * launch.
+ */
+const errorReporting = new ErrorReportingChoice(mainSettingsStore(), (enabled) =>
+  engine.setErrorReporting(enabled),
+);
+
+// Read before `app.whenReady()`, so a crash during start-up respects the
+// choice (DEC-128). `app.getPath("userData")` is available before ready.
+errorReporting.enabled();
+
+/**
+ * Main reports its own failures (REPORT-04, DEC-126, DEC-127), set up before
+ * anything else here can fail and before `app.whenReady()`, which the SDK needs.
+ *
+ * Nothing is set up, and nothing is sent, unless `CUEPOINT_SENTRY_DSN` names a
+ * DSN: until REPORT-08 a user's build has none. The choice is read at the time
+ * of each event, so turning reporting off takes effect at once. The engine's
+ * session token is 48 hex characters, which the scrubber removes by shape (the
+ * supervisor does not expose it, so `addReportingToken` is not called yet).
+ */
+const reportingOn = setupMainReporting({
+  dsn: mainReportingDsn(),
+  choice: () => errorReporting.enabled(),
+  scrubContext: {
+    home: safely(() => app.getPath("home")),
+    userName: safely(() => os.userInfo().username),
+    appRoots: app.isPackaged
+      ? [process.resourcesPath, safely(() => path.dirname(app.getPath("exe")))].filter(
+          (root): root is string => typeof root === "string" && root !== "",
+        )
+      : [],
+    tokens: [],
+  },
+});
+
+/** `read()`, or null when it throws (a user with no name, a path not yet known). */
+function safely(read: () => string): string | null {
+  try {
+    return read() || null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * The engine, told where the player's mpv is so it can analyse audio with it
@@ -195,35 +269,6 @@ function pushPlayerNotice(notice: unknown): void {
   }
 }
 
-/**
- * Main's own settings, read when first needed: the user-data folder is the
- * app's to name. One store is shared by the set list folder and the
- * error-reporting choice.
- */
-let mainSettings: MainSettingsStore | null = null;
-
-function mainSettingsStore(): MainSettingsStore {
-  mainSettings ??= new MainSettingsStore(path.join(app.getPath("userData"), MAIN_SETTINGS_FILE));
-  return mainSettings;
-}
-
-function setListFolders(): SetListFolderStore {
-  return setListFolderStore(mainSettingsStore());
-}
-
-/**
- * Whether error reports may be sent (REPORT-01, DEC-128). Written to the file
- * first, then told to the engine, which also reads it from its environment at
- * launch.
- */
-const errorReporting = new ErrorReportingChoice(mainSettingsStore(), (enabled) =>
-  engine.setErrorReporting(enabled),
-);
-
-// Read before `app.whenReady()`, so a crash during start-up respects the
-// choice (DEC-128). `app.getPath("userData")` is available before ready.
-errorReporting.enabled();
-
 let privacyExitPrefs = {
   clearCacheOnExit: false,
   clearLogsOnExit: false,
@@ -255,22 +300,35 @@ function showSaveDialogFor(
   return win ? dialog.showSaveDialog(win, options) : dialog.showSaveDialog(options);
 }
 
+/**
+ * Every IPC handler goes through here, in one place (REPORT-04): the channel and
+ * outcome become a breadcrumb, a handler that throws is reported, and an engine
+ * error is rethrown with its status, code and report id (`bridgeError.ts`).
+ * `desktopContract.test.ts` reads these calls as it read `ipcMain.handle`.
+ */
+function handle(
+  channel: string,
+  handler: (event: IpcMainInvokeEvent, ...args: any[]) => unknown,
+): void {
+  ipcMain.handle(channel, wrapIpcHandler(channel, handler));
+}
+
 function registerIpcHandlers(): void {
-  ipcMain.handle("engine:status", () => engine.getStatus());
-  ipcMain.handle("engine:restart", () => engine.restart());
-  ipcMain.handle("engine:searchLibrary", (_event, params) => engine.searchLibrary(params));
-  ipcMain.handle("engine:browseLibrary", (_event, params) => engine.browseLibrary(params));
-  ipcMain.handle("engine:getLibraryPlaylists", () => engine.getLibraryPlaylists());
-  ipcMain.handle("engine:getLibraryFacet", (_event, params) =>
+  handle("engine:status", () => engine.getStatus());
+  handle("engine:restart", () => engine.restart());
+  handle("engine:searchLibrary", (_event, params) => engine.searchLibrary(params));
+  handle("engine:browseLibrary", (_event, params) => engine.browseLibrary(params));
+  handle("engine:getLibraryPlaylists", () => engine.getLibraryPlaylists());
+  handle("engine:getLibraryFacet", (_event, params) =>
     engine.getLibraryFacet(params),
   );
-  ipcMain.handle("engine:getLibraryFilterFields", () => engine.getLibraryFilterFields());
-  ipcMain.handle("engine:getLibraryTrack", (_event, params) =>
+  handle("engine:getLibraryFilterFields", () => engine.getLibraryFilterFields());
+  handle("engine:getLibraryTrack", (_event, params) =>
     engine.getLibraryTrack(params),
   );
   // CLEAN-09: a thumbnail crosses as bytes. The preload turns them into an
   // object URL, so no path and no original image reaches the renderer.
-  ipcMain.handle("engine:getTrackArtwork", (_event, params) =>
+  handle("engine:getTrackArtwork", (_event, params) =>
     engine.getTrackArtwork(params),
   );
 
@@ -278,307 +336,307 @@ function registerIpcHandlers(): void {
   // forward: the main process supervises and bridges, and every rule
   // about what a Collection may hold or what a rating may be lives in
   // Python.
-  ipcMain.handle("engine:getCollections", () => engine.getCollections());
-  ipcMain.handle("engine:getCollectionEntries", (_event, params) =>
+  handle("engine:getCollections", () => engine.getCollections());
+  handle("engine:getCollectionEntries", (_event, params) =>
     engine.getCollectionEntries(params),
   );
-  ipcMain.handle("engine:createCollection", (_event, params) =>
+  handle("engine:createCollection", (_event, params) =>
     engine.createCollection(params),
   );
-  ipcMain.handle("engine:renameCollection", (_event, params) =>
+  handle("engine:renameCollection", (_event, params) =>
     engine.renameCollection(params),
   );
-  ipcMain.handle("engine:moveCollection", (_event, params) =>
+  handle("engine:moveCollection", (_event, params) =>
     engine.moveCollection(params),
   );
-  ipcMain.handle("engine:deleteCollection", (_event, params) =>
+  handle("engine:deleteCollection", (_event, params) =>
     engine.deleteCollection(params),
   );
-  ipcMain.handle("engine:previewCollectionDelete", (_event, params) =>
+  handle("engine:previewCollectionDelete", (_event, params) =>
     engine.previewCollectionDelete(params),
   );
-  ipcMain.handle("engine:addTracksToCollection", (_event, params) =>
+  handle("engine:addTracksToCollection", (_event, params) =>
     engine.addTracksToCollection(params),
   );
-  ipcMain.handle("engine:insertTrackInCollection", (_event, params) =>
+  handle("engine:insertTrackInCollection", (_event, params) =>
     engine.insertTrackInCollection(params),
   );
-  ipcMain.handle("engine:removeCollectionEntries", (_event, params) =>
+  handle("engine:removeCollectionEntries", (_event, params) =>
     engine.removeCollectionEntries(params),
   );
-  ipcMain.handle("engine:reorderCollectionEntry", (_event, params) =>
+  handle("engine:reorderCollectionEntry", (_event, params) =>
     engine.reorderCollectionEntry(params),
   );
-  ipcMain.handle("engine:saveSmartCollection", (_event, params) =>
+  handle("engine:saveSmartCollection", (_event, params) =>
     engine.saveSmartCollection(params),
   );
-  ipcMain.handle("engine:updateSmartCollection", (_event, params) =>
+  handle("engine:updateSmartCollection", (_event, params) =>
     engine.updateSmartCollection(params),
   );
-  ipcMain.handle("engine:duplicateSmartCollection", (_event, params) =>
+  handle("engine:duplicateSmartCollection", (_event, params) =>
     engine.duplicateSmartCollection(params),
   );
-  ipcMain.handle("engine:freezeSmartCollection", (_event, params) =>
+  handle("engine:freezeSmartCollection", (_event, params) =>
     engine.freezeSmartCollection(params),
   );
-  ipcMain.handle("engine:getTags", () => engine.getTags());
-  ipcMain.handle("engine:createTag", (_event, params) =>
+  handle("engine:getTags", () => engine.getTags());
+  handle("engine:createTag", (_event, params) =>
     engine.createTag(params),
   );
-  ipcMain.handle("engine:updateTag", (_event, params) =>
+  handle("engine:updateTag", (_event, params) =>
     engine.updateTag(params),
   );
-  ipcMain.handle("engine:deleteTag", (_event, params) =>
+  handle("engine:deleteTag", (_event, params) =>
     engine.deleteTag(params),
   );
-  ipcMain.handle("engine:mergeTags", (_event, params) =>
+  handle("engine:mergeTags", (_event, params) =>
     engine.mergeTags(params),
   );
-  ipcMain.handle("engine:assignTag", (_event, params) =>
+  handle("engine:assignTag", (_event, params) =>
     engine.assignTag(params),
   );
-  ipcMain.handle("engine:unassignTag", (_event, params) =>
+  handle("engine:unassignTag", (_event, params) =>
     engine.unassignTag(params),
   );
-  ipcMain.handle("engine:setTrackMetadata", (_event, params) =>
+  handle("engine:setTrackMetadata", (_event, params) =>
     engine.setTrackMetadata(params),
   );
-  ipcMain.handle("engine:getTrackHistory", (_event, params) =>
+  handle("engine:getTrackHistory", (_event, params) =>
     engine.getTrackHistory(params),
   );
-  ipcMain.handle("engine:applyBatch", (_event, params) =>
+  handle("engine:applyBatch", (_event, params) =>
     engine.applyBatch(params),
   );
 
   // Clean (CLEAN-11). Thin forwards, as ORG-08's are: what a match state, a
   // hand edit or a tag write may be is decided in Python.
-  ipcMain.handle("engine:startCleanMatch", (_event, params) =>
+  handle("engine:startCleanMatch", (_event, params) =>
     engine.startCleanMatch(params),
   );
-  ipcMain.handle("engine:resumeCleanMatch", (_event, params) =>
+  handle("engine:resumeCleanMatch", (_event, params) =>
     engine.resumeCleanMatch(params),
   );
-  ipcMain.handle("engine:getResumableMatches", () => engine.getResumableMatches());
-  ipcMain.handle("engine:getTrackMatches", (_event, params) =>
+  handle("engine:getResumableMatches", () => engine.getResumableMatches());
+  handle("engine:getTrackMatches", (_event, params) =>
     engine.getTrackMatches(params),
   );
-  ipcMain.handle("engine:getMatchCandidates", (_event, params) =>
+  handle("engine:getMatchCandidates", (_event, params) =>
     engine.getMatchCandidates(params),
   );
   // CLEAN-12: the renderer names a track, never a path.
-  ipcMain.handle("engine:getTrackFolder", (_event, params) =>
+  handle("engine:getTrackFolder", (_event, params) =>
     engine.getTrackFolder(params),
   );
-  ipcMain.handle("engine:decideMatch", (_event, params) =>
+  handle("engine:decideMatch", (_event, params) =>
     engine.decideMatch(params),
   );
-  ipcMain.handle("engine:applyMatch", (_event, params) =>
+  handle("engine:applyMatch", (_event, params) =>
     engine.applyMatch(params),
   );
-  ipcMain.handle("engine:setTrackOverrides", (_event, params) =>
+  handle("engine:setTrackOverrides", (_event, params) =>
     engine.setTrackOverrides(params),
   );
-  ipcMain.handle("engine:revertChange", (_event, params) =>
+  handle("engine:revertChange", (_event, params) =>
     engine.revertChange(params),
   );
-  ipcMain.handle("engine:revertBatch", (_event, params) =>
+  handle("engine:revertBatch", (_event, params) =>
     engine.revertBatch(params),
   );
-  ipcMain.handle("engine:startFileCheck", (_event, params) =>
+  handle("engine:startFileCheck", (_event, params) =>
     engine.startFileCheck(params),
   );
-  ipcMain.handle("engine:startDuplicateScan", (_event, params) =>
+  handle("engine:startDuplicateScan", (_event, params) =>
     engine.startDuplicateScan(params),
   );
-  ipcMain.handle("engine:getDuplicateGroups", (_event, params) =>
+  handle("engine:getDuplicateGroups", (_event, params) =>
     engine.getDuplicateGroups(params),
   );
-  ipcMain.handle("engine:dismissDuplicateGroup", (_event, params) =>
+  handle("engine:dismissDuplicateGroup", (_event, params) =>
     engine.dismissDuplicateGroup(params),
   );
-  ipcMain.handle("engine:restoreDuplicateGroup", (_event, params) =>
+  handle("engine:restoreDuplicateGroup", (_event, params) =>
     engine.restoreDuplicateGroup(params),
   );
-  ipcMain.handle("engine:startArtworkScan", (_event, params) =>
+  handle("engine:startArtworkScan", (_event, params) =>
     engine.startArtworkScan(params),
   );
-  ipcMain.handle("engine:previewTagWrite", (_event, params) =>
+  handle("engine:previewTagWrite", (_event, params) =>
     engine.previewTagWrite(params),
   );
-  ipcMain.handle("engine:startTagWrite", (_event, params) =>
+  handle("engine:startTagWrite", (_event, params) =>
     engine.startTagWrite(params),
   );
-  ipcMain.handle("engine:startTagRestore", (_event, params) =>
+  handle("engine:startTagRestore", (_event, params) =>
     engine.startTagRestore(params),
   );
-  ipcMain.handle("engine:getTagWrites", (_event, params) =>
+  handle("engine:getTagWrites", (_event, params) =>
     engine.getTagWrites(params),
   );
-  ipcMain.handle("engine:getLibraryHealth", () => engine.getLibraryHealth());
-  ipcMain.handle("engine:exportReviewList", (_event, params) =>
+  handle("engine:getLibraryHealth", () => engine.getLibraryHealth());
+  handle("engine:exportReviewList", (_event, params) =>
     engine.exportReviewList(params),
   );
-  ipcMain.handle("engine:previewRekordboxExport", (_event, params) =>
+  handle("engine:previewRekordboxExport", (_event, params) =>
     engine.previewRekordboxExport(params),
   );
-  ipcMain.handle("engine:startRekordboxExport", (_event, params) =>
+  handle("engine:startRekordboxExport", (_event, params) =>
     engine.startRekordboxExport(params),
   );
-  ipcMain.handle("engine:getRekordboxExportHistory", (_event, params) =>
+  handle("engine:getRekordboxExportHistory", (_event, params) =>
     engine.getRekordboxExportHistory(params),
   );
   // Discover (DISCOVER-09).
-  ipcMain.handle("engine:getDiscoverOptions", () => engine.getDiscoverOptions());
-  ipcMain.handle("engine:listDiscoveryRuns", (_event, params) =>
+  handle("engine:getDiscoverOptions", () => engine.getDiscoverOptions());
+  handle("engine:listDiscoveryRuns", (_event, params) =>
     engine.listDiscoveryRuns(params),
   );
-  ipcMain.handle("engine:getDiscoveryRun", (_event, params) =>
+  handle("engine:getDiscoveryRun", (_event, params) =>
     engine.getDiscoveryRun(params),
   );
-  ipcMain.handle("engine:getDiscoveryRunTracks", (_event, params) =>
+  handle("engine:getDiscoveryRunTracks", (_event, params) =>
     engine.getDiscoveryRunTracks(params),
   );
-  ipcMain.handle("engine:startDiscoveryRun", (_event, params) =>
+  handle("engine:startDiscoveryRun", (_event, params) =>
     engine.startDiscoveryRun(params),
   );
-  ipcMain.handle("engine:deleteDiscoveryRun", (_event, params) =>
+  handle("engine:deleteDiscoveryRun", (_event, params) =>
     engine.deleteDiscoveryRun(params),
   );
-  ipcMain.handle("engine:getWantlist", (_event, params) =>
+  handle("engine:getWantlist", (_event, params) =>
     engine.getWantlist(params),
   );
-  ipcMain.handle("engine:addToWantlist", (_event, params) =>
+  handle("engine:addToWantlist", (_event, params) =>
     engine.addToWantlist(params),
   );
-  ipcMain.handle("engine:removeFromWantlist", (_event, params) =>
+  handle("engine:removeFromWantlist", (_event, params) =>
     engine.removeFromWantlist(params),
   );
-  ipcMain.handle("engine:setWantlistNote", (_event, params) =>
+  handle("engine:setWantlistNote", (_event, params) =>
     engine.setWantlistNote(params),
   );
-  ipcMain.handle("engine:setWantlistBought", (_event, params) =>
+  handle("engine:setWantlistBought", (_event, params) =>
     engine.setWantlistBought(params),
   );
-  ipcMain.handle("engine:startBeatportPlaylistPush", (_event, params) =>
+  handle("engine:startBeatportPlaylistPush", (_event, params) =>
     engine.startBeatportPlaylistPush(params),
   );
-  ipcMain.handle("engine:startBeatportResolve", () => engine.startBeatportResolve());
-  ipcMain.handle("engine:getEntityPage", (_event, params) =>
+  handle("engine:startBeatportResolve", () => engine.startBeatportResolve());
+  handle("engine:getEntityPage", (_event, params) =>
     engine.getEntityPage(params),
   );
-  ipcMain.handle("engine:getEntityBeatport", (_event, params) =>
+  handle("engine:getEntityBeatport", (_event, params) =>
     engine.getEntityBeatport(params),
   );
-  ipcMain.handle("engine:getSimilarTracks", (_event, params) =>
+  handle("engine:getSimilarTracks", (_event, params) =>
     engine.getSimilarTracks(params),
   );
   // A Set (PREP-08): every answer is { value, refusal }. A saved set list's
   // folder is where the next set list dialog opens.
-  ipcMain.handle("engine:getSetPlan", (_event, params) =>
+  handle("engine:getSetPlan", (_event, params) =>
     engine.getSetPlan(params),
   );
-  ipcMain.handle("engine:getSetEntries", (_event, params) =>
+  handle("engine:getSetEntries", (_event, params) =>
     engine.getSetEntries(params),
   );
-  ipcMain.handle("engine:getSetAnalysis", (_event, params) =>
+  handle("engine:getSetAnalysis", (_event, params) =>
     engine.getSetAnalysis(params),
   );
-  ipcMain.handle("engine:getSetSuggestions", (_event, params) =>
+  handle("engine:getSetSuggestions", (_event, params) =>
     engine.getSetSuggestions(params),
   );
-  ipcMain.handle("engine:getSetListText", (_event, params) =>
+  handle("engine:getSetListText", (_event, params) =>
     engine.getSetListText(params),
   );
-  ipcMain.handle("engine:createSet", (_event, params) =>
+  handle("engine:createSet", (_event, params) =>
     engine.createSet(params),
   );
-  ipcMain.handle("engine:createSetFrom", (_event, params) =>
+  handle("engine:createSetFrom", (_event, params) =>
     engine.createSetFrom(params),
   );
-  ipcMain.handle("engine:duplicateSet", (_event, params) =>
+  handle("engine:duplicateSet", (_event, params) =>
     engine.duplicateSet(params),
   );
-  ipcMain.handle("engine:setSetNotes", (_event, params) =>
+  handle("engine:setSetNotes", (_event, params) =>
     engine.setSetNotes(params),
   );
-  ipcMain.handle("engine:createSetChapter", (_event, params) =>
+  handle("engine:createSetChapter", (_event, params) =>
     engine.createSetChapter(params),
   );
-  ipcMain.handle("engine:updateSetChapter", (_event, params) =>
+  handle("engine:updateSetChapter", (_event, params) =>
     engine.updateSetChapter(params),
   );
-  ipcMain.handle("engine:moveSetChapter", (_event, params) =>
+  handle("engine:moveSetChapter", (_event, params) =>
     engine.moveSetChapter(params),
   );
-  ipcMain.handle("engine:deleteSetChapter", (_event, params) =>
+  handle("engine:deleteSetChapter", (_event, params) =>
     engine.deleteSetChapter(params),
   );
-  ipcMain.handle("engine:splitSetChapter", (_event, params) =>
+  handle("engine:splitSetChapter", (_event, params) =>
     engine.splitSetChapter(params),
   );
-  ipcMain.handle("engine:moveSetEntry", (_event, params) =>
+  handle("engine:moveSetEntry", (_event, params) =>
     engine.moveSetEntry(params),
   );
-  ipcMain.handle("engine:setSetEntryTimes", (_event, params) =>
+  handle("engine:setSetEntryTimes", (_event, params) =>
     engine.setSetEntryTimes(params),
   );
-  ipcMain.handle("engine:setSetEntryNote", (_event, params) =>
+  handle("engine:setSetEntryNote", (_event, params) =>
     engine.setSetEntryNote(params),
   );
-  ipcMain.handle("engine:acknowledgeSetWarning", (_event, params) =>
+  handle("engine:acknowledgeSetWarning", (_event, params) =>
     engine.acknowledgeSetWarning(params),
   );
-  ipcMain.handle("engine:unacknowledgeSetWarning", (_event, params) =>
+  handle("engine:unacknowledgeSetWarning", (_event, params) =>
     engine.unacknowledgeSetWarning(params),
   );
-  ipcMain.handle("engine:saveSetList", (_event, params) =>
+  handle("engine:saveSetList", (_event, params) =>
     rememberSetListFolder(engine.saveSetList(params), setListFolders()),
   );
   // The waveform analysis (WAVE-03): each answers { value, refusal }.
-  ipcMain.handle("engine:getWaveformAnalysis", () => engine.getWaveformAnalysis());
-  ipcMain.handle("engine:pauseWaveformAnalysis", () => engine.pauseWaveformAnalysis());
-  ipcMain.handle("engine:resumeWaveformAnalysis", () => engine.resumeWaveformAnalysis());
+  handle("engine:getWaveformAnalysis", () => engine.getWaveformAnalysis());
+  handle("engine:pauseWaveformAnalysis", () => engine.pauseWaveformAnalysis());
+  handle("engine:resumeWaveformAnalysis", () => engine.resumeWaveformAnalysis());
   // The waveforms themselves (WAVE-05); the engine validates every parameter.
-  ipcMain.handle("engine:getWaveforms", (_event, params) => engine.getWaveforms(params));
-  ipcMain.handle("engine:requestWaveforms", (_event, params) => engine.requestWaveforms(params));
-  ipcMain.handle("engine:deleteWaveformData", () => engine.deleteWaveformData());
-  ipcMain.handle("engine:startLibraryImport", (_event, params) =>
+  handle("engine:getWaveforms", (_event, params) => engine.getWaveforms(params));
+  handle("engine:requestWaveforms", (_event, params) => engine.requestWaveforms(params));
+  handle("engine:deleteWaveformData", () => engine.deleteWaveformData());
+  handle("engine:startLibraryImport", (_event, params) =>
     engine.startLibraryImport(params),
   );
-  ipcMain.handle("engine:startLibraryRefreshPreview", (_event, params) =>
+  handle("engine:startLibraryRefreshPreview", (_event, params) =>
     engine.startLibraryRefreshPreview(params),
   );
-  ipcMain.handle("engine:startLibraryRefreshApply", (_event, params) =>
+  handle("engine:startLibraryRefreshApply", (_event, params) =>
     engine.startLibraryRefreshApply(params),
   );
-  ipcMain.handle("engine:getLibrarySummary", () => engine.getLibrarySummary());
-  ipcMain.handle("engine:listJobs", (_event, params) => engine.listJobs(params));
-  ipcMain.handle("engine:getRecentActivity", (_event, params) =>
+  handle("engine:getLibrarySummary", () => engine.getLibrarySummary());
+  handle("engine:listJobs", (_event, params) => engine.listJobs(params));
+  handle("engine:getRecentActivity", (_event, params) =>
     engine.getRecentActivity(params),
   );
-  ipcMain.handle("engine:getJob", (_event, jobId: string) => engine.getJob(jobId));
-  ipcMain.handle("engine:getJobResults", (_event, jobId: string) => engine.getJobResults(jobId));
-  ipcMain.handle("engine:cancelJob", (_event, jobId: string) => engine.cancelJob(jobId));
-  ipcMain.handle("engine:getBeatportTokenStatus", () => engine.getBeatportTokenStatus());
-  ipcMain.handle("engine:setBeatportToken", (_event, token: string) => engine.setBeatportToken(token));
-  ipcMain.handle("engine:testBeatportToken", (_event, body) => engine.testBeatportToken(body));
-  ipcMain.handle("engine:getLogsDir", () => engine.getLogsDir());
-  ipcMain.handle("engine:getCuepointLog", (_event, body) => engine.getCuepointLog(body));
-  ipcMain.handle("engine:clearCuepointLogs", () => engine.clearCuepointLogs());
-  ipcMain.handle("engine:clearCuepointCache", () => engine.clearCuepointCache());
-  ipcMain.handle("privacy:setExitPrefs", (_event, prefs: { clearCacheOnExit?: boolean; clearLogsOnExit?: boolean }) => {
+  handle("engine:getJob", (_event, jobId: string) => engine.getJob(jobId));
+  handle("engine:getJobResults", (_event, jobId: string) => engine.getJobResults(jobId));
+  handle("engine:cancelJob", (_event, jobId: string) => engine.cancelJob(jobId));
+  handle("engine:getBeatportTokenStatus", () => engine.getBeatportTokenStatus());
+  handle("engine:setBeatportToken", (_event, token: string) => engine.setBeatportToken(token));
+  handle("engine:testBeatportToken", (_event, body) => engine.testBeatportToken(body));
+  handle("engine:getLogsDir", () => engine.getLogsDir());
+  handle("engine:getCuepointLog", (_event, body) => engine.getCuepointLog(body));
+  handle("engine:clearCuepointLogs", () => engine.clearCuepointLogs());
+  handle("engine:clearCuepointCache", () => engine.clearCuepointCache());
+  handle("privacy:setExitPrefs", (_event, prefs: { clearCacheOnExit?: boolean; clearLogsOnExit?: boolean }) => {
     privacyExitPrefs = {
       clearCacheOnExit: Boolean(prefs?.clearCacheOnExit),
       clearLogsOnExit: Boolean(prefs?.clearLogsOnExit),
     };
     return { ok: true as const };
   });
-  ipcMain.handle("errorReporting:get", () => ({ enabled: errorReporting.enabled() }));
-  ipcMain.handle("errorReporting:set", (_event, enabled: unknown) => {
+  handle("errorReporting:get", () => ({ enabled: errorReporting.enabled() }));
+  handle("errorReporting:set", (_event, enabled: unknown) => {
     if (typeof enabled !== "boolean") throw new Error("errorReporting:set needs true or false");
     return errorReporting.set(enabled);
   });
-  ipcMain.handle(
+  handle(
     "support:exportBundle",
     async (_event, options: { include_logs?: boolean; include_config?: boolean; sanitize?: boolean }) => {
       const win = BrowserWindow.getFocusedWindow();
@@ -598,7 +656,7 @@ function registerIpcHandlers(): void {
       return { canceled: false as const, ...payload };
     },
   );
-  ipcMain.handle("shell:showItemInFolder", (_event, filePath: string) => {
+  handle("shell:showItemInFolder", (_event, filePath: string) => {
     shell.showItemInFolder(filePath);
   });
   /**
@@ -606,7 +664,7 @@ function registerIpcHandlers(): void {
    * Anything that is not an https page on Beatport's website is refused here,
    * whatever the renderer sent, and the answer says whether it opened.
    */
-  ipcMain.handle("shell:openBeatportPage", async (_event, url: unknown) => {
+  handle("shell:openBeatportPage", async (_event, url: unknown) => {
     const page = beatportPageUrl(url);
     if (page === null) return false;
     await shell.openExternal(page);
@@ -617,7 +675,7 @@ function registerIpcHandlers(): void {
   // Transport only. There is no queue here: what plays next is PLAYER-04's,
   // which is why there is no `player:next` yet — an endpoint that cannot do
   // anything is worse than an absent one.
-  ipcMain.handle("player:getState", () => playback.snapshot());
+  handle("player:getState", () => playback.snapshot());
   /**
    * Whether the media keys are actually working (PLAYER-12, macOS pass row 8).
    *
@@ -626,13 +684,13 @@ function registerIpcHandlers(): void {
    * so a screen can say so plainly, and so the E2E suite can assert it without
    * racing a toast that appears during startup.
    */
-  ipcMain.handle("player:mediaKeyStatus", () => mediaKeys.status);
+  handle("player:mediaKeyStatus", () => mediaKeys.status);
   /**
    * Play a view's worth of tracks (DEC-012). There is no single-file `play`:
    * everything that plays goes through the queue, so the two cannot disagree
    * about what is playing.
    */
-  ipcMain.handle(
+  handle(
     "player:playQueue",
     async (_event, items: QueueItemInput[], startIndex: number) => {
       try {
@@ -658,7 +716,7 @@ function registerIpcHandlers(): void {
    * fifty thousand rows from crossing IPC twice for a list the renderer never
    * needs to see.
    */
-  ipcMain.handle(
+  handle(
     "player:playView",
     async (_event, view: LibraryBrowseParams, startIndex: number) => {
       try {
@@ -695,35 +753,35 @@ function registerIpcHandlers(): void {
    * PLAYER-05's 50,000-track cap those are ~14.5 MB, and pushing them at the
    * transport's rate is ~58 MB/s of IPC for a panel showing twenty rows.
    */
-  ipcMain.handle("player:queueWindow", (_event, offset: number, limit: number) =>
+  handle("player:queueWindow", (_event, offset: number, limit: number) =>
     playback.queueWindow(offset ?? 0, limit ?? 100),
   );
-  ipcMain.handle("player:playNext", (_event, items: QueueItemInput[]) =>
+  handle("player:playNext", (_event, items: QueueItemInput[]) =>
     playback.playNextItems(items ?? []),
   );
-  ipcMain.handle("player:addToQueue", (_event, items: QueueItemInput[]) =>
+  handle("player:addToQueue", (_event, items: QueueItemInput[]) =>
     playback.addToQueue(items ?? []),
   );
-  ipcMain.handle("player:next", () => playback.next());
-  ipcMain.handle("player:previous", () => playback.previous());
-  ipcMain.handle("player:jumpTo", (_event, index: number) => playback.jumpTo(index));
-  ipcMain.handle("player:removeFromQueue", (_event, id: string) =>
+  handle("player:next", () => playback.next());
+  handle("player:previous", () => playback.previous());
+  handle("player:jumpTo", (_event, index: number) => playback.jumpTo(index));
+  handle("player:removeFromQueue", (_event, id: string) =>
     playback.removeFromQueue(id),
   );
-  ipcMain.handle("player:moveInQueue", (_event, from: number, to: number) =>
+  handle("player:moveInQueue", (_event, from: number, to: number) =>
     playback.moveInQueue(from, to),
   );
-  ipcMain.handle("player:clearQueue", () => playback.clearQueue());
-  ipcMain.handle("player:setShuffle", (_event, on: boolean) => playback.setShuffle(on));
-  ipcMain.handle("player:setRepeat", (_event, mode: RepeatMode) => playback.setRepeat(mode));
-  ipcMain.handle("player:pause", () => playback.pause());
-  ipcMain.handle("player:resume", () => playback.resume());
-  ipcMain.handle("player:toggle", () => playback.togglePause());
-  ipcMain.handle("player:stop", () => playback.stop());
-  ipcMain.handle("player:seek", (_event, seconds: number) => playback.seek(seconds));
-  ipcMain.handle("player:setVolume", (_event, volume: number) => playback.setVolume(volume));
-  ipcMain.handle("player:setMuted", (_event, muted: boolean) => playback.setMuted(muted));
-  ipcMain.handle("player:subscribeState", (event) => {
+  handle("player:clearQueue", () => playback.clearQueue());
+  handle("player:setShuffle", (_event, on: boolean) => playback.setShuffle(on));
+  handle("player:setRepeat", (_event, mode: RepeatMode) => playback.setRepeat(mode));
+  handle("player:pause", () => playback.pause());
+  handle("player:resume", () => playback.resume());
+  handle("player:toggle", () => playback.togglePause());
+  handle("player:stop", () => playback.stop());
+  handle("player:seek", (_event, seconds: number) => playback.seek(seconds));
+  handle("player:setVolume", (_event, volume: number) => playback.setVolume(volume));
+  handle("player:setMuted", (_event, muted: boolean) => playback.setMuted(muted));
+  handle("player:subscribeState", (event) => {
     const id = event.sender.id;
     const existing = playerWatchers.get(id);
     if (existing) {
@@ -737,7 +795,7 @@ function registerIpcHandlers(): void {
     event.sender.send("player:state", playback.snapshot());
     return { ok: true };
   });
-  ipcMain.handle("player:unsubscribeState", (event) => {
+  handle("player:unsubscribeState", (event) => {
     const id = event.sender.id;
     const existing = playerWatchers.get(id);
     if (!existing) return { ok: true };
@@ -757,7 +815,7 @@ function registerIpcHandlers(): void {
    * structured refusal rather than a throw, because "there is no audio player"
    * is something the settings panel shows a person.
    */
-  ipcMain.handle("player:audioDevices", async () => {
+  handle("player:audioDevices", async () => {
     try {
       return { ok: true as const, devices: await playback.listAudioDevices() };
     } catch (error) {
@@ -769,7 +827,7 @@ function registerIpcHandlers(): void {
       };
     }
   });
-  ipcMain.handle(
+  handle(
     "player:setAudioSettings",
     async (_event, settings: { device?: string; exclusive?: boolean }) => {
       try {
@@ -784,7 +842,7 @@ function registerIpcHandlers(): void {
       }
     },
   );
-  ipcMain.handle("player:subscribeNotices", (event) => {
+  handle("player:subscribeNotices", (event) => {
     const id = event.sender.id;
     const existing = noticeWatchers.get(id);
     if (existing) {
@@ -804,7 +862,7 @@ function registerIpcHandlers(): void {
     }
     return { ok: true };
   });
-  ipcMain.handle("player:unsubscribeNotices", (event) => {
+  handle("player:unsubscribeNotices", (event) => {
     const id = event.sender.id;
     const existing = noticeWatchers.get(id);
     if (!existing) return { ok: true };
@@ -816,15 +874,15 @@ function registerIpcHandlers(): void {
     }
     return { ok: true };
   });
-  ipcMain.handle("engine:subscribeJobEvents", (event, jobId: string) => {
+  handle("engine:subscribeJobEvents", (event, jobId: string) => {
     engine.subscribeJobEvents(jobId, event.sender.id, event.sender);
     return { ok: true };
   });
-  ipcMain.handle("engine:unsubscribeJobEvents", (event, jobId: string) => {
+  handle("engine:unsubscribeJobEvents", (event, jobId: string) => {
     engine.unsubscribeJobEvents(jobId, event.sender.id);
     return { ok: true };
   });
-  ipcMain.handle("dialog:openXml", async () => {
+  handle("dialog:openXml", async () => {
     const win = BrowserWindow.getFocusedWindow();
     const result = await showOpenDialogFor(win, {
       properties: ["openFile"],
@@ -841,7 +899,7 @@ function registerIpcHandlers(): void {
    * say when the export starts, so nothing here judges the path, and nothing
    * here starts an export — a cancelled dialog is simply an answer.
    */
-  ipcMain.handle(
+  handle(
     "dialog:saveRekordboxExport",
     (_event, request?: { currentPath?: string | null }) =>
       chooseRekordboxExportDestination(
@@ -860,7 +918,7 @@ function registerIpcHandlers(): void {
    * chooses a file and nothing else. The engine judges the path when it saves,
    * and nothing here saves; a cancelled dialog is simply an answer.
    */
-  ipcMain.handle("dialog:saveSetList", (_event, request?: SetListDialogRequest) =>
+  handle("dialog:saveSetList", (_event, request?: SetListDialogRequest) =>
     chooseSetListDestination(
       {
         store: setListFolders(),
@@ -873,7 +931,7 @@ function registerIpcHandlers(): void {
       request,
     ),
   );
-  ipcMain.handle(
+  handle(
     "dialog:saveExport",
     async (_event, options: { defaultPath?: string; format: string }) => {
       const win = BrowserWindow.getFocusedWindow();
@@ -915,10 +973,16 @@ async function createWindow(): Promise<void> {
    * honest than hiding the window and claiming, on arrival, that the engine
    * was connected when it was not.
    */
-  void engine.start().catch(() => {
-    // Reported through `getStatus()`, which the strip already polls; a
-    // rejection here would otherwise be an unhandled one.
-  });
+  void engine.start().then(
+    () => breadcrumb("engine", "started"),
+    (error: unknown) => {
+      // Reached the person through `getStatus()`, which the strip already polls; a
+      // rejection here would otherwise be an unhandled one. It is also reported,
+      // once per launch (REPORT-04).
+      breadcrumb("engine", "failed to start");
+      reportOnce("engine.start", error, { tags: { "engine.phase": "start" } });
+    },
+  );
 
   const size = { width: 1280, height: 800 };
   // An end-to-end run's window goes where it asks and is shown without focus
@@ -952,8 +1016,14 @@ async function createWindow(): Promise<void> {
 
   // Held on focus and given back on blur, so the keys belong to whatever the
   // user is looking at (PLAYER-12).
-  win.on("focus", () => mediaKeys.acquire());
-  win.on("blur", () => mediaKeys.release());
+  win.on("focus", () => {
+    breadcrumb("window", "focus");
+    mediaKeys.acquire();
+  });
+  win.on("blur", () => {
+    breadcrumb("window", "blur");
+    mediaKeys.release();
+  });
   win.on("closed", () => mediaKeys.release());
   if (win.isFocused()) mediaKeys.acquire();
   if (placement) win.showInactive();
@@ -971,18 +1041,45 @@ async function createWindow(): Promise<void> {
 }
 
 app.whenReady().then(() => {
+  breadcrumb("app", "ready");
   registerIpcHandlers();
   void createWindow();
 });
 
 app.on("window-all-closed", () => {
+  breadcrumb("app", "window-all-closed");
   if (process.platform !== "darwin") app.quit();
 });
+
+// A window's page or a helper process (GPU, utility) that died, with why. A clean
+// exit is not reported. The SDK's own `ChildProcess` integration is off, so each
+// is reported once, here (REPORT-04).
+app.on("render-process-gone", (_event, _contents, details) => {
+  reportProcessGone("renderer", details);
+});
+app.on("child-process-gone", (_event, details) => {
+  reportProcessGone(details.type, details);
+});
+
+// The player's state, as a trail: running, reconnecting, or why it gave up. Only
+// when reporting is set up, and only a change.
+if (reportingOn) {
+  let lastPlayerStatus = "";
+  player.onSnapshot((snapshot) => {
+    const { running, reconnecting, error } = snapshot.status;
+    const now = `${running ? "running" : "stopped"}${reconnecting ? " reconnecting" : ""}${error ? " failed" : ""}`;
+    if (now === lastPlayerStatus) return;
+    lastPlayerStatus = now;
+    breadcrumb("player", now);
+  });
+}
 
 // Held until it has finished: Electron does not wait for an async
 // `before-quit` listener, and this one used to lose the race to the quit and
 // leave the engine running (EXPORT-07).
 quitAfter(app, async () => {
+  markQuitting();
+  breadcrumb("app", "before-quit");
   const tasks: Array<Promise<unknown>> = [];
   if (privacyExitPrefs.clearCacheOnExit) tasks.push(engine.clearCuepointCache());
   if (privacyExitPrefs.clearLogsOnExit) tasks.push(engine.clearCuepointLogs());

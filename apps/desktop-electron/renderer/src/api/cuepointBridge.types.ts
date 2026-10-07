@@ -2920,7 +2920,32 @@ export interface SetsBridge {
   chooseSetListDestination: (request: SetListDialogRequest) => Promise<SetListDestinationChoice>;
 }
 
+/**
+ * What an engine error says about itself (REPORT-04, DEC-126): the HTTP status
+ * (below 500 is a refusal), the code, and the engine's own report of a 500.
+ * Each is null when the error did not come from the engine, or had none.
+ */
+export interface BridgeErrorFields {
+  status: number | null;
+  code: string | null;
+  reportId: string | null;
+}
+
+/**
+ * A rejection from the bridge, as the preload builds it. `message` is the
+ * engine's words, as it always was. The fields are properties on the preload's
+ * side; `contextBridge` rebuilds an Error from its message alone, so a page
+ * reads them through `bridgeErrorFields` (`./bridgeError.ts`).
+ */
+export interface BridgeError extends Error, BridgeErrorFields {}
+
 export interface CuePointBridge {
+  /**
+   * The fields of an engine error the page caught, found by its message (REPORT-04).
+   * Null for any other error. Prefer `bridgeErrorFields`, which asks this only when the
+   * error itself has none. Absent in a browser tab, or in an older shell.
+   */
+  engineErrorFields?: (message: string) => BridgeErrorFields | null;
   getEngineStatus: () => Promise<EngineStatus>;
   /** Absent when running in a browser tab, or in an older shell. */
   player?: PlayerBridge;

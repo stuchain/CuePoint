@@ -45,9 +45,13 @@ function invokedChannels(source: string): string[] {
   return [...source.matchAll(/ipcRenderer\.invoke\(\s*"([^"]+)"/g)].map((m) => m[1]!);
 }
 
-/** Every channel the main process handles. */
+/**
+ * Every channel the main process handles. Main registers each through its
+ * `handle(channel, fn)` helper, which wraps the handler once for every channel
+ * (REPORT-04); `ipcMain.handle` is called in that one place only.
+ */
 function handledChannels(source: string): string[] {
-  return [...source.matchAll(/ipcMain\.handle\(\s*\n?\s*"([^"]+)"/g)].map((m) => m[1]!);
+  return [...source.matchAll(/(?:^|[^.\w])handle\(\s*\n?\s*"([^"]+)"/gm)].map((m) => m[1]!);
 }
 
 /** Every `engine.X(...)` call main.ts makes inside an ipcMain handler. */
@@ -907,10 +911,10 @@ describe("desktop contract", () => {
       return engineClient.slice(start, next === -1 ? undefined : next);
     };
 
-    /** One `ipcMain.handle` registration in main.ts, up to the next one. */
+    /** One `handle(...)` registration in main.ts, up to the next one. */
     const handler = (channel: string) => {
       const start = main.indexOf(`"${channel}"`);
-      const next = main.indexOf("ipcMain.handle(", start);
+      const next = main.indexOf("\n  handle(", start);
       return main.slice(start, next === -1 ? undefined : next);
     };
 
@@ -1338,7 +1342,7 @@ describe("desktop contract", () => {
     };
 
     const handlerOf = (channel: string) => {
-      const start = main.indexOf(`ipcMain.handle("${channel}"`);
+      const start = main.indexOf(`  handle("${channel}"`);
       expect(start, channel).toBeGreaterThan(-1);
       return main.slice(start, main.indexOf("\n  );\n", start));
     };
@@ -1644,8 +1648,8 @@ describe("desktop contract", () => {
       expect(handledChannels(main)).toContain(`engine:${m.client}`);
       expect(main).toContain(
         m.params
-          ? `ipcMain.handle("engine:${m.client}", (_event, params) => engine.${m.client}(params));`
-          : `ipcMain.handle("engine:${m.client}", () => engine.${m.client}());`,
+          ? `handle("engine:${m.client}", (_event, params) => engine.${m.client}(params));`
+          : `handle("engine:${m.client}", () => engine.${m.client}());`,
       );
     });
 
@@ -1832,7 +1836,7 @@ describe("desktop contract", () => {
   describe("the Discover page (DISCOVER-10)", () => {
     /** The body of the handler for one channel, as text. */
     const handlerOf = (channel: string) => {
-      const start = main.indexOf(`ipcMain.handle("${channel}"`);
+      const start = main.indexOf(`  handle("${channel}"`);
       expect(start, channel).toBeGreaterThan(-1);
       return main.slice(start, main.indexOf("\n  });", start));
     };
@@ -1879,6 +1883,36 @@ describe("desktop contract", () => {
 
     it("passes the choice to the engine when it is launched", () => {
       expect(supervisor).toContain("CUEPOINT_ERROR_REPORTING");
+    });
+  });
+
+  describe("errors keep their code across the bridge (REPORT-04, DEC-126)", () => {
+    it("registers every handler through one wrapper, and calls ipcMain.handle once", () => {
+      expect(main.match(/ipcMain\.handle\(/g)).toHaveLength(1);
+      expect(main).toContain("ipcMain.handle(channel, wrapIpcHandler(channel, handler));");
+      expect(handledChannels(main).length).toBeGreaterThan(150);
+    });
+
+    it("throws an EngineError from the client, whose fields the preload hands on", () => {
+      expect(engineClient).toContain("export class EngineError extends Error");
+      for (const field of ["status", "code", "reportId"]) {
+        expect(engineClient).toContain(`readonly ${field}:`);
+        expect(preload).toContain(field);
+      }
+      expect(engineClient).not.toMatch(/throw new Error\(`?textOrNull|throw new Error\(error\??\.message/);
+    });
+
+    it("describes a bridge error and where to read its fields, in the bridge types", () => {
+      expect(bridgeTypes).toContain(
+        "export interface BridgeError extends Error, BridgeErrorFields",
+      );
+      expect(bridgeTypes).toContain("engineErrorFields?: (message: string) => BridgeErrorFields | null;");
+      expect(bridgeTypes).toMatch(/status: number \| null;\s+code: string \| null;\s+reportId: string \| null;/);
+    });
+
+    it("exposes engineErrorFields on the preload, without a channel", () => {
+      expect(preload).toContain("engineErrorFields: (message) =>");
+      expect(handledChannels(main)).not.toContain("engineErrorFields");
     });
   });
 

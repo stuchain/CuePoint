@@ -9,9 +9,66 @@ const { contextBridge, ipcRenderer, webUtils } = require("electron");
  */
 const REMOTE_PREFIX = /^Error invoking remote method '[^']*': (?:[A-Za-z]*Error: )?/;
 
+/**
+ * An engine error's status, code and report id ride at the end of its message,
+ * after this marker, because Electron rebuilds a rejected `invoke` from the
+ * message alone (REPORT-04, DEC-126). Keep equal to `BRIDGE_ERROR_MARKER` in
+ * `bridgeError.ts`.
+ */
+const ERROR_MARKER = "\u0000cuepoint-error:";
+
+/** What an error that did not come from the engine says about itself. */
+const NO_FIELDS = { status: null, code: null, reportId: null };
+
+function fieldsFrom(text) {
+  try {
+    const raw = JSON.parse(text);
+    return {
+      status: typeof raw.status === "number" ? raw.status : null,
+      code: typeof raw.code === "string" ? raw.code : null,
+      reportId: typeof raw.reportId === "string" ? raw.reportId : null,
+    };
+  } catch {
+    return NO_FIELDS;
+  }
+}
+
+/**
+ * The fields of the engine errors that crossed lately, by their words.
+ *
+ * `contextBridge` rebuilds an Error in the page from its message alone: `status`,
+ * `code`, `reportId`, `name` and `cause` are all dropped (checked in Electron 34), so
+ * the properties set below reach a page only where nothing is bridged. This is the
+ * way the page gets them: `engineErrorFields(error.message)`. The newest error with
+ * those words wins, so two failures with the same words at the same moment can swap
+ * their ids; the words of an engine error name a status, so that is rare and harmless.
+ */
+const MAX_REMEMBERED = 50;
+const recentFields = new Map();
+
+function remember(words, fields) {
+  recentFields.delete(words);
+  recentFields.set(words, fields);
+  if (recentFields.size > MAX_REMEMBERED) recentFields.delete(recentFields.keys().next().value);
+}
+
+/**
+ * The error as the renderer reads it: the engine's words as `message`, and
+ * `status`, `code` and `reportId` (null when the error has none).
+ */
 function engineWords(error) {
   if (error instanceof Error && REMOTE_PREFIX.test(error.message)) {
-    return new Error(error.message.replace(REMOTE_PREFIX, ""));
+    const text = error.message.replace(REMOTE_PREFIX, "");
+    const at = text.indexOf(ERROR_MARKER);
+    if (at === -1) {
+      // These words are no longer an engine error's: forget any earlier one's fields.
+      recentFields.delete(text);
+      return Object.assign(new Error(text), NO_FIELDS);
+    }
+    const words = text.slice(0, at);
+    const fields = fieldsFrom(text.slice(at + ERROR_MARKER.length));
+    remember(words, fields);
+    return Object.assign(new Error(words), fields);
   }
   return error;
 }
@@ -39,6 +96,12 @@ function withEngineWords(api) {
 }
 
 contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
+  // The status, code and report id of an engine error the page caught, by its
+  // message (REPORT-04). Null for any other error. See `recentFields`.
+  engineErrorFields: (message) => {
+    const fields = recentFields.get(message);
+    return fields ? { ...fields } : null;
+  },
   getEngineStatus: () => ipcRenderer.invoke("engine:status"),
   restartEngine: () => ipcRenderer.invoke("engine:restart"),
   searchLibrary: (params) => ipcRenderer.invoke("engine:searchLibrary", params),

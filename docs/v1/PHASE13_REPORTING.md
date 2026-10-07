@@ -514,6 +514,35 @@ event with every default field.
 
 **Complexity**: **M**
 
+**Outcome**: Implemented (2026-10-07), before REPORT-03 was committed: nothing in main needs the
+engine's side, and an engine error without a `report_id` is simply reported by main until it has one.
+`electron/reporting.ts` sets `@sentry/electron` **7.20.1** up first in `main.ts` (8.x needs Electron 35),
+with the plain transport, an allowlist of integrations (no minidumps, sessions, console, context lines,
+local variables, screenshots or fetch breadcrumbs), `sendClientReports: false` and IPC mode Classic. A
+broken SDK load or `init` sets nothing up and the app carries on. `engineClient.ts` throws
+`EngineError` (status, code, report id) from every reader.
+
+Decided while building:
+- **Electron drops an error's own properties at the context bridge.** The page gets a plain `Error`
+  with the words only. So `preload.cjs` remembers the last 50 engine errors' fields by their words,
+  and the renderer reads them with `bridgeErrorFields(error)` (`renderer/src/api/bridgeError.ts`).
+- **An outage is not a bug report.** "Engine not running", a refused connection and an unavailable
+  player are breadcrumbs; REPORT-05 reports the outage once. Any other failing IPC call is reported
+  once per launch per channel and message.
+- **One IPC wrapper.** Every `ipcMain.handle` goes through `handle()`, which records the channel and
+  its outcome, never the arguments; polled channels are not recorded.
+- **Trace headers** come from the SDK with tracing off and are added by `EngineClient.headers()`; the
+  engine continues the trace (REPORT-03).
+- A renderer or helper `killed`, and anything after quit begins, is a breadcrumb.
+- Renderer feedback, sessions, logs, metrics, replay, spans and scope updates do not pass main's
+  `beforeSend`; REPORT-06 keeps them off in the renderer.
+
+Checked in the cloud container: the main-process suite (1199), the renderer suite (4220, one test fixed
+for REPORT-02's quoting and one known-flaky StatusStrip test that passes alone), both type-checks, the
+build, and `e2e/reportErrors.spec.ts` (5, against a fake Sentry server). The whole e2e suite ran once
+before the review fixes: only the nine audio specs failed, as they do on Linux with no pinned mpv. Not
+checked: a packed app.
+
 ---
 
 ## REPORT-05 — The Engine and the Player, Watched

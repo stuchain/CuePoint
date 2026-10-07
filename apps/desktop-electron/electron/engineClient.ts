@@ -5,18 +5,90 @@ import { collectSseUntilTerminal } from "./sseClient.js";
 export interface EngineApiError {
   code: string;
   message: string;
+  /** Present on a 500 the engine itself reported (REPORT-03). */
+  report_id?: string;
+}
+
+/** The code of an answer that did not name one. */
+export const ENGINE_REQUEST_FAILED = "ENGINE_REQUEST_FAILED";
+
+/**
+ * An engine answer that was not a success, with what the envelope said about it
+ * (REPORT-04, DEC-126).
+ *
+ * `message` is the words a person reads and is what the old plain `Error` carried.
+ * `status` and `code` say whether it is a refusal (below 500) or a failure, and
+ * `reportId` names the engine's own report of a 500, so main and the renderer
+ * do not report it a second time. A fetch that fails because the engine is down is
+ * not one of these: nothing answered.
+ */
+export class EngineError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly reportId: string | null;
+
+  constructor(
+    message: string,
+    fields: { status: number; code?: string | null; reportId?: string | null },
+  ) {
+    super(message);
+    this.name = "EngineError";
+    this.status = fields.status;
+    this.code = fields.code || ENGINE_REQUEST_FAILED;
+    this.reportId = fields.reportId || null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * The error for a failed answer. `error` is the envelope's `error` object when
+ * the body had one, and anything else when it had none.
+ */
+export function engineErrorFrom(res: { status: number }, error: unknown): EngineError {
+  const fields = isRecord(error) ? error : {};
+  const text = (value: unknown): string | null =>
+    typeof value === "string" && value !== "" ? value : null;
+  return new EngineError(text(fields.message) ?? `Engine request failed (${res.status})`, {
+    status: res.status,
+    code: text(fields.code),
+    reportId: text(fields.report_id),
+  });
+}
+
+/**
+ * Headers that link an engine request to the report main may make about it
+ * (REPORT-04, DEC-126): the SDK's `sentry-trace` and `baggage`. Set once, by
+ * `setupMainReporting`, and only when reporting is set up; nothing is added
+ * otherwise. Never throws, since a request must not fail for a header.
+ */
+let traceHeaders: (() => Record<string, string>) | null = null;
+
+export function setEngineTraceHeaders(provider: (() => Record<string, string>) | null): void {
+  traceHeaders = provider;
+}
+
+function currentTraceHeaders(): Record<string, string> {
+  if (traceHeaders === null) return {};
+  try {
+    return traceHeaders();
+  } catch {
+    return {};
+  }
 }
 
 /** The two thumbnail sizes the engine makes (CLEAN-09): a table row, the Inspector. */
 export type ArtworkSize = "row" | "inspector";
 
 async function readJson<T>(res: Response): Promise<T> {
-  const body = (await res.json()) as T & { error?: EngineApiError };
   if (!res.ok) {
-    const message = body.error?.message ?? `Engine request failed (${res.status})`;
-    throw new Error(message);
+    // A body that is not JSON (a proxy's page, an empty answer) still has a status.
+    const failed = (await res.json().catch(() => null)) as { error?: EngineApiError } | null;
+    throw engineErrorFrom(res, failed?.error);
   }
-  return body;
+  return (await res.json()) as T;
 }
 
 /**
@@ -43,7 +115,13 @@ function textOrNull(value: unknown): string | null {
 async function readRefusable<T>(
   res: Response,
 ): Promise<{ body: T; refusal: null } | { body: null; refusal: RekordboxExportRefusal }> {
-  const body = (await res.json()) as T & { error?: EngineApiError & Record<string, unknown> };
+  let body: T & { error?: EngineApiError & Record<string, unknown> };
+  try {
+    body = (await res.json()) as T & { error?: EngineApiError & Record<string, unknown> };
+  } catch {
+    if (res.ok) throw new Error(`Engine request failed (${res.status})`);
+    throw engineErrorFrom(res, undefined);
+  }
   if (res.ok) return { body, refusal: null };
   const error = body.error;
   if (error && (REKORDBOX_EXPORT_REFUSAL_CODES as readonly string[]).includes(error.code)) {
@@ -59,7 +137,7 @@ async function readRefusable<T>(
       },
     };
   }
-  throw new Error(error?.message ?? `Engine request failed (${res.status})`);
+  throw engineErrorFrom(res, error);
 }
 
 /**
@@ -102,7 +180,8 @@ async function readDiscover<T>(res: Response): Promise<DiscoverAnswer<T>> {
   try {
     body = (await res.json()) as T & { error?: Record<string, unknown> };
   } catch {
-    throw new Error(`Engine request failed (${res.status})`);
+    if (res.ok) throw new Error(`Engine request failed (${res.status})`);
+    throw engineErrorFrom(res, undefined);
   }
   if (res.ok) return { value: body, refusal: null };
   const error = body?.error;
@@ -124,7 +203,7 @@ async function readDiscover<T>(res: Response): Promise<DiscoverAnswer<T>> {
       },
     };
   }
-  throw new Error(textOrNull(error?.message) ?? `Engine request failed (${res.status})`);
+  throw engineErrorFrom(res, error);
 }
 
 /** A query string from the values given; absent and null are left out. */
@@ -179,7 +258,8 @@ async function readSetAnswer<T>(res: Response): Promise<SetAnswer<T>> {
   try {
     body = (await res.json()) as T & { error?: Record<string, unknown> };
   } catch {
-    throw new Error(`Engine request failed (${res.status})`);
+    if (res.ok) throw new Error(`Engine request failed (${res.status})`);
+    throw engineErrorFrom(res, undefined);
   }
   if (res.ok) return { value: body, refusal: null };
   const error = body?.error;
@@ -199,7 +279,7 @@ async function readSetAnswer<T>(res: Response): Promise<SetAnswer<T>> {
       },
     };
   }
-  throw new Error(textOrNull(error?.message) ?? `Engine request failed (${res.status})`);
+  throw engineErrorFrom(res, error);
 }
 
 /**
@@ -230,7 +310,8 @@ async function readWaveformAnswer<T>(res: Response): Promise<WaveformAnswer<T>> 
   try {
     body = (await res.json()) as T & { error?: Record<string, unknown> };
   } catch {
-    throw new Error(`Engine request failed (${res.status})`);
+    if (res.ok) throw new Error(`Engine request failed (${res.status})`);
+    throw engineErrorFrom(res, undefined);
   }
   if (res.ok) return { value: body, refusal: null };
   const error = body?.error;
@@ -244,7 +325,7 @@ async function readWaveformAnswer<T>(res: Response): Promise<WaveformAnswer<T>> 
       },
     };
   }
-  throw new Error(textOrNull(error?.message) ?? `Engine request failed (${res.status})`);
+  throw engineErrorFrom(res, error);
 }
 
 export interface LibraryTrackRow {
@@ -2495,7 +2576,7 @@ export class EngineClient {
     if (this.sessionId) {
       headers["X-Session-Id"] = this.sessionId;
     }
-    return headers;
+    return { ...currentTraceHeaders(), ...headers };
   }
 
   /**
@@ -2622,8 +2703,8 @@ export class EngineClient {
       return null;
     }
     if (!res.ok) {
+      // Always throws: the answer says why.
       await readJson(res);
-      throw new Error(`Engine request failed (${res.status})`);
     }
     if (!(res.headers.get("Content-Type") ?? "").startsWith("image/jpeg")) {
       throw new Error("The engine answered artwork with something other than a JPEG");
@@ -3713,6 +3794,7 @@ export class EngineClient {
   ): Promise<void> {
     const res = await fetch(this.url(`/api/v1/jobs/${jobId}/events`), {
       headers: {
+        ...currentTraceHeaders(),
         Authorization: `Bearer ${this.token}`,
         Accept: "text/event-stream",
       },
