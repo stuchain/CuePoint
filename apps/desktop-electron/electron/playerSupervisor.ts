@@ -228,6 +228,9 @@ const IDLE_PLAYBACK: PlaybackState = {
   muted: false,
 };
 
+/** How long a seek refused while a file opens waits for it to open. */
+const OPENING_WAIT_MS = 5_000;
+
 export class PlayerSupervisor {
   private child: ChildProcess | null = null;
   private client: MpvClient | null = null;
@@ -252,6 +255,12 @@ export class PlayerSupervisor {
   private readonly idleListeners = new Set<IdleListener>();
   /** mpv's own `idle-active`: it has nothing loaded and is playing nothing. */
   private idleActive = false;
+  /**
+   * Settles when the file the last `play` gave mpv has opened, or failed to.
+   * Null when no file is opening. mpv refuses a seek until then.
+   */
+  private opening: Promise<void> | null = null;
+  private opened: (() => void) | null = null;
   /** What the user asked for; see `AudioState`. */
   private audio: AudioSettings = { ...DEFAULT_AUDIO_SETTINGS };
   /** What is actually in use, which a fallback can pull away from it. */
@@ -578,7 +587,11 @@ export class PlayerSupervisor {
     client.on("start-file", (info) => {
       for (const listener of this.startFileListeners) listener(info);
     });
+    client.on("event", (event: { event?: string }) => {
+      if (event.event === "file-loaded") this.settleOpening();
+    });
     client.on("end-file", (info) => {
+      this.settleOpening();
       this.playback = { ...this.playback, playing: false };
       this.push(true);
       for (const listener of this.endFileListeners) listener(info);
@@ -955,6 +968,8 @@ export class PlayerSupervisor {
     // which a failure looks like it arrived at an already-idle player.
     this.idleActive = false;
     this.push(true);
+    this.settleOpening();
+    this.opening = new Promise((resolve) => (this.opened = resolve));
     // `replace` clears mpv's playlist, so any preloaded entry goes with it —
     // verified against the bundled build, where playlist-count returns to 1.
     const entryId = await client.loadFile(filePath, "replace");
@@ -1012,7 +1027,17 @@ export class PlayerSupervisor {
 
   async seek(seconds: number): Promise<void> {
     const client = this.requireClient();
-    await client.seek(seconds, "absolute");
+    try {
+      await client.seek(seconds, "absolute");
+    } catch (error) {
+      // mpv refuses a seek while the file it was just given is still opening:
+      // seek once it has, or give up after OPENING_WAIT_MS, as a stalled open
+      // ends in an `end-file` that settles the wait anyway.
+      const opening = this.opening;
+      if (!opening) throw error;
+      await Promise.race([opening, new Promise((resolve) => setTimeout(resolve, OPENING_WAIT_MS))]);
+      await this.requireClient().seek(seconds, "absolute");
+    }
     this.playback = { ...this.playback, positionSeconds: seconds };
     this.push(true);
   }
@@ -1030,8 +1055,15 @@ export class PlayerSupervisor {
     if (this.client) await this.client.setMuted(muted);
   }
 
+  private settleOpening(): void {
+    this.opened?.();
+    this.opened = null;
+    this.opening = null;
+  }
+
   /** Stop playback without shutting the process down. */
   async stopPlayback(): Promise<void> {
+    this.settleOpening();
     const client = this.client;
     this.playback = { ...IDLE_PLAYBACK, volume: this.playback.volume, muted: this.playback.muted };
     this.push(true);

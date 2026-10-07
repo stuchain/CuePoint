@@ -553,6 +553,43 @@ describe("transport", () => {
     expect(clients[0].commands).toContainEqual(["seek", 42, "absolute"]);
   });
 
+  it("seeks once the file it was just given has opened", async () => {
+    // Found by the end-to-end test: mpv refuses a seek while the file a
+    // `loadfile` gave it is still opening, so play-then-seek failed whenever
+    // the seek arrived first.
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    const client = clients[0]!;
+    const seek = client.seek.bind(client);
+    let refused = false;
+    client.seek = async (seconds: number, mode = "absolute") => {
+      if (!refused) {
+        refused = true;
+        throw new Error("error running command");
+      }
+      await seek(seconds, mode);
+    };
+
+    const seeking = supervisor.seek(3);
+    await new Promise((resolve) => setImmediate(resolve));
+    client.emit("event", { event: "file-loaded" });
+    await seeking;
+
+    expect(client.commands).toContainEqual(["seek", 3, "absolute"]);
+    expect(supervisor.getSnapshot().playback.positionSeconds).toBe(3);
+  });
+
+  it("passes a refused seek on when no file is opening", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    const client = clients[0]!;
+    client.emit("event", { event: "file-loaded" });
+    client.seek = async () => {
+      throw new Error("error running command");
+    };
+    await expect(supervisor.seek(3)).rejects.toThrow("error running command");
+  });
+
   it("clamps volume to mpv's range", async () => {
     const { supervisor } = track(harness());
     await supervisor.play("/music/a.flac");
