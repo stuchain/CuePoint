@@ -3731,10 +3731,11 @@ icon.
 
 ---
 
-## DECISION ROUND 21 — PRODUCTION HARDENING (Phase 18) ⏳ Open, asked 2026-10-07
+## DECISION ROUND 21 — PRODUCTION HARDENING (Phase 18) ✅ Resolved 2026-10-07
 
 Asked while specifying Phase 18 (`PHASE18_HARDENING.md`). DEC-125 named what hardening covers;
-writing the steps raised ten questions no earlier decision answers.
+writing the steps raised ten questions no earlier decision answers. The user chose the
+recommendation for all ten on 2026-10-07. Outcomes are in DEC-179…DEC-188.
 
 Found while specifying:
 - **Restore is built and unreachable.** `BackupService.restore()` is complete and tested, but no
@@ -3754,7 +3755,7 @@ Found while specifying:
 
 ### Q-190 — Where Back Up Now and Restore live
 
-**Status**: Open
+**Status**: Resolved → DEC-179 (Option A)
 
 **Question**: DEC-009 asked for **Back Up Now** and **Restore** in Settings. Where exactly?
 
@@ -3768,7 +3769,7 @@ the list; the menu items can be added later as shortcuts to it.
 
 ### Q-191 — A copy before every upgrade
 
-**Status**: Open
+**Status**: Resolved → DEC-180 (Option A)
 
 **Question**: Five launch backups are kept, so five changed launches after an upgrade remove the last
 copy from before it. Keep one on purpose?
@@ -3782,7 +3783,7 @@ on it), and it costs one file per upgrade.
 
 ### Q-192 — When the library is checked for damage
 
-**Status**: Open
+**Status**: Resolved → DEC-181 (Option A)
 
 **Question**: SQLite's quick check reads the whole file (a 50,000-track library with Clean's data is
 about 300 MB). When does it run?
@@ -3796,7 +3797,7 @@ the rest; neither delays opening the app.
 
 ### Q-193 — A library that can't open at start
 
-**Status**: Open
+**Status**: Resolved → DEC-182 (Option A)
 
 **Question**: A damaged library, one from a newer CuePoint, or one whose upgrade failed shows a
 generic error today.
@@ -3810,7 +3811,7 @@ Settings may not be reachable then.
 
 ### Q-194 — Saving tags into audio files
 
-**Status**: Open
+**Status**: Resolved → DEC-183 (Option A)
 
 **Question**: Tags are written into the audio file in place. A crash or power cut mid-write can
 truncate the file; the saved before-values restore tags, not audio.
@@ -3824,7 +3825,7 @@ truncate the file; the saved before-values restore tags, not audio.
 
 ### Q-195 — The largest library v1 supports
 
-**Status**: Open
+**Status**: Resolved → DEC-184 (Option A)
 
 **Question**: Everything is built and measured for 50,000 tracks, and the player's queue is capped
 there.
@@ -3839,7 +3840,7 @@ libraries what to expect without a second set of budgets to hold.
 
 ### Q-196 — Accents and case in search and sort
 
-**Status**: Open
+**Status**: Resolved → DEC-185 (Option A)
 
 **Question**: Search and sort fold only plain A–Z today.
 
@@ -3852,7 +3853,7 @@ libraries what to expect without a second set of budgets to hold.
 
 ### Q-197 — How far accessibility goes
 
-**Status**: Open
+**Status**: Resolved → DEC-186 (Option A)
 
 - **Option A — WCAG 2.2 AA:** an automated check (axe) on every page in CI, contrast for every
   color, Windows high contrast, a keyboard spec per page, and one pass with NVDA on Windows and
@@ -3865,7 +3866,7 @@ is the only way to judge the table and the waveform.
 
 ### Q-198 — Linux at 1.0
 
-**Status**: Open
+**Status**: Resolved → DEC-187 (Option A)
 
 **Question**: Linux is "experimental" today: an AppImage, no bundled player, no self-update.
 
@@ -3878,7 +3879,7 @@ for Linux support.
 
 ### Q-199 — What blocks 1.0.0
 
-**Status**: Open
+**Status**: Resolved → DEC-188 (Option A)
 
 **Question**: HARDEN-09 runs every owed check. Which results hold back the `v1.0.0` tag?
 

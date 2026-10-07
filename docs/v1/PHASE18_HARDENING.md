@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 18: Production Hardening, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. No step is implemented yet.** Ten steps, HARDEN-01…HARDEN-10.
+Status: **Specified 2026-10-07; Decision Round 21 resolved the same day (DEC-179…DEC-188, all as recommended). No step is implemented yet.** Ten steps, HARDEN-01…HARDEN-10.
 Writing the steps raised ten questions that no earlier round answered. They are asked as Decision
 Round 21 (Q-190…Q-199). Where a step below says "if Q-NNN …", the recommended branch is written
 out, and the step is built as the answer says. Per the process, no implementation happens from this
@@ -250,7 +250,7 @@ run by the release workflow from DIST-04 on, and not on pushes. The manual check
 backups and restores are whole-or-nothing and work on a library too damaged to open; and a copy taken
 just before each upgrade is kept apart from the five launch copies.
 
-**User-visible result**: Settings has a **Backups** section (if Q-190 is A): "Your library is backed up
+**User-visible result**: Settings has a **Backups** section (DEC-179): "Your library is backed up
 each time you open CuePoint after a change. 5 are kept." A list of backups with their date, size and
 why ("When you opened CuePoint", "Before updating to 1.0.0", "Before restoring", "You made this"),
 **Back Up Now**, **Restore** on each row, and **Show in folder**. Restore asks first ("Restore your
@@ -288,7 +288,7 @@ pattern.
 - **The app version is recorded.** A migration adds `library_meta(key, value)` with
   `last_opened_by` (the app's version, written at every start) so backups, the pre-upgrade copy and
   HARDEN-03's "too new" screen can name versions, not schema numbers.
-- **A copy before every upgrade** (if Q-191 is A): `backup_on_launch` compares the library's schema
+- **A copy before every upgrade** (DEC-180): `backup_on_launch` compares the library's schema
   version with the build's head. When migrations are pending, it takes one copy with reason
   `pre-upgrade` (recording both app versions) **instead of** the launch copy, always, whether or not
   the library changed since the last backup. Pre-upgrade copies are pruned on their own count (keep 3),
@@ -395,7 +395,7 @@ and the fix is a new migration, never an edit to a shipped one.
 user sees what happened and a way back; damage is looked for when it is likely; a full disk says so;
 and the app knows when its last session ended uncleanly.
 
-**User-visible result**: Instead of a failed Library, a full-window screen (if Q-193 is A):
+**User-visible result**: Instead of a failed Library, a full-window screen (DEC-182):
 - **Damaged:** "CuePoint couldn't read your library. Your latest good backup is from Tuesday 14:02."
   **Restore this backup** · **Choose another backup** · **Show the library file** · **Report this
   problem**.
@@ -424,7 +424,7 @@ shape.
   the newest backup that passes `quick_check`. It is served by the authenticated `/api/v1/status`
   (cached, never recomputed per call), not by the open `/health`. The engine answers status even when
   the library cannot open, so the renderer can show the screen.
-- **When to check** (if Q-192 is A): `PRAGMA quick_check` runs at start **after an unclean exit** and
+- **When to check** (DEC-181): `PRAGMA quick_check` runs at start **after an unclean exit** and
   **once every 7 days** (the date kept in main's settings), in the background after the window shows;
   the library is usable while it runs and the screen appears only if it fails. `SQLITE_CORRUPT` or
   `SQLITE_NOTADB` raised during a session also marks the library damaged.
@@ -486,7 +486,7 @@ named so it can be swept.
   preferences.
 - **Temp files are named** `.<name>.cuepoint-tmp-<pid>`. At start, a sweep removes any whose process is
   gone, in CuePoint's own folders and in the folders it last exported to (kept in main's settings).
-- **Tag writes** (if Q-194 is A): every write path in `tag_writer.py` (each mutagen `save()` and the
+- **Tag writes** (DEC-183): every write path in `tag_writer.py` (each mutagen `save()` and the
   WAV LIST-INFO append) and the restore path in `tag_fields.py` write to a copy of the audio file made
   in the same folder. The copy is checked (its tags read back as written, and its audio frames are
   byte-identical to the original's, compared by mutagen's own frame offsets, so no decoder is needed
@@ -603,7 +603,7 @@ during real work.
 length; network locations keep their host; search and sort treat accented and non-Latin text as people
 expect.
 
-**User-visible result**: "beyonce" finds "Beyoncé" and "ÂME" finds "Âme" (if Q-196 is A); "Âme" sorts
+**User-visible result**: "beyonce" finds "Beyoncé" and "ÂME" finds "Âme" (DEC-185); "Âme" sorts
 with the A's; a library on a Mac with accented folder names refreshes without false changes; a track
 on `\\server\music` or in a folder 300 characters deep plays, exports and is checked like any other.
 
@@ -624,7 +624,7 @@ stripping; `file_check_service.py`'s UNC handling; the browse indexes.
   than 259 characters (one helper, used by the file check, the decoder hand-off, tag writes and export's
   folder checks); the packaged engine sets `longPathAware` in its manifest; mpv is given the prefixed
   path. Electron main's own file calls use Node, which handles long paths.
-- **Search and sort** (if Q-196 is A): a `search_key` column per field search reads today (title,
+- **Search and sort** (DEC-185): a `search_key` column per field search reads today (title,
   artist, album and label; no new fields), filled with `casefold` + NFKD with marks removed, kept by
   the import and every write. Label's key is of its effective value (DEC-068), so setting or clearing a
   label override rewrites it. Search compares keys with `LIKE` on them. Sort uses a `sort_key` built the same way
@@ -687,7 +687,7 @@ DIST-04 (the release workflow).
     only), not `-m performance`, which also picks up legacy files;
   - every bench with `--json`, each failing on its budget;
   - the packaged-app specs below.
-- **Budgets** (if Q-195 is A, at 50,000): each is the Windows number already recorded times 1.5, or
+- **Budgets** (DEC-184, at 50,000): each is the Windows number already recorded times 1.5, or
   the Phase 15/16 budget where one exists, and is set per leg after the first green run (a leg slower
   by more than 2× is investigated, not loosened). New budgets:
   - `bench_library`: import, refresh, browse, sort, search, facets;
@@ -705,7 +705,7 @@ DIST-04 (the release workflow).
   (click to "Imported"); scroll to the end; type a search and see the first row; sort; open the
   Statistics page; and the resident memory of main, the renderer, the engine and mpv after each,
   read from the OS. Budgets as above.
-- **Above 50,000** (if Q-195 is A): the same run at 100,000, recorded but not budgeted, so the guide can
+- **Above 50,000** (DEC-184): the same run at 100,000, recorded but not budgeted, so the guide can
   say what happens; `QUEUE_MAX_TRACKS` and the guide's "largest supported" stay at 50,000.
 - **`docs/user-guide/performance.md`** is rewritten from the run's JSON by
   `scripts/performance_tables.py`: one table per area with a column per system, the date and the
@@ -731,7 +731,7 @@ that fails twice in a row on an unchanged commit is investigated, never re-run u
 
 ## HARDEN-08 — Accessibility, Checked in CI and by Hand
 
-**Objective**: The app meets WCAG 2.2 AA (if Q-197 is A), held by an automated check on every page in
+**Objective**: The app meets WCAG 2.2 AA (DEC-186), held by an automated check on every page in
 CI and confirmed once by keyboard and with a screen reader on Windows and macOS.
 
 **User-visible result**: Every control can be reached and used by keyboard, with a visible focus; every
@@ -760,7 +760,7 @@ focus handling; `themeDerivation.ts`'s contrast math; the live regions.
   a role, a color or an order is recorded under the step and raised before it is built.
 - **The manual pass,** recorded under the step: NVDA on Windows and VoiceOver on macOS, through the
   first-run guide, an import, finding and playing a track, adding it to a Collection, Clean's review
-  and an export; each with motion reduced. Narrator and Linux's Orca are not part of it (if Q-197 is A).
+  and an export; each with motion reduced. Narrator and Linux's Orca are not part of it (DEC-186).
 
 **Tests**: the files above.
 
@@ -901,7 +901,7 @@ Phase 18, and v1, are complete when:
 9. The whole end-to-end suite passes against the packaged app on all four legs, and every owed check
    has a result. *HARDEN-09.*
 10. `v1.0.0` is published by the release workflow, and test builds update to it. *HARDEN-10.*
-11. No decision in DEC-001…DEC-178, or in the decision rounds of Phases 16 to 18, is contradicted. A
+11. No decision in DEC-001…DEC-188, or in the decision rounds of Phases 16 to 18, is contradicted. A
     contradiction stops the work and is raised rather than worked around.
 
 ## Decision Round 21 — what writing the steps raised
@@ -910,25 +910,25 @@ Asked in `OPEN_QUESTIONS.md` as Q-190…Q-199.
 
 | Question | Recommendation | Needed by |
 | --- | --- | --- |
-| Q-190 — Where Back Up Now and Restore live | A: a **Backups** section in Settings | HARDEN-01 |
-| Q-191 — A copy before every upgrade | A: yes, kept apart, the last 3 | HARDEN-01 |
-| Q-192 — When the library is checked for damage | A: after an unclean exit, and weekly | HARDEN-03 |
-| Q-193 — A library that can't open at start | A: a recovery screen offering the latest good backup | HARDEN-03 |
-| Q-194 — Saving tags into audio files | A: write a copy, check it, then swap it in | HARDEN-04 |
-| Q-195 — The largest library v1 supports | A: 50,000 supported and budgeted; 100,000 measured | HARDEN-07 |
-| Q-196 — Accents and case in search and sort | A: fold them beyond ASCII | HARDEN-06 |
-| Q-197 — How far accessibility goes | A: WCAG 2.2 AA, axe in CI, NVDA and VoiceOver by hand | HARDEN-08 |
-| Q-198 — Linux at 1.0 | A: stays experimental; automated checks only | HARDEN-09, HARDEN-10 |
-| Q-199 — What blocks 1.0.0 | A: every owed check on Windows and both Macs | HARDEN-09, HARDEN-10 |
+| Q-190 → DEC-179 — Where Back Up Now and Restore live | A: a **Backups** section in Settings | HARDEN-01 |
+| Q-191 → DEC-180 — A copy before every upgrade | A: yes, kept apart, the last 3 | HARDEN-01 |
+| Q-192 → DEC-181 — When the library is checked for damage | A: after an unclean exit, and weekly | HARDEN-03 |
+| Q-193 → DEC-182 — A library that can't open at start | A: a recovery screen offering the latest good backup | HARDEN-03 |
+| Q-194 → DEC-183 — Saving tags into audio files | A: write a copy, check it, then swap it in | HARDEN-04 |
+| Q-195 → DEC-184 — The largest library v1 supports | A: 50,000 supported and budgeted; 100,000 measured | HARDEN-07 |
+| Q-196 → DEC-185 — Accents and case in search and sort | A: fold them beyond ASCII | HARDEN-06 |
+| Q-197 → DEC-186 — How far accessibility goes | A: WCAG 2.2 AA, axe in CI, NVDA and VoiceOver by hand | HARDEN-08 |
+| Q-198 → DEC-187 — Linux at 1.0 | A: stays experimental; automated checks only | HARDEN-09, HARDEN-10 |
+| Q-199 → DEC-188 — What blocks 1.0.0 | A: every owed check on Windows and both Macs | HARDEN-09, HARDEN-10 |
 
 ## Deferred, with reasons
 
 - **Resuming every job after a crash.** DEC-007 deferred it; jobs that resume today keep resuming.
 - **Cloud or scheduled backups.** DEC-009 chose local backups on launch; a backup to another folder is
   already a setting (`backup.directory`).
-- **Libraries above 50,000 as supported** (if Q-195 is A). Measured at 100,000 and written down; the
+- **Libraries above 50,000 as supported** (DEC-184). Measured at 100,000 and written down; the
   queue cap and the guide stay at 50,000.
-- **Narrator and Orca.** Not part of the manual pass (if Q-197 is A); axe and the keyboard specs cover
+- **Narrator and Orca.** Not part of the manual pass (DEC-186); axe and the keyboard specs cover
   what they share.
 - **A full localization.** DEC-158: the app is in American English. HARDEN-06 makes other scripts work
   in data, not in the interface.

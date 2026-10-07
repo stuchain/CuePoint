@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 asked (Q-180…Q-189); Round 21 asked (Q-190…Q-199).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 asked (Q-180…Q-189); Round 21 resolved (DEC-179…DEC-188).**
 
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
@@ -1040,7 +1040,7 @@ Specified 2026-10-07 in `PHASE18_HARDENING.md`, in ten steps (HARDEN-01…HARDEN
 can make and restore, every upgrade tested with data, a way back when the library cannot open, crash
 recovery proven by killing processes, whole-or-nothing writes, Unicode and path edge cases, 50,000
 tracks measured on every system, accessibility, the packaged app in CI with every owed check run once,
-and `v1.0.0`. Writing it raised ten questions, asked as Decision Round 21 (Q-190…Q-199): where backups
+and `v1.0.0`. Writing it raised ten questions, Decision Round 21 (Q-190…Q-199), resolved as recommended (DEC-179…DEC-188): where backups
 live, a copy before every upgrade, when the library is checked for damage, a recovery screen, tag
 writes, the largest library, accents in search and sort, how far accessibility goes, Linux at 1.0,
 and what blocks 1.0.0.

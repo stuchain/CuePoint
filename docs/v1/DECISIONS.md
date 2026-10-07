@@ -5367,3 +5367,123 @@ fails before anything is built.
 release needs no manual step.
 
 **Decided with**: User · **Date**: 2026-10-07
+
+## DEC-179 — Backups Live in Their Own Settings Section
+
+**Status**: Approved · **Related**: Q-190, HARDEN-01, DEC-009, PAGES-01
+
+**Decision**: Settings gets a **Backups** section, before About & updates: the list of backups with their date, size and reason, **Back Up Now**, **Restore** on each row, and **Show in folder**. Restore asks first, and while work runs it asks as Restart now does (DEC-173).
+
+**Reason**: The user's choice, as recommended. A restore has to show which copy is which, and a section has room for the list. Menu shortcuts can be added later.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-180 — A Copy Is Kept From Just Before Every Upgrade
+
+**Status**: Approved · **Related**: Q-191, HARDEN-01, DEC-009, DIST-08
+
+**Decision**: When migrations are pending at launch, CuePoint takes one `pre-upgrade` copy, naming both app versions, instead of that launch's ordinary backup. Pre-upgrade copies are kept apart from the five launch copies, and the last 3 are kept. Without room for the copy, the upgrade does not run.
+
+**Reason**: The user's choice, as recommended. It is the one copy that undoes a bad release, which Phase 16's rollback relies on, and it costs one file per upgrade.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-181 — The Library Is Checked After a Crash and Weekly
+
+**Status**: Approved · **Related**: Q-192, HARDEN-03
+
+**Decision**: SQLite's `quick_check` runs on the library after an unclean exit and once every 7 days, in the background after the window shows. Damage found mid-session also marks the library damaged.
+
+**Reason**: The user's choice, as recommended. Damage is most likely after a crash or power cut, and a weekly check finds the rest. Neither delays opening the app.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-182 — A Library That Can't Open Gets a Recovery Screen
+
+**Status**: Approved · **Related**: Q-193, HARDEN-03, DEC-126, DEC-153
+
+**Decision**: A damaged, too-new or half-upgraded library shows a full-window screen that says which, in plain words, and offers the latest good backup, another backup, the file's folder and "Report this problem". Damaged and upgrade-failed are reported; too-new and disk full are not.
+
+**Reason**: The user's choice, as recommended. The moment the library won't open is the moment a backup matters, and Settings may not be reachable then.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-183 — Tags Are Written to a Copy, Checked, Then Swapped In
+
+**Status**: Approved · **Related**: Q-194, HARDEN-04, DEC-070
+
+**Decision**: Every tag write and tag restore writes a copy of the audio file in the same folder, checks that its audio frames are unchanged and its tags read back, then replaces the original in one step. A file without room for the copy, or held open by another program, fails before it is touched.
+
+**Reason**: The user's choice, as recommended. A DJ's audio files are the one thing CuePoint must never damage. It is a little slower and needs room for one extra file at a time.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-184 — 50,000 Tracks Are Supported; 100,000 Is Measured
+
+**Status**: Approved · **Related**: Q-195, HARDEN-07, DEC-125
+
+**Decision**: v1 supports libraries up to 50,000 tracks, held by speed budgets on every build leg in `scale.yml`. The same run at 100,000 is recorded in the performance guide without a promise. `QUEUE_MAX_TRACKS` stays at 50,000.
+
+**Reason**: The user's choice, as recommended. 50,000 is what every phase designed for. Measuring 100,000 tells larger libraries what to expect without a second set of budgets.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-185 — Search and Sort Ignore Accents and Case
+
+**Status**: Approved · **Related**: Q-196, HARDEN-06, DEC-068
+
+**Decision**: Search and sort fold accents and case beyond A–Z: "beyonce" finds "Beyoncé", "ÂME" finds "Âme", and "Âme" sorts with the A's. The fields searched stay title, artist, album and label.
+
+**Reason**: The user's choice, as recommended. Electronic music is full of accented names, and DJs type without them.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-186 — The App Meets WCAG 2.2 AA
+
+**Status**: Approved · **Related**: Q-197, HARDEN-08, DEC-134, DEC-141
+
+**Decision**: Automated axe checks on every page in CI, contrast for every color token, Windows high contrast, a keyboard spec per page, and one pass by hand with NVDA on Windows and VoiceOver on macOS.
+
+**Reason**: The user's choice, as recommended. It is the level the website already holds (DEC-141), and the pass by hand is the only way to judge the table and the waveform.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-187 — Linux Stays Experimental at 1.0
+
+**Status**: Approved · **Related**: Q-198, HARDEN-09, HARDEN-10, DEC-174
+
+**Decision**: Linux is built and tested by CI, including the packaged suite, with no checks by hand and no bundled player. The support page says it is experimental.
+
+**Reason**: The user's choice, as recommended. Every check by hand doubles with a fourth system, and nothing in v1 asked for Linux support.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-188 — Every Owed Check on Windows and Both Macs Blocks 1.0.0
+
+**Status**: Approved · **Related**: Q-199, HARDEN-09, HARDEN-10, DEC-119, DEC-176
+
+**Decision**: `v1.0.0` is tagged only when every owed check passes on Windows, an Apple Silicon Mac and an Intel Mac. Linux needs only its automated checks. Anything else found goes on `docs/release/known-issues.md`.
+
+**Reason**: The user's choice, as recommended. Each owed check was accepted as part of a phase, and 1.0 is where they are kept.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
