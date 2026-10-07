@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 14: The Pages Revisited, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. No step is implemented yet.** Thirteen steps, PAGES-01…PAGES-13.
+Status: **Specified 2026-10-07. No step is implemented yet.** Fourteen steps, PAGES-01…PAGES-14.
 The page reviews DEC-131 asks for are written in `PHASE14_REVIEWS.md`, 107 proposals across eleven
 surfaces, each with a screenshot of the app as it is today (`phase14/`). The user marked them on
 2026-10-07, taking the recommendation on every one (DEC-159): 100 accepted, and NAV-4, STR-4, BAR-6
@@ -57,7 +57,7 @@ size, the files it touches, a recommendation and a screenshot.
 
 | Surface | Proposals | Built in |
 | --- | --- | --- |
-| Settings | SET-1…SET-11 | PAGES-01 (SET-2 also in PAGES-02) |
+| Settings | SET-1…SET-11 | PAGES-01 (SET-2 also in PAGES-02; SET-4's 1.5× size in PAGES-14) |
 | The sidebar | NAV-1…NAV-6 | PAGES-03 |
 | The header and menu bar | HDR-1…HDR-7 (HDR-4 is DEC-133's placement) | PAGES-03, PAGES-10 |
 | The status strip and Activity | STR-1…STR-9 | PAGES-03 |
@@ -84,7 +84,7 @@ no accepted proposal shrinks to what DEC-132 to DEC-135 require of it, or disapp
 | DEC-132 | Plain words throughout; empty states that say what to do next; background work explained as it happens; a short first-run guide. |
 | DEC-133 | A pixel-art Camelot wheel behind a header button beside search, on every page. It lights the selected or playing track's key and DEC-096's compatible keys, and a key clicked filters the Library. Compatibility comes from the engine's rule; the filter is the Library's own. |
 | DEC-134 | All ten kinds of motion built, each behind its own Settings switch. `prefers-reduced-motion` honored. No motion delays a click or a keypress. Transform and opacity only. Phase 6's and WAVE-06's scroll checks re-run with every kind on. Defaults picked by the user after testing, recorded as an amendment. |
-| DEC-135 | Movement and scaling in whole pixels and stepped frames; fades smooth. Duration and step tokens in `tokens.css`, stepping the same at 1×, 2× and 3×. |
+| DEC-135 | Movement and scaling in whole pixels and stepped frames; fades smooth. Duration and step tokens in `tokens.css`, stepping the same at 1×, 1.5×, 2× and 3× (DEC-161). |
 | DEC-096 | The wheel lights the same key, one step either way, and the relative key. |
 | DEC-140 | This phase runs alone, after Phase 13. |
 
@@ -110,6 +110,10 @@ selected track, which PAGES-05 to PAGES-09 each feed from their pages.
 **Motion last.** PAGES-12 builds the ten kinds across the finished pages, then re-runs the scroll
 checks with every kind on. PAGES-13 is the user's test: they try each kind, pick the defaults, and
 the phase comes together.
+
+**The 1.5× size any time after PAGES-01.** PAGES-14 (DEC-161) needs only PAGES-01's Size control.
+It touches every stylesheet's hairlines, so it runs alone, not beside a page step; running it before
+PAGES-12 means motion's steps are built and checked at 1.5× from the start.
 
 **Every intermediate build keeps working,** with every suite green and the engine smoke check
 passing. A step that renames a string updates every test and every user-guide page that quotes it,
@@ -231,7 +235,7 @@ words in each section.
 **Dependencies**: Phase 13 (REPORT-01's Privacy panel exists).
 
 **Proposals carried, if accepted**: SET-1 (the sections), SET-3 (theme names, the editor, a confirm on
-delete), SET-4 (size, with DEC-161's 1.5× default), SET-5 (the Beatport section), SET-6 (waveform data behind a disclosure, the
+delete), SET-4 (size; its 1.5× option is PAGES-14's), SET-5 (the Beatport section), SET-6 (waveform data behind a disclosure, the
 "nothing to analyse" words), SET-7 (one Privacy section with the exit-clearing choices), SET-8 (audio
 words), SET-9 (export words), SET-10 (a "Saved" tick), SET-11 (reset per section).
 
@@ -249,15 +253,8 @@ words), SET-9 (export words), SET-10 (a "Saved" tick), SET-11 (reset per section
   holds "Clear cache on exit" and "Clear logs on exit", on the same `cuepoint-privacy-clear-*-on-exit`
   keys as Help → Privacy (`components/PrivacyDialog.tsx:5-6`), so both show one state.
 - **Theme ids do not change** (SET-3). Only their labels do, so a stored theme still loads.
-- **A 1.5× size, the default** (DEC-161). `tokens/scale.ts` offers `[1, 1.5, 2, 3]` and
-  `DEFAULT_SCALE` becomes 1.5. The stored value is read with `Number`, not `parseInt` (which reads
-  "1.5" as 1), on the same `cuepoint-ui-lab-scale` key. A stored 1, 2 or 3 is kept, so only a fresh
-  install, or one that never chose, opens at 1.5. Every size token in `tokens/tokens.css` whose base
-  is not a multiple of 2px (`--bevel-size-sm`, `--border-width-heavy`, and any other) is wrapped in
-  `round(nearest, …, 1px)` so an edge never lands on half a pixel; Electron 34's Chromium supports
-  it. The consumers of `useScaleFactor()` take a non-integer scale: the waveform's requested width
-  (`waveformEnvironment.ts`), and the row heights Prepare and `SetTransition` read. Thumbnails are
-  drawn at 3× already (DEC-076), so 1.5× only scales them down.
+- **The 1.5× size is PAGES-14's** (DEC-161). This step writes SET-4's label and hint, and lists the
+  options `tokens/scale.ts` offers, so the select gains Medium (1.5×) when PAGES-14 adds it.
 
 **Tests**:
 - A new `SettingsScreen.test.tsx`: the heading, the eight sections in order, each link scrolls to its
@@ -265,10 +262,6 @@ words), SET-9 (export words), SET-10 (a "Saved" tick), SET-11 (reset per section
 - `ThemeSettingsPanel` tests: a stored theme id from before the rename still applies; a custom theme
   is deleted only after the confirm (SET-3).
 - `PrivacyDialog` and the Privacy section show the same state after either changes it (SET-7).
-- `scale.test.ts`: with nothing stored the scale is 1.5; a stored "1.5" reads as 1.5, not 1; a
-  stored "2" stays 2; an unknown value falls back to 1.5 (DEC-161).
-- `e2e/playerBar.spec.ts` checks the bar fits at 1, 1.5, 2 and 3, and a new check confirms no
-  computed border, bevel or focus-ring width is fractional at 1.5×.
 - `e2e/waveformSettings.spec.ts`, `e2e/rekordboxExport.spec.ts`, `e2e/playerAudio.spec.ts` and
   `e2e/discover.spec.ts` pass with their strings updated.
 
@@ -871,6 +864,127 @@ the pages as they now are.
 
 ---
 
+## PAGES-14 — A 1.5× Size, and It Is the Default
+
+**Objective**: The size setting offers 1×, 1.5×, 2× and 3×, a fresh install opens at 1.5×, and the
+pixel style stays as sharp at 1.5× as at the whole sizes (DEC-161).
+
+**User-visible result**: Settings → Appearance → **Size of text and controls** lists "Small (1×)",
+"Medium (1.5×) — default", "Large (2×)" and "Extra large (3×)". Someone who never chose a size opens
+the app at 1.5×. In the default 1,280 × 800 window the Library shows four whole rows where it shows
+none without scrolling at 2× today. Someone who chose 1×, 2× or 3× keeps it.
+
+**Dependencies**: PAGES-01 (the Size control and SET-4's words). Nothing else.
+
+**Proposals carried, if accepted**: SET-4's options (amended by DEC-161).
+
+**What the investigation found** (2026-10-07). Read from the code, then measured in the running app
+at 1,280 × 800 with a 1,000-track library (`benchmark_1k.xml`), each size applied through the app's
+own storage key and a reload, on a local build that accepted 1.5. That build was not committed.
+
+1. **Storage reads "1.5" as 1.** `getStoredScale` uses `Number.parseInt` (`tokens/scale.ts:25`),
+   and `SCALE_OPTIONS` is `[1, 2, 3] as const`, so 1.5 is neither stored nor offered.
+   `ThemeSettingsPanel.tsx:135` already reads the select with `Number`.
+2. **Hairlines are the only CSS sizes that go fractional.** Every size is `calc(<base>px *
+   var(--scale))`. At 1.5× an even base is whole, and the odd ones are:
+   - `calc(1px * var(--scale))`, written 47 times across 18 stylesheets (16 in
+     `TrackDetailPanel.css`), plus one negative in `prepare.css`;
+   - `--bevel-size-sm` (1px) and `--border-width-heavy` (3px) in `tokens.css`;
+   - two derived sizes, `--row-height` (`--hit-min × 0.75`, 49.5px) and
+     `calc(var(--space-xs) * 0.75)` (4.5px). `calc(var(--hit-min) * 0.7)` is fractional at every
+     size already.
+3. **Chromium floors borders; it leaves shadows alone.** At 1.5× the computed border widths were only
+   1px and 3px. A 1.5px border is drawn 1px, so it stays sharp but is thinner than its share. Two
+   elements carried fractional inset shadows: the small bevel (`--shadow-bevel-sm`,
+   `--shadow-bevel-pressed`), whose edge then blurs across two device pixels.
+4. **Half-pixel positions are not new.** 358 of 490 laid-out elements on the Library had a
+   fractional edge at 1.5×, against 374 of 508 at 2×, from flex and percentage layout. The table's
+   rows sat at x.5 offsets at 1.5×.
+5. **It looks as sharp.** Crops enlarged four times showed the sidebar icons, the pixel font and the
+   bevels as crisp at 1.5× as at 2×. The icons are 12×12 grids at `--icon-size` (24px × scale), so a
+   cell is 3px at 1.5×.
+6. **Density** in the default window, Library, whole table rows on screen without scrolling the page:
+   9 at 1×, 4 at 1.5×, none at 2× (the table starts below the window's edge) and none at 3×.
+7. **Canvases already round the scale.** `waveformUnit` is `round(scale × devicePixelRatio)`
+   (`waveformLayout.ts:157`): 2 device pixels per unit at 1.5× on a 1× display (as at 2×), 3 on a 2×
+   display. `prepareLanes.ts:101,164` uses `round(scale)`, so the tempo and key lanes draw as at 2×.
+   Both stay on whole device pixels.
+8. **The rest takes a fraction as it is.** Column widths (`trackTableLayout.ts:87,94`) round
+   `px × scale`; `useNarrow` compares `width < below × scale`; `SetLanes`' gutter is a `calc`.
+   Thumbnails are cut for 3× (DEC-076), so 1.5× only scales them down.
+9. **A defect found on the way, not changed here.** `readRowHeight` (`trackTableLayout.ts:178`)
+   parses `--row-height` from `getPropertyValue`, which answers the unresolved `calc(…)` text.
+   `parseFloat` gives NaN, and the fallback of 36px is used. So table rows are 36px at every size
+   (measured at 1×, 1.5×, 2× and 3×), while the header row follows `--row-height`. Fixing it would
+   change the rows at every size, and DEC-112's measured row counts with them, so it is deferred (see
+   below) rather than folded into this step.
+10. **What assumes 2 is the default:**
+    - tests: `storageFailure.test.tsx:33` expects 2; `useNarrow.test.tsx:60` reasons from 2;
+      `e2e/prepare.spec.ts` asserts `--scale` is "2" and holds `WHOLE_ROWS` and the player-bar rows
+      measured at 2 (DEC-112's floor is five); `e2e/playerBar.spec.ts:61` loops over 1, 2 and 3;
+    - code comments: `PrepareLayout.tsx:6`, `waveformLayout.ts:80` ("integer scale");
+    - docs: `PIXEL_DESIGN_SYSTEM.md` §Scale mechanism ("integer-only by design"), and
+      `docs/user-guide/the-window.md` §Interface scale and theme ("scales in whole steps").
+
+**Design**:
+- **Storage** (`tokens/scale.ts`). `SCALE_OPTIONS = [1, 1.5, 2, 3]`, `DEFAULT_SCALE = 1.5`. The
+  stored value is read with `Number` and checked against the options; anything else reads as the
+  default. Same key, `cuepoint-ui-lab-scale`, so a stored 1, 2 or 3 is kept and nothing migrates.
+- **One hairline token.** `tokens.css` gains `--hairline: max(1px, round(down, calc(1px *
+  var(--scale)), 1px))`: 1, 1, 2 and 3 pixels at the four sizes. Rounding down matches what
+  Chromium already does to borders, so a border and a shadow of the same token agree. All 48
+  `calc(±1px * var(--scale))` become `var(--hairline)` (negated where needed), and `--bevel-size-sm`
+  is `var(--hairline)`. Electron 34's Chromium (132) supports `round()`.
+- **The other odd sizes round to a whole pixel**: `--border-width-heavy` as `round(down, calc(3px *
+  var(--scale)), 1px)` (4px at 1.5×), `--row-height` and the `--space-xs × 0.75` gap with
+  `round(nearest, …, 1px)`. At 1×, 2× and 3× every value is unchanged.
+- **A guard so it stays true.** A renderer unit test reads every stylesheet and fails on a
+  `calc(<n>px * var(--scale))` whose base times 1.5 is not whole, unless it sits inside `round(`. It
+  names the file and line.
+- **Canvases keep their rounding.** The waveform's unit and the lanes' unit stay
+  `round(scale × ratio)` and `round(scale)`; only their doc comments change ("the app's scale", not
+  "integer scale").
+- **Motion at 1.5×.** DEC-135's step tokens are in units; `--unit` is 6px at 1.5×, a whole pixel, so
+  PAGES-02's steps hold. PAGES-02's and PAGES-12's checks add 1.5× to the sizes they step at.
+- **The re-measured defaults.** `e2e/prepare.spec.ts` asserts the new default and re-measures
+  `WHOLE_ROWS` and the player-bar rows at 1.5×, on Linux and on Windows, recording both in this step's
+  outcome. DEC-112's floor of five must hold; at 1.5× there is more room than at 2×, not less.
+- **Docs.** `PIXEL_DESIGN_SYSTEM.md`'s scale section says the four sizes, the default, the hairline
+  token and why borders round down. The user guide's size section is rewritten with SET-4's words.
+  `CHANGELOG.md` under Unreleased: the new size and default.
+
+**Tests**:
+- `scale.test.ts`: with nothing stored the scale is 1.5; a stored "1.5" reads 1.5, not 1; a stored
+  "2" stays 2; "2.5", "abc" and "" read 1.5. `storageFailure.test.tsx` expects 1.5 when storage
+  throws.
+- `cssScale.test.ts` (the guard above), with a fixture stylesheet showing it fails on a bare
+  `calc(1px * var(--scale))`.
+- `waveformLayout.test.ts`: cases at 1.5 (unit 2 at ratio 1, 3 at ratio 2) and 300 CSS pixels' columns
+  at 1.5. `prepareLanes` tests: a column width at 1.5.
+- `ThemeSettingsPanel` test: the four options in order, 1.5 selected by default, choosing 1.5 sets
+  `--scale` and `data-scale` to "1.5".
+- `e2e/playerBar.spec.ts` loops over 1, 1.5, 2 and 3 and fits the bar at each.
+- A new `e2e/scale.spec.ts`: a fresh profile opens at 1.5×; on the Library and on Settings no
+  element's computed border width or box-shadow length is fractional at 1.5×; the page does not
+  scroll sideways at any of the four sizes in the default window.
+- `e2e/prepare.spec.ts` at the new default, as above.
+
+**Acceptance criteria / DoD**:
+- A fresh install opens at 1.5×; a stored size is kept.
+- No border, bevel or shadow lands on half a pixel at 1.5×, and the guard keeps it so.
+- Every page fits the default window at all four sizes with nothing spilling sideways.
+- DEC-112's floor holds at the new default, re-measured on Linux and Windows.
+- The design-system doc, the user guide and the changelog say 1.5× is the default.
+
+**Risks**: Medium. Every new user sees every page at a size none of the earlier phases measured, so
+any layout checked only at 2× may crowd or spill. The e2e suite's size checks run at the new default,
+and the step's outcome lists every number it re-measured. A 1px line drawn at 1px on a 1.5× page is
+thinner than a strict 1.5× would make it; that is DEC-161's accepted cost.
+
+**Complexity**: **M**
+
+---
+
 ## Phase-level acceptance
 
 Phase 14 is complete when, in a **packaged build** on Windows and macOS:
@@ -887,9 +1001,10 @@ Phase 14 is complete when, in a **packaged build** on Windows and macOS:
    reduced motion stops them all; no motion delays input. *PAGES-02, PAGES-12.*
 7. The scroll checks pass with every kind on. *PAGES-12.*
 8. The defaults are the user's, recorded as an amendment to DEC-134. *PAGES-13.*
-9. Every suite passes, with the engine smoke check, the desktop contract test, the coupling check, the
-   end-to-end suite and `npm run dist`.
-10. No decision in DEC-001…DEC-153 is contradicted, except where an accepted proposal says so and the
+9. A fresh install opens at 1.5×, and no hairline lands on half a pixel at any size. *PAGES-14.*
+10. Every suite passes, with the engine smoke check, the desktop contract test, the coupling check, the
+    end-to-end suite and `npm run dist`.
+11. No decision in DEC-001…DEC-161 is contradicted, except where an accepted proposal says so and the
     user accepted it knowing (BAR-6 and WAVE-06). A contradiction stops the work and is raised rather
     than worked around.
 
@@ -915,3 +1030,7 @@ Asked in `OPEN_QUESTIONS.md` as Q-157…Q-162 and answered 2026-10-07.
 - **Screenshots in the first-run guide.** Pixel drawings instead, so themes do not stale them
   (PAGES-11).
 - **"What's new" after an update.** Phase 16's proposal.
+- **Table rows that follow the size.** `readRowHeight` reads an unresolved `calc(…)` and falls back
+  to 36px, so rows are 36px at every size while the header grows (found in PAGES-14). Fixing it
+  changes how many rows every table shows at every size, and DEC-112's measured counts, so it needs
+  its own decision rather than riding a step.

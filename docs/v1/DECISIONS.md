@@ -5076,7 +5076,7 @@ has not chosen. Labels: "Small (1×)", "Medium (1.5×) — default", "Large (2×
   (borders, bevels, focus rings, shadows) round to whole pixels. Lines may differ by a pixel from a
   strict 1.5× of their 1× width; the pixel look holds because no edge is fractional.
 - A stored choice is kept. Only a fresh install, or one that never picked a size, opens at 1.5×.
-- Built in PAGES-01 with SET-4. The storage key stays `cuepoint-ui-lab-scale`.
+- Built in PAGES-14, after PAGES-01's Size control. The storage key stays `cuepoint-ui-lab-scale`.
 
 **Decided with**: User · **Date**: 2026-10-07
 

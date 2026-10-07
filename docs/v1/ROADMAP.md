@@ -895,13 +895,13 @@ cause the user owns treated as a refusal.
 
 ## Phase 14 — The Pages Revisited
 
-Specified 2026-10-07 in `PHASE14_PAGES.md`, in thirteen steps (PAGES-01…PAGES-13). The page reviews
+Specified 2026-10-07 in `PHASE14_PAGES.md`, in fourteen steps (PAGES-01…PAGES-14). The page reviews
 DEC-131 asks for are `PHASE14_REVIEWS.md`: 107 proposals across eleven surfaces, each with a
 screenshot (`phase14/`). The user took the recommendation on every one (DEC-159): 100 accepted, 4
 declined. Decision Round 17 settled what the reviews raised (DEC-154…DEC-158: feedback is the tenth
 kind of motion, the app never says "engine", Collections nests under Library, the wheel lights the
 selected track, American English) and DEC-160 (a wheel click replaces the Library's filter). DEC-161 adds a 1.5× size as the
-default.
+default, built in PAGES-14.
 
 - **Every page reviewed in writing, proposal by proposal** (DEC-130, DEC-131). Each review covers:
   - what the page does;
