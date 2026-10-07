@@ -153,7 +153,7 @@ def compand(value: float) -> int:
 def expand(level: int) -> float:
     """The linear amplitude a byte stands for; :func:`compand` undone."""
     if not 0 <= level <= LEVELS:
-        raise ValueError(f"A level is 0 to {LEVELS}, not {level}")
+        raise ValueError(f"A level is 0 to {LEVELS}, not {level!r}")
     return (level / LEVELS) ** 2
 
 
@@ -314,7 +314,7 @@ def decode(blob: bytes) -> Waveform:
     if magic != MAGIC:
         raise WaveformFormatError("not a CuePoint waveform")
     if version != FORMAT_VERSION:
-        raise WaveformFormatError(f"format version {version}, not {FORMAT_VERSION}")
+        raise WaveformFormatError(f"format version {version!r}, not {FORMAT_VERSION}")
     if band_count != BAND_COUNT:
         raise WaveformFormatError(f"{band_count} bands, not {BAND_COUNT}")
     if columns < 1:

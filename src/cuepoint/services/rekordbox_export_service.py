@@ -665,13 +665,13 @@ class RekordboxExportService(IRekordboxExportService):
         except FileNotFoundError as exc:
             raise ExportSourceError(
                 SOURCE_MISSING,
-                f"The collection file is no longer there: {plan.source_path}",
+                f"The collection file is no longer there: {str(plan.source_path)!r}",
                 plan.source_path,
             ) from exc
         except OSError as exc:
             raise ExportSourceError(
                 SOURCE_UNREADABLE,
-                f"The collection file could not be read: {plan.source_path}",
+                f"The collection file could not be read: {str(plan.source_path)!r}",
                 plan.source_path,
             ) from exc
         except ExportSourceError:
@@ -981,19 +981,19 @@ class RekordboxExportService(IRekordboxExportService):
         if Path(destination).suffix.lower() != EXPORT_SUFFIX:
             raise ExportDestinationError(
                 DESTINATION_NOT_XML,
-                f"An export is saved as an {EXPORT_SUFFIX} file: {destination}",
+                f"An export is saved as an {EXPORT_SUFFIX} file: {str(destination)!r}",
                 destination,
             )
         if os.path.isdir(destination):
             raise ExportDestinationError(
                 DESTINATION_IS_FOLDER,
-                f"That is a folder, not a file to save to: {destination}",
+                f"That is a folder, not a file to save to: {str(destination)!r}",
                 destination,
             )
         if not os.path.isdir(os.path.dirname(destination)):
             raise ExportDestinationError(
                 DESTINATION_FOLDER_MISSING,
-                f"The folder to save into does not exist: {destination}",
+                f"The folder to save into does not exist: {str(destination)!r}",
                 destination,
             )
         return destination
@@ -1019,7 +1019,7 @@ class RekordboxExportService(IRekordboxExportService):
             raise ExportSourceError(
                 SOURCE_MISSING,
                 f"The collection this library was imported from is not there: "
-                f"{path}. Import or refresh from the file's new location.",
+                f"{str(path)!r}. Import or refresh from the file's new location.",
                 path,
             )
         try:
@@ -1028,7 +1028,7 @@ class RekordboxExportService(IRekordboxExportService):
         except OSError as exc:
             raise ExportSourceError(
                 SOURCE_UNREADABLE,
-                f"The collection file cannot be read: {path} ({exc.strerror or exc}).",
+                f"The collection file cannot be read: {str(path)!r} ({exc.strerror or exc}).",
                 path,
             ) from exc
         return source

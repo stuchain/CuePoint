@@ -464,7 +464,7 @@ class FileCheckService(IFileCheckService):
             ValueError: If ``workers`` is below one.
         """
         if int(workers) < 1:
-            raise ValueError(f"A file check needs at least one worker, not {workers}")
+            raise ValueError(f"A file check needs at least one worker, not {workers!r}")
         self._files = file_status_repository
         self._batch = batch_service
         self._activity = activity_service

@@ -561,7 +561,7 @@
     "payload": {
       "error": {
         "code": "SET_LIST_DESTINATION_REFUSED",
-        "message": "A set list is saved as a .txt, .csv or .m3u8 file: /music/set lists/Friday.mp3",
+        "message": "A set list is saved as a .txt, .csv or .m3u8 file: '/music/set lists/Friday.mp3'",
         "path": "/music/set lists/Friday.mp3",
         "reason": "destination_not_set_list"
       }

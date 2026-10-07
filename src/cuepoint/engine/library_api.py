@@ -818,12 +818,12 @@ def validate_import_path(xml_path: str) -> str:
     """
     path = Path(xml_path)
     if not path.exists():
-        raise ValueError(f"No such file: {xml_path}")
+        raise ValueError(f"No such file: {xml_path!r}")
     if not path.is_file():
-        raise ValueError(f"Not a file: {xml_path}")
+        raise ValueError(f"Not a file: {xml_path!r}")
     if path.suffix.lower() not in IMPORT_SUFFIXES:
         raise ValueError(
-            f"Not a Rekordbox XML export: {path.name}. "
+            f"Not a Rekordbox XML export: {path.name!r}. "
             "In Rekordbox, use File > Export Collection in xml format."
         )
     return str(path)

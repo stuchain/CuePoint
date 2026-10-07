@@ -251,7 +251,9 @@ def read_tag_fields(path: PathLike) -> TagSnapshot:
     except TagFieldsError:
         raise
     except Exception as exc:  # noqa: BLE001 — any file can be anything
-        raise TagFieldsError(f"The tags of {path} could not be read: {exc}") from exc
+        raise TagFieldsError(
+            f"The tags of {str(path)!r} could not be read: {exc}"
+        ) from exc
     return TagSnapshot(tag_format, fields, pictures)
 
 
@@ -293,7 +295,9 @@ def restore_tag_fields(path: PathLike, values: Mapping[str, FieldValue]) -> None
     except (TagFieldsError, ValueError):
         raise
     except Exception as exc:  # noqa: BLE001 — surfaced as a failed restore
-        raise TagFieldsError(f"The tags of {path} could not be written: {exc}") from exc
+        raise TagFieldsError(
+            f"The tags of {str(path)!r} could not be written: {exc}"
+        ) from exc
 
 
 # ------------------------------------------------------------------ pictures
@@ -323,7 +327,7 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
 
             audio, tags = _load_id3(path)
             if tags.getall("APIC"):
-                raise PictureAlreadyPresent(f"{path} already holds a picture")
+                raise PictureAlreadyPresent(f"{str(path)!r} already holds a picture")
             tags.add(
                 APIC(
                     encoding=3,
@@ -337,7 +341,7 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
         else:
             vorbis = _load_vorbis(path, tag_format)
             if _vorbis_pictures(vorbis, tag_format):
-                raise PictureAlreadyPresent(f"{path} already holds a picture")
+                raise PictureAlreadyPresent(f"{str(path)!r} already holds a picture")
             picture = _flac_picture(data, width, height)
             if tag_format == FORMAT_FLAC:
                 vorbis.add_picture(picture)
@@ -352,7 +356,7 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
         raise
     except Exception as exc:  # noqa: BLE001 — surfaced as a failed write
         raise TagFieldsError(
-            f"A picture could not be embedded in {path}: {exc}"
+            f"A picture could not be embedded in {str(path)!r}: {exc}"
         ) from exc
     return picture_hash(data)
 
@@ -402,7 +406,7 @@ def remove_picture(path: PathLike, sha256: str) -> bool:
         raise
     except Exception as exc:  # noqa: BLE001 — surfaced as a failed restore
         raise TagFieldsError(
-            f"A picture could not be removed from {path}: {exc}"
+            f"A picture could not be removed from {str(path)!r}: {exc}"
         ) from exc
 
 
@@ -413,7 +417,7 @@ def _require_format(path: PathLike) -> str:
     tag_format = tag_format_of(path)
     if tag_format is None:
         raise UnsupportedTagFormat(
-            f"{Path(str(path)).suffix or 'A file with no extension'} is not a format"
+            f"{Path(str(path)).suffix or 'A file with no extension'!r} is not a format"
             " whose tags CuePoint writes"
         )
     return tag_format
@@ -435,7 +439,7 @@ def _load_id3(path: PathLike) -> Tuple[Any, Any]:
             return None, ID3(str(path))
         except ID3NoHeaderError:
             if not Path(str(path)).is_file():
-                raise TagFieldsError(f"{path} is not a file") from None
+                raise TagFieldsError(f"{str(path)!r} is not a file") from None
             return None, ID3()
     audio = AIFF(str(path))
     if audio.tags is None:

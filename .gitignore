@@ -204,6 +204,12 @@ src/output/
 # nothing real to render from (ORG-13).
 !apps/**/*.fixture.json
 
+# Test fixtures (exception to user-output *.json above). The scrubber corpus both
+# languages' tests run, the audit of every raise site that formats a value into
+# its message, and the events built from those sites (REPORT-02); without them
+# the scrubber tests and the raise-site test have nothing to read.
+!src/tests/fixtures/reporting/*.json
+
 # Golden set list files (exception to user-output *.csv above). PREP-06's writer
 # is compared against them byte for byte; without them the set list tests have
 # nothing to compare against.

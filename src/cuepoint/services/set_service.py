@@ -323,7 +323,7 @@ class SetService(ISetService):
         unknown = sorted(str(key) for key in changes if key not in CHAPTER_FIELDS)
         if unknown:
             raise ValueError(
-                f"A chapter has no field {', '.join(unknown)}; it has "
+                f"A chapter has no field {', '.join(unknown)!r}; it has "
                 + ", ".join(CHAPTER_FIELDS)
             )
         _check_target(changes.get("target_seconds"))

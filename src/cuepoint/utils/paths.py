@@ -87,7 +87,7 @@ def _standard_path(location: str) -> Path:
             return home / ".cache"
         if location == "DocumentsLocation":
             return home / "Documents"
-    raise ValueError(f"Unknown standard path location: {location}")
+    raise ValueError(f"Unknown standard path location: {location!r}")
 
 
 class AppPaths:
@@ -122,11 +122,11 @@ class AppPaths:
             return path
         except PermissionError as e:
             raise PermissionError(
-                f"Permission denied creating directory {path}. "
+                f"Permission denied creating directory {str(path)!r}. "
                 f"Please check permissions or choose a different location."
             ) from e
         except OSError as e:
-            raise OSError(f"Failed to create directory {path}: {e}") from e
+            raise OSError(f"Failed to create directory {str(path)!r}: {e}") from e
 
     @staticmethod
     def config_dir() -> Path:
@@ -528,15 +528,15 @@ class PathValidator:
 
             # Check exists
             if not path.exists():
-                return False, f"Path does not exist: {path}"
+                return False, f"Path does not exist: '{path}'"
 
             # Check is directory
             if not path.is_dir():
-                return False, f"Path is not a directory: {path}"
+                return False, f"Path is not a directory: '{path}'"
 
             # Check writable
             if not os.access(path, os.W_OK):
-                return False, f"Path is not writable: {path}"
+                return False, f"Path is not writable: '{path}'"
 
             return True, None
 

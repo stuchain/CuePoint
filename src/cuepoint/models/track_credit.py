@@ -129,7 +129,7 @@ class DerivedIndex:
         required_text(self.name, "name")
         version = whole_number(self.version, "version")
         if version < 1:
-            raise ValueError(f"version starts at 1, got {version}")
+            raise ValueError(f"version starts at 1, got {version!r}")
         object.__setattr__(self, "version", version)
         required_text(self.built_at, "built_at")
 

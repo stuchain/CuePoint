@@ -834,7 +834,7 @@ class CollectionService(ICollectionService):
         if source.kind == SOURCE_PLAYLIST:
             playlist = self._playlists.get(identifier)
             if playlist is None:
-                raise ValueError(f"No such Rekordbox playlist: {identifier}")
+                raise ValueError(f"No such Rekordbox playlist: {identifier!r}")
             if playlist.is_folder:
                 raise ValueError(
                     f"{playlist.name!r} is a Rekordbox folder and holds no tracks"

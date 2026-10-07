@@ -259,7 +259,7 @@ class TestWhatAReadMaySay:
         error = refused_read(
             engine, path, 400, "INVALID_REQUEST", set_id=friday["id"], sort="title"
         )
-        assert "Unknown parameter sort" in error["message"]
+        assert "Unknown parameter 'sort'" in error["message"]
 
     def test_a_parameter_given_twice_is_refused(self, engine, friday):  # noqa: F811
         status, payload = get_status(
@@ -311,7 +311,7 @@ class TestCreating:
         error = refused(
             engine, "create", {"name": "X", "kind": "set"}, 400, "INVALID_REQUEST"
         )
-        assert "Unknown field kind" in error["message"]
+        assert "Unknown field 'kind'" in error["message"]
         error = refused(
             engine,
             "create",
@@ -382,7 +382,7 @@ class TestCreating:
             ({"kind": "collection", "id": 1, "track_ids": [1]}, "not track_ids"),
             ({"kind": "collection"}, "id is required"),
             ({"kind": "playlist", "id": "7"}, "whole number"),
-            ({"kind": "collection", "id": 1, "rules": {}}, "Unknown field rules"),
+            ({"kind": "collection", "id": 1, "rules": {}}, "Unknown field 'rules'"),
         ],
     )
     def test_a_source_that_is_not_one(self, engine, ids, source, words):  # noqa: F811
@@ -703,7 +703,7 @@ class TestSuggestions:
             ({"filters": "{nope"}, "filters must be a JSON object"),
             ({"scope": "everything"}, "scope may only be"),
             ({"chapter_id": "abc"}, "whole number"),
-            ({"sort": "title"}, "Unknown parameter sort"),
+            ({"sort": "title"}, "Unknown parameter 'sort'"),
         ],
     )
     def test_what_is_refused_as_a_request(self, engine, friday, extra, words):  # noqa: F811
@@ -853,7 +853,7 @@ class TestChapters:
             ({"bpm_min": "fast"}, "bpm_min must be a number"),
             ({"bpm_max": True}, "bpm_max must be a number"),
             ({"name": "x" * 121}, "at most 120"),
-            ({"colour": "red"}, "Unknown field colour"),
+            ({"colour": "red"}, "Unknown field 'colour'"),
             ({}, "Nothing to change"),
         ],
     )
@@ -1082,7 +1082,7 @@ class TestEntries:
             ({"in_time": "4:00", "out_time": "1:00"}, "come in before it goes out"),
             ({"in_time": None, "out_time": "5:01"}, "5:00 long"),
             ({"in_time": 60, "out_time": "4:00"}, "in_time must be text"),
-            ({"in_time": None, "out_time": None, "note": "x"}, "Unknown field note"),
+            ({"in_time": None, "out_time": None, "note": "x"}, "Unknown field 'note'"),
         ],
     )
     def test_refused_times_write_nothing(self, engine, friday, body, words):  # noqa: F811

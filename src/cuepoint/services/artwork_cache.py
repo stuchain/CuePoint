@@ -65,7 +65,9 @@ class ArtworkCache:
             ValueError: If ``max_bytes`` is not positive.
         """
         if int(max_bytes) <= 0:
-            raise ValueError(f"The artwork cache needs a positive cap, not {max_bytes}")
+            raise ValueError(
+                f"The artwork cache needs a positive cap, not {max_bytes!r}"
+            )
         self._directory = Path(directory)
         self._max_bytes = int(max_bytes)
         self._lock = threading.Lock()

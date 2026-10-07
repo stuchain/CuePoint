@@ -142,7 +142,7 @@ class LibraryTrack:
         if self.bpm is not None:
             self.bpm = float(self.bpm)
             if not 0 < self.bpm <= 300:
-                raise ValueError(f"bpm out of range: {self.bpm}")
+                raise ValueError(f"bpm out of range: {self.bpm!r}")
 
         if self.year is not None:
             self.year = int(self.year)
@@ -154,7 +154,9 @@ class LibraryTrack:
             # database, where it would silently read as a nonsense rating
             # instead of failing at the boundary that should have converted it.
             if not 0 <= self.rating <= 5:
-                raise ValueError(f"rating must be a star count 0-5, got {self.rating}")
+                raise ValueError(
+                    f"rating must be a star count 0-5, got {self.rating!r}"
+                )
 
         for name in ("play_count", "duration_seconds", "bitrate"):
             value = getattr(self, name)

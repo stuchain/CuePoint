@@ -102,7 +102,7 @@ def validate_signals(signals: Optional[Iterable[str]]) -> Tuple[str, ...]:
     unknown = sorted(set(wanted) - set(SIGNALS))
     if unknown:
         raise ValueError(
-            f"Unknown duplicate signals {unknown}; the signals are {SIGNALS}"
+            f"Unknown duplicate signals {unknown!r}; the signals are {SIGNALS}"
         )
     if not wanted:
         raise ValueError("A duplicate scan needs at least one signal")

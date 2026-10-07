@@ -158,7 +158,7 @@ class ActivityService(IActivityService):
             ValueError: If the field is not one that may be changed this way.
         """
         if field_name not in REVERTABLE_FIELDS:
-            raise ValueError(f"Field is not editable through history: {field_name}")
+            raise ValueError(f"Field is not editable through history: {field_name!r}")
         if track.id is None:
             raise ValueError("Cannot change a field on a track that has no id")
 
@@ -220,11 +220,11 @@ class ActivityService(IActivityService):
             # its own tables, and writing one onto the imported record would
             # put a value where the next refresh erases it.
             raise ValueError(
-                f"Field is CuePoint's own, not Rekordbox's: {change.field_name}."
+                f"Field is CuePoint's own, not Rekordbox's: {change.field_name!r}."
                 " It is reverted as a CuePoint field"
             )
         if change.field_name not in REVERTABLE_FIELDS:
-            raise ValueError(f"Field is not revertable: {change.field_name}")
+            raise ValueError(f"Field is not revertable: {change.field_name!r}")
 
         track = self._tracks.get(change.track_id)
         if track is None:

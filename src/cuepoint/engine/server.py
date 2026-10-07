@@ -1145,7 +1145,7 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     set_reporting_enabled(initial_reporting_enabled(os.environ))
     cfg = config or EngineConfig.from_env()
     if cfg.host not in ALLOWED_HOSTS:
-        raise ValueError(f"Refusing to bind engine to non-loopback host: {cfg.host}")
+        raise ValueError(f"Refusing to bind engine to non-loopback host: {cfg.host!r}")
     fine_timer_resolution()
     # Synchronous and before the server exists: a backup running concurrently
     # with the first migration would lose the ordering guarantee above. It is

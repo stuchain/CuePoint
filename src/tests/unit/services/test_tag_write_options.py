@@ -107,7 +107,7 @@ class TestFromARequest:
             ({"key_format": "open_key"}, "key_format must be one of"),
             ({"key_format": 8}, "key_format must be text"),
             ({"comment_text": 5}, "comment_text must be text"),
-            ({"write_rating": True}, "Unknown option write_rating"),
+            ({"write_rating": True}, "Unknown option 'write_rating'"),
             ({"comment_text": "x" * (MAX_COMMENT_LENGTH + 1)}, "at most"),
             (
                 {

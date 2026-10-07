@@ -481,7 +481,7 @@ def refuse_source_as_destination(source_path: str, destination_path: str) -> Non
     if is_the_same_file():
         raise ValidationError(
             "Refusing to write the export over the collection it was read from: "
-            f"{destination_path}. Choose a different file."
+            f"{destination_path!r}. Choose a different file."
         )
 
 
@@ -586,7 +586,7 @@ def _plan(
     EXPORT-05's numbers the same numbers rather than two that happen to agree.
     """
     if not os.path.exists(source_path):
-        raise FileNotFoundError(f"XML file not found: {source_path}")
+        raise FileNotFoundError(f"XML file not found: {source_path!r}")
     size = os.path.getsize(source_path)
     if size > MAX_XML_SIZE_BYTES:
         raise ValidationError(

@@ -120,7 +120,7 @@ def parse_rekordbox(xml_path: str) -> Dict[str, Playlist]:
     import os
 
     if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path}")
+        raise FileNotFoundError(f"XML file not found: {xml_path!r}")
 
     # Design 4.70: Limit XML file size (safe parsing)
     size = os.path.getsize(xml_path)
@@ -241,7 +241,7 @@ def parse_playlist_tree(
         have path = name (no slash).
     """
     if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path}")
+        raise FileNotFoundError(f"XML file not found: {xml_path!r}")
     size = os.path.getsize(xml_path)
     if size > MAX_XML_SIZE_BYTES:
         raise ValueError(
@@ -455,7 +455,7 @@ def get_track_locations(xml_path: str) -> Dict[str, str]:
         ET.ParseError: If XML parsing fails.
     """
     if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path}")
+        raise FileNotFoundError(f"XML file not found: {xml_path!r}")
     size = os.path.getsize(xml_path)
     if size > MAX_XML_SIZE_BYTES:
         raise ValueError(
@@ -598,7 +598,7 @@ def get_playlist_track_ids(xml_path: str, playlist_name: str) -> List[str]:
     for path, pl in playlists_by_path.items():
         if pl.name == playlist_name or pl.name == name_only:
             return [t.track_id for t in pl.tracks if t.track_id]
-    raise ValueError(f"Playlist not found: {playlist_name}")
+    raise ValueError(f"Playlist not found: {playlist_name!r}")
 
 
 # Camelot code -> Rekordbox Classic (inverse of _camelot_key in matcher)
@@ -977,7 +977,7 @@ def _iter_collection_elements(xml_path: str) -> Iterator[ET.Element]:
         ET.ParseError: If the XML is malformed.
     """
     if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path}")
+        raise FileNotFoundError(f"XML file not found: {xml_path!r}")
 
     size = os.path.getsize(xml_path)
     if size > MAX_XML_SIZE_BYTES:
@@ -1046,7 +1046,7 @@ def iter_playlist_nodes(xml_path: str) -> Iterator[RekordboxPlaylist]:
         ET.ParseError: If the XML is malformed.
     """
     if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path}")
+        raise FileNotFoundError(f"XML file not found: {xml_path!r}")
 
     size = os.path.getsize(xml_path)
     if size > MAX_XML_SIZE_BYTES:
@@ -1181,7 +1181,7 @@ def collection_entry_count(xml_path: str) -> Optional[int]:
         ET.ParseError: If the XML is malformed.
     """
     if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path}")
+        raise FileNotFoundError(f"XML file not found: {xml_path!r}")
 
     size = os.path.getsize(xml_path)
     if size > MAX_XML_SIZE_BYTES:

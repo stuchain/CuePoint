@@ -232,11 +232,11 @@ class BeatportResolveService(IBeatportResolveService):
         clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     ) -> None:
         if batch_size < 1:
-            raise ValueError(f"batch_size must be at least 1, got {batch_size}")
+            raise ValueError(f"batch_size must be at least 1, got {batch_size!r}")
         if max_consecutive_failures < 1:
             raise ValueError(
                 "max_consecutive_failures must be at least 1,"
-                f" got {max_consecutive_failures}"
+                f" got {max_consecutive_failures!r}"
             )
         self._catalog = catalog_repository
         self._beatport = beatport

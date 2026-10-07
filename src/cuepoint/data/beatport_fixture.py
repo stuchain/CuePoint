@@ -255,7 +255,7 @@ def _api_entry(entry: object) -> _ApiEntry:
     unknown = set(entry) - _API_KEYS
     if unknown:
         raise BeatportFixtureError(
-            f"an api entry does not take {', '.join(sorted(unknown))}"
+            f"an api entry does not take {', '.join(sorted(unknown))!r}"
         )
     method = entry.get("method", "GET")
     if not isinstance(method, str) or method.upper() not in API_METHODS:
@@ -314,7 +314,7 @@ def load(path: Path) -> BeatportFixture:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        raise BeatportFixtureError(f"cannot read {path}: {exc}") from exc
+        raise BeatportFixtureError(f"cannot read {str(path)!r}: {exc}") from exc
     if not isinstance(data, dict):
         raise BeatportFixtureError("a fixture is a JSON object")
     raw_searches = data.get("searches")
@@ -353,7 +353,7 @@ def active() -> Optional[BeatportFixture]:
         stamp = path.stat().st_mtime
     except OSError as exc:
         raise BeatportFixtureError(
-            f"{ENV_VAR} names {raw}, which is not there"
+            f"{ENV_VAR} names {raw!r}, which is not there"
         ) from exc
     key = (str(path.resolve()), stamp)
     with _cache_lock:

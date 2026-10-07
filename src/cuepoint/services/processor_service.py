@@ -234,7 +234,7 @@ class ProcessorService(IProcessorService):
             title_only_search = True
 
         self.logging_service.info(
-            f"[{idx}] Processing: {title_for_search} - {original_artists or artists_for_scoring}"
+            f"[{idx}] Processing: {title_for_search!r} - {original_artists or artists_for_scoring!r}"
         )
 
         if extracted and title_only_search:
@@ -276,7 +276,7 @@ class ProcessorService(IProcessorService):
         if best and best.score >= min_accept_score:
             # Match found
             self.logging_service.info(
-                f"[{idx}] Match found: {best.title} - {best.artists} (score: {best.score:.1f})"
+                f"[{idx}] Match found: {best.title!r} - {best.artists!r} (score: {best.score:.1f})"
             )
 
             # Fetch full track data if needed (for future use)
@@ -1222,7 +1222,7 @@ class ProcessorService(IProcessorService):
         )
         if preflight.warnings:
             for warning in preflight.warning_messages():
-                self.logging_service.warning(f"Preflight warning: {warning}")
+                self.logging_service.warning(f"Preflight warning: {warning!r}")
         if not preflight.can_proceed:
             error_messages = preflight.error_messages()
             error_codes = {issue.code for issue in preflight.errors}
@@ -1256,7 +1256,7 @@ class ProcessorService(IProcessorService):
         except FileNotFoundError:
             raise ProcessingError(
                 error_type=ErrorType.FILE_NOT_FOUND,
-                message=f"XML file not found: {xml_path}",
+                message=f"XML file not found: {xml_path!r}",
                 details="The specified Rekordbox XML export file does not exist.",
                 suggestions=[
                     "Check that the file path is correct",
@@ -1273,7 +1273,7 @@ class ProcessorService(IProcessorService):
                 raise ProcessingError(
                     error_type=ErrorType.XML_PARSE_ERROR,
                     message=error_msg,
-                    details=f"Failed to parse XML file: {xml_path}",
+                    details=f"Failed to parse XML file: {xml_path!r}",
                     suggestions=[
                         "Verify the XML file is a valid Rekordbox export",
                         "Check that the file is not corrupted",
@@ -1285,8 +1285,8 @@ class ProcessorService(IProcessorService):
                 # Generic parsing error
                 raise ProcessingError(
                     error_type=ErrorType.XML_PARSE_ERROR,
-                    message=f"XML parsing failed: {error_msg}",
-                    details=f"Error occurred while parsing XML file: {xml_path}",
+                    message=f"XML parsing failed: {error_msg!r}",
+                    details=f"Error occurred while parsing XML file: {xml_path!r}",
                     suggestions=[
                         "Verify the XML file is a valid Rekordbox export",
                         "Check that the file is not corrupted",
@@ -1306,14 +1306,14 @@ class ProcessorService(IProcessorService):
             available_playlists = sorted(playlists.keys())
             raise ProcessingError(
                 error_type=ErrorType.PLAYLIST_NOT_FOUND,
-                message=f"Playlist '{playlist_name}' not found in XML file",
+                message=f"Playlist {playlist_name!r} not found in XML file",
                 details=(
-                    f"Available playlists: {', '.join(available_playlists[:10])}"
+                    f"Available playlists: {', '.join(repr(p) for p in available_playlists[:10])}"
                     f"{'...' if len(available_playlists) > 10 else ''}"
                 ),
                 suggestions=[
                     "Check the playlist name spelling (case-sensitive)",
-                    f"Verify '{playlist_name}' exists in your Rekordbox library",
+                    f"Verify {playlist_name!r} exists in your Rekordbox library",
                     "Export a fresh XML file from Rekordbox",
                     "Choose from available playlists listed above",
                 ],
@@ -1339,7 +1339,7 @@ class ProcessorService(IProcessorService):
         if not tracks:
             raise ProcessingError(
                 error_type=ErrorType.VALIDATION_ERROR,
-                message=f"Playlist '{playlist_name}' is empty",
+                message=f"Playlist {playlist_name!r} is empty",
                 details="The playlist contains no valid tracks.",
                 suggestions=[
                     "Verify the playlist has tracks in Rekordbox",
@@ -1480,7 +1480,7 @@ class ProcessorService(IProcessorService):
                         idx, track = future_to_args[future]
                         processed_futures.add(future)
                         self.logging_service.info(
-                            f"Track {idx} '{track.title}' was cancelled and will not be processed."
+                            f"Track {idx} {track.title!r} was cancelled and will not be processed."
                         )
                         results_dict[idx] = TrackResult(
                             playlist_index=idx,
@@ -1655,7 +1655,7 @@ class ProcessorService(IProcessorService):
                                 processed_futures.add(future)
                                 idx, track = future_to_args[future]
                                 self.logging_service.warning(
-                                    f"Error processing track {idx} '{track.title}': {e}",
+                                    f"Error processing track {idx} {track.title!r}: {e}",
                                     exc_info=True,  # Include full traceback for debugging
                                 )
                                 # Create error result
@@ -1719,7 +1719,7 @@ class ProcessorService(IProcessorService):
                                     # Future timed out - likely due to DuckDuckGo search hanging
                                     idx, track = future_to_args[future]
                                     self.logging_service.error(
-                                        f"Track {idx} '{track.title}' processing timed out in exception handler. "
+                                        f"Track {idx} {track.title!r} processing timed out in exception handler. "
                                         f"This may be due to DuckDuckGo search timeouts in packaged app."
                                     )
                                     error_result = TrackResult(
@@ -1736,7 +1736,7 @@ class ProcessorService(IProcessorService):
                                     # Handle error for this future
                                     idx, track = future_to_args[future]
                                     self.logging_service.warning(
-                                        f"Error processing remaining track {idx} '{track.title}': {e}"
+                                        f"Error processing remaining track {idx} {track.title!r}: {e}"
                                     )
                                     error_result = TrackResult(
                                         playlist_index=idx,
@@ -1818,7 +1818,7 @@ class ProcessorService(IProcessorService):
                                 processed_futures.add(future)
                                 idx, track = future_to_args[future]
                                 self.logging_service.error(
-                                    f"Track {idx} '{track.title}' processing timed out after waiting. "
+                                    f"Track {idx} {track.title!r} processing timed out after waiting. "
                                     f"This may be due to DuckDuckGo search timeouts in packaged app."
                                 )
                                 error_result = TrackResult(
@@ -1836,7 +1836,7 @@ class ProcessorService(IProcessorService):
                                 processed_futures.add(future)
                                 idx, track = future_to_args[future]
                                 self.logging_service.warning(
-                                    f"Error processing remaining track {idx} '{track.title}': {e}",
+                                    f"Error processing remaining track {idx} {track.title!r}: {e}",
                                     exc_info=True,
                                 )
                                 error_result = TrackResult(
@@ -1883,7 +1883,7 @@ class ProcessorService(IProcessorService):
                         for idx, track in inputs:
                             if idx not in results_dict:
                                 self.logging_service.error(
-                                    f"Creating error result for missing track {idx}: {track.title}"
+                                    f"Creating error result for missing track {idx}: {track.title!r}"
                                 )
                                 error_result = TrackResult(
                                     playlist_index=idx,

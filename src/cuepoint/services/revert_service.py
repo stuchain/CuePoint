@@ -351,13 +351,13 @@ class RevertService(IRevertService):
         if not counts:
             if events:
                 raise ValueError(
-                    f"Batch {wanted} changed nothing, so there is nothing to revert"
+                    f"Batch {wanted!r} changed nothing, so there is nothing to revert"
                 )
-            raise ValueError(f"No such batch: {wanted}")
+            raise ValueError(f"No such batch: {wanted!r}")
         foreign = sorted(set(counts) - CUEPOINT_REVERTABLE_FIELDS)
         if foreign:
             raise ValueError(
-                f"Batch {wanted} changed fields this revert cannot write:"
+                f"Batch {wanted!r} changed fields this revert cannot write:"
                 f" {', '.join(foreign)}"
             )
         return sum(counts.values())
@@ -643,11 +643,11 @@ def require_cuepoint_field(field: str) -> None:
     """
     if field in REVERTABLE_FIELDS:
         raise ValueError(
-            f"Field is Rekordbox's, not CuePoint's: {field}. It is reverted as an"
+            f"Field is Rekordbox's, not CuePoint's: {field!r}. It is reverted as an"
             " imported field"
         )
     if field not in CUEPOINT_REVERTABLE_FIELDS:
-        raise ValueError(f"Field is not revertable: {field}")
+        raise ValueError(f"Field is not revertable: {field!r}")
 
 
 class _Notation:

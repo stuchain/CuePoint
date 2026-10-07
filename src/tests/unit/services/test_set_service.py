@@ -376,9 +376,9 @@ class TestChapterFields:
             ({"target_seconds": MAX_TIME_SECONDS + 1}, "at most 99:59:59"),
             ({"target_seconds": 0}, "more than zero"),
             ({"notes": "x" * (MAX_NOTES_LENGTH + 1)}, "at most"),
-            ({"colour": "red"}, "no field colour"),
-            ({"collection_id": 7}, "no field collection_id"),
-            ({"position": 0}, "no field position"),
+            ({"colour": "red"}, "no field 'colour'"),
+            ({"collection_id": 7}, "no field 'collection_id'"),
+            ({"position": 0}, "no field 'position'"),
         ],
     )
     def test_a_refused_update_writes_none_of_it(

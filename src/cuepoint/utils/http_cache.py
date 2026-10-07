@@ -113,7 +113,7 @@ class HTTPCacheManager:
             stale_if_error=True,  # Use stale cache on error
         )
 
-        logger.info(f"HTTP cache initialized at {cache_path}")
+        logger.info(f"HTTP cache initialized at {str(cache_path)!r}")
 
     @staticmethod
     def get_session() -> Optional["CachedSession"]:
@@ -290,10 +290,12 @@ class CacheInvalidation:
                         except Exception:
                             pass
         except Exception as e:
-            logger.warning(f"Error clearing cache by pattern {pattern}: {e}")
+            logger.warning(f"Error clearing cache by pattern {pattern!r}: {e}")
 
         if cleared > 0:
-            logger.info(f"Cleared {cleared} cache entries matching pattern: {pattern}")
+            logger.info(
+                f"Cleared {cleared} cache entries matching pattern: {pattern!r}"
+            )
 
         return cleared
 

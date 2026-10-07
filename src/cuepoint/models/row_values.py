@@ -213,7 +213,7 @@ def optional_id(value: Any, name: str) -> Optional[int]:
         return None
     row_id = whole_number(value, name)
     if row_id < 1:
-        raise ValueError(f"{name} must be a positive id, got {row_id}")
+        raise ValueError(f"{name} must be a positive id, got {row_id!r}")
     return row_id
 
 

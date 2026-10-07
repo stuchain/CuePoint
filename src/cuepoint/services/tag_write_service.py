@@ -770,7 +770,7 @@ class TagWriteService(ITagWriteService):
             ValueError: If ``workers`` is below one.
         """
         if int(workers) < 1:
-            raise ValueError(f"A preview needs at least one worker, not {workers}")
+            raise ValueError(f"A preview needs at least one worker, not {workers!r}")
         self._writes = file_write_repository
         self._files = file_status_repository
         self._artwork_records = artwork_repository

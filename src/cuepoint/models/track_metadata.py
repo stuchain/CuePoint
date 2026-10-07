@@ -203,7 +203,7 @@ def normalize_rating(value: Any) -> Optional[int]:
         raise ValueError(f"Rating must be a whole number of stars, got {value!r}")
     if not MIN_RATING <= stars <= MAX_RATING:
         raise ValueError(
-            f"Rating must be between {MIN_RATING} and {MAX_RATING} stars, got {stars}"
+            f"Rating must be between {MIN_RATING} and {MAX_RATING} stars, got {stars!r}"
         )
     return stars
 

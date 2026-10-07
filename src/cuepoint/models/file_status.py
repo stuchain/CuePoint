@@ -92,7 +92,7 @@ class TrackFileStatus:
             one_of(self.reason, FILE_REASONS, "reason")
             if self.status != FILE_MISSING:
                 raise ValueError(
-                    f"Only a missing file has a reason, not a {self.status} one"
+                    f"Only a missing file has a reason, not a {self.status!r} one"
                 )
 
     @property

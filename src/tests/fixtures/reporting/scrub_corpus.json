@@ -1,0 +1,2649 @@
+[
+  {
+    "name": "token-bearer",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Request failed with Authorization: Bearer abc.DEF-123_xyz~+/= for retry"
+    },
+    "expected": {
+      "message": "Request failed with Authorization: Bearer <token> for retry"
+    }
+  },
+  {
+    "name": "token-key-value-forms",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "login failed password=hunter2 and api-key: K9 token=abc&x=1"
+    },
+    "expected": {
+      "message": "login failed password=<token> and api-key: <token> token=<token>&x=1"
+    }
+  },
+  {
+    "name": "token-jwt",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "bad jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk seen"
+    },
+    "expected": {
+      "message": "bad jwt <token> seen"
+    }
+  },
+  {
+    "name": "token-hex-run-32",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "checksum 0123456789abcdef0123456789abcdef mismatch"
+    },
+    "expected": {
+      "message": "checksum <token> mismatch"
+    }
+  },
+  {
+    "name": "token-hex-run-31-stays",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "short 0123456789abcdef0123456789abcde stays"
+    },
+    "expected": {
+      "message": "short 0123456789abcdef0123456789abcde stays"
+    }
+  },
+  {
+    "name": "token-base64-run",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "blob dGhpcyBpcyBhIHNlY3JldCBrZXkgMTIzNDU2Nzg5 end"
+    },
+    "expected": {
+      "message": "blob <token> end"
+    }
+  },
+  {
+    "name": "token-long-word-without-digit-stays",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "word abcdefghijklmnopqrstuvwxyzabcdefgh stays"
+    },
+    "expected": {
+      "message": "word abcdefghijklmnopqrstuvwxyzabcdefgh stays"
+    }
+  },
+  {
+    "name": "token-session-literal",
+    "ctx": {
+      "home": "/home/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/opt/CuePoint/resources"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "engine said s3cr3t-session-token-0123 is invalid"
+    },
+    "expected": {
+      "message": "engine said <token> is invalid"
+    }
+  },
+  {
+    "name": "token-hex-inside-path",
+    "ctx": {
+      "home": "/home/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/opt/CuePoint/resources"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "Hash file /home/anna/Music/0123456789abcdef0123456789abcdef.flac gone"
+    },
+    "expected": {
+      "message": "Hash file <home>/<dir>/<file>.flac gone"
+    }
+  },
+  {
+    "name": "quotes-single-with-apostrophe-inside",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Track 'Don't Stop Believin' not found in playlist \"Friday Night\""
+    },
+    "expected": {
+      "message": "Track '<value>' not found in playlist \"<value>\""
+    }
+  },
+  {
+    "name": "quotes-curly",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Cannot read “Strobe (Club Mix)” by ‘deadmau5’ today"
+    },
+    "expected": {
+      "message": "Cannot read “<value>” by ‘<value>’ today"
+    }
+  },
+  {
+    "name": "quotes-apostrophes-in-words-are-not-quotes",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Can't find DJ's crate; it's missing"
+    },
+    "expected": {
+      "message": "Can't find DJ's crate; it's missing"
+    }
+  },
+  {
+    "name": "quotes-followed-by-colon",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "'Opening Track': failed"
+    },
+    "expected": {
+      "message": "'<value>': failed"
+    }
+  },
+  {
+    "name": "quotes-unclosed-stays",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Stray 'quote without end"
+    },
+    "expected": {
+      "message": "Stray 'quote without end"
+    }
+  },
+  {
+    "name": "quotes-do-not-span-lines",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "first 'line\nsecond line' end"
+    },
+    "expected": {
+      "message": "first 'line\nsecond line' end"
+    }
+  },
+  {
+    "name": "quotes-empty",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Empty '' value"
+    },
+    "expected": {
+      "message": "Empty '' value"
+    }
+  },
+  {
+    "name": "quotes-unicode-value",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Playlist “Café del Mar — 夜の音楽” missing"
+    },
+    "expected": {
+      "message": "Playlist “<value>” missing"
+    }
+  },
+  {
+    "name": "path-windows-home",
+    "ctx": {
+      "home": "C:\\Users\\anna",
+      "user_name": "anna",
+      "app_roots": [
+        "C:\\Program Files\\CuePoint"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "Failed to read C:\\Users\\anna\\Music\\House\\2024\\track.flac."
+    },
+    "expected": {
+      "message": "Failed to read <home>\\<dir>\\<dir>\\<dir>\\<file>.flac."
+    }
+  },
+  {
+    "name": "path-windows-home-forward-slashes-any-case",
+    "ctx": {
+      "home": "C:\\Users\\anna",
+      "user_name": "anna",
+      "app_roots": [
+        "C:\\Program Files\\CuePoint"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "Cannot open c:/users/Anna/Music/x.mp3 now"
+    },
+    "expected": {
+      "message": "Cannot open <home>/<dir>/<file>.mp3 now"
+    }
+  },
+  {
+    "name": "path-windows-other-drive",
+    "ctx": {
+      "home": "C:\\Users\\anna",
+      "user_name": "anna",
+      "app_roots": [
+        "C:\\Program Files\\CuePoint"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "Missing D:/Music/Crate/a.wav,"
+    },
+    "expected": {
+      "message": "Missing D:/<dir>/<dir>/<file>.wav,"
+    }
+  },
+  {
+    "name": "path-unc",
+    "ctx": {
+      "home": "C:\\Users\\anna",
+      "user_name": "anna",
+      "app_roots": [
+        "C:\\Program Files\\CuePoint"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "\\\\NAS01\\Music\\Crate\\x.aiff missing"
+    },
+    "expected": {
+      "message": "\\\\<host>\\<share>\\<dir>\\<file>.aiff missing"
+    }
+  },
+  {
+    "name": "path-quoted-with-spaces-mac",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "message": "Cannot open '/Users/anna/Music/House Tracks/Don't Stop.flac' for reading"
+    },
+    "expected": {
+      "message": "Cannot open '<home>/<dir>/<dir>/<file>.flac' for reading"
+    }
+  },
+  {
+    "name": "path-quoted-windows-app-root",
+    "ctx": {
+      "home": "C:\\Users\\anna",
+      "user_name": "anna",
+      "app_roots": [
+        "C:\\Program Files\\CuePoint"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "Engine at \"C:\\Program Files\\CuePoint\\resources\\engine\\cuepoint-engine.exe\" exited"
+    },
+    "expected": {
+      "message": "Engine at \"<app>\\resources\\engine\\cuepoint-engine.exe\" exited"
+    }
+  },
+  {
+    "name": "path-app-root-mac",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "message": "/Applications/CuePoint.app/Contents/Resources/engine/cuepoint-engine failed"
+    },
+    "expected": {
+      "message": "<app>/engine/cuepoint-engine failed"
+    }
+  },
+  {
+    "name": "path-app-root-linux",
+    "ctx": {
+      "home": "/home/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/opt/CuePoint/resources"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "spawn /opt/CuePoint/resources/player/mpv ENOENT"
+    },
+    "expected": {
+      "message": "spawn <app>/player/mpv ENOENT"
+    }
+  },
+  {
+    "name": "path-file-url-percent-encoded-mac",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "message": "Open file:///Users/anna/Music/House/track%20one.flac failed"
+    },
+    "expected": {
+      "message": "Open file://<home>/<dir>/<dir>/<file>.flac failed"
+    }
+  },
+  {
+    "name": "path-file-url-windows-drive",
+    "ctx": {
+      "home": "C:\\Users\\anna",
+      "user_name": "anna",
+      "app_roots": [
+        "C:\\Program Files\\CuePoint"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "Open file:///C:/Users/anna/Music/a%20b.flac failed"
+    },
+    "expected": {
+      "message": "Open file:///<home>/<dir>/<file>.flac failed"
+    }
+  },
+  {
+    "name": "path-file-url-host-unc",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Open file://nas/share/Music/a.flac failed"
+    },
+    "expected": {
+      "message": "Open file://<host>/<share>/<dir>/<file>.flac failed"
+    }
+  },
+  {
+    "name": "path-percent-encoded-utf8",
+    "ctx": {
+      "home": "/home/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/opt/CuePoint/resources"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "Cannot open /home/anna/Music/Caf%C3%A9%20Del%20Mar/track.mp3"
+    },
+    "expected": {
+      "message": "Cannot open <home>/<dir>/<dir>/<file>.mp3"
+    }
+  },
+  {
+    "name": "path-tilde",
+    "ctx": {
+      "home": "/home/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/opt/CuePoint/resources"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "Cannot open ~/Music/Crate/a.flac"
+    },
+    "expected": {
+      "message": "Cannot open <home>/<dir>/<dir>/<file>.flac"
+    }
+  },
+  {
+    "name": "path-trailing-separator-is-a-dir",
+    "ctx": {
+      "home": "/home/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/opt/CuePoint/resources"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "Scanning /home/anna/Music/Crate/ now"
+    },
+    "expected": {
+      "message": "Scanning <home>/<dir>/<dir>/ now"
+    }
+  },
+  {
+    "name": "path-posix-outside-home",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Volume /Volumes/DJ/Crate/a.mp3 offline"
+    },
+    "expected": {
+      "message": "Volume /<dir>/<dir>/<dir>/<file>.mp3 offline"
+    }
+  },
+  {
+    "name": "path-extension-rules",
+    "ctx": {
+      "home": "/home/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/opt/CuePoint/resources"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "a /home/anna/Music/noext b /home/anna/x.verylong c /home/anna/y.tar.gz"
+    },
+    "expected": {
+      "message": "a <home>/<dir>/<file> b <home>/<file> c <home>/<file>.gz"
+    }
+  },
+  {
+    "name": "path-not-a-path-stays",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "see /etc and a/b and 10/12/2024 ok"
+    },
+    "expected": {
+      "message": "see /etc and a/b and 10/12/2024 ok"
+    }
+  },
+  {
+    "name": "path-api-route-stays",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Handler for /api/v1/library/tracks/{id} failed"
+    },
+    "expected": {
+      "message": "Handler for /api/v1/library/tracks/{id} failed"
+    }
+  },
+  {
+    "name": "path-api-route-quoted-stays",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Handler for '/api/v1/jobs/{job_id}' failed"
+    },
+    "expected": {
+      "message": "Handler for '/api/v1/jobs/{job_id}' failed"
+    }
+  },
+  {
+    "name": "home-and-user-anywhere",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "message": "User anna's home is /Users/anna; ANNA logged in as anna.local and annabelle"
+    },
+    "expected": {
+      "message": "User <user>'s home is <home>; <user> logged in as <user>.local and annabelle"
+    }
+  },
+  {
+    "name": "home-outside-path-shape",
+    "ctx": {
+      "home": "/root",
+      "user_name": "root",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "HOME is /root. Running as root."
+    },
+    "expected": {
+      "message": "HOME is <home>. Running as <user>."
+    }
+  },
+  {
+    "name": "url-beatport-track-slug",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "GET https://www.beatport.com/track/strobe-original-mix/1234567?q=deadmau5&page=2 failed"
+    },
+    "expected": {
+      "message": "GET https://www.beatport.com/track/<value>/1234567?q=<value>&page=<value> failed"
+    }
+  },
+  {
+    "name": "url-beatport-release-trailing-slash",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "GET https://www.beatport.com/release/some-ep/98765/ failed"
+    },
+    "expected": {
+      "message": "GET https://www.beatport.com/release/<value>/98765/ failed"
+    }
+  },
+  {
+    "name": "url-loopback-with-query",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "POST http://127.0.0.1:51234/api/v1/library/tracks/42?search=Don%27t%20Stop&limit=10 returned 500"
+    },
+    "expected": {
+      "message": "POST http://127.0.0.1:51234/api/v1/library/tracks/42?search=<value>&limit=<value> returned 500"
+    }
+  },
+  {
+    "name": "url-userinfo-and-fragment-removed",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "see https://anna:pw@example.com/a/b#frag"
+    },
+    "expected": {
+      "message": "see https://example.com/a/<value>#<value>"
+    }
+  },
+  {
+    "name": "url-trailing-punctuation",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "(see https://www.beatport.com/genre/house/5)."
+    },
+    "expected": {
+      "message": "(see https://www.beatport.com/genre/<value>/5)."
+    }
+  },
+  {
+    "name": "url-quoted-becomes-value",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Fetching 'https://www.beatport.com/track/x/1' failed"
+    },
+    "expected": {
+      "message": "Fetching '<value>' failed"
+    }
+  },
+  {
+    "name": "url-token-in-query-stays-token",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "GET https://api.example.com/v4/catalog?access_token=abcd1234&limit=5"
+    },
+    "expected": {
+      "message": "GET https://api.example.com/v4/<value>?access_token=<token>&limit=<value>"
+    }
+  },
+  {
+    "name": "traceback-engine-linux",
+    "ctx": {
+      "home": "/home/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/opt/CuePoint/resources"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "event_id": "0123abcd",
+      "level": "error",
+      "platform": "python",
+      "release": "1.0.0-feb1",
+      "environment": "production",
+      "exception": {
+        "values": [
+          {
+            "type": "FileNotFoundError",
+            "value": "[Errno 2] No such file or directory: '/home/anna/Music/House Mix/Don't Stop.flac'",
+            "mechanism": {
+              "type": "excepthook",
+              "handled": false
+            },
+            "stacktrace": {
+              "frames": [
+                {
+                  "filename": "cuepoint/services/export.py",
+                  "abs_path": "/opt/CuePoint/resources/engine/cuepoint/services/export.py",
+                  "function": "export_playlist",
+                  "module": "cuepoint.services.export",
+                  "lineno": 88,
+                  "in_app": true,
+                  "context_line": "    with open(path) as f:",
+                  "pre_context": [
+                    "    path = target / name"
+                  ],
+                  "post_context": [
+                    "        data = f.read()"
+                  ],
+                  "vars": {
+                    "path": "/home/anna/Music/x.flac",
+                    "name": "Don't Stop"
+                  }
+                },
+                {
+                  "filename": "pathlib.py",
+                  "abs_path": "/usr/lib/python3.11/pathlib.py",
+                  "function": "open",
+                  "module": "pathlib",
+                  "lineno": 1044,
+                  "in_app": false,
+                  "vars": {
+                    "self": "PosixPath('/home/anna/Music')"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expected": {
+      "event_id": "0123abcd",
+      "level": "error",
+      "platform": "python",
+      "release": "1.0.0-feb1",
+      "environment": "production",
+      "exception": {
+        "values": [
+          {
+            "type": "FileNotFoundError",
+            "value": "[Errno 2] No such file or directory: '<home>/<dir>/<dir>/<file>.flac'",
+            "mechanism": {
+              "type": "excepthook",
+              "handled": false
+            },
+            "stacktrace": {
+              "frames": [
+                {
+                  "filename": "cuepoint/services/export.py",
+                  "abs_path": "<app>/engine/cuepoint/services/export.py",
+                  "function": "export_playlist",
+                  "module": "cuepoint.services.export",
+                  "lineno": 88,
+                  "in_app": true,
+                  "context_line": "    with open(path) as f:",
+                  "pre_context": [
+                    "    path = target / name"
+                  ],
+                  "post_context": [
+                    "        data = f.read()"
+                  ]
+                },
+                {
+                  "filename": "pathlib.py",
+                  "abs_path": "/<dir>/<dir>/<dir>/<file>.py",
+                  "function": "open",
+                  "module": "pathlib",
+                  "lineno": 1044,
+                  "in_app": false
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "traceback-main-macos",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "platform": "node",
+      "level": "fatal",
+      "sdk": {
+        "name": "sentry.javascript.node",
+        "version": "8.0.0"
+      },
+      "exception": {
+        "values": [
+          {
+            "type": "Error",
+            "value": "ENOENT: no such file or directory, open '/Users/anna/Library/Application Support/CuePoint/main-settings.json'",
+            "mechanism": {
+              "type": "onuncaughtexception",
+              "handled": false
+            },
+            "stacktrace": {
+              "frames": [
+                {
+                  "filename": "/Applications/CuePoint.app/Contents/Resources/app.asar/dist/electron/mainSettings.js",
+                  "function": "MainSettingsStore.read",
+                  "lineno": 41,
+                  "colno": 13,
+                  "in_app": true
+                },
+                {
+                  "filename": "node:fs",
+                  "function": "readFileSync",
+                  "lineno": 441,
+                  "colno": 20,
+                  "in_app": false
+                },
+                {
+                  "filename": "/Users/anna/dev/CuePoint/node_modules/x/index.js",
+                  "function": "load",
+                  "lineno": 3,
+                  "colno": 1,
+                  "in_app": false
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expected": {
+      "platform": "node",
+      "level": "fatal",
+      "sdk": {
+        "name": "sentry.javascript.node",
+        "version": "8.0.0"
+      },
+      "exception": {
+        "values": [
+          {
+            "type": "Error",
+            "value": "ENOENT: no such file or directory, open '<home>/<dir>/<dir>/<dir>/<file>.json'",
+            "mechanism": {
+              "type": "onuncaughtexception",
+              "handled": false
+            },
+            "stacktrace": {
+              "frames": [
+                {
+                  "filename": "<app>/app.asar/dist/electron/mainSettings.js",
+                  "function": "MainSettingsStore.read",
+                  "lineno": 41,
+                  "colno": 13,
+                  "in_app": true
+                },
+                {
+                  "filename": "node:fs",
+                  "function": "readFileSync",
+                  "lineno": 441,
+                  "colno": 20,
+                  "in_app": false
+                },
+                {
+                  "filename": "<home>/<dir>/<dir>/<dir>/<dir>/<file>.js",
+                  "function": "load",
+                  "lineno": 3,
+                  "colno": 1,
+                  "in_app": false
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "traceback-renderer-windows",
+    "ctx": {
+      "home": "C:\\Users\\anna",
+      "user_name": "anna",
+      "app_roots": [
+        "C:\\Program Files\\CuePoint"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "platform": "javascript",
+      "tags": {
+        "process": "renderer",
+        "route": "/library"
+      },
+      "exception": {
+        "values": [
+          {
+            "type": "TypeError",
+            "value": "Cannot read properties of undefined (reading 'title')",
+            "mechanism": {
+              "type": "onerror",
+              "handled": false
+            },
+            "stacktrace": {
+              "frames": [
+                {
+                  "filename": "file:///C:/Program%20Files/CuePoint/resources/app.asar/renderer/assets/index-9f3a.js",
+                  "function": "renderRow",
+                  "lineno": 1,
+                  "colno": 52113,
+                  "in_app": true
+                },
+                {
+                  "filename": "http://localhost:5173/src/screens/Library.tsx?t=1700000000",
+                  "function": "LibraryRow",
+                  "lineno": 77,
+                  "colno": 9,
+                  "in_app": true
+                },
+                {
+                  "filename": "app://./assets/vendor-1a2b.js",
+                  "function": "commit",
+                  "lineno": 2,
+                  "colno": 8,
+                  "in_app": false
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expected": {
+      "platform": "javascript",
+      "tags": {
+        "process": "renderer",
+        "route": "/library"
+      },
+      "exception": {
+        "values": [
+          {
+            "type": "TypeError",
+            "value": "Cannot read properties of undefined (reading '<value>')",
+            "mechanism": {
+              "type": "onerror",
+              "handled": false
+            },
+            "stacktrace": {
+              "frames": [
+                {
+                  "filename": "file:///<app>/resources/app.asar/renderer/assets/index-9f3a.js",
+                  "function": "renderRow",
+                  "lineno": 1,
+                  "colno": 52113,
+                  "in_app": true
+                },
+                {
+                  "filename": "http://localhost:5173/src/screens/Library.tsx?t=<value>",
+                  "function": "LibraryRow",
+                  "lineno": 77,
+                  "colno": 9,
+                  "in_app": true
+                },
+                {
+                  "filename": "app://./assets/vendor-1a2b.js",
+                  "function": "commit",
+                  "lineno": 2,
+                  "colno": 8,
+                  "in_app": false
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "frame-abs-path-with-spaces-is-one-field",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "E",
+            "value": "x",
+            "stacktrace": {
+              "frames": [
+                {
+                  "abs_path": "/Users/anna/Music/House Mix/script.py",
+                  "filename": "script.py",
+                  "lineno": 1
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "E",
+            "value": "x",
+            "stacktrace": {
+              "frames": [
+                {
+                  "abs_path": "<home>/<dir>/<dir>/<file>.py",
+                  "filename": "script.py",
+                  "lineno": 1
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "breadcrumbs-every-kind",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "breadcrumbs": [
+        {
+          "category": "http",
+          "type": "http",
+          "level": "info",
+          "timestamp": 1.0,
+          "data": {
+            "url": "http://127.0.0.1:50321/api/v1/library/tracks?search=Strobe&limit=50",
+            "method": "GET",
+            "status_code": 200
+          }
+        },
+        {
+          "category": "navigation",
+          "type": "navigation",
+          "timestamp": 2.0,
+          "data": {
+            "from": "/library",
+            "to": "/prepare/sets/12"
+          }
+        },
+        {
+          "category": "ui.click",
+          "type": "default",
+          "timestamp": 3.0,
+          "message": "tr.track-row > td.title",
+          "data": {
+            "title": "Strobe"
+          }
+        },
+        {
+          "category": "ui.input",
+          "type": "default",
+          "timestamp": 4.0,
+          "message": "input#search"
+        },
+        {
+          "category": "console",
+          "type": "debug",
+          "level": "log",
+          "timestamp": 5.0,
+          "message": "loaded Strobe by deadmau5"
+        },
+        {
+          "category": "log",
+          "type": "default",
+          "level": "error",
+          "timestamp": 6.0,
+          "message": "Playlist 'Friday Night' failed to export to /Users/anna/Exports/fn.m3u8",
+          "data": {
+            "logger": "cuepoint.export"
+          }
+        },
+        {
+          "category": "job",
+          "type": "default",
+          "timestamp": 7.0,
+          "message": "started",
+          "data": {
+            "job_type": "export",
+            "playlist_name": "Friday Night",
+            "track": {
+              "artist": "deadmau5",
+              "bpm": 128
+            },
+            "count": 3,
+            "notes": [
+              "a",
+              "b"
+            ]
+          }
+        }
+      ]
+    },
+    "expected": {
+      "breadcrumbs": [
+        {
+          "category": "http",
+          "type": "http",
+          "level": "info",
+          "timestamp": 1.0,
+          "data": {
+            "url": "http://127.0.0.1:50321/api/v1/library/tracks?search=<value>&limit=<value>",
+            "method": "GET",
+            "status_code": 200
+          }
+        },
+        {
+          "category": "navigation",
+          "type": "navigation",
+          "timestamp": 2.0,
+          "data": {
+            "from": "/library",
+            "to": "/<dir>/<dir>/<file>"
+          }
+        },
+        {
+          "category": "log",
+          "type": "default",
+          "level": "error",
+          "timestamp": 6.0,
+          "message": "Playlist '<value>' failed to export to <home>/<dir>/<file>.m3u8",
+          "data": {
+            "logger": "cuepoint.export"
+          }
+        },
+        {
+          "category": "job",
+          "type": "default",
+          "timestamp": 7.0,
+          "message": "started",
+          "data": {
+            "job_type": "export",
+            "playlist_name": "<value>",
+            "track": {
+              "artist": "<value>",
+              "bpm": 128
+            },
+            "count": 3,
+            "notes": "<value>"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "breadcrumbs-values-wrapper",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "breadcrumbs": {
+        "values": [
+          {
+            "category": "http",
+            "type": "http",
+            "level": "info",
+            "timestamp": 1.0,
+            "data": {
+              "url": "http://127.0.0.1:50321/api/v1/library/tracks?search=Strobe&limit=50",
+              "method": "GET",
+              "status_code": 200
+            }
+          },
+          {
+            "category": "navigation",
+            "type": "navigation",
+            "timestamp": 2.0,
+            "data": {
+              "from": "/library",
+              "to": "/prepare/sets/12"
+            }
+          },
+          {
+            "category": "ui.click",
+            "type": "default",
+            "timestamp": 3.0,
+            "message": "tr.track-row > td.title",
+            "data": {
+              "title": "Strobe"
+            }
+          },
+          {
+            "category": "ui.input",
+            "type": "default",
+            "timestamp": 4.0,
+            "message": "input#search"
+          },
+          {
+            "category": "console",
+            "type": "debug",
+            "level": "log",
+            "timestamp": 5.0,
+            "message": "loaded Strobe by deadmau5"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "breadcrumbs": {
+        "values": [
+          {
+            "category": "http",
+            "type": "http",
+            "level": "info",
+            "timestamp": 1.0,
+            "data": {
+              "url": "http://127.0.0.1:50321/api/v1/library/tracks?search=<value>&limit=<value>",
+              "method": "GET",
+              "status_code": 200
+            }
+          },
+          {
+            "category": "navigation",
+            "type": "navigation",
+            "timestamp": 2.0,
+            "data": {
+              "from": "/library",
+              "to": "/<dir>/<dir>/<file>"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "fact7-python-default-sdk-event",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "event_id": "feedbeef",
+      "timestamp": "2026-10-07T10:00:00Z",
+      "level": "error",
+      "platform": "python",
+      "release": "1.0.0-feb1",
+      "dist": "1",
+      "environment": "production",
+      "server_name": "Annas-MacBook-Pro.local",
+      "user": {
+        "id": "1",
+        "username": "anna",
+        "email": "anna@example.com",
+        "ip_address": "{{auto}}"
+      },
+      "request": {
+        "url": "http://127.0.0.1:50321/api/v1/library/tracks?search=Strobe",
+        "method": "GET",
+        "query_string": "search=Strobe",
+        "data": {
+          "title": "Strobe"
+        },
+        "headers": {
+          "Authorization": "Bearer abc"
+        }
+      },
+      "contexts": {
+        "device": {
+          "name": "Annas-MacBook-Pro",
+          "model": "MacBookPro18,3",
+          "arch": "arm64"
+        },
+        "os": {
+          "name": "macOS",
+          "version": "14.5"
+        },
+        "runtime": {
+          "name": "CPython",
+          "version": "3.11.9"
+        }
+      },
+      "sdk": {
+        "name": "sentry.python",
+        "version": "2.0.0"
+      },
+      "exception": {
+        "values": [
+          {
+            "type": "ValueError",
+            "value": "bad value 'Strobe'",
+            "stacktrace": {
+              "frames": [
+                {
+                  "filename": "cuepoint/engine/server.py",
+                  "function": "handler",
+                  "lineno": 10,
+                  "in_app": true,
+                  "vars": {
+                    "title": "Strobe",
+                    "path": "/Users/anna/Music/a.flac",
+                    "self": "<Server>"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "breadcrumbs": [
+        {
+          "category": "console",
+          "message": "title=Strobe"
+        },
+        {
+          "category": "ui.click",
+          "message": "td 'Strobe'"
+        },
+        {
+          "category": "ui.input",
+          "message": "input#search"
+        },
+        {
+          "category": "http",
+          "type": "http",
+          "data": {
+            "url": "https://api.beatport.com/v4/catalog/tracks/12345",
+            "method": "GET"
+          }
+        }
+      ],
+      "attachments": [
+        {
+          "filename": "config.json",
+          "data": "{\"token\": \"x\"}"
+        },
+        {
+          "filename": "engine-output.txt",
+          "data": "started /Users/anna/x/y.log\nok"
+        }
+      ]
+    },
+    "expected": {
+      "event_id": "feedbeef",
+      "timestamp": "2026-10-07T10:00:00Z",
+      "level": "error",
+      "platform": "python",
+      "release": "1.0.0-feb1",
+      "dist": "1",
+      "environment": "production",
+      "contexts": {
+        "device": {
+          "model": "MacBookPro18,3",
+          "arch": "arm64"
+        },
+        "os": {
+          "name": "macOS",
+          "version": "14.5"
+        },
+        "runtime": {
+          "name": "CPython",
+          "version": "3.11.9"
+        }
+      },
+      "sdk": {
+        "name": "sentry.python",
+        "version": "2.0.0"
+      },
+      "exception": {
+        "values": [
+          {
+            "type": "ValueError",
+            "value": "bad value '<value>'",
+            "stacktrace": {
+              "frames": [
+                {
+                  "filename": "cuepoint/engine/server.py",
+                  "function": "handler",
+                  "lineno": 10,
+                  "in_app": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "breadcrumbs": [
+        {
+          "category": "http",
+          "type": "http",
+          "data": {
+            "url": "https://api.beatport.com/v4/<value>/<value>/12345",
+            "method": "GET"
+          }
+        }
+      ],
+      "attachments": [
+        {
+          "filename": "engine-output.txt",
+          "data": "started <home>/<dir>/<file>.log\nok"
+        }
+      ]
+    }
+  },
+  {
+    "name": "fact7-node-default-sdk-event",
+    "ctx": {
+      "home": "C:\\Users\\anna",
+      "user_name": "anna",
+      "app_roots": [
+        "C:\\Program Files\\CuePoint"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "platform": "node",
+      "server_name": "ANNA-PC",
+      "user": {
+        "ip_address": "{{auto}}"
+      },
+      "contexts": {
+        "device": {
+          "name": "ANNA-PC",
+          "arch": "x64"
+        },
+        "os": {
+          "name": "Windows",
+          "version": "10.0.22631"
+        },
+        "app": {
+          "app_name": "CuePoint",
+          "app_version": "1.0.0-feb1"
+        },
+        "culture": {
+          "locale": "en-US"
+        }
+      },
+      "breadcrumbs": [
+        {
+          "category": "console",
+          "level": "log",
+          "message": "opened C:\\Users\\anna\\Music\\a.flac"
+        }
+      ],
+      "message": "engine exited, log at C:\\Users\\anna\\AppData\\Roaming\\CuePoint\\logs\\engine.log"
+    },
+    "expected": {
+      "platform": "node",
+      "contexts": {
+        "device": {
+          "arch": "x64"
+        },
+        "os": {
+          "name": "Windows",
+          "version": "10.0.22631"
+        },
+        "app": {
+          "app_name": "CuePoint",
+          "app_version": "1.0.0-feb1"
+        },
+        "culture": {
+          "locale": "en-US"
+        }
+      },
+      "breadcrumbs": [],
+      "message": "engine exited, log at <home>\\<dir>\\<dir>\\<dir>\\<dir>\\<file>.log"
+    }
+  },
+  {
+    "name": "fact7-browser-default-sdk-event",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "platform": "javascript",
+      "request": {
+        "url": "app://./index.html",
+        "headers": {
+          "User-Agent": "Electron"
+        }
+      },
+      "contexts": {
+        "browser": {
+          "name": "Chrome",
+          "version": "126"
+        },
+        "device": {
+          "name": "Annas-MacBook-Pro",
+          "screen_width_pixels": 1440
+        }
+      },
+      "breadcrumbs": [
+        {
+          "category": "ui.click",
+          "message": "body > div#root > tr > td.title",
+          "data": {
+            "title": "Strobe (Extended Mix)"
+          }
+        },
+        {
+          "category": "ui.input",
+          "message": "input[type=\"search\"]"
+        },
+        {
+          "category": "console",
+          "message": "rendered 'Strobe'"
+        },
+        {
+          "category": "navigation",
+          "data": {
+            "from": "/library",
+            "to": "/discover"
+          }
+        }
+      ]
+    },
+    "expected": {
+      "platform": "javascript",
+      "contexts": {
+        "browser": {
+          "name": "Chrome",
+          "version": "126"
+        },
+        "device": {
+          "screen_width_pixels": 1440
+        }
+      },
+      "breadcrumbs": [
+        {
+          "category": "navigation",
+          "data": {
+            "from": "/library",
+            "to": "/discover"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "extra-and-contexts-library-keys",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "extra": {
+        "track_title": "Strobe",
+        "playlistName": "Friday Night",
+        "track": {
+          "artist": "deadmau5",
+          "title": "Strobe",
+          "bpm": 128,
+          "labels": [
+            "mau5trap"
+          ]
+        },
+        "job_type": "export",
+        "count": 4,
+        "message_text": "Failed on 'Strobe'",
+        "path": "/Users/anna/a/b.flac",
+        "trackList": [
+          {
+            "Title": "X",
+            "id": 7
+          },
+          {
+            "id": 8
+          }
+        ],
+        "nothing": null
+      },
+      "contexts": {
+        "os": {
+          "name": "macOS",
+          "version": "14.5"
+        },
+        "app": {
+          "app_name": "CuePoint",
+          "app_version": "1.0.0-feb1"
+        },
+        "runtime": {
+          "name": "CPython"
+        },
+        "job": {
+          "type": "export",
+          "playlist": "Friday Night",
+          "name": "Weekly",
+          "steps": {
+            "current": "write",
+            "file": "/Users/anna/x/y.m3u8"
+          }
+        },
+        "device": {
+          "name": "Annas-MacBook-Pro",
+          "arch": "arm64"
+        },
+        "library": {
+          "track_count": 12,
+          "hostname": "annas"
+        }
+      }
+    },
+    "expected": {
+      "extra": {
+        "track_title": "<value>",
+        "playlistName": "<value>",
+        "track": {
+          "artist": "<value>",
+          "title": "<value>",
+          "bpm": 128,
+          "labels": "<value>"
+        },
+        "job_type": "export",
+        "count": 4,
+        "message_text": "Failed on '<value>'",
+        "path": "<value>",
+        "trackList": [
+          {
+            "Title": "<value>",
+            "id": 7
+          },
+          {
+            "id": 8
+          }
+        ],
+        "nothing": null
+      },
+      "contexts": {
+        "os": {
+          "name": "macOS",
+          "version": "14.5"
+        },
+        "app": {
+          "app_name": "CuePoint",
+          "app_version": "1.0.0-feb1"
+        },
+        "runtime": {
+          "name": "CPython"
+        },
+        "job": {
+          "type": "export",
+          "playlist": "<value>",
+          "name": "<value>",
+          "steps": {
+            "current": "write",
+            "file": "<value>"
+          }
+        },
+        "device": {
+          "arch": "arm64"
+        },
+        "library": {
+          "track_count": 12
+        }
+      }
+    }
+  },
+  {
+    "name": "tags-and-unknown-top-level-keys",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "tags": {
+        "process": "engine",
+        "route": "/api/v1/library/tracks/{id}",
+        "file": "/Users/anna/x/y.flac"
+      },
+      "custom": {
+        "playlist": "x",
+        "note": "y",
+        "job": "export",
+        "where": "/Users/anna/a/b.txt"
+      }
+    },
+    "expected": {
+      "tags": {
+        "process": "engine",
+        "route": "/api/v1/library/tracks/{id}",
+        "file": "<value>"
+      },
+      "custom": {
+        "playlist": "<value>",
+        "note": "<value>",
+        "job": "export",
+        "where": "<home>/<dir>/<file>.txt"
+      }
+    }
+  },
+  {
+    "name": "logentry-message-formatted-params",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "logentry": {
+        "message": "Cannot open %s",
+        "formatted": "Cannot open '/Users/anna/Music/a.flac'",
+        "params": [
+          "/Users/anna/Music/a.flac"
+        ]
+      }
+    },
+    "expected": {
+      "logentry": {
+        "message": "Cannot open %s",
+        "formatted": "Cannot open <home>/<dir>/<file>.flac",
+        "params": [
+          "<home>/<dir>/<file>.flac"
+        ]
+      }
+    }
+  },
+  {
+    "name": "transaction-route-and-culprit-kept",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "transaction": "/api/v1/library/tracks/{id}",
+      "culprit": "cuepoint.services.export in export_playlist"
+    },
+    "expected": {
+      "transaction": "/api/v1/library/tracks/{id}",
+      "culprit": "cuepoint.services.export in export_playlist"
+    }
+  },
+  {
+    "name": "logentry-params-path-and-value",
+    "ctx": {
+      "home": "/Users/mark",
+      "user_name": "mark",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "logentry": {
+        "message": "Tag write failed for %s (%s)",
+        "formatted": "Tag write failed for /Users/mark/My Music/Strobe.flac (Strobe)",
+        "params": [
+          "/Users/mark/My Music/Strobe.flac",
+          "Strobe"
+        ]
+      }
+    },
+    "expected": {
+      "logentry": {
+        "message": "Tag write failed for %s (%s)",
+        "formatted": "Tag write failed for <home>/<dir>/<file>.flac (<value>)",
+        "params": [
+          "<home>/<dir>/<file>.flac",
+          "<value>"
+        ]
+      }
+    }
+  },
+  {
+    "name": "logentry-params-mismatch-drops-formatted",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "logentry": {
+        "message": "bad %s",
+        "formatted": "bad a",
+        "params": [
+          "a",
+          "b"
+        ]
+      }
+    },
+    "expected": {
+      "logentry": {
+        "message": "bad %s",
+        "params": [
+          "<value>",
+          "<value>"
+        ]
+      }
+    }
+  },
+  {
+    "name": "logentry-params-numbers-bools-and-repr",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "logentry": {
+        "message": "Job %s of %d tracks failed: %r %s",
+        "formatted": "x",
+        "params": [
+          "abc",
+          3,
+          "Strobe",
+          true
+        ]
+      }
+    },
+    "expected": {
+      "logentry": {
+        "message": "Job %s of %d tracks failed: %r %s",
+        "formatted": "Job <value> of 3 tracks failed: '<value>' True",
+        "params": [
+          "<value>",
+          3,
+          "<value>",
+          true
+        ]
+      }
+    }
+  },
+  {
+    "name": "logentry-params-dict",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "logentry": {
+        "message": "%(title)s by %(artist)s",
+        "formatted": "Strobe by deadmau5",
+        "params": {
+          "title": "Strobe",
+          "artist": "deadmau5"
+        }
+      }
+    },
+    "expected": {
+      "logentry": {
+        "message": "%(title)s by %(artist)s",
+        "formatted": "<value> by <value>",
+        "params": {
+          "title": "<value>",
+          "artist": "<value>"
+        }
+      }
+    }
+  },
+  {
+    "name": "home-with-space-windows",
+    "ctx": {
+      "home": "C:\\Users\\Anna Smith",
+      "user_name": "Anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "open C:\\Users\\Anna Smith\\Music\\Daft Punk\\x.flac"
+    },
+    "expected": {
+      "message": "open <home>\\<dir>\\<file> Punk\\x.flac"
+    }
+  },
+  {
+    "name": "home-with-space-other-case-and-separator",
+    "ctx": {
+      "home": "C:\\Users\\Anna Smith",
+      "user_name": "Anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "open c:/users/anna smith/Music/x.flac"
+    },
+    "expected": {
+      "message": "open <home>/<dir>/<file>.flac"
+    }
+  },
+  {
+    "name": "home-with-space-quoted",
+    "ctx": {
+      "home": "C:\\Users\\Anna Smith",
+      "user_name": "Anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Cannot open 'C:\\Users\\Anna Smith\\Music\\Daft Punk\\x.flac'"
+    },
+    "expected": {
+      "message": "Cannot open '<home>\\<dir>\\<dir>\\<file>.flac'"
+    }
+  },
+  {
+    "name": "home-prefix-of-another-folder-is-not-home",
+    "ctx": {
+      "home": "C:\\Users\\Anna Smith",
+      "user_name": "Anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "C:\\Users\\Anna Smithson\\Music\\x.flac"
+    },
+    "expected": {
+      "message": "C:\\<dir>\\<file> Smithson\\Music\\x.flac"
+    }
+  },
+  {
+    "name": "path-after-colon-posix",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "message": "error:/Volumes/DJ/Strobe/x.flac"
+    },
+    "expected": {
+      "message": "error:/<dir>/<dir>/<dir>/<file>.flac"
+    }
+  },
+  {
+    "name": "path-after-colon-home",
+    "ctx": {
+      "home": "/Users/mark",
+      "user_name": "mark",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "path:/Users/mark/Music/a.flac"
+    },
+    "expected": {
+      "message": "path:<home>/<dir>/<file>.flac"
+    }
+  },
+  {
+    "name": "path-after-angle-bracket",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "see <b>/Volumes/DJ/x.flac"
+    },
+    "expected": {
+      "message": "see <b>/<dir>/<dir>/<file>.flac"
+    }
+  },
+  {
+    "name": "scheme-url-is-not-a-unc-path",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "open app://./assets/x.js"
+    },
+    "expected": {
+      "message": "open app://./assets/x.js"
+    }
+  },
+  {
+    "name": "api-route-query-values-replaced",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Slow /api/v1/library/search?q=Strobe&limit=5 request"
+    },
+    "expected": {
+      "message": "Slow /api/v1/library/search?q=<value>&limit=<value> request"
+    }
+  },
+  {
+    "name": "api-route-query-in-transaction-and-span",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "transaction": "/api/v1/library/search?q=Strobe",
+      "spans": [
+        {
+          "description": "GET /api/v1/library/search?q=Strobe",
+          "op": "http"
+        }
+      ]
+    },
+    "expected": {
+      "transaction": "/api/v1/library/search?q=<value>",
+      "spans": [
+        {
+          "description": "GET /api/v1/library/search?q=<value>",
+          "op": "http"
+        }
+      ]
+    }
+  },
+  {
+    "name": "tags-key-rule-dict-and-pairs",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "tags": {
+        "playlist": "Friday",
+        "process": "engine",
+        "include_tags": true
+      }
+    },
+    "expected": {
+      "tags": {
+        "playlist": "<value>",
+        "process": "engine",
+        "include_tags": true
+      }
+    }
+  },
+  {
+    "name": "tags-key-rule-pairs",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "tags": [
+        [
+          "playlist",
+          "Friday"
+        ],
+        [
+          "process",
+          "engine"
+        ]
+      ]
+    },
+    "expected": {
+      "tags": [
+        [
+          "playlist",
+          "<value>"
+        ],
+        [
+          "process",
+          "engine"
+        ]
+      ]
+    }
+  },
+  {
+    "name": "contexts-runtime-types-kept",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "contexts": {
+        "chrome": {
+          "name": "Chrome",
+          "type": "runtime",
+          "version": "126"
+        },
+        "node": {
+          "name": "Node",
+          "version": "20"
+        },
+        "electron": {
+          "name": "Electron",
+          "version": "31"
+        },
+        "engine": {
+          "type": "runtime",
+          "name": "CPython",
+          "version": "3.11"
+        },
+        "gpu2": {
+          "type": "device",
+          "name": "Apple M2",
+          "model": "M2"
+        }
+      }
+    },
+    "expected": {
+      "contexts": {
+        "chrome": {
+          "name": "Chrome",
+          "type": "runtime",
+          "version": "126"
+        },
+        "node": {
+          "name": "Node",
+          "version": "20"
+        },
+        "electron": {
+          "name": "Electron",
+          "version": "31"
+        },
+        "engine": {
+          "type": "runtime",
+          "name": "CPython",
+          "version": "3.11"
+        },
+        "gpu2": {
+          "type": "device",
+          "model": "M2"
+        }
+      }
+    }
+  },
+  {
+    "name": "ids-kept-under-id-keys",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "extra": {
+        "report_id": "0123456789abcdef0123456789abcdef",
+        "reportId": "0123456789abcdef0123456789abcdef",
+        "event_id": "0123456789abcdef0123456789abcdef",
+        "trace_id": "0123456789abcdef0123456789abcdef",
+        "span_id": "0123456789abcdef",
+        "other_id": "0123456789abcdef0123456789abcdef",
+        "report_id_2": "x y"
+      },
+      "breadcrumbs": [
+        {
+          "category": "job",
+          "data": {
+            "trace_id": "0123456789abcdef0123456789abcdef"
+          }
+        }
+      ]
+    },
+    "expected": {
+      "extra": {
+        "report_id": "0123456789abcdef0123456789abcdef",
+        "reportId": "0123456789abcdef0123456789abcdef",
+        "event_id": "0123456789abcdef0123456789abcdef",
+        "trace_id": "0123456789abcdef0123456789abcdef",
+        "span_id": "0123456789abcdef",
+        "other_id": "<token>",
+        "report_id_2": "x y"
+      },
+      "breadcrumbs": [
+        {
+          "category": "job",
+          "data": {
+            "trace_id": "0123456789abcdef0123456789abcdef"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "node-frame-line-and-column-kept",
+    "ctx": {
+      "home": "/Users/mark",
+      "user_name": "mark",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "at load (/Users/mark/Projects/app/x.js:10:5)"
+    },
+    "expected": {
+      "message": "at load (<home>/<dir>/<dir>/<file>.js:10:5)"
+    }
+  },
+  {
+    "name": "node-frame-line-only-kept",
+    "ctx": {
+      "home": "/Users/mark",
+      "user_name": "mark",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "at /Users/mark/Projects/x.js:7"
+    },
+    "expected": {
+      "message": "at <home>/<dir>/<file>.js:7"
+    }
+  },
+  {
+    "name": "key-rule-keeps-numbers-and-flags",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "extra": {
+        "include_tags": true,
+        "title": 5,
+        "artist": null,
+        "labels": [
+          "x"
+        ],
+        "album": {
+          "a": 1
+        },
+        "notes": "n",
+        "playlist_count": 3
+      }
+    },
+    "expected": {
+      "extra": {
+        "include_tags": true,
+        "title": 5,
+        "artist": null,
+        "labels": "<value>",
+        "album": "<value>",
+        "notes": "<value>",
+        "playlist_count": 3
+      }
+    }
+  },
+  {
+    "name": "quotes-double-quoted-repr-with-apostrophes",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Track \"Lovin' You (Ol' Skool Mix)\" not found"
+    },
+    "expected": {
+      "message": "Track \"<value>\" not found"
+    }
+  },
+  {
+    "name": "astral-letter-before-quote-is-not-an-opener",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "𝒜'quoted' tail"
+    },
+    "expected": {
+      "message": "𝒜'quoted' tail"
+    }
+  },
+  {
+    "name": "astral-letter-after-quote-is-not-a-closer",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "'quoted'𝒜 tail"
+    },
+    "expected": {
+      "message": "'quoted'𝒜 tail"
+    }
+  },
+  {
+    "name": "whitespace-set-bom-does-not-end-a-path",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "message": "open /Users/anna/a.flac﻿tail"
+    },
+    "expected": {
+      "message": "open <home>/<file>"
+    }
+  },
+  {
+    "name": "whitespace-set-control-does-not-end-a-path",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "message": "open /Users/anna/a.flac\u001ftail"
+    },
+    "expected": {
+      "message": "open <home>/<file>"
+    }
+  },
+  {
+    "name": "whitespace-set-nbsp-ends-a-path",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "message": "open /Users/anna/a.flac tail"
+    },
+    "expected": {
+      "message": "open <home>/<file>.flac tail"
+    }
+  },
+  {
+    "name": "user-name-simple-lower-casing",
+    "ctx": {
+      "home": null,
+      "user_name": "ÉMILE",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "émile logged in"
+    },
+    "expected": {
+      "message": "<user> logged in"
+    }
+  },
+  {
+    "name": "breadcrumb-unhashable-category",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "breadcrumbs": [
+        {
+          "category": [
+            "a"
+          ],
+          "message": "x"
+        },
+        {
+          "category": {
+            "b": 1
+          }
+        }
+      ]
+    },
+    "expected": {
+      "breadcrumbs": [
+        {
+          "category": [
+            "a"
+          ],
+          "message": "x"
+        },
+        {
+          "category": {
+            "b": 1
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "percent-encoded-posix-run",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "message": "Cannot open %2FUsers%2Fanna%2FMusic%2Fa.flac now"
+    },
+    "expected": {
+      "message": "Cannot open <home>/<dir>/<file>.flac now"
+    }
+  },
+  {
+    "name": "percent-encoded-windows-run",
+    "ctx": {
+      "home": "C:\\Users\\anna",
+      "user_name": "anna",
+      "app_roots": [
+        "C:\\Program Files\\CuePoint"
+      ],
+      "tokens": [
+        "s3cr3t-session-token-0123"
+      ]
+    },
+    "input": {
+      "message": "Cannot open C%3A%5CUsers%5Canna%5Cx.flac now"
+    },
+    "expected": {
+      "message": "Cannot open <home>\\<file>.flac now"
+    }
+  },
+  {
+    "name": "unc-with-forward-slashes",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Open //NAS/Music/Crate/a.flac now"
+    },
+    "expected": {
+      "message": "Open //<host>/<share>/<dir>/<file>.flac now"
+    }
+  },
+  {
+    "name": "mechanism-data-is-walked",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "E",
+            "value": "x",
+            "mechanism": {
+              "type": "generic",
+              "handled": true,
+              "data": {
+                "track_title": "Strobe",
+                "url": "http://127.0.0.1:1/api/v1/x?q=a",
+                "path": "/Users/anna/a.flac"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "E",
+            "value": "x",
+            "mechanism": {
+              "type": "generic",
+              "handled": true,
+              "data": {
+                "track_title": "<value>",
+                "url": "http://127.0.0.1:1/api/v1/x?q=<value>",
+                "path": "<value>"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "authorization-basic-tokenised",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Authorization: Basic dXNlcjpwYXNz failed"
+    },
+    "expected": {
+      "message": "Authorization: Basic <token> failed"
+    }
+  },
+  {
+    "name": "cookie-line-tokenised",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Cookie: sid=abc; theme=dark\nnext line"
+    },
+    "expected": {
+      "message": "Cookie: <token>\nnext line"
+    }
+  },
+  {
+    "name": "set-cookie-tokenised",
+    "ctx": {
+      "home": null,
+      "user_name": null,
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "message": "Set-Cookie: a=b; Path=/"
+    },
+    "expected": {
+      "message": "Set-Cookie: <token>"
+    }
+  }
+]

@@ -91,7 +91,7 @@ class BeatportService(IBeatportService):
 
         # Perform search
         try:
-            self.logging_service.info(f"Searching Beatport for: {query}")
+            self.logging_service.info(f"Searching Beatport for: {query!r}")
 
             # Test if ddgs is available before searching
             try:
@@ -128,7 +128,7 @@ class BeatportService(IBeatportService):
             urls = get_network_circuit_breaker().call(_search)
 
             self.logging_service.info(
-                f"Found {len(urls)} track URLs for query: {query}"
+                f"Found {len(urls)} track URLs for query: {query!r}"
             )
 
             # Cache results (1 hour TTL)

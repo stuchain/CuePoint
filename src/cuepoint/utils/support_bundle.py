@@ -65,7 +65,7 @@ class SupportBundleGenerator:
         bundle_name = f"cuepoint-support-{run_id}.zip"
         bundle_path = output_path / bundle_name
 
-        logger.info(f"Generating support bundle: {bundle_path}")
+        logger.info(f"Generating support bundle: {str(bundle_path)!r}")
 
         try:
             with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_DEFLATED) as zipf:
@@ -111,7 +111,7 @@ class SupportBundleGenerator:
                             total_size += len(content.encode("utf-8"))
                         except Exception as e:
                             logger.warning(
-                                f"Could not include log file {log_file}: {e}"
+                                f"Could not include log file {str(log_file)!r}: {e}"
                             )
 
                     # Crash logs (Design 7.23: also check crashes/ subdir)
@@ -136,7 +136,7 @@ class SupportBundleGenerator:
                                 total_size += len(content.encode("utf-8"))
                             except Exception as e:
                                 logger.warning(
-                                    f"Could not include crash log {crash_file}: {e}"
+                                    f"Could not include crash log {str(crash_file)!r}: {e}"
                                 )
 
                 # Config file (if exists, sanitized)
@@ -194,7 +194,7 @@ Contents:
                     readme += "\n\nNote: Sensitive information has been sanitized."
                 zipf.writestr("README.txt", readme)
 
-            logger.info(f"Support bundle created: {bundle_path}")
+            logger.info(f"Support bundle created: {str(bundle_path)!r}")
             return bundle_path
 
         except Exception as e:

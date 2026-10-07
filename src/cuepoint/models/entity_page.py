@@ -105,7 +105,7 @@ def _beatport_id(value: Any, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ValueError(f"{name} is a whole number, got {value!r}")
     if not 0 < value <= MAX_BEATPORT_ID:
-        raise ValueError(f"{name} is from 1 to {MAX_BEATPORT_ID}, got {value}")
+        raise ValueError(f"{name} is from 1 to {MAX_BEATPORT_ID}, got {value!r}")
     return int(value)
 
 

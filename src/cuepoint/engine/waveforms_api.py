@@ -105,7 +105,7 @@ def _resolve(interface_name: str) -> Any:
 def _no_params(params: Dict[str, List[str]]) -> None:
     if params:
         raise bad_request(
-            f"This route takes no parameters, not {', '.join(sorted(params))}"
+            f"This route takes no parameters, not {', '.join(sorted(params))!r}"
         )
 
 
@@ -113,7 +113,7 @@ def _params(params: Dict[str, List[str]], allowed: Sequence[str]) -> Dict[str, s
     """One value per name, refusing names this route does not take."""
     unknown = sorted(set(params) - set(allowed))
     if unknown:
-        raise bad_request(f"Unknown parameter: {', '.join(unknown)}")
+        raise bad_request(f"Unknown parameter: {', '.join(unknown)!r}")
     single: Dict[str, str] = {}
     for name, values in params.items():
         if len(values) != 1:
@@ -138,7 +138,7 @@ def _body(raw: bytes) -> Dict[str, Any]:
 def _only(data: Mapping[str, Any], allowed: Sequence[str]) -> None:
     unknown = sorted(set(data) - set(allowed))
     if unknown:
-        raise bad_request(f"This route takes no fields {', '.join(unknown)}")
+        raise bad_request(f"This route takes no fields {', '.join(unknown)!r}")
 
 
 def _id(value: Any) -> int:

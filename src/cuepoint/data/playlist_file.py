@@ -28,7 +28,7 @@ def parse_m3u(playlist_path: str) -> List[Tuple[str, Optional[str], Optional[str
     """
     path = Path(playlist_path)
     if not path.exists():
-        raise FileNotFoundError(f"Playlist file not found: {playlist_path}")
+        raise FileNotFoundError(f"Playlist file not found: {playlist_path!r}")
     base_dir = path.parent
 
     raw: str

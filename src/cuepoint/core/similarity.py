@@ -199,7 +199,7 @@ class MusicalKey:
     def from_camelot(cls, number: int, letter: str) -> "MusicalKey":
         """The key at a place on the wheel."""
         if not 1 <= number <= 12 or letter not in ("A", "B"):
-            raise ValueError(f"{number}{letter} is not a Camelot code")
+            raise ValueError(f"{str(number) + str(letter)!r} is not a Camelot code")
         minor = letter == "A"
         tonic = 9 if minor else 0
         return cls(((number - 8) * 7 + tonic) % 12, minor)

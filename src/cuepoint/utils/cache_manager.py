@@ -109,7 +109,7 @@ class CacheManager:
                         shutil.rmtree(item)
                         cleared_count += 1
                 except Exception as e:
-                    logger.error(f"Error clearing cache item {item}: {e}")
+                    logger.error(f"Error clearing cache item {str(item)!r}: {e}")
 
             logger.info(
                 f"Cleared {cleared_count} cache items ({cleared_size / (1024 * 1024):.1f} MB)"
@@ -179,7 +179,9 @@ class CacheManager:
                 removed_count += 1
                 removed_size += file_info["size"]
             except Exception as e:
-                logger.error(f"Error removing cache file {file_info['path']}: {e}")
+                logger.error(
+                    f"Error removing cache file {str(file_info['path'])!r}: {e}"
+                )
 
         if removed_count > 0:
             logger.info(

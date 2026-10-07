@@ -160,7 +160,7 @@ class MarksBackfillService(IMarksBackfillService):
         clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     ) -> None:
         if chunk_size < 1:
-            raise ValueError(f"chunk_size must be at least 1, got {chunk_size}")
+            raise ValueError(f"chunk_size must be at least 1, got {chunk_size!r}")
         self._marks = marks_repository
         self._tracks = track_repository
         self._sources = source_repository

@@ -153,11 +153,11 @@ class DuplicateRepository(IDuplicateRepository):
         for group in groups:
             if group.signal != signal:
                 raise ValueError(
-                    f"A {group.signal} group cannot replace {signal} groups"
+                    f"A {group.signal} group cannot replace {signal!r} groups"
                 )
             if group.group_key in keys:
                 raise ValueError(
-                    f"Two {signal} groups share the key {group.group_key!r}"
+                    f"Two {signal!r} groups share the key {group.group_key!r}"
                 )
             keys.add(group.group_key)
 

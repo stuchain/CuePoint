@@ -183,19 +183,19 @@ def check_destination(path: str) -> str:
     if form_of(destination) is None:
         raise SetListDestinationError(
             DESTINATION_NOT_SET_LIST,
-            f"A set list is saved as a .txt, .csv or .m3u8 file: {destination}",
+            f"A set list is saved as a .txt, .csv or .m3u8 file: {str(destination)!r}",
             destination,
         )
     if os.path.isdir(destination):
         raise SetListDestinationError(
             DESTINATION_IS_FOLDER,
-            f"That is a folder, not a file to save to: {destination}",
+            f"That is a folder, not a file to save to: {str(destination)!r}",
             destination,
         )
     if not os.path.isdir(os.path.dirname(destination)):
         raise SetListDestinationError(
             DESTINATION_FOLDER_MISSING,
-            f"The folder to save into does not exist: {destination}",
+            f"The folder to save into does not exist: {str(destination)!r}",
             destination,
         )
     return destination

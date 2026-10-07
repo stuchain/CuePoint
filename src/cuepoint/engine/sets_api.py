@@ -218,7 +218,7 @@ def _params(params: Dict[str, List[str]], allowed: Sequence[str]) -> Dict[str, s
     unknown = sorted(key for key in params if key not in allowed)
     if unknown:
         raise bad_request(
-            f"Unknown parameter {', '.join(unknown)}. This request takes: "
+            f"Unknown parameter {', '.join(unknown)!r}. This request takes: "
             + ", ".join(allowed)
         )
     single: Dict[str, str] = {}
@@ -267,7 +267,7 @@ def _only(data: Mapping[str, Any], allowed: Sequence[str]) -> None:
     unknown = sorted(str(key) for key in data if key not in allowed)
     if unknown:
         raise bad_request(
-            f"Unknown field {', '.join(unknown)}. This request takes: "
+            f"Unknown field {', '.join(unknown)!r}. This request takes: "
             + ", ".join(allowed)
         )
 
@@ -868,7 +868,7 @@ def set_list_save(data: Dict[str, Any]) -> Dict[str, Any]:
         raise ApiError(
             500,
             SET_LIST_WRITE_FAILED,
-            f"The set list could not be written to {path}: {exc.strerror or exc}",
+            f"The set list could not be written to {str(path)!r}: {exc.strerror or exc}",
             path=path,
         ) from exc
     return {"saved": saved.to_dict()}

@@ -1381,7 +1381,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                         # Continue to next query - don't let timeout block processing
                         timed_out = True
                         logger.info(
-                            f"[{idx}] DuckDuckGo search timeout for '{search_q}' (will use fallback methods): {e!r}"
+                            f"[{idx}] DuckDuckGo search timeout for {search_q!r} (will use fallback methods): {e!r}"
                         )
                         vlog(idx, f"[search] ddgs timeout (will use fallback): {e!r}")
                         # If the timeout looks like a TLS handshake/connect timeout, continuing to
@@ -1407,7 +1407,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                     else:
                         # Other errors (network, SSL, etc.) - log as warning
                         logger.warning(
-                            f"[{idx}] DuckDuckGo search error for '{search_q}': {e!r}",
+                            f"[{idx}] DuckDuckGo search error for {search_q!r}: {e!r}",
                             exc_info=True,
                         )
                         vlog(idx, f"[search] ddgs error for '{search_q}': {e!r}")

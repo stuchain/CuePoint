@@ -1,0 +1,3305 @@
+{
+  "cuepoint/core/entity_names.py::name_key::name_key needs text, got {type(name).__name__}": {
+    "holds": "a Python type name",
+    "verdict": "exempt",
+    "reason": "Python type names"
+  },
+  "cuepoint/core/entity_names.py::split_credit::split_credit needs text, got {type(credit).__name__}": {
+    "holds": "a Python type name",
+    "verdict": "exempt",
+    "reason": "Python type names"
+  },
+  "cuepoint/core/set_analysis.py::EntryFacts.__post_init__::file must be one of {FILE_STATES}, got {self.file!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/set_analysis.py::analyse::Entry {entry.entry_id} is in chapter {entry.chapter_id}, which is not one of the Set's chapters": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/core/set_analysis.py::transition_warning::Only a transition's warnings can be acknowledged, and {kind!r} is not one of {TRANSITION_KINDS}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/set_timing.py::format_time::A time cannot be negative: {seconds}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/core/set_timing.py::format_time::A time is a whole number of seconds, not {seconds!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/set_timing.py::parse_time::A time is text such as 3:45, not {text!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/set_timing.py::parse_time::{stripped!r} has {minutes} minutes: in h:mm:ss the minutes run from 00 to 59": {
+    "holds": "a number or count, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/core/set_timing.py::parse_time::{stripped!r} has {seconds} seconds: seconds run from 00 to 59": {
+    "holds": "a number or count, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/core/set_timing.py::parse_time::{stripped!r} is not a time: type minutes and seconds as m:ss (3:45) or hours, minutes and seconds as h:mm:ss (1:03:45)": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/set_timing.py::planned_seconds::An entry must come in before it goes out, got in {start}s and out {out_seconds}s": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/core/similarity.py::MusicalKey.__post_init__::minor must be True or False, got {self.minor!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/similarity.py::MusicalKey.__post_init__::pitch must be a pitch class 0-11, got {self.pitch!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/similarity.py::MusicalKey.from_camelot::{str(number) + str(letter)!r} is not a Camelot code": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/similarity.py::Traits.__post_init__::bpm must be a finite tempo, got {self.bpm!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/similarity.py::Traits.__post_init__::bpm must be a number, got {bpm!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/similarity.py::Traits.__post_init__::key must be a MusicalKey, got {self.key!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/similarity.py::rank::limit must be a positive whole number, got {limit!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/similarity.py::rank_fits::limit must be a positive whole number, got {limit!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/similarity.py::tempo_gap::A tempo is a positive number, got {bpm!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/similarity.py::tempo_relation::A tempo is a positive number, got {bpm!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/waveform.py::Waveform.__post_init__::columns must be 1 to 65535, not {self.columns!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/waveform.py::Waveform.__post_init__::duration_ms is out of range: {self.duration_ms!r}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/core/waveform.py::Waveform.__post_init__::{self.columns} columns need {self.columns * BAND_COUNT} bytes, not {len(self.data)}": {
+    "holds": "a length, a number or count, arithmetic on integers",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/core/waveform.py::decode::format version {version!r}, not {FORMAT_VERSION}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/waveform.py::decode::the body does not decompress: {exc}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "zlib.error text: a fixed phrase and a code, never data"
+  },
+  "cuepoint/core/waveform.py::decode::the body holds {len(planar)} bytes, not {expected}": {
+    "holds": "a length, a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/core/waveform.py::decode::{band_count} bands, not {BAND_COUNT}": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/core/waveform.py::downsample::width must be {MIN_WIDTH} to {columns}, not {width!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/waveform.py::expand::A level is 0 to {LEVELS}, not {level!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/core/waveform.py::reduce::A waveform has {BAND_COUNT} bands, not {len(bands)}": {
+    "holds": "a length, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/data/artwork.py::_base64::a picture is not valid base64: {exc}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "binascii.Error text: a fixed phrase about padding or length, never the data"
+  },
+  "cuepoint/data/artwork_image.py::ArtworkRefused.__init__::reason must be one of {REFUSAL_REASONS}, got {reason!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/artwork_image.py::decode_image::expected bytes, got {type(data).__name__}": {
+    "holds": "a Python type name",
+    "verdict": "exempt",
+    "reason": "Python type names"
+  },
+  "cuepoint/data/artwork_image.py::decode_image::not an allowed image format: {exc}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "Pillow error text such as \"cannot identify image file\": a fixed phrase, never the data"
+  },
+  "cuepoint/data/artwork_image.py::decode_image::{size} bytes is over the {MAX_INPUT_BYTES}-byte cap": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/data/artwork_image.py::decode_image::{source.format} is not allowed": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "cuepoint/data/artwork_image.py::decode_image::{width} × {height} is over the {MAX_PIXELS}-pixel cap": {
+    "holds": "a number or count, exception text, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/data/artwork_image.py::make_thumbnail::A thumbnail size is 1 to {MAX_THUMBNAIL_SIZE}, not {size!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/audio_decode.py::DecodeFailed.__init__::Not a file failure reason: {reason!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/audio_decode.py::Loudness.__post_init__::A {self.reason} loudness has no peak": {
+    "holds": "an enum-like value chosen by our code",
+    "verdict": "exempt",
+    "reason": "an enum value chosen by our code and already validated"
+  },
+  "cuepoint/data/audio_decode.py::Loudness.__post_init__::Not a loudness reason: {self.reason!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/audio_decode.py::Loudness.__post_init__::{name} must be a finite number, not {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/audio_decode.py::_check_source::could not be opened: {exc}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/audio_decode.py::_check_source::{source.suffix or 'no extension'!r} is not an audio format CuePoint decodes": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/audio_decode.py::_decode_in::could not read the decoder's output: {exc}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/audio_decode.py::_decode_in::could not run {decoder!r}: {exc}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/audio_decode.py::_decode_in::took longer than {timeout_seconds} seconds": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "cuepoint/data/audio_decode.py::_outcome::: {said[:200]!r}": {
+    "holds": "decoder error output, which can name the file path",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/audio_decode.py::_outcome::the analysis filters did not run as built (output {found}; expected {EXPECTED_OUTPUT})": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/data/audio_decode.py::decode_envelope::The {mode} transport does not work on {sys.platform}": {
+    "holds": "an enum-like value chosen by our code, the platform name",
+    "verdict": "exempt",
+    "reason": "an enum value chosen by our code and already validated; the platform name"
+  },
+  "cuepoint/data/audio_decode.py::decode_envelope::Unknown transport: {mode!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/audio_decode.py::decode_envelope::no decoder at {str(decoder_path)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/beatport_fixture.py::BeatportFixture._read::cannot read {name!r}: {exc}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/beatport_fixture.py::BeatportFixture._read::{name!r} is outside the fixture's folder": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/beatport_fixture.py::_api_entry::'{key}' must map names to plain values": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/beatport_fixture.py::_api_entry::a {method} entry matches on '{key}', not '{other}'": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/beatport_fixture.py::_api_entry::an api entry does not take {', '.join(sorted(unknown))!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/beatport_fixture.py::_api_entry::an api entry's delay_ms is 0 to {MAX_DELAY_MS}": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/data/beatport_fixture.py::_mapping::{what} must map URLs to file names": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/data/beatport_fixture.py::_strings::{what} must be a list of strings": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/data/beatport_fixture.py::active::{ENV_VAR} names {raw!r}, which is not there": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/beatport_fixture.py::load::cannot read {str(path)!r}: {exc}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/playlist_file.py::parse_m3u::Playlist file not found: {playlist_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/providers.py::get_active_provider::{F001_PROVIDER_MISSING}: Provider '{name}' not found. Available: {available}": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/rekordbox.py::_iter_collection_elements::XML file not found: {xml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/rekordbox.py::_iter_collection_elements::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/data/rekordbox.py::collection_entry_count::XML file not found: {xml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/rekordbox.py::collection_entry_count::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/data/rekordbox.py::get_playlist_track_ids::Playlist not found: {playlist_name!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/rekordbox.py::get_track_locations::XML file not found: {xml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/rekordbox.py::get_track_locations::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/data/rekordbox.py::iter_playlist_nodes::XML file not found: {xml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/rekordbox.py::iter_playlist_nodes::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/data/rekordbox.py::parse_playlist_tree::XML file not found: {xml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/rekordbox.py::parse_playlist_tree::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/data/rekordbox.py::parse_rekordbox::XML file not found: {xml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/rekordbox.py::parse_rekordbox::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/data/rekordbox_export.py::_document_encoding::Unsupported XML encoding {declared!r}: CuePoint can export only UTF-8 or ASCII Rekordbox collections. Re-export the collection from Rekordbox and import it again.": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/rekordbox_export.py::_emit::Refusing to export a playlist tree more than {MAX_EXPORT_DEPTH} levels deep: something has gone wrong with the folder structure.": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/data/rekordbox_export.py::_plan::XML file not found: {source_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/rekordbox_export.py::_plan::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/data/rekordbox_export.py::_scan_document::The collection XML is not well-formed: {exc}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "ElementTree ParseError text: a fixed phrase with a line and column, never the content"
+  },
+  "cuepoint/data/rekordbox_export.py::refuse_source_as_destination::Refusing to write the export over the collection it was read from: {destination_path!r}. Choose a different file.": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/set_list_file.py::SetListRow.__post_init__::file_status must be one of {FILE_STATES}, got {self.file_status!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/set_list_file.py::_chapters_by_position::Entry {row.position + 1} is in chapter {row.chapter + 1}, which the set list does not have": {
+    "holds": "arithmetic on integers",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/data/set_list_file.py::render::A set list is one of {FORMATS}, not {form!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/tag_fields.py::_checked::A field value is a mapping of slots or None, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/tag_fields.py::_load_id3::{str(path)!r} is not a file": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/tag_fields.py::_require_format::{Path(str(path)).suffix or 'A file with no extension'!r} is not a format whose tags CuePoint writes": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/tag_fields.py::_slots_for::Unknown tag format {tag_format!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/tag_fields.py::embed_front_cover::A picture could not be embedded in {str(path)!r}: {exc}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/tag_fields.py::embed_front_cover::{str(path)!r} already holds a picture": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/tag_fields.py::predicted_value::A {field} to write cannot be blank": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/data/tag_fields.py::read_tag_fields::The tags of {str(path)!r} could not be read: {exc}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/tag_fields.py::remove_picture::A picture could not be removed from {str(path)!r}: {exc}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/tag_fields.py::require_field::{field!r} is not a tag field. Fields: {', '.join(TAG_FIELDS)}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/data/tag_fields.py::restore_tag_fields::The tags of {str(path)!r} could not be written: {exc}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/clean_api.py::_only::Unknown field {', '.join(unknown)!r}. This request takes: ": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/clean_api.py::_optional_bool::{key} must be true or false, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/clean_api.py::_path_int::{what} must be a number, not {raw!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/clean_api.py::_query_bool::{name} must be true or false, not {raw!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/clean_api.py::_query_int::{name} must be a number, not {raw!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/clean_api.py::_query_value::{name} may be given once": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/clean_api.py::_require_int::{key} is required and must be a whole number, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/clean_api.py::_require_str::{key} is required and must be a non-empty string": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/clean_api.py::_require_track::No track with id {track_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/clean_api.py::_track_row::No track with id {track_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/clean_api.py::attempt_candidates::No match attempt with id {attempt_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/clean_api.py::decide::A {decision} names no candidate": {
+    "holds": "an enum-like value chosen by our code",
+    "verdict": "exempt",
+    "reason": "an enum value chosen by our code and already validated"
+  },
+  "cuepoint/engine/clean_api.py::decide::decision must be one of {', '.join(DECISIONS)}, not {decision!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/clean_api.py::export_review::A {file_format} export is written to a {suffix} file": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "cuepoint/engine/clean_api.py::export_review::file_path must be an absolute path, not {file_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/clean_api.py::export_review::format must be one of csv, json, excel, not {data.get('format')!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/clean_api.py::export_review::{path.name!r} already exists. Send overwrite to replace it": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/clean_api.py::export_review::{str(file_path)!r} is not a file": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_body_choice::{key} must be one of {', '.join(allowed)}, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_existing_run::No discovery run {run_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/discover_api.py::_id_in_path::A {what} id is a positive whole number, not {raw!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_ids::{key} must be a list of Beatport track ids": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/discover_api.py::_only::Unknown field {', '.join(unknown)!r}. This request takes: {takes}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_optional_bool::{key} must be true or false, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_optional_date::{key} is not a date: {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_optional_date::{key} must be a date written YYYY-MM-DD, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_optional_int::{key} must be a whole number, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_optional_list::{key} must be a list, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_optional_text::{key} must be text, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_params::Unknown parameter {', '.join(unknown)!r}. This request takes: {takes}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_params::{key} may be given once": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/discover_api.py::_query_bool::{name} must be true or false, not {query[name]!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_query_choice::{name} must be one of {', '.join(allowed)}, not {raw!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_query_required::{name} is required": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/discover_api.py::_required::{key} is required": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/discover_api.py::_whole::{name} must be a whole number, not {raw!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::_whole::{name} must be from {low} to {high}, not {value}": {
+    "holds": "a number or count, exception text, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/discover_api.py::playlist_start::Discovery run {run_id} shows no tracks to push": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/discover_api.py::playlist_start::run_id is a positive whole number, not {run_id!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::playlist_start::{key} goes with run_id, not with track_ids": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/discover_api.py::run_delete::Discovery run {run_id} is still running; cancel it first": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/discover_api.py::run_delete::No discovery run {run_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/discover_api.py::wantlist_bought::bought must be true or false, not {bought!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/discover_api.py::wantlist_note::note must be text or null, not {note!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/library_api.py::library_track_detail::No track with id {track_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/library_api.py::parse_collection_id::collection_id must be a number, not {raw!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/library_api.py::parse_direction::dir must be 'asc' or 'desc', not {raw!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/library_api.py::parse_fields::fields may only be {allowed}, not {raw!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/library_api.py::parse_filters_param::filters must be a JSON object: {exc}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "JSONDecodeError text: a fixed phrase with a position, never the content"
+  },
+  "cuepoint/engine/library_api.py::parse_int_param::{name} must be an integer": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/library_api.py::parse_mode::mode must be {' or '.join(MODES)}, not {raw!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/library_api.py::parse_playlist_id::playlist_id must be a number, not {raw!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/library_api.py::parse_scope::scope may only be {allowed}, not {raw!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/library_api.py::parse_sort::Cannot sort by {raw!r}. Sortable columns: {valid}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/library_api.py::resolve_scope::scope={scope!r} needs a collection_id": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "cuepoint/engine/library_api.py::validate_import_path::No such file: {xml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/library_api.py::validate_import_path::Not a Rekordbox XML export: {path.name!r}. In Rekordbox, use File > Export Collection in xml format.": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/library_api.py::validate_import_path::Not a file: {xml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/organization_api.py::_optional_str::{key} must be a string, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/organization_api.py::_path_int::{what} must be a number, not {raw!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/organization_api.py::_query_int::{name} is required": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/organization_api.py::_query_int::{name} must be a number, not {raw!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/organization_api.py::_require_ids::{key} must be a non-empty list of ids": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/organization_api.py::_require_ids::{key} must hold numbers, not {item!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/organization_api.py::_require_int::{key} is required and must be a number": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/organization_api.py::_require_int::{key} must be a number, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/organization_api.py::_require_str::{key} is required and must be a non-empty string": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/organization_api.py::_rule_set::{key} must be a rule set object": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/organization_api.py::create_collection::kind may only be {allowed} or {CREATABLE_KINDS[-1]!r}, not {kind!r}; a smart collection is created by saving its rules": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/organization_api.py::set_track_metadata::No track with id {track_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/organization_api.py::set_track_metadata::favorite must be true or false, not {favorite!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/organization_api.py::track_history::No track with id {track_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/rekordbox_export_api.py::_only::Unknown field {', '.join(unknown)!r}. This request takes: ": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/rekordbox_export_api.py::_query_limit::limit must be a number, not {raw!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/rekordbox_export_api.py::parse_collection_ids::collection_ids must be a list of collection ids, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/rekordbox_export_api.py::parse_collection_ids::collection_ids must hold whole numbers only, not {item!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/rekordbox_export_api.py::parse_destination::destination_path must be text, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/rekordbox_export_api.py::parse_key_format::key_format must be text, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/server.py::EngineConfig.__post_init__::Host must be loopback only (got {self.host!r}); allowed: {sorted(ALLOWED_HOSTS)}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/server.py::EngineConfig.__post_init__::Port out of range: {self.port}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/server.py::EngineConfig.from_env::CUEPOINT_HOST must be loopback only (got {host!r}); allowed: {sorted(ALLOWED_HOSTS)}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/server.py::EngineConfig.from_env::Invalid CUEPOINT_PORT: {port_raw!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/server.py::run_engine::Refusing to bind engine to non-loopback host: {cfg.host!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/sets_api.py::_bpm::{name} must be a number, not {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/sets_api.py::_id::{name} must be a positive whole number, not {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/sets_api.py::_id::{name} must be a whole number, not {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/sets_api.py::_only::Unknown field {', '.join(unknown)!r}. This request takes: ": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/sets_api.py::_params::Unknown parameter {', '.join(unknown)!r}. This request takes: ": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/sets_api.py::_params::{key} may be given once": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/sets_api.py::_position::{name} cannot be negative, not {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/sets_api.py::_position::{name} is required": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/sets_api.py::_position::{name} must be a whole number, not {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/sets_api.py::_present::{name} is required; send null to clear it": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/sets_api.py::_query_id::{name} is required": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/sets_api.py::_require_chapter::There is no chapter {chapter_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/sets_api.py::_require_entry::There is no entry {entry_id} in a Set": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/sets_api.py::_require_set::There is no Set {set_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/sets_api.py::_required_id::{name} is required": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/sets_api.py::_source::A {kind} source names its id, not track_ids": {
+    "holds": "an enum-like value chosen by our code",
+    "verdict": "exempt",
+    "reason": "an enum value chosen by our code and already validated"
+  },
+  "cuepoint/engine/sets_api.py::_source::source.kind must be one of {', '.join(SET_SOURCES)}, not {kind!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/sets_api.py::_text::{name} must be text, not {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/sets_api.py::_whole::{name} must be a whole number, not {raw!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/sets_api.py::_whole::{name} must be from {low} to {high}, not {value}": {
+    "holds": "a number or count, exception text, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/sets_api.py::set_list_save::The set list could not be written to {str(path)!r}: {exc.strerror or exc}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/sets_api.py::suggestions::against must be one of {', '.join(SIDES)}, not {against!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/waveforms_api.py::_flag::{name} must be 0 or 1, not {raw!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/waveforms_api.py::_id::Each track id must be a whole number above 0, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/waveforms_api.py::_no_params::This route takes no parameters, not {', '.join(sorted(params))!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/waveforms_api.py::_only::This route takes no fields {', '.join(unknown)!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/waveforms_api.py::_params::Unknown parameter: {', '.join(unknown)!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/waveforms_api.py::_params::{name} must be given once": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/waveforms_api.py::_query_ids::track_ids must be whole numbers above 0, separated by commas, not {part!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/waveforms_api.py::_unique::At most {limit} track ids at once, not {len(wanted)}": {
+    "holds": "a length, a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/waveforms_api.py::_width::width must be a whole number from {MIN_WIDTH} to {COLUMNS}": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/models/beatport_cache.py::CachedBeatportTrack.__post_init__::bpm must be positive, got {bpm}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "cuepoint/models/beatport_listing.py::BeatportListing.__post_init__::beatport_id is beyond {MAX_BEATPORT_ID}": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/models/collection.py::Collection.__post_init__::A collection tree may be at most {MAX_COLLECTION_DEPTH} deep, got {self.depth}": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/models/collection.py::Collection.__post_init__::kind must be one of {KINDS}, got {self.kind!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/collection.py::_non_negative::{name} cannot be negative: {number}": {
+    "holds": "a number or count, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/collection.py::_non_negative::{name} must be a number, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/collection.py::normalize_collection_name::A collection name may be at most {MAX_COLLECTION_NAME_LENGTH} characters, got {len(name)}": {
+    "holds": "a length, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/models/config.py::load_config_from_yaml::Configuration file not found: {yaml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/config.py::load_config_from_yaml::Setting {key} expects {type(default_value).__name__}, got {type(value).__name__} ({value!r})": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/config.py::load_config_from_yaml::YAML file must contain a dictionary at root level: {yaml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/discovery_run.py::DiscoveryRun.__post_init__::labels_resolved ({self.labels_resolved}) cannot exceed labels_in_scope ({self.labels_in_scope})": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/models/discovery_run.py::_json_object::{name} is not valid JSON": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/discovery_run.py::_json_object::{name} must be JSON text, got {type(value).__name__}": {
+    "holds": "a Python type name, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/discovery_run.py::_json_object::{name} must be a JSON object": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/duplicate_group.py::DuplicateGroup.__post_init__::member_hash must be a SHA-256 in hex, got {self.member_hash!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/entity_page.py::EntityRef.__post_init__::A name key is at most {MAX_NAME_KEY_LENGTH} characters": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/models/entity_page.py::_beatport_id::{name} is a whole number, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/entity_page.py::_beatport_id::{name} is from 1 to {MAX_BEATPORT_ID}, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/entity_page.py::parse_entity_ref::A Beatport reference is bp:<id>, got {token!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/entity_page.py::parse_entity_ref::A reference is bp:<id> or name:<key>, got {token!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/entity_page.py::parse_entity_ref::A reference is text, got {token!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/file_status.py::TrackFileStatus.__post_init__::Only a missing file has a reason, not a {self.status!r} one": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/file_write.py::FileWrite.__post_init__::A {self.outcome} row is never pending": {
+    "holds": "an enum-like value chosen by our code",
+    "verdict": "exempt",
+    "reason": "an enum value chosen by our code and already validated"
+  },
+  "cuepoint/models/file_write.py::FileWrite.__post_init__::A {self.outcome} write must say why": {
+    "holds": "an enum-like value chosen by our code",
+    "verdict": "exempt",
+    "reason": "an enum value chosen by our code and already validated"
+  },
+  "cuepoint/models/file_write.py::_json_or_none::{name} is not valid JSON": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/file_write.py::_json_or_none::{name} must be JSON text, got {type(value).__name__}": {
+    "holds": "a Python type name, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/filter_rule.py::FieldSpec.__post_init__::{self.name}: only a beatport field names an identity": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/filter_rule.py::FieldSpec.__post_init__::{self.name}: {self.identity!r} is not an identity kind": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/filter_rule.py::FilterRule._validated_list::{spec.label} 'any of' needs at least one value": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/filter_rule.py::FilterRule._validated_list::{spec.label} 'between' needs exactly two values, got {len(values)}": {
+    "holds": "a length, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/filter_rule.py::FilterRule._validated_list::{spec.label} {operator!r} needs a list of values, got {self.value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::FilterRule._validated_value::{spec.label} {operator!r} takes no value, got {self.value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::FilterRule.from_dict::A filter rule must be an object, got {payload!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::FilterRule.from_dict::A filter rule needs {' and '.join(missing)}: {dict(payload)!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::FilterRule.validated::{spec.label} cannot be filtered with {self.operator!r}. Allowed for a {spec.type} field: {allowed}": {
+    "holds": "an enum-like value chosen by our code, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value; an enum value chosen by our code and already validated"
+  },
+  "cuepoint/models/filter_rule.py::RuleSet.from_dict::A filter must be an object, got {payload!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::RuleSet.from_dict::rules must be a list, got {raw_rules!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::RuleSet.validated::match must be {' or '.join((repr(m) for m in MATCH_MODES))}, not {self.match!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_beatport_id::{spec.label} needs a Beatport id, and {value!r} is too large to be one": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_beatport_id::{spec.label} needs a Beatport id, not {value!r} ({operator})": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_beatport_id::{spec.label} needs a positive id, not {value!r} ({operator})": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_bool::{spec.label} is yes or no, not {value!r} ({operator})": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_choice::{spec.label} is never {text!r} ({operator}). It is one of: ": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_id::{spec.label} is identified by a whole number, and {value!r} is not one": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_id::{spec.label} needs a positive id, not {value!r} ({operator})": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_id::{spec.label} needs a real id, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_id::{spec.label} needs an id, not {value!r} ({operator})": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_name::{spec.label} {operator!r} needs a name": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_number::{spec.label} is a whole number; {value!r} is not": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_number::{spec.label} needs a number, not {value!r} ({operator})": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_number::{spec.label} needs a real number, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_text::{spec.label} needs a value, not {value!r} ({operator})": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_text::{spec.label} {operator!r} needs something to match against": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/filter_rule.py::field_spec::Cannot filter by {name!r}. Filterable fields: {known}": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/library_track.py::LibraryTrack.__post_init__::bpm out of range: {self.bpm!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/library_track.py::LibraryTrack.__post_init__::rating must be a star count 0-5, got {self.rating!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/match_attempt.py::MatchCandidate.__post_init__::{name} must be between 0 and 100, got {similarity}": {
+    "holds": "a number or count, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/match_attempt.py::MatchPlan.__post_init__::A plan cannot leave out {self.excluded} of {self.selected} tracks": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/models/match_attempt.py::ResumableMatch.__post_init__::A resumable job has between 1 and {self.plan.planned} tracks left, not {self.remaining}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/models/match_attempt.py::_json_text::{name} is not valid JSON": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/match_attempt.py::_json_text::{name} is required": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/match_attempt.py::_json_text::{name} must be JSON text, got {type(value).__name__}": {
+    "holds": "a Python type name, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/match_attempt.py::_json_text::{name} must be a JSON {kind.__name__}": {
+    "holds": "a Python type name, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/rekordbox_export.py::RekordboxExport.__post_init__::changed_track_count ({self.changed_track_count}) cannot exceed track_count ({self.track_count})": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/models/rekordbox_export.py::_json_or_none::{name} is not valid JSON": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/rekordbox_export.py::_json_or_none::{name} must be JSON text, got {type(value).__name__}": {
+    "holds": "a Python type name, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/rekordbox_playlist.py::RekordboxPlaylist.__post_init__::depth cannot be negative: {self.depth}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/models/rekordbox_playlist.py::RekordboxPlaylist.__post_init__::kind must be one of {KINDS}, got {self.kind!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/rekordbox_playlist.py::RekordboxPlaylist.__post_init__::position cannot be negative: {self.position}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/models/row_values.py::flag::{name} must be true or false, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/row_values.py::https_url::{name} must be an https:// URL, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/row_values.py::non_negative::{name} cannot be negative: {number}": {
+    "holds": "a number or count, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/row_values.py::number::{name} is required": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/row_values.py::one_of::{name} must be one of {tuple(allowed)}, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/row_values.py::optional_id::{name} must be a positive id, got {row_id!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/row_values.py::optional_iso_date::{name} must be a YYYY-MM-DD date, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/row_values.py::optional_number::{name} must be a finite number, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/row_values.py::optional_number::{name} must be a number, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/row_values.py::required_id::{name} is required": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/row_values.py::required_text::{name} is required, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/row_values.py::whole_number::{name} must be a whole number, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/set_plan.py::SetAcknowledgement.__post_init__::warning must be a warning's name, got {warning!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/set_plan.py::SetChapter.__post_init__::A chapter's BPM range must run upwards, got {self.bpm_min} to {self.bpm_max}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/models/set_plan.py::SetEntryPlan.__post_init__::An entry must come in before it goes out, got in {self.in_seconds}s and out {self.out_seconds}s": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/models/set_plan.py::SetEntryPlan.__post_init__::in_seconds cannot be negative: {self.in_seconds}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/models/set_plan.py::_json_object::{name} must be JSON text, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/set_plan.py::_json_object::{name} must be a JSON object, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/set_plan.py::_positive_bpm::{name} must be more than zero, got {bpm}": {
+    "holds": "exception text, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/set_plan.py::_positive_seconds::{name} must be more than zero seconds, got {seconds}": {
+    "holds": "a number or count, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/set_plan.py::normalize_chapter_name::A chapter name may be at most {MAX_CHAPTER_NAME_LENGTH} characters, got {len(name)}": {
+    "holds": "a length, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/models/set_suggestions.py::SetSuggestions.__post_init__::sides must be some of {SIDES}, got {self.sides!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/tag.py::normalize_tag_category::A tag category may be at most {MAX_TAG_CATEGORY_LENGTH} characters, got {len(category)}": {
+    "holds": "a length, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/models/tag.py::normalize_tag_colour::A tag colour must be one of {known}, got {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/tag.py::normalize_tag_name::A tag name may be at most {MAX_TAG_NAME_LENGTH} characters, got {len(name)}": {
+    "holds": "a length, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/models/track.py::Track.__post_init__::Track year must be between 1900 and {datetime.now().year + 1}": {
+    "holds": "a year",
+    "verdict": "exempt",
+    "reason": "a year"
+  },
+  "cuepoint/models/track_clean_state.py::TrackCleanState.__post_init__::match_score must be a number, not {self.match_score!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_credit.py::DerivedIndex.__post_init__::version starts at 1, got {version!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_marks.py::BeatGridMarker.__post_init__::beat must be 1-4 or None, got {beat!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_marks.py::BeatGridMarker.__post_init__::bpm must be above zero, got {bpm}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "cuepoint/models/track_marks.py::TrackCue.__post_init__::end_ms must be after start_ms, got {end} <= {start}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/models/track_marks.py::TrackCue.__post_init__::hot_cue must be 0-7 or None, got {hot_cue!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_marks.py::TrackMarks.__post_init__::{name} must be in position order, got {positions}": {
+    "holds": "exception text, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/track_marks.py::_mark_ms::{name} must be at most {MAX_MARK_MS}, got {ms!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_marks.py::_optional_color::color must be #rrggbb in lower case, got {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_marks.py::_optional_name::name must be text, got {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_metadata.py::normalize_notes::A note may be at most {MAX_NOTES_LENGTH} characters, got {len(text)}": {
+    "holds": "a length, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/models/track_metadata.py::normalize_override_bpm::The bpm override must be a finite number, got {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_metadata.py::normalize_override_bpm::The bpm override must be a number, got {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_metadata.py::normalize_override_text::The {name} override must be text, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_metadata.py::normalize_override_year::The year override must be a whole number, got {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_metadata.py::normalize_rating::Rating must be a number of stars, got {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_metadata.py::normalize_rating::Rating must be a whole number of stars, got {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/track_metadata.py::normalize_rating::Rating must be between {MIN_RATING} and {MAX_RATING} stars, got {stars!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/wantlist.py::WantlistEntry.__post_init__::A note is at most {MAX_NOTE_LENGTH} characters, got {len(self.note)}": {
+    "holds": "a length, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/models/waveform.py::StoredLoudness.__post_init__::A {self.reason} loudness has no peak": {
+    "holds": "an enum-like value chosen by our code",
+    "verdict": "exempt",
+    "reason": "an enum value chosen by our code and already validated"
+  },
+  "cuepoint/models/waveform.py::WaveformAnswer.__post_init__::{self.width} columns need {self.width * 4} bytes": {
+    "holds": "a number or count, arithmetic on integers",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/models/waveform.py::WaveformState.__post_init__::A {self.state} waveform state has no reason": {
+    "holds": "an enum-like value chosen by our code",
+    "verdict": "exempt",
+    "reason": "an enum value chosen by our code and already validated"
+  },
+  "cuepoint/models/waveform.py::WaveformState.__post_init__::A {self.state} waveform state needs a reason": {
+    "holds": "an enum-like value chosen by our code",
+    "verdict": "exempt",
+    "reason": "an enum value chosen by our code and already validated"
+  },
+  "cuepoint/models/waveform.py::_measure::{name} must be a number, not {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/waveform.py::_measure::{name} must be finite, not {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/beatport_catalog_repository.py::BeatportCatalogRepository.entity_name::No entity of kind {kind!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/beatport_catalog_repository.py::BeatportCatalogRepository.entity_tracks::A window is 1 to {MAX_ENTITY_WINDOW} tracks from offset 0 or later": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/persistence/beatport_catalog_repository.py::BeatportCatalogRepository.entity_tracks::No entity of kind {kind!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/beatport_catalog_repository.py::BeatportCatalogRepository.entity_tracks::owned must be one of {OWNED_FILTERS}, got {owned!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/collection_repository.py::CollectionRepository._append::Set {collection_id} has no chapter": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/collection_repository.py::CollectionRepository._chapter_for_slot::Chapter {named} is not a chapter of this Set": {
+    "holds": "an int() result",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/collection_repository.py::CollectionRepository._chapter_for_slot::Set {set_id} has no chapter": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/collection_repository.py::CollectionRepository._chapter_for_slot::{_chapter_label(chapter)} does not reach position {position + 1}: the entry {'before' if too_early else 'after'} it is in {_chapter_label(neighbour)}, and a chapter's entries stay together": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/collection_repository.py::CollectionRepository.duplicate_set::Entry {entry.id} of Set {set_id} has no chapter": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.delete_run::Discovery run {run_id} is still running": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.finish_run::Discovery run {run_id} has already ended": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.finish_run::No discovery run {run_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.record_found::Not a count a run records here: {sorted(unknown)}": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.run_track_ids::owned must be one of {OWNED_FILTERS}, got {owned!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.run_track_ids::sort must be one of {RUN_TRACK_SORTS}, got {sort!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.run_tracks::A window is 1 to {MAX_WINDOW} tracks from offset 0 or later": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.run_tracks::owned must be one of {OWNED_FILTERS}, got {owned!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.run_tracks::sort must be one of {RUN_TRACK_SORTS}, got {sort!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.update_counts::Not a count a run records here: {sorted(counts)}": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/discovery_repository.py::_require_running::Discovery run {run_id} has already ended": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/discovery_repository.py::_require_running::No discovery run {run_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/duplicate_repository.py::DuplicateRepository.replace_signal::A {group.signal} group cannot replace {signal!r} groups": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/duplicate_repository.py::DuplicateRepository.replace_signal::Two {signal!r} groups share the key {group.group_key!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/duplicate_repository.py::DuplicateRepository.replace_signal::signal must be one of {SIGNALS}, got {signal!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/filter_sql.py::_compile_beatport::{spec.label} names no Beatport identity": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/filter_sql.py::_compile_membership::{spec.label} cannot be filtered with {operator!r} — the filter model allows it but the query builder does not implement it": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/filter_sql.py::_compile_values::{spec.label} cannot be filtered with {operator!r} — the filter model allows it but the query builder does not implement it": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/filter_sql.py::_link::{spec.label} is not a membership field": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/filter_sql.py::_values::{spec.label} is not a multi-valued field": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/filter_sql.py::compile_rule::{spec.label} cannot be filtered with {operator!r} — the filter model allows it but the query builder does not implement it": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/match_job_repository.py::MatchJobRepository.create::A match plan cannot hold {len(ids)} tracks from a selection of {selected}": {
+    "holds": "a length, a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/match_job_repository.py::MatchJobRepository.mark_done::Position {position} of match job {job_id} is not waiting": {
+    "holds": "a number or count, an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/match_job_repository.py::MatchJobRepository.take_over::Match job {from_job_id} has nothing left to resume": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/match_job_repository.py::MatchJobRepository.take_over::No match job {from_job_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/match_job_repository.py::_insert_plan::Match job {plan.job_id} already has a plan": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/match_repository.py::_check_evidence::Attempt {match.attempt_id} does not exist": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/match_repository.py::_check_evidence::Attempt {match.attempt_id} is track {owner}'s, not track {match.track_id}'s": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/match_repository.py::_check_evidence::Attempt {match.newer_attempt_id} does not exist": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/match_repository.py::_check_evidence::Attempt {match.newer_attempt_id} is older than attempt {match.attempt_id}, so it cannot be the newer one": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/match_repository.py::_check_evidence::Attempt {match.newer_attempt_id} is track {newer_owner}'s, not track {match.track_id}'s": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/match_repository.py::_check_evidence::Candidate {match.candidate_id} does not exist": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/match_repository.py::_check_evidence::Candidate {match.candidate_id} is from attempt {row['attempt_id']}, not attempt {match.attempt_id}: a decision rests on the attempt its candidate came from": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/playlist_repository.py::PlaylistRepository.replace_tree::playlist node {node.rekordbox_path!r} arrived at depth {node.depth} before any node at depth {node.depth - 1}; nodes must be supplied parents-first": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/rule_references.py::_check_collections::{_clause(spec, rule)} names Collection {identifier}, which no longer exists": {
+    "holds": "exception text, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/rule_references.py::_check_collections::{_clause(spec, rule)} names {row['name']!r}, which is a Smart Collection. A rule can filter on what a track is filed in, not on what another rule currently answers": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/rule_references.py::_check_tags::{_clause(spec, rule)} names tag {identifier}, which no longer exists": {
+    "holds": "exception text, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/set_integrity.py::check_set::Set {set_id} has no chapter": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/set_integrity.py::check_set::Set {set_id}'s chapters are out of order in its entries": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/set_integrity.py::check_set::Set {set_id}'s {chapters} chapters are not numbered 0 to {chapters - 1}": {
+    "holds": "a number or count, an integer id, arithmetic on integers",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/set_integrity.py::check_set::{row['unplanned']} entries of Set {set_id} have no chapter": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/set_repository.py::SetRepository.delete_chapter::Chapter {chapter_id} is the only chapter of Set {set_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/similarity_repository.py::SimilarityRepository.spellings::{field!r} is not a field a pre-selection spells": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_credit_repository.py::TrackCreditRepository.library_name::No name of kind {kind!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_credit_repository.py::TrackCreditRepository.linked_names::No identity of kind {kind!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_credit_repository.py::TrackCreditRepository.unresolved_owned::No name of kind {kind!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_credit_repository.py::identity_tracks_sql::No identity of kind {kind!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_metadata_repository.py::TrackMetadataRepository.set_override::{field!r} is not an override field": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_query.py::BrowseQuery.validated::Cannot sort by {sort!r}. Sortable columns: {valid}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_query.py::BrowseQuery.validated::Collection must be identified by a number, not {self.collection_id!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_query.py::BrowseQuery.validated::Playlist must be identified by a number, not {self.playlist_id!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_query.py::BrowseQuery.validated::Sort direction must be 'asc' or 'desc', not {self.direction!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_query.py::BrowseQuery.validated::Sorting by {sort!r} needs a collection; a track has no position in a library, only in a collection": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_query.py::BrowseQuery.validated::Sorting by {sort!r} needs a playlist; a track has no position in a library, only in a playlist": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_query.py::_column_facet_spec::{spec.label} is not a column; its facet is built by build_tag_facet_values": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/track_query.py::_joins::No join is registered for {sorted(unknown)}": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/track_query.py::build_facet_range::{spec.label} is a {spec.type} field; a range needs a number field": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/wantlist_repository.py::WantlistRepository.page::A window is 1 to {MAX_WINDOW} entries from offset 0 or later": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/persistence/wantlist_repository.py::WantlistRepository.page::bought must be one of {BOUGHT_FILTERS}, got {bought!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/wantlist_repository.py::WantlistRepository.page::owned must be one of {OWNED_FILTERS}, got {owned!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/wantlist_repository.py::WantlistRepository.page::sort must be one of {WANTLIST_SORTS}, got {sort!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/activity_service.py::ActivityService.apply_field_change::Field is not editable through history: {field_name!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/activity_service.py::ActivityService.revert_field_change::Field is CuePoint's own, not Rekordbox's: {change.field_name!r}. It is reverted as a CuePoint field": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/activity_service.py::ActivityService.revert_field_change::Field is not revertable: {change.field_name!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/activity_service.py::ActivityService.revert_field_change::Track no longer exists: {change.track_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/activity_service.py::ActivityService.revert_field_change::Unknown field change: {change_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/artwork_cache.py::ArtworkCache.__init__::The artwork cache needs a positive cap, not {max_bytes!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/artwork_cache.py::ArtworkCache.path_for::A thumbnail size is a positive whole number, not {size!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/artwork_cache.py::ArtworkCache.path_for::An artwork cache key is a SHA-256 in hex, not {key!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/artwork_service.py::ArtworkScanResult.__post_init__::An artwork scan of {self.total} tracks cannot finish {self.completed}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/artwork_service.py::ArtworkScanResult.__post_init__::trigger must be one of {TRIGGERS}, got {self.trigger!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/artwork_service.py::ArtworkService.scan::trigger must be one of {TRIGGERS}, got {trigger!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/artwork_service.py::ArtworkService.thumbnail::There is no track {track_id} in the library": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/artwork_service.py::size_pixels::Artwork comes in the sizes {sorted(THUMBNAIL_SIZES)}, not {size!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/backup_service.py::BackupService.create_backup::Could not create a database backup: {exc}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/backup_service.py::BackupService.restore:: as {safety.name}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "cuepoint/services/backup_service.py::BackupService.restore::Restoring the backup failed: {exc}. The database from before the restore was saved first": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/backup_service.py::BackupService.verify_backup::Backup file not found: {str(path)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/backup_service.py::BackupService.verify_backup::This backup could not be read: {exc}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path"
+  },
+  "cuepoint/services/backup_service.py::BackupService.verify_backup::This backup failed its integrity check: {result}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "cuepoint/services/batch_service.py::BatchOperation.validated::Favorite must be true or false, not {self.value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/batch_service.py::BatchOperation.validated::Unknown batch operation {self.kind!r}. Known operations: {known}": {
+    "holds": "an enum-like value chosen by our code, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value; an enum value chosen by our code and already validated"
+  },
+  "cuepoint/services/batch_service.py::BatchOperation.validated::{kind} takes no value, not {self.value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/batch_service.py::BatchResult.__post_init__::A batch cannot account for {self.completed} of {self.total} tracks": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/batch_service.py::BatchResult.__post_init__::A batch that was not cancelled accounts for every track it resolved: {self.completed} of {self.total}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/batch_service.py::_Tagging.target::No such tag: {self._tag_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/batch_service.py::_as_id::{kind} needs an id, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/batch_service.py::_listed::apply_match needs a list of fields, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/batch_service.py::_require_collection_named::No such collection: {collection_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/beatport_api.py::BeatportApi.add_track_to_playlist::Not a Beatport playlist id: {playlist_id!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/beatport_api_client.py::BeatportApiClient._request::Beatport API error: {resp.status_code}": {
+    "holds": "an HTTP status code",
+    "verdict": "exempt",
+    "reason": "an HTTP status"
+  },
+  "cuepoint/services/beatport_api_client.py::BeatportApiClient._request::Beatport API response too large ({body_len} bytes)": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/beatport_api_client.py::BeatportApiClient.post._post::Beatport API redirected a POST to {path!r} ({resp.status_code}); the path is wrong": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/beatport_ownership.py::requested_track_ids::A Beatport track id is a positive whole number, got {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/beatport_ownership.py::requested_track_ids::At most {limit} Beatport tracks at a time": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/beatport_playlist_service.py::BeatportPlaylistService._name::A playlist name is at most {MAX_PLAYLIST_NAME_LENGTH} characters": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/services/beatport_playlist_service.py::BeatportPlaylistService._name::A playlist name is text, got {type(name).__name__}": {
+    "holds": "a Python type name",
+    "verdict": "exempt",
+    "reason": "Python type names"
+  },
+  "cuepoint/services/beatport_playlist_service.py::BeatportPlaylistService.plan::all {_tracks(len(ids))}": {
+    "holds": "a track count phrase",
+    "verdict": "exempt",
+    "reason": "a count phrase"
+  },
+  "cuepoint/services/beatport_playlist_service.py::BeatportPlaylistService.plan::include_owned is true or false, got {include_owned!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/beatport_resolve_service.py::BeatportResolveService.__init__::batch_size must be at least 1, got {batch_size!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/beatport_resolve_service.py::BeatportResolveService.__init__::max_consecutive_failures must be at least 1, got {max_consecutive_failures!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._check_destination::That would put part of {node.name!r} deeper than {MAX_COLLECTION_DEPTH} levels": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._check_destination::{node.name!r} cannot be moved inside itself": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._check_destination::{node.name!r} cannot contain itself": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._depth_under::{parent.name!r} is a {parent.kind}, and only a folder can contain other collections": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._require_collection::{node.name!r} is a folder and does not hold tracks": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._require_collection::{node.name!r} is a smart collection: its membership comes from its rules, so tracks cannot be put in it by hand": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._require_node::No such collection: {node_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._require_set::{node.name!r} is a {node.kind}, not a Set": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._require_smart::{node.name!r} is a {node.kind}, not a smart collection: its membership is rows rather than a rule set": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._source_tracks::No such Rekordbox playlist: {identifier!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._source_tracks::{node.name!r} is a folder and does not hold tracks": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._source_tracks::{node.name!r} is already a Set: duplicate it to copy its chapters and plan as well": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService._source_tracks::{playlist.name!r} is a Rekordbox folder and holds no tracks": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::CollectionService.insert_track::A position cannot be negative: {position}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/collection_service.py::CollectionService.reorder::A position cannot be negative: {position}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/collection_service.py::CollectionService.reorder_entry::A position cannot be negative: {position}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/collection_service.py::CollectionService.reorder_entry::No such entry: {entry_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/collection_service.py::SetSource.__post_init__::A Set is made from one of {SET_SOURCES}, not {self.kind!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::SetSource.__post_init__::A {self.kind} source names its id and no tracks": {
+    "holds": "an enum-like value chosen by our code",
+    "verdict": "exempt",
+    "reason": "an enum value chosen by our code and already validated"
+  },
+  "cuepoint/services/collection_service.py::SmartResolution.require_query::{self.name!r} cannot be shown: {self.problem}": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::_checked_sort::Cannot save {field!r} as a smart collection's order: it is a position inside a playlist, and a smart collection is a question about the library rather than a place in one": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::_checked_sort::Cannot sort by {field!r}. Sortable columns: {valid}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/collection_service.py::_checked_sort::Sort direction must be 'asc' or 'desc', not {direction!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/config_service.py::ConfigService.load_from_file::Configuration file not found: {file_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/config_service.py::ConfigService.load_from_file::Invalid YAML in configuration file {file_path!r}: {e!r}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/config_service.py::ConfigService.save::Failed to save configuration: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/credit_index_service.py::CreditIndexService.__init__::chunk_size must be at least 1, got {chunk_size!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/database_service.py::DatabaseService._open_connection::Could not create the CuePoint data folder at {str(self.db_path.parent)!r}: {exc}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/database_service.py::DatabaseService._open_connection::Could not open the CuePoint library database: {exc}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path"
+  },
+  "cuepoint/services/database_service.py::DatabaseService._open_connection::The CuePoint library database at {str(self.db_path)!r} could not be read. It may be corrupt or not a database file: {exc}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/database_service.py::DatabaseService.execute_script::Failed to execute database script: {exc}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path"
+  },
+  "cuepoint/services/database_service.py::DatabaseService.transaction::Could not save changes to the library database: {exc}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path"
+  },
+  "cuepoint/services/discovery_service.py::DiscoveryRequest.__post_init__::A run reads at most {MAX_GENRES} genres": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/services/discovery_service.py::DiscoveryRequest.__post_init__::Genre ids are positive whole numbers: {self.genre_ids}": {
+    "holds": "an id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/discovery_service.py::DiscoveryRequest.__post_init__::The chart window is at most {MAX_WINDOW_DAYS} days": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/services/discovery_service.py::DiscoveryRequest.__post_init__::new_releases_days is 1 to {MAX_WINDOW_DAYS}": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/services/discovery_service.py::DiscoveryService.request::A genre id is a positive whole number, got {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/discovery_service.py::DiscoveryService.run_tracks::No discovery run {run_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/discovery_service.py::DiscoveryService.visible_track_ids::No discovery run {run_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/discovery_service.py::_names::A picked name is text, got {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/duplicate_service.py::DuplicateScanResult.__post_init__::trigger must be one of {TRIGGERS}, got {self.trigger!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/duplicate_service.py::DuplicateService._require::No duplicate group {group_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/duplicate_service.py::DuplicateService.groups::limit must be at least 1, not {limit!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/duplicate_service.py::DuplicateService.groups::offset cannot be negative, not {offset!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/duplicate_service.py::DuplicateService.scan::trigger must be one of {TRIGGERS}, got {trigger!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/duplicate_service.py::validate_signals::Unknown duplicate signals {unknown!r}; the signals are {SIGNALS}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/entity_page_service.py::EntityPageService.beatport::A window is 1 to {MAX_ENTITY_WINDOW} tracks from offset 0 or later": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/services/entity_page_service.py::EntityPageService.beatport::owned must be one of {OWNED_FILTERS}, got {owned!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/entity_page_service.py::EntityPageService.beatport::{ref.token!r} names no Beatport {_NOUN[kind]}": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/entity_page_service.py::EntityPageService.reference::A name reference carries a name, got {token!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/export_service.py::ExportService.export_table::Cannot export to {filepath!r}: {error_msg!r}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/export_service.py::ExportService.export_table::Failed to export to {filepath!r}: {exc}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/export_service.py::ExportService.export_table::Unknown export format {file_format!r}. Formats: ": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/export_service.py::ExportService.export_to_csv::Invalid delimiter: {delimiter!r}. Must be one of: {', '.join(valid_delimiters)}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/file_check_service.py::FileCheckResult.__post_init__::A file check of {self.total} tracks cannot finish {self.completed}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/file_check_service.py::FileCheckResult.__post_init__::A file check that was not cancelled finishes all {self.total} tracks, not {self.completed}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/file_check_service.py::FileCheckResult.__post_init__::trigger must be one of {TRIGGERS}, got {self.trigger!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/file_check_service.py::FileCheckService.__init__::A file check needs at least one worker, not {workers!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/file_check_service.py::FileCheckService.check::trigger must be one of {TRIGGERS}, got {trigger!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/library_import_service.py::LibraryImportService._check_references::{_counted(references.referenced_track_count, 'track')} removed from Rekordbox {'carries' if references.referenced_track_count == 1 else 'carry'} your own work: {_kinds_of_work(references)}. Confirm to remove {'it' if references.referenced_track_count == 1 else 'them'} and everything attached.": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "cuepoint/services/library_import_service.py::LibraryImportService._observed_tracks::Cancelled after reading {completed - 1} tracks": {
+    "holds": "arithmetic on integers",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/library_import_service.py::LibraryImportService._require_collection::{xml_path!r} has no COLLECTION section, so it is not a Rekordbox collection export. In Rekordbox, use File > Export Collection in xml format.": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/marks_backfill_service.py::MarksBackfillService.__init__::chunk_size must be at least 1, got {chunk_size!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/match_apply.py::MatchApplyService._require_track::No such track: {track_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/match_apply.py::MatchApplyService.apply_match::The accepted Beatport match for track {track_id} has no usable {', '.join(missing)}, so nothing was applied": {
+    "holds": "an integer id, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/match_apply.py::MatchApplyService.apply_match::Track {track_id} has no accepted match, so there is nothing to apply": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/match_input.py::library_track_to_track::Track {track.id} has no title, so there is nothing to ask Beatport": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/match_record.py::_candidate_row::Candidate {rank} is a {type(candidate).__name__}, not a scored BeatportCandidate": {
+    "holds": "a Python type name, an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; Python type names"
+  },
+  "cuepoint/services/match_record.py::_json_default::{type(value).__name__} is not JSON": {
+    "holds": "a Python type name",
+    "verdict": "exempt",
+    "reason": "Python type names"
+  },
+  "cuepoint/services/match_record.py::_to_json::The {name} cannot be stored as JSON: {exc}": {
+    "holds": "exception text, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "a TypeError saying which Python type is not JSON serializable"
+  },
+  "cuepoint/services/match_service.py::MatchJobResult.__post_init__::A match job cannot have finished {self.completed} of {self.planned} tracks": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/match_service.py::MatchService._ask::process_track returned {type(result).__name__}, not a TrackResult": {
+    "holds": "a Python type name",
+    "verdict": "exempt",
+    "reason": "Python type names"
+  },
+  "cuepoint/services/match_service.py::MatchService._with_lock_retry::The library database stayed locked for {LOCK_RETRY_SECONDS} seconds": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/services/match_service.py::MatchService._with_lock_retry::The library database would not save a match result: {exc}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "sqlite3.OperationalError text such as \"database is locked\""
+  },
+  "cuepoint/services/match_service.py::MatchService.check_resumable::Match job {job_id} has nothing left to resume": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/match_service.py::MatchService.check_resumable::No match job {job_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/match_service.py::MatchService.prepare::All {_tracks(len(named))} in that selection are already matched or decided. Re-match them to ask Beatport again.": {
+    "holds": "a track count phrase",
+    "verdict": "exempt",
+    "reason": "a count phrase"
+  },
+  "cuepoint/services/match_service.py::MatchService.run::No match job {job_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/match_state.py::MatchStateService._require_track::No track {track_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/match_state.py::MatchStateService.accept::No candidate {candidate_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/match_state.py::MatchStateService.reject::Track {track_id} has never been matched, so there is nothing to reject": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/match_state.py::_decision_from::The recorded decision for track {track_id} cannot be read ({exc}): {recorded!r}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/match_state.py::automatic_state::Attempt {attempt.id} is a match with no winner": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/metadata_service.py::MetadataService._require_track::No such track: {track_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/metadata_service.py::MetadataService.set_override::An override comes from {' or '.join(OVERRIDE_SOURCES)}, not {source!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/migration_runner.py::MigrationRunner._apply::Migration {migration.version} ({migration.description}) failed and was rolled back: {exc}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path"
+  },
+  "cuepoint/services/migration_runner.py::MigrationRunner.migrate::This library database is at schema version {current}, but this version of CuePoint only understands up to {target}. It was likely created by a newer version of CuePoint. Update CuePoint to open it.": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "cuepoint/services/output_writer.py::append_rows_to_main_csv::Invalid delimiter: {delimiter!r}. Must be one of: , ; \\t |": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/output_writer.py::write_csv_files::Invalid delimiter: {delimiter!r}. Must be one of: , ; \\t |": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/output_writer.py::write_excel_file::Failed to write Excel file: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/output_writer.py::write_json_file::Failed to write export file: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/output_writer.py::write_json_file::JSON export failed: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/output_writer.py::write_main_csv::CSV export failed: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/output_writer.py::write_main_csv::Failed to write CSV file: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/output_writer.py::write_main_csv::Invalid delimiter: {delimiter!r}. Must be one of: , ; \\t |": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/override_values.py::format_key::Unknown key notation {notation!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/override_values.py::normalize_bpm::bpm may have at most {BPM_DECIMALS} decimals, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/override_values.py::normalize_bpm::bpm must be a number, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/override_values.py::normalize_bpm::bpm must be between {MIN_BPM} and {MAX_BPM}, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/override_values.py::normalize_key::key must be text, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/override_values.py::normalize_key::key {value!r} is not a key in classic (Am), Camelot (8A) or short (Amin) notation": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/override_values.py::normalize_text::{field} cannot be blank; clear an override with null": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/override_values.py::normalize_text::{field} may be at most {MAX_TEXT_LENGTH} characters, not {len(text)}": {
+    "holds": "a length, our own constant, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/override_values.py::normalize_text::{field} must be text, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/override_values.py::normalize_year::year must be a whole number, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/override_values.py::normalize_year::year must be between {EARLIEST_YEAR} and {latest_year()}, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/override_values.py::require_field::{field!r} cannot be overridden. Fields: {', '.join(OVERRIDE_FIELDS)}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Available playlists: {', '.join((repr(p) for p in available_playlists[:10]))}{'...' if len(available_playlists) > 10 else ''}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Error occurred while parsing XML file: {xml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Failed to parse XML file: {xml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Playlist {playlist_name!r} is empty": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Playlist {playlist_name!r} not found in XML file": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Verify {playlist_name!r} exists in your Rekordbox library": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::XML file not found: {xml_path!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::XML parsing failed: {error_msg!r}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._check_destination::An export is saved as an {EXPORT_SUFFIX} file: {str(destination)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._check_destination::That is a folder, not a file to save to: {str(destination)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._check_destination::The folder to save into does not exist: {str(destination)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._export_tree::No such collection to export: {int(raw)}": {
+    "holds": "an int() result",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._require_source::The collection file cannot be read: {str(path)!r} ({exc.strerror or exc}).": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._require_source::The collection this library was imported from is not there: {str(path)!r}. Import or refresh from the file's new location.": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/rekordbox_export_service.py::RekordboxExportService.preview_of::The collection file could not be read: {str(plan.source_path)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/rekordbox_export_service.py::RekordboxExportService.preview_of::The collection file is no longer there: {str(plan.source_path)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/rekordbox_export_service.py::RekordboxExportService.validate::No such collection to export: {identifier}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "cuepoint/services/revert_service.py::BatchRevert.__post_init__::A revert cannot account for {self.completed} of {self.total} changes": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/revert_service.py::BatchRevert.__post_init__::A revert that was not cancelled accounts for every change in the batch: {self.completed} of {self.total}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/revert_service.py::RevertService.check_batch::Batch {wanted!r} changed fields this revert cannot write: {', '.join(foreign)}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/revert_service.py::RevertService.check_batch::Batch {wanted!r} changed nothing, so there is nothing to revert": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/revert_service.py::RevertService.check_batch::No such batch: {wanted!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/revert_service.py::RevertService.revert_change::Unknown field change: {change_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/revert_service.py::require_cuepoint_field::Field is Rekordbox's, not CuePoint's: {field!r}. It is reverted as an imported field": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/revert_service.py::require_cuepoint_field::Field is not revertable: {field!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_analysis_service.py::SetAnalysisService._require_set::No such Set: {set_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_analysis_service.py::SetAnalysisService._require_set::{node.name!r} is a {node.kind}, not a Set": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_analysis_service.py::SetAnalysisService.acknowledge::Entries {from_entry_id} and {to_entry_id} are in different Sets": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_analysis_service.py::SetAnalysisService.acknowledge::Entry {to_entry_id} does not follow entry {from_entry_id}: only a transition between adjacent entries can be acknowledged": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_analysis_service.py::SetAnalysisService.acknowledge::No such entry in a Set: {missing}": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/set_analysis_service.py::SetAnalysisService.acknowledge::Only a transition's warnings can be acknowledged, and {warning!r} is not one of {', '.join(TRANSITION_KINDS)}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_analysis_service.py::SetAnalysisService.acknowledge::There is no {warning} going from entry {from_entry_id} to entry {to_entry_id} to acknowledge": {
+    "holds": "an enum-like value chosen by our code, an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; an enum value chosen by our code and already validated"
+  },
+  "cuepoint/services/set_analysis_service.py::SetAnalysisService.unacknowledge::{warning!r} is not a transition warning, so it is never acknowledged": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_list_service.py::check_destination::A set list is saved as a .txt, .csv or .m3u8 file: {str(destination)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_list_service.py::check_destination::That is a folder, not a file to save to: {str(destination)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_list_service.py::check_destination::The folder to save into does not exist: {str(destination)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_service.py::SetService._require_chapter::No such chapter: {chapter_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_service.py::SetService._require_entry::No such entry in a Set: {entry_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_service.py::SetService._require_set::No such Set: {set_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_service.py::SetService._require_set::{node.name!r} is a {node.kind}, not a Set": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_service.py::SetService._update_chapter::No such chapter: {chapter_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_service.py::SetService.create_chapter::A position cannot be negative: {position}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_service.py::SetService.create_chapter::{after.label} is not a chapter of {node.name!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_service.py::SetService.delete_chapter::No such chapter: {chapter_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_service.py::SetService.delete_chapter::{chapter.label} is the only chapter of {name!r}, and a Set always has one": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_service.py::SetService.move_chapter::A position cannot be negative: {position}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_service.py::SetService.move_chapter::No such chapter: {chapter_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_service.py::SetService.move_entry::A position cannot be negative: {position}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_service.py::SetService.move_entry::No such entry: {entry_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_service.py::SetService.set_entry_times::An entry must come in before it goes out: in {format_time(in_seconds or 0)}, out {format_time(out_seconds)}": {
+    "holds": "a time we formatted from a number",
+    "verdict": "exempt",
+    "reason": "times formatted from numbers"
+  },
+  "cuepoint/services/set_service.py::SetService.set_entry_times::The track is {format_time(length)} long, so it cannot come in at {format_time(in_seconds)}": {
+    "holds": "a time we formatted from a number",
+    "verdict": "exempt",
+    "reason": "times formatted from numbers"
+  },
+  "cuepoint/services/set_service.py::SetService.set_entry_times::The track is {format_time(length)} long, so it cannot go out at {format_time(out_seconds)}": {
+    "holds": "a time we formatted from a number",
+    "verdict": "exempt",
+    "reason": "times formatted from numbers"
+  },
+  "cuepoint/services/set_service.py::SetService.set_notes::No such Set: {set_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_service.py::SetService.split_chapter_at::{chapter.label} already starts at this entry: rename it rather than start another chapter here": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_service.py::SetService.update_chapter::A chapter has no field {', '.join(unknown)!r}; it has ": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_service.py::_check_target::A chapter's target is at most {format_time(MAX_TIME_SECONDS)}, got {format_time(target_seconds)}": {
+    "holds": "a time we formatted from a number",
+    "verdict": "exempt",
+    "reason": "times formatted from numbers"
+  },
+  "cuepoint/services/set_suggestion_service.py::InsertionPointError.__init__::Unknown insertion point reason: {reason!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_suggestion_service.py::SetSuggestionService.suggest::No such Set: {set_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/set_suggestion_service.py::SetSuggestionService.suggest::against must be one of {SIDES} or None, got {against!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_suggestion_service.py::SetSuggestionService.suggest::{node.name!r} is a {node.kind}, not a Set": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_suggestion_service.py::_chapter_of_gap::Chapter {named} is not a chapter of {name!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_suggestion_service.py::_chapter_of_gap::{chapter.label} does not reach this gap: a chapter's entries stay together": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_suggestion_service.py::_entry_id::{name} must be an entry id, got {value!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_suggestion_service.py::_limit::limit must be a whole number from 1 to {MAX_SIMILAR_LIMIT}, got {limit!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/set_suggestion_service.py::_neighbours::{name!r} is empty: there is nothing to fit a track against": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/similarity_service.py::SimilarityService.similar::There is no track {seed_id} in the library": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/similarity_service.py::_limit::limit must be a whole number from 1 to {MAX_SIMILAR_LIMIT}, got {limit!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/similarity_service.py::_seed_id::A track id is a positive whole number, got {track_id!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/tag_service.py::TagService._require_tag::No such tag: {tag_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/tag_service.py::TagService.rename::A tag called {clash.name!r} already exists. Merge the two tags instead of renaming.": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/tag_write_options.py::TagWriteOptions.__post_init__::comment_text may be at most {MAX_COMMENT_LENGTH} characters, not {len(self.comment_text)}": {
+    "holds": "a length, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/services/tag_write_options.py::TagWriteOptions.__post_init__::key_format must be one of {', '.join(KEY_FORMATS)}, not {self.key_format!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/tag_write_options.py::TagWriteOptions.__post_init__::{name} must be true or false": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/tag_write_options.py::TagWriteOptions.from_request::Unknown option {', '.join(unknown)!r}. Options: {', '.join(sorted(_NAMES))}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/tag_write_options.py::TagWriteOptions.from_request::key_format must be one of {', '.join(KEY_FORMATS)}, not {raw['key_format']!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/tag_write_options.py::TagWriteOptions.from_request::{name} must be text, not {raw[name]!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/tag_write_options.py::TagWriteOptions.from_request::{name} must be true or false, not {raw[name]!r}": {
+    "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/tag_write_service.py::TagRestoreResult.__post_init__::A restore of {self.total} writes accounts for each, not {self.completed}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/tag_write_service.py::TagWritePreview.__post_init__::A preview of {self.total} tracks accounts for each, not {self.decided}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/tag_write_service.py::TagWritePreview.__post_init__::Unknown field skip {name}: {sorted(reasons)}": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/tag_write_service.py::TagWritePreview.__post_init__::Unknown skip reasons {sorted(unknown)}": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/tag_write_service.py::TagWriteResult.__post_init__::A write of {self.total} files accounts for each, not {self.completed}": {
+    "holds": "a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/tag_write_service.py::TagWriteService.__init__::A preview needs at least one worker, not {workers!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/wantlist_service.py::WantlistService._require_run_found::Discovery run {run_id} did not find {_tracks(len(stray))}: {', '.join((str(i) for i in stray[:5]))}": {
+    "holds": "a track count phrase, an integer id, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; a count phrase"
+  },
+  "cuepoint/services/wantlist_service.py::WantlistService._require_run_found::No discovery run {run_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/wantlist_service.py::WantlistService.set_bought::bought is true or false, got {bought!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/wantlist_service.py::_note::A note is at most {MAX_NOTE_LENGTH} characters": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/services/wantlist_service.py::_note::A note is text, got {type(value).__name__}": {
+    "holds": "a Python type name",
+    "verdict": "exempt",
+    "reason": "Python type names"
+  },
+  "cuepoint/services/wantlist_service.py::_run_id::A run id is a positive whole number, got {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/waveform_service.py::WaveformService.waveforms::width must be {MIN_WIDTH} to {COLUMNS}, not {width!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/utils/di_container.py::DIContainer._create_instance::Cannot resolve dependency {param_name} for {cls}": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/utils/di_container.py::DIContainer.resolve::Service {interface} not registered": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/utils/paths.py::AppPaths._ensure_dir::Failed to create directory {str(path)!r}: {e}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/utils/paths.py::AppPaths._ensure_dir::Permission denied creating directory {str(path)!r}. Please check permissions or choose a different location.": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "cuepoint/utils/paths.py::AppPaths.initialize_all::Failed to initialize application paths: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/utils/paths.py::PathValidator.ensure_path::Failed to create or validate path: {error}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "cuepoint/utils/paths.py::_standard_path::Unknown standard path location: {location!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/utils/platform.py::PlatformInfo._detect_platform::Unsupported platform: {system}": {
+    "holds": "the platform name",
+    "verdict": "exempt",
+    "reason": "the platform name"
+  },
+  "log::cuepoint/cli/cli_processor.py::CLIProcessor._handle_processing_error::Unexpected error: {error}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/cli/cli_processor.py::CLIProcessor._handle_unmatched_tracks::\n{'=' * 80}": {
+    "holds": "arithmetic on integers",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/cli/cli_processor.py::CLIProcessor._handle_unmatched_tracks::  [{result.playlist_index}] {result.title!r} - {artists_str!r}": {
+    "holds": "a track title, artist or search query",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/cli/cli_processor.py::CLIProcessor._handle_unmatched_tracks::  [{result.playlist_index}] {safe_title!r} - {safe_artists!r}": {
+    "holds": "a track title, artist or search query",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/cli/cli_processor.py::CLIProcessor._handle_unmatched_tracks::Found {len(unmatched_results)} unmatched track(s):": {
+    "holds": "a length",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/cli/cli_processor.py::CLIProcessor._handle_unmatched_tracks::{'=' * 80}": {
+    "holds": "arithmetic on integers",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/cli/cli_processor.py::CLIProcessor._write_output_files::Review candidates: {review_cands_count} rows -> {str(review_cands_path)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/cli/cli_processor.py::CLIProcessor._write_output_files::Review queries: {review_queries_count} rows -> {str(review_queries_path)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/cli/cli_processor.py::CLIProcessor.process_playlist::Could not write preflight report: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/cli/cli_processor.py::CLIProcessor.process_playlist::Could not write run summary JSON: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/cli/cli_processor.py::CLIProcessor.process_playlist::Preflight warning: {warning!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/data/beatport.py::<module>::DuckDuckGo search (ddgs) not available: {import_err!r}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/data/beatport.py::beatport_search_browser::[{idx}] Browser automation failed for query={query!r}: {e!r}": {
+    "holds": "a track title, artist or search query; exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/data/beatport.py::beatport_search_direct::[{idx}] Direct Beatport search failed for query={query!r}: {e!r}": {
+    "holds": "a track title, artist or search query; exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/data/beatport.py::ddg_track_urls::[{idx}] DuckDuckGo search (ddgs) not available: {e!r}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/data/beatport.py::ddg_track_urls::[{idx}] DuckDuckGo search error for {search_q!r}: {e!r}": {
+    "holds": "a track title, artist or search query; exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/data/beatport.py::ddg_track_urls::[{idx}] DuckDuckGo search failed: {e!r}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/data/beatport.py::ddg_track_urls::[{idx}] DuckDuckGo search timeout for {search_q!r} (will use fallback methods): {e!r}": {
+    "holds": "a track title, artist or search query; exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/data/beatport.py::ddg_track_urls::[{idx}] Fallback DuckDuckGo search failed: {e!r}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/data/beatport_search.py::beatport_search_hybrid::[{idx}] DuckDuckGo search failed (timeout?), falling back to direct search: {ddg_error!r}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/beatport_service.py::BeatportService.search_tracks::DuckDuckGo search (ddgs) not available: {import_err!r}. Track search may be limited. Falling back to direct search only.": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/beatport_service.py::BeatportService.search_tracks::DuckDuckGo search (ddgs) test failed: {test_err!r}. Track search may be limited.": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/beatport_service.py::BeatportService.search_tracks::Found {len(urls)} track URLs for query: {query!r}": {
+    "holds": "a track title, artist or search query",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/beatport_service.py::BeatportService.search_tracks::Searching Beatport for: {query!r}": {
+    "holds": "a track title, artist or search query",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/export_service.py::ExportService._validate_export_path::Could not check disk space: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/export_service.py::ExportService.export_table::Exported {len(rows)} rows as {file_format}: {filepath!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/export_service.py::ExportService.export_table::Failed to export to {filepath!r}: {exc}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/export_service.py::ExportService.export_to_csv::Exported {len(results)} tracks to CSV: {filepath!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/export_service.py::ExportService.export_to_excel::Exported {len(results)} tracks to Excel: {filepath!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/export_service.py::ExportService.export_to_json::Exported {len(results)} tracks to JSON: {filepath!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist::Processing track {idx}/{total}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_m3u::[m3u] Using parallel processing with {track_workers} workers for {len(inputs)} tracks": {
+    "holds": "a length, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_m3u::[m3u] Using sequential processing (TRACK_WORKERS={track_workers})": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml._record_cancelled_future::Track {idx} {track.title!r} was cancelled and will not be processed.": {
+    "holds": "a track title, artist or search query",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Auto-research: Found {len(unmatched_results)} unmatched track(s), re-searching with enhanced settings...": {
+    "holds": "a length",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::CRITICAL: Missing results for {len(missing_indices)} tracks! Expected {expected_count} tracks, got {actual_count}. Missing indices: {missing_indices}": {
+    "holds": "a length, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Creating error result for missing track {idx}: {track.title!r}": {
+    "holds": "a track title, artist or search query",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Error in auto-research for track {idx}: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Error in parallel processing loop: {loop_error}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Error processing remaining track {idx} {track.title!r}: {e}": {
+    "holds": "a track title, artist or search query; exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Error processing track {idx} {track.title!r}: {e}": {
+    "holds": "a track title, artist or search query; exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Parallel processing complete: {actual_count}/{expected_count} tracks processed": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Parallel processing failed, falling back to sequential: {parallel_error}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Preflight warning: {warning!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Processed futures: {len(processed_futures)}, Remaining: {len(remaining_futures)}, Total: {len(future_to_args)}": {
+    "holds": "a length",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Processing cancelled; resolving {len(remaining_futures)} remaining futures as cancelled.": {
+    "holds": "a length",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Progress callback setup error (non-fatal, continuing): {callback_setup_error}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Re-searching {len(unmatched_inputs)} unmatched tracks using parallel processing with {min(track_workers, len(unmatched_inputs))} workers": {
+    "holds": "a length, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Submitted {len(future_to_args)} tasks to ThreadPoolExecutor, waiting for completion...": {
+    "holds": "a length",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Track {idx} {track.title!r} processing timed out after waiting. This may be due to DuckDuckGo search timeouts in packaged app.": {
+    "holds": "a track title, artist or search query",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Track {idx} {track.title!r} processing timed out in exception handler. This may be due to DuckDuckGo search timeouts in packaged app.": {
+    "holds": "a track title, artist or search query",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Using parallel processing with {track_workers} workers for {len(inputs)} tracks": {
+    "holds": "a length, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Using sequential processing (TRACK_WORKERS={track_workers})": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::[perf] run={report.run_id} tracks={report.tracks_processed} duration={report.duration_sec}s memory_mb={report.memory_mb_peak} stages={report.stages}": {
+    "holds": "an integer id, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::as_completed iterator exhausted after {loop_iterations} iterations. Processed: {len(processed_futures)}/{len(future_to_args)}": {
+    "holds": "a length, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::as_completed loop exceeded safety limit ({max_iterations} iterations)! This should never happen. Breaking to process remaining futures.": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::as_completed loop exited early! Processing {len(remaining_futures)} remaining futures that weren't handled in the loop. This should not happen - investigating...": {
+    "holds": "a length",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::as_completed loop finished: {loop_iterations} iterations, {len(processed_futures)} futures processed, {len(results_dict)} results collected": {
+    "holds": "a length, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_track::[{idx}] Match found: {best.title!r} - {best.artists!r} (score: {best.score})": {
+    "holds": "a track title, artist or search query",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_track::[{idx}] No match found (duration: {dur} ms)": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_track::[{idx}] Processing: {title_for_search!r} - {original_artists or artists_for_scoring!r}": {
+    "holds": "a track title, artist or search query",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/cache_manager.py::CacheManager.clear_cache::Cleared {cleared_count} cache items ({cleared_size / (1024 * 1024)} MB)": {
+    "holds": "arithmetic on integers, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/utils/cache_manager.py::CacheManager.clear_cache::Error clearing cache item {str(item)!r}: {e}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/cache_manager.py::CacheManager.clear_cache::Error clearing cache: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/cache_manager.py::CacheManager.get_cache_file_count::Error counting cache files: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/cache_manager.py::CacheManager.get_cache_size::Error calculating cache size: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/cache_manager.py::CacheManager.prune_cache::Error removing cache file {str(file_info['path'])!r}: {e}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/cache_manager.py::CacheManager.prune_cache::Error scanning cache files: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/cache_manager.py::CacheManager.prune_cache::Pruned cache: removed {removed_count} files ({removed_size / (1024 * 1024)} MB)": {
+    "holds": "arithmetic on integers, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/utils/history_manager.py::HistoryManager.cleanup_old_files::Error cleaning up file {str(file)!r}: {e}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/history_manager.py::HistoryManager.cleanup_old_files::Error cleaning up old files: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/history_manager.py::HistoryManager.cleanup_old_files::{action} {removed_count} old history files": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/utils/history_manager.py::HistoryManager.get_recent_files::Error getting recent files: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/history_manager.py::HistoryManager.get_recent_files::Error reading file {str(file)!r}: {e}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/http_cache.py::CacheInvalidation.clear_by_url_pattern::Cleared {cleared} cache entries matching pattern: {pattern!r}": {
+    "holds": "a track title, artist or search query",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/http_cache.py::CacheInvalidation.clear_by_url_pattern::Error clearing cache by pattern {pattern!r}: {e}": {
+    "holds": "a track title, artist or search query; exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/http_cache.py::CacheInvalidation.clear_expired::Error removing expired cache entries: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/http_cache.py::CacheInvalidation.clear_old_entries::Cleared {cleared} cache entries older than {days} days": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/utils/http_cache.py::CacheInvalidation.clear_old_entries::Error clearing old cache entries: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/http_cache.py::CachePruner.prune_to_size::Error pruning cache: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/http_cache.py::CachePruner.prune_to_size::Pruned cache: removed {removed} entries, target size: {target_size / (1024 * 1024)} MB": {
+    "holds": "arithmetic on integers, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "log::cuepoint/utils/http_cache.py::HTTPCacheManager.initialize::HTTP cache initialized at {str(cache_path)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/logger.py::CuePointLogger.configure::Build: {build_info['build_number']}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/utils/logger.py::CuePointLogger.configure::Commit: {build_info.get('short_commit_sha', build_info['commit_sha'][:7])}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/utils/logger.py::CuePointLogger.configure::Platform: {platform.system()} {platform.release()}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/utils/logger.py::CuePointLogger.configure::Python: {platform.python_version()}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/utils/logger.py::CuePointLogger.configure::Version: {build_info.get('version', 'unknown')}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/utils/logger.py::log_timing::Completed {operation_name} in {duration}s": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/utils/logger.py::log_timing::Failed {operation_name} after {duration}s: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/logger.py::log_timing::Starting {operation_name}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/utils/network.py::exponential_backoff.decorator.wrapper::Retry {attempt + 1}/{retry_config.max_retries} for {f.__name__} (HTTP {e.response.status_code}) after {total_delay}s": {
+    "holds": "an HTTP status code, arithmetic on integers, exception text",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; an HTTP status"
+  },
+  "log::cuepoint/utils/network.py::exponential_backoff.decorator.wrapper::Retry {attempt + 1}/{retry_config.max_retries} for {f.__name__} after {total_delay}s: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/performance.py::PerformanceMonitor.record_operation::Slow operation: {operation} took {duration}s": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
+  "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Could not include config: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Could not include crash log {str(crash_file)!r}: {e}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Could not include log file {str(log_file)!r}: {e}": {
+    "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Failed to generate support bundle: {e}": {
+    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Generating support bundle: {str(bundle_path)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
+  "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Support bundle created: {str(bundle_path)!r}": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  }
+}

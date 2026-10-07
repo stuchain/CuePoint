@@ -226,7 +226,7 @@ def _params(params: Dict[str, List[str]], allowed: Sequence[str]) -> Dict[str, s
     if unknown:
         takes = ", ".join(allowed) if allowed else "no parameters"
         raise bad_request(
-            f"Unknown parameter {', '.join(unknown)}. This request takes: {takes}"
+            f"Unknown parameter {', '.join(unknown)!r}. This request takes: {takes}"
         )
     single: Dict[str, str] = {}
     for key, values in params.items():
@@ -319,7 +319,7 @@ def _only(data: Dict[str, Any], allowed: Sequence[str]) -> None:
     if unknown:
         takes = ", ".join(allowed) if allowed else "nothing"
         raise bad_request(
-            f"Unknown field {', '.join(unknown)}. This request takes: {takes}"
+            f"Unknown field {', '.join(unknown)!r}. This request takes: {takes}"
         )
 
 

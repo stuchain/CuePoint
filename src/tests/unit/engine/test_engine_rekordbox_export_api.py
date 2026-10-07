@@ -406,8 +406,8 @@ class TestThePreview:
             ({"collection_ids": [None]}, ("whole numbers",)),
             ({"key_format": 3}, ("key_format",)),
             ({"key_format": ["camelot"]}, ("key_format",)),
-            ({"selection": {"scope": "all"}}, ("Unknown field selection",)),
-            ({"destination_path": "C:/x.xml"}, ("Unknown field destination_path",)),
+            ({"selection": {"scope": "all"}}, ("Unknown field 'selection'",)),
+            ({"destination_path": "C:/x.xml"}, ("Unknown field 'destination_path'",)),
         ),
     )
     def test_a_malformed_selection_is_a_400_never_a_500(
@@ -662,7 +662,7 @@ class TestTheStart:
             ({"key_format": False, "destination_path": "a.xml"}, ("key_format",)),
             (
                 {"overwrite": True, "destination_path": "a.xml"},
-                ("Unknown field overwrite",),
+                ("Unknown field 'overwrite'",),
             ),
         ),
     )

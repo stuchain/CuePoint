@@ -889,7 +889,7 @@ def _check_source(source: Path) -> None:
     if not is_decodable_path(source):
         raise DecodeFailed(
             REASON_UNDECODABLE,
-            f"{source.suffix or 'no extension'} is not an audio format CuePoint decodes",
+            f"{source.suffix or 'no extension'!r} is not an audio format CuePoint decodes",
         )
 
 
@@ -963,7 +963,7 @@ def decode_envelope(
     if cancel is not None and cancel():
         raise DecodeCancelled(str(source_path))
     if not decoder_path.is_file():
-        raise DecoderUnavailable(f"no decoder at {decoder_path}")
+        raise DecoderUnavailable(f"no decoder at {str(decoder_path)!r}")
     _check_source(source_path)
 
     if not _SWEPT.is_set():
@@ -1004,7 +1004,7 @@ def _decode_in(
             creationflags=_spawn_flags(),
         )
     except OSError as exc:
-        raise DecoderUnavailable(f"could not run {decoder}: {exc}") from exc
+        raise DecoderUnavailable(f"could not run {decoder!r}: {exc}") from exc
 
     with _LIVE_LOCK:
         _LIVE.add(child)
@@ -1066,7 +1066,7 @@ def _outcome(
     if log_text is None:
         said = err.decode("utf-8", errors="replace").strip()
         raise DecoderUnavailable(
-            "the decoder wrote no log" + (f": {said[:200]}" if said else "")
+            "the decoder wrote no log" + (f": {said[:200]!r}" if said else "")
         )
     log = read_decoder_log(log_text)
     if log.filter_failed or (log.outputs and not log.negotiated):

@@ -87,7 +87,7 @@ class TestReadingTheFile:
             ({"images": {"u": None}}, "images must map"),
             ({"api": {}}, "api must be a list"),
             ({"api": ["catalog/genres"]}, "is an object"),
-            ({"api": [{"path": "a", "query": {}}]}, "does not take query"),
+            ({"api": [{"path": "a", "query": {}}]}, "does not take 'query'"),
             ({"api": [{"path": "a", "method": "PUT"}]}, "GET or POST"),
             ({"api": [{"path": "a", "method": 1}]}, "GET or POST"),
             ({"api": [{"body": {}}]}, "needs a 'path'"),

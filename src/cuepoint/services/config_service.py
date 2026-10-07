@@ -262,7 +262,7 @@ class ConfigService(IConfigService):
 
         config_path = Path(file_path)
         if not config_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {file_path}")
+            raise FileNotFoundError(f"Configuration file not found: {file_path!r}")
 
         try:
             with open(config_path, "r", encoding="utf-8") as f:
@@ -286,7 +286,7 @@ class ConfigService(IConfigService):
                             self._legacy_settings[legacy_key] = value
         except yaml.YAMLError as e:
             raise ValueError(
-                f"Invalid YAML in configuration file {file_path}: {e}"
+                f"Invalid YAML in configuration file {file_path!r}: {e!r}"
             ) from e
 
     def _flatten_dict(

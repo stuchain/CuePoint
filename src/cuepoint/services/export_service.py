@@ -225,7 +225,7 @@ class ExportService(IExportService):
         valid_delimiters = [",", ";", "\t", "|"]
         if delimiter not in valid_delimiters:
             raise ExportError(
-                message=f"Invalid delimiter: {delimiter}. Must be one of: {', '.join(valid_delimiters)}",
+                message=f"Invalid delimiter: {delimiter!r}. Must be one of: {', '.join(valid_delimiters)}",
                 error_code="EXPORT_INVALID_DELIMITER",
                 context={"filepath": filepath, "delimiter": delimiter},
             )
@@ -259,7 +259,7 @@ class ExportService(IExportService):
 
                 if self.logging_service:
                     self.logging_service.info(
-                        f"Exported {len(results)} tracks to CSV: {filepath}",
+                        f"Exported {len(results)} tracks to CSV: {filepath!r}",
                         extra={"filepath": filepath, "track_count": len(results)},
                     )
             except Exception:
@@ -356,7 +356,7 @@ class ExportService(IExportService):
                 raise
             if self.logging_service:
                 self.logging_service.info(
-                    f"Exported {len(results)} tracks to JSON: {filepath}",
+                    f"Exported {len(results)} tracks to JSON: {filepath!r}",
                     extra={"filepath": filepath, "track_count": len(results)},
                 )
         except Exception as e:
@@ -407,7 +407,7 @@ class ExportService(IExportService):
         is_valid, error_msg = self._validate_export_path(filepath, len(rows), overwrite)
         if not is_valid:
             raise ExportError(
-                message=f"Cannot export to {filepath}: {error_msg}",
+                message=f"Cannot export to {filepath!r}: {error_msg!r}",
                 error_code="EXPORT_PATH_REFUSED",
                 context={"filepath": filepath, "row_count": len(rows)},
             )
@@ -432,12 +432,12 @@ class ExportService(IExportService):
         except Exception as exc:
             if self.logging_service:
                 self.logging_service.error(
-                    f"Failed to export to {filepath}: {exc}",
+                    f"Failed to export to {filepath!r}: {exc}",
                     exc_info=exc,
                     extra={"filepath": filepath},
                 )
             raise ExportError(
-                message=f"Failed to export to {filepath}: {exc}",
+                message=f"Failed to export to {filepath!r}: {exc}",
                 error_code="EXPORT_WRITE_FAILED",
                 context={"filepath": filepath, "row_count": len(rows)},
             ) from exc
@@ -449,7 +449,7 @@ class ExportService(IExportService):
                     pass
         if self.logging_service:
             self.logging_service.info(
-                f"Exported {len(rows)} rows as {file_format}: {filepath}",
+                f"Exported {len(rows)} rows as {file_format}: {filepath!r}",
                 extra={"filepath": filepath, "row_count": len(rows)},
             )
 
@@ -563,7 +563,7 @@ class ExportService(IExportService):
                 raise
             if self.logging_service:
                 self.logging_service.info(
-                    f"Exported {len(results)} tracks to Excel: {filepath}",
+                    f"Exported {len(results)} tracks to Excel: {filepath!r}",
                     extra={"filepath": filepath, "track_count": len(results)},
                 )
         except Exception as e:

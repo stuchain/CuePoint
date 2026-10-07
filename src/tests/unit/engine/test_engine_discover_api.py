@@ -515,7 +515,7 @@ class TestStartingARun:
     @pytest.mark.parametrize(
         "body, words",
         [
-            ({"genre_ids": [5], "days": 3}, "Unknown field days"),
+            ({"genre_ids": [5], "days": 3}, "Unknown field 'days'"),
             ({"genre_ids": "5"}, "genre_ids must be a list"),
             ({"genre_ids": [5], "charts_from": "yesterday"}, "YYYY-MM-DD"),
             ({"genre_ids": [5], "charts_from": "2026-02-30"}, "not a date"),
@@ -602,7 +602,7 @@ class TestReadingRuns:
             ({"limit": 201}, "limit"),
             ({"limit": "ten"}, "whole number"),
             ({"offset": -1}, "whole number"),
-            ({"page": 2}, "Unknown parameter page"),
+            ({"page": 2}, "Unknown parameter 'page'"),
         ],
     )
     def test_a_list_window_it_cannot_answer_is_refused(
@@ -686,7 +686,7 @@ class TestARunsTracks:
             ({"limit": 501}, "limit"),
             ({"limit": 0}, "limit"),
             ({"offset": "x"}, "whole number"),
-            ({"bought": "only"}, "Unknown parameter bought"),
+            ({"bought": "only"}, "Unknown parameter 'bought'"),
         ],
     )
     def test_a_window_it_cannot_answer_is_refused(self, engine, ran, params, words):
@@ -728,7 +728,7 @@ class TestDeletingARun:
             post(engine, run_path(ran, "/delete"), {"force": True}),
             400,
             "INVALID_REQUEST",
-            "Unknown field force",
+            "Unknown field 'force'",
         )
 
 
@@ -890,7 +890,7 @@ class TestTheWantlist:
             (
                 api.WANTLIST_ADD_PATH,
                 {"track_ids": [3], "note": "x"},
-                "Unknown field note",
+                "Unknown field 'note'",
             ),
             (api.WANTLIST_REMOVE_PATH, {"track_ids": ["3"]}, "whole number"),
             (api.WANTLIST_NOTE_PATH, {"track_id": 3}, "note is required"),
@@ -1049,7 +1049,7 @@ class TestPushingAPlaylist:
             ({"track_ids": [3], "name": 5}, "name must be text"),
             ({"track_ids": [3], "name": "x" * 201}, "200"),
             ({"track_ids": [3], "include_owned": "yes"}, "true or false"),
-            ({"track_ids": [3], "public": True}, "Unknown field public"),
+            ({"track_ids": [3], "public": True}, "Unknown field 'public'"),
         ],
     )
     def test_a_push_it_cannot_make_is_refused(self, engine, store, ran, body, words):
@@ -1186,7 +1186,7 @@ class TestPages:
             (
                 api.ENTITY_PATH,
                 {"kind": "artist", "ref": "name:x", "q": "y"},
-                "Unknown parameter q",
+                "Unknown parameter 'q'",
             ),
             (
                 api.ENTITY_BEATPORT_PATH,
@@ -1303,7 +1303,7 @@ class TestSimilarTracks:
             ({"track_id": 1, "scope": "collection"}, "collection_id"),
             ({"track_id": 1, "collection_id": 3}, "scope"),
             ({"track_id": 1, "playlist_id": "x"}, "playlist_id"),
-            ({"track_id": 1, "sort": "bpm"}, "Unknown parameter sort"),
+            ({"track_id": 1, "sort": "bpm"}, "Unknown parameter 'sort'"),
         ],
     )
     def test_a_request_it_cannot_answer_is_refused(

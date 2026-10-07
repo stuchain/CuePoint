@@ -107,7 +107,7 @@ def _only(data: Dict[str, Any], allowed: Sequence[str]) -> None:
     unknown = sorted(str(key) for key in data if key not in allowed)
     if unknown:
         raise bad_request(
-            f"Unknown field {', '.join(unknown)}. This request takes: "
+            f"Unknown field {', '.join(unknown)!r}. This request takes: "
             + ", ".join(allowed)
         )
 

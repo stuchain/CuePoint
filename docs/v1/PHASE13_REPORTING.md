@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 13: Error Reporting, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. REPORT-01 is implemented (2026-10-07); REPORT-02 is next.** Eight steps,
+Status: **Specified 2026-10-07. REPORT-01 and REPORT-02 are implemented (2026-10-07); REPORT-03 is next.** Eight steps,
 REPORT-01…REPORT-08. Writing the steps raised six questions that Decision Round 14 did not answer.
 They were asked as Decision Round 16 (Q-151…Q-156) and settled the same day as DEC-148…DEC-153, so
 there are no open points. Per the process, no implementation happens from this
@@ -339,6 +339,34 @@ raise-site test hold it, and REPORT-08 runs the scrubbers over a day's real repo
 release.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented (2026-10-07). The scrubbers are `src/cuepoint/reporting/scrub.py` and
+`electron/reportScrub.ts`, with the same rules and the same results. They are held by
+`src/tests/fixtures/reporting/scrub_corpus.json` (94 hand-written cases) and by
+`raise_site_events.json` beside it (one event per audited site), both run by `test_scrub.py` and
+`reportScrub.test.ts`, with a property test in each.
+
+Decided while building, beyond the design above:
+- **Log calls are audited too.** The audit covers 648 `raise` sites and 99 log calls at INFO and above,
+  every argument and keyword, `+` and `.join`. 432 can carry a library value or a path and have an
+  event; 315 are exempt with a reason (`raise_sites.json`). `test_raise_sites.py` keeps it current,
+  and a site's key keeps its `!r`, so dropping the quotes fails it.
+- **Values are quoted with `!r`,** not `'…'`. A title such as "Lovin' You (Ol' Skool Mix)" closes a
+  hand-written quote early; `repr` switches to double quotes. About 100 sites changed; only the
+  quoting of their messages changed.
+- **A log record's arguments are values.** Each `%s` argument becomes `<value>`, or its path shape when
+  it is a whole path, and the formatted message is rebuilt from them.
+- **Kept:** API route paths (their query values are replaced), a `:line:col` after a path, 32-hex ids
+  under `report_id`, `event_id`, `trace_id` and `span_id`, booleans and numbers under library keys,
+  and the SDKs' runtime contexts.
+- **Limit:** an unquoted path with a space ends at the space. Our code quotes them; anything else is
+  best effort.
+
+Checked in the cloud container: the reporting tests (553 in Python, 544 in TypeScript), the tests of
+every module whose messages changed, the regression suite, ruff 0.14.0, the TypeScript type-check
+and the dead-code guard. The one engine failure,
+`test_the_source_spelled_differently_is_refused_all_the_same`, fails the same before this step (it
+assumes a case-insensitive file system). Nothing sends yet.
 
 ---
 

@@ -309,7 +309,7 @@
       "code": "REKORDBOX_EXPORT_DESTINATION_REFUSED",
       "job_id": null,
       "job_type": null,
-      "message": "Refusing to write the export over the collection it was read from: C:\\Users\\dj\\Music\\collection.xml. Choose a different file.",
+      "message": "Refusing to write the export over the collection it was read from: 'C:\\Users\\dj\\Music\\collection.xml'. Choose a different file.",
       "path": "C:\\Users\\dj\\Music\\collection.xml",
       "reason": "destination_is_source"
     }
@@ -320,7 +320,7 @@
       "code": "REKORDBOX_EXPORT_DESTINATION_REFUSED",
       "job_id": null,
       "job_type": null,
-      "message": "An export is saved as an .xml file: C:\\Users\\dj\\Music\\Exports\\set.mp3",
+      "message": "An export is saved as an .xml file: 'C:\\Users\\dj\\Music\\Exports\\set.mp3'",
       "path": "C:\\Users\\dj\\Music\\Exports\\set.mp3",
       "reason": "destination_not_xml"
     }
@@ -654,7 +654,7 @@
       "code": "REKORDBOX_EXPORT_SOURCE_REFUSED",
       "job_id": null,
       "job_type": null,
-      "message": "The collection this library was imported from is not there: C:\\Users\\dj\\Music\\collection.xml. Import or refresh from the file's new location.",
+      "message": "The collection this library was imported from is not there: 'C:\\Users\\dj\\Music\\collection.xml'. Import or refresh from the file's new location.",
       "path": "C:\\Users\\dj\\Music\\collection.xml",
       "reason": "source_missing"
     }

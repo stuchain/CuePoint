@@ -136,7 +136,7 @@ def write_csv_files(
     """
     # Validate delimiter
     if delimiter not in [",", ";", "\t", "|"]:
-        raise ValueError(f"Invalid delimiter: {delimiter}. Must be one of: , ; \\t |")
+        raise ValueError(f"Invalid delimiter: {delimiter!r}. Must be one of: , ; \\t |")
 
     # Ensure output_dir is absolute
     output_dir = os.path.abspath(output_dir)
@@ -345,7 +345,7 @@ def write_main_csv(
 
     # Validate delimiter
     if delimiter not in [",", ";", "\t", "|"]:
-        raise ValueError(f"Invalid delimiter: {delimiter}. Must be one of: , ; \\t |")
+        raise ValueError(f"Invalid delimiter: {delimiter!r}. Must be one of: , ; \\t |")
 
     export_start_time = time.time()
 
@@ -488,7 +488,7 @@ def append_rows_to_main_csv(
     if not results:
         return None
     if delimiter not in [",", ";", "\t", "|"]:
-        raise ValueError(f"Invalid delimiter: {delimiter}. Must be one of: , ; \\t |")
+        raise ValueError(f"Invalid delimiter: {delimiter!r}. Must be one of: , ; \\t |")
     path = os.path.abspath(filepath)
     if not os.path.exists(path):
         return None

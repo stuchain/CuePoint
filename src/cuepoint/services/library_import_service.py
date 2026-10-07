@@ -490,7 +490,7 @@ class LibraryImportService(ILibraryImportService):
             return declared
         raise ValidationError(
             message=(
-                f"{xml_path} has no COLLECTION section, so it is not a Rekordbox "
+                f"{xml_path!r} has no COLLECTION section, so it is not a Rekordbox "
                 "collection export. In Rekordbox, use File > Export Collection in "
                 "xml format."
             ),

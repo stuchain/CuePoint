@@ -137,7 +137,7 @@ class TagWriteOptions:
         unknown = sorted(str(name) for name in raw if name not in _NAMES)
         if unknown:
             raise ValueError(
-                f"Unknown option {', '.join(unknown)}. Options: {', '.join(sorted(_NAMES))}"
+                f"Unknown option {', '.join(unknown)!r}. Options: {', '.join(sorted(_NAMES))}"
             )
         for name in _FLAGS:
             if name in raw and not isinstance(raw[name], bool):

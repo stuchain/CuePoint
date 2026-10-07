@@ -136,7 +136,7 @@ class CLIProcessor:
             )
             if preflight.warnings:
                 for warning in preflight.warning_messages():
-                    self.logging_service.warning(f"Preflight warning: {warning}")
+                    self.logging_service.warning(f"Preflight warning: {warning!r}")
             if preflight_report_path:
                 try:
                     import json
@@ -461,7 +461,7 @@ class CLIProcessor:
                         elif r.candidates:
                             review_cands_count += len(r.candidates)
                 self.logging_service.info(
-                    f"Review candidates: {review_cands_count} rows -> {review_cands_path}"
+                    f"Review candidates: {review_cands_count} rows -> {str(review_cands_path)!r}"
                 )
 
             if review_queries_path:
@@ -473,7 +473,7 @@ class CLIProcessor:
                     if r.playlist_index in review_indices
                 )
                 self.logging_service.info(
-                    f"Review queries: {review_queries_count} rows -> {review_queries_path}"
+                    f"Review queries: {review_queries_count} rows -> {str(review_queries_path)!r}"
                 )
 
         return output_files
@@ -580,7 +580,7 @@ class CLIProcessor:
             artists_str = result.artist or "(no artists)"
             try:
                 self.logging_service.warning(
-                    f"  [{result.playlist_index}] {result.title} - {artists_str}"
+                    f"  [{result.playlist_index}] {result.title!r} - {artists_str!r}"
                 )
                 print(f"  [{result.playlist_index}] {result.title} - {artists_str}")
             except UnicodeEncodeError:
@@ -588,7 +588,7 @@ class CLIProcessor:
                 safe_title = result.title.encode("ascii", "ignore").decode("ascii")
                 safe_artists = artists_str.encode("ascii", "ignore").decode("ascii")
                 self.logging_service.warning(
-                    f"  [{result.playlist_index}] {safe_title} - {safe_artists}"
+                    f"  [{result.playlist_index}] {safe_title!r} - {safe_artists!r}"
                 )
                 print(f"  [{result.playlist_index}] {safe_title} - {safe_artists}")
 

@@ -377,7 +377,7 @@ class EntityPageService(IEntityPageService):
             found_by_name = True
 
         if beatport_id is None:  # pragma: no cover - every path above sets it
-            raise ValueError(f"{ref.token} names no Beatport {_NOUN[kind]}")
+            raise ValueError(f"{ref.token!r} names no Beatport {_NOUN[kind]}")
         try:
             self._beatport.require_token()
         except BeatportAPIError as exc:

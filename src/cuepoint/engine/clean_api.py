@@ -299,7 +299,7 @@ def _only(data: Dict[str, Any], allowed: Sequence[str]) -> None:
     unknown = sorted(str(key) for key in data if key not in allowed)
     if unknown:
         raise bad_request(
-            f"Unknown field {', '.join(unknown)}. This request takes: "
+            f"Unknown field {', '.join(unknown)!r}. This request takes: "
             + ", ".join(allowed)
         )
 
@@ -865,11 +865,11 @@ def export_review(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, 
         raise ApiError(
             409,
             "EXPORT_FILE_EXISTS",
-            f"{path.name} already exists. Send overwrite to replace it",
+            f"{path.name!r} already exists. Send overwrite to replace it",
             file_path=file_path,
         )
     if path.exists() and not path.is_file():
-        raise bad_request(f"{file_path} is not a file")
+        raise bad_request(f"{str(file_path)!r} is not a file")
     written = _service("IReviewExportService").export(
         _selection(data), file_format, str(path), overwrite=overwrite
     )

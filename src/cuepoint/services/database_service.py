@@ -190,7 +190,7 @@ class DatabaseService(IDatabaseService):
             raise DatabaseError(
                 message=(
                     f"Could not create the CuePoint data folder at "
-                    f"{self.db_path.parent}: {exc}"
+                    f"{str(self.db_path.parent)!r}: {exc}"
                 ),
                 error_code="DB_DIR_CREATE_FAILED",
                 context={"db_path": str(self.db_path)},
@@ -231,7 +231,7 @@ class DatabaseService(IDatabaseService):
             connection.close()
             raise DatabaseError(
                 message=(
-                    f"The CuePoint library database at {self.db_path} could not be "
+                    f"The CuePoint library database at {str(self.db_path)!r} could not be "
                     f"read. It may be corrupt or not a database file: {exc}"
                 ),
                 error_code="DB_UNREADABLE",

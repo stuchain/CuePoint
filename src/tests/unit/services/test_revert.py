@@ -731,7 +731,7 @@ class TestEachPathRefusesTheOthersFields:
         change = activity.record_field_change(ids["1"], field, "before", "after")
         before = raw_history(db)
 
-        with pytest.raises(ValueError, match=f"Rekordbox's, not CuePoint's: {field}"):
+        with pytest.raises(ValueError, match=f"Rekordbox's, not CuePoint's: '{field}'"):
             revert.revert_change(change.id)
 
         assert raw_history(db) == before
@@ -745,7 +745,7 @@ class TestEachPathRefusesTheOthersFields:
         imported = tracks.get(ids["1"])
 
         with pytest.raises(
-            ValueError, match=f"CuePoint's own, not Rekordbox's: {field}"
+            ValueError, match=f"CuePoint's own, not Rekordbox's: '{field}'"
         ):
             activity.revert_field_change(change.id)
 
@@ -754,7 +754,7 @@ class TestEachPathRefusesTheOthersFields:
 
     def test_a_field_neither_path_owns_is_not_revertable(self, revert, activity, ids):
         change = activity.record_field_change(ids["1"], "normalized_path", "a", "b")
-        with pytest.raises(ValueError, match="not revertable: normalized_path"):
+        with pytest.raises(ValueError, match="not revertable: 'normalized_path'"):
             revert.revert_change(change.id)
 
     def test_an_unknown_change_is_refused(self, revert):
@@ -992,7 +992,7 @@ class TestWhatABatchRevertRefuses:
         assert raw_history(db) == before
 
     def test_an_unknown_batch_is_refused(self, revert):
-        with pytest.raises(ValueError, match="No such batch: nope"):
+        with pytest.raises(ValueError, match="No such batch: 'nope'"):
             revert.check_batch("nope")
 
     @pytest.mark.parametrize("blank", ["", "   ", None])

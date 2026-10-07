@@ -148,7 +148,7 @@ def _optional_name(value: Any) -> Optional[str]:
 def _mark_ms(value: Any, name: str) -> int:
     ms = non_negative(value, name)
     if ms > MAX_MARK_MS:
-        raise ValueError(f"{name} must be at most {MAX_MARK_MS}, got {ms}")
+        raise ValueError(f"{name} must be at most {MAX_MARK_MS}, got {ms!r}")
     return ms
 
 
@@ -181,7 +181,7 @@ class TrackCue:
         one_of(self.kind, CUE_KINDS, "kind")
         hot_cue = optional_whole_number(self.hot_cue, "hot_cue")
         if hot_cue is not None and not 0 <= hot_cue < len(HOT_CUE_LETTERS):
-            raise ValueError(f"hot_cue must be 0-7 or None, got {hot_cue}")
+            raise ValueError(f"hot_cue must be 0-7 or None, got {hot_cue!r}")
         object.__setattr__(self, "hot_cue", hot_cue)
         start = _mark_ms(self.start_ms, "start_ms")
         object.__setattr__(self, "start_ms", start)
@@ -270,7 +270,7 @@ class BeatGridMarker:
         object.__setattr__(self, "meter", _optional_name(self.meter))
         beat = optional_whole_number(self.beat, "beat")
         if beat is not None and not 1 <= beat <= 4:
-            raise ValueError(f"beat must be 1-4 or None, got {beat}")
+            raise ValueError(f"beat must be 1-4 or None, got {beat!r}")
         object.__setattr__(self, "beat", beat)
 
     def values(self) -> GridValues:

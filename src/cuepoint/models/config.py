@@ -501,14 +501,14 @@ def load_config_from_yaml(yaml_path: str) -> dict:
         )
 
     if not os.path.exists(yaml_path):
-        raise FileNotFoundError(f"Configuration file not found: {yaml_path}")
+        raise FileNotFoundError(f"Configuration file not found: {yaml_path!r}")
 
     with open(yaml_path, "r", encoding="utf-8") as f:
         yaml_content = yaml.safe_load(f)
 
     if not isinstance(yaml_content, dict):
         raise ValueError(
-            f"YAML file must contain a dictionary at root level: {yaml_path}"
+            f"YAML file must contain a dictionary at root level: {yaml_path!r}"
         )
 
     # Flatten nested structure
@@ -546,12 +546,12 @@ def load_config_from_yaml(yaml_path: str) -> dict:
                     except ValueError:
                         raise ValueError(
                             f"Setting {key} expects {type(default_value).__name__}, "
-                            f"got {type(value).__name__} ({value})"
+                            f"got {type(value).__name__} ({value!r})"
                         )
                 else:
                     raise ValueError(
                         f"Setting {key} expects {type(default_value).__name__}, "
-                        f"got {type(value).__name__} ({value})"
+                        f"got {type(value).__name__} ({value!r})"
                     )
 
     # Step 12: Warn on deprecated config keys
