@@ -8,7 +8,7 @@ class is unreached. PRUNE-04 is implemented (2026-10-07): the retired app's pipe
 script nothing runs are gone. PRUNE-06 is implemented (2026-10-07): every dependency left has a
 live importer. PRUNE-07 is implemented (2026-10-07): 250 docs became 135, each checked against
 the code. PRUNE-08 is implemented (2026-10-07): CI's dead-code guard keeps the repository clean,
-and the phase is complete in code; a Windows and macOS run is owed.** Eight steps, PRUNE-01…PRUNE-08. Per the
+and the phase is complete in code; the Windows run passed (2026-10-07) and a macOS run is owed.** Eight steps, PRUNE-01…PRUNE-08. Per the
 process, no implementation happens from this document. Each step needs an explicit "Implement
 PRUNE-NN" instruction, scoped to exactly that step, and its outcome is recorded under the step
 afterwards. There are no open points. The measurements taken while writing it are in cross-cutting
@@ -1215,6 +1215,33 @@ The Electron end-to-end suite did not finish in this container: it stopped at th
 with many specs failing on the container's own engine environment, so it gives no result either
 way. It is owed to the Windows run.
 
+**The Windows run** (2026-10-07, Windows 11, Python 3.13.7, Node 24.14.0, on the same machine as
+the baseline):
+- `npm run dist` on `e3dc9675`, with the engine sidecar rebuilt from that commit:
+
+  | What | Baseline (`06844ee1`) | Now |
+  | --- | --- | --- |
+  | Installer, `release/CuePoint Setup 0.0.0.exe` | 182,625,997 bytes (174.2 MiB) | 182,787,164 bytes (174.3 MiB) |
+  | Packaged engine sidecar | 80,360,117 bytes | 80,341,695 bytes |
+  | Unpacked app, `release/win-unpacked/` | 432,187,877 bytes | 432,799,744 bytes |
+
+  The installer is 161 KB (0.09%) larger. The sidecar is 18 KB smaller and the Electron and
+  renderer source shrank on net, so the difference is in the Electron bundle; it was not traced
+  further.
+- The packaged app starts: its window opens, its engine answers `/health` with `ok`, and both exit
+  when the window is closed.
+- The end-to-end suite, on `add02baa`: 75 passed, 1 skipped (the opt-in memory run), in 11.0
+  minutes. That includes the 9 audio-playing specs PRUNE-05 owes. The suite has 76 tests against
+  the baseline's 71; the five added since are other steps' specs, not this phase's.
+
+  Two earlier full runs failed 3 and 2 specs, each one passing alone. All were timing under load,
+  and each was fixed before this run: the failed-queue toast split a run of failures in two
+  (`974d0708`, `32d2dccf`); a repeat mode changed just before quitting was lost, because
+  localStorage reached the disk after the quit (`123d02e0` flushes it on quit); the waveform bar's
+  column count was read before the canvas was measured (`c3c91ab3`, with `120ce891`); and
+  `shell.spec.ts` and `smoke.spec.ts` ran against the real `~/.cuepoint`, whose library changed
+  what the keyboard walk reached (`a434ba8e`).
+
 **Phase-level acceptance:**
 1. Met (PRUNE-01).
 2. Met (PRUNE-02); `check_no_qt.py` passes and CI installs no Qt.
@@ -1226,11 +1253,10 @@ way. It is owed to the Windows run.
    slower (above).
 6. Met (PRUNE-07); Docs Check is green.
 7. Met: no route, flag, config key, migration or export changed, and the contract tests pass.
-8. Owed: the end-to-end suite and `npm run dist` on Windows, and CI's macOS build, need a run off
-   this container.
+8. Met on Windows: the end-to-end suite passes and the build is made with `npm run dist` and
+   starts (above). CI's macOS build is still owed.
 
-**Still owed:** the Windows run (`npm run dist`, installer size, the app starts, the end-to-end
-suite with the 9 audio-playing specs PRUNE-05 owes) and a macOS one.
+**Still owed:** the macOS run.
 
 ---
 
