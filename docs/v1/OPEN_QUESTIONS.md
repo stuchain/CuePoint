@@ -3728,3 +3728,165 @@ icon.
 - **Option B — Keep the current logo.**
 
 **Recommendation**: **A**. Every other surface is pixel art; the favicon is the one seen most.
+
+---
+
+## DECISION ROUND 21 — PRODUCTION HARDENING (Phase 18) ⏳ Open, asked 2026-10-07
+
+Asked while specifying Phase 18 (`PHASE18_HARDENING.md`). DEC-125 named what hardening covers;
+writing the steps raised ten questions no earlier decision answers.
+
+Found while specifying:
+- **Restore is built and unreachable.** `BackupService.restore()` is complete and tested, but no
+  endpoint, Settings control or CLI calls it, and DEC-009's **Back Up Now** / **Restore** were never
+  built. Q-190.
+- **The copy from before an upgrade is pruned** after five changed launches, and the rollback runbook
+  relies on it. Q-191.
+- **A library that fails at start is a dead end:** damaged, too new and half-upgraded all show as a
+  generic error, and nothing checks the live library for damage. Q-192, Q-193.
+- **Tags are written into audio files in place,** so a crash mid-write can truncate the file. Q-194.
+- **Every 50,000-track number is from one Windows machine,** and no workflow runs the scale tests.
+  Q-195.
+- **Search and sort fold ASCII only:** "ÂME" does not find "Âme", and "Âme" sorts after "Zedd". Q-196.
+- **No accessibility checker runs anywhere,** and no screen-reader pass is recorded. Q-197.
+- **The end-to-end suite never runs against the packaged app in CI,** and about thirty manual checks
+  are owed from Phases 5 to 13. Q-198, Q-199.
+
+### Q-190 — Where Back Up Now and Restore live
+
+**Status**: Open
+
+**Question**: DEC-009 asked for **Back Up Now** and **Restore** in Settings. Where exactly?
+
+- **Option A — A Backups section in Settings,** before About & updates: the list of backups with
+  their date, size and reason, **Back Up Now**, **Restore** per row, **Show in folder**.
+- **Option B — Inside Settings › About & updates,** as two buttons and a picker.
+- **Option C — The app menu only** (File › Back Up Now, File › Restore…).
+
+**Recommendation**: **A**. A restore needs to show which copy is which, and a section has room for
+the list; the menu items can be added later as shortcuts to it.
+
+### Q-191 — A copy before every upgrade
+
+**Status**: Open
+
+**Question**: Five launch backups are kept, so five changed launches after an upgrade remove the last
+copy from before it. Keep one on purpose?
+
+- **Option A — Yes.** Just before the first pending migration, a copy named for both versions, kept
+  apart from the five; the last 3 are kept.
+- **Option B — No.** The launch backups are enough; raise their count instead.
+
+**Recommendation**: **A**. It is the one copy that undoes a bad release (Phase 16's rollback relies
+on it), and it costs one file per upgrade.
+
+### Q-192 — When the library is checked for damage
+
+**Status**: Open
+
+**Question**: SQLite's quick check reads the whole file (a 50,000-track library with Clean's data is
+about 300 MB). When does it run?
+
+- **Option A — After an unclean exit, and once a week,** in the background after the window shows.
+- **Option B — At every launch.**
+- **Option C — Never on its own;** damage is found when a read fails.
+
+**Recommendation**: **A**. Damage is most likely after a crash or power cut, and a weekly check finds
+the rest; neither delays opening the app.
+
+### Q-193 — A library that can't open at start
+
+**Status**: Open
+
+**Question**: A damaged library, one from a newer CuePoint, or one whose upgrade failed shows a
+generic error today.
+
+- **Option A — A recovery screen** that says which, in plain words, and offers the latest good
+  backup, another backup, the file's folder and "Report this problem".
+- **Option B — A clear message only,** with the backups folder; restoring is done in Settings.
+
+**Recommendation**: **A**. The moment the library won't open is the one moment a backup matters, and
+Settings may not be reachable then.
+
+### Q-194 — Saving tags into audio files
+
+**Status**: Open
+
+**Question**: Tags are written into the audio file in place. A crash or power cut mid-write can
+truncate the file; the saved before-values restore tags, not audio.
+
+- **Option A — Write a copy, check it, swap it in.** The copy is made beside the file, checked to
+  decode and to read back its tags, then replaces the original in one step. Needs free space for one
+  file at a time, and is somewhat slower (measured in the step).
+- **Option B — Keep writing in place.**
+
+**Recommendation**: **A**. A DJ's audio files are the one thing CuePoint must never damage.
+
+### Q-195 — The largest library v1 supports
+
+**Status**: Open
+
+**Question**: Everything is built and measured for 50,000 tracks, and the player's queue is capped
+there.
+
+- **Option A — 50,000 supported and held by budgets; 100,000 measured** and written down, without a
+  promise.
+- **Option B — 100,000 supported,** with the queue cap and the budgets raised to match.
+- **Option C — 50,000, and nothing above it measured.**
+
+**Recommendation**: **A**. 50,000 is what every phase designed for; measuring 100,000 tells larger
+libraries what to expect without a second set of budgets to hold.
+
+### Q-196 — Accents and case in search and sort
+
+**Status**: Open
+
+**Question**: Search and sort fold only plain A–Z today.
+
+- **Option A — Fold them beyond ASCII.** "beyonce" finds "Beyoncé", "ÂME" finds "Âme", "Âme" sorts
+  with the A's. A migration adds search and sort keys (timed at 50,000).
+- **Option B — Case only,** beyond ASCII; accents still matter.
+- **Option C — Leave it.**
+
+**Recommendation**: **A**. Electronic music is full of accented names, and DJs type without them.
+
+### Q-197 — How far accessibility goes
+
+**Status**: Open
+
+- **Option A — WCAG 2.2 AA:** an automated check (axe) on every page in CI, contrast for every
+  color, Windows high contrast, a keyboard spec per page, and one pass with NVDA on Windows and
+  VoiceOver on macOS.
+- **Option B — The automated checks only,** without the screen-reader pass.
+- **Option C — Keyboard only.**
+
+**Recommendation**: **A**. It is the level the website already holds (DEC-141), and the manual pass
+is the only way to judge the table and the waveform.
+
+### Q-198 — Linux at 1.0
+
+**Status**: Open
+
+**Question**: Linux is "experimental" today: an AppImage, no bundled player, no self-update.
+
+- **Option A — Stays experimental.** Built and tested by CI, including the packaged suite; no
+  manual checks; the support page says so.
+- **Option B — Supported,** with the manual checks run on Linux too and a player bundled.
+
+**Recommendation**: **A**. Every manual check doubles with a fourth system, and nothing in v1 asked
+for Linux support.
+
+### Q-199 — What blocks 1.0.0
+
+**Status**: Open
+
+**Question**: HARDEN-09 runs every owed check. Which results hold back the `v1.0.0` tag?
+
+- **Option A — Every owed check on Windows and both Macs** must pass; Linux only its automated
+  checks; anything else found goes to a known-issues list.
+- **Option B — Only data loss, crashes and checks that cannot be worked around;** the rest are known
+  issues.
+- **Option C — Every check on every system,** Linux included.
+
+**Recommendation**: **A**. The owed checks were each accepted as part of a phase; 1.0 is where they
+are kept.

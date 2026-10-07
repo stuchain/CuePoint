@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 asked (Q-180…Q-189).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 asked (Q-180…Q-189); Round 21 asked (Q-190…Q-199).**
 
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
@@ -12,7 +12,7 @@ Phase numbers follow the order of implementation (DEC-146):
 
 Phase 12 is specified (`PHASE12_CLEANUP.md`), and so are Phase 13 (`PHASE13_REPORTING.md`), Phase 14
 (`PHASE14_PAGES.md`, with its page reviews in `PHASE14_REVIEWS.md`) and Phase 15
-(`PHASE15_STATISTICS.md`), Phase 16 (`PHASE16_DISTRIBUTION.md`) and Phase 17 (`PHASE17_WEBSITE.md`); Phase 18 is not yet. PRUNE-01 is implemented
+(`PHASE15_STATISTICS.md`), Phase 16 (`PHASE16_DISTRIBUTION.md`), Phase 17 (`PHASE17_WEBSITE.md`) and Phase 18 (`PHASE18_HARDENING.md`). PRUNE-01 is implemented
 (2026-10-06): the audit is `PHASE12_AUDIT.md`, and the user approved every group of it the same day.
 PRUNE-02 is implemented (2026-10-06): Qt is removed, and `scripts/check_no_qt.py` keeps it out.
 PRUNE-03 is implemented (2026-10-07): no unreached Python module remains but the migrations.
@@ -1034,10 +1034,34 @@ download before 1.0.0, when the site goes live, the domain, comparison pages, an
     - accessibility;
     - forms tested.
 
-## Phase 18 — Production Hardening — v1's final phase, not yet specified
+## Phase 18 — Production Hardening — v1's final phase
 
-50k-track testing, full migration/backup/restore testing, cross-platform packaging validation,
-accessibility, crash recovery, Unicode/path edge cases.
+Specified 2026-10-07 in `PHASE18_HARDENING.md`, in ten steps (HARDEN-01…HARDEN-10): backups the user
+can make and restore, every upgrade tested with data, a way back when the library cannot open, crash
+recovery proven by killing processes, whole-or-nothing writes, Unicode and path edge cases, 50,000
+tracks measured on every system, accessibility, the packaged app in CI with every owed check run once,
+and `v1.0.0`. Writing it raised ten questions, asked as Decision Round 21 (Q-190…Q-199): where backups
+live, a copy before every upgrade, when the library is checked for damage, a recovery screen, tag
+writes, the largest library, accents in search and sort, how far accessibility goes, Linux at 1.0,
+and what blocks 1.0.0.
+
+- **The library is safe** (DEC-009, DEC-125). **Back Up Now** and **Restore** in the app; a copy
+  before every upgrade; damaged, too-new and half-upgraded libraries meet a way back; every file
+  written whole or not at all, audio tags included.
+  - **Found in the code:** restore is built and tested but nothing calls it; tags are written in
+    place; nothing checks the live library for damage.
+- **Crash recovery** (DEC-028, DEC-007). A hung engine is restarted, a crashed window reloads, the
+  next launch knows what was interrupted; each proven by killing the process mid-work.
+- **Unicode and paths.** NFC and NFD paths compare equal, network paths keep their host, Windows paths
+  over 260 characters work, and search and sort fold accents beyond ASCII.
+- **50,000 tracks on every system,** in the packaged app, on a schedule and before every release,
+  with budgets that fail. Today every number is from one Windows machine and no workflow runs the
+  scale tests.
+- **Accessibility:** axe on every page in CI, contrast for every color, high contrast, keyboard specs,
+  and one NVDA and VoiceOver pass.
+- **Checked as shipped:** the end-to-end suite against the packaged app on all four legs, and every
+  owed check from Phases 5 to 17 run once from `docs/release/v1-acceptance.md`.
+- **Ends with `v1.0.0`** (DEC-176), tagged on `main` and published by the release workflow.
 
 Phases 12 to 17 run before it (DEC-140, DEC-146).
 
