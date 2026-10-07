@@ -226,6 +226,24 @@ async function tops(window: Page, selector: string, fractions: readonly number[]
 const BAR_CANVAS = "[data-testid=player-waveform] canvas";
 const INSPECTOR_CANVAS = "[data-testid=inspector-waveform] canvas";
 
+/**
+ * The bar canvas's column count, once it has one. The canvas is visible before
+ * its ResizeObserver has measured it, and until then it lays out zero columns.
+ */
+async function barColumns(window: Page): Promise<number> {
+  let columns = 0;
+  await expect
+    .poll(
+      async () => {
+        columns = Number(await window.locator(BAR_CANVAS).getAttribute("data-columns"));
+        return columns;
+      },
+      { timeout: 10_000 },
+    )
+    .toBeGreaterThan(0);
+  return columns;
+}
+
 test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", () => {
   test.skip(!hasDecoder, "no mpv: run `python scripts/fetch_player_sidecar.py`");
 
@@ -271,7 +289,7 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
         await load(window, files[index]!, trackId, title);
         const player = await playerDuration(window);
         await expect(window.locator(BAR_CANVAS)).toBeVisible({ timeout: 20_000 });
-        const columns = Number(await window.locator(BAR_CANVAS).getAttribute("data-columns"));
+        const columns = await barColumns(window);
         const answer = await window.evaluate(
           (track) => window.cuepoint!.waveforms!.get({ track_ids: [track], width: 120 }),
           trackId,
@@ -309,7 +327,7 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
       await expect(slider).toHaveAttribute("aria-valuetext", /0:0\d of 0:06/);
 
       // --- a click at the second section's start seeks there -----------------
-      const columns = Number(await window.locator(BAR_CANVAS).getAttribute("data-columns"));
+      const columns = await barColumns(window);
       const box = (await window.getByTestId("player-waveform").boundingBox())!;
       await window.mouse.click(box.x + (box.width * HOT_CUE_SECONDS) / 6, box.y + box.height / 2);
       const column = 6 / columns;
