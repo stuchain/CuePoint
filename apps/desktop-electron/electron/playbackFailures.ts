@@ -30,6 +30,16 @@
  */
 export const FAILURE_COALESCE_MS = 400;
 
+/**
+ * How many windows a run waits for the player to answer its last failure.
+ *
+ * Whether the run ends in "playback stopped" is decided by that answer (mpv's
+ * `idle-active`, or the next file starting), and on a loaded machine it can
+ * come after one window. The wait is bounded so that a player that never
+ * answers still gets its failures reported.
+ */
+export const MAX_SETTLING_WINDOWS = 10;
+
 interface PlaybackFailure {
   /** What the queue calls the track. May be blank for an untitled item. */
   title: string;
@@ -106,12 +116,15 @@ interface FailureReporterOptions {
   onReport: (report: FailureReport) => void;
   /** Overridden in tests that do not want to wait. */
   windowMs?: number;
+  /** True while the player has not yet answered the last failure. */
+  isSettling?: () => boolean;
 }
 
 export class FailureReporter {
   private count = 0;
   private first: PlaybackFailure | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private settlingWindows = 0;
   private disposed = false;
 
   private readonly windowMs: number;
@@ -129,6 +142,7 @@ export class FailureReporter {
     if (this.disposed) return;
     this.count += 1;
     this.first ??= failure;
+    this.settlingWindows = 0;
     this.arm();
   }
 
@@ -173,6 +187,11 @@ export class FailureReporter {
     this.clearTimer();
     this.timer = setTimeout(() => {
       this.timer = null;
+      if (this.options.isSettling?.() && this.settlingWindows < MAX_SETTLING_WINDOWS) {
+        this.settlingWindows += 1;
+        this.arm();
+        return;
+      }
       this.flush(false);
     }, this.windowMs);
     // Never a reason to keep the process alive; a pending toast is not work.

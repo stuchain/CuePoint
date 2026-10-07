@@ -107,6 +107,7 @@ export class PlaybackController {
     this.failures = new FailureReporter({
       windowMs: options.failureWindowMs,
       onReport: (report) => this.onFailureReport(report),
+      isSettling: () => this.failedAwaitingAdvance !== null,
     });
 
     this.unsubscribes.push(

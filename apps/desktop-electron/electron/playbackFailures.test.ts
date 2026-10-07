@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   FAILURE_COALESCE_MS,
+  MAX_SETTLING_WINDOWS,
   FailureReporter,
   failureMessage,
   type FailureReport,
@@ -149,6 +150,38 @@ describe("coalescing", () => {
     // And the pending run is gone, so the window does not report it again.
     vi.advanceTimersByTime(FAILURE_COALESCE_MS * 2);
     expect(reports).toHaveLength(1);
+  });
+
+  it("waits while the player has not yet answered the last failure", () => {
+    // The answer decides whether the run ends in "playback stopped".
+    let settling = true;
+    const reports: FailureReport[] = [];
+    const instance = new FailureReporter({
+      onReport: (report) => reports.push(report),
+      isSettling: () => settling,
+    });
+
+    instance.record({ title: "a", reason: null });
+    instance.record({ title: "b", reason: null });
+    vi.advanceTimersByTime(FAILURE_COALESCE_MS * 3);
+    expect(reports).toHaveLength(0);
+
+    settling = false;
+    instance.stopped();
+    expect(reports).toEqual([expect.objectContaining({ count: 2, stopped: true })]);
+  });
+
+  it("reports anyway once the player has kept it waiting too long", () => {
+    const reports: FailureReport[] = [];
+    const instance = new FailureReporter({
+      onReport: (report) => reports.push(report),
+      isSettling: () => true,
+    });
+
+    instance.record({ title: "a", reason: null });
+    vi.advanceTimersByTime(FAILURE_COALESCE_MS * (MAX_SETTLING_WINDOWS + 1));
+
+    expect(reports).toEqual([expect.objectContaining({ count: 1, stopped: false })]);
   });
 
   it("says nothing when playback stops with nothing having failed", () => {

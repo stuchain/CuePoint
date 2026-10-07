@@ -571,6 +571,30 @@ describe("recovering from a failure (PLAYER-10)", () => {
     expect(calls.some((call) => call.kind === "stop")).toBe(true);
   });
 
+  it("says playback stopped even when mpv goes idle after the window closes", async () => {
+    // Found by the end-to-end test on a loaded machine: the last failure's
+    // `idle-active` came more than the window after its `end-file`, so the
+    // window reported the run first, without "playback stopped", and the stop
+    // that followed had nothing left to report.
+    const { player, finish, advanceTo, goIdle } = fakePlayer();
+    const controller = new PlaybackController(player, { failureWindowMs: 5 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b"), 0);
+
+    finish("error", 1, "loading failed");
+    advanceTo(2);
+    finish("error", 2, "loading failed");
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    goIdle();
+
+    await vi.waitFor(() => expect(notices).toHaveLength(1));
+    expect(notices[0]).toMatchObject({
+      stopped: true,
+      count: 2,
+      message: "2 tracks could not be played — playback stopped",
+    });
+  });
+
   it("plays a track that failed before, when it is asked for again", async () => {
     // DEC-054 makes failure transient; the drive may well be back.
     const { player, calls, finish, goIdle } = fakePlayer();
