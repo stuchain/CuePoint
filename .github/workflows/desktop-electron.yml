@@ -17,6 +17,15 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
 
+    env:
+      # The commit this build is made from: main and the engine sidecar record it, and it is
+      # Sentry's `dist` for all three processes (REPORT-07).
+      # On a pull request `github.sha` is a merge commit nobody can check out, so the head is used.
+      CUEPOINT_BUILD_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      # Only whether the secret exists: `secrets.*` cannot be read in a step's `if:`, and the token
+      # itself is given to the one step that uses it, not to npm install scripts, pip, pytest or the app.
+      HAS_SENTRY_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -131,9 +140,41 @@ jobs:
         working-directory: apps/desktop-electron
         run: npm run test:e2e
 
+      # REPORT-07. Each OS leg builds its own bundles, so each uploads its own maps: the debug id
+      # that `inject` writes into every file and its map ties a stack frame to its map whatever the
+      # leg, so the same release and dist from three legs do not collide. Must run after the last
+      # `npm run build` (a rebuild would drop the debug ids) and before electron-builder packs.
+      - name: Upload source maps to Sentry
+        # Pushes only (a pull request builds from code nobody has merged), and only with the secret.
+        if: github.event_name == 'push' && env.HAS_SENTRY_TOKEN == 'true'
+        # A Sentry outage must not stop the installers; a tag build is the release, so it must succeed.
+        continue-on-error: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+        working-directory: apps/desktop-electron
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: cuepoint
+          SENTRY_PROJECT: electron
+        run: |
+          version="$(node -p "require('./package.json').cuepoint.engineVersion")"
+          dist="${CUEPOINT_BUILD_COMMIT:0:7}"
+          npx sentry-cli sourcemaps inject electron-dist renderer/dist
+          npx sentry-cli sourcemaps upload --release "cuepoint@${version}" --dist "${dist}" electron-dist renderer/dist
+
+      # No map ships: electron-builder's `files` excludes them too, and this keeps them off the disk
+      # that is packed from, uploaded or not.
+      - name: Delete source maps
+        if: always()
+        shell: bash
+        working-directory: apps/desktop-electron
+        run: |
+          node -e "const fs=require('fs'),p=require('path');const w=d=>{if(!fs.existsSync(d))return;for(const e of fs.readdirSync(d,{withFileTypes:true})){const f=p.join(d,e.name);if(e.isDirectory())w(f);else if(f.endsWith('.map'))fs.rmSync(f)}};['electron-dist','renderer/dist'].forEach(w)"
+
+      # `package`, not `dist`: `dist` builds again first, which would replace the files that
+      # carry the debug ids.
       - name: Build Electron installers + artifacts
         working-directory: apps/desktop-electron
-        run: npm run dist
+        run: npm run package
 
       - name: Generate SHA256SUMS
         working-directory: apps/desktop-electron

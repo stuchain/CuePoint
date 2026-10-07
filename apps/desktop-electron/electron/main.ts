@@ -13,6 +13,7 @@ import type { PlayerNotice } from "./playbackFailures";
 import { PlaybackController } from "./playbackController";
 import { queueTruncationMessage, resolveQueueFromView } from "./queueResolver";
 import { chooseRekordboxExportDestination } from "./rekordboxExportDialog";
+import { currentBuildInfo } from "./buildInfo";
 import { ErrorReportingChoice } from "./errorReporting";
 import {
   breadcrumb,
@@ -60,6 +61,12 @@ function setListFolders(): SetListFolderStore {
 }
 
 /**
+ * Which build this is: the release, `dist` and environment every process reports (REPORT-07).
+ * Handed to the SDK, to the engine's environment and, through `app:buildInfo`, to the page.
+ */
+const build = currentBuildInfo(app.isPackaged);
+
+/**
  * Whether error reports may be sent (REPORT-01, DEC-128). Written to the file
  * first, then told to the engine, which also reads it from its environment at
  * launch.
@@ -84,6 +91,7 @@ errorReporting.enabled();
  */
 const reportingOn = setupMainReporting({
   dsn: mainReportingDsn(),
+  build,
   choice: () => errorReporting.enabled(),
   scrubContext: {
     home: safely(() => app.getPath("home")),
@@ -120,6 +128,7 @@ const engine: EngineSupervisor = new EngineSupervisor({
     })?.path ?? null,
   // A closure, so `errorReporting` (declared below) is read at launch, not here.
   errorReporting: (): boolean => errorReporting.enabled(),
+  build,
   // The engine's exits, restarts and give-ups, once per incident (REPORT-05).
   reporter: processReporter,
 });
@@ -636,6 +645,8 @@ function registerIpcHandlers(): void {
     return { ok: true as const };
   });
   // `configured` is whether the renderer's reporter has anywhere to send to: main set the SDK up.
+  // The app's version and build, for the About dialog (REPORT-07). Nothing in it is secret.
+  handle("app:buildInfo", () => build);
   handle("errorReporting:get", () => ({ enabled: errorReporting.enabled(), configured: reportingOn }));
   // End-to-end runs only (they set the display variable): the page may be made to throw.
   handle("testHooks:enabled", () => displayChoice(process.env[E2E_DISPLAY_ENV]) !== null);

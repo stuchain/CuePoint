@@ -788,7 +788,31 @@ function textField(value: unknown, ctx: ScrubContext): unknown {
   return typeof value === "string" ? scrubText(value, ctx) : clone(value);
 }
 
+const IMAGE_PATH_KEYS = ["code_file", "debug_file"];
+
+/**
+ * Keep `debug_meta` (debug ids tie a frame to its source map), but its images' file paths go through
+ * the path rule, as a frame's `filename` does: a loaded module's path names the user.
+ */
+function scrubDebugMeta(debugMeta: unknown, ctx: ScrubContext): unknown {
+  if (!isRecord(debugMeta)) return clone(debugMeta);
+  const out = clone(debugMeta) as Json;
+  if (Array.isArray(debugMeta.images)) {
+    out.images = debugMeta.images.map((image) => {
+      if (!isRecord(image)) return clone(image);
+      const copy = clone(image) as Json;
+      for (const key of IMAGE_PATH_KEYS) {
+        const value = image[key];
+        if (typeof value === "string") copy[key] = scrubPathValue(value, ctx);
+      }
+      return copy;
+    });
+  }
+  return out;
+}
+
 const EVENT_HANDLERS: Record<string, (value: unknown, ctx: ScrubContext) => unknown> = {
+  debug_meta: scrubDebugMeta,
   message: textField,
   logentry: scrubLogentry,
   exception: scrubValueList,
@@ -809,7 +833,7 @@ const EVENT_HANDLERS: Record<string, (value: unknown, ctx: ScrubContext) => unkn
  * frame's local variables, breadcrumbs of category `ui.click`, `ui.input` and `console`, and every
  * attachment but the output tails. Text-scrubbed: `message`, exception values, breadcrumb
  * messages. `logentry.params` become paths or `<value>` and `formatted` is rebuilt from them.
- * `transaction`, `culprit` and a frame's `abs_path` and `filename` go through the path rule.
+ * `transaction`, `culprit` and a frame's `abs_path` and `filename` and a debug image's `code_file` go through the path rule.
  * Library-named keys lose their string and collection values in `extra`, `tags`, non-standard
  * `contexts`, breadcrumb `data` and `mechanism.data` (numbers and flags stay; a 32-hex value under
  * `event_id`, `trace_id`, `span_id` or `report_id` stays). Event, SDK and build fields

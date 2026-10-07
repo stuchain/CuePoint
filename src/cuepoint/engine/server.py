@@ -128,7 +128,7 @@ from cuepoint.reporting.engine_reporting import (
     watch_jobs,
 )
 from cuepoint.reporting.expected import is_expected_failure
-from cuepoint.version import __version__
+from cuepoint.version import __version__, get_release
 
 _logger = logging.getLogger(__name__)
 
@@ -217,7 +217,8 @@ class EngineConfig:
 
 
 def health_payload() -> dict:
-    payload = {"status": "ok", "version": __version__}
+    # `release` is the name every process reports to Sentry (REPORT-07); not a secret.
+    payload = {"status": "ok", "version": __version__, "release": get_release()}
     session_id = os.environ.get("CUEPOINT_SESSION_ID", "").strip()
     if session_id:
         payload["session_id"] = session_id

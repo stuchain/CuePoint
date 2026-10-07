@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 13: Error Reporting, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. REPORT-01 to REPORT-06 are implemented (2026-10-07).** Eight steps,
+Status: **Specified 2026-10-07. REPORT-01 to REPORT-07 are implemented (2026-10-07).** Eight steps,
 REPORT-01…REPORT-08. Writing the steps raised six questions that Decision Round 14 did not answer.
 They were asked as Decision Round 16 (Q-151…Q-156) and settled the same day as DEC-148…DEC-153, so
 there are no open points. Per the process, no implementation happens from this
@@ -808,6 +808,49 @@ and stack traces from main and the renderer read as source.
 **Risks**: Low. **The secret** is the one thing CI needs from the user (DEC-148).
 
 **Complexity**: **S**
+
+**Outcome**: Implemented (2026-10-07).
+- **One release.** `electron/buildInfo.ts` builds `cuepoint@<version>` from `package.json`'s
+  `cuepoint.engineVersion` (imported at build time); `version.py` has `RELEASE_PREFIX` and
+  `get_release()`, and `/health` answers `release` beside `version` (nothing secret). Main hands the
+  release, `dist` and environment to its SDK, to the engine's environment (`CUEPOINT_RELEASE`,
+  `CUEPOINT_DIST`, `CUEPOINT_ENVIRONMENT`, always set, empty when unknown) and to the renderer through
+  a new `app:buildInfo` channel (preload, main, bridge types and the contract test moved together; no
+  engine route). The engine falls back to `get_release()` and the recorded short commit when run bare.
+- **`dist`** is the first seven characters of the commit. CI sets `CUEPOINT_BUILD_COMMIT`;
+  `build/buildElectron.mjs` (replacing the esbuild CLI call, which could not bake a value in portably)
+  defines `__CUEPOINT_COMMIT__`; `build_engine_sidecar.py` writes `cuepoint_build.json` (commit, date)
+  into a temporary folder the spec bundles, and `version.py` reads it when frozen. The source tree is
+  never written. With no commit given a build records none, and its `dist` is absent, not invented.
+  `version.py`'s February build number, commit and date are now `None`; `is_dev_build()` is true when
+  no commit was recorded, and the short commit is seven characters, not eight.
+- **Environment**: `production` for a packaged app, `development` from source. A run from source still
+  sends nothing without `CUEPOINT_SENTRY_DSN` (DEC-150). REPORT-08 must bake DSNs into packaged builds
+  only, and keep that.
+- **Source maps**: main is built with `sourcemap: "external"`; `electron-dist/**/*.map`, the renderer's
+  maps and `node_modules` maps are excluded from the package. `@sentry/cli` 3.8.0 is pinned. Its
+  platform binary is an optional dependency, which `npm ci` installs; its `postinstall` downloads the
+  binary only when that optional package is missing (it was not, here), so CI needs no extra step.
+  `desktop-electron.yml`, after the e2e tests and before packing, injects debug ids into `electron-dist`
+  and `renderer/dist`, uploads both to `cuepoint`/`electron` under the release and `dist`, deletes the
+  maps, then packs with `npm run package` (`npm run dist` builds first, which would replace the injected
+  files). It runs on every OS leg, on pushes only, only when the secret exists (the job holds a flag; the token is in that
+  step's own `env:`), and `continue-on-error` unless the ref is a tag; the legs do not collide because
+  debug ids, not file names, tie a frame to its map.
+- **The coupling check** also compares main's release (the prefix and derivation in `buildInfo.ts`)
+  with the engine's `health_payload()['release']`.
+- **Review fixes**: an empty `CUEPOINT_DIST` from main is final (no fallback to the sidecar's commit);
+  `debug_meta.images[].code_file` and `debug_file` go through the path rule in both scrubbers (shared
+  corpus); the coupling check also holds About's `DESKTOP_ENGINE_VERSION` to `__version__`. The e2e
+  compares main's event with the engine's real environment and `/health` (read from `/proc`, Linux
+  only), because no route makes the engine report an event without production code.
+- **About** shows `Version` and `Build` (the commit, "not recorded", and "(development)" from source).
+
+Checked in the cloud container: the main-process and renderer suites, both type-checks, lint, both
+builds, the Python script, reporting and engine suites, ruff, the mypy gate, the health smoke, the
+coupling and dead-code checks, `npm run pack` with no `.map` in `app.asar`, and `sentry-cli sourcemaps
+inject` on the real bundles. Not checked: the upload itself (it needs the secret and Sentry), the
+Windows and macOS legs, and, by hand, that one event from each process resolves to source in Sentry.
 
 ---
 

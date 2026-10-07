@@ -602,12 +602,18 @@ def test_setup_uses_the_release_dist_and_environment_from_the_environment():
         set_reporting_enabled(False)
 
 
-def test_setup_defaults_to_development_and_makes_no_release_guess(reporting):
+def test_setup_defaults_to_development_and_names_its_own_release_without_guessing(
+    reporting,
+):
+    from cuepoint.version import get_release
+
     engine_reporting.report_unexpected(RuntimeError("x"))
     _flush()
     event = reporting.events[0]
     assert event["environment"] == "development"
-    assert not event.get("release")
+    # The engine's own release (REPORT-07), never one the SDK guessed by running ``git``.
+    assert event["release"] == get_release()
+    assert not event.get("dist")
 
 
 # ---------------------------------------------------------------------------
@@ -1022,3 +1028,38 @@ def test_a_vanished_client_at_connection_level_is_not_reported(reporting):
             server_module.report_connection_error(None, ("127.0.0.1", 1))
     _flush()
     assert reporting.events == []
+
+
+@pytest.mark.parametrize(
+    ("environ", "expected"),
+    [
+        # Under main: what it gave is final, an empty dist included.
+        (
+            {"CUEPOINT_RELEASE": "cuepoint@2.0.0", "CUEPOINT_DIST": ""},
+            ("cuepoint@2.0.0", None),
+        ),
+        ({"CUEPOINT_RELEASE": "cuepoint@2.0.0"}, ("cuepoint@2.0.0", None)),
+        (
+            {"CUEPOINT_RELEASE": "cuepoint@2.0.0", "CUEPOINT_DIST": "abc1234"},
+            ("cuepoint@2.0.0", "abc1234"),
+        ),
+    ],
+)
+def test_under_main_the_given_release_and_dist_are_final(
+    environ, expected, monkeypatch
+):
+    monkeypatch.setattr(engine_reporting, "get_short_commit_sha", lambda: "5ide5ca")
+    assert engine_reporting._release_and_dist(environ) == expected
+
+
+def test_a_bare_engine_names_its_own_release_and_the_commit_its_build_recorded(
+    monkeypatch,
+):
+    from cuepoint.version import get_release
+
+    monkeypatch.setattr(engine_reporting, "get_short_commit_sha", lambda: "5ide5ca")
+    assert engine_reporting._release_and_dist({}) == (get_release(), "5ide5ca")
+    assert engine_reporting._release_and_dist({"CUEPOINT_DIST": "abc1234"}) == (
+        get_release(),
+        "abc1234",
+    )

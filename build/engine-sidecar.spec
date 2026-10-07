@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 """PyInstaller spec for CuePoint HTTP engine sidecar (Electron desktop)."""
 
+import os
 import sys
 from pathlib import Path
 
@@ -17,6 +18,13 @@ datas = []
 logging_yaml = project_root / "config" / "logging.yaml"
 if logging_yaml.exists():
     datas.append((str(logging_yaml), "config"))
+
+# REPORT-07: `scripts/build_engine_sidecar.py` writes the commit and date this build was made from
+# into a temporary `cuepoint_build.json` and names it here; `cuepoint.version` reads it back when
+# frozen. A build run by hand has none and records none.
+build_info = os.environ.get("CUEPOINT_BUILD_INFO_FILE")
+if build_info and Path(build_info).is_file():
+    datas.append((build_info, "."))
 
 # Package data files must be listed explicitly; PyInstaller only follows the
 # module graph, so a file a package reads at runtime but does not list here

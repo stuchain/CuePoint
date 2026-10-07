@@ -1891,6 +1891,21 @@ describe("desktop contract", () => {
     });
   });
 
+  describe("the build (REPORT-07)", () => {
+    it("crosses the bridge as app:buildInfo, typed", () => {
+      expect(invokedChannels(preload)).toContain("app:buildInfo");
+      expect(handledChannels(main)).toContain("app:buildInfo");
+      expect(bridgeTypes).toContain("buildInfo?: () => Promise<AppBuildInfo>");
+      expect(bridgeTypes).toContain("export interface AppBuildInfo");
+    });
+
+    it("is told to the SDK and to the engine from the one value", () => {
+      expect(main).toContain("const build = currentBuildInfo(app.isPackaged)");
+      expect(main).toMatch(/setupMainReporting\(\{[^}]*\bbuild,/s);
+      expect(main).toMatch(/new EngineSupervisor\(\{[\s\S]*?\n  build,/);
+    });
+  });
+
   describe("error reporting (REPORT-01)", () => {
     it("crosses the bridge through a get and a set in every file", () => {
       for (const channel of ["errorReporting:get", "errorReporting:set"]) {

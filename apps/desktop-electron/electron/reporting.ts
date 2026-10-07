@@ -38,6 +38,7 @@
 import { createRequire } from "node:module";
 
 import { bridgeSafeError } from "./bridgeError";
+import type { BuildInfo } from "./buildInfo";
 import { EngineError, setEngineTraceHeaders } from "./engineClient";
 import type { ProcessIncident, ProcessReporter } from "./processWatch";
 import { scrubAttachment, scrubEvent, type ScrubContext } from "./reportScrub";
@@ -114,8 +115,11 @@ export interface MainReportingOptions {
   transport?: unknown;
   /** Replaces the Electron SDK; for tests. */
   sdk?: ReportingSdk;
-  /** Where `CUEPOINT_RELEASE`, `CUEPOINT_DIST` and `CUEPOINT_ENVIRONMENT` are read. */
-  env?: NodeJS.ProcessEnv;
+  /**
+   * Which build this is (`buildInfo.ts`): its release, `dist` and environment stamp every event
+   * main sends, and the renderer's, which go through main (REPORT-07, DEC-126).
+   */
+  build?: Pick<BuildInfo, "release" | "dist" | "environment">;
 }
 
 /**
@@ -144,6 +148,7 @@ const QUIET_CHANNELS = new Set([
   "engine:getJob",
   "player:getState",
   "errorReporting:get",
+  "app:buildInfo",
   "testHooks:enabled",
 ]);
 /** Most distinct unexpected IPC errors remembered for the once-per-launch rule. */
@@ -214,7 +219,7 @@ function beforeBreadcrumb(crumb: Record<string, unknown>): Record<string, unknow
 export function setupMainReporting(options: MainReportingOptions): boolean {
   const dsn = options.dsn?.trim();
   if (!dsn || dsn.toLowerCase() === "off") return false;
-  const env = options.env ?? process.env;
+  const build = options.build;
   try {
     const sdk = options.sdk ?? loadElectronSdk();
     const base = { dsn, sendDefaultPii: false };
@@ -238,9 +243,9 @@ export function setupMainReporting(options: MainReportingOptions): boolean {
       // IPCMode.Classic (1): no `sentry-ipc` protocol is registered. See the file comment.
       ipcMode: 1,
       transport: options.transport ?? sdk.makeElectronTransport,
-      ...(env.CUEPOINT_RELEASE ? { release: env.CUEPOINT_RELEASE } : {}),
-      ...(env.CUEPOINT_DIST ? { dist: env.CUEPOINT_DIST } : {}),
-      ...(env.CUEPOINT_ENVIRONMENT ? { environment: env.CUEPOINT_ENVIRONMENT } : {}),
+      ...(build?.release ? { release: build.release } : {}),
+      ...(build?.dist ? { dist: build.dist } : {}),
+      ...(build?.environment ? { environment: build.environment } : {}),
       beforeSend,
       beforeBreadcrumb,
     });

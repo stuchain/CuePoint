@@ -372,6 +372,8 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   clearCuepointLogs: () => ipcRenderer.invoke("engine:clearCuepointLogs"),
   clearCuepointCache: () => ipcRenderer.invoke("engine:clearCuepointCache"),
   setPrivacyExitPrefs: (prefs) => ipcRenderer.invoke("privacy:setExitPrefs", prefs),
+  // This build's version, release, commit and environment (REPORT-07), for the About dialog.
+  buildInfo: () => ipcRenderer.invoke("app:buildInfo"),
   errorReporting: {
     get: () => ipcRenderer.invoke("errorReporting:get"),
     set: (enabled) => ipcRenderer.invoke("errorReporting:set", enabled),

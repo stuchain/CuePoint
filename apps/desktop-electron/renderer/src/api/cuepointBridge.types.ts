@@ -314,6 +314,17 @@ export interface ClearOkResponse {
   ok: boolean;
 }
 
+/** Which build this is, as Electron main reports it (REPORT-07). */
+export interface AppBuildInfo {
+  /** The app's version, the same as the engine's. */
+  version: string;
+  /** `cuepoint@<version>`: the release name every report carries. */
+  release: string;
+  /** The short commit the build was made from, or null for a build that recorded none. */
+  dist: string | null;
+  environment: "production" | "development";
+}
+
 /**
  * Whether error reports may be sent (REPORT-01, DEC-128). Stored by Electron
  * main, which tells the engine; on from the first launch.
@@ -3311,6 +3322,8 @@ export interface CuePointBridge {
   clearCuepointLogs?: () => Promise<ClearOkResponse>;
   clearCuepointCache?: () => Promise<ClearOkResponse>;
   setPrivacyExitPrefs?: (prefs: PrivacyExitPrefs) => Promise<{ ok: boolean }>;
+  /** Which build this is (REPORT-07): shown in About. Absent from an older main. */
+  buildInfo?: () => Promise<AppBuildInfo>;
   errorReporting?: {
     get: () => Promise<ErrorReportingState>;
     set: (enabled: boolean) => Promise<ErrorReportingState>;

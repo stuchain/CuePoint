@@ -143,7 +143,6 @@ function setup(extra: Partial<Parameters<typeof setupMainReporting>[0]> = {}): b
     choice: () => enabled,
     scrubContext: ctx,
     sdk: facade(),
-    env: {},
     ...extra,
   });
 }
@@ -233,11 +232,15 @@ describe("what init is given (fact 7)", () => {
     expect(initOptions.transport).toBe(fake);
   });
 
-  it("takes release, dist and environment from the environment (REPORT-07 fills them)", () => {
-    setup({ env: { CUEPOINT_RELEASE: "1.2.3", CUEPOINT_DIST: "abc1234", CUEPOINT_ENVIRONMENT: "staging" } });
-    expect(initOptions).toMatchObject({ release: "1.2.3", dist: "abc1234", environment: "staging" });
+  it("stamps the build's release, dist and environment on every event (REPORT-07)", () => {
+    setup({ build: { release: "cuepoint@1.2.3", dist: "abc1234", environment: "production" } });
+    expect(initOptions).toMatchObject({ release: "cuepoint@1.2.3", dist: "abc1234", environment: "production" });
 
-    setup({ env: {} });
+    // A build that recorded no commit has no dist, rather than a made-up one.
+    setup({ build: { release: "cuepoint@1.2.3", dist: null, environment: "development" } });
+    expect(initOptions.dist).toBeUndefined();
+
+    setup({});
     expect(initOptions.release).toBeUndefined();
     expect(initOptions.dist).toBeUndefined();
     expect(initOptions.environment).toBeUndefined();

@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **About shows the app's version and its build.** The build is the short commit
+  the app was made from, or "not recorded" for a build made by hand
 - **An error screen instead of a blank window.** When part of the app fails
   while drawing, it says "Something went wrong" with **Reload**; a failing page
   leaves the sidebar and the player bar working

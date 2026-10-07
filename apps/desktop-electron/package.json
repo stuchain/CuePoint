@@ -15,7 +15,7 @@
   "scripts": {
     "dev:renderer": "npm run dev --prefix renderer",
     "build:renderer": "npm run build --prefix renderer",
-    "build:electron": "esbuild electron/main.ts --bundle --platform=node --packages=external --format=esm --outfile=electron-dist/main.mjs",
+    "build:electron": "node build/buildElectron.mjs",
     "build": "npm run build:renderer && npm run build:electron",
     "build:engine-sidecar": "python ../../scripts/build_engine_sidecar.py",
     "fetch:player-sidecar": "python ../../scripts/fetch_player_sidecar.py",
@@ -30,7 +30,8 @@
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
     "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "package": "electron-builder"
   },
   "build": {
     "appId": "com.cuepoint.desktop",
@@ -40,8 +41,10 @@
     },
     "files": [
       "electron-dist/**/*",
+      "!electron-dist/**/*.map",
       "renderer/dist/**/*",
       "!renderer/dist/**/*.map",
+      "!**/node_modules/**/*.map",
       "electron/preload.cjs",
       "package.json"
     ],
@@ -92,6 +95,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
+    "@sentry/cli": "3.8.0",
     "cross-env": "^7.0.3",
     "electron": "^34.5.8",
     "electron-builder": "^25.1.8",

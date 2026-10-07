@@ -2645,5 +2645,48 @@
     "expected": {
       "message": "Set-Cookie: <token>"
     }
+  },
+  {
+    "name": "debug-image-code-file-goes-through-the-path-rule",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [
+        "/Applications/CuePoint.app/Contents/Resources"
+      ],
+      "tokens": []
+    },
+    "input": {
+      "debug_meta": {
+        "images": [
+          {
+            "type": "sourcemap",
+            "code_file": "/Users/anna/Music/House Mix/CuePoint/electron-dist/main.mjs",
+            "debug_id": "eda71d98-e4aa-5ede-9a1a-9dfd3db05a38"
+          },
+          {
+            "type": "sourcemap",
+            "code_file": "/Applications/CuePoint.app/Contents/Resources/app.asar/renderer/dist/assets/index.js",
+            "debug_id": "1c054179-d887-503b-b35c-a5b85fe8c77b"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "debug_meta": {
+        "images": [
+          {
+            "type": "sourcemap",
+            "code_file": "<home>/<dir>/<dir>/<dir>/<dir>/<file>.mjs",
+            "debug_id": "eda71d98-e4aa-5ede-9a1a-9dfd3db05a38"
+          },
+          {
+            "type": "sourcemap",
+            "code_file": "<app>/app.asar/renderer/dist/assets/index.js",
+            "debug_id": "1c054179-d887-503b-b35c-a5b85fe8c77b"
+          }
+        ]
+      }
+    }
   }
 ]

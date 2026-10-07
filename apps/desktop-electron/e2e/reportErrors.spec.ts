@@ -16,7 +16,7 @@ import {
   type Page,
 } from "@playwright/test";
 import { createServer, type Server } from "node:http";
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { hostname, tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -67,6 +67,28 @@ function filesUnder(dir: string): string[] {
   return readdirSync(dir, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
     .map((entry) => path.join(entry.parentPath, entry.name));
+}
+
+/**
+ * The environment of the engine that `mainPid` started, and its port, read from /proc (Linux only).
+ * The engine is the process that was told its parent was main (`CUEPOINT_PARENT_PID`).
+ */
+function engineEnvironmentOf(mainPid: number): Record<string, string> | null {
+  for (const entry of readdirSync("/proc")) {
+    if (!/^\d+$/.test(entry)) continue;
+    try {
+      const vars = Object.fromEntries(
+        readFileSync(`/proc/${entry}/environ`, "utf-8")
+          .split("\0")
+          .filter((line) => line.includes("="))
+          .map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]),
+      );
+      if (vars.CUEPOINT_PARENT_PID === String(mainPid) && vars.CUEPOINT_PORT) return vars;
+    } catch {
+      // Not ours to read, or gone.
+    }
+  }
+  return null;
 }
 
 function launch(userDataDir: string, dsn: string | null): Promise<ElectronApplication> {
@@ -126,6 +148,31 @@ test.describe("main reports (REPORT-04)", () => {
       expect(events).toHaveLength(1);
       const [event] = events;
       expect(event!.tags["ipc.channel"]).toBe("errorReporting:set");
+      // The build it came from (REPORT-07): the release the engine reports at /health too, and
+      // `development`, because a run from source is not a packaged app (DEC-150).
+      const status = await window.evaluate(
+        () => (window as never as { cuepoint: { getEngineStatus: () => Promise<{ version?: string }> } }).cuepoint.getEngineStatus(),
+      );
+      expect(status.version).toBeTruthy();
+      expect(event!.release).toBe(`cuepoint@${status.version}`);
+      expect(event!.environment).toBe("development");
+      // Main and the engine, started together, are one build (REPORT-07, DEC-126). No route in the
+      // harness makes the engine report an event without production code, so what the engine would
+      // stamp on one is read from what it was given: its own environment (the engine reads the
+      // variables `setup_engine_reporting` stamps events with from there) and its /health release.
+      if (process.platform === "linux") {
+        const mainPid = await app.evaluate(() => process.pid);
+        const engineEnv = engineEnvironmentOf(mainPid);
+        expect(engineEnv).not.toBeNull();
+        expect(engineEnv!.CUEPOINT_RELEASE).toBe(event!.release);
+        expect(engineEnv!.CUEPOINT_ENVIRONMENT).toBe(event!.environment);
+        // An empty dist is how main says "this build has no commit"; Sentry gets no dist then.
+        expect(engineEnv!.CUEPOINT_DIST || undefined).toBe(event!.dist);
+        const health = (await (await fetch(`http://127.0.0.1:${engineEnv!.CUEPOINT_PORT}/health`)).json()) as {
+          release?: string;
+        };
+        expect(health.release).toBe(event!.release);
+      }
       const text = JSON.stringify(event);
       // Nothing personal: not the machine, not where the profile is, no request or user.
       expect(text).not.toContain(hostname());

@@ -18,9 +18,11 @@ off is already queued for the transport, and the transport (``gated_transport.Ga
 flag again immediately before it sends, so that one is dropped too: nothing is sent after the
 switch is off, and nothing is kept for later.
 
-``release`` is passed as ``""`` and not None when ``CUEPOINT_RELEASE`` is unset: with None the SDK
-guesses one by running ``git rev-parse`` in the working directory, which is a subprocess at start
-and, in a user's folder, a read of their repository.
+``release`` is never None: with None the SDK guesses one by running ``git rev-parse`` in the working
+directory, which is a subprocess at start and, in a user's folder, a read of their repository. Under
+Electron main the release, ``dist`` and environment arrive in ``CUEPOINT_RELEASE``, ``CUEPOINT_DIST``
+and ``CUEPOINT_ENVIRONMENT`` and are used as given, an empty ``CUEPOINT_DIST`` meaning "no dist".
+Only a bare engine, with none of them set, names its own release and the commit its build recorded.
 
 Each event is recorded by exception (a bounded map from the exception to its event id), so an
 exception the logging integration already reported is not reported twice: ``report_unexpected``
@@ -45,6 +47,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from cuepoint.reporting.expected import is_expected_failure
 from cuepoint.reporting.scrub import ScrubContext, scrub_breadcrumb, scrub_event
+from cuepoint.version import get_release, get_short_commit_sha
 
 if TYPE_CHECKING:  # pragma: no cover
     from cuepoint.engine.jobs import Job, JobStore
@@ -236,6 +239,16 @@ def before_breadcrumb(
 # ---------------------------------------------------------------------------
 
 
+def _release_and_dist(environ: Mapping[str, str]) -> tuple[str, str | None]:
+    """The release and ``dist`` to report. Main gives both (REPORT-07), and what it gives is final:
+    an empty ``CUEPOINT_DIST`` is "this build has no commit", not a reason to use the sidecar's.
+    Only when main gave no release (a bare engine) are they the engine's own."""
+    given = environ.get(RELEASE_ENV)
+    if given:
+        return given, environ.get(DIST_ENV) or None
+    return get_release(), environ.get(DIST_ENV) or get_short_commit_sha()
+
+
 def setup_engine_reporting(
     environ: Mapping[str, str] = os.environ, *, transport: Any = None
 ) -> bool:
@@ -261,11 +274,14 @@ def setup_engine_reporting(
 
             transport = GatedHttpTransport
         _scrub_context = ScrubContext.from_environment()
+        release, dist = _release_and_dist(environ)
         sentry_sdk.init(
             dsn=dsn,
-            # An empty release stops the SDK guessing one by running ``git`` in the user's folder.
-            release=environ.get(RELEASE_ENV) or "",
-            dist=environ.get(DIST_ENV) or None,
+            # Main passes the build's release, ``dist`` and environment (REPORT-07). A bare engine
+            # names its own release; never empty, which would let the SDK guess one by running
+            # ``git`` in the user's folder.
+            release=release,
+            dist=dist,
             environment=environ.get(ENVIRONMENT_ENV) or "development",
             include_local_variables=False,
             send_default_pii=False,

@@ -6,14 +6,17 @@ from __future__ import annotations
 import json
 import os
 import platform
+import re
 import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SPEC = PROJECT_ROOT / "build" / "engine-sidecar.spec"
@@ -62,6 +65,39 @@ def platform_dir(
     if key is None:
         return None
     return f"{key}-{normalize_arch(machine or platform.machine())}"
+
+
+#: What CI sets to the commit being built (REPORT-07); ``desktop-electron.yml`` gives main the same.
+COMMIT_ENV = "CUEPOINT_BUILD_COMMIT"
+#: Where the spec finds the build-info file to bundle (``build/engine-sidecar.spec``).
+BUILD_INFO_FILE_ENV = "CUEPOINT_BUILD_INFO_FILE"
+#: Must equal ``cuepoint.version.BUILD_INFO_FILENAME``, which reads the file back.
+BUILD_INFO_FILENAME = "cuepoint_build.json"
+
+
+def build_info(
+    environ: Optional[Mapping[str, str]] = None, now: Optional[datetime] = None
+) -> dict[str, Any]:
+    """What the sidecar records about its build: the commit (if CI named one) and when.
+
+    A build with no ``CUEPOINT_BUILD_COMMIT`` records none, rather than guessing from whatever
+    checkout it runs in, so a build never claims to be another one. ``cuepoint.version`` reads this
+    file back when frozen.
+    """
+    env = os.environ if environ is None else environ
+    commit = (env.get(COMMIT_ENV) or "").strip().lower()
+    stamp = (now or datetime.now(timezone.utc)).isoformat(timespec="seconds")
+    return {
+        "commit_sha": commit if re.fullmatch(r"[0-9a-f]{7,40}", commit) else None,
+        "build_date": stamp,
+    }
+
+
+def write_build_info(directory: Path, info: Mapping[str, Any]) -> Path:
+    """Write ``info`` into ``directory`` where the spec bundles it from; answers the file."""
+    target = directory / BUILD_INFO_FILENAME
+    target.write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
+    return target
 
 
 def _free_port() -> int:
@@ -113,7 +149,16 @@ def _smoke_test_executable(exe: Path) -> None:
                     if resp.status == 200:
                         data = json.loads(resp.read().decode("utf-8"))
                         if data.get("status") == "ok":
-                            print(f"OK: sidecar health version={data.get('version')}")
+                            if not str(data.get("release") or "").startswith(
+                                "cuepoint@"
+                            ):
+                                raise RuntimeError(
+                                    f"Engine sidecar /health names no release: {data!r}"
+                                )
+                            print(
+                                f"OK: sidecar health version={data.get('version')} "
+                                f"release={data.get('release')}"
+                            )
                             return
             except Exception:
                 time.sleep(_SMOKE_POLL_SECONDS)
@@ -160,11 +205,16 @@ def main() -> int:
         return 1
 
     print(f"Building engine sidecar with {SPEC}...")
-    result = subprocess.run(
-        [sys.executable, "-m", "PyInstaller", "--clean", "--noconfirm", str(SPEC)],
-        cwd=PROJECT_ROOT,
-        check=False,
-    )
+    # The build's commit and date go in a temporary file the spec bundles; nothing in the source
+    # tree is written, so nothing is left to clean up or to commit by mistake.
+    with tempfile.TemporaryDirectory(prefix="cuepoint-build-info-") as info_dir:
+        info_file = write_build_info(Path(info_dir), build_info())
+        result = subprocess.run(
+            [sys.executable, "-m", "PyInstaller", "--clean", "--noconfirm", str(SPEC)],
+            cwd=PROJECT_ROOT,
+            env={**os.environ, BUILD_INFO_FILE_ENV: str(info_file)},
+            check=False,
+        )
     if result.returncode != 0:
         print("PyInstaller build failed", file=sys.stderr)
         return result.returncode

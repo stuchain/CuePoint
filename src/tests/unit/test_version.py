@@ -59,8 +59,8 @@ class TestVersionModule:
     def test_get_short_commit_sha(self):
         """Test get_short_commit_sha returns short SHA or None."""
         short_sha = get_short_commit_sha()
-        # Can be None or 8-character string
-        assert short_sha is None or (isinstance(short_sha, str) and len(short_sha) == 8)
+        # Can be None or 7-character string (Sentry's dist)
+        assert short_sha is None or (isinstance(short_sha, str) and len(short_sha) == 7)
 
     def test_get_build_date(self):
         """Test get_build_date returns build date or None."""

@@ -92,6 +92,7 @@ import {
   type WaveformDataDeletion,
   type WaveformsRequested,
 } from "./engineClient";
+import type { BuildInfo } from "./buildInfo";
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
 import { withDecoderPath } from "./playerLaunch";
 import { stopProcessTree } from "./processTree";
@@ -187,6 +188,11 @@ interface EngineSupervisorOptions {
    */
   errorReporting?: () => boolean;
   /**
+   * Which build this is (`buildInfo.ts`), told to the engine so its reports carry the release,
+   * `dist` and environment main's do (REPORT-07, DEC-126). Absent, the engine is told none.
+   */
+  build?: BuildInfo;
+  /**
    * Where the engine's incidents go (REPORT-05): an exit that was not asked for, each restart,
    * a give-up, a launch that failed. `main.ts` passes `processReporter`; the supervisor never
    * imports the Sentry SDK. Absent, nothing is reported.
@@ -210,6 +216,7 @@ interface EngineEnvironmentInput {
   parentPid: number;
   decoderPath: string | null;
   errorReporting: boolean;
+  build?: Pick<BuildInfo, "release" | "dist" | "environment">;
   env?: NodeJS.ProcessEnv;
 }
 
@@ -228,6 +235,11 @@ export function engineEnvironment(input: EngineEnvironmentInput): NodeJS.Process
       CUEPOINT_SESSION_ID: input.sessionId,
       // Always set, so an inherited value never decides it (REPORT-01, DEC-128).
       CUEPOINT_ERROR_REPORTING: input.errorReporting ? "1" : "0",
+      // Always set, empty when unknown, so an inherited value never decides what build the engine
+      // says it is (REPORT-07). The engine reads empty as "not given".
+      CUEPOINT_RELEASE: input.build?.release ?? "",
+      CUEPOINT_DIST: input.build?.dist ?? "",
+      CUEPOINT_ENVIRONMENT: input.build?.environment ?? "",
       CUEPOINT_HEADLESS: "1",
       // This process, not the engine's parent: a packaged engine's parent is
       // its own bootloader. The engine ends itself when this process has gone,
@@ -398,6 +410,7 @@ export class EngineSupervisor {
       parentPid: process.pid,
       decoderPath: this.options.decoderPath?.() ?? null,
       errorReporting: this.options.errorReporting?.() ?? false,
+      build: this.options.build,
     });
 
     const standIn = this.options.command?.();

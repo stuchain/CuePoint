@@ -958,7 +958,35 @@ def _text_field(value: Any, ctx: ScrubContext) -> Any:
     return scrub_text(value, ctx) if isinstance(value, str) else copy.deepcopy(value)
 
 
+_IMAGE_PATH_KEYS = ("code_file", "debug_file")
+
+
+def _scrub_debug_meta(debug_meta: Any, ctx: ScrubContext) -> Any:
+    """Keep ``debug_meta`` (debug ids tie a frame to its source map), but its images' file paths
+    go through the path rule, as a frame's ``filename`` does: a loaded module's path names the user."""
+    if not isinstance(debug_meta, Mapping):
+        return copy.deepcopy(debug_meta)
+    out = copy.deepcopy(dict(debug_meta))
+    images = debug_meta.get("images")
+    if isinstance(images, list):
+        out["images"] = [
+            {
+                k: (
+                    _scrub_path_value(v, ctx)
+                    if k in _IMAGE_PATH_KEYS and isinstance(v, str)
+                    else copy.deepcopy(v)
+                )
+                for k, v in image.items()
+            }
+            if isinstance(image, Mapping)
+            else copy.deepcopy(image)
+            for image in images
+        ]
+    return out
+
+
 _EVENT_HANDLERS: dict[str, Callable[[Any, ScrubContext], Any]] = {
+    "debug_meta": _scrub_debug_meta,
     "message": _text_field,
     "logentry": _scrub_logentry,
     "exception": _scrub_value_list,
@@ -980,8 +1008,8 @@ def scrub_event(event: dict[str, Any], ctx: ScrubContext) -> dict[str, Any]:
     frame's local variables, breadcrumbs of category ``ui.click``, ``ui.input`` and ``console``,
     and every attachment but the output tails. Text-scrubbed: ``message``, exception values,
     breadcrumb messages. ``logentry.params`` become paths or ``<value>`` and ``formatted`` is
-    rebuilt from them. ``transaction``, ``culprit`` and a frame's ``abs_path`` and ``filename`` go
-    through the path rule. Library-named keys lose their string and collection values in
+    rebuilt from them. ``transaction``, ``culprit`` and a frame's ``abs_path`` and ``filename`` and a
+    debug image's ``code_file`` go through the path rule. Library-named keys lose their string and collection values in
     ``extra``, ``tags``, non-standard ``contexts``, breadcrumb ``data`` and ``mechanism.data``
     (numbers and flags stay; a 32-hex value under ``event_id``, ``trace_id``, ``span_id`` or
     ``report_id`` stays). Event, SDK and build fields (``_KEPT_EVENT_KEYS``) and the standard

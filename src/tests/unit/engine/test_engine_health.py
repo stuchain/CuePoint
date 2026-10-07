@@ -37,6 +37,9 @@ def test_health_endpoint_returns_ok():
             data = json.loads(resp.read().decode("utf-8"))
         assert data["status"] == "ok"
         assert data["version"] == health_payload()["version"]
+        # The release every process reports to Sentry (REPORT-07); nothing secret is added.
+        assert data["release"] == f"cuepoint@{data['version']}"
+        assert set(data) <= {"status", "version", "release", "session_id"}
     finally:
         server.shutdown()
         thread.join(timeout=2)

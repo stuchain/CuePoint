@@ -15,9 +15,17 @@ The Electron build signs and notarizes the macOS app only when the environment h
 
 `notarize.cjs` uses the API key if it is complete, and the Apple ID credentials otherwise. If either set is present but the app is not signed, it stops with an error instead of submitting a broken build.
 
-No workflow in `.github/workflows/` sets any of these today. The only secret the workflows use is the automatic `GITHUB_TOKEN`, which `publish-gh-pages-site.yml` and `docs-check.yml` read. A signed and notarized macOS build therefore comes from a machine where you set the variables above before running `npm run dist`. If you move signing into a workflow, add the secrets under **Settings > Secrets and variables > Actions** and pass them as environment variables to the `npm run dist` step.
+No workflow in `.github/workflows/` sets any of these today. The secrets the workflows use are the automatic `GITHUB_TOKEN`, which `publish-gh-pages-site.yml` and `docs-check.yml` read, and `SENTRY_AUTH_TOKEN` (below). A signed and notarized macOS build therefore comes from a machine where you set the variables above before running `npm run dist`. If you move signing into a workflow, add the secrets under **Settings > Secrets and variables > Actions** and pass them as environment variables to the `npm run dist` step.
 
 Windows builds are unsigned for now: nothing in the repository configures Windows code signing (DEC-145).
+
+## The Sentry auth token
+
+`SENTRY_AUTH_TOKEN` is a repository secret read by one step only: **Upload source maps to Sentry** in `desktop-electron.yml`. The job's environment carries just a flag saying whether the secret exists (`HAS_SENTRY_TOKEN`); the token itself is in that step's own `env:`, so `npm ci` install scripts, pip, pytest, the e2e app and the engine never see it. The step runs only on `push` events (not pull requests, so a fork or an unmerged change cannot reach it) and only when the secret is set.
+
+- **What it can do:** `sentry-cli sourcemaps inject` runs locally; `sourcemaps upload` sends main's and the renderer's source maps to the `electron` project of the `cuepoint` organization. Create the token as an organization or internal-integration token limited to **Project: Read & Write** and **Release: Admin** (the scopes source map upload needs), and nothing else. With it someone could upload maps for any release of that project, so treat it like a signing credential.
+- **Rotate:** create a new token in Sentry, replace the secret under **Settings > Secrets and variables > Actions**, run the workflow on a push and check that the step is green and the new release shows its files in Sentry (**Settings > Source Maps**), then revoke the old token. Rotate straight away if it may have leaked or someone with access leaves.
+- **A failed upload** does not stop the installers on a branch push (`continue-on-error`), but it fails a tag build, because a release without readable stack traces should be noticed.
 
 ## Principles
 
