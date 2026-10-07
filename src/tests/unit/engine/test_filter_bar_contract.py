@@ -183,7 +183,7 @@ class TestTheUnitIsTheEnginesToDeclare:
     """What a number means comes from the field list, not from a field name."""
 
     def test_the_renderer_uses_the_engine_s_token(self, filter_text: str) -> None:
-        match = re.search(r'export const UNIT_STARS = "([a-z]+)";', filter_text)
+        match = re.search(r'(?:export )?const UNIT_STARS = "([a-z]+)";', filter_text)
         assert match is not None, "UNIT_STARS is no longer declared"
         assert match.group(1) == UNIT_STARS
 
