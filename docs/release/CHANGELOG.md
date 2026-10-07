@@ -283,6 +283,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   files
 
 ### Changed
+- **Error reports are on in released builds, with a switch.** When CuePoint hits an
+  unexpected error, a released build sends one scrubbed report to Sentry (EU
+  region): the error, where it happened, the steps before it, the version and
+  your operating system, never file, folder, track, artist, label or playlist
+  names, notes, tags or tokens. Turn it off in **Settings → Privacy → Send error
+  reports**, at once and with no restart. The privacy notice, Help → Privacy and
+  the user guide say what is sent. Builds run from source and the CLI send
+  nothing
 - **Export to Rekordbox** takes Sets beside Collections: each ticked Set is
   written as one playlist in its running order, repeats included, at its folder
   path, and recorded as a Set. Its chapters, planned times, notes and accepted

@@ -198,7 +198,16 @@ The **Help** menu has the tools you need to find out what went wrong and to repo
 - **Diagnostics...** shows whether the engine is connected, its version and the session ID.
 - **Log Viewer...** shows the application log. Filter by **Level**, **Search** the text, turn on **Auto-refresh**, or use **Refresh**, **Clear logs**, **Export...** (saves what you see to a text file) and **Open logs folder**.
 - **Export support bundle...** (then **Generate Bundle**) saves a ZIP with diagnostics, logs and your configuration with sensitive values removed, and shows it in your file manager. From the CLI, run `python main.py --export-support-bundle`; it prints the path of the bundle.
-- **Privacy...** sets whether the cache and logs are cleared when you quit, and clears them now. See the [Privacy Notice](../policy/privacy-notice.md).
+- **Report a problem...** sends a note you write, with the app's version and the id of the last error report, when you press **Send**. It is disabled while error reports are off.
+- **Privacy...** shows whether error reports are on, sets whether the cache and logs are cleared when you quit, and clears them now. See the [Privacy Notice](../policy/privacy-notice.md).
+
+### The app reports errors on its own
+
+Released builds send an error report to Sentry (EU region) when CuePoint hits an unexpected error, unless you turned **Settings → Privacy → Send error reports** off. A report carries no file, folder, track, artist, label or playlist names, notes, tags or tokens; the [Privacy Notice](../policy/privacy-notice.md) lists what it does carry.
+
+- **Finding a report's id.** When a screen fails, the error screen shows **Report** and a short id (eight characters) with **Reload**. **Help → Report a problem...** shows the last report's id. Quote it in a [GitHub issue](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml) so the report can be found.
+- **Sending a note.** **Help → Report a problem...** sends what you write, exactly as you write it, so leave out anything you do not want read.
+- **No id.** With error reports off nothing is sent and there is no id; the log and support bundle below still work.
 
 If something goes wrong, the log and the support bundle are the first things to look at. The CLI prints a run ID and the log path at the start and end of a run.
 

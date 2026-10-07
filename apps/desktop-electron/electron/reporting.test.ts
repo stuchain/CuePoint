@@ -7,6 +7,7 @@ import {
   MAIN_INTEGRATIONS,
   addReportingToken,
   breadcrumb,
+  BUILT_IN_MAIN_DSN,
   mainReportingDsn,
   reportEngineError,
   processReporter,
@@ -177,6 +178,31 @@ describe("the DSN", () => {
     expect(mainReportingDsn({ CUEPOINT_SENTRY_DSN: "off" })).toBeUndefined();
     expect(mainReportingDsn({ CUEPOINT_SENTRY_DSN: "OFF" })).toBeUndefined();
     expect(mainReportingDsn({ CUEPOINT_SENTRY_DSN: ` ${DSN} ` })).toBe(DSN);
+  });
+
+  it("resolves as a table: built in only for a packaged app (REPORT-08, DEC-148, DEC-150)", () => {
+    const explicit = "https://k@example.invalid/9";
+    const rows: Array<[string, NodeJS.ProcessEnv, boolean, string | undefined]> = [
+      ["packaged, unset", {}, true, BUILT_IN_MAIN_DSN],
+      ["packaged, empty", { CUEPOINT_SENTRY_DSN: "" }, true, BUILT_IN_MAIN_DSN],
+      ["packaged, blank", { CUEPOINT_SENTRY_DSN: "  " }, true, BUILT_IN_MAIN_DSN],
+      ["packaged, off", { CUEPOINT_SENTRY_DSN: "off" }, true, undefined],
+      ["packaged, OFF", { CUEPOINT_SENTRY_DSN: "OFF" }, true, undefined],
+      ["packaged, explicit", { CUEPOINT_SENTRY_DSN: explicit }, true, explicit],
+      ["from source, unset", {}, false, undefined],
+      ["from source, off", { CUEPOINT_SENTRY_DSN: "off" }, false, undefined],
+      ["from source, explicit", { CUEPOINT_SENTRY_DSN: explicit }, false, explicit],
+    ];
+    for (const [name, env, packaged, expected] of rows) {
+      expect(mainReportingDsn(env, packaged), name).toBe(expected);
+    }
+    // Where it is not told, it is a source run: nothing.
+    expect(mainReportingDsn({})).toBeUndefined();
+  });
+
+  it("the built-in DSN is the Electron project's, in the EU region, and a bare DSN", () => {
+    expect(BUILT_IN_MAIN_DSN).toMatch(/^https:\/\/[0-9a-f]{32}@o\d+\.ingest\.de\.sentry\.io\/4512215272915024$/);
+    expect(BUILT_IN_MAIN_DSN).not.toContain("4510867733217360"); // the engine's project
   });
 
   it("with none, nothing is set up and every helper does nothing", async () => {

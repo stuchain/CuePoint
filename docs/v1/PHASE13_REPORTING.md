@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 13: Error Reporting, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. REPORT-01 to REPORT-07 are implemented (2026-10-07).** Eight steps,
+Status: **Specified 2026-10-07. REPORT-01 to REPORT-08 are implemented (2026-10-07); what is left is the owner's: the day of real reports, the packaged Windows and macOS checks, and confirming the notice's retention and IP wording against the Sentry projects.** Eight steps,
 REPORT-01…REPORT-08. Writing the steps raised six questions that Decision Round 14 did not answer.
 They were asked as Decision Round 16 (Q-151…Q-156) and settled the same day as DEC-148…DEC-153, so
 there are no open points. Per the process, no implementation happens from this
@@ -79,7 +79,7 @@ This phase brings error reporting back, on the terms Decision Round 14 set:
 
 ## Sequencing
 
-**Nothing is sent until REPORT-08.** REPORT-03 to REPORT-06 build every sender, but the address
+**Nothing was sent until REPORT-08, which is now built.** REPORT-03 to REPORT-06 build every sender, but the address
 Sentry receives at (the DSN) comes only from an environment variable until then. A developer can
 point a build at Sentry to check a step; a user's build sends nothing. REPORT-08 builds the address
 into the app and changes the privacy notice in the same step, as DEC-128 asks.
@@ -895,6 +895,73 @@ notice, Help → Privacy and the user guide say what is sent.
 **Risks**: Low, once REPORT-02 to REPORT-07 hold. The day of real reports is the last check.
 
 **Complexity**: **S**
+
+**Outcome**: Implemented (2026-10-07).
+- **DSN resolution, one pure function per language.** `mainReportingDsn(env, packaged)` in
+  `electron/reporting.ts` and `resolve_engine_dsn(environ, frozen)` in `engine_reporting.py`: `off` (any
+  case, trimmed) is none; any other non-empty `CUEPOINT_SENTRY_DSN` is that DSN in any build; unset or
+  empty is the built-in DSN only for a packaged app (`app.isPackaged`) or the frozen sidecar
+  (`sys.frozen`), and none from source (DEC-150). The built-in DSNs are `BUILT_IN_MAIN_DSN` (the Electron
+  project, shared by main and the renderer) and `BUILT_IN_ENGINE_DSN` (the Python project), both in
+  Sentry's EU region (DEC-148). Both are public by design; no token or auth value was added anywhere.
+- **Off reaches the engine** two ways. `engineEnvironment` writes `CUEPOINT_SENTRY_DSN=off` into the
+  engine's environment when main was told off in any spelling, and removes an empty value, so the engine
+  resolves its own DSN and never receives the Electron one; a DSN set by hand is passed on, as before.
+  The switch (REPORT-01) is separate and still gates every send in every process.
+- **The CLI never reports (DEC-151).** Nothing in `src/main.py`'s imports calls the setup; the CLI
+  imports the breadcrumb helper, which does nothing until the setup has run, and never loads the SDK.
+  A test runs the real CLI with a DSN set and checks it, and another that only `engine/server.py` calls
+  the setup.
+- **Cold start.** REPORT-03 measured about 100 to 250 ms with a DSN; every packaged start has one now.
+  `setup_engine_reporting` took 160 to 175 ms in a bare interpreter. It now runs on a daemon thread
+  (`start_engine_reporting_in_background`, guarded against a second call) started right after the port
+  is bound, with no pause. What is and is not covered in the window before it finishes:
+  - Before the port is bound, a failure ends the engine and is not reported from inside it; the
+    supervisor reports the exit with the output tail (REPORT-05).
+  - After the port is bound and until the setup finishes, a bounded buffer in `engine_reporting.py`
+    holds up to 16 `report_unexpected` calls (the exception and its route, job type and error code;
+    not its trace headers), up to 50 breadcrumbs and up to 16 logged ERROR records of the `cuepoint`
+    loggers (a temporary handler). The setup replays them right after `init`; `before_send` and the
+    gated transport check the choice at that moment, so off still sends nothing, and the buffer is
+    emptied when the choice turns off or the setup does not succeed.
+  - Not covered: errors that are neither raised through `report_unexpected` nor logged at ERROR (for
+    example an uncaught exception in a thread, which the SDK's hooks see only once set up), and
+    anything beyond the buffer's bounds.
+  - Measured with `bench_engine_start.py` (medians; a noisy container where identical runs differ by
+    up to 100 ms): from source, with a DSN against without, was +0 to +110 ms with the synchronous
+    setup and about +45 ms with it on a thread and no pause; packaged Linux sidecar, +10 ms on
+    average before and +55 ms after, both inside the noise. The 100 ms budget cannot be shown met
+    to better than the noise here; the 160 ms setup is off the critical path by construction.
+- **The notices, changed together.** `PRIVACY_NOTICE.md` and `docs/policy/privacy-notice.md` are now equal
+  (they had drifted) and say what a report carries and never carries, where it goes (Sentry, EU region),
+  how long it is kept, and how to turn it off at **Settings → Privacy → Send error reports**. Names are "removed by rules applied on your computer", not claimed absolute; breadcrumbs are "a short description of each of the last steps"; the Report a problem note is stated as the exception (sent as written). The dialog no longer states a retention number. The IP
+  wording is conservative: the app puts no user id or IP in a report, and says Sentry receives the
+  address a request comes from; it does not claim the address is not stored. `telemetry.md` describes
+  error reporting beside the CLI's separate opt-in telemetry; `data-processing-notice.md` names Sentry
+  as the one processor; `PrivacyDialog.tsx` says "No analytics or usage tracking" and one sentence about
+  error reports beside the switch's state and "Change in Settings"; `validate_compliance.py` now fails
+  on the old "no telemetry" wording in the dialog or the notice, unequal notices, or a missing Sentry or
+  switch mention. The user guide has a Privacy and error reports section, and `troubleshooting.md` says
+  how to find a report's id. The changelog has one entry.
+- **Tests.** The DSN tables (TypeScript and Python), `engineEnvironment` giving the engine `off`, the
+  CLI check, `PrivacyDialog.test.tsx`, `test_validate_compliance.py`, and an end-to-end run with
+  `CUEPOINT_SENTRY_DSN=off` and the fake Sentry server, in which nothing arrives and the engine's
+  environment says `off`. "A packaged build uses the built-in DSN" is covered by the unit tables: an
+  end-to-end run cannot point the built-in DSN at a local server without a production test hook.
+
+Checked in the cloud container: the main-process suite (1282), the renderer suite (4295, with lint,
+type-check and build), the Python reporting, engine, scripts and utils suites (3015, with the one known
+failure deselected), `reportErrors.spec.ts` and `rendererReports.spec.ts` (10), ruff 0.14.0, the mypy
+gate, the engine health smoke, the coupling and dead-code checks, `check_no_qt.py`,
+`validate_compliance.py` and `git diff --check`. A packaged Linux sidecar was built in a fresh
+environment and started.
+
+**Left for the owner**: (1) the day of real reports, with a packaged build and reporting on, every report
+read in Sentry for anything personal, anything found added to REPORT-02's corpus; (2) the packaged
+Windows and macOS phase-level checks, and `npm run dist`; (3) confirming against the two Sentry projects
+the notice's sentences on retention (30 days), the EU region, and that Sentry is not asked to hide the IP
+(and, if "Prevent Storing of IP Addresses" is on, saying so); (4) the end-to-end suite as a whole, which
+was not run here.
 
 ---
 

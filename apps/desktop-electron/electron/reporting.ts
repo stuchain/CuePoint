@@ -2,8 +2,8 @@
  * Electron main reports its own failures (REPORT-04, DEC-126, DEC-127, DEC-128, DEC-149).
  *
  * `setupMainReporting` starts the Sentry Electron SDK at the top of `main.ts`, and
- * only when a DSN is given: from `CUEPOINT_SENTRY_DSN` until REPORT-08, so nothing
- * is sent from a user's build. Everything the SDK would do by default that DEC-127
+ * only when a DSN is given (`mainReportingDsn`: `CUEPOINT_SENTRY_DSN`, else the built-in DSN
+ * of a packaged app, never from source). Everything the SDK would do by default that DEC-127
  * forbids is switched off here, and REPORT-02's scrubber is the last step of every
  * event and breadcrumb:
  *
@@ -168,10 +168,24 @@ let lastQuietIpc: string | null = null;
 const reportedIpc = new Map<string, string | null>();
 let quitting = false;
 
-/** The DSN in `env`, or undefined when it is unset, empty or `off`. */
-export function mainReportingDsn(env: NodeJS.ProcessEnv = process.env): string | undefined {
+/**
+ * The Electron project's DSN (DEC-148), EU region: main and the renderer report to it. A DSN only
+ * allows sending events, so it is safe to ship, as the Qt app shipped its own. Used only by a
+ * packaged app with `CUEPOINT_SENTRY_DSN` unset (DEC-150).
+ */
+export const BUILT_IN_MAIN_DSN =
+  "https://54d66cd51dba660a8c6f2a5ca6ffe4bc@o4510867725746176.ingest.de.sentry.io/4512215272915024";
+
+/**
+ * The DSN main reports to, or undefined for none (DEC-148, DEC-150). `CUEPOINT_SENTRY_DSN` set to
+ * `off` (any case) is none; set to anything else it is that DSN in any build; unset or empty it is
+ * the built-in DSN for a packaged app (`packaged`) and none from source.
+ */
+export function mainReportingDsn(env: NodeJS.ProcessEnv = process.env, packaged = false): string | undefined {
   const value = (env.CUEPOINT_SENTRY_DSN ?? "").trim();
-  return value === "" || value.toLowerCase() === "off" ? undefined : value;
+  if (value.toLowerCase() === "off") return undefined;
+  if (value !== "") return value;
+  return packaged ? BUILT_IN_MAIN_DSN : undefined;
 }
 
 function loadElectronSdk(): ReportingSdk {

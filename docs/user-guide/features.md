@@ -14,7 +14,7 @@ shortcuts — see [The CuePoint window](the-window.md).
 | **Clean** | Match tracks on Beatport, review the matches, find missing files and possible duplicates, and see what needs you | [Clean](clean.md) |
 | **Discover** | Find new music on Beatport from your artists and labels, keep a wantlist, push tracks to a Beatport playlist, open an artist's or label's page, and find similar tracks in your library | [Discover](discover.md) |
 | **Prepare** | Plan a set: a running order in chapters, with planned times, transition checks, suggestions for any gap, and set lists | [Prepare](prepare.md) |
-| **Settings** | Theme, audio output, where Rekordbox exports go, and the Beatport token Discover uses | [The CuePoint window](the-window.md#interface-scale-and-theme) |
+| **Settings** | Theme, audio output, where Rekordbox exports go, the Beatport token Discover uses, and the error-reports switch | [The CuePoint window](the-window.md#interface-scale-and-theme), [Privacy and error reports](the-window.md#privacy-and-error-reports) |
 
 Music plays in the player along the bottom of the window — see
 [Playing music](player.md).

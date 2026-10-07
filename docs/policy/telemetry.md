@@ -1,6 +1,32 @@
 # Telemetry Policy
 
-## v1.0 Status
+CuePoint has two separate kinds of reporting. This page is mostly about the first.
+
+| | Usage telemetry | Error reporting |
+| --- | --- | --- |
+| Where | CLI only | Desktop app (released builds) |
+| Default | **Off**, opt-in | **On**, with a switch |
+| Sent to | An endpoint you configure (none by default) | Sentry, EU region |
+| Switch | `--telemetry-enable` / `--telemetry-disable` | Settings → Privacy → Send error reports |
+
+## Error Reporting (desktop app)
+Released builds of the desktop app send an error report to Sentry (EU region) when CuePoint hits an
+unexpected error, unless the user turns it off in **Settings → Privacy → Send error reports** (it takes
+effect at once, with no restart). Reports are scrubbed on the device before they are sent: they carry
+the error, where in the code it happened, a short description of each of the last steps before it, the version and build,
+and the operating system, with file, folder, track, artist, label and playlist names, the notes and tags kept in CuePoint,
+tokens, the user's or computer's name and the values of variables removed by rules applied on the
+computer before sending. A note sent with **Help → Report a problem** is sent as written. Nothing is queued for later.
+The full list, and how long Sentry keeps a report, is in the [Privacy Notice](privacy-notice.md).
+
+- Builds run from source send nothing unless a developer sets `CUEPOINT_SENTRY_DSN` by hand (a DSN
+  set by hand goes to both the desktop app's main process and the engine);
+  `CUEPOINT_SENTRY_DSN=off` sends nothing from a build of any kind.
+- **The CLI never sends error reports**, whatever its configuration or environment. Its usage
+  telemetry (below) is separate, opt-in and off.
+- This is not analytics: no usage events, sessions, performance traces or session recordings are sent.
+
+## v1.0 Status (usage telemetry)
 - ✅ Telemetry implemented (opt-in only)
 - ✅ Default OFF – no data collection unless user enables
 - ✅ All processing local; optional remote endpoint
@@ -12,7 +38,7 @@
 
 ### Core Principles
 1. **Opt-in Only**: Default OFF; user must explicitly enable
-2. **User Control**: CLI flags `--telemetry-enable` / `--telemetry-disable`. The desktop app has no telemetry switch and sends none; events come only from CLI runs
+2. **User Control**: CLI flags `--telemetry-enable` / `--telemetry-disable`. The desktop app has no usage-telemetry switch and sends none; usage events come only from CLI runs
 3. **Transparency**: Clear disclosure of what is collected
 4. **Minimal Data**: Collect only what's necessary; no PII
 5. **Local Processing**: Events buffered locally; optional HTTPS endpoint
@@ -43,7 +69,7 @@
 
 ### Implementation
 1. **Opt-in Only**: Default OFF in config (`telemetry.enabled: false`)
-2. **Desktop app**: collects nothing; the in-app Privacy dialog says so
+2. **Desktop app**: collects no usage telemetry (error reports are separate, see above); the in-app Privacy dialog shows the error-report switch
 3. **CLI Flags**: `--telemetry-enable`, `--telemetry-disable`
 4. **Data Minimization**: PII scrubbing; primitives only
 5. **Secure Transport**: HTTPS only; endpoint must start with `https://`

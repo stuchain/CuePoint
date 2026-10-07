@@ -11,12 +11,12 @@ const STORAGE_CLEAR_LOGS = "cuepoint-privacy-clear-logs-on-exit";
 const PRIVACY_TEXT = `CuePoint respects your privacy.
 
 Data collection:
-- No telemetry or analytics in v1.0
-- No background data collection
+- No analytics or usage tracking
+- Error reports: when CuePoint hits an unexpected error, a released build sends a report to Sentry (EU region) unless you turn it off. Reports are cleaned on your computer so they do not include file, folder, track, artist, label or playlist names, the notes and tags you keep in CuePoint, or tokens. The Privacy Notice says what a report carries and how long it is kept.
 
 Network requests:
 - Beatport scraping/search: user-initiated only
-- Update checking: optional (future integration)
+- Update checking: none; CuePoint does not check for updates
 
 Local storage:
 - Match history CSV exports and configuration on disk
@@ -37,7 +37,7 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
   const [clearing, setClearing] = useState(false);
   // What the bridge said about error reports (REPORT-01): nothing yet, on or
   // off, or that it could not be read.
-  const [reporting, setReporting] = useState<boolean | "unreadable" | null>(null);
+  const [reporting, setReporting] = useState<boolean | "unreadable" | "unconfigured" | null>(null);
   const { push } = useToast();
   const navigate = useNavigate();
 
@@ -48,7 +48,7 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
     window.cuepoint?.errorReporting
       ?.get()
       .then((state) => {
-        if (live) setReporting(state.enabled);
+        if (live) setReporting(state.configured === false ? "unconfigured" : state.enabled);
       })
       .catch(() => {
         if (live) setReporting("unreadable");
@@ -111,8 +111,10 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
     navigate("/settings", { state: settingsFocusState("error-reporting") });
   };
 
+  // The switch's state, then where to change it (the notice's "Settings → Privacy → Send error reports").
   let reportingWords = "Error reports: …";
   if (!window.cuepoint?.errorReporting) reportingWords = "Error reports: unavailable outside the desktop app";
+  else if (reporting === "unconfigured") reportingWords = "Error reports: not available in this build (nothing is sent)";
   else if (reporting === "unreadable") reportingWords = "Error reports: could not be read";
   else if (reporting !== null) reportingWords = `Error reports: ${reporting ? "on" : "off"}`;
 

@@ -3,7 +3,7 @@
  * bridge (REPORT-04, DEC-126, DEC-127, DEC-128).
  *
  * The app is launched with `CUEPOINT_SENTRY_DSN` pointing at a server this spec runs, so
- * what would leave the machine is what arrives here. Nothing in a user's build has a DSN.
+ * what would leave the machine is what arrives here. A run from source has no built-in DSN (DEC-150).
  * These are the checks that need a real Electron: the SDK's own integrations, its
  * transport, and `contextBridge`, which rebuilds an Error in the page from its message
  * alone (`status`, `code` and `reportId` do not survive it, hence `engineErrorFields`).
@@ -247,6 +247,43 @@ test.describe("main reports (REPORT-04)", () => {
       expect(thrown.message).toBe("errorReporting:set needs true or false");
       await new Promise((resolve) => setTimeout(resolve, 1_000));
       expect(fake.bodies).toEqual([]);
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("with CUEPOINT_SENTRY_DSN=off nothing is sent from main or the engine (REPORT-08)", async () => {
+    // The built-in DSNs cannot be pointed at a local server without a production test hook, so
+    // "a packaged build uses the built-in DSN" is the unit tables' (`reporting.test.ts`,
+    // `test_engine_dsn.py`). What an end-to-end run can show is that `off` stops everything and
+    // reaches the engine: the fake server is the only place a report could go in this run, and a
+    // developer who had set a DSN by hand would see it arrive; `off` must beat even that.
+    const app = await launch(userDataDir, "off");
+    try {
+      const window = await app.firstWindow({ timeout: 60_000 });
+      await waitForEngine(window);
+
+      const thrown = await failure(window, "cuepoint.errorReporting.set('yes')");
+      expect(thrown.message).toBe("errorReporting:set needs true or false");
+      await failure(window, "cuepoint.setTrackOverrides({ trackId: 1, bpm: 400 })");
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
+
+      expect(fake.bodies).toEqual([]);
+      // Main is off too: no SDK was set up, so the bridge says reporting is not configured.
+      const state = await window.evaluate(() =>
+        (
+          window as never as {
+            cuepoint: { errorReporting: { get: () => Promise<{ enabled: boolean; configured: boolean }> } };
+          }
+        ).cuepoint.errorReporting.get(),
+      );
+      expect(state.configured).toBe(false);
+      if (process.platform === "linux") {
+        const mainPid = await app.evaluate(() => process.pid);
+        const engineEnv = engineEnvironmentOf(mainPid);
+        expect(engineEnv).not.toBeNull();
+        expect(engineEnv!.CUEPOINT_SENTRY_DSN).toBe("off");
+      }
     } finally {
       await app.close();
     }

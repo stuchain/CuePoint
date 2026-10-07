@@ -1,7 +1,7 @@
 # Data Processing Notice — CuePoint
 
 **Version 1.0 — 2026-02-03**  
-**Last updated**: 2026-02-03
+**Last updated**: 2026-10-07
 
 ## Summary
 
@@ -31,9 +31,19 @@ CuePoint makes network requests **only when you initiate actions** that require 
 
 These requests go **directly from your device** to the third-party service. CuePoint does not proxy or store this data on its own servers.
 
+### Error reports
+
+Released builds of the desktop app send an error report when CuePoint hits an unexpected error, unless you turn it off in **Settings → Privacy → Send error reports**.
+
+| Data Transmitted | Recipient | Purpose |
+| --- | --- | --- |
+| The error and its message, where in the code it happened, a short description of each of the last steps before it, CuePoint's version and build, your operating system and basic hardware details, and for an engine or player crash the scrubbed tail of its output. File, folder, track, artist, label and playlist names, the notes and tags you keep in CuePoint, tokens, and your user and computer names are removed by rules applied on your computer before sending. A note you send with Help → Report a problem is sent as you write it. | Sentry (sentry.io), EU region | Finding and fixing bugs |
+
+**Sentry is the one processor** of this data, acting for the CuePoint project. It is the only service that receives error reports. Reports are kept for as long as Sentry keeps events on our plan (30 days). The CLI never sends error reports. See the [Privacy Notice](privacy-notice.md) for the full list.
+
 ## Data NOT Stored Remotely
 
-CuePoint **does not** store any user data on remote servers. All processing is local. Third-party services (Beatport, DuckDuckGo, GitHub) have their own privacy policies governing data they receive.
+CuePoint **does not** store your library, files or collection on remote servers. All processing is local. The only data CuePoint sends to a service of its own choosing is the scrubbed error reports described above (Sentry), which you can turn off. Third-party services (Beatport, DuckDuckGo, GitHub) have their own privacy policies governing data they receive.
 
 ## Data Retention
 
@@ -44,13 +54,14 @@ CuePoint **does not** store any user data on remote servers. All processing is l
 ## Your Rights
 
 - **Clear data**: Use Help → Privacy to clear cache, logs, and config.
+- **Turn off error reports**: Settings → Privacy → Send error reports; it takes effect at once.
 - **Opt out of network**: Avoid Beatport/DuckDuckGo features if you prefer no external requests.
 - **Local-only use**: You can use CuePoint with local XML processing and manual exports without any network requests.
 
 ## Related Documents
 
 - [Privacy Notice](privacy-notice.md) — Full privacy policy
-- [Telemetry Policy](telemetry.md) — Telemetry and analytics (none in v1.0)
+- [Telemetry Policy](telemetry.md) — Telemetry and analytics (usage telemetry is CLI-only and opt-in; the desktop app's error reports are described there)
 
 ## Contact
 

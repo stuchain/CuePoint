@@ -124,7 +124,7 @@ from cuepoint.reporting.engine_reporting import (
     report_unexpected,
     request_scope,
     route_template,
-    setup_engine_reporting,
+    start_engine_reporting_in_background,
     watch_jobs,
 )
 from cuepoint.reporting.expected import is_expected_failure
@@ -1276,9 +1276,11 @@ def fine_timer_resolution(platform: str = sys.platform) -> bool:
 def run_engine(config: Optional[EngineConfig] = None) -> None:
     # First, so "may I send?" has its answer before any work starts (REPORT-01, DEC-128).
     set_reporting_enabled(initial_reporting_enabled(os.environ))
-    # Before anything that can fail, so a failure while starting is caught (REPORT-03). Does
-    # nothing without CUEPOINT_SENTRY_DSN.
-    setup_engine_reporting()
+    # Reporting is set up in the background right after the port is bound (below), not here: the
+    # SDK costs about 150 ms and every packaged start now has a DSN (REPORT-08). A failure before
+    # the port is bound ends the engine, and the app's supervisor reports that exit with the
+    # output tail; after it, a bounded buffer holds reports, breadcrumbs and logged errors until
+    # the setup has finished (see engine_reporting's docstring for what is not covered).
     watch_jobs(_JOB_STORE)
     cfg = config or EngineConfig.from_env()
     if cfg.host not in ALLOWED_HOSTS:
@@ -1331,6 +1333,9 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     server = with_error_reporting(
         ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg))
     )
+    # Does nothing without a DSN (see resolve_engine_dsn). The socket is bound, so the app's health
+    # checks are answered while the SDK loads; what fails meanwhile is held, then replayed.
+    start_engine_reporting_in_background()
     # WAVE-03: an analysis the last engine left unfinished continues, unless it
     # was paused, once this one has been serving for a while, so a launch is
     # never slowed by it. The engine is serving from the line below.

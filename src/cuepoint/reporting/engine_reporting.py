@@ -1,8 +1,23 @@
 """The engine reports its own unexpected failures (REPORT-03, DEC-126, DEC-127, DEC-153).
 
-Sentry is set up here, first thing in ``run_engine()``, and only when ``CUEPOINT_SENTRY_DSN``
-is set (REPORT-08 builds it into releases; a source checkout and a user's build have none, so
-nothing here sends anything until then). Every sender checks REPORT-01's flag
+Sentry is set up here, in the background right after ``run_engine()`` has bound its port (the
+setup takes about 150 ms, which would otherwise be added to every start; REPORT-08), and only when a
+DSN resolves (:func:`resolve_engine_dsn`): ``CUEPOINT_SENTRY_DSN`` when it names one, none when it is
+``off``, and the project's built-in DSN (DEC-148) only in the frozen sidecar, never from source
+(DEC-150).
+
+What happens in the window before the setup has finished. Failures that occur while the engine is
+starting, before the port is bound, are not reported from here: the engine ends, and the app's
+supervisor reports that exit with the tail of the engine's output (REPORT-05). After the port is
+bound and until the setup finishes, a small bounded buffer holds what would have been reported: up to
+``MAX_PENDING_REPORTS`` (16) calls to :func:`report_unexpected` (the exception and its route, job
+type and error code, not its trace), up to ``MAX_BREADCRUMBS`` breadcrumbs, and up to 16 logged ERROR
+records of the ``cuepoint`` loggers (a temporary handler). The setup replays them right after
+``init``; ``before_send`` and the gated transport check the user's choice at that moment, so with
+reporting off nothing is sent, and the buffer is emptied when the choice turns off or the setup does
+not succeed. Not covered: errors that are neither raised through :func:`report_unexpected` nor logged
+at ERROR (for example an uncaught exception in a thread, which the SDK's own hooks catch only once
+set up), and logged records beyond the 16th. Every sender checks REPORT-01's flag
 (:func:`~cuepoint.engine.reporting_api.reporting_enabled`) and ends in REPORT-02's scrubber.
 
 **The CLI never calls any of this** (DEC-151). It does not set the DSN or the flag, and nothing
@@ -39,10 +54,11 @@ import contextvars
 import logging
 import os
 import re
+import sys
 import threading
 from collections import OrderedDict, deque
 from datetime import datetime
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from typing import TYPE_CHECKING, Any, Optional
 
 from cuepoint.reporting.expected import is_expected_failure
@@ -55,24 +71,35 @@ if TYPE_CHECKING:  # pragma: no cover
 __all__ = [
     "DSN_ENV",
     "before_breadcrumb",
+    "BUILT_IN_ENGINE_DSN",
     "before_send",
     "breadcrumb",
     "is_refusal",
     "report_unexpected",
     "request_scope",
+    "resolve_engine_dsn",
     "route_template",
     "setup_engine_reporting",
+    "start_engine_reporting_in_background",
     "teardown_engine_reporting",
     "watch_jobs",
 ]
 
 #: Where the DSN comes from. Never stored, never in the UI; ``off`` also means none.
 DSN_ENV = "CUEPOINT_SENTRY_DSN"
+#: The Python project's DSN (DEC-148), EU region. A DSN only allows sending events, so it is shipped
+#: as the Qt app shipped its own. Used only by a frozen engine with ``CUEPOINT_SENTRY_DSN`` unset.
+BUILT_IN_ENGINE_DSN = (
+    "https://f6809b0fe8cdd6674bccbe0c87fd9535"
+    "@o4510867725746176.ingest.de.sentry.io/4510867733217360"
+)
 RELEASE_ENV = "CUEPOINT_RELEASE"
 DIST_ENV = "CUEPOINT_DIST"
 ENVIRONMENT_ENV = "CUEPOINT_ENVIRONMENT"
 
 MAX_BREADCRUMBS = 50
+#: Most reports (and, separately, logged errors) held while the setup is still running.
+MAX_PENDING_REPORTS = 16
 
 _logger = logging.getLogger(__name__)
 
@@ -92,6 +119,89 @@ _CAPTURED_LIMIT = 64
 _trace_headers: contextvars.ContextVar[dict[str, str] | None] = contextvars.ContextVar(
     "cuepoint_trace_headers", default=None
 )
+
+
+#: The window between the port being bound and the setup finishing: what would be reported waits here.
+_pending = False
+_pending_reports: list[tuple[BaseException, dict[str, Optional[str]]]] = []
+_pending_crumbs: deque[tuple[str, str, Optional[dict[str, Any]]]] = deque(
+    maxlen=MAX_BREADCRUMBS
+)
+_pending_logs: list[logging.LogRecord] = []
+_pending_handler: Optional[logging.Handler] = None
+_background: Optional[threading.Thread] = None
+
+
+class _PendingLogHandler(logging.Handler):
+    """Holds ERROR records of the ``cuepoint`` loggers while the SDK is not set up yet."""
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.ERROR)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        with _lock:
+            if (
+                _pending
+                and len(_pending_logs) < MAX_PENDING_REPORTS
+                and reporting_enabled()
+            ):
+                _pending_logs.append(record)
+
+
+def _discard_pending() -> None:
+    """Forget what waited, and stop waiting. Idempotent."""
+    global _pending, _pending_handler
+    with _lock:
+        _pending = False
+        _pending_reports.clear()
+        _pending_crumbs.clear()
+        _pending_logs.clear()
+        handler, _pending_handler = _pending_handler, None
+    if handler is not None:
+        logging.getLogger("cuepoint").removeHandler(handler)
+
+
+def _begin_pending() -> None:
+    global _pending, _pending_handler
+    handler = _PendingLogHandler()
+    with _lock:
+        _pending = True
+        _pending_handler = handler
+    logging.getLogger("cuepoint").addHandler(handler)
+    try:
+        from cuepoint.engine.reporting_api import add_reporting_listener
+
+        add_reporting_listener(lambda enabled: None if enabled else _discard_pending())
+    except Exception:  # noqa: BLE001
+        _logger.debug("[reporting] no listener", exc_info=True)
+
+
+def _replay_pending() -> None:
+    """Called once the SDK is set up: hand it what waited. The choice is checked again by the hooks."""
+    global _pending, _pending_handler
+    with _lock:
+        was_pending = _pending
+        reports = list(_pending_reports)
+        crumbs = list(_pending_crumbs)
+        records = list(_pending_logs)
+        _pending = False
+        _pending_reports.clear()
+        _pending_crumbs.clear()
+        _pending_logs.clear()
+        handler, _pending_handler = _pending_handler, None
+    if handler is not None:
+        logging.getLogger("cuepoint").removeHandler(handler)
+    if not was_pending:
+        return
+    for category, message, data in crumbs:
+        breadcrumb(category, message, data)
+    for exc, context in reports:
+        report_unexpected(exc, **context)  # type: ignore[arg-type]
+    for record in records:
+        try:
+            logging.getLogger(record.name).handle(record)
+        except Exception:  # noqa: BLE001
+            _logger.debug("[reporting] a logged error was dropped", exc_info=True)
 
 
 def reporting_enabled() -> bool:
@@ -249,17 +359,73 @@ def _release_and_dist(environ: Mapping[str, str]) -> tuple[str, str | None]:
     return get_release(), environ.get(DIST_ENV) or get_short_commit_sha()
 
 
+def resolve_engine_dsn(
+    environ: Mapping[str, str] = os.environ, *, frozen: Optional[bool] = None
+) -> Optional[str]:
+    """The DSN the engine reports to, or None for none (DEC-148, DEC-150).
+
+    ``CUEPOINT_SENTRY_DSN`` set to ``off`` (any case) is none; set to anything else it is that
+    DSN, in any build; unset or empty it is the built-in DSN when the engine is the frozen
+    sidecar (``frozen``, by default ``sys.frozen``) and none from source.
+    """
+    value = (environ.get(DSN_ENV) or "").strip()
+    if value.lower() == "off":
+        return None
+    if value:
+        return value
+    if frozen is None:
+        frozen = bool(getattr(sys, "frozen", False))
+    return BUILT_IN_ENGINE_DSN if frozen else None
+
+
+def start_engine_reporting_in_background(
+    *, setup: Optional[Callable[[], bool]] = None
+) -> threading.Thread:
+    """Run the setup on a daemon thread and return it at once, so it is off the start-up path.
+
+    Importing the SDK and starting its client cost about 150 ms; the engine starts listening
+    first. Until the setup finishes, reports, breadcrumbs and logged errors wait in a small bounded
+    buffer (see the module docstring). Never raises; a failed setup is no reporting, and drops the
+    buffer. A second call returns the thread of the first and starts nothing.
+    """
+    global _background
+    with _lock:
+        if _background is not None:
+            return _background
+    if setup is not None or resolve_engine_dsn() is not None:
+        _begin_pending()
+
+    def run() -> None:
+        try:
+            (setup or setup_engine_reporting)()
+        except Exception:  # noqa: BLE001 — reporting must never stop the engine
+            _logger.debug("[reporting] the background setup failed", exc_info=True)
+        finally:
+            # A setup that worked has replayed the buffer; any other has nothing to replay it to.
+            if not _active:
+                _discard_pending()
+
+    thread = threading.Thread(target=run, name="cuepoint-reporting-setup", daemon=True)
+    with _lock:
+        _background = thread
+    thread.start()
+    return thread
+
+
 def setup_engine_reporting(
-    environ: Mapping[str, str] = os.environ, *, transport: Any = None
+    environ: Mapping[str, str] = os.environ,
+    *,
+    transport: Any = None,
+    frozen: Optional[bool] = None,
 ) -> bool:
     """Set Sentry up, or do nothing. True when it is set up.
 
-    No DSN (unset, empty or ``off``) means nothing is set up and every other call here does
+    No DSN (:func:`resolve_engine_dsn`) means nothing is set up and every other call here does
     nothing. ``transport`` is for tests: a ``Transport`` instance that records what would be sent.
     """
     global _active, _scrub_context
-    dsn = (environ.get(DSN_ENV) or "").strip()
-    if not dsn or dsn.lower() == "off":
+    dsn = resolve_engine_dsn(environ, frozen=frozen)
+    if dsn is None:
         return False
     try:
         import sentry_sdk
@@ -328,13 +494,16 @@ def setup_engine_reporting(
         _logger.debug("[reporting] no listener", exc_info=True)
     with _lock:
         _active = True
+    _replay_pending()
     return True
 
 
 def teardown_engine_reporting() -> None:
     """Close the client and forget it was set up (tests; the engine never needs this)."""
-    global _active, _scrub_context
+    global _active, _scrub_context, _background
+    _discard_pending()
     with _lock:
+        _background = None
         was_active = _active
         _active = False
         _scrub_context = None
@@ -370,6 +539,7 @@ def report_unexpected(
     repeats one already reported.
     """
     if not _active:
+        _hold_report(exc, route=route, job_type=job_type, error_code=error_code)
         return None
     try:
         import sentry_sdk
@@ -394,6 +564,19 @@ def report_unexpected(
         return None
 
 
+def _hold_report(exc: BaseException, **context: Optional[str]) -> None:
+    """Keep a report made before the setup finished (bounded), unless the user has said no."""
+    if not _pending or not reporting_enabled():
+        return
+    with _lock:
+        if not _pending or len(_pending_reports) >= MAX_PENDING_REPORTS:
+            return
+        key = _capture_key(exc)
+        if any(_capture_key(held) == key for held, _ in _pending_reports):
+            return
+        _pending_reports.append((exc, dict(context)))
+
+
 def is_active() -> bool:
     """True once :func:`setup_engine_reporting` has succeeded (and not been torn down)."""
     return _active
@@ -404,6 +587,12 @@ def breadcrumb(
 ) -> None:
     """Record one step before a possible error. Never raises, and does nothing when off."""
     if not _active:
+        if _pending and reporting_enabled():
+            with _lock:
+                if _pending:
+                    _pending_crumbs.append(
+                        (category, message, dict(data) if data else None)
+                    )
         return
     try:
         import sentry_sdk

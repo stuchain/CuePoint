@@ -44,7 +44,7 @@ describe("the error-reporting switch", () => {
   it("says what a report carries, and what it never does", () => {
     render(<ErrorReportingSettingsPanel />);
     expect(screen.getByText(/the steps that led to it/)).toBeInTheDocument();
-    expect(screen.getByText(/never carries your file, folder, track/)).toBeInTheDocument();
+    expect(screen.getByText(/built not to carry your file, folder, track/)).toBeInTheDocument();
   });
 
   it("calls the bridge once with the opposite value, and shows the answer", async () => {

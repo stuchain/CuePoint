@@ -1,10 +1,12 @@
 # Privacy Notice — CuePoint v1.0
 
-**Last updated**: 2025-12-14  
+**Last updated**: 2026-10-07
+
 **Applies to**: CuePoint v1.0
 
 ## Summary (plain language)
-- CuePoint v1.0 **does not** include telemetry or analytics.
+- CuePoint v1.0 has **no analytics and no usage tracking**.
+- Released builds **send an error report** to Sentry (EU region) when CuePoint hits an unexpected error, **unless you turn it off** in **Settings → Privacy → Send error reports**. It takes effect at once. Reports are cleaned on your computer before they are sent, so that they do not include your file, folder, track, artist, label or playlist names, the notes and tags you keep in CuePoint, or tokens.
 - CuePoint processes your Rekordbox collection **locally on your device**.
 - CuePoint makes network requests **only when you initiate actions** that require it (e.g., Beatport lookups).
 - CuePoint stores some data **locally** (settings, cache, logs). You can clear it from **Help → Privacy**.
@@ -13,8 +15,26 @@
 CuePoint is an open-source desktop application maintained by the CuePoint project contributors.
 
 ## Information we collect
-### v1.0 — no telemetry / analytics
-CuePoint v1.0 does **not** collect telemetry, analytics, or usage tracking data, and it does not send your Rekordbox collection to our servers.
+### Error reports (on by default; you can turn them off)
+When CuePoint hits an unexpected error, a released build sends one error report so we can find and fix the bug. Reports are on by default. Builds you run from source do not send them (unless a developer sets that up by hand), and the command-line tool (CLI) never sends them.
+
+**A report carries:**
+- the kind of error and its message, with file and folder names, your user, home and computer names, and track, artist, label and playlist names removed by rules applied on your computer before sending;
+- where in CuePoint's code it happened (the stack trace);
+- a short description of each of the last steps before it (for example a screen was opened, a job failed), cleaned the same way;
+- CuePoint's version and build, and basic details about your computer: operating system and version, processor and graphics hardware, memory, language and time zone;
+- when the engine (the part of CuePoint that does the work) or the audio player stops unexpectedly, the last lines of what it wrote, with the same removals applied;
+- if you use **Help → Report a problem**, the note you write there, CuePoint's version and the id of the last report. That is sent only when you press Send, and the note is sent exactly as you write it, so leave out anything you don't want read.
+
+**A report is built not to carry** (the note you choose to send with Report a problem is the one exception): file or folder names (a path is reduced to its depth and file extension), your user, home or computer name, track, artist, label or playlist names, the notes and tags you keep in CuePoint, tokens or passwords, the values of variables in the code, your library or Rekordbox collection, screenshots, recordings or memory dumps. The app sends no user id, name or email, and does not put your IP address in a report. As with any server you connect to, Sentry receives the network address a request comes from.
+
+**Where it goes:** to Sentry (sentry.io), in Sentry's EU region. Sentry is the only service that receives error reports.
+
+**How long it is kept:** for as long as Sentry keeps events on our Sentry plan, which is 30 days. We read reports only to fix bugs.
+
+**How to turn it off:** **Settings → Privacy → Send error reports**, or **Help → Privacy → Change in Settings**. It takes effect at once, with no restart: nothing is sent after that, and nothing is saved to send later. A report that has already reached Sentry stays there until Sentry deletes it.
+
+CuePoint's CLI has its own usage telemetry, which is separate, opt-in and off unless you enable it (see the [Telemetry Policy](telemetry.md)).
 
 ### User-initiated network requests
 CuePoint may make network requests when you use features that require them:
@@ -60,19 +80,13 @@ titles, artists, file paths, tags, ratings or notes.
 ## Your choices and controls
 - Clear cache/logs/config from **Help → Privacy**.
 - Optionally enable “clear cache on exit” and “clear logs on exit”.
+- Turn error reports off in **Settings → Privacy → Send error reports**.
 
 ## Third-party services
-CuePoint may interact with third-party services you choose to use (e.g., Beatport, DuckDuckGo, GitHub hosting for updates). Their privacy practices are governed by their own policies.
+CuePoint may interact with third-party services you choose to use (e.g., Beatport, DuckDuckGo, GitHub hosting for updates), and sends error reports to Sentry unless you turn them off. Their privacy practices are governed by their own policies.
 
 ## Changes to this notice
 If data practices change in a future version, this notice will be updated and the “Last updated” date will change.
 
 ## Contact
 For privacy questions or concerns, please open an issue in the CuePoint repository.
-
-
-
-
-
-
-

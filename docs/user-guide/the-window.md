@@ -145,3 +145,14 @@ and hand focus back to whatever opened them.
 CuePoint draws at 1×, 2× or 3× and ships five themes; both live in
 **Settings → Appearance**, and both are remembered. The interface is pixel art,
 so it scales in whole steps to stay sharp.
+
+## Privacy and error reports
+
+**Settings → Privacy** has one switch, **Send error reports**, on by default in released builds.
+When CuePoint hits an unexpected error, it sends one report to Sentry (EU region) so the bug can be
+fixed. A report says what went wrong, where in CuePoint's code, the steps that led to it, the
+version and your operating system. It never carries your file, folder, track, artist, label or
+playlist names, your notes, tags or tokens. Turn the switch off and nothing more is sent, at once,
+with no restart. **Help → Privacy...** shows whether it is on and takes you to the switch; the full
+list, and how long Sentry keeps a report, is in the [Privacy Notice](../policy/privacy-notice.md).
+The CLI never sends error reports.

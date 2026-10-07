@@ -226,28 +226,33 @@ interface EngineEnvironmentInput {
  * Pure, so what the engine is told can be checked without spawning it.
  */
 export function engineEnvironment(input: EngineEnvironmentInput): NodeJS.ProcessEnv {
-  return withDecoderPath(
-    {
-      ...(input.env ?? process.env),
-      CUEPOINT_HOST: "127.0.0.1",
-      CUEPOINT_PORT: String(input.port),
-      CUEPOINT_TOKEN: input.token,
-      CUEPOINT_SESSION_ID: input.sessionId,
-      // Always set, so an inherited value never decides it (REPORT-01, DEC-128).
-      CUEPOINT_ERROR_REPORTING: input.errorReporting ? "1" : "0",
-      // Always set, empty when unknown, so an inherited value never decides what build the engine
-      // says it is (REPORT-07). The engine reads empty as "not given".
-      CUEPOINT_RELEASE: input.build?.release ?? "",
-      CUEPOINT_DIST: input.build?.dist ?? "",
-      CUEPOINT_ENVIRONMENT: input.build?.environment ?? "",
-      CUEPOINT_HEADLESS: "1",
-      // This process, not the engine's parent: a packaged engine's parent is
-      // its own bootloader. The engine ends itself when this process has gone,
-      // however it went (EXPORT-07, `parent_watch.py`).
-      CUEPOINT_PARENT_PID: String(input.parentPid),
-    },
-    input.decoderPath,
-  );
+  const inherited = input.env ?? process.env;
+  const dsn = (inherited.CUEPOINT_SENTRY_DSN ?? "").trim();
+  const env: NodeJS.ProcessEnv = {
+    ...inherited,
+    CUEPOINT_HOST: "127.0.0.1",
+    CUEPOINT_PORT: String(input.port),
+    CUEPOINT_TOKEN: input.token,
+    CUEPOINT_SESSION_ID: input.sessionId,
+    // Always set, so an inherited value never decides it (REPORT-01, DEC-128).
+    CUEPOINT_ERROR_REPORTING: input.errorReporting ? "1" : "0",
+    // Always set, empty when unknown, so an inherited value never decides what build the engine
+    // says it is (REPORT-07). The engine reads empty as "not given".
+    CUEPOINT_RELEASE: input.build?.release ?? "",
+    CUEPOINT_DIST: input.build?.dist ?? "",
+    CUEPOINT_ENVIRONMENT: input.build?.environment ?? "",
+    CUEPOINT_HEADLESS: "1",
+    // This process, not the engine's parent: a packaged engine's parent is
+    // its own bootloader. The engine ends itself when this process has gone,
+    // however it went (EXPORT-07, `parent_watch.py`).
+    CUEPOINT_PARENT_PID: String(input.parentPid),
+  };
+  // Told off, the engine is told off, in the one spelling it reads (REPORT-08). Told nothing, it
+  // resolves its own DSN (the sidecar's built-in one when packaged, DEC-148): main's DSN, the
+  // Electron project's, is never made up for it. A DSN set by hand is passed on as it is.
+  if (dsn.toLowerCase() === "off") env.CUEPOINT_SENTRY_DSN = "off";
+  else if (dsn === "") delete env.CUEPOINT_SENTRY_DSN;
+  return withDecoderPath(env, input.decoderPath);
 }
 
 /** What a launch answers when `stop()` came before it could spawn. */

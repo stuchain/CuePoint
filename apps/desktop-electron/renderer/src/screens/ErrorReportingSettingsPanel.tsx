@@ -97,8 +97,8 @@ export function ErrorReportingSettingsPanel({ onOpenPrivacy, focusToken = null }
         </label>
         <p className="cp-error-reporting__text">
           A report says what went wrong, where in CuePoint&apos;s code, and the steps that led to it.
-          It never carries your file, folder, track, artist, label or playlist names, your notes, tags
-          or tokens.
+          It is built not to carry your file, folder, track, artist, label or playlist names, your
+          notes, tags or tokens: they are removed on your computer before it is sent.
         </p>
         {!available && (
           <p className="cp-error-reporting__text">Open CuePoint as a desktop app to change this.</p>

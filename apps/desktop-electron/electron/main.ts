@@ -83,14 +83,15 @@ errorReporting.enabled();
  * Main reports its own failures (REPORT-04, DEC-126, DEC-127), set up before
  * anything else here can fail and before `app.whenReady()`, which the SDK needs.
  *
- * Nothing is set up, and nothing is sent, unless `CUEPOINT_SENTRY_DSN` names a
- * DSN: until REPORT-08 a user's build has none. The choice is read at the time
+ * Nothing is set up, and nothing is sent, without a DSN: a packaged app has the built-in one
+ * (DEC-148), a run from source only what `CUEPOINT_SENTRY_DSN` names (DEC-150), and `off` is none.
+ * The choice is read at the time
  * of each event, so turning reporting off takes effect at once. The engine's
  * session token is 48 hex characters, which the scrubber removes by shape, and the
  * engine supervisor also hands it over when it makes one (`processReporter.addToken`).
  */
 const reportingOn = setupMainReporting({
-  dsn: mainReportingDsn(),
+  dsn: mainReportingDsn(process.env, app.isPackaged),
   build,
   choice: () => errorReporting.enabled(),
   scrubContext: {

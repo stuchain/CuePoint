@@ -113,7 +113,7 @@ See `providers.py` docstrings and [Beatport Site Change Plan](beatport-site-chan
 
 - **No PII in cache**: Cache stores URLs and parsed metadata only
 - **Local storage**: All caches in user-writable paths (not install dir)
-- **Network**: Only search queries and page fetches; no telemetry by default
+- **Network**: Only search queries and page fetches; no usage telemetry by default (the desktop app's separate error reports are described in `docs/policy/telemetry.md`)
 
 ## 7. Metrics and Monitoring
 

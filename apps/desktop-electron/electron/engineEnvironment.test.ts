@@ -156,3 +156,26 @@ describe("naming the decoder", () => {
     expect(python).toContain(`DECODER_PATH_ENV = "${DECODER_PATH_ENV}"`);
   });
 });
+
+describe("the DSN the engine is given (REPORT-08, DEC-148, DEC-150)", () => {
+  const given = (env: NodeJS.ProcessEnv): NodeJS.ProcessEnv =>
+    engineEnvironment({ ...base, decoderPath: null, errorReporting: true, env });
+
+  it("is told off, spelled one way, when main was told off in any spelling", () => {
+    for (const value of ["off", "OFF", " Off "]) {
+      expect(given({ CUEPOINT_SENTRY_DSN: value }).CUEPOINT_SENTRY_DSN).toBe("off");
+    }
+  });
+
+  it("is left to resolve its own when main was told nothing: no DSN is made up for it", () => {
+    expect("CUEPOINT_SENTRY_DSN" in given({})).toBe(false);
+    expect("CUEPOINT_SENTRY_DSN" in given({ CUEPOINT_SENTRY_DSN: "" })).toBe(false);
+    expect("CUEPOINT_SENTRY_DSN" in given({ CUEPOINT_SENTRY_DSN: "   " })).toBe(false);
+  });
+
+  it("passes an explicit DSN on, as a developer set it", () => {
+    expect(given({ CUEPOINT_SENTRY_DSN: "https://k@example.invalid/1" }).CUEPOINT_SENTRY_DSN).toBe(
+      "https://k@example.invalid/1",
+    );
+  });
+});
