@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 asked (Q-180…Q-189); Round 21 resolved (DEC-179…DEC-188).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 resolved (DEC-189…DEC-198); Round 21 resolved (DEC-179…DEC-188).**
 
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
@@ -950,7 +950,7 @@ keeping a top list, and where history starts. The user took the recommendation o
 
 ## Phase 16 — Distribution
 
-Specified 2026-10-07 in `PHASE16_DISTRIBUTION.md`, in eight steps (DIST-01…DIST-08): one version,
+Specified 2026-10-07 in `PHASE16_DISTRIBUTION.md`, in nine steps (DIST-01…DIST-09; DIST-09, the app's icon, added by DEC-198): one version,
 the Intel Mac build, update metadata in every build, a release workflow run by a tag, the update rule,
 the updater in main, "Update ready" in the app, and the docs with a real update on every system.
 Writing it raised ten questions, asked as Decision Round 19 (Q-170…Q-179): the mechanism, where Macs
@@ -985,22 +985,25 @@ build, the app's pictures captured from the app, the 3D runtime with its rendere
 download, features, guide and FAQ, changelog and blog, privacy, terms and the 404, the forms and
 analytics, and the launch. Writing it raised ten questions, asked as Decision Round 20
 (Q-180…Q-189): the opening scene, the site's colors, sound, the analytics and form services, the
-download before 1.0.0, when the site goes live, the domain, comparison pages, and the mark.
+download before 1.0.0, when the site goes live, the domain, comparison pages, and the mark. The user
+took the recommendation on seven; chose no download on the site until 1.0.0 (DEC-194) and a domain
+bought before launch (DEC-196); and asked for the app to get an icon, built in Phase 16 as DIST-09
+(DEC-198).
 
 - **A full remake** (DEC-139). Today the site is `gh-pages-root/`, one 639-line page.
   - **Where and how:** `apps/website/` in this repository, built with Astro and Three.js, with
     scroll-driven WebGL scenes in the app's pixel style in 3D.
   - **Search and speed:** static pages for search engines, and a still fallback for every scene.
-  - **Hosting:** English only, on GitHub Pages until a domain is bought. The address is one
-    setting, so moving to a custom domain later loses no search standing.
+  - **Hosting:** English only, on GitHub Pages, on a domain the user buys before launch
+    (DEC-196). The address is one setting.
 - **Pages:**
   - home, features and download;
   - guide (built from `docs/user-guide/`) and FAQ;
   - changelog and privacy;
   - a blog.
 - **Clear to new and non-technical users** what the app does (DEC-132).
-- **The user will install skills for it.**
-- *Proposed:* the download detects the visitor's system and chip.
+- **Skills for it** are vendored in `apps/website/.claude/skills/`.
+- **The download detects the visitor's system and chip,** and turns on at 1.0.0 (DEC-194).
 - **The release checklist,** each item held by a check in CI where a machine can check it (DEC-141).
   Cookieless analytics, so no banner is needed (DEC-142). Contact and bug-report forms (DEC-143). The
   user is the publisher (DEC-144).

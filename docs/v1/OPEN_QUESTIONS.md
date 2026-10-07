@@ -3589,10 +3589,13 @@ manual step.
 
 ---
 
-## DECISION ROUND 20 — THE WEBSITE (Phase 17) ⏳ Open, asked 2026-10-07
+## DECISION ROUND 20 — THE WEBSITE (Phase 17) ✅ Resolved 2026-10-07
 
 Asked while specifying Phase 17 (`PHASE17_WEBSITE.md`). Decision Round 14 settled the site's shape
 (DEC-139, DEC-141…DEC-144). Writing the steps raised ten questions those decisions do not answer.
+The user took the recommendation on seven, chose B for Q-185 (no download until 1.0.0) and B for
+Q-187 (a domain before launch), and asked for the app to get an icon (DEC-198). Outcomes are
+DEC-189…DEC-198.
 
 Found while specifying:
 - **Deploying by Actions stops the `gh-pages` branch being served,** with the retired app's
@@ -3605,7 +3608,7 @@ Found while specifying:
 
 ### Q-180 — The opening scene
 
-**Status**: Open
+**Status**: Resolved → DEC-189 (Option A chosen: the crate becomes the wheel)
 
 **Question**: The home page opens on one scroll-driven 3D scene. Which story does it tell?
 
@@ -3622,7 +3625,7 @@ ready), it shows a feature only CuePoint has (the wheel), and it lands on the re
 
 ### Q-181 — The site's colors
 
-**Status**: Open
+**Status**: Resolved → DEC-190 (Option A chosen: the five themes)
 
 - **Option A — The app's five themes, switchable.** A pixel switch in the header recolors the pages
   and the 3D; Neo Dark first.
@@ -3633,7 +3636,7 @@ colors are tokens and one shader uniform.
 
 ### Q-182 — Sound
 
-**Status**: Open
+**Status**: Resolved → DEC-191 (Option B chosen: an opt-in speaker button)
 
 **Question**: A DJ's site could move to music. Never on its own.
 
@@ -3645,7 +3648,7 @@ colors are tokens and one shader uniform.
 
 ### Q-183 — The analytics service
 
-**Status**: Open
+**Status**: Resolved → DEC-192 (Option A chosen: Umami Cloud)
 
 **Question**: DEC-142 left the choice among Plausible, Umami and Cloudflare. You create the account.
 
@@ -3657,7 +3660,7 @@ colors are tokens and one shader uniform.
 
 ### Q-184 — The form service
 
-**Status**: Open
+**Status**: Resolved → DEC-193 (Option A chosen: Web3Forms)
 
 **Question**: GitHub Pages cannot receive a form. You create the account.
 
@@ -3669,7 +3672,7 @@ inbox.
 
 ### Q-185 — The download before 1.0.0
 
-**Status**: Open
+**Status**: Resolved → DEC-194 (Option B chosen: no download until 1.0.0)
 
 **Question**: Until Phase 18 ends with 1.0.0, every release is a test release (DEC-176).
 
@@ -3681,7 +3684,7 @@ themselves.
 
 ### Q-186 — When the site goes live
 
-**Status**: Open
+**Status**: Resolved → DEC-195 (Option A chosen: at the end of Phase 17)
 
 - **Option A — At the end of this phase,** deployed from `feature` until v1 is on `main`, then from
   `main`.
@@ -3692,7 +3695,7 @@ describes the retired app.
 
 ### Q-187 — The domain
 
-**Status**: Open
+**Status**: Resolved → DEC-196 (Option B chosen: a domain before launch)
 
 **Question**: DEC-139 keeps GitHub Pages' address until a domain is bought.
 
@@ -3704,7 +3707,7 @@ people remember, and lets Search Console verify the whole domain.
 
 ### Q-188 — Comparison pages
 
-**Status**: Open
+**Status**: Resolved → DEC-197 (Option A chosen: comparison pages)
 
 **Question**: DJs search for "X alternative" and "X vs Y".
 
@@ -3718,7 +3721,7 @@ keep them fair.
 
 ### Q-189 — The mark and the favicon
 
-**Status**: Open
+**Status**: Resolved → DEC-198 (Option A chosen: a pixel-art mark, which also becomes the app's icon)
 
 **Question**: The only mark is `gh-pages-root/logo.svg`, a green rounded square, and the app has no
 icon.

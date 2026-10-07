@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 16: Distribution, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. No step is implemented yet.** Eight steps, DIST-01…DIST-08.
+Status: **Specified 2026-10-07. No step is implemented yet.** Nine steps, DIST-01…DIST-09 (DIST-09, the app's icon, added by DEC-198 on 2026-10-07).
 Writing the steps raised ten questions that Decision Round 14 did not answer. They were asked as
 Decision Round 19 (Q-170…Q-179) and settled the same day as DEC-169…DEC-178: nine as recommended,
 and Q-171 otherwise. There is no Apple Developer account, so the Macs ship unsigned and update
@@ -98,6 +98,9 @@ docs and runs a real update from one test release to the next, on every system.
 
 **Every intermediate build keeps working,** with every suite green. Until DIST-06 the app does not
 check for anything, so a build between DIST-01 and DIST-05 looks unchanged apart from its version.
+
+**The app's icon (DIST-09) can be built at any point before DIST-04's first release,** and depends
+on nothing else here; it is listed last only because it was added last (DEC-198).
 
 **The first build with the updater has to be installed by hand.** Nothing before it can update itself:
 the published releases (v0.0.2, v0.0.3) and every build so far have no updater. DIST-08's runbook
@@ -679,6 +682,66 @@ privacy notice.
 
 ---
 
+## DIST-09 — The App's Icon
+
+**Objective**: CuePoint has an icon of its own, a pixel-art mark in the app's style, on every system,
+in every build from the first release in the new scheme (DEC-176) on (DEC-198).
+
+**User-visible result**: The CuePoint icon on the taskbar and Start menu (Windows), the Dock and
+Finder (macOS), the desktop's launcher (Linux), the installer and the DMG, and the window's title bar
+where the system shows one.
+
+**Dependencies**: None in this phase. Built before DIST-04's first release.
+
+**Existing code reused**: none. Today `apps/desktop-electron/package.json` names no icon, there is no
+`.ico`, `.icns` or app PNG in the repository, and every packaged build shows Electron's default icon.
+`gh-pages-root/logo.svg` (a green rounded square) is not reused: it has none of the pixel signature.
+
+**Design**:
+- **The mark,** drawn in the app's style (`docs/v1/PIXEL_DESIGN_SYSTEM.md`): square, a black
+  outline, a bevel, hard zero-blur shadow, in Neo Dark's violet accent. It is drawn by hand on pixel
+  grids, not scaled down from a large picture, so small sizes stay crisp:
+  - `apps/desktop-electron/build/icon-source/mark-16.svg`, `mark-32.svg` and `mark-64.svg`, one rect
+    per pixel, each grid its own drawing;
+  - a 1024 px master scaled up from the 64 grid with nearest-neighbor, for the large sizes.
+
+  Two or three candidates are shown to the user as pictures in the thread, and the one the user
+  approves is committed. Nothing is built from an unapproved mark.
+- **`scripts/build_app_icons.py`** makes, from those sources, every file electron-builder needs, into
+  `apps/desktop-electron/build/` (its `buildResources` default, already holding the entitlements):
+  - `icon.ico` with 16, 24, 32, 48, 64, 128 and 256 px, each small size from its own grid;
+  - `icon.icns` with 16 to 1024 px (`@1x` and `@2x`);
+  - `icon.png` (512 px) and `icons/<size>x<size>.png` for Linux;
+  - the generated files are committed, so a build needs no image tool, and the script's `--check`
+    fails when they are older than the sources or differ from what the sources give.
+- **`package.json`'s `build`:** `icon` for each of `win`, `mac` and `linux` (and NSIS's
+  `installerIcon` and `uninstallerIcon`), so the installer and the DMG carry it too.
+- **The window:** `BrowserWindow`'s `icon` is set on Linux and Windows from `build/icon.png`, so a
+  development run shows it as well (macOS takes the bundle's).
+- **The renderer's About section** (Settings › About & updates, PAGES-01) shows the mark at 64 px.
+- **The website (Phase 17)** reuses the same sources for its favicon and OG images (SITE-11).
+
+**Tests**:
+- `src/tests/unit/scripts/test_build_app_icons.py`: the `.ico` holds every size above and each small
+  size equals its own grid pixel for pixel; the `.icns` holds every size; `--check` passes on the
+  committed files and fails after a source changes.
+- `electron/builderConfig.test.ts`: `build.win.icon`, `build.mac.icon`, `build.linux.icon` and the
+  NSIS icons point at files that exist.
+
+**Acceptance criteria / DoD**:
+- The user approved the mark.
+- `npm run dist` on Windows shows the icon on the installer, the Start menu, the taskbar and the
+  window; on a Mac, in the DMG, the Dock and Finder; on Linux, on the AppImage. Checked on the user's
+  PC through Remote Control, and on the macOS and Linux CI legs by inspecting the built bundle's
+  icon files.
+- `python scripts/build_app_icons.py --check` runs in CI and passes.
+
+**Risks**: Low in code. The mark is the user's to approve.
+
+**Complexity**: **S**
+
+---
+
 ## Phase-level acceptance
 
 Phase 16 is complete when:
@@ -700,9 +763,11 @@ Phase 16 is complete when:
    motion switch on and with reduced motion. *DIST-07.*
 8. The runbook, the rollback runbook, key management, the user guide and the privacy notice describe
    what the app and the release workflow do. *DIST-08.*
-9. Every suite passes, with the engine smoke check, the desktop contract test, the coupling check, the
+9. Every build carries CuePoint's own icon, the pixel mark the user approved, on every system.
+   *DIST-09.*
+10. Every suite passes, with the engine smoke check, the desktop contract test, the coupling check, the
    end-to-end suite and `npm run dist` on all four legs.
-10. No decision in DEC-001…DEC-178 is contradicted. A contradiction stops
+11. No decision in DEC-001…DEC-198 is contradicted. A contradiction stops
     the work and is raised rather than worked around.
 
 ## Decision Round 19 — what writing the steps raised

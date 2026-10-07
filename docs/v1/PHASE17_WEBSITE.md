@@ -1,15 +1,15 @@
 # CuePoint v1.0.0 — Phase 17: The Website, Detailed Step Specifications
 
 Status: **Specified 2026-10-07. No step is implemented yet.** Thirteen steps, SITE-01…SITE-13.
-Writing the steps raised ten questions that Decision Round 14 did not answer. They are asked as
-Decision Round 20 (Q-180…Q-189). Where a step below says "if Q-NNN …", the recommended branch is
-written out, and the step is built as the answer says. Per the process, no implementation happens
+Writing the steps raised ten questions that Decision Round 14 did not answer. They were asked as
+Decision Round 20 (Q-180…Q-189) and answered the same day (DEC-189…DEC-198); each step below names
+the decision that settles it. Per the process, no implementation happens
 from this document. Each step needs an explicit "Implement SITE-NN" instruction, scoped to exactly
 that step, and its outcome is recorded under the step afterwards.
 
 Depends on Phases 1–16. Phase 16 must be complete first (DEC-140): the download page offers what
 DIST-03 and DIST-04 publish, under DIST-03's file names. The site's pictures are taken of the app as
-Phases 14 and 15 leave it. Decision Rounds 1–19 apply (`DECISIONS.md`, DEC-001…DEC-178). This phase's own decisions
+Phases 14 and 15 leave it. Decision Rounds 1–20 apply (`DECISIONS.md`, DEC-001…DEC-198). This phase's own decisions
 are DEC-139 (the site: here, Astro and Three.js, the app's pixel style in 3D), DEC-141 (the release
 checklist, each item held by a check), DEC-142 (cookieless analytics), DEC-143 (two forms) and
 DEC-144 (the user is the publisher), with DEC-132 (clear to new users), DEC-155 and DEC-158 (the
@@ -41,7 +41,8 @@ in full:
 
 **What this phase is not.**
 - **No change to the app.** Nothing in `apps/desktop-electron/` or `src/cuepoint/` changes, except
-  that SITE-04 adds a capture script beside the end-to-end suite.
+  that SITE-04 adds a capture script beside the end-to-end suite. The app's icon is Phase 16's
+  DIST-09 (DEC-198).
 - **No server.** GitHub Pages serves files; the forms and the analytics are outside services.
 - **No other language** (DEC-139), **no newsletter** (DEC-143), **no account or sign-in.**
 - **No release made from the site.** Releases are Phase 16's tags; the site reads them.
@@ -82,13 +83,14 @@ Claude Code loads them once a session touches `apps/website/`. Each step names t
 | --- | --- |
 | DEC-139 | `apps/website/`, Astro and Three.js, scroll-driven WebGL in the app's pixel style in 3D; the listed pages; English; GitHub Pages' address until a domain is bought; the address as one setting feeding canonicals, sitemap and `robots.txt`; a still fallback for every scene; the guide built from `docs/user-guide/`; `gh-pages-root/` retired on the first deploy. |
 | DEC-141 | Every row of its table, each held by the check it names, in CI on every build where a machine can check it. SITE-03 builds the checks; each later step is held by them; SITE-13 ticks every row with its evidence. |
-| DEC-142 | Analytics that set no cookie (Q-183 picks the service); no banner; a consent component that turns on by itself if a non-essential cookie is ever set; the service named in the privacy policy. |
-| DEC-143 | A contact and feedback form and a bug-report form through a form service (Q-184); spam protection without a puzzle; the bug form asks for the app version and system and says the app reports errors itself; tested in CI against the service's test mode or a stand-in, and once live before launch. |
+| DEC-142 | Analytics that set no cookie (Umami Cloud, DEC-192); no banner; a consent component that turns on by itself if a non-essential cookie is ever set; the service named in the privacy policy. |
+| DEC-143 | A contact and feedback form and a bug-report form through a form service (Web3Forms, DEC-193); spam protection without a puzzle; the bug form asks for the app version and system and says the app reports errors itself; tested in CI against the service's test mode or a stand-in, and once live before launch. |
 | DEC-144 | The privacy policy and the terms name the user, as an individual, as publisher and contact; drafted from what the app and site do; the user approves the final text before launch. |
 | DEC-132, DEC-158 | Plain words for a DJ who is not technical; American English; no "engine" or "jobs" (DEC-155). |
 | DEC-145, DEC-129, DEC-170, DEC-174, DEC-176 | A download is a release DIST-04 published; macOS is two downloads, Apple Silicon and Intel; Windows and both Macs ship unsigned (DEC-145, DEC-170), so the page says what SmartScreen and Gatekeeper show and how to open the app the first time; Linux is told when a new version is out (DEC-174); every release before 1.0.0 is a test release (DEC-176). |
 | DEC-126 | The bug form and the FAQ say the app reports its errors itself and how to turn that off. |
 | DEC-140 | This phase runs alone, after Phase 16. |
+| DEC-189…DEC-198 | Decision Round 20: the crate becomes the wheel; five themes; sound only on request; Umami Cloud; Web3Forms; no download until 1.0.0; live at the end of this phase; a domain bought before launch; comparison pages; the pixel mark, which DIST-09 already made the app's icon. |
 
 ## Sequencing
 
@@ -143,12 +145,13 @@ Switching the Pages source is a setting the user changes once (SITE-13).
 it with cookieless analytics. The GA4 property is left for the user to delete; nothing in the new
 site loads Google's scripts or fonts.
 
-### 5. The app has no icon of its own
+### 5. The app has no icon of its own (DIST-09 gives it one)
 
 `apps/desktop-electron/package.json` names no icon and there is no `.ico` or `.icns` in the
 repository, so the packaged app shows Electron's default. The only mark is `gh-pages-root/logo.svg`,
 a green rounded square with a white "C" and cue point, which has none of the app's pixel signature.
-DEC-141 makes the favicon "from the app's icon". Q-189 asks whether a pixel mark is drawn.
+DEC-141 makes the favicon "from the app's icon". DEC-198 draws a pixel mark and makes it the app's
+icon in Phase 16 (DIST-09), so by this phase the mark exists and the site reuses it.
 
 ### 6. The guide is written for the app, in Markdown, with relative links
 
@@ -171,12 +174,12 @@ analytics' or Search Console's field data after launch.
 
 A still drawn by hand drifts from the scene it stands for. SITE-05 renders each scene's still at
 build, in headless Chromium with WebGL (SwiftShader), at the scene's resting frame, in each theme the
-site offers (Q-181). If Chromium cannot render WebGL in CI, the still is rendered on a developer
+site offers (DEC-190). If Chromium cannot render WebGL in CI, the still is rendered on a developer
 machine and committed, and CI checks it exists and is newer than the scene's source.
 
 ### 9. Release data is read at build
 
-The download page shows the newest release DEC-145 would offer a new visitor, with each file's size
+The download page shows the newest normal release (DEC-194; none before 1.0.0), with each file's size
 and checksum. It reads GitHub's release list at build, not in the visitor's browser (no rate limit,
 no layout shift, readable by search engines). DIST-04's release workflow triggers a site deploy
 when it publishes, so the page is never older than the newest release. If the read fails, the build
@@ -264,10 +267,10 @@ theme).
   `apps/website/src/styles/tokens.generated.css`, with `--scale` fixed for the web (sizes in `rem`,
   so the visitor's text size is honored). `npm run build` runs it first. A test fails if the
   generated file differs from what the app's tokens give, so the site cannot drift from the app.
-- **Themes (if Q-181 is A):** all five themes, Neo Dark by default, chosen from a pixel switch in
+- **Themes (DEC-190):** all five themes, Neo Dark by default, chosen from a pixel switch in
   the header, kept in `localStorage` (wrapped, so a blocked store just means Neo Dark), applied
   before first paint by a tiny inline script so there is no flash. The 3D reads the same palette
-  (SITE-05). If Q-181 is B, only Neo Dark is generated.
+  (SITE-05).
 - **Fonts, self-hosted:** Pixelify Sans (OFL) for headings, navigation and buttons; one readable
   sans for long prose (the guide and the blog), chosen in this step with `impeccable` and recorded in
   `PRODUCT.md`, also self-hosted. `font-display: swap`, the heading font preloaded, metric overrides
@@ -447,7 +450,7 @@ shows the scene's still whenever 3D should not run.
   - a render target at a fraction of the canvas size, scaled up with nearest-neighbor filtering, so
     the pixels are real pixels at every screen size;
   - a palette pass that snaps colors to the active theme's palette (uniforms read from the CSS
-    tokens), so a theme change recolors the scene (Q-181);
+    tokens), so a theme change recolors the scene (DEC-190);
   - an outline pass in `--border-outline` black, and hard, unblurred shadows;
   - voxel helpers: instanced cubes (`InstancedMesh`) and pixel textures with `NearestFilter`.
 - **Scroll:** GSAP ScrollTrigger drives each scene's timeline with `scrub`, so the camera and the
@@ -497,9 +500,10 @@ does for them, then shows it, then offers the download.
 
 **Design**:
 - **Above the fold:** the headline (`h1`) saying what the app does for a DJ in plain words, one
-  sentence under it, **Download for <system>** (SITE-07's detection; one primary action, DEC-141),
+  sentence under it, **Download for <system>** (SITE-07's detection; one primary action, DEC-141;
+  "Get notified of 1.0" until 1.0.0, DEC-194),
   a secondary **See how it works** that scrolls, and the opening scene's still.
-- **The opening scene (Q-180, A as recommended): the crate becomes the wheel.** A voxel record crate
+- **The opening scene (DEC-189): the crate becomes the wheel.** A voxel record crate
   with mismatched, unlabeled records. As the visitor scrolls, the records lift out, get their tags
   (key, tempo, genre) as pixel labels, and fly into a 3D Camelot wheel that lights in the app's
   colors; the wheel then turns flat and becomes the real app's window (SITE-04's shot). It tells the
@@ -510,7 +514,7 @@ does for them, then shows it, then offers the download.
   the export back to Rekordbox. Each links to its feature page (SITE-08).
 - **Trust:** free, runs on your computer, your library stays yours, open source on GitHub, works with
   Rekordbox's XML. Each claim checked against the app and the privacy notice.
-- **Sound (if Q-182 is B):** a pixel speaker button, off by default, plays a short loop and the
+- **Sound (DEC-191):** a pixel speaker button, off by default, plays a short loop and the
   voxels move to it (Web Audio's analyser). The button is hidden until the loop file exists; no
   sound ever plays unasked.
 - **Schema:** `SoftwareApplication` (name, operating systems, category `MultimediaApplication`, price
@@ -546,10 +550,14 @@ download one more click away, and honest words about what happens after.
 
 **Design**:
 - **Release data at build** (fact 9): `scripts/fetch-releases.mjs` reads the release list, picks
-  what a new visitor is offered (if Q-185 is A: the newest normal release, else the newest test
-  release, marked **Preview**; until 1.0.0 every release is a test release, DEC-176), and writes `src/data/releases.json` with each file's name, size,
+  the newest normal release (test releases are never offered on the site, DEC-194; until 1.0.0
+  every release is a test release, DEC-176, so there is none yet), and writes `src/data/releases.json` with each file's name, size,
   SHA-256 and URL. It reuses DEC-145's precedence (a small copy of DIST-05's compare, tested against
   the same examples).
+- **Before 1.0.0** (DEC-194): the page says 1.0.0 is coming and what CuePoint will run on, and
+  links GitHub's releases page for anyone who wants a test build. Every page's primary action is
+  "Get notified of 1.0", which opens the repository's page where a visitor can watch its releases.
+  When the data holds a normal release, everything below turns on by itself.
 - **Detection (the roadmap's proposal), in the browser, after the page is shown:**
   `navigator.userAgentData.getHighEntropyValues(["platform", "architecture", "bitness"])` where
   offered, the user agent otherwise. Windows → the Windows installer. A Mac → Apple Silicon when
@@ -569,8 +577,11 @@ download one more click away, and honest words about what happens after.
   (`workflow_dispatch`) after a release is published (SITE-13 wires it).
 
 **Tests**:
-- `scripts/fetch-releases.test.mjs` with a recorded release list: drafts and files outside DIST-03's
-  names skipped; the preview rule per Q-185; a failed read keeps the last data and fails nothing.
+- `scripts/fetch-releases.test.mjs` with a recorded release list: drafts, test releases and files
+  outside DIST-03's names skipped; a list with only test releases gives "none yet"; a failed read
+  keeps the last data and fails nothing.
+- `e2e/download.spec.ts` also runs against a recorded list with no normal release: the page says
+  1.0.0 is coming, links GitHub's releases, and shows no download button.
 - `src/lib/detect.test.ts`: each user agent and client-hints answer in a table maps to its download,
   including an Apple Silicon Mac in Chrome, a Mac in Safari, Windows on Arm (offered x64, said so),
   an iPhone and an Android phone.
@@ -612,7 +623,8 @@ features overview linking them.
   ("fix Rekordbox key tags", "find duplicate tracks Rekordbox", "Camelot wheel harmonic mixing
   Rekordbox"), listed in `apps/website/docs/content-plan.md` with the page that answers it. No two
   pages aim at the same query.
-- **Comparison pages (if Q-188 is A):** `/compare/<tool>/` for each tool named in the answer: what
+- **Comparison pages (DEC-197):** `/compare/<tool>/` for Lexicon, Mixed In Key, rekordcloud and any
+  other the user names: what
   each does, side by side, every fact about the other tool linked to its own public page and dated,
   and what CuePoint does not do. Reviewed by the user before launch.
 - **Schema:** `BreadcrumbList` on each; `SoftwareApplication`'s `featureList` on the overview.
@@ -725,13 +737,13 @@ and every page's OG image, favicons and manifest.
 
 **User-visible result**: `/privacy/`, `/terms/`, the 404, and a picture whenever a page is shared.
 
-**Dependencies**: SITE-02, SITE-03; Q-189.
+**Dependencies**: SITE-02, SITE-03; DIST-09's mark (DEC-198).
 
 **Skills**: `impeccable`, `seo`, `best-practices`.
 
 **Design**:
 - **Privacy:** one page covering the site and the app, drafted from what each actually does: the
-  site's analytics (Q-183, what it counts, no cookie, DEC-142), the forms (Q-184, what is sent and to
+  site's analytics (Umami Cloud, DEC-192, what it counts, no cookie, DEC-142), the forms (Web3Forms, DEC-193, what is sent and to
   whom, DEC-143), the app's error reports (DEC-126, what is scrubbed, DEC-127, the switch, DEC-128),
   the updater's requests to GitHub (DEC-145), where the app keeps data, the publisher and contact
   (DEC-144). It agrees with `PRIVACY_NOTICE.md` and `docs/policy/privacy-notice.md` and says the
@@ -740,11 +752,9 @@ and every page's OG image, favicons and manifest.
 - **Both carry a "last updated" date** and are approved by the user before launch (DEC-144).
 - **The 404:** in the site's style, with a small voxel scene's still (or the scene, gated), the guide
   search, and the main links; `noindex`.
-- **The mark (Q-189, A as recommended):** a pixel-art mark drawn in the app's style (square, black
-  outline, bevel, the theme's accent), as SVG on a 16×16 and a 32×32 grid, approved by the user. The
+- **The mark (DEC-198):** DIST-09's pixel mark, already the app's icon, is reused as it is. The
   favicon set (`favicon.ico` 16/32/48, `icon.svg`, `apple-touch-icon.png` 180, the manifest's 192 and
-  512) and `site.webmanifest` are generated from it at build. The same files are handed to Phase 18
-  for the app's icon (fact 5); this step does not touch the app.
+  512) and `site.webmanifest` are generated from its SVG source at build. Nothing new is drawn.
 - **OG images:** generated at build for every page (`satori` and `resvg`, 1200×630), in the pixel
   style: the page's title in Pixelify Sans on the theme's panel, the mark, and the page's app
   picture where it has one. Each page's `og:image` and `twitter:image` point at its own.
@@ -757,8 +767,7 @@ and every page's OG image, favicons and manifest.
 
 **Acceptance criteria / DoD**:
 - The checks and tests pass.
-- The user approves the privacy text, the terms text and the mark (asked in the thread, before
-  SITE-13).
+- The user approves the privacy text and the terms text (asked in the thread, before SITE-13).
 
 **Risks**: Low in code. The policy text is the user's to approve.
 
@@ -774,13 +783,12 @@ cookieless analytics counting visits, sources and downloads, with the consent co
 **User-visible result**: `/contact/` and `/report-a-bug/`, each with a thank-you page; downloads and
 visits counted.
 
-**Dependencies**: SITE-02, SITE-03, SITE-07; Q-183, Q-184.
+**Dependencies**: SITE-02, SITE-03, SITE-07; DEC-192, DEC-193.
 
 **Skills**: `accessibility`, `best-practices`, `performance`.
 
 **Design**:
-- **The forms** (DEC-143), each a plain HTML form that posts to the service (Q-184, Web3Forms as
-  recommended), so it works with no script; a small script adds inline validation and sends it in
+- **The forms** (DEC-143), each a plain HTML form that posts to the service (Web3Forms, DEC-193), so it works with no script; a small script adds inline validation and sends it in
   the background, then shows the thank-you page.
   - **Contact and feedback:** name (optional), email, subject (feedback, a question, other),
     message.
@@ -794,7 +802,7 @@ visits counted.
     focused; a send failure keeps what was typed and offers the email address.
   - **The access key** for the service is public by design (it identifies the inbox, not a secret),
     lives in `site.config.ts`, and is restricted to the site's domain in the service's settings.
-- **Analytics** (DEC-142, Q-183, Umami Cloud as recommended): its script, loaded `defer`, after
+- **Analytics** (DEC-142; Umami Cloud, DEC-192): its script, loaded `defer`, after
   consent is not needed (it sets no cookie). Counted: page views, referrers, and events for each
   download (system and chip), each form sent, the theme switch and the sound button. No personal
   data in any event.
@@ -829,19 +837,20 @@ its evidence.
 
 **User-visible result**: The new site at the address.
 
-**Dependencies**: SITE-01…SITE-12; the user's approvals in SITE-06, SITE-10 and SITE-11; Q-186,
-Q-187.
+**Dependencies**: SITE-01…SITE-12; the user's approvals in SITE-06, SITE-10 and SITE-11; the
+user's domain (DEC-196).
 
 **Skills**: `web-quality-audit`, `seo`; Claude SEO on the user's PC.
 
 **Design**:
 - **Deploy:** `website.yml` gains a deploy job (`actions/upload-pages-artifact`,
-  `actions/deploy-pages`) on pushes to the branch Q-186 names, after every check passes, and on
+  `actions/deploy-pages`) on pushes to `feature`, and to `main` once v1 is there (DEC-195), after every check passes, and on
   `workflow_dispatch` (fact 9). `PUBLIC` becomes true in the deploy build only, so preview artifacts
   keep `noindex`.
 - **The user switches Pages' source to GitHub Actions** (repository Settings › Pages), once; the
-  thread says so when the step is ready (fact 3). If Q-187 is B, the domain's DNS records and the
-  Pages custom domain are set the same way, and `SITE_URL` changes in the same commit.
+  thread says so when the step is ready (fact 3). The user's domain (DEC-196) is set the same way:
+  its DNS records at the registrar and Pages' custom domain with **Enforce HTTPS**; `SITE_URL`
+  changes to it in the same commit, and `public/CNAME` names it.
 - **Retired:** `gh-pages-root/`, `.github/workflows/publish-gh-pages-site.yml`, and
   `scripts/publish_feeds.py` with its tests, once the new site is live (DEC-139). The `gh-pages`
   branch is kept as it is.
@@ -849,7 +858,7 @@ Q-187.
   publishes, so the download page updates by itself.
 - **Search engines** (DEC-141): Google Search Console and Bing Webmaster Tools verified by the meta
   tags the user copies from each (the codes go in `site.config.ts`), the sitemap submitted in both.
-  Moved to DNS verification if a domain is bought.
+  Verified by DNS on the user's domain (DEC-196).
 - **The backlink plan:** `apps/website/docs/backlinks.md`, where CuePoint belongs (DJ forums and
   subreddits, Rekordbox communities, software directories, launch sites, GitHub topics and awesome
   lists, DJ blogs and YouTube reviewers) and what is offered at each. The user carries it out
@@ -899,38 +908,37 @@ Phase 17 is complete when:
    its evidence in `launch-checklist.md`. *SITE-03, SITE-13.*
 6. LCP ≤ 2.5 s, TBT ≤ 200 ms and CLS ≤ 0.1 on Lighthouse's mobile emulation for the home, download, a
    guide page and a post, with the 3D. *SITE-03.*
-7. The download offers the visitor's system and chip in one click, and every file of the release.
-   *SITE-07.*
+7. Before 1.0.0 the site offers no download and links GitHub's releases; from 1.0.0 it offers the
+   visitor's system and chip in one click, and every file of the release. *SITE-07.*
 8. Both forms deliver; the analytics set no cookie and count downloads. *SITE-12.*
 9. The guide is built from `docs/user-guide/` and the changelog from `CHANGELOG.md`, with no copy of
    either in the site. *SITE-09, SITE-10.*
-10. The user approved the home page, the privacy and terms text, the first post and the mark.
-11. No decision in DEC-001…DEC-178, or in Decision Round 20's, is contradicted. A
+10. The user approved the home page, the privacy and terms text and the first post.
+11. No decision in DEC-001…DEC-198 is contradicted. A
     contradiction stops the work and is raised rather than worked around.
 
 ## Decision Round 20 — what writing the steps raised
 
-Asked in `OPEN_QUESTIONS.md` as Q-180…Q-189.
+Asked in `OPEN_QUESTIONS.md` as Q-180…Q-189 and answered on 2026-10-07: the recommendation on
+seven, B on Q-185 and Q-187, and the mark made the app's icon.
 
-| Question | Recommendation | Needed by |
-| --- | --- | --- |
-| Q-180 — The opening scene | A: the crate becomes the wheel | SITE-06 |
-| Q-181 — The site's colors | A: the app's five themes, switchable, Neo Dark first | SITE-02, SITE-05 |
-| Q-182 — Sound | B: an opt-in speaker button, the voxels moving to a loop you own | SITE-06 |
-| Q-183 — The analytics service | A: Umami Cloud | SITE-11, SITE-12 |
-| Q-184 — The form service | A: Web3Forms | SITE-11, SITE-12 |
-| Q-185 — The download before 1.0.0 | A: the newest test release, marked Preview | SITE-07 |
-| Q-186 — When the site goes live | A: at the end of this phase, from `feature` until v1 is on `main` | SITE-13 |
-| Q-187 — The domain | B: buy one before launch | SITE-13 |
-| Q-188 — Comparison pages | A: yes, factual and dated | SITE-08 |
-| Q-189 — The mark and the favicon | A: a new pixel-art mark | SITE-11 |
+| Question | Recommendation | Answer | Needed by |
+| --- | --- | --- | --- |
+| Q-180 — The opening scene | A: the crate becomes the wheel | DEC-189: A | SITE-06 |
+| Q-181 — The site's colors | A: the app's five themes, switchable, Neo Dark first | DEC-190: A | SITE-02, SITE-05 |
+| Q-182 — Sound | B: an opt-in speaker button, the voxels moving to a loop you own | DEC-191: B | SITE-06 |
+| Q-183 — The analytics service | A: Umami Cloud | DEC-192: A | SITE-11, SITE-12 |
+| Q-184 — The form service | A: Web3Forms | DEC-193: A | SITE-11, SITE-12 |
+| Q-185 — The download before 1.0.0 | A: the newest test release, marked Preview | DEC-194: **B**, no download until 1.0.0 | SITE-07 |
+| Q-186 — When the site goes live | A: at the end of this phase, from `feature` until v1 is on `main` | DEC-195: A | SITE-13 |
+| Q-187 — The domain | B: buy one before launch | DEC-196: B | SITE-13 |
+| Q-188 — Comparison pages | A: yes, factual and dated | DEC-197: A | SITE-08 |
+| Q-189 — The mark and the favicon | A: a new pixel-art mark | DEC-198: A, and it is the app's icon (DIST-09) | SITE-11 |
 
 ## Deferred, with reasons
 
 - **Other languages.** DEC-139: English only.
 - **A newsletter.** DEC-143: none.
-- **The app's icon.** The mark SITE-11 draws is handed to Phase 18; this phase changes nothing in the
-  app (fact 5).
 - **Docs versioned by release.** The guide shows the app as `feature` has it. Versions of it are not
   asked for.
 - **Server-side features** (accounts, comments, a forum). GitHub Pages is static; not asked for.

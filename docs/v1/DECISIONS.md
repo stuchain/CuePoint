@@ -5487,3 +5487,173 @@ release needs no manual step.
 **Decided with**: User · **Date**: 2026-10-07
 
 ---
+
+---
+
+## DEC-189 — The Opening Scene: the Crate Becomes the Wheel
+
+**Status**: Approved · **Related**: Q-180, DEC-139, SITE-06
+
+**Decision**: The home page opens on one scroll-driven scene. A voxel crate holds unlabeled records.
+As the visitor scrolls, the records lift out, take their key, tempo and genre as pixel labels, and
+fly into a 3D Camelot wheel that lights up. The wheel then turns flat and becomes the real app's
+window.
+
+**Reason**: The user's choice, after seeing a live mockup of options A and B. It tells the product's
+story in one movement (a messy library, matched, organized, ready for the booth), shows the wheel,
+which only CuePoint has, and lands on the real app.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-190 — The Site Offers the App's Five Themes
+
+**Status**: Approved · **Related**: Q-181, SITE-02, SITE-05
+
+**Decision**: A pixel switch in the site's header offers the app's five themes. Neo Dark is the
+default. A theme recolors the pages and the 3D scenes, and is remembered in the visitor's browser.
+
+**Reason**: The user's choice, as recommended. It shows a feature of the app on the site itself,
+and costs little: the colors are generated tokens and one shader uniform.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-191 — Sound Only When the Visitor Asks for It
+
+**Status**: Approved · **Related**: Q-182, SITE-06
+
+**Decision**: The home page has a pixel speaker button, off by default. Pressed, it plays a short
+loop and the voxels move to it. The user supplies a loop they own the rights to; until that file
+exists, the button is hidden. No sound ever plays unasked.
+
+**Reason**: The user's choice, as recommended.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-192 — Analytics: Umami Cloud
+
+**Status**: Approved · **Related**: Q-183, DEC-142, SITE-11, SITE-12
+
+**Decision**: The site counts visits, sources and downloads with Umami Cloud, which sets no cookie.
+Downloads, form sends, the theme switch and the sound button are counted as events. The user
+creates the account; the privacy policy names the service.
+
+**Reason**: The user's choice, as recommended. It counts what the backlink plan needs at no cost.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-193 — Forms: Web3Forms
+
+**Status**: Approved · **Related**: Q-184, DEC-143, SITE-11, SITE-12
+
+**Decision**: The contact and bug-report forms send through Web3Forms to the user's email. Its
+access key is public by design and restricted to the site's domain. The user creates the account;
+the privacy policy names the service.
+
+**Reason**: The user's choice, as recommended. Two low-traffic forms fit its free plan.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-194 — No Download on the Site Until 1.0.0
+
+**Status**: Approved · **Related**: Q-185, DEC-176, SITE-06, SITE-07
+
+**Decision**: Until 1.0.0 is released, the site offers no download. The download page says 1.0.0 is
+coming, and links GitHub's releases page for anyone who wants a test build. When the release data
+read at build holds a normal release, the site's download buttons, the detection by system and chip
+and the file list turn on by themselves, with no further change.
+
+**Reason**: The user's choice. Test builds stay for people who seek them out on GitHub; the site's
+visitors get the finished app.
+
+**Implications**:
+- Before 1.0.0, the one primary action on each page (DEC-141) is "Get notified of 1.0", which opens
+  the repository's page where a visitor can watch its releases.
+- SITE-07 is built and tested in full against recorded release data, so the switch at 1.0.0 is
+  already proven.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-195 — The Site Goes Live at the End of Phase 17
+
+**Status**: Approved · **Related**: Q-186, SITE-13
+
+**Decision**: The site is deployed when Phase 17 ends, from `feature`, and from `main` once v1 is on
+`main`.
+
+**Reason**: The user's choice, as recommended. Search engines start learning the site months
+earlier, and the old page describes the retired app.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-196 — A Domain Is Bought Before Launch
+
+**Status**: Approved · **Related**: Q-187, DEC-139, SITE-13 · **Amends**: DEC-139 ("GitHub Pages'
+own address until a domain is bought")
+
+**Decision**: The user buys a domain before the site launches, and the site launches on it. The
+user owns it.
+
+**Reason**: The user's choice, as recommended. Launching once on the final address avoids a move,
+gives the site a name people remember, and lets Search Console verify the whole domain.
+
+**Implications**:
+- **Checked 2026-10-07:** `cuepoint.com` (GoDaddy, since 2004), `cuepoint.app`, `cuepoint.io`,
+  `getcuepoint.com`, `cuepointapp.com` and `cuepointdj.com` are taken. `usecuepoint.com`,
+  `trycuepoint.com`, `getcuepoint.app` and `cuepointdj.app` were free (RDAP).
+- **The registrar:** Cloudflare Registrar sells at cost (a `.com` about $10.44 a year, the same at
+  renewal, privacy included) but does not sell `.app`; Porkbun or Spaceship sell `.app` at about
+  $15 a year. Prices as listed on 2026-10-07; the user checks at purchase.
+- **The name is the user's choice;** `SITE_URL` changes to it in SITE-13, and Search Console and Bing
+  verify by DNS.
+- **Other products already use the name CuePoint** (the taken domains above). A trademark search
+  before launch is advised.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-197 — Comparison Pages, Factual and Dated
+
+**Status**: Approved · **Related**: Q-188, SITE-08
+
+**Decision**: The site has a page per similar tool (for example Lexicon, Mixed In Key and
+rekordcloud). Each fact about the other tool links its own public page and carries the date it was
+checked, and each page says what CuePoint does not do. The user reviews each page before launch.
+
+**Reason**: The user's choice, as recommended. They answer searches the feature pages cannot.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-198 — A Pixel-Art Mark, and It Is the App's Icon
+
+**Status**: Approved · **Related**: Q-189, DEC-141, DIST-09, SITE-11
+
+**Decision**: A new pixel-art mark is drawn in the app's style: square, black-outlined, beveled, in
+the theme's accent. The user approves it. It becomes the app's icon on Windows, macOS and Linux, the
+site's favicon and the mark on the site. `gh-pages-root/logo.svg` retires with the old page.
+
+**Reason**: The user's choice, and the user's words: the app has no icon of its own, and "that
+should not be the case". Every packaged build so far shows Electron's default icon.
+
+**Implications**:
+- **The app's icon is built in Phase 16, as DIST-09,** so the first release in the new scheme
+  (DEC-176) and every update after it carry it. It does not wait for the website.
+- **SITE-11 reuses the mark** for the favicon set and the OG images, and draws nothing new.
+
+**Decided with**: User · **Date**: 2026-10-07
