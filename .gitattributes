@@ -2,3 +2,8 @@
 # not convert their line endings.
 src/tests/fixtures/rekordbox/marks.xml -text
 src/tests/fixtures/rekordbox/marks_export.xml -text
+
+# cmd.exe can mis-read labels and goto in a batch file with LF line endings, so
+# every checkout gets CRLF whatever core.autocrlf says.
+*.bat text eol=crlf
+*.cmd text eol=crlf
