@@ -125,7 +125,8 @@ describe("a row's waveform", () => {
   });
 
   it("asks once per 16 columns as the column is dragged wider", async () => {
-    // jsdom has no ResizeObserver: this one reports what the test says.
+    // jsdom has no ResizeObserver: this one reports what the test says, and,
+    // as a real one does, every box it starts watching.
     const observed = new Set<Element>();
     let report: ((targets: Element[]) => void) | null = null;
     class FakeResizeObserver {
@@ -146,6 +147,7 @@ describe("a row's waveform", () => {
     try {
       const waveforms = install();
       render(<Rows ids={[1]} />);
+      await act(async () => report?.([...observed]));
       await pass(SETTLE_MS);
       const widths = () => waveforms.get.mock.calls.map(([params]) => params.width);
       expect(widths()).toEqual([64]);

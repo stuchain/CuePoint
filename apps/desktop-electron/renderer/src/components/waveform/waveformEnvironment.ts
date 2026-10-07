@@ -61,8 +61,12 @@ export function useBoxSize<T extends HTMLElement>(): [RefObject<T | null>, BoxSi
       setSize((previous) =>
         previous.width === next.width && previous.height === next.height ? previous : next,
       );
-    changed(measure(element));
-    return observeBox(element, changed);
+    const unobserve = observeBox(element, changed);
+    // The observer reports every box it starts watching, after layout. Measuring
+    // here as well forced a layout per box, and a page of the Library's Waveform
+    // column mounts forty at once, inside the scroll that brought them in.
+    if (typeof ResizeObserver === "undefined") changed(measure(element));
+    return unobserve;
   }, []);
   return [box, size];
 }
@@ -113,7 +117,9 @@ let themeRevision = 0;
 function subscribeTheme(listener: () => void): () => void {
   themeListeners.add(listener);
   if (!themeObserver && typeof MutationObserver !== "undefined") {
+    tokenCache.clear();
     themeObserver = new MutationObserver(() => {
+      tokenCache.clear();
       themeRevision += 1;
       themeListeners.forEach((each) => each());
     });
@@ -129,9 +135,31 @@ function subscribeTheme(listener: () => void): () => void {
     if (themeListeners.size === 0) {
       themeObserver?.disconnect();
       themeObserver = null;
+      tokenCache.clear();
     }
   };
 }
+
+/**
+ * The theme's tokens, read from the root once per theme rather than once per
+ * canvas.
+ *
+ * Every waveform paints from the same root tokens. Reading them from each
+ * canvas's computed style forced a style pass per canvas, and a scroll brings
+ * in a page of them. Remembered only while the theme is watched, so a change
+ * is never missed.
+ */
+const tokenCache = new Map<string, string>();
+
+export const themeTokens: Pick<CSSStyleDeclaration, "getPropertyValue"> = {
+  getPropertyValue(name: string): string {
+    const known = themeObserver ? tokenCache.get(name) : undefined;
+    if (known !== undefined) return known;
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name);
+    if (themeObserver) tokenCache.set(name, value);
+    return value;
+  },
+};
 
 /** A number that changes whenever the theme's tokens may have. */
 export function useThemeRevision(): number {

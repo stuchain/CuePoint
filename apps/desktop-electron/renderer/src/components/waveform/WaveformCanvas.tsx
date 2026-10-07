@@ -21,7 +21,7 @@ import { useLayoutEffect, useMemo } from "react";
 import type { BeatGridMarker, TrackCue } from "../../api/cuepointBridge.types";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { useWaveformColour } from "./waveformColour";
-import { useBoxSize, useDevicePixelRatio, useThemeRevision } from "./waveformEnvironment";
+import { themeTokens, useBoxSize, useDevicePixelRatio, useThemeRevision } from "./waveformEnvironment";
 import { layoutWaveform, type WaveformColourMode } from "./waveformLayout";
 import { paintLayout } from "./waveformPaint";
 import "./WaveformCanvas.css";
@@ -85,9 +85,11 @@ export function WaveformCanvas({
     if (!element) return;
     if (element.width !== layout.width) element.width = layout.width;
     if (element.height !== layout.height) element.height = layout.height;
+    // Not measured yet: nothing to paint.
+    if (layout.width === 0 || layout.height === 0) return;
     const context = element.getContext("2d");
     if (!context) return;
-    paintLayout(context, layout, getComputedStyle(element));
+    paintLayout(context, layout, themeTokens);
   }, [canvas, layout, theme]);
 
   return (

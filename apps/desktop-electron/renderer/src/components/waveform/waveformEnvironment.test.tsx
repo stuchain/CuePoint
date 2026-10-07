@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import {
+  themeTokens,
   useBoxSize,
   useDevicePixelRatio,
   useThemeRevision,
@@ -84,6 +85,40 @@ describe("boxes", () => {
 
     view.unmount();
     expect(observer!.disconnected).toBe(true);
+  });
+
+  it("leaves the first measurement to the observer, so mounting forces no layout", () => {
+    // A page of the Library's Waveform column mounts forty boxes at once; one
+    // measurement each on mount forced a layout each, and made one scroll a
+    // long task. The observer reports every box it starts watching, after
+    // layout, which costs nothing extra.
+    const sizes: Record<string, { width: number; height: number }> = {};
+    const view = render(<Box id="a" onSize={(size) => (sizes.a = size)} />);
+    expect(HTMLElement.prototype.getBoundingClientRect).not.toHaveBeenCalled();
+
+    const a = view.getByTestId("a");
+    rects.set(a, { width: 120, height: 20 });
+    act(() => observers[0]!.report([a]));
+    expect(sizes.a).toEqual({ width: 120, height: 20 });
+  });
+
+  it("measures on mount where there is no observer", () => {
+    vi.stubGlobal("ResizeObserver", undefined);
+    const sizes: Record<string, { width: number; height: number }> = {};
+    function Measured() {
+      const [box, size] = useBoxSize<HTMLDivElement>();
+      sizes.a = size;
+      return (
+        <div
+          ref={(element) => {
+            if (element) rects.set(element, { width: 80, height: 10 });
+            box.current = element;
+          }}
+        />
+      );
+    }
+    render(<Measured />);
+    expect(sizes.a).toEqual({ width: 80, height: 10 });
   });
 });
 
@@ -187,6 +222,27 @@ describe("the theme", () => {
     one.unmount();
     two.unmount();
     document.documentElement.removeAttribute("data-theme");
+    document.documentElement.removeAttribute("style");
+  });
+
+  it("reads each token once per theme, not once per canvas", async () => {
+    // Every waveform on screen paints from the same root tokens. Read once per
+    // canvas, each read forced a style pass on a page full of new rows.
+    document.documentElement.style.setProperty("--waveform-low", "#0000ff");
+    const reader = renderHook(() => useThemeRevision());
+    const computed = vi.spyOn(window, "getComputedStyle");
+
+    expect(themeTokens.getPropertyValue("--waveform-low").trim()).toBe("#0000ff");
+    expect(themeTokens.getPropertyValue("--waveform-low").trim()).toBe("#0000ff");
+    expect(computed).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      document.documentElement.style.setProperty("--waveform-low", "#00ff00");
+      await Promise.resolve();
+    });
+    expect(themeTokens.getPropertyValue("--waveform-low").trim()).toBe("#00ff00");
+
+    reader.unmount();
     document.documentElement.removeAttribute("style");
   });
 });
