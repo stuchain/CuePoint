@@ -296,6 +296,14 @@ describe("jobs", () => {
     render(<StatusStrip />);
     await screen.findByText("Matching on Beatport 3/10");
 
+    // From here on the discovery poll never answers, so the only way 8/10 can
+    // reach the strip is the SSE event. Left answering, the fixture's 3/10
+    // came back on the next 2s poll and overwrote the tick whenever a loaded
+    // machine let real time cross a poll before the assertion ran (the fake
+    // clock advances with real time), which is why this failed only in full
+    // runs.
+    listJobs.mockReturnValue(new Promise(() => {}));
+
     sseHandler?.({
       id: "job-1",
       state: "running",
