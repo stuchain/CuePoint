@@ -33,7 +33,7 @@ import path from "node:path";
  */
 
 /** Why mpv stopped playing a file. `end-file`'s `reason` field. */
-export type EndFileReason = "eof" | "stop" | "quit" | "error" | "redirect" | "unknown";
+type EndFileReason = "eof" | "stop" | "quit" | "error" | "redirect" | "unknown";
 
 export interface MpvEndFile {
   reason: EndFileReason;
@@ -62,7 +62,7 @@ export interface MpvStartFile {
   playlistEntryId: number | null;
 }
 
-export interface MpvPropertyChange<T = unknown> {
+interface MpvPropertyChange<T = unknown> {
   name: string;
   data: T;
   /** The observe id mpv echoes back, used to route to the right observer. */
@@ -70,12 +70,12 @@ export interface MpvPropertyChange<T = unknown> {
 }
 
 /** Any event mpv pushes, in its raw shape. */
-export interface MpvEvent {
+interface MpvEvent {
   event: string;
   [key: string]: unknown;
 }
 
-export interface MpvClientOptions {
+interface MpvClientOptions {
   /** Pipe (Windows) or unix socket path to connect to. */
   socketPath: string;
   /**
@@ -92,8 +92,8 @@ export interface MpvClientOptions {
   createConnection?: (socketPath: string) => net.Socket;
 }
 
-export const DEFAULT_REQUEST_TIMEOUT_MS = 5_000;
-export const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 5_000;
+const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
 
 /**
  * Base arguments for the mpv process (consumed by PLAYER-03's supervisor).
@@ -242,7 +242,7 @@ type PropertyHandler = (value: unknown) => void;
  * is a protocol complaint, not a reason to tear down playback. Fatal ends of
  * the connection arrive as `close`.
  */
-export interface MpvClientEventMap {
+interface MpvClientEventMap {
   event: [MpvEvent];
   "property-change": [MpvPropertyChange];
   "start-file": [MpvStartFile];

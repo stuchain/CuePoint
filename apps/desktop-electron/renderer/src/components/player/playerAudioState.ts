@@ -29,7 +29,7 @@ export const PLAYER_AUDIO_EXCLUSIVE_STORAGE_KEY = "cuepoint-player-audio-exclusi
 /** The system default, which is also mpv's own name for it. */
 export const SYSTEM_DEFAULT_DEVICE = "auto";
 
-export function loadAudioDevice(): string {
+function loadAudioDevice(): string {
   try {
     const raw = localStorage.getItem(PLAYER_AUDIO_DEVICE_STORAGE_KEY);
     return typeof raw === "string" && raw.trim() !== "" ? raw : SYSTEM_DEFAULT_DEVICE;
@@ -47,7 +47,7 @@ export function saveAudioDevice(device: string): void {
   }
 }
 
-export function loadAudioExclusive(): boolean {
+function loadAudioExclusive(): boolean {
   try {
     return localStorage.getItem(PLAYER_AUDIO_EXCLUSIVE_STORAGE_KEY) === "1";
   } catch {

@@ -1,12 +1,6 @@
 import { Modal } from "./Modal";
 import "./SupportBundleDialog.css";
 
-export interface SupportBundleOptions {
-  include_logs?: boolean;
-  include_config?: boolean;
-  sanitize?: boolean;
-}
-
 interface SupportBundleDialogProps {
   open: boolean;
   onClose: () => void;

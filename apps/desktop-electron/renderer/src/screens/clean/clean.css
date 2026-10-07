@@ -507,10 +507,6 @@
   overflow-wrap: anywhere;
 }
 
-.clean-group__member > .cp-button {
-  grid-area: reveal;
-}
-
 .clean-group__actions {
   display: flex;
   flex-wrap: wrap;

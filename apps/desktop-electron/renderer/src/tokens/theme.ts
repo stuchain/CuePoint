@@ -21,7 +21,7 @@ export const BUILT_IN_THEME_OPTIONS = [
 ] as const;
 
 export type BuiltInThemeId = (typeof BUILT_IN_THEME_OPTIONS)[number]["id"];
-export type CustomThemeId = `custom:${string}`;
+type CustomThemeId = `custom:${string}`;
 export type ThemeId = BuiltInThemeId | CustomThemeId;
 
 export interface ThemeOption {
@@ -33,16 +33,12 @@ export interface ThemeOption {
 const STORAGE_KEY = "cuepoint-ui-lab-theme";
 export const DEFAULT_THEME: BuiltInThemeId = "neoDark";
 
-export function isBuiltInThemeId(value: string): value is BuiltInThemeId {
+function isBuiltInThemeId(value: string): value is BuiltInThemeId {
   return BUILT_IN_THEME_OPTIONS.some((t) => t.id === value);
 }
 
 export function isCustomThemeId(value: string): value is CustomThemeId {
   return value.startsWith("custom:");
-}
-
-export function isThemeId(value: string): value is ThemeId {
-  return isBuiltInThemeId(value) || isCustomThemeId(value);
 }
 
 export function getAllThemeOptions(): ThemeOption[] {
@@ -88,12 +84,12 @@ export function persistThemeId(themeId: ThemeId): void {
   }
 }
 
-export function applyBuiltInTheme(themeId: BuiltInThemeId): void {
+function applyBuiltInTheme(themeId: BuiltInThemeId): void {
   clearThemeTokenOverrides();
   document.documentElement.dataset.theme = themeId;
 }
 
-export function applyCustomTheme(theme: CustomTheme): void {
+function applyCustomTheme(theme: CustomTheme): void {
   document.documentElement.dataset.theme = toCustomThemeId(theme.id);
   applyThemeTokensToDocument(deriveThemeTokens(theme.colors));
 }

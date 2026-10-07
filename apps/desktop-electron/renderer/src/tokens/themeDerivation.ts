@@ -1,6 +1,6 @@
 import type { CustomThemeColors } from "./customThemes";
 
-export type ThemeTokenMap = Record<string, string>;
+type ThemeTokenMap = Record<string, string>;
 
 const TOKEN_KEYS = [
   "bg-app",
@@ -79,7 +79,7 @@ export function lighten(hex: string, amount: number): string {
   return rgbToHex(r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount);
 }
 
-export function relativeLuminance(hex: string): number {
+function relativeLuminance(hex: string): number {
   const { r, g, b } = hexToRgb(hex);
   const [rs, gs, bs] = [r, g, b].map((c) => {
     const s = c / 255;
@@ -127,7 +127,7 @@ function rgba(hex: string, alpha: number): string {
  * hues and the theme's accent, each held at 3:1 against the panel; the played
  * part dimmed by the panel itself; the grid a faint line of the text colour.
  */
-export function deriveWaveformTokens(colors: {
+function deriveWaveformTokens(colors: {
   bgPanel: string;
   fgPrimary: string;
   fgMuted: string;

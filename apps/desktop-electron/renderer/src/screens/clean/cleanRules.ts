@@ -29,7 +29,7 @@ export type ReviewScope =
   | "no_match"
   | "not_matched";
 
-export interface ReviewScopeOption {
+interface ReviewScopeOption {
   id: ReviewScope;
   label: string;
 }

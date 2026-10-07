@@ -142,7 +142,7 @@ export function unknownTracksLine(preview: RekordboxExportPreview): string | nul
 // ------------------------------------------------------------------ the tracks
 
 /** The six values an export can rewrite, in the export's order. */
-export const EXPORT_FIELDS: ReadonlyArray<{ field: RekordboxExportField; label: string }> = [
+const EXPORT_FIELDS: ReadonlyArray<{ field: RekordboxExportField; label: string }> = [
   { field: "key", label: "Key" },
   { field: "bpm", label: "BPM" },
   { field: "genre", label: "Genre" },
@@ -233,7 +233,7 @@ export function playlistKindNote(playlist: RekordboxExportPlaylistPreview): stri
 
 // ---------------------------------------------------------------- the warnings
 
-export interface ExportWarning {
+interface ExportWarning {
   key: "absent" | "missing" | "unchecked" | "collision";
   text: string;
   /** A note says something worth knowing; a warning something that changes the file. */
@@ -307,7 +307,7 @@ export function confirmLabel(preview: RekordboxExportPreview | null): string {
     : `Export ${tracks}`;
 }
 
-export interface ConfirmState {
+interface ConfirmState {
   /** The preview answering the choices on screen now, or null. */
   preview: RekordboxExportPreview | null;
   /** A refusal standing in the preview's or the start's place. */
@@ -349,7 +349,7 @@ const BUSY_JOB_NAMES: Record<string, string> = {
 };
 
 /** The next step a refusal offers, which the dialog draws as a button. */
-export type RefusalStep = "import" | "retry" | "choose" | "wait" | null;
+type RefusalStep = "import" | "retry" | "choose" | "wait" | null;
 
 /** What a refusal says, in the order a person needs it: what, then what to do. */
 export function refusalText(refusal: RekordboxExportRefusal): string {

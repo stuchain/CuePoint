@@ -40,7 +40,7 @@ import { REVIEW_KEYS } from "./reviewKeyboard";
 import { useTrackArtwork } from "./useTrackArtwork";
 import type { TrackMatchesState } from "./useTrackMatches";
 
-export interface ComparisonPanelProps {
+interface ComparisonPanelProps {
   row: LibraryTrackRow | null;
   matches: TrackMatchesState;
   /** The candidates drawn, in order: the page decides, so the keyboard agrees. */

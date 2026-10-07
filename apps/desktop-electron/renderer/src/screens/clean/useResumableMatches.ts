@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 
 import type { ResumableMatch } from "../../api/cuepointBridge.types";
 
-export interface ResumableMatchesState {
+interface ResumableMatchesState {
   /** Newest first, as the engine lists them. */
   jobs: ResumableMatch[];
   total: number;

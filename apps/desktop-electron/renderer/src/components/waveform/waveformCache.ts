@@ -43,7 +43,7 @@ import type {
 export const BATCH_SIZE = 200;
 
 /** Answers kept at once. */
-export const CACHE_LIMIT = 2_000;
+const CACHE_LIMIT = 2_000;
 
 /** The least time between two reads of the analysis, and two refreshes. */
 export const REFRESH_MS = 2_000;
@@ -132,7 +132,7 @@ export async function readEntries(
   return answers;
 }
 
-export interface WaveformCacheOptions {
+interface WaveformCacheOptions {
   /** The bridge's waveforms namespace, asked at each use. */
   bridge: () => Bridge | undefined;
   now?: () => number;

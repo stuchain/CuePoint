@@ -17,9 +17,9 @@ import { formatWhen } from "./cleanFormat";
 import type { ReviewScope } from "./cleanRules";
 
 /** The one thing an empty state offers to do about itself, when there is one. */
-export type CleanEmptyOffer = "show_not_matched" | "check_files" | "find_duplicates";
+type CleanEmptyOffer = "show_not_matched" | "check_files" | "find_duplicates";
 
-export interface CleanEmptyView {
+interface CleanEmptyView {
   headline: string;
   hint: string | null;
   offer: CleanEmptyOffer | null;
@@ -43,7 +43,7 @@ function lastRun(health: LibraryHealth, id: string): string | null | undefined {
   return detection ? detection.last_run_at : undefined;
 }
 
-export interface ReviewEmptyInput {
+interface ReviewEmptyInput {
   scope: ReviewScope;
   /** True when the queue is narrowed to a playlist or a Collection. */
   scoped: boolean;

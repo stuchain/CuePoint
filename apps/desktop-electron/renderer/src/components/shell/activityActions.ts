@@ -16,7 +16,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 
 /** The batch operations a revert refuses, and why (DEC-058, CLEAN-06). */
-export const MEMBERSHIP_OPERATIONS: ReadonlySet<string> = new Set([
+const MEMBERSHIP_OPERATIONS: ReadonlySet<string> = new Set([
   "add_to_collection",
   "remove_from_collection",
 ]);
@@ -30,17 +30,17 @@ export const MEMBERSHIP_REVERT_REASON =
   "Adding tracks to or removing them from a Collection or a Set cannot be reverted: tracks hold positions that later edits move. Add or remove them again instead.";
 
 /** The activity events a batch records: one applied, one reverted (DEC-063). */
-export const BATCH_EVENTS: ReadonlySet<string> = new Set(["library.batch", "library.batch_reverted"]);
+const BATCH_EVENTS: ReadonlySet<string> = new Set(["library.batch", "library.batch_reverted"]);
 
 /** The activity events a tag write leaves: written, and stopped part way. */
-export const TAG_WRITE_EVENT = "clean.tags.written";
-export const TAG_INTERRUPTED_EVENT = "clean.tags.interrupted";
+const TAG_WRITE_EVENT = "clean.tags.written";
+const TAG_INTERRUPTED_EVENT = "clean.tags.interrupted";
 
 /** The activity event a match leaves when CuePoint closed before it finished (DEC-065). */
-export const MATCH_INTERRUPTED_EVENT = "clean.match.interrupted";
+const MATCH_INTERRUPTED_EVENT = "clean.match.interrupted";
 
 /** What an activity entry offers, if anything. */
-export type ActivityOffer =
+type ActivityOffer =
   | { kind: "revert-batch"; batchId: string; disabledReason: string | null }
   | { kind: "restore-tags"; jobIds: string[]; interrupted: boolean }
   | { kind: "resume-match"; jobId: string }
@@ -115,12 +115,6 @@ export function writesLine(restorable: number, unconfirmed: number): string {
   return confirmed > 0
     ? `${unfinished}, and ${count(confirmed, "value")} ${confirmed === 1 ? "was" : "were"} written. Restore puts every file back.`
     : `${unfinished}. Restore puts every file back; a file still holding its old value counts as restored.`;
-}
-
-/** What a restore started, and what it covers. */
-export function restoreStartedLine(writes: number, unconfirmed: number): string {
-  const head = `Restoring ${count(writes, "value")}.`;
-  return unconfirmed > 0 ? `${head} ${count(unconfirmed, "write")} may not have finished; a file that still holds its old value is left as it is.` : head;
 }
 
 /** What a batch revert did, in its counts. */

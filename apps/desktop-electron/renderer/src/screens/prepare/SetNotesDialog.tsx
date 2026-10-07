@@ -15,7 +15,7 @@ import { Modal } from "../../components/Modal";
 import { notesToSend } from "./prepareFormat";
 import "./prepare.css";
 
-export interface SetNotesDialogProps {
+interface SetNotesDialogProps {
   /** The Set, or null when the dialog is closed. */
   set: { name: string; notes: string | null } | null;
   /** Why the engine refused the last attempt, in its words. */

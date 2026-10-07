@@ -16,7 +16,7 @@ import {
   runSummary,
 } from "./discoverFormat";
 
-export interface RunListProps {
+interface RunListProps {
   runs: readonly DiscoverRun[];
   total: number;
   genres: readonly DiscoverGenre[];

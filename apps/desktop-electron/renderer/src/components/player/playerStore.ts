@@ -64,7 +64,7 @@ function subscribe(listener: Listener): () => void {
 }
 
 /** The cached snapshot, or null when there is no bridge or nothing has played. */
-export function getPlayerSnapshot(): PlayerSnapshot | null {
+function getPlayerSnapshot(): PlayerSnapshot | null {
   return snapshot;
 }
 

@@ -32,7 +32,7 @@ import { usePlayerValue } from "./playerStore";
 export const PLAYER_VOLUME_STEP = 5;
 
 /** Fields that own every key while they have focus. */
-export function isTypingTarget(target: EventTarget | null): boolean {
+function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
   return ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
@@ -44,7 +44,7 @@ export function isTypingTarget(target: EventTarget | null): boolean {
  * Matched by role rather than by tag, because the app's own controls are real
  * buttons but a menu item or a queue row is a `role=` on a div.
  */
-export function isSpaceTarget(target: EventTarget | null): boolean {
+function isSpaceTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return Boolean(
     target.closest(

@@ -9,7 +9,7 @@ import type { EngineStatus } from "../../api/cuepointBridge.types";
  * mounted for the life of the app, which is exactly why the interval is modest
  * rather than tight: a permanent component polling hard is permanent load.
  */
-export const ENGINE_POLL_MS = 4000;
+const ENGINE_POLL_MS = 4000;
 
 /**
  * Live engine status.

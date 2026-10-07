@@ -67,7 +67,7 @@ export interface FilterCollectionOption {
   isSet?: boolean;
 }
 
-export interface FilterBarProps {
+interface FilterBarProps {
   vocabulary: LibraryFilterVocabulary | null;
   filters: FilterRuleSet | null;
   onFiltersChange: (filters: FilterRuleSet | null) => void;

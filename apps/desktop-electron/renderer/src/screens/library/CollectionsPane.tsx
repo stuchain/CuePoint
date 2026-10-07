@@ -67,7 +67,7 @@ import {
 } from "./collectionDrag";
 import "./CollectionsPane.css";
 
-export interface CollectionsPaneProps {
+interface CollectionsPaneProps {
   tree: CollectionTreeNode[];
   rows: CollectionRow[];
   selected: CollectionTreeNode | null;

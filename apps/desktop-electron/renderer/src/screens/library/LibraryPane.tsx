@@ -28,7 +28,7 @@ import type { PlaylistTreeController } from "./usePlaylistTree";
 import "./PlaylistPane.css";
 import "./CollectionsPane.css";
 
-export interface LibraryPaneProps {
+interface LibraryPaneProps {
   /** Tracks in the whole library, for the "All tracks" row. */
   libraryTrackCount: number;
   playlists: PlaylistTreeController;

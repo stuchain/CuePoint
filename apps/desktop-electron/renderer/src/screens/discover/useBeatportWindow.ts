@@ -26,12 +26,12 @@ import type { TrackTableSource, TrackTableStatus } from "../../components/table"
 import { PAGE_SIZE, pagesForRange, pagesToEvict } from "../library/useTrackWindow";
 
 /** What every Beatport window answers: rows, how many in all, and itself. */
-export interface BeatportPageShape<Row> {
+interface BeatportPageShape<Row> {
   rows: Row[];
   total: number;
 }
 
-export interface BeatportWindowOptions<Row, Page extends BeatportPageShape<Row>> {
+interface BeatportWindowOptions<Row, Page extends BeatportPageShape<Row>> {
   /**
    * The question, as text. A change of key is a new question: the rows held
    * are dropped and the first page is asked for again.
@@ -48,7 +48,7 @@ export interface BeatportWindowOptions<Row, Page extends BeatportPageShape<Row>>
   answers: (page: Page) => boolean;
 }
 
-export interface BeatportWindow<Row, Page> {
+interface BeatportWindow<Row, Page> {
   source: TrackTableSource<Row>;
   total: number;
   /** The latest answer, for the counts it carries beside its rows. */

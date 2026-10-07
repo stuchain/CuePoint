@@ -19,7 +19,7 @@ export interface QuitEvent {
   preventDefault: () => void;
 }
 
-export interface QuittingApp {
+interface QuittingApp {
   on: (event: "before-quit", listener: (event: QuitEvent) => void) => unknown;
   quit: () => void;
 }

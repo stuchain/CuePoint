@@ -56,9 +56,9 @@ import { useTrackWrites } from "./useTrackWrites";
 import "./TrackDetailPanel.css";
 
 /** A Collection as the track-detail read names it — enough to show and to open. */
-export type TrackCollectionRef = Pick<CollectionNode, "id" | "name" | "kind">;
+type TrackCollectionRef = Pick<CollectionNode, "id" | "name" | "kind">;
 
-export interface TrackDetailPanelProps {
+interface TrackDetailPanelProps {
   detail: LibraryTrackDetail | null;
   loading?: boolean;
   error?: string | null;

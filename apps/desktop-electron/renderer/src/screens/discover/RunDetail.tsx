@@ -44,7 +44,7 @@ import { openOnBeatport } from "./openOnBeatport";
 import { useBeatportSelection } from "./useBeatportSelection";
 import { useBeatportWindow } from "./useBeatportWindow";
 
-export interface RunDetailProps {
+interface RunDetailProps {
   runId: number;
   tools: DiscoverTools;
   /** Changes when the run may have changed: it is running, or just ended. */

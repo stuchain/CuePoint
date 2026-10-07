@@ -37,10 +37,10 @@ import {
   type CollectionsPaneState,
 } from "./collectionTree";
 
-export type CollectionTreeStatus = "loading" | "ready" | "error" | "unavailable";
+type CollectionTreeStatus = "loading" | "ready" | "error" | "unavailable";
 
 /** What a write answered: the node it produced, or why it could not. */
-export interface WriteResult {
+interface WriteResult {
   ok: boolean;
   error?: string;
   node?: CollectionNode;

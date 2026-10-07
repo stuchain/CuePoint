@@ -29,7 +29,7 @@ export function waitsForAnalysis(entry: WaveformEntry | null | undefined, loudne
   return waitsInView(entry, { loudness });
 }
 
-export interface WaveformRequestOptions {
+interface WaveformRequestOptions {
   /** The view shows the loudness, so a track still to be measured is asked for. */
   loudness?: boolean;
   /** The bridge's waveforms namespace; the app's own unless a test gives one. */

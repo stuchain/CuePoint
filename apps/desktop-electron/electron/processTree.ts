@@ -15,7 +15,7 @@
  */
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 
-export interface Killable {
+interface Killable {
   pid?: number;
   kill: (signal?: NodeJS.Signals | number) => boolean;
 }

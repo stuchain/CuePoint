@@ -25,7 +25,7 @@ import { ScopeDialog } from "./ScopeDialog";
 import { refusalText } from "./discoverFormat";
 import { defaultForm, formProblems, runRequest, type NewRunForm, type ScopeMode } from "./newRun";
 
-export interface NewRunPanelProps {
+interface NewRunPanelProps {
   options: DiscoverOptions;
   /** False when Beatport cannot be asked; the reason says why. */
   usable: boolean;

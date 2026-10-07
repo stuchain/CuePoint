@@ -23,7 +23,7 @@ export function cellText(value: string | number | null | undefined): string {
   return value == null || value === "" ? "—" : String(value);
 }
 
-export interface ValueRow {
+interface ValueRow {
   id: string;
   label: string;
   track: (track: ComparedTrack) => string;
@@ -115,7 +115,7 @@ function signed(value: number | null): string {
   return value > 0 ? `+${value}` : String(value);
 }
 
-export interface ScoreRow {
+interface ScoreRow {
   id: string;
   label: string;
   candidate: (candidate: MatchCandidate) => string;

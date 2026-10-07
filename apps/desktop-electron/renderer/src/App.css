@@ -52,10 +52,3 @@
   max-width: var(--content-max-width);
   margin-inline: auto;
 }
-
-.app-main .screen--fill {
-  align-self: stretch;
-  flex: 1;
-  justify-content: flex-start;
-  min-height: 0;
-}

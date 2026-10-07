@@ -84,10 +84,6 @@ export function sameItem(a: QueueItem | null, b: QueueItem | null): boolean {
   return a?.id === b?.id;
 }
 
-export function selectPaused(state: PlayerSnapshot | null): boolean {
-  return state?.playback.paused ?? false;
-}
-
 /**
  * Is a track actually playing?
  *

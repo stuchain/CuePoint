@@ -5,7 +5,7 @@ export type ScaleFactor = (typeof SCALE_OPTIONS)[number];
 
 const STORAGE_KEY = "cuepoint-ui-lab-scale";
 
-export function isScaleFactor(value: number): value is ScaleFactor {
+function isScaleFactor(value: number): value is ScaleFactor {
   return SCALE_OPTIONS.includes(value as ScaleFactor);
 }
 
@@ -36,7 +36,7 @@ export function setStoredScale(scale: ScaleFactor): void {
   }
 }
 
-export function applyScale(scale: ScaleFactor): void {
+function applyScale(scale: ScaleFactor): void {
   document.documentElement.dataset.scale = String(scale);
   document.documentElement.style.setProperty("--scale", String(scale));
 }

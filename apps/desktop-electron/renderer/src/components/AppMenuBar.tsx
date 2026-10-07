@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./AppMenuBar.css";
 
-export interface AppMenuActions {
+interface AppMenuActions {
   onOpenSupport: () => void;
   onOpenShortcuts: () => void;
   onOpenPrivacy: () => void;

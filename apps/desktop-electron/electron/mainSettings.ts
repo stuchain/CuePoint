@@ -22,7 +22,7 @@ import path from "node:path";
 /** The file's name, in `app.getPath("userData")`. */
 export const MAIN_SETTINGS_FILE = "main-settings.json";
 
-export interface MainSettings {
+interface MainSettings {
   /** The folder the last set list was saved to, absolute; null before the first. */
   setListFolder: string | null;
 }

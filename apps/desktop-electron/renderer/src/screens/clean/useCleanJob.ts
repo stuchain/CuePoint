@@ -18,7 +18,7 @@ import { jobErrorMessage } from "../library/libraryFormat";
 
 export type CleanMessageTone = "info" | "success" | "warning";
 
-export interface CleanJobOptions<Answer> {
+interface CleanJobOptions<Answer> {
   /** What to say once the engine has started it, from its answer. */
   started?: (answer: Answer) => string | null;
   /** What to say when it succeeds. */
@@ -27,7 +27,7 @@ export interface CleanJobOptions<Answer> {
   onEnded?: (outcome: FinishedJob) => void;
 }
 
-export interface CleanJobs {
+interface CleanJobs {
   /** Which job this page is waiting on, by the key it was started under. */
   running: string | null;
   run: <Answer extends { job_id?: string; id?: string }>(

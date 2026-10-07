@@ -529,7 +529,7 @@ export type PixelIconName = keyof typeof PIXEL_ICONS;
 export const PIXEL_ICON_NAMES = Object.keys(PIXEL_ICONS) as PixelIconName[];
 
 /** A horizontal run of lit pixels, collapsed into one rectangle. */
-export interface PixelRun {
+interface PixelRun {
   x: number;
   y: number;
   width: number;

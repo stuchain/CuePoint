@@ -14,7 +14,7 @@
 import type { TrackColumnDef } from "../../components/table";
 
 /** Each gathered column's text, by column id (`gatherText`). */
-export type GatheredTexts<Row> = ReadonlyMap<string, (row: Row) => string>;
+type GatheredTexts<Row> = ReadonlyMap<string, (row: Row) => string>;
 
 /** What a cell contributes to a copy. */
 export function cellText<Row>(

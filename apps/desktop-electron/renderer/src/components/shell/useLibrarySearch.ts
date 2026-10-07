@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { LibrarySearchResponse } from "../../api/cuepointBridge.types";
 
 /** How long typing settles before a request goes out. */
-export const SEARCH_DEBOUNCE_MS = 200;
+const SEARCH_DEBOUNCE_MS = 200;
 
 /** Below this, a query is not worth a round trip or a results panel. */
 export const MIN_QUERY_LENGTH = 2;
 
-export type SearchStatus =
+type SearchStatus =
   | "idle"
   | "searching"
   | "results"
@@ -16,7 +16,7 @@ export type SearchStatus =
   | "unavailable"
   | "error";
 
-export interface LibrarySearchState {
+interface LibrarySearchState {
   status: SearchStatus;
   response: LibrarySearchResponse | null;
   error: string | null;

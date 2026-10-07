@@ -35,7 +35,7 @@ export interface PickerItem {
   icon?: PixelIconName;
 }
 
-export interface PickerDialogProps {
+interface PickerDialogProps {
   open: boolean;
   title: string;
   items: readonly PickerItem[];

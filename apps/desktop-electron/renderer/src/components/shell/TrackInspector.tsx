@@ -7,7 +7,7 @@ import {
 } from "./inspectorState";
 import "./TrackInspector.css";
 
-export interface TrackInspectorProps {
+interface TrackInspectorProps {
   /**
    * What to show for the current selection.
    *

@@ -40,7 +40,7 @@ export interface TransitionHalf {
 }
 
 /** The selected entry and the one after it; null after the last. */
-export interface Transition {
+interface Transition {
   from: TransitionHalf;
   to: TransitionHalf | null;
 }

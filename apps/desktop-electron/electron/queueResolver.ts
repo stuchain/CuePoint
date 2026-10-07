@@ -40,13 +40,13 @@ export const QUEUE_PAGE_SIZE = 2_000;
  */
 export const QUEUE_MAX_TRACKS = 50_000;
 
-export interface ResolveQueueOptions {
+interface ResolveQueueOptions {
   /** Overridden in tests. */
   pageSize?: number;
   maxTracks?: number;
 }
 
-export interface ResolvedQueue {
+interface ResolvedQueue {
   items: QueueItemInput[];
   /** How many tracks the view actually holds, before any cap. */
   total: number;

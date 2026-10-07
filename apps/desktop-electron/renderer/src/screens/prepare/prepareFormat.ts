@@ -36,7 +36,7 @@ export function warningCountLine(analysis: SetAnalysis): string {
 }
 
 /** One fact in the header's line: its words, a longer title, and whether it is a warning. */
-export interface HeaderFact {
+interface HeaderFact {
   text: string;
   title?: string;
   strong?: boolean;
@@ -138,7 +138,7 @@ export function shortWarning(warning: SetWarning): string {
 }
 
 /** What a cell draws for a list of warnings. */
-export interface WarningSummary {
+interface WarningSummary {
   /** "open" when any is still to accept, "accepted" when all were. */
   tone: "none" | "open" | "accepted";
   text: string;

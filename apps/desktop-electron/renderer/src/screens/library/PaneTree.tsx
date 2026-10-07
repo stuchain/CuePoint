@@ -47,7 +47,7 @@ export interface PaneTreeRow {
   droppable?: boolean;
 }
 
-export interface PaneTreeProps {
+interface PaneTreeProps {
   /** The accessible name of the tree itself. */
   label: string;
   rows: PaneTreeRow[];

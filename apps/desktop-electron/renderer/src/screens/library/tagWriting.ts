@@ -23,8 +23,6 @@ export const TAG_FIELDS = [
   { toggle: "write_comment", field: "comment", label: "Comment" },
 ] as const;
 
-export type TagToggle = (typeof TAG_FIELDS)[number]["toggle"];
-
 /** Every option the dialog sends, always all of them. */
 export type DialogTagOptions = Required<TagWriteOptions>;
 

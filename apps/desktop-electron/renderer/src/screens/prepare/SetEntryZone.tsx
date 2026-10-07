@@ -21,7 +21,7 @@ import { chapterName, type EntryRow } from "./prepareRows";
 import { timeCell } from "./prepareFormat";
 import { describeSetNotice, describeSetWarning, isAcknowledgeable } from "./setWarnings";
 
-export interface SetEntryZoneProps {
+interface SetEntryZoneProps {
   row: EntryRow;
   chapters: readonly SetChapterPlan[];
   /** Saves both times; answers whether the engine took them. */

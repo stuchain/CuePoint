@@ -55,7 +55,7 @@ interface Record_ {
   unconfirmed: number;
 }
 
-export interface ActivityOfferProps {
+interface ActivityOfferProps {
   event: ActivityEvent;
   /** Called after an action changed something, so the feed reads again. */
   onDone: () => void;

@@ -18,7 +18,7 @@ import { useScale } from "../../tokens/ScaleContext";
 import { chapterName } from "./prepareRows";
 import { laneLayout, linkWords, rangeText, type KeyLinkStyle } from "./prepareLanes";
 
-export interface SetLanesProps {
+interface SetLanesProps {
   shape: SetShape;
   /** Each entry's title, for its column's label. */
   titles: ReadonlyMap<number, string>;

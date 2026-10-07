@@ -29,7 +29,7 @@ export const TAG_CATEGORY_MAX_LENGTH = 60;
  */
 export const TAG_COLOURS = ["primary", "success", "warning", "danger", "info"] as const;
 
-export type TagColour = (typeof TAG_COLOURS)[number];
+type TagColour = (typeof TAG_COLOURS)[number];
 
 /** What each token is called in a colour picker. */
 const COLOUR_LABELS: Record<TagColour, string> = {
@@ -62,7 +62,7 @@ export function draftOf(tag: Tag): TagDraft {
   return { name: tag.name, category: tag.category ?? "", colour: tag.colour };
 }
 
-export type DraftCheck = { ok: true } | { ok: false; reason: string };
+type DraftCheck = { ok: true } | { ok: false; reason: string };
 
 /** A draft the engine would accept, or why it would not. */
 export function checkDraft(draft: TagDraft): DraftCheck {

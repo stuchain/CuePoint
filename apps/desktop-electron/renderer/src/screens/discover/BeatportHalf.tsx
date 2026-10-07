@@ -57,7 +57,7 @@ interface HalfPage {
 
 const idOf = (row: BeatportTrackRow) => row.beatport_track_id;
 
-export interface BeatportHalfProps {
+interface BeatportHalfProps {
   kind: EntityKind;
   /** The page's own reference, as the engine answered it. */
   pageRef: string;

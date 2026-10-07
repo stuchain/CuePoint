@@ -76,14 +76,14 @@ export const EMPTY_SET_SUGGESTIONS =
   "An empty Set has nothing to fit against. Add its first track from the Library tab, and Suggestions will fit the next one to it.";
 
 /** How long the search box waits for typing to stop. */
-export const SEARCH_DELAY_MS = 200;
+const SEARCH_DELAY_MS = 200;
 
 const TABS: { id: SourceTab; label: string }[] = [
   { id: "suggestions", label: "Suggestions" },
   { id: "library", label: "Library" },
 ];
 
-export interface SourcePanelProps {
+interface SourcePanelProps {
   setId: number;
   chapters: readonly SetChapterPlan[];
   point: InsertionPoint;
@@ -102,7 +102,7 @@ export interface SourcePanelProps {
 }
 
 /** Where an insert goes, in words, the titles set apart. */
-export function PointLine({ words, title }: { words: PointWords; title?: string }) {
+function PointLine({ words, title }: { words: PointWords; title?: string }) {
   const where = (chapter: string | null) => (chapter ? `, in ${chapter}` : "");
   return (
     <p className="prepare-source__point" role="status" aria-label={`Insert: ${pointText(words)}`} title={title}>

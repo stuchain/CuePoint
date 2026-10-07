@@ -16,9 +16,9 @@
 /** The environment variable that asks for a placement. */
 export const E2E_DISPLAY_ENV = "CUEPOINT_E2E_DISPLAY";
 
-export type DisplayChoice = "left" | "right" | "primary";
+type DisplayChoice = "left" | "right" | "primary";
 
-export interface Rect {
+interface Rect {
   x: number;
   y: number;
   width: number;
@@ -30,7 +30,7 @@ export interface DisplayLike {
 }
 
 /** Where the window goes; it is shown inactive wherever it is. */
-export interface Placement {
+interface Placement {
   x: number;
   y: number;
 }

@@ -19,13 +19,6 @@
   --results-min-rows: 10;
   --row-height: calc(var(--hit-min) * 0.75);
   --row-unmatched-bg: #5c2e2e;
-  /*
-   * `cqw` is the content region's width, not the window's: with a sidebar the
-   * two differ, and a viewport-relative cap can exceed the space the frame
-   * actually has. `getFrameMaxWidth()` measures the same element in JS.
-   */
-  --results-frame-max-width: 80cqw;
-
   /* Breakpoints (reference values for JS/docs; media queries use literals) */
   --bp-sm: 600px;
   --bp-md: 900px;

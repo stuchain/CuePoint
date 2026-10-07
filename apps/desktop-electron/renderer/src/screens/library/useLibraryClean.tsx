@@ -29,21 +29,21 @@ import type { LibraryBatchController } from "./useLibraryBatch";
 import { WriteTagsDialog } from "./WriteTagsDialog";
 
 /** The tracks an operation applies to (DEC-045). */
-export interface CleanTarget {
+interface CleanTarget {
   selection: BatchSelection;
   count: number;
   /** The one track, when the target is exactly one known track. */
   trackId?: number | null;
 }
 
-export interface LibraryCleanOptions {
+interface LibraryCleanOptions {
   batch: LibraryBatchController;
   onMessage: (message: string, tone: "info" | "success" | "warning") => void;
   /** Called when a job this started has ended, or a single edit was saved. */
   onChanged: () => void;
 }
 
-export interface LibraryClean {
+interface LibraryClean {
   handlersFor: (target: CleanTarget) => CleanMenuHandlers;
   /** The dialogs, to render once in the page. */
   dialogs: ReactNode;

@@ -49,9 +49,9 @@ export const PAGE_SIZE = 100;
 export const MAX_PAGES = 12;
 
 /** Rows fetched either side of the visible range, so scrolling stays ahead. */
-export const PREFETCH_ROWS = 100;
+const PREFETCH_ROWS = 100;
 
-export interface TrackWindow {
+interface TrackWindow {
   /** What the table renders from. */
   source: TrackTableSource<LibraryTrackRow>;
   /** Rows matching the query, from the engine — never counted from loaded rows. */

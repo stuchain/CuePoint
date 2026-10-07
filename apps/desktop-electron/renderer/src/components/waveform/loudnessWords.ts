@@ -63,7 +63,7 @@ export function loudnessDifference(
 }
 
 /** Why a measured track has no value, in words; null when it has one. */
-export function loudnessReasonWords(loudness: WaveformLoudness): string | null {
+function loudnessReasonWords(loudness: WaveformLoudness): string | null {
   switch (loudness.reason) {
     case null:
       return null;
@@ -105,7 +105,7 @@ export function loudnessLine(
 }
 
 /** What a Library cell shows: the number alone, or one muted word. */
-export interface LoudnessCell {
+interface LoudnessCell {
   /** "−8.4", or a word such as "Silent"; empty when there is nothing to say. */
   text: string;
   /** Whether `text` is a value rather than a word. */

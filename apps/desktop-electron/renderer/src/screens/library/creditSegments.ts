@@ -12,7 +12,7 @@
  */
 import type { TrackCreditLink } from "../../api/cuepointBridge.types";
 
-export interface CreditSegment {
+interface CreditSegment {
   text: string;
   /** Present when this part of the credit is a name to link. */
   link?: TrackCreditLink;

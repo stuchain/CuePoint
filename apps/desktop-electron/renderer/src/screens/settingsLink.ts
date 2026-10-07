@@ -10,7 +10,7 @@
 import type { Location } from "react-router-dom";
 
 /** The fields a link can open Settings on. */
-export type SettingsFocus = "beatport-token";
+type SettingsFocus = "beatport-token";
 
 interface SettingsFocusState {
   settingsFocus: SettingsFocus;

@@ -13,7 +13,7 @@
 import type { EngineJobSummary, JobState } from "../../api/cuepointBridge.types";
 
 /** How often to ask, when there is no subscription to listen to. */
-export const POLL_INTERVAL_MS = 400;
+const POLL_INTERVAL_MS = 400;
 
 const TERMINAL: readonly JobState[] = ["succeeded", "failed", "cancelled"];
 

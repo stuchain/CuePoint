@@ -9,7 +9,7 @@ import type { EntityKind, TrackCreditLink } from "../../api/cuepointBridge.types
 import { creditSegments } from "./creditSegments";
 import "./CreditLinks.css";
 
-export interface CreditLinksProps {
+interface CreditLinksProps {
   credit: string;
   links: readonly TrackCreditLink[];
   onOpen: (kind: EntityKind, ref: string) => void;

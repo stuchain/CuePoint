@@ -7,7 +7,7 @@ export const SOURCE_WIDTH_STORAGE_KEY = "cuepoint-prepare-source-width";
 export const SOURCE_MIN_WIDTH = 240;
 export const SOURCE_DEFAULT_WIDTH = 360;
 /** The Set stays the wider pane (DEC-112). */
-export const SOURCE_MAX_FRACTION = 0.45;
+const SOURCE_MAX_FRACTION = 0.45;
 /** How far an arrow key moves the divider. */
 export const SOURCE_NUDGE = 16;
 

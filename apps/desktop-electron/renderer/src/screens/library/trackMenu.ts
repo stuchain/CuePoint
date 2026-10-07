@@ -16,7 +16,7 @@ import type { TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { RATING_STARS } from "./trackEdits";
 
 /** Where the table is scoped, as far as these entries are concerned. */
-export interface OrganizationMenuContext {
+interface OrganizationMenuContext {
   /** How many tracks the entries will apply to. */
   count: number;
   /**

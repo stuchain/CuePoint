@@ -22,7 +22,7 @@ import type {
  */
 export const JOB_POLL_MS = 2000;
 
-export interface ActiveJobState {
+interface ActiveJobState {
   job: EngineJobSummary | null;
   /** Active jobs in total, so the strip can say "1 of 3" rather than lying. */
   activeCount: number;

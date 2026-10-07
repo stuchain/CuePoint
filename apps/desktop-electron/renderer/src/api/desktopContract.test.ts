@@ -13,8 +13,7 @@
  * nothing type-checks the gap because `main.ts` compiles against whatever the
  * supervisor happens to have.
  *
- * `preload.ts` is a placeholder and is deliberately not read here; `preload.cjs`
- * is what actually loads.
+ * `preload.cjs` is what actually loads.
  */
 import { describe, expect, it } from "vitest";
 

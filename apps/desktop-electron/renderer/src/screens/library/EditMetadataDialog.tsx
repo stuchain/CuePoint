@@ -23,7 +23,7 @@ import {
 } from "./metadataEdits";
 import "./cleanDialogs.css";
 
-export interface EditMetadataDialogProps {
+interface EditMetadataDialogProps {
   open: boolean;
   /** How many tracks the edit applies to. */
   count: number;

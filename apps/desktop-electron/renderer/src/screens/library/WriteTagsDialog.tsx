@@ -39,7 +39,7 @@ import {
 } from "./tagWriting";
 import "./cleanDialogs.css";
 
-export interface WriteTagsDialogProps {
+interface WriteTagsDialogProps {
   open: boolean;
   selection: BatchSelection | null;
   count: number;

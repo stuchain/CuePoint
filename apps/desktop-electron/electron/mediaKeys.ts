@@ -46,7 +46,7 @@ export interface ShortcutRegistry {
  * user is told", and CuePoint told nobody. Injected rather than imported so the
  * policy stays testable without an Electron runtime.
  */
-export interface MediaKeyPermission {
+interface MediaKeyPermission {
   /** True when the OS has granted it. Called on every acquire; must be cheap. */
   granted(): boolean;
   /**
@@ -65,7 +65,7 @@ export interface MediaKeyPermission {
  * `unavailable` is the only value that deserves telling the user about: the
  * others are either working or a key legitimately owned by something else.
  */
-export type MediaKeyState =
+type MediaKeyState =
   /** Holding at least one accelerator. */
   | "held"
   /** The OS refuses global media keys to this process (macOS Accessibility). */
@@ -75,13 +75,13 @@ export type MediaKeyState =
   /** Nothing held because nothing has been asked for yet. */
   | "idle";
 
-export interface MediaKeyHandlers {
+interface MediaKeyHandlers {
   playPause(): unknown;
   next(): unknown;
   previous(): unknown;
 }
 
-export interface MediaKeyBindingOptions {
+interface MediaKeyBindingOptions {
   /** Absent on platforms that gate nothing, which is every one but macOS. */
   permission?: MediaKeyPermission;
   /**

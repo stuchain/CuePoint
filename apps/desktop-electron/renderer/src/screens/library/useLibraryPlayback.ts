@@ -38,7 +38,7 @@ export function toQueueItem(row: LibraryTrackRow): QueueItemInput {
   };
 }
 
-export interface LibraryPlaybackActions {
+interface LibraryPlaybackActions {
   /** DEC-012: play this row, with the whole view behind it. */
   playRow: (index: number) => Promise<void>;
   /** Replace the queue with these rows and play the first. */
@@ -49,7 +49,7 @@ export interface LibraryPlaybackActions {
   available: boolean;
 }
 
-export interface LibraryPlaybackOptions {
+interface LibraryPlaybackOptions {
   query: LibraryQuery;
   /** Reports what happened, so a truncated or failed action is not silent. */
   onMessage?: (message: string) => void;

@@ -14,7 +14,7 @@ import { APPLY_FIELD_LABELS } from "../clean/comparison";
 import { effectiveText, importedText, overrideSourceText } from "./libraryClean";
 import { EDIT_FIELDS, parseFieldText } from "./metadataEdits";
 
-export interface TrackOverridesProps {
+interface TrackOverridesProps {
   track: LibraryTrackRow & { id: number };
   /** After the engine accepted a value. */
   onSaved: () => void;

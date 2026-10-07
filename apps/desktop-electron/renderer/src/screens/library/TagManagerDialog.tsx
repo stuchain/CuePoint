@@ -40,7 +40,7 @@ import {
 } from "./tagManager";
 import "./TagManagerDialog.css";
 
-export interface TagManagerDialogProps {
+interface TagManagerDialogProps {
   open: boolean;
   tags: readonly TagUsage[];
   busy?: boolean;

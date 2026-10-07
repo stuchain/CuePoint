@@ -24,10 +24,10 @@ export const REKORDBOX_EXPORT_BRIDGE_METHODS = [
   "cancelJob",
 ] as const satisfies readonly (keyof CuePointBridge)[];
 
-export type RekordboxExportBridgeMethod = (typeof REKORDBOX_EXPORT_BRIDGE_METHODS)[number];
+type RekordboxExportBridgeMethod = (typeof REKORDBOX_EXPORT_BRIDGE_METHODS)[number];
 
 /** The bridge with every method the export calls present. */
-export type RekordboxExportBridge = Required<Pick<CuePointBridge, RekordboxExportBridgeMethod>>;
+type RekordboxExportBridge = Required<Pick<CuePointBridge, RekordboxExportBridgeMethod>>;
 
 /**
  * The bridge, when it can run an export; `null` in a browser tab or an older

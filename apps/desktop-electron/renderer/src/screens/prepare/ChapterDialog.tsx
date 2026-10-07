@@ -18,7 +18,7 @@ import { chapterName } from "./prepareRows";
 import { formatTime } from "./setTime";
 import "./prepare.css";
 
-export interface ChapterDialogProps {
+interface ChapterDialogProps {
   /** The chapter, or null when the dialog is closed. */
   chapter: SetChapterPlan | null;
   busy?: boolean;

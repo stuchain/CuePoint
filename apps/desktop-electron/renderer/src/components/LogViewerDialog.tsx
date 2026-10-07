@@ -18,7 +18,7 @@ function downloadTextFile(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-export interface LogViewerDialogProps {
+interface LogViewerDialogProps {
   open: boolean;
   onClose: () => void;
 }

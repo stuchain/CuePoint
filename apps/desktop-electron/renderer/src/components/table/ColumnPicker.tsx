@@ -15,7 +15,7 @@ import { canMove, isLastVisible, type ColumnLayout } from "./columnLayout";
 import type { TrackColumnDef } from "./trackTableLayout";
 import "./ColumnPicker.css";
 
-export interface ColumnPickerProps<Row> {
+interface ColumnPickerProps<Row> {
   open: boolean;
   onClose: () => void;
   columns: readonly TrackColumnDef<Row>[];

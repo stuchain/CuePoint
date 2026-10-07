@@ -16,7 +16,7 @@ import {
   cuesInTrackOrder,
 } from "./trackMarks";
 
-export interface TrackMarksSectionProps {
+interface TrackMarksSectionProps {
   /** Absent from an engine older than WAVE-04, which draws nothing. */
   marks: TrackMarksSummary | undefined;
 }

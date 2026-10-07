@@ -127,7 +127,7 @@ export function entriesBefore(rows: readonly PrepareRow[], index: number): numbe
 }
 
 /** A place in the Set: the position an entry takes there, and its chapter. */
-export interface DropPlace {
+interface DropPlace {
   position: number;
   chapter_id: number;
 }
@@ -159,7 +159,7 @@ export function dropPlace(
 }
 
 /** What `sets.moveEntry` is asked: the entry's final place, and its chapter. */
-export interface EntryMove {
+interface EntryMove {
   entry_id: number;
   position: number;
   chapter_id: number;

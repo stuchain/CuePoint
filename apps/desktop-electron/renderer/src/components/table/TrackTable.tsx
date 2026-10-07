@@ -46,7 +46,7 @@ import {
 import type { TrackTableSource } from "./trackTableSource";
 import "./TrackTable.css";
 
-export type SortDirection = "asc" | "desc";
+type SortDirection = "asc" | "desc";
 
 export interface TrackTableSort {
   /** A column's `sortKey`, never its id: what the engine is asked for. */

@@ -30,7 +30,7 @@
  */
 export const FAILURE_COALESCE_MS = 400;
 
-export interface PlaybackFailure {
+interface PlaybackFailure {
   /** What the queue calls the track. May be blank for an untitled item. */
   title: string;
   /** mpv's own explanation, from `end-file`'s `file_error`, when it gave one. */
@@ -85,7 +85,7 @@ export function failureMessage(
  * keys until the Accessibility permission is granted, and a silently dead
  * feature is worse than one that explains itself.
  */
-export type PlayerNoticeKind =
+type PlayerNoticeKind =
   | "track-failed"
   | "player-unavailable"
   | "audio-fallback"
@@ -102,7 +102,7 @@ export interface PlayerNotice {
   stopped: boolean;
 }
 
-export interface FailureReporterOptions {
+interface FailureReporterOptions {
   onReport: (report: FailureReport) => void;
   /** Overridden in tests that do not want to wait. */
   windowMs?: number;

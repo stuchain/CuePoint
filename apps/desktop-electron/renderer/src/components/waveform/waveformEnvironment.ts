@@ -15,7 +15,7 @@ import { requestWidth } from "./waveformLayout";
 // ------------------------------------------------------------------ boxes
 
 /** A box's size in CSS pixels. */
-export interface BoxSize {
+interface BoxSize {
   width: number;
   height: number;
 }

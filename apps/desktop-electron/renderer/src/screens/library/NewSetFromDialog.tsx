@@ -22,7 +22,7 @@ import type { FolderOption } from "./SaveSmartDialog";
 import { SMART_NAME_MAX_LENGTH, checkSmartName } from "./smartFilter";
 import "./NewSetFromDialog.css";
 
-export interface NewSetFromDialogProps {
+interface NewSetFromDialogProps {
   /** The source, or null when the dialog is closed. */
   source: NewSetSource | null;
   folders: readonly FolderOption[];

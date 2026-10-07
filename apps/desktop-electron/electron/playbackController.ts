@@ -48,7 +48,7 @@ import {
  * user asked for the change and expects it to happen now.
  */
 
-export interface PlaybackControllerOptions {
+interface PlaybackControllerOptions {
   queue?: PlaybackQueue;
   /** Injected in tests. */
   random?: () => number;
@@ -56,12 +56,12 @@ export interface PlaybackControllerOptions {
   failureWindowMs?: number;
 }
 
-export interface PlaybackControllerSnapshot extends PlayerSnapshot {
+interface PlaybackControllerSnapshot extends PlayerSnapshot {
   queue: QueueSnapshot;
 }
 
-export type ControllerListener = (snapshot: PlaybackControllerSnapshot) => void;
-export type NoticeListener = (notice: PlayerNotice) => void;
+type ControllerListener = (snapshot: PlaybackControllerSnapshot) => void;
+type NoticeListener = (notice: PlayerNotice) => void;
 
 export class PlaybackController {
   private readonly queue: PlaybackQueue;

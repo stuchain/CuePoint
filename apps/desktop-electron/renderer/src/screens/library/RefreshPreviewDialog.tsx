@@ -22,7 +22,7 @@ import {
 } from "./libraryFormat";
 import "./library.css";
 
-export interface RefreshPreviewDialogProps {
+interface RefreshPreviewDialogProps {
   open: boolean;
   diff: RefreshDiff | null;
   applying: boolean;

@@ -11,7 +11,7 @@ import { useEffect, useMemo, useReducer } from "react";
 
 import { waveformCache, type WaveformCache, type WaveformEntry } from "./waveformCache";
 
-export interface UseWaveformsOptions {
+interface UseWaveformsOptions {
   /** Ask for each track's cues and grid too. */
   marks?: boolean;
   /**

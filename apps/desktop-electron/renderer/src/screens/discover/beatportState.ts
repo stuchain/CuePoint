@@ -16,9 +16,9 @@ import type {
 } from "../../api/cuepointBridge.types";
 
 /** What the notice offers: Settings for the token, or asking again. */
-export type BeatportNoticeAction = "settings" | "retry";
+type BeatportNoticeAction = "settings" | "retry";
 
-export interface BeatportNotice {
+interface BeatportNotice {
   state: BeatportErrorClass;
   headline: string;
   hint: string;

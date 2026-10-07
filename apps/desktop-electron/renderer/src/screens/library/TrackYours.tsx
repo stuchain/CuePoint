@@ -31,7 +31,7 @@ import { TrackOverrides } from "./TrackOverrides";
 import { useTrackMetadata } from "./useTrackMetadata";
 import { useTrackTags, type TrackTag } from "./useTrackTags";
 
-export interface TrackYoursProps {
+interface TrackYoursProps {
   trackId: number;
   /** What the engine last said. A new object means a fresh read. */
   metadata: TrackMetadata;

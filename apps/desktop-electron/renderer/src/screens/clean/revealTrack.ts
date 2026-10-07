@@ -10,7 +10,7 @@
  * Relocating is Rekordbox's (DEC-073). This only shows a person where to look.
  */
 
-export interface RevealOutcome {
+interface RevealOutcome {
   tone: "info" | "warning";
   message: string;
 }

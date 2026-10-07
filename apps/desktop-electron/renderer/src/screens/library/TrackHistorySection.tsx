@@ -26,7 +26,7 @@ import { canRevertChange, writesLine } from "./libraryClean";
 import { historyLine } from "./trackEdits";
 import type { TrackWritesState } from "./useTrackWrites";
 
-export interface TrackHistorySectionProps {
+interface TrackHistorySectionProps {
   changes: readonly TrackFieldChange[];
   loading: boolean;
   error: string | null;

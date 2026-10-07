@@ -27,7 +27,7 @@ import { pluralize } from "../library/libraryFormat";
 import type { BeatportAction, BeatportActionId } from "./beatportActions";
 import type { BeatportSelection } from "./useBeatportSelection";
 
-export interface BeatportTableProps<Row> {
+interface BeatportTableProps<Row> {
   columns: readonly TrackColumnDef<Row>[];
   layoutKey: string;
   source: TrackTableSource<Row>;

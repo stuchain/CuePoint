@@ -99,7 +99,7 @@ function messageOf(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
-export interface ReviewViewProps {
+interface ReviewViewProps {
   health: LibraryHealth | null;
   onHealthChanged: () => void;
   /**

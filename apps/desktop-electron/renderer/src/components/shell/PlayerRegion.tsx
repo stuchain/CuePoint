@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export interface PlayerRegionProps {
+interface PlayerRegionProps {
   /**
    * The transport UI. Phase 5 supplies it; nothing does today.
    *

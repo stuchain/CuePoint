@@ -20,7 +20,7 @@ import type { Tag, TagUsage } from "../../api/cuepointBridge.types";
 /** A tag as one track's record carries it — no usage count, that is the vocabulary's. */
 export type TrackTag = Pick<Tag, "id" | "name" | "category" | "colour">;
 
-export interface TrackTagsEditor {
+interface TrackTagsEditor {
   tags: TrackTag[];
   /** Every tag in the library, for suggestions. Empty until it has loaded. */
   vocabulary: TagUsage[];
@@ -29,7 +29,7 @@ export interface TrackTagsEditor {
   remove: (tagId: number) => Promise<void>;
 }
 
-export interface TrackTagsOptions {
+interface TrackTagsOptions {
   trackId: number | null;
   /** What the track-detail read said this track carries. */
   tags: readonly TrackTag[];

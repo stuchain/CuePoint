@@ -36,7 +36,7 @@ export function libraryRulesState(
 }
 
 /** The names a location carries for its rules' ids; only text is kept. */
-export function ruleNamesFromLocationState(state: unknown): Record<string, string> | null {
+function ruleNamesFromLocationState(state: unknown): Record<string, string> | null {
   if (!state || typeof state !== "object") return null;
   const carried = (state as Record<string, unknown>)[NAMES_KEY];
   if (!carried || typeof carried !== "object" || Array.isArray(carried)) return null;

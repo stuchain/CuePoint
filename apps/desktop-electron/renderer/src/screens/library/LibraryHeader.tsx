@@ -25,7 +25,7 @@ import type { LibrarySummary } from "../../api/cuepointBridge.types";
 import { formatWhen, pluralize, sourceState, sourceStateMessage } from "./libraryFormat";
 import "./LibraryHeader.css";
 
-export interface LibraryHeaderProps {
+interface LibraryHeaderProps {
   summary: LibrarySummary;
   busy: null | "importing" | "checking" | "applying";
   busyLabel: string | null;

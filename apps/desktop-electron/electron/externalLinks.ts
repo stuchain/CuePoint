@@ -16,7 +16,7 @@
  */
 
 /** The hosts a Beatport page may be on. */
-export const BEATPORT_HOSTS: readonly string[] = ["www.beatport.com", "beatport.com"];
+const BEATPORT_HOSTS: readonly string[] = ["www.beatport.com", "beatport.com"];
 
 /** The longest URL opened. A track page's is under 200 characters. */
 export const MAX_URL_LENGTH = 2048;

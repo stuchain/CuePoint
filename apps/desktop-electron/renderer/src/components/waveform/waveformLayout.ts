@@ -60,7 +60,7 @@ export interface PaintRect {
 }
 
 /** One cue as drawn: its line, and for a hot cue its lettered flag. */
-export interface CueMarker {
+interface CueMarker {
   /** Its column, from 0. */
   column: number;
   /** The hot cue's letter, A–H, or null for a memory cue. */
@@ -124,14 +124,14 @@ export const BANDS = 4;
 export const GRID_MIN_SPACING = 6;
 
 /** The bars a grid line may stand for, in the order they are tried. */
-export const GRID_STEPS = [1, 4, 8, 16, 32] as const;
+const GRID_STEPS = [1, 4, 8, 16, 32] as const;
 
 /** Rekordbox's own colour for a hot cue it gave none. */
 export const HOT_CUE_DEFAULT = "#28e214";
 
 /** A letter is 3 × 5 scale pixels; its flag adds one on every side. */
-export const GLYPH_WIDTH = 3;
-export const GLYPH_HEIGHT = 5;
+const GLYPH_WIDTH = 3;
+const GLYPH_HEIGHT = 5;
 export const FLAG_WIDTH = GLYPH_WIDTH + 2;
 export const FLAG_HEIGHT = GLYPH_HEIGHT + 2;
 
@@ -164,11 +164,11 @@ export function waveformColumns(cssWidth: number, scale: number, devicePixelRati
 }
 
 /** The narrowest and widest picture the engine answers (WAVE-02). */
-export const MIN_REQUEST_WIDTH = 16;
-export const MAX_REQUEST_WIDTH = 1200;
+const MIN_REQUEST_WIDTH = 16;
+const MAX_REQUEST_WIDTH = 1200;
 
 /** Request widths are whole multiples of this many columns (WAVE-06). */
-export const REQUEST_WIDTH_STEP = 16;
+const REQUEST_WIDTH_STEP = 16;
 
 /**
  * The picture to ask for to fill a box: its columns rounded up to a multiple of

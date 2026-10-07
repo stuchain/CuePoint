@@ -48,7 +48,7 @@ export function formatWhen(iso: string | null | undefined): string {
   });
 }
 
-export type SourceState = "missing" | "changed" | "unknown" | "unchanged";
+type SourceState = "missing" | "changed" | "unknown" | "unchanged";
 
 /**
  * What the export file looks like now, as one of four states.
@@ -77,7 +77,7 @@ export function sourceStateMessage(state: SourceState): string {
   }
 }
 
-export interface DiffLine {
+interface DiffLine {
   key: string;
   label: string;
   count: number;

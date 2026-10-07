@@ -16,11 +16,11 @@ import { usePlayerValue } from "./playerStore";
  * length, what is playing, and the ordering that produced it.
  */
 
-export const QUEUE_WINDOW_SIZE = 100;
+const QUEUE_WINDOW_SIZE = 100;
 /** Rows kept either side of the visible range, so scrolling does not flicker. */
-export const QUEUE_WINDOW_OVERSCAN = 20;
+const QUEUE_WINDOW_OVERSCAN = 20;
 
-export interface QueueWindowState {
+interface QueueWindowState {
   items: QueueItem[];
   offset: number;
   total: number;

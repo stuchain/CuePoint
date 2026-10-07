@@ -34,7 +34,7 @@ import { openOnBeatport } from "./openOnBeatport";
 import { useBeatportSelection } from "./useBeatportSelection";
 import { useBeatportWindow } from "./useBeatportWindow";
 
-export interface WantlistViewProps {
+interface WantlistViewProps {
   tools: DiscoverTools;
 }
 

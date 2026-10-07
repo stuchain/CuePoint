@@ -29,9 +29,9 @@ import "./QueuePanel.css";
  */
 
 /** Height of one row in CSS pixels at 1x, before the scale multiplier. */
-export const QUEUE_ROW_HEIGHT = 44;
+const QUEUE_ROW_HEIGHT = 44;
 
-export interface QueuePanelProps {
+interface QueuePanelProps {
   onClose: () => void;
 }
 

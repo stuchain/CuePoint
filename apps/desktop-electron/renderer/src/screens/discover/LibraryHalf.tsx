@@ -38,12 +38,12 @@ import { libraryRowMenuItems } from "./libraryRowMenu";
 import { nounOf } from "./entityFormat";
 
 /** The page's library table keeps a layout of its own, apart from the Library's. */
-export const PAGE_LIBRARY_LAYOUT_KEY = "cuepoint-discover-page-library-layout";
+const PAGE_LIBRARY_LAYOUT_KEY = "cuepoint-discover-page-library-layout";
 
 /** Newest first: what a page about someone is usually read for. */
 const PAGE_ORDER = { sort: "year", dir: "desc" as const };
 
-export interface LibraryHalfProps {
+interface LibraryHalfProps {
   kind: EntityKind;
   /** The engine's rule set for the page, handed to the browse unchanged. */
   rules: FilterRuleSet;

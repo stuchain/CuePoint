@@ -42,7 +42,7 @@ export interface EmptyStateInput {
   isSet?: boolean;
 }
 
-export interface EmptyStateView {
+interface EmptyStateView {
   /** The sentence. */
   headline: string;
   /** The clauses, when the answer is "these rules matched nothing". */

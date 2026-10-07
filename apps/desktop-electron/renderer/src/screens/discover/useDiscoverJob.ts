@@ -19,7 +19,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { followJob, type FinishedJob } from "../library/followJob";
 
-export interface DiscoverJob {
+interface DiscoverJob {
   /** The job being followed, while it runs. */
   jobId: string | null;
   start: (

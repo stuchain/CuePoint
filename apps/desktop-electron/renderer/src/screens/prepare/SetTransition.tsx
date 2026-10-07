@@ -42,7 +42,7 @@ import {
   type TransitionHalf,
 } from "./transitionStrip";
 
-export interface SetTransitionProps {
+interface SetTransitionProps {
   /** The running order, as the table shows it. */
   entries: readonly SetEntry[];
   selectedEntryId: number | null;

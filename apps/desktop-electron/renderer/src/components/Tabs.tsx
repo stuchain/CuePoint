@@ -1,12 +1,12 @@
 import "./Tabs.css";
 
-export interface TabItem {
+interface TabItem {
   id: string;
   label: string;
   disabled?: boolean;
 }
 
-export interface TabsProps {
+interface TabsProps {
   tabs: TabItem[];
   activeId: string;
   onChange: (id: string) => void;

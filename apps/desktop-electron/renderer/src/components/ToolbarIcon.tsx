@@ -16,7 +16,7 @@ interface ToolbarIconBaseProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * union makes passing neither, or both, a compile error rather than a button
  * that silently renders nothing.
  */
-export type ToolbarIconProps = ToolbarIconBaseProps &
+type ToolbarIconProps = ToolbarIconBaseProps &
   (
     | { icon: PixelIconName; glyph?: never }
     | { glyph: string; icon?: never }

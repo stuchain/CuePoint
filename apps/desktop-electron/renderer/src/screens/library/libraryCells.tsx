@@ -46,7 +46,7 @@ export function OverriddenValue({ row, field }: { row: LibraryTrackRow; field: O
  * A table scrolled quickly mounts a hundred rows; each asks the engine to read
  * and shrink a picture. A few at a time keeps the rest of the app answered.
  */
-export const ARTWORK_CONCURRENCY = 4;
+const ARTWORK_CONCURRENCY = 4;
 
 let active = 0;
 const waiting: Array<() => void> = [];

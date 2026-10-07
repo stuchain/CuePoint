@@ -36,7 +36,7 @@ interface MetadataPatch {
   notes?: string | null;
 }
 
-export interface TrackMetadataEditor {
+interface TrackMetadataEditor {
   /** The record as it should be drawn now — optimistic until the engine answers. */
   metadata: TrackMetadata;
   /** The notes field's text, which is a draft until the debounce fires. */
@@ -50,7 +50,7 @@ export interface TrackMetadataEditor {
   flushNotes: () => void;
 }
 
-export interface TrackMetadataOptions {
+interface TrackMetadataOptions {
   trackId: number | null;
   /** What the engine last said, from the track-detail read. */
   metadata: TrackMetadata;

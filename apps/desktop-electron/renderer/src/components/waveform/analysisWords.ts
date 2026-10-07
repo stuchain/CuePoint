@@ -15,7 +15,7 @@ import { aboutDuration } from "../shell/useActiveJob";
 import type { WaveformEntry } from "./waveformCache";
 
 /** What the one button beside the analysis does, if there is one. */
-export type WaveformAnalysisAction = "pause" | "resume" | "start" | null;
+type WaveformAnalysisAction = "pause" | "resume" | "start" | null;
 
 /** What Settings' preview says with nothing in the player (WAVE-05). */
 export const PREVIEW_EMPTY_WORDS = "Play a track to preview its waveform here.";

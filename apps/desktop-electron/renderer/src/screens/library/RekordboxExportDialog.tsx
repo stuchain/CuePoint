@@ -84,7 +84,7 @@ export interface RekordboxExportDialogProps {
 type Phase = "choosing" | "exporting" | "done";
 
 /** How long ticking waits before asking, so three quick ticks are one preview. */
-export const PREVIEW_SETTLE_MS = 150;
+const PREVIEW_SETTLE_MS = 150;
 
 interface Answer {
   /** The request this answers, so a late answer to an old one is recognized. */

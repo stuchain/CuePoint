@@ -43,7 +43,7 @@ import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
 /** Every track in the library, as a selection. */
 const WHOLE_LIBRARY_SELECTION: BatchSelection = { query: {} };
 
-export interface MissingFilesViewProps {
+interface MissingFilesViewProps {
   health: LibraryHealth | null;
   onHealthChanged: () => void;
   /**

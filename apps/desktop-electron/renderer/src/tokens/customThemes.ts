@@ -19,9 +19,9 @@ export interface CustomTheme {
   updatedAt: string;
 }
 
-export const CUSTOM_THEMES_STORAGE_KEY = "cuepoint-ui-lab-custom-themes";
+const CUSTOM_THEMES_STORAGE_KEY = "cuepoint-ui-lab-custom-themes";
 
-export function createCustomThemeId(): string {
+function createCustomThemeId(): string {
   return crypto.randomUUID();
 }
 

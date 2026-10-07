@@ -14,7 +14,7 @@
 import { Button } from "../../components/Button";
 import "./SelectionActions.css";
 
-export interface SelectionActionsProps {
+interface SelectionActionsProps {
   count: number;
   /** True when the selection is "everything matching", not a list of tracks. */
   describedByQuery: boolean;

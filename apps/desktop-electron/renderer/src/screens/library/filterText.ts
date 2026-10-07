@@ -26,7 +26,7 @@ import type {
   LibraryFilterVocabulary,
 } from "../../api/cuepointBridge.types";
 
-export type OperatorArity = "none" | "single" | "pair" | "list";
+type OperatorArity = "none" | "single" | "pair" | "list";
 
 /** How many stars a rating has. The engine stores 0–5; nothing converts. */
 export const RATING_STARS = 5;
@@ -39,7 +39,7 @@ export const RATING_STARS = 5;
  * field names, so all three rating layers — the effective value and each side
  * of DEC-057 — get stars because the engine calls them stars.
  */
-export const UNIT_STARS = "stars";
+const UNIT_STARS = "stars";
 
 /** What an operator is called on screen. The engine speaks identifiers. */
 const OPERATOR_LABELS: Record<string, string> = {
@@ -111,7 +111,7 @@ export function choicesOf(field: LibraryFilterField | null): LibraryFilterChoice
  * The engine's `CHOICE_OPERATORS`: "contains" and its kin ask about part of a
  * word, and keep their text box.
  */
-export const CHOICE_OPERATORS: readonly string[] = ["is", "is_not", "any_of"];
+const CHOICE_OPERATORS: readonly string[] = ["is", "is_not", "any_of"];
 
 /** Whether a clause on this field with this operator is offered as a choice. */
 export function offersChoices(field: LibraryFilterField | null, operator: string): boolean {
@@ -198,7 +198,7 @@ export function beatportNameKey(field: string, id: unknown): string {
 }
 
 /** What is shown for an id whose row is gone — deleted between saves. */
-export const MISSING_NAME = "(no longer there)";
+const MISSING_NAME = "(no longer there)";
 
 /**
  * What is shown before the vocabulary has arrived.
@@ -207,7 +207,7 @@ export const MISSING_NAME = "(no longer there)";
  * fine, for the second before the names load, is a lie a user would act on.
  * The absence of a lookup and the absence of a row are different facts.
  */
-export const UNKNOWN_NAME = "…";
+const UNKNOWN_NAME = "…";
 
 function nameFor(
   field: LibraryFilterField | null,
@@ -324,7 +324,7 @@ function parseNumber(raw: string): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-export type BuildResult =
+type BuildResult =
   | { ok: true; rule: FilterRule }
   | { ok: false; reason: string };
 

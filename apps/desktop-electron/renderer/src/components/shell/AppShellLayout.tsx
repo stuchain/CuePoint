@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import "./AppShellLayout.css";
 
-export interface AppShellLayoutProps {
+interface AppShellLayoutProps {
   /** Application menu bar. Spans the full width above every other region. */
   menuBar?: ReactNode;
   /** Shell header. Global search moves in here in SHELL-04. */

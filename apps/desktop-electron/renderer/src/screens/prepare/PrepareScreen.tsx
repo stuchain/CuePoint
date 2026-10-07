@@ -118,7 +118,7 @@ import "../screens.css";
 import "./prepare.css";
 
 /** The page's own memory of the tree's folders, apart from the Library pane's. */
-export const PREPARE_TREE_STORAGE_KEY = "cuepoint-prepare-tree";
+const PREPARE_TREE_STORAGE_KEY = "cuepoint-prepare-tree";
 
 /** What an entry drag carries: the entry, which is not the track (DEC-107). */
 export const SET_ENTRY_MIME = "application/x-cuepoint-set-entry";
@@ -126,7 +126,7 @@ export const SET_ENTRY_MIME = "application/x-cuepoint-set-entry";
 /** Said when the Set open is deleted, here or elsewhere, or by a refresh. */
 export const SET_GONE_LINE = "The Set that was open is not there any more.";
 
-export interface PrepareScreenProps {
+interface PrepareScreenProps {
   /** Where the Inspector's "Open on the Clean page" goes. */
   onOpenInClean?: (trackId: number) => void;
   /** Clean's missing-file view, which the export's count links to (DEC-088). */

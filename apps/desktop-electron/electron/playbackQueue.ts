@@ -21,7 +21,7 @@
 
 export type RepeatMode = "off" | "one" | "all";
 
-export type QueueItemStatus = "pending" | "playing" | "failed";
+type QueueItemStatus = "pending" | "playing" | "failed";
 
 export interface QueueItem {
   /** Unique within a queue. The same track can appear twice with two ids. */
@@ -58,7 +58,7 @@ export interface QueueItemInput {
  */
 export const PREVIOUS_RESTART_THRESHOLD_SECONDS = 3;
 
-export interface PlaybackQueueOptions {
+interface PlaybackQueueOptions {
   /** Injected so shuffled order is deterministic in tests. */
   random?: () => number;
 }

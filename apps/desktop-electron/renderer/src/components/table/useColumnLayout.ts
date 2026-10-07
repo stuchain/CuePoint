@@ -24,7 +24,7 @@ import {
 } from "./columnLayout";
 import type { ColumnWidths, TrackColumnDef } from "./trackTableLayout";
 
-export interface ColumnLayoutController<Row> {
+interface ColumnLayoutController<Row> {
   /** Every column, in the user's order, with what is hidden and how wide. */
   layout: ColumnLayout;
   /** What the table should render, in order. */

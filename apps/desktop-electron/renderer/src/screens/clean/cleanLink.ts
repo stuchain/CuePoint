@@ -17,7 +17,7 @@ export function cleanTrackState(trackId: number): Record<string, number> {
 }
 
 /** The track a location carries, or null when it carries none that is valid. */
-export function trackFromLocationState(state: unknown): number | null {
+function trackFromLocationState(state: unknown): number | null {
   if (!state || typeof state !== "object") return null;
   const carried = (state as Record<string, unknown>)[STATE_KEY];
   return typeof carried === "number" && Number.isInteger(carried) && carried > 0 ? carried : null;
@@ -46,7 +46,7 @@ export function cleanSectionState(section: CleanSection): Record<string, string>
 }
 
 /** The part a location carries, or null when it carries none that is a part. */
-export function sectionFromLocationState(state: unknown): CleanSection | null {
+function sectionFromLocationState(state: unknown): CleanSection | null {
   if (!state || typeof state !== "object") return null;
   const carried = (state as Record<string, unknown>)[SECTION_KEY];
   return CLEAN_SECTIONS.find((entry) => entry.id === carried)?.id ?? null;

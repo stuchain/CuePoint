@@ -60,7 +60,7 @@ export interface LibraryBatchController {
   cancel: () => void;
 }
 
-export interface LibraryBatchOptions {
+interface LibraryBatchOptions {
   onMessage: (message: string, tone: "info" | "success" | "warning") => void;
   /**
    * Called after a batch the engine accepted, however it ran.

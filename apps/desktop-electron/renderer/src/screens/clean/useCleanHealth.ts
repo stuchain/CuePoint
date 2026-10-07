@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
 
-export interface CleanHealth {
+interface CleanHealth {
   health: LibraryHealth | null;
   error: string | null;
   loading: boolean;

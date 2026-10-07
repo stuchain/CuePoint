@@ -18,7 +18,7 @@ interface Group {
   callbacks: Set<() => void>;
 }
 
-export interface SettlerOptions {
+interface SettlerOptions {
   delayMs?: number;
   setTimeout?: (run: () => void, ms: number) => unknown;
   /** Ends the current task's group; a microtask by default. */
@@ -62,7 +62,7 @@ export class Settler {
 }
 
 /** The one settler the app's rows share. */
-export const rowSettler = new Settler();
+const rowSettler = new Settler();
 
 /**
  * True once `key` has been shown for `SETTLE_MS`; false again, and waiting,

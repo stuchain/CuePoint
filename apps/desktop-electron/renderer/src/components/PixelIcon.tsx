@@ -1,7 +1,7 @@
 import { PIXEL_GRID_SIZE, pixelRunsFor, type PixelIconName } from "./pixelIcons";
 import "./PixelIcon.css";
 
-export interface PixelIconProps {
+interface PixelIconProps {
   name: PixelIconName;
   /**
    * Accessible name. Omit when the icon sits inside an already-labelled

@@ -9,14 +9,14 @@
  */
 import type { TrackContextMenuItem } from "../../components/TrackContextMenu";
 
-export interface EntryMenuState {
+interface EntryMenuState {
   /** How many entries the menu acts on. */
   count: number;
   /** "Start a chapter here" can: the entry is not its chapter's first. */
   canSplit: boolean;
 }
 
-export interface EntryMenuHandlers {
+interface EntryMenuHandlers {
   onPlay: () => void;
   onPlayNext: () => void;
   onAddToQueue: () => void;
@@ -68,13 +68,13 @@ export function entryMenuItems(
   return items;
 }
 
-export interface HeadingMenuState {
+interface HeadingMenuState {
   /** Where the chapter is among the Set's, from 0. */
   position: number;
   chapters: number;
 }
 
-export interface HeadingMenuHandlers {
+interface HeadingMenuHandlers {
   onEdit: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;

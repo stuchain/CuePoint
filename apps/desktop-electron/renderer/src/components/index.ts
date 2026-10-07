@@ -1,34 +1,18 @@
 export { AboutDialog } from "./AboutDialog";
 export { AppMenuBar } from "./AppMenuBar";
-export type { AppMenuActions } from "./AppMenuBar";
 export { DiagnosticsDialog } from "./DiagnosticsDialog";
-export { OnboardingDialog, shouldShowOnboarding } from "./OnboardingDialog";
+export { OnboardingDialog } from "./OnboardingDialog";
 export { PrivacyDialog } from "./PrivacyDialog";
 export { RekordboxInstructionsDialog } from "./RekordboxInstructionsDialog";
 export { LogViewerDialog } from "./LogViewerDialog";
 export { ShortcutsDialog } from "./ShortcutsDialog";
 export { SupportBundleDialog } from "./SupportBundleDialog";
-// The Universal Track Table (LIBUI-04). It replaced ResultsTable when inKey
-// and Results retired in Phase 7 (DEC-041, DEC-071).
 export { TrackContextMenu } from "./TrackContextMenu";
-export type { TrackContextMenuItem, TrackContextMenuProps } from "./TrackContextMenu";
-export { TrackTable } from "./table/TrackTable";
-export type { TrackTableProps, TrackTableSort, SortDirection } from "./table/TrackTable";
-export type { TrackColumnDef, ColumnWidths } from "./table/trackTableLayout";
-export { inMemorySource, pendingSource } from "./table/trackTableSource";
-export { ColumnPicker } from "./table/ColumnPicker";
-export { useColumnLayout } from "./table/useColumnLayout";
-export { LIBRARY_TABLE_LAYOUT_KEY } from "./table/columnLayout";
-export type { ColumnLayout } from "./table/columnLayout";
-export type { TrackTableSource, TrackTableStatus } from "./table/trackTableSource";
+export type { TrackContextMenuItem } from "./TrackContextMenu";
 export { Badge } from "./Badge";
 export { Button } from "./Button";
-export { ListRow } from "./ListRow";
 export { Modal } from "./Modal";
 export { Panel } from "./Panel";
-export { ProgressBar } from "./ProgressBar";
 export { Select } from "./Select";
-export { Tabs } from "./Tabs";
 export { TextField } from "./TextField";
 export { ToastProvider, useToast } from "./Toast";
-export { ToolbarIcon } from "./ToolbarIcon";

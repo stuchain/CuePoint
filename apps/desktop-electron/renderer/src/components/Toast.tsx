@@ -10,7 +10,7 @@ import "./Toast.css";
 
 export type ToastVariant = "info" | "success" | "warning" | "error";
 
-export interface ToastMessage {
+interface ToastMessage {
   id: string;
   message: string;
   variant: ToastVariant;

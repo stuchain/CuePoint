@@ -27,7 +27,7 @@ import { inSetText } from "./prepareSource";
 export type SuggestionRow = LibraryTrackRow & { id: number; suggestion: SetSuggestion };
 
 /** A library row with the id every row the engine sends has. */
-export type SourceLibraryRow = LibraryTrackRow;
+type SourceLibraryRow = LibraryTrackRow;
 
 export const SUGGESTION_TABLE_LAYOUT_KEY = "cuepoint-prepare-suggestions-layout";
 export const SOURCE_LIBRARY_TABLE_LAYOUT_KEY = "cuepoint-prepare-library-layout";
@@ -44,7 +44,7 @@ function unsorted<Row extends LibraryTrackRow>(column: TrackColumnDef<LibraryTra
 }
 
 /** One side's reasons as its cell says them. */
-export function sideText(side: SetSuggestionSide | null): string {
+function sideText(side: SetSuggestionSide | null): string {
   if (!side) return "";
   return side.reasons.length > 0 ? reasonsText(side.reasons) : "Nothing in common";
 }
@@ -59,7 +59,7 @@ function sideCell(side: SetSuggestionSide | null) {
  * window the panel is about one column wide, and the reasons are what a
  * suggestion is read for.
  */
-export function suggestionSummary(row: SuggestionRow): string {
+function suggestionSummary(row: SuggestionRow): string {
   const { before, after, score, in_set: inSet } = row.suggestion;
   const lines = [`${row.title} · score ${score}`];
   if (before) lines.push(`With the one before: ${sideText(before)}`);

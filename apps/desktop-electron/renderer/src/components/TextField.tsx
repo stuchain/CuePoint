@@ -1,7 +1,7 @@
 import type { InputHTMLAttributes } from "react";
 import "./TextField.css";
 
-export interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
+interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   hint?: string;
   error?: string;

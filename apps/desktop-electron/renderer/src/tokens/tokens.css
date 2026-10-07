@@ -88,8 +88,3 @@ body {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
-
-.pixel-canvas {
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-}

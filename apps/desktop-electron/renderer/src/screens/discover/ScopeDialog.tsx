@@ -16,7 +16,7 @@ import { Modal } from "../../components/Modal";
 import { TextField } from "../../components/TextField";
 import { formatCount, pluralize } from "../library/libraryFormat";
 
-export interface ScopeDialogProps {
+interface ScopeDialogProps {
   open: boolean;
   /** "artist" or "label", for the wording. */
   noun: string;

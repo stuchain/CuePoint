@@ -112,7 +112,7 @@ export function formatScore(score: number | null | undefined): string {
 // ---------------------------------------------------------------- menu
 
 /** What the Clean entries apply to. */
-export interface CleanMenuContext {
+interface CleanMenuContext {
   /** How many tracks. */
   count: number;
 }
@@ -199,7 +199,7 @@ export function cleanMenuItems(
 // ------------------------------------------------------- Beatport zone
 
 /** One overridable field as the Inspector's Beatport zone shows it. */
-export interface BeatportFieldRow {
+interface BeatportFieldRow {
   field: OverrideField;
   label: string;
   /** What Rekordbox sent. */
@@ -254,7 +254,7 @@ export function beatportFieldRows(
  * Mirrors `CUEPOINT_REVERTABLE_FIELDS`. Rekordbox's fields are the imported
  * record's history, which stays read-only (DEC-047).
  */
-export const CUEPOINT_HISTORY_FIELDS: ReadonlySet<string> = new Set([
+const CUEPOINT_HISTORY_FIELDS: ReadonlySet<string> = new Set([
   "cuepoint_rating",
   "favorite",
   "notes",

@@ -26,9 +26,9 @@ import type {
 } from "../../api/cuepointBridge.types";
 import type { LibraryQuery } from "./libraryQuery";
 
-export type VocabularyStatus = "loading" | "ready" | "error" | "unavailable";
+type VocabularyStatus = "loading" | "ready" | "error" | "unavailable";
 
-export interface FilterVocabularyState {
+interface FilterVocabularyState {
   vocabulary: LibraryFilterVocabulary | null;
   status: VocabularyStatus;
   error: string | null;
@@ -69,7 +69,7 @@ export function useFilterVocabulary(): FilterVocabularyState {
   return state;
 }
 
-export interface FacetState {
+interface FacetState {
   facet: LibraryFacet | null;
   loading: boolean;
   error: string | null;

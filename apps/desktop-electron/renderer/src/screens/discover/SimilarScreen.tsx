@@ -89,7 +89,7 @@ async function load(seedId: number): Promise<Loaded | string> {
   return { seed, answer: answer.value, rows };
 }
 
-export interface SimilarScreenProps {
+interface SimilarScreenProps {
   /** Where the Inspector's "Open on the Clean page" goes. */
   onOpenInClean?: (trackId: number) => void;
 }

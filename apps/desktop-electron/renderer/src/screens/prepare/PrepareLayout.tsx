@@ -22,7 +22,7 @@ import {
   saveSourceWidth,
 } from "./prepareLayoutState";
 
-export interface PrepareLayoutProps {
+interface PrepareLayoutProps {
   set: ReactNode;
   /** PREP-11's source panel. Absent, the Set takes the width. */
   source?: ReactNode;

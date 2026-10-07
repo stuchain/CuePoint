@@ -13,8 +13,6 @@
  */
 import type { EntityKind, FilterRule } from "../../api/cuepointBridge.types";
 
-export const ENTITY_KINDS: readonly EntityKind[] = ["artist", "label"];
-
 /** The route patterns, for `App.tsx`. */
 export const ARTIST_PAGE_ROUTE = "/discover/artist/:ref";
 export const LABEL_PAGE_ROUTE = "/discover/label/:ref";

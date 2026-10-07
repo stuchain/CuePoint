@@ -30,7 +30,7 @@ import { PaneTree, type PaneTreeRow } from "./PaneTree";
 import { isCuePointDrag } from "./collectionDrag";
 import "./PlaylistPane.css";
 
-export interface PlaylistPaneProps {
+interface PlaylistPaneProps {
   rows: VisibleRow[];
   selected: PlaylistTreeNode | null;
   /** Tracks in the whole library, for the "All tracks" row. */
@@ -60,7 +60,7 @@ export interface PlaylistPaneProps {
 const ALL_TRACKS_KEY = "__all__";
 
 /** What a user is told when they drop a selection on a mirrored playlist. */
-export const REKORDBOX_DROP_REFUSAL =
+const REKORDBOX_DROP_REFUSAL =
   "Rekordbox playlists are read-only in CuePoint. Drop onto a Collection instead.";
 
 export function PlaylistPane({

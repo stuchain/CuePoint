@@ -25,14 +25,14 @@ import type {
 } from "../../api/cuepointBridge.types";
 import type { TrackContextMenuItem } from "../../components/TrackContextMenu";
 
-export interface DiscoverMenuContext {
+interface DiscoverMenuContext {
   /** How many tracks the entries would act on; they are offered for one. */
   count: number;
   /** The one track's credits, or null while unknown. */
   credits: TrackCreditLinks | null;
 }
 
-export interface DiscoverMenuHandlers {
+interface DiscoverMenuHandlers {
   onSimilar: () => void;
   onOpenPage: (kind: EntityKind, ref: string) => void;
 }

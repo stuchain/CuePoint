@@ -25,7 +25,7 @@ import type {
 /** How long a gap must stay chosen before it is asked about. */
 export const SUGGESTION_DELAY_MS = 150;
 
-export interface SetSuggestionsState {
+interface SetSuggestionsState {
   answer: SetSuggestions | null;
   loading: boolean;
   /** Why the list could not be read, in words, other than a refusal handled. */
@@ -33,7 +33,7 @@ export interface SetSuggestionsState {
   retry: () => void;
 }
 
-export interface SetSuggestionsOptions {
+interface SetSuggestionsOptions {
   /** The request for the gap, or null when there is nothing to ask. */
   request: SetSuggestionsRequest | null;
   /** Changes with every re-read of the Set: a new answer is owed. */

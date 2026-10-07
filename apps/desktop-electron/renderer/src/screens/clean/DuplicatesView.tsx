@@ -38,7 +38,7 @@ import { revealTrack } from "./revealTrack";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
 
 /** Groups read at a time: a screenful or two, never a whole library's worth. */
-export const DUPLICATE_PAGE = 50;
+const DUPLICATE_PAGE = 50;
 
 function messageOf(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
@@ -114,7 +114,7 @@ function GroupCard({ group, busy, onAnswer, onTag, onCollect, onReveal }: GroupC
   );
 }
 
-export interface DuplicatesViewProps {
+interface DuplicatesViewProps {
   health: LibraryHealth | null;
   onHealthChanged: () => void;
 }

@@ -1,6 +1,6 @@
 /** Parse Server-Sent Event frames from a fetch response body. */
 
-export async function* readSseJsonEvents(
+async function* readSseJsonEvents(
   response: Response,
 ): AsyncGenerator<Record<string, unknown>> {
   if (!response.body) {

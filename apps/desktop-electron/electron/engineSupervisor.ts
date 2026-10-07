@@ -168,10 +168,10 @@ export const HEALTH_POLL_MS = 250;
  * behind a flickering status; three attempts recover the transient case and
  * then stop and say so, leaving the user a Restart engine control.
  */
-export const MAX_RESTART_ATTEMPTS = 3;
-export const RESTART_BACKOFF_MS = [1000, 2000, 4000];
+const MAX_RESTART_ATTEMPTS = 3;
+const RESTART_BACKOFF_MS = [1000, 2000, 4000];
 
-export interface EngineSupervisorOptions {
+interface EngineSupervisorOptions {
   /**
    * The mpv the engine analyses audio with, resolved at each launch, or null
    * when there is none (WAVE-01, DEC-123). Resolved per launch rather than
@@ -181,7 +181,7 @@ export interface EngineSupervisorOptions {
   decoderPath?: () => string | null;
 }
 
-export interface EngineEnvironmentInput {
+interface EngineEnvironmentInput {
   port: number;
   token: string;
   sessionId: string;

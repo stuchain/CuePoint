@@ -29,7 +29,7 @@ export interface FolderOption {
   depth: number;
 }
 
-export interface SaveSmartDialogProps {
+interface SaveSmartDialogProps {
   open: boolean;
   rules: FilterRuleSet | null;
   vocabulary: LibraryFilterVocabulary | null;

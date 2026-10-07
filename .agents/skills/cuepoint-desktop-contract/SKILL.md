@@ -17,7 +17,7 @@ Start with the smallest relevant files:
 - Electron HTTP/SSE client: `apps/desktop-electron/electron/engineClient.ts` and `sseClient.ts`.
 - Process supervision: `engineSupervisor.ts` and `engineLaunch.ts`.
 - IPC registration: `electron/main.ts`.
-- Runtime preload: `electron/preload.cjs`. The adjacent `preload.ts` is only a placeholder.
+- Runtime preload: `electron/preload.cjs`.
 - Renderer contract: `renderer/src/api/cuepointBridge.types.ts`.
 - Consumer: the relevant renderer hook, context, screen, or component.
 

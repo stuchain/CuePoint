@@ -27,9 +27,9 @@ import type {
 import { forgetWaveforms } from "./waveformCache";
 
 /** How often the analysis is read while a view shows it. */
-export const ANALYSIS_POLL_MS = 2000;
+const ANALYSIS_POLL_MS = 2000;
 
-export interface WaveformAnalysis {
+interface WaveformAnalysis {
   /** The last state read, or null before the first read. */
   status: WaveformAnalysisStatus | null;
   /** Why the state could not be read, or null. */

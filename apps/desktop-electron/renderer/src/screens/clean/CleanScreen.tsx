@@ -33,7 +33,7 @@ import { useCleanHealth } from "./useCleanHealth";
 import "../screens.css";
 import "./clean.css";
 
-export interface CleanScreenProps {
+interface CleanScreenProps {
   /**
    * A track to open in the review queue (CLEAN-13), from the Inspector's link.
    * Applied once per navigation, as the Library's `openWith` is.

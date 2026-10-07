@@ -33,9 +33,9 @@ import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
 import { pluralize } from "../library/libraryFormat";
 
 /** The row menu's first entry, as the panel's button says it for one track. */
-export const INSERT_HERE = "Insert here";
+const INSERT_HERE = "Insert here";
 
-export interface SourceTableProps<Row extends LibraryTrackRow> {
+interface SourceTableProps<Row extends LibraryTrackRow> {
   ariaLabel: string;
   columns: readonly TrackColumnDef<Row>[];
   widths: ColumnWidths;

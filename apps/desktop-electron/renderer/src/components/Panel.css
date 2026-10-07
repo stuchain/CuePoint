@@ -29,12 +29,6 @@
   padding: var(--space-md) var(--space-lg);
 }
 
-.match-layout .cp-panel__body {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-}
-
 .cp-panel--fill {
   display: flex;
   flex-direction: column;

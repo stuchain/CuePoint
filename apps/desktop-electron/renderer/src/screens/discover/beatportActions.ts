@@ -38,7 +38,7 @@ export interface BeatportAction {
  */
 export const MAX_OPEN_PAGES = 10;
 
-export interface ActionContext {
+interface ActionContext {
   /** Whether Beatport can be asked: a push needs a token it accepts. */
   pushable: boolean;
   /** Why a push is not offered, when it is not. */

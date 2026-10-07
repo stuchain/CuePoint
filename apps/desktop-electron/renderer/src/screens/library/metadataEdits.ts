@@ -16,7 +16,7 @@ export const EDIT_FIELDS: readonly OverrideField[] = APPLY_FIELDS;
 /** What a person asked for one field in the selection dialog. */
 export type EditMode = "keep" | "set" | "clear";
 
-export interface FieldDraft {
+interface FieldDraft {
   mode: EditMode;
   text: string;
 }
@@ -33,7 +33,7 @@ export function emptyEditDraft(): EditDraft {
   };
 }
 
-export type ParsedValue =
+type ParsedValue =
   | { ok: true; value: string | number | null }
   | { ok: false; reason: string };
 
@@ -56,7 +56,7 @@ export function parseFieldText(field: OverrideField, text: string): ParsedValue 
   return { ok: true, value: trimmed };
 }
 
-export type DraftEdits =
+type DraftEdits =
   | { ok: true; edits: OverrideEdit[] }
   | { ok: false; field: OverrideField; reason: string };
 

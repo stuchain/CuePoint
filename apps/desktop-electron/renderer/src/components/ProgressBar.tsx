@@ -1,6 +1,6 @@
 import "./ProgressBar.css";
 
-export interface ProgressBarProps {
+interface ProgressBarProps {
   value: number;
   label?: string;
 }

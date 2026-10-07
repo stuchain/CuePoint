@@ -47,7 +47,7 @@ const FINISHED_LINES: Record<string, string> = {
   artwork_scan: "Finished reading artwork.",
 };
 
-export interface HealthViewProps {
+interface HealthViewProps {
   health: LibraryHealth | null;
   error: string | null;
   loading: boolean;

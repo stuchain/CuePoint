@@ -28,9 +28,9 @@ import type { PixelIconName } from "../pixelIcons";
  * `tools` left with the Tools group (DEC-100).
  */
 export const NAV_GROUPS = ["workspace", "system"] as const;
-export type NavGroup = (typeof NAV_GROUPS)[number];
+type NavGroup = (typeof NAV_GROUPS)[number];
 
-export const NAV_GROUP_LABELS: Record<NavGroup, string | null> = {
+const NAV_GROUP_LABELS: Record<NavGroup, string | null> = {
   workspace: null,
   system: null,
 };
@@ -218,7 +218,7 @@ export function findOwningDestination(
   );
 }
 
-export interface NavGroupEntry {
+interface NavGroupEntry {
   group: NavGroup;
   label: string | null;
   destinations: NavDestination[];

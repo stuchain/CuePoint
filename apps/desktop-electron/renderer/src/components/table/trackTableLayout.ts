@@ -30,7 +30,7 @@ export const COLUMN_DEFAULT_PX = 120;
 /** Fallback row height, in CSS pixels, when no stylesheet has loaded. */
 export const ROW_HEIGHT_FALLBACK = 36;
 
-export type ColumnAlign = "left" | "right";
+type ColumnAlign = "left" | "right";
 
 /**
  * One column of a track table.

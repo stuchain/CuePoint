@@ -36,14 +36,14 @@ export interface Rect {
 /** How a line between two keys is drawn: the relation, or a clash. */
 export type KeyLinkStyle = SetKeyRelation | "clash";
 
-export interface KeyLink {
+interface KeyLink {
   /** The entry the line leads into. */
   toEntryId: number;
   style: KeyLinkStyle;
   rects: Rect[];
 }
 
-export interface LaneColumn {
+interface LaneColumn {
   entryId: number;
   index: number;
   x: number;
@@ -52,7 +52,7 @@ export interface LaneColumn {
   label: string;
 }
 
-export interface LaneLayout {
+interface LaneLayout {
   /** Each entry's column width, and the whole drawing's width. */
   columnWidth: number;
   width: number;

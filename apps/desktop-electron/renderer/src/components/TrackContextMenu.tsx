@@ -40,7 +40,7 @@ export interface TrackContextMenuItem {
   items?: TrackContextMenuItem[];
 }
 
-export interface TrackContextMenuProps {
+interface TrackContextMenuProps {
   x: number;
   y: number;
   items: TrackContextMenuItem[];

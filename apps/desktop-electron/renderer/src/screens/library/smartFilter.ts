@@ -85,7 +85,7 @@ export function isModified(
 }
 
 /** The part of the query the bar owns: what to ask, and what to ask it of. */
-export type SmartQuery = Pick<LibraryQuery, "filters" | "scope" | "collectionId">;
+type SmartQuery = Pick<LibraryQuery, "filters" | "scope" | "collectionId">;
 
 /**
  * What the table should be showing, given the bar's rules and its attachment.
@@ -126,7 +126,7 @@ export function smartStatus(
 /** How long a Smart Collection's name may be. The engine's limit, mirrored. */
 export const SMART_NAME_MAX_LENGTH = 120;
 
-export type NameCheck = { ok: true; name: string } | { ok: false; reason: string };
+type NameCheck = { ok: true; name: string } | { ok: false; reason: string };
 
 /**
  * A name for a new Smart Collection, or why it is not one.

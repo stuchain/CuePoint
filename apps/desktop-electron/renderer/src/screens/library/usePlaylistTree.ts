@@ -12,7 +12,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { LibraryPlaylistNode } from "../../api/cuepointBridge.types";
 import {
-  EMPTY_PANE_STATE,
   PLAYLIST_PANE_STORAGE_KEY,
   ancestorPaths,
   buildTree,
@@ -26,7 +25,7 @@ import {
   type VisibleRow,
 } from "./playlistTree";
 
-export type PlaylistTreeStatus = "loading" | "ready" | "error" | "unavailable";
+type PlaylistTreeStatus = "loading" | "ready" | "error" | "unavailable";
 
 export interface PlaylistTreeController {
   /** The roots, each with its children. */
@@ -176,5 +175,3 @@ export function usePlaylistTree(
     reload,
   };
 }
-
-export { EMPTY_PANE_STATE };

@@ -9,7 +9,7 @@
  */
 import type { TrackContextMenuItem } from "../../components/TrackContextMenu";
 
-export interface RowPlaybackHandlers {
+interface RowPlaybackHandlers {
   /** One row: play it with the view behind it. Several: play those. */
   onPlay: () => void;
   onPlayNext: () => void;

@@ -28,7 +28,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { useLibraryChanges } from "../../api/libraryChanges";
 
-export interface PreparedSet {
+interface PreparedSet {
   setId: number;
   plan: SetPlan;
   entries: SetEntries;
@@ -37,11 +37,11 @@ export interface PreparedSet {
 
 export type Tone = "success" | "warning";
 
-export interface EditOptions {
+interface EditOptions {
   onRefused?: (message: string) => void;
 }
 
-export interface PreparedSetOptions {
+interface PreparedSetOptions {
   /** The Set the page names, or null for none. */
   setId: number | null;
   onMessage: (message: string, tone: Tone) => void;
@@ -49,7 +49,7 @@ export interface PreparedSetOptions {
   onGone: (refusal: SetRefusal) => void;
 }
 
-export interface PreparedSetController {
+interface PreparedSetController {
   /** The Set read last, only when it is the one named. */
   set: PreparedSet | null;
   loading: boolean;

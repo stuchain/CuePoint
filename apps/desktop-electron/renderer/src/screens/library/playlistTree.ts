@@ -22,9 +22,6 @@ import type { LibraryPlaylistNode } from "../../api/cuepointBridge.types";
 /** Where the pane's expansion and selection are kept. */
 export const PLAYLIST_PANE_STORAGE_KEY = "cuepoint-library-playlist-pane";
 
-/** The synthetic root: everything, scoped to nothing. */
-export const ALL_TRACKS_ID = null;
-
 export interface PlaylistTreeNode extends LibraryPlaylistNode {
   children: PlaylistTreeNode[];
 }
@@ -208,7 +205,7 @@ export function savePaneState(storageKey: string, state: PaneState): void {
   }
 }
 
-export interface ResolvedSelection {
+interface ResolvedSelection {
   /** The node the stored path refers to, or null for "All tracks". */
   node: PlaylistTreeNode | null;
   /** True when a stored selection no longer exists in the collection. */

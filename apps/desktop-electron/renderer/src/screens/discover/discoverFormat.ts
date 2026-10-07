@@ -77,7 +77,7 @@ export function runOutcome(run: DiscoverRun): string {
 }
 
 /** Genre names for ids, in the run's order; an id the list lacks shows as one. */
-export function genreNames(ids: readonly number[], genres: readonly DiscoverGenre[]): string[] {
+function genreNames(ids: readonly number[], genres: readonly DiscoverGenre[]): string[] {
   const byId = new Map(genres.map((genre) => [genre.id, genre.name]));
   return ids.map((id) => byId.get(id) ?? `Genre ${id}`);
 }

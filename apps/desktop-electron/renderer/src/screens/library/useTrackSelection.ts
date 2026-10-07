@@ -38,7 +38,7 @@ const GATHER_PAGE = 500;
 /** Ids per request while gathering a selection's order: the engine's id-page cap. */
 const GATHER_ID_PAGE = 50_000;
 
-export interface TrackSelectionController {
+interface TrackSelectionController {
   selection: Selection;
   count: number;
   /** Click a row, with whatever modifiers were held. */

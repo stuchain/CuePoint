@@ -25,15 +25,15 @@ import { refusalText } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
 
 /** Runs asked for at a time; "Show older runs" asks for this many more. */
-export const RUNS_PAGE = 50;
+const RUNS_PAGE = 50;
 
 /**
  * The width, at scale 1, below which the list goes above the run rather than
  * beside it: room for a run's header on a line or two and several columns.
  */
-export const SIDE_BY_SIDE_MIN_WIDTH = 560;
+const SIDE_BY_SIDE_MIN_WIDTH = 560;
 
-export interface RunsViewProps {
+interface RunsViewProps {
   tools: DiscoverTools;
   /** The discovery job the page is following, while one runs. */
   runningJobId: string | null;

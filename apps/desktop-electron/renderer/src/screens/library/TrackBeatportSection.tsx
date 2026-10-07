@@ -18,7 +18,7 @@ import { decisionLine } from "../clean/cleanFormat";
 import { useTrackMatches } from "../clean/useTrackMatches";
 import { artworkText, beatportFieldRows, fieldSourceText } from "./libraryClean";
 
-export interface TrackBeatportSectionProps {
+interface TrackBeatportSectionProps {
   track: LibraryTrackRow & { id: number };
   /** Bumped by the panel after any change to the track, so the zone reads again. */
   version: number;

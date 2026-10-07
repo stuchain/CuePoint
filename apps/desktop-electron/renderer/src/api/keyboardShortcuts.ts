@@ -1,4 +1,4 @@
-export interface KeyboardShortcutEntry {
+interface KeyboardShortcutEntry {
   context: string;
   action: string;
   shortcut: string;

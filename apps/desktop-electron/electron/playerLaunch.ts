@@ -46,9 +46,9 @@ export function playerBinaryRelativePath(platform: NodeJS.Platform = process.pla
   return "mpv";
 }
 
-export type PlayerBinarySource = "env" | "bundled" | "development";
+type PlayerBinarySource = "env" | "bundled" | "development";
 
-export interface ResolvedPlayerBinary {
+interface ResolvedPlayerBinary {
   path: string;
   source: PlayerBinarySource;
 }

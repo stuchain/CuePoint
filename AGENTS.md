@@ -99,7 +99,6 @@ re-staging. mypy is excluded from it deliberately; `.pre-commit-config.yaml` exp
 
 - For engine API changes, search and synchronize Python `server.py`/`*_api.py`, Electron
   `engineClient.ts`/`main.ts`, runtime `preload.cjs`, renderer bridge types/consumers, and tests.
-  `preload.ts` is currently a placeholder, not the runtime preload.
 - Bind the engine to loopback. Only `/health` is unauthenticated and it exposes no secrets;
   `/api/v1/*` uses the in-memory bearer token.
 - Never expose tokens, unrestricted filesystem access, or Node APIs to renderer storage. Keep

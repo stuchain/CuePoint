@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import "./ListRow.css";
 
-export interface ListRowProps extends HTMLAttributes<HTMLDivElement> {
+interface ListRowProps extends HTMLAttributes<HTMLDivElement> {
   selected?: boolean;
   matched?: boolean;
   primary: ReactNode;

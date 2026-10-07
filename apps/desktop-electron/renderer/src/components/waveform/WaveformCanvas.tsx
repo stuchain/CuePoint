@@ -26,7 +26,7 @@ import { layoutWaveform, type WaveformColourMode } from "./waveformLayout";
 import { paintLayout } from "./waveformPaint";
 import "./WaveformCanvas.css";
 
-export interface WaveformCanvasProps {
+interface WaveformCanvasProps {
   /** `columns × 4` bytes: full, low, mid, high. */
   data: Uint8Array;
   durationMs: number;

@@ -18,7 +18,7 @@ import { Modal } from "../../components/Modal";
 import { TextField } from "../../components/TextField";
 import { refusalText } from "./discoverFormat";
 
-export interface PushDialogProps {
+interface PushDialogProps {
   open: boolean;
   /** What will be pushed, as a phrase: "the 3 selected tracks". */
   what: string;

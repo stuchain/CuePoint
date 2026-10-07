@@ -80,7 +80,7 @@ function ruleNames(page: EntityPage): Record<string, string> {
   return { [beatportNameKey(field, page.beatport_id)]: page.name };
 }
 
-export interface EntityScreenProps {
+interface EntityScreenProps {
   kind: EntityKind;
   /** Where the Inspector's "Open on the Clean page" goes. */
   onOpenInClean?: (trackId: number) => void;

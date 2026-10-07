@@ -27,19 +27,19 @@ import {
 } from "./setList";
 
 /** The Set a set list is of: its id, and the name the file is named after. */
-export interface SetListTarget {
+interface SetListTarget {
   id: number;
   name: string;
 }
 
-export interface SetListOptions {
+interface SetListOptions {
   /** Said out loud: a toast, a status line — the page decides. */
   onMessage: (message: string, tone: "success" | "warning") => void;
   /** The Set has gone (`SET_NOT_FOUND`): whatever draws it should re-read. */
   onGone?: () => void;
 }
 
-export interface SetListActions {
+interface SetListActions {
   /** False when the shell has no `sets` namespace, so nothing is offered. */
   available: boolean;
   save: (target: SetListTarget) => Promise<void>;

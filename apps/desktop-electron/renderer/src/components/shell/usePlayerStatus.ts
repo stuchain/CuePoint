@@ -32,16 +32,6 @@ export function playerStatusMessage(snapshot: PlayerSnapshot | null): string | n
   return null;
 }
 
-/** Identity selector, for callers that genuinely want the whole snapshot. */
-function selectSnapshot(state: PlayerSnapshot | null): PlayerSnapshot | null {
-  return state;
-}
-
-/** Live player state. Re-renders on every push; prefer a narrower selector. */
-export function usePlayerStatus(): PlayerSnapshot | null {
-  return usePlayerValue(selectSnapshot);
-}
-
 /**
  * The strip's message, recomputed only when it actually changes.
  *

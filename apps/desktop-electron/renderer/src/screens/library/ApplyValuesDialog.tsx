@@ -12,7 +12,7 @@ import { Modal } from "../../components";
 import { APPLY_FIELDS, APPLY_FIELD_LABELS } from "../clean/comparison";
 import "./cleanDialogs.css";
 
-export interface ApplyValuesDialogProps {
+interface ApplyValuesDialogProps {
   open: boolean;
   count: number;
   onClose: () => void;

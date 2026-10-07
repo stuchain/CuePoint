@@ -21,15 +21,13 @@ import { OverriddenValue, RowArtwork, RowLoudness, RowWaveform } from "./library
 import { gatherLoudnessText } from "./libraryLoudness";
 import { formatDuration } from "./trackValues";
 
-export { effective, formatBpm, formatDuration } from "./trackValues";
-
 /**
  * Stars, not a number — the parser converted Rekordbox's 0/51/…/255 encoding
  * at import (LIBRARY-02), so the stored value is already a star count. A track
  * with no rating shows nothing; one rated zero shows "unrated", because those
  * are different facts (DEC-034).
  */
-export function formatRating(rating: number | null): string {
+function formatRating(rating: number | null): string {
   return rating == null ? "" : starsFor(rating);
 }
 

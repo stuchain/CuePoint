@@ -201,7 +201,7 @@ export function movedPosition(from: number, insertAt: number): number {
 }
 
 /** What the table is showing, as far as rearranging it is concerned. */
-export interface ReorderView {
+interface ReorderView {
   scope: "collection" | "smart" | null;
   collectionId: number | null;
   sort: string;

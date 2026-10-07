@@ -29,7 +29,7 @@ function folderChoices(folders: readonly FolderOption[]) {
   ];
 }
 
-export interface NewSetDialogProps {
+interface NewSetDialogProps {
   open: boolean;
   folders: readonly FolderOption[];
   busy?: boolean;
@@ -103,7 +103,7 @@ export function NewSetDialog({ open, folders, busy = false, error = null, onCrea
   );
 }
 
-export interface SetSourceDialogProps {
+interface SetSourceDialogProps {
   open: boolean;
   groups: readonly SourceGroup[];
   onChoose: (source: NewSetSource) => void;

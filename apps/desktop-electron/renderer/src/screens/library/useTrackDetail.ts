@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { LibraryTrackDetail } from "../../api/cuepointBridge.types";
 
-export interface TrackDetailState {
+interface TrackDetailState {
   detail: LibraryTrackDetail | null;
   loading: boolean;
   error: string | null;

@@ -33,7 +33,7 @@ import {
  */
 export const LIBRARY_TABLE_LAYOUT_KEY = "cuepoint-library-table-layout";
 
-export interface ColumnLayoutEntry {
+interface ColumnLayoutEntry {
   id: string;
   width: number;
   hidden: boolean;

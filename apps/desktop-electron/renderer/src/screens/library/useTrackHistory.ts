@@ -24,7 +24,7 @@ import type { TrackFieldChange } from "../../api/cuepointBridge.types";
  */
 export const HISTORY_LIMIT = 50;
 
-export interface TrackHistoryState {
+interface TrackHistoryState {
   changes: TrackFieldChange[];
   loading: boolean;
   error: string | null;

@@ -3,7 +3,8 @@
 Status: **Specified 2026-10-06. PRUNE-01 is implemented (2026-10-06), and the user approved every
 group of its audit (`PHASE12_AUDIT.md`) the same day. PRUNE-02 is implemented (2026-10-06): Qt is
 removed. PRUNE-03 is implemented (2026-10-07): no unreached Python module remains but the
-migrations. PRUNE-04 is next.** Eight steps, PRUNE-01…PRUNE-08. Per the
+migrations. PRUNE-05 is implemented (2026-10-07): no Electron or renderer file, export or
+class is unreached. PRUNE-04 is next.** Eight steps, PRUNE-01…PRUNE-08. Per the
 process, no implementation happens from this document. Each step needs an explicit "Implement
 PRUNE-NN" instruction, scoped to exactly that step, and its outcome is recorded under the step
 afterwards. There are no open points. The measurements taken while writing it are in cross-cutting
@@ -786,6 +787,40 @@ counts recorded against the baseline.
 dynamic ones.
 
 **Complexity**: **S**
+
+**Outcome**: Implemented (2026-10-07). Group G is done. `audit_dead_code.py` reports no unused
+export outside the two kept contract files, no unreached TypeScript file, and one CSS class
+(below). Every check matches the baseline but for the deleted tests:
+- the renderer: `tsc -b` and `oxlint` clean, 158 files and 4,207 tests passed (the baseline's
+  159 and 4,209, less `fileDropUtils.test.ts` and its 2 tests);
+- Electron main: `tsc` clean with and without `noUnusedLocals`, 558 tests passed and 37 skipped,
+  as before; `npm run build` succeeds;
+- the end-to-end suite: on Linux without an mpv binary, 52 passed, 10 skipped and 9 failed. The 9 are the specs
+  that play audio, and they fail the same way on the unchanged branch, since nothing pins a player
+  for Linux. They are owed a run on Windows or macOS.
+
+**Files.** The six the audit lists are deleted, with `fileDropUtils.test.ts`. AGENTS.md, the
+desktop-contract skill (both copies) and the contract test's header no longer mention
+`preload.ts`.
+
+**Exports.** `engineClient.ts` and `cuepointBridge.types.ts` stay as they were, and so does every
+test-only export.
+- 307 exports are now private: the audit's 287, two of its "used nowhere" that are in fact used
+  in their own file (`DEFAULT_AUDIO_SETTINGS`, `deriveWaveformTokens`; the scan misses a spread),
+  and 18 that the barrels below had been the only importer of.
+- Removed: `SupportBundleOptions`, `selectPaused`, `restoreStartedLine`, `ENTITY_KINDS`,
+  `ALL_TRACKS_ID`, `TagToggle`, `isThemeId` and `usePlayerStatus` (with its selector), and the
+  re-exports `libraryColumns.tsx` and `usePlaylistTree.ts` carried for no one.
+- The four barrels lose the 106 names nothing imports through them.
+
+**CSS.** The 37 unused classes' rules are deleted, with the `@media` and `@container` blocks that
+held only them, and `--results-frame-max-width`, which only they used. `screens.css` keeps
+`.screen--stack:not(.screen--fill):not(.screen--scroll)`: the rule is live, and `screen--fill`
+is named only inside its `:not()`, which is why the audit still lists it.
+
+**Found, not changed:** with the barrel's re-exports gone, `ListRow`, `ProgressBar` and
+`ToolbarIcon` (each with its stylesheet) are reached only by their stories and tests. Group G's
+approval did not cover them, so they stay for the user to decide.
 
 ---
 

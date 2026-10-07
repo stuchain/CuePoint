@@ -19,7 +19,7 @@ export const CLEAN_SECTIONS: ReadonlyArray<{ id: CleanSection; label: string }> 
 
 export const CLEAN_SECTION_STORAGE_KEY = "cuepoint-clean-section";
 
-export const DEFAULT_CLEAN_SECTION: CleanSection = "review";
+const DEFAULT_CLEAN_SECTION: CleanSection = "review";
 
 function isSection(value: string | null): value is CleanSection {
   return CLEAN_SECTIONS.some((section) => section.id === value);

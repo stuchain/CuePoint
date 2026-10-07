@@ -54,7 +54,7 @@ import "./PlayerBar.css";
 
 const bridge = () => window.cuepoint?.player;
 
-export interface PlayerBarProps {
+interface PlayerBarProps {
   /** Whether the queue panel is open, and how to change that (PLAYER-08). */
   queueOpen?: boolean;
   onToggleQueue?: () => void;

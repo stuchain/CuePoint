@@ -40,7 +40,7 @@ export const TAG_NAME_MAX_LENGTH = 60;
 const VALUE_LIMIT = 48;
 
 /** The two layers a rating is resolved from — the part of the record that matters here. */
-export type RatingLayers = Pick<TrackMetadata, "rating" | "rekordbox_rating">;
+type RatingLayers = Pick<TrackMetadata, "rating" | "rekordbox_rating">;
 
 /**
  * Stars, or the words for the two things stars cannot draw.
@@ -166,7 +166,7 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 /** One entry of the History section, ready to render. */
-export interface HistoryLine {
+interface HistoryLine {
   /** What changed, in words. */
   title: string;
   /** The value before, when showing it adds anything the title does not say. */

@@ -46,15 +46,15 @@ import {
  * Declared here rather than imported because `engineSupervisor` pulls in
  * Electron, which would drag this module's tests back into needing a runtime.
  */
-export const MAX_PLAYER_RESTART_ATTEMPTS = 3;
-export const PLAYER_RESTART_BACKOFF_MS = [1000, 2000, 4000];
+const MAX_PLAYER_RESTART_ATTEMPTS = 3;
+const PLAYER_RESTART_BACKOFF_MS = [1000, 2000, 4000];
 
 /** How long to wait for mpv to create its socket before giving up. */
-export const PLAYER_CONNECT_ATTEMPTS = 25;
-export const PLAYER_CONNECT_RETRY_MS = 100;
+const PLAYER_CONNECT_ATTEMPTS = 25;
+const PLAYER_CONNECT_RETRY_MS = 100;
 
 /** How long a polite shutdown gets before the process is killed. */
-export const PLAYER_QUIT_TIMEOUT_MS = 2000;
+const PLAYER_QUIT_TIMEOUT_MS = 2000;
 
 /**
  * How long mpv must survive before a crash counts as a fresh problem.
@@ -82,7 +82,7 @@ export interface AudioSettings {
   exclusive: boolean;
 }
 
-export interface AudioState extends AudioSettings {
+interface AudioState extends AudioSettings {
   /** The device actually in use, after any fallback. */
   activeDevice: string;
   /** Whether exclusive output is actually in force. */
@@ -97,12 +97,12 @@ export interface AudioState extends AudioSettings {
   exclusiveSupported: boolean;
 }
 
-export interface AudioDevice {
+interface AudioDevice {
   name: string;
   description: string;
 }
 
-export const DEFAULT_AUDIO_SETTINGS: AudioSettings = { device: "auto", exclusive: false };
+const DEFAULT_AUDIO_SETTINGS: AudioSettings = { device: "auto", exclusive: false };
 
 /** The device name that means "whatever the system is using". */
 export const SYSTEM_DEFAULT_DEVICE = "auto";
@@ -138,7 +138,7 @@ export function isAudioOutputFailure(reason: string | null | undefined): boolean
 /** How many lines of mpv's own output are kept for diagnostics. */
 export const PLAYER_OUTPUT_LINES = 50;
 
-export const PLAYER_STABLE_UPTIME_MS = 10_000;
+const PLAYER_STABLE_UPTIME_MS = 10_000;
 
 /**
  * Minimum gap between pushes caused only by playback position.
@@ -148,9 +148,9 @@ export const PLAYER_STABLE_UPTIME_MS = 10_000;
  * progress bar a few pixels. Anything that actually changes — paused, the
  * track, the sidecar's health — bypasses this and pushes at once.
  */
-export const POSITION_PUSH_INTERVAL_MS = 250;
+const POSITION_PUSH_INTERVAL_MS = 250;
 
-export interface PlayerStatus {
+interface PlayerStatus {
   /** A player binary exists and could be started. */
   available: boolean;
   /** The process is running right now. */
@@ -164,7 +164,7 @@ export interface PlayerStatus {
   source?: string;
 }
 
-export interface PlaybackState {
+interface PlaybackState {
   /** The file mpv was last asked to play, or null. */
   filePath: string | null;
   playing: boolean;
@@ -191,7 +191,7 @@ export class PlayerUnavailableError extends Error {
   }
 }
 
-export interface PlayerSupervisorOptions extends Partial<ResolvePlayerBinaryOptions> {
+interface PlayerSupervisorOptions extends Partial<ResolvePlayerBinaryOptions> {
   /** Injected in tests. */
   spawn?: typeof nodeSpawn;
   createClient?: (socketPath: string) => MpvClient;

@@ -10,7 +10,7 @@ import {
 import { ActivityOffer } from "./ActivityOffer";
 import "./ActivityPanel.css";
 
-export interface ActivityPanelProps {
+interface ActivityPanelProps {
   open: boolean;
   onClose: () => void;
 }

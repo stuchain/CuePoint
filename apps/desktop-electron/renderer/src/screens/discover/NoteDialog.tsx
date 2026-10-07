@@ -11,7 +11,7 @@ import type { DiscoverRefusal } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components/Modal";
 import { refusalText } from "./discoverFormat";
 
-export interface NoteDialogProps {
+interface NoteDialogProps {
   open: boolean;
   /** The track, as the table names it. */
   track: string;

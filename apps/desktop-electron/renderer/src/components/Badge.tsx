@@ -3,7 +3,7 @@ import "./Badge.css";
 
 export type BadgeVariant = "default" | "success" | "warning" | "danger" | "info";
 
-export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
+interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
 }
 

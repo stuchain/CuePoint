@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { Button } from "./Button";
 import "./Modal.css";
 
-export interface ModalProps {
+interface ModalProps {
   open: boolean;
   title: string;
   children: ReactNode;
