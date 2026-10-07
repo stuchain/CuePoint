@@ -3429,3 +3429,159 @@ holds each track's count as of the last import. Is that kept as the starting poi
 
 **Recommendation**: **A**. It costs nothing and keeps weeks of plays a DJ would otherwise lose. DEC-137
 is amended to say history starts at the last import before the step.
+
+## DECISION ROUND 19 — DISTRIBUTION (Phase 16) ⏳ Open, asked 2026-10-07
+
+Asked while specifying Phase 16 (`PHASE16_DISTRIBUTION.md`). Decision Round 14 settled the updater's
+rule (DEC-145) and two Mac downloads (DEC-129). Writing the steps raised ten questions those
+decisions do not answer.
+
+Found while specifying:
+- **A Mac can only update itself if it is signed.** Squirrel.Mac refuses an update whose signature
+  does not match the running app's, and CI builds unsigned Macs today. Q-171.
+- **A stock updater channel picks the newest-published release,** not the highest version, so it
+  cannot follow DEC-145 on its own. Q-170.
+- **`package.json`'s version is `0.0.0`,** and an Electron updater reads it. DIST-01 makes it the real
+  version.
+- **Nothing builds on a tag,** and mpv's rolling builds can vanish between two builds of the same
+  commit. Q-176, Q-178.
+- **The first build with the updater must be installed by hand** by everyone: nothing before it can
+  update itself.
+
+### Q-170 — Which mechanism installs updates
+
+**Status**: Open
+
+**Question**: DEC-145 leaves the mechanism to this specification, held to its table.
+
+- **Option A — `electron-updater` installs, CuePoint chooses.** CuePoint reads GitHub's release list,
+  picks the release with DEC-145's one function, and points `electron-updater` at that release to
+  download, check and install it (with block maps, so an update downloads only what changed).
+- **Option B — `electron-updater`'s own GitHub channels.** Less code, but it picks the
+  newest-published release, so a hotfix published after a test release reaches test builds that are
+  already higher. It breaks DEC-145's "highest version wins".
+- **Option C — Sparkle appcasts,** as the retired app had. Mac only; Windows would need a second
+  updater, and the feed scripts were removed in Phase 12.
+
+**Recommendation**: **A**. It is the only one that follows DEC-145 exactly, and it keeps the hard
+parts (download, signature, install) in a library that does them every day.
+
+### Q-171 — Where the Mac builds are signed
+
+**Status**: Open
+
+**Question**: A Mac update installs only into a signed app (Developer ID, notarized). Where does the
+signing happen?
+
+- **Option A — In the release workflow.** You add the Developer ID certificate and an App Store
+  Connect API key as repository secrets once; every tag signs and notarizes both Mac builds.
+- **Option B — On your Mac, by hand.** The workflow publishes Windows and Linux; you build, sign and
+  upload both Mac builds for each release.
+- **Option C — Not yet.** No Apple Developer account for now: Macs say a new version is out with a
+  download link, and install by hand, until signing is set up.
+
+**Recommendation**: **A**. B makes every release wait on one machine and two manual builds (one of
+them Intel, which is not at hand). C is the fallback if there is no Developer account yet.
+
+### Q-172 — Where "Update ready" appears
+
+**Status**: Open
+
+- **Option A — A quiet item in the status strip,** "CuePoint 1.0.0-test.2 is ready", that opens a
+  panel with the notes and **Restart now** / **Later**.
+- **Option B — A dialog,** once per version, when the download finishes.
+- **Option C — A toast** with the button.
+
+**Recommendation**: **A**. It never interrupts a set being prepared, and it stays until the update
+installs. Today's toasts vanish after 4 s and hold no buttons.
+
+### Q-173 — "What's new" after an update
+
+**Status**: Open
+
+The roadmap proposed it.
+
+- **Option A — Yes, once,** on the first launch after an update: that version's notes, dismissed with
+  **Got it**, and reachable later from Settings › About & updates.
+- **Option B — No.** The notes are shown in "Update ready" and in Settings only.
+
+**Recommendation**: **A**. An update that installed at quit was never seen; this is where the user
+learns what changed.
+
+### Q-174 — Restart now while work is running
+
+**Status**: Open
+
+**Question**: Restarting stops a waveform analysis, a match or an export. Each resumes or can be rerun,
+but nothing asks first today.
+
+- **Option A — Ask first,** naming the work: "Waveforms are being analyzed (1,240 left)." with
+  **Restart when done**, **Restart now** and **Cancel**.
+- **Option B — Restart at once.** The work resumes or is rerun after.
+- **Option C — Disable Restart now while work runs;** it installs at quit.
+
+**Recommendation**: **A**. It is the one quit the user may not think of as one.
+
+### Q-175 — Linux
+
+**Status**: Open
+
+**Question**: DEC-145 updates AppImages by hand. Does the Linux app say a new version is out?
+
+- **Option A — Yes,** by the same rule: "CuePoint 1.0.1 is out" with **Download**, which opens the
+  release page. Nothing downloads or installs.
+- **Option B — No.** Linux users check GitHub themselves.
+
+**Recommendation**: **A**. It costs a target in the rule and one message, and DEC-145's "by hand" holds.
+
+### Q-176 — Keeping a copy of mpv
+
+**Status**: Open
+
+**Question**: mpv's builds come from a rolling tag that mpv republishes, so a pinned file can vanish
+(it did on 2026-10-07). A release built on a tag would then fail.
+
+- **Option A — Mirror it.** Each pinned mpv archive is also attached, unchanged and with the same
+  SHA-256, to a CuePoint release of its own (`sidecar-mpv-<version>`); builds fetch from there first.
+- **Option B — Keep fetching from mpv,** and re-pin by hand when a file vanishes.
+
+**Recommendation**: **A**. A tag then builds on any day, and the GPL source link stays as it is. The
+mirror is made once per re-pin, from your machine (the cloud cannot reach mpv's releases).
+
+### Q-177 — The first version in the new scheme
+
+**Status**: Open
+
+**Question**: `version.py` says `1.0.0-feb1`; GitHub's last normal release is `v0.0.3` (the retired
+app).
+
+- **Option A — `1.0.0-test.1`,** counting up `test.N` until Phase 18 ends with `1.0.0`.
+- **Option B — `0.1.0`,** with normal releases before 1.0, and `1.0.0` at the end of Phase 18.
+
+**Recommendation**: **A**. Everything until v1 is a test of v1, and DEC-145's scheme says so. Normal
+users are only ever offered `1.0.0` and later.
+
+### Q-178 — Which branches can release
+
+**Status**: Open
+
+- **Option A — Test tags from any branch, normal tags only from `main`.** You can test what is on
+  `feature` without merging it.
+- **Option B — Any tag from any branch.**
+- **Option C — Every tag only from `main`.**
+
+**Recommendation**: **A**. Work lives on `feature` today, and a normal release should be what `main`
+holds.
+
+### Q-179 — Where release notes come from
+
+**Status**: Open
+
+**Question**: The notes appear on GitHub, in "Update ready" and in "What's new".
+
+- **Option A — The version's section of `CHANGELOG.md`,** copied by the release workflow. A tag with
+  no section fails.
+- **Option B — Written by hand on GitHub** after the workflow publishes a draft.
+
+**Recommendation**: **A**. The changelog is already checked in CI, and the release then needs no
+manual step.
