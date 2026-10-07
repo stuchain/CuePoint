@@ -142,7 +142,7 @@ describe("the hook", () => {
       currentPath: "/music/set lists/Friday.mp3",
     });
     expect(onMessage.mock.calls).toEqual([
-      ["A set list is saved as a .txt, .csv or .m3u8 file: /music/set lists/Friday.mp3", "warning"],
+      ["A set list is saved as a .txt, .csv or .m3u8 file: '/music/set lists/Friday.mp3'", "warning"],
       ["Saved “Friday” as a CSV set list — 6 entries, 6 untimed.", "success"],
     ]);
   });
