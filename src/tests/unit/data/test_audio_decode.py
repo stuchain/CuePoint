@@ -462,6 +462,16 @@ class TestDecoderLog:
         assert not log.negotiated
         assert log.first_error() == "the decoder gave no reason"
 
+    def test_a_log_that_reached_the_exit_line_is_complete(self):
+        assert ad.read_decoder_log(GOOD_LOG).complete
+
+    def test_a_log_cut_short_is_not_complete(self):
+        """The decoder exited before its log was all on disk."""
+        log = ad.read_decoder_log(
+            _log("[i][cplayer]  (+) Audio --aid=1 (alac 2ch 44100Hz)")
+        )
+        assert not log.complete
+
     def test_lines_that_are_not_log_lines_are_ignored(self):
         log = ad.read_decoder_log("garbage\n[e] half a line\n" + GOOD_LOG)
         assert log.outputs == (ad.EXPECTED_OUTPUT,)
@@ -787,8 +797,20 @@ elif mode == "nice":
     log("[i][cplayer] " + os.environ["STUB_EXPECTED"])
     output(3)
 elif mode == "good":
-    log("[i][cplayer] " + os.environ["STUB_EXPECTED"])
+    log("[i][cplayer] " + os.environ["STUB_EXPECTED"], "[i][cplayer] Exiting... (End of file)")
     output(int(os.environ.get("STUB_FRAMES", "30")))
+elif mode == "cut-short":
+    # The decoder exited before its log was all on disk: the samples are whole,
+    # the log stops before the output it opened. STUB_CUT_TIMES runs do so.
+    count_file = os.environ["STUB_COUNT_FILE"]
+    runs = int(open(count_file).read()) if os.path.exists(count_file) else 0
+    with open(count_file, "w") as handle:
+        handle.write(str(runs + 1))
+    if runs < int(os.environ["STUB_CUT_TIMES"]):
+        log("[i][cplayer]  (+) Audio --aid=1 (flac 2ch 44100Hz)")
+    else:
+        log("[i][cplayer] " + os.environ["STUB_EXPECTED"], "[i][cplayer] Exiting... (End of file)")
+    output(30)
 elif mode == "wrong-format":
     log("[i][cplayer] AO: [pcm] 44100Hz 4.0 4ch float")
     output(30)
@@ -807,6 +829,7 @@ def stub(tmp_path, monkeypatch) -> Path:
     path.write_text(f"#!{sys.executable}\n{_STUB}", encoding="utf-8")
     path.chmod(0o755)
     monkeypatch.setenv("STUB_EXPECTED", ad.EXPECTED_OUTPUT)
+    monkeypatch.setattr(ad, "_COMPLETE_SEEN", threading.Event())
     return path
 
 
@@ -875,6 +898,57 @@ class TestStubDecoder:
         monkeypatch.setenv("STUB_MODE", "no-log")
         with pytest.raises(ad.DecoderUnavailable, match="no log"):
             ad.decode_envelope(song, stub, workdir_root=workdirs)
+
+    def test_a_log_cut_short_is_decoded_again_not_stored_as_no_audio(
+        self, stub, song, monkeypatch, workdirs, tmp_path
+    ):
+        """Regression: a good file was recorded as `no_audio` on a busy machine.
+
+        mpv exited before its log reached the output it opened; the samples
+        were whole, and the file was failed for the log's missing line.
+        """
+        count = tmp_path / "count"
+        ad._COMPLETE_SEEN.set()
+        monkeypatch.setenv("STUB_MODE", "cut-short")
+        monkeypatch.setenv("STUB_COUNT_FILE", str(count))
+        monkeypatch.setenv("STUB_CUT_TIMES", "1")
+        envelope = ad.decode_envelope(song, stub, workdir_root=workdirs)
+        assert envelope.frames == 30
+        assert count.read_text() == "2"
+        assert list(workdirs.iterdir()) == []
+
+    def test_a_log_cut_short_every_time_is_judged_on_the_last_attempt(
+        self, stub, song, monkeypatch, workdirs, tmp_path
+    ):
+        count = tmp_path / "count"
+        ad._COMPLETE_SEEN.set()
+        monkeypatch.setenv("STUB_MODE", "cut-short")
+        monkeypatch.setenv("STUB_COUNT_FILE", str(count))
+        monkeypatch.setenv("STUB_CUT_TIMES", "99")
+        with pytest.raises(ad.DecodeFailed) as caught:
+            ad.decode_envelope(song, stub, workdir_root=workdirs)
+        assert caught.value.reason == "no_audio"
+        assert count.read_text() == str(ad.LOG_ATTEMPTS)
+        assert list(workdirs.iterdir()) == []
+
+    def test_a_decoder_never_seen_writing_a_whole_log_is_not_run_again(
+        self, stub, song, monkeypatch, workdirs, tmp_path
+    ):
+        """A build without the exit line would otherwise decode every file thrice."""
+        count = tmp_path / "count"
+        monkeypatch.setenv("STUB_MODE", "cut-short")
+        monkeypatch.setenv("STUB_COUNT_FILE", str(count))
+        monkeypatch.setenv("STUB_CUT_TIMES", "99")
+        with pytest.raises(ad.DecodeFailed):
+            ad.decode_envelope(song, stub, workdir_root=workdirs)
+        assert count.read_text() == "1"
+
+    def test_a_whole_log_teaches_the_engine_what_cut_short_looks_like(
+        self, stub, song, monkeypatch, workdirs
+    ):
+        monkeypatch.setenv("STUB_MODE", "good")
+        ad.decode_envelope(song, stub, workdir_root=workdirs)
+        assert ad._COMPLETE_SEEN.is_set()
 
     def test_a_decoder_error_is_the_files(self, stub, song, monkeypatch, workdirs):
         monkeypatch.setenv("STUB_MODE", "error")

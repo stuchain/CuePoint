@@ -382,6 +382,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **A good file could be recorded as having no audio, or lose its loudness.** On a
+  busy machine `mpv` sometimes exits before its log is all on disk, and the
+  waveform analysis read the missing lines as "no audio was decoded" or "loudness
+  not measured". A decode whose log stops before `mpv`'s last line is now run
+  again, up to three times in all
 - **A request the engine could not answer dropped the connection.** An error that
   escaped a request handler printed its traceback to a pipe nothing reads and
   closed the connection, so the app saw "connection aborted" and no reason. It now

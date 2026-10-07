@@ -228,6 +228,9 @@ WORKDIR_PREFIX = "cuepoint-decode-"
 #: A folder older than this, left by an engine that was killed, is removed.
 STALE_WORKDIR_SECONDS = 3600.0
 
+#: How many times a file is decoded when its log keeps coming back cut short.
+LOG_ATTEMPTS = 3
+
 #: How often the watchdog looks for a cancel.
 _POLL_SECONDS = 0.05
 #: Bytes per envelope frame: four 32-bit floats.
@@ -493,6 +496,8 @@ class DecoderLog:
     outputs: Tuple[str, ...]
     errors: Tuple[str, ...]
     filter_failed: bool
+    #: The decoder's last line, ``Exiting... (reason)``, is there.
+    complete: bool = False
 
     @property
     def negotiated(self) -> bool:
@@ -509,6 +514,7 @@ def read_decoder_log(text: str) -> DecoderLog:
     outputs: List[str] = []
     errors: List[str] = []
     filter_failed = False
+    complete = False
     for line in text.splitlines():
         match = _LOG_LINE.match(line)
         if match is None:
@@ -520,7 +526,9 @@ def read_decoder_log(text: str) -> DecoderLog:
             errors.append(message)
         if any(marker in message for marker in _FILTER_FAILED):
             filter_failed = True
-    return DecoderLog(tuple(outputs), tuple(errors), filter_failed)
+        if match.group("module") == "cplayer" and message.startswith("Exiting..."):
+            complete = True
+    return DecoderLog(tuple(outputs), tuple(errors), filter_failed, complete)
 
 
 # The meter's summary, as FFmpeg 8 writes it on mpv's `ffmpeg` log:
@@ -657,6 +665,9 @@ _LIVE: Set["subprocess.Popen[bytes]"] = set()
 _ENDED: Set["subprocess.Popen[bytes]"] = set()
 _LIVE_LOCK = threading.Lock()
 _SWEPT = threading.Event()
+# Set once this decoder has written a whole log: only then is a log without its
+# last line known to be cut short, rather than a build that never writes one.
+_COMPLETE_SEEN = threading.Event()
 
 
 def live_children() -> int:
@@ -970,13 +981,31 @@ def decode_envelope(
         _SWEPT.set()
         sweep_stale_workdirs(workdir_root)
 
-    workdir = Path(tempfile.mkdtemp(prefix=WORKDIR_PREFIX, dir=workdir_root))
-    try:
-        return _decode_in(
-            workdir, source_path, decoder_path, mode, cancel, timeout_seconds
-        )
-    finally:
-        shutil.rmtree(workdir, ignore_errors=True)
+    # The decoder can exit before its log is all on disk, most often on a busy
+    # machine: the log then stops short of the output it opened, or of the
+    # loudness summary, and a good file would read as having no audio. Such a
+    # decode is run again; the last attempt is judged on what it left.
+    attempt = 1
+    while True:
+        workdir = Path(tempfile.mkdtemp(prefix=WORKDIR_PREFIX, dir=workdir_root))
+        try:
+            returncode, raw, err, log_text = _decode_in(
+                workdir, source_path, decoder_path, mode, cancel, timeout_seconds
+            )
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)
+        if log_text is not None and read_decoder_log(log_text).complete:
+            _COMPLETE_SEEN.set()
+        elif (
+            log_text is not None and _COMPLETE_SEEN.is_set() and attempt < LOG_ATTEMPTS
+        ):
+            _logger.info(
+                "[waveforms] the decoder's log for %s was cut short; decoding again",
+                source_path.name,
+            )
+            attempt += 1
+            continue
+        return _outcome(source_path, returncode, raw, err, log_text)
 
 
 def _decode_in(
@@ -986,7 +1015,8 @@ def _decode_in(
     mode: str,
     cancel: Optional[Callable[[], bool]],
     timeout_seconds: float,
-) -> Envelope:
+) -> Tuple[int, bytes, bytes, Optional[str]]:
+    """Run the decoder once: its exit code, output, stderr and log."""
     log_path = workdir / _LOG_FILE
     envelope_path = workdir / _ENVELOPE_FILE
     output = "/dev/stdout" if mode == TRANSPORT_PIPE else str(envelope_path)
@@ -1050,9 +1080,7 @@ def _decode_in(
                 f"could not read the decoder's output: {exc}"
             ) from exc
 
-    return _outcome(
-        source, child.returncode, raw or b"", err or b"", _read_text(log_path)
-    )
+    return child.returncode, raw or b"", err or b"", _read_text(log_path)
 
 
 def _outcome(
