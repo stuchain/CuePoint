@@ -44,8 +44,8 @@ if pip3 install -r requirements.txt; then
     echo "Optional: Install additional dependencies for development:"
     echo "  pip3 install -r requirements-dev.txt"
     echo ""
-    echo "Optional: Install optional dependencies:"
-    echo "  pip3 install -r requirements_optional.txt"
+    echo "Optional: for the Beatport browser fallback, install the Playwright browser:"
+    echo "  playwright install chromium"
     echo ""
 else
     echo ""

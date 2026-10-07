@@ -5,7 +5,8 @@ group of its audit (`PHASE12_AUDIT.md`) the same day. PRUNE-02 is implemented (2
 removed. PRUNE-03 is implemented (2026-10-07): no unreached Python module remains but the
 migrations. PRUNE-05 is implemented (2026-10-07): no Electron or renderer file, export or
 class is unreached. PRUNE-04 is implemented (2026-10-07): the retired app's pipeline and every
-script nothing runs are gone. PRUNE-06 is next.** Eight steps, PRUNE-01…PRUNE-08. Per the
+script nothing runs are gone. PRUNE-06 is implemented (2026-10-07): every dependency left has a
+live importer.** Eight steps, PRUNE-01…PRUNE-08. Per the
 process, no implementation happens from this document. Each step needs an explicit "Implement
 PRUNE-NN" instruction, scoped to exactly that step, and its outcome is recorded under the step
 afterwards. There are no open points. The measurements taken while writing it are in cross-cutting
@@ -913,6 +914,60 @@ for.
 **Risks**: Low.
 
 **Complexity**: **S**
+
+**Outcome**: Implemented (2026-10-07). Group I is done: every package it marked is gone, and
+every dependency that remains has a live importer or a tool that runs it (`audit_dead_code.py
+--section dependencies` lists none without).
+
+**Python:**
+- `aiohttp` and `sentry-sdk` left `requirements.txt` and `requirements-build.txt`. Nothing imported
+  either; Phase 13 re-adds Sentry (DEC-126).
+- `black`, `isort`, `pylint`, `flake8` and `radon` left `requirements-dev.txt`. ruff and
+  `pre-commit` are the gates.
+- `pytest-asyncio`, `pytest-benchmark`, `pytest-mock` and `pytest-xdist` left both files. No test
+  uses their fixtures, markers or flags. The `benchmark` marker stays registered in `pytest.ini`;
+  it never needed the plugin.
+- **`requirements_optional.txt` is folded in.** Playwright and Selenium were already in
+  `requirements.txt`; its one instruction, `playwright install chromium`, is a comment beside
+  Playwright there. The Beatport browser fallback is live: `best_beatport_match` →
+  `track_urls` → `beatport_search_browser`, with `USE_BROWSER_AUTOMATION` on by default. The CLI's
+  missing-dependency error and `scripts/setup/install_requirements.sh` stopped naming the file.
+- Each requirements file starts with what installs it and why.
+- `.pylintrc` and `pyproject.toml` are deleted. `pyproject.toml` held only black's and isort's
+  sections; the three scripts that look for it carry on without it.
+- `test_code_quality_step_5_7.py` went. Its ten live checks (`.editorconfig`,
+  `.pre-commit-config.yaml` and `mypy.ini` exist; pre-commit runs ruff, keeps the hygiene hooks and
+  leaves mypy out; the sources parse) moved unchanged to `test_code_quality_config.py`. The 18
+  others tested the removed tools, their config, VS Code settings, or asserted `True`.
+
+**npm:** `tsx` (desktop) and `@storybook/blocks` and `@storybook/test` (renderer) were removed with
+`npm uninstall`. Nothing imported them. `tsx` stays in the desktop lockfile as an optional peer of
+Vite, and the Storybook two as the addons' own dependencies.
+
+**The packaged engine:** `build/engine-sidecar.spec` named none of the removed packages, so it is
+unchanged. Built on Linux in one session from this step's fresh virtual environment and from the
+commit before it: 93,471,616 bytes against 93,470,792 (the same modules; 824 bytes is the build's
+own metadata), and a cold start median of 3,084 ms against 3,118 ms over five runs each
+(`bench_engine_start.py`). Both pass the sidecar's health smoke.
+
+**Found on the way, fixed in its own commit:** PRUNE-05 made `UNIT_STARS` private in
+`filterText.ts`, and the engine's filter-bar contract test read it only as `export const`. The test
+now reads the constant whether or not it is exported.
+
+**Checks run:**
+- the full suite from a fresh virtual environment built only from the new requirement files:
+  11,861 passed, 106 skipped. `test_the_source_spelled_differently_is_refused_all_the_same` was
+  deselected; it fails on Linux before and after this step (PRUNE-04's outcome says why);
+- the mypy gate, `ruff check` and `ruff format --check` over `src/`, `check_no_qt.py`;
+- `npm ci`, the tests and the typecheck in the desktop workspace (558 passed) and the renderer
+  (4,209 passed), the renderer's lint and production build;
+- the hashed install (`generate_requirements_hashes.py`, then `--require-hashes`),
+  `generate_sbom.py`, `generate_licenses.py`, `validate_licenses.py` and `validate_compliance.py`;
+- an independent review of the change against this specification.
+
+**Left as it was:** `psutil` is still imported optionally by three shipped modules and declared
+nowhere (audit finding 9). Declaring it would add it to the packaged engine, which this phase
+does not do.
 
 ---
 

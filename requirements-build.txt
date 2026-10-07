@@ -1,13 +1,13 @@
-# CuePoint - pinned dependencies for shipped builds
+# CuePoint - the runtime dependencies plus PyInstaller, pinned for release checks.
 #
-# This file is used for reproducible release builds (Step 8.2).
-# Keep `requirements.txt` flexible for development; keep this pinned for CI/release packaging.
+# Installed by the compliance, license and release-gates workflows (including the
+# `pip --require-hashes` check via scripts/generate_requirements_hashes.py), and
+# pip-audited by security-scan.yml. The engine sidecar build
+# (scripts/build_engine_sidecar.py) runs against requirements.txt in
+# desktop-electron.yml.
 #
-# NOTE: Pins are currently aligned to the minimum versions declared in requirements.txt.
-# Update intentionally and run the full test suite + security scans when changing.
-#
-# IMPORTANT: This file must include ALL runtime dependencies from requirements.txt
-# (excluding test dependencies) to ensure the packaged app works correctly.
+# IMPORTANT: keep every runtime dependency of requirements.txt here (test
+# dependencies excluded), at the same version, so these checks see what ships.
 
 # Desktop UI note
 # Electron is the shipped desktop shell. Legacy Qt-specific dependencies are no
@@ -15,7 +15,6 @@
 
 # HTTP requests and web scraping
 requests==2.33.0
-aiohttp==3.13.4
 beautifulsoup4==4.14.3
 
 # DuckDuckGo search integration
@@ -52,12 +51,8 @@ openpyxl==3.1.5
 # Audio tag writing (Key, Comment, Year for Write to track tags)
 mutagen>=1.47.0
 
-# Error reporting (optional: set SENTRY_DSN to enable)
-sentry-sdk>=2.0.0,<3
-
 # Build tool (PyInstaller for packaging)
 pyinstaller==6.17.0
 
-# Artwork thumbnails at runtime (CLEAN-09). It was also used for icon generation
-# at build time by a script that no longer exists; the pin matches requirements.txt.
+# Artwork thumbnails at runtime (CLEAN-09); the pin matches requirements.txt.
 Pillow==12.3.0

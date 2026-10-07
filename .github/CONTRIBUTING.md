@@ -44,8 +44,7 @@ Before opening a PR, ensure:
 
 ## Coding Standards
 
-- **Formatting**: Black (line length 100), isort
-- **Linting**: Ruff, pylint (errors only)
+- **Formatting and linting**: Ruff (`ruff format`, `ruff check`)
 - **Typing**: Type hints for public APIs
 - **Testing**: Unit tests for new logic; regression tests for bug fixes
 

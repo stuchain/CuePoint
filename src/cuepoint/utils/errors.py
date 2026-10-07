@@ -365,7 +365,7 @@ def error_missing_dependency(
 
     context = {"Missing package": package_name, "Install command": install_command}
 
-    see_also = "requirements.txt and requirements_optional.txt for all dependencies"
+    see_also = "requirements.txt for all dependencies"
 
     return format_error_message(
         error_type="Missing Dependency",
