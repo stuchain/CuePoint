@@ -1075,7 +1075,7 @@ def track_urls(
                                 f"(browser {len(browser_urls)} + direct {len(direct_urls)})",
                             )
                             return merged[:max_results]
-                        return browser_urls
+                        return browser_urls[:max_results]
 
             # If both fail, fall through to DuckDuckGo
         except ImportError:
