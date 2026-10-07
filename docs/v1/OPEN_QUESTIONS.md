@@ -3084,3 +3084,112 @@ pipeline)
 ### Q-150 — Untracked local files
 
 **Status**: Resolved → DEC-147 (left alone; the recommendation was to list them for the user)
+
+---
+
+## DECISION ROUND 16 — ERROR REPORTING (Phase 13) ✅ Resolved 2026-10-07
+
+Asked while specifying Phase 13 (`PHASE13_REPORTING.md`). Decision Round 14 settled what is reported
+(DEC-126), what a report may carry (DEC-127) and that it is on by default (DEC-128). Writing the steps
+raised six questions those decisions do not answer. The user chose the recommendation for all six
+on 2026-10-07. Outcomes are in DEC-148…DEC-153.
+
+Found while specifying:
+- **The engine's output is piped and never read** (`engineSupervisor.ts`). Once a pipe fills, the
+  engine's next write would block. Inferred from the code, not reproduced. REPORT-05 fixes it.
+- **Engine errors lose their code on the way to the renderer** (`engineClient.ts`'s `readJson`), so
+  nothing outside the engine can tell a refusal from a bug. REPORT-04 fixes it.
+- **Main logs nothing, and the renderer has no error boundary,** so a render error leaves a blank
+  window. REPORT-04 and REPORT-06.
+- **The engine writes its log to `~/.cuepoint/logs` and reads it from `<data dir>/Logs`.**
+  Recorded, not scheduled (fact 5).
+
+### Q-151 — Which Sentry projects receive the reports
+
+**Status**: Resolved → DEC-148 (Option A chosen: the existing Python project for the engine, a new Electron project)
+
+**Question**: Where do the engine's and the desktop app's reports go?
+
+- **Option A — Two projects:** the existing Python project in the EU (the Qt app's, which already
+  holds issues such as PYTHON-1C) for the engine, and a new Electron project for main and the
+  renderer. Each platform gets the grouping and source-map handling Sentry builds for it, and a
+  shared release and trace id link them.
+- **Option B — One project for all three.** One place to look; Python and JavaScript issues mix,
+  and the Electron SDK's features expect a project of its own platform.
+- **Option C — Two new projects,** leaving the Qt app's history behind.
+
+Whichever is chosen, the user provides the DSNs and adds a `SENTRY_AUTH_TOKEN` secret to the
+repository for the source-map upload (REPORT-07, REPORT-08).
+
+**Recommendation**: **A**.
+
+### Q-152 — Native crash dumps
+
+**Status**: Resolved → DEC-149 (Option A chosen: no dumps)
+
+**Question**: When Electron or mpv crashes natively, does a crash dump go to Sentry?
+
+- **Option A — No dumps.** A process that is gone is reported as an event with its reason and exit
+  code (REPORT-04, REPORT-05). A native crash's stack inside Chromium or mpv is not seen.
+- **Option B — Dumps.** The Electron SDK uploads minidumps, which show the native stack. A dump holds
+  part of the process's memory, which can include paths and track names, and cannot be scrubbed.
+
+**Recommendation**: **A**. DEC-127's promise holds only if nothing unscrubbed is sent, and the native
+code is Chromium's and mpv's, which CuePoint does not fix.
+
+### Q-153 — Development runs
+
+**Status**: Resolved → DEC-150 (Option A chosen: only on a developer's opt-in)
+
+**Question**: Does the app send reports when run from source?
+
+- **Option A — No,** unless a developer sets `CUEPOINT_SENTRY_DSN` by hand. Reports come only from
+  packaged builds.
+- **Option B — Yes, tagged `development`.** The user sees their own development errors in Sentry,
+  mixed with users' unless filtered.
+
+**Recommendation**: **A**.
+
+### Q-154 — The CLI
+
+**Status**: Resolved → DEC-151 (Option A chosen: the CLI does not report)
+
+**Question**: Does the CLI report errors?
+
+- **Option A — No.** DEC-126 names the engine, main and the renderer. The CLI has no Settings switch
+  to turn it off, and it is a developer surface.
+- **Option B — Yes, behind a flag and a config key,** off or on by default.
+
+**Recommendation**: **A**.
+
+### Q-155 — "Report a problem"
+
+**Status**: Resolved → DEC-152 (Option A chosen: built in REPORT-06)
+
+**Question**: The roadmap proposed a "Report a problem" action. Is it built in this phase?
+
+- **Option A — Yes, in REPORT-06.** Help gains **Report a problem**: a note, the app's version and
+  the last report's id, sent as Sentry user feedback. The note is sent as the user wrote it, and the
+  dialog says so.
+- **Option B — Not now.** Phase 14 reviews the Help menu with the other pages, and can propose it
+  there.
+
+**Recommendation**: **A**. It is small, and it lets a user say what they were doing when a report
+alone does not.
+
+### Q-156 — A failed job with a cause the user owns
+
+**Status**: Resolved → DEC-153 (Option A chosen: not reported, as refusals)
+
+**Question**: DEC-126 reports every failed job and no expected refusal. Some jobs fail on a cause the
+user owns, such as a Beatport token that was rejected, a drive that was unplugged or an XML file that
+was moved. Are those reported?
+
+- **Option A — Not reported,** as refusals. Their error codes are listed in one place
+  (`reporting/expected.py`), each added on purpose with a test, and every other failure is
+  reported.
+- **Option B — Every failed job is reported,** tagged `expected` where the code says so, so the user
+  can see how often each happens.
+
+**Recommendation**: **A**. It keeps Sentry a list of bugs, and the activity feed already shows the
+user what happened.

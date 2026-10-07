@@ -4820,3 +4820,97 @@ removals: a caller search first, and the evidence recorded.
   README, AGENTS.md's map, the developer setup, the user guide's index and the release runbooks.
 
 **Decided with**: User · **Date**: 2026-10-06
+
+---
+
+## DEC-148 — Two Sentry Projects: the Existing Python One for the Engine, a New Electron One for the App
+
+**Status**: Approved · **Related**: Q-151, DEC-126, Phase 13
+
+**Decision**: The engine reports to the existing Python project in the EU, the one the Qt app used.
+Electron main and the renderer report to a new Electron project. Both share the release name and
+trace id (DEC-126).
+
+**Reason**: The user's choice, as recommended. Each platform gets the grouping and source-map handling
+Sentry builds for it, and the engine's earlier history stays in one place.
+
+**Implications**:
+- **The user provides** both DSNs and a `SENTRY_AUTH_TOKEN` repository secret before REPORT-07
+  and REPORT-08.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-149 — No Native Crash Dumps
+
+**Status**: Approved · **Related**: Q-152, DEC-127, Phase 13
+
+**Decision**: No minidumps are sent from Electron or mpv. A process that is gone is reported as an
+event with its reason and exit code.
+
+**Reason**: The user's choice, as recommended. A dump holds part of the process's memory, which can
+include paths and track names and cannot be scrubbed (DEC-127).
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-150 — Runs From Source Send Nothing Unless a Developer Opts In
+
+**Status**: Approved · **Related**: Q-153, DEC-126, Phase 13
+
+**Decision**: Only packaged builds send reports. A run from source sends only when
+`CUEPOINT_SENTRY_DSN` is set by hand, tagged `development`.
+
+**Reason**: The user's choice, as recommended. Development errors do not mix with users'.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-151 — The CLI Does Not Report
+
+**Status**: Approved · **Related**: Q-154, DEC-126, Phase 13
+
+**Decision**: The CLI sends no error reports. An engine started without Electron's environment
+reports nothing.
+
+**Reason**: The user's choice, as recommended. DEC-126 names the engine, main and the renderer, and the
+CLI has no Settings switch to turn reporting off.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-152 — "Report a Problem" Is Built in Phase 13
+
+**Status**: Approved · **Related**: Q-155, DEC-126, Phase 13
+
+**Decision**: Help gains **Report a problem**: a note, the app's version and the last report's id,
+sent as Sentry user feedback. The note is sent as the user wrote it, and the dialog says so. Built in
+REPORT-06.
+
+**Reason**: The user's choice, as recommended. It lets a user say what they were doing when a report
+alone does not.
+
+**Implications**:
+- **It respects the switch.** With reporting off, the action is disabled and says why.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-153 — A Job That Fails on a Cause the User Owns Is a Refusal
+
+**Status**: Approved · **Related**: Q-156, DEC-126, Phase 13
+
+**Decision**: A job that fails on a cause the user owns (a rejected Beatport token, an unplugged
+drive, a moved XML file) is not reported. Those error codes are listed in one place, each added on
+purpose with a test. Every other failed job is reported.
+
+**Reason**: The user's choice, as recommended. It keeps Sentry a list of bugs, and the activity feed
+already shows the user what happened. It applies DEC-126's rule that expected refusals are not
+errors.
+
+**Decided with**: User · **Date**: 2026-10-07

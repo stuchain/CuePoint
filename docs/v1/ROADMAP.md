@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–15 resolved (DEC-001…DEC-147).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153).**
 
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
@@ -10,7 +10,8 @@ Phase numbers follow the order of implementation (DEC-146):
 - **Phase 18,** Production Hardening, is v1's last phase.
 - **Phases 19 and 20** are future releases (DEC-125).
 
-Phase 12 is specified (`PHASE12_CLEANUP.md`); Phases 13 to 18 are not yet. PRUNE-01 is implemented
+Phase 12 is specified (`PHASE12_CLEANUP.md`), and so is Phase 13 (`PHASE13_REPORTING.md`); Phases 14
+to 18 are not yet. PRUNE-01 is implemented
 (2026-10-06): the audit is `PHASE12_AUDIT.md`, and the user approved every group of it the same day.
 PRUNE-02 is implemented (2026-10-06): Qt is removed, and `scripts/check_no_qt.py` keeps it out.
 PRUNE-03 is implemented (2026-10-07): no unreached Python module remains but the migrations.
@@ -787,7 +788,7 @@ Step specifications: `PHASE11_WAVEFORMS.md`.
 The user asked for these to be built before v1's hardening. Phase numbers follow the order of
 implementation (DEC-146). Each phase runs alone, and Phase 18 follows them. Decision Round 14
 settled the shape of Phases 13 to 17 (DEC-126…DEC-145), and Decision Round 15 settled Phase 12's
-(DEC-147). Phase 12 is specified, and the rest are not yet. Items marked *proposed* are suggestions that have not been accepted.
+(DEC-147). Phases 12 and 13 are specified, and the rest are not yet. Items marked *proposed* are suggestions that have not been accepted.
 
 Why this order:
 - **Cleanup comes first,** so that every later phase works in a smaller codebase and a smaller set of
@@ -859,6 +860,11 @@ and archives go. Untracked local files are left alone.
 
 ## Phase 13 — Error Reporting
 
+Specified 2026-10-07 in `PHASE13_REPORTING.md`, in eight steps (REPORT-01…REPORT-08). Decision
+Round 16 settled what writing it raised (DEC-148…DEC-153): two Sentry projects, no native crash
+dumps, nothing sent from source runs or the CLI, "Report a problem" built, and a job failing on a
+cause the user owns treated as a refusal.
+
 - **Sentry, on by default, catching every error everywhere** (DEC-126). It covers:
   - crashes and uncaught errors in the engine, Electron main and the renderer;
   - the engine and the player exiting or restarting;
@@ -878,7 +884,7 @@ and archives go. Untracked local files are left alone.
   - Electron main and the renderer have no Sentry.
   - `PRIVACY_NOTICE.md` and `docs/policy/` promise that v1.0 collects nothing, and change in the
     same step.
-- *Proposed:* a "Report a problem" action that sends a note with the error's id.
+- **A "Report a problem" action** that sends a note with the last report's id (DEC-152).
 
 ## Phase 14 — The Pages Revisited
 
