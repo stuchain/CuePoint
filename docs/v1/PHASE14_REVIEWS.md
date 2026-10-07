@@ -162,9 +162,9 @@ Each switch previews itself (a tiny sprite next to it moves once when toggled on
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation), amended the same day: a 1.5× size is added and is the default (DEC-161)
 
-**What**: Label "Size of text and controls"; options "Small (1×)", "Medium (2×) — default", "Large (3×)"; hint "Everything grows in whole pixels, so the pixel style stays sharp."
+**What**: Label "Size of text and controls"; options "Small (1×)", "Medium (1.5×) — default", "Large (2×)", "Extra large (3×)"; hint "Edges and lines snap to whole pixels at every size, so the pixel style stays sharp." (DEC-161 added 1.5× after the review.)
 
 **Why**: Item 5.
 

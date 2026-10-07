@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size.**
 
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
@@ -899,7 +899,8 @@ DEC-131 asks for are `PHASE14_REVIEWS.md`: 107 proposals across eleven surfaces,
 screenshot (`phase14/`). The user took the recommendation on every one (DEC-159): 100 accepted, 4
 declined. Decision Round 17 settled what the reviews raised (DEC-154…DEC-158: feedback is the tenth
 kind of motion, the app never says "engine", Collections nests under Library, the wheel lights the
-selected track, American English) and DEC-160 (a wheel click replaces the Library's filter).
+selected track, American English) and DEC-160 (a wheel click replaces the Library's filter). DEC-161 adds a 1.5× size as the
+default.
 
 - **Every page reviewed in writing, proposal by proposal** (DEC-130, DEC-131). Each review covers:
   - what the page does;

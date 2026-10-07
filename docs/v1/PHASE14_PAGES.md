@@ -5,7 +5,7 @@ The page reviews DEC-131 asks for are written in `PHASE14_REVIEWS.md`, 107 propo
 surfaces, each with a screenshot of the app as it is today (`phase14/`). The user marked them on
 2026-10-07, taking the recommendation on every one (DEC-159): 100 accepted, and NAV-4, STR-4, BAR-6
 and BAR-10 declined. Writing the reviews raised six questions that Decision Round 14 did not answer,
-asked as Decision Round 17 (Q-157…Q-162). All six are settled (DEC-154…DEC-158, DEC-160). The steps below name every
+asked as Decision Round 17 (Q-157…Q-162). All six are settled (DEC-154…DEC-158, DEC-160). DEC-161 later added a 1.5× size as the default. The steps below name every
 proposal they could carry, and each carries only the accepted ones. Per the process, no implementation happens from this document. Each
 step needs an explicit "Implement PAGES-NN" instruction, scoped to exactly that step, and its outcome
 is recorded under the step afterwards.
@@ -231,7 +231,7 @@ words in each section.
 **Dependencies**: Phase 13 (REPORT-01's Privacy panel exists).
 
 **Proposals carried, if accepted**: SET-1 (the sections), SET-3 (theme names, the editor, a confirm on
-delete), SET-4 (size), SET-5 (the Beatport section), SET-6 (waveform data behind a disclosure, the
+delete), SET-4 (size, with DEC-161's 1.5× default), SET-5 (the Beatport section), SET-6 (waveform data behind a disclosure, the
 "nothing to analyse" words), SET-7 (one Privacy section with the exit-clearing choices), SET-8 (audio
 words), SET-9 (export words), SET-10 (a "Saved" tick), SET-11 (reset per section).
 
@@ -249,6 +249,15 @@ words), SET-9 (export words), SET-10 (a "Saved" tick), SET-11 (reset per section
   holds "Clear cache on exit" and "Clear logs on exit", on the same `cuepoint-privacy-clear-*-on-exit`
   keys as Help → Privacy (`components/PrivacyDialog.tsx:5-6`), so both show one state.
 - **Theme ids do not change** (SET-3). Only their labels do, so a stored theme still loads.
+- **A 1.5× size, the default** (DEC-161). `tokens/scale.ts` offers `[1, 1.5, 2, 3]` and
+  `DEFAULT_SCALE` becomes 1.5. The stored value is read with `Number`, not `parseInt` (which reads
+  "1.5" as 1), on the same `cuepoint-ui-lab-scale` key. A stored 1, 2 or 3 is kept, so only a fresh
+  install, or one that never chose, opens at 1.5. Every size token in `tokens/tokens.css` whose base
+  is not a multiple of 2px (`--bevel-size-sm`, `--border-width-heavy`, and any other) is wrapped in
+  `round(nearest, …, 1px)` so an edge never lands on half a pixel; Electron 34's Chromium supports
+  it. The consumers of `useScaleFactor()` take a non-integer scale: the waveform's requested width
+  (`waveformEnvironment.ts`), and the row heights Prepare and `SetTransition` read. Thumbnails are
+  drawn at 3× already (DEC-076), so 1.5× only scales them down.
 
 **Tests**:
 - A new `SettingsScreen.test.tsx`: the heading, the eight sections in order, each link scrolls to its
@@ -256,6 +265,10 @@ words), SET-9 (export words), SET-10 (a "Saved" tick), SET-11 (reset per section
 - `ThemeSettingsPanel` tests: a stored theme id from before the rename still applies; a custom theme
   is deleted only after the confirm (SET-3).
 - `PrivacyDialog` and the Privacy section show the same state after either changes it (SET-7).
+- `scale.test.ts`: with nothing stored the scale is 1.5; a stored "1.5" reads as 1.5, not 1; a
+  stored "2" stays 2; an unknown value falls back to 1.5 (DEC-161).
+- `e2e/playerBar.spec.ts` checks the bar fits at 1, 1.5, 2 and 3, and a new check confirms no
+  computed border, bevel or focus-ring width is fractional at 1.5×.
 - `e2e/waveformSettings.spec.ts`, `e2e/rekordboxExport.spec.ts`, `e2e/playerAudio.spec.ts` and
   `e2e/discover.spec.ts` pass with their strings updated.
 

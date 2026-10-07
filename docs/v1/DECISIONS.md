@@ -5054,3 +5054,23 @@ recommendation added.
 filter.
 
 **Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-161 — A 1.5× Size, and It Is the Default
+
+**Status**: Approved · **Related**: SET-4, DEC-159, Phase 1 DS-2 (integer pixel scale), PAGES-01
+
+**Decision**: The size setting offers 1×, 1.5×, 2× and 3×, and 1.5× is the default for anyone who
+has not chosen. Labels: "Small (1×)", "Medium (1.5×) — default", "Large (2×)", "Extra large (3×)".
+
+**Reason**: The user's choice: 2× is too large as a default and 1× too small.
+
+**Implications**:
+- **Amends DS-2's whole-number scale.** At 1.5× a 1px line would be 1.5px and blur, so edge tokens
+  (borders, bevels, focus rings, shadows) round to whole pixels. Lines may differ by a pixel from a
+  strict 1.5× of their 1× width; the pixel look holds because no edge is fractional.
+- A stored choice is kept. Only a fresh install, or one that never picked a size, opens at 1.5×.
+- Built in PAGES-01 with SET-4. The storage key stays `cuepoint-ui-lab-scale`.
+
+**Decided with**: User · **Date**: 2026-10-07
