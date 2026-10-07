@@ -3193,3 +3193,120 @@ was moved. Are those reported?
 
 **Recommendation**: **A**. It keeps Sentry a list of bugs, and the activity feed already shows the
 user what happened.
+
+---
+
+## DECISION ROUND 17 — THE PAGES REVISITED (Phase 14) ⏳ Open
+
+Asked while specifying Phase 14 (`PHASE14_PAGES.md`). Decision Round 14 settled the shape of the phase
+(DEC-130…DEC-135). The page reviews (`PHASE14_REVIEWS.md`) carry 107 proposals the user marks yes or
+no one by one (DEC-131); these six questions are the ones a yes or no cannot answer.
+
+Found while specifying:
+- **Search results cannot be opened.** They are plain list rows with no click or key handling
+  (`GlobalSearch.tsx:110-115`). HDR-1 proposes the fix.
+- **The first-run tour has three defects** (`OnboardingDialog.tsx`): it reopens on the last screen
+  seen, a stray click marks it done for good, and its storage write is unguarded. RUN-2.
+- **The shortcuts list is stale.** It lists Ctrl+O, Ctrl+E and the retired Match and Results screens
+  (`api/keyboardShortcuts.ts:9-22`), and no handler exists for either key. LIB-12.
+- **No motion honors reduced motion today.** The toast slides in regardless. PAGES-02.
+
+### Q-157 — The tenth kind of motion
+
+**Status**: Open
+
+**Question**: DEC-134 builds "all ten kinds of motion on the user's list", and lists nine:
+microinteractions, interaction animations, state transitions, page transitions, entrance and exit,
+hover and focus, scroll animations, loading, and shared-element transitions. The list the user gave
+in Q-135 is not recorded anywhere else. What is the tenth?
+
+- **Option A — Feedback.** Motion that confirms or warns: a tick when a setting is saved, a short
+  shake when a value is refused, a pulse on something new (a finished job, a new search result).
+- **Option B — Data changes.** Numbers and bars that move to their new value: counts, progress,
+  loudness, a Set's running time.
+- **Option C — There were nine.** DEC-134 is corrected to nine kinds.
+- **Option D — Something else,** which the user names.
+
+**Recommendation**: **A**, unless the user's list said otherwise. It has the most honest uses here
+(SET-10's "Saved" tick, refused inputs in Prepare's chapter dialog and the time fields), and it reads
+as one kind, where B overlaps state transitions.
+
+### Q-158 — "Engine" and "jobs" in the app's words
+
+**Status**: Open
+
+**Question**: The status strip says "Engine connected · v1.0.0", "Starting engine…", "Restart engine"
+and "No jobs running". Search and Activity say "needs the CuePoint engine". A DJ does not know what
+the engine is. Does the word stay?
+
+- **Option A — Replace it.** "Ready", "Starting up…", "Reconnecting… (attempt 2 of 3)", "CuePoint's
+  library service stopped" with **Restart**; idle shows nothing; "background work" for jobs. The
+  version moves to Help → About and Settings → About & updates. The raw error moves to a hover title
+  and Diagnostics.
+- **Option B — Keep it, and define it once.** The first-run guide and the glossary say what the
+  engine is. "No jobs running" still goes.
+
+**Recommendation**: **A**. The strip is on screen all the time, and nothing the user does needs the
+word. Every end-to-end spec that waits on "Engine connected" moves to asking the bridge first
+(`PHASE14_PAGES.md`, fact 1).
+
+### Q-159 — Collections in the sidebar
+
+**Status**: Open
+
+**Question**: The sidebar has **Library** and **Collections**, and both open the Library page; the
+second aims it at the Collections pane (DEC-062). A new user sees two destinations and one page.
+
+- **Option A — Remove the Collections entry.** The Library's left pane already holds Collections.
+- **Option B — Nest it under Library,** indented, so it reads as a way into the Library.
+- **Option C — Keep it as it is.**
+
+**Recommendation**: **B**. It keeps the one-click way to Collections DEC-062 wanted, and the indent
+says it is part of the Library.
+
+### Q-160 — What a click on the wheel does to the Library's filter
+
+**Status**: Open
+
+**Question**: DEC-133: "A key, clicked, filters the Library to it." The Library may already have a
+search and rules on.
+
+- **Option A — Replace.** The Library opens on all tracks in that key: the search and rules are
+  cleared. A second button under the wheel, **All N lit keys**, filters to every compatible key at
+  once.
+- **Option B — Add.** The key joins whatever is on: a Library already showing "Genre is House" shows
+  House tracks in that key. Clicking another key replaces the key rule, not the others.
+- **Option C — A, with Shift-click for B.**
+
+**Recommendation**: **A**. "Show me what mixes with this" is a fresh question; carrying an old filter
+along hides tracks without saying so. **All N lit keys** is the click a DJ wants most.
+
+### Q-161 — Which track the wheel lights
+
+**Status**: Open
+
+**Question**: DEC-133 lights "the selected or playing track's key". When a track is selected and a
+different one is playing, which is lit?
+
+- **Option A — The selected track,** else the playing one. The caption names which.
+- **Option B — The playing track,** else the selected one.
+- **Option C — Both,** in two colours, with a legend.
+
+**Recommendation**: **A**. Selecting is the deliberate act, and the player bar's key (BAR-5) opens the
+wheel lit for the playing track when that is the one wanted.
+
+### Q-162 — British or American English
+
+**Status**: Open
+
+**Question**: The app mixes them: "Colour" and "Analysing" (British) beside "Favorite" and
+"organize" (American). Plain words throughout (DEC-132) is the moment to pick one.
+
+- **Option A — British,** with -ise: "Favourite", "organise", "colour", "analyse".
+- **Option B — British with -ize** (the docs' current habit): "Favourite", "organize", "colour",
+  "analyse".
+- **Option C — American:** "Favorite", "organize", "color", "analyze".
+
+**Recommendation**: **C**. Beatport, Rekordbox and most DJ software speak American English, and it
+changes the fewest field names a user types in filters ("Colour" is one). The user guide follows
+whichever is chosen.
