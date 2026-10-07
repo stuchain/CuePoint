@@ -1,6 +1,6 @@
 # Pixel UI assets (reference)
 
-This folder holds **documentation** for pixel-art assets used by the future Electron UI. **Source files** (e.g. Aseprite) should stay **out of git** per [phase-0c-repo-hygiene.md](../phase-0c-repo-hygiene.md); commit **exported** PNG/WebP and **JSON** 9-slice metadata only.
+This folder holds **documentation** for pixel-art assets used by the future Electron UI. **Source files** (e.g. Aseprite) should stay **out of git** per phase-0c-repo-hygiene.md (`docs/ui-overhaul/phase-0c-repo-hygiene.md`, removed in Phase 12; in git history); commit **exported** PNG/WebP and **JSON** 9-slice metadata only.
 
 ## Export checklist
 
@@ -9,7 +9,7 @@ This folder holds **documentation** for pixel-art assets used by the future Elec
 3. For **9-slice** panels, record insets in a small JSON file next to the image, e.g. `{ "left": 8, "right": 8, "top": 8, "bottom": 8 }`.
 4. Name files predictably: `button-primary-idle.png`, `panel-section.png`, etc.
 
-See [phase-1-pixel-design-system.md](../phase-1-pixel-design-system.md) for the full pipeline.
+See phase-1-pixel-design-system.md (`docs/ui-overhaul/phase-1-pixel-design-system.md`, removed in Phase 12; in git history) for the full pipeline.
 
 ## Analytical acceptance (assets)
 

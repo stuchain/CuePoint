@@ -37,7 +37,7 @@ Output files include a `schema_version` header. Current version: `1.0`.
 For breaking changes:
 
 1. Bump schema version (e.g., 1.0 → 2.0)
-2. Add migration guide in `docs/release/` or `docs/guides/`
+2. Add a migration guide in `docs/release/`
 3. Document in release notes
 4. Consider backward-compat mode (e.g., flag for old format)
 

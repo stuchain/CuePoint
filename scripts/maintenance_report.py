@@ -71,8 +71,8 @@ def generate_report(
         "requirements": {},
         "dependency_audit": {},
         "compatibility": {
-            "docs": "docs/release/compatibility-matrix.md",
-            "maintenance_policy": "docs/release/maintenance-policy.md",
+            "docs": "docs/user-guide/support-policy.md",
+            "maintenance_policy": "docs/policy/maintenance-policy.md",
         },
     }
 
@@ -133,8 +133,8 @@ def generate_report(
         "",
         f"Overall: {'PASS' if report['dependency_audit']['overall'] else 'FAIL'}",
         "",
-        "See docs/release/maintenance-policy.md for maintenance cadence and SLA.",
-        "See docs/release/compatibility-matrix.md for OS/Python support.",
+        "See docs/policy/maintenance-policy.md for maintenance cadence and SLA.",
+        "See docs/user-guide/support-policy.md for OS/Python support.",
     ])
 
     report["_output"] = "\n".join(lines)

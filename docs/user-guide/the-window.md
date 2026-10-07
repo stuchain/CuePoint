@@ -108,6 +108,8 @@ matches only the tracks it had not reached. See [Clean](clean.md#matching).
 
 ## Keyboard shortcuts
 
+To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Keyboard shortcuts...**. The dialog lists them by context (Global, Library, Clean, Player and so on). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys. Some keys it lists, such as **Ctrl+O**, **Ctrl+E**, **F5**, **Ctrl+R**, **Ctrl+H**, **Ctrl+,** and **Ctrl+Shift+F**, have no action in the window yet. The keys below are the ones that work.
+
 | Shortcut | Does |
 | --- | --- |
 | **Ctrl+K** | Search your library |
@@ -117,7 +119,6 @@ matches only the tracks it had not reached. See [Clean](clean.md#matching).
 | **Ctrl+B** | Collapse or expand the navigation |
 | **Ctrl+I** | Show or hide the Track Inspector |
 | **Ctrl+Shift+A** | Open Activity |
-| **Ctrl+,** | Settings |
 | **F1** or **Ctrl+?** | All keyboard shortcuts |
 
 In Clean's review queue:
@@ -131,6 +132,8 @@ In Clean's review queue:
 | **N** | Next track without deciding |
 
 These keys do nothing while you are typing in a field or have a dialog open.
+
+The player's keys (**Space**, **Ctrl** with the arrow keys, and the media keys) are in [Playing music](player.md#from-the-keyboard).
 
 Every part of the window can be reached with **Tab** alone, in the order it
 appears on screen: search, navigation, page, Inspector, status strip. Dialogs

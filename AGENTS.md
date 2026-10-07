@@ -7,7 +7,6 @@ Use this as an operational map, not a product manual. Load only the files needed
 - Run `git status --short`; preserve unrelated user changes.
 - Search with `rg`/`rg --files` before opening broad directories.
 - Prefer current code, package scripts, test config, and CI over prose when they disagree.
-- Treat `docs/development/archive/` and `docs/ui-overhaul/tracking/` as historical context.
 - Skip lockfiles, binaries, generated output, and large fixtures unless directly relevant.
 
 ## Architecture
@@ -30,13 +29,13 @@ fails on any Qt import, requirement or CI install.
 | Waveforms (Phase 11) | `src/cuepoint/*/waveform*` and `data/audio_decode.py` (the player's mpv decodes, FFmpeg reduces and measures loudness; ADR-009); `waveforms.db` is a rebuildable cache beside the library, loudness in its own table (ADR-010); drawn by `renderer/src/components/waveform/`, Prepare's strip in `screens/prepare/SetTransition.tsx`; `scripts/bench_waveforms.py` measures the phase; release check `fetch_player_sidecar.py --check-analysis` |
 | Discover (Beatport catalog, runs, pages, similarity) | `src/cuepoint/services/` (`discovery_*`, `beatport_*`, `entity_page_*`, `similarity_*`), `src/cuepoint/core/similarity.py`, `src/cuepoint/engine/discover_api.py` |
 | Shared models | `src/cuepoint/models/`, `src/cuepoint/compat/gui_types.py` |
-| Electron main/preload | `apps/desktop-electron/electron/` |
+| Electron main/preload | `apps/desktop-electron/electron/` (`main.ts`, `engineSupervisor.ts`, `engineClient.ts`, `playerSupervisor.ts`; the runtime preload is `preload.cjs`) |
 | React UI | `apps/desktop-electron/renderer/src/` |
 | Tests | `src/tests/`, `apps/desktop-electron/e2e/` |
 | Build/release | `scripts/`, `.github/workflows/`, `build/` |
 
 For intent, start with `docs/development/architecture.md`, accepted ADRs in
-`docs/ui-overhaul/adr/`, or `docs/release/ops-index.md` as appropriate.
+`docs/ui-overhaul/adr/`, or `docs/release/release-deployment-runbook.md` as appropriate.
 
 ## Environment and commands
 
@@ -45,7 +44,7 @@ Run Python commands at repository root. Setup is documented in `README.md` and
 `docs/development/developer-setup.md`.
 
 ```bash
-# Run
+# Run (desktop: first `npm ci` here and in renderer/)
 python main.py --xml collection.xml --playlist "My Playlist"
 cd apps/desktop-electron && npm run electron:start
 
@@ -69,11 +68,12 @@ python -m pytest src/tests/unit/engine/ -q --tb=short
 PYTHONPATH=src python scripts/smoke_engine_health.py       # needs src on the path, as CI sets it
 python scripts/check_desktop_version_coupling.py
 cd apps/desktop-electron && npm run build
+cd apps/desktop-electron && npm test && npm run typecheck   # main-process tests and types
 ```
 
 `scripts/run_tests.py` selects layers but does not accept arbitrary pytest options such as `-k`;
 use `python -m pytest` for focused selectors. Run Electron E2E only when the changed flow warrants
-it. Do not claim a check passed unless it ran; report skipped checks and why.
+it (`npm run test:e2e` in `apps/desktop-electron`; `npm run test:e2e:install` once). Do not claim a check passed unless it ran; report skipped checks and why.
 
 ## Local automation
 
@@ -91,14 +91,15 @@ payload with bash builtins, not `jq`, which is not a supported dependency.
 `lint-touched.sh` is the only hook that writes: it reformats the file just touched, so re-read a
 file before editing a region it may have changed. Lint violations are reported, never auto-fixed.
 
-`pre-commit` is installed at `.git/hooks/pre-commit` and runs ruff plus file hygiene on staged
-files. `trailing-whitespace` and `end-of-file-fixer` rewrite files and abort the commit for
+`pre-commit` (`pre-commit install`, once per clone) runs ruff plus file hygiene on staged files.
+It is not installed for you, so a fresh clone has no such gate. `trailing-whitespace` and `end-of-file-fixer` rewrite files and abort the commit for
 re-staging. mypy is excluded from it deliberately; `.pre-commit-config.yaml` explains why.
 
 ## Invariants
 
 - For engine API changes, search and synchronize Python `server.py`/`*_api.py`, Electron
   `engineClient.ts`/`main.ts`, runtime `preload.cjs`, renderer bridge types/consumers, and tests.
+  The runtime preload is `preload.cjs`: `electron-builder` ships it and `main.ts` loads it through `resolvePreloadPath()` (in `engineSupervisor.ts`).
 - Bind the engine to loopback. Only `/health` is unauthenticated and it exposes no secrets;
   `/api/v1/*` uses the in-memory bearer token.
 - Never expose tokens, unrestricted filesystem access, or Node APIs to renderer storage. Keep

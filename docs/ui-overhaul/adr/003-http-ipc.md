@@ -34,5 +34,5 @@ Use **HTTP JSON** on `127.0.0.1` for request/response APIs. Add **WebSocket or S
 
 ## References
 
-- [phase-0b-security-and-privacy.md](../phase-0b-security-and-privacy.md)
-- [phase-3-engine-api.md](../phase-3-engine-api.md)
+- phase-0b-security-and-privacy.md (`docs/ui-overhaul/phase-0b-security-and-privacy.md`, removed in Phase 12; in git history)
+- phase-3-engine-api.md (`docs/ui-overhaul/phase-3-engine-api.md`, removed in Phase 12; in git history)

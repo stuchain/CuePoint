@@ -17,6 +17,7 @@ PRUNE-02 is implemented (2026-10-06): Qt is removed, and `scripts/check_no_qt.py
 PRUNE-03 is implemented (2026-10-07): no unreached Python module remains but the migrations.
 PRUNE-04 is implemented (2026-10-07): the retired app's workflows and every script nothing runs are gone.
 PRUNE-06 is implemented (2026-10-07): every dependency left has a live importer.
+PRUNE-07 is implemented (2026-10-07): 250 docs became 135, each checked against the code.
 Phase 11 is specified in `PHASE11_WAVEFORMS.md` (WAVE-01…WAVE-08), unblocked by Decision Round 13
 (DEC-113…DEC-123); WAVE-01 to WAVE-08 are implemented, WAVE-08 (loudness, DEC-124, which
 supersedes DEC-121) the last. Phase 11's acceptance is met on Windows, in the
@@ -811,7 +812,7 @@ Specified 2026-10-06 in `PHASE12_CLEANUP.md`, in eight steps:
 - **PRUNE-04:** the old release pipeline and scripts nothing runs. *Implemented 2026-10-07.*
 - **PRUNE-05:** dead Electron and renderer code.
 - **PRUNE-06:** dependencies. *Implemented 2026-10-07.*
-- **PRUNE-07:** the docs.
+- **PRUNE-07:** the docs. *Implemented 2026-10-07.*
 - **PRUNE-08:** a dead-code guard in CI, and the phase comes together.
 
 The prefix is PRUNE because CLEAN is Phase 7's.

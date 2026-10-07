@@ -30,18 +30,17 @@ Design 10.9. Running against sample data without affecting production.
 python src/main.py --xml src/tests/fixtures/rekordbox/minimal.xml --playlist "Test Playlist" --out sandbox_out
 
 # With debug logs
-set CUEPOINT_DEBUG=1   # Windows
-# export CUEPOINT_DEBUG=1  # macOS/Linux
-python src/main.py --xml src/tests/fixtures/rekordbox/minimal.xml --playlist "Test Playlist" --out sandbox_out
+python src/main.py --xml src/tests/fixtures/rekordbox/minimal.xml --playlist "Test Playlist" --out sandbox_out --debug
 ```
 
 ## Running GUI with Sample Data
 
-1. Launch desktop shell: `cd apps/desktop-electron && npm run electron:dev`
-2. Import XML from the in-app flow
-3. Select `src/tests/fixtures/rekordbox/minimal.xml` (or `small.xml`)
-4. Choose a playlist from the dropdown
-5. Process and review results
+1. Start the renderer dev server: `cd apps/desktop-electron && npm run dev:renderer`. `npm run electron:dev` loads it from `http://localhost:5173`, so it needs the server running. To skip the dev server, use `npm run electron:start`, which builds the renderer first.
+2. In a second terminal, start the shell: `cd apps/desktop-electron && npm run electron:dev`
+3. In **Library**, choose **Import a collection...** and pick `src/tests/fixtures/rekordbox/minimal.xml` (or `small.xml`)
+4. In **Clean**, choose **Show what is not matched**, then **Match all**, and review the results
+
+Matching asks Beatport, so it needs the network.
 
 ## Offline Testing (No Network)
 
@@ -52,7 +51,7 @@ Integration tests use mocked HTTP. For manual offline testing:
 
 ## Output Location
 
-Default output: `CuePoint_Output/` in user Documents (or as configured). For sandbox runs, use `--out sandbox_out` to write to project directory.
+Default output: `CuePoint_Output/` in user Documents (or as configured). For sandbox runs, `--out sandbox_out` sets the output file base name (a timestamp is added), and `--output-dir sandbox_out` writes to a folder in the project directory.
 
 ## Fixture Policy
 

@@ -1,68 +1,76 @@
 # Release Rollback Plan
 
-Design: 02 Release Engineering and Distribution (2.4, 2.20, 2.37, 2.89).
+When a release is broken (a critical bug, a security issue, or installers that fail), withdraw it and, if needed, ship a fixed one. The app has no auto-updater yet (DEC-145), so a bad release spreads only through the download page. Withdrawing the GitHub release stops new installs; people who already installed it have to install the fix by hand.
 
-## Purpose
+## When to roll back
 
-When a release is broken (critical bug, security issue, or failed installs), follow this plan to withdraw the release and optionally publish a hotfix.
+Roll back when a release has:
 
-## Rollback Steps
+- data loss or corruption,
+- a crash for more than about 2% of users,
+- an installer that does not install or does not start,
+- a security vulnerability.
+
+For a live incident, start with the [Incident Response Runbook](incident-response-runbook.md) and come here once you decide to withdraw.
+
+## Rollback steps
 
 ### 1. Identify the broken version
 
-- Note the version (e.g. `1.2.3`) and the GitHub release tag (e.g. `v1.2.3`).
-- Document the incident: what failed, who is affected, and root cause if known.
+- Note the version (for example `1.2.3`) and its GitHub release tag (`v1.2.3`).
+- Write down what failed, who is affected and the root cause, if known.
 
-### 2. Remove appcast entry
+### 2. Withdraw the GitHub release
 
-- So that auto-update no longer offers the broken version:
-  - Edit or regenerate the appcast so the broken version is no longer the latest (or remove its `<item>`).
-  - Appcast files: `updates/macos/stable/appcast.xml`, `updates/windows/stable/appcast.xml` (on `gh-pages` or your feed host).
-- Publish the updated appcast (e.g. push to `gh-pages` or update the feed).
+- Open the release for the broken tag.
+- Either **unpublish** it (convert it to a draft) so it is no longer shown as a normal release, or mark it as a pre-release so it is not the latest.
+- Add a line at the top of the description: "WITHDRAWN: [brief reason]. Do not use this build."
+- Check that the previous good release is marked as the latest.
 
-### 3. Mark GitHub release as withdrawn
+### 3. Notify users
 
-- Open the GitHub release for the broken tag.
-- Either:
-  - **Unpublish**: Use “Unpublish release” so the release page and assets are no longer the default; or
-  - **Draft**: Convert to draft so it is not shown as a normal release.
-- Add a note in the release description: “WITHDRAWN: [brief reason]. Do not use this build.”
+- Post a notice (release page, GitHub Discussions, or a pinned issue) saying that the version was withdrawn, why, and what to do. For a security issue, publish a GitHub security advisory.
+- Give a timeline for the fix if you have one.
 
-### 4. Notify users (if applicable)
+### 4. Ship a fix
 
-- Post release notes or a notice that the version was withdrawn and why.
-- If you have a beta or mailing list, notify testers.
+A version number must go up, so do not reuse the withdrawn tag. Ship the fix as a new patch release (for example `1.2.4`), made either from a minimal fix or from a revert of the bad change, on top of the last good code. Follow the checklist below.
 
-### 5. Publish a hotfix (if applicable)
+### 5. After the rollback
 
-- Follow the [Emergency Hotfix Checklist](#emergency-hotfix-checklist) to ship a patched version.
+- Find the root cause and write it down (the incident template and postmortem are in the [Incident Response Runbook](incident-response-runbook.md)).
+- Add a test that would have caught it.
+- Say what happened in the next release notes.
 
-## Emergency Hotfix Checklist
+## Emergency hotfix checklist
 
-- [ ] Create hotfix branch from the **last good** release tag (e.g. `git checkout -b hotfix/1.2.4 v1.2.3`).
-- [ ] Apply the minimal fix; run tests.
-- [ ] Bump version (e.g. to `1.2.4`) in `src/cuepoint/version.py` and sync (e.g. `scripts/sync_version.py`).
-- [ ] Update `docs/release/CHANGELOG.md` with the fix and version.
-- [ ] Create and push tag (e.g. `v1.2.4`).
-- [ ] Let CI build, sign, and run release workflow.
-- [ ] After release is published, regenerate appcast so the new version is the latest entry.
-- [ ] Verify update check offers the hotfix and not the withdrawn version.
+- [ ] Create a hotfix branch from the **last good** release tag, for example `git checkout -b hotfix/1.2.4 v1.2.3`.
+- [ ] Make the minimal fix, or revert the bad change, and run the tests.
+- [ ] Bump the version in `src/cuepoint/version.py` and set the same value in `cuepoint.engineVersion` in `apps/desktop-electron/package.json`.
+- [ ] Update `docs/release/CHANGELOG.md` with the fix and the version.
+- [ ] Run `python scripts/check_desktop_version_coupling.py` and `python scripts/validate_changelog.py`. Run `python scripts/validate_version.py` after you tag; it fails until the new tag exists.
+- [ ] Push the branch, open a pull request from it into `main`, and wait for its green `desktop-electron.yml` run. A push to a `hotfix/*` branch does not start that workflow.
+- [ ] Follow [Publish](release-deployment-runbook.md#publish) in the release runbook: tag, check the artifacts and checksums, create the release.
+- [ ] Mark the new release as latest, and update the notice you posted in step 3.
 
-## Rollback drill (periodic test)
+## Rollback drill
 
-Run periodically to validate rollback steps.
+Run this now and then to check the steps still work.
 
-1. **Simulate a bad release**: Add a test entry to a copy of the appcast (or use a test channel).
-2. **Remove the appcast entry**: Edit the appcast so the test version is no longer the latest; publish.
-3. **Confirm clients no longer see that version**: Run the app’s update check; it should not offer the removed version.
-4. **Publish a “fix” entry**: Add a new version entry; confirm the update flow offers it.
-5. **Validate appcast**: Run `python scripts/validate_appcast.py` on the modified appcast to ensure structure remains valid.
+1. Publish a test build (`X.Y.Z-test.N`) as a GitHub pre-release.
+2. Withdraw it as in step 2 and check the release page no longer presents it as current.
+3. Publish a "fix" test build and check the release page lists it.
+4. Remove both test releases when you are done.
 
-## Optional: checksum file signing
+## Prevention
 
-You may sign `SHA256SUMS` (e.g. with GPG) when a key is available. See [Key management](key-management.md#checksum-file-signing-optional).
+- Run the full test suite and the [pre-release checks](release-deployment-runbook.md#test-before-you-publish) before you tag.
+- Install the build on a clean machine before you publish it.
+- Watch new issues for 24-48 hours after a release.
+- Publish a test build to testers first when a change is risky.
 
 ## References
 
-- [Release strategy](release-strategy.md)
+- [Release Deployment Runbook](release-deployment-runbook.md)
+- [Incident Response Runbook](incident-response-runbook.md)
 - [Key management](key-management.md)

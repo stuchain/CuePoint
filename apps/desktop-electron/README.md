@@ -6,10 +6,11 @@ Electron shell and React renderer for the CuePoint desktop application.
 
 ```
 apps/desktop-electron/
-  electron/          # Main process and preload
+  electron/          # Main process, the preload bridge (preload.cjs) and their tests
   electron-dist/     # Built main bundle (gitignored)
   renderer/          # Vite + React UI
-  docs/              # Desktop design and implementation notes
+  e2e/               # Playwright tests that drive the built app
+  build/             # electron-builder hooks (signing, notarizing) and macOS entitlements
   package.json       # Dev orchestration
 ```
 
@@ -17,7 +18,7 @@ apps/desktop-electron/
 
 ```bash
 cd apps/desktop-electron/renderer
-npm install
+npm ci
 npm run dev          # http://localhost:5173
 npm run storybook    # http://localhost:6006
 ```
@@ -35,12 +36,18 @@ Terminal 2 — Electron shell (spawns `python -m cuepoint.engine`):
 
 ```bash
 cd apps/desktop-electron
-npm install
+npm ci
 npm run electron:dev
 ```
 
-Python must be available on `PATH`. The main process configures `PYTHONPATH` for
-the repository and starts the engine automatically.
+`electron:dev` loads the renderer from the dev server (`http://localhost:5173`, or
+`CUEPOINT_RENDERER_URL`), so keep terminal 1 running. To run the production build
+instead, use `npm run electron:start`, which builds the renderer and the shell first.
+
+The main process finds Python in this order: the `CUEPOINT_PYTHON` environment
+variable, the repository's `.venv`, then `python3` (`python` on Windows) on
+`PATH`. It sets `PYTHONPATH` to the repository's `src/` and starts the engine
+automatically. A packaged app runs the bundled engine sidecar instead.
 
 ## Routes
 
@@ -50,16 +57,18 @@ the repository and starts the engine automatically.
 | `/collections` | The Library page, aimed at Collections |
 | `/clean` | Clean: matching, review, missing files, duplicates, Health |
 | `/discover` | Discover: runs, the wantlist, and under it the Artist, Label and Similar tracks pages |
+| `/prepare` | Prepare: Sets, with a Set's own page at `/prepare/:setId` |
 | `/settings` | Settings |
 
 `/match` and `/results`, inKey's and Results' old addresses, redirect to
-`/clean` (DEC-071); `/incrate` redirects to `/discover`, and `/` — Tools'
-landing page — to `/library` (DEC-100). A path that matches nothing redirects to
+`/clean` (DEC-071). `/incrate`, the screen Discover replaced, redirects to
+`/discover`, and `/`, the landing page of the Tools group that is gone, to
+`/library` (DEC-100). A path that matches nothing redirects to
 the Library too. `renderer/src/components/shell/navRegistry.ts` declares every
 destination and every retired one.
 
 ## Docs
 
-- [UI overhaul plan](../../docs/ui-overhaul/README.md)
-- [Spike S1](docs/spike-s1-engine-health.md)
-- [Design sign-off](docs/design-signoff.md)
+- [Developer setup](../../docs/development/developer-setup.md)
+- [Architecture](../../docs/development/architecture.md)
+- [UI overhaul: the architecture decision records](../../docs/ui-overhaul/README.md)

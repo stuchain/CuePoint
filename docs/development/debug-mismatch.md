@@ -4,18 +4,13 @@ Design 10.10. Step-by-step guide when a track gets the wrong match or no match.
 
 ## Step 1: Enable Debug Logging
 
+Run the CLI with `--debug`, which turns on both `--verbose` (detailed progress) and `--trace` (every candidate evaluated):
+
 ```bash
-# Windows
-set CUEPOINT_DEBUG=1
-
-# macOS/Linux
-export CUEPOINT_DEBUG=1
-
-# Run CLI
-python src/main.py --xml your.xml --playlist "Playlist" --out debug_out
+python src/main.py --xml your.xml --playlist "Playlist" --out debug_out --debug
 ```
 
-Or in GUI: Settings > Advanced > enable debug logging (if available).
+`--out` is the base name of the output files, not a folder; use `--output-dir` to choose the folder. The desktop app has no setting for this. Its **Help > Log Viewer...** shows the application log.
 
 ## Step 2: Capture the Input Track
 

@@ -127,6 +127,35 @@ token field:
 Without a token you can still open past runs and use your wantlist; a new run
 and a push need one.
 
+### Getting a token
+
+Beatport does not hand out tokens from your account page. You ask for API
+access, and then exchange what they give you for a token.
+
+1. Fill in [Beatport's API key request form](https://accounts.beatport.com/developer/request-api-key)
+   (app name, what you will use it for) and wait for approval. Beatport then
+   sends you a **client ID**, and possibly a **client secret**, with the rules for
+   which sign-in flows you may use. Without a client ID you cannot get a token.
+2. Use your client ID to get an **access token** from Beatport. With a client
+   secret and a Beatport account, use the password flow. With only a client ID,
+   use the authorization code flow. Both are written out in the
+   [Beatport v4 reference](../development/beatport-v4-api.md#getting-a-token).
+   Keep your client secret private. The answer is a JSON object; the token is its
+   `access_token` value.
+3. In CuePoint, open **Settings**, paste the token into **Beatport token** and
+   choose **Save token**. The field hides the value and shows a masked copy once
+   it is saved; to replace the token, enter a new one.
+4. Choose **Test connection**. CuePoint calls Beatport once and tells you whether
+   it accepted the token, so you do not have to start a run to find out.
+
+You can set the environment variable `BEATPORT_ACCESS_TOKEN` instead. It takes
+priority over the saved token.
+
+A token expires after a while (Beatport's answer says when, in `expires_in`).
+CuePoint does not refresh it: when Discover says **Beatport rejected the
+token**, get a new one as above, or use the refresh token you got with the first
+(see the reference), and save it.
+
 ### Resolving Beatport identities
 
 When your library has matched tracks that Discover has not read from Beatport

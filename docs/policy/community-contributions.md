@@ -1,7 +1,7 @@
 # Community Contributions Policy — CuePoint
 
-**Version 1.0 — 2026-02-03**  
-**Last updated**: 2026-02-03
+**Version 1.1 — 2026-10-07**
+**Last updated**: 2026-10-07
 
 ## Overview
 
@@ -14,6 +14,20 @@ CuePoint welcomes contributions from the community. This policy describes how we
 - **Code contributions**: Fork, branch, make changes, and open a Pull Request
 
 See [CONTRIBUTING.md](../../.github/CONTRIBUTING.md) for detailed setup and workflow.
+
+## Taking Part in the Community
+
+- **Ask questions** in [GitHub Discussions](https://github.com/stuchain/CuePoint/discussions). Search first, and give context and details.
+- **Share ideas** there too. Explain the problem and what you propose, be open to feedback, and consider alternatives.
+- **Help others.** Answer when you can, be patient with newcomers, and give constructive feedback.
+- **Report bugs** in [GitHub Issues](https://github.com/stuchain/CuePoint/issues) with the issue templates. Include the steps to reproduce.
+- **Report security problems** as described in the [Security Policy](../../.github/SECURITY.md), not in a public discussion.
+
+Before you post, search for an existing discussion or issue, check the [FAQ](../faq/index.md) and the [documentation](../README.md), gather the details, and keep the post clear and short. When you reply, be helpful and respectful, give examples where you can, and link to relevant resources.
+
+## Moderation
+
+We keep the community respectful and inclusive. Moderators may remove inappropriate content, warn or ban people who break the [Code of Conduct](code-of-conduct.md), close discussions that do not follow these guidelines, and take other steps as needed.
 
 ## Contributor Expectations
 

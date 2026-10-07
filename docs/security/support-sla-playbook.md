@@ -12,8 +12,8 @@ Triage and escalation procedures for CuePoint support.
 
 ## Triage Workflow
 
-1. **Intake**: User reports via GitHub Issues or in-app Report Issue.
-2. **Categorize**: Assign priority (P0/P1/P2) and category (crash, update, matching, performance, UI).
+1. **Intake**: User reports via GitHub Issues.
+2. **Categorize**: Assign priority (P0/P1/P2) and category (crash, matching, performance, UI).
 3. **Request bundle**: If not attached, ask for Support Bundle (Help > Export Support Bundle).
 4. **Reproduce**: Use run ID and diagnostics to reproduce; check logs for errors.
 5. **Resolve or escalate**: Fix, document workaround, or escalate to maintainers.
@@ -21,7 +21,6 @@ Triage and escalation procedures for CuePoint support.
 ## Categories
 
 - **Crash**: Unhandled exception, app exits. Check crash logs in `crashes/`.
-- **Update failure**: Auto-update fails. Verify appcast, signatures, network.
 - **Matching quality**: Wrong or missing matches. Check query generation, scoring.
 - **Performance**: Slow runs, high memory. Check performance report, concurrency.
 - **UI issue**: Layout, responsiveness, accessibility.
@@ -43,17 +42,8 @@ Triage and escalation procedures for CuePoint support.
 ## Runbook: Crash Spike
 
 1. Identify affected version from issues.
-2. Disable auto-update for that version if needed.
-3. Profile and fix root cause.
-4. Release hotfix.
-5. Re-enable update.
-
-## Runbook: Update Failure
-
-1. Check appcast URL and format.
-2. Verify signatures (macOS notarization, Windows code signing).
-3. Re-publish if artifact corrupted.
-4. Document in release notes.
+2. Profile and fix root cause.
+3. Release a hotfix (see the [Rollback runbook](../release/rollback.md)).
 
 ## Runbook: Log Loss
 

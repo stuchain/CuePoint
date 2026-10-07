@@ -42,6 +42,50 @@ Desktop: Library tracks → Query Generation → Search → Match/Score → matc
 | `data/beatport.py` | Beatport search and page parsing |
 | `data/rekordbox.py` | Rekordbox XML parsing |
 
+## How a Track Is Matched
+
+The same matcher serves the CLI and the desktop app. These are its parts, in the order a track meets them.
+
+**Input.** `data/rekordbox.py` extracts playlists and track rows from the XML export. If a track has no artist, the artists are taken from the title. Titles are cleaned with `sanitize_title_for_search` before queries are built.
+
+**Query generation** (`core/query_generator.py`) builds a set of query variants in stages:
+
+- **Priority queries**: the full title with artist combinations.
+- **N-gram queries**: title fragments of one to N words.
+- **Remix queries**: the remixer and mix type, when the title names them.
+- **Special phrases**: parenthetical phrases such as "(Ivory Re-fire)".
+- **Reverse queries**: "Artist Title", optionally.
+
+The count is bounded by the `TITLE_GRAM_MAX`, `MAX_QUERIES_PER_TRACK` and `CROSS_TITLE_GRAMS_WITH_ARTISTS` settings.
+
+**Search** (`data/beatport_search.py`, `data/beatport.py`) combines methods: direct search of Beatport's pages and endpoints, DuckDuckGo (through `ddgs`) to find track URLs, and browser automation (Playwright or Selenium) when a page is rendered by JavaScript. `services/beatport_service.py` is the entry point; it caches search results and logs diagnostics.
+
+**Candidate parsing** (`data/beatport.py`, `parse_track_page`) reads a track page into its title, artists, key, year, BPM, label, genre, release name and release date. Parsed pages are cached.
+
+**Scoring** (`core/matcher.py`) weights title and artist similarity, then adds bonuses for a matching key or year, for the mix type (remix or original mix) and for special phrases. **Guards** reject false positives early: a title that matches on too few significant tokens, weak overlap between title and artist tokens, and title-only checks when the artist is missing. If a candidate scores high enough, the matcher stops early (`EARLY_EXIT_SCORE`, `EARLY_EXIT_MIN_QUERIES`).
+
+**Concurrency.** Tracks are processed in parallel (`TRACK_WORKERS`), candidates for one track are fetched in parallel (`CANDIDATE_WORKERS`), and `PER_TRACK_TIME_BUDGET_SEC` caps the time spent on a track. A `SEED` setting makes ordering and tie-breaking repeatable.
+
+**Output.** The CLI's writer (`services/output_writer.py`) produces the main CSV (one row per track), a candidates CSV (every candidate with its score), a queries CSV (an audit trail of the queries run) and, when any track falls below the acceptance threshold, a review CSV with matching review candidates and queries files. The desktop app stores attempts and candidates in SQLite instead (see [Matching (desktop)](#matching-desktop)).
+
+**Configuration** is layered: defaults in `models/config.py` (`SETTINGS`), overridden by `config.yaml` (the template is `config/config.yaml.template`), overridden by CLI flags and presets such as `--fast`, `--turbo` and `--exhaustive`. Nested YAML keys are mapped to the flat `SETTINGS` names, and you can also write the uppercase names directly.
+
+**Constraints.** A valid Rekordbox XML export is required. Match quality depends on Beatport's availability and metadata, and search speed on the network.
+
+## The desktop app (process model)
+
+```
+React renderer  ->  window.cuepoint (preload.cjs, contextBridge)  ->  Electron main (IPC)
+  ->  loopback HTTP + SSE, bearer token  ->  cuepoint.engine (Python)  ->  services / core / data
+```
+
+- **Renderer** (`apps/desktop-electron/renderer/src/`): React. It presents state and holds no business rules. It runs with context isolation on and no Node access, and reaches everything through the `window.cuepoint` bridge.
+- **Preload** (`apps/desktop-electron/electron/preload.cjs`): the runtime preload, which exposes narrow methods that forward to IPC handlers in `main.ts`.
+- **Electron main** (`electron/main.ts`): creates the window, shows native dialogs, and supervises two child processes. `engineSupervisor.ts` starts the Python engine on `127.0.0.1` on a free port with a per-session bearer token (in development `python -m cuepoint.engine`; packaged, the PyInstaller engine sidecar). `playerSupervisor.ts` starts the bundled mpv player. `engineClient.ts` makes the authenticated calls and relays job events (SSE) to the renderer.
+- **Engine** (`src/cuepoint/engine/`): an HTTP server. Only `/health` is unauthenticated. Everything under `/api/v1/` needs the bearer token. Long work runs as jobs (`jobs.py`) whose progress streams from `/api/v1/jobs/{id}/events`.
+
+The pages below describe two of the paths through it in detail.
+
 ## Library Browsing (desktop)
 
 The Library page browses a collection that does not fit in the renderer. Every
@@ -144,4 +188,5 @@ Clean page (ReviewView) / Library actions
 
 - [Match Rules & Scoring](match-rules-and-scoring.md)
 - [Beatport Parsing](beatport-parsing.md)
+- [Beatport v4 API Reference](beatport-v4-api.md) (what Discover uses)
 - [Project README](https://github.com/stuchain/CuePoint/blob/main/README.md)

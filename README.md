@@ -29,8 +29,8 @@ python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt -r requirements-dev.txt
 cd apps/desktop-electron
-npm install
-npm install --prefix renderer
+npm ci
+npm ci --prefix renderer
 ```
 
 Run the desktop app:
@@ -45,7 +45,7 @@ Run the CLI from the repository root:
 python main.py --xml collection.xml --playlist "My Playlist"
 ```
 
-See [How to run](docs/how-to-run.md) for platform launchers and build details.
+See [Developer setup](docs/development/developer-setup.md) for platform notes, running from source and build details.
 
 ## Repository layout
 
@@ -61,7 +61,8 @@ See [How to run](docs/how-to-run.md) for platform launchers and build details.
 
 ```bash
 python scripts/run_tests.py --all --no-slow
-make check-format
+ruff check src/
+ruff format --check src/
 cd apps/desktop-electron/renderer && npm test
 ```
 

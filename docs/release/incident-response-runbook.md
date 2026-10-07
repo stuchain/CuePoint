@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This runbook guides response to incidents (critical bugs, crashes, update failures). Follow these steps to identify impact, communicate, and mitigate.
+This runbook guides response to incidents (critical bugs, crashes, broken installers). Follow these steps to identify impact, communicate, and mitigate. For how support issues are triaged before they become incidents, see [Support SLA](../policy/support-sla.md#triage).
 
 ## Incident Severity
 
@@ -44,16 +44,15 @@ This runbook guides response to incidents (critical bugs, crashes, update failur
 
 ### 4. Mitigate
 
-- **Crash spike**: Disable auto-update for affected version; profile and fix
-- **Update failure**: Check appcast, signatures; re-publish if corrupted
-- **Data loss**: Document workaround; release hotfix ASAP
+- **Crash spike**: Withdraw the affected release (see [Rollback](rollback.md)); reproduce with the reporter's support bundle and fix
+- **Broken installer**: Withdraw the release; rebuild from the tag, check the artifacts and checksums, and re-publish (see [Disaster recovery](#disaster-recovery))
+- **Data loss**: Document a workaround; release a hotfix ASAP
 
 ### 5. Resolve
 
 - Implement fix
 - Test thoroughly
-- Release hotfix or patch
-- Update appcast
+- Release a hotfix or patch (see the hotfix checklist in [Rollback](rollback.md))
 
 ### 6. Postmortem (Sev1 Required)
 
@@ -101,15 +100,54 @@ Action items: [List]
 
 Consider rollback when:
 - Crash spike (>2% of users)
-- Update failure (clients cannot update)
+- An installer that does not install or start
 - Data loss or corruption
 - Security vulnerability
 
 See [Rollback Runbook](rollback.md).
 
+## Backup and disaster recovery
+
+What to keep, and how to recover when a repository or a release is lost.
+
+### What is backed up
+
+| Asset | Where it lives | How it is kept |
+| --- | --- | --- |
+| Release installers and checksums | GitHub Releases | Retained with each release. Do not delete releases; withdraw them instead (see [Rollback](rollback.md)). Export installers of major versions to storage you control. |
+| Documentation and build configuration | The repository | Git history versions every change. Tag releases to preserve the state of the docs. |
+| Signing keys and credentials | Your password manager or encrypted storage | See [Key management](key-management.md). Never in the repository. |
+
+### Disaster recovery
+
+**The GitHub repository is compromised or lost**
+
+1. Verify the integrity of a trusted local clone.
+2. Create a new repository if needed and push from the trusted clone.
+3. Re-create the releases from your installer backups, or rebuild them (below).
+4. Rotate every signing key and credential (see [Key management](key-management.md)).
+5. Say what happened in the release notes if the repository moved.
+
+**Release installers are lost**
+
+1. Check out the release tag: `git checkout vX.Y.Z`.
+2. Run the build as CI does (see [What CI builds](release-deployment-runbook.md#what-ci-builds)), or open a pull request (or push a `phase_*` branch) at that tag so `desktop-electron.yml` runs. The workflow has no manual trigger.
+3. Re-sign and re-notarize the macOS build.
+4. Re-publish the installers and checksums to the GitHub release.
+
+### Check your backups
+
+- Monthly: confirm the release installers still download, and that you can build from a tag.
+- Quarterly: do a full restore drill (build from a tag and verify the output) and update this section if the steps changed.
+
+### Retention
+
+- Release installers: keep them for every supported version.
+- Support bundles that users send: keep them for 30 days, then delete them.
+
 ## Related Documents
 
-- [Triage Workflow](triage-workflow.md)
+- [Support SLA](../policy/support-sla.md)
 - [Rollback](rollback.md)
-- [Update Feed Recovery](update-feed-recovery-runbook.md)
+- [Release Deployment Runbook](release-deployment-runbook.md)
 - [Support SLA Playbook](../security/support-sla-playbook.md)

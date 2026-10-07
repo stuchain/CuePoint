@@ -65,15 +65,15 @@ from project root.
 
 **Cause**: Different Python version, OS, or env.
 
-**Fix**: Check `.github/workflows/test.yml` for matrix (e.g. Python 3.11, Windows/macOS). Run same Python version locally.
+**Fix**: Check `.github/workflows/test.yml` and `release-gates.yml` for the Python and OS matrix (Python 3.11 and 3.12 on Linux, macOS and Windows). Run the same Python version locally.
 
-### "Missing DLL" or PyInstaller errors
+### "Missing DLL" or PyInstaller errors when building the engine sidecar
 
 **Cause**: PyInstaller version mismatch or missing system libs.
 
-**Fix**: Use PyInstaller 6.17+ (see `requirements-dev.txt`). On Windows, ensure Visual C++ Redistributable is installed.
+**Fix**: Use the PyInstaller version pinned in `requirements-build.txt`. On Windows, ensure Visual C++ Redistributable is installed.
 
-### The packaged app behaves differently from a development run
+### The packaged engine behaves differently from a development run
 
 **Cause**: PyInstaller bundles what the *module graph* references — `import`
 statements, followed transitively. Anything loaded another way is invisible to
@@ -84,10 +84,10 @@ it and simply will not be there:
 - a non-`.py` file a package reads at runtime needs an entry in `datas`
 
 Both fail *only* in packaged builds, and usually silently — the build succeeds
-and the missing code or file surfaces as an unrelated error later. Two have
-happened here: inCrate's `schema.sql` (a data file, since retired with inCrate), and `cuepoint.migrations`
-(dynamically imported, which shipped no migrations and would have created a
-database with no tables on a fresh install).
+and the missing code or file surfaces as an unrelated error later. This has
+happened here: `cuepoint.migrations` is dynamically imported, so a bundle
+without it shipped no migrations and would have created a database with no
+tables on a fresh install.
 
 **Fix**: Add it to `build/engine-sidecar.spec`. The guards are
 `src/tests/unit/scripts/test_engine_sidecar_datas.py` and
@@ -100,25 +100,32 @@ python scripts/build_engine_sidecar.py    # builds, then smoke-tests /health
 
 ## Lint / Type Errors
 
-### Ruff or mypy fails on new code
+### Ruff fails on new code
 
 **Fix**:
 ```bash
 ruff check src/ --fix
-mypy src/ --ignore-missing-imports
+ruff format src/
 ```
 
-### Black reformats differently than CI
+### The mypy gate fails
 
-**Fix**: Use same Black version as in `requirements-dev.txt` (25.12.0). Run `black src/` before committing.
+**Fix**: Run the gate, not a bare `mypy src/`, which still reports older errors the gate does not cover:
+```bash
+python -m pytest src/tests/integration/test_mypy_foundation.py -q
+```
 
-## GUI Errors
+### Ruff formats differently than CI
 
-### GUI crashes on launch
+**Fix**: Install the ruff version pinned in `requirements-dev.txt` and run `ruff format --check src/`, which is what CI runs.
 
-**Cause**: Missing dependency or bad config.
+## Desktop app errors
 
-**Fix**: Delete or rename `config.yaml` in user config dir and retry. Check logs in Help > Open Logs Folder.
+### The app crashes on launch
+
+**Cause**: A missing sidecar, a bad config, or an engine that did not start.
+
+**Fix**: Run `npm run electron:dev` from `apps/desktop-electron` and read the terminal output. Delete or rename `~/.cuepoint/config.yaml` and retry. Check the logs with **Help > Log Viewer...**, then **Open logs folder**.
 
 ## Network / Beatport
 
@@ -126,7 +133,7 @@ mypy src/ --ignore-missing-imports
 
 **Cause**: Network block (VPN, firewall, corporate proxy).
 
-**Fix**: Try different network. Or set `DDG_ENABLED: false` in config to rely on direct Beatport search (if available).
+**Fix**: Try different network. Or put `DDG_ENABLED: false` in a YAML file and pass it to the CLI with `--config` to skip DuckDuckGo and use direct Beatport search.
 
 ### Beatport parsing returns empty data
 

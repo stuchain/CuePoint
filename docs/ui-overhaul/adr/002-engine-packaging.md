@@ -28,5 +28,5 @@ For **development and Spike S1**, allow `python -m cuepoint.engine` (or equivale
 
 ## References
 
-- [phase-0-architecture.md](../phase-0-architecture.md)
-- [spike-s1-engine-health.md](../../../apps/desktop-electron/docs/spike-s1-engine-health.md)
+- phase-0-architecture.md (`docs/ui-overhaul/phase-0-architecture.md`, removed in Phase 12; in git history)
+- spike-s1-engine-health.md (`apps/desktop-electron/docs/spike-s1-engine-health.md`, removed in Phase 12; in git history)

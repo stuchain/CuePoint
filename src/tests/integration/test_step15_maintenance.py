@@ -118,6 +118,5 @@ def test_requirements_files_exist() -> None:
 def test_maintenance_docs_exist() -> None:
     """Step 15 maintenance documentation exists."""
     repo_root = _repo_root()
-    assert (repo_root / "docs" / "release" / "maintenance-policy.md").exists()
-    assert (repo_root / "docs" / "release" / "compatibility-matrix.md").exists()
-    assert (repo_root / "docs" / "release" / "maintenance-roadmap.md").exists()
+    assert (repo_root / "docs" / "policy" / "maintenance-policy.md").exists()
+    assert (repo_root / "docs" / "user-guide" / "support-policy.md").exists()

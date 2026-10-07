@@ -18,7 +18,7 @@ CuePoint stores the following data **on your device only**:
 | Logs | App logs directory | Application logs (sanitized) | Per rotation policy (e.g., 7 days) |
 | Exports | User-chosen directory | CSV, Excel, JSON outputs | User-controlled |
 
-You can clear cache, logs, and reset config from **Help → Privacy** in the application.
+You can clear the cache and logs from **Help > Privacy...** in the application.
 
 ## Data Transmitted (Network Requests)
 
@@ -28,7 +28,6 @@ CuePoint makes network requests **only when you initiate actions** that require 
 | --- | --- | --- | --- |
 | Beatport lookups | Track title, artist (search queries) | Beatport / third-party search | Metadata enrichment |
 | DuckDuckGo search | Search query (track metadata) | DuckDuckGo | Fallback metadata search |
-| Update check | App version, OS (if enabled) | GitHub / update server | Check for updates |
 
 These requests go **directly from your device** to the third-party service. CuePoint does not proxy or store this data on its own servers.
 
@@ -45,7 +44,7 @@ CuePoint **does not** store any user data on remote servers. All processing is l
 ## Your Rights
 
 - **Clear data**: Use Help → Privacy to clear cache, logs, and config.
-- **Opt out of network**: Disable update checking; avoid Beatport/DuckDuckGo features if you prefer no external requests.
+- **Opt out of network**: Avoid Beatport/DuckDuckGo features if you prefer no external requests.
 - **Local-only use**: You can use CuePoint with local XML processing and manual exports without any network requests.
 
 ## Related Documents

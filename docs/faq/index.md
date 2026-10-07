@@ -6,7 +6,7 @@ Common questions and where to find answers.
 
 ### What is CuePoint?
 
-CuePoint keeps a library of your Rekordbox collection, matches it to Beatport metadata (key, BPM, genre, label, year), and helps you keep it clean. See [Quick Start](../getting-started/quick-start.md).
+CuePoint keeps a library of your Rekordbox collection, matches it to Beatport metadata (key, BPM, genre, label, year), and helps you keep it clean. See [Getting Started](../user-guide/getting-started.md).
 
 ### How do I get started?
 
@@ -15,7 +15,7 @@ CuePoint keeps a library of your Rekordbox collection, matches it to Beatport me
 3. Match it on Beatport from the **Clean** page
 4. Review the matches, apply the values you want, and export the review list
 
-See [First Steps](../getting-started/first-steps.md) and [Workflows](../user-guide/workflows.md).
+See [Getting Started](../user-guide/getting-started.md) and [Workflows](../user-guide/workflows.md).
 
 ### What do match scores mean?
 
@@ -54,6 +54,7 @@ CSV, JSON, and Excel. See [Features](../user-guide/features.md).
 ```bash
 python scripts/run_tests.py --unit
 python scripts/run_tests.py --all
+cd apps/desktop-electron/renderer && npm test
 ```
 
 See [Testing Strategy](../development/testing-strategy.md).
@@ -69,7 +70,3 @@ See [Beatport Parsing](../development/beatport-parsing.md).
 ### Where do I start contributing?
 
 See [Contributing](../../.github/CONTRIBUTING.md) and [Developer Setup](../development/developer-setup.md).
-
----
-
-*Last updated: 2026-02-03*

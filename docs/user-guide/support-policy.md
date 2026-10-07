@@ -16,17 +16,32 @@ For detailed triage and escalation procedures, see [Support SLA](../policy/suppo
 
 - **Windows**: Windows 10+ (x64)
 - **macOS**: macOS 12+ (Apple Silicon; an Intel build is planned)
+- **Linux**: Experimental. CI builds an AppImage and the community tests it. It ships without the bundled player (no mpv binary is pinned for Linux). Report issues, but they are not guaranteed a fix.
+
+A platform is **supported** when CI tests it and it is recommended for everyday use. It is **experimental** when it may work but is not guaranteed. Anything else is unsupported: not tested, use at your own risk.
+
+## Running From Source
+
+To run CuePoint from source or use the CLI, you need Python 3.11 or newer. CI tests Python 3.11 and 3.12 on Windows, macOS and Linux; `.python-version` pins the version used for development. Older Pythons are not supported.
+
+## What CI Tests
+
+- `desktop-electron.yml` builds and tests the desktop app on `ubuntu-latest`, `windows-latest` and `macos-latest`.
+- `release-gates.yml` runs the unit and integration tests on the same three systems with Python 3.11 and 3.12.
+- `test.yml` runs the test suite, lint and type checks.
+
+Before each major release, the full suite runs on every supported OS. New OS versions and new Rekordbox versions are checked when they ship: run the integration tests with sample XML, then update this page and the [Rekordbox Compatibility Matrix](../schema/rekordbox-compatibility-matrix.md), and add the change to the release notes.
 
 ## Rekordbox Export Expectations
 
 - **Format**: Rekordbox XML export
 - **Content**: Playlists and track entries present in the XML
-- **Version**: Recent Rekordbox versions (exported using standard XML export)
+- **Version**: Recent Rekordbox versions (exported using standard XML export). The [Rekordbox Compatibility Matrix](../schema/rekordbox-compatibility-matrix.md) lists the versions that are supported and experimental.
 
 ## File Size Guidance
 
 - Recommended XML export size is **<= 100MB**.
-- Larger exports are supported but may take longer to parse and process.
+- CuePoint rejects an XML export larger than 100 MiB (104,857,600 bytes); it does not parse it. Exports close to the limit take longer to parse and process.
 
 ## Update Cadence
 
@@ -41,15 +56,13 @@ For detailed triage and escalation procedures, see [Support SLA](../policy/suppo
 
 When reporting issues, include a **support bundle** for faster resolution:
 
-1. **Help > Support & Diagnostics > Export Support Bundle** – Creates a ZIP with:
+1. **Help > Export support bundle...** – Creates a ZIP with:
    - `diagnostics.json` – App version, OS, config summary
    - `logs/` – Application logs
    - `crashes/` – Crash logs (if any)
    - `config.yaml` – Sanitized configuration
 
-2. **Report Issue** – Opens GitHub with pre-filled version/OS; optionally generates a bundle to attach.
-
-3. **CLI**: Run ID and log path are printed at start and end. Use `--debug` for extra detail when reproducing.
+2. **CLI**: `python main.py --export-support-bundle` writes the same bundle. Run ID and log path are printed at start and end. Use `--debug` for extra detail when reproducing.
 
 ## Log Locations
 

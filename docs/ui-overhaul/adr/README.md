@@ -1,6 +1,6 @@
 # Architecture Decision Records (UI overhaul)
 
-This folder holds **ADRs** for the Electron + Python engine migration. The **working list** lives in [phase-0-architecture.md](../phase-0-architecture.md#adrs-stubs--fill-during-implementation).
+This folder holds **ADRs** for the Electron + Python engine migration. The **working list** lives in phase-0-architecture.md (`docs/ui-overhaul/phase-0-architecture.md`, removed in Phase 12; in git history).
 
 When an ADR is promoted from “Proposed” to “Accepted”, add a file:
 

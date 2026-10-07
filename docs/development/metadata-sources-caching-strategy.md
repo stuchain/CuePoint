@@ -61,7 +61,7 @@ See `providers.py` docstrings and [Beatport Site Change Plan](beatport-site-chan
 3. Add contract tests in `tests/unit/data/test_providers.py`
 4. Add fixtures (HTML/JSON samples) for offline tests
 5. Document in provider guide
-6. Update [roadmap](../roadmap.md)
+6. Update [roadmap](../v1/ROADMAP.md)
 
 ## 3. Caching Strategy
 
@@ -126,4 +126,4 @@ See `providers.py` docstrings and [Beatport Site Change Plan](beatport-site-chan
 - [Beatport Site Change Plan](beatport-site-change-plan.md)
 - [Provider abstraction](https://github.com/stuchain/CuePoint/blob/main/src/cuepoint/data/providers.py)
 - [Schema Migration Guide](../schema/migration-guide.md)
-- [Roadmap](../roadmap.md)
+- [Roadmap](../v1/ROADMAP.md)

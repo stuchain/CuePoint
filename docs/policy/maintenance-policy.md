@@ -1,8 +1,8 @@
 # Maintenance Policy — CuePoint
 
-**Long-term maintenance and evolution**  
-**Version 1.0 — 2026-02-04**  
-**Last updated**: 2026-02-04
+**Long-term maintenance and evolution**
+**Version 1.1 — 2026-10-07**
+**Last updated**: 2026-10-07
 
 ## Overview
 
@@ -29,7 +29,7 @@ This policy defines how CuePoint maintains stability, security, and evolvability
 
 - **Tools**: `pip-audit` (vulnerabilities), `pip-licenses` (license compliance).
 - **Schedule**: Weekly in CI; manual audit before each release.
-- **CI integration**: `security-scan.yml` and `test.yml` run `pip-audit` on all requirement files.
+- **CI integration**: `security-scan.yml` runs `pip-audit` on `requirements.txt`, `requirements-build.txt` and `requirements-dev.txt` on pushes, pull requests and weekly.
 
 ### 1.4 Dependency Update Checklist
 
@@ -80,13 +80,12 @@ This policy defines how CuePoint maintains stability, security, and evolvability
 - Deprecated code and config keys.
 - Test coverage gaps.
 - Performance hotspots.
-- Code complexity (radon, pylint).
+- Code complexity, reviewed by hand (no complexity tool is installed).
 
 ### 3.3 Tech Debt Review Checklist
 
 - [ ] Identify hotspots (complexity, coupling, duplication)
 - [ ] Create refactor plan with priorities
-- [ ] Add items to [Maintenance Roadmap](maintenance-roadmap.md)
 - [ ] Track in issues with `tech-debt` label
 - [ ] Prioritize by impact and risk
 
@@ -100,40 +99,33 @@ This policy defines how CuePoint maintains stability, security, and evolvability
 
 ### 4.1 Compatibility Matrix
 
-See [Compatibility Matrix](compatibility-matrix.md) for:
+The [Support Policy](../user-guide/support-policy.md) lists what is supported and tested:
 
 - **OS versions**: Windows, macOS, Linux.
 - **Python versions**: Supported and tested.
-- **Rekordbox XML versions**: See [Rekordbox Compatibility Matrix](../schema/rekordbox-compatibility-matrix.md).
+- **Rekordbox XML versions**: See the [Rekordbox Compatibility Matrix](../schema/rekordbox-compatibility-matrix.md).
 
 ### 4.2 New OS Version Testing
 
 - **Beta channels**: Test on new OS betas before general availability.
 - **Schedule**: Add compatibility tests before each major release.
-- **Documentation**: Update compatibility matrix with each release.
+- **Documentation**: Update the Support Policy and the Rekordbox Compatibility Matrix when support changes.
 
 ### 4.3 Compatibility Test Suite
 
-- Run on Windows, macOS in CI (see `test.yml` matrix).
+- Run on Windows, macOS and Linux in CI (see the matrices in `desktop-electron.yml` and `release-gates.yml`).
 - Integration tests with sample XML fixtures.
 - Document manual testing for new OS versions.
 
-## 5. Maintenance Roadmap
+## 5. Planning and Review
 
-### 5.1 Purpose
+There is no separate maintenance roadmap document. Planned refactors, upgrades, compatibility work and tech-debt items live in GitHub issues (see the `maintenance_task` issue template), and the product plan is in the [Roadmap](../v1/ROADMAP.md).
 
-The [Maintenance Roadmap](maintenance-roadmap.md) tracks:
+### 5.1 Review Cadence
 
-- Planned refactors and upgrades.
-- Deprecation schedule.
-- Compatibility work.
-- Tech-debt items.
-
-### 5.2 Review Cadence
-
-- **Quarterly**: Update roadmap, reprioritize backlog.
-- **Annual**: Long-term planning, architecture review.
-- **Pre-release**: Confirm target versions for planned items.
+- **Quarterly**: Review the issues above and reprioritize the backlog.
+- **Annual**: Long-term planning and an architecture review.
+- **Pre-release**: Confirm the target versions for planned items.
 
 ## 6. Sunsetting Policy
 
@@ -188,7 +180,6 @@ Run `python main.py --maintenance-report` to generate a maintenance status repor
 - [Vulnerability Patch Runbook](../security/vulnerability-patch.md)
 - [Deprecation Policy](../policy/deprecation-policy.md)
 - [Deprecation Schedule](../policy/deprecation-schedule.md)
-- [Compatibility Matrix](compatibility-matrix.md)
-- [Maintenance Roadmap](maintenance-roadmap.md)
-- [Release Strategy](release-strategy.md)
-- [Roadmap](../roadmap.md)
+- [Support Policy](../user-guide/support-policy.md)
+- [Release Deployment Runbook](../release/release-deployment-runbook.md)
+- [Roadmap](../v1/ROADMAP.md)

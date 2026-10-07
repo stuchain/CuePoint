@@ -19,7 +19,7 @@ Thanks for helping improve CuePoint. Design 10.41.
 2. **Activate venv**:
    - Windows: `.venv\Scripts\activate`
    - macOS/Linux: `source .venv/bin/activate`
-3. **Run the app**: `cd apps/desktop-electron && npm run electron:dev`
+3. **Run the app**: `cd apps/desktop-electron && npm ci && npm ci --prefix renderer && npm run electron:start`
 4. **Run tests**: `python scripts/run_tests.py --unit`
 
 See [Developer Setup](https://github.com/stuchain/CuePoint/blob/main/docs/development/developer-setup.md) for details.
@@ -38,8 +38,9 @@ Before opening a PR, ensure:
 
 - [ ] **Tests**: Added or updated for new/changed logic
 - [ ] **Docs**: Updated for user-facing changes
-- [ ] **Lint**: `ruff check src/` passes
-- [ ] **Types**: `mypy src/ --ignore-missing-imports` passes (or known issues documented)
+- [ ] **Lint and format**: `ruff check src/` and `ruff format --check src/` pass
+- [ ] **Types**: `python -m pytest src/tests/integration/test_mypy_foundation.py -q` passes (the mypy gate)
+- [ ] **Renderer**: for UI changes, `npm run lint`, `npm run typecheck` and `npm test` pass in `apps/desktop-electron/renderer`
 - [ ] **Changelog**: Updated in `docs/release/CHANGELOG.md` for notable changes
 
 ## Coding Standards
@@ -48,7 +49,7 @@ Before opening a PR, ensure:
 - **Typing**: Type hints for public APIs
 - **Testing**: Unit tests for new logic; regression tests for bug fixes
 
-See [Coding Standards](https://github.com/stuchain/CuePoint/blob/main/docs/development/coding-standards.md).
+See [Coding Standards](https://github.com/stuchain/CuePoint/blob/main/docs/development/developer-setup.md#coding-standards).
 
 **Documentation:** [docs/README.md](https://github.com/stuchain/CuePoint/blob/main/docs/README.md) — single entry point for all docs.
 
@@ -57,7 +58,7 @@ See [Coding Standards](https://github.com/stuchain/CuePoint/blob/main/docs/devel
 1. Fork the repo
 2. Create a branch (`git checkout -b feature/your-feature`)
 3. Implement changes
-4. Run tests: `python scripts/run_tests.py --all`
+4. Run tests: `python scripts/run_tests.py --all --no-slow`
 5. Open a PR with the checklist above
 
 ## Documentation

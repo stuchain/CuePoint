@@ -6,7 +6,8 @@ removed. PRUNE-03 is implemented (2026-10-07): no unreached Python module remain
 migrations. PRUNE-05 is implemented (2026-10-07): no Electron or renderer file, export or
 class is unreached. PRUNE-04 is implemented (2026-10-07): the retired app's pipeline and every
 script nothing runs are gone. PRUNE-06 is implemented (2026-10-07): every dependency left has a
-live importer.** Eight steps, PRUNE-01…PRUNE-08. Per the
+live importer. PRUNE-07 is implemented (2026-10-07): 250 docs became 135, each checked against
+the code.** Eight steps, PRUNE-01…PRUNE-08. Per the
 process, no implementation happens from this document. Each step needs an explicit "Implement
 PRUNE-NN" instruction, scoped to exactly that step, and its outcome is recorded under the step
 afterwards. There are no open points. The measurements taken while writing it are in cross-cutting
@@ -1027,6 +1028,76 @@ phase by phase since Phase 3.
 against the file it was merged into before the source is deleted.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented (2026-10-07). Group J is done as marked: 82 docs deleted, 36 merged and
+30 updated. The Markdown outside `apps/website/` went from 250 files and 61,864 lines to 135 and
+49,750, and `docs/` from 220 files to 109. The Phase 13 specification, written the same day,
+is in the second count. The link check finds no broken link, and no remaining doc presents Qt,
+inCrate, the Sparkle updater or the PyInstaller app as current.
+
+**Deleted:** `docs/ui-overhaul/tracking/`, `docs/development/archive/`, the Electron migration's
+plans, phases and matrices, inCrate's designs and spec, the Qt screens' feature pages, the old
+updater's pages, the Step 10 signing guides, the readiness documents of the retired app, and the
+indexes of folders that emptied. `docs/getting-started/`, `docs/guides/`, `docs/feature/`'s
+Markdown and `docs/release/guides/` are gone.
+
+**Merged, one subject one place:**
+- **`docs/release/release-deployment-runbook.md` is the one release runbook** for what the
+  Electron release does today: version and changelog, what `desktop-electron.yml` builds,
+  signing and notarizing (`apps/desktop-electron/build/*.cjs`), the checks before publishing,
+  the release notes and announcement, the GitHub Pages site and reproducible builds. It says
+  plainly that there is no updater and no release workflow until Phase 16 (DEC-145, DEC-147).
+- Key management, rollback, incident response and the support SLA each absorbed their satellites.
+  The maintenance policy moved to `docs/policy/`.
+- The user guide absorbed getting started, the shortcuts, the known issues, diagnostics,
+  compatibility and the Beatport token. The developer setup absorbed how to run, the coding
+  standards and the macOS Python environment. `architecture.md` absorbed what was true of
+  `TECHNICAL_ANALYSIS.md`, and the Beatport v4 reference moved to
+  `docs/development/beatport-v4-api.md`.
+
+**Updated, each against the code:** the README, `docs/README.md` (now the map of where each kind
+of doc lives and who it is for, with who owns it), `docs/index.md`, AGENTS.md, the developer docs,
+the feature pages that named Qt files, the user guide's pages, `.github/CONTRIBUTING.md`, the
+desktop and source READMEs, and the release skill's two copies, rewritten for the Electron release.
+`docs/ui-overhaul/README.md` is now the index of the ADRs.
+
+**The design record:** `docs/v1/` is unchanged. Three ADRs' links to deleted plans became plain
+text naming the file and that it is in git history.
+
+**Found on the way, by checking each page against the code:**
+- **Help that described the retired app.** Troubleshooting described Qt dialogs and a Settings
+  screen the Electron app has not got. Several pages cited `src/cuepoint/ui/` and an unread
+  `CUEPOINT_DEBUG`. The keyboard page listed shortcuts nothing binds. Each now says what the app
+  and the CLI do.
+- **The shortcuts dialog lists keys nothing handles.** `keyboardShortcuts.ts` lists **Ctrl+O**,
+  **Ctrl+E**, **F5**, **Ctrl+R**, **Ctrl+H**, **Ctrl+,** and **Ctrl+Shift+F**, and the window binds
+  none of them. The user guide says so. Changing the dialog is a code change, left for the pages'
+  revisit (Phase 14).
+- **The release steps in the old docs no longer worked.** `validate_version.py` needs the tag
+  before the version bump's gate is green. Every CI leg writes the same `SHA256SUMS.txt` over the
+  whole `release/` folder. `desktop-electron.yml` runs neither on a `hotfix/*` push nor by hand.
+  The runbook works with each of these as it is.
+
+**Tests:** `test_step15_maintenance.py` checks the maintenance policy and the compatibility
+facts in their new homes, and no longer checks the deleted maintenance roadmap.
+
+**Checks run:**
+- the link check over every tracked Markdown file;
+- `rg` for every deleted doc, every deleted script and the Qt screens;
+- every command in the README, the developer setup and AGENTS.md, once, as written, on Linux.
+  The installs, the GUI launches and the full suite are the exceptions: the suite ran in
+  PRUNE-04 and PRUNE-06, and the rest need a desktop or a download. Two commands were wrong and
+  are fixed: `make check-format`, and `electron:dev` used without the renderer's dev server;
+- an independent review of the whole change against this specification. It found five errors,
+  all fixed: the release order, the checksums, the hotfix and rebuild triggers, and the stale
+  troubleshooting page. A sixth, AGENTS.md's dropped note on `preload.ts`, lapsed when PRUNE-05
+  deleted the file.
+
+**Kept as the audit marked them, and worth a look later:**
+- `docs/release/design-two-appcast-feeds-test-stable.md` is marked superseded. The audit kept it
+  as history, and it is the one remaining doc about the feeds.
+- `docs/feature/get-token.js` is an old token helper nothing references. It is not Markdown, so it
+  was not in group J.
 
 ---
 

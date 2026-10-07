@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Use this template for maintenance tasks: tech debt, refactors, dependency updates, or compatibility work.
-        See [Maintenance Policy](https://github.com/stuchain/CuePoint/blob/main/docs/release/maintenance-policy.md).
+        See [Maintenance Policy](https://github.com/stuchain/CuePoint/blob/main/docs/policy/maintenance-policy.md).
 
   - type: textarea
     id: task

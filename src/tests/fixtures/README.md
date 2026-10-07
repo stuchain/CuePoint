@@ -4,10 +4,11 @@ This directory contains test fixtures used across all test layers.
 
 ## Directory Structure
 
-- `rekordbox/`: Rekordbox XML fixtures
-- `beatport/`: Beatport HTML response fixtures
-- `exports/`: Golden files (expected outputs)
-- `tracks/`: Track data fixtures
+- `rekordbox/`: Rekordbox XML fixtures (including `edge_cases/`)
+- `beatport/`: Beatport HTML pages and the `discover`, `journey` and `phase` fixture worlds
+- `beatport_v4/`: Beatport v4 API response fixtures (see its own README)
+- `audio/`: short audio files in several formats
+- `set_lists/`: set list files (`.csv`, `.m3u8`, `.txt`)
 
 ## Fixture Naming
 

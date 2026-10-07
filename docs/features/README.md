@@ -5,10 +5,11 @@ This folder documents **all** features of the CuePoint app—large and small. Ea
 1. **What the feature is** (high-level)
 2. **How it is implemented** (with code references)
 
-The **UI** pages describe the retired Qt window and its matching screens, and
-say so at the top. Since Phase 7 the desktop app matches library tracks from
-**Clean** ([user guide](../user-guide/clean.md), DEC-071); the file-based
-processing and export pages now describe the CLI, which is unchanged.
+Since Phase 7 the desktop app matches library tracks from **Clean**
+([user guide](../user-guide/clean.md), DEC-071). The file-based processing, preflight and
+export pages describe the CLI, and their status line says so. Screens of the
+desktop app are documented in the [user guide](../user-guide/), and its
+architecture in [Architecture](../development/architecture.md).
 
 ## Feature index
 
@@ -26,13 +27,7 @@ processing and export pages now describe the CLI, which is unchanged.
 | Export | [csv-and-excel-export.md](csv-and-excel-export.md) | CSV/Excel output, main/candidates/queries |
 | Export | [data-integrity.md](data-integrity.md) | Schema, checksums, audit log, backups |
 | Config | [configuration.md](configuration.md) | Config service, YAML, presets (fast/turbo/myargs) |
-| UI | [main-window-and-navigation.md](main-window-and-navigation.md) | Main window, file/playlist selection, mode |
-| UI | [progress-and-results.md](progress-and-results.md) | Progress widget, results view, pause/cancel |
-| UI | [shortcuts-and-themes.md](shortcuts-and-themes.md) | Keyboard shortcuts, themes, focus |
-| UI | [dialogs-and-help.md](dialogs-and-help.md) | Settings, run summary, onboarding, about |
-| UI | [status-bar-history-batch.md](status-bar-history-batch.md) | Status bar, history view, batch playlist UI |
-| Update | [update-system.md](update-system.md) | Check, download, install updates (macOS/Windows) |
+| UI | [The CuePoint window](../user-guide/the-window.md#keyboard-shortcuts) | Keyboard shortcuts, themes, focus (user guide) |
 | CLI | [cli-and-arguments.md](cli-and-arguments.md) | CLI processor, all arguments, migrate |
 | Reliability | [reliability-and-performance.md](reliability-and-performance.md) | Retry, circuit breaker, guardrails |
-| Support | [support-and-diagnostics.md](support-and-diagnostics.md) | Support bundle, log viewer, crash handler |
-| inCrate (historical) | [incrate.md](incrate.md) | Retired into [Discover](../user-guide/discover.md) (DISCOVER-12) |
+| Support | [Diagnostics and support](../user-guide/troubleshooting.md#diagnostics-and-support) | Support bundle, Log Viewer, Diagnostics (user guide) |

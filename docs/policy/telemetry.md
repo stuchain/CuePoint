@@ -6,21 +6,20 @@
 - ✅ All processing local; optional remote endpoint
 - ✅ No network requests except for:
   - Beatport scraping (user-initiated)
-  - Update checking (user-configurable)
   - Telemetry (only when opt-in enabled and endpoint configured)
 
 ## Privacy-First Approach
 
 ### Core Principles
 1. **Opt-in Only**: Default OFF; user must explicitly enable
-2. **User Control**: Toggle in Settings → Privacy; CLI flags `--telemetry-enable` / `--telemetry-disable`
+2. **User Control**: CLI flags `--telemetry-enable` / `--telemetry-disable`. The desktop app has no telemetry switch and sends none; events come only from CLI runs
 3. **Transparency**: Clear disclosure of what is collected
 4. **Minimal Data**: Collect only what's necessary; no PII
 5. **Local Processing**: Events buffered locally; optional HTTPS endpoint
 
 ### What Is Collected (when opt-in enabled)
 - **Usage Events** (anonymized):
-  - `app_start` – app launched (channel: cli/gui)
+  - `app_start` – CLI launched (channel: cli)
   - `run_start` – processing started (run_id, track_count)
   - `run_complete` – processing finished (duration_ms, tracks, match_rate)
   - `run_error` – processing failed (error_code, stage)
@@ -44,7 +43,7 @@
 
 ### Implementation
 1. **Opt-in Only**: Default OFF in config (`telemetry.enabled: false`)
-2. **Settings UI**: Toggle in Settings → Privacy
+2. **Desktop app**: collects nothing; the in-app Privacy dialog says so
 3. **CLI Flags**: `--telemetry-enable`, `--telemetry-disable`
 4. **Data Minimization**: PII scrubbing; primitives only
 5. **Secure Transport**: HTTPS only; endpoint must start with `https://`
