@@ -137,8 +137,8 @@ Work from the phase 3 survey. `docs/release/CHANGELOG.md` is the source, and it 
 through a chain — verify each hop:
 
 `docs/release/CHANGELOG.md` -> `scripts/generate_release_notes.py` -> `RELEASE_NOTES.md` ->
-the GitHub Release body -> the appcast `<description>` -> the in-app update dialog, which
-`src/cuepoint/update/update_checker.py` reads from that feed element.
+the GitHub Release body -> the appcast `<description>`. The Qt-era updater that read that feed
+element was removed in Phase 12; Phase 16 builds its successor (DEC-145).
 
 - The changelog covers the range phase 3 established: **back to the previous stable release** for
   a stable release, **back to the immediately preceding release** for a test release. So a stable
@@ -299,8 +299,8 @@ behavior.
 | Feeds and appcasts | `validate_appcast.py`, `validate_feeds.py`, `check_appcast_diff.py` |
 | Installers | `verify_installer.py` |
 
-`release_readiness.py`, `step10_release_readiness.py`, `validate_release.py`, and
-`test_pre_release.py` are older step-numbered masters that predate the current changelog and
+`release_readiness.py`, `step10_release_readiness.py` and `validate_release.py` are older
+step-numbered masters that predate the current changelog and
 Electron layout. Read them before running them, and do not treat their verdicts as the gate.
 
 ## Safety and release invariants

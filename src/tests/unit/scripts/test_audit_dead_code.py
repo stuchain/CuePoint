@@ -274,6 +274,19 @@ class TestPythonReach:
         ]
         assert "src/tests/test_names.py" not in modules["src/app/dead.py"].tests
 
+    def test_only_a_patched_name_counts_not_a_dotted_config_key(self, tree):
+        # "app.dead" as a config key reached src/app/dead.py once; the audit
+        # listed config tests as tests of a shim that way (PRUNE-03).
+        (tree / "src/tests/test_keys.py").write_text(
+            "def test_keys(monkeypatch):\n"
+            "    config = {'app.dead': 1, 'app.tested_only.value': 2}\n"
+            "    monkeypatch.setattr('app.helper.go', lambda: 0)\n"
+        )
+        modules = _modules(audit.run_audit(tree))
+        assert "src/tests/test_keys.py" not in modules["src/app/dead.py"].tests
+        assert "src/tests/test_keys.py" not in modules["src/app/tested_only.py"].tests
+        assert "src/tests/test_keys.py" in modules["src/app/helper.py"].tests
+
     def test_a_module_only_a_live_script_imports_is_reached_by_script(self, result):
         assert _modules(result)["src/app/script_only.py"].status == "script"
 

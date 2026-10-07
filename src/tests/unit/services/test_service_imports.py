@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Integration test: service import smoke test (Step 5.2)."""
+"""Every service imports and the DI container builds (Step 5.2).
+
+Moved from `src/tests/`'s root into its layer (PRUNE-03).
+"""
 
 from __future__ import annotations
 

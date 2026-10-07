@@ -415,6 +415,9 @@ class References:
 # ---------------------------------------------------------------------------
 
 _DOTTED = re.compile(r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+$")
+#: Calls whose first argument is a dotted name the test reaches into. A dotted
+#: string anywhere else (a config key like "beatport.timeout") names nothing.
+_PATCHING_CALLS = {"patch", "dict", "setattr", "delattr"}
 _QT_TOP = {"PySide6", "PyQt6", "PyQt5", "PySide2", "pytestqt"}
 #: The last part of a dotted string that makes it a file name, not a module.
 _FILE_EXTENSIONS = {s.lstrip(".") for s in _TEXT_SUFFIXES} | {
@@ -445,7 +448,8 @@ class PyParse:
     imports: list[PyImport] = field(default_factory=list)
     dynamic_sites: list[str] = field(default_factory=list)
     scans_own_package: bool = False
-    strings: set[str] = field(default_factory=set)
+    #: Dotted names a file patches: ``patch("a.b.c")``, ``monkeypatch.setattr("a.b.c", …)``.
+    patched: set[str] = field(default_factory=set)
     error: Optional[str] = None
 
 
@@ -459,7 +463,7 @@ def _call_name(node: ast.AST) -> str:
 
 
 def parse_python(text: str) -> PyParse:
-    """Every import, dynamic load and dotted string in one Python file."""
+    """Every import, dynamic load and patched name in one Python file."""
     result = PyParse()
     try:
         tree = ast.parse(text)
@@ -515,9 +519,13 @@ def parse_python(text: str) -> PyParse:
                     result.dynamic_sites.append(f"{node.lineno}: {ast.unparse(node)}")
             elif short in ("spec_from_file_location", "run_path", "load_source"):
                 result.dynamic_sites.append(f"{node.lineno}: {ast.unparse(node)}")
-        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
-            if _DOTTED.match(node.value):
-                result.strings.add(node.value)
+            elif (
+                short in _PATCHING_CALLS
+                and isinstance(first, ast.Constant)
+                and isinstance(first.value, str)
+                and _DOTTED.match(first.value)
+            ):
+                result.patched.add(first.value)
     return result
 
 
@@ -802,12 +810,12 @@ class PythonGraph:
         return list(reversed(path))
 
     def strings_resolving(self, rel: str) -> set[str]:
-        """Modules a file names in a dotted string (``mock.patch("a.b.c")``)."""
+        """Modules a file patches by name: ``patch("a.b.c")``, ``monkeypatch.setattr("a.b", …)``."""
         found: set[str] = set()
         parse = self.parses.get(rel)
         if parse is None:
             return found
-        for text in parse.strings:
+        for text in parse.patched:
             parts = text.split(".")
             # "beatport.py" and "__init__.py" are file names, not modules.
             if parts[-1] in _FILE_EXTENSIONS or "__init__" in parts:

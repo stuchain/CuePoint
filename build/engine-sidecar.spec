@@ -48,8 +48,6 @@ hiddenimports = (
         "cuepoint.utils.logger",
         "cuepoint.utils.run_context",
         "cuepoint.utils.privacy",
-        "cuepoint.ui.gui_interface",
-        "cuepoint.ui.controllers.export_controller",
         # CLEAN-09: Pillow finds its image decoders by importing plugin
         # modules at runtime. Every format the artwork guard allows is named,
         # so a packaged engine can make a thumbnail from each of them.
@@ -81,9 +79,6 @@ a = Analysis(
         "PyQt5",
         "matplotlib",
         "tkinter",
-        "cuepoint.ui.main_window",
-        "cuepoint.ui.widgets",
-        "cuepoint.ui.dialogs",
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

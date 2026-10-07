@@ -138,21 +138,30 @@ def test_without_the_token_it_answers_as_an_unknown_path_does(base, method, path
 # ------------------------------------------------------------------ modules
 
 
+def _gone(module: str) -> bool:
+    """No such module: ``find_spec`` says so, or its package is gone too."""
+    try:
+        return importlib.util.find_spec(module) is None
+    except ModuleNotFoundError:
+        return True
+
+
 @pytest.mark.parametrize("module", RETIRED_MODULES)
 def test_a_retired_module_is_gone(module):
-    assert importlib.util.find_spec(module) is None
+    assert _gone(module)
 
 
 @pytest.mark.parametrize("old, new", MOVED_MODULES)
 def test_what_survived_answers_only_at_its_new_address(old, new):
-    assert importlib.util.find_spec(old) is None
+    assert _gone(old)
     assert importlib.util.find_spec(new) is not None
 
 
-def test_the_incrate_package_holds_only_the_oauth_helpers():
-    # DEC-098 leaves beatport_oauth.py where it is, untouched.
-    left = sorted(p.name for p in (_PACKAGE / "incrate").iterdir() if p.is_file())
-    assert left == ["__init__.py", "beatport_oauth.py"]
+def test_the_incrate_package_is_gone():
+    # DEC-098 left beatport_oauth.py behind; PRUNE-03 (DEC-147) removed it and
+    # the package with it, since nothing called it.
+    assert _gone("cuepoint.incrate")
+    assert not (_PACKAGE / "incrate").exists()
 
 
 def test_the_inventory_schema_and_the_developer_script_are_gone():

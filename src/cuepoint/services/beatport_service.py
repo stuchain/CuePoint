@@ -95,7 +95,7 @@ class BeatportService(IBeatportService):
 
             # Test if ddgs is available before searching
             try:
-                from duckduckgo_search import DDGS
+                from ddgs import DDGS
 
                 # Try to create a DDGS instance to verify it works
                 test_ddgs = DDGS()

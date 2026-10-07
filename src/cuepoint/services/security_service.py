@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from cuepoint.services.interfaces import ISecurityService
-from cuepoint.update.security import FeedIntegrityVerifier
+from cuepoint.services.update_security import FeedIntegrityVerifier
 
 
 @dataclass(frozen=True)

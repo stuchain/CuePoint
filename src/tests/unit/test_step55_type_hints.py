@@ -19,11 +19,6 @@ from cuepoint.services import (
     matcher_service,
     processor_service,
 )
-from cuepoint.compat import (
-    config_controller,
-    export_controller,
-    results_controller,
-)
 
 
 class TestTypeHints:
@@ -136,28 +131,6 @@ class TestTypeHints:
         assert "return" in hints
         assert hints["return"] is bool
 
-    @pytest.mark.unit
-    def test_controller_type_hints(self):
-        """Test controllers have type hints."""
-        # Test ResultsController
-        method = results_controller.ResultsController.apply_filters
-        hints = get_type_hints(method)
-        assert "search_text" in hints
-        assert "confidence" in hints
-        assert "return" in hints
-
-        # Test ExportController
-        method = export_controller.ExportController.validate_export_options
-        hints = get_type_hints(method)
-        assert "options" in hints
-        assert "return" in hints
-
-        # Test ConfigController
-        method = config_controller.ConfigController.get_preset_values
-        hints = get_type_hints(method)
-        assert "preset" in hints
-        assert "return" in hints
-
 
 class TestDocstrings:
     """Test that all public functions and classes have docstrings."""
@@ -218,13 +191,6 @@ class TestDocstrings:
         assert rekordbox.RBTrack.__doc__ is not None
         assert beatport.is_track_url.__doc__ is not None
         assert beatport.parse_track_page.__doc__ is not None
-
-    @pytest.mark.unit
-    def test_controller_docstrings(self):
-        """Test controllers have docstrings."""
-        assert results_controller.ResultsController.__doc__ is not None
-        assert export_controller.ExportController.__doc__ is not None
-        assert config_controller.ConfigController.__doc__ is not None
 
     @pytest.mark.unit
     def test_module_docstrings(self):

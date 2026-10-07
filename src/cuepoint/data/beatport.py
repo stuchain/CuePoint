@@ -42,34 +42,30 @@ from dateutil import parser as dateparser
 
 # Import DDGS with better error handling for packaged apps
 try:
-    from duckduckgo_search import DDGS
-except ImportError:
-    # Try direct import from ddgs package
-    try:
-        from ddgs import DDGS
-    except ImportError as import_err:
-        # Log the error for debugging
-        import logging
+    from ddgs import DDGS
+except ImportError as import_err:
+    # Log the error for debugging
+    import logging
 
-        logger = logging.getLogger(__name__)
-        logger.error(
-            f"DuckDuckGo search (ddgs) not available: {import_err!r}", exc_info=True
-        )
-        # Create a stub that will raise on use
-        _import_err = import_err
+    logger = logging.getLogger(__name__)
+    logger.error(
+        f"DuckDuckGo search (ddgs) not available: {import_err!r}", exc_info=True
+    )
+    # Create a stub that will raise on use
+    _import_err = import_err
 
-        class DDGS:  # type: ignore
-            def __init__(self, *args, **kwargs):
-                raise ImportError(
-                    "DuckDuckGo search (ddgs package) is required but not available. "
-                    "Please ensure ddgs>=9.0.0 is installed."
-                ) from _import_err
+    class DDGS:  # type: ignore
+        def __init__(self, *args, **kwargs):
+            raise ImportError(
+                "DuckDuckGo search (ddgs package) is required but not available. "
+                "Please ensure ddgs>=9.0.0 is installed."
+            ) from _import_err
 
-            def __enter__(self):
-                return self
+        def __enter__(self):
+            return self
 
-            def __exit__(self, *args):
-                pass
+        def __exit__(self, *args):
+            pass
 
 
 import threading  # noqa: E402

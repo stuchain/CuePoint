@@ -363,28 +363,36 @@ class TestWriteMainCsvEdgeCases:
             # Should return None when file is empty
             assert result is None
 
-    @patch("performance.performance_collector")
+    @patch("cuepoint.utils.performance.performance_collector")
     def test_write_main_csv_performance_tracking(
         self, mock_collector, sample_track_results, temp_output_dir
     ):
-        """Test write_main_csv performance tracking - lines 229-238."""
-        # Mock performance_collector
+        """A collector that records exports is told about the CSV (PRUNE-03).
+
+        The import was ``from performance import …``, a root shim, and this test
+        patched the shim; it now patches ``cuepoint.utils.performance``, where
+        ``output_writer`` imports from.
+        """
         mock_collector.record_export = Mock()
 
         result = write_main_csv(sample_track_results, "test.csv", temp_output_dir)
 
-        # Should record export metrics (if performance tracking available)
         assert result is not None
-        # Verify record_export was called if performance_collector is available
-        if hasattr(mock_collector, "record_export"):
-            try:
-                mock_collector.record_export.assert_called_once()
-                call_kwargs = mock_collector.record_export.call_args[1]
-                assert call_kwargs["format"] == "csv"
-                assert call_kwargs["compressed"] is False
-            except AssertionError:
-                # Performance tracking may not be available, which is fine
-                pass
+        mock_collector.record_export.assert_called_once()
+        call_kwargs = mock_collector.record_export.call_args.kwargs
+        assert call_kwargs["format"] == "csv"
+        assert call_kwargs["compressed"] is False
+        assert call_kwargs["track_count"] == len(sample_track_results)
+        assert call_kwargs["file_size"] > 0
+
+    def test_write_main_csv_with_the_real_collector(
+        self, sample_track_results, temp_output_dir
+    ):
+        """The shipped collector has no ``record_export``; the export still succeeds."""
+        from cuepoint.utils.performance import performance_collector
+
+        assert not hasattr(performance_collector, "record_export")
+        assert write_main_csv(sample_track_results, "test.csv", temp_output_dir)
 
 
 @pytest.mark.unit
@@ -1182,31 +1190,33 @@ class TestWriteCsvFilesEdgeCases:
             assert "queries" in data["tracks"][0]
             assert data["tracks"][0]["queries"] == ["query1", "query2"]
 
-    @patch("performance.performance_collector")
+    @patch("cuepoint.utils.performance.performance_collector")
     def test_write_json_file_performance_tracking(
         self, mock_collector, sample_track_results, temp_output_dir
     ):
-        """Test write_json_file performance tracking - lines 684-693."""
+        """A collector that records exports is told about the JSON (PRUNE-03)."""
         from cuepoint.services.output_writer import write_json_file
 
-        # Mock performance_collector
         mock_collector.record_export = Mock()
 
         filepath = os.path.join(temp_output_dir, "test.json")
         result = write_json_file(sample_track_results, filepath, compress=True)
 
-        # Should record export metrics (if performance tracking available)
         assert result is not None
-        # Verify record_export was called if performance_collector is available
-        if hasattr(mock_collector, "record_export"):
-            try:
-                mock_collector.record_export.assert_called_once()
-                call_kwargs = mock_collector.record_export.call_args[1]
-                assert call_kwargs["format"] == "json"
-                assert call_kwargs["compressed"] is True
-            except AssertionError:
-                # Performance tracking may not be available, which is fine
-                pass
+        mock_collector.record_export.assert_called_once()
+        call_kwargs = mock_collector.record_export.call_args.kwargs
+        assert call_kwargs["format"] == "json"
+        assert call_kwargs["compressed"] is True
+        assert call_kwargs["track_count"] == len(sample_track_results)
+
+    def test_write_json_file_with_the_real_collector(
+        self, sample_track_results, temp_output_dir
+    ):
+        """The shipped collector has no ``record_export``; the export still succeeds."""
+        from cuepoint.services.output_writer import write_json_file
+
+        filepath = os.path.join(temp_output_dir, "test.json")
+        assert write_json_file(sample_track_results, filepath, compress=False)
 
     @pytest.mark.skipif(
         not hasattr(

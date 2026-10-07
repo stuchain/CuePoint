@@ -2,7 +2,8 @@
 
 Status: **Specified 2026-10-06. PRUNE-01 is implemented (2026-10-06), and the user approved every
 group of its audit (`PHASE12_AUDIT.md`) the same day. PRUNE-02 is implemented (2026-10-06): Qt is
-removed. PRUNE-03 is next.** Eight steps, PRUNE-01…PRUNE-08. Per the
+removed. PRUNE-03 is implemented (2026-10-07): no unreached Python module remains but the
+migrations. PRUNE-04 is next.** Eight steps, PRUNE-01…PRUNE-08. Per the
 process, no implementation happens from this document. Each step needs an explicit "Implement
 PRUNE-NN" instruction, scoped to exactly that step, and its outcome is recorded under the step
 afterwards. There are no open points. The measurements taken while writing it are in cross-cutting
@@ -581,6 +582,121 @@ the packaged sidecar is built and started, since PyInstaller is where a missing 
 shows.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented (2026-10-07). `audit_dead_code.py` reports **no unreached Python module**
+other than the migrations. Every module in groups B and C is gone, except `compat/__init__.py` and
+`gui_types.py`, which the CLI and the engine's jobs import. The full suite passes in the fresh no-Qt
+environment and the local one (11,975 passed, 49 skipped, 0 failed each), the mypy gate passes for
+three platforms, and the packaged sidecar builds and passes its smoke.
+
+**The root shims** (fact 5):
+- `output_writer.py` imports `cuepoint.utils.performance` in both places.
+- `data/beatport.py` and `services/beatport_service.py` import `ddgs`. That was the second live shim
+  the audit found, and their failure handling is unchanged.
+- `src/beatport.py`, `src/duckduckgo_search.py` and `src/performance.py` are deleted. Nothing had
+  imported `beatport`: the audit's five "tests" of it were config keys like `"beatport.timeout"`
+  read as dotted module names.
+- **Fact 5's question:** the packaged engine had contained both live shims, so the imports had not
+  been failing in shipped builds. It now contains neither, and carries `ddgs` and
+  `cuepoint.utils.performance` directly.
+- **`output_writer`'s two performance paths** each run in a test, now strictly. The old tests patched
+  the shim and swallowed their own assertion failures. Each path also runs against the shipped
+  collector, which has no `record_export`.
+- **Found, not changed:** export metrics have never been recorded in a shipped build. Making them so
+  would change behaviour, which this phase does not.
+
+**`update/`** (group B):
+- `security.py` moved beside its one live caller as `services/update_security.py`, with its tests
+  and a test through `SecurityService`.
+- The rest of `update/` and its three test files are deleted: the checker, preferences, signature
+  verifier and `version_utils` (DEC-145).
+- Seven manual scripts imported only `update/`, and their deletion was already approved (group E).
+  They went here rather than in PRUNE-04, so that no script imports a deleted package:
+  - `inspect_appcast.py` and `test_pre_release.py`;
+  - `test_update_check_simulation.py`, `test_update_detection.py` and
+    `test_update_system_comprehensive.py`;
+  - `test_version_comparison.py` and `test_version_comparison_interactive.py`.
+
+  The release-feed scripts `release.yml` runs never imported `update/`, and stay for PRUNE-04.
+
+**`compat/` and `incrate/`:**
+- The three Qt-era controllers and their three test files went.
+- So did `TestFilterPerformance` and two type-hint tests that measured them.
+- `incrate/` went whole, with its test.
+- `test_retired_incrate.py` now asserts the package is gone. It had asserted that `beatport_oauth.py`
+  stayed behind (DEC-098).
+
+**The unreachable `utils/` and `models/` modules**, each with its tests:
+- `accessibility`, `crypto`, `error_handler`, `error_reporter` and `file_safety`;
+- `health_check`, `logger_helper`, `metrics` and `performance_decorators`;
+- `progress_tracker`, `security`, `system_check`, `telemetry_analytics` and `validation`;
+- `models/serialization`.
+
+Every deleted test file imported only its module; the exceptions it used have their own tests.
+
+**`src/__init__.py`**, which the audit kept as uncertain, went too. Nothing imports `src`, and with
+and without it pytest collects the same 12,023 test ids. So the DoD holds without an exception.
+
+**Stray tests at `src/tests/`'s root:**
+- 16 one-off Step 5 runners, verifiers and script-tests went: `run_*`, `verify_*`,
+  `test_step_5_2`, `test_comprehensive` and `test_step55_comprehensive`.
+- Their DI and import checks are covered by `unit/test_di_container.py` and `unit/test_services.py`.
+- `test_imports.py`, a live smoke, moved to `unit/services/test_service_imports.py`.
+
+**Configuration:**
+- The sidecar spec's five stale `cuepoint.ui.*` names went (audit finding 4). The build now logs no
+  "Hidden import not found".
+- `mypy.ini` and `pytest.ini`'s coverage omits lost every section for a deleted module.
+- `src/README.md` and the release skill (both copies) stopped naming them.
+
+**Found on the way, each fixed in its own commit before this step's:**
+- **Tests that searched the web.** 14 tests patched `duckduckgo_search.DDGS`, a name
+  `data/beatport.py` had already bound to its own `DDGS`, so their mocks never applied. They ran
+  real DuckDuckGo searches, and three others opened a real browser against Beatport.
+  - The patches target `cuepoint.data.beatport.DDGS`.
+  - A fixture makes the browser search return nothing unless a test patches it.
+  - A guard fails any connection off the machine.
+  - The file runs in 4 seconds instead of 250.
+- **A real bug the offline run exposed.** When the direct search found nothing, `track_urls`
+  returned the browser search's URLs uncapped, past `max_results`. It is fixed, with a regression
+  test that fails without the fix.
+- **The audit counted config keys as module references.** It now counts a dotted string only where
+  it is patched (`patch`, `patch.dict`, `monkeypatch.setattr`), and a test holds that.
+
+**Every changed test count is accounted for**, against PRUNE-02 (12,195 passed and 50 skipped, then
+11,975 and 49). The removed tests are the deleted modules' and strays':
+
+| Removed with | Tests |
+| --- | --- |
+| `update/` | 21 |
+| The three controllers (and their two type-hint tests and one performance test) | 43 |
+| `incrate/` | 17 |
+| The `utils/` modules | 142 |
+| The stray root tests | 10 run and 1 skipped |
+
+The added ones are:
+- the browser cap's regression test (3);
+- `test_update_security`'s new home (6: five moved from the old file, and one through
+  `SecurityService`);
+- the strict performance paths (2 more);
+- the audit's patched-name test (1);
+- `test_service_imports` (1), moved from `test_imports`.
+
+**Checks run:**
+- the full suite in both environments;
+- the mypy gate for three platforms, and the legacy mypy record;
+- `ruff check` and `ruff format --check` over `src/`;
+- `check_no_qt.py`;
+- the audit (0 unreached);
+- the sidecar build, its smoke and the engine smoke;
+- the packaged engine's start (median 2,589 ms, against PRUNE-01's 2,573 ms);
+- the sidecar's archive (256 `cuepoint` modules, 26 migrations; 80,339,238 bytes, 21 KB smaller).
+
+**Left for later steps, as planned:**
+- `build/pyinstaller.spec` names the deleted shim and `test_search_dependencies.py`; it goes with
+  the retired workflows in PRUNE-04.
+- `SecurityService` is registered nowhere. It stays reached only because the sidecar packages all
+  of `services/`, and PRUNE-08's guard can decide whether packaging alone counts as use.
 
 ---
 

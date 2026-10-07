@@ -417,7 +417,7 @@ def write_main_csv(
 
             # Record export metrics (if performance tracking enabled)
             try:
-                from performance import performance_collector
+                from cuepoint.utils.performance import performance_collector
 
                 if hasattr(performance_collector, "record_export"):
                     performance_collector.record_export(
@@ -978,7 +978,7 @@ def write_json_file(
 
         # Record export metrics (if performance tracking enabled)
         try:
-            from performance import performance_collector
+            from cuepoint.utils.performance import performance_collector
 
             if hasattr(performance_collector, "record_export"):
                 performance_collector.record_export(

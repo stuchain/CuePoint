@@ -271,43 +271,6 @@ class TestCachePerformance:
 
 
 @pytest.mark.performance
-class TestFilterPerformance:
-    """Performance tests for filtering operations."""
-
-    def test_filter_performance(self):
-        """Test filter application performance.
-
-        Target: < 100ms for filtering 1000 results
-        """
-        from cuepoint.compat.results_controller import ResultsController
-        from cuepoint.models.result import TrackResult
-
-        # Create test results
-        results = []
-        for i in range(1000):
-            result = TrackResult(
-                playlist_index=i,
-                title=f"Track {i}",
-                artist=f"Artist {i}",
-                matched=i % 2 == 0,  # Every other track matched
-                match_score=85.0 if i % 2 == 0 else 0.0,
-                confidence="high" if i % 2 == 0 else "low",
-            )
-            results.append(result)
-
-        controller = ResultsController()
-        controller.set_results(results)
-
-        # Measure filter performance
-        start = time.perf_counter()
-        controller.apply_filters(search_text="Track 1")
-        duration = time.perf_counter() - start
-
-        # Assert performance requirement
-        assert duration < 0.1, f"Filtering took {duration:.3f}s, expected < 0.1s"
-
-
-@pytest.mark.performance
 class TestMemoryPerformance:
     """Memory usage performance tests."""
 

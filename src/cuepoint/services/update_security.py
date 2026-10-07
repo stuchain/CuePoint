@@ -4,6 +4,9 @@
 """
 Update security utilities (Step 8.3, Design 4).
 
+Moved from ``cuepoint/update/security.py`` when the Qt-era ``update/`` package
+went (PRUNE-03): ``security_service`` is its one live caller, and lives beside it.
+
 This module provides:
 - HTTPS enforcement for update feeds and download URLs
 - SHA-256 checksum verification helpers (for frameworks or custom download flows)
