@@ -10,6 +10,7 @@ import {
   exclusiveOutputSupported,
   isAudioOutputFailure,
 } from "./playerSupervisor";
+import type { ProcessIncident, ProcessReporter } from "./processWatch";
 
 /**
  * The player's lifecycle (PLAYER-03).
@@ -36,7 +37,9 @@ class FakeChild extends EventEmitter {
 
   /** Write a line the way mpv writes one. */
   say(text: string): void {
-    this.stderr.write(text);
+    // Arrives a moment later, as a pipe's contents do: output written just before an exit is
+    // read after the `exit` event, not before it.
+    setImmediate(() => this.stderr.write(text));
   }
 
   kill(signal?: NodeJS.Signals): boolean {
@@ -47,11 +50,20 @@ class FakeChild extends EventEmitter {
     return true;
   }
 
-  /** Simulate the process ending, as a crash or after a kill. */
-  exit(code: number): void {
-    if (this.exitCode !== null) return;
+  /**
+   * Simulate the process ending, as a crash or after a kill.
+   *
+   * As a real child does: `exit` first, and `close` only once stderr has been read to its end,
+   * so output still in the pipe at `exit` arrives after it.
+   */
+  exit(code: number | null, signal: NodeJS.Signals | null = null): void {
+    if (this.exitCode !== null || this.signalCode !== null) return;
     this.exitCode = code;
-    this.emit("exit", code, null);
+    this.signalCode = signal;
+    this.emit("exit", code, signal);
+    this.stderr.once("end", () => this.emit("close", code, signal));
+    // After what `say` queued before it, as a pipe closes after its contents are read.
+    setImmediate(() => this.stderr.end());
   }
 }
 
@@ -148,6 +160,9 @@ function harness(
     connectFailures?: number;
     maxRestartAttempts?: number;
     stableUptimeMs?: number;
+    reporter?: ProcessReporter;
+    /** Called with each child as it is spawned, and its index; for tests that make one misbehave. */
+    onSpawn?: (child: FakeChild, index: number) => void;
     /** Exclusive output exists only on some platforms (PLAYER-11, DEC-055). */
     platform?: NodeJS.Platform;
   } = {},
@@ -168,6 +183,7 @@ function harness(
     restartBackoffMs: [1, 1, 1],
     maxRestartAttempts: overrides.maxRestartAttempts,
     stableUptimeMs: overrides.stableUptimeMs,
+    reporter: overrides.reporter,
     positionPushIntervalMs: 5,
     createSocketPath: () => `/tmp/sock-${children.length}`,
     spawn: ((binary: string, args: string[]) => {
@@ -175,6 +191,7 @@ function harness(
       spawnCalls.push({ binary, args });
       const child = new FakeChild();
       children.push(child);
+      overrides.onSpawn?.(child, children.length - 1);
       return child;
     }) as never,
     createClient: ((socketPath: string) => {
@@ -189,6 +206,15 @@ function harness(
 }
 
 const settle = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Wait for `condition`, by polling; the wait is bounded and fails loudly. */
+async function until(condition: () => boolean, ms = 2000): Promise<void> {
+  const deadline = Date.now() + ms;
+  while (!condition()) {
+    if (Date.now() > deadline) throw new Error("timed out waiting");
+    await new Promise((resolve) => setTimeout(resolve, 2));
+  }
+}
 
 const supervisors: PlayerSupervisor[] = [];
 function track(h: Harness): Harness {
@@ -931,5 +957,183 @@ describe("pushing state to listeners", () => {
     supervisor.onSnapshot((s) => snapshots.push(s));
     await supervisor.play("/music/a.flac");
     expect(snapshots.at(-1)?.status.running).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Incidents (REPORT-05)
+// ---------------------------------------------------------------------------
+
+describe("what the player reports", () => {
+  function recorder() {
+    const incidents: ProcessIncident[] = [];
+    const crumbs: Array<{ category: string; message: string; data?: Record<string, unknown> }> = [];
+    const reporter: ProcessReporter = {
+      breadcrumb: (category, message, data) => crumbs.push({ category, message, data }),
+      incident: (incident) => incidents.push(incident),
+    };
+    const named = (message: string) => crumbs.filter((c) => c.message === message);
+    return { incidents, crumbs, reporter, named };
+  }
+
+  it("an exit with a code that a restart recovers from is one event, once the player has stayed up", async () => {
+    const { incidents, reporter, named } = recorder();
+    // Long enough that the "not yet" check below cannot race the timer, short enough to wait for.
+    const { supervisor, children, spawnCalls } = track(harness({ reporter, stableUptimeMs: 400 }));
+    await supervisor.play("/music/a.flac");
+    children[0].say("[ao/alsa] cannot open device /Users/anna/Music\n");
+    await settle(5);
+
+    children[0].exit(3);
+    await until(() => spawnCalls.length === 2 && supervisor.getStatus().running);
+    // Back, but not yet proven: a loop that restarts cleanly and dies at once is still one incident.
+    expect(incidents).toEqual([]);
+    await until(() => incidents.length > 0, 3000);
+
+    expect(incidents).toHaveLength(1);
+    const [incident] = incidents;
+    expect(incident!.process).toBe("player");
+    expect(incident!.outcome).toBe("recovered");
+    expect(incident!.message).toBe("player exited unexpectedly");
+    expect(incident!.data).toMatchObject({ exit_code: 3, signal: null, restarts: 1, exits: 1 });
+    expect(incident!.attachment?.filename).toBe("player-output.txt");
+    expect(incident!.attachment?.text).toContain("cannot open device");
+    expect(named("player exited unexpectedly")).toHaveLength(1);
+    expect(named("player restarting")).toHaveLength(1);
+  });
+
+  it("three restarts and a give-up are one event, with the reason and the tail", async () => {
+    const { incidents, reporter, named } = recorder();
+    const { supervisor, children } = track(harness({ reporter, stableUptimeMs: 60_000 }));
+    await supervisor.play("/music/a.flac");
+    children[0].say("mpv: audio init failed\n");
+    await settle(5);
+
+    for (let i = 0; i < 6; i += 1) {
+      children.at(-1)?.exit(3);
+      await settle(20);
+    }
+
+    expect(incidents).toHaveLength(1);
+    expect(incidents[0]!.outcome).toBe("gave-up");
+    expect(incidents[0]!.data).toMatchObject({ exit_code: 3, restarts: 3, exits: 4 });
+    expect(incidents[0]!.data.reason).toMatch(/stopped responding/);
+    expect(incidents[0]!.attachment?.text).toContain("audio init failed");
+    expect(named("player exited unexpectedly")).toHaveLength(4);
+    expect(named("player restarting")).toHaveLength(3);
+  });
+
+  it("a deliberate stop, and playing again after one, are not reported", async () => {
+    const { incidents, crumbs, reporter } = recorder();
+    const { supervisor } = track(harness({ reporter, stableUptimeMs: 10 }));
+    await supervisor.play("/music/a.flac");
+    await supervisor.stop();
+    await settle(30);
+    await supervisor.play("/music/b.flac");
+    await supervisor.dispose();
+    await settle(30);
+
+    expect(incidents).toEqual([]);
+    expect(crumbs.filter((c) => c.category === "process")).toEqual([]);
+  });
+
+  it("an exit that ends by a signal says which", async () => {
+    const { incidents, reporter } = recorder();
+    const { supervisor, children } = track(harness({ reporter, stableUptimeMs: 10 }));
+    await supervisor.play("/music/a.flac");
+    children[0].exit(null, "SIGSEGV");
+    await settle(60);
+
+    expect(incidents[0]!.data).toMatchObject({ exit_code: null, signal: "SIGSEGV" });
+  });
+
+  it("restart loops that overlap are still one give-up event", async () => {
+    // Each restarted mpv dies while it is still being connected to: its exit handler fires while the
+    // restart that started it is running, and used to start a second loop beside the first.
+    const { incidents, reporter } = recorder();
+    const { supervisor, children, spawnCalls } = track(
+      harness({
+        reporter,
+        stableUptimeMs: 60_000,
+        onSpawn: (child, index) => {
+          if (index >= 1) queueMicrotask(() => child.exit(1));
+        },
+      }),
+    );
+    await supervisor.play("/music/a.flac");
+    children[0].exit(1);
+    await until(() => incidents.length > 0);
+    await settle(80);
+
+    expect(incidents).toHaveLength(1);
+    expect(incidents[0]!.outcome).toBe("gave-up");
+    // The first start and three restarts: no loop beside the loop.
+    expect(spawnCalls).toHaveLength(4);
+    expect(supervisor.getStatus().running).toBe(false);
+  });
+
+  it("the tail holds what was still in the pipe when mpv exited", async () => {
+    const { incidents, reporter } = recorder();
+    const { supervisor, children } = track(harness({ reporter, maxRestartAttempts: 0 }));
+    await supervisor.play("/music/a.flac");
+
+    children[0].say("last words before dying\n");
+    children[0].exit(1);
+    await until(() => incidents.length > 0);
+
+    expect(incidents[0]!.outcome).toBe("gave-up");
+    expect(incidents[0]!.attachment?.text).toContain("last words before dying");
+  });
+
+  it("keeps a runaway line to a cap, with a marker", async () => {
+    const { incidents, reporter } = recorder();
+    const { supervisor, children } = track(harness({ reporter, maxRestartAttempts: 0 }));
+    await supervisor.play("/music/a.flac");
+
+    children[0].say(`${"z".repeat(5000)}\n`);
+    await settle(5);
+    children[0].exit(1);
+    await until(() => incidents.length > 0);
+
+    const lines = incidents[0]!.attachment!.text.split("\n");
+    expect(Math.max(...lines.map((l) => l.length))).toBeLessThan(2100);
+    expect(incidents[0]!.attachment!.text).toContain("...[truncated]");
+    expect(supervisor.recentOutput().every((l) => l.length < 2100)).toBe(true);
+  });
+
+  it("reports the uptime of the process that died, not of an earlier one (its own spawn, not the last good start)", async () => {
+    const { incidents, reporter } = recorder();
+    const { supervisor, children } = track(
+      harness({
+        reporter,
+        maxRestartAttempts: 1,
+        stableUptimeMs: 60_000,
+        // The restarted mpv dies at once, before its start has finished.
+        onSpawn: (child, index) => {
+          if (index === 1) queueMicrotask(() => child.exit(1));
+        },
+      }),
+    );
+    await supervisor.play("/music/a.flac");
+    await settle(60);
+
+    children[0].exit(1);
+    await until(() => incidents.length > 0);
+
+    // Nothing, not the first mpv's 60 ms.
+    expect(incidents[0]!.data.uptime_ms).toBeLessThan(40);
+  });
+
+  it("an incident open when the app quits is dropped, unsent", async () => {
+    const { incidents, reporter } = recorder();
+    const { supervisor, children, spawnCalls } = track(harness({ reporter, stableUptimeMs: 20 }));
+    await supervisor.play("/music/a.flac");
+
+    children[0].exit(1);
+    await until(() => spawnCalls.length === 2);
+    await supervisor.dispose();
+    await settle(80);
+
+    expect(incidents).toEqual([]);
   });
 });

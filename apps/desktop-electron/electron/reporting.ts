@@ -20,7 +20,9 @@
  * (`wrapIpcHandler`), a renderer or helper process that is gone, `engine.start()`'s
  * swallowed failure. An engine error is never reported twice: below 500 it is a
  * refusal and is not reported, and one of 500 or more that the engine reported
- * itself (it carries `reportId`) is a breadcrumb naming that report.
+ * itself (it carries `reportId`) is a breadcrumb naming that report. The engine and the
+ * player are reported by their supervisors, once per incident, through `processReporter`
+ * (REPORT-05): an outage seen by IPC is only a breadcrumb.
  *
  * Renderer to main: the SDK is started with `ipcMode` Classic only. That opens no `sentry-ipc`
  * protocol, and the page has no way to reach its `ipcMain` channels (the preload exposes none
@@ -37,13 +39,16 @@ import { createRequire } from "node:module";
 
 import { bridgeSafeError } from "./bridgeError";
 import { EngineError, setEngineTraceHeaders } from "./engineClient";
-import { scrubEvent, type ScrubContext } from "./reportScrub";
+import type { ProcessIncident, ProcessReporter } from "./processWatch";
+import { scrubAttachment, scrubEvent, type ScrubContext } from "./reportScrub";
 
 /** The part of the Sentry SDK this file uses. */
 export interface ReportingSdk {
   init(options: Record<string, unknown>): void;
   captureException(error: unknown, hint?: Record<string, unknown>): string;
   captureMessage(message: string, hint?: Record<string, unknown>): string;
+  /** The one call that takes an `EventHint`, and so the one that can carry attachments (REPORT-05). */
+  captureEvent(event: Record<string, unknown>, hint?: Record<string, unknown>): string;
   addBreadcrumb(crumb: Record<string, unknown>): void;
   getTraceData(): Record<string, string | undefined>;
   getDefaultIntegrations(options: Record<string, unknown>): ReadonlyArray<{ name: string }>;
@@ -126,6 +131,7 @@ function loadElectronSdk(): ReportingSdk {
     init: (options) => sentry.init(options),
     captureException: (error, hint) => sentry.captureException(error, hint),
     captureMessage: (message, hint) => sentry.captureMessage(message, hint),
+    captureEvent: (event, hint) => sentry.captureEvent(event, hint),
     addBreadcrumb: (crumb) => sentry.addBreadcrumb(crumb),
     getTraceData: () => sentry.getTraceData(),
     getDefaultIntegrations: (options) => sentry.getDefaultIntegrations(options),
@@ -306,6 +312,55 @@ export function reportProcessGone(kind: string, details: ProcessGoneDetails): st
     return null;
   }
 }
+
+/**
+ * One event for a process incident (REPORT-05): the engine or the player exited without being
+ * asked to, was restarted, or was given up on. Answers the event id, or null when reporting is
+ * off, is not set up, or the SDK failed. Never throws.
+ *
+ * The tail of the process's output goes as an attachment, scrubbed line by line here, before
+ * the SDK sees it. Attachments live in the SDK's `EventHint`, which `captureMessage` does not
+ * take (its second argument is a scope context), so the event goes through `captureEvent`.
+ * `beforeSend` still runs on the event (the choice, then `scrubEvent`). It is handed the hint too
+ * but only ever looks at the event, so the attachment text is scrubbed here, before the SDK has it.
+ */
+export function reportProcessIncident(incident: ProcessIncident): string | null {
+  const on = enabledNow();
+  if (on === null) return null;
+  try {
+    const { attachment } = incident;
+    const text = attachment === null ? null : scrubAttachment(attachment.filename, attachment.text, on.ctx);
+    return on.sdk.captureEvent(
+      {
+        message: incident.message,
+        level: "error",
+        tags: {
+          "process.type": incident.process,
+          "process.outcome": incident.outcome,
+          "process.exit_code": String(incident.data.exit_code ?? ""),
+        },
+        extra: { ...incident.data },
+      },
+      {
+        attachments:
+          attachment !== null && text !== null
+            ? [{ filename: attachment.filename, data: text, contentType: "text/plain" }]
+            : [],
+      },
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** What a supervisor is given to report with (`processWatch.ts`); `main.ts` passes it to both. */
+export const processReporter: ProcessReporter = {
+  breadcrumb,
+  incident: (incident) => {
+    reportProcessIncident(incident);
+  },
+  addToken: addReportingToken,
+};
 
 /** Report an error once for each `key` in a launch. A report that was not made does not use the key. */
 export function reportOnce(key: string, error: unknown, context?: ReportContext): string | null {

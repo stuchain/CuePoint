@@ -95,6 +95,7 @@ import {
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
 import { withDecoderPath } from "./playerLaunch";
 import { stopProcessTree } from "./processTree";
+import { IncidentTracker, OUTPUT_TAIL_LINES, capLine, type OutputTail, type ProcessReporter } from "./processWatch";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Repo root: works from source (`electron/`) and bundle (`electron-dist/`). */
@@ -185,6 +186,21 @@ interface EngineSupervisorOptions {
    * Absent reads as off.
    */
   errorReporting?: () => boolean;
+  /**
+   * Where the engine's incidents go (REPORT-05): an exit that was not asked for, each restart,
+   * a give-up, a launch that failed. `main.ts` passes `processReporter`; the supervisor never
+   * imports the Sentry SDK. Absent, nothing is reported.
+   */
+  reporter?: ProcessReporter;
+  /** Replaces `RESTART_BACKOFF_MS`; for tests. */
+  restartBackoffMs?: readonly number[];
+  /** Replaces `HEALTH_TIMEOUT_MS`; for tests. */
+  healthTimeoutMs?: number;
+  /**
+   * Replaces what is spawned, for tests with a stand-in engine. It is given nothing of the
+   * environment: `engineEnvironment()` is still what the child runs with.
+   */
+  command?: () => { command: string; args: string[]; cwd?: string };
 }
 
 interface EngineEnvironmentInput {
@@ -222,8 +238,26 @@ export function engineEnvironment(input: EngineEnvironmentInput): NodeJS.Process
   );
 }
 
+/** What a launch answers when `stop()` came before it could spawn. */
+const STOPPED: EngineStatus = { connected: false, error: "Engine not running" };
+
 export class EngineSupervisor {
-  constructor(private readonly options: EngineSupervisorOptions = {}) {}
+  constructor(private readonly options: EngineSupervisorOptions = {}) {
+    this.incidents = new IncidentTracker("engine", options.reporter);
+  }
+
+  /** What the engine's exits and restarts add up to (`processWatch.ts`). */
+  private readonly incidents: IncidentTracker;
+  /**
+   * The last lines the engine wrote, by stream (REPORT-05, fact 4).
+   *
+   * The pipes are read, not just kept: a pipe nobody reads fills (about 64 KB) and the engine's
+   * next write blocks, in the middle of whatever request it was serving.
+   */
+  private stdoutTail: string[] = [];
+  private stderrTail: string[] = [];
+  /** When the current child was spawned, for the uptime an incident reports. */
+  private spawnedAt = 0;
 
   private child: ChildProcess | null = null;
   private port: number | null = null;
@@ -264,6 +298,60 @@ export class EngineSupervisor {
   /** Set while `stop()` is deliberate, so quitting is not treated as a crash. */
   private stopping = false;
   private restartTimer: NodeJS.Timeout | null = null;
+  /** Wakes the automatic restart that is waiting out its backoff, so `stop()` or a Restart can end it. */
+  private wakeRestart: (() => void) | null = null;
+  /**
+   * Set by `stop()`, cleared by the next `start()`/`restart()`: the app (or a test) has asked for
+   * no engine, so nothing may spawn one, whatever was in flight when it asked.
+   */
+  private stopRequested = false;
+  /**
+   * Counts the times someone other than an automatic restart took over (`stop()`, `restart()`). An
+   * automatic restart remembers the count it began under and does nothing once it has changed, so a
+   * stale one cannot bounce an engine that a Restart has just brought up, and a Restart is not
+   * undone by the loop it replaced.
+   */
+  private generation = 0;
+
+  /** The last lines of the engine's stdout and stderr, oldest first. Survives restarts. */
+  recentOutput(): { stdout: readonly string[]; stderr: readonly string[] } {
+    return { stdout: [...this.stdoutTail], stderr: [...this.stderrTail] };
+  }
+
+  /** One line into a bounded tail: capped in length, and the oldest dropped past `OUTPUT_TAIL_LINES`. */
+  private noteLine(which: "stdout" | "stderr", line: string): void {
+    if (line.trim() === "") return;
+    const tail = which === "stdout" ? this.stdoutTail : this.stderrTail;
+    tail.push(capLine(line));
+    if (tail.length > OUTPUT_TAIL_LINES) tail.splice(0, tail.length - OUTPUT_TAIL_LINES);
+  }
+
+  /**
+   * Read one of the child's pipes line by line, keeping a bounded tail, never blocking it.
+   * The same shape as `PlayerSupervisor.drainOutput`; a chunk can end mid-line, so the
+   * remainder waits for the next one.
+   */
+  private drain(child: ChildProcess, which: "stdout" | "stderr"): void {
+    const stream = child[which];
+    if (!stream) return;
+    let partial = "";
+    const keep = (line: string): void => this.noteLine(which, line);
+    stream.setEncoding("utf-8");
+    stream.on("data", (chunk: string) => {
+      const lines = (partial + chunk).split(/\r?\n/);
+      partial = lines.pop() ?? "";
+      // A line with no end is as long as a runaway write; cap what is held for it.
+      if (partial.length > 8192) {
+        keep(partial);
+        partial = "";
+      }
+      for (const line of lines) keep(line);
+    });
+    // The rest of a line the engine died in the middle of is the interesting one.
+    stream.on("end", () => keep(partial));
+    // A broken pipe at shutdown is not worth surfacing, and an unhandled one would take main down.
+    stream.on("error", () => undefined);
+  }
 
   getRepoRoot(): string {
     return REPO_ROOT;
@@ -276,6 +364,7 @@ export class EngineSupervisor {
    * a window created straight after it cannot ask for anything in between.
    */
   start(): Promise<EngineStatus> {
+    this.stopRequested = false;
     const run = this.launch();
     this.startup = run;
     void run
@@ -290,11 +379,17 @@ export class EngineSupervisor {
   private async launch(): Promise<EngineStatus> {
     // `stop()` kills the current child; that exit is ours, not a crash.
     this.stopping = true;
-    await this.stop();
+    await this.killChild();
     this.stopping = false;
+    if (this.stopRequested) return STOPPED;
     this.healthy = false;
     this.port = await this.pickPort();
+    // `stop()` may have come while the port was being found; spawning now would leave an engine
+    // behind a quit that has already happened.
+    if (this.stopRequested) return STOPPED;
     this.token = crypto.randomBytes(24).toString("hex");
+    // The scrubber removes it from anything reported (REPORT-04 left this unwired).
+    this.options.reporter?.addToken?.(this.token);
 
     const baseEnv = engineEnvironment({
       port: this.port,
@@ -305,9 +400,23 @@ export class EngineSupervisor {
       errorReporting: this.options.errorReporting?.() ?? false,
     });
 
-    if (shouldUseBundledEngine()) {
+    const standIn = this.options.command?.();
+    if (standIn) {
+      this.child = spawn(standIn.command, standIn.args, {
+        cwd: standIn.cwd ?? REPO_ROOT,
+        env: baseEnv,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } else if (shouldUseBundledEngine()) {
       const enginePath = getBundledEnginePath();
       if (!fs.existsSync(enginePath)) {
+        // Reported here and not by `main.ts`: this start resolves, it does not reject.
+        this.incidents.startFailed(
+          "missing",
+          "bundled engine not found",
+          "the bundled engine is missing from the install",
+          this.outputTail(),
+        );
         return {
           connected: false,
           error: `Bundled engine not found: ${enginePath}`,
@@ -330,22 +439,67 @@ export class EngineSupervisor {
       });
     }
 
-    this.child.on("exit", () => {
+    this.spawnedAt = Date.now();
+    this.drain(this.child, "stdout");
+    this.drain(this.child, "stderr");
+
+    const child = this.child;
+    let exited = false;
+    // Resolves when everything the child wrote has been read (its `close`).
+    const closed = new Promise<void>((resolve) => child.once("close", () => resolve()));
+    child.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
+      exited = true;
+      // `stop()` and a newer launch let go of a child before it exits: that exit is ours, not a
+      // crash, and not an incident (REPORT-05). It must not touch the state of the child that
+      // replaced it, nor start a restart.
+      if (this.child !== child) return;
       this.child = null;
       this.healthy = false;
-      // A deliberate stop is not a crash, and neither is an exit during a
-      // restart we are already running.
-      if (this.stopping || this.reconnecting) return;
+      if (this.stopping) return;
+      // An exit during a restart is still one that was not asked for: it is one more exit in
+      // the open incident, though the restart already running will do the restarting.
+      this.incidents.exited({ code, signal, uptimeMs: Date.now() - this.spawnedAt });
+      if (this.reconnecting) return;
       void this.scheduleRestart();
     });
 
-    const ok = await this.pollHealth();
+    // A spawn that fails (no such binary) is an `error` event and no `exit`; unhandled, it would
+    // be an uncaught exception in main. Its words go to the tail, where the scrubber reads them.
+    child.on("error", (error: Error) => {
+      this.noteLine("stderr", `[spawn] ${error.message}`);
+      if (this.child !== child) return;
+      this.child = null;
+      this.healthy = false;
+      this.incidents.startFailed(
+        "spawn",
+        "engine could not be started",
+        "the engine process could not be spawned",
+        this.outputTail(),
+      );
+    });
+
+    const ok = await this.pollHealth(this.options.healthTimeoutMs, HEALTH_POLL_MS, child);
+    if (this.stopRequested) return STOPPED;
     if (!ok) {
+      // An engine that died: let its last words arrive before they are read into a report.
+      if (exited) await Promise.race([closed, new Promise<void>((resolve) => setTimeout(resolve, 1000).unref?.())]);
+      // A child that is still there did not answer in time. One that exited is already the
+      // incident's story (its exit was recorded above), and `startFailed` leaves it be.
+      if (!exited && this.child === child) {
+        this.incidents.startFailed(
+          "health",
+          "engine did not answer its health check",
+          "the engine started but did not answer /health in time",
+          this.outputTail(),
+        );
+      }
       return {
         connected: false,
         error: "Engine health check failed or timed out",
       };
     }
+    // It answers: if it came back from an exit, that is the incident's one event.
+    this.incidents.recovered(this.outputTail());
     return this.getStatus();
   }
 
@@ -356,30 +510,42 @@ export class EngineSupervisor {
    * start would otherwise be respawned as fast as the machine allows.
    */
   private async scheduleRestart(): Promise<void> {
+    const generation = this.generation;
     if (this.restartAttempts >= MAX_RESTART_ATTEMPTS) {
       this.reconnecting = false;
+      // Not silent any more: the incident's one event (REPORT-05).
+      this.incidents.gaveUp(
+        `the engine did not stay up after ${MAX_RESTART_ATTEMPTS} restarts`,
+        this.outputTail(),
+      );
       return;
     }
-    const delay = RESTART_BACKOFF_MS[this.restartAttempts] ?? 4000;
+    const backoff = this.options.restartBackoffMs ?? RESTART_BACKOFF_MS;
+    const delay = backoff[this.restartAttempts] ?? backoff.at(-1) ?? 4000;
     this.restartAttempts += 1;
     this.reconnecting = true;
+    this.incidents.restarting(this.restartAttempts, delay);
 
     await new Promise<void>((resolve) => {
+      this.wakeRestart = resolve;
       this.restartTimer = setTimeout(resolve, delay);
+      // A pending restart must not keep the process alive; `stop()` and `restart()` also end it.
+      this.restartTimer.unref?.();
     });
     this.restartTimer = null;
-    if (this.stopping) {
-      this.reconnecting = false;
-      return;
-    }
+    this.wakeRestart = null;
+    // `stop()` or the user's Restart ended the wait, and owns what happens next.
+    if (this.stopRequested || generation !== this.generation) return;
 
     const status = await this.start();
+    if (this.stopRequested || generation !== this.generation) return;
     this.reconnecting = false;
     if (status.connected) {
       // Healthy again: the next crash gets a full set of attempts of its own,
       // rather than inheriting the count from an unrelated failure.
       this.restartAttempts = 0;
-    } else if (this.restartAttempts < MAX_RESTART_ATTEMPTS) {
+    } else {
+      // Tries again, or, with the attempts spent, gives up and says so.
       void this.scheduleRestart();
     }
   }
@@ -391,16 +557,39 @@ export class EngineSupervisor {
    * of the automatic attempts that already gave up.
    */
   async restart(): Promise<EngineStatus> {
-    if (this.restartTimer) {
-      clearTimeout(this.restartTimer);
-      this.restartTimer = null;
-    }
+    // Ends a restart that is waiting, and makes one that is starting stand down when it finishes.
+    this.generation += 1;
+    this.endBackoff();
     this.restartAttempts = 0;
     this.reconnecting = false;
     return this.start();
   }
 
+  /** Ends the wait of an automatic restart that is in its backoff, if there is one. */
+  private endBackoff(): void {
+    if (this.restartTimer) clearTimeout(this.restartTimer);
+    this.restartTimer = null;
+    const wake = this.wakeRestart;
+    this.wakeRestart = null;
+    wake?.();
+  }
+
+  /**
+   * Stop the engine, for good until the next `start()`: any restart waiting or starting stands down.
+   *
+   * An incident still open is dropped, unsent: see the comment in `processWatch.ts`.
+   */
   async stop(): Promise<void> {
+    this.stopRequested = true;
+    this.generation += 1;
+    this.endBackoff();
+    this.reconnecting = false;
+    this.incidents.abandon();
+    await this.killChild();
+  }
+
+  /** Kill the child and wait for it (or two seconds). What `launch()` and `stop()` both need. */
+  private async killChild(): Promise<void> {
     if (!this.child) return;
     const proc = this.child;
     this.child = null;
@@ -414,6 +603,11 @@ export class EngineSupervisor {
         resolve();
       }, 2000);
     });
+  }
+
+  /** What an incident's attachment is made from. */
+  private outputTail(): OutputTail {
+    return this.recentOutput();
   }
 
   getStatus(): EngineStatus {
@@ -1176,12 +1370,15 @@ export class EngineSupervisor {
   private async pollHealth(
     timeoutMs = HEALTH_TIMEOUT_MS,
     delayMs = HEALTH_POLL_MS,
+    child: ChildProcess | null = this.child,
   ): Promise<boolean> {
     if (!this.port) return false;
     const url = `http://127.0.0.1:${this.port}/health`;
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
-      if (!this.child) return false;
+      // Also when a restart has replaced the child this launch spawned: this poll would be asking
+      // the old port for the whole budget, and its caller would never be told it had failed.
+      if (!this.child || this.child !== child) return false;
       try {
         const res = await fetch(url);
         if (res.ok) {

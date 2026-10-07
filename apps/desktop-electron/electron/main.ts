@@ -18,6 +18,7 @@ import {
   breadcrumb,
   mainReportingDsn,
   markQuitting,
+  processReporter,
   reportOnce,
   reportProcessGone,
   setupMainReporting,
@@ -78,8 +79,8 @@ errorReporting.enabled();
  * Nothing is set up, and nothing is sent, unless `CUEPOINT_SENTRY_DSN` names a
  * DSN: until REPORT-08 a user's build has none. The choice is read at the time
  * of each event, so turning reporting off takes effect at once. The engine's
- * session token is 48 hex characters, which the scrubber removes by shape (the
- * supervisor does not expose it, so `addReportingToken` is not called yet).
+ * session token is 48 hex characters, which the scrubber removes by shape, and the
+ * engine supervisor also hands it over when it makes one (`processReporter.addToken`).
  */
 const reportingOn = setupMainReporting({
   dsn: mainReportingDsn(),
@@ -119,6 +120,8 @@ const engine: EngineSupervisor = new EngineSupervisor({
     })?.path ?? null,
   // A closure, so `errorReporting` (declared below) is read at launch, not here.
   errorReporting: (): boolean => errorReporting.enabled(),
+  // The engine's exits, restarts and give-ups, once per incident (REPORT-05).
+  reporter: processReporter,
 });
 
 /**
@@ -133,6 +136,7 @@ const player = new PlayerSupervisor({
   packaged: app.isPackaged,
   resourcesPath: process.resourcesPath,
   repoRoot: engine.getRepoRoot(),
+  reporter: processReporter,
 });
 
 /**
@@ -974,11 +978,12 @@ async function createWindow(): Promise<void> {
    * was connected when it was not.
    */
   void engine.start().then(
-    () => breadcrumb("engine", "started"),
+    (status) => breadcrumb("engine", status.connected ? "started" : "start did not connect"),
     (error: unknown) => {
       // Reached the person through `getStatus()`, which the strip already polls; a
       // rejection here would otherwise be an unhandled one. It is also reported,
-      // once per launch (REPORT-04).
+      // once per launch (REPORT-04). This is only the start that throws: a start that
+      // resolves unhealthy, or with no engine, is the supervisor's to report (REPORT-05).
       breadcrumb("engine", "failed to start");
       reportOnce("engine.start", error, { tags: { "engine.phase": "start" } });
     },
@@ -1071,6 +1076,10 @@ if (reportingOn) {
     if (now === lastPlayerStatus) return;
     lastPlayerStatus = now;
     breadcrumb("player", now);
+  });
+  // A file that would not play is the user's (missing, unreadable): a step, never an event.
+  playback.onNotice((notice) => {
+    breadcrumb("player", "notice", { kind: notice.kind, count: notice.count, stopped: notice.stopped });
   });
 }
 

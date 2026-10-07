@@ -14,6 +14,7 @@ import {
   playerUnavailableReason,
   type ResolvePlayerBinaryOptions,
 } from "./playerLaunch";
+import { IncidentTracker, capLine, type ProcessReporter } from "./processWatch";
 
 /**
  * Owns the mpv process and mirrors its state (PLAYER-03, DEC-049, DEC-050).
@@ -204,6 +205,12 @@ interface PlayerSupervisorOptions extends Partial<ResolvePlayerBinaryOptions> {
   restartBackoffMs?: readonly number[];
   maxRestartAttempts?: number;
   stableUptimeMs?: number;
+  /**
+   * Where the player's incidents go (REPORT-05): an exit that was not asked for, each restart, and
+   * giving up. `main.ts` passes `processReporter`; the supervisor never imports the Sentry SDK.
+   * Absent, nothing is reported.
+   */
+  reporter?: ProcessReporter;
 }
 
 type SnapshotListener = (snapshot: PlayerSnapshot) => void;
@@ -253,11 +260,17 @@ export class PlayerSupervisor {
   private output: string[] = [];
   private outputTail = "";
 
+  /** What the player's exits and restarts add up to (`processWatch.ts`). */
+  private readonly incidents: IncidentTracker;
+  /** Ends an incident once a restarted player has stayed up (see `watchStable`). */
+  private stableTimer: NodeJS.Timeout | null = null;
+
   private readonly spawnFn: typeof nodeSpawn;
   private readonly clientFactory: (socketPath: string) => MpvClient;
   private readonly socketPathFactory: () => string;
 
   constructor(private readonly options: PlayerSupervisorOptions = {}) {
+    this.incidents = new IncidentTracker("player", options.reporter);
     this.spawnFn = options.spawn ?? nodeSpawn;
     this.clientFactory =
       options.createClient ?? ((socketPath) => new MpvClient({ socketPath }));
@@ -499,28 +512,45 @@ export class PlayerSupervisor {
       spawnError = error;
     });
 
-    child.once("exit", () => {
+    // When this process was spawned, for the uptime an incident reports. Its own, not the last
+    // good start's (`startedAt`), which is stale for a process that dies while it is starting.
+    const spawnedAt = Date.now();
+    let exited = false;
+    child.once("exit", (code: number | null, signal: NodeJS.Signals | null) => {
+      exited = true;
       if (this.child !== child) return; // superseded by a restart
+      const uptimeMs = Date.now() - spawnedAt;
+      const ranFor = this.startedAt > 0 ? Date.now() - this.startedAt : 0;
       this.child = null;
+      this.startedAt = 0;
       this.client?.close();
       this.client = null;
+      this.clearStableTimer();
       this.markStopped();
       if (this.stopping || this.disposed) return;
+      this.incidents.exited({ code, signal, uptimeMs });
       const stableFor = this.options.stableUptimeMs ?? PLAYER_STABLE_UPTIME_MS;
-      if (this.startedAt > 0 && Date.now() - this.startedAt >= stableFor) {
+      if (ranFor >= stableFor && ranFor > 0) {
         // It ran properly for a while, so this is a new problem rather than a
         // continuation of a crash loop: give it a full budget again.
         this.restartAttempts = 0;
         this.gaveUpReason = null;
       }
-      void this.scheduleRestart();
+      // A restart already running (`scheduleRestart`) sees this exit as a failed start and goes on
+      // by itself; a second loop beside it is how one incident became several reports.
+      if (this.reconnecting) return;
+      // Not before stderr has been read to its end: the last words are what the report is for.
+      void this.drained(child).then(() => {
+        if (this.stopping || this.disposed || this.child !== null || this.reconnecting) return;
+        void this.scheduleRestart();
+      });
     });
 
     this.child = child;
 
     const client = this.clientFactory(socketPath);
     try {
-      await this.connectWithRetry(client, () => spawnError);
+      await this.connectWithRetry(client, () => spawnError, () => exited);
     } catch (error) {
       this.child = null;
       try {
@@ -556,6 +586,12 @@ export class PlayerSupervisor {
 
     await this.observeState(client);
     await this.restoreAudio(client);
+    // It died while it was being set up: a failed start, for whoever is starting it to see.
+    if (exited) {
+      client.close();
+      this.client = null;
+      throw new PlayerUnavailableError("The audio player exited while it was starting.");
+    }
     this.startedAt = Date.now();
     this.gaveUpReason = null;
     this.push(true);
@@ -567,7 +603,11 @@ export class PlayerSupervisor {
    * Retried rather than slept on: a fixed sleep is either too short on a loaded
    * machine or wasted time on a fast one.
    */
-  private async connectWithRetry(client: MpvClient, spawnError: () => Error | null): Promise<void> {
+  private async connectWithRetry(
+    client: MpvClient,
+    spawnError: () => Error | null,
+    gone: () => boolean,
+  ): Promise<void> {
     const attempts = this.options.connectAttempts ?? PLAYER_CONNECT_ATTEMPTS;
     const retryMs = this.options.connectRetryMs ?? PLAYER_CONNECT_RETRY_MS;
     let lastError: Error | null = null;
@@ -575,6 +615,8 @@ export class PlayerSupervisor {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       const failure = spawnError();
       if (failure) throw failure;
+      // A process that has exited will never open its socket; do not wait out the attempts for it.
+      if (gone()) throw new Error("the player exited before it could be connected to");
       try {
         await client.connect();
         return;
@@ -653,16 +695,41 @@ export class PlayerSupervisor {
       // A chunk can end mid-line; hold the remainder for the next one.
       this.outputTail = lines.pop() ?? "";
       for (const line of lines) this.note(line);
+      // A line with no end is as long as a runaway write: keep it capped and start over.
+      if (this.outputTail.length > 8192) {
+        this.note(this.outputTail);
+        this.outputTail = "";
+      }
+    });
+    // What mpv wrote without a newline as it died is the last thing it said.
+    stream.on("end", () => {
+      this.note(this.outputTail);
+      this.outputTail = "";
     });
     // A broken pipe on shutdown is not an error worth surfacing, but an
     // unhandled one on a stream would take the process down.
     stream.on("error", () => undefined);
   }
 
+  /**
+   * Resolves once everything the child wrote has been read (`close`), or after a second: a
+   * grandchild holding the pipe open must not hold the restart up.
+   */
+  private drained(child: ChildProcess): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, 1000);
+      timer.unref?.();
+      child.once("close", () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+  }
+
   /** Keep one line in the bounded diagnostics tail. */
   private note(line: string): void {
     if (line.trim() === "") return;
-    this.output.push(line);
+    this.output.push(capLine(line));
     if (this.output.length > PLAYER_OUTPUT_LINES) {
       this.output = this.output.slice(-PLAYER_OUTPUT_LINES);
     }
@@ -729,6 +796,8 @@ export class PlayerSupervisor {
     if (this.restartAttempts >= max) {
       this.reconnecting = false;
       this.gaveUpReason = "The audio player stopped responding. Play a track to try again.";
+      // The incident's one event (REPORT-05), with the words the user was told.
+      this.incidents.gaveUp(this.gaveUpReason, { stderr: this.output });
       this.push(true);
       return;
     }
@@ -736,6 +805,7 @@ export class PlayerSupervisor {
     const delay = backoff[this.restartAttempts] ?? backoff.at(-1) ?? 4000;
     this.restartAttempts += 1;
     this.reconnecting = true;
+    this.incidents.restarting(this.restartAttempts, delay);
     this.push(true);
 
     await new Promise<void>((resolve) => {
@@ -751,6 +821,7 @@ export class PlayerSupervisor {
     try {
       await this.start();
       this.reconnecting = false;
+      this.watchStable();
       // Deliberately *not* resetting the attempt counter here. Starting is not
       // the same as working; the counter is cleared when the process proves
       // itself by surviving (see the exit handler) or when the user plays
@@ -762,9 +833,33 @@ export class PlayerSupervisor {
     }
   }
 
+  /**
+   * Close the open incident once this mpv has stayed up for `stableUptimeMs`.
+   *
+   * Not when it merely starts: mpv that launches cleanly and dies at once (no audio device) starts
+   * successfully every time, and an event per start would be the flapping report one incident
+   * exists to prevent. An exit before the timer fires clears it, and the incident goes on.
+   */
+  private watchStable(): void {
+    if (!this.incidents.isOpen || this.child === null) return;
+    const child = this.child;
+    this.clearStableTimer();
+    this.stableTimer = setTimeout(() => {
+      this.stableTimer = null;
+      if (this.child === child) this.incidents.recovered({ stderr: this.output });
+    }, this.options.stableUptimeMs ?? PLAYER_STABLE_UPTIME_MS);
+    this.stableTimer.unref?.();
+  }
+
+  private clearStableTimer(): void {
+    if (this.stableTimer) clearTimeout(this.stableTimer);
+    this.stableTimer = null;
+  }
+
   /** Stop mpv: ask politely, then insist. */
   async stop(): Promise<void> {
     this.stopping = true;
+    this.clearStableTimer();
     if (this.restartTimer) {
       clearTimeout(this.restartTimer);
       this.restartTimer = null;
@@ -818,6 +913,8 @@ export class PlayerSupervisor {
   /** Shut down for good. Called on app quit; the supervisor is unusable after. */
   async dispose(): Promise<void> {
     this.disposed = true;
+    // Quitting with an incident open: it is dropped, unsent (see `processWatch.ts`).
+    this.incidents.abandon();
     if (this.pushTimer) {
       clearTimeout(this.pushTimer);
       this.pushTimer = null;

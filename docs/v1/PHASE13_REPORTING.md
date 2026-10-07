@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 13: Error Reporting, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. REPORT-01 to REPORT-04 are implemented (2026-10-07).** Eight steps,
+Status: **Specified 2026-10-07. REPORT-01 to REPORT-05 are implemented (2026-10-07).** Eight steps,
 REPORT-01…REPORT-08. Writing the steps raised six questions that Decision Round 14 did not answer.
 They were asked as Decision Round 16 (Q-151…Q-156) and settled the same day as DEC-148…DEC-153, so
 there are no open points. Per the process, no implementation happens from this
@@ -629,6 +629,29 @@ and stall (fact 4). Nothing is sent from a user's build yet.
 **Risks**: Low.
 
 **Complexity**: **S**
+
+**Outcome**: Implemented (2026-10-07). `electron/processWatch.ts` holds the one rule both supervisors
+follow (`IncidentTracker`): the first exit that was not asked for opens an incident, each restart is a
+breadcrumb, and the incident ends in one event, `recovered` or `gave-up`; a failed start (health timed
+out, bundled engine missing) is its own `start-failed` event. The supervisors take an injected
+`ProcessReporter` (`processReporter` in `reporting.ts`), never the SDK. The engine's stdout and stderr
+are drained as mpv's are, keeping the last 50 lines of each, every line capped at 2000 characters;
+the tail is attached as `engine-output.txt` / `player-output.txt` and scrubbed line by line. The
+supervisor hands its session token to the scrubber. A playback failure on one file is a breadcrumb.
+
+Decided while building:
+- **The supervisor owns a failed start.** `main.ts` reports only an `engine.start()` that throws; a
+  start that resolves unhealthy or finds no engine is the supervisor's event.
+- **An incident open at quit is dropped, not sent** (`abandon()`): the quit path waits for no SDK
+  flush, so an "interrupted" event would arrive only by luck. If a flush is ever added, that is where.
+- **Restarts cannot overlap.** `stop()` during the backoff ends it and spawns nothing; a user Restart
+  bumps a generation counter so a stale automatic restart cannot bounce the healthy engine; the
+  player starts no second restart loop while one runs, and gives up at most once.
+- **The give-up tail is read after `close`**, so it holds the last lines written before the exit.
+
+Checked in the cloud container: the main-process suite (1242, including the 1 MB stand-in engine,
+which stalled before the drain), the type-check, the build and the desktop contract test. Not checked:
+a real engine or mpv crash in a packed app.
 
 ---
 

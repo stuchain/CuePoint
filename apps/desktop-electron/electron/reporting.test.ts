@@ -9,8 +9,10 @@ import {
   breadcrumb,
   mainReportingDsn,
   reportEngineError,
+  processReporter,
   reportOnce,
   reportProcessGone,
+  reportProcessIncident,
   reportUnexpected,
   setupMainReporting,
   teardownMainReporting,
@@ -19,6 +21,7 @@ import {
   wrapIpcHandler,
   type ReportingSdk,
 } from "./reporting";
+import type { ProcessIncident } from "./processWatch";
 import type { ScrubContext } from "./reportScrub";
 
 /**
@@ -39,6 +42,8 @@ const DSN = "https://publickey@o0.ingest.example.invalid/1";
 interface Sent {
   event: Record<string, unknown>;
   envelope: unknown;
+  /** The attachment items that travelled with the event, by filename (REPORT-05). */
+  attachments: Array<{ filename: string; text: string }>;
 }
 
 let sent: Sent[];
@@ -95,9 +100,16 @@ function facade(): ReportingSdk {
         stackParser: Node.defaultStackParser,
         transport: () => ({
           send: async (envelope: unknown) => {
-            const item = (envelope as unknown[][][])[1]![0]!;
+            const items = (envelope as unknown[][][])[1]!;
+            const item = items[0]!;
             if ((item[0] as { type?: string }).type === "event") {
-              sent.push({ event: item[1] as Record<string, unknown>, envelope });
+              const attachments = items
+                .filter((i) => (i[0] as { type?: string }).type === "attachment")
+                .map((i) => ({
+                  filename: (i[0] as { filename: string }).filename,
+                  text: typeof i[1] === "string" ? i[1] : new TextDecoder().decode(i[1] as Uint8Array),
+                }));
+              sent.push({ event: item[1] as Record<string, unknown>, envelope, attachments });
             }
             return {};
           },
@@ -109,6 +121,7 @@ function facade(): ReportingSdk {
     },
     captureException: (error, hint) => Node.captureException(error, hint),
     captureMessage: (message, hint) => Node.captureMessage(message, hint as never),
+    captureEvent: (event, hint) => Node.captureEvent(event as never, hint as never),
     addBreadcrumb: (crumb) => {
       handed.push(crumb);
       Node.addBreadcrumb(crumb);
@@ -769,5 +782,105 @@ describe("tokens learned after start", () => {
     await flush();
 
     expect(JSON.stringify(sent[0]!.event)).not.toContain("late-engine-token-123");
+  });
+});
+
+describe("a process incident (REPORT-05)", () => {
+  const incident = (overrides: Partial<ProcessIncident> = {}): ProcessIncident => ({
+    process: "engine",
+    outcome: "gave-up",
+    message: "engine exited unexpectedly and was given up on",
+    data: { exit_code: 3, signal: null, restarts: 3, uptime_ms: 1200, exits: 4, reason: "gave up" },
+    attachment: {
+      filename: "engine-output.txt",
+      text: "== stderr (last 2 lines) ==\nopening /Users/anna/Music/x.flac\nauth failed with late-token-abc",
+    },
+    ...overrides,
+  });
+
+  it("is one event with its numbers, and the tail as a scrubbed attachment", async () => {
+    setup();
+    ctx.tokens.push("late-token-abc");
+
+    const id = reportProcessIncident(incident());
+    await flush();
+
+    expect(typeof id).toBe("string");
+    expect(sent).toHaveLength(1);
+    const { event, attachments } = sent[0]!;
+    expect(event.message).toBe("engine exited unexpectedly and was given up on");
+    expect(event.level).toBe("error");
+    expect(event.tags).toMatchObject({
+      "process.type": "engine",
+      "process.outcome": "gave-up",
+      "process.exit_code": "3",
+    });
+    expect(event.extra).toMatchObject({ exit_code: 3, restarts: 3, uptime_ms: 1200, exits: 4 });
+
+    // The attachment is shaped by REPORT-02's scrubber: no home path, no token, and it is named
+    // as the scrubber allows.
+    expect(attachments).toHaveLength(1);
+    expect(attachments[0]!.filename).toBe("engine-output.txt");
+    expect(attachments[0]!.text).not.toContain("/Users/anna");
+    expect(attachments[0]!.text).not.toContain("anna");
+    expect(attachments[0]!.text).not.toContain("late-token-abc");
+    expect(attachments[0]!.text).toContain("== stderr (last 2 lines) ==");
+  });
+
+  it("is subject to the choice: off at the time of the event, nothing is made", async () => {
+    setup();
+    enabled = false;
+
+    expect(reportProcessIncident(incident())).toBeNull();
+    await flush();
+    expect(sent).toEqual([]);
+  });
+
+  it("still passes through beforeSend, which applies the choice and scrubs the event", async () => {
+    setup();
+    const seen: unknown[] = [];
+    const before = initOptions.beforeSend as (event: Record<string, unknown>) => Record<string, unknown> | null;
+    // The SDK calls `beforeSend` with the event: turning the choice off after `captureEvent`
+    // returned but before it is processed must still drop it.
+    expect(typeof before).toBe("function");
+    enabled = false;
+    seen.push(before({ message: "x" }));
+    expect(seen).toEqual([null]);
+    enabled = true;
+
+    reportProcessIncident(incident({ data: { exit_code: 1, signal: null, restarts: 0, uptime_ms: 5, exits: 1, reason: "/Users/anna/Music/x.flac" } }));
+    await flush();
+    expect(JSON.stringify(sent[0]!.event)).not.toContain("/Users/anna");
+  });
+
+  it("sends no attachment but the two output tails: any other name is dropped", async () => {
+    setup();
+    reportProcessIncident(incident({ attachment: { filename: "secrets.txt" as never, text: "hunter2" } }));
+    await flush();
+    expect(sent[0]!.attachments).toEqual([]);
+  });
+
+  it("sends none when the incident has none", async () => {
+    setup();
+    reportProcessIncident(incident({ attachment: null }));
+    await flush();
+    expect(sent[0]!.attachments).toEqual([]);
+  });
+
+  it("does nothing when reporting is not set up", async () => {
+    expect(reportProcessIncident(incident())).toBeNull();
+  });
+
+  it("the reporter handed to the supervisors makes breadcrumbs, events and learns tokens", async () => {
+    setup();
+    processReporter.breadcrumb("process", "engine restarting", { attempt: 1 });
+    processReporter.incident(incident());
+    processReporter.addToken?.("learned-by-supervisor");
+    reportUnexpected(new Error("learned-by-supervisor"));
+    await flush();
+
+    expect(sent).toHaveLength(2);
+    expect(JSON.stringify(sent[1]!.event)).not.toContain("learned-by-supervisor");
+    expect(handed.some((c) => c.message === "engine restarting")).toBe(true);
   });
 });
