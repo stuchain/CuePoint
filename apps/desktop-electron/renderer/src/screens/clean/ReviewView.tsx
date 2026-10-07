@@ -73,6 +73,7 @@ import { useScopeOptions } from "./useScopeOptions";
 import { useResumableMatches } from "./useResumableMatches";
 import { useTrackMatches } from "./useTrackMatches";
 import type { CleanOpening } from "./cleanLink";
+import { reportUnexpected } from "../../reporting/reporting";
 
 const PLAIN = { shiftKey: false, ctrlKey: false, metaKey: false };
 
@@ -296,6 +297,7 @@ export function ReviewView({
             : { decision, track_id: trackId },
         );
       } catch (cause) {
+        reportUnexpected(cause);
         setBusy(false);
         push(messageOf(cause), "warning");
         return;
@@ -320,6 +322,7 @@ export function ReviewView({
       try {
         await bridge({ fields, track_id: trackId });
       } catch (cause) {
+        reportUnexpected(cause);
         setBusy(false);
         push(messageOf(cause), "warning");
         return;
@@ -471,6 +474,7 @@ export function ReviewView({
       setExportOpen(false);
       push(exportedLine(written.count, written.file_path), "success");
     } catch (cause) {
+      reportUnexpected(cause);
       push(messageOf(cause), "warning");
     } finally {
       setExporting(false);

@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 // adding them for one test would remove the compiler's ability to say so.
 import preloadSource from "../../../electron/preload.cjs?raw";
 import mainSource from "../../../electron/main.ts?raw";
+import reportingSource from "../../../electron/reporting.ts?raw";
 import engineClientSource from "../../../electron/engineClient.ts?raw";
 import supervisorSource from "../../../electron/engineSupervisor.ts?raw";
 import bridgeTypesSource from "./cuepointBridge.types.ts?raw";
@@ -39,6 +40,7 @@ const main = lf(mainSource);
 const engineClient = lf(engineClientSource);
 const supervisor = lf(supervisorSource);
 const bridgeTypes = lf(bridgeTypesSource);
+const readReportingSource = (): string => lf(reportingSource);
 
 /** Every channel the preload invokes. */
 function invokedChannels(source: string): string[] {
@@ -1862,6 +1864,30 @@ describe("desktop contract", () => {
       // able to start any protocol handler on the machine.
       expect(main.match(/shell\.openExternal\(/g)).toHaveLength(1);
       expect(handlerOf("shell:openBeatportPage")).toContain("shell.openExternal(page)");
+    });
+  });
+
+  describe("the renderer's error reporter (REPORT-06)", () => {
+    it("asks main whether reporting is set up, through the same get", () => {
+      expect(main).toContain('handle("errorReporting:get", () => ({ enabled: errorReporting.enabled(), configured: reportingOn }))');
+      expect(bridgeTypes).toContain("configured?: boolean");
+    });
+
+    it("has a test-only hook that crosses the bridge in every file", () => {
+      expect(invokedChannels(preload)).toContain("testHooks:enabled");
+      expect(handledChannels(main)).toContain("testHooks:enabled");
+      expect(bridgeTypes).toContain("testHooks?: {");
+    });
+
+    it("reaches main's Sentry channels only through the narrow bridge", () => {
+      // `ipcRenderer.invoke("...")` and `send("...")` literals are the preload's whole surface; the
+      // Sentry channels are named by constants so this contract does not count them as engine calls.
+      expect(preload).toContain('"sentry-ipc.envelope"');
+      expect(preload).toContain('"sentry-ipc.feedback"');
+      expect(preload).toContain('"sentry-ipc.start"');
+      expect(preload).not.toMatch(/sentry-ipc\.(scope|status|structured-log|metric)/);
+      // Main's SDK keeps Classic mode: no `sentry-ipc` protocol is registered.
+      expect(readReportingSource()).toContain("ipcMode: 1");
     });
   });
 

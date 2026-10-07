@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 13: Error Reporting, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. REPORT-01 to REPORT-05 are implemented (2026-10-07).** Eight steps,
+Status: **Specified 2026-10-07. REPORT-01 to REPORT-06 are implemented (2026-10-07).** Eight steps,
 REPORT-01…REPORT-08. Writing the steps raised six questions that Decision Round 14 did not answer.
 They were asked as Decision Round 16 (Q-151…Q-156) and settled the same day as DEC-148…DEC-153, so
 there are no open points. Per the process, no implementation happens from this
@@ -714,6 +714,46 @@ a screen the user can recover from instead of a blank window.
 **Risks**: Low. The boundary changes what a user sees only where the window was blank.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented (2026-10-07). `renderer/src/reporting/` sets the renderer SDK up in
+`main.tsx` before React renders, only when main says reporting is set up, and then loads `App`, so
+an error while the app's modules load also shows the error screen. Tracing, replay, sessions, client
+reports, logs, metrics and every automatic breadcrumb are off; the renderer adds the destination id on
+navigation and the kind of each error toast. `ErrorBoundary` wraps the app and each destination
+(**Reload**, and the short report id). Help → **Report a problem** (`ReportProblemDialog.tsx`) sends
+the note as written, the app version and the last report id, and says whether it was sent; it is
+disabled when reporting is off. Renderer source maps are `hidden` and not packed.
+
+Decided while building:
+- **The renderer's events reach Sentry through main**, by a narrow Classic-mode IPC bridge in
+  `preload.cjs` that parses each envelope exactly as the SDK does, passes only `event` and `feedback`
+  items, and asks for the choice before feedback (which skips main's `beforeSend`). Main wraps the
+  SDK's renderer listeners so a malformed message is dropped.
+- **Reported once.** An error main has already reported crosses the bridge carrying main's event id,
+  so the page does not report it again; an unavailable engine or player crosses as `UNAVAILABLE`.
+- **Errors the page makes itself carry fields** (`reporting/expected.ts`): a Beatport refusal and a
+  refused job are 400s, a stopped job is `JOB_CANCELLED`, and a job the engine already reported keeps
+  its `report_id`. The expected job codes are checked against `src/cuepoint/reporting/expected.py`.
+- The same rules apply to uncaught errors and rejections, in the renderer's `beforeSend`; repeats are
+  deduplicated by name, message and top frame.
+- **86 catch sites** that end in an error toast, inline error or error state call
+  `reportUnexpected(cause)`, in 47 files: components (`LogViewerDialog`, `PrivacyDialog`,
+  `useWaveformAnalysis`, `waveformCache`, `ActivityOffer`, `ActivityPanel`, `useLibrarySearch`),
+  settings panels (Audio, Error reporting, Rekordbox export), Library (`LibraryScreen`,
+  `RekordboxExportDialog`, `TrackBeatportSection`, `TrackDetailPanel`, `TrackOverrides`,
+  `WriteTagsDialog`, `followJob`, `useCollectionTree`, `useFilterVocabulary`, `useLibraryBatch`,
+  `useLibraryClean`, `usePlaylistTree`, `useTrackDetail`, `useTrackHistory`, `useTrackMetadata`,
+  `useTrackTags`, `useTrackWindow`), Discover (`BeatportHalf`, `DiscoverScreen`, `EntityScreen`,
+  `NewRunPanel`, `NoteDialog`, `PushDialog`, `RunDetail`, `RunsView`, `SimilarScreen`,
+  `WantlistView`, `useBeatportWindow`), Clean (`DuplicatesView`, `ReviewView`, `revealTrack`,
+  `useCleanHealth`, `useCleanJob`, `useTrackMatches`) and Prepare (`usePreparedSet`, `useSetList`,
+  `useSetSuggestions`). Not wired: `useEngineStatus` (an outage is a status), `SupportBundleDialog`
+  and the silent fallbacks.
+
+Checked in the cloud container: the renderer suite (4286), the main-process suite (1267), both
+type-checks, lint, both builds, the dead-code guard, and `e2e/rendererReports.spec.ts` with
+`e2e/reportErrors.spec.ts` (9, against a fake Sentry server). Not checked: the whole e2e suite, a
+packed app.
 
 ---
 

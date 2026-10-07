@@ -23,6 +23,7 @@ import { useNarrow } from "./useNarrow";
 import { beatportUsable, unusableReason } from "./beatportState";
 import { refusalText } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** Runs asked for at a time; "Show older runs" asks for this many more. */
 const RUNS_PAGE = 50;
@@ -95,6 +96,7 @@ export function RunsView({
         return listed[0]?.id ?? "new";
       });
     } catch (cause) {
+      reportUnexpected(cause);
       setListError(cause instanceof Error ? cause.message : String(cause));
       setRuns((previous) => previous ?? []);
     }

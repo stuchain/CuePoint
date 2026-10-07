@@ -46,6 +46,7 @@ import { libraryRowMenuItems } from "./libraryRowMenu";
 import { SIMILAR_COLUMNS, SIMILAR_TABLE_LAYOUT_KEY, type SimilarRow } from "./similarColumns";
 import { describeUnused } from "./similarReasons";
 import { useBeatportSelection } from "./useBeatportSelection";
+import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";
 
@@ -129,6 +130,7 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
         }
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (current) setProblem(cause instanceof Error ? cause.message : String(cause));
       });
     return () => {

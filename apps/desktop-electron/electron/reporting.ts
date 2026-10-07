@@ -25,12 +25,12 @@
  * (REPORT-05): an outage seen by IPC is only a breadcrumb.
  *
  * Renderer to main: the SDK is started with `ipcMode` Classic only. That opens no `sentry-ipc`
- * protocol, and the page has no way to reach its `ipcMain` channels (the preload exposes none
- * of them and `PreloadInjection` is off), so no renderer can send anything yet. REPORT-06 decides
- * what to open. Be aware when it does: what a renderer SDK sends bypasses main's `beforeSend`
- * except for error events. Feedback, sessions, logs, metrics, replay, profile chunks, spans and
- * scope updates (user, tags, extras, breadcrumbs) do not pass it, so REPORT-06 must keep them off
- * in the renderer SDK; main's scrubber still runs over the scope data when an event is sent.
+ * protocol; the page reaches main's `sentry-ipc.*` channels only through the narrow
+ * `__SENTRY_IPC__` bridge in `preload.cjs` (REPORT-06), which forwards error events and feedback
+ * and drops the rest. What a renderer SDK sends bypasses main's `beforeSend` except for error
+ * events: feedback, sessions, logs, metrics, replay, profile chunks, spans and scope updates (user,
+ * tags, extras, breadcrumbs) do not pass it, so the renderer SDK keeps them off and the preload
+ * refuses them; main's scrubber still runs over the scope data when an event is sent.
  *
  * The SDK is a value (`ReportingSdk`) because `@sentry/electron/main` throws on load
  * when it is not inside Electron, so this file can be tested under Node.
@@ -41,6 +41,50 @@ import { bridgeSafeError } from "./bridgeError";
 import { EngineError, setEngineTraceHeaders } from "./engineClient";
 import type { ProcessIncident, ProcessReporter } from "./processWatch";
 import { scrubAttachment, scrubEvent, type ScrubContext } from "./reportScrub";
+
+/** What `guardRendererChannels` needs of Electron's `ipcMain`. */
+export interface GuardableIpc {
+  listeners(channel: string): Array<(...args: never[]) => unknown>;
+  removeAllListeners(channel: string): unknown;
+  on(channel: string, listener: (...args: never[]) => unknown): unknown;
+}
+
+/** The channels the SDK listens on with `ipcMain.on`, which have no handler of their own to catch. */
+const SDK_ON_CHANNELS = ["sentry-ipc.envelope", "sentry-ipc.structured-log", "sentry-ipc.metric", "sentry-ipc.scope"];
+
+/**
+ * The SDK parses what the page sends inside an `ipcMain.on` listener that does not catch:
+ * an envelope that is not an envelope would be an uncaught exception in main. Each of those
+ * listeners is wrapped, so a bad message from the page is dropped (and noted), never thrown.
+ * `ipc` is Electron's `ipcMain`; without it (outside Electron) nothing is wrapped.
+ */
+export function guardRendererChannels(ipc: GuardableIpc | undefined = loadIpcMain()): void {
+  if (!ipc) return;
+  for (const channel of SDK_ON_CHANNELS) {
+    const listeners = ipc.listeners(channel);
+    if (listeners.length === 0) continue;
+    ipc.removeAllListeners(channel);
+    for (const listener of listeners) {
+      ipc.on(channel, (...args: never[]) => {
+        try {
+          return listener(...args);
+        } catch {
+          breadcrumb("renderer-report", "a message from the page was dropped");
+          return undefined;
+        }
+      });
+    }
+  }
+}
+
+function loadIpcMain(): GuardableIpc | undefined {
+  try {
+    const found = createRequire(import.meta.url)("electron") as { ipcMain?: GuardableIpc };
+    return found.ipcMain;
+  } catch {
+    return undefined;
+  }
+}
 
 /** The part of the Sentry SDK this file uses. */
 export interface ReportingSdk {
@@ -100,6 +144,7 @@ const QUIET_CHANNELS = new Set([
   "engine:getJob",
   "player:getState",
   "errorReporting:get",
+  "testHooks:enabled",
 ]);
 /** Most distinct unexpected IPC errors remembered for the once-per-launch rule. */
 const MAX_REPORTED_IPC = 200;
@@ -114,7 +159,8 @@ interface Active {
 let active: Active | null = null;
 const reportedOnce = new Set<string>();
 let lastQuietIpc: string | null = null;
-const reportedIpc = new Set<string>();
+/** What main reported for each unexpected IPC error (key to event id), so a repeat answers the same id. */
+const reportedIpc = new Map<string, string | null>();
 let quitting = false;
 
 /** The DSN in `env`, or undefined when it is unset, empty or `off`. */
@@ -185,7 +231,7 @@ export function setupMainReporting(options: MainReportingOptions): boolean {
       // A list, so the SDK's own defaults (native dumps, screenshots, offline-only
       // breadcrumbs, local variables) are replaced rather than added to.
       defaultIntegrations: integrations,
-      serverName: "",
+      includeServerName: false,
       attachScreenshot: false,
       sendClientReports: false,
       maxBreadcrumbs: BREADCRUMB_LIMIT,
@@ -198,6 +244,8 @@ export function setupMainReporting(options: MainReportingOptions): boolean {
       beforeSend,
       beforeBreadcrumb,
     });
+
+    guardRendererChannels();
 
     // With tracing off the SDK still has a trace id for the process, and it is the id
     // on main's own events. The engine continues it, so an engine report and the main
@@ -397,13 +445,17 @@ export function isUnavailable(error: unknown): boolean {
   return typeof code === "string" && /^(ECONNREFUSED|ECONNRESET|EPIPE|UND_ERR_)/.test(code);
 }
 
-/** An unexpected IPC error is reported once per launch for each channel, name and message. */
-function reportIpcOnce(channel: string, error: unknown): void {
+/**
+ * An unexpected IPC error is reported once per launch for each channel, name and message.
+ * Answers the event id it was reported under, also for a repeat, so the page can name it.
+ */
+function reportIpcOnce(channel: string, error: unknown): string | null {
   const key = `${channel}|${error instanceof Error ? `${error.name}|${error.message}` : String(error)}`;
-  if (reportedIpc.has(key)) return;
+  if (reportedIpc.has(key)) return reportedIpc.get(key) ?? null;
   if (reportedIpc.size >= MAX_REPORTED_IPC) reportedIpc.clear();
-  reportedIpc.add(key);
-  reportUnexpected(error, { tags: { "ipc.channel": channel } });
+  const id = reportUnexpected(error, { tags: { "ipc.channel": channel } });
+  reportedIpc.set(key, id);
+  return id;
 }
 
 function ipcBreadcrumb(channel: string, outcome: Outcome): void {
@@ -433,21 +485,26 @@ export function wrapIpcHandler<E, A extends unknown[], R>(
       ipcBreadcrumb(channel, "ok");
       return result;
     } catch (error) {
+      // What the page is told about the error: main's event id when main reported it (so the
+      // page does not report it again and can name it), or that the engine or player is gone.
+      let reportId: string | null = null;
+      let code: string | undefined;
       try {
         // The call's own breadcrumb first, so the trail on its event ends with it.
         if (error instanceof EngineError) {
           ipcBreadcrumb(channel, error.status < 500 ? "refused" : "failed");
-          reportEngineError(error);
+          reportId = reportEngineError(error);
         } else if (isUnavailable(error)) {
           ipcBreadcrumb(channel, "unavailable");
+          code = "UNAVAILABLE";
         } else {
           ipcBreadcrumb(channel, "failed");
-          reportIpcOnce(channel, error);
+          reportId = reportIpcOnce(channel, error);
         }
       } catch {
         // Reporting must not change what the caller sees.
       }
-      throw bridgeSafeError(error);
+      throw bridgeSafeError(error, { reportId, code });
     }
   };
 }

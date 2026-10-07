@@ -57,6 +57,7 @@ import {
   tracksLine,
   yearsText,
 } from "./entityFormat";
+import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";
 
@@ -136,6 +137,7 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
         }
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (current) setProblem(cause instanceof Error ? cause.message : String(cause));
       });
     return () => {

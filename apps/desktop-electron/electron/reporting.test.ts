@@ -19,6 +19,7 @@ import {
   markQuitting,
   isUnavailable,
   wrapIpcHandler,
+  guardRendererChannels,
   type ReportingSdk,
 } from "./reporting";
 import type { ProcessIncident } from "./processWatch";
@@ -562,17 +563,21 @@ describe("the IPC wrapper", () => {
     expect(JSON.stringify(crumb)).not.toContain("secret track title");
   });
 
-  it("records one event for a handler that throws, and rethrows the same error", async () => {
+  it("records one event for a handler that throws, and rethrows it carrying the event's id", async () => {
     setup();
     const failure = new TypeError("handler broke");
     const handler = wrapIpcHandler("engine:restart", () => {
       throw failure;
     });
 
-    await expect(handler(event)).rejects.toBe(failure);
+    const thrown = (await handler(event).catch((e: unknown) => e)) as Error;
     await flush();
 
     expect(sent).toHaveLength(1);
+    const reportId = sent[0]!.event.event_id as string;
+    expect(thrown.message).toBe(
+      `handler broke${BRIDGE_ERROR_MARKER}` + JSON.stringify({ status: null, code: null, reportId }),
+    );
     expect(sent[0]!.event.tags).toMatchObject({ "ipc.channel": "engine:restart" });
     expect(crumbs().at(-1)!.data).toEqual({ outcome: "failed" });
   });
@@ -634,13 +639,55 @@ describe("the IPC wrapper", () => {
     expect(sent).toHaveLength(1);
   });
 
-  it("rethrows a plain error as it is, and does not mark it", async () => {
+  it("a repeat of an error main already reported answers the same id, with no second event", async () => {
     setup();
+    const handler = wrapIpcHandler("engine:restart", () => {
+      throw new TypeError("handler broke");
+    });
+
+    const first = (await handler(event).catch((e: unknown) => e)) as Error;
+    const second = (await handler(event).catch((e: unknown) => e)) as Error;
+    await flush();
+
+    expect(sent).toHaveLength(1);
+    expect(second.message).toBe(first.message);
+    expect(first.message).toContain(`"reportId":"${sent[0]!.event.event_id as string}"`);
+  });
+
+  it("a 500 without a report id that main reports crosses the bridge with main's id", async () => {
+    setup();
+    const handler = wrapIpcHandler("engine:getTags", async () => {
+      throw new EngineError("The engine failed.", { status: 502, code: "ENGINE_REQUEST_FAILED" });
+    });
+
+    const thrown = (await handler(event).catch((e: unknown) => e)) as Error;
+    await flush();
+
+    expect(thrown.message).toContain(`"reportId":"${sent[0]!.event.event_id as string}"`);
+  });
+
+  it("marks an outage as UNAVAILABLE, so the page does not report it", async () => {
+    setup();
+    const handler = wrapIpcHandler("engine:status", () => {
+      throw new Error("Engine not running");
+    });
+
+    const thrown = (await handler(event).catch((e: unknown) => e)) as Error;
+    await flush();
+
+    expect(sent).toEqual([]);
+    expect(thrown.message).toBe(
+      `Engine not running${BRIDGE_ERROR_MARKER}` + JSON.stringify({ status: null, code: "UNAVAILABLE", reportId: null }),
+    );
+  });
+
+  it("rethrows an error main did not report as it is, and does not mark it", async () => {
     const plain = new Error("The engine is not connected.");
     const handler = wrapIpcHandler("engine:status", () => {
       throw plain;
     });
 
+    // Reporting is not set up: nothing was reported, so there is nothing to say about it.
     await expect(handler(event)).rejects.toBe(plain);
   });
 
@@ -688,7 +735,12 @@ describe("the IPC wrapper", () => {
       const handler = wrapIpcHandler("engine:listJobs", () => {
         throw error;
       });
-      for (let i = 0; i < 10; i++) await expect(handler(event)).rejects.toBe(error);
+      for (let i = 0; i < 10; i++) {
+        const thrown = (await handler(event).catch((e: unknown) => e)) as Error;
+        expect(thrown.message).toBe(
+          error.message + BRIDGE_ERROR_MARKER + JSON.stringify({ status: null, code: "UNAVAILABLE", reportId: null }),
+        );
+      }
     }
     await flush();
 
@@ -882,5 +934,36 @@ describe("a process incident (REPORT-05)", () => {
     expect(sent).toHaveLength(2);
     expect(JSON.stringify(sent[1]!.event)).not.toContain("learned-by-supervisor");
     expect(handed.some((c) => c.message === "engine restarting")).toBe(true);
+  });
+});
+
+describe("the page's channels (REPORT-06)", () => {
+  it("wraps each of the SDK's listeners so a bad message from the page is dropped, not thrown", () => {
+    const listeners = new Map<string, Array<(...args: never[]) => unknown>>();
+    const ipc = {
+      listeners: (channel: string) => [...(listeners.get(channel) ?? [])],
+      removeAllListeners: (channel: string) => void listeners.delete(channel),
+      on: (channel: string, listener: (...args: never[]) => unknown) =>
+        void listeners.set(channel, [...(listeners.get(channel) ?? []), listener]),
+    };
+    const seen: unknown[] = [];
+    listeners.set("sentry-ipc.envelope", [
+      (...args: never[]) => {
+        seen.push(args[0]);
+        throw new SyntaxError("Unexpected token in JSON");
+      },
+    ]);
+    listeners.set("sentry-ipc.start", [() => seen.push("start")]);
+
+    guardRendererChannels(ipc);
+
+    const [wrapped] = listeners.get("sentry-ipc.envelope")!;
+    expect(() => wrapped!("not an envelope" as never)).not.toThrow();
+    expect(seen).toEqual(["not an envelope"]);
+    expect(listeners.get("sentry-ipc.start")).toHaveLength(1);
+  });
+
+  it("does nothing outside Electron", () => {
+    expect(() => guardRendererChannels(undefined)).not.toThrow();
   });
 });

@@ -27,6 +27,7 @@ import type { OverrideEdit } from "./libraryBatch";
 import { editTarget } from "./metadataEdits";
 import type { LibraryBatchController } from "./useLibraryBatch";
 import { WriteTagsDialog } from "./WriteTagsDialog";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** The tracks an operation applies to (DEC-045). */
 interface CleanTarget {
@@ -151,6 +152,7 @@ export function useLibraryClean({ batch, onMessage, onChanged }: LibraryCleanOpt
         try {
           await single({ trackId: target.trackId, [change.field]: change.value });
         } catch (cause) {
+          reportUnexpected(cause);
           return messageOf(cause);
         }
         onChanged();

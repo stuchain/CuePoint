@@ -53,6 +53,7 @@ import {
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
 import { openOnBeatport } from "./openOnBeatport";
 import { useDiscoverJob } from "./useDiscoverJob";
+import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";
 
@@ -110,6 +111,7 @@ export function DiscoverScreen() {
         setRefused(null);
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (current) setOptionsError(cause instanceof Error ? cause.message : String(cause));
       });
     return () => {
@@ -213,6 +215,7 @@ export function DiscoverScreen() {
       }
       toast(refusalText(refusal), "warning");
     } catch (cause) {
+      reportUnexpected(cause);
       toast(cause instanceof Error ? cause.message : String(cause), "warning");
     }
   };

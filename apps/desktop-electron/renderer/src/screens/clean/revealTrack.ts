@@ -1,3 +1,4 @@
+import { reportUnexpected } from "../../reporting/reporting";
 /**
  * "Show in folder" for a track whose file may not be there (CLEAN-07, CLEAN-12).
  *
@@ -39,6 +40,7 @@ export async function revealTrack(trackId: number): Promise<RevealOutcome | null
       message: "Nothing on this file's path exists. The drive may not be connected.",
     };
   } catch (cause) {
+    reportUnexpected(cause);
     return { tone: "warning", message: cause instanceof Error ? cause.message : String(cause) };
   }
 }

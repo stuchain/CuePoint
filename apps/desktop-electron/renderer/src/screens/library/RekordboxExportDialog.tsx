@@ -59,6 +59,7 @@ import {
   trackCountLine,
   unknownTracksLine,
 } from "./rekordboxExport";
+import { reportUnexpected } from "../../reporting/reporting";
 import "./cleanDialogs.css";
 import "./rekordboxExport.css";
 
@@ -216,6 +217,7 @@ export function RekordboxExportDialog({
           setAnswer({ key: requestKey, preview: outcome.preview, refusal: outcome.refusal });
         })
         .catch((cause) => {
+          reportUnexpected(cause);
           if (!current || !alive.current) return;
           setAnswer(null);
           setProblem(messageOf(cause));
@@ -268,6 +270,7 @@ export function RekordboxExportDialog({
       setDestination(chosen.filePath);
       setStartRefusal(null);
     } catch (cause) {
+      reportUnexpected(cause);
       if (alive.current) setProblem(messageOf(cause));
     }
   };
@@ -319,6 +322,7 @@ export function RekordboxExportDialog({
       }
       setPhase("done");
     } catch (cause) {
+      reportUnexpected(cause);
       if (!alive.current) return;
       setProblem(messageOf(cause));
       setPhase("choosing");

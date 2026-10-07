@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
+import { reportUnexpected } from "../../reporting/reporting";
 
 interface CleanHealth {
   health: LibraryHealth | null;
@@ -39,6 +40,7 @@ export function useCleanHealth(): CleanHealth {
         setError(null);
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
       })
       .finally(() => {

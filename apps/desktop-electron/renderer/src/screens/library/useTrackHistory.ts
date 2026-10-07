@@ -14,6 +14,7 @@
 import { useEffect, useState } from "react";
 
 import type { TrackFieldChange } from "../../api/cuepointBridge.types";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /**
  * How much history the panel asks for.
@@ -64,6 +65,7 @@ export function useTrackHistory(trackId: number | null, version = 0): TrackHisto
         });
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (cancelled) return;
         setState({
           changes: [],

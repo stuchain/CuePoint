@@ -36,6 +36,7 @@ import { duplicatesEmptyState } from "./cleanEmpty";
 import { fileStatusLabel, signalExplanation, signalLabel, trackCount } from "./cleanFormat";
 import { revealTrack } from "./revealTrack";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** Groups read at a time: a screenful or two, never a whole library's worth. */
 const DUPLICATE_PAGE = 50;
@@ -159,6 +160,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
         setError(null);
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (!cancelled) setError(messageOf(cause));
       })
       .finally(() => {
@@ -181,6 +183,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
       setGroups((previous) => [...previous, ...payload.groups]);
       setTotal(payload.total);
     } catch (cause) {
+      reportUnexpected(cause);
       push(messageOf(cause), "warning");
     }
   }, [groups.length, includeDismissed, push]);
@@ -213,6 +216,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
         );
         onHealthChanged();
       } catch (cause) {
+        reportUnexpected(cause);
         push(messageOf(cause), "warning");
       } finally {
         setActing(null);
@@ -291,6 +295,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
           count: current.group.track_ids.length,
         });
       } catch (cause) {
+        reportUnexpected(cause);
         push(messageOf(cause), "warning");
       }
     },

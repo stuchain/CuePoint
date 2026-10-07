@@ -635,7 +635,10 @@ function registerIpcHandlers(): void {
     };
     return { ok: true as const };
   });
-  handle("errorReporting:get", () => ({ enabled: errorReporting.enabled() }));
+  // `configured` is whether the renderer's reporter has anywhere to send to: main set the SDK up.
+  handle("errorReporting:get", () => ({ enabled: errorReporting.enabled(), configured: reportingOn }));
+  // End-to-end runs only (they set the display variable): the page may be made to throw.
+  handle("testHooks:enabled", () => displayChoice(process.env[E2E_DISPLAY_ENV]) !== null);
   handle("errorReporting:set", (_event, enabled: unknown) => {
     if (typeof enabled !== "boolean") throw new Error("errorReporting:set needs true or false");
     return errorReporting.set(enabled);

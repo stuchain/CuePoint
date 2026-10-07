@@ -27,6 +27,7 @@ import type {
   SetsBridge,
 } from "../../api/cuepointBridge.types";
 import { useLibraryChanges } from "../../api/libraryChanges";
+import { reportUnexpected } from "../../reporting/reporting";
 
 interface PreparedSet {
   setId: number;
@@ -101,6 +102,7 @@ async function readSet(sets: SetsBridge, setId: number): Promise<Read> {
       },
     };
   } catch (cause) {
+    reportUnexpected(cause);
     return { kind: "failed", message: messageOf(cause) };
   }
 }
@@ -182,6 +184,7 @@ export function usePreparedSet({
         reload();
         return answer.value;
       } catch (cause) {
+        reportUnexpected(cause);
         onMessage(messageOf(cause), "warning");
         return null;
       }
@@ -196,6 +199,7 @@ export function usePreparedSet({
         reload();
         return value;
       } catch (cause) {
+        reportUnexpected(cause);
         onMessage(messageOf(cause), "warning");
         // An entry another window removed is refused as a failure here; the
         // re-read shows what is there now.

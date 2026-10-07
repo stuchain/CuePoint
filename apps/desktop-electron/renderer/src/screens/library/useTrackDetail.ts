@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { LibraryTrackDetail } from "../../api/cuepointBridge.types";
+import { reportUnexpected } from "../../reporting/reporting";
 
 interface TrackDetailState {
   detail: LibraryTrackDetail | null;
@@ -57,6 +58,7 @@ export function useTrackDetail(trackId: number | null): TrackDetailState {
         setState({ detail, loading: false, error: null });
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (cancelled) return;
         setState({
           detail: null,

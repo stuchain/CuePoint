@@ -33,6 +33,8 @@ import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
 import { openOnBeatport } from "./openOnBeatport";
 import { useBeatportSelection } from "./useBeatportSelection";
 import { useBeatportWindow } from "./useBeatportWindow";
+import { refusalError } from "../../reporting/expected";
+import { reportUnexpected } from "../../reporting/reporting";
 
 interface WantlistViewProps {
   tools: DiscoverTools;
@@ -126,6 +128,7 @@ export function WantlistView({ tools }: WantlistViewProps) {
       if (clearAfter) selection.clear();
       reload();
     } catch (cause) {
+      reportUnexpected(cause);
       notify(cause instanceof Error ? cause.message : String(cause), "warning");
     } finally {
       setWorking(false);
@@ -180,7 +183,7 @@ export function WantlistView({ tools }: WantlistViewProps) {
     const found: number[] = [];
     for (let offset = 0; offset <= most; offset += limit) {
       const answer = await bridge({ owned, bought, sort: order.sort, dir: order.dir, offset, limit });
-      if (answer.refusal) throw new Error(refusalText(answer.refusal));
+      if (answer.refusal) throw refusalError(refusalText(answer.refusal), answer.refusal.code);
       found.push(...answer.value.rows.map(idOf));
       if (offset + limit >= answer.value.total) break;
     }

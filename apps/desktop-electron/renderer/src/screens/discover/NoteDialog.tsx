@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import type { DiscoverRefusal } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components/Modal";
 import { refusalText } from "./discoverFormat";
+import { reportUnexpected } from "../../reporting/reporting";
 
 interface NoteDialogProps {
   open: boolean;
@@ -42,6 +43,7 @@ export function NoteDialog({ open, track, note, maxLength, onSave, onClose }: No
       const refused = await onSave(text.trim() === "" ? null : text.trim());
       if (refused) setRefusal(refusalText(refused));
     } catch (cause) {
+      reportUnexpected(cause);
       setRefusal(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSaving(false);

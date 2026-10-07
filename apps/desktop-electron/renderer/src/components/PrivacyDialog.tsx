@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { settingsFocusState } from "../screens/settingsLink";
 import { Button, Modal, useToast } from "./index";
+import { reportUnexpected } from "../reporting/reporting";
 import "./PrivacyDialog.css";
 
 const STORAGE_CLEAR_CACHE = "cuepoint-privacy-clear-cache-on-exit";
@@ -82,6 +83,7 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
       await window.cuepoint.clearCuepointCache();
       push("Cache cleared.", "success");
     } catch (e) {
+      reportUnexpected(e);
       push(e instanceof Error ? e.message : "Failed to clear cache.", "warning");
     } finally {
       setClearing(false);
@@ -97,6 +99,7 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
       await window.cuepoint.clearCuepointLogs();
       push("Logs cleared.", "success");
     } catch (e) {
+      reportUnexpected(e);
       push(e instanceof Error ? e.message : "Failed to clear logs.", "warning");
     } finally {
       setClearing(false);

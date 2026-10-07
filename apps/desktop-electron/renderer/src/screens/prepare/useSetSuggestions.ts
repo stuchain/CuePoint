@@ -21,6 +21,7 @@ import type {
   SetSuggestions,
   SetSuggestionsRequest,
 } from "../../api/cuepointBridge.types";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** How long a gap must stay chosen before it is asked about. */
 export const SUGGESTION_DELAY_MS = 150;
@@ -99,6 +100,7 @@ export function useSetSuggestions({
           }
         })
         .catch((cause: unknown) => {
+          reportUnexpected(cause);
           if (!current) return;
           setLoading(false);
           setProblem(messageOf(cause));

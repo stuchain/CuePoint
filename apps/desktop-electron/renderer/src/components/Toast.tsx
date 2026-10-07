@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { reportToast } from "../reporting/reporting";
 import "./Toast.css";
 
 export type ToastVariant = "info" | "success" | "warning" | "error";
@@ -27,6 +28,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const push = useCallback((message: string, variant: ToastVariant = "info") => {
     const id = crypto.randomUUID();
+    // A step before an error report, by its kind: the words may carry a name (REPORT-06).
+    if (variant === "error" || variant === "warning") reportToast(variant);
     setToasts((prev) => [...prev, { id, message, variant }]);
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));

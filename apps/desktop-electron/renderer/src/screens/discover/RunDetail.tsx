@@ -43,6 +43,7 @@ import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
 import { openOnBeatport } from "./openOnBeatport";
 import { useBeatportSelection } from "./useBeatportSelection";
 import { useBeatportWindow } from "./useBeatportWindow";
+import { reportUnexpected } from "../../reporting/reporting";
 
 interface RunDetailProps {
   runId: number;
@@ -113,6 +114,7 @@ export function RunDetail({ runId, tools, version, onDeleted, onGone }: RunDetai
         setHeaderError(null);
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (current) setHeaderError(cause instanceof Error ? cause.message : String(cause));
       });
     return () => {
@@ -190,6 +192,7 @@ export function RunDetail({ runId, tools, version, onDeleted, onGone }: RunDetai
       else notify(answer.value.message, "success");
       reload();
     } catch (cause) {
+      reportUnexpected(cause);
       notify(cause instanceof Error ? cause.message : String(cause), "warning");
     } finally {
       setWorking(false);
@@ -236,6 +239,7 @@ export function RunDetail({ runId, tools, version, onDeleted, onGone }: RunDetai
         onDeleted(runId);
       }
     } catch (cause) {
+      reportUnexpected(cause);
       notify(cause instanceof Error ? cause.message : String(cause), "warning");
     } finally {
       setDeleting(false);

@@ -17,6 +17,7 @@ import type { LibraryTrackRow, OverrideField } from "../../api/cuepointBridge.ty
 import { decisionLine } from "../clean/cleanFormat";
 import { useTrackMatches } from "../clean/useTrackMatches";
 import { artworkText, beatportFieldRows, fieldSourceText } from "./libraryClean";
+import { reportUnexpected } from "../../reporting/reporting";
 
 interface TrackBeatportSectionProps {
   track: LibraryTrackRow & { id: number };
@@ -55,6 +56,7 @@ export function TrackBeatportSection({
       await bridge({ fields: [field], track_id: track.id });
       onApplied();
     } catch (cause) {
+      reportUnexpected(cause);
       onError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setApplying(null);

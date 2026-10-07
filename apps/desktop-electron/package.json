@@ -41,6 +41,7 @@
     "files": [
       "electron-dist/**/*",
       "renderer/dist/**/*",
+      "!renderer/dist/**/*.map",
       "electron/preload.cjs",
       "package.json"
     ],

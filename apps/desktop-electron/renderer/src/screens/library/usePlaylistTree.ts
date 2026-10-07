@@ -24,6 +24,7 @@ import {
   type PlaylistTreeNode,
   type VisibleRow,
 } from "./playlistTree";
+import { reportUnexpected } from "../../reporting/reporting";
 
 type PlaylistTreeStatus = "loading" | "ready" | "error" | "unavailable";
 
@@ -76,6 +77,7 @@ export function usePlaylistTree(
         setError(null);
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (cancelled) return;
         setStatus("error");
         setError(cause instanceof Error ? cause.message : String(cause));

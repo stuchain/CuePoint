@@ -35,15 +35,17 @@ import {
   revertedLine,
   writesLine,
 } from "./activityActions";
+import { jobFailureError } from "../../reporting/expected";
+import { reportUnexpected } from "../../reporting/reporting";
 
 function messageOf(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
 /** A job's answer, once it has ended. */
-async function finishedResult<T>(jobId: string): Promise<T | null> {
+export async function finishedResult<T>(jobId: string): Promise<T | null> {
   const finished = await followJob(jobId).finished;
-  if (finished.state === "failed") throw new Error(jobErrorMessage(finished.error));
+  if (finished.state === "failed") throw jobFailureError(jobErrorMessage(finished.error), finished.error);
   const read = window.cuepoint?.getJobResults;
   if (!read) return null;
   const payload = await read(jobId);
@@ -130,6 +132,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
         setRemaining(null);
         onDone();
       } catch (cause) {
+        reportUnexpected(cause);
         setSaid(messageOf(cause));
       } finally {
         setBusy(false);
@@ -154,6 +157,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
         announceLibraryChange();
         onDone();
       } catch (cause) {
+        reportUnexpected(cause);
         setSaid(messageOf(cause));
       } finally {
         setBusy(false);
@@ -180,6 +184,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
         setSaid(restoredLine(results));
         setRecord((previous) => (previous ? { restorable: 0, unconfirmed: 0 } : previous));
       } catch (cause) {
+        reportUnexpected(cause);
         setSaid(messageOf(cause));
       } finally {
         setBusy(false);

@@ -25,6 +25,7 @@ import type {
   WaveformRefusal,
 } from "../../api/cuepointBridge.types";
 import { forgetWaveforms } from "./waveformCache";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** How often the analysis is read while a view shows it. */
 const ANALYSIS_POLL_MS = 2000;
@@ -90,6 +91,7 @@ export function useWaveformAnalysis(pollMs: number = ANALYSIS_POLL_MS): Waveform
           if (refusal) setError(refusal.message);
         })
         .catch((cause: unknown) => {
+          reportUnexpected(cause);
           if (!cancelled) setError(messageOf(cause));
         });
     };
@@ -108,6 +110,7 @@ export function useWaveformAnalysis(pollMs: number = ANALYSIS_POLL_MS): Waveform
       try {
         return take(await call());
       } catch (cause) {
+        reportUnexpected(cause);
         if (alive.current) setError(messageOf(cause));
         return null;
       } finally {
@@ -131,6 +134,7 @@ export function useWaveformAnalysis(pollMs: number = ANALYSIS_POLL_MS): Waveform
       take({ value: answer.value.analysis, refusal: null });
       return { value: answer.value.deleted, refusal: null };
     } catch (cause) {
+      reportUnexpected(cause);
       if (alive.current) setError(messageOf(cause));
       return null;
     } finally {

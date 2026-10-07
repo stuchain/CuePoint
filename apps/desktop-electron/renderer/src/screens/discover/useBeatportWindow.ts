@@ -24,6 +24,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DiscoverAnswer, DiscoverRefusal } from "../../api/cuepointBridge.types";
 import type { TrackTableSource, TrackTableStatus } from "../../components/table";
 import { PAGE_SIZE, pagesForRange, pagesToEvict } from "../library/useTrackWindow";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** What every Beatport window answers: rows, how many in all, and itself. */
 interface BeatportPageShape<Row> {
@@ -190,7 +191,10 @@ export function useBeatportWindow<Row, Page extends BeatportPageShape<Row>>({
               return next;
             });
           })
-          .catch((cause: unknown) => fail(messageOf(cause), null));
+          .catch((cause: unknown) => {
+            reportUnexpected(cause);
+            fail(messageOf(cause), null);
+          });
       }
       return true;
     },

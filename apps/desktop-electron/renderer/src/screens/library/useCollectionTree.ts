@@ -36,6 +36,7 @@ import {
   type CollectionTreeNode,
   type CollectionsPaneState,
 } from "./collectionTree";
+import { reportUnexpected } from "../../reporting/reporting";
 
 type CollectionTreeStatus = "loading" | "ready" | "error" | "unavailable";
 
@@ -143,6 +144,7 @@ async function answerOf<T>(
     reload();
     return read(answer.value);
   } catch (cause) {
+    reportUnexpected(cause);
     return { ok: false, error: messageOf(cause) };
   }
 }
@@ -176,6 +178,7 @@ export function useCollectionTree(
         setError(null);
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (cancelled) return;
         setStatus("error");
         setError(messageOf(cause));
@@ -263,6 +266,7 @@ export function useCollectionTree(
         reload();
         return read(payload);
       } catch (cause) {
+        reportUnexpected(cause);
         return { ok: false, error: messageOf(cause) };
       }
     },
@@ -373,6 +377,7 @@ export function useCollectionTree(
         reload();
         return { ok: true, added: payload.added, skipped: payload.skipped };
       } catch (cause) {
+        reportUnexpected(cause);
         return { ok: false, error: messageOf(cause) };
       }
     },

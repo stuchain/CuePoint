@@ -35,6 +35,7 @@ import {
   queryKey,
   type LibraryQuery,
 } from "./libraryQuery";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** Rows per request. The engine clamps at 500; this is a window, not a dump. */
 export const PAGE_SIZE = 100;
@@ -245,6 +246,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
             });
           })
           .catch((cause: unknown) => {
+            reportUnexpected(cause);
             for (let page = first; page <= lastPage; page += 1) {
               inFlight.current.delete(page);
               // Remembered, so a failing page is not asked for again on every

@@ -3,6 +3,7 @@ export { AppMenuBar } from "./AppMenuBar";
 export { DiagnosticsDialog } from "./DiagnosticsDialog";
 export { OnboardingDialog } from "./OnboardingDialog";
 export { PrivacyDialog } from "./PrivacyDialog";
+export { ReportProblemDialog } from "./ReportProblemDialog";
 export { RekordboxInstructionsDialog } from "./RekordboxInstructionsDialog";
 export { LogViewerDialog } from "./LogViewerDialog";
 export { ShortcutsDialog } from "./ShortcutsDialog";

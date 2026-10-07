@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Panel } from "../components";
+import { reportUnexpected, setReportingChoice } from "../reporting/reporting";
 import "./error-reporting-settings.css";
 
 /** The switch's id: what Help → Privacy's "Change in Settings" focuses. */
@@ -38,6 +39,7 @@ export function ErrorReportingSettingsPanel({ onOpenPrivacy, focusToken = null }
         if (live) setEnabled(state.enabled);
       })
       .catch((reason: unknown) => {
+        reportUnexpected(reason);
         if (live) setError(reason instanceof Error ? reason.message : "Could not read the setting.");
       })
       .finally(() => {
@@ -66,8 +68,12 @@ export function ErrorReportingSettingsPanel({ onOpenPrivacy, focusToken = null }
     setError(null);
     setEnabled(next);
     try {
-      setEnabled((await reporting.set(next)).enabled);
+      const answered = (await reporting.set(next)).enabled;
+      // The page's own reporter follows at once (REPORT-06): no more steps or reports.
+      setReportingChoice(answered);
+      setEnabled(answered);
     } catch (reason) {
+      reportUnexpected(reason);
       setEnabled(before);
       setError(reason instanceof Error ? reason.message : "Could not change the setting.");
     } finally {

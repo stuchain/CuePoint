@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "./index";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 
-const DESKTOP_ENGINE_VERSION = "1.0.0-feb1";
+export const DESKTOP_ENGINE_VERSION = "1.0.0-feb1";
 
 interface AboutDialogProps {
   open: boolean;

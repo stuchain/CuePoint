@@ -28,6 +28,7 @@ import {
   withRating,
   type NotesState,
 } from "./trackEdits";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** What one write asks the engine to change. */
 interface MetadataPatch {
@@ -152,6 +153,7 @@ export function useTrackMetadata({
         }
         onSaved?.();
       } catch (cause) {
+        reportUnexpected(cause);
         // Only what this write claimed goes back. Anything else on screen
         // belongs to a write that did not fail.
         if (showing && alive.current) {

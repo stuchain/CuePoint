@@ -38,6 +38,7 @@ import type {
   WaveformsBridge,
   WaveformsQuery,
 } from "../../api/cuepointBridge.types";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** Ids per request: the engine's own limit. */
 export const BATCH_SIZE = 200;
@@ -123,6 +124,7 @@ export async function readEntries(
         for (const trackId of answer.value.unknown) answers.set(trackId, { kind: "unknown" });
       }
     } catch (cause) {
+      reportUnexpected(cause);
       message = cause instanceof Error ? cause.message : String(cause);
     }
     if (message !== null) {
@@ -284,6 +286,7 @@ export class WaveformCache {
     try {
       answer = await get(askFor(trackIds, query));
     } catch (cause) {
+      reportUnexpected(cause);
       this.settleFailed(keys, generation, cause instanceof Error ? cause.message : String(cause));
       return;
     }

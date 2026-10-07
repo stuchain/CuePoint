@@ -4,13 +4,20 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   base: "./",
+  build: {
+    // Source maps are written beside the bundle with no `sourceMappingURL` comment, so
+    // the app does not ship a pointer to them. REPORT-07 uploads them to Sentry
+    // (REPORT-06, DEC-126).
+    sourcemap: "hidden",
+  },
   server: {
     fs: {
       // `desktopContract.test.ts` reads the Electron main-process files as text
       // to check that a feature crossing the engine boundary moved every file it
       // has to. Named explicitly rather than allowing the parent directory
-      // wholesale.
-      allow: [".", "../electron"],
+      // wholesale. `expected.test.ts` reads the engine's list of expected job
+      // errors the same way.
+      allow: [".", "../electron", "../../../src/cuepoint/reporting"],
     },
   },
   test: {

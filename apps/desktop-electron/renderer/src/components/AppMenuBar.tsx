@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { reportingActive, reportingSetUp, setReportingChoice } from "../reporting/reporting";
 import "./AppMenuBar.css";
 
 interface AppMenuActions {
@@ -7,6 +8,8 @@ interface AppMenuActions {
   onOpenShortcuts: () => void;
   onOpenPrivacy: () => void;
   onOpenAbout: () => void;
+  /** Help → Report a problem (DEC-152). */
+  onReportProblem: () => void;
   onOpenDiagnostics: () => void;
   onOpenLogViewer: () => void;
   onShowOnboarding: () => void;
@@ -18,12 +21,40 @@ export function AppMenuBar({
   onOpenShortcuts,
   onOpenPrivacy,
   onOpenAbout,
+  onReportProblem,
   onOpenDiagnostics,
   onOpenLogViewer,
   onShowOnboarding,
   onOpenRekordboxInstructions,
 }: AppMenuActions) {
   const [helpOpen, setHelpOpen] = useState(false);
+
+  // Whether a problem report can be sent: reporting set up, and the choice on. Read again each
+  // time the menu opens, because the switch in Settings can change it (DEC-152).
+  const [reportsOn, setReportsOn] = useState(reportingActive);
+  const [reportsSetUp, setReportsSetUp] = useState(reportingSetUp);
+  const reportProblemAvailable = reportsOn;
+
+  useEffect(() => {
+    if (!helpOpen) return;
+    const bridge = window.cuepoint?.errorReporting;
+    if (!bridge) return;
+    let live = true;
+    bridge
+      .get()
+      .then((answer) => {
+        if (!live) return;
+        setReportingChoice(answer.enabled);
+        setReportsSetUp(reportingSetUp());
+        setReportsOn(reportingSetUp() && answer.enabled);
+      })
+      .catch(() => {
+        // Unreadable: keep what was known.
+      });
+    return () => {
+      live = false;
+    };
+  }, [helpOpen]);
 
   const closeMenus = useCallback(() => setHelpOpen(false), []);
 
@@ -91,6 +122,22 @@ export function AppMenuBar({
                 <button type="button" role="menuitem" onClick={() => run(onOpenSupport)}>
                   Export support bundle…
                 </button>
+              </li>
+              <li role="none">
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={!reportProblemAvailable}
+                  aria-describedby={reportProblemAvailable ? undefined : "app-menu-report-off"}
+                  onClick={() => run(onReportProblem)}
+                >
+                  Report a problem…
+                </button>
+                {reportProblemAvailable ? null : (
+                  <span id="app-menu-report-off" className="app-menu-bar__note">
+                    {reportsSetUp ? "Error reports are off in Settings" : "Error reports are not set up in this build"}
+                  </span>
+                )}
               </li>
               <li role="none">
                 <button type="button" role="menuitem" onClick={() => run(onOpenAbout)}>

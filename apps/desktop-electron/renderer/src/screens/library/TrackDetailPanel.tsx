@@ -53,6 +53,7 @@ import { TrackWaveform } from "./TrackWaveform";
 import { TrackYours } from "./TrackYours";
 import { useTrackHistory } from "./useTrackHistory";
 import { useTrackWrites } from "./useTrackWrites";
+import { reportUnexpected } from "../../reporting/reporting";
 import "./TrackDetailPanel.css";
 
 /** A Collection as the track-detail read names it — enough to show and to open. */
@@ -195,6 +196,7 @@ export function TrackDetailPanel({
         onChanged();
         announceLibraryChange();
       } catch (cause) {
+        reportUnexpected(cause);
         // A stale revert is refused with both values named (CLEAN-06).
         report(cause instanceof Error ? cause.message : String(cause));
       } finally {
@@ -214,6 +216,7 @@ export function TrackDetailPanel({
       if (finished.state === "failed") report(jobErrorMessage(finished.error));
       else onMessage?.("Restored the tags CuePoint wrote into this file.");
     } catch (cause) {
+      reportUnexpected(cause);
       report(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setRestoring(false);

@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MatchCandidate, TrackMatches } from "../../api/cuepointBridge.types";
+import { reportUnexpected } from "../../reporting/reporting";
 
 export interface TrackMatchesState {
   matches: TrackMatches | null;
@@ -78,6 +79,7 @@ export function useTrackMatches(trackId: number | null, version = 0): TrackMatch
         });
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (!cancelled) setError(messageOf(cause));
       })
       .finally(() => {
@@ -100,6 +102,7 @@ export function useTrackMatches(trackId: number | null, version = 0): TrackMatch
         if (!cancelled) setCandidates(payload.candidates);
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (!cancelled) setError(messageOf(cause));
       });
     return () => {

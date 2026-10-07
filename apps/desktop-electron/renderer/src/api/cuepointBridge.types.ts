@@ -320,6 +320,12 @@ export interface ClearOkResponse {
  */
 export interface ErrorReportingState {
   enabled: boolean;
+  /**
+   * Whether Electron main has set error reporting up (REPORT-06): with no
+   * address to send to, the page's reporter does not start. Absent from an
+   * older main, which reads as not set up.
+   */
+  configured?: boolean;
 }
 
 export interface PrivacyExitPrefs {
@@ -3308,6 +3314,10 @@ export interface CuePointBridge {
   errorReporting?: {
     get: () => Promise<ErrorReportingState>;
     set: (enabled: boolean) => Promise<ErrorReportingState>;
+  };
+  /** End-to-end runs only: `enabled()` answers true, and the page may be made to throw (REPORT-06). */
+  testHooks?: {
+    enabled: () => Promise<boolean>;
   };
   subscribeJobEvents: (
     jobId: string,

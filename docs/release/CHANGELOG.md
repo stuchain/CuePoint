@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **An error screen instead of a blank window.** When part of the app fails
+  while drawing, it says "Something went wrong" with **Reload**; a failing page
+  leaves the sidebar and the player bar working
+- **Help → Report a problem.** Send a note, as you wrote it, with the app's
+  version and the last error report's id. It is off when error reports are off
 - **Waveform analysis.** After every file check, CuePoint works out a waveform
   for each file the check found, in the background, at low priority, through the
   player's own decoder: your Sets' tracks first, then your Collections', then the

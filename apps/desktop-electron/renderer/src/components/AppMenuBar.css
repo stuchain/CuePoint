@@ -90,3 +90,20 @@
   background: var(--border-outline);
   list-style: none;
 }
+
+.app-menu-bar__dropdown button:disabled {
+  color: var(--fg-disabled);
+  cursor: default;
+}
+
+.app-menu-bar__dropdown button:disabled:hover {
+  background: transparent;
+}
+
+/* Why Report a problem is disabled (DEC-152). */
+.app-menu-bar__note {
+  display: block;
+  padding: 0 var(--space-sm) var(--space-xs);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}

@@ -47,6 +47,8 @@ import { openOnBeatport } from "./openOnBeatport";
 import { useBeatportSelection } from "./useBeatportSelection";
 import { useBeatportWindow } from "./useBeatportWindow";
 import { useDiscoverJob } from "./useDiscoverJob";
+import { refusalError } from "../../reporting/expected";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** One answer of the half, shaped as a window for `useBeatportWindow`. */
 interface HalfPage {
@@ -204,6 +206,7 @@ export function BeatportHalf({
       else notify(answer.value.message, "success");
       reload();
     } catch (cause) {
+      reportUnexpected(cause);
       notify(cause instanceof Error ? cause.message : String(cause), "warning");
     } finally {
       setWorking(false);
@@ -223,6 +226,7 @@ export function BeatportHalf({
       if (answer.refusal) notify(refusalText(answer.refusal), "warning");
       else setPushing({ options: answer.value });
     } catch (cause) {
+      reportUnexpected(cause);
       notify(cause instanceof Error ? cause.message : String(cause), "warning");
     } finally {
       setReadingOptions(false);
@@ -237,7 +241,7 @@ export function BeatportHalf({
     const found: number[] = [];
     for (let offset = 0; offset <= most; offset += limit) {
       const answer = await bridge({ kind, ref: pageRef, owned, offset, limit });
-      if (answer.refusal) throw new Error(refusalText(answer.refusal));
+      if (answer.refusal) throw refusalError(refusalText(answer.refusal), answer.refusal.code);
       const page = answer.value.page;
       if (!page) break;
       found.push(...page.rows.map(idOf));
@@ -280,6 +284,7 @@ export function BeatportHalf({
       }
       notify(refusalText(refusal), "warning");
     } catch (cause) {
+      reportUnexpected(cause);
       notify(cause instanceof Error ? cause.message : String(cause), "warning");
     }
   };

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   AboutDialog,
@@ -8,6 +8,7 @@ import {
   OnboardingDialog,
   PrivacyDialog,
   RekordboxInstructionsDialog,
+  ReportProblemDialog,
   ShortcutsDialog,
   SupportBundleDialog,
   ToastProvider,
@@ -56,6 +57,7 @@ import {
 } from "./screens/clean/cleanLink";
 import { ScaleProvider } from "./tokens/ScaleContext";
 import { ThemeProvider } from "./tokens/ThemeContext";
+import { E2eCrashProbe, ErrorBoundary, useNavigationBreadcrumbs } from "./reporting";
 import { shouldShowOnboarding } from "./components/OnboardingDialog";
 import "./App.css";
 
@@ -72,6 +74,7 @@ function AppShell() {
   const [onboardingOpen, setOnboardingOpen] = useState(() => shouldShowOnboarding());
   const [rekordboxOpen, setRekordboxOpen] = useState(false);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
+  const [reportProblemOpen, setReportProblemOpen] = useState(false);
 
   useEffect(() => {
     document.title = "CuePoint";
@@ -108,6 +111,20 @@ function AppShell() {
   }, []);
 
   useRememberDestination();
+  // A step for each destination opened, by its id (REPORT-06).
+  useNavigationBreadcrumbs();
+
+  /**
+   * Each destination's page sits in its own error boundary, so a page that throws shows
+   * the error screen in the content area and the sidebar and player bar keep working. It
+   * clears when the user opens another page (REPORT-06).
+   */
+  const guarded = (page: ReactNode) => (
+    <ErrorBoundary scope="page" resetKey={location.pathname}>
+      {page}
+      <E2eCrashProbe />
+    </ErrorBoundary>
+  );
 
   // DISCOVER-11: the pages every track leads to, and Similar tracks.
   const openEntity = useCallback(
@@ -215,6 +232,7 @@ function AppShell() {
     onOpenShortcuts: () => setShortcutsOpen(true),
     onOpenPrivacy: () => setPrivacyOpen(true),
     onOpenAbout: () => setAboutOpen(true),
+    onReportProblem: () => setReportProblemOpen(true),
     onOpenDiagnostics: () => setDiagnosticsOpen(true),
     onOpenLogViewer: () => setLogViewerOpen(true),
     onShowOnboarding: () => setOnboardingOpen(true),
@@ -240,7 +258,7 @@ function AppShell() {
             <Route
               key={destination.id}
               path={destination.path}
-              element={screenFor(destination.id)}
+              element={guarded(screenFor(destination.id))}
             />
           ))}
           {/*
@@ -252,17 +270,17 @@ function AppShell() {
             <>
               <Route
                 path={ARTIST_PAGE_ROUTE}
-                element={<EntityScreen kind="artist" onOpenInClean={openInClean} />}
+                element={guarded(<EntityScreen kind="artist" onOpenInClean={openInClean} />)}
               />
               <Route
                 path={LABEL_PAGE_ROUTE}
-                element={<EntityScreen kind="label" onOpenInClean={openInClean} />}
+                element={guarded(<EntityScreen kind="label" onOpenInClean={openInClean} />)}
               />
-              <Route path={SIMILAR_ROUTE} element={<SimilarScreen onOpenInClean={openInClean} />} />
+              <Route path={SIMILAR_ROUTE} element={guarded(<SimilarScreen onOpenInClean={openInClean} />)} />
             </>
           )}
           {findDestinationById("prepare")?.enabled && (
-            <Route path={PREPARE_SET_ROUTE} element={prepareScreen} />
+            <Route path={PREPARE_SET_ROUTE} element={guarded(prepareScreen)} />
           )}
           {/*
             A retired page's path lands on the page that replaced it (DEC-071,
@@ -293,6 +311,7 @@ function AppShell() {
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <ReportProblemDialog open={reportProblemOpen} onClose={() => setReportProblemOpen(false)} />
       <DiagnosticsDialog open={diagnosticsOpen} onClose={() => setDiagnosticsOpen(false)} />
       <OnboardingDialog open={onboardingOpen} onComplete={() => setOnboardingOpen(false)} />
       <RekordboxInstructionsDialog open={rekordboxOpen} onClose={() => setRekordboxOpen(false)} />

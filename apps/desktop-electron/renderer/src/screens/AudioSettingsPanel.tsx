@@ -9,6 +9,7 @@ import {
   saveAudioExclusive,
 } from "../components/player/playerAudioState";
 import { usePlayerValue } from "../components/player/playerStore";
+import { reportUnexpected } from "../reporting/reporting";
 import "./audio-settings.css";
 
 /**
@@ -55,6 +56,7 @@ export function AudioSettingsPanel() {
       setDevices(result.devices ?? []);
       setError(result.ok ? null : (result.error ?? "Could not read the audio devices."));
     } catch (problem) {
+      reportUnexpected(problem);
       setDevices([]);
       setError(problem instanceof Error ? problem.message : "Could not read the audio devices.");
     } finally {

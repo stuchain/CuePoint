@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { followJob, type FinishedJob } from "../library/followJob";
 import { jobErrorMessage } from "../library/libraryFormat";
+import { reportUnexpected } from "../../reporting/reporting";
 
 export type CleanMessageTone = "info" | "success" | "warning";
 
@@ -68,6 +69,7 @@ export function useCleanJob(
       try {
         answer = await start();
       } catch (cause) {
+        reportUnexpected(cause);
         if (alive.current) setRunning(null);
         onMessage(messageOf(cause), "warning");
         return false;

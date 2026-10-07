@@ -116,6 +116,7 @@ import { usePlaylistTree } from "./usePlaylistTree";
 import { useTrackDetail } from "./useTrackDetail";
 import { COPY_LIMIT, useTrackSelection } from "./useTrackSelection";
 import { useTrackWindow } from "./useTrackWindow";
+import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./library.css";
 
@@ -250,6 +251,7 @@ export function LibraryScreen({
       const payload = await bridge.getLibrarySummary();
       if (mounted.current) setSummary(payload);
     } catch (error) {
+      reportUnexpected(error);
       if (mounted.current) {
         push(error instanceof Error ? error.message : "Could not read the library", "warning");
       }
@@ -779,6 +781,7 @@ export function LibraryScreen({
         detail.reload();
         push(said, "success");
       } catch (error) {
+        reportUnexpected(error);
         setTagError(error instanceof Error ? error.message : "That change did not go through.");
       }
     },
@@ -1013,6 +1016,7 @@ export function LibraryScreen({
         window_.reload();
         collections.reload();
       } catch (error) {
+        reportUnexpected(error);
         push(
           error instanceof Error ? error.message : "Could not move that track.",
           "warning",
@@ -1177,6 +1181,7 @@ export function LibraryScreen({
         void loadTags();
         runAction({ kind: "add_tag", value: tag.id, target: tag.name }, current.target);
       } catch (error) {
+        reportUnexpected(error);
         push(error instanceof Error ? error.message : "Could not make that tag.", "warning");
       }
     },
@@ -1224,6 +1229,7 @@ export function LibraryScreen({
       try {
         jobId = (await start()).job_id;
       } catch (error) {
+        reportUnexpected(error);
         if (mounted.current) setBusy(null);
         push(error instanceof Error ? error.message : "The engine refused that", "warning");
         return null;
@@ -1300,6 +1306,7 @@ export function LibraryScreen({
       }
       if (mounted.current) setDiff(previewed);
     } catch (error) {
+      reportUnexpected(error);
       push(error instanceof Error ? error.message : "Could not read the preview", "warning");
     }
   }, [push, run]);

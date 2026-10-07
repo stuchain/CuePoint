@@ -11,6 +11,7 @@
  * a browser-lab render or an older preload can still manage.
  */
 import type { EngineJobSummary, JobState } from "../../api/cuepointBridge.types";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** How often to ask, when there is no subscription to listen to. */
 const POLL_INTERVAL_MS = 400;
@@ -23,7 +24,7 @@ export function isTerminal(state: string | undefined): boolean {
 
 export interface FinishedJob {
   state: JobState;
-  error?: { code?: string; message?: string };
+  error?: { code?: string; message?: string; report_id?: string | null };
 }
 
 export interface FollowHandle {
@@ -91,6 +92,7 @@ export function followJob(jobId: string, pollMs = POLL_INTERVAL_MS): FollowHandl
     try {
       consider(await bridge.getJob!(jobId));
     } catch (error) {
+      reportUnexpected(error);
       finish({
         state: "failed",
         error: {

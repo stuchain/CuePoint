@@ -30,6 +30,7 @@ import {
   describeBatch,
   type BatchAction,
 } from "./libraryBatch";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** One batch, ready to run: what to do, to which tracks, and how many. */
 export interface BatchRun {
@@ -113,6 +114,7 @@ export function useLibraryBatch({
           operation: batchOperation(run.action),
         });
       } catch (cause) {
+        reportUnexpected(cause);
         if (alive.current) setBusy(false);
         if (onRefused) onRefused(messageOf(cause));
         else onMessage(messageOf(cause), "warning");

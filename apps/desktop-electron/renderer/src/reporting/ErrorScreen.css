@@ -1,0 +1,52 @@
+/*
+ * The error screen (REPORT-06). Built of the same panel and tokens as the rest of
+ * the app. `--app` stands alone in the window, outside the shell; `--page` sits in
+ * the content area beside the sidebar and the player bar.
+ */
+
+.cp-error-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  background: var(--bg-app, var(--bg-panel));
+  color: var(--fg-primary);
+}
+
+.cp-error-screen--app {
+  min-height: 100vh;
+}
+
+.cp-error-screen--page {
+  min-height: 100%;
+  flex: 1;
+}
+
+.cp-error-screen__panel {
+  width: 100%;
+  max-width: 480px;
+}
+
+.cp-error-screen__text {
+  margin: 0 0 var(--space-md);
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.cp-error-screen__id {
+  margin: 0 0 var(--space-md);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-error-screen__id code {
+  color: var(--fg-primary);
+  font-family: inherit;
+  letter-spacing: 0.08em;
+}
+
+.cp-error-screen__actions {
+  display: flex;
+  gap: var(--space-sm);
+}

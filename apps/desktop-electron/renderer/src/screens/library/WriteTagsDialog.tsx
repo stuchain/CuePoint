@@ -20,8 +20,7 @@ import type {
   TagWriteResult,
 } from "../../api/cuepointBridge.types";
 import { Button, Modal } from "../../components";
-import { followJob } from "./followJob";
-import { jobErrorMessage } from "./libraryFormat";
+import { jobResult } from "./jobResult";
 import {
   DEFAULT_TAG_OPTIONS,
   KEY_FORMATS,
@@ -37,6 +36,7 @@ import {
   writeHeadline,
   type DialogTagOptions,
 } from "./tagWriting";
+import { reportUnexpected } from "../../reporting/reporting";
 import "./cleanDialogs.css";
 
 interface WriteTagsDialogProps {
@@ -59,22 +59,6 @@ type Phase =
 
 function messageOf(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
-}
-
-/** The result a finished job answered, or a sentence saying why there is none. */
-async function jobResult<T>(jobId: string): Promise<T> {
-  const handle = followJob(jobId);
-  const finished = await handle.finished;
-  if (finished.state === "failed") throw new Error(jobErrorMessage(finished.error));
-  const read = window.cuepoint?.getJobResults;
-  if (!read) throw new Error("The engine is not connected.");
-  const payload = await read(jobId);
-  if (payload.result == null) {
-    throw new Error(
-      finished.state === "cancelled" ? "Stopped before it had an answer." : "The job answered nothing.",
-    );
-  }
-  return payload.result as T;
 }
 
 export function WriteTagsDialog({ open, selection, count, onClose, onChanged }: WriteTagsDialogProps) {
@@ -147,6 +131,7 @@ export function WriteTagsDialog({ open, selection, count, onClose, onChanged }: 
       setPreview(answer);
       setPhase("previewed");
     } catch (cause) {
+      reportUnexpected(cause);
       if (!alive.current) return;
       setJobId(null);
       setProblem(messageOf(cause));
@@ -169,6 +154,7 @@ export function WriteTagsDialog({ open, selection, count, onClose, onChanged }: 
       setWritten(result);
       setPhase("written");
     } catch (cause) {
+      reportUnexpected(cause);
       if (!alive.current) return;
       setProblem(messageOf(cause));
       // A write that started and then failed may have written files, so it is
@@ -199,6 +185,7 @@ export function WriteTagsDialog({ open, selection, count, onClose, onChanged }: 
       setRestored(result);
       setPhase("restored");
     } catch (cause) {
+      reportUnexpected(cause);
       if (!alive.current) return;
       setProblem(messageOf(cause));
       setPhase("written");

@@ -17,6 +17,7 @@ import type { DiscoverRefusal } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components/Modal";
 import { TextField } from "../../components/TextField";
 import { refusalText } from "./discoverFormat";
+import { reportUnexpected } from "../../reporting/reporting";
 
 interface PushDialogProps {
   open: boolean;
@@ -59,6 +60,7 @@ export function PushDialog({
       const refused = await onPush(trimmed, includeOwned);
       if (refused) setRefusal(refusalText(refused));
     } catch (cause) {
+      reportUnexpected(cause);
       setRefusal(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setPushing(false);

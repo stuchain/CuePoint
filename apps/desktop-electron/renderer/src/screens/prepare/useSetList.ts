@@ -25,6 +25,7 @@ import {
   setListCopiedLine,
   setListSavedLine,
 } from "./setList";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** The Set a set list is of: its id, and the name the file is named after. */
 interface SetListTarget {
@@ -89,6 +90,7 @@ export function useSetList({ onMessage, onGone }: SetListOptions): SetListAction
           currentPath = answer.refusal.path ?? choice.filePath;
         }
       } catch (cause) {
+        reportUnexpected(cause);
         onMessage(messageOf(cause), "warning");
       }
     },
@@ -114,6 +116,7 @@ export function useSetList({ onMessage, onGone }: SetListOptions): SetListAction
           wrote ? "success" : "warning",
         );
       } catch (cause) {
+        reportUnexpected(cause);
         onMessage(messageOf(cause), "warning");
       }
     },

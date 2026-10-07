@@ -8,6 +8,7 @@ import {
   sortNewestFirst,
 } from "./activityFormat";
 import { ActivityOffer } from "./ActivityOffer";
+import { reportUnexpected } from "../../reporting/reporting";
 import "./ActivityPanel.css";
 
 interface ActivityPanelProps {
@@ -52,6 +53,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
         setStatus("ready");
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         setError(cause instanceof Error ? cause.message : String(cause));
         setStatus("error");
       });

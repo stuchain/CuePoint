@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Tag, TagUsage } from "../../api/cuepointBridge.types";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** A tag as one track's record carries it — no usage count, that is the vocabulary's. */
 export type TrackTag = Pick<Tag, "id" | "name" | "category" | "colour">;
@@ -105,6 +106,7 @@ export function useTrackTags({
       try {
         tag = (await create({ name: wanted })).tag;
       } catch (cause) {
+        reportUnexpected(cause);
         onError(messageOf(cause));
         return;
       }
@@ -115,6 +117,7 @@ export function useTrackTags({
         if (alive.current) setReloads((n) => n + 1);
         onSaved?.();
       } catch (cause) {
+        reportUnexpected(cause);
         if (alive.current) setShown((current) => current.filter((t) => t.id !== tag.id));
         onError(messageOf(cause));
       }
@@ -136,6 +139,7 @@ export function useTrackTags({
         await unassign({ tag_id: tagId, track_ids: [trackId] });
         onSaved?.();
       } catch (cause) {
+        reportUnexpected(cause);
         if (alive.current) setShown(before);
         onError(messageOf(cause));
       }

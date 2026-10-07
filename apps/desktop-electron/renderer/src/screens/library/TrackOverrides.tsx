@@ -13,6 +13,7 @@ import type { LibraryTrackRow, OverrideField } from "../../api/cuepointBridge.ty
 import { APPLY_FIELD_LABELS } from "../clean/comparison";
 import { effectiveText, importedText, overrideSourceText } from "./libraryClean";
 import { EDIT_FIELDS, parseFieldText } from "./metadataEdits";
+import { reportUnexpected } from "../../reporting/reporting";
 
 interface TrackOverridesProps {
   track: LibraryTrackRow & { id: number };
@@ -78,6 +79,7 @@ export function TrackOverrides({ track, onSaved }: TrackOverridesProps) {
       setProblems((previous) => ({ ...previous, [field]: undefined }));
       onSaved();
     } catch (cause) {
+      reportUnexpected(cause);
       setProblems((previous) => ({ ...previous, [field]: messageOf(cause) }));
     } finally {
       inFlight.current = null;

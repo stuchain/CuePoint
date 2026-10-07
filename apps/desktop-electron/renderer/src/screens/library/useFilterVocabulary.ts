@@ -25,6 +25,7 @@ import type {
   LibraryFilterVocabulary,
 } from "../../api/cuepointBridge.types";
 import type { LibraryQuery } from "./libraryQuery";
+import { reportUnexpected } from "../../reporting/reporting";
 
 type VocabularyStatus = "loading" | "ready" | "error" | "unavailable";
 
@@ -54,6 +55,7 @@ export function useFilterVocabulary(): FilterVocabularyState {
         setState({ vocabulary, status: "ready", error: null });
       })
       .catch((cause: unknown) => {
+        reportUnexpected(cause);
         if (cancelled) return;
         setState({
           vocabulary: null,
@@ -107,6 +109,7 @@ export function useFacet(query: LibraryQuery): FacetState {
           setLoading(false);
         })
         .catch((cause: unknown) => {
+          reportUnexpected(cause);
           setLoading(false);
           setError(cause instanceof Error ? cause.message : String(cause));
         });

@@ -95,6 +95,93 @@ function withEngineWords(api) {
   return wrapped;
 }
 
+/**
+ * The renderer's error reporter reaches Electron main through this, and
+ * through nothing else (REPORT-06, DEC-126, DEC-127, DEC-128).
+ *
+ * `@sentry/electron`'s renderer SDK looks for `window.__SENTRY_IPC__`, which its
+ * own preload would set. This is that bridge cut down to what a report needs:
+ *
+ * - `sendEnvelope` forwards an envelope only when every item in it is an error
+ *   `event`. Main passes an event through its `beforeSend` (the choice, then the
+ *   scrubber); it passes every other kind (sessions, replay, spans, client
+ *   reports) to Sentry as it is, so they never leave the page.
+ * - `sendFeedback` forwards one feedback item, and only while the choice is on:
+ *   main sends feedback without its `beforeSend`.
+ * - Scope, status, log and metric updates are dropped. Each reaches main's scope
+ *   or Sentry unscrubbed.
+ *
+ * The channel names are the SDK's own (namespace `sentry-ipc`), which main
+ * registers in its Classic IPC mode.
+ */
+const SENTRY_START_CHANNEL = "sentry-ipc.start";
+const SENTRY_ENVELOPE_CHANNEL = "sentry-ipc.envelope";
+const SENTRY_FEEDBACK_CHANNEL = "sentry-ipc.feedback";
+
+/**
+ * The `type` of each item in an envelope (a string or bytes), read exactly as
+ * `parseEnvelope` in @sentry/core reads it, because main parses the same bytes with it: a
+ * header line, then for each item a header line followed by either `length` bytes (a
+ * truthy numeric `length`) or one line of JSON. Every JSON line is parsed. Answers null for
+ * anything that does not read cleanly, or that holds a binary item, which no error event or
+ * feedback ever has.
+ */
+function envelopeItemTypes(envelope) {
+  try {
+    let buffer = typeof envelope === "string" ? new TextEncoder().encode(envelope) : envelope;
+    if (!(buffer instanceof Uint8Array)) return null;
+    const decoder = new TextDecoder("utf-8", { fatal: true });
+    const readBinary = (length) => {
+      const bin = buffer.subarray(0, length);
+      buffer = buffer.subarray(length + 1);
+      return bin;
+    };
+    const readJson = () => {
+      let i = buffer.indexOf(10);
+      if (i < 0) i = buffer.length;
+      return JSON.parse(decoder.decode(readBinary(i)));
+    };
+    const header = readJson();
+    if (typeof header !== "object" || header === null) return null;
+    const types = [];
+    while (buffer.length) {
+      const itemHeader = readJson();
+      if (typeof itemHeader !== "object" || itemHeader === null || typeof itemHeader.type !== "string") return null;
+      const binaryLength = typeof itemHeader.length === "number" ? itemHeader.length : undefined;
+      if (binaryLength) return null;
+      readJson();
+      types.push(itemHeader.type);
+    }
+    return types;
+  } catch {
+    return null;
+  }
+}
+
+function onlyTypes(envelope, allowed) {
+  const types = envelopeItemTypes(envelope);
+  return types !== null && types.length > 0 && types.every((type) => allowed.includes(type));
+}
+
+contextBridge.exposeInMainWorld("__SENTRY_IPC__", {
+  "sentry-ipc": {
+    sendRendererStart: () => ipcRenderer.send(SENTRY_START_CHANNEL),
+    sendEnvelope: (envelope) => {
+      if (onlyTypes(envelope, ["event"])) ipcRenderer.send(SENTRY_ENVELOPE_CHANNEL, envelope);
+    },
+    sendFeedback: async (envelope) => {
+      if (!onlyTypes(envelope, ["feedback"])) return {};
+      const state = await ipcRenderer.invoke("errorReporting:get");
+      if (!state || state.enabled !== true) return {};
+      return ipcRenderer.invoke(SENTRY_FEEDBACK_CHANNEL, envelope);
+    },
+    sendScope: () => {},
+    sendStatus: () => {},
+    sendStructuredLog: () => {},
+    sendMetric: () => {},
+  },
+});
+
 contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   // The status, code and report id of an engine error the page caught, by its
   // message (REPORT-04). Null for any other error. See `recentFields`.
@@ -288,6 +375,11 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   errorReporting: {
     get: () => ipcRenderer.invoke("errorReporting:get"),
     set: (enabled) => ipcRenderer.invoke("errorReporting:set", enabled),
+  },
+  // Whether this run is an end-to-end test (REPORT-06): the page may then be
+  // made to throw, to see the error screen. Main answers false for a user.
+  testHooks: {
+    enabled: () => ipcRenderer.invoke("testHooks:enabled"),
   },
   subscribeJobEvents: (jobId, onEvent) => {
     const eventHandler = (_event, payload) => {

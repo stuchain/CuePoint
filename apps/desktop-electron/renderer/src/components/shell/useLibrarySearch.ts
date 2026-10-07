@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LibrarySearchResponse } from "../../api/cuepointBridge.types";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** How long typing settles before a request goes out. */
 const SEARCH_DEBOUNCE_MS = 200;
@@ -84,6 +85,7 @@ export function useLibrarySearch(query: string): LibrarySearchState {
           setState({ status: statusFor(query, response), response, error: null });
         })
         .catch((cause: unknown) => {
+          reportUnexpected(cause);
           if (token !== latest.current) return;
           setState({
             status: "error",

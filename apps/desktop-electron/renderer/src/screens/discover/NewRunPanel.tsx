@@ -24,6 +24,7 @@ import { formatCount, pluralize } from "../library/libraryFormat";
 import { ScopeDialog } from "./ScopeDialog";
 import { refusalText } from "./discoverFormat";
 import { defaultForm, formProblems, runRequest, type NewRunForm, type ScopeMode } from "./newRun";
+import { reportUnexpected } from "../../reporting/reporting";
 
 interface NewRunPanelProps {
   options: DiscoverOptions;
@@ -130,6 +131,7 @@ export function NewRunPanel({
       const refused = await onStart(runRequest(form));
       if (refused) setRefusal(refusalText(refused));
     } catch (cause) {
+      reportUnexpected(cause);
       setRefusal(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setStarting(false);

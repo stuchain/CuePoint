@@ -1,0 +1,59 @@
+.report-problem-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+}
+
+.report-problem-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  color: var(--fg-primary);
+}
+
+.report-problem-dialog__field textarea {
+  width: 100%;
+  padding: var(--space-sm);
+  resize: vertical;
+  font: inherit;
+  color: var(--fg-primary);
+  background: var(--bg-toolbar);
+  border: var(--border-width) solid var(--border-outline);
+}
+
+.report-problem-dialog__field textarea:disabled {
+  color: var(--fg-disabled);
+}
+
+.report-problem-dialog__note,
+.report-problem-dialog__off,
+.report-problem-dialog__done,
+.report-problem-dialog__error {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.report-problem-dialog__note {
+  color: var(--fg-muted);
+}
+
+.report-problem-dialog__off {
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel-alt);
+  color: var(--fg-primary);
+}
+
+.report-problem-dialog__error {
+  color: var(--accent-danger);
+}
+
+.report-problem-dialog__facts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}

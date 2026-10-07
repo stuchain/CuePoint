@@ -9,6 +9,7 @@ import {
   keyFormatLabel,
   rememberedFolderLine,
 } from "./library/rekordboxExport";
+import { reportUnexpected } from "../reporting/reporting";
 import "./rekordbox-export-settings.css";
 
 /** How many past exports Settings lists. */
@@ -47,6 +48,7 @@ export function RekordboxExportSettingsPanel() {
       setHistory(await bridge({ limit: SETTINGS_HISTORY_LIMIT }));
       setError(null);
     } catch (problem) {
+      reportUnexpected(problem);
       setError(problem instanceof Error ? problem.message : "Could not read the export history.");
     } finally {
       setLoading(false);
