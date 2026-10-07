@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 open (Q-163…Q-169).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168).**
 
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
@@ -931,7 +931,8 @@ Specified 2026-10-07 in `PHASE15_STATISTICS.md`, in seven steps (STATS-01…STAT
 first, so it starts as early as possible, then the engine's answers, then the page. Writing it raised
 seven questions, asked as Decision Round 18 (Q-163…Q-169): narrowing the page to a Collection or
 playlist, Clean's Health tab, tracks with no play count, remixer credits, what "Since" offers,
-keeping a top list, and where history starts.
+keeping a top list, and where history starts. The user took the recommendation on all seven
+(DEC-162…DEC-168), so nothing is open.
 
 - **Its own destination** in the sidebar, after Prepare (DEC-138).
 - **The page shows** (DEC-136):

@@ -4534,6 +4534,11 @@ a running total.
 
 **Decided with**: User · **Date**: 2026-10-06
 
+### Amended (2026-10-07, DEC-168) — history starts at the last import
+
+The migration seeds a first reading from each track's stored count, dated the last import, so
+history starts there rather than at the first refresh after the step.
+
 ---
 
 ## DEC-138 — Statistics Is Its Own Destination
@@ -5072,5 +5077,122 @@ has not chosen. Labels: "Small (1×)", "Medium (1.5×) — default", "Large (2×
   strict 1.5× of their 1× width; the pixel look holds because no edge is fractional.
 - A stored choice is kept. Only a fresh install, or one that never picked a size, opens at 1.5×.
 - Built in PAGES-01 with SET-4. The storage key stays `cuepoint-ui-lab-scale`.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-162 — Statistics Can Be Narrowed to a Collection or a Rekordbox Playlist
+
+**Status**: Approved · **Related**: Q-163, Q-137, DEC-136, STATS-02, STATS-04
+
+**Decision**: One picker at the top of the Statistics page narrows every section to the whole library,
+a Collection (plain or Smart) or a Rekordbox playlist. The Library's filter gains a **Rekordbox
+playlist** field, so a narrowed number still opens exactly its tracks.
+
+**Reason**: The user's choice, as recommended. Q-137 proposed the scope and DEC-136 did not say. "What
+do I play most from this playlist" is the natural question, and the new field is useful in the
+Library on its own.
+
+**Implications**:
+- **A new filter field,** `playlist` (`in_playlist`, over `rekordbox_playlist_tracks`), built in
+  STATS-02. Stored rules that do not use it are unchanged.
+- **Every route takes `scope`,** and every rule set it returns carries the scope's own rule.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-163 — Clean Keeps Its Health Tab; Statistics Shows a Summary
+
+**Status**: Approved · **Related**: Q-164, DEC-136, PAGES-07, STATS-07
+
+**Decision**: Clean keeps its Health tab with every check. Statistics shows a health summary (files,
+Beatport, waveforms) whose counts open the Library and which links to Clean's tab with **All health
+checks**.
+
+**Reason**: The user's choice, as recommended. Problems are fixed in Clean; Statistics answers "how is
+my library", and a summary does that.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-164 — A Track With No Play Count Is "Plays Unknown", Not Never Played
+
+**Status**: Approved · **Related**: Q-165, DEC-136, m0005
+
+**Decision**: "Never played" counts only tracks whose play count is zero. Tracks whose export has no
+`PlayCount` are shown on their own line, **Plays unknown**, and open in the Library with `play count
+is empty`.
+
+**Reason**: The user's choice, as recommended. m0005 stores a missing count as unknown on purpose;
+counting it as zero would say something the export never said.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-165 — A Remix Counts Toward Its Remixer's Plays
+
+**Status**: Approved · **Related**: Q-166, DEC-136, DISCOVER-03
+
+**Decision**: Top artists sum the plays of every track crediting them as artist **or** remixer, once
+per track, as the Library's artist filter matches both.
+
+**Reason**: The user's choice, as recommended. A row's number and the tracks it opens then agree.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-166 — "Since" Offers Presets and a Date
+
+**Status**: Approved · **Related**: Q-167, DEC-137, STATS-02, STATS-05
+
+**Decision**: Most played can be shown since your last refresh (the plays that refresh found), the
+last 7, 30 and 90 days, the last year, all time, or a date the user picks.
+
+**Reason**: The user's choice, as recommended. "Since my last refresh" and "last month" are the
+questions asked most, and presets answer them in one click.
+
+**Implications**: "Since your last refresh" is asked by read, not by date (`since_read`), so two
+refreshes on one day stay apart. Every choice is as fine as the refreshes, and the page says so.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-167 — A Top List Can Be Kept as a Collection
+
+**Status**: Approved · **Related**: Q-168, DEC-136, STATS-05
+
+**Decision**: **Keep as Collection** on the most-played list makes a plain Collection of those tracks
+in rank order, named for the list ("Most played since Sep 1, 2026 (top 50)"). It is a snapshot and
+does not change when plays change.
+
+**Reason**: The user's choice, as recommended. It turns "what I play most" into a crate. A Collection
+that updates itself is not possible: "top N" and "since" are not filter rules.
+
+**Implications**: A new atomic engine route, `POST /api/v1/collections/create-from`, makes the
+Collection and adds its tracks in one transaction (STATS-05).
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-168 — Play History Is Seeded From the Last Import
+
+**Status**: Approved · **Related**: Q-169, DEC-137, STATS-01
+
+**Decision**: The migration that adds play history keeps every track's known play count as a first
+reading, dated the library's last import. History therefore starts at the last import before
+STATS-01, not at the first refresh after it.
+
+**Reason**: The user's choice, as recommended. It costs nothing and keeps the plays between that
+import and the first refresh after updating, which would otherwise be lost.
+
+**Implications**: Amends DEC-137's start. With no library imported, there is nothing to seed, and
+history starts at the first import.
 
 **Decided with**: User · **Date**: 2026-10-07

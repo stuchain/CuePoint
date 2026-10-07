@@ -1,18 +1,20 @@
 # CuePoint v1.0.0 — Phase 15: Statistics, Detailed Step Specifications
 
 Status: **Specified 2026-10-07. No step is implemented yet.** Seven steps, STATS-01…STATS-07.
-Writing the steps raised seven questions that Decision Round 14 did not answer. They are asked as
-Decision Round 18 (Q-163…Q-169, `OPEN_QUESTIONS.md`), and the steps they touch say which way each
-answer moves them. Per the process, no implementation happens from this document. Each step needs
-an explicit "Implement STATS-NN" instruction, scoped to exactly that step, and its outcome is
-recorded under the step afterwards.
+Writing the steps raised seven questions that Decision Round 14 did not answer. They were asked as
+Decision Round 18 (Q-163…Q-169) and settled the same day as DEC-162…DEC-168, each as recommended, so
+there are no open points. Where a step below says "if Q-NNN …", the recommended branch is the one
+built. Per the process, no implementation happens from this document. Each step needs an explicit
+"Implement STATS-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
+step afterwards.
 
 Depends on Phases 1–14. Phase 14 must be complete first (DEC-140): the page is built in the
 revisited style, and it reuses what Phase 14 adds (the shell header, the Camelot wheel, the selected
-track, the empty-state shape, Settings' sections and the ten motion switches). Decision Rounds 1–17
-apply (`DECISIONS.md`, DEC-001…DEC-161). This phase's own decisions are DEC-136 (what the page
-shows), DEC-137 (play history) and DEC-138 (its own destination), with DEC-020 (the destination
-registry), DEC-096 (the key rule the wheel lights), DEC-132 (clear to new users), DEC-155 (no
+track, the empty-state shape, Settings' sections and the ten motion switches). Decision Rounds 1–18
+apply (`DECISIONS.md`, DEC-001…DEC-168). This phase's own decisions are DEC-136 (what the page
+shows), DEC-137 (play history) and DEC-138 (its own destination), with DEC-162…DEC-168 (scope, Clean's
+Health tab, unknown plays, remixes, "Since", keeping a list, and history seeded from the last
+import), and DEC-020 (the destination registry), DEC-096 (the key rule the wheel lights), DEC-132 (clear to new users), DEC-155 (no
 "engine" or "jobs" in the app's words), DEC-158 (American English) and DEC-140 (its place, after the
 pages).
 
@@ -37,7 +39,7 @@ changed, with the date, so "most played since a date" has an answer. History sta
 refresh after STATS-01, and cannot be recovered for earlier.
 
 **Every number leads somewhere.** A bar, a count or a row opens the Library on exactly those tracks
-wherever a Library filter can say it, and a top list can be kept as a Collection (Q-168).
+wherever a Library filter can say it, and a top list can be kept as a Collection (DEC-167).
 
 **What this phase is not.**
 - **No new data from outside.** Every number is a query over what CuePoint already holds, plus the
@@ -104,7 +106,7 @@ STATS-02; both need STATS-01's tables only for STATS-02's "since".
 
 **Then the page.** STATS-04 adds the destination, the bridge and the page's frame, with its empty
 states and scope. STATS-05 (plays) and STATS-06 (spreads) fill it, in either order. STATS-07 adds
-health, settles Clean's Health tab (Q-164), and brings the phase together.
+health, keeps Clean's Health tab as it is (DEC-163), and brings the phase together.
 
 **Every intermediate build keeps working,** with every suite green and the engine smoke check
 passing. The destination appears only in STATS-04, so a build between STATS-01 and STATS-04 looks
@@ -116,7 +118,7 @@ unchanged.
 
 Rekordbox writes one running total per track. m0005 stores it with no default on purpose: a missing
 `PlayCount` is **unknown**, not never played (`m0005_track_fields_and_source.py:25-29`). So "never
-played" is `play_count = 0`, and tracks with no count are their own group (Q-165). Plays per refresh
+played" is `play_count = 0`, and tracks with no count are their own group, **Plays unknown** (DEC-164). Plays per refresh
 are only as fine as the DJ's refreshes: two weeks of gigs between refreshes read as one jump on the
 refresh date.
 
@@ -166,7 +168,7 @@ DEC-136 says DISCOVER-03's credit index, so "B" means B: artists group by `track
 (`core/entity_names.py:153`), shown by the first spelling alphabetically, as `library_artists` does
 (`min(name)`, `track_credit_repository.py:477-486`). Labels group by the effective `label_key` (`:110-120`). The
 Library's `artist_name` filter matches artist **and** remixer credits (`filter_rule.py:694`), so
-whether plays count remixer credits decides whether a row's number matches what it opens (Q-166).
+so plays count remixer credits too (DEC-165), and a row's number matches what it opens.
 A track credited to two artists counts its plays for each, but **once per name**: a track credited
 to B as artist and as remixer has two `track_credits` rows with the same `name_key` (m0021's key is
 `(track_id, role, position)`), so sums run over distinct `(track_id, name_key)`.
@@ -192,7 +194,7 @@ A rule set is AND-only (`libraryLink.ts:57-67`; `filter_rule.py:107-114`). The f
 | A Rekordbox playlist, as a scope | **nothing today**: no filter field names a playlist, and opening the Library on rules clears the playlist (`LibraryScreen.tsx:360-370`) |
 
 **What cannot be said as a rule:** a top N, plays since a date, a loudness range, and "analyzed".
-Top lists open one track at a time (`libraryTrackState`) and can be kept as a Collection (Q-168);
+Top lists open one track at a time (`libraryTrackState`) and can be kept as a Collection (DEC-167);
 loudness and analyzed show their numbers only. `date_added` is unvalidated text compared as text
 (`filter_sql.py:370`; `between` is inclusive), so a month bucket is **defined as** the text range
 `between YYYY-MM-01 and YYYY-MM-31`, and counted with that same comparison, not by parsing the date.
@@ -255,11 +257,12 @@ read, inside the same transaction, so later steps can answer "most played since 
   - `read_at` is the UTC time CuePoint read the file (`utc_now_iso()`), not the XML's export date,
     which the XML does not carry.
 - **What is stored:**
-  - **The baseline.** If Q-169 takes the seed, m0027 itself inserts one `seed` read dated
+  - **The baseline is seeded** (DEC-168). m0027 itself inserts one `seed` read dated
     `library_source.imported_at` (the last import before the migration) and copies every known
     `tracks.play_count` into it, so the plays between that import and the first refresh are kept.
-    Otherwise the **first read after the migration**, found as "no `library_reads` row yet", stores
-    every known count. Either way the baseline is the only read that stores unchanged counts.
+    With no library imported there is no seed, and the **first import**, found as "no
+    `library_reads` row yet", stores every known count instead. The baseline is the only read that
+    stores unchanged counts.
   - **After that, one row per track whose count moved,** up or down (DEC-137): an update where
     `existing.play_count` differs from `track.play_count`, both known.
   - **A new track** stores its first known count, as its own baseline.
@@ -345,25 +348,23 @@ expressions (fact 3); `RuleSet` as Health returns it; the module shape of `engin
     it, and `since_clamped` says so. A date after `last_read` answers zero plays.
   - **The date is the user's local day:** the renderer sends `since` with the local UTC offset
     (`since=2026-09-01&tz=+03:00`); the service compares `read_at` against that local midnight.
-  - **Since a read** (`since_read=<id>`, Q-167's "since your last refresh"): the plays are the rises
+  - **Since a read** (`since_read=<id>`, DEC-166's "since your last refresh"): the plays are the rises
     recorded **at** that read and after it, compared with each track's read before. A date cannot
     say this when two refreshes fall on one day.
   - **Ties** sort by plays, then title, then id, so the list is stable.
-  - **Artists and labels** sum their tracks' plays (all time or since), over the credits Q-166
-    decides and distinct per track (fact 6), and count the tracks that had at least one play.
+  - **Artists and labels** sum their tracks' plays (all time or since), over artist and remixer
+    credits (DEC-165), distinct per track (fact 6), and count the tracks that had at least one play.
     Zero-play artists are left out. **All time,** a row's rules are the name and `play_count gt 0`,
     so it opens exactly the tracks counted. **Since a date,** no rule can say "played since", so the
     row opens all of that artist's played tracks and says so ("Shows all of B's played tracks").
   - **Never played** and **unknown** are counts with rules, not lists: the Library shows them.
-- **Scope** (Q-163): `scope=library` (the default), `collection:<id>`, or, if Q-163 takes
-  playlists, `playlist:<id>`. Every query takes the scope as a track-id subquery. A Smart
+- **Scope** (DEC-162): `scope=library` (the default), `collection:<id>` or `playlist:<id>`. Every query takes the scope as a track-id subquery. A Smart
   Collection's scope is its rules, compiled as the Library compiles them. Each returned rule set
   gains the scope's own rule (fact 7), so the Library opens the same tracks.
-  - **Playlists need a filter field first.** If Q-163 takes them, this step adds `playlist`
+  - **Playlists need a filter field first.** This step adds `playlist`
     (`TYPE_PLAYLIST`, operator `in_playlist`, over `rekordbox_playlist_tracks`, m0006)
     to `FIELDS`, compiled like `collection`'s membership. The Library's filter gains "Rekordbox
     playlist" as a field with it, and PAGES-05's field groups place it beside Collection.
-  - If Q-163 is declined, `scope` is not built.
 - **Refusals** (`status_for`): a bad `limit`, `since`, `tz`, `since_read` or `scope`, or `since` with
   `since_read`, is 400 `INVALID_REQUEST`; an unknown
   Collection or playlist is 404; no library is 503 `LIBRARY_UNAVAILABLE`. None is reported to Sentry
@@ -376,7 +377,7 @@ expressions (fact 3); `RuleSet` as Health returns it; the module shape of `engin
     the last read), with the clamp; since the last read, with two refreshes on one day;
   - a count that fell (Rekordbox reset), a new track, and a track with unknown count;
   - an artist spelled two ways counts as one; a two-artist track counts for both; a track crediting
-    B as artist and remixer counts once for B; remixer credits as Q-166 decides;
+    B as artist and remixer counts once for B; a remix counts for its remixer;
   - labels from an override beat the imported label;
   - each scope, and that every returned rule set opens exactly the counted tracks (run through
     `browse_count`).
@@ -450,8 +451,8 @@ and `current_files`; `HealthService.report()`; `WaveformAnalysisService.plan()`.
   Every count is scoped. `HealthService.report()` and `WaveformAnalysisService.plan()` take no
   scope today, so this step counts files and match states with one grouped query each over the
   scope's tracks, and gives `plan()`'s counting a `paths` argument (the scope's present paths),
-  keeping its rule for what counts as analyzed (current version, size as last checked). Q-164
-  decides whether this route also carries Health's other checks (duplicates, artwork, and the rest).
+  keeping its rule for what counts as analyzed (current version, size as last checked). Health's
+  other checks (duplicates, artwork, and the rest) stay in Clean's tab (DEC-163).
 - **One grouped query per field,** not one count per bucket (fact 11). Loudness is one read of
   the store per request, with the paths chunked under SQLite's variable limit.
 
@@ -489,7 +490,7 @@ and the page's frame: its sections, scope picker, loading and empty states.
 **User-visible result**: A **Statistics** entry after Prepare opens a page with three sections,
 Plays, Your library and Health, each showing a loading state, then its content once STATS-05 to
 STATS-07 fill it. With no library imported, the page says so and offers **Import a library**. With a
-library but no history yet (no seed under Q-169, and no refresh since updating), the Plays section
+library but no history yet (no library was imported before updating, so nothing was seeded), the Plays section
 says "Play history starts at your next refresh" and still shows all-time plays.
 
 **Dependencies**: STATS-02, STATS-03; Phase 14 (PAGES-03's sidebar, PAGES-05's empty-state shape).
@@ -509,7 +510,7 @@ says "Play history starts at your next refresh" and still shows all-time plays.
 - **`screens/statistics/StatisticsScreen.tsx`** with `useStatistics.ts` (one hook per route,
   re-read when the scope changes and after an import or refresh finishes, as Clean's health hook
   listens).
-- **The scope picker** (Q-163) sits in the page header: **Whole library**, then the Collections and
+- **The scope picker** (DEC-162) sits in the page header: **Whole library**, then the Collections and
   Rekordbox playlists in a tree like the Library's. The chosen scope is remembered in
   `cuepoint-statistics-scope` (localStorage, fact 7 of Phase 14), falling back to Whole library when
   the Collection or playlist is gone.
@@ -547,12 +548,12 @@ date, each leading to its tracks; a top list kept as a Collection.
 
 **User-visible result**: The Plays section shows:
 - **Most played:** a list with a **Top 10 / 25 / 50 / 100 / 200** choice and a **Since** choice
-  (Q-167). Each row is rank, title, artist and plays, with a pixel bar for plays. Clicking a row opens
+  (DEC-166). Each row is rank, title, artist and plays, with a pixel bar for plays. Clicking a row opens
   the Library on that track; the play button previews it.
 - **Top artists** and **top labels:** the top 10 of each, with plays and track count. A click opens
   the Library on that artist's or label's tracks.
 - **Never played** and **plays unknown:** a count each, opening the Library on them.
-- **Keep as Collection** (Q-168) on the most-played list: it makes a Collection named, for
+- **Keep as Collection** (DEC-167) on the most-played list: it makes a Collection named, for
   example, "Most played since Sep 1, 2026 (top 50)", holding those tracks in rank order, and says
   where it is.
 - The section's footer says when the counts were last read and when history started: "Counts from
@@ -565,7 +566,7 @@ preview action as the Library uses it; the bars of STATS-06's `PixelBars` if STA
 else this step creates `components/charts/PixelBars.tsx` and STATS-06 extends it.
 
 **Design**:
-- **Since** offers what Q-167 decides. A date before history starts is shown as clamped, with the
+- **Since** offers last refresh, 7, 30 and 90 days, a year, all time, and a date (DEC-166). A date before history starts is shown as clamped, with the
   route's `history_from`.
 - **The top list's choices** persist in `cuepoint-statistics-plays` (`{ limit, since }`).
 - **Keep as Collection** calls a new atomic engine route, `POST /api/v1/collections/create-from
@@ -655,25 +656,22 @@ Storybook stories for each chart at each scale and theme are the check.
 
 ## STATS-07 — Health, and the Phase Comes Together
 
-**Objective**: Library health on the page, Clean's Health tab settled (Q-164), the user guide, and
+**Objective**: Library health on the page, Clean's Health tab kept (DEC-163), the user guide, and
 the phase-level acceptance.
 
 **User-visible result**: The **Health** section shows files (present, missing, unreadable, not
 checked, with when they were last checked), Beatport (accepted, needs review, rejected, no match,
-not matched) and waveforms (analyzed, failed, waiting). Each count with a rule opens the Library on it; each links to where it is fixed:
-**Check files** and **Match** in Clean, **Analyze** in Settings → Waveforms. Clean's Health tab is as
-Q-164 decides.
+not matched) and waveforms (analyzed, failed, waiting). Each count with a rule opens the Library
+on it, and each group links to where it is fixed: **Check files** and **Match** in Clean, **Analyze**
+in Settings → Waveforms. **All health checks** opens Clean's Health tab, which stays (DEC-163).
 
 **Dependencies**: STATS-05, STATS-06.
 
 **Design**:
 - **The section** reads `statistics/health`, drawn as three small pixel bars (one per group) with
   their counts, using `PixelBars`.
-- **Clean's Health tab** (Q-164):
-  - *If it stays (recommended):* the page shows the three groups above and **All health checks** opens
-    Clean's tab. Nothing in Clean changes.
-  - *If it moves:* `HealthView` moves to `screens/statistics/` as the Health section in full, Clean
-    loses the tab, its e2e and user-guide references move, and `clean/health` stays as the route.
+- **Clean's Health tab stays** (DEC-163): the page shows the three groups above and **All health
+  checks** opens Clean's tab. Nothing in Clean changes.
 - **The user guide:** `statistics.md` in full (what each number means, that plays come from
   Rekordbox's own count, that history starts at the first refresh after updating, and that "since"
   is as fine as the refreshes), `glossary.md` (play history, never played), and `the-window.md`.
@@ -681,7 +679,6 @@ Q-164 decides.
 
 **Tests**:
 - `HealthSection.test.tsx`: each group, the links, the not-checked line.
-- If the tab moves, Clean's tests and `e2e/cleanPage.spec.ts` updated in the same commit.
 - `e2e/statistics.spec.ts`: the full journey (import, refresh with changes, every section, one click
   from each into the Library).
 
@@ -715,22 +712,22 @@ Phase 15 is complete when, in a **packaged build** on Windows and macOS:
    switch on and with reduced motion. *STATS-04 to STATS-07.*
 10. Every suite passes, with the engine smoke check, the desktop contract test, the coupling check,
     the end-to-end suite and `npm run dist`.
-11. No decision in DEC-001…DEC-161 is contradicted. A contradiction stops the work and is raised
+11. No decision in DEC-001…DEC-168 is contradicted. A contradiction stops the work and is raised
     rather than worked around.
 
 ## Decision Round 18 — what writing the steps raised
 
-Asked in `OPEN_QUESTIONS.md` as Q-163…Q-169.
+Asked in `OPEN_QUESTIONS.md` as Q-163…Q-169 and answered 2026-10-07, each as recommended.
 
-| Question | Recommendation | Needed by |
+| Question | Outcome | Needed by |
 | --- | --- | --- |
-| Q-163 — Can the page be narrowed to a Collection or playlist? | Yes, both, one picker for the whole page; playlists gain a filter field | STATS-02 |
-| Q-164 — Does Clean keep its Health tab? | Yes; Statistics shows a summary that links to it | STATS-03, STATS-07 |
-| Q-165 — Tracks with no play count | Their own line, not counted as never played | STATS-02 |
-| Q-166 — Do remixer credits count toward an artist's plays? | Yes, as the Library's artist filter does | STATS-02 |
-| Q-167 — What "Since" offers | Your last refresh, 7, 30 and 90 days, a year, all time, and a date | STATS-05 |
-| Q-168 — Keeping a top list | As a plain Collection, a snapshot in rank order | STATS-05 |
-| Q-169 — Where history starts | From the last import before STATS-01, seeded from today's counts | STATS-01 |
+| Q-163 — Can the page be narrowed to a Collection or playlist? | DEC-162: both, one picker; playlists gain a filter field | STATS-02, STATS-04 |
+| Q-164 — Does Clean keep its Health tab? | DEC-163: yes; Statistics shows a summary that links to it | STATS-03, STATS-07 |
+| Q-165 — Tracks with no play count | DEC-164: their own "Plays unknown" line | STATS-02 |
+| Q-166 — Do remixer credits count toward an artist's plays? | DEC-165: yes, once per track | STATS-02 |
+| Q-167 — What "Since" offers | DEC-166: last refresh, 7, 30, 90 days, a year, all time, a date | STATS-02, STATS-05 |
+| Q-168 — Keeping a top list | DEC-167: a plain Collection, a snapshot in rank order | STATS-05 |
+| Q-169 — Where history starts | DEC-168: seeded from the last import | STATS-01 |
 
 ## Deferred, with reasons
 

@@ -3315,11 +3315,12 @@ whichever is chosen.
 
 ---
 
-## DECISION ROUND 18 — STATISTICS (Phase 15) — open
+## DECISION ROUND 18 — STATISTICS (Phase 15) ✅ Resolved 2026-10-07
 
 Asked while specifying Phase 15 (`PHASE15_STATISTICS.md`). Decision Round 14 settled what the page
 shows (DEC-136), that play counts are kept at each refresh (DEC-137) and that Statistics is its own
-destination (DEC-138). Writing the steps raised seven questions those decisions do not answer.
+destination (DEC-138). Writing the steps raised seven questions those decisions do not answer. The user chose the recommendation for all seven
+on 2026-10-07. Outcomes are in DEC-162…DEC-168.
 
 Found while specifying:
 - **A missing `PlayCount` is unknown, not zero** (m0005), so "never played" cannot simply mean "no
@@ -3333,7 +3334,7 @@ Found while specifying:
 
 ### Q-163 — Narrowing the page to a Collection or playlist
 
-**Status**: Open
+**Status**: Resolved → DEC-162 (Option A chosen: Collections and Rekordbox playlists)
 
 **Question**: Q-137 proposed that each list can be scoped to a Collection or a Rekordbox playlist.
 DEC-136 took Q-137's list but does not mention the scope. Is it built?
@@ -3349,7 +3350,7 @@ the new filter field is useful in the Library on its own.
 
 ### Q-164 — Clean's Health tab
 
-**Status**: Open
+**Status**: Resolved → DEC-163 (Option A chosen: Clean keeps its tab)
 
 **Question**: DEC-136 puts library health on Statistics. Clean already has a Health tab with more
 checks (duplicates, artwork and the rest), and Phase 14 kept it, leaving this to Phase 15.
@@ -3364,7 +3365,7 @@ library", and a summary is enough for that.
 
 ### Q-165 — Tracks with no play count
 
-**Status**: Open
+**Status**: Resolved → DEC-164 (Option A chosen: their own line)
 
 **Question**: Rekordbox leaves `PlayCount` out for some tracks, and CuePoint stores that as unknown.
 How does the page count them?
@@ -3377,7 +3378,7 @@ How does the page count them?
 
 ### Q-166 — Remixer credits and an artist's plays
 
-**Status**: Open
+**Status**: Resolved → DEC-165 (Option A chosen: remixes count)
 
 **Question**: Top artists sum the plays of their tracks. Does a remix count for its remixer?
 
@@ -3390,7 +3391,7 @@ How does the page count them?
 
 ### Q-167 — What "Since" offers
 
-**Status**: Open
+**Status**: Resolved → DEC-166 (Option A chosen: presets and a date)
 
 **Question**: Most played can be shown since a date (DEC-137). What does the choice offer?
 
@@ -3403,7 +3404,7 @@ presets answer them in one click. Each is only as fine as the refreshes, which t
 
 ### Q-168 — Keeping a top list
 
-**Status**: Open
+**Status**: Resolved → DEC-167 (Option A chosen: a plain Collection)
 
 **Question**: The roadmap proposed saving a top list as a Collection. How?
 
@@ -3416,7 +3417,7 @@ updates itself is not possible: "top N" and "since" are not filter rules.
 
 ### Q-169 — Where play history starts
 
-**Status**: Open
+**Status**: Resolved → DEC-168 (Option A chosen: seeded from the last import)
 
 **Question**: DEC-137 starts history "with the first refresh after the step". The library already
 holds each track's count as of the last import. Is that kept as the starting point?
