@@ -147,16 +147,31 @@ async function trackIdsByTitle(window: Page): Promise<Map<string, number>> {
 }
 
 /** Put one track in the player, silent and paused at its start (a seek before it loads is refused). */
+/**
+ * Loads one file into the player, paused.
+ *
+ * `playQueue` starts playing, and the tone fixtures last 0.26 s: with a fast
+ * audio output the track can end before the pause lands, which leaves the
+ * player idle with no duration. Such a load is tried again.
+ */
 async function load(window: Page, file: string, trackId: number | null, title: string): Promise<void> {
-  await window.evaluate(
-    async ({ file, trackId, title }) => {
-      const player = (window as never as { cuepoint: Record<string, any> }).cuepoint.player;
-      await player.setVolume(0);
-      await player.playQueue([{ trackId, filePath: file, title, artist: "Fixture" }], 0);
-      await player.pause();
-    },
-    { file, trackId, title },
-  );
+  for (let attempt = 1; ; attempt++) {
+    await window.evaluate(
+      async ({ file, trackId, title }) => {
+        const player = (window as never as { cuepoint: Record<string, any> }).cuepoint.player;
+        await player.setVolume(0);
+        await player.playQueue([{ trackId, filePath: file, title, artist: "Fixture" }], 0);
+        await player.pause();
+      },
+      { file, trackId, title },
+    );
+    const deadline = Date.now() + 5_000;
+    while (Date.now() < deadline) {
+      if (((await playerState(window)).duration ?? 0) > 0) return;
+      await window.waitForTimeout(100);
+    }
+    if (attempt === 3) return;
+  }
 }
 
 async function playerState(window: Page): Promise<{ duration: number | null; position: number | null }> {
