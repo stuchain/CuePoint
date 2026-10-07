@@ -27,7 +27,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
 
 function launch(userDataDir: string): Promise<ElectronApplication> {
-  const env = { ...process.env, NODE_ENV: "production" } as Record<string, string>;
+  // The engine's home lives inside the profile, so a restart within a test sees
+  // the same library and the test never reads the real `~/.cuepoint`, whose
+  // collections and tracks change what the keyboard walk reaches.
+  const env = {
+    ...process.env,
+    NODE_ENV: "production",
+    CUEPOINT_HOME: path.join(userDataDir, "cuepoint-home"),
+  } as Record<string, string>;
   // Inherited from a developer shell this makes electron run as plain Node, and
   // the app never starts.
   delete env.ELECTRON_RUN_AS_NODE;

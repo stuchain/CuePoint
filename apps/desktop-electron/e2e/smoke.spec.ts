@@ -10,10 +10,15 @@ const DESKTOP_ROOT = path.resolve(__dirname, "..");
 
 test.describe("Electron desktop smoke (TC-UI-001)", () => {
   test("app launches and shows main navigation", async () => {
-    // Its own profile directory: the app persists UI state, and a test run
-    // should not read or write the real CuePoint profile.
+    // Its own profile directory and engine home: the app persists UI state and
+    // the engine its library, and a test run should not read or write the real
+    // CuePoint profile or `~/.cuepoint`.
     const userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-smoke-"));
-    const env = { ...process.env, NODE_ENV: "production" } as Record<string, string>;
+    const env = {
+      ...process.env,
+      NODE_ENV: "production",
+      CUEPOINT_HOME: path.join(userDataDir, "cuepoint-home"),
+    } as Record<string, string>;
     // Inherited from a developer shell this makes electron run as plain Node,
     // and the app never starts. `shell.spec.ts` drops it for the same reason.
     delete env.ELECTRON_RUN_AS_NODE;
