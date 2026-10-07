@@ -198,7 +198,7 @@ Contents:
             return bundle_path
 
         except Exception as e:
-            logger.error(f"Failed to generate support bundle: {e}")
+            logger.warning(f"Failed to generate support bundle: {e}")
             raise
 
     @staticmethod

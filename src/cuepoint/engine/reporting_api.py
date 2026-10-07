@@ -11,13 +11,24 @@ from __future__ import annotations
 
 import json
 import threading
-from typing import Dict, Mapping
+from typing import Callable, Dict, List, Mapping
 
 #: Set by Electron main at launch: "1" for on, "0" for off.
 REPORTING_ENV = "CUEPOINT_ERROR_REPORTING"
 
 _lock = threading.Lock()
 _enabled = False
+_listeners: List[Callable[[bool], None]] = []
+
+
+def add_reporting_listener(listener: Callable[[bool], None]) -> None:
+    """Be told, once and in this process, each time the flag is set (REPORT-03).
+
+    The error reporter uses it to forget its recorded steps when reporting is turned off.
+    """
+    with _lock:
+        if listener not in _listeners:
+            _listeners.append(listener)
 
 
 def initial_reporting_enabled(environ: Mapping[str, str]) -> bool:
@@ -35,6 +46,12 @@ def set_reporting_enabled(enabled: bool) -> Dict[str, object]:
     global _enabled
     with _lock:
         _enabled = enabled
+        listeners = list(_listeners)
+    for listener in listeners:
+        try:
+            listener(enabled)
+        except Exception:  # noqa: BLE001 — a listener must not fail the switch
+            pass
     return {"enabled": enabled}
 
 

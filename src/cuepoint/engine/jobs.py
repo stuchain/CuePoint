@@ -9,6 +9,7 @@ inKey (CLEAN-14, DEC-071); a match now runs over library tracks, in
 from __future__ import annotations
 
 import logging
+import sys
 import threading
 import time
 import uuid
@@ -94,6 +95,10 @@ class Job:
     error: Optional[Dict[str, str]] = None
     demo: bool = False
     cancel_requested: bool = False
+    #: The exception that failed the job, kept so the ended listeners can report it
+    #: (REPORT-03). Private to the process: never in :meth:`to_status_dict`, the database
+    #: record or an event, because an exception's message can hold a path or a title.
+    cause: Optional[BaseException] = field(default=None, repr=False, compare=False)
 
     def to_status_dict(self) -> Dict[str, Any]:
         payload: Dict[str, Any] = {
@@ -150,6 +155,8 @@ class JobStore:
         self._last_progress_persist: Dict[str, float] = {}
         self._start_listeners: List[Callable[[Job], None]] = []
         self._end_listeners: List[Callable[[Job], None]] = []
+        #: Ids of jobs whose runner is on a thread right now: only these keep a ``cause``.
+        self._running: set = set()
 
     def add_listeners(
         self,
@@ -346,6 +353,7 @@ class JobStore:
             return self._jobs.get(job_id)
 
     def _run_job(self, job: Job, runner: Callable[[Job], None]) -> None:
+        self._running.add(job.id)
         self._update(job, state=JobState.RUNNING)
         try:
             runner(job)
@@ -374,6 +382,7 @@ class JobStore:
             if job.state not in (JobState.FAILED, JobState.SUCCEEDED):
                 self._update(job, state=JobState.SUCCEEDED)
         except Exception as exc:  # noqa: BLE001 — surface to API client
+            job.cause = exc
             self._update(
                 job,
                 state=JobState.FAILED,
@@ -384,6 +393,10 @@ class JobStore:
             with self._lock:
                 end_listeners = list(self._end_listeners)
             self._notify(end_listeners, job)
+            # The exception holds its traceback and the frames' locals: keep it only as long as
+            # the listeners need it, not for the life of the process.
+            job.cause = None
+            self._running.discard(job.id)
 
     def report_progress(self, job: Job, progress: ProgressInfo) -> None:
         """Record a progress tick from a runner.
@@ -412,7 +425,14 @@ class JobStore:
         ``result`` is set in the same call rather than a second one so a caller
         watching for the terminal state never sees it arrive before the answer
         it is waiting for.
+
+        A runner ends a failed job from inside its ``except`` block, so the exception being
+        handled is kept as the job's ``cause`` for the ended listeners (REPORT-03).
         """
+        if state is JobState.FAILED and job.cause is None and job.id in self._running:
+            handled = sys.exc_info()[1]
+            if isinstance(handled, Exception):
+                job.cause = handled
         self._update(job, state=state, error=error, result=result)
 
     def _update(

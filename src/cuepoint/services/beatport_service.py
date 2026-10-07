@@ -152,7 +152,7 @@ class BeatportService(IBeatportService):
             except ImportError:
                 pass
             error_msg = f"Failed to search Beatport for '{query}': {str(e)}"
-            self.logging_service.error(
+            self.logging_service.warning(
                 error_msg,
                 exc_info=e,
                 extra={"query": query, "max_results": max_results},
@@ -243,7 +243,7 @@ class BeatportService(IBeatportService):
             except ImportError:
                 pass
             error_msg = f"Error fetching track data from {url}: {str(e)}"
-            self.logging_service.error(
+            self.logging_service.warning(
                 error_msg, exc_info=e, extra={"url": url, "cache_key": cache_key}
             )
             # Return None instead of raising - allows processing to continue with other tracks

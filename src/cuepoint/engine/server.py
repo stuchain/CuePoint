@@ -118,6 +118,16 @@ from cuepoint.engine.waveforms_api import (
     status_for as waveforms_status,
 )
 from cuepoint.engine.jobs import JobStore, JobTypeBusyError
+from cuepoint.reporting.engine_reporting import (
+    breadcrumb,
+    is_active as reporting_active,
+    report_unexpected,
+    request_scope,
+    route_template,
+    setup_engine_reporting,
+    watch_jobs,
+)
+from cuepoint.reporting.expected import is_expected_failure
 from cuepoint.version import __version__
 
 _logger = logging.getLogger(__name__)
@@ -228,6 +238,38 @@ def get_job_store() -> JobStore:
 _MAX_DISCARDED_BODY = 16 * 1024 * 1024
 
 
+def report_connection_error(request: Any, client_address: Any) -> None:
+    """What the engine's server does with an exception that escaped a request thread.
+
+    ``socketserver`` calls ``handle_error`` for it and by default prints the traceback to stderr,
+    which nothing reads and which holds paths. An OSError here is the client going away (a closed
+    or timed out connection) and is not an error; anything else is reported (REPORT-03) and written to the log with its stack.
+    """
+    exc = sys.exc_info()[1]
+    if exc is None or isinstance(exc, OSError):
+        return
+    report_unexpected(exc, route="{connection}")
+    _logger.warning(
+        "[engine] a request ended with an unhandled %s",
+        type(exc).__name__,
+        exc_info=exc,
+    )
+
+
+def with_error_reporting(server: ThreadingHTTPServer) -> ThreadingHTTPServer:
+    """Give ``server`` the engine's ``handle_error``: reported, never printed. Returns it."""
+
+    def handle_error(request: Any, client_address: Any) -> None:
+        report_connection_error(request, client_address)
+
+    server.handle_error = handle_error  # type: ignore[method-assign]
+    return server
+
+
+#: What an exception that escapes a route is answered with, when no answer was started.
+INTERNAL_ERROR = "INTERNAL_ERROR"
+
+
 def make_handler(
     config: EngineConfig, store: Optional[JobStore] = None
 ) -> Type[BaseHTTPRequestHandler]:
@@ -239,6 +281,63 @@ def make_handler(
     class EngineHandler(BaseHTTPRequestHandler):
         def log_message(self, format: str, *args) -> None:  # noqa: A003
             return
+
+        #: Whether this request's status line has gone out; reset per request.
+        _response_started: bool = False
+
+        def _send_unexpected(self, exc: BaseException, payload: dict) -> None:
+            """Answer a failure that is ours: report it, then send the 500 envelope.
+
+            The one place a route answers 500 (REPORT-03). The event id goes into the
+            envelope as ``error.report_id`` when one was made, so the renderer can name it.
+            """
+            error = payload.get("error")
+            code = error.get("code") if isinstance(error, dict) else None
+            event_id = (
+                None
+                if is_expected_failure(code, exc)
+                else report_unexpected(exc, route=route_template(self.path))
+            )
+            if event_id and isinstance(payload.get("error"), dict):
+                payload["error"]["report_id"] = event_id
+            self._send_json(500, payload)
+
+        def _send_mapped(self, exc: BaseException, status_for) -> None:
+            """Answer a routed module's mapping of ``exc``, reporting it if it is a failure.
+
+            Everything but a 500 is sent as mapped, with no report: below 500, 503 and 502 (a
+            Beatport refusal) are refusals (DEC-126). A 500 whose code
+            names a cause the user owns is sent as mapped too (DEC-153).
+            """
+            status, payload = status_for(exc)
+            error = payload.get("error") if isinstance(payload, dict) else None
+            code = error.get("code") if isinstance(error, dict) else None
+            if status == 500 and not is_expected_failure(code, exc):
+                event_id = report_unexpected(exc, route=route_template(self.path))
+                if event_id and isinstance(error, dict):
+                    error["report_id"] = event_id
+            self._send_json(status, payload)
+
+        def _dispatch(self, route) -> None:
+            """Run one route in its own scope; an exception that escapes it is answered.
+
+            What escapes is a bug: it is reported with the route's template and, when no answer
+            was started, answered ``500 INTERNAL_ERROR`` with the ``report_id`` rather than a
+            dropped connection. A client that went away (a closed connection) is not reported.
+            """
+            with request_scope(self.headers):
+                try:
+                    route()
+                except ConnectionError:
+                    return
+                except Exception as exc:  # noqa: BLE001 — the last resort for a request
+                    if self._response_started:
+                        report_unexpected(exc, route=route_template(self.path))
+                        return
+                    self._send_unexpected(
+                        exc,
+                        error_payload(INTERNAL_ERROR, str(exc) or type(exc).__name__),
+                    )
 
         def _send_json(self, status: int, payload: dict) -> None:
             body = json.dumps(payload).encode("utf-8")
@@ -290,7 +389,7 @@ def make_handler(
                 self._send_json(404, error_payload("TRACK_NOT_FOUND", str(exc)))
                 return
             except Exception as exc:  # noqa: BLE001 — surface to API client
-                self._send_json(500, error_payload("ARTWORK_FAILED", str(exc)))
+                self._send_unexpected(exc, error_payload("ARTWORK_FAILED", str(exc)))
                 return
             if body is None:
                 self._send_no_content()
@@ -309,6 +408,7 @@ def make_handler(
 
         def handle_one_request(self) -> None:
             self._body = None
+            self._response_started = False
             super().handle_one_request()
 
         def _content_length(self) -> int:
@@ -344,6 +444,21 @@ def make_handler(
 
         def send_response(self, code: int, message: Optional[str] = None) -> None:
             self._discard_unread_body()
+            self._response_started = True
+            # A step before any later error: the method, the route's template and the status,
+            # never the query or the body (REPORT-03).
+            # ``send_error`` can run before the request line was parsed (a too long line, a bad
+            # version), when there is no command or path yet; and nothing is built unless
+            # reporting is set up.
+            command = getattr(self, "command", None)
+            path = getattr(self, "path", None)
+            if reporting_active() and command and isinstance(path, str):
+                route = route_template(path)
+                breadcrumb(
+                    "http",
+                    f"{command} {route} {code}",
+                    {"method": command, "route": route, "status": code},
+                )
             super().send_response(code, message)
 
         def _stream_job_events(self, job_id: str) -> None:
@@ -469,11 +584,16 @@ def make_handler(
                 )
                 return
             except Exception as exc:  # noqa: BLE001 — surface to API client
-                self._send_json(500, error_payload("LIBRARY_REFRESH_FAILED", str(exc)))
+                self._send_unexpected(
+                    exc, error_payload("LIBRARY_REFRESH_FAILED", str(exc))
+                )
                 return
             self._send_json(202, payload)
 
         def do_GET(self) -> None:  # noqa: N802
+            self._dispatch(self._route_get)
+
+        def _route_get(self) -> None:
             parsed = urlparse(self.path)
             path = parsed.path
             if path == "/health":
@@ -535,7 +655,9 @@ def make_handler(
                         sanitize=True,
                     )
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("LOGS_READ_FAILED", str(exc)))
+                    self._send_unexpected(
+                        exc, error_payload("LOGS_READ_FAILED", str(exc))
+                    )
                     return
                 self._send_json(200, payload)
                 return
@@ -551,8 +673,8 @@ def make_handler(
                     self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(
-                        500, error_payload("LIBRARY_SUMMARY_FAILED", str(exc))
+                    self._send_unexpected(
+                        exc, error_payload("LIBRARY_SUMMARY_FAILED", str(exc))
                     )
                     return
                 self._send_json(200, payload)
@@ -628,7 +750,7 @@ def make_handler(
                     self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("SEARCH_FAILED", str(exc)))
+                    self._send_unexpected(exc, error_payload("SEARCH_FAILED", str(exc)))
                     return
                 self._send_json(200, payload)
                 return
@@ -644,7 +766,9 @@ def make_handler(
                     self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("PLAYLISTS_FAILED", str(exc)))
+                    self._send_unexpected(
+                        exc, error_payload("PLAYLISTS_FAILED", str(exc))
+                    )
                     return
                 self._send_json(200, payload)
                 return
@@ -701,7 +825,7 @@ def make_handler(
                     self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("FACET_FAILED", str(exc)))
+                    self._send_unexpected(exc, error_payload("FACET_FAILED", str(exc)))
                     return
                 self._send_json(200, payload)
                 return
@@ -775,7 +899,9 @@ def make_handler(
                     self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("TRACK_DETAIL_FAILED", str(exc)))
+                    self._send_unexpected(
+                        exc, error_payload("TRACK_DETAIL_FAILED", str(exc))
+                    )
                     return
                 self._send_json(200, payload)
                 return
@@ -804,7 +930,9 @@ def make_handler(
                     )
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(500, error_payload("ACTIVITY_FAILED", str(exc)))
+                    self._send_unexpected(
+                        exc, error_payload("ACTIVITY_FAILED", str(exc))
+                    )
                     return
                 self._send_json(200, payload)
                 return
@@ -886,10 +1014,14 @@ def make_handler(
             try:
                 status, payload = run()
             except Exception as exc:  # noqa: BLE001 — mapped, not swallowed
-                status, payload = status_for(exc)
+                self._send_mapped(exc, status_for)
+                return
             self._send_json(status, payload)
 
         def do_POST(self) -> None:  # noqa: N802
+            self._dispatch(self._route_post)
+
+        def _route_post(self) -> None:
             path = urlparse(self.path).path
             if not self._authorized():
                 self._send_json(
@@ -900,8 +1032,8 @@ def make_handler(
                 try:
                     payload = clear_logs_now()
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(
-                        500, error_payload("PRIVACY_CLEAR_LOGS_FAILED", str(exc))
+                    self._send_unexpected(
+                        exc, error_payload("PRIVACY_CLEAR_LOGS_FAILED", str(exc))
                     )
                     return
                 self._send_json(200, payload)
@@ -910,8 +1042,8 @@ def make_handler(
                 try:
                     payload = clear_cache_now()
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(
-                        500, error_payload("PRIVACY_CLEAR_CACHE_FAILED", str(exc))
+                    self._send_unexpected(
+                        exc, error_payload("PRIVACY_CLEAR_CACHE_FAILED", str(exc))
                     )
                     return
                 self._send_json(200, payload)
@@ -950,8 +1082,8 @@ def make_handler(
                     )
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(
-                        500, error_payload("LIBRARY_IMPORT_FAILED", str(exc))
+                    self._send_unexpected(
+                        exc, error_payload("LIBRARY_IMPORT_FAILED", str(exc))
                     )
                     return
                 self._send_json(202, payload)
@@ -985,8 +1117,8 @@ def make_handler(
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
-                    self._send_json(
-                        500, error_payload("SUPPORT_BUNDLE_FAILED", str(exc))
+                    self._send_unexpected(
+                        exc, error_payload("SUPPORT_BUNDLE_FAILED", str(exc))
                     )
                     return
                 self._send_json(200, payload)
@@ -1143,6 +1275,10 @@ def fine_timer_resolution(platform: str = sys.platform) -> bool:
 def run_engine(config: Optional[EngineConfig] = None) -> None:
     # First, so "may I send?" has its answer before any work starts (REPORT-01, DEC-128).
     set_reporting_enabled(initial_reporting_enabled(os.environ))
+    # Before anything that can fail, so a failure while starting is caught (REPORT-03). Does
+    # nothing without CUEPOINT_SENTRY_DSN.
+    setup_engine_reporting()
+    watch_jobs(_JOB_STORE)
     cfg = config or EngineConfig.from_env()
     if cfg.host not in ALLOWED_HOSTS:
         raise ValueError(f"Refusing to bind engine to non-loopback host: {cfg.host!r}")
@@ -1191,7 +1327,9 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     from cuepoint.engine.discovery_jobs import close_interrupted_discovery_runs
 
     close_interrupted_discovery_runs()
-    server = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg))
+    server = with_error_reporting(
+        ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg))
+    )
     # WAVE-03: an analysis the last engine left unfinished continues, unless it
     # was paused, once this one has been serving for a while, so a launch is
     # never slowed by it. The engine is serving from the line below.
@@ -1260,7 +1398,9 @@ def start_engine_thread(
 ) -> Tuple[ThreadingHTTPServer, threading.Thread]:
     """Start engine in a background thread (tests)."""
     cfg = config or EngineConfig.from_env()
-    server = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg, store=store))
+    server = with_error_reporting(
+        ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg, store=store))
+    )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server, thread

@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from cuepoint.models.library_track import LibraryTrack, utc_now_iso
+from cuepoint.reporting.engine_reporting import breadcrumb
 from cuepoint.persistence.activity_repository import (
     SOURCE_CUEPOINT,
     ActivityEvent,
@@ -98,6 +99,9 @@ class ActivityService(IActivityService):
         detail: Optional[Dict[str, Any]] = None,
     ) -> ActivityEvent:
         """Append a user-readable activity event."""
+        # The type only, as a step before any later error; never the summary or detail, which
+        # name tracks and files (REPORT-03). Does nothing unless the engine set reporting up.
+        breadcrumb("activity", event_type)
         return self._activity.add_event(
             ActivityEvent(
                 type=event_type,

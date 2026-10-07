@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 13: Error Reporting, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. REPORT-01 and REPORT-02 are implemented (2026-10-07); REPORT-03 is next.** Eight steps,
+Status: **Specified 2026-10-07. REPORT-01 to REPORT-04 are implemented (2026-10-07).** Eight steps,
 REPORT-01…REPORT-08. Writing the steps raised six questions that Decision Round 14 did not answer.
 They were asked as Decision Round 16 (Q-151…Q-156) and settled the same day as DEC-148…DEC-153, so
 there are no open points. Per the process, no implementation happens from this
@@ -444,6 +444,39 @@ healthy, and the bench measures it. **A 500 path missed** is the other, and a te
 `server.py`'s syntax tree for every `500` answer and asserts each calls `report_unexpected`.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented (2026-10-07). `src/cuepoint/reporting/engine_reporting.py` sets
+`sentry-sdk` 2.71.0 up first in `run_engine`, only when `CUEPOINT_SENTRY_DSN` is set, with an explicit
+list of integrations (logging, threading, excepthook, dedupe, argv, atexit) and no tracing, local
+variables, server name, request bodies or client reports. Every 500 goes through one helper,
+`_send_unexpected`, and `status_for` results through `_send_mapped`; AST tests hold both. An
+exception that escapes a handler now answers `500 INTERNAL_ERROR`. Failed jobs report from one
+`ended` listener, with their type and code.
+
+Decided while building:
+- **Only a 500 is reported.** A 502 (Beatport unavailable) and a 503 are refusals.
+- **The user's causes, by code and by cause** (`reporting/expected.py`): the Beatport token, limits
+  and outages, the library's state, the export's source and destination, a schema too new, and any
+  failure caused by a missing, unreadable or unwritable file, a full or read-only disk, or a file that
+  is not XML. `EXPORT_WRITE_FAILED` counts only when an `OSError` caused it.
+- **Logged errors that precede a raise are warnings.** Five such logs became warnings so one failure
+  is one report; an exception already captured from a log answers with that report's id.
+- **One trail for the whole engine.** The SDK keeps breadcrumbs per thread, so the engine keeps its own
+  50-step ring, scrubbed, and attaches it to each event. Turning reporting off clears it.
+- **Off means off, even for a report already queued.** `GatedHttpTransport` checks the choice again
+  just before sending. It overrides a private method, so the pin is exact and a test checks the method
+  exists.
+- **The engine continues main's trace** from the `sentry-trace` header, so one failure has one trace
+  across processes, with no performance tracing.
+- `release` is `""`, not unset, when no release is given: unset, the SDK runs `git` in the user's
+  folder. `job.cause` is cleared once the job's listeners have run.
+
+Checked in the cloud container: 4,033 Python tests across the engine, reporting, scripts, data and
+utils (with the one known failure, and the dead-code guard waiting on REPORT-06 for
+`bridgeError.ts`), ruff 0.14.0, the mypy gate and the engine smoke check. The packaged sidecar builds
+in a fresh environment, contains the SDK, and passes the smoke check: +1.0% in size, and no measurable
+cold-start change without a DSN. **With a DSN, setting Sentry up adds about 100–250 ms to the cold
+start**, over the 100 ms budget; REPORT-08 moves the setup off the start-up path or accepts it.
 
 ---
 

@@ -36,6 +36,11 @@ playwright==1.57.0
 # Also need ChromeDriver or GeckoDriver in PATH
 selenium==4.39.0
 
+# Error reporting from the engine (Phase 13; sends nothing without a DSN built into a release).
+# Upgrading it means re-checking GatedHttpTransport's _send_envelope override and the logging
+# integration's Logger.callHandlers hook (src/cuepoint/reporting/).
+sentry-sdk==2.71.0
+
 # Excel export support (for GUI export functionality)
 openpyxl==3.1.5
 

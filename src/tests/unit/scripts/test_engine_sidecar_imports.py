@@ -149,3 +149,40 @@ class TestEngineSidecarMakesThumbnails:
         assert [
             line for line in build.splitlines() if line.startswith("Pillow")
         ] == pins
+
+
+#: The integrations the engine's error reporter enables (REPORT-03), named in the spec
+#: because the SDK imports some of them by string.
+_SENTRY_IMPORTS = (
+    "sentry_sdk.integrations.atexit",
+    "sentry_sdk.integrations.dedupe",
+    "sentry_sdk.integrations.excepthook",
+    "sentry_sdk.integrations.logging",
+    "sentry_sdk.integrations.threading",
+)
+
+
+@pytest.mark.unit
+class TestEngineSidecarCanReport:
+    @pytest.mark.parametrize("module", _SENTRY_IMPORTS)
+    def test_every_enabled_integration_is_bundled_and_resolves(self, module):
+        import importlib
+
+        pytest.importorskip("sentry_sdk")
+        assert f'"{module}"' in _SPEC.read_text(encoding="utf-8")
+        importlib.import_module(module)
+
+    def test_the_reporting_package_is_collected(self):
+        assert 'collect_submodules("cuepoint.reporting")' in _SPEC.read_text(
+            encoding="utf-8"
+        )
+
+    def test_sentry_is_one_pinned_version_in_both_requirements_files(self):
+        runtime = (_REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
+        build = (_REPO_ROOT / "requirements-build.txt").read_text(encoding="utf-8")
+        pins = [line for line in runtime.splitlines() if line.startswith("sentry-sdk")]
+
+        assert pins == ["sentry-sdk==2.71.0"]
+        assert [
+            line for line in build.splitlines() if line.startswith("sentry-sdk")
+        ] == pins

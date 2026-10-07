@@ -35,8 +35,25 @@ except Exception:
 # cannot see. Without this the sidecar ships zero migrations and creates an
 # empty database on a fresh install.
 # src/tests/unit/scripts/test_engine_sidecar_imports.py guards this.
+#
+# REPORT-03: the error reporter loads `sentry_sdk` and its integrations inside
+# `setup_engine_reporting()`, and the SDK itself imports further modules by name.
+# Only the integrations the engine enables are listed, each by name; the
+# remaining ones (django, flask, celery...) would only add size.
+# src/tests/unit/scripts/test_engine_sidecar_imports.py guards this.
+SENTRY_INTEGRATIONS = [
+    "sentry_sdk.integrations.argv",
+    "sentry_sdk.integrations.atexit",
+    "sentry_sdk.integrations.dedupe",
+    "sentry_sdk.integrations.excepthook",
+    "sentry_sdk.integrations.logging",
+    "sentry_sdk.integrations.modules",
+    "sentry_sdk.integrations.stdlib",
+    "sentry_sdk.integrations.threading",
+]
 hiddenimports = (
     collect_submodules("cuepoint.engine")
+    + collect_submodules("cuepoint.reporting")
     + collect_submodules("cuepoint.services")
     + collect_submodules("cuepoint.migrations")
     + [
@@ -60,6 +77,7 @@ hiddenimports = (
         "cuepoint.data.artwork",
         "cuepoint.data.artwork_image",
     ]
+    + SENTRY_INTEGRATIONS
 )
 
 block_cipher = None

@@ -110,7 +110,7 @@ class TestBeatportService:
 
         assert exc_info.value.error_code == "BEATPORT_SEARCH_ERROR"
         assert "test query" in exc_info.value.message
-        mock_logging_service.error.assert_called()
+        mock_logging_service.warning.assert_called()
 
     def test_fetch_track_data_cache_hit(self, mock_cache_service, mock_logging_service):
         """Test fetch_track_data with cache hit."""
@@ -205,7 +205,7 @@ class TestBeatportService:
         result = service.fetch_track_data("https://www.beatport.com/track/test/123")
 
         assert result is None
-        mock_logging_service.error.assert_called()
+        mock_logging_service.warning.assert_called()
 
     def test_search_tracks_default_max_results(
         self, mock_cache_service, mock_logging_service
@@ -400,7 +400,7 @@ class TestBeatportService:
 
         # Should return None for invalid URL
         assert result is None
-        mock_logging_service.error.assert_called()
+        mock_logging_service.warning.assert_called()
 
     @patch("cuepoint.services.beatport_service.get_active_provider")
     def test_search_tracks_cache_key_format(

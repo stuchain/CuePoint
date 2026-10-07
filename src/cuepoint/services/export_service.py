@@ -431,7 +431,7 @@ class ExportService(IExportService):
             raise
         except Exception as exc:
             if self.logging_service:
-                self.logging_service.error(
+                self.logging_service.warning(
                     f"Failed to export to {filepath!r}: {exc}",
                     exc_info=exc,
                     extra={"filepath": filepath},

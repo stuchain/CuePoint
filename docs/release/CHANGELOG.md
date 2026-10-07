@@ -367,6 +367,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **A request the engine could not answer dropped the connection.** An error that
+  escaped a request handler printed its traceback to a pipe nothing reads and
+  closed the connection, so the app saw "connection aborted" and no reason. It now
+  answers `500 INTERNAL_ERROR` with the usual error envelope. The engine's
+  failures, steps and failed jobs are also prepared for error reporting
+  (Phase 13); nothing is sent, because a release carries no reporting address yet
 - **The engine's image library carried known vulnerabilities.** Pillow, which
   reads artwork, is raised from 12.1.1 to 12.3.0, past the 35 advisories
   published against it; aiohttp and pytest, used only in development, are raised

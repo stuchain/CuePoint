@@ -133,7 +133,7 @@ def write_key_comment_year_to_file(
             return _write_vorbis(path, key, comment, year, label, bpm, genre)
         return _write_mutagen_auto(path, key, comment, year, label, bpm, genre)
     except Exception as e:
-        _logger.exception("Tag write failed for %s", file_path)
+        _logger.warning("Tag write failed for %s", file_path, exc_info=True)
         return (STATUS_WRITE_ERROR, str(e))
 
 

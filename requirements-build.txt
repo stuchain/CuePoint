@@ -45,6 +45,9 @@ playwright==1.57.0
 # Also need ChromeDriver or GeckoDriver in PATH (not bundled)
 selenium==4.39.0
 
+# Error reporting from the engine (Phase 13; sends nothing without a DSN built into a release)
+sentry-sdk==2.71.0
+
 # Excel export support (for GUI export functionality)
 openpyxl==3.1.5
 
