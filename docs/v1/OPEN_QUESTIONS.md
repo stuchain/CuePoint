@@ -3815,8 +3815,8 @@ Settings may not be reachable then.
 **Question**: Tags are written into the audio file in place. A crash or power cut mid-write can
 truncate the file; the saved before-values restore tags, not audio.
 
-- **Option A — Write a copy, check it, swap it in.** The copy is made beside the file, checked to
-  decode and to read back its tags, then replaces the original in one step. Needs free space for one
+- **Option A — Write a copy, check it, swap it in.** The copy is made beside the file, checked that
+  its audio is unchanged and its tags read back, then replaces the original in one step. Needs free space for one
   file at a time, and is somewhat slower (measured in the step).
 - **Option B — Keep writing in place.**
 

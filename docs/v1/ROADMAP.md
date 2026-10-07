@@ -1050,7 +1050,7 @@ and what blocks 1.0.0.
   written whole or not at all, audio tags included.
   - **Found in the code:** restore is built and tested but nothing calls it; tags are written in
     place; nothing checks the live library for damage.
-- **Crash recovery** (DEC-028, DEC-007). A hung engine is restarted, a crashed window reloads, the
+- **Crash recovery** (DEC-028, DEC-007). An engine or player that stops answering is restarted, a crashed window reloads, the
   next launch knows what was interrupted; each proven by killing the process mid-work.
 - **Unicode and paths.** NFC and NFD paths compare equal, network paths keep their host, Windows paths
   over 260 characters work, and search and sort fold accents beyond ASCII.

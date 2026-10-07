@@ -12,7 +12,7 @@ phases built, so it starts when there is nothing left to add. It reuses what Pha
 every process, the expected-error list, "Report a problem"), what Phase 14 adds (Settings in sections,
 the motion provider and reduced motion), what Phase 15 adds (m0027, play history) and what Phase 16
 adds (one version, the tag-driven release, the single-instance lock, the four build legs). Decision
-Rounds 1–20 apply (`DECISIONS.md`, DEC-001…DEC-178 and Round 20's answers). This phase's own decisions are DEC-125 (hardening is v1's last
+Rounds 1–20 apply (`DECISIONS.md`, DEC-001…DEC-178, and Round 20's answers once recorded). This phase's own decisions are DEC-125 (hardening is v1's last
 phase, and what it lists), DEC-009 (backups, whose Settings half was never built), DEC-007 (jobs
 persist; full crash-resumability deferred), DEC-028 (the engine's bounded restart), DEC-065 and
 DEC-070 (interrupted matches and tag writes are offered, never resumed unasked), DEC-083 (an export
@@ -35,7 +35,7 @@ It does five things:
 - **Your library is safe.** Back Up Now and Restore exist in the app (DEC-009); a copy is kept before
   every upgrade; a damaged or too-new library at start is met with a way back, not an error; every
   file CuePoint writes is written whole or not at all.
-- **A crash costs nothing.** A hung engine is found and restarted, a crashed window reloads, and the
+- **A crash costs nothing.** An engine or player that stops answering is restarted, a crashed window reloads, and the
   next launch after an unclean exit says what was interrupted. Each is proven by killing the process
   on purpose.
 - **Any path, any name.** Paths are compared the same whether a Mac wrote them decomposed or Windows
@@ -72,29 +72,32 @@ It does five things:
 | The database: WAL, `busy_timeout` 5 s, `foreign_keys`, a probe on open (`DB_UNREADABLE`); `synchronous` left at FULL | `services/database_service.py:209-239` |
 | The waveform store finds `SQLITE_CORRUPT` and sets the file aside to rebuild | `persistence/waveform_store.py:139`, `:260-272`, `:446-460` |
 | A disk-full code that nothing raises | `exceptions/cuepoint_exceptions.py:108` (`R002_DISK_FULL`); `reporting/expected.py:88` |
-| The engine's bounded restart (3 tries, 1/2/4 s), then **Restart engine** (DEC-028); health polled only at start (90 s) | `electron/engineSupervisor.ts:159`, `:171-172`, `:334-393` |
-| The player's same policy, with its retry budget reset after 10 s up | `electron/playerSupervisor.ts:49-50`, `:141`, `:509-513`, `:726-745` |
-| The engine exits when its parent dies (3 s grace) | `engine/server.py:1335-1360` |
-| A gone renderer or child process is reported, nothing more | `electron/main.ts:1057-1062`; `electron/reporting.ts:287-300` |
+| The engine's bounded restart (3 tries, 1/2/4 s), then **Restart engine** (DEC-028); health polled only at start (90 s); `stop()` kills the process tree at once | `electron/engineSupervisor.ts:160`, `:172-173`, `:505-565`, `:582-600` |
+| The player's same policy, with its retry budget reset after 10 s up; no liveness ping | `electron/playerSupervisor.ts:50`, `:142`, `:532-545`, `:792-850` |
+| The engine exits when its parent dies (3 s grace); `/health` and `/api/v1/status` answered on the HTTP server's own threads | `engine/server.py:1350-1380`, `:599-602` |
+| A gone renderer or child process is reported, nothing more | `electron/main.ts:1059-1067`; `electron/reporting.ts:287-300` |
 | Jobs left running are marked `JOB_INTERRUPTED` at the next start; matches and tag writes offered; waveforms and the credit index resume | `engine/server.py:140-181`, `:1314-1348`; `persistence/job_repository.py:148-163` |
 | Temp-and-rename writes: Rekordbox XML, set lists, CSV, artwork, checkpoints, main settings (none fsyncs but `output_writer`) | `data/rekordbox_export.py:1319-1335`; `data/set_list_file.py:392-409`; `electron/mainSettings.ts:70-83`; `services/output_writer.py:359-399` |
-| Tag writes in place through mutagen's `save()`, with before-values recorded (DEC-070) | `data/tag_fields.py:294`, `:452` |
+| Tag writes in place: mutagen's `save()` in six places plus a hand-written WAV LIST-INFO append, with before-values recorded (DEC-070); the restore path in `tag_fields.py` the same | `data/tag_writer.py:171`, `:300`, `:339`, `:386`, `:425`, `:515`; `data/tag_fields.py:294`, `:452` |
 | A file location decoded once, host stripped, `/D:/` → `D:/` | `data/rekordbox.py:665-723` |
+| Migrations run lazily, on the first repository a request resolves, after the launch backup | `services/bootstrap.py:232-382`; `engine/server.py:1290-1294` |
+| The database records schema versions only, not which app opened it | `services/migration_runner.py:39-45` |
+| Text search reads title, artist, album and label (label as its effective value, override first) | `persistence/track_query.py:291`; DEC-068 |
 | Paths compared by slashes, `normpath` and `casefold`, never by Unicode form | `models/library_track.py:40-70` |
 | Search by `LIKE … ESCAPE '!'`, sort by `COLLATE NOCASE` (both ASCII-only folding; "Âme" sorts last) | `persistence/track_query.py:300-325`; `migrations/m0007_browse_indexes.py:58`; `test_track_browse.py:241` |
 | Export refuses its own source, by `samefile`, then a resolved `normcase` | `data/rekordbox_export.py:440-480` |
-| The scale benches, each at 50,000 (budgets in `bench_sets`, `bench_marks`, `bench_waveform_store`, `bench_waveforms`; none in `bench_library` or `bench_clean`) | `scripts/bench_*.py` |
+| The scale benches, mostly at 50,000 (budgets in `bench_sets`, `bench_marks`, `bench_waveform_store`, `bench_waveforms`, `bench_decoder`, `bench_waveform_analysis`; none in `bench_library`, `bench_clean` or `bench_match_storage`) | `scripts/bench_*.py` |
 | Scale tests at 20,000 and 5,000, marked `slow`, **run by no workflow** | `src/tests/performance/test_*_scale.py`; `test.yml:72` (`--no-slow`); `release-gates.yml:49,55` |
 | A 50,000-track renderer memory spec, skipped unless `CUEPOINT_E2E_MEMORY` | `e2e/libraryBrowse.spec.ts:270-347` |
 | Engine start measured on an empty home only | `scripts/bench_engine_start.py:135-157`; `PHASE12_CLEANUP.md:1184-1190` |
 | The 50,000 numbers, Windows only, with stale v0 tables at the end | `docs/user-guide/performance.md:16-304`, `:313-340` |
-| 13 end-to-end specs that can drive a packaged app; **no workflow sets** `CUEPOINT_E2E_EXECUTABLE` | e.g. `e2e/clean.spec.ts:111-114`; `desktop-electron.yml:130-136` (e2e runs before `dist`) |
-| `verify_macos_bundle.py`, run by hand only | `docs/release/release-deployment-runbook.md:75-81` |
+| 12 end-to-end specs that can drive a packaged app; **no workflow sets** `CUEPOINT_E2E_EXECUTABLE` | e.g. `e2e/clean.spec.ts:111-114`; `desktop-electron.yml:130-136` (e2e runs before `dist`) |
+| `verify_macos_bundle.py` on both Macs in the release workflow | DIST-04 (Phase 16); by hand before it (`release-deployment-runbook.md:75-81`) |
 | The runbook's manual checks on built installers | `release-deployment-runbook.md:85-125` |
 | Roles and names in about 100 renderer tests; a player accessibility audit; a focus-trapping modal; 9 live regions; 30 `:focus-visible` rules | `components/player/playerAccessibility.test.tsx`; `components/Modal.tsx:35-112` |
 | WCAG contrast math, applied to waveform tokens only | `tokens/themeDerivation.ts:91-179`; `waveformTokens.test.ts` |
 | Reduced motion and the ten motion switches | PAGES-02, PAGES-12 (Phase 14) |
-| The single-instance lock | DIST-06 (Phase 16) |
+| The single-instance lock; the Mac swap at quit (DEC-170); Restart now asking first while work runs (DEC-173) | DIST-06 (Phase 16) |
 
 ## Decisions this phase implements
 
@@ -102,11 +105,12 @@ It does five things:
 | --- | --- |
 | DEC-125 | 50k-track testing, migration/backup/restore testing, cross-platform packaging validation, accessibility, crash recovery, Unicode/path edge cases: one step or more each. The owed packaged runs and Phase 5's acceptance are closed here. |
 | DEC-009 | **Back Up Now** and **Restore** in the app (HARDEN-01), where Q-190 says. |
-| DEC-007, DEC-065, DEC-070 | A crash marks jobs interrupted and offers matches and tag writes, as now; nothing new resumes unasked (HARDEN-04). |
-| DEC-028 | The bounded restart stays; a hung engine counts as an exit (HARDEN-04). |
+| DEC-007, DEC-065, DEC-070 | A crash marks jobs interrupted and offers matches and tag writes, as now; nothing new resumes unasked (HARDEN-05). |
+| DEC-173 | Restore, like Restart now, asks first while work runs (HARDEN-01). |
+| DEC-028 | The bounded restart stays; a stopped (hung) engine process counts as an exit (HARDEN-05). |
 | DEC-083 | Export's source refusal holds for every path form HARDEN-06 adds. |
 | DEC-119 | Phase 5's manual acceptance is run and recorded (HARDEN-09). |
-| DEC-126, DEC-153 | A damaged library, a failed migration and a hung engine are reported; a full disk and a too-new library are the user's and are not. |
+| DEC-126, DEC-153 | A damaged library, a failed migration and a stopped engine are reported; a full disk and a too-new library are the user's and are not. |
 | DEC-134 | Every check of HARDEN-08 runs with motion on and with reduced motion. |
 | DEC-149 | Recovery is built from events, not dumps. |
 | DEC-132, DEC-155, DEC-158 | Recovery screens in plain American English, without "engine", "database" or "schema": "your library", "a backup from Tuesday 14:02". |
@@ -118,13 +122,15 @@ It does five things:
 
 **Data first.** HARDEN-01 makes backups usable and keeps one before every upgrade, so every later step
 that breaks a library on purpose has a way back. HARDEN-02 proves every upgrade path. HARDEN-03 meets a
-damaged library at start.
+damaged library at start, and adds the unclean-exit marker.
 
-**Then crashes and writes.** HARDEN-04 recovers from a dead or hung process. HARDEN-05 makes every
-write whole-or-nothing, which HARDEN-04's kill tests then hold.
+**Then writes and crashes.** HARDEN-04 makes every write whole-or-nothing and names its temp files.
+HARDEN-05 recovers from a dead or stopped process, and its kill tests hold HARDEN-04's writes.
 
-**Then the edges.** HARDEN-06 is paths and text. HARDEN-07 is scale. HARDEN-08 is accessibility. Each
-is independent of the other two and can be built in any order.
+**Then the edges.** HARDEN-06 is paths and text. HARDEN-07 is scale, and it is where every timing an
+earlier step promises is measured and budgeted (the quick check, the slowest migrations, the Unicode
+keys). HARDEN-08 is accessibility. HARDEN-06 and HARDEN-08 can be built in either order; HARDEN-07
+comes after HARDEN-06.
 
 **Then the release.** HARDEN-09 runs the end-to-end suite against the packaged app in CI and every
 owed manual check from one checklist. HARDEN-10 fixes what that run finds, updates the docs and tags
@@ -143,14 +149,20 @@ control or CLI command calls it, and the user guide promises "restoring a backup
 (`organization.md:180-187`, `prepare.md:316`) without a way to do it. Restoring under a running engine
 also needs every open connection closed and every cache (the browse window, the waveform store's
 handle, the credit index) dropped: the safe way is to restore with the engine stopped and start it
-again.
+again. Two more gaps: restore takes its `pre-restore` copy through SQLite (`backup_service.py:286-287`),
+which fails on a file too damaged to open, so it cannot restore over exactly the library that most
+needs it; and both a new backup and a restore write their target in place, so a crash leaves a partial
+`cuepoint-*.db` that is listed as a backup, or a half-restored library.
 
 ### 2. The launch backup does not survive an upgrade for long
 
 The launch backup runs only when the database changed, and five are kept. After an upgrade, five
 changed launches push out the last copy from before the migration. Phase 16's rollback runbook names
 that copy as the way back from a bad release (`PHASE16_DISTRIBUTION.md`, DIST-08), so it has to be
-kept on purpose.
+kept on purpose. The launch backup already runs just before migrations (they run lazily, on the first
+repository a request resolves), so the pre-upgrade copy can replace it on that launch rather than be a
+second identical file. The library records schema numbers only, so "before updating to 1.0.0" needs
+the app version recorded too.
 
 ### 3. No test walks every upgrade with data
 
@@ -167,16 +179,20 @@ error. None offers the backups that exist for exactly this. Nothing runs `quick_
 library, so damage found mid-session surfaces as unrelated failures. `R002_DISK_FULL` is defined and
 never raised.
 
-### 5. A hung engine is never found
+### 5. A stopped engine is never found
 
-The supervisor polls health only until the engine first answers. An engine that is alive but stuck
-(a lock never released, a loop) is never restarted; the app waits on it forever. A crashed renderer is
-reported and left blank. Nothing records that the last session ended uncleanly.
+The supervisor polls health only until the engine first answers. An engine process that stops
+answering altogether (suspended, starved, or wedged in a way that stalls its HTTP server) is never
+restarted. A deadlock inside one worker is a different case: `/health` is answered on the server's
+own thread and reads no data, so it keeps answering; such a hang shows as a request that never returns,
+and is the job of request timeouts, not of the heartbeat. A crashed renderer is reported and left
+blank. Nothing records that the last session ended uncleanly.
 
 ### 6. Two writes are not whole-or-nothing
 
-- **Tag writes** rewrite the audio file in place. A crash mid-write can truncate it; the before-values
-  restore tags, not audio.
+- **Tag writes** rewrite the audio file in place (`tag_writer.py`, six `save()` calls and a WAV
+  LIST-INFO append). A crash mid-write can truncate it; the before-values restore tags, not audio.
+- **Backups and restores** write their target in place (fact 1).
 - **Temp-and-rename writes** skip `fsync`, so after a power cut the renamed file can be empty. A killed
   export leaves `cuepoint_export_*.xml` temp files that nothing removes.
 
@@ -184,8 +200,10 @@ reported and left blank. Nothing records that the last session ended uncleanly.
 
 - **Unicode form.** macOS file systems hand back decomposed names (NFD); Rekordbox on Windows writes
   composed ones (NFC). `normalize_path` does not normalize the form, so "Beyoncé" written two ways is
-  two paths: a refresh can see a track as removed and added, and Clean's file check can call a present
-  file missing (*inferred; HARDEN-06's test proves or clears it*).
+  two keys. Refresh matches by TrackID first and uses the path only as a fallback
+  (`library_track.py:50-52`), and APFS ignores the form on lookup, so the effect is narrower than it
+  sounds: path-keyed lookups (duplicates by path, export's source refusal, the fallback match) can miss
+  (*inferred; HARDEN-06's test proves or clears each*).
 - **UNC.** `location_to_path` strips any host from `file://host/…`, so `file://server/share/a.mp3`
   loses `server`.
 - **Long paths.** Nothing handles Windows paths over 260 characters, on the engine's side or mpv's.
@@ -207,7 +225,7 @@ import that is checked to finish has ever run.
 
 `desktop-electron.yml` runs the end-to-end suite against the development build, then packages. The
 packaged app is only started by the sidecar's own `/health` smoke check. `verify_macos_bundle.py` is
-run by hand. The manual checks owed, by phase:
+run by the release workflow from DIST-04 on, and not on pushes. The manual checks owed, by phase:
 - **Phase 5:** macOS rows 2 (notarytool), 6 (exclusive output on real hardware), 7 (unplugging the
   device), 9 (gapless by ear); Windows rows re-run on the current mpv pin (`PHASE5_PLAYER.md:1317-1421`).
 - **Phase 7:** a real USB drive and network share (`PHASE7_CLEAN.md:1936-1939`).
@@ -218,9 +236,10 @@ run by hand. The manual checks owed, by phase:
 - **Phase 10:** packaged Windows and macOS runs (`PHASE10_PREPARE.md:3142-3191`).
 - **Phase 11:** packaged Linux (with `CUEPOINT_MPV_PATH`), Windows and macOS runs; decoder timings on
   macOS (`PHASE11_WAVEFORMS.md:2206-2216`).
-- **Phase 12:** the macOS run (`PHASE12_CLEANUP.md:1229-1233`).
+- **Phase 12:** the Windows run's open items (the nine audio-playing specs from PRUNE-05) and the
+  macOS run (`PHASE12_CLEANUP.md:1229-1233`).
 - **Phase 13:** source maps resolving per process; no `.map` file in the package
-  (`PHASE13_REPORTING.md:735-738`).
+  (`PHASE13_REPORTING.md:735-738`, `:759`).
 - **Phases 14–17:** whatever their own steps record as owed when they finish.
 
 ---
@@ -228,37 +247,53 @@ run by hand. The manual checks owed, by phase:
 ## HARDEN-01 — Back Up Now, Restore, and a Copy Before Every Upgrade
 
 **Objective**: The user can make a backup, see the backups, and restore one, from the app (DEC-009);
-and a copy taken just before each upgrade is kept apart from the five launch copies.
+backups and restores are whole-or-nothing and work on a library too damaged to open; and a copy taken
+just before each upgrade is kept apart from the five launch copies.
 
 **User-visible result**: Settings has a **Backups** section (if Q-190 is A): "Your library is backed up
 each time you open CuePoint after a change. 5 are kept." A list of backups with their date, size and
 why ("When you opened CuePoint", "Before updating to 1.0.0", "Before restoring", "You made this"),
 **Back Up Now**, **Restore** on each row, and **Show in folder**. Restore asks first ("Restore your
 library to how it was on Tuesday 7 October, 14:02? Changes since then are set aside in a backup of their
-own."), then CuePoint restarts its work in the background and the Library reloads.
+own."); while work runs it names the work first, as Restart now does (DEC-173). Then CuePoint restarts
+its work in the background and the Library reloads.
 
-**Dependencies**: Phase 17; PAGES-01 (Settings' sections).
+**Dependencies**: Phase 17; PAGES-01 (Settings' sections); DIST-06 (the single-instance lock).
 
-**Existing code reused**: `BackupService` (create, list, verify, restore, prune); the engine's restart
-in `engineSupervisor.ts`; Settings' section shape; the IPC and bridge pattern.
+**Existing code reused**: `BackupService` (create, list, verify, restore, prune); the supervisor's stop
+and start; DEC-173's "asks first while work runs" check; Settings' section shape; the IPC and bridge
+pattern.
 
 **Design**:
-- **Engine:** `GET /api/v1/backups` (list: name, time, reason, bytes), `POST /api/v1/backups` (back up
-  now; reason `manual`). Neither restores.
+- **Engine:** `GET /api/v1/backups` (list: name, time, reason, app version, bytes), `POST
+  /api/v1/backups` (back up now; reason `manual`). Neither restores.
+- **Whole-or-nothing backups and restores.** `create_backup` writes `.<name>.partial` and renames it
+  when SQLite's backup finishes; `list_backups` never lists a `.partial`, and the next start removes
+  any. `restore()` restores into a temp file beside the library, checks it with `quick_check`, then
+  replaces the library with `os.replace` and drops the old `-wal`/`-shm`.
+- **A damaged library can be restored.** When the library cannot be opened, restore sets the live file
+  and its `-wal`/`-shm` aside by plain file copy (reason `pre-restore-damaged`, never pruned
+  automatically) instead of through SQLite, then restores as above.
 - **Restore runs in main, with the engine stopped.** `backups:restore(name)`:
-  1. main asks the engine to stop through the supervisor's normal stop (no restart counted);
-  2. main runs the engine binary once with `--restore <name>` (a new CLI mode of `run_engine` that
+  1. if work is running, the renderer asks first as DEC-173 does (**Restore when done** / **Restore
+     now** / **Cancel**); **Restore now** cancels the work through its own cancel, never by kill;
+  2. main stops the engine through the supervisor's normal stop (no restart counted);
+  3. main runs the engine binary once with `--restore <name>` (a new CLI mode of `run_engine` that
      calls `BackupService.restore()` and exits 0 or with the error's code), so the restore uses the
      same code as its tests and nothing else holds the file;
-  3. main starts the engine as at launch, and the renderer reloads every view (the same signal the
+  4. main starts the engine as at launch, and the renderer reloads every view (the same signal the
      Library uses after an import).
-  A failure at step 2 leaves the library as it was (restore verifies before it touches anything) and
+  A failure at step 3 leaves the library as it was (restore verifies before it touches anything) and
   says so; the engine is started either way.
-- **A copy before every upgrade** (if Q-191 is A): before the first pending migration, the runner asks
-  `BackupService` for a backup with reason `pre-upgrade-v<from>-to-v<to>`, synchronously, in the same
-  place the launch backup runs. Pre-upgrade copies are pruned on their own count (keep 3), never by the
-  launch copies' five; `pre-restore` copies keep their current rule (never pruned automatically), and the
-  section lets the user delete any copy by hand.
+- **The app version is recorded.** A migration adds `library_meta(key, value)` with
+  `last_opened_by` (the app's version, written at every start) so backups, the pre-upgrade copy and
+  HARDEN-03's "too new" screen can name versions, not schema numbers.
+- **A copy before every upgrade** (if Q-191 is A): `backup_on_launch` compares the library's schema
+  version with the build's head. When migrations are pending, it takes one copy with reason
+  `pre-upgrade` (recording both app versions) **instead of** the launch copy, always, whether or not
+  the library changed since the last backup. Pre-upgrade copies are pruned on their own count (keep 3),
+  never by the launch copies' five; `pre-restore` copies keep their current rule, and the section lets
+  the user delete any copy by hand.
 - **Every new backup is checked** with `verify_backup` (`quick_check`) after it is written; a copy that
   fails is deleted, reported (DEC-126) and does not count toward the five.
 - **The words** follow DEC-155 and DEC-158: "library", "backup", never "database", "schema" or
@@ -270,19 +305,23 @@ in `engineSupervisor.ts`; Settings' section shape; the IPC and bridge pattern.
 
 **Tests**:
 - `src/tests/unit/engine/test_backups_api.py`: list shape and order; create returns the new copy;
-  a failed create is an error, not a half file.
+  a failed create leaves no listed file.
 - `src/tests/unit/engine/test_restore_mode.py`: `--restore` restores, exits 0, keeps a `pre-restore`
-  copy; a corrupt backup exits with its code and leaves the library untouched.
-- `src/tests/unit/services/test_backup_service.py` (extended): pre-upgrade copies pruned on their own
-  count; a backup that fails `quick_check` is deleted and not counted.
-- `src/tests/unit/services/test_migration_runner.py` (extended): one pre-upgrade copy before the first
-  pending migration, none when nothing is pending, named with both versions.
+  copy; a corrupt backup exits with its code and leaves the library untouched; a library overwritten
+  with noise is set aside by file copy and restored.
+- `src/tests/unit/services/test_backup_service.py` (extended): a create interrupted mid-copy leaves a
+  `.partial` that is not listed and is removed at the next start; a restore interrupted before the
+  replace leaves the library unchanged; pre-upgrade copies pruned on their own count; a backup that
+  fails `quick_check` is deleted and not counted.
+- `src/tests/unit/engine/test_backup_on_launch.py` (extended): pending migrations give one
+  `pre-upgrade` copy and no launch copy, even when nothing changed; none pending gives the launch copy
+  as today.
 - `electron/backups.test.ts`: restore stops the engine without counting a restart, runs the restore,
-  starts the engine, and starts it even when the restore fails.
+  starts the engine, and starts it even when the restore fails; running work is asked about first.
 - `renderer/src/screens/settings/BackupsSection.test.tsx`: the list, the reasons in words, the confirm,
   **Back Up Now** disabled while running.
-- `e2e/backups.spec.ts`: import a library, back up, delete a playlist's tracks from a Collection,
-  restore, and the Collection is whole again; the `pre-restore` copy is listed.
+- `e2e/backups.spec.ts`: import a library, back up, remove tracks from a Collection, restore, and the
+  Collection is whole again; the `pre-restore` copy is listed.
 
 **Acceptance criteria / DoD**:
 - The end-to-end spec passes on all four legs.
@@ -325,12 +364,16 @@ pattern; `bench_library.write_export` for realistic rows.
   is saved under `src/tests/fixtures/libraries/`, small (200 tracks) and committed, and the ladder
   migrates each. The first is made from `v1.0.0-test.1`'s build when it exists; until then the ladder
   runs on synthetic libraries alone.
+- **The pre-upgrade copy** (HARDEN-01) is checked by the ladder's launch-level test: a library at
+  head-1 opened by `run_engine` leaves exactly one `pre-upgrade` copy, at head-1, that passes
+  `quick_check`.
 - **A migration killed halfway** (`test_migration_crash.py`): a subprocess runs the runner with a
   migration that sleeps mid-way; the parent kills it; a fresh runner finds the earlier migrations
   applied, the killed one not, applies it, and the data checks pass. Repeated with the kill during the
-  pre-upgrade backup: the partial backup file is not listed and is removed at the next start.
+  pre-upgrade backup: the `.partial` file (HARDEN-01) is not listed, is removed at the next start, and
+  no migration ran.
 - **The 50,000-track upgrade** of the slowest migrations (m0025's table rebuild and Phase 15's m0027)
-  is timed in HARDEN-07's scale run, not here.
+  is timed and budgeted in HARDEN-07's scale run, not here.
 
 **Tests**: the files above.
 
@@ -349,7 +392,8 @@ and the fix is a new migration, never an edit to a shipped one.
 ## HARDEN-03 — A Damaged, Too-New or Unfinished Library at Start
 
 **Objective**: When the library cannot be opened, is from a newer CuePoint, or failed to upgrade, the
-user sees what happened and a way back; damage is looked for when it is likely; a full disk says so.
+user sees what happened and a way back; damage is looked for when it is likely; a full disk says so;
+and the app knows when its last session ended uncleanly.
 
 **User-visible result**: Instead of a failed Library, a full-window screen (if Q-193 is A):
 - **Damaged:** "CuePoint couldn't read your library. Your latest good backup is from Tuesday 14:02."
@@ -364,44 +408,56 @@ user sees what happened and a way back; damage is looked for when it is likely; 
 - **After an unclean exit,** once, quietly in the status strip: "CuePoint didn't close properly last
   time. Your library was checked and is fine." (or the Damaged screen).
 
-**Dependencies**: HARDEN-01.
+**Dependencies**: HARDEN-01; DIST-06 (the single-instance lock).
 
 **Existing code reused**: `DB_UNREADABLE`, `DB_SCHEMA_TOO_NEW`, `DB_MIGRATION_FAILED`;
-`verify_backup`; HARDEN-01's restore; the Phase 13 report path; the empty-state shape.
+`verify_backup`; HARDEN-01's restore and `last_opened_by`; the Phase 13 report path; the empty-state
+shape.
 
 **Design**:
-- **Start-up state from the engine.** `/health` gains `library: ok | damaged | too_new | upgrade_failed`
-  with the versions and the newest backup that passes `quick_check`. The engine answers health even
-  when the library cannot open, so the renderer can show the screen.
-- **When to check** (if Q-192 is A): `PRAGMA quick_check` runs at start **after an unclean exit**
-  (HARDEN-04's marker) and **once every 7 days** (the date kept in main's settings), in the background
-  after the window shows; the library is usable while it runs and the screen appears only if it fails.
-  `SQLITE_CORRUPT` or `SQLITE_NOTADB` raised during a session also marks the library damaged.
+- **An unclean-exit marker.** Main writes `session.lock` in `userData` **after** DIST-06's
+  `requestSingleInstanceLock()` succeeds (so a second launch never reads the first's marker as a
+  crash), and removes it in `quitAfter`'s cleanup. Found at start, it means the last session did not
+  end; main passes `uncleanExit: true` to the engine at start and to the renderer.
+- **Start-up state from the engine.** The engine works out the library's state once at start, and
+  again after a restore or a failure: `ok | damaged | too_new | upgrade_failed`, with the versions and
+  the newest backup that passes `quick_check`. It is served by the authenticated `/api/v1/status`
+  (cached, never recomputed per call), not by the open `/health`. The engine answers status even when
+  the library cannot open, so the renderer can show the screen.
+- **When to check** (if Q-192 is A): `PRAGMA quick_check` runs at start **after an unclean exit** and
+  **once every 7 days** (the date kept in main's settings), in the background after the window shows;
+  the library is usable while it runs and the screen appears only if it fails. `SQLITE_CORRUPT` or
+  `SQLITE_NOTADB` raised during a session also marks the library damaged.
 - **Disk full:** `SQLITE_FULL` and `ENOSPC` on any write become `R002_DISK_FULL`, an expected error
-  (DEC-153, not reported), shown with the words above. The launch and pre-upgrade backups check free
-  space first and skip with a status message, rather than fill the disk.
+  (DEC-153, not reported), shown with the words above. The launch backup checks free space first and
+  skips with a status message rather than fill the disk. **The pre-upgrade copy never skips:** without
+  room for it, the upgrade does not run, and the screen says "CuePoint needs about 300 MB free to
+  update your library safely." with **Try again**.
 - **Reported** (DEC-126): damaged and upgrade-failed, with the versions. **Not reported:** too new
   and disk full (the user's).
 - **The words** follow DEC-155 and DEC-158.
 
 **Tests**:
-- `src/tests/unit/engine/test_health_library_state.py`: each state from a fixture (a truncated file, a
-  version above head, a migration made to fail), with the newest good backup chosen past a bad one.
+- `src/tests/unit/engine/test_library_state.py`: each state from a fixture (a truncated file, a
+  version above head, a migration made to fail), with the newest good backup chosen past a bad one; the
+  state is computed once and served from `/api/v1/status`, never from `/health`.
 - `src/tests/unit/services/test_database_service.py` (extended): `SQLITE_FULL` becomes `R002`;
   corruption mid-session flips the state.
 - `src/tests/unit/services/test_backup_service.py` (extended): a launch backup with too little free
-  space is skipped, not written.
+  space is skipped; a pre-upgrade copy with too little space stops the upgrade.
+- `electron/sessionLock.test.ts`: written only after the single-instance lock, removed at clean quit,
+  found after a kill; a second instance neither writes nor reads it.
 - `electron/integrityCheck.test.ts`: the check runs after an unclean exit and after 7 days, not
   otherwise.
 - `renderer/src/screens/recovery/LibraryRecovery.test.tsx`: each state's words and buttons; **Restore
   this backup** calls HARDEN-01's restore.
 - `e2e/libraryRecovery.spec.ts`: a library file overwritten with noise opens the Damaged screen, and
-  **Restore this backup** brings the library back.
+  **Restore this backup** brings the library back (through HARDEN-01's set-aside path).
 
 **Acceptance criteria / DoD**:
-- `quick_check` on a 50,000-track library with Clean's data (about 300 MB) is timed in HARDEN-07's run
-  and recorded; it never delays the first paint.
 - The end-to-end spec passes on all four legs; unit suites, typecheck and contract test pass.
+- The check never delays the first paint (asserted in `integrityCheck.test.ts`); its time on a
+  50,000-track library is HARDEN-07's to measure and budget.
 
 **Risks**: Low. The screen is new; the recovery under it is HARDEN-01's.
 
@@ -409,81 +465,18 @@ user sees what happened and a way back; damage is looked for when it is likely; 
 
 ---
 
-## HARDEN-04 — Crash Recovery, Proven by Killing Things
-
-**Objective**: A hung engine is restarted; a crashed window reloads; the next launch after an unclean
-exit knows; and each is proven by killing the process on purpose during real work.
-
-**User-visible result**:
-- **A hung engine** is restarted like a crashed one, with the same message the strip shows today.
-- **A crashed window** reloads by itself once, saying "CuePoint's window stopped and was reopened.";
-  a second crash within a minute shows a plain page with **Reload** and **Report this problem**.
-- **After an unclean exit,** the next launch says what was interrupted: "An export was interrupted.
-  Nothing was written." / the match and tag-write offers of DEC-065 and DEC-070, as today.
-
-**Dependencies**: HARDEN-03 (the unclean-exit marker feeds its check).
-
-**Existing code reused**: `engineSupervisor.ts` and `playerSupervisor.ts`'s restart policy (DEC-028);
-`JOB_INTERRUPTED`; the Phase 13 events for a gone process.
-
-**Design**:
-- **A heartbeat.** While the engine is up, main calls `/health` every 15 s with a 10 s timeout. Three
-  misses in a row (45 s unanswered) count as an exit: the supervisor kills the process tree and runs its
-  bounded restart. A long job does not miss: health is answered on its own thread, which the test
-  holds. The player gets the same through its existing IPC ping.
-- **The renderer.** On `render-process-gone` (not a clean exit), main reloads the window once and sends
-  the message above; two within 60 s show `recovery.html`, a static page with no app code, with
-  **Reload** and **Report this problem**.
-- **An unclean-exit marker.** Main writes `session.lock` in `userData` at start and removes it in
-  `quitAfter`'s cleanup. Found at start, it means the last session did not end; main tells the engine
-  (for HARDEN-03's check) and the renderer (for the message).
-- **Interrupted work** says what it was, from the jobs marked `JOB_INTERRUPTED`; nothing new resumes
-  (DEC-007).
-- **Temp files** left by a killed export or set-list write are removed at start (HARDEN-05 names them).
-- **Reported:** a hang (once per session), a renderer crash (as Phase 13 already does).
-
-**Tests**:
-- `electron/engineSupervisor.test.ts` (extended, fake timers): three missed heartbeats restart once;
-  two missed then one answered do not; the restart counts toward DEC-028's three.
-- `src/tests/unit/engine/test_health_while_busy.py`: health answers within 1 s while a job holds the
-  database write lock.
-- `electron/rendererRecovery.test.ts`: one crash reloads; two in 60 s load `recovery.html`; a clean
-  exit does neither.
-- `electron/sessionLock.test.ts`: written at start, removed at clean quit, found after a kill.
-- **Crash-injection end-to-end specs** (`e2e/crash.spec.ts`), each killing a process with the OS's own
-  kill, mid-work, then checking the app recovers and the library passes `integrity_check`:
-  - the engine during a 50,000-track import → restarted, import marked interrupted, library as before
-    it;
-  - the engine during an export → no partial XML at the destination, temp file gone after restart;
-  - the engine during a tag write → the offer appears; every audio file still decodes;
-  - the engine stopped with `SIGSTOP` (a hang) → restarted within 60 s;
-  - mpv during playback → the player restarts, the queue is kept;
-  - the renderer (`process.crash()` through a test hook) → the window reloads;
-  - the whole app during a refresh → the next launch shows the unclean-exit message.
-
-**Acceptance criteria / DoD**:
-- `e2e/crash.spec.ts` passes on all four legs (`SIGSTOP` is skipped on Windows, where the hang is made
-  with a test-only endpoint instead).
-- Electron tests, typecheck and the engine unit tests pass.
-
-**Risks**: **Medium.** Kill timing is flaky by nature; each spec waits for a named point in the work
-(a progress count) before killing, never a fixed delay.
-
-**Complexity**: **M**
-
----
-
-## HARDEN-05 — Every Write Whole or Not at All
+## HARDEN-04 — Every Write Whole or Not at All
 
 **Objective**: Every file CuePoint writes, its own or the user's, is either the old version or the new
-one after a crash or a power cut, never a mix or an empty file.
+one after a crash or a power cut, never a mix or an empty file; and what a killed write leaves behind is
+named so it can be swept.
 
 **User-visible result**: None, unless something goes wrong.
 
-**Dependencies**: HARDEN-04 (its kill tests).
+**Dependencies**: HARDEN-03.
 
-**Existing code reused**: the temp-and-rename writers; `output_writer.py`'s fsync; `tag_fields.py`;
-DEC-070's before-values.
+**Existing code reused**: the temp-and-rename writers; `output_writer.py`'s fsync; `tag_writer.py` and
+`tag_fields.py`; DEC-070's before-values; HARDEN-01's whole-or-nothing backups.
 
 **Design**:
 - **One helper per side.** `cuepoint/utils/atomic_write.py` (`write_atomic(path, bytes|stream)`: temp
@@ -491,14 +484,22 @@ DEC-070's before-values.
   `electron/atomicWrite.ts` (the same with `fs.promises`). Every existing temp-and-rename writer moves
   onto it: Rekordbox XML, set lists, CSV, artwork, checkpoints, `mainSettings`, the player's saved
   preferences.
-- **Temp files are named** `.<name>.cuepoint-tmp-<pid>`; HARDEN-04's start-up sweep removes any whose
-  process is gone, in the folders CuePoint wrote to last (kept in main's settings).
-- **Tag writes** (if Q-194 is A): mutagen writes a copy of the audio file made in the same folder; the
-  copy is checked (it decodes its first and last second with the bundled decoder, and its tags read
-  back as written), then replaces the original with `os.replace`. A folder without room for the copy
-  fails that file with "Not enough space to save tags safely", before touching it. The file's times
-  and, on POSIX, its mode are kept. On a network share where `os.replace` is not atomic, the same path
-  is used and the check still runs.
+- **Temp files are named** `.<name>.cuepoint-tmp-<pid>`. At start, a sweep removes any whose process is
+  gone, in CuePoint's own folders and in the folders it last exported to (kept in main's settings).
+- **Tag writes** (if Q-194 is A): every write path in `tag_writer.py` (each mutagen `save()` and the
+  WAV LIST-INFO append) and the restore path in `tag_fields.py` write to a copy of the audio file made
+  in the same folder. The copy is checked (its tags read back as written, and its audio frames are
+  byte-identical to the original's, compared by mutagen's own frame offsets, so no decoder is needed
+  and Linux works), then replaces the original with `os.replace`.
+  - The file's times and, on POSIX, its mode are kept; hard links and extended attributes are not, and
+    the guide says so.
+  - A folder without room for the copy fails that file with "Not enough space to save tags safely",
+    before touching it.
+  - On Windows, a file another program holds open (mpv playing it, Rekordbox) fails the replace; the
+    original is untouched, the copy removed, and the file reported as "in use, try again".
+    CuePoint's own player releases the file first when the track being written is loaded.
+  - On a network share where `os.replace` is not atomic, the same path is used and the check still
+    runs.
 - **The database** keeps WAL with `synchronous=FULL` (today's default, now set explicitly so it never
   changes by accident); the waveform store keeps `NORMAL`, being rebuildable.
 
@@ -506,19 +507,91 @@ DEC-070's before-values.
 - `src/tests/unit/utils/test_atomic_write.py`: a failure mid-write leaves the old file; the temp is
   removed; the folder fsync is called on POSIX.
 - `electron/atomicWrite.test.ts`: the same.
-- `src/tests/unit/data/test_tag_fields_atomic.py`: a write that raises halfway leaves the original
-  byte-identical; a copy that fails the decode check is discarded; no space fails before touching;
-  times are kept; MP3, FLAC, AIFF, WAV, M4A and OGG fixtures all round-trip.
+- `src/tests/unit/data/test_tag_writer_atomic.py`: a write that raises halfway leaves the original
+  byte-identical; a copy whose audio frames differ is discarded; no space fails before touching; a
+  locked file (faked) leaves the original and no copy; times are kept; MP3, FLAC, AIFF, WAV (with
+  LIST-INFO), M4A and OGG fixtures all round-trip.
 - `src/tests/unit/test_atomic_writers_used.py`: a source scan finding no `os.rename`, `os.replace` or
-  `writeFile` of a destination outside the two helpers (an allow-list for the helpers themselves).
-- HARDEN-04's tag-write and export kill specs, now asserting byte-identical originals.
+  `writeFile` of a user-facing or library file outside the two helpers, with a named allow-list for the
+  legitimate others (the helpers, the waveform store's set-aside, DIST-06's Mac swap, logging).
+- Later, HARDEN-05's tag-write and export kill specs assert byte-identical originals.
 
 **Acceptance criteria / DoD**:
-- The suites above pass; HARDEN-04's crash specs pass with the stronger assertions.
-- A tag write over 1,000 files is timed before and after, and recorded (`bench_tag_write.py`, new).
+- The suites above pass.
+- A tag write over 1,000 files is timed before and after (`bench_tag_write.py`, new) and recorded; its
+  budget is HARDEN-07's.
 
 **Risks**: **Medium** for tag writes: the copy costs disk and time per file, and the measurement decides
 whether a warning is needed for very large batches.
+
+**Complexity**: **M**
+
+---
+
+## HARDEN-05 — Crash Recovery, Proven by Killing Things
+
+**Objective**: A stopped engine or player is restarted; a crashed window reloads; the next launch
+after an unclean exit says what was interrupted; and each is proven by killing the process on purpose
+during real work.
+
+**User-visible result**:
+- **A stopped engine** is restarted like a crashed one, with the same message the strip shows today.
+- **A crashed window** reloads by itself once, saying "CuePoint's window stopped and was reopened.";
+  a second crash within a minute shows a plain page with **Reload** and **Report this problem**.
+- **After an unclean exit** (HARDEN-03's marker), the next launch says what was interrupted: "An export
+  was interrupted. Nothing was written." / the match and tag-write offers of DEC-065 and DEC-070, as
+  today.
+
+**Dependencies**: HARDEN-03 (the marker), HARDEN-04 (the temp names and the sweep).
+
+**Existing code reused**: `engineSupervisor.ts` and `playerSupervisor.ts`'s restart policy (DEC-028);
+`JOB_INTERRUPTED`; the Phase 13 events for a gone process.
+
+**Design**:
+- **A heartbeat, for a process that stops answering** (fact 5). While the engine is up, main calls
+  `/health` every 15 s with a 10 s timeout. Three misses in a row (45 s unanswered) count as an exit:
+  the supervisor kills the process tree and runs its bounded restart. This catches a suspended,
+  starved or wholly wedged process, not a deadlock inside one worker, which `/health` cannot see; that
+  case is held by each request's existing timeout and reported as a failed request. The player gets a
+  heartbeat of its own: a `get_property` of `idle-active` over its IPC every 15 s, with the same rule.
+- **The renderer.** On `render-process-gone` (not a clean exit), main reloads the window once and sends
+  the message above; two within 60 s load `recovery.html`, a page with no app bundle and a minimal
+  preload exposing only `reload` and `report`, which run Phase 13's "Report a problem" from main.
+- **Interrupted work** says what it was, from the jobs marked `JOB_INTERRUPTED`; nothing new resumes
+  (DEC-007).
+- **A test-only stall.** For the hang spec on Windows (no `SIGSTOP`), the engine honours
+  `POST /api/v1/test/stall` only when started with `CUEPOINT_TEST_HOOKS=1`, which main passes only
+  when its own `CUEPOINT_E2E` is set; a packaged app started normally has no such route (a test holds
+  it).
+- **Reported:** a stopped process (once per session), a renderer crash (as Phase 13 already does).
+
+**Tests**:
+- `electron/engineSupervisor.test.ts` (extended, fake timers): three missed heartbeats restart once;
+  two missed then one answered do not; the restart counts toward DEC-028's three.
+- `electron/playerSupervisor.test.ts` (extended): the same for the player's heartbeat.
+- `src/tests/unit/engine/test_health_while_busy.py`: health answers within 1 s while a job holds the
+  database write lock.
+- `src/tests/unit/engine/test_test_hooks.py`: the stall route is absent without `CUEPOINT_TEST_HOOKS`.
+- `electron/rendererRecovery.test.ts`: one crash reloads; two in 60 s load `recovery.html`; a clean
+  exit does neither; the recovery preload exposes only its two calls.
+- **Crash-injection end-to-end specs** (`e2e/crash.spec.ts`), each killing a process with the OS's own
+  kill, mid-work, then checking the app recovers and the library passes `integrity_check`:
+  - the engine during a 50,000-track import → restarted, import marked interrupted, library as before
+    it;
+  - the engine during an export → no partial XML at the destination, temp file gone after restart;
+  - the engine during a tag write → the offer appears; every audio file's frames are byte-identical to
+    before;
+  - the engine stopped (`SIGSTOP`, or the stall route on Windows) → restarted within 60 s;
+  - mpv during playback → the player restarts, the queue is kept;
+  - the renderer (`process.crash()` through a test hook) → the window reloads;
+  - the whole app during a refresh → the next launch shows the unclean-exit message.
+
+**Acceptance criteria / DoD**:
+- `e2e/crash.spec.ts` passes on all four legs.
+- Electron tests, typecheck and the engine unit tests pass.
+
+**Risks**: **Medium.** Kill timing is flaky by nature; each spec waits for a named point in the work
+(a progress count) before killing, never a fixed delay.
 
 **Complexity**: **M**
 
@@ -534,24 +607,27 @@ expect.
 with the A's; a library on a Mac with accented folder names refreshes without false changes; a track
 on `\\server\music` or in a folder 300 characters deep plays, exports and is checked like any other.
 
-**Dependencies**: HARDEN-02 (a migration is added and the ladder checks it).
+**Dependencies**: HARDEN-02 (two migrations are added and the ladder checks them).
 
 **Existing code reused**: `normalize_path`; `location_to_path`; `core/text_processing.py`'s accent
 stripping; `file_check_service.py`'s UNC handling; the browse indexes.
 
 **Design**:
-- **Unicode form.** `normalize_path` applies NFC before its other steps; every stored path key is
-  rewritten in a migration (`m00NN_path_nfc`), which the ladder covers. The file-system call itself
-  uses the path as the OS gave it, so nothing is opened by a name the disk does not hold.
+- **Unicode form.** `normalize_path` applies NFC before its other steps, and a migration
+  (`m00NN_path_nfc`) rewrites the stored `normalized_path` keys, which carry no unique index
+  (`m0002_tracks.py:12`), and nothing else. `file_path` is never rewritten: it is what the OS and the
+  waveform store (keyed by exact path, outside the migration runner, `waveform_store.py:31-36`) know
+  the file by, so nothing is opened by a name the disk does not hold and no waveform is orphaned.
 - **UNC.** `location_to_path` keeps a host other than `localhost` or empty as `//host/share/...`
   (`\\host\share\...` on Windows). Tested with Rekordbox's own spelling of a network track.
 - **Long paths.** On Windows the engine opens files through `\\?\`-prefixed absolute paths when longer
   than 259 characters (one helper, used by the file check, the decoder hand-off, tag writes and export's
   folder checks); the packaged engine sets `longPathAware` in its manifest; mpv is given the prefixed
   path. Electron main's own file calls use Node, which handles long paths.
-- **Search and sort** (if Q-196 is A): a `search_key` column per text field searched (title, artist,
-  album, label, remixer, comment), filled with `casefold` + NFKD with marks removed, kept by the import
-  and every write; search compares keys with `LIKE` on them. Sort uses a `sort_key` built the same way
+- **Search and sort** (if Q-196 is A): a `search_key` column per field search reads today (title,
+  artist, album and label; no new fields), filled with `casefold` + NFKD with marks removed, kept by
+  the import and every write. Label's key is of its effective value (DEC-068), so setting or clearing a
+  label override rewrites it. Search compares keys with `LIKE` on them. Sort uses a `sort_key` built the same way
   plus the original as a tie-break, with the browse indexes rebuilt on it. Both are filled by the
   migration, timed at 50,000 in HARDEN-07. Non-Latin scripts (Greek, Cyrillic, CJK) fold by `casefold`
   alone and sort by code point within their script, after Latin.
@@ -575,8 +651,9 @@ stripping; `file_check_service.py`'s UNC handling; the browse indexes.
   Windows: import, refresh shows no change, play, analyze a waveform, write a tag, export, file check.
 
 **Acceptance criteria / DoD**:
-- The spec passes on all four legs; the ladder passes with the new migration; search and sort timings
-  at 50,000 are within HARDEN-07's budgets.
+- The spec passes on all four legs; the ladder passes with the new migration; a label override
+  changes what search finds by the new label (`test_track_search_unicode.py`).
+- The migration's and the keys' times at 50,000 are HARDEN-07's to measure and budget.
 
 **Risks**: **Medium.** The path migration rewrites every stored key; the launch and pre-upgrade backups
 come first, and the ladder proves it.
@@ -594,17 +671,20 @@ packaged app; the performance guide holds every system's numbers.
 **User-visible result**: The performance guide has numbers for Windows, both Macs and Linux, from the
 same run.
 
-**Dependencies**: HARDEN-06 (its search and sort keys are measured here); DIST-02 (the Intel leg).
+**Dependencies**: HARDEN-02…HARDEN-06 (their timings are measured here); DIST-02 (the Intel leg);
+DIST-04 (the release workflow).
 
 **Existing code reused**: every `scripts/bench_*.py`; `bench_library.write_export`;
 `src/tests/performance/`; the memory spec in `libraryBrowse.spec.ts`; `bench_engine_start.py`.
 
 **Design**:
 - **`.github/workflows/scale.yml`**, on a weekly schedule, on `workflow_dispatch`, and called by
-  `release.yml` before it publishes (a red scale run stops a release). Four legs, as `desktop-electron.yml`.
+  `release.yml` for **normal** tags before it publishes (a red scale run stops a normal release; test
+  tags are not held by it). DIST-04's `test_release_workflow.py` is updated for the new step. Four legs, as `desktop-electron.yml`.
   It runs:
-  - `pytest -m performance` at full size (`CUEPOINT_SCALE=50000`; the tests' 20,000 and 5,000 become
-    the default for local runs only);
+  - the four scale tests by path (`src/tests/performance/test_{library,marks,sets,waveforms}_scale.py`)
+    at full size (`CUEPOINT_SCALE=50000`; their 20,000 and 5,000 become the default for local runs
+    only), not `-m performance`, which also picks up legacy files;
   - every bench with `--json`, each failing on its budget;
   - the packaged-app specs below.
 - **Budgets** (if Q-195 is A, at 50,000): each is the Windows number already recorded times 1.5, or
@@ -613,11 +693,13 @@ same run.
   - `bench_library`: import, refresh, browse, sort, search, facets;
   - `bench_clean`: Health, file check, duplicates;
   - start-up (below);
-  - quick check (HARDEN-03), the slowest migrations (HARDEN-02), the Unicode keys (HARDEN-06).
+  - the quick check (HARDEN-03), the slowest migrations (HARDEN-02), the path and Unicode-key
+    migrations and search on the keys (HARDEN-06), and a 1,000-file tag write (HARDEN-04).
 - **Start-up with a full library.** `bench_engine_start.py --library 50000` starts the packaged engine
   on a home holding a 50,000-track library with Clean's data and waveforms, and times launch backup,
   migrations (none pending, and one pending), and first `/health`. The macOS timeout of its test is
-  found and fixed here (fact 8: `TestTheRealEngine` starts the engine from source with no warm cache).
+  found and fixed here (`PHASE12_CLEANUP.md:1222-1224`; the suspect is `TestTheRealEngine`, which starts
+  the engine from source).
 - **The packaged app at 50,000** (`e2e/scale.spec.ts`, run only by `scale.yml`, against
   `CUEPOINT_E2E_EXECUTABLE`): launch to a usable Library; import a 50,000-track export end to end
   (click to "Imported"); scroll to the end; type a search and see the first row; sort; open the
@@ -634,7 +716,7 @@ same run.
   (sizes tiny, clock faked).
 - `src/tests/unit/scripts/test_performance_tables.py`: the guide's tables from a recorded JSON.
 - `src/tests/unit/scripts/test_scale_workflow.py`: `scale.yml` has four legs, the schedule and
-  `workflow_dispatch`, and `release.yml` calls it before publishing.
+  `workflow_dispatch`, and `release.yml` calls it before publishing a normal tag and not a test tag.
 
 **Acceptance criteria / DoD**:
 - One `scale.yml` run is green on all four legs, and `performance.md` holds its numbers.
@@ -713,8 +795,8 @@ the runbook's manual checks; each phase's owed list.
   that today starts the development build learns the packaged path (a helper in `e2e/support/`, so
   each spec changes one line). On pushes the packaged run is the smoke subset (`@packaged-smoke`
   tag: start, import, play, export, quit), and on `release: true` and `scale.yml` it is the whole suite.
-- **macOS:** `verify_macos_bundle.py` runs after `npm run pack` on both Mac legs, unsigned (DEC-170:
-  no hardened-runtime or stapler check, since nothing is notarized).
+- **macOS:** DIST-04 already runs `verify_macos_bundle.py` on both Macs for a release; this step adds
+  it to pushes, after `npm run pack` on both Mac legs, unsigned (DEC-170).
 - **Known reds** are fixed or their causes recorded here: the macOS `playback` specs' `rows.nth(1)`
   (`PHASE8_EXPORT.md:1646-1683`); the Qt hook's bash-4 syntax on macOS; the timing-flaky
   `StatusStrip.test.tsx` SSE test.
@@ -767,7 +849,8 @@ the user guide; `support-policy.md`.
   - `support-policy.md`: the systems as tested in HARDEN-09 (Windows 10+ x64; macOS 12+ on Apple
     Silicon and Intel; Linux as Q-198 says), the largest supported library (HARDEN-07), and the
     support bundle section corrected to what the app has (the "Help > Export support bundle" and
-    `main.py` lines are the retired app's);
+    `main.py` lines are the retired app's); `getting-started.md`'s system requirements, which the
+    website reads (`PHASE17_WEBSITE.md:566`), changed to match;
   - `troubleshooting.md`: backups and restore, the recovery screens, the unclean-exit message;
   - `performance.md` from HARDEN-07; an accessibility page (`accessibility.md`): what is supported,
     the shortcuts, how to report a barrier;
@@ -805,8 +888,10 @@ Phase 18, and v1, are complete when:
 3. A damaged, too-new or half-upgraded library at start offers a way back, and a full disk says so
    without a half-made change. *HARDEN-03.*
 4. Killing the engine, mpv, the window or the whole app during real work loses nothing that was saved,
-   and the app recovers or says what was interrupted; a hung engine is restarted. *HARDEN-04.*
-5. No file CuePoint writes, its own or an audio file's tags, is ever left half-written. *HARDEN-05.*
+   and the app recovers or says what was interrupted; a stopped engine or player is restarted.
+   *HARDEN-05.*
+5. No file CuePoint writes, its own, a backup, or an audio file's tags, is ever left half-written.
+   *HARDEN-01, HARDEN-04.*
 6. Paths in any Unicode form, on a network share or longer than 260 characters work everywhere, and
    search and sort fold accents and case beyond ASCII. *HARDEN-06.*
 7. 50,000 tracks are measured on all four legs, in the packaged app, within budgets, on a schedule and
@@ -829,7 +914,7 @@ Asked in `OPEN_QUESTIONS.md` as Q-190…Q-199.
 | Q-191 — A copy before every upgrade | A: yes, kept apart, the last 3 | HARDEN-01 |
 | Q-192 — When the library is checked for damage | A: after an unclean exit, and weekly | HARDEN-03 |
 | Q-193 — A library that can't open at start | A: a recovery screen offering the latest good backup | HARDEN-03 |
-| Q-194 — Saving tags into audio files | A: write a copy, check it, then swap it in | HARDEN-05 |
+| Q-194 — Saving tags into audio files | A: write a copy, check it, then swap it in | HARDEN-04 |
 | Q-195 — The largest library v1 supports | A: 50,000 supported and budgeted; 100,000 measured | HARDEN-07 |
 | Q-196 — Accents and case in search and sort | A: fold them beyond ASCII | HARDEN-06 |
 | Q-197 — How far accessibility goes | A: WCAG 2.2 AA, axe in CI, NVDA and VoiceOver by hand | HARDEN-08 |
