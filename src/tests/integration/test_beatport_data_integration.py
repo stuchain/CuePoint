@@ -1,5 +1,6 @@
 """Integration tests for beatport.py data module with real parsing logic."""
 
+import socket
 from unittest.mock import Mock, patch
 
 import pytest
@@ -23,6 +24,41 @@ def _disable_ddg_preflight():
         "cuepoint.data.beatport.SETTINGS", {"DDG_PREFLIGHT_ENABLED": False}
     ):
         yield
+
+
+@pytest.fixture(autouse=True)
+def _no_network(monkeypatch):
+    """Fail any connection off this machine: these tests parse and mock, never fetch.
+
+    Patches of a name the code had already bound elsewhere used to miss, and
+    the tests then searched DuckDuckGo for real. This makes such a miss a
+    failure instead of a slow, flaky pass.
+    """
+    real_connect = socket.socket.connect
+
+    def guarded(sock, address):
+        host = address[0] if isinstance(address, tuple) else address
+        if host not in ("127.0.0.1", "::1", "localhost"):
+            raise AssertionError(f"a test tried to reach the network: {address!r}")
+        return real_connect(sock, address)
+
+    monkeypatch.setattr(socket.socket, "connect", guarded)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_browser_search():
+    """Never launch a real browser against Beatport (AGENTS.md: mock external services).
+
+    ``track_urls`` falls back to the Playwright browser search for a remix query
+    with few direct results, and ``USE_BROWSER_AUTOMATION`` is on by default.
+    Tests that mocked only the direct search therefore opened a real browser and
+    waited on the network, about 37 seconds each. The browser search finds
+    nothing here unless a test patches it itself, which overrides this.
+    """
+    with patch(
+        "cuepoint.data.beatport_search.beatport_search_browser", return_value=[]
+    ) as browser:
+        yield browser
 
 
 class TestBeatportDataIntegration:
@@ -1196,7 +1232,7 @@ class TestBeatportDataIntegration:
             assert isinstance(urls, list)
             assert len(urls) > 0
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     def test_ddg_track_urls_basic(self, mock_ddgs_class):
         """Test ddg_track_urls basic functionality."""
         # Mock DDGS context manager
@@ -1211,7 +1247,7 @@ class TestBeatportDataIntegration:
         # Should return URLs
         assert isinstance(urls, list)
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     def test_ddg_track_urls_remix_query(self, mock_ddgs_class):
         """Test ddg_track_urls with remix query (should increase max_results)."""
         # Mock DDGS
@@ -1252,7 +1288,7 @@ class TestBeatportDataIntegration:
             # Should use DuckDuckGo for non-remix queries
             assert isinstance(urls, list)
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     def test_ddg_track_urls_quoted_query(self, mock_ddgs_class):
         """Test ddg_track_urls with quoted query."""
         # Mock DDGS
@@ -1267,7 +1303,7 @@ class TestBeatportDataIntegration:
         # Should handle quoted queries
         assert isinstance(urls, list)
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     def test_ddg_track_urls_exact_remix_query(self, mock_ddgs_class):
         """Test ddg_track_urls with exact quoted remix query."""
         # Mock DDGS
@@ -1284,7 +1320,7 @@ class TestBeatportDataIntegration:
         # Should use higher max_results for exact quoted remix queries
         assert isinstance(urls, list)
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     def test_ddg_track_urls_multiple_strategies(self, mock_ddgs_class):
         """Test ddg_track_urls trying multiple search strategies."""
         # Mock DDGS with multiple results
@@ -1301,7 +1337,7 @@ class TestBeatportDataIntegration:
         # Should try multiple search strategies
         assert isinstance(urls, list)
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     def test_ddg_track_urls_exception_handling(self, mock_ddgs_class):
         """Test ddg_track_urls handling exceptions."""
         # Mock DDGS raising exception
@@ -1314,7 +1350,7 @@ class TestBeatportDataIntegration:
         # Should handle exceptions gracefully
         assert isinstance(urls, list)
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     def test_ddg_track_urls_fallback_search(self, mock_ddgs_class):
         """Test ddg_track_urls fallback search when few results."""
         # Mock DDGS returning few results
@@ -1416,7 +1452,7 @@ class TestBeatportDataIntegration:
         assert isinstance(urls, list)
         assert mock_direct.called
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     def test_ddg_track_urls_extended_mix(self, mock_ddgs_class):
         """Test ddg_track_urls with extended mix query."""
         # Mock DDGS
@@ -1433,7 +1469,7 @@ class TestBeatportDataIntegration:
         # Should detect extended mix and increase max_results
         assert isinstance(urls, list)
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     def test_ddg_track_urls_rework_keyword(self, mock_ddgs_class):
         """Test ddg_track_urls with rework keyword."""
         # Mock DDGS
@@ -1450,7 +1486,7 @@ class TestBeatportDataIntegration:
         # Should detect rework keyword and increase max_results
         assert isinstance(urls, list)
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     def test_ddg_track_urls_break_early_non_remix(self, mock_ddgs_class):
         """Test ddg_track_urls breaking early for non-remix queries with many results."""
         # Mock DDGS returning many results
@@ -1596,7 +1632,7 @@ class TestBeatportDataIntegration:
         # Should auto-detect artist+title query and try browser
         assert isinstance(urls, list)
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     @patch("cuepoint.data.beatport.request_html")
     def test_ddg_track_urls_fallback_page_parsing(self, mock_request, mock_ddgs_class):
         """Test ddg_track_urls fallback parsing pages for track links."""
@@ -1624,7 +1660,7 @@ class TestBeatportDataIntegration:
         # Should parse pages and extract track links
         assert isinstance(urls, list)
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     def test_ddg_track_urls_fallback_broader_searches(self, mock_ddgs_class):
         """Test ddg_track_urls performing broader searches when few results."""
         # Mock DDGS with fallback searches
@@ -1639,7 +1675,7 @@ class TestBeatportDataIntegration:
         # Should perform broader searches when results are low
         assert isinstance(urls, list)
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     def test_ddg_track_urls_url_construction_fallback(self, mock_ddgs_class):
         """Test ddg_track_urls constructing URLs from query parts."""
         # Mock DDGS
@@ -1812,7 +1848,8 @@ class TestBeatportDataIntegration:
         ]
 
         with patch.dict(
-            "cuepoint.data.beatport.SETTINGS", {"USE_BROWSER_AUTOMATION": True}
+            "cuepoint.data.beatport.SETTINGS",
+            {"USE_BROWSER_AUTOMATION": True, "PREFER_DIRECT_SEARCH": False},
         ):
             urls = track_urls(
                 1,
@@ -1892,7 +1929,7 @@ class TestBeatportDataIntegration:
             search_query = call_args[0][1] if len(call_args[0]) > 1 else ""
             assert "site:beatport.com" not in search_query.lower()
 
-    @patch("duckduckgo_search.DDGS")
+    @patch("cuepoint.data.beatport.DDGS")
     @patch("cuepoint.data.beatport.request_html")
     def test_ddg_track_urls_fallback_exception(self, mock_request, mock_ddgs_class):
         """Test ddg_track_urls handling exceptions in fallback search."""
@@ -2162,7 +2199,8 @@ class TestBeatportDataIntegration:
         ]
 
         with patch.dict(
-            "cuepoint.data.beatport.SETTINGS", {"USE_BROWSER_AUTOMATION": True}
+            "cuepoint.data.beatport.SETTINGS",
+            {"USE_BROWSER_AUTOMATION": True, "PREFER_DIRECT_SEARCH": False},
         ):
             urls = track_urls(
                 1,
