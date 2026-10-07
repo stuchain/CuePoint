@@ -362,6 +362,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reads artwork, is raised from 12.1.1 to 12.3.0, past the 35 advisories
   published against it; aiohttp and pytest, used only in development, are raised
   past theirs too
+- **A match could look at more Beatport pages than asked for.** When Beatport's
+  own search found nothing and the browser search found many, every one of its
+  results was fetched and scored, past the number of candidates the settings
+  allow. The browser's results are now held to that number, as every other
+  search's are
 - **A request the engine refused could fail as a dropped connection** on
   Windows instead of saying why: the engine answered before reading what was
   sent, and closing with that unread made Windows reset the connection. The
