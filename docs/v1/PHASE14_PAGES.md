@@ -864,15 +864,17 @@ the pages as they now are.
 
 ---
 
-## PAGES-14 — A 1.5× Size, and It Is the Default
+## PAGES-14 — A 1.5× Size, and It Is the Default; Table Rows That Follow the Size
 
 **Objective**: The size setting offers 1×, 1.5×, 2× and 3×, a fresh install opens at 1.5×, and the
-pixel style stays as sharp at 1.5× as at the whole sizes (DEC-161).
+pixel style stays as sharp at 1.5× as at the whole sizes (DEC-161). Table rows grow with the size,
+as `--row-height` always meant them to; today they are 36px at every size (finding 9).
 
 **User-visible result**: Settings → Appearance → **Size of text and controls** lists "Small (1×)",
 "Medium (1.5×) — default", "Large (2×)" and "Extra large (3×)". Someone who never chose a size opens
 the app at 1.5×. In the default 1,280 × 800 window the Library shows four whole rows where it shows
-none without scrolling at 2× today. Someone who chose 1×, 2× or 3× keeps it.
+none without scrolling at 2× today. Someone who chose 1×, 2× or 3× keeps it. Every table's rows are as
+tall as the size says (50px at 1.5×), so the text in them is never cut at 3×.
 
 **Dependencies**: PAGES-01 (the Size control and SET-4's words). Nothing else.
 
@@ -912,12 +914,13 @@ own storage key and a reload, on a local build that accepted 1.5. That build was
 8. **The rest takes a fraction as it is.** Column widths (`trackTableLayout.ts:87,94`) round
    `px × scale`; `useNarrow` compares `width < below × scale`; `SetLanes`' gutter is a `calc`.
    Thumbnails are cut for 3× (DEC-076), so 1.5× only scales them down.
-9. **A defect found on the way, not changed here.** `readRowHeight` (`trackTableLayout.ts:178`)
+9. **A defect found on the way, fixed here** (the user's call, 2026-10-07). `readRowHeight` (`trackTableLayout.ts:178`)
    parses `--row-height` from `getPropertyValue`, which answers the unresolved `calc(…)` text.
    `parseFloat` gives NaN, and the fallback of 36px is used. So table rows are 36px at every size
-   (measured at 1×, 1.5×, 2× and 3×), while the header row follows `--row-height`. Fixing it would
-   change the rows at every size, and DEC-112's measured row counts with them, so it is deferred (see
-   below) rather than folded into this step.
+   (measured at 1×, 1.5×, 2× and 3×), while the header row follows `--row-height`. The cell text is
+   `--font-size-xs` (10px × size) at a line height of 1.2, so at 3× a 36px line sits in a 36px row
+   with no room left. Every table uses it: the Library, Collections, Clean, Discover, Prepare's Set
+   and its source panel, and `SetTransition`'s strip.
 10. **What assumes 2 is the default:**
     - tests: `storageFailure.test.tsx:33` expects 2; `useNarrow.test.tsx:60` reasons from 2;
       `e2e/prepare.spec.ts` asserts `--scale` is "2" and holds `WHOLE_ROWS` and the player-bar rows
@@ -941,6 +944,26 @@ own storage key and a reload, on a local build that accepted 1.5. That build was
 - **A guard so it stays true.** A renderer unit test reads every stylesheet and fails on a
   `calc(<n>px * var(--scale))` whose base times 1.5 is not whole, unless it sits inside `round(`. It
   names the file and line.
+- **Rows that follow the size.** `layout.css` registers `--row-height` with `@property` (syntax
+  `<length>`, inherited, initial 36px), so `getComputedStyle` answers a resolved length such as
+  "50px" and `readRowHeight` reads it as it always meant to. The value is `round(nearest,
+  calc(var(--hit-min) * 0.75), 1px)`: 33, 50, 66 and 99 pixels at the four sizes. The table's
+  virtualizer, Prepare's and `SetTransition` already re-read it when the size changes, so nothing
+  else in the code changes. The header row and the body rows are then the same height.
+- **What the fix costs at 2×.** Measured on Linux in `e2e/prepare.spec.ts`, Prepare's Set table, whole
+  rows on screen as the page opens:
+
+  | | Today (2×, rows stuck at 36px) | Fixed, at 1.5× (the new default) | Fixed, at 2× |
+  | --- | --- | --- | --- |
+  | The Set | 8 measured, 7 held | 8 | 4 |
+  | The source panel | 3 held | 6 | 2 |
+  | With the tempo and key lanes | 4 held | 6 | 2 |
+  | With the transition strip | 3 held | 5 | 1 |
+
+  At the new default every count is at or above what the tests hold today, and DEC-112's floor of five
+  holds. At 2× the Set falls to four, below that floor. DEC-112's floor is for the default size,
+  which is now 1.5×; someone who picks 2× chooses bigger rows over more of them. The spec's held
+  counts are re-measured at 1.5× and the 2× numbers recorded in the step's outcome.
 - **Canvases keep their rounding.** The waveform's unit and the lanes' unit stay
   `round(scale × ratio)` and `round(scale)`; only their doc comments change ("the app's scale", not
   "integer scale").
@@ -968,12 +991,18 @@ own storage key and a reload, on a local build that accepted 1.5. That build was
   element's computed border width or box-shadow length is fractional at 1.5×; the page does not
   scroll sideways at any of the four sizes in the default window.
 - `e2e/prepare.spec.ts` at the new default, as above.
+- `trackTableLayout.test.ts`: `readRowHeight` reads a registered length ("50px") as 50, and still
+  falls back on an empty or unparseable value.
+- In `e2e/scale.spec.ts`: on the Library at each of the four sizes, a body row's height equals the
+  header row's, and equals the size's `--row-height` (33, 50, 66, 99); no cell's text is clipped
+  (each cell's `scrollHeight` is at most its `clientHeight`).
 
 **Acceptance criteria / DoD**:
 - A fresh install opens at 1.5×; a stored size is kept.
 - No border, bevel or shadow lands on half a pixel at 1.5×, and the guard keeps it so.
 - Every page fits the default window at all four sizes with nothing spilling sideways.
 - DEC-112's floor holds at the new default, re-measured on Linux and Windows.
+- Every table's rows are the size's row height, at every size, and no cell's text is cut.
 - The design-system doc, the user guide and the changelog say 1.5× is the default.
 
 **Risks**: Medium. Every new user sees every page at a size none of the earlier phases measured, so
@@ -1001,7 +1030,8 @@ Phase 14 is complete when, in a **packaged build** on Windows and macOS:
    reduced motion stops them all; no motion delays input. *PAGES-02, PAGES-12.*
 7. The scroll checks pass with every kind on. *PAGES-12.*
 8. The defaults are the user's, recorded as an amendment to DEC-134. *PAGES-13.*
-9. A fresh install opens at 1.5×, and no hairline lands on half a pixel at any size. *PAGES-14.*
+9. A fresh install opens at 1.5×, no hairline lands on half a pixel at any size, and table rows are
+   as tall as the size says. *PAGES-14.*
 10. Every suite passes, with the engine smoke check, the desktop contract test, the coupling check, the
     end-to-end suite and `npm run dist`.
 11. No decision in DEC-001…DEC-161 is contradicted, except where an accepted proposal says so and the
@@ -1030,7 +1060,3 @@ Asked in `OPEN_QUESTIONS.md` as Q-157…Q-162 and answered 2026-10-07.
 - **Screenshots in the first-run guide.** Pixel drawings instead, so themes do not stale them
   (PAGES-11).
 - **"What's new" after an update.** Phase 16's proposal.
-- **Table rows that follow the size.** `readRowHeight` reads an unresolved `calc(…)` and falls back
-  to 36px, so rows are 36px at every size while the header grows (found in PAGES-14). Fixing it
-  changes how many rows every table shows at every size, and DEC-112's measured counts, so it needs
-  its own decision rather than riding a step.
