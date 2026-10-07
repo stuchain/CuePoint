@@ -3312,3 +3312,119 @@ wheel lit for the playing track when that is the one wanted.
 **Recommendation**: **C**. Beatport, Rekordbox and most DJ software speak American English, and it
 changes the fewest field names a user types in filters ("Colour" is one). The user guide follows
 whichever is chosen.
+
+---
+
+## DECISION ROUND 18 — STATISTICS (Phase 15) — open
+
+Asked while specifying Phase 15 (`PHASE15_STATISTICS.md`). Decision Round 14 settled what the page
+shows (DEC-136), that play counts are kept at each refresh (DEC-137) and that Statistics is its own
+destination (DEC-138). Writing the steps raised seven questions those decisions do not answer.
+
+Found while specifying:
+- **A missing `PlayCount` is unknown, not zero** (m0005), so "never played" cannot simply mean "no
+  plays recorded". Q-165.
+- **No filter field names a Rekordbox playlist,** so a page narrowed to a playlist could not open
+  its numbers in the Library without one. Q-163.
+- **Loudness lives in `waveforms.db`, keyed by path,** so it can be counted but not filtered. Its bars
+  show counts only (STATS-06).
+- **Keeping a list as a Collection takes two calls that can half-fail,** leaving an empty
+  Collection. STATS-05 adds one atomic route.
+
+### Q-163 — Narrowing the page to a Collection or playlist
+
+**Status**: Open
+
+**Question**: Q-137 proposed that each list can be scoped to a Collection or a Rekordbox playlist.
+DEC-136 took Q-137's list but does not mention the scope. Is it built?
+
+- **Option A — Yes, Collections and Rekordbox playlists,** one picker for the whole page. Playlists
+  need a new "Rekordbox playlist" filter field, which the Library's filter gains too.
+- **Option B — Collections only.** No new filter field; a playlist can still be looked at by making
+  a Collection of it.
+- **Option C — The whole library only.**
+
+**Recommendation**: **A**. "What do I play most from my techno playlist" is the natural question, and
+the new filter field is useful in the Library on its own.
+
+### Q-164 — Clean's Health tab
+
+**Status**: Open
+
+**Question**: DEC-136 puts library health on Statistics. Clean already has a Health tab with more
+checks (duplicates, artwork and the rest), and Phase 14 kept it, leaving this to Phase 15.
+
+- **Option A — Clean keeps its tab.** Statistics shows a summary (files, Beatport, waveforms) that
+  links to it. Health is fixed where the fixes are.
+- **Option B — The tab moves to Statistics.** Clean loses it, and its links to Clean's actions stay.
+- **Option C — Both show it in full.**
+
+**Recommendation**: **A**. Clean is where each problem is fixed; Statistics answers "how is my
+library", and a summary is enough for that.
+
+### Q-165 — Tracks with no play count
+
+**Status**: Open
+
+**Question**: Rekordbox leaves `PlayCount` out for some tracks, and CuePoint stores that as unknown.
+How does the page count them?
+
+- **Option A — Their own line,** "Plays unknown: 41", next to "Never played", which counts only a
+  count of zero.
+- **Option B — As never played.**
+
+**Recommendation**: **A**. Counting unknown as zero says something the export never said.
+
+### Q-166 — Remixer credits and an artist's plays
+
+**Status**: Open
+
+**Question**: Top artists sum the plays of their tracks. Does a remix count for its remixer?
+
+- **Option A — Yes,** artist and remixer credits both count, as the Library's artist filter
+  matches both. The number on a row and the tracks it opens agree.
+- **Option B — Artist credits only.** A remix counts for the original artist alone; clicking a row
+  then opens more tracks than it counted.
+
+**Recommendation**: **A**.
+
+### Q-167 — What "Since" offers
+
+**Status**: Open
+
+**Question**: Most played can be shown since a date (DEC-137). What does the choice offer?
+
+- **Option A — Presets and a date:** since your last refresh (the plays that refresh found), the last 7, 30 and 90 days, the last
+  year, all time, and a date of your own.
+- **Option B — All time, or a date of your own.**
+
+**Recommendation**: **A**. "Since my last refresh" and "last month" are the questions asked most, and
+presets answer them in one click. Each is only as fine as the refreshes, which the page says.
+
+### Q-168 — Keeping a top list
+
+**Status**: Open
+
+**Question**: The roadmap proposed saving a top list as a Collection. How?
+
+- **Option A — A plain Collection,** a snapshot of those tracks in rank order, named for the list
+  ("Most played since Sep 1, 2026 (top 50)"). It does not change when plays change.
+- **Option B — Not built.** The lists are looked at, not kept.
+
+**Recommendation**: **A**. It is how a DJ turns "what I play most" into a crate. A Collection that
+updates itself is not possible: "top N" and "since" are not filter rules.
+
+### Q-169 — Where play history starts
+
+**Status**: Open
+
+**Question**: DEC-137 starts history "with the first refresh after the step". The library already
+holds each track's count as of the last import. Is that kept as the starting point?
+
+- **Option A — Seed it.** The migration keeps today's counts as a first reading, dated the last
+  import, so the plays between that import and the first refresh after updating are counted too.
+- **Option B — As DEC-137 says.** History starts at the first refresh after updating, and plays
+  before it are not counted as "since".
+
+**Recommendation**: **A**. It costs nothing and keeps weeks of plays a DJ would otherwise lose. DEC-137
+is amended to say history starts at the last import before the step.

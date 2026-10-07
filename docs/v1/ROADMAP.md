@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size.**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 open (Q-163…Q-169).**
 
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
@@ -10,8 +10,9 @@ Phase numbers follow the order of implementation (DEC-146):
 - **Phase 18,** Production Hardening, is v1's last phase.
 - **Phases 19 and 20** are future releases (DEC-125).
 
-Phase 12 is specified (`PHASE12_CLEANUP.md`), and so are Phase 13 (`PHASE13_REPORTING.md`) and Phase 14
-(`PHASE14_PAGES.md`, with its page reviews in `PHASE14_REVIEWS.md`); Phases 15 to 18 are not yet. PRUNE-01 is implemented
+Phase 12 is specified (`PHASE12_CLEANUP.md`), and so are Phase 13 (`PHASE13_REPORTING.md`), Phase 14
+(`PHASE14_PAGES.md`, with its page reviews in `PHASE14_REVIEWS.md`) and Phase 15
+(`PHASE15_STATISTICS.md`); Phases 16 to 18 are not yet. PRUNE-01 is implemented
 (2026-10-06): the audit is `PHASE12_AUDIT.md`, and the user approved every group of it the same day.
 PRUNE-02 is implemented (2026-10-06): Qt is removed, and `scripts/check_no_qt.py` keeps it out.
 PRUNE-03 is implemented (2026-10-07): no unreached Python module remains but the migrations.
@@ -793,7 +794,7 @@ Step specifications: `PHASE11_WAVEFORMS.md`.
 The user asked for these to be built before v1's hardening. Phase numbers follow the order of
 implementation (DEC-146). Each phase runs alone, and Phase 18 follows them. Decision Round 14
 settled the shape of Phases 13 to 17 (DEC-126…DEC-145), and Decision Round 15 settled Phase 12's
-(DEC-147). Phases 12, 13 and 14 are specified, and the rest are not yet. Items marked *proposed* are suggestions that have not been accepted.
+(DEC-147). Phases 12 to 15 are specified, and the rest are not yet. Items marked *proposed* are suggestions that have not been accepted.
 
 Why this order:
 - **Cleanup comes first,** so that every later phase works in a smaller codebase and a smaller set of
@@ -926,6 +927,12 @@ default.
 
 ## Phase 15 — Statistics
 
+Specified 2026-10-07 in `PHASE15_STATISTICS.md`, in seven steps (STATS-01…STATS-07): play history
+first, so it starts as early as possible, then the engine's answers, then the page. Writing it raised
+seven questions, asked as Decision Round 18 (Q-163…Q-169): narrowing the page to a Collection or
+playlist, Clean's Health tab, tracks with no play count, remixer credits, what "Since" offers,
+keeping a top list, and where history starts.
+
 - **Its own destination** in the sidebar, after Prepare (DEC-138).
 - **The page shows** (DEC-136):
   - most played, as a top 10, 25, 50, 100 or 200;
@@ -938,7 +945,7 @@ default.
   after the step.
 - **Found in the code:** `PlayCount` is already imported (m0005), and it is a filter field and a
   sort. The XML holds only a running total.
-- *Proposed:* a top list saved as a Collection.
+- *Proposed:* a top list saved as a Collection (Q-168).
 
 ## Phase 16 — Distribution
 
