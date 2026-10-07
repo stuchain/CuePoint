@@ -1,7 +1,7 @@
 # Maintenance Policy — CuePoint
 
-**Long-term maintenance and evolution**
-**Version 1.1 — 2026-10-07**
+**Long-term maintenance and evolution**\
+**Version 1.1 — 2026-10-07**\
 **Last updated**: 2026-10-07
 
 ## Overview
