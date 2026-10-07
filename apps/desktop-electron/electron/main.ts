@@ -1,7 +1,7 @@
 /**
  * Electron main process — Spike S1: spawn engine and expose status to renderer.
  */
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, screen, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, screen, session, shell, systemPreferences } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import os from "node:os";
 import path from "node:path";
@@ -1095,6 +1095,10 @@ quitAfter(app, async () => {
   if (tasks.length > 0) {
     await Promise.allSettled(tasks);
   }
+  // Chromium commits localStorage to disk on a delay, and a quit inside it
+  // loses the last write: a repeat mode changed just before quitting came back
+  // as the one before it (PLAYER-07).
+  session.defaultSession.flushStorageData();
   // Given back before anything else: an accelerator still registered at quit
   // takes the machine's media keys away from whatever the user turns to next.
   mediaKeys.release();

@@ -96,6 +96,11 @@ test("shuffle and repeat reach the queue and survive a restart", async () => {
     await window.getByRole("button", { name: "Repeat one" }).click();
     await window.getByRole("button", { name: "Repeat off" }).click();
     expect((await orderState(window)).repeat).toBe("all");
+    // Main answers before the renderer saves the preference, so closing now
+    // can lose the last click. Wait for the save the restart depends on.
+    await expect
+      .poll(() => window.evaluate(() => localStorage.getItem("cuepoint-player-repeat")))
+      .toBe("all");
   } finally {
     await app.close();
   }
