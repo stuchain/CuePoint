@@ -179,6 +179,12 @@ interface EngineSupervisorOptions {
    * noticed at the next restart.
    */
   decoderPath?: () => string | null;
+  /**
+   * Whether the engine may send error reports, resolved at each launch like
+   * `decoderPath` so a restart carries the current choice (REPORT-01, DEC-128).
+   * Absent reads as off.
+   */
+  errorReporting?: () => boolean;
 }
 
 interface EngineEnvironmentInput {
@@ -187,6 +193,7 @@ interface EngineEnvironmentInput {
   sessionId: string;
   parentPid: number;
   decoderPath: string | null;
+  errorReporting: boolean;
   env?: NodeJS.ProcessEnv;
 }
 
@@ -203,6 +210,8 @@ export function engineEnvironment(input: EngineEnvironmentInput): NodeJS.Process
       CUEPOINT_PORT: String(input.port),
       CUEPOINT_TOKEN: input.token,
       CUEPOINT_SESSION_ID: input.sessionId,
+      // Always set, so an inherited value never decides it (REPORT-01, DEC-128).
+      CUEPOINT_ERROR_REPORTING: input.errorReporting ? "1" : "0",
       CUEPOINT_HEADLESS: "1",
       // This process, not the engine's parent: a packaged engine's parent is
       // its own bootloader. The engine ends itself when this process has gone,
@@ -293,6 +302,7 @@ export class EngineSupervisor {
       sessionId: this.sessionId,
       parentPid: process.pid,
       decoderPath: this.options.decoderPath?.() ?? null,
+      errorReporting: this.options.errorReporting?.() ?? false,
     });
 
     if (shouldUseBundledEngine()) {
@@ -1072,6 +1082,10 @@ export class EngineSupervisor {
 
   async clearCuepointLogs(): Promise<{ ok: boolean }> {
     return (await this.readyClient()).clearCuepointLogs();
+  }
+
+  async setErrorReporting(enabled: boolean): Promise<{ enabled: boolean }> {
+    return (await this.readyClient()).setErrorReporting(enabled);
   }
 
   async clearCuepointCache(): Promise<{ ok: boolean }> {

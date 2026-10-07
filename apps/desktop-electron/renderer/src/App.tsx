@@ -204,7 +204,7 @@ function AppShell() {
       case "prepare":
         return prepareScreen;
       case "settings":
-        return <SettingsExportScreen />;
+        return <SettingsExportScreen onOpenPrivacy={() => setPrivacyOpen(true)} />;
       default:
         return null;
     }

@@ -11,6 +11,7 @@ import type { PlayerNotice } from "./playbackFailures";
 import { PlaybackController } from "./playbackController";
 import { queueTruncationMessage, resolveQueueFromView } from "./queueResolver";
 import { chooseRekordboxExportDestination } from "./rekordboxExportDialog";
+import { ErrorReportingChoice } from "./errorReporting";
 import { MAIN_SETTINGS_FILE, MainSettingsStore } from "./mainSettings";
 import {
   chooseSetListDestination,
@@ -42,6 +43,8 @@ const engine: EngineSupervisor = new EngineSupervisor({
       resourcesPath: process.resourcesPath,
       repoRoot: engine.getRepoRoot(),
     })?.path ?? null,
+  // A closure, so `errorReporting` (declared below) is read at launch, not here.
+  errorReporting: (): boolean => errorReporting.enabled(),
 });
 
 /**
@@ -194,14 +197,32 @@ function pushPlayerNotice(notice: unknown): void {
 
 /**
  * Main's own settings, read when first needed: the user-data folder is the
- * app's to name, and nothing reads the file until a set list is saved.
+ * app's to name. One store is shared by the set list folder and the
+ * error-reporting choice.
  */
 let mainSettings: MainSettingsStore | null = null;
 
-function setListFolders(): SetListFolderStore {
+function mainSettingsStore(): MainSettingsStore {
   mainSettings ??= new MainSettingsStore(path.join(app.getPath("userData"), MAIN_SETTINGS_FILE));
-  return setListFolderStore(mainSettings);
+  return mainSettings;
 }
+
+function setListFolders(): SetListFolderStore {
+  return setListFolderStore(mainSettingsStore());
+}
+
+/**
+ * Whether error reports may be sent (REPORT-01, DEC-128). Written to the file
+ * first, then told to the engine, which also reads it from its environment at
+ * launch.
+ */
+const errorReporting = new ErrorReportingChoice(mainSettingsStore(), (enabled) =>
+  engine.setErrorReporting(enabled),
+);
+
+// Read before `app.whenReady()`, so a crash during start-up respects the
+// choice (DEC-128). `app.getPath("userData")` is available before ready.
+errorReporting.enabled();
 
 let privacyExitPrefs = {
   clearCacheOnExit: false,
@@ -551,6 +572,11 @@ function registerIpcHandlers(): void {
       clearLogsOnExit: Boolean(prefs?.clearLogsOnExit),
     };
     return { ok: true as const };
+  });
+  ipcMain.handle("errorReporting:get", () => ({ enabled: errorReporting.enabled() }));
+  ipcMain.handle("errorReporting:set", (_event, enabled: unknown) => {
+    if (typeof enabled !== "boolean") throw new Error("errorReporting:set needs true or false");
+    return errorReporting.set(enabled);
   });
   ipcMain.handle(
     "support:exportBundle",

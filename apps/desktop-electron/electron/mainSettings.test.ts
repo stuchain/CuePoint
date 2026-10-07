@@ -9,7 +9,8 @@ import { MAIN_SETTINGS_FILE, MainSettingsStore, parseMainSettings } from "./main
  * What the main process remembers for itself (PREP-08).
  *
  * A file in the user-data folder that reading never fails on and writing
- * replaces whole. Its one setting today is where set lists go.
+ * replaces whole. It holds where set lists go and the error-reporting
+ * choice (REPORT-01, DEC-128).
  */
 
 const made: string[] = [];
@@ -28,7 +29,7 @@ const GIGS = path.resolve("/music/gigs");
 
 describe("reading", () => {
   it("answers the defaults before anything was written", () => {
-    expect(new MainSettingsStore(settingsFile()).read()).toEqual({ setListFolder: null });
+    expect(new MainSettingsStore(settingsFile()).read()).toEqual({ setListFolder: null, errorReporting: true });
   });
 
   it.each([
@@ -38,19 +39,56 @@ describe("reading", () => {
     ["a folder that is not text", JSON.stringify({ setListFolder: 7 })],
     ["a folder that is not absolute", JSON.stringify({ setListFolder: "music/gigs" })],
   ])("reads %s as the default", (_what, text) => {
-    expect(parseMainSettings(text)).toEqual({ setListFolder: null });
+    expect(parseMainSettings(text)).toEqual({ setListFolder: null, errorReporting: true });
   });
 
   it("keeps an absolute folder, and ignores what it does not know", () => {
     expect(parseMainSettings(JSON.stringify({ setListFolder: GIGS, theme: "dark" }))).toEqual({
       setListFolder: GIGS,
+      errorReporting: true,
     });
   });
 
   it("reads a file that cannot be opened as the defaults", () => {
     const file = settingsFile();
     fs.mkdirSync(file); // a folder where the file should be
-    expect(new MainSettingsStore(file).read()).toEqual({ setListFolder: null });
+    expect(new MainSettingsStore(file).read()).toEqual({ setListFolder: null, errorReporting: true });
+  });
+});
+
+describe("the error-reporting choice (REPORT-01, DEC-128)", () => {
+  it("reads as on when there is no file", () => {
+    expect(new MainSettingsStore(settingsFile()).read().errorReporting).toBe(true);
+  });
+
+  it("reads as on when the key is missing", () => {
+    expect(parseMainSettings(JSON.stringify({ setListFolder: GIGS })).errorReporting).toBe(true);
+  });
+
+  it.each([
+    ["a string", JSON.stringify({ errorReporting: "false" })],
+    ["a number", JSON.stringify({ errorReporting: 0 })],
+    ["null", JSON.stringify({ errorReporting: null })],
+    ["garbage text", "{nope"],
+  ])("reads %s as on", (_what, text) => {
+    expect(parseMainSettings(text).errorReporting).toBe(true);
+  });
+
+  it("keeps off through a round trip", () => {
+    const file = settingsFile();
+    new MainSettingsStore(file).update({ errorReporting: false });
+    expect(new MainSettingsStore(file).read().errorReporting).toBe(false);
+  });
+
+  it("keeps off when the set list folder is updated", () => {
+    const file = settingsFile();
+    const store = new MainSettingsStore(file);
+    store.update({ errorReporting: false });
+    expect(store.update({ setListFolder: GIGS })).toEqual({
+      setListFolder: GIGS,
+      errorReporting: false,
+    });
+    expect(new MainSettingsStore(file).read().errorReporting).toBe(false);
   });
 });
 
@@ -59,10 +97,13 @@ describe("writing", () => {
     const file = settingsFile();
     const store = new MainSettingsStore(file);
 
-    expect(store.update({ setListFolder: GIGS })).toEqual({ setListFolder: GIGS });
+    expect(store.update({ setListFolder: GIGS })).toEqual({
+      setListFolder: GIGS,
+      errorReporting: true,
+    });
 
-    expect(new MainSettingsStore(file).read()).toEqual({ setListFolder: GIGS });
-    expect(JSON.parse(fs.readFileSync(file, "utf8"))).toEqual({ setListFolder: GIGS });
+    expect(new MainSettingsStore(file).read()).toEqual({ setListFolder: GIGS, errorReporting: true });
+    expect(JSON.parse(fs.readFileSync(file, "utf8"))).toEqual({ setListFolder: GIGS, errorReporting: true });
   });
 
   it("leaves no temporary file behind", () => {
@@ -85,6 +126,6 @@ describe("writing", () => {
     fs.mkdirSync(`${file}.${process.pid}.tmp`);
 
     expect(() => store.update({ setListFolder: path.resolve("/elsewhere") })).toThrow();
-    expect(store.read()).toEqual({ setListFolder: GIGS });
+    expect(store.read()).toEqual({ setListFolder: GIGS, errorReporting: true });
   });
 });

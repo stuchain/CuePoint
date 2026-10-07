@@ -50,6 +50,11 @@ describe("settingsFocus", () => {
     expect(first.token).not.toBe(second.token);
   });
 
+  it("reads the error-reporting switch as a field a link can ask for", () => {
+    const state = settingsFocusState("error-reporting");
+    expect(settingsFocus({ state })).toEqual({ focus: "error-reporting", token: state.token });
+  });
+
   it("reads nothing from an ordinary visit or a stranger's state", () => {
     expect(settingsFocus({ state: null })).toBeNull();
     expect(settingsFocus({ state: { settingsFocus: "password" } })).toBeNull();

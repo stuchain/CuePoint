@@ -1,0 +1,56 @@
+/*
+ * The error-reporting switch in Settings (REPORT-01, DEC-128).
+ *
+ * Built from the audio panel's tokens; the one addition is a button that reads
+ * as a link, for "Privacy details".
+ */
+
+.cp-error-reporting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.cp-error-reporting__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--hit-min);
+  font-size: var(--font-size-sm);
+  color: var(--fg-primary);
+}
+
+.cp-error-reporting__toggle input:disabled + span {
+  color: var(--fg-disabled);
+}
+
+.cp-error-reporting__text {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.cp-error-reporting__error {
+  margin: 0;
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel-alt);
+  color: var(--accent-danger);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.cp-error-reporting__link {
+  align-self: flex-start;
+  min-height: var(--hit-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-decoration: underline;
+  cursor: pointer;
+}

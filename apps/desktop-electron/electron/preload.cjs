@@ -222,6 +222,10 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   clearCuepointLogs: () => ipcRenderer.invoke("engine:clearCuepointLogs"),
   clearCuepointCache: () => ipcRenderer.invoke("engine:clearCuepointCache"),
   setPrivacyExitPrefs: (prefs) => ipcRenderer.invoke("privacy:setExitPrefs", prefs),
+  errorReporting: {
+    get: () => ipcRenderer.invoke("errorReporting:get"),
+    set: (enabled) => ipcRenderer.invoke("errorReporting:set", enabled),
+  },
   subscribeJobEvents: (jobId, onEvent) => {
     const eventHandler = (_event, payload) => {
       if (payload?.jobId === jobId) onEvent(payload.event);

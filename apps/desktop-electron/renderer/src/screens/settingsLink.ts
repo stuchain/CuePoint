@@ -5,12 +5,13 @@
  * to fix the token (DEC-098). The token field is the last thing on that page,
  * so a link that landed at the top would leave them to find it. The link
  * carries which field it is about in the location's state, as Clean's links
- * do, and Settings scrolls to it and focuses it.
+ * do, and Settings scrolls to it and focuses it. Help → Privacy links to the
+ * error-reporting switch the same way (REPORT-01).
  */
 import type { Location } from "react-router-dom";
 
 /** The fields a link can open Settings on. */
-type SettingsFocus = "beatport-token";
+type SettingsFocus = "beatport-token" | "error-reporting";
 
 interface SettingsFocusState {
   settingsFocus: SettingsFocus;
@@ -27,6 +28,9 @@ export function settingsFocus(
   location: Pick<Location, "state">,
 ): { focus: SettingsFocus; token: string } | null {
   const state = location.state as Partial<SettingsFocusState> | null | undefined;
-  if (!state || state.settingsFocus !== "beatport-token") return null;
+  if (!state) return null;
+  if (state.settingsFocus !== "beatport-token" && state.settingsFocus !== "error-reporting") {
+    return null;
+  }
   return { focus: state.settingsFocus, token: String(state.token ?? "") };
 }

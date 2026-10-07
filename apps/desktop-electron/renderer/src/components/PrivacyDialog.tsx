@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { settingsFocusState } from "../screens/settingsLink";
 import { Button, Modal, useToast } from "./index";
 import "./PrivacyDialog.css";
 
@@ -32,7 +34,28 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
   const [clearCacheOnExit, setClearCacheOnExit] = useState(false);
   const [clearLogsOnExit, setClearLogsOnExit] = useState(false);
   const [clearing, setClearing] = useState(false);
+  // What the bridge said about error reports (REPORT-01): nothing yet, on or
+  // off, or that it could not be read.
+  const [reporting, setReporting] = useState<boolean | "unreadable" | null>(null);
   const { push } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    setReporting(null);
+    window.cuepoint?.errorReporting
+      ?.get()
+      .then((state) => {
+        if (live) setReporting(state.enabled);
+      })
+      .catch(() => {
+        if (live) setReporting("unreadable");
+      });
+    return () => {
+      live = false;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -80,6 +103,16 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
     }
   };
 
+  const handleChangeInSettings = () => {
+    onClose();
+    navigate("/settings", { state: settingsFocusState("error-reporting") });
+  };
+
+  let reportingWords = "Error reports: …";
+  if (!window.cuepoint?.errorReporting) reportingWords = "Error reports: unavailable outside the desktop app";
+  else if (reporting === "unreadable") reportingWords = "Error reports: could not be read";
+  else if (reporting !== null) reportingWords = `Error reports: ${reporting ? "on" : "off"}`;
+
   return (
     <Modal
       open={open}
@@ -90,6 +123,12 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
     >
       <div className="privacy-dialog">
         <pre className="privacy-dialog__text">{PRIVACY_TEXT}</pre>
+        <p className="privacy-dialog__reporting">
+          <span data-testid="privacy-error-reports">{reportingWords}</span>{" "}
+          <button type="button" className="privacy-dialog__link" onClick={handleChangeInSettings}>
+            Change in Settings
+          </button>
+        </p>
         <fieldset className="privacy-dialog__prefs">
           <legend>On exit</legend>
           <label>

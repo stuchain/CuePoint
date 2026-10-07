@@ -5,6 +5,7 @@ import { Button, Panel, TextField } from "../components";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { useBeatportToken } from "../hooks/useBeatportToken";
 import { AudioSettingsPanel } from "./AudioSettingsPanel";
+import { ErrorReportingSettingsPanel } from "./ErrorReportingSettingsPanel";
 import { RekordboxExportSettingsPanel } from "./RekordboxExportSettingsPanel";
 import { ThemeSettingsPanel } from "./ThemeSettingsPanel";
 import { WaveformSettingsPanel } from "./WaveformSettingsPanel";
@@ -20,7 +21,7 @@ export const BEATPORT_TOKEN_FIELD_ID = "settings-beatport-token";
  * export's section shows where exports go and offers no way to start one
  * (DEC-087).
  */
-export function SettingsExportScreen() {
+export function SettingsExportScreen({ onOpenPrivacy }: { onOpenPrivacy?: () => void } = {}) {
   const engineAvailable = hasEngineBridge();
   const {
     status,
@@ -40,7 +41,9 @@ export function SettingsExportScreen() {
   // its status has been read: the field is disabled while it loads, and a
   // field disabled after it was focused loses the focus without a word.
   const location = useLocation();
-  const focusToken = settingsFocus(location)?.token ?? null;
+  const asked = settingsFocus(location);
+  const focusToken = asked?.focus === "beatport-token" ? asked.token : null;
+  const focusReporting = asked?.focus === "error-reporting" ? asked.token : null;
   const focused = useRef<string | null>(null);
   const fieldReady = engineAvailable && loaded && !loading;
   useEffect(() => {
@@ -100,6 +103,8 @@ export function SettingsExportScreen() {
           {testMessage ? <p className="screen__muted">{testMessage}</p> : null}
         </div>
       </Panel>
+
+      <ErrorReportingSettingsPanel onOpenPrivacy={onOpenPrivacy} focusToken={focusReporting} />
     </div>
   );
 }

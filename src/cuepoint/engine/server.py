@@ -30,6 +30,11 @@ from cuepoint.engine.support_bundle_api import (
 )
 from cuepoint.engine.logs_api import get_cuepoint_log_text, get_cuepoint_logs_dir
 from cuepoint.engine.privacy_api import clear_cache_now, clear_logs_now
+from cuepoint.engine.reporting_api import (
+    initial_reporting_enabled,
+    parse_reporting_body,
+    set_reporting_enabled,
+)
 from cuepoint.engine.activity_api import (
     RECENT_LIMIT_DEFAULT,
     ActivityUnavailableError,
@@ -227,6 +232,9 @@ def make_handler(
     config: EngineConfig, store: Optional[JobStore] = None
 ) -> Type[BaseHTTPRequestHandler]:
     job_store = store or _JOB_STORE
+    # Resets the flag to the launch value for each server, which is what the
+    # tests' start_engine_thread needs; run_engine has already set it (REPORT-01).
+    set_reporting_enabled(initial_reporting_enabled(os.environ))
 
     class EngineHandler(BaseHTTPRequestHandler):
         def log_message(self, format: str, *args) -> None:  # noqa: A003
@@ -909,6 +917,15 @@ def make_handler(
                 self._send_json(200, payload)
                 return
 
+            if path == "/api/v1/reporting":
+                try:
+                    enabled = parse_reporting_body(self._read_body())
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                self._send_json(200, set_reporting_enabled(enabled))
+                return
+
             if path == "/api/v1/library/import":
                 try:
                     payload = start_import(
@@ -1124,6 +1141,8 @@ def fine_timer_resolution(platform: str = sys.platform) -> bool:
 
 
 def run_engine(config: Optional[EngineConfig] = None) -> None:
+    # First, so "may I send?" has its answer before any work starts (REPORT-01, DEC-128).
+    set_reporting_enabled(initial_reporting_enabled(os.environ))
     cfg = config or EngineConfig.from_env()
     if cfg.host not in ALLOWED_HOSTS:
         raise ValueError(f"Refusing to bind engine to non-loopback host: {cfg.host}")

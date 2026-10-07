@@ -23,6 +23,7 @@ const base = {
   token: "secret",
   sessionId: "session",
   parentPid: 4242,
+  errorReporting: false,
 };
 
 /** The decoder path an engine would be given, for one way of finding mpv. */
@@ -109,6 +110,29 @@ describe("the engine's environment", () => {
       env: { [DECODER_PATH_ENV]: "/somewhere/else/mpv" },
     });
     expect(env[DECODER_PATH_ENV]).toBe("/bundled/mpv");
+  });
+});
+
+describe("the error-reporting choice (REPORT-01, DEC-128)", () => {
+  it("is 1 when on and 0 when off", () => {
+    expect(engineEnvironment({ ...base, decoderPath: null, errorReporting: true, env: {} })).toMatchObject({
+      CUEPOINT_ERROR_REPORTING: "1",
+    });
+    expect(engineEnvironment({ ...base, decoderPath: null, errorReporting: false, env: {} })).toMatchObject({
+      CUEPOINT_ERROR_REPORTING: "0",
+    });
+  });
+
+  it("overrides an inherited value", () => {
+    const inherited = { CUEPOINT_ERROR_REPORTING: "1" };
+    expect(
+      engineEnvironment({ ...base, decoderPath: null, errorReporting: false, env: inherited })
+        .CUEPOINT_ERROR_REPORTING,
+    ).toBe("0");
+    expect(
+      engineEnvironment({ ...base, decoderPath: null, errorReporting: true, env: { CUEPOINT_ERROR_REPORTING: "0" } })
+        .CUEPOINT_ERROR_REPORTING,
+    ).toBe("1");
   });
 });
 

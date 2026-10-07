@@ -8,8 +8,12 @@
  * save but its activity event (DEC-110), so unlike the Rekordbox export's
  * folder (DEC-086) there is no engine record to read it back from.
  *
+ * It also holds the error-reporting choice (REPORT-01, DEC-128), which main
+ * owns because main starts first and starts everything else.
+ *
  * Reading never fails: a missing, unreadable or hand-edited file reads as the
- * defaults, because a remembered folder only decides where a dialog opens.
+ * defaults, because a remembered folder only decides where a dialog opens. A
+ * broken file reads as error reporting on, as a first launch does (DEC-128).
  * Writing replaces the file whole, through a temporary file beside it, so a
  * crash mid-write leaves the old settings rather than half of the new ones.
  *
@@ -25,10 +29,12 @@ export const MAIN_SETTINGS_FILE = "main-settings.json";
 interface MainSettings {
   /** The folder the last set list was saved to, absolute; null before the first. */
   setListFolder: string | null;
+  /** Whether error reports may be sent; on from the first launch (DEC-128). */
+  errorReporting: boolean;
 }
 
 function defaults(): MainSettings {
-  return { setListFolder: null };
+  return { setListFolder: null, errorReporting: true };
 }
 
 /** The settings a file's text holds; anything unreadable reads as the default. */
@@ -40,9 +46,12 @@ export function parseMainSettings(text: string): MainSettings {
     return defaults();
   }
   if (!data || typeof data !== "object" || Array.isArray(data)) return defaults();
-  const folder = (data as Record<string, unknown>).setListFolder;
+  const record = data as Record<string, unknown>;
+  const folder = record.setListFolder;
+  const reporting = record.errorReporting;
   return {
     setListFolder: typeof folder === "string" && path.isAbsolute(folder) ? folder : null,
+    errorReporting: typeof reporting === "boolean" ? reporting : true,
   };
 }
 

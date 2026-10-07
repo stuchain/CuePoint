@@ -35,3 +35,21 @@
   flex-wrap: wrap;
   margin-top: var(--space-sm);
 }
+
+.privacy-dialog__reporting {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-xs);
+}
+
+.privacy-dialog__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

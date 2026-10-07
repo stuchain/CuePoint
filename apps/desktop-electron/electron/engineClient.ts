@@ -3687,6 +3687,16 @@ export class EngineClient {
     return readJson(res);
   }
 
+  /** Tell the engine the error-reporting choice (REPORT-01, DEC-128). */
+  async setErrorReporting(enabled: boolean): Promise<{ enabled: boolean }> {
+    const res = await fetch(this.url("/api/v1/reporting"), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ enabled }),
+    });
+    return readJson(res);
+  }
+
   async clearCuepointCache(): Promise<{ ok: boolean }> {
     const res = await fetch(this.url("/api/v1/privacy/clear-cache"), {
       method: "POST",

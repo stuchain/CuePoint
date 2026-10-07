@@ -1861,6 +1861,27 @@ describe("desktop contract", () => {
     });
   });
 
+  describe("error reporting (REPORT-01)", () => {
+    it("crosses the bridge through a get and a set in every file", () => {
+      for (const channel of ["errorReporting:get", "errorReporting:set"]) {
+        expect(invokedChannels(preload)).toContain(channel);
+        expect(handledChannels(main)).toContain(channel);
+      }
+      expect(bridgeTypes).toContain("errorReporting?: {");
+      expect(bridgeTypes).toContain("export interface ErrorReportingState");
+    });
+
+    it("tells the engine through its authorized route", () => {
+      expect(engineClient).toContain("async setErrorReporting");
+      expect(engineClient).toContain("/api/v1/reporting");
+      expect(supervisorMethodsDeclared(supervisor)).toContain("setErrorReporting");
+    });
+
+    it("passes the choice to the engine when it is launched", () => {
+      expect(supervisor).toContain("CUEPOINT_ERROR_REPORTING");
+    });
+  });
+
   describe("inKey's routes are gone (CLEAN-14, DEC-071)", () => {
     // A removal is the same six-file sweep as an addition, and a method left in
     // one file is as silent as one missing from another: the renderer would

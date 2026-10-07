@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 13: Error Reporting, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. No step is implemented yet; REPORT-01 is next.** Eight steps,
+Status: **Specified 2026-10-07. REPORT-01 is implemented (2026-10-07); REPORT-02 is next.** Eight steps,
 REPORT-01…REPORT-08. Writing the steps raised six questions that Decision Round 14 did not answer.
 They were asked as Decision Round 16 (Q-151…Q-156) and settled the same day as DEC-148…DEC-153, so
 there are no open points. Per the process, no implementation happens from this
@@ -248,6 +248,21 @@ preferences, which the renderer pushes to main at launch (`privacy:setExitPrefs`
 **Risks**: Low.
 
 **Complexity**: **S**
+
+**Outcome**: Implemented (2026-10-07). The choice is `errorReporting` in `main-settings.json`, read
+as on when missing or unreadable, and held by `ErrorReportingChoice` (`electron/errorReporting.ts`),
+which main reads before `app.whenReady`. The engine gets `CUEPOINT_ERROR_REPORTING=1` or `0` at each
+launch and holds the flag in `cuepoint/engine/reporting_api.py`, set first thing in `run_engine` and
+changed by `POST /api/v1/reporting`. Settings ends with a Privacy panel holding the "Send error
+reports" switch; Help → Privacy shows its state and opens Settings on it. `set` writes the file, then
+tells the engine in order, and fails only when the file cannot be written, in plain words. Nothing
+sends anything yet.
+
+Checked in the cloud container: the engine's new route tests (13), the Electron suite (575) and the
+renderer suite (4210) pass, with both type-checks and the pinned ruff 0.14.0. The engine suite has one
+failure, `test_engine_rekordbox_export_api.py::TestTheStart::test_the_source_spelled_differently_is_refused_all_the_same`,
+which fails the same on the commit before this step. Not checked: the switch in a running or packaged
+app.
 
 ---
 

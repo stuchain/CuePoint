@@ -314,6 +314,14 @@ export interface ClearOkResponse {
   ok: boolean;
 }
 
+/**
+ * Whether error reports may be sent (REPORT-01, DEC-128). Stored by Electron
+ * main, which tells the engine; on from the first launch.
+ */
+export interface ErrorReportingState {
+  enabled: boolean;
+}
+
 export interface PrivacyExitPrefs {
   clearCacheOnExit: boolean;
   clearLogsOnExit: boolean;
@@ -3272,6 +3280,10 @@ export interface CuePointBridge {
   clearCuepointLogs?: () => Promise<ClearOkResponse>;
   clearCuepointCache?: () => Promise<ClearOkResponse>;
   setPrivacyExitPrefs?: (prefs: PrivacyExitPrefs) => Promise<{ ok: boolean }>;
+  errorReporting?: {
+    get: () => Promise<ErrorReportingState>;
+    set: (enabled: boolean) => Promise<ErrorReportingState>;
+  };
   subscribeJobEvents: (
     jobId: string,
     onEvent: (event: JobStatus) => void,
