@@ -7,7 +7,7 @@ Compliance validation entry point (Step 8.5).
 This is intentionally lightweight and geared toward CI gates:
 - Verifies pinned build requirements file exists
 - Validates license metadata for direct build dependencies
-- Ensures Privacy dialog is present (in-app disclosure)
+- Ensures the Electron app's Privacy dialog component is present (in-app disclosure)
 - Ensures PRIVACY_NOTICE.md exists (external disclosure)
 """
 
@@ -25,9 +25,11 @@ def main() -> int:
         print("ERROR: requirements-build.txt is missing")
         return 1
 
-    privacy_dialog = repo_root / "src" / "cuepoint" / "ui" / "dialogs" / "privacy_dialog.py"
+    privacy_dialog = (
+        repo_root / "apps" / "desktop-electron" / "renderer" / "src" / "components" / "PrivacyDialog.tsx"
+    )
     if not privacy_dialog.exists():
-        print("ERROR: Privacy dialog is missing (expected in-app privacy disclosure)")
+        print("ERROR: PrivacyDialog.tsx is missing (expected in-app privacy disclosure in the Electron renderer)")
         return 1
 
     privacy_notice = repo_root / "PRIVACY_NOTICE.md"

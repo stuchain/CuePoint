@@ -1,7 +1,7 @@
 """
 Unit tests for Release Engineering and Distribution scripts (Design 02).
 
-Tests validate_changelog, validate_appcast, generate_sbom, generate_build_metadata logic.
+Tests validate_changelog, generate_sbom and validate_version logic.
 """
 
 import sys
@@ -106,84 +106,6 @@ class TestValidateChangelog:
         assert extract_base_version("2.3.4+abc") == "2.3.4"
 
 
-class TestValidateAppcast:
-    """Tests for validate_appcast validation logic."""
-
-    def test_validate_semver(self):
-        import validate_appcast as m
-
-        validate_semver = m.validate_semver
-
-        assert validate_semver("1.0.0") is True
-        assert validate_semver("2.3.4") is True
-        assert validate_semver("1.0.0-beta.1") is True
-        assert validate_semver("invalid") is False
-        assert validate_semver("1.0") is False
-
-    def test_validate_appcast_missing_file(self):
-        import validate_appcast as m
-
-        validate_appcast = m.validate_appcast
-
-        valid, errors = validate_appcast(Path("/nonexistent/appcast.xml"))
-        assert valid is False
-        assert any("not found" in e for e in errors)
-
-    def test_validate_appcast_valid_xml(self):
-        import validate_appcast as m
-
-        validate_appcast = m.validate_appcast
-
-        xml = """<?xml version="1.0"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <item>
-      <title>Version 1.0.0</title>
-      <sparkle:version>10000</sparkle:version>
-      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
-      <enclosure url="https://example.com/CuePoint-1.0.0.dmg" length="12345" type="application/octet-stream"/>
-    </item>
-  </channel>
-</rss>
-"""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
-            f.write(xml)
-            path = Path(f.name)
-        try:
-            valid, errors = validate_appcast(
-                path, check_https=True, check_version_format=True
-            )
-            assert valid, errors
-        finally:
-            path.unlink(missing_ok=True)
-
-    def test_validate_appcast_rejects_http_url(self):
-        import validate_appcast as m
-
-        validate_appcast = m.validate_appcast
-
-        xml = """<?xml version="1.0"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <item>
-      <sparkle:version>10000</sparkle:version>
-      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
-      <enclosure url="http://example.com/app.dmg" length="123" type="application/octet-stream"/>
-    </item>
-  </channel>
-</rss>
-"""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
-            f.write(xml)
-            path = Path(f.name)
-        try:
-            valid, errors = validate_appcast(path, check_https=True)
-            assert valid is False
-            assert any("https" in e.lower() for e in errors)
-        finally:
-            path.unlink(missing_ok=True)
-
-
 class TestGenerateSbom:
     """Tests for generate_sbom."""
 
@@ -211,28 +133,6 @@ class TestGenerateSbom:
         assert "foo" in spdx_id("foo", "1.0.0")
 
 
-class TestGenerateBuildMetadata:
-    """Tests for generate_build_metadata."""
-
-    def test_get_version(self):
-        import generate_build_metadata as m
-
-        get_version = m.get_version
-
-        v = get_version()
-        assert v is not None
-        assert len(v) >= 5  # e.g. 1.0.0
-
-    def test_generate_build_metadata_output(self):
-        import generate_build_metadata as m
-
-        get_project_root = m.get_project_root
-
-        root = get_project_root()
-        assert root is not None
-        assert (root / "scripts" / "generate_build_metadata.py").exists()
-
-
 class TestValidateVersion:
     """Smoke tests for validate_version (import and basic logic)."""
 
@@ -255,93 +155,3 @@ class TestValidateVersion:
 
         assert extract_base_version("1.0.0") == "1.0.0"
         assert extract_base_version("1.0.1-test") == "1.0.1"
-
-
-class TestVerifyInstaller:
-    """Tests for verify_installer (Design 2.38: checksum and signature verification)."""
-
-    def test_sha256_file(self):
-        import verify_installer as m
-
-        sha256_file = m.sha256_file
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as f:
-            f.write(b"hello world")
-            path = Path(f.name)
-        try:
-            digest = sha256_file(path)
-            assert len(digest) == 64
-            assert all(c in "0123456789abcdef" for c in digest)
-        finally:
-            path.unlink(missing_ok=True)
-
-    def test_verify_checksum_match(self):
-        import verify_installer as m
-
-        sha256_file = m.sha256_file
-        verify_checksum = m.verify_checksum
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as f:
-            f.write(b"test content")
-            path = Path(f.name)
-        try:
-            expected = sha256_file(path)
-            ok, msg = verify_checksum(path, expected)
-            assert ok is True, msg
-        finally:
-            path.unlink(missing_ok=True)
-
-    def test_verify_checksum_mismatch(self):
-        import verify_installer as m
-
-        verify_checksum = m.verify_checksum
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as f:
-            f.write(b"test")
-            path = Path(f.name)
-        try:
-            ok, msg = verify_checksum(path, "0" * 64)
-            assert ok is False
-            assert "mismatch" in msg
-        finally:
-            path.unlink(missing_ok=True)
-
-    def test_parse_checksums_file_gnu_format(self):
-        import verify_installer as m
-
-        parse_checksums_file = m.parse_checksums_file
-
-        # SHA256 hashes are 64 hex chars
-        h1 = "a" * 64
-        h2 = "b" * 64
-        content = f"SHA256 (foo.dmg) = {h1}\nSHA256 (bar.exe) = {h2}\n"
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-            f.write(content)
-            path = Path(f.name)
-        try:
-            pairs = parse_checksums_file(path)
-            assert len(pairs) == 2
-            assert ("foo.dmg", h1) in pairs
-            assert ("bar.exe", h2) in pairs
-        finally:
-            path.unlink(missing_ok=True)
-
-    def test_parse_checksums_file_bsd_format(self):
-        import verify_installer as m
-
-        parse_checksums_file = m.parse_checksums_file
-
-        # SHA256 hashes are 64 hex chars
-        h1 = "a" * 64
-        h2 = "b" * 64
-        content = f"{h1}  foo.dmg\n{h2}  bar.exe\n"
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-            f.write(content)
-            path = Path(f.name)
-        try:
-            pairs = parse_checksums_file(path)
-            assert len(pairs) == 2
-            assert ("foo.dmg", h1) in pairs
-            assert ("bar.exe", h2) in pairs
-        finally:
-            path.unlink(missing_ok=True)

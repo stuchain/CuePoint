@@ -1,3 +1,6 @@
+# Validates dependency licence metadata and the bundled mpv component licences,
+# and builds THIRD_PARTY_LICENSES.txt as an artifact. Runs on pushes, pull requests
+# and weekly.
 name: License Compliance
 
 on:

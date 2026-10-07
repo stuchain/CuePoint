@@ -1,4 +1,5 @@
-# Design 10.6, 10.30: Doc link checker - fail CI on broken links
+# Checks links in docs/ and .github/ with lychee and fails CI on broken links.
+# Runs when docs, workflows or .lycheeignore change.
 name: Docs Check
 
 on:

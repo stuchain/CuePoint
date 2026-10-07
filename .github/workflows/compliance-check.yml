@@ -1,3 +1,5 @@
+# Runs scripts/validate_compliance.py (privacy disclosure, license files and similar
+# compliance checks) on pushes, pull requests and weekly.
 name: Compliance Check
 
 on:

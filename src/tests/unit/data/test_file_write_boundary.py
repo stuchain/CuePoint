@@ -95,8 +95,6 @@ ALLOWED_IMPORTERS: Dict[str, Set[str]] = {
         # EXPORT-01 removed rekordbox.py's tag-writing wrappers, so CLEAN-10's
         # service is the only route left from the runtime into tag_writer.
         "src/cuepoint/services/tag_write_service.py",
-        # A developer's debugging script for the same existing path.
-        "scripts/debug_sync_to_split_test.py",
     },
     "cuepoint.data.tag_fields": {"src/cuepoint/services/tag_write_service.py"},
     # EXPORT-01 removed this module's writers, so nothing reaches one.
@@ -355,10 +353,10 @@ class TestTheBoundary:
     def test_the_scan_covers_the_runtime_and_the_scripts(self):
         files = {path.relative_to(_REPO).as_posix() for path in _scanned_files()}
 
-        assert len(files) > 300
+        assert len(files) > 250
         assert "src/cuepoint/engine/tag_write_jobs.py" in files
         assert "src/cuepoint/engine/sync_tags_api.py" not in files
-        assert "scripts/debug_sync_to_split_test.py" in files
+        assert "scripts/bench_clean.py" in files
         assert "main.py" in files
         assert not any(name.startswith("src/tests/") for name in files)
 

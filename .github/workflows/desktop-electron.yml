@@ -1,3 +1,6 @@
+# Builds and tests the Electron desktop app: renderer lint, tests and typecheck,
+# the Electron main process, the Python engine sidecar and the mpv player sidecar
+# (format and waveform checks, bundled licences). This is the packaging workflow.
 name: Desktop Electron
 
 on:

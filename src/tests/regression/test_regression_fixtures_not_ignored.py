@@ -27,7 +27,7 @@ _FIXTURES = _REPO / "src" / "tests" / "fixtures"
 
 #: Fixtures that are local on purpose: developer captures a test skips without.
 LOCAL_ONLY = {
-    # scripts/debug_beatport_search_page.py writes it; its test skips if absent.
+    # A developer's local capture; its test skips if absent.
     "beatport/search_next_data_sample.json",
 }
 

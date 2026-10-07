@@ -1,3 +1,6 @@
+# The main Python test workflow: ruff lint and format, the mypy gate, the Qt-removal
+# check, and the unit, integration and system tests with coverage, plus a large-file
+# check. Runs on pushes and on pull requests.
 name: Test
 
 on:

@@ -7,8 +7,9 @@ Version Information for CuePoint
 This module serves as the single source of truth for version information.
 Version follows Semantic Versioning (SemVer): MAJOR.MINOR.PATCH
 
-Build identifiers (build_number, commit_sha, build_date) are set during
-the build process by scripts/set_build_info.py.
+Build identifiers (build_number, commit_sha, build_date) keep the defaults
+below: nothing in the repository sets them now. The release pipeline (Phase 16)
+will set them at build time.
 """
 
 import sys

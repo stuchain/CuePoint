@@ -1,3 +1,5 @@
+# Fails a push to a phase_* branch if a tracked file is over the size limit
+# (scripts/check_large_files.py and a git-tracked large-file check).
 name: Large File Check
 
 on:

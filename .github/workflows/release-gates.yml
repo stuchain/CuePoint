@@ -1,3 +1,6 @@
+# Release gates: version sync, changelog, SBOM, hashed-install check, licence
+# bundle, ruff, mypy gate and file sizes on every PR and push; the unit and
+# integration tests across 3 OSes and 2 Pythons on push only.
 name: Release Gates
 
 on:
@@ -45,15 +48,11 @@ jobs:
         run: |
           pytest src/tests/unit/ -v --cov=src/cuepoint --cov-report=xml
         timeout-minutes: 30
-        env:
-          CUEPOINT_SKIP_UPDATE_CHECK: "1"
         continue-on-error: false
 
       - name: Run integration tests
         run: |
           pytest src/tests/integration/ -v --timeout=120
-        env:
-          CUEPOINT_SKIP_UPDATE_CHECK: "1"
         continue-on-error: false
 
       - name: Upload coverage
@@ -115,35 +114,6 @@ jobs:
             exit 1
           fi
 
-      - name: Validate appcast (if present)
-        shell: bash
-        run: |
-          if [ -f "updates/macos/stable/appcast.xml" ] || [ -f "updates/windows/stable/appcast.xml" ]; then
-            python scripts/validate_appcast.py --macos updates/macos/stable/appcast.xml --windows updates/windows/stable/appcast.xml 2>/dev/null || true
-          fi
-        continue-on-error: true
-
-      - name: Validate update appcasts (if present)
-        shell: bash
-        run: |
-          MACOS_APPCAST="updates/macos/stable/appcast.xml"
-          WINDOWS_APPCAST="updates/windows/stable/appcast.xml"
-
-          args=()
-          if [ -f "$MACOS_APPCAST" ]; then
-            args+=(--macos "$MACOS_APPCAST")
-          fi
-          if [ -f "$WINDOWS_APPCAST" ]; then
-            args+=(--windows "$WINDOWS_APPCAST")
-          fi
-
-          if [ ${#args[@]} -eq 0 ]; then
-            echo "No update appcasts found in repo; skipping validate_updates.py"
-            exit 0
-          fi
-
-          python scripts/validate_updates.py "${args[@]}"
-
       - name: Run linter
         run: |
           ruff check src/
@@ -172,5 +142,4 @@ jobs:
   # that does not exist in this repository, behind `|| echo "Build script not
   # found - skipping"` and `continue-on-error: true` — so it could not fail, and
   # its green tick meant nothing. Real packaging is covered by
-  # desktop-electron.yml (PyInstaller sidecar + electron-builder) and the
-  # build-windows.yml / build-macos.yml release workflows.
+  # desktop-electron.yml (PyInstaller sidecar + electron-builder).

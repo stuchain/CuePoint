@@ -1,3 +1,5 @@
+# Runs pip-audit over the production, pinned build and development dependencies
+# on pushes, pull requests and weekly.
 name: Security Scan
 
 on:

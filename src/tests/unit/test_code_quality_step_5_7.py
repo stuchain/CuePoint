@@ -296,44 +296,6 @@ class TestTypeChecking:
         assert True, "mypy check completed"
 
 
-class TestMakefileTargets:
-    """Test that Makefile targets work correctly."""
-
-    @property
-    def root_path(self) -> Path:
-        """Get the root path of the project."""
-        return Path(__file__).parent.parent.parent.parent
-
-    def test_makefile_exists(self):
-        """Test that Makefile exists."""
-        makefile = self.root_path / "Makefile"
-        assert makefile.exists(), "Makefile not found"
-
-    def test_makefile_has_format_target(self):
-        """Test that Makefile has format target."""
-        makefile = self.root_path / "Makefile"
-        content = makefile.read_text()
-        assert "format:" in content, "Makefile format target not found"
-
-    def test_makefile_has_lint_target(self):
-        """Test that Makefile has lint target."""
-        makefile = self.root_path / "Makefile"
-        content = makefile.read_text()
-        assert "lint:" in content, "Makefile lint target not found"
-
-    def test_makefile_has_type_check_target(self):
-        """Test that Makefile has type-check target."""
-        makefile = self.root_path / "Makefile"
-        content = makefile.read_text()
-        assert "type-check:" in content, "Makefile type-check target not found"
-
-    def test_makefile_has_quality_check_target(self):
-        """Test that Makefile has quality-check target."""
-        makefile = self.root_path / "Makefile"
-        content = makefile.read_text()
-        assert "quality-check:" in content, "Makefile quality-check target not found"
-
-
 class TestPreCommitHooks:
     """What the pre-commit config actually runs.
 
@@ -452,25 +414,6 @@ class TestVSCodeSettings:
             content = settings.read_text()
             assert "black" in content.lower(), (
                 "Black formatter not configured in VS Code settings"
-            )
-
-
-class TestMakefileTargetsExecution:
-    """Test that Makefile targets can actually be executed."""
-
-    @property
-    def root_path(self) -> Path:
-        """Get the root path of the project."""
-        return Path(__file__).parent.parent.parent.parent
-
-    def test_makefile_check_format_target(self):
-        """Test that make check-format target works."""
-        makefile = self.root_path / "Makefile"
-        if makefile.exists():
-            # Just verify the target exists, don't actually run make (requires make to be installed)
-            content = makefile.read_text()
-            assert "check-format:" in content, (
-                "check-format target not found in Makefile"
             )
 
 

@@ -1,6 +1,7 @@
 # Publish the static GitHub Pages site (landing page, robots.txt, sitemap.xml, logo)
-# from gh-pages-root/ without creating a release tag. Appcast feeds under updates/
-# on gh-pages are left unchanged.
+# from gh-pages-root/ to the gh-pages branch with scripts/publish_feeds.py
+# (--site-only), without creating a release tag. Anything else on gh-pages is
+# left unchanged.
 
 name: Publish GitHub Pages site
 

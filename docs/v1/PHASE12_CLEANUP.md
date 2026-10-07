@@ -4,7 +4,8 @@ Status: **Specified 2026-10-06. PRUNE-01 is implemented (2026-10-06), and the us
 group of its audit (`PHASE12_AUDIT.md`) the same day. PRUNE-02 is implemented (2026-10-06): Qt is
 removed. PRUNE-03 is implemented (2026-10-07): no unreached Python module remains but the
 migrations. PRUNE-05 is implemented (2026-10-07): no Electron or renderer file, export or
-class is unreached. PRUNE-04 is next.** Eight steps, PRUNE-01…PRUNE-08. Per the
+class is unreached. PRUNE-04 is implemented (2026-10-07): the retired app's pipeline and every
+script nothing runs are gone. PRUNE-06 is next.** Eight steps, PRUNE-01…PRUNE-08. Per the
 process, no implementation happens from this document. Each step needs an explicit "Implement
 PRUNE-NN" instruction, scoped to exactly that step, and its outcome is recorded under the step
 afterwards. There are no open points. The measurements taken while writing it are in cross-cutting
@@ -750,6 +751,62 @@ script nothing runs. Keep everything that builds, checks or releases the Electro
 every staying workflow is run, not only read.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented (2026-10-07). Groups E and F are done, with group H's root files: 80
+scripts, three workflows, the retired app's spec and plist, the `Makefile` and inCrate's sample
+XML are gone. `scripts/` holds the 37 scripts the audit kept, each listed in `scripts/README.md`
+by what runs it. `audit_dead_code.py` reports no script that is unreferenced or not run.
+
+**Scripts:**
+- Ten of the 90 the audit marked had already gone in PRUNE-02 and PRUNE-03; the other 80 went
+  here, exactly as marked.
+- **`publish_feeds.py`** keeps its name and loses its feed half (675 lines to about 270). It only
+  publishes the site's files from `gh-pages-root/`, as `publish-gh-pages-site.yml` runs it;
+  `--site-only` is kept as a no-op so the workflow is unchanged. Checked against a local bare
+  remote: a first run creates `gh-pages`, a second commits the change, a third finds nothing to
+  commit. **Found on the way:** it took any successful `git ls-remote` to mean the branch existed,
+  so it could not have created a new `gh-pages`. It now also needs the branch to be listed.
+- **`validate_compliance.py`** looked for the deleted Qt privacy dialog, which is why Compliance
+  Check failed on the branch (the baseline). It now checks the Electron app's
+  `renderer/src/components/PrivacyDialog.tsx`, and passes.
+
+**Workflows:**
+- `build-macos.yml`, `build-windows.yml` and `release.yml` are deleted, with
+  `build/pyinstaller.spec` and `build/Info.plist.template`.
+- `release-gates.yml` loses its two appcast steps and the old updater's
+  `CUEPOINT_SKIP_UPDATE_CHECK`. It and `test.yml` had no Qt step left after PRUNE-02.
+- Every remaining workflow says what it does in its first lines.
+
+**Tests and comments that named what went:**
+- Deleted with their scripts: `test_appcast_channels.py`, `test_beatport_v4_spike.py`,
+  `test_track_metrics.py`, and `release/test_release_workflow_two_feeds.py`, which read
+  `release.yml`.
+- From `test_release_validation.py`, the appcast, build-metadata and installer classes; from
+  `test_code_quality_step_5_7.py`, the two Makefile classes.
+- `test_file_write_boundary.py` drops the debug script from its allowed writers.
+- The Beatport v4 fixtures' README and the regression fixture list stop naming the deleted
+  spike and debug scripts, and `version.py` and `requirements-build.txt` stop naming
+  `set_build_info.py` and `generate_icons.py`.
+
+**Every changed test count is accounted for.** 45 test ids are gone, each a test of a deleted
+script or workflow: the installer, appcast and build-metadata classes (11), the release workflow
+(4), the appcast channels (4), the Beatport spike (10), the metrics script (10) and the Makefile
+(6). None was added.
+
+**Checks run** (Linux, Python 3.13):
+- the full suite: 11,877 passed, 107 skipped, 1 failed. The failure,
+  `test_the_source_spelled_differently_is_refused_all_the_same`, fails the same way on the
+  commit before this step: it spells the source in upper case and expects the engine to refuse
+  it, which holds only on a case-insensitive file system. CI runs on macOS and Windows.
+- `ruff check` and `ruff format --check` over `src/`, `check_no_qt.py`,
+  `validate_compliance.py`, and every remaining workflow parsed as YAML;
+- the audit's script section (no unreferenced or unrun script);
+- `rg` for every deleted script, workflow and file outside `docs/`. The release skill's two
+  copies still name them, and so do docs; both are PRUNE-07's (audit finding 5, group J).
+
+**Owed:** every remaining workflow's run on the branch, on this step's push. Large File Check runs
+only on `phase_*` branches and the site's workflow only on `main`, so those two were read and
+not run. `npm run dist` was not run here; this step changes nothing it builds.
 
 ---
 
