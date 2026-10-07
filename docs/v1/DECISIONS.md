@@ -4467,6 +4467,12 @@ default. The recommendation was to leave out scroll animations and shared-elemen
 
 **Decided with**: User · **Date**: 2026-10-06
 
+
+### Amended (2026-10-07, DEC-154) — the tenth kind is feedback
+
+The list above names nine kinds. The tenth is **feedback**: a tick on save, a shake on a refused
+value, a pulse on something new (DEC-154).
+
 ---
 
 ## DEC-135 — Motion Moves in Pixel Steps; Fades Stay Smooth
@@ -4914,3 +4920,138 @@ already shows the user what happened. It applies DEC-126's rule that expected re
 errors.
 
 **Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-154 — The Tenth Kind of Motion Is Feedback
+
+**Status**: Approved · **Related**: Q-157, DEC-134, DEC-135, Phase 14
+
+**Decision**: DEC-134's tenth kind of motion is **feedback**: motion that confirms or warns. A tick
+when a setting is saved, a short shake when a value is refused, a pulse on something new (a finished
+job, a new search result). It has its own switch, like the other nine.
+
+**Reason**: The user's choice, as recommended. DEC-134 named ten kinds and listed nine, and the
+user's original list is not recorded. Feedback has the most honest uses here (SET-10's "Saved" tick,
+refused times and BPMs in Prepare) and does not overlap the other nine.
+
+**Implications**:
+- **DEC-134's list is ten** with this one; its stable id is `feedback` (`PHASE14_PAGES.md`,
+  PAGES-02).
+- **A shake moves in whole pixels** like any other movement (DEC-135).
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-155 — The App Does Not Say "Engine" or "Jobs"
+
+**Status**: Approved · **Related**: Q-158, DEC-132, STR-1, Phase 14
+
+**Decision**: No user-visible text says "engine" or "jobs". The status strip says "Ready", "Starting
+up…", "Reconnecting… (attempt 2 of 3)" and "CuePoint's library service stopped" with **Restart**,
+and shows nothing when idle. Running work is "background work". The version moves to Help → About and
+Settings → About & updates. The raw error moves to the hover title and Diagnostics.
+
+**Reason**: The user's choice, as recommended. The strip is on screen all the time, and nothing the
+user does needs the word (DEC-132).
+
+**Implications**:
+- **Every end-to-end spec that waits on "Engine connected"** moves to `waitForEngine()` first, in a
+  commit of its own (PAGES-03).
+- **Developer surfaces keep the word:** the CLI, logs, Diagnostics and the docs for developers.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-156 — Collections Is Nested Under Library in the Sidebar
+
+**Status**: Approved · **Related**: Q-159, DEC-062, NAV-3, Phase 14
+
+**Decision**: The sidebar's **Collections** entry stays, indented under **Library** as a way into
+it, rather than as a second top-level destination.
+
+**Reason**: The user's choice, as recommended. It keeps DEC-062's one-click way to Collections, and
+the indent says it is part of the Library.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-157 — The Wheel Lights the Selected Track, Else the Playing One
+
+**Status**: Approved · **Related**: Q-161, DEC-133, Phase 14
+
+**Decision**: When a track is selected, the Camelot wheel lights its key and the keys compatible with
+it. With nothing selected, it lights the playing track's. The wheel's caption names which track it
+shows.
+
+**Reason**: The user's choice, as recommended. Selecting is the deliberate act, and the player bar's
+key (BAR-5) opens the wheel for the playing track.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-158 — The App Is Written in American English
+
+**Status**: Approved · **Related**: Q-162, DEC-132, Phase 14
+
+**Decision**: Every user-visible string uses American spelling: "Favorite", "organize", "color",
+"analyze", "Analyzing waveforms". The user guide follows.
+
+**Reason**: The user's choice, as recommended. Beatport, Rekordbox and most DJ software use American
+English, and today the app mixes the two.
+
+**Implications**:
+- **Labels only.** Field ids, storage keys and config keys keep their spelling
+  (`cuepoint-waveform-colour`, the `colour` field), so nothing stored changes.
+- **Each Phase 14 step** respells the strings on its own surface; PAGES-13 checks the rest.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-159 — Phase 14's Proposals: the Recommendation on Every One
+
+**Status**: Approved · **Related**: DEC-131, Phase 14
+
+**Decision**: The user took the recommendation on every proposal in `PHASE14_REVIEWS.md`. 100 are
+accepted. Four are declined:
+- **NAV-4,** count badges in the sidebar: it needs a new engine count, and CLN-3's tab counts show
+  the same on the page.
+- **STR-4,** a toast the first time each kind of background work runs: an import starts five at
+  once.
+- **BAR-6,** the reason for a missing waveform written in the seek area: it reverses WAVE-06, and
+  BAR-7's plain words in the hover title are enough.
+- **BAR-10,** a "how to play" hint: RUN-1 and RUN-3 say it.
+
+NAV-3 and STR-1 are settled by DEC-156 and DEC-155. HDR-4 is DEC-133's placement.
+
+**Reason**: The user's choice.
+
+**Implications**: Each mark is recorded beside its proposal. Only the accepted proposals are built,
+in the steps `PHASE14_PAGES.md` names for them.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-160 — A Click on the Camelot Wheel Replaces the Library's Filter
+
+**Status**: Approved · **Related**: DEC-133, DEC-157, Q-160, PAGES-10
+
+**Decision**: Clicking a key on the wheel opens the Library on all tracks in that key. The Library's
+search and rules are cleared and replaced by one key rule. There is no **All N lit keys** button.
+
+**Reason**: The user's choice. "Show me what mixes with this" is a fresh question, and carrying an
+old filter along would hide tracks without saying so. The user declined the extra button the
+recommendation added.
+
+**Implications**: PAGES-10 navigates to `/library` with `libraryRulesState` holding only the
+`key any_of <spellings>` rule. To see several lit keys at once, the DJ adds them in the Library's own
+filter.
+
+**Decided with**: User · **Date**: 2026-10-07
+
