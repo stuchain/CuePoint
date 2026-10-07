@@ -781,6 +781,195 @@ class TestHelpers:
         assert audit.reference_kind("src/cuepoint/x.py", layout) == "source"
 
 
+_CLEAN_KEYS = (
+    "main.py",
+    "scripts/README.md",
+    "apps/desktop-electron/package.json",
+    "apps/desktop-electron/electron/main.ts",
+    "apps/desktop-electron/electron/preload.cjs",
+    "apps/desktop-electron/renderer/package.json",
+    "apps/desktop-electron/renderer/index.html",
+)
+
+_CLEAN_EXTRA: dict[str, str] = {
+    "src/main.py": "from cuepoint.alive import run\ndef main():\n    run()\n",
+    "src/cuepoint/__init__.py": "",
+    "src/cuepoint/alive.py": "def run():\n    return 1\n",
+    "scripts/run_by_ci.py": "print('run')\n",
+    ".github/workflows/ci.yml": (
+        "name: CI\non:\n  push:\njobs:\n  test:\n    runs-on: ubuntu-latest\n"
+        "    steps:\n      - run: python scripts/run_by_ci.py\n"
+    ),
+    "apps/desktop-electron/renderer/src/main.tsx": "export const X = 1;\n",
+}
+
+
+@pytest.fixture()
+def clean(tmp_path: Path) -> Path:
+    """A small repository in which everything is reached."""
+    files = {k: TREE[k] for k in _CLEAN_KEYS} | _CLEAN_EXTRA
+    for rel, text in files.items():
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    return tmp_path
+
+
+def _add(root: Path, rel: str, text: str) -> None:
+    path = root / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def _check(root: Path, capsys, *extra: str) -> tuple[int, str]:
+    code = audit.main(["--root", str(root), "--check", *extra])
+    captured = capsys.readouterr()
+    return code, captured.out + captured.err
+
+
+class TestTheGuard:
+    def test_a_clean_tree_passes(self, clean, capsys):
+        code, out = _check(clean, capsys)
+        assert code == 0, out
+        assert out.strip().count("\n") == 0
+        assert "OK" in out
+
+    def test_an_unreached_module_fails(self, clean, capsys):
+        _add(clean, "src/cuepoint/orphan.py", "X = 1\n")
+        code, out = _check(clean, capsys)
+        assert code == 1
+        assert "src/cuepoint/orphan.py" in out
+        assert "Python module unreached" in out
+        assert "ALLOWLIST" in out
+
+    def test_a_migration_passes(self, clean, capsys):
+        _add(clean, "src/cuepoint/migrations/__init__.py", "")
+        _add(clean, "src/cuepoint/migrations/m001_initial.py", "VERSION = 1\n")
+        code, out = _check(clean, capsys)
+        assert code == 0, out
+
+    def test_an_allowlisted_module_passes(self, clean, capsys, monkeypatch):
+        _add(clean, "src/cuepoint/orphan.py", "X = 1\n")
+        monkeypatch.setattr(
+            audit, "ALLOWLIST", {"src/cuepoint/orphan.py": "loaded by a plugin host"}
+        )
+        code, out = _check(clean, capsys)
+        assert code == 0, out
+        assert "OK" in out
+        assert "1 allowlisted" in out
+
+    def test_an_unreferenced_script_fails(self, clean, capsys):
+        _add(clean, "scripts/nobody.py", "print('x')\n")
+        code, out = _check(clean, capsys)
+        assert code == 1
+        assert "scripts/nobody.py" in out
+        assert "unreferenced" in out
+
+    def test_a_script_only_the_retired_pipeline_runs_fails(self, clean, capsys):
+        _add(clean, "scripts/old_build.py", "print('old')\n")
+        _add(clean, "requirements-qt.txt", "PySide6==6.0\n")
+        _add(
+            clean,
+            ".github/workflows/build-old.yml",
+            TREE[".github/workflows/build-old.yml"],
+        )
+        code, out = _check(clean, capsys)
+        assert code == 1
+        assert "scripts/old_build.py" in out
+        assert "retired-pipeline" in out
+
+    @pytest.mark.parametrize("flag", ["--json", "--output"])
+    def test_check_cannot_be_combined_with_a_report(self, clean, tmp_path, flag):
+        target = tmp_path / "report.out"
+        with pytest.raises(SystemExit) as raised:
+            audit.main(["--root", str(clean), "--check", flag, str(target)])
+        assert raised.value.code == 2
+        assert not target.exists()
+
+    def test_check_cannot_be_combined_with_a_section(self, clean):
+        with pytest.raises(SystemExit):
+            audit.main(["--root", str(clean), "--check", "--section", "python"])
+
+    def test_the_hint_is_not_printed_for_a_stale_entry_alone(
+        self, clean, capsys, monkeypatch
+    ):
+        monkeypatch.setattr(audit, "ALLOWLIST", {"src/cuepoint/gone.py": "x"})
+        _, out = _check(clean, capsys)
+        assert "Delete it, wire it in" not in out
+
+    def test_a_failure_line_does_not_repeat_its_status(self, clean, capsys):
+        _add(clean, "src/cuepoint/orphan.py", "X = 1\n")
+        _, out = _check(clean, capsys)
+        assert "Python module unreached: src/cuepoint/orphan.py\n" in out
+
+    def test_a_test_only_file_says_only_tests_import_it(self, clean, capsys):
+        base = "apps/desktop-electron/renderer/src/"
+        _add(clean, base + "only.ts", "export const ONLY = 1;\n")
+        _add(clean, base + "only.test.ts", "import { ONLY } from './only';\n")
+        _, out = _check(clean, capsys)
+        assert f"Renderer file test-only: {base}only.ts (only tests import it)" in out
+
+    def test_a_script_named_only_by_a_non_dev_doc_fails(self, clean, capsys):
+        _add(clean, "scripts/doc_only.py", "print('x')\n")
+        _add(clean, "docs/guide.md", "Run `scripts/doc_only.py`.\n")
+        code, out = _check(clean, capsys)
+        assert code == 1
+        assert "scripts/doc_only.py" in out
+        assert "not-run" in out
+
+    def test_an_unreached_renderer_file_fails(self, clean, capsys):
+        _add(
+            clean,
+            "apps/desktop-electron/renderer/src/lost.ts",
+            "export const LOST = 1;\n",
+        )
+        code, out = _check(clean, capsys)
+        assert code == 1
+        assert "apps/desktop-electron/renderer/src/lost.ts" in out
+        assert "unreached" in out
+
+    def test_a_renderer_file_only_its_test_imports_fails(self, clean, capsys):
+        base = "apps/desktop-electron/renderer/src/"
+        _add(clean, base + "only.ts", "export const ONLY = 1;\n")
+        _add(
+            clean,
+            base + "only.test.ts",
+            "import { ONLY } from './only';\nexpect(ONLY).toBe(1);\n",
+        )
+        code, out = _check(clean, capsys)
+        assert code == 1
+        assert base + "only.ts" in out
+        assert "test-only" in out
+
+    def test_a_stale_allowlist_entry_for_a_missing_path_fails(
+        self, clean, capsys, monkeypatch
+    ):
+        monkeypatch.setattr(audit, "ALLOWLIST", {"src/cuepoint/gone.py": "was dynamic"})
+        code, out = _check(clean, capsys)
+        assert code == 1
+        assert "src/cuepoint/gone.py" in out
+        assert "no longer exists" in out
+        assert "remove" in out.lower()
+
+    def test_a_stale_allowlist_entry_for_a_reached_path_fails(
+        self, clean, capsys, monkeypatch
+    ):
+        monkeypatch.setattr(
+            audit, "ALLOWLIST", {"src/cuepoint/alive.py": "was unreached once"}
+        )
+        code, out = _check(clean, capsys)
+        assert code == 1
+        assert "src/cuepoint/alive.py" in out
+        assert "no longer a failing file (reached, untracked or not guarded)" in out
+        assert "remove" in out.lower()
+
+    def test_check_does_not_write_reports(self, clean, capsys):
+        code, out = _check(clean, capsys)
+        assert code == 0
+        assert "#" not in out
+        assert "| " not in out
+
+
 class TestTheRealRepository:
     """The audit runs on this repository, and what must hold of it does."""
 
@@ -804,7 +993,9 @@ class TestTheRealRepository:
     def test_the_guards_run(self, real):
         scripts = _scripts(real)
         assert scripts["scripts/check_no_qt.py"].status == "run"
-        assert scripts["scripts/audit_dead_code.py"].status == "dev-docs"
+        assert (
+            scripts["scripts/audit_dead_code.py"].status == "run"
+        )  # test.yml, PRUNE-08
 
     def test_through_the_command_line(self):
         completed = subprocess.run(
@@ -817,3 +1008,14 @@ class TestTheRealRepository:
         )
         assert completed.returncode == 0, completed.stderr
         assert "desktop-electron.yml" in completed.stdout
+
+    def test_the_repository_passes_the_guard(self):
+        completed = subprocess.run(
+            [sys.executable, str(_SCRIPT), "--check"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            cwd=str(_REPO_ROOT),
+            check=False,
+        )
+        assert completed.returncode == 0, completed.stdout + completed.stderr

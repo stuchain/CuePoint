@@ -19,6 +19,12 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
 - `generate_sha256_sums.py`: Writes `SHA256SUMS.txt` for the release artifacts. `desktop-electron.yml`.
 - `check_no_qt.py`: Fails on any Qt import, requirement or CI install. `desktop-electron.yml`, `test.yml`;
   also the `qt-guard.sh` Claude hook.
+- `audit_dead_code.py`: Reports what nothing shipped or run reaches (Python modules, scripts, workflows,
+  Electron and renderer files, exports, CSS, docs, dependencies) and changes nothing. With `--check` it is
+  the dead-code guard: exit 1 on a Python module, script or Electron/renderer file nothing shipped or run
+  reaches (a file only tests reach counts as dead), or on a stale `ALLOWLIST` entry. `test.yml` runs
+  `--check`. By hand, `python scripts/audit_dead_code.py --output report.md`; Phase 12's audit
+  (`docs/v1/PHASE12_AUDIT.md`) is written from it.
 - `run_tests.py`: Runs the Python test suites by layer (`--unit`, `--all`, `--no-slow`, `--coverage`). `test.yml`.
 - `check_large_files.py`: Fails on files over the size limit. `large-file-check.yml`, `test.yml`.
 - `check_file_sizes.py`: Fails if any tracked file exceeds the size limit. `release-gates.yml`.
@@ -52,10 +58,6 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
 - `dev_setup.py`: Checks the Python version, creates a venv, installs dependencies and runs a sanity check
   (`.github/CONTRIBUTING.md`).
 - `setup/install_requirements.sh`: Installs Python requirements on Linux/macOS.
-- `audit_dead_code.py`: Reports what nothing shipped or run reaches (Python modules, scripts, workflows,
-  Electron and renderer files, exports, CSS, docs, dependencies) and changes nothing.
-  `python scripts/audit_dead_code.py --output report.md`. Phase 12's audit (`docs/v1/PHASE12_AUDIT.md`)
-  is written from it.
 - `analyze_licenses.py`: Best-effort licence analysis of the installed Python dependencies.
 - `verify_macos_bundle.py`: Checks a packaged macOS app is in a state Apple would notarize.
 - `generate_test_xml.py`: Generates synthetic Rekordbox XML fixtures (`--benchmark` for `bench.py`).

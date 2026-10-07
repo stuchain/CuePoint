@@ -7,7 +7,8 @@ migrations. PRUNE-05 is implemented (2026-10-07): no Electron or renderer file, 
 class is unreached. PRUNE-04 is implemented (2026-10-07): the retired app's pipeline and every
 script nothing runs are gone. PRUNE-06 is implemented (2026-10-07): every dependency left has a
 live importer. PRUNE-07 is implemented (2026-10-07): 250 docs became 135, each checked against
-the code.** Eight steps, PRUNE-01…PRUNE-08. Per the
+the code. PRUNE-08 is implemented (2026-10-07): CI's dead-code guard keeps the repository clean,
+and the phase is complete in code; a Windows and macOS run is owed.** Eight steps, PRUNE-01…PRUNE-08. Per the
 process, no implementation happens from this document. Each step needs an explicit "Implement
 PRUNE-NN" instruction, scoped to exactly that step, and its outcome is recorded under the step
 afterwards. There are no open points. The measurements taken while writing it are in cross-cutting
@@ -1136,6 +1137,100 @@ user relies on.
 **Risks**: Low.
 
 **Complexity**: **S**
+
+**Outcome**: Implemented (2026-10-07). The phase is complete in code. What is still owed is a
+Windows and macOS run, listed at the end.
+
+**The guard.** `python scripts/audit_dead_code.py --check` runs in `test.yml`, right after the
+no-Qt check, on both legs. It fails, one line per file, on:
+- a Python module nothing shipped reaches (migrations and launchers pass);
+- a script nothing runs: referenced by nothing, named only by tests, non-developer docs or dead
+  scripts, or run only by the retired pipeline;
+- an Electron or renderer file nothing reaches, or that only its tests import.
+
+Exports and CSS are not guarded, as specified. `ALLOWLIST` (path → reason) holds named exceptions;
+an entry whose file is gone or no longer fails the guard fails it too, so the list cannot rot. It
+starts empty: the repository passes with no exception. `--check` cannot be combined with
+`--output`, `--json` or `--section`, so a report run cannot pass for a guard run. It reads tracked
+files (`git ls-files`) and takes about 10 seconds. Its 18 fixture tests are in
+`TestTheGuard` (`test_audit_dead_code.py`), and `TestTheRealRepository` runs it on the repository.
+
+**Where the spec differs.** The spec says "the hook and AGENTS.md's tables name it". AGENTS.md
+names it in its commands and under "Change quality". There is no Claude hook: the guard reads the
+whole repository for 10 seconds, which is a CI gate's job, not a per-edit hook's.
+
+**The before and after,** against PRUNE-01's baseline (`06844ee1`), counted by
+`audit_dead_code.py --section counts`:
+
+| What | Baseline | Now |
+| --- | --- | --- |
+| Python modules in `src/cuepoint/` | 290 files, 105,095 lines | 260 files, 98,870 lines |
+| Python test files | 468 files, 161,250 lines | 420 files, 153,101 lines |
+| Electron and renderer TypeScript | 515 files, 121,141 lines | 503 files, 120,609 lines |
+| `scripts/` | 129 files, 27,925 lines | 39 files, 12,508 lines |
+| Markdown in `docs/` | 220 files, 59,188 lines | 109 files, 48,212 lines |
+| Markdown outside `apps/website/` | 250 files | 135 files |
+| Modules nothing shipped reaches | 27, besides the migrations | 0 |
+| Modules importing PySide6 | 7 | 0 |
+| Scripts by status | 20 run, 12 run by a run script, 25 developer docs, 8 retired pipeline, 34 dead references, 29 nothing | 19 run, 19 developer docs |
+| Workflows building the Qt app | 4 | 0 |
+| Python packages declared | 40 | 27 |
+| npm packages declared (desktop, renderer) | 8, 23 | 7, 21 |
+
+All Markdown counts 216 files now: the 81 under `apps/website/` arrived with Phase 17's vendored
+skills (`f7f970f`) and are not this phase's.
+
+**The packaged engine** (Linux x64, both built and timed in one session from the same virtual
+environment, five cold starts each, twice, interleaved; `bench_engine_start.py`):
+
+| | Baseline (`06844ee1`) | Now (`a2add08`) |
+| --- | --- | --- |
+| Sidecar size | 93,493,968 bytes | 93,470,608 bytes |
+| Sidecar start, median of each round | 2,779 ms, 2,833 ms | 2,853 ms, 2,862 ms |
+| From source, median of each round | 995 ms, 984 ms | 1,037 ms, 997 ms |
+
+The sidecar is 23 KB smaller: Qt and the removed packages were never in it, so only the removed
+modules' bytes went. The start times are the same within the runs' own spread (each round's
+range is about 250 ms), as PRUNE-01 warned they move with the machine's load. The installer's size
+is owed to the Windows run.
+
+**The suites,** on `a2add08` on Linux:
+
+| Suite | Baseline | Now |
+| --- | --- | --- |
+| Python, everything | 12,138 passed, 50 skipped, 1 failed and 3 errors collecting (all Qt, CI-like) | 11,861 passed, 105 skipped, 1 failed |
+| Renderer | 4,209 passed in 159 files | 4,198 in 157 files (see below) |
+| Electron main | 595 passed in 28 files | 558 passed, 37 skipped, in 28 files |
+
+Every step's outcome accounts for the tests it removed with its code. The one Python failure is
+`test_the_source_spelled_differently_is_refused_all_the_same`, which assumes a case-insensitive
+file system and fails on Linux before and after this phase (PRUNE-04). More tests skip on Linux
+than on the baseline's Windows. The renderer's `StatusStrip.test.tsx` ("follows progress over SSE
+rather than by polling") failed in two of three full runs in this container and passes alone; it
+fails the same way on `3517ec9`, before any of this phase's code steps, so it is a timing-sensitive
+test, not a regression. The renderer's lint (0 errors, the same `only-export-components`
+warnings) and both typechecks are clean.
+
+The Electron end-to-end suite did not finish in this container: it stopped at the 40-minute limit
+with many specs failing on the container's own engine environment, so it gives no result either
+way. It is owed to the Windows run.
+
+**Phase-level acceptance:**
+1. Met (PRUNE-01).
+2. Met (PRUNE-02); `check_no_qt.py` passes and CI installs no Qt.
+3. Met: the guard above, in CI, with an empty allowlist.
+4. Partly met. Every remaining workflow builds or checks something that exists (PRUNE-04), but
+   Test is still red on macOS for reasons that predate this phase: `bench_engine_start.py`'s tests time out there, and the Qt guard
+   hook's `${p,,}` needs bash 4, which macOS lacks.
+5. Met: every dependency has a live importer (PRUNE-06), and the engine is no larger and starts no
+   slower (above).
+6. Met (PRUNE-07); Docs Check is green.
+7. Met: no route, flag, config key, migration or export changed, and the contract tests pass.
+8. Owed: the end-to-end suite and `npm run dist` on Windows, and CI's macOS build, need a run off
+   this container.
+
+**Still owed:** the Windows run (`npm run dist`, installer size, the app starts, the end-to-end
+suite with the 9 audio-playing specs PRUNE-05 owes) and a macOS one.
 
 ---
 

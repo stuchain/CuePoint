@@ -16,8 +16,11 @@ to 18 are not yet. PRUNE-01 is implemented
 PRUNE-02 is implemented (2026-10-06): Qt is removed, and `scripts/check_no_qt.py` keeps it out.
 PRUNE-03 is implemented (2026-10-07): no unreached Python module remains but the migrations.
 PRUNE-04 is implemented (2026-10-07): the retired app's workflows and every script nothing runs are gone.
+PRUNE-05 is implemented (2026-10-07): no Electron or renderer file, export or class is unreached.
 PRUNE-06 is implemented (2026-10-07): every dependency left has a live importer.
 PRUNE-07 is implemented (2026-10-07): 250 docs became 135, each checked against the code.
+PRUNE-08 is implemented (2026-10-07): a guard in CI keeps dead code out, and Phase 12 is complete in
+code; a Windows and macOS run is owed.
 Phase 11 is specified in `PHASE11_WAVEFORMS.md` (WAVE-01…WAVE-08), unblocked by Decision Round 13
 (DEC-113…DEC-123); WAVE-01 to WAVE-08 are implemented, WAVE-08 (loudness, DEC-124, which
 supersedes DEC-121) the last. Phase 11's acceptance is met on Windows, in the
@@ -802,7 +805,7 @@ Why this order:
 - **Distribution comes before the website,** so that the site's download offers each build. The site
   comes last among these phases, so that its pictures show the revisited pages.
 
-## Phase 12 — Cleanup: Repository, Dead Code and Docs (PRUNE-01 … PRUNE-08) — in progress
+## Phase 12 — Cleanup: Repository, Dead Code and Docs (PRUNE-01 … PRUNE-08) — implemented
 
 Specified 2026-10-06 in `PHASE12_CLEANUP.md`, in eight steps:
 - **PRUNE-01:** the audit, approved by group before anything goes. *Implemented 2026-10-06;
@@ -810,10 +813,11 @@ Specified 2026-10-06 in `PHASE12_CLEANUP.md`, in eight steps:
 - **PRUNE-02:** Qt. *Implemented 2026-10-06.*
 - **PRUNE-03:** legacy Python modules. *Implemented 2026-10-07.*
 - **PRUNE-04:** the old release pipeline and scripts nothing runs. *Implemented 2026-10-07.*
-- **PRUNE-05:** dead Electron and renderer code.
+- **PRUNE-05:** dead Electron and renderer code. *Implemented 2026-10-07.*
 - **PRUNE-06:** dependencies. *Implemented 2026-10-07.*
 - **PRUNE-07:** the docs. *Implemented 2026-10-07.*
-- **PRUNE-08:** a dead-code guard in CI, and the phase comes together.
+- **PRUNE-08:** a dead-code guard in CI, and the phase comes together. *Implemented 2026-10-07;
+  the Windows and macOS runs are owed.*
 
 The prefix is PRUNE because CLEAN is Phase 7's.
 

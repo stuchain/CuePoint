@@ -61,6 +61,12 @@ jobs:
       - name: Verify Qt has not come back
         run: python scripts/check_no_qt.py
 
+      # Fails on a Python module, script or renderer file nothing shipped or
+      # run reaches (a file only a test reaches counts as dead).
+      # See docs/v1/PHASE12_CLEANUP.md, PRUNE-08.
+      - name: Dead-code guard
+        run: python scripts/audit_dead_code.py --check
+
       - name: Run tests (unit, integration, system)
         run: |
           python scripts/run_tests.py --all --coverage --no-slow

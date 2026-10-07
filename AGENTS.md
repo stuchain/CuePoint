@@ -56,6 +56,7 @@ ruff check src/
 ruff format --check src/
 python -m pytest src/tests/integration/test_mypy_foundation.py -q  # the mypy gate; bare `mypy src/` reports legacy debt
 python scripts/check_no_qt.py
+python scripts/audit_dead_code.py --check  # the dead-code guard (CI runs it)
 
 # Renderer (from apps/desktop-electron/renderer)
 npm test
@@ -117,6 +118,8 @@ re-staging. mypy is excluded from it deliberately; `.pre-commit-config.yaml` exp
 ## Change quality
 
 - Make the smallest coherent change; search callers before deletion or rename.
+- When you delete or add a module, script or renderer file, run the guard (it reads tracked files,
+  so `git add` new ones first); a file only a test reaches counts as dead.
 - Keep shared skill instructions synchronized between `.agents/skills/` (Codex) and
   `.claude/skills/` (Claude Code); `agents/openai.yaml` metadata is Codex-only.
 - Add unit tests for logic, a regression test for bugs, and integration/E2E coverage for changed

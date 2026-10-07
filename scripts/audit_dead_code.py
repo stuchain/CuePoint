@@ -42,6 +42,7 @@ Usage::
     python scripts/audit_dead_code.py --output r.md   # ...or to a file
     python scripts/audit_dead_code.py --json r.json   # the full findings as JSON
     python scripts/audit_dead_code.py --section python --section scripts
+    python scripts/audit_dead_code.py --check         # the guard: exit 1 on dead code
 """
 
 from __future__ import annotations
@@ -66,6 +67,12 @@ except ModuleNotFoundError:  # pragma: no cover - the repository needs 3.11+
     tomllib = None  # type: ignore[assignment]
 
 ROOT = Path(__file__).resolve().parent.parent
+
+#: PRUNE-08: files the guard (``--check``) tolerates although the scan finds
+#: nothing reaching them, as ``path -> why it is genuinely used``. Only a use the
+#: scan cannot see belongs here; otherwise delete the file or wire it in. An
+#: entry whose file is gone or is now reached fails the guard, so this cannot rot.
+ALLOWLIST: dict[str, str] = {}
 
 SECTIONS = (
     "counts",
@@ -2435,6 +2442,74 @@ def audit_to_json(audit: Audit) -> dict[str, Any]:
     return {key: value for key, value in asdict(audit).items() if value is not None}
 
 
+#: Script statuses the guard fails on, and the same for renderer/Electron files.
+GUARD_SCRIPT_STATUSES = ("unreferenced", "not-run", "retired-pipeline")
+GUARD_TS_STATUSES = ("unreached", "test-only")
+
+
+def guard_failures(audit: Audit) -> list[tuple[str, str, str]]:
+    """``(kind, path, reason)`` for each file the guard fails on, allowlist aside.
+
+    The kind carries the status, so ``reason`` is empty unless it says more.
+    """
+    found: list[tuple[str, str, str]] = []
+    if audit.python:
+        found += [
+            ("Python module unreached", m.path, "")
+            for m in audit.python.modules
+            if m.status == "unreached"
+        ]
+    found += [
+        (f"Script {s.status}", s.path, s.reason)
+        for s in audit.scripts or []
+        if s.status in GUARD_SCRIPT_STATUSES
+    ]
+    if audit.typescript:
+        for f in audit.typescript.files:
+            if f.status not in GUARD_TS_STATUSES:
+                continue
+            side = "Electron" if "/electron/" in f"/{f.path}" else "Renderer"
+            reason = "only tests import it" if f.status == "test-only" else ""
+            found.append((f"{side} file {f.status}", f.path, reason))
+    return sorted(found, key=lambda item: item[1])
+
+
+def run_guard(root: Path) -> int:
+    """PRUNE-08: print one line per dead file and return 1, or print OK and 0."""
+    audit = run_audit(root, ("python", "scripts", "typescript"))
+    failures = guard_failures(audit)
+    failing = {path for _, path, _ in failures}
+    lines = [
+        f"{kind}: {path}" + (f" ({reason})" if reason else "")
+        for kind, path, reason in failures
+        if path not in ALLOWLIST
+    ]
+    dead = len(lines)
+    for path, reason in sorted(ALLOWLIST.items()):
+        if path in failing:
+            continue
+        why = (
+            "is no longer a failing file (reached, untracked or not guarded)"
+            if (root / path).exists()
+            else "no longer exists"
+        )
+        lines.append(
+            f"Stale allowlist entry: {path} {why} ({reason}); remove it from ALLOWLIST"
+        )
+    if lines:
+        print("\n".join(lines), file=sys.stderr)
+        print(f"Dead-code guard: {len(lines)} problem(s).", file=sys.stderr)
+        if dead:
+            print(
+                "Delete it, wire it in, or add it to ALLOWLIST in "
+                "scripts/audit_dead_code.py with a reason.",
+                file=sys.stderr,
+            )
+        return 1
+    print(f"Dead-code guard: OK ({len(ALLOWLIST)} allowlisted).")
+    return 0
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Report what nothing shipped or run reaches (Phase 12, PRUNE-01)."
@@ -2448,12 +2523,23 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     parser.add_argument("--output", type=Path, help="write the Markdown report here")
     parser.add_argument("--json", type=Path, dest="json_path", help="write JSON here")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="the dead-code guard: exit 1 if a module, script or renderer file is unreached",
+    )
     args = parser.parse_args(argv)
 
     sections = tuple(args.section) if args.section else SECTIONS
     if not args.root.is_dir():
         print(f"Not a directory: {args.root}", file=sys.stderr)
         return 2
+    if args.check:
+        if args.output or args.json_path or args.section:
+            parser.error(
+                "--check cannot be combined with --output, --json or --section"
+            )
+        return run_guard(args.root)
     audit = run_audit(args.root, sections)
     report = render_markdown(audit, sections)
     if args.json_path:

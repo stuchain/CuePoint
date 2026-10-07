@@ -320,6 +320,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status chrome off-screen as those are added
 
 ### Removed
+- **Code, scripts, dependencies and docs nothing used** (Phase 12, DEC-147).
+  Qt and the retired Qt app's code are gone, with the 30 Python modules and 12
+  Electron and renderer files nothing reached, the old app's build and release
+  workflows, 90 scripts nothing ran, 13 Python and 3 npm dependencies nothing
+  used, and 115 docs that were stale or said the same thing twice. Nothing a
+  user relies on changed: the app, the CLI and its flags, the engine's routes
+  and answers, config keys, the databases and exports are as they were. CI now
+  fails when a Python module, script or desktop source file that nothing runs
+  appears again (`scripts/audit_dead_code.py --check`)
 - **inCrate and the Tools group** (DEC-090, DEC-100, ADR-007). Discover does
   everything inCrate did, on the library you already imported, so there is no
   second import. The app opens on the **Library** when it has no page to
