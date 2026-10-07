@@ -73,7 +73,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* `--hit-min` (44px x scale), the same floor `ToolbarIcon` and `Button` use.
+  /* `--hit-min` (44px x scale), the same floor `Button` uses.
      Sized from the token rather than a number picked here, so the transport
      obeys the app's own standard at every scale — the design sign-off measures
      against it. */

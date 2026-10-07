@@ -71,8 +71,8 @@ interface NavDestinationBase {
 }
 
 /**
- * Exactly one of `icon` and `glyph`, mirroring `ToolbarIcon`'s union so the
- * sidebar can hand either straight through. DEC-010 drew only the highest
+ * Exactly one of `icon` and `glyph`, so the sidebar can hand either straight
+ * through. DEC-010 drew only the highest
  * -visibility icons; `clean`, `discover` and `prepare` stay Unicode glyphs
  * until SHELL-09 draws them against this rail.
  */

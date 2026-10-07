@@ -818,9 +818,10 @@ held only them, and `--results-frame-max-width`, which only they used. `screens.
 `.screen--stack:not(.screen--fill):not(.screen--scroll)`: the rule is live, and `screen--fill`
 is named only inside its `:not()`, which is why the audit still lists it.
 
-**Found, not changed:** with the barrel's re-exports gone, `ListRow`, `ProgressBar` and
-`ToolbarIcon` (each with its stylesheet) are reached only by their stories and tests. Group G's
-approval did not cover them, so they stay for the user to decide.
+**Found after the audit:** with the barrel's re-exports gone, `ListRow`, `ProgressBar` and
+`ToolbarIcon` were reached only by their stories and `ToolbarIcon.test.tsx`. The user approved their
+removal the same day, and they went with their stylesheets, stories and test. The renderer then
+runs 157 files and 4,198 tests: `ToolbarIcon.test.tsx` held 9.
 
 ---
 
