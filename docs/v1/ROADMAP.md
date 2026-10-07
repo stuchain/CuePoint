@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 asked (Q-180…Q-189).**
 
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
@@ -12,7 +12,7 @@ Phase numbers follow the order of implementation (DEC-146):
 
 Phase 12 is specified (`PHASE12_CLEANUP.md`), and so are Phase 13 (`PHASE13_REPORTING.md`), Phase 14
 (`PHASE14_PAGES.md`, with its page reviews in `PHASE14_REVIEWS.md`) and Phase 15
-(`PHASE15_STATISTICS.md`) and Phase 16 (`PHASE16_DISTRIBUTION.md`); Phases 17 and 18 are not yet. PRUNE-01 is implemented
+(`PHASE15_STATISTICS.md`), Phase 16 (`PHASE16_DISTRIBUTION.md`) and Phase 17 (`PHASE17_WEBSITE.md`); Phase 18 is not yet. PRUNE-01 is implemented
 (2026-10-06): the audit is `PHASE12_AUDIT.md`, and the user approved every group of it the same day.
 PRUNE-02 is implemented (2026-10-06): Qt is removed, and `scripts/check_no_qt.py` keeps it out.
 PRUNE-03 is implemented (2026-10-07): no unreached Python module remains but the migrations.
@@ -794,7 +794,7 @@ Step specifications: `PHASE11_WAVEFORMS.md`.
 The user asked for these to be built before v1's hardening. Phase numbers follow the order of
 implementation (DEC-146). Each phase runs alone, and Phase 18 follows them. Decision Round 14
 settled the shape of Phases 13 to 17 (DEC-126…DEC-145), and Decision Round 15 settled Phase 12's
-(DEC-147). Phases 12 to 16 are specified, and the rest are not yet. Items marked *proposed* are suggestions that have not been accepted.
+(DEC-147). Phases 12 to 17 are specified. Items marked *proposed* are suggestions that have not been accepted.
 
 Why this order:
 - **Cleanup comes first,** so that every later phase works in a smaller codebase and a smaller set of
@@ -978,6 +978,14 @@ themselves at quit (DEC-170, which amends DEC-129). Nothing is open.
 - **"What's new"** shown once after an update (DEC-172).
 
 ## Phase 17 — Website
+
+Specified 2026-10-07 in `PHASE17_WEBSITE.md`, in thirteen steps (SITE-01…SITE-13): the Astro project
+and one address, the app's look as generated tokens and one page layout, DEC-141's checks failing the
+build, the app's pictures captured from the app, the 3D runtime with its rendered stills, then home,
+download, features, guide and FAQ, changelog and blog, privacy, terms and the 404, the forms and
+analytics, and the launch. Writing it raised ten questions, asked as Decision Round 20
+(Q-180…Q-189): the opening scene, the site's colors, sound, the analytics and form services, the
+download before 1.0.0, when the site goes live, the domain, comparison pages, and the mark.
 
 - **A full remake** (DEC-139). Today the site is `gh-pages-root/`, one 639-line page.
   - **Where and how:** `apps/website/` in this repository, built with Astro and Three.js, with

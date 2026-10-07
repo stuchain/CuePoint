@@ -3586,3 +3586,145 @@ holds.
 
 **Recommendation**: **A**. The changelog is already checked in CI, and the release then needs no
 manual step.
+
+---
+
+## DECISION ROUND 20 — THE WEBSITE (Phase 17) ⏳ Open, asked 2026-10-07
+
+Asked while specifying Phase 17 (`PHASE17_WEBSITE.md`). Decision Round 14 settled the site's shape
+(DEC-139, DEC-141…DEC-144). Writing the steps raised ten questions those decisions do not answer.
+
+Found while specifying:
+- **Deploying by Actions stops the `gh-pages` branch being served,** with the retired app's
+  appcasts and two old installers on it. The branch is kept; the retired app finds no update.
+- **Today's page loads Google Analytics,** which DEC-142 replaces.
+- **The app has no icon of its own,** and the only mark is a green rounded logo with none of the
+  pixel signature. Q-189.
+- **Release data is read at build,** and a release triggers a deploy, so the download page is never
+  older than the newest release.
+
+### Q-180 — The opening scene
+
+**Status**: Open
+
+**Question**: The home page opens on one scroll-driven 3D scene. Which story does it tell?
+
+- **Option A — The crate becomes the wheel.** A voxel crate of unlabeled records; as you scroll,
+  the records lift out, get their key, tempo and genre as pixel labels, fly into a 3D Camelot wheel
+  that lights up, and the wheel turns flat into the real app's window.
+- **Option B — The library as a city.** Each track a voxel tower, its height the tempo and its color
+  the key; the camera flies over, and cleaning tidies the skyline.
+- **Option C — The waveform landscape.** A voxel terrain made from a track's waveform, which the
+  camera rides like a playhead.
+
+**Recommendation**: **A**. It is the product's story in one movement (messy, matched, organized,
+ready), it shows a feature only CuePoint has (the wheel), and it lands on the real app.
+
+### Q-181 — The site's colors
+
+**Status**: Open
+
+- **Option A — The app's five themes, switchable.** A pixel switch in the header recolors the pages
+  and the 3D; Neo Dark first.
+- **Option B — Neo Dark only.**
+
+**Recommendation**: **A**. It shows a feature of the app on the site itself, and costs little: the
+colors are tokens and one shader uniform.
+
+### Q-182 — Sound
+
+**Status**: Open
+
+**Question**: A DJ's site could move to music. Never on its own.
+
+- **Option A — No sound.**
+- **Option B — An opt-in speaker button.** Off by default; pressed, it plays a short loop and the
+  voxels move to it. You supply a loop you own the rights to; until then the button is hidden.
+
+**Recommendation**: **B**. It is the moment a DJ remembers, and it never plays unasked.
+
+### Q-183 — The analytics service
+
+**Status**: Open
+
+**Question**: DEC-142 left the choice among Plausible, Umami and Cloudflare. You create the account.
+
+- **Option A — Umami Cloud.** A free plan, no cookie, and download clicks counted as events.
+- **Option B — Plausible.** No cookie and events, paid (from about $9 a month).
+- **Option C — Cloudflare Web Analytics.** Free and no cookie, but it cannot count download clicks.
+
+**Recommendation**: **A**. It counts what the backlink plan needs (sources and downloads) at no cost.
+
+### Q-184 — The form service
+
+**Status**: Open
+
+**Question**: GitHub Pages cannot receive a form. You create the account.
+
+- **Option A — Web3Forms.** A free plan; each form sends to your email; a public access key.
+- **Option B — Formspree.** A free plan with a dashboard, and a lower monthly limit.
+
+**Recommendation**: **A**. Two low-traffic forms fit its free plan, and the messages land in your
+inbox.
+
+### Q-185 — The download before 1.0.0
+
+**Status**: Open
+
+**Question**: Until Phase 18 ends with 1.0.0, every release is a test release (DEC-176).
+
+- **Option A — The newest test release, marked Preview,** with one line on what that means.
+- **Option B — No download until 1.0.0;** the page links GitHub's releases.
+
+**Recommendation**: **A**. The site's first visitors can try it, and DEC-145 moves them to 1.0.0 by
+themselves.
+
+### Q-186 — When the site goes live
+
+**Status**: Open
+
+- **Option A — At the end of this phase,** deployed from `feature` until v1 is on `main`, then from
+  `main`.
+- **Option B — When v1 is on `main`,** at the end of Phase 18.
+
+**Recommendation**: **A**. Search engines start learning the site months earlier, and the old page
+describes the retired app.
+
+### Q-187 — The domain
+
+**Status**: Open
+
+**Question**: DEC-139 keeps GitHub Pages' address until a domain is bought.
+
+- **Option A — Launch on `stuchain.github.io/CuePoint`,** and move later (one setting).
+- **Option B — Buy a domain before launch** (about $10–20 a year, yours) and launch on it.
+
+**Recommendation**: **B**. Launching once on the final address avoids a move, gives the site a name
+people remember, and lets Search Console verify the whole domain.
+
+### Q-188 — Comparison pages
+
+**Status**: Open
+
+**Question**: DJs search for "X alternative" and "X vs Y".
+
+- **Option A — Yes.** A page per similar tool (for example Lexicon, Mixed In Key, rekordcloud), each
+  fact linked to the tool's own page and dated, saying what CuePoint does not do too. You review
+  each before launch.
+- **Option B — No comparison pages.**
+
+**Recommendation**: **A**. They answer searches the feature pages cannot, and dated, sourced facts
+keep them fair.
+
+### Q-189 — The mark and the favicon
+
+**Status**: Open
+
+**Question**: The only mark is `gh-pages-root/logo.svg`, a green rounded square, and the app has no
+icon.
+
+- **Option A — A new pixel-art mark,** drawn in the app's style (square, black outline, bevel, the
+  theme's accent). You approve it; the site uses it, and Phase 18 can make it the app's icon.
+- **Option B — Keep the current logo.**
+
+**Recommendation**: **A**. Every other surface is pixel art; the favicon is the one seen most.
