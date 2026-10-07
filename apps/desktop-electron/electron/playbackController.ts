@@ -1,4 +1,9 @@
 import type { MpvEndFile, MpvStartFile } from "./mpvClient";
+
+type PlayerEvent =
+  | { kind: "start"; info: MpvStartFile }
+  | { kind: "end"; info: MpvEndFile }
+  | { kind: "idle" };
 import {
   FailureReporter,
   type FailureReport,
@@ -98,6 +103,19 @@ export class PlaybackController {
    * advanced to a track nobody queued.
    */
   private generation = 0;
+
+  /**
+   * mpv's events about entries an append in flight has not named yet.
+   *
+   * mpv fails a missing file in about a millisecond, so it can start the entry
+   * an append just added, fail it and go idle before the append's reply says
+   * which entry id it was. Taken as they arrive, the start is unknown and
+   * dropped, the queue stays a track behind, and the idle looks like mpv
+   * having moved on: the queue stalls with tracks untried. Held instead, and
+   * replayed in order once the id is known. Null when no append is in flight.
+   */
+  private unnamed: PlayerEvent[] | null = null;
+  private appendsInFlight = 0;
 
   constructor(
     private readonly player: PlayerSupervisor,
@@ -306,12 +324,46 @@ export class PlaybackController {
     }
     if (this.preloadedItemId === upcoming.id) return;
 
-    const entryId = await this.player.enqueue(upcoming.filePath);
+    this.appendsInFlight += 1;
+    this.unnamed ??= [];
+    let entryId: number | null;
+    try {
+      entryId = await this.player.enqueue(upcoming.filePath);
+    } catch (error) {
+      this.appendsInFlight -= 1;
+      this.replayUnnamed();
+      throw error;
+    }
+    this.appendsInFlight -= 1;
     // A `replace` happened while this append was in flight: mpv's playlist is
     // not the one this entry id belongs to any more.
-    if (generation !== this.generation) return;
+    if (generation !== this.generation) {
+      this.replayUnnamed();
+      return;
+    }
     if (entryId !== null) this.entryToItem.set(entryId, upcoming.id);
     this.preloadedItemId = upcoming.id;
+    this.replayUnnamed();
+  }
+
+  /** True when an event names an entry that an append in flight may yet name. */
+  private holdsFor(entryId: number | null | undefined): boolean {
+    if (this.unnamed === null) return false;
+    // Once one event is held, everything after it waits too, so that order is kept.
+    if (this.unnamed.length > 0) return true;
+    return entryId != null && !this.entryToItem.has(entryId);
+  }
+
+  /** Handles the held events now that the appends in flight have answered. */
+  private replayUnnamed(): void {
+    if (this.appendsInFlight > 0 || this.unnamed === null) return;
+    const held = this.unnamed;
+    this.unnamed = null;
+    for (const event of held) {
+      if (event.kind === "start") this.onStartFile(event.info);
+      else if (event.kind === "end") this.onEndFile(event.info);
+      else this.onPlayerIdle();
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -325,6 +377,10 @@ export class PlaybackController {
    * to catch up — this is the gapless transition, observed after the fact.
    */
   private onStartFile(info: MpvStartFile): void {
+    if (this.holdsFor(info.playlistEntryId)) {
+      this.unnamed!.push({ kind: "start", info });
+      return;
+    }
     if (info.playlistEntryId === null) return;
     const itemId = this.entryToItem.get(info.playlistEntryId);
     if (!itemId || itemId === this.queue.currentId) return;
@@ -350,6 +406,10 @@ export class PlaybackController {
    * rather than leaving a stale "playing" state.
    */
   private onEndFile(info: MpvEndFile): void {
+    if (this.holdsFor(info.playlistEntryId)) {
+      this.unnamed!.push({ kind: "end", info });
+      return;
+    }
     if (info.reason === "error" && isAudioOutputFailure(info.error)) {
       // Not the file's fault and not the file's problem: mpv could not open
       // the audio output. Marking the track failed here would blame a track
@@ -392,6 +452,10 @@ export class PlaybackController {
    * means something is stuck.
    */
   private onPlayerIdle(): void {
+    if (this.unnamed !== null && this.unnamed.length > 0) {
+      this.unnamed.push({ kind: "idle" });
+      return;
+    }
     const failedId = this.failedAwaitingAdvance;
     if (failedId === null) return;
     this.failedAwaitingAdvance = null;

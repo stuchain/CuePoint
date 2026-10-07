@@ -571,6 +571,46 @@ describe("recovering from a failure (PLAYER-10)", () => {
     expect(calls.some((call) => call.kind === "stop")).toBe(true);
   });
 
+  it("follows mpv into an entry it started before the append that made it answered", async () => {
+    // Found by the end-to-end test: mpv fails a missing file in a millisecond,
+    // so it can start the entry CuePoint just appended, fail it and go idle,
+    // all before the append's reply says which entry id it was. The start was
+    // then unknown and dropped, the queue stayed a track behind, and the idle
+    // looked like mpv having moved on: the queue stalled with tracks untried
+    // and the message never said playback stopped.
+    const { player, calls, finish, advanceTo, goIdle } = fakePlayer();
+    const fake = player as unknown as { enqueue: (file: string) => Promise<number> };
+    const enqueue = fake.enqueue;
+    fake.enqueue = async (file: string) => {
+      if (file !== "/music/c.flac") return enqueue(file);
+      const id = await enqueue(file);
+      finish("error", 2, "loading failed");
+      advanceTo(id);
+      finish("error", id, "loading failed");
+      goIdle();
+      return id;
+    };
+    const controller = new PlaybackController(player, { failureWindowMs: 1_000 });
+    const notices = watch(controller);
+    await controller.playQueue(tracks("a", "b", "c"), 0);
+
+    finish("error", 1, "loading failed");
+    advanceTo(2);
+
+    await vi.waitFor(() => expect(notices).toHaveLength(1));
+    expect(notices[0]).toMatchObject({
+      stopped: true,
+      count: 3,
+      message: "3 tracks could not be played — playback stopped",
+    });
+    expect(calls.some((call) => call.kind === "stop")).toBe(true);
+    expect(controller.queueWindow(0, 10).items.map((item) => item.status)).toEqual([
+      "failed",
+      "failed",
+      "failed",
+    ]);
+  });
+
   it("says playback stopped even when mpv goes idle after the window closes", async () => {
     // Found by the end-to-end test on a loaded machine: the last failure's
     // `idle-active` came more than the window after its `end-file`, so the
