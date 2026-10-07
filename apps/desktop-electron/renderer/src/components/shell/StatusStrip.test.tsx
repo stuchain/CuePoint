@@ -57,6 +57,19 @@ beforeEach(() => {
   bridge();
 });
 
+/**
+ * The job stream, once the strip has subscribed to it.
+ *
+ * The strip subscribes in an effect after the job first renders, so the label
+ * can be on screen before there is anything to send an event to. Sending one
+ * then did nothing, which a loaded machine turned into a failure and which made
+ * "ignores an event for a different job" pass without sending anything.
+ */
+async function stream(): Promise<(event: unknown) => void> {
+  await waitFor(() => expect(sseHandler).not.toBeNull());
+  return sseHandler!;
+}
+
 afterEach(() => {
   vi.useRealTimers();
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
@@ -304,7 +317,7 @@ describe("jobs", () => {
     // runs.
     listJobs.mockReturnValue(new Promise(() => {}));
 
-    sseHandler?.({
+    (await stream())({
       id: "job-1",
       state: "running",
       progress: { completed_tracks: 8, total_tracks: 10, percentage: 80 },
@@ -319,7 +332,7 @@ describe("jobs", () => {
     render(<StatusStrip />);
     await screen.findByText("Matching on Beatport 3/10");
 
-    sseHandler?.({
+    (await stream())({
       id: "someone-elses-job",
       state: "running",
       progress: { completed_tracks: 9, total_tracks: 10, percentage: 90 },
