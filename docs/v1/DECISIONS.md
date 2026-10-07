@@ -4345,7 +4345,7 @@ nothing personal, and the switch and the notice say so.
 
 ## DEC-129 — macOS Ships as Two Downloads, Apple Silicon and Intel
 
-**Status**: Approved · **Related**: Q-130, PLAYER-01, Phase 16
+**Status**: Approved · Amended by DEC-170 (unsigned; no Apple Developer account) · **Related**: Q-130, PLAYER-01, Phase 16
 
 **Decision**: The Mac app is built, signed and notarized twice, once for Apple Silicon (arm64) and
 once for Intel (x64). It is not a Universal build.
@@ -4707,7 +4707,7 @@ and the user approves the final text before launch.
 
 ## DEC-145 — The Auto-Updater: A Test Build Takes the Newest Test or Normal Release; a Normal Build Only Normal
 
-**Status**: Approved · **Related**: Q-129, DEC-019, DEC-129, Phase 16 · **Supersedes**: the test-only
+**Status**: Approved · Mechanism settled by DEC-169 and DEC-170 · **Related**: Q-129, DEC-019, DEC-129, Phase 16 · **Supersedes**: the test-only
 track of `docs/release/design-two-appcast-feeds-test-stable.md`
 
 **Decision**: The installed build's own version decides what it may be offered.
@@ -5194,5 +5194,176 @@ import and the first refresh after updating, which would otherwise be lost.
 
 **Implications**: Amends DEC-137's start. With no library imported, there is nothing to seed, and
 history starts at the first import.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-169 — CuePoint's Rule Picks the Release; electron-updater Installs It on Windows
+
+**Status**: Approved · **Related**: Q-170, DEC-145, DIST-05, DIST-06
+
+**Decision**: The app reads GitHub's release list and chooses the release with DEC-145's one pure
+function. On Windows, `electron-updater` is then pointed at that release alone, and downloads,
+checks and installs it, with block maps so only what changed is downloaded. Its own release
+choice is never used. macOS installs as DEC-170 says.
+
+**Reason**: The user's choice, as recommended. `electron-updater`'s own GitHub channels pick the
+newest-published release, not the highest version, so they cannot follow DEC-145 on their own.
+
+**Implications**: DIST-05 (the rule and the release list) and DIST-06. Sparkle appcasts are not
+revived.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-170 — The Macs Ship Unsigned and Replace Themselves at Quit, as the Retired App Did
+
+**Status**: Approved · **Related**: Q-171, DEC-129, DEC-145, DEC-019, DIST-04, DIST-06 ·
+**Amends**: DEC-129 ("signed and notarized")
+
+**Decision**: There is no Apple Developer account, so neither Mac build is signed with a Developer
+ID or notarized; electron-builder's ad-hoc signature is kept. The Macs update the way the retired
+Qt app did, without Squirrel.Mac: the app downloads its chip's build itself, and the new app
+replaces the old one where it is installed, then opens.
+
+**Reason**: The user's choice ("do whatever we did in the past updater"). Squirrel.Mac, which
+`electron-updater` uses on macOS, refuses an update for an unsigned app. The retired app's
+installer (`update/update_installer.py`, `_install_macos`, removed in b864019) mounted the DMG,
+deleted `/Applications/CuePoint.app`, copied the new app in, opened it and exited. A file the app
+downloads itself carries no quarantine flag, so Gatekeeper does not stop the new copy.
+
+**Implications**:
+- **Made safer than before** (DIST-06):
+  - the zip, not a mounted DMG;
+  - the SHA-512 and size checked against the release's manifest;
+  - the version and chip checked in the bundle;
+  - the swap done by a small script only after the app has quit, with the old bundle restored if
+    the swap fails;
+  - the app replaced where it is installed, not always in `/Applications`.
+- **When the app's folder cannot be written,** or the app runs from the DMG or translocated, it
+  offers **Download** instead of installing.
+- **The first install is by hand,** with the quarantine flag cleared as the user guide says.
+  Updates after that need nothing.
+- **The release workflow does not sign or notarize.** The signing hooks stay as no-ops without
+  credentials, and key-management says what an Apple Developer account would change: sign,
+  notarize and move the Macs to `electron-updater`.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-171 — "Update Ready" Is a Quiet Item in the Status Strip
+
+**Status**: Approved · **Related**: Q-172, DEC-145, DIST-07
+
+**Decision**: When an update has downloaded, the status strip shows "CuePoint X is ready". It
+opens a panel with the release notes, **Restart now** and **Later**, and it stays until the update
+installs.
+
+**Reason**: The user's choice, as recommended. It never interrupts a set being prepared. Toasts
+vanish after 4 s and hold no buttons.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-172 — "What's New" Shows Once After an Update
+
+**Status**: Approved · **Related**: Q-173, DIST-06, DIST-07
+
+**Decision**: On the first launch after an update, that version's notes are shown once and
+dismissed with **Got it**. They are not shown on a first install. They can be read again from
+Settings › About & updates.
+
+**Reason**: The user's choice, as recommended. An update that installed at quit was never seen.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-173 — Restart Now Asks First While Work Is Running
+
+**Status**: Approved · **Related**: Q-174, DIST-06
+
+**Decision**: If work is running (waveform analysis, matching, an export), **Restart now** asks
+first and names the work. It offers **Restart when done**, **Restart now** and **Cancel**.
+
+**Reason**: The user's choice, as recommended. It is the one quit the user may not think of as one.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-174 — Linux Is Told a New Version Is Out
+
+**Status**: Approved · **Related**: Q-175, DEC-145, DIST-05…DIST-07
+
+**Decision**: Linux uses the same rule and says "CuePoint X is out", with **Download**, which opens
+the release page. Nothing downloads or installs. DEC-145's "by hand" holds.
+
+**Reason**: The user's choice, as recommended.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-175 — CuePoint Keeps Its Own Copy of Each Pinned mpv
+
+**Status**: Approved · **Related**: Q-176, DEC-049, DIST-04
+
+**Decision**: Each pinned mpv archive is also attached, unchanged and with the same SHA-256, to a
+CuePoint release of its own (`sidecar-mpv-<version>`). Builds fetch it from there first, and from
+mpv's rolling release second.
+
+**Reason**: The user's choice, as recommended. mpv republishes its rolling tag, and a pinned file
+vanished on 2026-10-07. With a copy, a tag builds on any day.
+
+**Implications**: The mirror is made once per re-pin, from the owner's machine, since the cloud
+cannot reach mpv's releases. The GPL source link is unchanged.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-176 — The First Version Is 1.0.0-test.1
+
+**Status**: Approved · **Related**: Q-177, DEC-145, DIST-01
+
+**Decision**: `version.py`'s `1.0.0-feb1` becomes `1.0.0-test.1`. Test versions count up `test.N`
+until Phase 18 ends with `1.0.0`.
+
+**Reason**: The user's choice, as recommended. Everything before v1 is a test of v1, and normal
+users are only ever offered `1.0.0` and later.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-177 — Test Tags From Any Branch, Normal Tags Only From main
+
+**Status**: Approved · **Related**: Q-178, DIST-04
+
+**Decision**: The release workflow builds a `vX.Y.Z-test.N` tag on any branch. It builds a
+`vX.Y.Z` tag only on a commit that `main` contains.
+
+**Reason**: The user's choice, as recommended. Work lives on `feature`, and a normal release should
+be what `main` holds.
+
+**Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-178 — Release Notes Come From the Changelog
+
+**Status**: Approved · **Related**: Q-179, DIST-04, DIST-07
+
+**Decision**: The release workflow copies the version's section of `docs/release/CHANGELOG.md`
+into the GitHub release. "Update ready" and "What's new" show the same text. A tag with no section
+fails before anything is built.
+
+**Reason**: The user's choice, as recommended. The changelog is already checked in CI, so the
+release needs no manual step.
 
 **Decided with**: User · **Date**: 2026-10-07

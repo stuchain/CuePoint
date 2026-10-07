@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 asked (Q-170…Q-179).**
+Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178).**
 
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
@@ -957,6 +957,9 @@ Writing it raised ten questions, asked as Decision Round 19 (Q-170…Q-179): the
 are signed (a Mac can only update itself when signed), where "Update ready" shows, "What's new",
 restarting during work, Linux, a copy of mpv, the first version, which branches release, and the
 notes.
+The user took the recommendation on nine (DEC-169, DEC-171…DEC-178). For the tenth there is no
+Apple Developer account, so the Macs ship unsigned and update the way the retired app did, replacing
+themselves at quit (DEC-170, which amends DEC-129). Nothing is open.
 
 - **An auto-updater** (DEC-145). DEC-019 left it as a future item, and this schedules it.
   - **A test build** (`X.Y.Z-test.N`) updates to the highest newer release, test or normal.
@@ -964,14 +967,15 @@ notes.
   - **Downloads in the background,** then shows "Update ready" with the release notes and
     **Restart now**, and otherwise installs at quit.
   - **Checks** at launch, every 4 hours, and from a button in Settings.
-  - **Windows and macOS only.** Windows ships unsigned for now.
+  - **Windows and macOS only.** Both ship unsigned for now; the Macs replace themselves at quit, as
+    the retired app did (DEC-170).
 - **macOS as two downloads, Apple Silicon and Intel** (DEC-129).
   - **Today only Apple Silicon (arm64) is built.** The build passes no architecture, so it gets the
     machine's own. CI's `macos-latest` is arm64, and the macOS checks ran on an M5 Pro. An Intel
     `mpv` is pinned and fetched, but nothing packages it.
   - The user guide's Intel claim was corrected on 2026-10-06.
   - The Intel build is checked on CI's Intel runner.
-- *Proposed:* "What's new" shown once after an update.
+- **"What's new"** shown once after an update (DEC-172).
 
 ## Phase 17 — Website
 

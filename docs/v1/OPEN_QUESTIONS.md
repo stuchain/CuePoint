@@ -3430,11 +3430,12 @@ holds each track's count as of the last import. Is that kept as the starting poi
 **Recommendation**: **A**. It costs nothing and keeps weeks of plays a DJ would otherwise lose. DEC-137
 is amended to say history starts at the last import before the step.
 
-## DECISION ROUND 19 — DISTRIBUTION (Phase 16) ⏳ Open, asked 2026-10-07
+## DECISION ROUND 19 — DISTRIBUTION (Phase 16) ✅ Resolved 2026-10-07
 
 Asked while specifying Phase 16 (`PHASE16_DISTRIBUTION.md`). Decision Round 14 settled the updater's
 rule (DEC-145) and two Mac downloads (DEC-129). Writing the steps raised ten questions those
-decisions do not answer.
+decisions do not answer. The user chose the recommendation for nine on 2026-10-07, and for Q-171
+chose that the Macs update the way the retired app did, unsigned. Outcomes are in DEC-169…DEC-178.
 
 Found while specifying:
 - **A Mac can only update itself if it is signed.** Squirrel.Mac refuses an update whose signature
@@ -3450,7 +3451,7 @@ Found while specifying:
 
 ### Q-170 — Which mechanism installs updates
 
-**Status**: Open
+**Status**: Resolved → DEC-169 (Option A chosen: CuePoint's rule, electron-updater installs on Windows)
 
 **Question**: DEC-145 leaves the mechanism to this specification, held to its table.
 
@@ -3468,7 +3469,7 @@ parts (download, signature, install) in a library that does them every day.
 
 ### Q-171 — Where the Mac builds are signed
 
-**Status**: Open
+**Status**: Resolved → DEC-170 (none of the options: no Apple Developer account; the Macs ship unsigned and replace themselves at quit, as the retired app did)
 
 **Question**: A Mac update installs only into a signed app (Developer ID, notarized). Where does the
 signing happen?
@@ -3485,7 +3486,7 @@ them Intel, which is not at hand). C is the fallback if there is no Developer ac
 
 ### Q-172 — Where "Update ready" appears
 
-**Status**: Open
+**Status**: Resolved → DEC-171 (Option A chosen: the status strip)
 
 - **Option A — A quiet item in the status strip,** "CuePoint 1.0.0-test.2 is ready", that opens a
   panel with the notes and **Restart now** / **Later**.
@@ -3497,7 +3498,7 @@ installs. Today's toasts vanish after 4 s and hold no buttons.
 
 ### Q-173 — "What's new" after an update
 
-**Status**: Open
+**Status**: Resolved → DEC-172 (Option A chosen: once)
 
 The roadmap proposed it.
 
@@ -3510,7 +3511,7 @@ learns what changed.
 
 ### Q-174 — Restart now while work is running
 
-**Status**: Open
+**Status**: Resolved → DEC-173 (Option A chosen: ask first)
 
 **Question**: Restarting stops a waveform analysis, a match or an export. Each resumes or can be rerun,
 but nothing asks first today.
@@ -3524,7 +3525,7 @@ but nothing asks first today.
 
 ### Q-175 — Linux
 
-**Status**: Open
+**Status**: Resolved → DEC-174 (Option A chosen: say so, with a link)
 
 **Question**: DEC-145 updates AppImages by hand. Does the Linux app say a new version is out?
 
@@ -3536,7 +3537,7 @@ but nothing asks first today.
 
 ### Q-176 — Keeping a copy of mpv
 
-**Status**: Open
+**Status**: Resolved → DEC-175 (Option A chosen: mirror it)
 
 **Question**: mpv's builds come from a rolling tag that mpv republishes, so a pinned file can vanish
 (it did on 2026-10-07). A release built on a tag would then fail.
@@ -3550,7 +3551,7 @@ mirror is made once per re-pin, from your machine (the cloud cannot reach mpv's 
 
 ### Q-177 — The first version in the new scheme
 
-**Status**: Open
+**Status**: Resolved → DEC-176 (Option A chosen: `1.0.0-test.1`)
 
 **Question**: `version.py` says `1.0.0-feb1`; GitHub's last normal release is `v0.0.3` (the retired
 app).
@@ -3563,7 +3564,7 @@ users are only ever offered `1.0.0` and later.
 
 ### Q-178 — Which branches can release
 
-**Status**: Open
+**Status**: Resolved → DEC-177 (Option A chosen)
 
 - **Option A — Test tags from any branch, normal tags only from `main`.** You can test what is on
   `feature` without merging it.
@@ -3575,7 +3576,7 @@ holds.
 
 ### Q-179 — Where release notes come from
 
-**Status**: Open
+**Status**: Resolved → DEC-178 (Option A chosen: the changelog)
 
 **Question**: The notes appear on GitHub, in "Update ready" and in "What's new".
 

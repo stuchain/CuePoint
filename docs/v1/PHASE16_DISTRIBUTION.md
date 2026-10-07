@@ -1,9 +1,10 @@
 # CuePoint v1.0.0 — Phase 16: Distribution, Detailed Step Specifications
 
 Status: **Specified 2026-10-07. No step is implemented yet.** Eight steps, DIST-01…DIST-08.
-Writing the steps raised ten questions that Decision Round 14 did not answer. They are asked as
-Decision Round 19 (Q-170…Q-179). Where a step below says "if Q-NNN …", the recommended branch is
-written out, and the step is built as the answer says. Per the process, no implementation happens
+Writing the steps raised ten questions that Decision Round 14 did not answer. They were asked as
+Decision Round 19 (Q-170…Q-179) and settled the same day as DEC-169…DEC-178: nine as recommended,
+and Q-171 otherwise. There is no Apple Developer account, so the Macs ship unsigned and update
+themselves the way the retired app did (DEC-170). Each step below is written as the answers say. Per the process, no implementation happens
 from this document. Each step needs an explicit "Implement DIST-NN" instruction, scoped to exactly
 that step, and its outcome is recorded under the step afterwards.
 
@@ -11,7 +12,7 @@ Depends on Phases 1–15. Phase 15 must be complete first (DEC-140). It reuses w
 (Sentry in all three processes, REPORT-07's one release name and its source-map upload) and what
 Phase 14 adds (Settings' **About & updates** section, PAGES-01). Decision Rounds 1–18 apply
 (`DECISIONS.md`, DEC-001…DEC-168). This phase's own decisions are DEC-145 (the updater's rule) and
-DEC-129 (two Mac downloads), with DEC-019 (the old updater's fate, which this phase finally replaces),
+DEC-129 (two Mac downloads), with DEC-169…DEC-178 (Decision Round 19), and DEC-019 (the old updater's fate, which this phase finally replaces),
 DEC-147 (releases come from `desktop-electron.yml` until this phase), DEC-126 and DEC-153 (what
 Sentry reports), DEC-132 (clear to new users), DEC-155 and DEC-158 (the app's words) and DEC-009
 (the launch backup).
@@ -36,10 +37,10 @@ This phase makes releasing a tag, and updating automatic:
   test or normal; a normal build only to a newer normal one.
 
 **What this phase is not.**
-- **No Windows code signing.** Windows ships unsigned for now, with SmartScreen's warning accepted
-  (DEC-145).
+- **No code signing.** Windows ships unsigned for now, with SmartScreen's warning accepted
+  (DEC-145), and so does macOS, with no Apple Developer account (DEC-170).
 - **No Linux self-update.** AppImages are updated by hand (DEC-145); at most the app says a new
-  version is out (Q-175).
+  version is out (DEC-174).
 - **No switch to turn updates off, and no skipping a version** (DEC-145).
 - **No Windows on Arm, no Universal Mac build, no Mac App Store, no Microsoft Store, no package
   managers** (winget, Homebrew). Deferred, below.
@@ -74,8 +75,8 @@ This phase makes releasing a tag, and updating automatic:
 
 | Decision | What it requires here |
 | --- | --- |
-| DEC-145 | The rule as one pure function in main, with a test per row; SemVer precedence, prerelease included; the highest version wins; `X.Y.Z-test.N`; test releases as GitHub pre-releases; background download; **Update ready** with notes and **Restart now**, else install at quit; checks at launch, every 4 h and from Settings; no off switch, no skipping; HTTPS and the release's checksum; never a lower version; Windows and macOS only; `version.py`'s two odd versions renamed; `version_utils`' base-only comparison not reused; the mechanism chosen here (Q-170). |
-| DEC-129 | Two Mac builds, arm64 and x64, each signed and notarized; the Intel one built and checked on CI's Intel runner; the download and the updater name the chip; the user guide's "Intel planned" lines corrected when it ships. |
+| DEC-145 | The rule as one pure function in main, with a test per row; SemVer precedence, prerelease included; the highest version wins; `X.Y.Z-test.N`; test releases as GitHub pre-releases; background download; **Update ready** with notes and **Restart now**, else install at quit; checks at launch, every 4 h and from Settings; no off switch, no skipping; HTTPS and the release's checksum; never a lower version; Windows and macOS only; `version.py`'s two odd versions renamed; `version_utils`' base-only comparison not reused; the mechanism chosen here (DEC-169, DEC-170). |
+| DEC-129, DEC-170 | Two Mac builds, arm64 and x64, unsigned (DEC-170 amends "signed and notarized"); the Intel one built and checked on CI's Intel runner; the download and the updater name the chip; the user guide's "Intel planned" lines corrected when it ships. |
 | DEC-147 | `desktop-electron.yml` stops being where releases come from; a tag-driven release workflow takes over. |
 | DEC-126, DEC-153 | A failed update is reported; a check that fails because the computer is offline is not (a cause the user owns). |
 | DEC-009 | The first launch of an update takes the launch backup before migrating, as every launch does; nothing new is needed, and DIST-08 checks it. |
@@ -141,14 +142,23 @@ which is slower and not what DEC-129 asked). mpv's own Intel build comes from Gi
 `macos-15-intel` runner, and that is the runner the Intel leg uses. electron-builder names a Mac
 DMG `CuePoint-<version>-arm64.dmg` only when told to; today the name carries no chip.
 
-### 5. Updating a Mac needs a signed app
+### 5. Electron's Mac updater needs a signed app, and the retired app's did not
 
-On macOS an Electron app installs an update through Squirrel.Mac, which **refuses an update whose
-code signature does not match the running app's**. An unsigned or ad-hoc-signed build cannot update
-itself. CI builds unsigned Macs today, because no workflow has the Apple secrets
-(`key-management.md`), and a signed build comes only from a Mac where the variables are set by hand.
-Squirrel.Mac also installs from a **zip**, not the DMG, so each Mac build needs both. Where signing
-happens is Q-171.
+On macOS `electron-updater` installs through Squirrel.Mac, which **refuses an update whose code
+signature does not match the running app's**, so an unsigned or ad-hoc-signed build cannot update
+itself that way. There is no Apple Developer account (Q-171), so CuePoint's Macs stay unsigned.
+
+The retired Qt app updated its unsigned Mac build without Squirrel
+(`update/update_installer.py`, `_install_macos`, removed in b864019): it downloaded the DMG,
+mounted it with `hdiutil`, deleted `/Applications/CuePoint.app`, copied the new app in, opened it and
+exited. That works unsigned because **a file an app downloads with its own HTTP client carries no
+quarantine flag**, so Gatekeeper does not stop the replaced app. Only the first copy, downloaded in a
+browser, has to be cleared by hand, and the user guide's getting-started already says how. DEC-170
+keeps that approach, made safer: the app is replaced where it is installed (not always
+`/Applications`), only after the old one has quit, from the zip rather than a mounted DMG, and only
+after its checksum passes. Apple Silicon runs only signed code, and electron-builder signs ad hoc when
+no identity is set, which is enough for a copy with no quarantine flag (*inferred; DIST-08 confirms
+it on both chips*).
 
 ### 6. Windows updates per user, with no prompt
 
@@ -164,9 +174,9 @@ The common Electron updater, `electron-updater`, has GitHub channels of its own.
 **newest-published** release rather than the highest version, and decide test from normal by the
 channel's name. DEC-145 asks for the **highest** version by SemVer precedence, and for a test build to
 take a newer normal one. For example, a `1.4.1` hotfix published after `1.5.0-test.1` would be offered
-to a `1.5.0-test.1` build by a stock channel; DEC-145 offers it nothing, since `1.4.1` is lower. Q-170
-settles the mechanism: the recommendation keeps `electron-updater` for downloading, checking and
-installing, and has CuePoint's own function choose the release.
+to a `1.5.0-test.1` build by a stock channel; DEC-145 offers it nothing, since `1.4.1` is lower. So
+CuePoint's own function chooses the release, and `electron-updater` only downloads, checks and
+installs it, on Windows (DEC-169).
 
 ### 8. Quitting already stops both sidecars, within 5 seconds
 
@@ -181,21 +191,21 @@ would hold the files the installer is replacing, and would run a second engine o
 
 Quitting while waveforms are analyzed, a library is matched or an export is written stops the work,
 which each job already survives (resume or rerun). Nothing asks first. **Restart now** is a quit the
-user did not think of as one, so what it does while work runs is Q-174.
+user did not think of as one, so it asks first, naming the work (DEC-173).
 
 ### 10. The mpv pin can vanish
 
 mpv's builds come from its rolling `git-release` tag, which mpv republishes. A pinned asset 404s when
 that happens (it did on 2026-10-07, and was re-pinned from the owner's machine). A release workflow
-that fetches mpv at tag time can then fail on a commit that built yesterday. Q-176 asks whether
-CuePoint keeps its own copy.
+that fetches mpv at tag time can then fail on a commit that built yesterday. So CuePoint keeps its
+own copy (DEC-175).
 
 ## DIST-01 — One Version, in DEC-145's Scheme
 
 **Objective**: The app, the engine, Sentry and the release all read one version, in the
 `X.Y.Z` / `X.Y.Z-test.N` scheme, and a check fails when any copy differs.
 
-**User-visible result**: The About section shows `1.0.0-test.1` (if Q-177 is answered A) and the
+**User-visible result**: The About section shows `1.0.0-test.1` (DEC-176) and the
 commit, from source and from a packaged build alike.
 
 **Dependencies**: Phase 15.
@@ -204,7 +214,7 @@ commit, from source and from a packaged build alike.
 release name and `dist`.
 
 **Design**:
-- **`version.py`:** `__version__` becomes the first version in the scheme (Q-177; recommended
+- **`version.py`:** `__version__` becomes the first version in the scheme (DEC-176:
   `1.0.0-test.1`). `__version_local_dev__` and the frozen/source split in `get_version()` go: a source
   run reports the same version, and Sentry already tells them apart by environment (REPORT-07).
 - **`package.json`:** `version` becomes the same string. `cuepoint.engineVersion` goes, and main
@@ -303,7 +313,7 @@ File names name the system and the chip.
 
 **Design**:
 - **Targets.** Windows: `nsis`, unchanged (per-user, fact 6). macOS: `dmg` and `zip` (the zip is
-  what Squirrel.Mac installs, fact 5). Linux: `AppImage`, unchanged.
+  what the Mac installer downloads, DIST-06). Linux: `AppImage`, unchanged.
 - **File names** (`artifactName`), so the website (Phase 17) and the updater can pick by name:
   - `CuePoint-${version}-win-x64-setup.exe`;
   - `CuePoint-${version}-mac-${arch}.dmg` and `.zip`;
@@ -342,8 +352,7 @@ File names name the system and the chip.
 
 ## DIST-04 — A Release Is a Tag
 
-**Objective**: Pushing `vX.Y.Z-test.N` or `vX.Y.Z` builds every download, signs and notarizes the
-Macs, and publishes one GitHub release with the installers, the merged manifests, the block maps, the
+**Objective**: Pushing `vX.Y.Z-test.N` or `vX.Y.Z` builds every download and publishes one GitHub release with the installers, the merged manifests, the block maps, the
 checksums and the release notes.
 
 **User-visible result**: A test or normal release appears on GitHub with every file, without a hand
@@ -351,32 +360,27 @@ upload.
 
 **Dependencies**: DIST-03; REPORT-07 (its source-map upload moves here for tagged builds).
 
-**Existing code reused**: `desktop-electron.yml`'s build steps, as a reusable workflow; the signing
-hooks; `verify_macos_bundle.py`; `validate_version.py --tag`; `validate_changelog.py`.
+**Existing code reused**: `desktop-electron.yml`'s build steps, as a reusable workflow;
+`verify_macos_bundle.py`; `validate_version.py --tag`; `validate_changelog.py`.
 
 **Design**:
 - **`desktop-electron.yml` becomes callable** (`workflow_call`), keeping its push and pull-request
-  triggers, with one input, `release: true|false`. On `true` it signs (where Q-171 says), keeps the
-  source maps' upload to Sentry, and keeps the artifacts for the release job.
+  triggers, with one input, `release: true|false`. On `true` it keeps the source maps' upload to Sentry, and keeps the artifacts for the release job.
 - **`.github/workflows/release.yml`,** on `push: tags: ['v*']`:
   1. **Gate:** `validate_version.py --tag ${{ github.ref_name }}` (the tag is `v` + the version, in
-     the scheme), and the changelog has a section for that version. The branch the tagged commit is
-     on is checked as Q-178 says (recommended: a test tag from any branch, a normal tag only from
-     `main`).
+     the scheme), and the changelog has a section for that version. A test tag may be on any branch;
+     a normal tag must be on a commit `main` contains (DEC-177).
   2. **Build:** calls `desktop-electron.yml` with `release: true`, on all four legs.
-  3. **Sign the Macs** (if Q-171 is A): the two Mac legs import the Developer ID certificate into a
-     temporary keychain from secrets and set the notarization key, so the existing hooks sign and
-     notarize; `verify_macos_bundle.py --expect-hardened-runtime` and `xcrun stapler validate` must
-     pass, or the release stops. Without the secrets the workflow stops with a message naming them,
-     rather than publishing an unsigned Mac build that cannot update.
+  3. **Check the Macs** (DEC-170: no signing): both Mac apps pass `verify_macos_bundle.py` without
+     `--expect-hardened-runtime`, and `codesign --verify` accepts their ad-hoc signature. The
+     signing hooks stay as they are, no-ops without credentials, so signing can be added later
+     without changing this design.
   4. **Publish:** merges the Mac manifests (DIST-03), then creates the GitHub release for the tag as
-     a **draft**, uploads every file, writes the notes (Q-179; recommended: that version's
+     a **draft**, uploads every file, writes the notes (DEC-178: that version's
      `CHANGELOG.md` section), and only then publishes it: a pre-release for a test tag, the latest
      release for a normal tag. A failure at any step leaves at most a draft, which the updater never
      reads (fact 2).
-- **The secrets** are named in `key-management.md`, with how to add them, and nothing else in the
-  repository reads them.
-- **The mpv archives** come from where Q-176 says (recommended: a CuePoint release of its own,
+- **The mpv archives** come from a CuePoint release of their own (DEC-175,
   `sidecar-mpv-<version>`, holding the pinned archives with the same SHA-256, so a tag builds on any
   day; `fetch_player_sidecar.py` tries it first and mpv's rolling release second).
 - **The old manual path** in the runbook is replaced by "push the tag", with the manual steps kept
@@ -389,7 +393,7 @@ hooks; `verify_macos_bundle.py`; `validate_version.py --tag`; `validate_changelo
 - `src/tests/unit/scripts/test_release_workflow.py`: reads `release.yml` and asserts the order (gate,
   build, sign, draft, upload, publish), that publishing is last, that a `-test.` tag sets
   `prerelease: true` and `make_latest: false`, and that a normal tag sets `make_latest: true`.
-- If Q-176 is A, `test_fetch_player_sidecar.py`: the mirror is tried first, a hash mismatch from
+- `test_fetch_player_sidecar.py`: the mirror is tried first, a hash mismatch from
   either source fails, and the upstream URL is the fallback.
 - **The first real release:** tagging `v1.0.0-test.1` publishes a pre-release with, for each of the
   four legs, the installer, the block map and the checksums, plus `latest.yml`, the merged
@@ -397,12 +401,12 @@ hooks; `verify_macos_bundle.py`; `validate_version.py --tag`; `validate_changelo
 
 **Acceptance criteria / DoD**:
 - `v1.0.0-test.1` is published by the workflow alone, as a pre-release, with every file above; both
-  Mac apps in it pass `verify_macos_bundle.py` and `stapler validate` (if Q-171 is A).
+  Mac apps in it pass `verify_macos_bundle.py` and `codesign --verify` (ad hoc, DEC-170).
 - A tag that does not match the version fails at the gate, before any build.
 - Pushes and pull requests still run `desktop-electron.yml` as before, unsigned.
 
-**Risks**: **Medium.** Signing and notarizing in CI fails late and only with real secrets; the first
-release is the test of it. A notarization queue can take most of an hour (`notarize.cjs` waits 45 min).
+**Risks**: **Medium.** The workflow is new, and the first real tag is its test. With no signing there
+is no notarization wait.
 
 **Complexity**: **M**
 
@@ -428,12 +432,12 @@ went with `update/` in Phase 12, `PHASE12_AUDIT.md`).
     numerically.
   - `pickUpdate(installed, releases, target)` returns the release to offer, or `null`:
     - releases that are drafts, outside the scheme, or have no manifest for `target`
-      (`win-x64`, `mac-arm64`, `mac-x64`, and `linux-x64` only if Q-175 is A) are dropped;
+      (`win-x64`, `mac-arm64`, `mac-x64` and `linux-x64`, DEC-174) are dropped;
     - a **normal** installed version keeps only normal releases; a **test** installed version keeps
       both;
     - of those **strictly higher** than the installed version, the highest is offered.
   - Nothing else decides: no date, no "latest" flag, no channel name.
-- **`electron/releaseList.ts`** (the mechanism, if Q-170 is A): reads
+- **`electron/releaseList.ts`** (DEC-169): reads
   `https://api.github.com/repos/stuchain/CuePoint/releases?per_page=100` over HTTPS, with a 15 s
   timeout and the app's version in the user agent, and maps each release to
   `{ tag, version, draft, prerelease, notes, publishedAt, assets }`. A release has a manifest for a
@@ -482,7 +486,7 @@ macOS.
 rules.
 
 **Design**:
-- **`electron-updater`** (if Q-170 is A), added with `npm install`, pinned. Its own choice is turned
+- **On Windows, `electron-updater`** (DEC-169), added with `npm install`, pinned. Its own choice is turned
   off: it is never asked to find a release. For the release `pickUpdate` chose, main sets a generic
   feed to that release's download folder
   (`https://github.com/stuchain/CuePoint/releases/download/<tag>/`) and lets the updater read that
@@ -491,20 +495,36 @@ rules.
   - the manifest's version must equal the chosen version, or the download is refused;
   - the download is checked against the manifest's SHA-512 before it runs (the release's checksum,
     DEC-145), over HTTPS only;
-  - on macOS, Squirrel.Mac also checks the signature (fact 5).
-- **`electron/updater.ts`**, a small state machine, the one place that talks to the updater:
-  `idle → checking → (up-to-date | available → downloading → ready) | failed`, with the version, the
+- **On macOS, CuePoint's own installer** (DEC-170), `electron/macInstaller.ts`, since Squirrel.Mac
+  needs a signed app (fact 5):
+  - **download:** the chip's zip, named in the chosen release's `latest-mac.yml`, fetched over HTTPS
+    with main's own `net` stream into `userData/updates/<version>/` (never the browser's download
+    manager, which would mark it quarantined), and refused unless its SHA-512 and size match the
+    manifest;
+  - **unpack:** `ditto -x -k` into the same folder; the result must be one `CuePoint.app` whose
+    `Info.plist` version is the chosen version and whose code is for this Mac's chip
+    (`check_bundle_arch`'s rule), or it is deleted and the update fails;
+  - **where:** the app's own bundle (`app.getPath("exe")` up to `.app`). If that folder cannot be
+    written (an admin-owned `/Applications` for a standard user), or the app runs translocated or from
+    the DMG, nothing is replaced: the state is `manual`, and DIST-07 offers the download instead;
+  - **install, after quit:** a small detached shell script, started last in `quitAfter`'s cleanup,
+    waits for the app's process to exit, moves the old bundle aside, moves the new one in, removes the
+    old one, and opens the new app if **Restart now** asked for it. If the move in fails, the old
+    bundle is moved back, so the user is never left with no app. The script and its log live in
+    `userData/updates/`;
+  - **the quarantine flag** is never set on anything it writes, and a test checks it is absent.
+- **`electron/updater.ts`**, a small state machine, the one place that talks to either installer:
+  `idle → checking → (up-to-date | available → downloading → ready) | manual | failed`, with the version, the
   notes and the progress. It is unit-tested with the updater faked.
 - **When:** 10 s after the window shows (so the first paint and the engine's start come first), then
   every 4 hours while open, and on `updates:check`. A check while one runs joins it. A version
   already downloaded is not downloaded again.
 - **Restart now** (`updates:restart`) quits through `quitAfter`, so the player and the engine stop
-  first (fact 8), then installs and relaunches. While work runs, it does what Q-174 says
-  (recommended: asks first, naming the work).
+  first (fact 8), then installs and relaunches. While work runs, it asks first, naming the work (DEC-173).
 - **A single-instance lock.** `app.requestSingleInstanceLock()`; a second launch focuses the first
   window and exits (fact 8).
-- **Linux:** if Q-175 is A, the check runs and reports `available` with a link to the release, and
-  nothing downloads; otherwise the updater is not started on Linux.
+- **Linux:** the check runs and reports `available` with a link to the release, and nothing
+  downloads (DEC-174).
 - **Development and end-to-end runs** never check: the updater starts only in a packaged build, and
   `CUEPOINT_UPDATE_FEED` (a local folder or URL, test builds only) lets DIST-08's test point a
   packaged build at a staged release.
@@ -513,7 +533,7 @@ rules.
   not check" and are retried at the next check.
 - **The bridge:** `updates: { getState, check, restart, subscribe }`, with `updates:*` channels,
   typed in `cuepointBridge.types.ts` and held by `desktopContract.test.ts`.
-- **Main's settings** gain `lastCheckedAt` and `lastSeenVersion` (for "What's new", if Q-173 is A),
+- **Main's settings** gain `lastCheckedAt` and `lastSeenVersion` (for "What's new", DEC-172),
   in both `parseMainSettings` and `update`.
 
 **Tests**:
@@ -521,8 +541,14 @@ rules.
   the window and repeats every 4 hours (fake timers); a second check joins the first; the feed is set
   to the chosen release's folder; a manifest version that differs from the chosen one is refused;
   offline, 403, 429 and a timeout give `failed` with "could not check" and no Sentry event; a failed
-  download sends one; `restart` goes through `quitAfter`; nothing starts unpackaged; on Linux, the
-  behaviour Q-175 chose.
+  download sends one; `restart` goes through `quitAfter`; nothing starts unpackaged; on Linux, a
+  link and no download.
+- `electron/macInstaller.test.ts` (file system and `ditto` faked where needed): a checksum or size
+  mismatch deletes the download and fails; a bundle with the wrong version or chip fails; an
+  unwritable folder, a translocated path and a DMG path give `manual`; the install script, run against
+  a temporary folder with a fake app, swaps the bundles after the process exits, restores the old one
+  when the move fails, and opens the new one only on **Restart now**; nothing written carries
+  `com.apple.quarantine` (on the Mac legs, with the real `xattr`).
 - `electron/singleInstance.test.ts`: a second instance exits and focuses the first window.
 - `mainSettings.test.ts`: the two new fields round-trip, and unknown keys are still dropped.
 - `desktopContract.test.ts`: every `updates:*` channel is handled and exposed.
@@ -533,7 +559,9 @@ rules.
 - `npm test`, `npm run typecheck` and the contract test pass.
 
 **Risks**: **Medium.** Installing while a sidecar holds a file fails on Windows; the quit's order and
-the single-instance lock are what prevent it, and DIST-08 proves it on a real install.
+the single-instance lock are what prevent it. The Mac installer is CuePoint's own code replacing an
+app bundle, so its restore path matters as much as its happy path. DIST-08 proves both on real
+installs.
 
 **Complexity**: **M**
 
@@ -545,15 +573,16 @@ the single-instance lock are what prevent it, and DIST-08 proves it on a real in
 notes, and restarts now or later; Settings shows the version and checks on request.
 
 **User-visible result**:
-- **Update ready** appears where Q-172 says (recommended: a quiet item in the status strip,
+- **Update ready** appears as a quiet item in the status strip (DEC-171),
   "CuePoint 1.0.0-test.2 is ready", that opens a panel with the release notes and **Restart now** /
   **Later**). **Later** leaves it to install at quit, and the item stays until then.
 - **Settings › About & updates** (PAGES-01) shows the version and build, "Last checked 10:42", the
   state in words ("You're up to date", "Downloading 1.0.0-test.2… 40%", "Update ready — Restart now",
   "Couldn't check for updates. You may be offline."), and **Check for updates**.
-- **What's new** (if Q-173 is A): on the first launch after an update, a panel with that version's
+- **What's new** (DEC-172): on the first launch after an update, a panel with that version's
   notes, once, dismissed with **Got it**; also reachable from About & updates.
-- On Linux (if Q-175 is A): "CuePoint 1.0.1 is out" with **Download**, which opens the release page.
+- On Linux (DEC-174), and on a Mac whose app cannot be replaced (`manual`, DEC-170): "CuePoint 1.0.1
+  is out" with **Download**, which opens the release page.
 
 **Dependencies**: DIST-06; PAGES-01 (the section); PAGES-02 and PAGES-12 (motion).
 
@@ -579,7 +608,7 @@ the motion kinds and switches.
   `<script>`, an `<img onerror>` and a `javascript:` link do not.
 - `renderer/src/screens/settings/AboutUpdatesSection.test.tsx`: version and build, each state's words,
   **Check for updates** disabled while checking.
-- If Q-173 is A, `WhatsNew.test.tsx`: shown once after the version changes, never on a first install,
+- `WhatsNew.test.tsx`: shown once after the version changes, never on a first install,
   not again after **Got it**.
 - The new strings contain neither "engine" nor "jobs" (DEC-155), checked as PAGES-03 checks the rest.
 
@@ -615,7 +644,10 @@ privacy notice.
   draft again (the updater stops offering it at once) and fixed by a higher one. A build that already
   installed it stays until the fix; a database it migrated is refused by an older build by name
   (`DB_SCHEMA_TOO_NEW`), and the launch backup taken before the migration (DEC-009) is how to go back.
-- **`key-management.md`:** the release workflow's secrets (if Q-171 is A).
+- **`key-management.md`:** that no build is signed (DEC-170), and what signing would need if an
+  Apple Developer account is added later.
+- **The user guide's getting-started** keeps clearing the quarantine flag for the first download, and
+  says later updates need nothing.
 - **`docs/features/update-system.md`:** rewritten to describe the updater as built.
 - **The user guide:** a short "Updates" page (what happens, where to check, test versions);
   `features.md:114` and `support-policy.md:18` name both Mac chips.
@@ -631,7 +663,9 @@ privacy notice.
   one on hardware if available, else on CI's runner with `CUEPOINT_UPDATE_FEED`), the installed app,
   within a minute of launch, says the update is ready; **Restart now** installs it, CuePoint relaunches
   as `1.0.0-test.2`, the library and settings are unchanged, a launch backup exists from before, and
-  no CuePoint, engine or mpv process from the old version is left. Then a second run where the user
+  no CuePoint, engine or mpv process from the old version is left. On each Mac the app was installed from the DMG
+  by hand once (quarantine cleared as the guide says), and the update replaced it with no Gatekeeper
+  prompt; a second Mac run with the app in a folder the user cannot write shows **Download** instead. Then a second run where the user
   quits instead: the update installs at quit. On Windows, whether SmartScreen asked is recorded
   (fact 6).
 
@@ -652,7 +686,7 @@ Phase 16 is complete when:
 1. Pushing a `vX.Y.Z-test.N` tag publishes a pre-release, and a `vX.Y.Z` tag the latest release, each
    with an installer for Windows, an Apple Silicon Mac, an Intel Mac and Linux, the update manifests,
    the block maps, the checksums and the notes, with nothing uploaded by hand. *DIST-03, DIST-04.*
-2. Both Mac builds are signed and notarized, each contains only its own chip's code, and the Intel one
+2. Both Mac builds pass the bundle checks unsigned (DEC-170), each contains only its own chip's code, and the Intel one
    was built and tested on an Intel runner. *DIST-02, DIST-04.*
 3. The app, the engine, Sentry, the About section and the release report one version, in the
    `X.Y.Z` / `X.Y.Z-test.N` scheme. *DIST-01.*
@@ -668,30 +702,33 @@ Phase 16 is complete when:
    what the app and the release workflow do. *DIST-08.*
 9. Every suite passes, with the engine smoke check, the desktop contract test, the coupling check, the
    end-to-end suite and `npm run dist` on all four legs.
-10. No decision in DEC-001…DEC-168, or in Decision Round 19's, is contradicted. A contradiction stops
+10. No decision in DEC-001…DEC-178 is contradicted. A contradiction stops
     the work and is raised rather than worked around.
 
 ## Decision Round 19 — what writing the steps raised
 
-Asked in `OPEN_QUESTIONS.md` as Q-170…Q-179.
+Asked in `OPEN_QUESTIONS.md` as Q-170…Q-179 and answered 2026-10-07: Q-171 as the user chose, the
+rest as recommended.
 
-| Question | Recommendation | Needed by |
+| Question | Outcome | Needed by |
 | --- | --- | --- |
-| Q-170 — Which mechanism installs updates? | A: `electron-updater` downloads, checks and installs; CuePoint's own rule picks the release | DIST-05, DIST-06 |
-| Q-171 — Where are the Mac builds signed? | A: in the release workflow, from repository secrets | DIST-04 |
-| Q-172 — Where does "Update ready" appear? | A: a quiet item in the status strip that opens the notes | DIST-07 |
-| Q-173 — "What's new" after an update? | A: once, on the first launch after it | DIST-06, DIST-07 |
-| Q-174 — Restart now while work is running | A: ask first, naming the work | DIST-06 |
-| Q-175 — Linux | A: say a new version is out, with a download link | DIST-05…DIST-07 |
-| Q-176 — Keeping a copy of mpv | A: mirror each pinned archive on a CuePoint release | DIST-04 |
-| Q-177 — The first version in the new scheme | A: `1.0.0-test.1`, with `1.0.0` at the end of Phase 18 | DIST-01 |
-| Q-178 — Which branches can release | A: test tags from any branch, normal tags only from `main` | DIST-04 |
-| Q-179 — Where release notes come from | A: the version's `CHANGELOG.md` section | DIST-04, DIST-07 |
+| Q-170 — Which mechanism installs updates? | DEC-169: CuePoint's rule picks the release; `electron-updater` installs it on Windows | DIST-05, DIST-06 |
+| Q-171 — Where are the Mac builds signed? | DEC-170: nowhere; Macs ship unsigned and replace themselves at quit, as the retired app did | DIST-04, DIST-06 |
+| Q-172 — Where does "Update ready" appear? | DEC-171: a quiet item in the status strip that opens the notes | DIST-07 |
+| Q-173 — "What's new" after an update? | DEC-172: once, on the first launch after it | DIST-06, DIST-07 |
+| Q-174 — Restart now while work is running | DEC-173: ask first, naming the work | DIST-06 |
+| Q-175 — Linux | DEC-174: say a new version is out, with a download link | DIST-05…DIST-07 |
+| Q-176 — Keeping a copy of mpv | DEC-175: mirror each pinned archive on a CuePoint release | DIST-04 |
+| Q-177 — The first version in the new scheme | DEC-176: `1.0.0-test.1`, with `1.0.0` at the end of Phase 18 | DIST-01 |
+| Q-178 — Which branches can release | DEC-177: test tags from any branch, normal tags only from `main` | DIST-04 |
+| Q-179 — Where release notes come from | DEC-178: the version's `CHANGELOG.md` section | DIST-04, DIST-07 |
 
 ## Deferred, with reasons
 
-- **Windows code signing.** DEC-145 ships Windows unsigned for now. Adding a certificate later
-  changes the build's settings and the updater's publisher check, not this design.
+- **Code signing.** DEC-145 ships Windows unsigned and DEC-170 macOS. A Windows certificate later
+  changes the build's settings and the updater's publisher check; an Apple Developer ID later lets the
+  Macs sign, notarize and move to `electron-updater`, with the release workflow's signing step added
+  back. Neither changes the rule.
 - **Windows on Arm and Linux on Arm.** Not asked for; each is another build leg.
 - **A Universal Mac build.** DEC-129 chose two builds.
 - **Stores and package managers** (Mac App Store, Microsoft Store, winget, Homebrew, Flathub). Each has
