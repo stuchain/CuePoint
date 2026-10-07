@@ -268,6 +268,9 @@ export function TrackTable<Row>({
     getScrollElement: () => scrollRef.current,
     estimateSize: () => rowHeight,
     overscan,
+    // Rows are rendered in their own task, not inside the scroll event: with a
+    // page of waveforms in them, one task holding both was a long task.
+    useFlushSync: false,
   });
 
   // Back to the top when the rows start answering a different question.
