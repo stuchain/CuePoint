@@ -6197,3 +6197,23 @@ inside the update, and is not started from an inert or leaving copy. `cp-shared-
 the stylesheet and the user guide.
 
 **Decided with**: Claude (a build finding on DEC-134, raised at review) · **Date**: 2026-10-08
+
+---
+
+## DEC-220 — Release Gates Measure Coverage on Python 3.12 Only
+
+**Status**: Approved · **Related**: DEC-218, CI fix · Green on all four
+
+**Decision**: Release Gates' unit-test step measures coverage (and uploads and checks it) on the
+Python 3.12 legs only, with coverage.py's `sysmon` core. The Python 3.11 legs run the same unit tests
+without coverage.
+
+**Reason**: Python 3.11 has no `sys.monitoring`, so coverage there uses the line tracer, which
+roughly doubles the suite: Ubuntu took 14 minutes on 3.11 against 7.5 on 3.12 for the same commit,
+and Windows 3.11 took 29 of the step's 30 minutes. Raising the limit would hide the cost; measuring
+the same code twice per system adds nothing the 3.12 leg does not already show.
+
+**Implications**: The 35% coverage gate still runs on Ubuntu, macOS and Windows (3.12). A test that
+fails only on 3.11 still fails its leg. `--durations=30` lists the slowest tests on every leg.
+
+**Decided with**: Claude (CI fix thread, under the rule not to raise timeouts to hide slowness) · **Date**: 2026-10-08

@@ -52,13 +52,14 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run unit tests
+        # Coverage is measured on Python 3.12 only (DEC-220). 3.11 has no sys.monitoring,
+        # and its line tracer doubles the suite: Ubuntu ran it in 14 minutes on 3.11
+        # against 7.5 on 3.12, and Windows in 29 of its 30 minutes. The 3.11 legs still
+        # run every unit test; the 3.12 legs on all three systems hold the coverage gate.
         run: |
-          pytest src/tests/unit/ -v --durations=30 --cov=src/cuepoint --cov-report=xml
-        # Python 3.12's line tracer is slower than 3.11's: the Windows 3.12 leg ran
-        # the whole suite in 30 minutes against 23 on 3.11. sys.monitoring (3.12+)
-        # measures the same line coverage about a quarter faster.
+          pytest src/tests/unit/ -v --durations=30 ${{ matrix.python-version != '3.11' && '--cov=src/cuepoint --cov-report=xml' || '' }}
         env:
-          COVERAGE_CORE: ${{ matrix.python-version == '3.11' && 'ctrace' || 'sysmon' }}
+          COVERAGE_CORE: sysmon
         timeout-minutes: 30
         continue-on-error: false
 
@@ -68,6 +69,7 @@ jobs:
         continue-on-error: false
 
       - name: Upload coverage
+        if: matrix.python-version != '3.11'
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage.xml
@@ -75,6 +77,7 @@ jobs:
           minimum_coverage: 35
 
       - name: Check test coverage
+        if: matrix.python-version != '3.11'
         run: |
           coverage report --fail-under=35
         continue-on-error: false
