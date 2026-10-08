@@ -1068,7 +1068,12 @@ async function createWindow(): Promise<void> {
   });
   win.on("closed", () => mediaKeys.release());
   if (win.isFocused()) mediaKeys.acquire();
-  if (placement) win.showInactive();
+  if (placement) {
+    // macOS still fits a new window to a small screen; resized now, with
+    // `enableLargerThanScreen` set, it keeps the size the tests expect.
+    win.setSize(size.width, size.height);
+    win.showInactive();
+  }
 
   // Ctrl+=, Ctrl+- and Ctrl+0 step the Size setting (FLW-20). The page is never zoomed, by
   // a pinch or by Ctrl and the wheel either, or the two would fight over how big it is.
