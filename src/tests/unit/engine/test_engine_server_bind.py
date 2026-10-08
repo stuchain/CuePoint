@@ -59,3 +59,26 @@ def _free_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         return sock.getsockname()[1]
+
+
+def test_an_engine_started_for_a_test_shuts_down_without_waiting_out_a_poll(
+    monkeypatch,
+):
+    """``shutdown()`` waits for ``serve_forever``'s poll, 0.5s by default.
+
+    Over a thousand engine tests each paid it at teardown, which was most of
+    the engine suite's run time (and a Windows runner's whole time budget).
+    """
+    import time
+
+    server, _thread = server_module.start_engine_thread(
+        EngineConfig(host="127.0.0.1", port=_free_port(), token="t")
+    )
+    try:
+        time.sleep(0.1)  # let serve_forever settle into its poll
+        started = time.perf_counter()
+        server.shutdown()
+        elapsed = time.perf_counter() - started
+    finally:
+        server.server_close()
+    assert elapsed < 0.25, f"shutdown took {elapsed:.2f}s"

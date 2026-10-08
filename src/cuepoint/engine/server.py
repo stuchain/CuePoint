@@ -1428,6 +1428,10 @@ def start_engine_thread(
     server = with_error_reporting(
         ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg, store=store))
     )
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    # shutdown() waits out one poll of serve_forever, 0.5s by default: a test
+    # that starts and stops an engine would otherwise spend that on every stop.
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True
+    )
     thread.start()
     return server, thread
