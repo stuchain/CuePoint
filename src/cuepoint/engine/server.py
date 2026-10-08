@@ -10,7 +10,9 @@ import sys
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import socketserver
+from http.server import BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer as _StdlibThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Type
 from urllib.parse import parse_qs, urlparse
@@ -255,6 +257,22 @@ def report_connection_error(request: Any, client_address: Any) -> None:
         type(exc).__name__,
         exc_info=exc,
     )
+
+
+class ThreadingHTTPServer(_StdlibThreadingHTTPServer):
+    """The stdlib threading server, bound without a reverse DNS lookup.
+
+    ``HTTPServer.server_bind`` calls ``socket.getfqdn(host)`` to fill in
+    ``server_name``, which on some macOS machines blocks for tens of seconds
+    before the engine listens at all. Nothing here reads ``server_name``, so it
+    is set to the address itself.
+    """
+
+    def server_bind(self) -> None:
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name = str(host)
+        self.server_port = port
 
 
 def with_error_reporting(server: ThreadingHTTPServer) -> ThreadingHTTPServer:
