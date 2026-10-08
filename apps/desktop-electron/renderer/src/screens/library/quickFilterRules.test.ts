@@ -12,7 +12,7 @@ import {
   quickCount,
   toggleNone,
   toggleValue,
-} from "./quickFilters";
+} from "./quickFilterRules";
 
 const rules = (...list: FilterRuleSet["rules"]): FilterRuleSet => ({ match: "all", rules: list });
 

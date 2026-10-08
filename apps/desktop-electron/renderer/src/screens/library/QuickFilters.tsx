@@ -28,7 +28,7 @@ import {
   quickCount,
   toggleNone,
   toggleValue,
-} from "./quickFilters";
+} from "./quickFilterRules";
 import { libraryHasNoKeys } from "./libraryKeys";
 import "./QuickFilters.css";
 
