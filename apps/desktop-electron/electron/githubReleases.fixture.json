@@ -1,0 +1,197 @@
+[
+  {
+    "id": 300003,
+    "tag_name": "v1.0.0-test.1",
+    "name": "CuePoint 1.0.0-test.1",
+    "draft": false,
+    "prerelease": true,
+    "body": "Second test build.\n\n- Updater rule.",
+    "published_at": "2026-10-08T09:00:00Z",
+    "html_url": "https://github.com/stuchain/CuePoint/releases/tag/v1.0.0-test.1",
+    "assets": [
+      {
+        "name": "CuePoint-1.0.0-test.1-win-x64-setup.exe",
+        "size": 98000000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/CuePoint-1.0.0-test.1-win-x64-setup.exe",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "CuePoint-1.0.0-test.1-win-x64-setup.exe.blockmap",
+        "size": 104000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/CuePoint-1.0.0-test.1-win-x64-setup.exe.blockmap",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "CuePoint-1.0.0-test.1-mac-arm64.zip",
+        "size": 120000000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/CuePoint-1.0.0-test.1-mac-arm64.zip",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "CuePoint-1.0.0-test.1-mac-arm64.dmg",
+        "size": 125000000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/CuePoint-1.0.0-test.1-mac-arm64.dmg",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "CuePoint-1.0.0-test.1-mac-x64.zip",
+        "size": 125000000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/CuePoint-1.0.0-test.1-mac-x64.zip",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "CuePoint-1.0.0-test.1-mac-x64.dmg",
+        "size": 130000000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/CuePoint-1.0.0-test.1-mac-x64.dmg",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "CuePoint-1.0.0-test.1-linux-x86_64.AppImage",
+        "size": 110000000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/CuePoint-1.0.0-test.1-linux-x86_64.AppImage",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "latest.yml",
+        "size": 600,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/latest.yml",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "latest-mac.yml",
+        "size": 900,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/latest-mac.yml",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "latest-linux.yml",
+        "size": 500,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/latest-linux.yml",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "SHA256SUMS-win.txt",
+        "size": 200,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/SHA256SUMS-win.txt",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "SHA256SUMS-mac.txt",
+        "size": 400,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/SHA256SUMS-mac.txt",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "SHA256SUMS-linux.txt",
+        "size": 200,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/SHA256SUMS-linux.txt",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "CuePoint-1.0.0-test.1-mac-arm64.zip.blockmap",
+        "size": 130000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/CuePoint-1.0.0-test.1-mac-arm64.zip.blockmap",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "CuePoint-1.0.0-test.1-mac-x64.zip.blockmap",
+        "size": 135000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/CuePoint-1.0.0-test.1-mac-x64.zip.blockmap",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "CuePoint-1.0.0-test.1-linux-x86_64.AppImage.blockmap",
+        "size": 115000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-test.1/CuePoint-1.0.0-test.1-linux-x86_64.AppImage.blockmap",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": 300002,
+    "tag_name": "v1.0.0-feb1-test1",
+    "name": "v1.0.0-feb1-test1",
+    "draft": true,
+    "prerelease": true,
+    "body": "Old-style test name.",
+    "published_at": null,
+    "html_url": "https://github.com/stuchain/CuePoint/releases/tag/v1.0.0-feb1-test1",
+    "assets": [
+      {
+        "name": "CuePoint-1.0.0-feb1-test1-win-x64-setup.exe",
+        "size": 90000000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v1.0.0-feb1-test1/CuePoint-1.0.0-feb1-test1-win-x64-setup.exe",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": 300001,
+    "tag_name": "v0.0.3",
+    "name": "CuePoint 0.0.3",
+    "draft": false,
+    "prerelease": false,
+    "body": "Third early release.",
+    "published_at": "2026-02-10T12:00:00Z",
+    "html_url": "https://github.com/stuchain/CuePoint/releases/tag/v0.0.3",
+    "assets": [
+      {
+        "name": "CuePoint-Setup-0.0.3.exe",
+        "size": 80000000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v0.0.3/CuePoint-Setup-0.0.3.exe",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "CuePoint-0.0.3.dmg",
+        "size": 85000000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v0.0.3/CuePoint-0.0.3.dmg",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": 300000,
+    "tag_name": "v0.0.2",
+    "name": "CuePoint 0.0.2",
+    "draft": false,
+    "prerelease": false,
+    "body": "Second early release.",
+    "published_at": "2026-01-20T12:00:00Z",
+    "html_url": "https://github.com/stuchain/CuePoint/releases/tag/v0.0.2",
+    "assets": [
+      {
+        "name": "CuePoint-Setup-0.0.2.exe",
+        "size": 79000000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v0.0.2/CuePoint-Setup-0.0.2.exe",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      },
+      {
+        "name": "CuePoint-0.0.2.dmg",
+        "size": 84000000,
+        "browser_download_url": "https://github.com/stuchain/CuePoint/releases/download/v0.0.2/CuePoint-0.0.2.dmg",
+        "content_type": "application/octet-stream",
+        "state": "uploaded"
+      }
+    ]
+  }
+]
