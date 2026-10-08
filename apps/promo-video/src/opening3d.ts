@@ -3,7 +3,7 @@ import { PHASES } from "../../website/src/three/phases";
 import { PIXEL_SIZE, PixelPipeline } from "../../website/src/three/pixel";
 import { createRenderer } from "../../website/src/three/renderer";
 import { cameraPose, create as createOpening } from "../../website/src/three/scenes/opening";
-import { at, BAR, BEAT, kickLevel, shot } from "./timing";
+import { at, BEAT, kickLevel, shot } from "./timing";
 
 /**
  * The website's own 3D scene (DEC-189: the crate becoming the Camelot wheel), drawn through the site's
@@ -19,10 +19,10 @@ import { at, BAR, BEAT, kickLevel, shot } from "./timing";
  */
 export const KEYS: ReadonlyArray<readonly [number, number]> = [
   [0, 0],
-  [at(0, 1), PHASES.lift[0]],
+  [at(0, 0.25), PHASES.lift[0]],
   [at(1), (PHASES.tag[0] + PHASES.tag[1]) / 2 - 0.08],
-  [at(2), PHASES.fly[0]],
-  [at(2, 3), 1],
+  [at(1, 1.5), PHASES.fly[0]],
+  [at(1, 3.25), 1],
 ];
 
 /** From here the wheel is lit, and the kick pumps it (the site does this with the visitor's sound). */
@@ -69,13 +69,14 @@ export function cameraMove(t: number): CameraMove {
     const u = t / shot("opening").end;
     // further back than the site while the records take their tags, so the tags never fill the frame,
     // then in to the wheel, and in the last beat a short push toward it that the cut finishes
-    const back = ease((t - at(0, 2)) / (at(1) - at(0, 2))) * (1 - ease((t - at(2)) / (BEAT * 2)));
-    const push = ease((t - at(2, 3)) / BEAT);
+    const back = ease((t - at(0, 1)) / (at(1) - at(0, 1))) * (1 - ease((t - at(1, 1.5)) / (BEAT * 2)));
+    const push = ease((t - at(1, 3)) / BEAT);
     return { yaw: -0.4 + 0.45 * ease(u), distance: 1.12 + 0.55 * back - 0.1 * ease(u) - 0.12 * push * push, rise: 0.8 * (1 - u), zoom: punch };
   }
   // the end card: a slow, steady turn round the lit wheel, settling as the words land
-  const v = (t - end) / (4 * BAR);
-  return { yaw: 0.35 - 0.5 * ease(v), distance: 1.35 - 0.05 * ease(v), rise: 0.4 * (1 - ease(v)), zoom: punch };
+  const v = (t - end) / (shot("end").end - end);
+  // a steady turn to the last frame (not eased out, so the end never stops moving)
+  return { yaw: 0.35 - 0.55 * v, distance: 1.35 - 0.08 * v, rise: 0.4 * (1 - ease(v)), zoom: punch };
 }
 
 export function applyMove(pose: { position: Vec3; target: Vec3 }, m: CameraMove): Vec3 {

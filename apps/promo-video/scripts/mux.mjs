@@ -5,7 +5,7 @@
  * this reads its masters in out/.
  *
  * The piece starts at --start and is stretched (without changing its pitch much) from the track's tempo
- * to the promo's 128 BPM, so its bars land on the cuts. Start it a whole number of bars before a drop
+ * to the promo's tempo (BPM in src/timing.ts), so its bars land on the cuts. Start it a whole number of bars before a drop
  * and the drop lands on a cut. The output is named -PRIVATE: commercial music needs a license to post,
  * and the track never goes in the repository.
  *

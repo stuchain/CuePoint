@@ -2,20 +2,20 @@
 /**
  * `npm run beat`: writes out/beat.wav, the promo's music, made here from nothing but math, so there is
  * no sample or track to license. Melodic breakbeat in the spirit of Bicep: a broken beat, wide detuned
- * pads, a rolling arp through a dotted-eighth delay, a sub bass, and a big room on everything. 128 BPM
- * in A minor (8A on the wheel), 16 bars on the same grid as the picture (src/timing.ts):
+ * pads, a rolling arp through a dotted-eighth delay, a sub bass, and a big room on everything. 132 BPM
+ * in A minor (8A on the wheel), 11 bars on the same grid as the picture (src/timing.ts):
  *
  *   bar 0      pads and arp, filtered, alone
- *   bars 1-2   the breakbeat comes in; a riser clears the second half of bar 2
- *   bars 3-11  the drop: bass, open pads, the lead arp (the app shots)
- *   bars 12-15 the end card: everything open, one last hit on the third beat of the final bar
+ *   bar 1      the breakbeat comes in; a riser clears its second half
+ *   bars 2-8   the drop: bass, open pads, the lead arp (the app shots)
+ *   bars 9-10  the end card: everything open, one last hit on the third beat of the final bar
  *
  * Deterministic: the noise is seeded, so every run writes the same file.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BAR, BARS, BEAT, DURATION, FINAL_HIT, KICKS, SNARES } from "../src/timing.ts";
+import { BAR, BARS, BEAT, DURATION, FINAL_HIT, KICKS, shot, SNARES } from "../src/timing.ts";
 
 const RATE = 44100;
 const N = Math.round(DURATION * RATE);
@@ -40,8 +40,8 @@ const rnd = () => {
 
 const at = (bar, beat = 0) => bar * BAR + beat * BEAT;
 const midi = (n) => 440 * 2 ** ((n - 69) / 12);
-const DROP = at(3);
-const END = at(12);
+const DROP = at(2);
+const END = shot("end").start;
 
 /**
  * Adds a mono voice at time t (seconds), panned -1..1, with sends to the reverb and the delay. Every
@@ -197,7 +197,7 @@ for (let bar = 0; bar < BARS; bar++) {
   // hats: shuffled sixteenths with accents, from bar 1
   if (bar >= 1) {
     for (let s = 0; s < 16; s++) {
-      if (bar === 2 && s >= 8) break;
+      if (bar === 1 && s >= 8) break;
       if (last && s >= 8) break;
       const swing = s % 2 ? 0.035 : 0;
       const accent = s % 4 === 2 ? 0.2 : s % 2 ? 0.07 : 0.11;
@@ -217,7 +217,7 @@ for (let bar = 0; bar < BARS; bar++) {
 
 for (const t of KICKS) kick(t, Math.abs(t - FINAL_HIT) < 1e-6);
 for (const t of SNARES) snare(t);
-riser(at(2, 0), BAR);
+riser(at(1, 0), BAR);
 impact(DROP);
 impact(END);
 // the last hit: the chord, ringing out into the room

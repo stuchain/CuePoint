@@ -6112,7 +6112,7 @@ re-rendered when the redesigned pages land instead of re-edited by hand.
 **Implications**: Embedding it on the site belongs to Phase 17's thread. When real captures exist,
 the stand-ins are swapped and `APP_PREVIEW` turned off.
 
-**Later the same day**: v2 cut faster with CSS 3D camera moves; v3, after the user asked for it
+**Later the same day**: v4 is 20 seconds at 132 BPM with a one-bar feature montage (Clean, keys, Discover, Prepare, waveforms, Export), at the user's request. Before that, v2 cut faster with CSS 3D camera moves; v3, after the user asked for it
 cleaner, keeps the 3D but drops the flashes, frame shake and fly-through exits, centers every shot,
 and holds the captions level in one place. `npm run mux` puts the user's own copy of a track under
 the picture for a private cut; licensed music is never committed or posted.

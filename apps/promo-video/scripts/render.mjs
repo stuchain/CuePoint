@@ -22,7 +22,7 @@ import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 import { FORMATS } from "../src/formats.ts";
-import { at, FPS, FRAMES } from "../src/timing.ts";
+import { at, BARS, FPS, FRAMES } from "../src/timing.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
@@ -34,7 +34,7 @@ const frameLimit = arg("frames") ? Number(arg("frames")) : FRAMES;
 if (!Number.isInteger(frameLimit) || frameLimit < 1 || frameLimit > FRAMES) throw new Error(`--frames must be 1 to ${FRAMES}`);
 const stills = arg("stills")?.split(",").map(Number);
 /** The poster is the end card once everything has landed. */
-const POSTER_T = at(15, 3.5); // after the last hit's flash and punch have settled
+const POSTER_T = at(BARS - 1, 3.5); // the end card once every word has landed
 const NAMES = { wide: "cuepoint-promo-16x9", tall: "cuepoint-promo-9x16" };
 /** The frames are sRGB PNGs: convert with the BT.709 matrix and say so, or players shift the colors. */
 const BT709 = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"];

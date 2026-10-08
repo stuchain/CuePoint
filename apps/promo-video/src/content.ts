@@ -39,6 +39,16 @@ export const SET: ReadonlyArray<{ title: string; key: string; bpm: number }> = [
   { title: "Glass Hours", key: "9A", bpm: 126 },
 ];
 
+/** New releases on the Discover shot, from artists already in the made-up library. */
+export const RELEASES: ReadonlyArray<{ title: string; artist: string }> = [
+  { title: "Tidal Lines", artist: "Lumen Coast" },
+  { title: "Night Swim", artist: "Odd Harbor" },
+  { title: "Parallax", artist: "Kessler Drift" },
+  { title: "Soft Focus", artist: "Mira Vale" },
+  { title: "Lanterns", artist: "Tessa Rowe" },
+  { title: "Coastline", artist: "Dunes & Delta" },
+];
+
 /**
  * The twelve hues of the app's icon (DEC-210), one per Camelot number: the icon draws them clockwise
  * from 12 at the top, so 1A sits at one o'clock in the same color here as on the icon.

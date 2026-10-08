@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PHASES } from "../../website/src/three/phases";
 import { KEYS, progressAt } from "./opening3d";
-import { CAPTIONS, shot } from "./timing";
+import { BEAT, CAPTIONS, shot } from "./timing";
 
 const caption = (text: string) => CAPTIONS.find((c) => c.text === text)!;
 
@@ -21,10 +21,9 @@ describe("the opening shot's story", () => {
   it("says each step while the site's scene shows it", () => {
     const messy = caption("A messy library?");
     expect(progressAt(messy.to)).toBeLessThanOrEqual(PHASES.tag[1]);
+    // "matched" while the records take their tags and fly into the wheel, sorted by key
     const matched = caption("Matched on Beatport.");
     expect(progressAt(matched.from)).toBeGreaterThanOrEqual(PHASES.tag[0]);
-    expect(progressAt(matched.to)).toBeLessThanOrEqual(PHASES.fly[0] + 1e-9);
-    const sorted = caption("Sorted on the Camelot wheel.");
-    expect(progressAt(sorted.from)).toBeGreaterThanOrEqual(PHASES.fly[0] - 1e-9);
+    expect(progressAt(matched.from + BEAT)).toBeLessThanOrEqual(PHASES.fly[0] + 1e-9);
   });
 });

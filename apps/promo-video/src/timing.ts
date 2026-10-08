@@ -1,26 +1,31 @@
 /**
- * The promo's clock. Everything is placed on the beat: 128 BPM, 16 bars of 4 beats, exactly 30 seconds,
+ * The promo's clock. Everything is placed on the beat: 132 BPM, 11 bars of 4 beats, exactly 20 seconds,
  * so cuts, pops and camera kicks land on the music (scripts/beat.mjs plays the same grid).
  */
 export const FPS = 30;
-export const BPM = 128;
+export const BPM = 132;
 export const BEAT = 60 / BPM;
 export const BAR = BEAT * 4;
-export const BARS = 16;
+export const BARS = 11;
 export const DURATION = BAR * BARS;
 export const FRAMES = Math.round(DURATION * FPS);
 
 /** Seconds at a bar (0-based), plus beats into it. */
 export const at = (bar: number, beat = 0): number => bar * BAR + beat * BEAT;
 
-/** The shots, in bars: a new one every two or three bars, the end card holding for four. */
+/**
+ * The shots, in bars: the hook and Clean get two bars each, then the features come one bar apiece (the
+ * fastest part, on the drop), and the end card holds for two.
+ */
 export const SHOTS = [
-  { id: "opening", from: 0, to: 3 },
-  { id: "clean", from: 3, to: 6 },
-  { id: "keys", from: 6, to: 8 },
-  { id: "prepare", from: 8, to: 10 },
-  { id: "export", from: 10, to: 12 },
-  { id: "end", from: 12, to: 16 },
+  { id: "opening", from: 0, to: 2 },
+  { id: "clean", from: 2, to: 4 },
+  { id: "keys", from: 4, to: 5 },
+  { id: "discover", from: 5, to: 6 },
+  { id: "prepare", from: 6, to: 7 },
+  { id: "waveforms", from: 7, to: 8 },
+  { id: "export", from: 8, to: 9 },
+  { id: "end", from: 9, to: 11 },
 ] as const;
 
 export type ShotId = (typeof SHOTS)[number]["id"];
@@ -30,7 +35,7 @@ export const shot = (id: ShotId): { start: number; end: number } => {
   return { start: at(s.from), end: at(s.to) };
 };
 
-/** The cuts between shots, where the picture flashes. */
+/** The cuts between shots: hard cuts on the downbeat. */
 export const CUTS: readonly number[] = SHOTS.slice(1).map((s) => at(s.from));
 
 /**
@@ -38,19 +43,20 @@ export const CUTS: readonly number[] = SHOTS.slice(1).map((s) => at(s.from));
  * website's home page already says (apps/website/src/data/home.ts): no claim the app does not back up.
  */
 export const CAPTIONS = [
-  { text: "A messy library?", from: at(0, 0.25), to: at(1) },
+  { text: "A messy library?", from: 0, to: at(1) },
   { text: "Matched on Beatport.", from: at(1), to: at(2) },
-  { text: "Sorted on the Camelot wheel.", from: at(2), to: at(3) },
-  { text: "Keys and tempos, fixed.", from: at(3, 0.5), to: at(6) },
-  { text: "See your keys on the Camelot wheel.", from: at(6, 0.25), to: at(8) },
-  { text: "Plan sets that mix in key.", from: at(8, 0.25), to: at(10) },
-  { text: "Back to Rekordbox.", from: at(10, 0.25), to: at(12) },
+  { text: "Keys and tempos, fixed.", from: at(2, 0.25), to: at(4) },
+  { text: "Filter by key.", from: at(4), to: at(5) },
+  { text: "Find new music.", from: at(5), to: at(6) },
+  { text: "Plan sets in key.", from: at(6), to: at(7) },
+  { text: "Every track\u2019s waveform.", from: at(7), to: at(8) },
+  { text: "Back to Rekordbox.", from: at(8), to: at(9) },
 ] as const;
 
-/** Which bars the drums play. The intro bar is pads and arps; the riser clears bar 2's second half. */
+/** Which bars the drums play. The intro bar is pads and arps; the riser clears bar 1's second half. */
 const DRUM_BARS = (bar: number, beat: number): boolean => {
   if (bar === 0) return false;
-  if (bar === 2 && beat >= 2) return false; // the riser into the app shots
+  if (bar === 1 && beat >= 2) return false; // the riser into the app shots
   if (bar === BARS - 1 && beat >= 2) return false; // the last hit, alone
   return true;
 };
