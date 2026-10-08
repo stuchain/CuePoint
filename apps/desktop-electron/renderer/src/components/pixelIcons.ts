@@ -489,6 +489,59 @@ const tag = [
   "............",
 ];
 
+/**
+ * Chevrons for the sidebar's toggle (NAV-2): drawn rather than the « » text glyphs, which
+ * sit differently in every font. Mirror images of each other.
+ */
+const chevronLeft = [
+  "............",
+  "............",
+  ".......##...",
+  "......##....",
+  ".....##.....",
+  "....##......",
+  "....##......",
+  ".....##.....",
+  "......##....",
+  ".......##...",
+  "............",
+  "............",
+];
+
+const chevronRight = [
+  "............",
+  "............",
+  "...##.......",
+  "....##......",
+  ".....##.....",
+  "......##....",
+  "......##....",
+  ".....##.....",
+  "....##......",
+  "...##.......",
+  "............",
+  "............",
+];
+
+/**
+ * The brand (HDR-6): a cue point, the marker a DJ drops on a track — a pin whose head is
+ * a filled circle over a short stem, standing on a baseline.
+ */
+const logo = [
+  "............",
+  "....####....",
+  "...######...",
+  "..########..",
+  "..########..",
+  "..########..",
+  "...######...",
+  "....####....",
+  ".....##.....",
+  ".....##.....",
+  "..########..",
+  "............",
+];
+
 export const PIXEL_ICONS = {
   play,
   pause,
@@ -522,6 +575,10 @@ export const PIXEL_ICONS = {
   // borrowing a glyph.
   smart,
   tag,
+  // NAV-2, HDR-6: the sidebar's toggle and its brand.
+  "chevron-left": chevronLeft,
+  "chevron-right": chevronRight,
+  logo,
 } as const satisfies Record<string, readonly string[]>;
 
 export type PixelIconName = keyof typeof PIXEL_ICONS;

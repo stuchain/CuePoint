@@ -16,11 +16,11 @@ CuePoint does not update itself yet. To get a new version, download the new inst
 
 ## First run
 
-CuePoint opens with a short tour. You can skip it, and open it again from **Help > Getting started...**.
+CuePoint opens with a short tour. You can skip it, and open it again from **Help > Getting started**.
 
 ### 1. Export your collection from Rekordbox
 
-In Rekordbox, choose **File > Export Collection in xml format** and save the file somewhere easy to find. The **Help** menu in CuePoint has the same steps under **Rekordbox XML export...**.
+In Rekordbox, choose **File > Export Collection in xml format** and save the file somewhere easy to find. **Help > Troubleshooting > How to export from Rekordbox...** shows the same steps.
 
 ### 2. Import it
 
@@ -54,7 +54,7 @@ CuePoint never deletes or moves tracks or files, and never writes to your Rekord
 
 - **Start small.** Match one playlist first, so you see how matching behaves on your music.
 - **Review before you apply.** Look at each candidate beside your track before you accept it.
-- **Find a track fast.** Press **Ctrl+K** to search your whole library, or **Ctrl+F** to search the table in front of you. All shortcuts are in [The CuePoint window](the-window.md#keyboard-shortcuts).
+- **Find a track fast.** Press **Ctrl+K** to search your whole library (**Enter** opens a result in the Library, **Shift+Enter** plays it), or **Ctrl+F** to search the table in front of you. All shortcuts are in [The CuePoint window](the-window.md#keyboard-shortcuts).
 - **Save your work.** **Export review list...** on the Clean page saves the list as CSV, JSON or Excel. To put your values into the audio files, see [Writing tags to files](library.md#writing-tags-to-files); Rekordbox shows them after **Reload Tag**.
 
 ## CLI quick start
@@ -91,7 +91,7 @@ run_summary:
 
 ## Help and privacy
 
-Use **Help > Privacy...** for a summary of data handling and controls.
+Use **Help > Privacy** to open Settings → Privacy, where the data-handling controls are; its **Privacy details** button gives a summary.
 
 If something goes wrong, see [Troubleshooting](troubleshooting.md) and the [FAQ](../faq/index.md). You can also [report an issue](https://github.com/stuchain/CuePoint/issues) or ask in [Discussions](https://github.com/stuchain/CuePoint/discussions).
 

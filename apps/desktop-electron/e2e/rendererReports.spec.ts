@@ -21,6 +21,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 
+import { chooseMenuItem } from "./appMenu";
 import { waitForEngine } from "./engineReady";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -162,8 +163,7 @@ test.describe("the renderer reports (REPORT-06)", () => {
       await waitForEngine(window);
       await ready(window);
 
-      await window.getByRole("button", { name: "Help" }).click();
-      await window.getByRole("menuitem", { name: /report a problem/i }).click();
+      await chooseMenuItem(app, "report-problem");
       const note = "I dragged a track onto /Users/me/Music/Secret Song.mp3 and it froze";
       await window.getByRole("textbox").fill(note);
       await window.getByRole("button", { name: "Send" }).click();
@@ -178,7 +178,7 @@ test.describe("the renderer reports (REPORT-06)", () => {
     }
   });
 
-  test("with reports off, Report a problem is disabled and nothing is sent", async () => {
+  test("with reports off, Report a problem says so and nothing is sent", async () => {
     writeFileSync(path.join(userDataDir, "main-settings.json"), JSON.stringify({ errorReporting: false }));
     const app = await launch(userDataDir, fake.dsn);
     try {
@@ -187,9 +187,10 @@ test.describe("the renderer reports (REPORT-06)", () => {
       await ready(window);
 
       await crashPage(window);
-      await window.getByRole("button", { name: "Help" }).click();
-      await expect(window.getByRole("menuitem", { name: /report a problem/i })).toBeDisabled();
-      await expect(window.getByText("Error reports are off in Settings")).toBeVisible();
+      await chooseMenuItem(app, "report-problem");
+      // The dialog says why it cannot send, and has nothing to send with.
+      await expect(window.getByText(/Error reports are off in Settings/)).toBeVisible();
+      await expect(window.getByRole("button", { name: "Send" })).toBeDisabled();
       // The error screen has no id: nothing was reported.
       await expect(window.getByTestId("error-screen-report-id")).toHaveCount(0);
       await new Promise((resolve) => setTimeout(resolve, 1500));

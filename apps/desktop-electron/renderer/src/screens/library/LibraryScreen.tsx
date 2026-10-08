@@ -95,7 +95,7 @@ import { smartQuery, type SmartAttachment } from "./smartFilter";
 import { deletedLine, mergedLine, type TagPatch } from "./tagManager";
 import { describeRule, type ValueNames } from "./filterText";
 import { emptyStateFor } from "./libraryEmpty";
-import type { LibraryOpening } from "./libraryLink";
+import type { LibraryOpening, TrackOpening } from "./libraryLink";
 import { batchConsequence, batchSelection, type BatchAction } from "./libraryBatch";
 import { cleanMenuItems } from "./libraryClean";
 import { creditsFor, discoverMenuItems } from "./libraryDiscover";
@@ -175,6 +175,22 @@ export interface LibraryScreenProps {
    */
   refreshWith?: string | null;
   /**
+   * Open on one track, selected and in view, with Track details showing it (HDR-1): what
+   * a search result sends. Applied once per navigation, over the whole library.
+   */
+  trackWith?: TrackOpening | null;
+  /**
+   * Start the import's file choice once, for the navigation this token names: File →
+   * "Import another file…" (FLW-20) does what the Library's own button does.
+   */
+  importWith?: string | null;
+  /**
+   * Called once a one-shot opening (`trackWith`, `importWith`) has been applied, so the
+   * caller can clear it from the history: Back must not reopen the file chooser or
+   * re-select the track. A prop for `focus`'s reason: routing stays in `App.tsx`.
+   */
+  onOpeningApplied?: () => void;
+  /**
    * Open a track on the Clean page (CLEAN-13). A prop for `focus`'s reason:
    * routing stays in `App.tsx`. Absent, the Inspector offers no link.
    */
@@ -205,6 +221,9 @@ export function LibraryScreen({
   focus,
   openWith,
   refreshWith,
+  trackWith,
+  importWith,
+  onOpeningApplied,
   onOpenInClean,
   onOpenMissingFiles,
   onOpenEntity,
@@ -370,6 +389,37 @@ export function LibraryScreen({
     setOpenedNames(openWith.names ?? {});
     setQuery({ ...DEFAULT_LIBRARY_QUERY, filters: openWith.rules });
   }, [collections, openWith, playlists]);
+
+  /**
+   * Open on a track a search found (HDR-1).
+   *
+   * The whole library with nothing narrowing it — a playlist, Collection, search text or
+   * rule left over could hide the track — then the track selected and scrolled to, which
+   * is what puts it in Track details. A track the library no longer holds selects nothing.
+   */
+  const openedTrack = useRef<string | null>(null);
+  const [scrollTo, setScrollTo] = useState<number | null>(null);
+  useEffect(() => {
+    if (!trackWith || openedTrack.current === trackWith.token) return;
+    openedTrack.current = trackWith.token;
+    const whole: LibraryQuery = { ...DEFAULT_LIBRARY_QUERY };
+    playlists.select(null);
+    collections.select(null);
+    setSmart(null);
+    setBarRules(null);
+    setOpenedNames({});
+    setScrollTo(null);
+    setQuery(whole);
+    onOpeningApplied?.();
+    void selection
+      .pickTrack(trackWith.trackId, whole)
+      .then((index) => {
+        if (!mounted.current) return;
+        if (index >= 0) setScrollTo(index);
+        else push("That track is no longer in your library.", "info");
+      })
+      .catch(reportUnexpected);
+  }, [collections, onOpeningApplied, playlists, push, selection, trackWith]);
   /** Where a row drag started, which is the only Collection position in hand. */
   const draggingRow = useRef<{ index: number; count: number } | null>(null);
   const detail = useTrackDetail(selection.selection.lastId);
@@ -1316,8 +1366,18 @@ export function LibraryScreen({
   useEffect(() => {
     if (!refreshWith || refreshedWith.current === refreshWith) return;
     refreshedWith.current = refreshWith;
+    onOpeningApplied?.();
     void handleCheck();
-  }, [handleCheck, refreshWith]);
+  }, [handleCheck, onOpeningApplied, refreshWith]);
+
+  // Likewise once per navigation that asked for the import's file choice.
+  const importedWith = useRef<string | null>(null);
+  useEffect(() => {
+    if (!importWith || importedWith.current === importWith) return;
+    importedWith.current = importWith;
+    onOpeningApplied?.();
+    void handleImport();
+  }, [handleImport, importWith, onOpeningApplied]);
 
   const handleApply = useCallback(
     async ({ confirmReferences }: { confirmReferences: boolean }) => {
@@ -1708,6 +1768,7 @@ export function LibraryScreen({
               onRowDrop={(toIndex, transfer) => void reorderTo(toIndex, transfer)}
               // Shift+F10 and the menu key open it on the last row clicked.
               activeIndex={selection.selection.anchor}
+              scrollToIndex={scrollTo}
               emptyState={emptyState}
               resetKey={queryKey(query)}
               ariaLabel="Library tracks"

@@ -1,5 +1,4 @@
 export { AboutDialog } from "./AboutDialog";
-export { AppMenuBar } from "./AppMenuBar";
 export { DiagnosticsDialog } from "./DiagnosticsDialog";
 export { Hint } from "./Hint";
 export { OnboardingDialog } from "./OnboardingDialog";

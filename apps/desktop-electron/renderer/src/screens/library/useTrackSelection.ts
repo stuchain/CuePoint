@@ -50,6 +50,15 @@ interface TrackSelectionController {
   selectAllMatching: () => void;
   clear: () => void;
   /**
+   * Select one track by id in the view a query describes, wherever in it the track is
+   * (a search result opening the Library, HDR-1). Answers its position, or -1 when the
+   * view does not hold it, and then selects nothing.
+   *
+   * The selection is made *for* that query: the question changing to it afterwards is
+   * not "a different question", so it does not clear what this just chose.
+   */
+  pickTrack: (id: number, forQuery: LibraryQuery) => Promise<number>;
+  /**
    * The rows in the selection, in the order the table shows them, up to
    * `COPY_LIMIT`. Fetched, because a selection can name rows no window holds.
    */
@@ -145,6 +154,20 @@ export function useTrackSelection(
 
   const clear = useCallback(() => setSelection(clearSelection()), []);
 
+  const pickTrack = useCallback(async (id: number, forQuery: LibraryQuery): Promise<number> => {
+    for (let offset = 0; ; offset += GATHER_ID_PAGE) {
+      // eslint-disable-next-line no-await-in-loop
+      const ids = await fetchIds(forQuery, offset, GATHER_ID_PAGE);
+      const at = ids.indexOf(id);
+      if (at >= 0) {
+        previousKey.current = queryKey(forQuery);
+        setSelection(selectOnly(id, offset + at));
+        return offset + at;
+      }
+      if (ids.length < GATHER_ID_PAGE) return -1;
+    }
+  }, []);
+
   const gatherRows = useCallback(
     async (limit: number = COPY_LIMIT): Promise<LibraryTrackRow[]> => {
       const bridge = window.cuepoint?.browseLibrary;
@@ -187,5 +210,14 @@ export function useTrackSelection(
     ? Math.max(0, total - selection.excluded.size)
     : selection.ids.size;
 
-  return { selection, count, onRowClick, selectAllMatching, clear, gatherRows, gatherIds };
+  return {
+    selection,
+    count,
+    onRowClick,
+    selectAllMatching,
+    clear,
+    pickTrack,
+    gatherRows,
+    gatherIds,
+  };
 }

@@ -9,7 +9,7 @@ import "./error-reporting-settings.css";
 export const ERROR_REPORTING_FIELD_ID = "settings-error-reporting";
 
 interface ErrorReportingSettingsPanelProps {
-  /** Opens Help → Privacy, which shows the same state and links back. */
+  /** Opens the Privacy dialog, which explains what is collected and links back here. */
   onOpenPrivacy?: () => void;
   /** One per navigation that asked for the switch; it is focused once, when it can take focus. */
   focusToken?: string | null;

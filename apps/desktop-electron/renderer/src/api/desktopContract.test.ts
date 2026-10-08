@@ -25,6 +25,8 @@ import mainSource from "../../../electron/main.ts?raw";
 import reportingSource from "../../../electron/reporting.ts?raw";
 import engineClientSource from "../../../electron/engineClient.ts?raw";
 import supervisorSource from "../../../electron/engineSupervisor.ts?raw";
+import appMenuSource from "../../../electron/appMenu.ts?raw";
+import menuCommandsSource from "./menuCommands.ts?raw";
 import bridgeTypesSource from "./cuepointBridge.types.ts?raw";
 import waveformsFixture from "../components/waveform/waveforms.fixture.json";
 
@@ -2066,6 +2068,53 @@ describe("desktop contract", () => {
         expect(supervisorMethodsDeclared(supervisor)).toContain(method);
         expect(handledChannels(main)).toContain(`engine:${method}`);
       }
+    });
+  });
+
+  describe("the one menu bar (FLW-20, DEC-204)", () => {
+    // The menu is built in main and the renderer answers it, so the bridge has one
+    // call each way, and the ids between them are a fixed list that both sides read.
+    const appMenu = lf(appMenuSource);
+    const menuCommands = lf(menuCommandsSource);
+
+    /** The quoted ids inside `export const NAME = [ ... ] as const`. */
+    function listed(source: string, name: string): string[] {
+      const block = new RegExp(`${name}\\s*=\\s*\\[([^\\]]*)\\]`).exec(source);
+      return block ? [...block[1]!.matchAll(/"([^"]+)"/g)].map((m) => m[1]!) : [];
+    }
+
+    it("sends the renderer's size to main, and main handles it", () => {
+      expect(invokedChannels(preload)).toContain("menu:setSizeState");
+      expect(handledChannels(main)).toContain("menu:setSizeState");
+      expect(preload).toContain("setSizeState");
+    });
+
+    it("lets the renderer listen for the menu's commands, on the channel main sends on", () => {
+      expect(preload).toMatch(/ipcRenderer\.on\(\s*"menu:command"/);
+      expect(preload).toMatch(/ipcRenderer\.removeListener\(\s*"menu:command"/);
+      expect(appMenu).toContain('"menu:command"');
+    });
+
+    it("declares both calls on the renderer bridge type", () => {
+      expect(bridgeTypes).toContain("menu?:");
+      expect(bridgeTypes).toContain("setSizeState:");
+      expect(bridgeTypes).toContain("onCommand:");
+    });
+
+    it("exposes the preload's menu and nothing else of Electron's", () => {
+      const block = preload.slice(preload.indexOf("menu: {"), preload.indexOf("menu: {") + 600);
+      expect(block).not.toMatch(/ipcRenderer\.send\(|\bMenu\b|\bremote\b/);
+    });
+
+    it("gives the renderer and the menu the same list of command ids", () => {
+      const main = listed(appMenu, "MENU_COMMAND_IDS");
+      expect(main.length).toBeGreaterThan(10);
+      expect(listed(menuCommands, "MENU_COMMAND_IDS")).toEqual(main);
+    });
+
+    it("installs the menu from main, and sets the window's zoom to a fixed factor", () => {
+      expect(main).toContain("installAppMenu(");
+      expect(main).toContain("setVisualZoomLevelLimits(1, 1)");
     });
   });
 });

@@ -2,9 +2,7 @@ import type { ReactNode } from "react";
 import "./AppShellLayout.css";
 
 interface AppShellLayoutProps {
-  /** Application menu bar. Spans the full width above every other region. */
-  menuBar?: ReactNode;
-  /** Shell header. Global search moves in here in SHELL-04. */
+  /** Shell header: the search, and PAGES-10's wheel button. */
   header?: ReactNode;
   /** Primary navigation. The sidebar moves in here in SHELL-02. */
   sidebar?: ReactNode;
@@ -28,14 +26,16 @@ interface AppShellLayoutProps {
  * "occupies no space until Phase 5" player slot depends on this property, so the
  * conditionals are load-bearing, not tidiness.
  *
- * Landmarks (SHELL-10). `main` here, `search` on the header region and
- * `contentinfo` on the status strip; `banner` stays on `AppMenuBar` and
+ * Landmarks (SHELL-10). `main` here and `contentinfo` on the status strip;
+ * `search` is the search field's own container (PAGES-03B: the header row also
+ * holds the Camelot wheel's button, which is not part of the search), and
  * `navigation` and `complementary` come from the sidebar and Inspector, which
- * own those elements. Nothing declares a landmark twice.
+ * own those elements. There is no `banner`: the in-window menu bar is gone, the
+ * one menu bar being the native one. Nothing declares a landmark twice.
  *
- * The header and status roles live on the region wrappers rather than inside
- * the components: the wrapper is the landmark, and a component that later ends
- * up somewhere else should not carry the shell's semantics with it.
+ * The status role lives on the region wrapper rather than inside the
+ * component: the wrapper is the landmark, and a component that later ends up
+ * somewhere else should not carry the shell's semantics with it.
  *
  * The content element keeps its historical `app-main` class alongside the grid
  * class, because screen styling in `App.css` and `screens.css` is written
@@ -43,7 +43,6 @@ interface AppShellLayoutProps {
  * this step.
  */
 export function AppShellLayout({
-  menuBar,
   header,
   sidebar,
   inspector,
@@ -53,12 +52,7 @@ export function AppShellLayout({
 }: AppShellLayoutProps) {
   return (
     <div className="app-shell">
-      {menuBar ? <div className="app-shell__menubar">{menuBar}</div> : null}
-      {header ? (
-        <div className="app-shell__header" role="search">
-          {header}
-        </div>
-      ) : null}
+      {header ? <div className="app-shell__header">{header}</div> : null}
       {sidebar ? <div className="app-shell__sidebar">{sidebar}</div> : null}
       <main className="app-shell__content app-main">{children}</main>
       {inspector ? <div className="app-shell__inspector">{inspector}</div> : null}

@@ -215,8 +215,8 @@ If something goes wrong, the log and the support bundle are the first things to 
 
 If these solutions don't help:
 
-1. Generate a support bundle (**Help > Export support bundle...**)
-2. Check the logs (**Help > Log Viewer...**, then **Open logs folder**)
+1. Generate a support bundle (**Help > Troubleshooting > Export support bundle...**)
+2. Check the logs (**Help > Troubleshooting > Log viewer...**, then **Open logs folder**)
 3. [Report Issue](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml) on GitHub and attach the bundle
 4. Ask in [Discussions](https://github.com/stuchain/CuePoint/discussions)
 

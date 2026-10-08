@@ -39,6 +39,17 @@ describe("pixel icon artwork", () => {
     );
   });
 
+  it("draws the sidebar's brand and its toggle (HDR-6, NAV-2)", () => {
+    expect(PIXEL_ICON_NAMES).toEqual(
+      expect.arrayContaining(["logo", "chevron-left", "chevron-right"]),
+    );
+  });
+
+  it("draws the two chevrons as mirror images", () => {
+    const flipped = PIXEL_ICONS["chevron-left"].map((row) => [...row].reverse().join(""));
+    expect(PIXEL_ICONS["chevron-right"]).toEqual(flipped);
+  });
+
   it("covers every navigation destination (SHELL-09)", () => {
     // FOUNDATION-14 left the concept icons as Unicode glyphs "until there is a
     // screen to draw them against". There is one now.

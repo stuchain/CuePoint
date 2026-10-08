@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 import { Hint } from "../Hint";
 import { ActivityPanel } from "./ActivityPanel";
+import { modifierName } from "./platformKeys";
 import { jobLabel, jobPercent, jobStopLabel, jobTitle, useActiveJob } from "./useActiveJob";
 import { useEngineStatus } from "./useEngineStatus";
 import { usePlayerStatusMessage } from "./usePlayerStatus";
@@ -25,8 +26,7 @@ import "./StatusStrip.css";
  */
 /** The Activity button's reason, with the shortcut the keyboard handler below answers to. */
 function activityHint(): string {
-  const mac = typeof navigator !== "undefined" && /mac/i.test(navigator.platform ?? "");
-  return `Activity: what CuePoint has done (${mac ? "Cmd" : "Ctrl"}+Shift+A)`;
+  return `Activity: what CuePoint has done (${modifierName()}+Shift+A)`;
 }
 
 /**

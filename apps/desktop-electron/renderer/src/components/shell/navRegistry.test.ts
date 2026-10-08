@@ -15,6 +15,7 @@ import {
   findDestinationByPath,
   groupedDestinations,
   homeDestination,
+  EMPTY_LIBRARY_HINT,
   HOME_DESTINATION_ID,
   NAV_DESTINATIONS,
   NAV_GROUPS,
@@ -78,7 +79,7 @@ describe("navRegistry", () => {
   it("throws when the home destination is missing", () => {
     // A shell that cannot resolve home renders nothing; better to fail loudly.
     const withoutHome: NavDestination[] = [
-      { id: "x", label: "X", path: "/x", group: "workspace", glyph: "x", enabled: true },
+      { id: "x", label: "X", hint: "x", path: "/x", group: "workspace", glyph: "x", enabled: true },
     ];
     expect(() => homeDestination(withoutHome)).toThrow(/Home destination/);
   });
@@ -267,8 +268,8 @@ describe("retired destinations (DEC-071, DEC-100)", () => {
     // a page nothing renders.
     const retired: RetiredDestination[] = [{ id: "old", path: "/old", replacedBy: "new" }];
     const destinations: NavDestination[] = [
-      { id: "library", label: "Library", path: "/library", group: "workspace", icon: "library", enabled: true },
-      { id: "new", label: "New", path: "/new", group: "workspace", icon: "clean", enabled: false },
+      { id: "library", label: "Library", hint: "x", path: "/library", group: "workspace", icon: "library", enabled: true },
+      { id: "new", label: "New", hint: "x", path: "/new", group: "workspace", icon: "clean", enabled: false },
     ];
     expect(replacementFor("old", destinations, retired)).toBeNull();
     expect(retiredRedirects(destinations, retired)).toEqual([]);
@@ -322,5 +323,46 @@ describe("groupedDestinations", () => {
 
     expect(entries.map((entry) => entry.group)).toEqual(["workspace", "system"]);
     expect(entries[0]?.destinations.map((d) => d.id)).toEqual(["library"]);
+  });
+
+  describe("hints, the sub-entry and the library-first pages (NAV-1, NAV-3, NAV-5)", () => {
+    it("gives every destination the one-line hint the sidebar shows (NAV-1)", () => {
+      const hints = Object.fromEntries(NAV_DESTINATIONS.map((d) => [d.id, d.hint]));
+      expect(hints).toEqual({
+        library: "Your Rekordbox tracks",
+        collections: "Your own groups and smart lists",
+        clean: "Fix values with Beatport",
+        discover: "Find new music",
+        prepare: "Plan a set",
+        settings: "Look, sound, accounts",
+      });
+    });
+
+    it("writes the hints without a final period and in American spelling", () => {
+      for (const destination of NAV_DESTINATIONS) {
+        expect(destination.hint).not.toMatch(/\.$/);
+        expect(destination.hint).not.toMatch(/colour|behaviour|organis|analys/i);
+      }
+    });
+
+    it("nests Collections under the Library (NAV-3, DEC-156)", () => {
+      expect(findDestinationById("collections")?.parentId).toBe("library");
+      for (const destination of NAV_DESTINATIONS) {
+        if (destination.parentId) {
+          expect(findDestinationById(destination.parentId)).not.toBeNull();
+        }
+      }
+    });
+
+    it("names the pages that need a library before the first import (NAV-5)", () => {
+      const needing = NAV_DESTINATIONS.filter((d) => d.needsLibrary).map((d) => d.id);
+      expect(needing).toEqual(["collections", "clean", "discover", "prepare"]);
+      expect(EMPTY_LIBRARY_HINT).toBe("Import your Rekordbox collection first");
+    });
+
+    it("keeps Settings last, in its own group, for the pinned bottom (NAV-6)", () => {
+      const groups = groupedDestinations();
+      expect(groups.at(-1)?.destinations.map((d) => d.id)).toEqual(["settings"]);
+    });
   });
 });

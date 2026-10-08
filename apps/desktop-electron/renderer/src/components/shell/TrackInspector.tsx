@@ -5,6 +5,7 @@ import {
   saveInspectorState,
   type InspectorState,
 } from "./inspectorState";
+import { useShellCommand } from "./shellCommands";
 import "./TrackInspector.css";
 
 interface TrackInspectorProps {
@@ -73,9 +74,12 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     next?.focus();
   }, [state.visible]);
 
+  // View → Track details in the menu.
+  useShellCommand("toggle-inspector", toggle);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "i") {
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "i") {
         event.preventDefault();
         toggle();
       }

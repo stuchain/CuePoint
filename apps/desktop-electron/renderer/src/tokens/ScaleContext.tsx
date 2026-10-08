@@ -1,6 +1,7 @@
 import {
   createContext,
   useCallback,
+  useEffect,
   useContext,
   useMemo,
   useState,
@@ -10,6 +11,7 @@ import {
   DEFAULT_SCALE,
   SCALE_OPTIONS,
   initScale,
+  scaleOptionLabel,
   setStoredScale,
   type ScaleFactor,
 } from "./scale";
@@ -29,6 +31,16 @@ export function ScaleProvider({ children }: { children: ReactNode }) {
     setStoredScale(next);
     setScaleState(next);
   }, []);
+
+  // View → Size in the native menu shows these options with the current one ticked (FLW-20),
+  // so main is told whenever the size changes, and once at start.
+  useEffect(() => {
+    const told = window.cuepoint?.menu?.setSizeState({
+      options: SCALE_OPTIONS.map((value) => ({ value, label: scaleOptionLabel(value) })),
+      current: scale,
+    });
+    void Promise.resolve(told).catch(() => undefined);
+  }, [scale]);
 
   const value = useMemo(
     () => ({ scale, setScale, scaleOptions: SCALE_OPTIONS }),

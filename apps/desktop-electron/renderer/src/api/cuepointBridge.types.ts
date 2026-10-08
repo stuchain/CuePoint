@@ -325,6 +325,13 @@ export interface AppBuildInfo {
   environment: "production" | "development";
 }
 
+export interface MenuSizeState {
+  /** The sizes View → Size offers, in order, each with its words (`scaleOptionLabel`). */
+  options: ReadonlyArray<{ value: number; label: string }>;
+  /** The size in use now, one of `options`. */
+  current: number;
+}
+
 /**
  * Whether error reports may be sent (REPORT-01, DEC-128). Stored by Electron
  * main, which tells the engine; on from the first launch.
@@ -3329,6 +3336,16 @@ export interface CuePointBridge {
   errorReporting?: {
     get: () => Promise<ErrorReportingState>;
     set: (enabled: boolean) => Promise<ErrorReportingState>;
+  };
+  /**
+   * The one menu bar, which main builds (FLW-20, DEC-204). The renderer tells main the sizes and
+   * the current one whenever the size changes, and main sends back the id of each command the
+   * user picks, which `api/menuCommands.ts` lists. Absent in a browser tab and from an older main.
+   */
+  menu?: {
+    setSizeState: (state: MenuSizeState) => Promise<void>;
+    /** Listen for the menu's commands; returns the function that stops listening. */
+    onCommand: (listener: (id: string) => void) => () => void;
   };
   /** End-to-end runs only: `enabled()` answers true, and the page may be made to throw (REPORT-06). */
   testHooks?: {

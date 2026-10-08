@@ -136,6 +136,34 @@ describe("transport keys", () => {
   });
 });
 
+describe("Cmd on macOS", () => {
+  const platform = (value: string) => vi.spyOn(navigator, "platform", "get").mockReturnValue(value);
+
+  it("steps the queue and the volume with Cmd and the arrows", async () => {
+    platform("MacIntel");
+    const player = install(50);
+    render(<Probe />);
+
+    await userEvent.keyboard("{Meta>}{ArrowRight}{/Meta}");
+    await userEvent.keyboard("{Meta>}{ArrowLeft}{/Meta}");
+    await userEvent.keyboard("{Meta>}{ArrowUp}{/Meta}");
+
+    expect(player.next).toHaveBeenCalledTimes(1);
+    expect(player.previous).toHaveBeenCalledTimes(1);
+    expect(player.setVolume).toHaveBeenCalledWith(50 + PLAYER_VOLUME_STEP);
+  });
+
+  it("leaves the Windows key alone elsewhere", async () => {
+    platform("Linux x86_64");
+    const player = install();
+    render(<Probe />);
+
+    await userEvent.keyboard("{Meta>}{ArrowRight}{/Meta}");
+
+    expect(player.next).not.toHaveBeenCalled();
+  });
+});
+
 describe("keys that belong to something else", () => {
   it("leaves Space to a text field", async () => {
     // Otherwise typing "drum and bass" into the filter bar stops the music

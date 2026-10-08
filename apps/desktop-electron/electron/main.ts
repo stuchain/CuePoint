@@ -1,13 +1,14 @@
 /**
  * Electron main process — Spike S1: spawn engine and expose status to renderer.
  */
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, screen, session, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, screen, session, shell, systemPreferences } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
 import { resolveAppIconPath } from "./appIcon";
+import { installAppMenu, type MenuPlatform } from "./appMenu";
 import { beatportPageUrl } from "./externalLinks";
 import { MediaKeyBinding } from "./mediaKeys";
 import type { PlayerNotice } from "./playbackFailures";
@@ -328,7 +329,14 @@ function handle(
   ipcMain.handle(channel, wrapIpcHandler(channel, handler));
 }
 
+/** CuePoint's one menu bar (FLW-20); set up when the app is ready, rebuilt when the size changes. */
+let appMenu: ReturnType<typeof installAppMenu> | null = null;
+
 function registerIpcHandlers(): void {
+  // The renderer's sizes and the current one, for View → Size (FLW-20).
+  handle("menu:setSizeState", (_event, state: unknown) => {
+    appMenu?.setSizeState(state);
+  });
   handle("engine:status", () => engine.getStatus());
   handle("engine:restart", () => engine.restart());
   handle("engine:searchLibrary", (_event, params) => engine.searchLibrary(params));
@@ -1057,6 +1065,11 @@ async function createWindow(): Promise<void> {
   if (win.isFocused()) mediaKeys.acquire();
   if (placement) win.showInactive();
 
+  // Ctrl+=, Ctrl+- and Ctrl+0 step the Size setting (FLW-20). The page is never zoomed, by
+  // a pinch or by Ctrl and the wheel either, or the two would fight over how big it is.
+  void win.webContents.setVisualZoomLevelLimits(1, 1);
+  win.webContents.on("zoom-changed", () => win.webContents.setZoomFactor(1));
+
   if (isDev) {
     // The `engine` and engine-version query parameters this once carried were
     // read by nothing — searched before removing — and carrying them was the
@@ -1071,6 +1084,13 @@ async function createWindow(): Promise<void> {
 
 app.whenReady().then(() => {
   breadcrumb("app", "ready");
+  appMenu = installAppMenu({
+    Menu,
+    getWindow: () => BrowserWindow.getAllWindows()[0] ?? null,
+    platform: ((): MenuPlatform =>
+      process.platform === "darwin" || process.platform === "win32" ? process.platform : "linux")(),
+    packaged: app.isPackaged,
+  });
   registerIpcHandlers();
   void createWindow();
 });

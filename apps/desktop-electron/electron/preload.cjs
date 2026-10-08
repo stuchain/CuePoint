@@ -378,6 +378,18 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
     get: () => ipcRenderer.invoke("errorReporting:get"),
     set: (enabled) => ipcRenderer.invoke("errorReporting:set", enabled),
   },
+  // The one menu bar (FLW-20): the renderer reports its sizes, main sends back the command picked.
+  // Nothing of Electron's Menu crosses; the renderer can say what size it is and hear a fixed id.
+  menu: {
+    setSizeState: (state) => ipcRenderer.invoke("menu:setSizeState", state),
+    onCommand: (listener) => {
+      const handler = (_event, id) => {
+        if (typeof id === "string") listener(id);
+      };
+      ipcRenderer.on("menu:command", handler);
+      return () => ipcRenderer.removeListener("menu:command", handler);
+    },
+  },
   // Whether this run is an end-to-end test (REPORT-06): the page may then be
   // made to throw, to see the error screen. Main answers false for a user.
   testHooks: {

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { readExitClearing, saveExitClearing } from "../screens/exitClearing";
 import { settingsFocusState } from "../screens/settingsLink";
 import { Button, Modal, useToast } from "./index";
 import { reportUnexpected } from "../reporting/reporting";
@@ -21,8 +20,8 @@ Local storage:
 - Beatport token stored locally when configured
 - Logs and cache for debugging (can be cleared)
 
-You can adjust exit preferences below. You can clear cache/logs now, and optionally
-clear them automatically on exit.`;
+You can clear the cache and the logs now. Whether CuePoint sends error reports, and whether
+it clears the cache and logs when it quits, are chosen in Settings → Privacy.`;
 
 interface PrivacyDialogProps {
   open: boolean;
@@ -30,8 +29,6 @@ interface PrivacyDialogProps {
 }
 
 export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
-  const [clearCacheOnExit, setClearCacheOnExit] = useState(false);
-  const [clearLogsOnExit, setClearLogsOnExit] = useState(false);
   const [clearing, setClearing] = useState(false);
   // What the bridge said about error reports (REPORT-01): nothing yet, on or
   // off, or that it could not be read.
@@ -55,18 +52,6 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
       live = false;
     };
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const stored = readExitClearing();
-    setClearCacheOnExit(stored.clearCache);
-    setClearLogsOnExit(stored.clearLogs);
-  }, [open]);
-
-  const handleSave = () => {
-    saveExitClearing({ clearCache: clearCacheOnExit, clearLogs: clearLogsOnExit });
-    onClose();
-  };
 
   const handleClearCacheNow = async () => {
     if (!window.cuepoint?.clearCuepointCache) return;
@@ -100,15 +85,8 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
     }
   };
 
+  // The one home of these choices is Settings → Privacy (SET-7).
   const handleChangeInSettings = () => {
-    onClose();
-    navigate("/settings", { state: settingsFocusState("error-reporting") });
-  };
-
-  // The exit-clearing choices live in Settings → Privacy too (SET-7).
-  // The ticked boxes are saved first, so leaving the dialog loses nothing.
-  const handleChangeExitInSettings = () => {
-    saveExitClearing({ clearCache: clearCacheOnExit, clearLogs: clearLogsOnExit });
     onClose();
     navigate("/settings", { state: settingsFocusState("privacy") });
   };
@@ -125,39 +103,16 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
       open={open}
       title="Privacy"
       onClose={onClose}
-      secondaryAction={{ label: "Cancel", onClick: onClose }}
-      primaryAction={{ label: "Save", onClick: handleSave }}
+      secondaryAction={{ label: "Close", onClick: onClose }}
     >
       <div className="privacy-dialog">
         <pre className="privacy-dialog__text">{PRIVACY_TEXT}</pre>
         <p className="privacy-dialog__reporting">
           <span data-testid="privacy-error-reports">{reportingWords}</span>{" "}
           <button type="button" className="privacy-dialog__link" onClick={handleChangeInSettings}>
-            Change in Settings
-          </button>
-        </p>
-        <fieldset className="privacy-dialog__prefs">
-          <legend>On exit</legend>
-          <label>
-            <input
-              type="checkbox"
-              checked={clearCacheOnExit}
-              onChange={(e) => setClearCacheOnExit(e.target.checked)}
-            />
-            Clear cache on exit
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={clearLogsOnExit}
-              onChange={(e) => setClearLogsOnExit(e.target.checked)}
-            />
-            Clear logs on exit
-          </label>
-          <button type="button" className="privacy-dialog__link" onClick={handleChangeExitInSettings}>
             Change these in Settings → Privacy
           </button>
-        </fieldset>
+        </p>
 
         <div className="privacy-dialog__actions">
           <Button

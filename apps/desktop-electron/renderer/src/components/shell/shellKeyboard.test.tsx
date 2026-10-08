@@ -11,10 +11,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
+import { ToastProvider } from "../Toast";
 import { Sidebar } from "./Sidebar";
 import { TrackInspector } from "./TrackInspector";
 import { StatusStrip } from "./StatusStrip";
 import { AppShellLayout } from "./AppShellLayout";
+import { ShellHeader } from "./ShellHeader";
 import { KEYBOARD_SHORTCUTS } from "../../api/keyboardShortcuts";
 
 afterEach(() => {
@@ -30,7 +32,7 @@ describe("sidebar keyboard", () => {
         <Sidebar />
       </MemoryRouter>,
     );
-  const toggle = () => screen.getByRole("button", { name: /(Collapse|Expand) navigation/i });
+  const toggle = () => screen.getByRole("button", { name: /(Collapse|Expand) sidebar/i });
 
   it("collapses and expands with Ctrl+B", async () => {
     const user = userEvent.setup();
@@ -144,14 +146,20 @@ describe("status strip keyboard", () => {
 });
 
 describe("landmarks", () => {
-  it("marks the header as search and the status strip as contentinfo", () => {
+  it("marks the search field as search and the status strip as contentinfo", () => {
+    // The landmark is the search field's own container, not the header row (PAGES-03B).
     const { container } = render(
-      <AppShellLayout header={<p>search</p>} statusBar={<p>status</p>}>
-        <p>page</p>
-      </AppShellLayout>,
+      <ToastProvider>
+        <MemoryRouter>
+          <AppShellLayout header={<ShellHeader />} statusBar={<p>status</p>}>
+            <p>page</p>
+          </AppShellLayout>
+        </MemoryRouter>
+      </ToastProvider>,
     );
 
-    expect(container.querySelector('[role="search"]')).not.toBeNull();
+    expect(container.querySelectorAll('[role="search"]')).toHaveLength(1);
+    expect(container.querySelector(".app-shell__header")).not.toHaveAttribute("role");
     expect(container.querySelector("footer")).not.toBeNull();
     expect(container.querySelectorAll("main")).toHaveLength(1);
   });
@@ -171,16 +179,27 @@ describe("landmarks", () => {
 describe("the shortcuts registry", () => {
   it("never gives one key two meanings", () => {
     // The DoD for SHELL-10, and the reason Ctrl+K was chosen for global search
-    // in SHELL-04 rather than overloading Ctrl+F.
-    const byShortcut = new Map<string, Set<string>>();
+    // in SHELL-04 rather than overloading Ctrl+F. A page's own key (Enter in a table, the
+    // arrows on a divider) means what that page says; the global ones mean one thing
+    // everywhere, so no page may reuse one.
+    const seen = new Map<string, Set<string>>();
     for (const entry of KEYBOARD_SHORTCUTS) {
-      const actions = byShortcut.get(entry.shortcut) ?? new Set<string>();
-      actions.add(entry.action);
-      byShortcut.set(entry.shortcut, actions);
+      const contexts = seen.get(entry.shortcut) ?? new Set<string>();
+      contexts.add(entry.context);
+      seen.set(entry.shortcut, contexts);
     }
-    const ambiguous = [...byShortcut.entries()].filter(([, actions]) => actions.size > 1);
+    const reusedGlobal = [...seen.entries()].filter(
+      ([, contexts]) => contexts.has("Global") && contexts.size > 1,
+    );
+    expect(reusedGlobal).toEqual([]);
 
-    expect(ambiguous).toEqual([]);
+    const twiceInOneContext = KEYBOARD_SHORTCUTS.filter(
+      (entry, at) =>
+        KEYBOARD_SHORTCUTS.findIndex(
+          (other) => other.context === entry.context && other.shortcut === entry.shortcut,
+        ) !== at,
+    );
+    expect(twiceInOneContext).toEqual([]);
   });
 
   it("documents every shell binding the shell actually implements", () => {

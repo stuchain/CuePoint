@@ -22,6 +22,7 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Filter shortcuts…"
         />
+        <p className="shortcuts-dialog__note">On a Mac, use Cmd where a shortcut says Ctrl.</p>
         <div className="shortcuts-dialog__table-wrap">
           <table className="shortcuts-dialog__table">
             <thead>

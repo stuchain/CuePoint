@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 
+import { hasShortcutModifier } from "../shell/platformKeys";
 import { selectVolume } from "./playerFormat";
 import { usePlayerValue } from "./playerStore";
 
@@ -70,11 +71,13 @@ export function usePlayerShortcuts(): void {
     const onKeyDown = (event: KeyboardEvent) => {
       const player = window.cuepoint?.player;
       if (!player) return;
-      if (event.altKey || event.metaKey) return;
+      if (event.altKey) return;
+      // Meta is the shortcut key on macOS (Cmd), the system's elsewhere.
+      if (event.metaKey && !hasShortcutModifier(event)) return;
       if (isTypingTarget(event.target)) return;
 
       if (event.key === " " || event.code === "Space") {
-        if (event.ctrlKey || event.shiftKey) return;
+        if (hasShortcutModifier(event) || event.shiftKey) return;
         if (isSpaceTarget(event.target) || dialogIsOpen()) return;
         // Prevented so the page does not also scroll, which is what Space
         // does to a scrollable container by default.
@@ -83,7 +86,7 @@ export function usePlayerShortcuts(): void {
         return;
       }
 
-      if (!event.ctrlKey || event.shiftKey) return;
+      if (!hasShortcutModifier(event) || event.shiftKey) return;
 
       switch (event.key) {
         case "ArrowRight":

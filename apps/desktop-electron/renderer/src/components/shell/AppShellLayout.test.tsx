@@ -36,7 +36,6 @@ describe("AppShellLayout", () => {
   it("renders every supplied region", () => {
     render(
       <AppShellLayout
-        menuBar={<div data-testid="menubar" />}
         header={<div data-testid="header" />}
         sidebar={<div data-testid="sidebar" />}
         inspector={<div data-testid="inspector" />}
@@ -47,13 +46,12 @@ describe("AppShellLayout", () => {
       </AppShellLayout>,
     );
 
-    for (const region of ["menubar", "header", "sidebar", "inspector", "player", "status"]) {
+    for (const region of ["header", "sidebar", "inspector", "player", "status"]) {
       expect(screen.getByTestId(region)).toBeInTheDocument();
     }
   });
 
   it.each([
-    ["menubar", ".app-shell__menubar"],
     ["header", ".app-shell__header"],
     ["sidebar", ".app-shell__sidebar"],
     ["inspector", ".app-shell__inspector"],
@@ -70,18 +68,30 @@ describe("AppShellLayout", () => {
   });
 
   it("declares no landmark of its own beyond main", () => {
-    // AppMenuBar already claims role="banner"; a second one here would be a
-    // duplicate landmark. The rest arrive with the content later steps supply.
+    // The in-window menu bar (and its banner) is gone with the one native menu bar,
+    // and the `search` landmark moved onto the search field's own container
+    // (HDR-1, PAGES-03B): the header row wraps the wheel's button as well.
     const { container } = render(
-      <AppShellLayout menuBar={<header>Menu</header>}>
+      <AppShellLayout header={<div>Header</div>}>
         <p>Routed page</p>
       </AppShellLayout>,
     );
 
     expect(container.querySelectorAll("main")).toHaveLength(1);
-    expect(container.querySelectorAll("header")).toHaveLength(1);
+    expect(container.querySelectorAll("header")).toHaveLength(0);
+    expect(screen.queryByRole("search")).not.toBeInTheDocument();
+    expect(screen.queryByRole("banner")).not.toBeInTheDocument();
     expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
     expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
+  });
+
+  it("has no menu bar region any more", () => {
+    const { container } = render(
+      <AppShellLayout>
+        <p>Routed page</p>
+      </AppShellLayout>,
+    );
+    expect(container.querySelector(".app-shell__menubar")).toBeNull();
   });
 
   it("places the content region between the sidebar and the inspector", () => {

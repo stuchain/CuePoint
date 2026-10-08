@@ -39,6 +39,11 @@ interface NavDestinationBase {
   /** Stable across path changes; this is what gets persisted. */
   id: string;
   label: string;
+  /**
+   * One line on what the page is for (NAV-1): shown muted under the label when the
+   * sidebar is open, and in the title in both states.
+   */
+  hint: string;
   path: string;
   group: NavGroup;
   /** False for a destination declared but not yet built. */
@@ -60,6 +65,16 @@ interface NavDestinationBase {
    * a second identity for a page that already has one.
    */
   pageId?: string;
+  /**
+   * The entry this one is drawn under, indented (NAV-3, DEC-156): Collections sits under
+   * the Library because it is a way into the Library page's own tree.
+   */
+  parentId?: string;
+  /**
+   * True for a page that has nothing to show before the first import (NAV-5). While the
+   * library is empty the sidebar dims it and says why; it stays clickable.
+   */
+  needsLibrary?: boolean;
   /**
    * True when routes under this path are pages of this destination rather than
    * destinations of their own: Discover's Artist and Label pages and Similar
@@ -85,19 +100,22 @@ export type NavDestination = NavDestinationBase &
  */
 export const HOME_DESTINATION_ID = "library";
 
+/** The hint a dimmed entry shows in place of its own (NAV-5). */
+export const EMPTY_LIBRARY_HINT = "Import your Rekordbox collection first";
+
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
   // Not built yet (DEC-020). Each is enabled by the phase that builds it.
   // Collections is enabled and points into Library's own page (DEC-062).
   // Clean is enabled by CLEAN-12 (DEC-072), Discover by DISCOVER-10 (DEC-021),
   // Prepare by PREP-10 (DEC-104), its Sets pages under it (`/prepare/:setId`).
   // The Library is home (DEC-100).
-  { id: "library", label: "Library", path: "/library", group: "workspace", icon: "library", enabled: true },
-  { id: "collections", label: "Collections", path: "/collections", group: "workspace", icon: "collections", enabled: true, pageId: "library" },
-  { id: "clean", label: "Clean", path: "/clean", group: "workspace", icon: "clean", enabled: true },
-  { id: "discover", label: "Discover", path: "/discover", group: "workspace", icon: "discover", enabled: true, nested: true },
-  { id: "prepare", label: "Prepare", path: "/prepare", group: "workspace", icon: "prepare", enabled: true, nested: true },
+  { id: "library", label: "Library", hint: "Your Rekordbox tracks", path: "/library", group: "workspace", icon: "library", enabled: true },
+  { id: "collections", label: "Collections", hint: "Your own groups and smart lists", path: "/collections", group: "workspace", icon: "collections", parentId: "library", needsLibrary: true, enabled: true, pageId: "library" },
+  { id: "clean", label: "Clean", hint: "Fix values with Beatport", path: "/clean", group: "workspace", icon: "clean", needsLibrary: true, enabled: true },
+  { id: "discover", label: "Discover", hint: "Find new music", path: "/discover", group: "workspace", icon: "discover", needsLibrary: true, enabled: true, nested: true },
+  { id: "prepare", label: "Prepare", hint: "Plan a set", path: "/prepare", group: "workspace", icon: "prepare", needsLibrary: true, enabled: true, nested: true },
 
-  { id: "settings", label: "Settings", path: "/settings", group: "system", icon: "settings", enabled: true },
+  { id: "settings", label: "Settings", hint: "Look, sound, accounts", path: "/settings", group: "system", icon: "settings", enabled: true },
 ];
 
 /**

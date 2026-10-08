@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   AboutDialog,
-  AppMenuBar,
   DiagnosticsDialog,
   LogViewerDialog,
   OnboardingDialog,
@@ -18,7 +17,7 @@ import {
   AppShellLayout,
   enabledDestinations,
   findDestinationById,
-  GlobalSearch,
+  ShellHeader,
   homeDestination,
   Sidebar,
   StatusStrip,
@@ -39,7 +38,18 @@ import {
   SettingsScreen,
 } from "./screens";
 import { sendExitClearing } from "./screens/exitClearing";
-import { libraryOpening, libraryRefreshState, refreshOpening } from "./screens/library/libraryLink";
+import {
+  importOpening,
+  libraryImportState,
+  libraryOpening,
+  libraryRefreshState,
+  refreshOpening,
+  trackOpening,
+} from "./screens/library/libraryLink";
+import { settingsFocusState } from "./screens/settingsLink";
+import { hasShortcutModifier } from "./components/shell/platformKeys";
+import { emitShellCommand } from "./components/shell/shellCommands";
+import { useMenuCommands } from "./components/shell/useMenuCommands";
 import { PREPARE_SET_ROUTE, preparePath } from "./screens/prepare/prepareLink";
 import { EntityScreen } from "./screens/discover/EntityScreen";
 import { SimilarScreen } from "./screens/discover/SimilarScreen";
@@ -97,7 +107,7 @@ function AppShell() {
         event.preventDefault();
         setShortcutsOpen(true);
       }
-      if (event.ctrlKey && (event.key === "?" || (event.shiftKey && event.key === "/"))) {
+      if (hasShortcutModifier(event) && (event.key === "?" || (event.shiftKey && event.key === "/"))) {
         event.preventDefault();
         setShortcutsOpen(true);
       }
@@ -130,6 +140,12 @@ function AppShell() {
   const openSimilar = useCallback(
     (trackId: number) => navigate(similarPath(trackId)),
     [navigate],
+  );
+  // A one-shot opening (a searched track, the import's file choice) is spent once the
+  // Library applies it; clearing it keeps Back from replaying it.
+  const clearOpening = useCallback(
+    () => navigate(location.pathname, { replace: true, state: null }),
+    [location.pathname, navigate],
   );
   const openInClean = useCallback(
     (trackId: number) => navigate("/clean", { state: cleanTrackState(trackId) }),
@@ -176,6 +192,9 @@ function AppShell() {
           <LibraryScreen
             openWith={libraryOpening(location)}
             refreshWith={refreshOpening(location)}
+            trackWith={trackOpening(location)}
+            importWith={importOpening(location)}
+            onOpeningApplied={clearOpening}
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
             onOpenInClean={openInClean}
             onOpenMissingFiles={openMissingFiles}
@@ -228,23 +247,31 @@ function AppShell() {
     }
   };
 
-  const menuActions = {
-    onOpenSupport: () => setSupportOpen(true),
-    onOpenShortcuts: () => setShortcutsOpen(true),
-    onOpenPrivacy: () => setPrivacyOpen(true),
-    onOpenAbout: () => setAboutOpen(true),
-    onReportProblem: () => setReportProblemOpen(true),
-    onOpenDiagnostics: () => setDiagnosticsOpen(true),
-    onOpenLogViewer: () => setLogViewerOpen(true),
-    onShowOnboarding: () => setOnboardingOpen(true),
-    onOpenRekordboxInstructions: () => setRekordboxOpen(true),
-  };
+  // The native menu (FLW-20, DEC-204): main sends the id of the item picked and each one
+  // does what the in-window bar's items did, or opens the page they lead to. Import and
+  // Check for changes are the Library's own buttons, reached by way of the Library.
+  useMenuCommands({
+    settings: () => navigate("/settings"),
+    "getting-started": () => setOnboardingOpen(true),
+    shortcuts: () => setShortcutsOpen(true),
+    // The choices live in Settings → Privacy; the dialog only explains them.
+    privacy: () => navigate("/settings", { state: settingsFocusState("privacy") }),
+    "report-problem": () => setReportProblemOpen(true),
+    diagnostics: () => setDiagnosticsOpen(true),
+    "log-viewer": () => setLogViewerOpen(true),
+    "support-bundle": () => setSupportOpen(true),
+    "rekordbox-help": () => setRekordboxOpen(true),
+    about: () => setAboutOpen(true),
+    import: () => navigate("/library", { state: libraryImportState() }),
+    "check-rekordbox": () => navigate("/library", { state: libraryRefreshState() }),
+    "toggle-inspector": () => emitShellCommand("toggle-inspector"),
+    "toggle-sidebar": () => emitShellCommand("toggle-sidebar"),
+  });
 
   return (
     <>
       <AppShellLayout
-        menuBar={<AppMenuBar {...menuActions} />}
-        header={<GlobalSearch />}
+        header={<ShellHeader />}
         sidebar={<Sidebar />}
         inspector={
           <TrackInspector>

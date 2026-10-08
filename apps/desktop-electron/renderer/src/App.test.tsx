@@ -70,12 +70,19 @@ describe("App shell", () => {
     localStorage.clear();
   });
 
-  it("renders the menu bar inside the shell rather than as a fixed overlay", () => {
+  it("has one menu bar, the native one: nothing is drawn in the window (FLW-20)", () => {
     const { container } = render(<App />);
 
-    const menubar = container.querySelector(".app-shell__menubar");
-    expect(menubar).not.toBeNull();
-    expect(menubar?.querySelector(".app-menu-bar")).not.toBeNull();
+    expect(container.querySelector(".app-shell__menubar, .app-menu-bar")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Help" })).not.toBeInTheDocument();
+  });
+
+  it("puts the search and the wheel's empty slot in the header", () => {
+    const { container } = render(<App />);
+
+    const header = container.querySelector(".app-shell__header");
+    expect(header?.querySelector("[role='search'] input")).not.toBeNull();
+    expect(header?.querySelector("[data-slot='wheel']")).not.toBeNull();
   });
 
   it("renders exactly one main region", () => {

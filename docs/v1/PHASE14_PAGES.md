@@ -551,6 +551,35 @@ and log-viewer dialogs. The engine's "Engine started" Activity summary is now "C
 the popover is a non-modal `dialog`; the Activity shortcut reads Cmd on macOS, Ctrl elsewhere; the Python event
 sources are read by `activityFormat.test.ts`, so `vite.config.ts` allows those two folders.
 
+**Outcome** (2026-10-08), part B: the sidebar has the pixel logo and "CuePoint" at its top (the logo alone when
+collapsed, linking home), a drawn chevron toggle titled "Collapse sidebar (Ctrl+B)" / "Expand sidebar (Ctrl+B)" (Cmd on
+a Mac), a hint under every label (also in the title in both states), Collections indented under Library, Settings
+pinned to the bottom under a thin line, and, while the library is empty, Collections, Clean, Discover and Prepare
+dimmed but clickable with "Import your Rekordbox collection first" (`useLibraryEmpty` reads the library summary on
+mount and after each page change, and polls every 4 seconds only while it is empty; unreadable counts as not empty).
+`ShellHeader` holds the search and an empty `data-slot="wheel"` for PAGES-10; the `search` landmark is now the search
+field's own container. Search results are a `listbox` of `option` rows with `aria-activedescendant`: Up and Down move,
+Enter or a click opens the Library on the track (`libraryTrackState`, applied once per navigation by LibraryScreen's
+`trackWith`: whole library, nothing filtered, the track selected and scrolled to, so Track details show it), Shift+Enter
+or the row's play button plays it through `player.playQueue`. An outside press or focus leaving closes the panel; one
+letter says "Keep typing: at least 2 letters"; "Search will work once CuePoint has finished starting." and "Search
+didn't work. Try again." (the cause in the title). The in-window `AppMenuBar`, its test and the menu bar grid row are
+gone. `electron/appMenu.ts` builds the one menu (CuePoint on macOS, File, Edit, View, a minimize/close Window menu on
+macOS, Help with a Troubleshooting submenu, and a Developer menu only in unpackaged builds; no Reload, Developer Tools
+or Zoom in a packaged build). The bridge is `menu.setSizeState({ options: [{ value, label }], current })` (ScaleProvider
+sends it on every change) and `menu.onCommand(cb)` with the fixed ids; the renderer's `useMenuCommands` answers them
+(sizes step `SCALE_OPTIONS`, Import and Check go through the Library by location state, Track details and Sidebar
+through a small shell-command event, Privacy opens Settings at Privacy). Pinch and Ctrl-wheel zoom are off
+(`setVisualZoomLevelLimits(1, 1)`). `PrivacyDialog` keeps its explanation, the error-report state and one link to
+Settings → Privacy; its exit-clearing boxes and Save went. The Shortcuts list dropped the keys nothing answers
+(Ctrl+E, F5, Ctrl+R, Ctrl+H, Ctrl+Shift+F and the Match, Results and History contexts) and gained the menu's and
+Prepare's; `keyboardShortcuts.test.ts` reads each against its handler. Decisions made: the menu's Sidebar and Track
+details items show Ctrl+B and Ctrl+I without registering them on Windows and Linux (the page already answers both, so a
+registered accelerator would toggle twice); Report a problem is always enabled and its dialog says when reports are off;
+the Privacy dialog keeps "Clear cache now" and "Clear logs now", which Settings does not duplicate. Playwright's key
+presses never reach a native accelerator, so the e2e chooses the Size, Default size, Bigger and Smaller items through
+`Menu.getApplicationMenu()` and checks their accelerators; the keys themselves were not exercised by a test.
+
 ---
 
 ## PAGES-04 — The Player Bar and the Queue

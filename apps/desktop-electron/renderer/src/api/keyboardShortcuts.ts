@@ -4,27 +4,34 @@ interface KeyboardShortcutEntry {
   shortcut: string;
 }
 
-/** Parity with Qt `ShortcutManager.DEFAULT_SHORTCUTS` (display reference). */
+/**
+ * The Shortcuts list (Help → Shortcuts): only keys that do something. Each row is read
+ * against the code that answers it by `keyboardShortcuts.test.ts`, so a handler that goes
+ * takes its row with it. The menu's keys (Ctrl+O, Ctrl+,, Ctrl+=, Ctrl+-, Ctrl+0) are
+ * answered by the native menu (`electron/appMenu.ts`). On a Mac, Cmd takes the place of Ctrl.
+ */
 export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
-  { context: "Global", action: "Open XML file", shortcut: "Ctrl+O" },
-  { context: "Global", action: "Export results", shortcut: "Ctrl+E" },
+  { context: "Global", action: "Import another file", shortcut: "Ctrl+O" },
+  { context: "Global", action: "Open Settings", shortcut: "Ctrl+," },
+  { context: "Global", action: "Make everything bigger", shortcut: "Ctrl+=" },
+  { context: "Global", action: "Make everything smaller", shortcut: "Ctrl+-" },
+  { context: "Global", action: "Back to the default size", shortcut: "Ctrl+0" },
   { context: "Global", action: "Search library", shortcut: "Ctrl+K" },
-  { context: "Global", action: "Show or hide track inspector", shortcut: "Ctrl+I" },
-  { context: "Global", action: "Collapse or expand navigation", shortcut: "Ctrl+B" },
+  { context: "Global", action: "Show or hide track details", shortcut: "Ctrl+I" },
+  { context: "Global", action: "Collapse or expand the sidebar", shortcut: "Ctrl+B" },
   { context: "Global", action: "Open activity", shortcut: "Ctrl+Shift+A" },
   { context: "Global", action: "Show keyboard shortcuts", shortcut: "Ctrl+?" },
-  { context: "Global", action: "Show help", shortcut: "F1" },
-  { context: "Global", action: "Cancel operation", shortcut: "Esc" },
-  { context: "Match", action: "Start processing", shortcut: "F5" },
-  { context: "Match", action: "Restart processing", shortcut: "Ctrl+R" },
-  { context: "Results", action: "Focus search", shortcut: "Ctrl+F" },
-  { context: "Results", action: "Clear filters", shortcut: "Ctrl+Shift+F" },
-  { context: "Results", action: "View candidates", shortcut: "Enter" },
+  { context: "Global", action: "Open this list", shortcut: "F1" },
+  { context: "Global", action: "Close a dialog, panel or search", shortcut: "Esc" },
   // The Library became a browser in Phase 4 (DEC-039), so it has a context of
-  // its own. Ctrl+F is deliberately the same key as on Results: it is the same
-  // gesture — put the cursor where the narrowing happens.
+  // its own.
   { context: "Library", action: "Focus search", shortcut: "Ctrl+F" },
   { context: "Library", action: "Select all matching tracks", shortcut: "Ctrl+A" },
+  { context: "Library", action: "Play the selected track", shortcut: "Enter" },
+  // Prepare's: the Set's source panel has a divider to drag, and the In and Out times
+  // save on Enter. Plain Enter and the arrows are the field's and the divider's own.
+  { context: "Prepare", action: "Resize the source panel (focus its divider first)", shortcut: "Left / Right" },
+  { context: "Prepare", action: "Save an entry's In or Out time", shortcut: "Enter" },
   // Clean's review queue (CLEAN-12). Bare keys, because reviewing thousands of
   // tracks is a keyboard job; they are not taken while typing in a field or
   // inside a dialog, and none of them is modified, so none collides with a
@@ -34,9 +41,6 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Clean", action: "Accept the chosen candidate", shortcut: "A" },
   { context: "Clean", action: "Reject the match", shortcut: "R" },
   { context: "Clean", action: "Next track without deciding", shortcut: "N" },
-  // Escape is not listed again here: "Cancel operation" above is what it
-  // means everywhere, and clearing a selection is backing out of one. Two rows
-  // would be two meanings for one key, which is the thing SHELL-10 forbids.
   // The player (PLAYER-12). Space is bare because it is the one key everyone
   // already tries; the rest are Ctrl-modified because bare arrows belong to the
   // table and the queue panel, which is where a keyboard user spends their time.
@@ -49,8 +53,6 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Player", action: "Remove a queued track", shortcut: "Delete" },
   // Held only while CuePoint has focus, so the rest of the machine keeps them.
   { context: "Player", action: "Media keys, while CuePoint is focused", shortcut: "Play/Pause, Next, Previous" },
-  { context: "History", action: "Toggle history", shortcut: "Ctrl+H" },
-  { context: "Settings", action: "Open settings", shortcut: "Ctrl+," },
 ];
 
 export function filterShortcuts(

@@ -272,7 +272,7 @@ async function currentTitle(win: Page): Promise<string | null> {
 
 async function setSidebar(win: Page, collapsed: boolean) {
   const nav = win.getByRole("navigation", { name: "Main navigation" });
-  const wanted = collapsed ? "Collapse navigation" : "Expand navigation";
+  const wanted = collapsed ? "Collapse sidebar" : "Expand sidebar";
   const toggle = nav.getByRole("button", { name: wanted });
   if (await toggle.count()) await toggle.click();
   await expect(nav).toHaveAttribute("data-collapsed", String(collapsed));

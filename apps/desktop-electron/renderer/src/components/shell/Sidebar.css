@@ -39,8 +39,48 @@
   align-items: center;
 }
 
+/*
+ * The brand tops the rail (HDR-6): the logo and the name, the logo alone when the rail is
+ * closed. It is a link home, not a destination, so it never takes the active look.
+ */
+.cp-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--hit-min);
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--fg-primary);
+  font-size: var(--font-size-md, var(--font-size-sm));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.cp-sidebar--collapsed .cp-sidebar__brand {
+  justify-content: center;
+  padding: var(--space-xs);
+}
+
+.cp-sidebar__brand:hover .cp-sidebar__logo {
+  color: var(--accent-info);
+}
+
+.cp-sidebar__brand:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.cp-sidebar__brand-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .cp-sidebar__toggle {
   align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: var(--icon-size);
   min-height: var(--icon-size);
   margin-bottom: var(--space-xs);
@@ -68,15 +108,22 @@
   padding-bottom: var(--space-xs);
 }
 
-/* A separator between groups, but never a trailing rule under the last one. */
-.cp-sidebar__group:not(:last-child) {
-  border-bottom: var(--border-width) solid var(--border-outline);
-  margin-bottom: var(--space-xs);
-}
+/* The divider between groups is the pinned group's own top rule, below. */
 
 .cp-sidebar--collapsed .cp-sidebar__group {
   align-items: center;
   align-self: stretch;
+}
+
+/*
+ * Settings is pinned to the bottom of the rail under a thin divider (NAV-6): the group
+ * after the workspace takes the free space above it, so it sits at the foot however tall
+ * the window is.
+ */
+.cp-sidebar__group--pinned {
+  margin-top: auto;
+  padding-top: var(--space-xs);
+  border-top: var(--hairline) solid var(--border-outline);
 }
 
 .cp-sidebar__group-label {
@@ -141,8 +188,40 @@
   line-height: 1;
 }
 
+.cp-sidebar__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .cp-sidebar__label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* What the page is for (NAV-1): muted, smaller, never the loud part of the entry. */
+.cp-sidebar__hint {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Collections is a way into the Library, so it is drawn under it, indented (NAV-3). */
+.cp-sidebar:not(.cp-sidebar--collapsed) .cp-sidebar__link[data-sub="true"] {
+  margin-left: var(--space-md);
+}
+
+/* Pages with nothing to show before the first import (NAV-5): quieter, still clickable. */
+.cp-sidebar__link--dimmed {
+  opacity: 0.55;
+}
+
+.cp-sidebar__link--dimmed:hover,
+.cp-sidebar__link--dimmed:focus-visible {
+  opacity: 1;
 }

@@ -35,3 +35,9 @@
   background: var(--bg-panel);
   font-family: inherit;
 }
+
+.shortcuts-dialog__note {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}

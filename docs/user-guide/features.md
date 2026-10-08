@@ -119,4 +119,4 @@ playlist from an XML export and writes CSV files, as it always has. See
 ## Keyboard shortcuts
 
 The full list is in [The CuePoint window](the-window.md#keyboard-shortcuts),
-and in the app under **Help → Keyboard shortcuts** (**F1**).
+and in the app under **Help → Shortcuts** (**F1**).

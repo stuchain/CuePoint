@@ -7,9 +7,9 @@ page you are on changes; everything around it does not.
 
 | Region | Where | What it does |
 | --- | --- | --- |
-| Menu bar | Top | The app menu, including Help |
-| Search | Below the menu bar | Searches your library — see [Searching](#searching) |
-| Navigation | Left | Moves between pages; collapses to an icon rail |
+| Menu bar | Top | CuePoint's one menu bar: File, Edit, View and Help (see [The menu bar](#the-menu-bar)) |
+| Search | Top of the window | Searches your library — see [Searching](#searching) |
+| Sidebar | Left | The CuePoint logo, then the pages; collapses to an icon rail |
 | Page | Middle | Whatever you are working on |
 | Track Inspector | Right | Details for a selected track; can be resized or hidden |
 | Status strip | Bottom | Whether CuePoint is ready, what is running in the background, and the Activity panel |
@@ -20,8 +20,19 @@ also reopens on the page you were last using.
 
 ## Navigating
 
-The sidebar lists the pages available to you. Pages that are still being built
-are not shown at all rather than appearing and doing nothing.
+The sidebar lists the pages available to you, with the CuePoint logo and name at
+its top (click them to go home, to the Library). Each page has a one-line hint
+under its name, and the same line is its tooltip when the sidebar is collapsed:
+**Library** "Your Rekordbox tracks", **Collections** "Your own groups and smart
+lists", **Clean** "Fix values with Beatport", **Discover** "Find new music",
+**Prepare** "Plan a set" and **Settings** "Look, sound, accounts". **Collections**
+sits indented under **Library**, because it is a way into the Library page's own
+tree. **Settings** is pinned to the bottom, under a thin line.
+
+Until you import a Rekordbox collection, **Collections**, **Clean**, **Discover**
+and **Prepare** are dimmed and their hint reads "Import your Rekordbox collection
+first". They still open: they just have nothing to show yet. They light up on their
+own after the first import.
 
 **Library** is where your Rekordbox collection lives — see
 [Your library](library.md). **Clean** is where it is matched on Beatport and
@@ -36,21 +47,57 @@ reopen, it opens on the Library. Double-clicking a track there plays it; the bar
 along the bottom of the window is the player, and it appears the first time you
 play something — see [Playing music](player.md).
 
-Collapse the sidebar with the button at its top, or press **Ctrl+B**. Collapsed,
-it shows icons only; hover any icon to see its name, and screen readers still
-announce the full label.
+Collapse the sidebar with the arrow button under the logo (**Collapse sidebar
+(Ctrl+B)**), or press **Ctrl+B**, or choose **View > Sidebar**. Collapsed, it shows
+the logo and icons only; hover any icon to see its name and hint, and screen readers
+still announce the full label.
 
 ## Searching
 
-Press **Ctrl+K**, or click the search field, and type at least two characters.
-Search looks at track titles, artists, albums and labels.
+Press **Ctrl+K**, or click the search field, and type at least two characters; one
+letter shows "Keep typing: at least 2 letters". Search looks at track titles,
+artists, albums and labels.
+
+The results are a list you can use from the keyboard: **Up** and **Down** move
+through them, **Enter** (or a click) opens the Library on that track, selected, with
+its details in the Track Inspector, and **Shift+Enter** plays it. Each row also has a
+small play button. The results close when you click anywhere else, tab away or press
+**Esc**; clicking in the field brings them back.
 
 If you have not imported a Rekordbox collection yet, search says so rather than
 reporting that nothing matched — those are different problems. Import one from
-the [Library](library.md) page.
+the [Library](library.md) page. If CuePoint is still starting, search says "Search
+will work once CuePoint has finished starting." If a search fails, it says "Search
+didn't work. Try again."
 
 **Ctrl+K searches your whole library. Ctrl+F searches the table in front of
 you.** They are deliberately different keys, because they do different things.
+
+## The menu bar
+
+CuePoint has one menu bar, its own, in place of the generic one Electron adds and
+the small Help menu CuePoint used to draw inside the window.
+
+- **CuePoint** (on a Mac only): **About CuePoint**, **Settings...** (**Cmd+,**) and
+  **Quit**.
+- **File**: **Import another file...** (**Ctrl+O**) opens the Library and asks for a
+  Rekordbox XML file, as the Library's own button does; **Check Rekordbox for
+  changes** starts the same check. Exporting is not here: it stays on the Library
+  and on a Collection's or Set's own bar, because a menu item has no scope.
+- **Edit**: **Undo**, **Redo**, **Cut**, **Copy**, **Paste** and **Select all**, so
+  copying and pasting work in every text field, including the Beatport token.
+- **View**: **Size** (Small, Medium, Large and Extra large, with the one in use
+  ticked), **Bigger** (**Ctrl+=**), **Smaller** (**Ctrl+-**), **Default size**
+  (**Ctrl+0**), **Track details**, **Sidebar**, and, on Windows and Linux,
+  **Settings...** (**Ctrl+,**). These keys change the Size setting, the same one as
+  Settings → Appearance; they never zoom the page.
+- **Help**: **Getting started**, **Shortcuts**, **Report a problem...**, **Privacy**
+  (opens Settings → Privacy), then **Troubleshooting** (**Diagnostics...**, **Log
+  viewer...**, **Export support bundle...** and **How to export from Rekordbox...**),
+  and on Windows and Linux **About CuePoint**.
+
+A development build of CuePoint adds a **Developer** menu with reload and the
+developer tools; a released build has neither.
 
 ## The Track Inspector
 
@@ -71,7 +118,7 @@ sent, and its history. See [The Inspector](library.md#the-inspector).
 The strip along the bottom says **Ready** when CuePoint is working normally. While
 it starts it says **Starting up…**, and when its library service stops and comes
 back it says **Reconnecting… (attempt 2 of 3)**. The version number is in
-**Help > About** and in Settings → About & updates.
+**Help > About CuePoint** and in Settings → About & updates.
 
 If CuePoint's library service stops unexpectedly, CuePoint restarts it for you.
 After three failed attempts it stops trying, says **CuePoint's library service
@@ -119,18 +166,25 @@ matches only the tracks it had not reached. See [Clean](clean.md#matching).
 
 ## Keyboard shortcuts
 
-To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Keyboard shortcuts...**. The dialog lists them by context (Global, Library, Clean, Player and so on). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys. Some keys it lists, such as **Ctrl+O**, **Ctrl+E**, **F5**, **Ctrl+R**, **Ctrl+H**, **Ctrl+,** and **Ctrl+Shift+F**, have no action in the window yet. The keys below are the ones that work.
+To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**. The dialog lists them by context (Global, Library, Prepare, Clean, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. On a Mac, use **Cmd** where it says **Ctrl**.
 
 | Shortcut | Does |
 | --- | --- |
+| **Ctrl+O** | Import another Rekordbox file |
+| **Ctrl+,** | Open Settings |
+| **Ctrl+=** / **Ctrl+-** / **Ctrl+0** | Bigger, smaller, the default size |
 | **Ctrl+K** | Search your library |
 | **Ctrl+F** | Search within the table on screen |
 | **Ctrl+A** | Select every track matching what you are looking at |
+| **Enter** | On the Library table: play the selected track |
 | **Esc** | Let go of a selection, or close what is open |
-| **Ctrl+B** | Collapse or expand the navigation |
+| **Ctrl+B** | Collapse or expand the sidebar |
 | **Ctrl+I** | Show or hide the Track Inspector |
 | **Ctrl+Shift+A** | Open Activity |
 | **F1** or **Ctrl+?** | All keyboard shortcuts |
+
+On Prepare, **Left** / **Right** resize the source panel once its divider has focus,
+and **Enter** saves an entry's In or Out time.
 
 In Clean's review queue:
 
@@ -147,7 +201,7 @@ These keys do nothing while you are typing in a field or have a dialog open.
 The player's keys (**Space**, **Ctrl** with the arrow keys, and the media keys) are in [Playing music](player.md#from-the-keyboard).
 
 Every part of the window can be reached with **Tab** alone, in the order it
-appears on screen: search, navigation, page, Inspector, status strip. Dialogs
+appears on screen: search, sidebar, page, Inspector, status strip. Dialogs
 take focus when they open, keep **Tab** inside themselves, close on **Escape**,
 and hand focus back to whatever opened them.
 
@@ -202,10 +256,10 @@ When CuePoint hits an unexpected error, it sends one report to Sentry (EU region
 fixed. A report says what went wrong, where in CuePoint's code, the steps that led to it, the
 version and your operating system. It never carries your file, folder, track, artist, label or
 playlist names, your notes, tags or tokens. Turn the switch off and nothing more is sent, at once,
-with no restart. **Help → Privacy...** shows whether it is on and takes you to the switch; the full
+with no restart. **Help → Privacy** opens Settings → Privacy, where the switch is; the full
 list, and how long Sentry keeps a report, is in the [Privacy Notice](../policy/privacy-notice.md).
 The CLI never sends error reports.
 
 Under **When CuePoint quits**, **Clear cache** and **Clear logs** clear them each
-time CuePoint closes. They are the same two choices as in **Help → Privacy...**
-(which links here), so the two always agree.
+time CuePoint closes. This is the one place those choices are made: the **Privacy
+details** dialog explains them and links here.

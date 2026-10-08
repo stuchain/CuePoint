@@ -6,8 +6,8 @@
  * accessible name still *looks* right — and it is the state DEC-022 chose over
  * a drag handle, so it has to be worth having.
  */
-import { afterEach, describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
@@ -24,11 +24,24 @@ function renderSidebar(initialPath = "/") {
 }
 
 const nav = () => screen.getByRole("navigation", { name: /main navigation/i });
-const toggle = () => screen.getByRole("button", { name: /(Collapse|Expand) navigation/i });
+/** The destinations' names in order; the brand link is not one. */
+const destinationNames = () =>
+  within(nav())
+    .getAllByRole("link")
+    .map((link) => link.getAttribute("aria-label") ?? "")
+    .filter((name) => name !== "CuePoint");
+const toggle = () => screen.getByRole("button", { name: /(Collapse|Expand) sidebar/i });
 
 afterEach(() => {
   localStorage.clear();
+  delete (window as unknown as { cuepoint?: unknown }).cuepoint;
 });
+
+function libraryIs(empty: boolean) {
+  const getLibrarySummary = vi.fn().mockResolvedValue({ library_empty: empty, source: empty ? null : {} });
+  (window as unknown as { cuepoint?: unknown }).cuepoint = { getLibrarySummary };
+  return getLibrarySummary;
+}
 
 describe("Sidebar", () => {
   it("renders every enabled destination", () => {
@@ -54,7 +67,7 @@ describe("Sidebar", () => {
     const discover = within(nav()).getByRole("link", { name: "Discover" });
     expect(discover).toHaveAttribute("href", "/discover");
     expect(discover).toHaveAttribute("aria-current", "page");
-    const links = within(nav()).getAllByRole("link").map((link) => link.textContent);
+    const links = destinationNames();
     expect(links.indexOf("Clean")).toBeLessThan(links.indexOf("Discover"));
   });
 
@@ -77,7 +90,7 @@ describe("Sidebar", () => {
     renderSidebar();
     expect(within(nav()).queryByText("Tools")).not.toBeInTheDocument();
     expect(within(nav()).queryByRole("link", { name: "inCrate" })).not.toBeInTheDocument();
-    const links = within(nav()).getAllByRole("link").map((link) => link.textContent);
+    const links = destinationNames();
     expect(links).toEqual(["Library", "Collections", "Clean", "Discover", "Prepare", "Settings"]);
   });
 
@@ -180,6 +193,161 @@ describe("Sidebar", () => {
       renderSidebar();
 
       expect(nav()).toHaveAttribute("data-collapsed", "false");
+    });
+  });
+
+  describe("hints, titles and the toggle (NAV-1, NAV-2)", () => {
+    it("shows each destination's hint under its label when expanded", () => {
+      renderSidebar();
+      const library = within(nav()).getByRole("link", { name: "Library" });
+      expect(within(library).getByText("Your Rekordbox tracks")).toBeInTheDocument();
+      const settings = within(nav()).getByRole("link", { name: "Settings" });
+      expect(within(settings).getByText("Look, sound, accounts")).toBeInTheDocument();
+    });
+
+    it("puts the hint in the title in both states", async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+      expect(within(nav()).getByRole("link", { name: "Discover" })).toHaveAttribute(
+        "title",
+        expect.stringContaining("Find new music"),
+      );
+
+      await user.click(toggle());
+
+      const collapsed = within(nav()).getByRole("link", { name: "Discover" });
+      expect(collapsed).toHaveAttribute("title", expect.stringContaining("Discover"));
+      expect(collapsed).toHaveAttribute("title", expect.stringContaining("Find new music"));
+      expect(within(collapsed).queryByText("Find new music")).not.toBeInTheDocument();
+    });
+
+    it("titles the toggle with its shortcut and draws a chevron, not a text glyph", async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+      expect(toggle()).toHaveAttribute("title", "Collapse sidebar (Ctrl+B)");
+      expect(toggle().querySelector("svg[data-icon='chevron-left']")).not.toBeNull();
+      expect(toggle().textContent).toBe("");
+
+      await user.click(toggle());
+
+      expect(toggle()).toHaveAttribute("title", "Expand sidebar (Ctrl+B)");
+      expect(toggle().querySelector("svg[data-icon='chevron-right']")).not.toBeNull();
+    });
+  });
+
+  describe("the brand (HDR-6)", () => {
+    it("tops the sidebar with the logo and name, linking home", () => {
+      renderSidebar("/settings");
+      const brand = within(nav()).getByRole("link", { name: "CuePoint" });
+      expect(brand).toHaveAttribute("href", "/library");
+      expect(within(brand).getByText("CuePoint")).toBeInTheDocument();
+      expect(brand.querySelector("svg[data-icon='logo']")).not.toBeNull();
+      // A brand link is not a destination: Library alone is lit on /library.
+      expect(brand).not.toHaveAttribute("aria-current");
+    });
+
+    it("keeps only the logo when collapsed", async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+      await user.click(toggle());
+      const brand = within(nav()).getByRole("link", { name: "CuePoint" });
+      expect(within(brand).queryByText("CuePoint")).not.toBeInTheDocument();
+      expect(brand.querySelector("svg[data-icon='logo']")).not.toBeNull();
+    });
+  });
+
+  describe("Collections under Library, Settings at the bottom (NAV-3, NAV-6)", () => {
+    it("marks Collections as a sub-entry of the Library", () => {
+      renderSidebar();
+      const collections = within(nav()).getByRole("link", { name: "Collections" });
+      expect(collections).toHaveAttribute("data-sub", "true");
+      expect(within(nav()).getByRole("link", { name: "Library" })).not.toHaveAttribute("data-sub");
+      const order = within(nav()).getAllByRole("link").map((link) => link.getAttribute("aria-label") ?? "");
+      expect(order.indexOf("Collections")).toBe(order.indexOf("Library") + 1);
+    });
+
+    it("pins Settings in a group of its own, below a divider", () => {
+      renderSidebar();
+      const groups = nav().querySelectorAll(".cp-sidebar__group");
+      const last = groups[groups.length - 1]!;
+      expect(last).toHaveClass("cp-sidebar__group--pinned");
+      expect(within(last as HTMLElement).getAllByRole("link").map((l) => l.getAttribute("aria-label"))).toEqual([
+        "Settings",
+      ]);
+    });
+  });
+
+  describe("before the first import (NAV-5)", () => {
+    const dimmed = ["Collections", "Clean", "Discover", "Prepare"];
+
+    it("dims Collections, Clean, Discover and Prepare, still clickable, with the reason", async () => {
+      libraryIs(true);
+      renderSidebar();
+
+      await waitFor(() =>
+        expect(within(nav()).getByRole("link", { name: "Clean" })).toHaveAttribute("data-dimmed", "true"),
+      );
+      for (const label of dimmed) {
+        const link = within(nav()).getByRole("link", { name: label });
+        expect(link).toHaveAttribute("data-dimmed", "true");
+        expect(link).toHaveAttribute("href");
+        expect(within(link).getByText("Import your Rekordbox collection first")).toBeInTheDocument();
+        expect(link).toHaveAttribute("title", expect.stringContaining("Import your Rekordbox collection first"));
+      }
+      for (const label of ["Library", "Settings"]) {
+        expect(within(nav()).getByRole("link", { name: label })).not.toHaveAttribute("data-dimmed");
+      }
+    });
+
+    it("shows the reason in the title when collapsed", async () => {
+      libraryIs(true);
+      localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, "1");
+      renderSidebar();
+      await waitFor(() =>
+        expect(within(nav()).getByRole("link", { name: "Prepare" })).toHaveAttribute("data-dimmed", "true"),
+      );
+      expect(within(nav()).getByRole("link", { name: "Prepare" })).toHaveAttribute(
+        "title",
+        expect.stringContaining("Import your Rekordbox collection first"),
+      );
+    });
+
+    it("dims nothing once the library has tracks", async () => {
+      const read = libraryIs(false);
+      renderSidebar();
+      await waitFor(() => expect(read).toHaveBeenCalled());
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      for (const label of dimmed) {
+        expect(within(nav()).getByRole("link", { name: label })).not.toHaveAttribute("data-dimmed");
+      }
+    });
+
+    it("dims nothing when the library cannot be read at all", async () => {
+      (window as unknown as { cuepoint?: unknown }).cuepoint = {
+        getLibrarySummary: vi.fn().mockRejectedValue(new Error("starting")),
+      };
+      renderSidebar();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(within(nav()).getByRole("link", { name: "Clean" })).not.toHaveAttribute("data-dimmed");
+    });
+
+    it("reads the library again after a page change, so the first import lights the pages up", async () => {
+      const read = libraryIs(true);
+      const view = render(
+        <MemoryRouter initialEntries={["/library"]}>
+          <Sidebar />
+        </MemoryRouter>,
+      );
+      await waitFor(() =>
+        expect(within(nav()).getByRole("link", { name: "Clean" })).toHaveAttribute("data-dimmed", "true"),
+      );
+      read.mockResolvedValue({ library_empty: false, source: {} });
+      const user = userEvent.setup();
+      await user.click(within(nav()).getByRole("link", { name: "Settings" }));
+      await waitFor(() =>
+        expect(within(nav()).getByRole("link", { name: "Clean" })).not.toHaveAttribute("data-dimmed"),
+      );
+      view.unmount();
     });
   });
 });

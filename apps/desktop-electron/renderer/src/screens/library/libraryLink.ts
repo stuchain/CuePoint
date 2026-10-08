@@ -102,3 +102,49 @@ export function libraryOpening(location: { state: unknown; key: string }): Libra
   const names = ruleNamesFromLocationState(location.state);
   return names ? { rules, token: location.key, names } : { rules, token: location.key };
 }
+
+const TRACK_KEY = "cuepointLibraryTrack";
+
+/**
+ * The location state that opens the Library on one track, selected (HDR-1): a search
+ * result chosen with Enter or a click. Like the rules, it travels in the router's state
+ * and is not remembered as a destination.
+ */
+export function libraryTrackState(trackId: number): Record<string, unknown> {
+  return { [TRACK_KEY]: trackId };
+}
+
+/** The track a location asks the Library to select, or null when it asks for none. */
+export function trackFromLocationState(state: unknown): number | null {
+  if (!state || typeof state !== "object") return null;
+  const carried = (state as Record<string, unknown>)[TRACK_KEY];
+  return typeof carried === "number" && Number.isInteger(carried) && carried > 0 ? carried : null;
+}
+
+/** What the Library is asked to select, and the navigation that asked, so it is applied once. */
+export interface TrackOpening {
+  trackId: number;
+  token: string;
+}
+
+export function trackOpening(location: { state: unknown; key: string }): TrackOpening | null {
+  const trackId = trackFromLocationState(location.state);
+  return trackId === null ? null : { trackId, token: location.key };
+}
+
+const IMPORT_KEY = "cuepointLibraryImport";
+
+/**
+ * The location state that opens the Library and starts the import's file choice: File →
+ * "Import another file…" (FLW-20) does what the Library's own button does.
+ */
+export function libraryImportState(): Record<string, unknown> {
+  return { [IMPORT_KEY]: true };
+}
+
+/** The navigation that asked for an import, as a token, or null when none did. */
+export function importOpening(location: { state: unknown; key: string }): string | null {
+  const state = location.state;
+  if (!state || typeof state !== "object") return null;
+  return (state as Record<string, unknown>)[IMPORT_KEY] === true ? location.key : null;
+}
