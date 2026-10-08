@@ -4,6 +4,14 @@
 [data-theme] {
   --scale: 1.25;
   --unit: 0.3125rem;
+  --motion-instant: 16ms;
+  --motion-quick: 80ms;
+  --motion-base: 160ms;
+  --motion-slow: 320ms;
+  --motion-steps-short: 2;
+  --motion-steps-long: 4;
+  --motion-step-px: var(--unit);
+  --motion-fade: linear;
   --border-width: 2px;
   --border-width-heavy: 3px;
   --bevel-size: 2px;

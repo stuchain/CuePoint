@@ -393,6 +393,17 @@ budget flaps, the run count rises, never the budget.
 
 **Complexity**: **M**
 
+**Outcome (2026-10-08)**: `scripts/check-site.mjs` holds 24 rules with a one-fault fixture each,
+plus canonical-is-own-address, sitemap locs that must resolve, noindex required on every preview
+page, and relative links refused on the 404. Results carry a severity: a `SoftwareApplication`
+without a rating or review is a warning, not a failure, since Google needs one for the rich result
+and CuePoint has none to give (never invented). `e2e/a11y.spec.ts` runs axe (WCAG 2.2 AA) on every
+page at 375, 768 and 1440 px and in all five themes at 1440, with no horizontal scroll and 24 px
+targets. Lighthouse CI asserts the budgets with `is-crawlable` skipped while previews are
+`noindex`; a test fails if the skip outlives `PUBLIC = false`. The 50 KB script budget is a total
+cap; SITE-05 adds the before-the-3D measure. `website-links.yml` checks external links weekly and
+keeps one issue open. Favicons reuse DIST-09's `icon.ico` and 512 px PNG.
+
 ---
 
 ## SITE-04 — The App's Pictures, Taken From the App

@@ -25,14 +25,15 @@ export function getStaticPaths() {
 
 <Page
   title="Style guide"
-  description="Every component in every theme, for review. Preview builds only."
+  description="Every component of the CuePoint site, shown in each of the five themes, for review. Preview builds only."
   path="styleguide/"
   breadcrumbs={[
     { label: "Home", path: "" },
     { label: "Style guide", path: "styleguide/" },
   ]}
 >
-  <Section id="guide" heading="Style guide">
+  <Section id="guide">
+    <h1>Style guide</h1>
     <p>
       Every component in each of the app's five themes. The switch in the header changes the page;
       each block below is pinned to one theme.
@@ -79,7 +80,7 @@ export function getStaticPaths() {
             <Img src={ogDefault} alt="The CuePoint mark on a dark background" width={240} />
 
             <h3>Breadcrumbs</h3>
-            <Breadcrumbs items={[{ label: "Home", path: "" }, { label: "Guide", path: "guide/" }, { label: "Library", path: "guide/library/" }]} />
+            <Breadcrumbs items={[{ label: "Home", path: "" }, { label: "Style guide", path: "styleguide/" }, { label: "Components", path: "styleguide/" }]} />
 
             <h3>Type</h3>
             <p class="small">Prose is set in Atkinson Hyperlegible Next. Muted text, on the page only: <span class="muted">Camelot 8A, 124 BPM</span>.</p>

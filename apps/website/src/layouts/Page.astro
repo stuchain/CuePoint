@@ -2,14 +2,13 @@
 import { Font } from "astro:assets";
 import { PUBLIC, SITE_URL } from "../../site.config";
 import ogDefault from "../assets/og/default.png";
-import mark from "../assets/mark/mark-32.svg";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import { SITE_NAME } from "../data/site";
 import { CSP } from "../lib/csp";
 import { DEFAULT_THEME, themeInitScript } from "../lib/themes";
-import { canonicalFor } from "../lib/url";
+import { canonicalFor, hrefFor } from "../lib/url";
 import type { PageProps } from "./Page.types";
 import "../styles/tokens.generated.css";
 import "../styles/global.css";
@@ -52,7 +51,10 @@ const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c"
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {robots && <meta name="robots" content={robots} />}
-    <link rel="icon" type="image/svg+xml" href={mark.src} />
+    <link rel="icon" type="image/svg+xml" href={hrefFor("icon.svg")} />
+    <link rel="icon" sizes="32x32" href={hrefFor("favicon.ico")} />
+    <link rel="apple-touch-icon" href={hrefFor("apple-touch-icon.png")} />
+    <link rel="manifest" href={hrefFor("site.webmanifest")} />
 
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:type" content="website" />

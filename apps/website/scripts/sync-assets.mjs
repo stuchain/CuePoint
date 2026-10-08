@@ -7,9 +7,10 @@
  *
  * `optimizeMark()` is pure (the tests call it); the CLI below reads the source and writes the result.
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import sharp from "sharp";
 
 const attr = (tag, name) => new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1];
 
@@ -68,10 +69,35 @@ export function optimizeMark(source) {
 export const SOURCE = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "desktop-electron", "build", "icon-source", "mark-32.svg");
 export const TARGET = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "assets", "mark", "mark-32.svg");
 
-function main() {
-  mkdirSync(dirname(TARGET), { recursive: true });
-  writeFileSync(TARGET, optimizeMark(readFileSync(SOURCE, "utf8")));
-  console.log(`sync-assets: wrote ${TARGET}`);
+const HERE = dirname(fileURLToPath(import.meta.url));
+const APP_BUILD = join(HERE, "..", "..", "desktop-electron", "build");
+const PUBLIC_DIR = join(HERE, "..", "public");
+
+/**
+ * The favicon set in public/ (SITE-03; SITE-11 polishes it). The app's own icon files (DIST-09) are
+ * copied, not redrawn: icon.ico becomes favicon.ico and icons/512x512.png becomes icon-512.png. The
+ * 192 px icon, also used as the apple-touch-icon, is the optimized mark drawn at a whole multiple of
+ * its 32-cell grid (6x), so every cell stays a sharp square.
+ */
+export async function syncIcons(svg, outDir = PUBLIC_DIR) {
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(join(outDir, "icon.svg"), svg);
+  copyFileSync(join(APP_BUILD, "icon.ico"), join(outDir, "favicon.ico"));
+  copyFileSync(join(APP_BUILD, "icons", "512x512.png"), join(outDir, "icon-512.png"));
+  const png = await sharp(Buffer.from(svg), { density: 72 * (192 / 32) })
+    .resize(192, 192, { kernel: "nearest" })
+    .png()
+    .toBuffer();
+  writeFileSync(join(outDir, "icon-192.png"), png);
+  writeFileSync(join(outDir, "apple-touch-icon.png"), png);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
+async function main() {
+  mkdirSync(dirname(TARGET), { recursive: true });
+  const svg = optimizeMark(readFileSync(SOURCE, "utf8"));
+  writeFileSync(TARGET, svg);
+  await syncIcons(svg);
+  console.log(`sync-assets: wrote ${TARGET} and the favicon set in ${PUBLIC_DIR}`);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

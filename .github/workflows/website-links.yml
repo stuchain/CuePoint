@@ -1,0 +1,77 @@
+# Checks every external link of the built website, weekly and on demand (SITE-03, DEC-141).
+# It is not part of website.yml so that another site being down never blocks a push. A dead link
+# opens (or updates) an issue.
+name: Website links
+
+on:
+  schedule:
+    - cron: '23 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  external-links:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/website
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/website/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # Internal links are checked on every build by check:site, so only addresses on other hosts are
+      # checked here (--scheme): the site's own address (github.io/CuePoint) is excluded, and so are the
+      # w3.org and schema.org namespace names, which are identifiers, not pages.
+      - name: Check external links
+        id: lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --scheme https
+            --scheme http
+            --max-retries 3
+            --retry-wait-time 5
+            --timeout 30
+            --accept '200..=299,403,429'
+            --exclude '^https://stuchain\.github\.io/CuePoint'
+            --exclude '^https?://www\.w3\.org/'
+            --exclude '^https://schema\.org'
+            --root-dir "${{ github.workspace }}/apps/website/dist"
+            'apps/website/dist/**/*.html'
+          fail: false
+          output: lychee/out.md
+          jobSummary: true
+
+      - name: Find an open dead-links issue
+        id: existing
+        if: steps.lychee.outputs.exit_code != 0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "number=$(gh issue list --repo "$GITHUB_REPOSITORY" --label website-links --state open --limit 1 --json number --jq '.[0].number // empty')" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update the issue for dead links
+        if: steps.lychee.outputs.exit_code != 0
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: Website has dead external links
+          content-filepath: lychee/out.md
+          issue-number: ${{ steps.existing.outputs.number }}
+          labels: website-links

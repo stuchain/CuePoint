@@ -1,0 +1,12 @@
+.lighthouseci/
+playwright-report/
+test-results/
+# the repository root ignores *.json; this one is config, not output
+!lighthouserc.json
+
+# written by scripts/sync-assets.mjs from the app's icon files (run by build, check, test)
+public/favicon.ico
+public/icon.svg
+public/icon-192.png
+public/icon-512.png
+public/apple-touch-icon.png

@@ -33,3 +33,25 @@ describe("optimized mark", () => {
     expect(readFileSync(TARGET, "utf8")).toBe(optimized);
   });
 });
+
+describe("favicon set", () => {
+  it("copies the app's icons and draws the 192 px icon on whole cells", async () => {
+    const { mkdtempSync, readFileSync: read, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { syncIcons } = await import("./sync-assets.mjs");
+    const dir = mkdtempSync(join(tmpdir(), "icons-"));
+    try {
+      await syncIcons(optimized, dir);
+      expect(read(join(dir, "icon.svg"), "utf8")).toBe(optimized);
+      expect(read(join(dir, "favicon.ico")).subarray(0, 4)).toEqual(Buffer.from([0, 0, 1, 0]));
+      const big = await sharp(join(dir, "icon-512.png")).metadata();
+      expect([big.width, big.height]).toEqual([512, 512]);
+      const small = await sharp(join(dir, "icon-192.png")).metadata();
+      expect([small.width, small.height]).toEqual([192, 192]);
+      expect(read(join(dir, "apple-touch-icon.png"))).toEqual(read(join(dir, "icon-192.png")));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
