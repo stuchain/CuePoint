@@ -9,6 +9,8 @@
  */
 import { describe, expect, it } from "vitest";
 
+import layoutCss from "../../tokens/layout.css?raw";
+
 import {
   COLUMN_DEFAULT_PX,
   COLUMN_MIN_PX,
@@ -177,5 +179,23 @@ describe("row height", () => {
     document.documentElement.style.setProperty("--row-height", "auto");
     expect(readRowHeight()).toBe(ROW_HEIGHT_FALLBACK);
     document.documentElement.style.removeProperty("--row-height");
+  });
+});
+
+describe("the --row-height token", () => {
+  // getComputedStyle answers an unresolved `calc(...)` for an unregistered
+  // custom property, which parseFloat reads as NaN: every table row was then 36px.
+  // jsdom resolves no calc and cannot register a property, so these text checks
+  // of layout.css plus e2e/scale.spec.ts carry the regression.
+  it("is registered as an inherited length, so the browser resolves it", () => {
+    expect(layoutCss).toMatch(
+      /@property --row-height\s*\{[^}]*syntax:\s*"<length>";[^}]*inherits:\s*true;[^}]*initial-value:\s*36px;/,
+    );
+  });
+
+  it("rounds to a whole pixel", () => {
+    expect(layoutCss).toMatch(
+      /--row-height:\s*round\(nearest,\s*calc\(var\(--hit-min\) \* 0\.75\),\s*1px\);/,
+    );
   });
 });

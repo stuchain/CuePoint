@@ -1,6 +1,18 @@
 /**
  * Layout tokens — content width, safe areas for lab chrome, responsive spacing.
  */
+
+/*
+ * Registered so `getComputedStyle` answers a resolved length ("50px"), not the
+ * unresolved calc() text of an unregistered property, which `readRowHeight`
+ * could not read: every table row was 36px at every size.
+ */
+@property --row-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 36px;
+}
+
 :root {
   --content-max-width: min(1200px, 100%);
   --content-narrow-width: min(480px, 100%);
@@ -17,7 +29,7 @@
 
   --screen-padding: var(--space-xl);
   --results-min-rows: 10;
-  --row-height: calc(var(--hit-min) * 0.75);
+  --row-height: round(nearest, calc(var(--hit-min) * 0.75), 1px);
   --row-unmatched-bg: #5c2e2e;
   /* Breakpoints (reference values for JS/docs; media queries use literals) */
   --bp-sm: 600px;

@@ -29,9 +29,12 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     // Each test file gets a fresh jsdom document.
     restoreMocks: true,
-    // CSS is stubbed out in tests, except the theme files, which
-    // `waveformTokens.test.ts` reads as text to hold every theme's waveform
-    // colours to their contrast (WAVE-05).
-    css: { include: [/\/tokens\/themes\/[^/]+\.css/] },
+    // CSS is stubbed out in tests, except the files read as text: the theme files,
+    // which `waveformTokens.test.ts` holds to their waveform contrast (WAVE-05), and
+    // any stylesheet a test imports with `?raw`, which `cssScale.test.ts` checks for
+    // sizes that would land on half a pixel at 1.5x (DEC-161), and
+    // `tokens/layout.css`, which `trackTableLayout.test.ts` reads as text. A stylesheet a
+    // component imports stays stubbed: jsdom would apply it and hide controls.
+    css: { include: [/\/tokens\/themes\/[^/]+\.css/, /\.css\?raw/] },
   },
 });
