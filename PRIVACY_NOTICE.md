@@ -22,11 +22,11 @@ When CuePoint hits an unexpected error, a released build sends one error report 
 - the kind of error and its message, with file and folder names, your user, home and computer names, and track, artist, label and playlist names removed by rules applied on your computer before sending;
 - where in CuePoint's code it happened (the stack trace);
 - a short description of each of the last steps before it (for example a screen was opened, a job failed), cleaned the same way;
-- CuePoint's version and build, and basic details about your computer: operating system and version, processor and graphics hardware, memory, language and time zone;
+- CuePoint's version and build, and basic details about your computer: operating system and version, processor and graphics hardware, memory, screen size, when it was last started, language and time zone;
 - when the engine (the part of CuePoint that does the work) or the audio player stops unexpectedly, the last lines of what it wrote, with the same removals applied;
 - if you use **Help → Report a problem**, the note you write there, CuePoint's version and the id of the last report. That is sent only when you press Send, and the note is sent exactly as you write it, so leave out anything you don't want read.
 
-**A report is built not to carry** (the note you choose to send with Report a problem is the one exception): file or folder names (a path is reduced to its depth and file extension), your user, home or computer name, track, artist, label or playlist names, the notes and tags you keep in CuePoint, tokens or passwords, the values of variables in the code, your library or Rekordbox collection, screenshots, recordings or memory dumps. The app sends no user id, name or email, and does not put your IP address in a report. As with any server you connect to, Sentry receives the network address a request comes from.
+**A report is built not to carry** (the note you choose to send with Report a problem is the one exception): file or folder names (a path is reduced to its depth and file extension), your user, home or computer name, track, artist, label or playlist names, the notes and tags you keep in CuePoint, tokens or passwords, the values of variables in the code, your library or Rekordbox collection, screenshots, recordings or memory dumps. The app sends no user id, name or email, and does not put your IP address in a report. As with any server you connect to, Sentry receives the network address a request comes from, and works out from it the country a report came from.
 
 **Where it goes:** to Sentry (sentry.io), in Sentry's EU region. Sentry is the only service that receives error reports.
 
