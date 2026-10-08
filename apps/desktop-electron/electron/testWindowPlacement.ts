@@ -11,6 +11,11 @@
  * every run; a person never sets it, and without it nothing changes. Playwright
  * drives the page through the DevTools protocol, which needs neither focus nor
  * a particular screen.
+ *
+ * The window also keeps its full size on a screen smaller than it. A CI Mac's
+ * screen is 1024x768, and macOS shrank the 1280x800 window to fit, so the
+ * Library collapsed and its rows sat under the header and the status strip,
+ * where no click reached them. `enableLargerThanScreen` only acts on macOS.
  */
 
 /** The environment variable that asks for a placement. */
@@ -33,6 +38,14 @@ export interface DisplayLike {
 interface Placement {
   x: number;
   y: number;
+}
+
+/** The window options a test run adds: shown later without focus, and never shrunk to the screen. */
+export function testWindowOptions(placement: Placement): Placement & {
+  show: false;
+  enableLargerThanScreen: true;
+} {
+  return { ...placement, show: false, enableLargerThanScreen: true };
 }
 
 /** The choice an environment value makes, or null for none (or one not understood). */

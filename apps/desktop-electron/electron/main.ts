@@ -40,7 +40,12 @@ import type { LibraryBrowseParams, SetListDialogRequest } from "./engineClient";
 import { resolvePlayerBinary } from "./playerLaunch";
 import { PlayerSupervisor } from "./playerSupervisor";
 import { quitAfter } from "./quitAfter";
-import { E2E_DISPLAY_ENV, displayChoice, testWindowPlacement } from "./testWindowPlacement";
+import {
+  E2E_DISPLAY_ENV,
+  displayChoice,
+  testWindowOptions,
+  testWindowPlacement,
+} from "./testWindowPlacement";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === "development";
@@ -1029,7 +1034,7 @@ async function createWindow(): Promise<void> {
   });
   const win = new BrowserWindow({
     ...size,
-    ...(placement ? { ...placement, show: false } : {}),
+    ...(placement ? testWindowOptions(placement) : {}),
     // Windows and Linux show the window's own icon; macOS uses the bundle's (DIST-09).
     ...(appIconPath ? { icon: appIconPath } : {}),
     webPreferences: {

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { displayChoice, testWindowPlacement, type DisplayLike } from "./testWindowPlacement";
+import {
+  displayChoice,
+  testWindowOptions,
+  testWindowPlacement,
+  type DisplayLike,
+} from "./testWindowPlacement";
 
 /**
  * Where an end-to-end run puts the window: the display it names, centred, and
@@ -51,5 +56,17 @@ describe("testWindowPlacement", () => {
   it("uses the primary display when it is the only one", () => {
     expect(testWindowPlacement("left", [PRIMARY], PRIMARY, SIZE)).toEqual({ x: 640, y: 300 });
     expect(testWindowPlacement("left", [], PRIMARY, SIZE)).toEqual({ x: 640, y: 300 });
+  });
+});
+
+describe("testWindowOptions", () => {
+  it("shows the window later and keeps its size on a screen smaller than it", () => {
+    // Regression: a CI Mac's 1024x768 screen shrank the window to 1024x677.
+    expect(testWindowOptions({ x: 0, y: 0 })).toEqual({
+      x: 0,
+      y: 0,
+      show: false,
+      enableLargerThanScreen: true,
+    });
   });
 });
