@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { at, BAR, BEAT, CAPTIONS, DURATION, FRAMES, FPS, KICKS, kickLevel, SHOTS } from "./timing";
+import { at, BAR, BEAT, CAPTIONS, CUTS, DURATION, FINAL_HIT, FRAMES, FPS, KICKS, kickLevel, SHOTS, SNARES, snareLevel } from "./timing";
 
 describe("the promo's clock", () => {
   it("is exactly 30 seconds at 30 fps", () => {
@@ -30,15 +30,21 @@ describe("the promo's clock", () => {
   });
 
   it("pulses only where the music has a kick", () => {
-    expect(kickLevel(0)).toBe(0); // bar 0 is the arpeggio alone
+    expect(kickLevel(0)).toBe(0); // bar 0 is pads and arps alone
     expect(kickLevel(at(1))).toBeCloseTo(1, 9);
     expect(kickLevel(at(1) + 0.3)).toBeLessThan(0.1);
-    expect(kickLevel(at(4, 2) + 0.05)).toBeLessThan(0.15); // the riser: no kick
-    expect(kickLevel(at(5))).toBeCloseTo(1, 9);
+    expect(kickLevel(at(2, 3))).toBeLessThan(0.05); // the riser: no kick
+    expect(kickLevel(at(3))).toBeCloseTo(1, 9);
+    expect(kickLevel(FINAL_HIT)).toBeCloseTo(1, 9);
     expect(kickLevel(DURATION)).toBe(0);
   });
 
-  it("puts every kick on the beat grid", () => {
-    for (const k of KICKS) expect((k / BEAT) % 1).toBeCloseTo(0, 6);
+  it("puts every kick and snare on the sixteenth-note grid, inside the video", () => {
+    for (const k of [...KICKS, ...SNARES]) {
+      expect(((k / BEAT) * 4) % 1).toBeCloseTo(0, 6);
+      expect(k).toBeLessThan(DURATION);
+    }
+    expect(snareLevel(at(5, 1))).toBeCloseTo(1, 9);
+    expect(CUTS).toHaveLength(SHOTS.length - 1);
   });
 });

@@ -43,7 +43,7 @@ export const SET: ReadonlyArray<{ title: string; key: string; bpm: number }> = [
  * The twelve hues of the app's icon (DEC-210), one per Camelot number: the icon draws them clockwise
  * from 12 at the top, so 1A sits at one o'clock in the same color here as on the icon.
  */
-const HUES = ["#7af08e", "#b6f05a", "#f0e05a", "#f8b05a", "#f8806a", "#f86a9a", "#e86ad8", "#b87af8", "#8a9af8", "#6ac0f8", "#5ae0f0", "#5ee8c5"] as const;
+export const HUES = ["#7af08e", "#b6f05a", "#f0e05a", "#f8b05a", "#f8806a", "#f86a9a", "#e86ad8", "#b87af8", "#8a9af8", "#6ac0f8", "#5ae0f0", "#5ee8c5"] as const;
 
 export function keyColor(key: string): string {
   const n = Number.parseInt(key, 10);

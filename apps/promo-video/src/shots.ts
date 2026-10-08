@@ -1,15 +1,29 @@
 import type { gsap } from "gsap";
 import markUrl from "../../desktop-electron/build/icon-source/mark-32.svg?url";
-import { APP_PREVIEW, CLEAN_ROWS, keyColor, SET } from "./content";
+import { APP_PREVIEW, CLEAN_ROWS, keyColor, mixesInKey, SET } from "./content";
 import type { FormatId } from "./formats";
-import { at, BEAT, CAPTIONS, shot } from "./timing";
+import { at, BEAT, CAPTIONS, CUTS, FINAL_HIT, shot } from "./timing";
 
 type Timeline = gsap.core.Timeline;
 
 /**
  * The app shots are stand-ins drawn in the app's own pixel style, marked "Preview", until the
  * redesigned pages (Phase 14 and 15) can be captured from the real app (SITE-04's capture script).
+ * Each sits in its own CSS 3D space: the camera swoops in, drifts, and flies out past the viewer.
  */
+
+/** A shot's 3D space: perspective on the outside, a rig the camera moves inside. */
+function space(cls: string, perspective = 1800): { el: HTMLElement; rig: HTMLElement } {
+  const el = h(`<div class="layer ${cls}"><div class="space" style="perspective:${perspective}px"><div class="rig"></div></div></div>`);
+  return { el, rig: el.querySelector(".rig")! };
+}
+
+/** Swoop the rig in from deep space, drift it across the shot, and throw it past the camera. */
+function swoop(tl: Timeline, rig: Element, start: number, end: number, from: gsap.TweenVars, rest: gsap.TweenVars, drift: gsap.TweenVars): void {
+  tl.fromTo(rig, { z: -2600, ...from }, { z: 0, ...rest, duration: BEAT * 1.25, ease: "power3.out" }, start);
+  tl.to(rig, { ...drift, duration: end - start - BEAT * 2.25, ease: "sine.inOut" }, start + BEAT * 1.25);
+  tl.to(rig, { z: 1400, rotationY: "+=25", duration: BEAT, ease: "power3.in" }, end - BEAT);
+}
 
 const h = (html: string): HTMLElement => {
   const t = document.createElement("template");
@@ -104,10 +118,10 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
       <div class="row head"><span class="c-title">Title</span><span class="c-artist">Artist</span><span>Key</span><span>BPM</span><span class="c-genre">Genre</span><span>Status</span></div>
       ${rows}
     </div>`;
-  const el = h(`<div class="layer shot-clean"></div>`);
-  el.append(windowShell(format, "Clean", page));
+  const { el, rig } = space("shot-clean");
+  rig.append(windowShell(format, "Clean", page));
 
-  const { start } = shot("clean");
+  const { start, end } = shot("clean");
   const match = el.querySelector(".px-button.match")!;
   const apply = el.querySelector(".px-button.apply")!;
   const bar = el.querySelector(".px-progress > i")!;
@@ -115,15 +129,14 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
   const n = rowEls.length;
   const accepted = CLEAN_ROWS.filter((r) => r.status === "accepted").length;
 
-  // the window steps up into place under the wipe
-  tl.from(el.querySelector(".window"), { y: 80, duration: BEAT, ease: "steps(4)" }, start);
-  tl.set(match, { attr: { "data-pressed": "1" } }, at(5, 1));
-  tl.set(match, { attr: { "data-pressed": "0" } }, at(5, 1.5));
-  const first = at(5, 2);
-  const step = BEAT / 1.5;
+  swoop(tl, rig, start, end, { rotationY: -55, rotationX: 25 }, { rotationY: -16, rotationX: 9 }, { rotationY: 12, rotationX: 4 });
+  tl.set(match, { attr: { "data-pressed": "1" } }, at(3, 1));
+  tl.set(match, { attr: { "data-pressed": "0" } }, at(3, 1.5));
+  const first = at(3, 1.5);
+  const step = BEAT / 2;
   tl.to(bar, { width: "100%", duration: step * n, ease: `steps(${n * 4})` }, first);
   const matchedAt = (i: number): number => first + step * (i + 1) - step / 2;
-  const applyAt = at(7, 1);
+  const applyAt = at(4, 3);
   textTrack(el.querySelector(".count")!, tl, [
     [0, "Ready"],
     ...rowEls.map((_, i) => [matchedAt(i), `Matching ${i + 1} of ${n}`] as const),
@@ -136,15 +149,15 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
     const t = matchedAt(i);
     const keyCell = [...row.querySelectorAll(".c-key")].filter((c) => c.querySelector(".new"));
     tl.to(oldOf(keyCell), { opacity: 0, duration: BEAT / 4, ease: "steps(2)" }, t);
-    tl.fromTo(row.querySelectorAll(".c-key .new, .status .new"), { ...POP }, { ...IN }, t);
+    tl.fromTo(row.querySelectorAll(".c-key .new, .status .new"), { scale: 2.4, opacity: 0 }, { ...IN }, t);
     if (row.classList.contains("is-bad")) tl.to(row, { backgroundColor: "rgba(0,0,0,0)", duration: BEAT / 2, ease: "steps(2)" }, t);
   });
   // Apply from the accepted matches: tempo and genre, row by row
-  tl.from(apply, { scale: 0, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, at(6, 3));
+  tl.from(apply, { scale: 0, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, at(4, 2));
   tl.set(apply, { attr: { "data-pressed": "1" } }, applyAt);
   tl.set(apply, { attr: { "data-pressed": "0" } }, applyAt + BEAT / 2);
   rowEls.forEach((row, i) => {
-    const t = applyAt + BEAT / 2 + (i * BEAT) / 4;
+    const t = applyAt + BEAT / 2 + (i * BEAT) / 6;
     const cells = [...row.querySelectorAll(".apply")].filter((c) => c.querySelector(".new"));
     if (cells.length === 0) return;
     tl.to(oldOf(cells), { opacity: 0, duration: BEAT / 4, ease: "steps(2)" }, t);
@@ -153,7 +166,43 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
   return el;
 }
 
-// ---- Prepare: a set in key, with a waveform playing ----
+// ---- Keys: the wheel as a floor, the 24 keys rising around it ----
+
+function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
+  const wide = format === "wide";
+  const mark = wide ? 896 : 768; // whole multiples of the 32-pixel mark
+  const rA = mark * 0.64;
+  const rB = rA + (wide ? 130 : 116);
+  const { el, rig } = space("shot-keys", 1400);
+  const tiles = Array.from({ length: 24 }, (_, i) => {
+    const n = (i % 12) + 1;
+    const ring = i < 12 ? "B" : "A";
+    const r = ring === "B" ? rB : rA;
+    const a = (n / 12) * Math.PI * 2 - Math.PI / 2;
+    return `<span class="tile" data-key="${n}${ring}" style="left:${Math.cos(a) * r}px;top:${Math.sin(a) * r}px;background:${keyColor(`${n}${ring}`)}">${n}${ring}</span>`;
+  }).join("");
+  rig.innerHTML = `<div class="disc"><img src="${markUrl}" alt="" style="width:${mark}px;height:${mark}px;margin:${-mark / 2}px 0 0 ${-mark / 2}px" />${tiles}</div>`;
+  const disc = rig.querySelector(".disc")!;
+  const { start, end } = shot("keys");
+  // the disc tilts down into a floor and turns under the camera
+  tl.fromTo(disc, { rotationX: 0, rotationZ: -90, scale: 0.2, y: wide ? 0 : 60 }, { rotationX: 58, rotationZ: -20, scale: 1, duration: BEAT * 1.25, ease: "power3.out" }, start);
+  tl.to(disc, { rotationZ: 25, duration: end - start - BEAT * 1.25, ease: "sine.inOut" }, start + BEAT * 1.25);
+  const tileEls = [...el.querySelectorAll<HTMLElement>(".tile")];
+  // all 24 rise in a sweep round the wheel, then the keys that mix with 8A stand tall
+  const order = [...tileEls].sort((a, b) => Number.parseInt(a.dataset["key"]!, 10) - Number.parseInt(b.dataset["key"]!, 10));
+  order.forEach((tile, i) => tl.fromTo(tile, { z: 0, opacity: 0.25 }, { z: 36, opacity: 1, duration: BEAT / 4, ease: "steps(2)" }, start + BEAT + (i * BEAT) / 8));
+  const lift = at(7, 0);
+  for (const tile of tileEls) {
+    const key = tile.dataset["key"]!;
+    if (key === "8A") tl.to(tile, { z: 170, scale: 1.5, duration: BEAT / 2, ease: "steps(3)" }, lift);
+    else if (mixesInKey("8A", key)) tl.to(tile, { z: 120, scale: 1.25, duration: BEAT / 2, ease: "steps(3)" }, lift + BEAT / 2);
+    else tl.to(tile, { opacity: 0.3, duration: BEAT / 4, ease: "steps(2)" }, lift);
+  }
+  tl.to(rig, { z: 1600, duration: BEAT, ease: "power3.in" }, end - BEAT);
+  return el;
+}
+
+// ---- Prepare: fly down the running order, every step in key ----
 
 function waveSvg(): string {
   // a made-up track's three bands, as whole-pixel columns (deterministic, so every render matches)
@@ -178,43 +227,48 @@ function waveSvg(): string {
 }
 
 function buildPrepare(format: FormatId, tl: Timeline): HTMLElement {
-  const slots = SET.map(
-    (s, i) => `
-      <div class="slot"><span class="n">${i + 1}</span><span>${esc(s.title)}</span><span class="bpm">${s.bpm}</span>${keyBadge(s.key)}</div>
-      ${i < SET.length - 1 ? `<div class="link"><i></i>${s.key} to ${SET[i + 1]!.key}: mixes in key</div>` : ""}`,
-  ).join("");
-  const page = `
-    <div class="page__head"><h2>Prepare</h2><p>Plan a set</p><span class="px-badge">Friday warm-up</span></div>
-    <div class="wave">${waveSvg()}<div class="played"></div><div class="head"></div></div>
-    <div class="order">${slots}</div>`;
-  const el = h(`<div class="layer shot-prepare"></div>`);
-  el.append(windowShell(format, "Prepare", page));
+  const wide = format === "wide";
+  const GAP = 900;
+  const swing = wide ? 300 : 70;
+  const { el, rig } = space("shot-prepare", 1300);
+  const cards = SET.map((s, i) => {
+    const side = i % 2 === 0 ? -1 : 1;
+    return `<div class="card px-panel" style="--x:${side * swing}px;--z:${-i * GAP}px;--ry:${-side * 16}deg">
+        <span class="n">${i + 1}</span><span class="t">${esc(s.title)}</span><span class="bpm">${s.bpm} BPM</span>${keyBadge(s.key)}
+      </div>`;
+  }).join("");
+  const links = SET.slice(1)
+    .map((s, i) => `<div class="link3d" style="--z:${-(i + 0.5) * GAP}px"><i></i>${SET[i]!.key} to ${s.key}: mixes in key</div>`)
+    .join("");
+  rig.innerHTML = cards + links;
+  const hud = h(`
+    <div class="hud px-panel">
+      <div class="page__head"><h2>Prepare</h2><p>Plan a set</p><span class="px-badge">Friday warm-up</span>${APP_PREVIEW ? `<span class="px-badge preview">Preview</span>` : ""}</div>
+      <div class="wave">${waveSvg()}<div class="played"></div><div class="head"></div></div>
+    </div>`);
+  el.append(hud);
 
-  const { start } = shot("prepare");
-  const end = shot("export").end;
-  tl.from(el.querySelector(".window"), { y: 80, duration: BEAT, ease: "steps(4)" }, start);
-  // the playhead walks across the track in whole steps, one per beat
+  const { start, end } = shot("prepare");
+  tl.from(hud, { y: -300, duration: BEAT, ease: "steps(4)" }, start);
+  // the camera arrives at each card on the beat and glides between them
+  tl.fromTo(rig, { z: -1800, rotationX: 12 }, { z: 0, rotationX: 6, duration: BEAT, ease: "power3.out" }, start);
+  for (let i = 1; i < SET.length; i++) tl.to(rig, { z: i * GAP, duration: BEAT * 0.9, ease: "power3.inOut" }, start + BEAT * (2 * i - 1) + BEAT * 0.1);
+  tl.to(rig, { z: SET.length * GAP + 600, duration: BEAT, ease: "power3.in" }, end - BEAT);
   const beats = Math.round((end - start) / BEAT);
-  tl.fromTo(el.querySelector(".wave .head"), { left: "4%" }, { left: "78%", duration: end - start, ease: `steps(${beats * 2})` }, start);
-  tl.fromTo(el.querySelector(".wave .played"), { width: "4%" }, { width: "78%", duration: end - start, ease: `steps(${beats * 2})` }, start);
-  const slotEls = el.querySelectorAll(".slot");
-  const linkEls = el.querySelectorAll(".link");
-  slotEls.forEach((s, i) => tl.from(s, { x: -60, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, at(8, 1 + i)));
-  linkEls.forEach((l, i) => tl.from(l, { opacity: 0, scale: 0.6, duration: BEAT / 2, ease: "steps(3)" }, at(9, 1 + i * 1.5)));
+  tl.fromTo(hud.querySelector(".wave .head"), { left: "6%" }, { left: "70%", duration: end - start, ease: `steps(${beats * 2})` }, start);
+  tl.fromTo(hud.querySelector(".wave .played"), { width: "6%" }, { width: "70%", duration: end - start, ease: `steps(${beats * 2})` }, start);
+  el.querySelectorAll(".link3d").forEach((l, i) => tl.from(l, { scale: 0, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, start + BEAT * (2 * i + 1)));
   return el;
 }
 
-// ---- Export: back to Rekordbox, over the set ----
+// ---- Export: back to Rekordbox, the file flying out at the camera ----
 
 function buildExport(format: FormatId, tl: Timeline): HTMLElement {
   const wide = format === "wide";
-  const width = wide ? 980 : 940;
-  const left = wide ? (1920 - width) / 2 : (1080 - width) / 2;
-  const top = wide ? 200 : 520;
-  const el = h(`
-    <div class="layer shot-export">
-      <div class="dim"></div>
-      <div class="dialog px-panel" style="left:${left}px;top:${top}px;width:${width}px">
+  const width = wide ? 1100 : 980;
+  const { el, rig } = space("shot-export", 1600);
+  rig.innerHTML = `
+      <div class="dialog px-panel" style="width:${width}px;margin-left:${-width / 2}px">
         <h3>Export to Rekordbox</h3>
         <div class="inner">
           <div class="field">CuePoint library.xml</div>
@@ -223,112 +277,110 @@ function buildExport(format: FormatId, tl: Timeline): HTMLElement {
           <div class="actions"><span class="px-button">Export ${CLEAN_ROWS.length} tracks</span></div>
         </div>
       </div>
-      <div class="toast" style="left:${wide ? 1230 : 120}px;top:${wide ? 760 : 1290}px">Ready for Rekordbox</div>
-    </div>`);
-  const { start } = shot("export");
-  tl.to(el.querySelector(".dim"), { opacity: 1, duration: BEAT / 2, ease: "steps(3)" }, start);
-  tl.from(el.querySelector(".dialog"), { y: -140, opacity: 0, duration: BEAT, ease: "steps(4)" }, start);
+      <div class="file"><b>XML</b></div>`;
+  el.append(h(`<div class="toast" style="${wide ? "right:140px;bottom:230px" : "left:60px;right:60px;bottom:520px;justify-content:center"}">Ready for Rekordbox</div>`));
+  const { start, end } = shot("export");
+  swoop(tl, rig, start, end, { rotationX: -70, rotationY: 20 }, { rotationX: 10, rotationY: -8 }, { rotationX: 4, rotationY: 10 });
   const button = el.querySelector(".px-button")!;
-  tl.set(button, { attr: { "data-pressed": "1" } }, at(11, 3));
-  tl.set(button, { attr: { "data-pressed": "0" } }, at(11, 3.5));
-  tl.to(el.querySelector(".px-progress > i"), { width: "100%", duration: BEAT * 3, ease: "steps(12)" }, at(12, 0));
-  tl.fromTo(el.querySelector(".toast"), { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: BEAT / 2, ease: "steps(3)" }, at(12, 3));
+  tl.set(button, { attr: { "data-pressed": "1" } }, at(10, 1.5));
+  tl.set(button, { attr: { "data-pressed": "0" } }, at(10, 2));
+  tl.to(el.querySelector(".px-progress > i"), { width: "100%", duration: BEAT * 2, ease: "steps(10)" }, at(10, 2));
+  // the file leaves the dialog and flies through the camera
+  tl.fromTo(el.querySelector(".file"), { z: -200, opacity: 0, rotationY: 0 }, { z: 1500, opacity: 1, rotationY: 540, duration: BEAT * 1.5, ease: "power2.in" }, at(11, 0));
+  tl.fromTo(el.querySelector(".toast"), { scale: 3, rotation: -8, opacity: 0 }, { scale: 1, rotation: -3, opacity: 1, duration: BEAT / 2, ease: "steps(3)" }, at(11, 1));
   return el;
 }
 
-// ---- The end card: the mark in a ring of the 24 keys ----
+// ---- The end card, over the site's 3D wheel turning behind it ----
 
 function buildEnd(format: FormatId, tl: Timeline): HTMLElement {
   const wide = format === "wide";
-  const markPx = wide ? 288 : 352; // whole multiples of the 32-pixel mark
-  const radius = wide ? 330 : 380; // the outer (B) ring; the inner (A) ring clears the mark's corners
-  const inner = wide ? 245 : 290;
-  const box = radius * 2 + 90;
-  const keys = Array.from({ length: 24 }, (_, i) => {
-    // 12 at the top, outer ring B, inner ring A, like the wheel
-    const n = (i % 12) + 1;
-    const ring = i < 12 ? "B" : "A";
-    const r = ring === "B" ? radius : inner;
-    const a = ((n - 1) / 12) * Math.PI * 2 - Math.PI / 2 + Math.PI / 6;
-    const x = box / 2 + Math.cos(a) * r;
-    const y = box / 2 + Math.sin(a) * r;
-    return `<span class="k" style="left:${x}px;top:${y}px;background:${keyColor(`${n}${ring}`)}">${n}${ring}</span>`;
-  }).join("");
+  const markPx = wide ? 192 : 224;
+  const letters = [..."CuePoint"].map((c) => `<span>${c}</span>`).join("");
   const el = h(`
-    <div class="layer end" style="flex-direction:${wide ? "row" : "column"};gap:${wide ? 90 : 40}px">
-      <div class="ring" style="width:${box}px;height:${box}px">
-        <img src="${markUrl}" alt="" style="position:absolute;width:${markPx}px;height:${markPx}px;left:${(box - markPx) / 2}px;top:${(box - markPx) / 2}px" />
-        ${keys}
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:${wide ? "flex-start" : "center"};gap:30px">
-        <h1>CuePoint</h1>
-        <p style="text-align:${wide ? "left" : "center"};max-width:${wide ? 760 : 960}px">Your Rekordbox library, cleaned up and ready for the booth.</p>
+    <div class="layer end-card">
+      <div class="end-panel">
+        <img class="end-mark" src="${markUrl}" alt="" style="width:${markPx}px;height:${markPx}px" />
+        <h1>${letters}</h1>
+        <p>Your Rekordbox library, cleaned up and ready for the booth.</p>
         <span class="px-button url">usecuepoint.com</span>
       </div>
     </div>`);
   const { start } = shot("end");
-  tl.from(el.querySelector(".ring img"), { scale: 0, duration: BEAT, ease: "steps(4)" }, start);
-  // the keys light around the wheel, three to a beat, then the whole ring holds lit
-  el.querySelectorAll(".k").forEach((k, i) => {
-    tl.to(k, { opacity: 1, duration: BEAT / 6, ease: "steps(1)" }, start + BEAT + (i * BEAT) / 3);
+  tl.fromTo(el.querySelector(".end-mark"), { scale: 5, rotation: -30, opacity: 0 }, { scale: 1, rotation: 0, opacity: 1, duration: BEAT, ease: "steps(5)" }, start + BEAT);
+  el.querySelectorAll("h1 span").forEach((s, i) => {
+    tl.fromTo(s, { rotationX: -100, y: -80, opacity: 0 }, { rotationX: 0, y: 0, opacity: 1, duration: BEAT / 2, ease: "back.out(2)" }, at(12, 3) + (i * BEAT) / 4);
   });
-  tl.from(el.querySelector("h1"), { y: 50, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, at(13, 2));
-  tl.from(el.querySelector("p"), { y: 30, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, at(14, 0));
-  tl.from(el.querySelector(".url"), { scale: 0, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, at(14, 2));
+  tl.from(el.querySelector("p"), { y: 40, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, at(14, 0));
+  tl.fromTo(el.querySelector(".url"), { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: BEAT / 2, ease: "back.out(3)" }, at(14, 2));
+  // the last hit: everything punches
+  tl.fromTo(el.querySelector(".end-panel"), { scale: 1.12 }, { scale: 1, duration: BEAT, ease: "power2.out" }, FINAL_HIT);
   return el;
 }
 
-// ---- captions and the pixel wipe ----
+// ---- captions, flashes ----
 
 function buildCaptions(format: FormatId, tl: Timeline): HTMLElement {
   const el = h(`<div class="layer captions"></div>`);
   for (const c of CAPTIONS) {
     const cap = h(`<div class="caption" style="top:${FRAME[format].caption}px">${esc(c.text)}</div>`);
     el.append(cap);
-    tl.fromTo(cap, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: BEAT / 2, ease: "steps(3)" }, c.from);
-    tl.to(cap, { opacity: 0, duration: BEAT / 4, ease: "steps(2)" }, c.to - BEAT / 4);
+    tl.fromTo(cap, { opacity: 0, scale: 1.6, rotation: -4 }, { opacity: 1, scale: 1, rotation: -1.5, duration: BEAT / 2, ease: "steps(3)" }, c.from);
+    tl.to(cap, { opacity: 0, scale: 0.8, duration: BEAT / 4, ease: "steps(2)" }, c.to - BEAT / 4);
   }
   return el;
 }
 
-/** Blocks fill the screen from the middle out, the shot changes underneath, and they clear. */
-function buildWipe(format: FormatId, tl: Timeline, cuts: readonly number[]): HTMLElement {
-  const cols = format === "wide" ? 16 : 9;
-  const rows = format === "wide" ? 9 : 16;
-  const el = h(`<div class="layer wipe" style="grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},1fr)"></div>`);
-  for (let i = 0; i < cols * rows; i++) el.append(document.createElement("i"));
-  const cells = el.querySelectorAll("i");
-  for (const cut of cuts) {
-    tl.to(cells, { scale: 1.02, duration: BEAT / 4, ease: "steps(2)", stagger: { grid: [rows, cols], from: "center", amount: BEAT / 2 } }, cut - (BEAT * 3) / 4);
-    tl.to(cells, { scale: 0, duration: BEAT / 4, ease: "steps(2)", stagger: { grid: [rows, cols], from: "center", amount: BEAT / 2 } }, cut);
-  }
+/** A frame of light on every cut and on the last hit. */
+function buildFlash(tl: Timeline): HTMLElement {
+  const el = h(`<div class="layer flash"></div>`);
+  for (const t of [...CUTS, FINAL_HIT]) tl.fromTo(el, { opacity: 0.9 }, { opacity: 0, duration: BEAT / 2, ease: "steps(3)", immediateRender: false }, t);
   return el;
 }
 
-/** Builds every layer onto the stage and its tweens onto the timeline. Returns the opening's host. */
-export function buildShots(stage: HTMLElement, format: FormatId, tl: Timeline): { openingHost: HTMLElement } {
-  const openingHost = h(`<div class="layer shot-opening"></div>`);
-  const clean = buildClean(format, tl);
-  const prepare = buildPrepare(format, tl);
-  const exp = buildExport(format, tl);
-  const end = buildEnd(format, tl);
-  const layers: Array<[HTMLElement, number, number]> = [
-    [openingHost, shot("opening").start, shot("opening").end],
-    [clean, shot("clean").start, shot("clean").end],
-    [prepare, shot("prepare").start, shot("export").end],
-    [exp, shot("export").start, shot("export").end],
-    [end, shot("end").start, shot("end").end],
-  ];
-  for (const [el, from, to] of layers) {
-    stage.append(el);
-    // .shot starts hidden in CSS; a set at time 0 would never render from a paused timeline at 0
-    if (from > 0) {
-      el.classList.add("shot");
-      tl.set(el, { visibility: "visible" }, from);
-    }
+/** Shows a layer only between `from` and `to` (the opening's layer is shown from the first frame). */
+function showBetween(tl: Timeline, el: HTMLElement, ranges: ReadonlyArray<readonly [number, number]>): void {
+  // .shot starts hidden in CSS; a set at time 0 would never render from a paused timeline at 0
+  const [first] = ranges;
+  if (first && first[0] > 0) el.classList.add("shot");
+  for (const [from, to] of ranges) {
+    if (from > 0) tl.set(el, { visibility: "visible" }, from);
     if (to < shot("end").end) tl.set(el, { visibility: "hidden" }, to);
   }
-  stage.append(buildCaptions(format, tl));
-  stage.append(buildWipe(format, tl, [shot("clean").start, shot("prepare").start, shot("end").start]));
-  return { openingHost };
+}
+
+export interface Hosts {
+  /** Where the site's 3D scene canvas goes (the opening and the end card). */
+  readonly sceneHost: HTMLElement;
+  /** Where the pixel backdrop canvas goes (behind the app shots). */
+  readonly backdropHost: HTMLElement;
+  /** Everything that shakes with the kick (not the captions). */
+  readonly world: HTMLElement;
+}
+
+/** Builds every layer onto the stage and its tweens onto the timeline. */
+export function buildShots(stage: HTMLElement, format: FormatId, tl: Timeline): Hosts {
+  const world = h(`<div class="layer world"></div>`);
+  stage.append(world);
+  const sceneHost = h(`<div class="layer scene-host"></div>`);
+  const backdropHost = h(`<div class="layer backdrop-host"></div>`);
+  world.append(sceneHost, backdropHost);
+  showBetween(tl, sceneHost, [
+    [0, shot("opening").end],
+    [shot("end").start, shot("end").end],
+  ]);
+  showBetween(tl, backdropHost, [[shot("clean").start, shot("end").start]]);
+  const shots: Array<[HTMLElement, number, number]> = [
+    [buildClean(format, tl), shot("clean").start, shot("clean").end],
+    [buildKeys(format, tl), shot("keys").start, shot("keys").end],
+    [buildPrepare(format, tl), shot("prepare").start, shot("prepare").end],
+    [buildExport(format, tl), shot("export").start, shot("export").end],
+    [buildEnd(format, tl), shot("end").start, shot("end").end],
+  ];
+  for (const [el, from, to] of shots) {
+    world.append(el);
+    showBetween(tl, el, [[from, to]]);
+  }
+  stage.append(buildCaptions(format, tl), buildFlash(tl));
+  return { sceneHost, backdropHost, world };
 }
