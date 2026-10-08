@@ -45,6 +45,7 @@ from cuepoint.models.playlist import Playlist  # noqa: E402
 from cuepoint.models.track import Track  # noqa: E402
 from cuepoint.models.track_marks import ReadMarks  # noqa: E402
 from cuepoint.utils.errors import error_xml_parsing  # noqa: E402
+from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
 
@@ -120,7 +121,7 @@ def parse_rekordbox(xml_path: str) -> Dict[str, Playlist]:
     import os
 
     if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path!r}")
+        raise FileNotFoundError(f"XML file not found: {quoted(xml_path)}")
 
     # Design 4.70: Limit XML file size (safe parsing)
     size = os.path.getsize(xml_path)
@@ -241,7 +242,7 @@ def parse_playlist_tree(
         have path = name (no slash).
     """
     if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path!r}")
+        raise FileNotFoundError(f"XML file not found: {quoted(xml_path)}")
     size = os.path.getsize(xml_path)
     if size > MAX_XML_SIZE_BYTES:
         raise ValueError(
@@ -455,7 +456,7 @@ def get_track_locations(xml_path: str) -> Dict[str, str]:
         ET.ParseError: If XML parsing fails.
     """
     if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path!r}")
+        raise FileNotFoundError(f"XML file not found: {quoted(xml_path)}")
     size = os.path.getsize(xml_path)
     if size > MAX_XML_SIZE_BYTES:
         raise ValueError(
@@ -977,7 +978,7 @@ def _iter_collection_elements(xml_path: str) -> Iterator[ET.Element]:
         ET.ParseError: If the XML is malformed.
     """
     if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path!r}")
+        raise FileNotFoundError(f"XML file not found: {quoted(xml_path)}")
 
     size = os.path.getsize(xml_path)
     if size > MAX_XML_SIZE_BYTES:
@@ -1046,7 +1047,7 @@ def iter_playlist_nodes(xml_path: str) -> Iterator[RekordboxPlaylist]:
         ET.ParseError: If the XML is malformed.
     """
     if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path!r}")
+        raise FileNotFoundError(f"XML file not found: {quoted(xml_path)}")
 
     size = os.path.getsize(xml_path)
     if size > MAX_XML_SIZE_BYTES:
@@ -1181,7 +1182,7 @@ def collection_entry_count(xml_path: str) -> Optional[int]:
         ET.ParseError: If the XML is malformed.
     """
     if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path!r}")
+        raise FileNotFoundError(f"XML file not found: {quoted(xml_path)}")
 
     size = os.path.getsize(xml_path)
     if size > MAX_XML_SIZE_BYTES:

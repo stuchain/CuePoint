@@ -6,6 +6,7 @@ import logging
 import os
 from pathlib import Path
 from typing import List, Optional, Tuple
+from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ def parse_m3u(playlist_path: str) -> List[Tuple[str, Optional[str], Optional[str
     """
     path = Path(playlist_path)
     if not path.exists():
-        raise FileNotFoundError(f"Playlist file not found: {playlist_path!r}")
+        raise FileNotFoundError(f"Playlist file not found: {quoted(playlist_path)}")
     base_dir = path.parent
 
     raw: str

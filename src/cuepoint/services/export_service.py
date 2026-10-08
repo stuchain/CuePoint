@@ -19,6 +19,7 @@ from cuepoint.exceptions.cuepoint_exceptions import ExportError
 from cuepoint.models.result import TrackResult
 from cuepoint.services.interfaces import IExportService, ILoggingService
 from cuepoint.services.output_writer import write_csv_files
+from cuepoint.utils.quoting import quoted
 
 #: The formats :meth:`ExportService.export_table` writes.
 TABLE_FORMAT_CSV = "csv"
@@ -259,7 +260,7 @@ class ExportService(IExportService):
 
                 if self.logging_service:
                     self.logging_service.info(
-                        f"Exported {len(results)} tracks to CSV: {filepath!r}",
+                        f"Exported {len(results)} tracks to CSV: {quoted(filepath)}",
                         extra={"filepath": filepath, "track_count": len(results)},
                     )
             except Exception:
@@ -356,7 +357,7 @@ class ExportService(IExportService):
                 raise
             if self.logging_service:
                 self.logging_service.info(
-                    f"Exported {len(results)} tracks to JSON: {filepath!r}",
+                    f"Exported {len(results)} tracks to JSON: {quoted(filepath)}",
                     extra={"filepath": filepath, "track_count": len(results)},
                 )
         except Exception as e:
@@ -407,7 +408,7 @@ class ExportService(IExportService):
         is_valid, error_msg = self._validate_export_path(filepath, len(rows), overwrite)
         if not is_valid:
             raise ExportError(
-                message=f"Cannot export to {filepath!r}: {error_msg!r}",
+                message=f"Cannot export to {quoted(filepath)}: {error_msg!r}",
                 error_code="EXPORT_PATH_REFUSED",
                 context={"filepath": filepath, "row_count": len(rows)},
             )
@@ -432,12 +433,12 @@ class ExportService(IExportService):
         except Exception as exc:
             if self.logging_service:
                 self.logging_service.warning(
-                    f"Failed to export to {filepath!r}: {exc}",
+                    f"Failed to export to {quoted(filepath)}: {exc}",
                     exc_info=exc,
                     extra={"filepath": filepath},
                 )
             raise ExportError(
-                message=f"Failed to export to {filepath!r}: {exc}",
+                message=f"Failed to export to {quoted(filepath)}: {exc}",
                 error_code="EXPORT_WRITE_FAILED",
                 context={"filepath": filepath, "row_count": len(rows)},
             ) from exc
@@ -449,7 +450,7 @@ class ExportService(IExportService):
                     pass
         if self.logging_service:
             self.logging_service.info(
-                f"Exported {len(rows)} rows as {file_format}: {filepath!r}",
+                f"Exported {len(rows)} rows as {file_format}: {quoted(filepath)}",
                 extra={"filepath": filepath, "row_count": len(rows)},
             )
 
@@ -563,7 +564,7 @@ class ExportService(IExportService):
                 raise
             if self.logging_service:
                 self.logging_service.info(
-                    f"Exported {len(results)} tracks to Excel: {filepath!r}",
+                    f"Exported {len(results)} tracks to Excel: {quoted(filepath)}",
                     extra={"filepath": filepath, "track_count": len(results)},
                 )
         except Exception as e:

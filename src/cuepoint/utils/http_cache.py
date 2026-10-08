@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from cuepoint.utils.paths import AppPaths
+from cuepoint.utils.quoting import quoted
 
 try:
     import requests_cache
@@ -113,7 +114,7 @@ class HTTPCacheManager:
             stale_if_error=True,  # Use stale cache on error
         )
 
-        logger.info(f"HTTP cache initialized at {str(cache_path)!r}")
+        logger.info(f"HTTP cache initialized at {quoted(cache_path)}")
 
     @staticmethod
     def get_session() -> Optional["CachedSession"]:

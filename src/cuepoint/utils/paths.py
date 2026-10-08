@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from cuepoint.utils.platform import is_macos, is_windows
+from cuepoint.utils.quoting import quoted
 
 
 #: Overrides the directory holding the user's CuePoint state.
@@ -87,7 +88,7 @@ def _standard_path(location: str) -> Path:
             return home / ".cache"
         if location == "DocumentsLocation":
             return home / "Documents"
-    raise ValueError(f"Unknown standard path location: {location!r}")
+    raise ValueError(f"Unknown standard path location: {quoted(location)}")
 
 
 class AppPaths:
@@ -122,11 +123,11 @@ class AppPaths:
             return path
         except PermissionError as e:
             raise PermissionError(
-                f"Permission denied creating directory {str(path)!r}. "
+                f"Permission denied creating directory {quoted(path)}. "
                 f"Please check permissions or choose a different location."
             ) from e
         except OSError as e:
-            raise OSError(f"Failed to create directory {str(path)!r}: {e}") from e
+            raise OSError(f"Failed to create directory {quoted(path)}: {e}") from e
 
     @staticmethod
     def config_dir() -> Path:

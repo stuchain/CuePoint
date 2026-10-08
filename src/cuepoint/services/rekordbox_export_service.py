@@ -123,6 +123,7 @@ from cuepoint.services.interfaces import (
 )
 from cuepoint.services.tag_write_options import KEY_FORMAT_NORMAL, KEY_FORMATS
 from cuepoint.services.tag_write_service import key_text
+from cuepoint.utils.quoting import quoted
 
 #: The notation an export uses unless the caller names another (DEC-089).
 DEFAULT_KEY_FORMAT = KEY_FORMAT_NORMAL
@@ -665,13 +666,13 @@ class RekordboxExportService(IRekordboxExportService):
         except FileNotFoundError as exc:
             raise ExportSourceError(
                 SOURCE_MISSING,
-                f"The collection file is no longer there: {str(plan.source_path)!r}",
+                f"The collection file is no longer there: {quoted(plan.source_path)}",
                 plan.source_path,
             ) from exc
         except OSError as exc:
             raise ExportSourceError(
                 SOURCE_UNREADABLE,
-                f"The collection file could not be read: {str(plan.source_path)!r}",
+                f"The collection file could not be read: {quoted(plan.source_path)}",
                 plan.source_path,
             ) from exc
         except ExportSourceError:
@@ -981,19 +982,19 @@ class RekordboxExportService(IRekordboxExportService):
         if Path(destination).suffix.lower() != EXPORT_SUFFIX:
             raise ExportDestinationError(
                 DESTINATION_NOT_XML,
-                f"An export is saved as an {EXPORT_SUFFIX} file: {str(destination)!r}",
+                f"An export is saved as an {EXPORT_SUFFIX} file: {quoted(destination)}",
                 destination,
             )
         if os.path.isdir(destination):
             raise ExportDestinationError(
                 DESTINATION_IS_FOLDER,
-                f"That is a folder, not a file to save to: {str(destination)!r}",
+                f"That is a folder, not a file to save to: {quoted(destination)}",
                 destination,
             )
         if not os.path.isdir(os.path.dirname(destination)):
             raise ExportDestinationError(
                 DESTINATION_FOLDER_MISSING,
-                f"The folder to save into does not exist: {str(destination)!r}",
+                f"The folder to save into does not exist: {quoted(destination)}",
                 destination,
             )
         return destination
@@ -1019,7 +1020,7 @@ class RekordboxExportService(IRekordboxExportService):
             raise ExportSourceError(
                 SOURCE_MISSING,
                 f"The collection this library was imported from is not there: "
-                f"{str(path)!r}. Import or refresh from the file's new location.",
+                f"{quoted(path)}. Import or refresh from the file's new location.",
                 path,
             )
         try:
@@ -1028,7 +1029,7 @@ class RekordboxExportService(IRekordboxExportService):
         except OSError as exc:
             raise ExportSourceError(
                 SOURCE_UNREADABLE,
-                f"The collection file cannot be read: {str(path)!r} ({exc.strerror or exc}).",
+                f"The collection file cannot be read: {quoted(path)} ({exc.strerror or exc}).",
                 path,
             ) from exc
         return source

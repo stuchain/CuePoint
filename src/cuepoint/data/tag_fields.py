@@ -55,6 +55,7 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from cuepoint.utils.quoting import quoted
 
 #: The fields a tag write replaces, in the order options name them.
 FIELD_KEY = "key"
@@ -252,7 +253,7 @@ def read_tag_fields(path: PathLike) -> TagSnapshot:
         raise
     except Exception as exc:  # noqa: BLE001 — any file can be anything
         raise TagFieldsError(
-            f"The tags of {str(path)!r} could not be read: {exc}"
+            f"The tags of {quoted(path)} could not be read: {exc}"
         ) from exc
     return TagSnapshot(tag_format, fields, pictures)
 
@@ -296,7 +297,7 @@ def restore_tag_fields(path: PathLike, values: Mapping[str, FieldValue]) -> None
         raise
     except Exception as exc:  # noqa: BLE001 — surfaced as a failed restore
         raise TagFieldsError(
-            f"The tags of {str(path)!r} could not be written: {exc}"
+            f"The tags of {quoted(path)} could not be written: {exc}"
         ) from exc
 
 
@@ -327,7 +328,7 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
 
             audio, tags = _load_id3(path)
             if tags.getall("APIC"):
-                raise PictureAlreadyPresent(f"{str(path)!r} already holds a picture")
+                raise PictureAlreadyPresent(f"{quoted(path)} already holds a picture")
             tags.add(
                 APIC(
                     encoding=3,
@@ -341,7 +342,7 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
         else:
             vorbis = _load_vorbis(path, tag_format)
             if _vorbis_pictures(vorbis, tag_format):
-                raise PictureAlreadyPresent(f"{str(path)!r} already holds a picture")
+                raise PictureAlreadyPresent(f"{quoted(path)} already holds a picture")
             picture = _flac_picture(data, width, height)
             if tag_format == FORMAT_FLAC:
                 vorbis.add_picture(picture)
@@ -356,7 +357,7 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
         raise
     except Exception as exc:  # noqa: BLE001 — surfaced as a failed write
         raise TagFieldsError(
-            f"A picture could not be embedded in {str(path)!r}: {exc}"
+            f"A picture could not be embedded in {quoted(path)}: {exc}"
         ) from exc
     return picture_hash(data)
 
@@ -406,7 +407,7 @@ def remove_picture(path: PathLike, sha256: str) -> bool:
         raise
     except Exception as exc:  # noqa: BLE001 — surfaced as a failed restore
         raise TagFieldsError(
-            f"A picture could not be removed from {str(path)!r}: {exc}"
+            f"A picture could not be removed from {quoted(path)}: {exc}"
         ) from exc
 
 
@@ -439,7 +440,7 @@ def _load_id3(path: PathLike) -> Tuple[Any, Any]:
             return None, ID3(str(path))
         except ID3NoHeaderError:
             if not Path(str(path)).is_file():
-                raise TagFieldsError(f"{str(path)!r} is not a file") from None
+                raise TagFieldsError(f"{quoted(path)} is not a file") from None
             return None, ID3()
     audio = AIFF(str(path))
     if audio.tags is None:

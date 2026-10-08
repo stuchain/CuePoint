@@ -23,6 +23,7 @@ from cuepoint.models.rekordbox_playlist import (
     RekordboxPlaylist,
 )
 from cuepoint.services.interfaces import IDatabaseService, IPlaylistRepository
+from cuepoint.utils.quoting import quoted
 
 _NODE_COLUMNS = (
     "parent_id",
@@ -116,7 +117,7 @@ class PlaylistRepository(IPlaylistRepository):
                     parent_id = parent_at_depth.get(node.depth - 1)
                     if parent_id is None:
                         raise ValueError(
-                            f"playlist node {node.rekordbox_path!r} arrived at depth "
+                            f"playlist node {quoted(node.rekordbox_path)} arrived at depth "
                             f"{node.depth} before any node at depth {node.depth - 1}; "
                             "nodes must be supplied parents-first"
                         )

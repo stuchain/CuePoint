@@ -42,6 +42,7 @@ from cuepoint.persistence.track_query import (
     DEFAULT_SORT,
     SORTABLE_COLUMNS,
 )
+from cuepoint.utils.quoting import quoted
 
 # Kept in step with LibraryService's own clamp; declared here too so a caller
 # reading this module knows the bounds without following the call through.
@@ -818,9 +819,9 @@ def validate_import_path(xml_path: str) -> str:
     """
     path = Path(xml_path)
     if not path.exists():
-        raise ValueError(f"No such file: {xml_path!r}")
+        raise ValueError(f"No such file: {quoted(xml_path)}")
     if not path.is_file():
-        raise ValueError(f"Not a file: {xml_path!r}")
+        raise ValueError(f"Not a file: {quoted(xml_path)}")
     if path.suffix.lower() not in IMPORT_SUFFIXES:
         raise ValueError(
             f"Not a Rekordbox XML export: {path.name!r}. "

@@ -46,6 +46,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from cuepoint.engine.api_errors import ApiError, bad_request, error_payload, not_found
 from cuepoint.models.filter_rule import FilterRuleError
 from cuepoint.persistence.track_query import BrowseQueryError
+from cuepoint.utils.quoting import quoted
 
 #: A page of the file-write record. A write over a whole library records a row
 #: per field per file, and nobody reads three hundred thousand of them at once.
@@ -857,7 +858,9 @@ def export_review(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, 
     file_path = _require_str(data, "file_path")
     path = Path(file_path)
     if not path.is_absolute():
-        raise bad_request(f"file_path must be an absolute path, not {file_path!r}")
+        raise bad_request(
+            f"file_path must be an absolute path, not {quoted(file_path)}"
+        )
     if path.suffix.lower() != suffix:
         raise bad_request(f"A {file_format} export is written to a {suffix} file")
     overwrite = _optional_bool(data, "overwrite")
@@ -869,7 +872,7 @@ def export_review(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, 
             file_path=file_path,
         )
     if path.exists() and not path.is_file():
-        raise bad_request(f"{str(file_path)!r} is not a file")
+        raise bad_request(f"{quoted(file_path)} is not a file")
     written = _service("IReviewExportService").export(
         _selection(data), file_format, str(path), overwrite=overwrite
     )

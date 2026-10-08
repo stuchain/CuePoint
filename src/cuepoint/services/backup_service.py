@@ -37,6 +37,7 @@ from cuepoint.services.interfaces import (
     IConfigService,
     IDatabaseService,
 )
+from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
 
@@ -240,7 +241,7 @@ class BackupService(IBackupService):
         path = Path(backup_path)
         if not path.is_file():
             raise DatabaseError(
-                message=f"Backup file not found: {str(path)!r}",
+                message=f"Backup file not found: {quoted(path)}",
                 error_code="BACKUP_NOT_FOUND",
                 context={"backup": str(path)},
             )

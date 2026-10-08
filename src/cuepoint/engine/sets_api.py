@@ -95,6 +95,7 @@ from typing import (
 
 from cuepoint.engine.api_errors import ApiError, bad_request, error_payload, not_found
 from cuepoint.models.filter_rule import FilterRuleError
+from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
 
@@ -868,7 +869,7 @@ def set_list_save(data: Dict[str, Any]) -> Dict[str, Any]:
         raise ApiError(
             500,
             SET_LIST_WRITE_FAILED,
-            f"The set list could not be written to {str(path)!r}: {exc.strerror or exc}",
+            f"The set list could not be written to {quoted(path)}: {exc.strerror or exc}",
             path=path,
         ) from exc
     return {"saved": saved.to_dict()}

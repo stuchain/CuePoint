@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, List, TypedDict
 
 from cuepoint.utils.paths import AppPaths
+from cuepoint.utils.quoting import quoted
 
 
 class _CacheFileInfo(TypedDict):
@@ -180,7 +181,7 @@ class CacheManager:
                 removed_size += file_info["size"]
             except Exception as e:
                 logger.error(
-                    f"Error removing cache file {str(file_info['path'])!r}: {e}"
+                    f"Error removing cache file {quoted(file_info['path'])}: {e}"
                 )
 
         if removed_count > 0:

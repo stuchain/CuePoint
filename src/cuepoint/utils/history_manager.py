@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, TypedDict
 
 from cuepoint.utils.paths import AppPaths
+from cuepoint.utils.quoting import quoted
 
 
 class _HistoryFileInfo(TypedDict):
@@ -70,7 +71,7 @@ class HistoryManager:
                             }
                         )
                 except Exception as e:
-                    logger.warning(f"Error reading file {str(file)!r}: {e}")
+                    logger.warning(f"Error reading file {quoted(file)}: {e}")
 
             # Sort by modification time (newest first)
             files.sort(key=lambda x: x["mtime"], reverse=True)
@@ -128,7 +129,7 @@ class HistoryManager:
                             file.unlink()
                         removed_count += 1
                 except Exception as e:
-                    logger.error(f"Error cleaning up file {str(file)!r}: {e}")
+                    logger.error(f"Error cleaning up file {quoted(file)}: {e}")
 
             if removed_count > 0:
                 action = "Would remove" if dry_run else "Removed"

@@ -870,7 +870,7 @@
     }
   },
   {
-    "name": "cuepoint/data/audio_decode.py::decode_envelope::no decoder at {str(decoder_path)!r}",
+    "name": "cuepoint/data/audio_decode.py::decode_envelope::no decoder at {quoted(decoder_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1073,7 +1073,7 @@
     }
   },
   {
-    "name": "cuepoint/data/beatport_fixture.py::load::cannot read {str(path)!r}: {exc}",
+    "name": "cuepoint/data/beatport_fixture.py::load::cannot read {quoted(path)}: {exc}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1102,7 +1102,7 @@
     }
   },
   {
-    "name": "cuepoint/data/playlist_file.py::parse_m3u::Playlist file not found: {playlist_path!r}",
+    "name": "cuepoint/data/playlist_file.py::parse_m3u::Playlist file not found: {quoted(playlist_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1160,7 +1160,7 @@
     }
   },
   {
-    "name": "cuepoint/data/rekordbox.py::_iter_collection_elements::XML file not found: {xml_path!r}",
+    "name": "cuepoint/data/rekordbox.py::_iter_collection_elements::XML file not found: {quoted(xml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1189,7 +1189,7 @@
     }
   },
   {
-    "name": "cuepoint/data/rekordbox.py::collection_entry_count::XML file not found: {xml_path!r}",
+    "name": "cuepoint/data/rekordbox.py::collection_entry_count::XML file not found: {quoted(xml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1247,7 +1247,7 @@
     }
   },
   {
-    "name": "cuepoint/data/rekordbox.py::get_track_locations::XML file not found: {xml_path!r}",
+    "name": "cuepoint/data/rekordbox.py::get_track_locations::XML file not found: {quoted(xml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1276,7 +1276,7 @@
     }
   },
   {
-    "name": "cuepoint/data/rekordbox.py::iter_playlist_nodes::XML file not found: {xml_path!r}",
+    "name": "cuepoint/data/rekordbox.py::iter_playlist_nodes::XML file not found: {quoted(xml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1305,7 +1305,7 @@
     }
   },
   {
-    "name": "cuepoint/data/rekordbox.py::parse_playlist_tree::XML file not found: {xml_path!r}",
+    "name": "cuepoint/data/rekordbox.py::parse_playlist_tree::XML file not found: {quoted(xml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1334,7 +1334,7 @@
     }
   },
   {
-    "name": "cuepoint/data/rekordbox.py::parse_rekordbox::XML file not found: {xml_path!r}",
+    "name": "cuepoint/data/rekordbox.py::parse_rekordbox::XML file not found: {quoted(xml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1392,7 +1392,7 @@
     }
   },
   {
-    "name": "cuepoint/data/rekordbox_export.py::_plan::XML file not found: {source_path!r}",
+    "name": "cuepoint/data/rekordbox_export.py::_plan::XML file not found: {quoted(source_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1421,7 +1421,7 @@
     }
   },
   {
-    "name": "cuepoint/data/rekordbox_export.py::refuse_source_as_destination::Refusing to write the export over the collection it was read from: {destination_path!r}. Choose a different file.",
+    "name": "cuepoint/data/rekordbox_export.py::refuse_source_as_destination::Refusing to write the export over the collection it was read from: {quoted(destination_path)}. Choose a different file.",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1537,7 +1537,7 @@
     }
   },
   {
-    "name": "cuepoint/data/tag_fields.py::_load_id3::{str(path)!r} is not a file",
+    "name": "cuepoint/data/tag_fields.py::_load_id3::{quoted(path)} is not a file",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1624,7 +1624,7 @@
     }
   },
   {
-    "name": "cuepoint/data/tag_fields.py::embed_front_cover::A picture could not be embedded in {str(path)!r}: {exc}",
+    "name": "cuepoint/data/tag_fields.py::embed_front_cover::A picture could not be embedded in {quoted(path)}: {exc}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1653,7 +1653,7 @@
     }
   },
   {
-    "name": "cuepoint/data/tag_fields.py::embed_front_cover::{str(path)!r} already holds a picture",
+    "name": "cuepoint/data/tag_fields.py::embed_front_cover::{quoted(path)} already holds a picture",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1682,7 +1682,7 @@
     }
   },
   {
-    "name": "cuepoint/data/tag_fields.py::read_tag_fields::The tags of {str(path)!r} could not be read: {exc}",
+    "name": "cuepoint/data/tag_fields.py::read_tag_fields::The tags of {quoted(path)} could not be read: {exc}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1711,7 +1711,7 @@
     }
   },
   {
-    "name": "cuepoint/data/tag_fields.py::remove_picture::A picture could not be removed from {str(path)!r}: {exc}",
+    "name": "cuepoint/data/tag_fields.py::remove_picture::A picture could not be removed from {quoted(path)}: {exc}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1769,7 +1769,7 @@
     }
   },
   {
-    "name": "cuepoint/data/tag_fields.py::restore_tag_fields::The tags of {str(path)!r} could not be written: {exc}",
+    "name": "cuepoint/data/tag_fields.py::restore_tag_fields::The tags of {quoted(path)} could not be written: {exc}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -2001,7 +2001,7 @@
     }
   },
   {
-    "name": "cuepoint/engine/clean_api.py::export_review::file_path must be an absolute path, not {file_path!r}",
+    "name": "cuepoint/engine/clean_api.py::export_review::file_path must be an absolute path, not {quoted(file_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -2088,7 +2088,7 @@
     }
   },
   {
-    "name": "cuepoint/engine/clean_api.py::export_review::{str(file_path)!r} is not a file",
+    "name": "cuepoint/engine/clean_api.py::export_review::{quoted(file_path)} is not a file",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -2784,7 +2784,7 @@
     }
   },
   {
-    "name": "cuepoint/engine/library_api.py::validate_import_path::No such file: {xml_path!r}",
+    "name": "cuepoint/engine/library_api.py::validate_import_path::No such file: {quoted(xml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -2842,7 +2842,7 @@
     }
   },
   {
-    "name": "cuepoint/engine/library_api.py::validate_import_path::Not a file: {xml_path!r}",
+    "name": "cuepoint/engine/library_api.py::validate_import_path::Not a file: {quoted(xml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -3654,7 +3654,7 @@
     }
   },
   {
-    "name": "cuepoint/engine/sets_api.py::set_list_save::The set list could not be written to {str(path)!r}: {exc.strerror or exc}",
+    "name": "cuepoint/engine/sets_api.py::set_list_save::The set list could not be written to {quoted(path)}: {exc.strerror or exc}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -3944,7 +3944,7 @@
     }
   },
   {
-    "name": "cuepoint/models/config.py::load_config_from_yaml::Configuration file not found: {yaml_path!r}",
+    "name": "cuepoint/models/config.py::load_config_from_yaml::Configuration file not found: {quoted(yaml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -4002,7 +4002,7 @@
     }
   },
   {
-    "name": "cuepoint/models/config.py::load_config_from_yaml::YAML file must contain a dictionary at root level: {yaml_path!r}",
+    "name": "cuepoint/models/config.py::load_config_from_yaml::YAML file must contain a dictionary at root level: {quoted(yaml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -6119,7 +6119,7 @@
     }
   },
   {
-    "name": "cuepoint/persistence/playlist_repository.py::PlaylistRepository.replace_tree::playlist node {node.rekordbox_path!r} arrived at depth {node.depth} before any node at depth {node.depth - 1}; nodes must be supplied parents-first",
+    "name": "cuepoint/persistence/playlist_repository.py::PlaylistRepository.replace_tree::playlist node {quoted(node.rekordbox_path)} arrived at depth {node.depth} before any node at depth {node.depth - 1}; nodes must be supplied parents-first",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -6931,7 +6931,7 @@
     }
   },
   {
-    "name": "cuepoint/services/backup_service.py::BackupService.verify_backup::Backup file not found: {str(path)!r}",
+    "name": "cuepoint/services/backup_service.py::BackupService.verify_backup::Backup file not found: {quoted(path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -7743,7 +7743,7 @@
     }
   },
   {
-    "name": "cuepoint/services/config_service.py::ConfigService.load_from_file::Configuration file not found: {file_path!r}",
+    "name": "cuepoint/services/config_service.py::ConfigService.load_from_file::Configuration file not found: {quoted(file_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -7772,7 +7772,7 @@
     }
   },
   {
-    "name": "cuepoint/services/config_service.py::ConfigService.load_from_file::Invalid YAML in configuration file {file_path!r}: {e!r}",
+    "name": "cuepoint/services/config_service.py::ConfigService.load_from_file::Invalid YAML in configuration file {quoted(file_path)}: {e!r}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -7859,7 +7859,7 @@
     }
   },
   {
-    "name": "cuepoint/services/database_service.py::DatabaseService._open_connection::Could not create the CuePoint data folder at {str(self.db_path.parent)!r}: {exc}",
+    "name": "cuepoint/services/database_service.py::DatabaseService._open_connection::Could not create the CuePoint data folder at {quoted(self.db_path.parent)}: {exc}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -7888,7 +7888,7 @@
     }
   },
   {
-    "name": "cuepoint/services/database_service.py::DatabaseService._open_connection::The CuePoint library database at {str(self.db_path)!r} could not be read. It may be corrupt or not a database file: {exc}",
+    "name": "cuepoint/services/database_service.py::DatabaseService._open_connection::The CuePoint library database at {quoted(self.db_path)} could not be read. It may be corrupt or not a database file: {exc}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -8207,7 +8207,7 @@
     }
   },
   {
-    "name": "cuepoint/services/export_service.py::ExportService.export_table::Cannot export to {filepath!r}: {error_msg!r}",
+    "name": "cuepoint/services/export_service.py::ExportService.export_table::Cannot export to {quoted(filepath)}: {error_msg!r}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -8236,7 +8236,7 @@
     }
   },
   {
-    "name": "cuepoint/services/export_service.py::ExportService.export_table::Failed to export to {filepath!r}: {exc}",
+    "name": "cuepoint/services/export_service.py::ExportService.export_table::Failed to export to {quoted(filepath)}: {exc}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -8410,7 +8410,7 @@
     }
   },
   {
-    "name": "cuepoint/services/library_import_service.py::LibraryImportService._require_collection::{xml_path!r} has no COLLECTION section, so it is not a Rekordbox collection export. In Rekordbox, use File > Export Collection in xml format.",
+    "name": "cuepoint/services/library_import_service.py::LibraryImportService._require_collection::{quoted(xml_path)} has no COLLECTION section, so it is not a Rekordbox collection export. In Rekordbox, use File > Export Collection in xml format.",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9077,7 +9077,7 @@
     }
   },
   {
-    "name": "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Error occurred while parsing XML file: {xml_path!r}",
+    "name": "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Error occurred while parsing XML file: {quoted(xml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9106,7 +9106,7 @@
     }
   },
   {
-    "name": "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Failed to parse XML file: {xml_path!r}",
+    "name": "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Failed to parse XML file: {quoted(xml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9222,7 +9222,7 @@
     }
   },
   {
-    "name": "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::XML file not found: {xml_path!r}",
+    "name": "cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::XML file not found: {quoted(xml_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9280,7 +9280,7 @@
     }
   },
   {
-    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._check_destination::An export is saved as an {EXPORT_SUFFIX} file: {str(destination)!r}",
+    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._check_destination::An export is saved as an {EXPORT_SUFFIX} file: {quoted(destination)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9309,7 +9309,7 @@
     }
   },
   {
-    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._check_destination::That is a folder, not a file to save to: {str(destination)!r}",
+    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._check_destination::That is a folder, not a file to save to: {quoted(destination)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9338,7 +9338,7 @@
     }
   },
   {
-    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._check_destination::The folder to save into does not exist: {str(destination)!r}",
+    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._check_destination::The folder to save into does not exist: {quoted(destination)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9367,7 +9367,7 @@
     }
   },
   {
-    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._require_source::The collection file cannot be read: {str(path)!r} ({exc.strerror or exc}).",
+    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._require_source::The collection file cannot be read: {quoted(path)} ({exc.strerror or exc}).",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9396,7 +9396,7 @@
     }
   },
   {
-    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._require_source::The collection this library was imported from is not there: {str(path)!r}. Import or refresh from the file's new location.",
+    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._require_source::The collection this library was imported from is not there: {quoted(path)}. Import or refresh from the file's new location.",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9425,7 +9425,7 @@
     }
   },
   {
-    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService.preview_of::The collection file could not be read: {str(plan.source_path)!r}",
+    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService.preview_of::The collection file could not be read: {quoted(plan.source_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9454,7 +9454,7 @@
     }
   },
   {
-    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService.preview_of::The collection file is no longer there: {str(plan.source_path)!r}",
+    "name": "cuepoint/services/rekordbox_export_service.py::RekordboxExportService.preview_of::The collection file is no longer there: {quoted(plan.source_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9715,7 +9715,7 @@
     }
   },
   {
-    "name": "cuepoint/services/set_list_service.py::check_destination::A set list is saved as a .txt, .csv or .m3u8 file: {str(destination)!r}",
+    "name": "cuepoint/services/set_list_service.py::check_destination::A set list is saved as a .txt, .csv or .m3u8 file: {quoted(destination)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9744,7 +9744,7 @@
     }
   },
   {
-    "name": "cuepoint/services/set_list_service.py::check_destination::That is a folder, not a file to save to: {str(destination)!r}",
+    "name": "cuepoint/services/set_list_service.py::check_destination::That is a folder, not a file to save to: {quoted(destination)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9773,7 +9773,7 @@
     }
   },
   {
-    "name": "cuepoint/services/set_list_service.py::check_destination::The folder to save into does not exist: {str(destination)!r}",
+    "name": "cuepoint/services/set_list_service.py::check_destination::The folder to save into does not exist: {quoted(destination)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -10527,7 +10527,7 @@
     }
   },
   {
-    "name": "cuepoint/utils/paths.py::AppPaths._ensure_dir::Failed to create directory {str(path)!r}: {e}",
+    "name": "cuepoint/utils/paths.py::AppPaths._ensure_dir::Failed to create directory {quoted(path)}: {e}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -10556,7 +10556,7 @@
     }
   },
   {
-    "name": "cuepoint/utils/paths.py::AppPaths._ensure_dir::Permission denied creating directory {str(path)!r}. Please check permissions or choose a different location.",
+    "name": "cuepoint/utils/paths.py::AppPaths._ensure_dir::Permission denied creating directory {quoted(path)}. Please check permissions or choose a different location.",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -10643,7 +10643,7 @@
     }
   },
   {
-    "name": "cuepoint/utils/paths.py::_standard_path::Unknown standard path location: {location!r}",
+    "name": "cuepoint/utils/paths.py::_standard_path::Unknown standard path location: {quoted(location)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -10735,7 +10735,7 @@
     }
   },
   {
-    "name": "log::cuepoint/cli/cli_processor.py::CLIProcessor._write_output_files::Review candidates: {review_cands_count} rows -> {str(review_cands_path)!r}",
+    "name": "log::cuepoint/cli/cli_processor.py::CLIProcessor._write_output_files::Review candidates: {review_cands_count} rows -> {quoted(review_cands_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -10756,7 +10756,7 @@
     }
   },
   {
-    "name": "log::cuepoint/cli/cli_processor.py::CLIProcessor._write_output_files::Review queries: {review_queries_count} rows -> {str(review_queries_path)!r}",
+    "name": "log::cuepoint/cli/cli_processor.py::CLIProcessor._write_output_files::Review queries: {review_queries_count} rows -> {quoted(review_queries_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11134,7 +11134,7 @@
     }
   },
   {
-    "name": "log::cuepoint/services/export_service.py::ExportService.export_table::Exported {len(rows)} rows as {file_format}: {filepath!r}",
+    "name": "log::cuepoint/services/export_service.py::ExportService.export_table::Exported {len(rows)} rows as {file_format}: {quoted(filepath)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11155,7 +11155,7 @@
     }
   },
   {
-    "name": "log::cuepoint/services/export_service.py::ExportService.export_table::Failed to export to {filepath!r}: {exc}",
+    "name": "log::cuepoint/services/export_service.py::ExportService.export_table::Failed to export to {quoted(filepath)}: {exc}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11176,7 +11176,7 @@
     }
   },
   {
-    "name": "log::cuepoint/services/export_service.py::ExportService.export_to_csv::Exported {len(results)} tracks to CSV: {filepath!r}",
+    "name": "log::cuepoint/services/export_service.py::ExportService.export_to_csv::Exported {len(results)} tracks to CSV: {quoted(filepath)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11197,7 +11197,7 @@
     }
   },
   {
-    "name": "log::cuepoint/services/export_service.py::ExportService.export_to_excel::Exported {len(results)} tracks to Excel: {filepath!r}",
+    "name": "log::cuepoint/services/export_service.py::ExportService.export_to_excel::Exported {len(results)} tracks to Excel: {quoted(filepath)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11218,7 +11218,7 @@
     }
   },
   {
-    "name": "log::cuepoint/services/export_service.py::ExportService.export_to_json::Exported {len(results)} tracks to JSON: {filepath!r}",
+    "name": "log::cuepoint/services/export_service.py::ExportService.export_to_json::Exported {len(results)} tracks to JSON: {quoted(filepath)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11596,7 +11596,7 @@
     }
   },
   {
-    "name": "log::cuepoint/utils/cache_manager.py::CacheManager.prune_cache::Error removing cache file {str(file_info['path'])!r}: {e}",
+    "name": "log::cuepoint/utils/cache_manager.py::CacheManager.prune_cache::Error removing cache file {quoted(file_info['path'])}: {e}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11638,7 +11638,7 @@
     }
   },
   {
-    "name": "log::cuepoint/utils/history_manager.py::HistoryManager.cleanup_old_files::Error cleaning up file {str(file)!r}: {e}",
+    "name": "log::cuepoint/utils/history_manager.py::HistoryManager.cleanup_old_files::Error cleaning up file {quoted(file)}: {e}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11701,7 +11701,7 @@
     }
   },
   {
-    "name": "log::cuepoint/utils/history_manager.py::HistoryManager.get_recent_files::Error reading file {str(file)!r}: {e}",
+    "name": "log::cuepoint/utils/history_manager.py::HistoryManager.get_recent_files::Error reading file {quoted(file)}: {e}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11827,7 +11827,7 @@
     }
   },
   {
-    "name": "log::cuepoint/utils/http_cache.py::HTTPCacheManager.initialize::HTTP cache initialized at {str(cache_path)!r}",
+    "name": "log::cuepoint/utils/http_cache.py::HTTPCacheManager.initialize::HTTP cache initialized at {quoted(cache_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11911,7 +11911,7 @@
     }
   },
   {
-    "name": "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Could not include crash log {str(crash_file)!r}: {e}",
+    "name": "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Could not include crash log {quoted(crash_file)}: {e}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11932,7 +11932,7 @@
     }
   },
   {
-    "name": "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Could not include log file {str(log_file)!r}: {e}",
+    "name": "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Could not include log file {quoted(log_file)}: {e}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11974,7 +11974,7 @@
     }
   },
   {
-    "name": "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Generating support bundle: {str(bundle_path)!r}",
+    "name": "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Generating support bundle: {quoted(bundle_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -11995,7 +11995,7 @@
     }
   },
   {
-    "name": "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Support bundle created: {str(bundle_path)!r}",
+    "name": "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Support bundle created: {quoted(bundle_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",

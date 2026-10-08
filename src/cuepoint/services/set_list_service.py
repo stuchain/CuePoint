@@ -69,6 +69,7 @@ from cuepoint.services.override_values import (
     notation_from_counts,
     parse_key,
 )
+from cuepoint.utils.quoting import quoted
 
 #: The activity event a save records (DEC-110).
 EVENT_SET_LIST_SAVED = "set_list.saved"
@@ -183,19 +184,19 @@ def check_destination(path: str) -> str:
     if form_of(destination) is None:
         raise SetListDestinationError(
             DESTINATION_NOT_SET_LIST,
-            f"A set list is saved as a .txt, .csv or .m3u8 file: {str(destination)!r}",
+            f"A set list is saved as a .txt, .csv or .m3u8 file: {quoted(destination)}",
             destination,
         )
     if os.path.isdir(destination):
         raise SetListDestinationError(
             DESTINATION_IS_FOLDER,
-            f"That is a folder, not a file to save to: {str(destination)!r}",
+            f"That is a folder, not a file to save to: {quoted(destination)}",
             destination,
         )
     if not os.path.isdir(os.path.dirname(destination)):
         raise SetListDestinationError(
             DESTINATION_FOLDER_MISSING,
-            f"The folder to save into does not exist: {str(destination)!r}",
+            f"The folder to save into does not exist: {quoted(destination)}",
             destination,
         )
     return destination

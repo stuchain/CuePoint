@@ -113,6 +113,7 @@ from cuepoint.data.rekordbox import (
 )
 from cuepoint.exceptions.cuepoint_exceptions import ValidationError
 from cuepoint.models.rekordbox_playlist import build_path
+from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
 
@@ -481,7 +482,7 @@ def refuse_source_as_destination(source_path: str, destination_path: str) -> Non
     if is_the_same_file():
         raise ValidationError(
             "Refusing to write the export over the collection it was read from: "
-            f"{destination_path!r}. Choose a different file."
+            f"{quoted(destination_path)}. Choose a different file."
         )
 
 
@@ -586,7 +587,7 @@ def _plan(
     EXPORT-05's numbers the same numbers rather than two that happen to agree.
     """
     if not os.path.exists(source_path):
-        raise FileNotFoundError(f"XML file not found: {source_path!r}")
+        raise FileNotFoundError(f"XML file not found: {quoted(source_path)}")
     size = os.path.getsize(source_path)
     if size > MAX_XML_SIZE_BYTES:
         raise ValidationError(

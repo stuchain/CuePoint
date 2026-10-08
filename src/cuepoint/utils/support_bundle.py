@@ -19,6 +19,7 @@ from typing import Optional
 from cuepoint.utils.diagnostics import DiagnosticCollector
 from cuepoint.utils.paths import AppPaths
 from cuepoint.utils.run_context import get_current_run_id
+from cuepoint.utils.quoting import quoted
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ class SupportBundleGenerator:
         bundle_name = f"cuepoint-support-{run_id}.zip"
         bundle_path = output_path / bundle_name
 
-        logger.info(f"Generating support bundle: {str(bundle_path)!r}")
+        logger.info(f"Generating support bundle: {quoted(bundle_path)}")
 
         try:
             with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_DEFLATED) as zipf:
@@ -111,7 +112,7 @@ class SupportBundleGenerator:
                             total_size += len(content.encode("utf-8"))
                         except Exception as e:
                             logger.warning(
-                                f"Could not include log file {str(log_file)!r}: {e}"
+                                f"Could not include log file {quoted(log_file)}: {e}"
                             )
 
                     # Crash logs (Design 7.23: also check crashes/ subdir)
@@ -136,7 +137,7 @@ class SupportBundleGenerator:
                                 total_size += len(content.encode("utf-8"))
                             except Exception as e:
                                 logger.warning(
-                                    f"Could not include crash log {str(crash_file)!r}: {e}"
+                                    f"Could not include crash log {quoted(crash_file)}: {e}"
                                 )
 
                 # Config file (if exists, sanitized)
@@ -194,7 +195,7 @@ Contents:
                     readme += "\n\nNote: Sensitive information has been sanitized."
                 zipf.writestr("README.txt", readme)
 
-            logger.info(f"Support bundle created: {str(bundle_path)!r}")
+            logger.info(f"Support bundle created: {quoted(bundle_path)}")
             return bundle_path
 
         except Exception as e:

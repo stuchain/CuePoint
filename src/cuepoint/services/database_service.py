@@ -37,6 +37,7 @@ from typing import Iterator, Optional
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
 from cuepoint.services.interfaces import IConfigService, IDatabaseService
 from cuepoint.utils.paths import cuepoint_home
+from cuepoint.utils.quoting import quoted
 
 DATABASE_FILENAME = "cuepoint.db"
 
@@ -190,7 +191,7 @@ class DatabaseService(IDatabaseService):
             raise DatabaseError(
                 message=(
                     f"Could not create the CuePoint data folder at "
-                    f"{str(self.db_path.parent)!r}: {exc}"
+                    f"{quoted(self.db_path.parent)}: {exc}"
                 ),
                 error_code="DB_DIR_CREATE_FAILED",
                 context={"db_path": str(self.db_path)},
@@ -231,7 +232,7 @@ class DatabaseService(IDatabaseService):
             connection.close()
             raise DatabaseError(
                 message=(
-                    f"The CuePoint library database at {str(self.db_path)!r} could not be "
+                    f"The CuePoint library database at {quoted(self.db_path)} could not be "
                     f"read. It may be corrupt or not a database file: {exc}"
                 ),
                 error_code="DB_UNREADABLE",

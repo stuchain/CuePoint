@@ -70,6 +70,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
+from cuepoint.utils.quoting import quoted
 
 #: The variable naming the fixture file.
 ENV_VAR = "CUEPOINT_BEATPORT_FIXTURE"
@@ -314,7 +315,7 @@ def load(path: Path) -> BeatportFixture:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        raise BeatportFixtureError(f"cannot read {str(path)!r}: {exc}") from exc
+        raise BeatportFixtureError(f"cannot read {quoted(path)}: {exc}") from exc
     if not isinstance(data, dict):
         raise BeatportFixtureError("a fixture is a JSON object")
     raw_searches = data.get("searches")

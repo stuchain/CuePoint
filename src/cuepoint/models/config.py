@@ -41,6 +41,7 @@ import os
 import sys
 
 import requests  # type: ignore[import-untyped]
+from cuepoint.utils.quoting import quoted
 
 # -----------------------------
 # Main Configuration Dictionary
@@ -501,14 +502,14 @@ def load_config_from_yaml(yaml_path: str) -> dict:
         )
 
     if not os.path.exists(yaml_path):
-        raise FileNotFoundError(f"Configuration file not found: {yaml_path!r}")
+        raise FileNotFoundError(f"Configuration file not found: {quoted(yaml_path)}")
 
     with open(yaml_path, "r", encoding="utf-8") as f:
         yaml_content = yaml.safe_load(f)
 
     if not isinstance(yaml_content, dict):
         raise ValueError(
-            f"YAML file must contain a dictionary at root level: {yaml_path!r}"
+            f"YAML file must contain a dictionary at root level: {quoted(yaml_path)}"
         )
 
     # Flatten nested structure

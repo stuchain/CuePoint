@@ -71,6 +71,7 @@ from cuepoint.utils.run_performance_collector import (
     STAGE_SEARCH_CANDIDATES,
     RunPerformanceCollector,
 )
+from cuepoint.utils.quoting import quoted
 
 
 def _throttled_progress_callback(
@@ -1256,7 +1257,7 @@ class ProcessorService(IProcessorService):
         except FileNotFoundError:
             raise ProcessingError(
                 error_type=ErrorType.FILE_NOT_FOUND,
-                message=f"XML file not found: {xml_path!r}",
+                message=f"XML file not found: {quoted(xml_path)}",
                 details="The specified Rekordbox XML export file does not exist.",
                 suggestions=[
                     "Check that the file path is correct",
@@ -1273,7 +1274,7 @@ class ProcessorService(IProcessorService):
                 raise ProcessingError(
                     error_type=ErrorType.XML_PARSE_ERROR,
                     message=error_msg,
-                    details=f"Failed to parse XML file: {xml_path!r}",
+                    details=f"Failed to parse XML file: {quoted(xml_path)}",
                     suggestions=[
                         "Verify the XML file is a valid Rekordbox export",
                         "Check that the file is not corrupted",
@@ -1286,7 +1287,7 @@ class ProcessorService(IProcessorService):
                 raise ProcessingError(
                     error_type=ErrorType.XML_PARSE_ERROR,
                     message=f"XML parsing failed: {error_msg!r}",
-                    details=f"Error occurred while parsing XML file: {xml_path!r}",
+                    details=f"Error occurred while parsing XML file: {quoted(xml_path)}",
                     suggestions=[
                         "Verify the XML file is a valid Rekordbox export",
                         "Check that the file is not corrupted",

@@ -39,6 +39,7 @@ from cuepoint.utils.errors import (
 )
 from cuepoint.utils.run_context import get_current_run_id
 from cuepoint.utils.utils import get_output_directory, with_timestamp
+from cuepoint.utils.quoting import quoted
 
 
 class CLIProcessor:
@@ -461,7 +462,7 @@ class CLIProcessor:
                         elif r.candidates:
                             review_cands_count += len(r.candidates)
                 self.logging_service.info(
-                    f"Review candidates: {review_cands_count} rows -> {str(review_cands_path)!r}"
+                    f"Review candidates: {review_cands_count} rows -> {quoted(review_cands_path)}"
                 )
 
             if review_queries_path:
@@ -473,7 +474,7 @@ class CLIProcessor:
                     if r.playlist_index in review_indices
                 )
                 self.logging_service.info(
-                    f"Review queries: {review_queries_count} rows -> {str(review_queries_path)!r}"
+                    f"Review queries: {review_queries_count} rows -> {quoted(review_queries_path)}"
                 )
 
         return output_files

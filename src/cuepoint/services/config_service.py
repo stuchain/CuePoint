@@ -22,6 +22,7 @@ from cuepoint.models.config import SETTINGS
 from cuepoint.models.config_models import AppConfig
 from cuepoint.services.interfaces import IConfigService
 from cuepoint.utils.paths import cuepoint_home
+from cuepoint.utils.quoting import quoted
 
 
 def default_config_file() -> Path:
@@ -262,7 +263,9 @@ class ConfigService(IConfigService):
 
         config_path = Path(file_path)
         if not config_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {file_path!r}")
+            raise FileNotFoundError(
+                f"Configuration file not found: {quoted(file_path)}"
+            )
 
         try:
             with open(config_path, "r", encoding="utf-8") as f:
@@ -286,7 +289,7 @@ class ConfigService(IConfigService):
                             self._legacy_settings[legacy_key] = value
         except yaml.YAMLError as e:
             raise ValueError(
-                f"Invalid YAML in configuration file {file_path!r}: {e!r}"
+                f"Invalid YAML in configuration file {quoted(file_path)}: {e!r}"
             ) from e
 
     def _flatten_dict(
