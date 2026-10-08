@@ -6070,3 +6070,19 @@ answers. The user chose on 2026-10-08 to start them early.
 
 **Decided with**: User · **Date**: 2026-10-08
 
+---
+
+## DEC-215 — Forms stay on Web3Forms' free plan (amends DEC-193)
+
+**Status**: Approved · **Related**: DEC-193, SITE-12, SITE-13
+
+**Decision**: The contact and bug-report forms use Web3Forms' free plan. On that plan the access key cannot
+be restricted to the site's domain, so DEC-193's "restricted to the site's domain" does not hold: the key is
+public and unrestricted. Spam is held back by a hidden trap field, a minimum fill time and Web3Forms' own
+filter. The free plan also refuses server-side sends, so there is no automated live send; the real send is
+checked by hand on the deployed site at SITE-13.
+
+**Reason**: The user's choice, as recommended. Domain restriction is a paid feature, and two low-traffic forms
+on a personal project do not justify the cost.
+
+**Decided with**: User · **Date**: 2026-10-08
