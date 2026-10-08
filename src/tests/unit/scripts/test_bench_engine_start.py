@@ -176,9 +176,11 @@ class TestIsolation:
 
         monkeypatch.setattr(bench, "stop_process_tree", capture)
         bench.measure_once(fake_engine(), timeout=30)
-        home = fake_engine.record.read_text().split()[-1]
-        assert seen["CUEPOINT_HOME"].startswith(home)
-        assert seen["APPDATA"].startswith(home)
+        # Resolved: on macOS the temp dir is /var/..., a link to /private/var/...,
+        # and the engine may report either spelling of the same place.
+        home = Path(fake_engine.record.read_text().split()[-1]).resolve()
+        assert Path(seen["CUEPOINT_HOME"]).resolve().is_relative_to(home)
+        assert Path(seen["APPDATA"]).resolve().is_relative_to(home)
 
 
 class TestCommandLine:
