@@ -16,6 +16,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { hasFetchedPlayer } from "./playerAvailable";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -222,7 +223,9 @@ test.describe("the sizes (PAGES-14)", () => {
   });
 
   test("Settings does not scroll sideways at 3× when no audio player is found", async () => {
-    // A blank override is ignored, and a development tree has no fetched player.
+    // Windows and macOS CI fetch the player into the tree, so only Linux can lose it.
+    test.skip(hasFetchedPlayer, "this tree has a fetched player, so one is always found");
+    // A blank override is ignored, and this tree has no fetched player.
     const app = await launch(userDataDir, cuepointHome, { CUEPOINT_MPV_PATH: "" });
     try {
       const win = await app.firstWindow({ timeout: 60_000 });

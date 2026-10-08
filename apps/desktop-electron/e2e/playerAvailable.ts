@@ -16,5 +16,8 @@ export const hasPlayer = Boolean(
   resolvePlayerBinary({ packaged: false, repoRoot: REPO_ROOT, env: process.env }),
 );
 
+/** Whether `scripts/fetch_player_sidecar.py` put a player in this tree, whatever the environment says. */
+export const hasFetchedPlayer = Boolean(resolvePlayerBinary({ packaged: false, repoRoot: REPO_ROOT, env: {} }));
+
 export const NO_PLAYER =
   "no mpv: run `python scripts/fetch_player_sidecar.py` or set CUEPOINT_MPV_PATH";

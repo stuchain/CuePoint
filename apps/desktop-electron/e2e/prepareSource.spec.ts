@@ -214,7 +214,11 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
 
       // --- the Library tab: a search, and a drag onto the Set ------------------
       await panel.getByRole("tab", { name: "Library" }).click();
-      await panel.getByRole("searchbox", { name: "Search" }).fill("Track 2");
+      await panel.getByRole("searchbox", { name: "Search" }).fill("Track 21");
+      // The search waits for typing to stop, so the whole library shows first: drag
+      // only once the list has narrowed, or the rows move under the pointer.
+      const libraryRows = win.getByRole("table", { name: "Library tracks to add" }).locator(".track-table__row");
+      await expect(libraryRows).toHaveCount(1, { timeout: 30_000 });
       const found = rowTitled(win, "Library tracks to add", "Track 21");
       await expect(found).toBeVisible({ timeout: 30_000 });
       const target = rowTitled(win, "Set entries", "Track 07");
