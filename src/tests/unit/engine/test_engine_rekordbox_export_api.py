@@ -607,7 +607,11 @@ class TestTheStart:
     def test_the_source_spelled_differently_is_refused_all_the_same(
         self, engine, store, imported
     ):
-        spelled = str(imported.parent / "." / imported.name.upper())
+        # Upper case names the same file only where the filesystem ignores case
+        # (Windows, macOS); on Linux it is another file, and allowed.
+        upper = imported.parent / imported.name.upper()
+        name = upper.name if upper.exists() else imported.name
+        spelled = str(imported.parent / "." / name)
 
         error = refused(
             start(engine, {"destination_path": spelled}), 400, api.DESTINATION_REFUSED
