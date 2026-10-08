@@ -1,0 +1,230 @@
+---
+/**
+ * Search inside the guide (SITE-09). The index is made by Pagefind after the build, from the pages that
+ * carry data-pagefind-body. Nothing of it loads until the box is focused: then /pagefind/pagefind.js is
+ * imported on demand, so the page's own script stays tiny.
+ *
+ * Without script the box does nothing, and the guide's index page still lists every page.
+ * Accessibility: a labelled search landmark; the results are a list of ordinary links; a status line
+ * (aria-live) says how many were found; Down Arrow moves from the box into the results, Up Arrow and
+ * Escape come back; Escape in the box clears it.
+ */
+import { hrefFor } from "../lib/url";
+
+interface Props {
+  /** A unique id prefix, so a page can hold more than one. */
+  id?: string;
+}
+const { id = "guide-search" } = Astro.props;
+---
+
+<div role="search" class="gs" data-guide-search data-pagefind-src={hrefFor("pagefind/pagefind.js")} data-base={hrefFor("")}>
+  <label class="label" for={`${id}-input`}>Search the guide</label>
+  <input
+    class="input"
+    id={`${id}-input`}
+    type="search"
+    name="q"
+    autocomplete="off"
+    spellcheck="false"
+    placeholder="Try “duplicates” or “export”"
+    aria-describedby={`${id}-status`}
+  />
+  <p class="status" id={`${id}-status`} role="status" aria-live="polite"></p>
+  <ul class="results" id={`${id}-results`} hidden></ul>
+</div>
+
+<script>
+  type Sub = { url: string; title: string; excerpt: string };
+  type PagefindResult = { data(): Promise<{ url: string; meta: { title?: string }; excerpt: string; sub_results?: Sub[] }> };
+  type Pagefind = {
+    options(o: Record<string, unknown>): Promise<void>;
+    init(): Promise<void>;
+    debouncedSearch(q: string, o?: Record<string, unknown>, ms?: number): Promise<{ results: PagefindResult[] } | null>;
+  };
+
+  const MAX_RESULTS = 8;
+
+  function setup(root: HTMLElement) {
+    const input = root.querySelector<HTMLInputElement>("input")!;
+    const status = root.querySelector<HTMLElement>(".status")!;
+    const list = root.querySelector<HTMLUListElement>(".results")!;
+    const src = root.dataset["pagefindSrc"]!;
+    const base = root.dataset["base"]!;
+    let loading: Promise<Pagefind> | undefined;
+    let latest = 0;
+
+    const load = (): Promise<Pagefind> => {
+      loading ??= (async () => {
+        const mod = (await import(/* @vite-ignore */ src)) as Pagefind;
+        await mod.options({ baseUrl: base });
+        await mod.init();
+        return mod;
+      })();
+      loading.catch(() => {
+        loading = undefined;
+      });
+      return loading;
+    };
+
+    // Excerpts are text with <mark> around the match. Build them from nodes, never innerHTML.
+    function excerptNodes(html: string): Node[] {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      return [...doc.body.childNodes].map((n) => {
+        if (n.nodeName === "MARK") {
+          const m = document.createElement("mark");
+          m.textContent = n.textContent;
+          return m;
+        }
+        return document.createTextNode(n.textContent ?? "");
+      });
+    }
+
+    function clear() {
+      list.replaceChildren();
+      list.hidden = true;
+      status.textContent = "";
+    }
+
+    async function run() {
+      const q = input.value.trim();
+      const mine = ++latest;
+      if (q.length < 2) {
+        clear();
+        return;
+      }
+      let pf: Pagefind;
+      try {
+        pf = await load();
+      } catch {
+        status.textContent = "Search could not load. Reload the page and try again.";
+        return;
+      }
+      const found = await pf.debouncedSearch(q, {}, 150);
+      if (found === null || mine !== latest) return;
+      const shown = await Promise.all(found.results.slice(0, MAX_RESULTS).map((r) => r.data()));
+      if (mine !== latest) return;
+      list.replaceChildren(
+        ...shown.map((d) => {
+          const li = document.createElement("li");
+          const a = document.createElement("a");
+          a.href = d.url;
+          a.textContent = d.meta.title ?? d.url;
+          const p = document.createElement("p");
+          p.append(...excerptNodes(d.excerpt));
+          li.append(a, p);
+          return li;
+        }),
+      );
+      list.hidden = shown.length === 0;
+      const total = found.results.length;
+      status.textContent =
+        total === 0
+          ? `No guide page mentions “${q}”.`
+          : `${total} ${total === 1 ? "page" : "pages"} mention “${q}”${total > shown.length ? `, showing the first ${shown.length}` : ""}.`;
+    }
+
+    // Load the search code only when the box is used.
+    input.addEventListener("focus", () => void load().catch(() => {}), { once: true });
+    input.addEventListener("input", () => void run());
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && input.value !== "") {
+        e.preventDefault();
+        input.value = "";
+        clear();
+      } else if (e.key === "ArrowDown") {
+        const first = list.querySelector<HTMLAnchorElement>("a");
+        if (first) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    });
+    list.addEventListener("keydown", (e) => {
+      const links = [...list.querySelectorAll<HTMLAnchorElement>("a")];
+      const i = links.indexOf(document.activeElement as HTMLAnchorElement);
+      if (i === -1) return;
+      if (e.key === "ArrowDown" && links[i + 1]) {
+        e.preventDefault();
+        links[i + 1]!.focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        (links[i - 1] ?? input).focus();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        input.focus();
+      }
+    });
+  }
+
+  document.querySelectorAll<HTMLElement>("[data-guide-search]").forEach(setup);
+</script>
+
+<style>
+  .gs {
+    display: block;
+    max-width: 40rem;
+    margin-bottom: var(--space-xl);
+  }
+  .label {
+    display: block;
+    margin-bottom: var(--space-xs);
+    font-family: var(--font-pixel);
+    font-weight: 600;
+    font-variant-ligatures: none;
+  }
+  .input {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--bg-input);
+    color: var(--fg-primary);
+    border: var(--border-width) solid var(--border-light);
+    border-radius: 0;
+    box-shadow: var(--shadow-inset-deep);
+  }
+  .input::placeholder {
+    color: var(--fg-muted);
+    opacity: 1;
+  }
+  .status {
+    min-height: 1.6em;
+    margin: var(--space-xs) 0 0;
+    color: var(--fg-primary);
+    font-size: var(--font-size-sm);
+  }
+  .results {
+    margin: var(--space-sm) 0 0;
+    padding: 0;
+    list-style: none;
+    background: var(--bg-panel);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel);
+  }
+  .results[hidden] {
+    display: none;
+  }
+  .results :global(li) {
+    padding: var(--space-md) var(--space-lg);
+  }
+  .results :global(li + li) {
+    border-top: var(--hairline) solid var(--border-muted);
+  }
+  .results :global(a) {
+    display: inline-block;
+    min-height: 1.5rem;
+    font-family: var(--font-pixel);
+    font-weight: 600;
+    font-variant-ligatures: none;
+  }
+  .results :global(p) {
+    margin: var(--space-xs) 0 0;
+    font-size: var(--font-size-sm);
+    color: var(--fg-primary);
+  }
+  .results :global(mark) {
+    background: var(--accent-primary);
+    color: var(--border-outline);
+    padding: 0 0.15em;
+  }
+</style>

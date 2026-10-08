@@ -727,6 +727,25 @@ that answers what a new visitor asks.
 
 **Complexity**: **M**
 
+**Outcome (2026-10-08)**: `/guide/` and its 16 pages are built from `docs/user-guide/*.md` where they
+are (unchanged). Astro 7 renders Markdown with Sätteri, so the link rewriter is an mdast plugin, not
+a remark one. `src/content/guide.ts` gives each page its title, description, order and section; the
+build fails on a file with no row, a row with no file, a link to a missing page, heading or
+repository file, an image, or a raw HTML link. Links out of the guide go to GitHub on the `feature`
+branch (`GITHUB_BRANCH` in `site.ts`). Each page has a sidebar, "On this page", previous and next,
+breadcrumbs, Edit on GitHub, and Pagefind search that loads only when the box is focused (its index
+is built after `astro build`; its unused UI files are removed). `/faq/` has nine answers from
+`faq.yaml`, with `FAQPage` JSON-LD from the same file; the answers describe the app today (no
+updater yet). A Playwright test finds a word unique to each guide page through the real search box.
+Sentences found for **a docs change of their own** (none edited here): `support-policy.md:18` and
+`features.md:114` say an Intel Mac build is "planned" (DEC-129 ships both chips);
+`getting-started.md` ("does not update itself yet") and `troubleshooting.md` ("No in-app updates")
+must change when DIST-06 lands, and the FAQ's updates answer with them; the page titles (H1)
+mix title case ("Getting Started", "Performance and Scalability") with sentence case ("Your
+library"); and
+`support-policy.md` and `performance.md` use words meant for the repository (CI workflow names,
+`python main.py`, "Design 6.63", error codes) on a DJ-facing site.
+
 ---
 
 ## SITE-10 — The Changelog and the Blog

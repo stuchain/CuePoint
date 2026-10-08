@@ -1,7 +1,11 @@
 import { defineCollection } from "astro:content";
-import { glob } from "astro/loaders";
+import { file, glob, type Loader } from "astro/loaders";
 import { z } from "astro/zod";
 import { PUBLISHER } from "./data/site";
+import { assertGuideTable } from "./content/guide";
+import { guideLinkConfig } from "./lib/guide-config";
+import { guideFiles, validateGuideLinks } from "./lib/guide-links";
+
 
 /**
  * The blog (SITE-10): one Markdown file per post in src/content/blog/. A missing or malformed field
@@ -31,4 +35,49 @@ export const blog = defineCollection({
     }),
 });
 
-export const collections = { blog };
+/**
+ * The guide: docs/user-guide/*.md where they are (DEC-139). The wrapper checks the table and every link
+ * before the glob loader renders, because the glob loader only logs a render error and carries on:
+ * a broken link must fail the build, not make an empty page.
+ */
+function guideLoader(): Loader {
+  const inner = glob({ pattern: "*.md", base: "../../docs/user-guide" });
+  return {
+    name: "guide-loader",
+    async load(context) {
+      const cfg = guideLinkConfig();
+      assertGuideTable(guideFiles(cfg.guideDir));
+      await validateGuideLinks(cfg);
+      await inner.load(context);
+      for (const entry of context.store.values()) {
+        if (!entry.rendered?.html) throw new Error(`The guide page ${entry.id} did not render; see the error above.`);
+      }
+    },
+  };
+}
+
+export const guide = defineCollection({ loader: guideLoader() });
+
+/** The FAQ: src/content/faq.yaml. Each answer links the guide by page and heading, checked at build. */
+export const faq = defineCollection({
+  loader: file("src/content/faq.yaml"),
+  schema: z.object({
+    /** The order on the page. */
+    order: z.number().int(),
+    question: z.string().min(8),
+    answer: z.string().min(20),
+    links: z
+      .array(
+        z.object({
+          /** The guide page: its file name without .md. */
+          page: z.string(),
+          /** A heading on that page, as its id. */
+          heading: z.string().optional(),
+          label: z.string(),
+        }),
+      )
+      .min(1),
+  }),
+});
+
+export const collections = { blog, guide, faq };

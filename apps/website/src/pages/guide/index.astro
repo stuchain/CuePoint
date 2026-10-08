@@ -1,0 +1,88 @@
+---
+/** /guide/: the guide's front page. It lists every page, in order, and holds the search box. */
+import GuideSearch from "../../components/GuideSearch.astro";
+import Section from "../../components/Section.astro";
+import { guidePath, guideSections, guideSlug } from "../../content/guide";
+import Page from "../../layouts/Page.astro";
+import { hrefFor } from "../../lib/url";
+
+const sections = guideSections();
+---
+
+<Page
+  title="CuePoint user guide"
+  description="How to use CuePoint with your Rekordbox collection: import, match on Beatport, clean up, plan a set and export, explained for DJs."
+  path="guide/"
+  breadcrumbs={[
+    { label: "Home", path: "" },
+    { label: "Guide", path: "guide/" },
+  ]}
+>
+  <Section id="guide-index">
+    <h1>CuePoint user guide</h1>
+    <p class="lede">
+      Everything CuePoint does with your Rekordbox collection, in the order you will meet it. New here? Start with
+      <a href={hrefFor("guide/getting-started/")}>Getting started</a>.
+    </p>
+
+    <GuideSearch />
+
+    {
+      sections.map((section) => (
+        <section class="sec">
+          <h2 id={`sec-${section.id}`}>{section.label}</h2>
+          <ul class="cards">
+            {section.pages.map((p) => (
+              <li>
+                <a class="card" href={hrefFor(guidePath(guideSlug(p.file)))}>
+                  <span class="name">{p.title}</span>
+                  <span class="about">{p.description}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+  </Section>
+</Page>
+
+<style>
+  .lede {
+    max-width: 42rem;
+  }
+  .sec {
+    margin-top: var(--space-xl);
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: var(--space-lg);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    height: 100%;
+    padding: var(--space-md) var(--space-lg);
+    background: var(--bg-panel);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel);
+    text-decoration: none;
+  }
+  .card:hover .name {
+    text-decoration: underline;
+  }
+  .name {
+    font-family: var(--font-pixel);
+    font-weight: 700;
+    font-size: var(--font-size-lg);
+    font-variant-ligatures: none;
+  }
+  .about {
+    font-size: var(--font-size-sm);
+  }
+</style>

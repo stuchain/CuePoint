@@ -1,6 +1,10 @@
 import { defineConfig, fontProviders } from "astro/config";
 import sitemap from "@astrojs/sitemap";
+import { satteri } from "@astrojs/markdown-satteri";
 import { SITE_URL, addressParts, isStyleguide } from "./site.config";
+import { guideLinkConfig } from "./src/lib/guide-config";
+import { guideLinksPlugin } from "./src/lib/guide-links";
+import { scrollWrap } from "./src/lib/scroll-wrap";
 
 const { site, base } = addressParts(SITE_URL);
 
@@ -18,6 +22,14 @@ export default defineConfig({
   output: "static",
   trailingSlash: "always",
   build: { format: "directory" },
+  // Markdown: the guide's links are rewritten (SITE-09); no highlighter, code is plain and themed by CSS.
+  markdown: {
+    syntaxHighlight: false,
+    processor: satteri({
+      mdastPlugins: [guideLinksPlugin(guideLinkConfig())],
+      hastPlugins: [scrollWrap],
+    }),
+  },
   integrations: [
     sitemap({
       // The style guide exists only in preview builds; keep it out of the sitemap whatever happens.

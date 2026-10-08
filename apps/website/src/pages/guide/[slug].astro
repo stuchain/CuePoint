@@ -1,0 +1,22 @@
+---
+/** /guide/<slug>/: one page of docs/user-guide, rendered from the Markdown where it is (SITE-09). */
+import { getCollection, render } from "astro:content";
+import { GUIDE_ROWS } from "../../content/guide";
+import Guide from "../../layouts/Guide.astro";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("guide");
+  return entries.map((entry) => {
+    const row = GUIDE_ROWS.find((r) => r.file === `${entry.id}.md`);
+    if (!row) throw new Error(`The guide page ${entry.id} has no row in src/content/guide.ts`);
+    return { params: { slug: entry.id }, props: { entry, row } };
+  });
+}
+
+const { entry, row } = Astro.props;
+const { Content, headings } = await render(entry);
+---
+
+<Guide row={row} headings={headings}>
+  <Content />
+</Guide>

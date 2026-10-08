@@ -6,8 +6,10 @@
       "startServerReadyTimeout": 60000,
       "url": [
         "http://localhost:4321/",
+        "http://localhost:4321/guide/getting-started/",
         "http://localhost:4321/blog/",
-        "http://localhost:4321/changelog/"
+        "http://localhost:4321/changelog/",
+        "http://localhost:4321/faq/"
       ],
       "numberOfRuns": 3,
       "settings": {

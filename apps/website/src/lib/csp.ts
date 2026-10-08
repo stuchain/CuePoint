@@ -7,6 +7,9 @@ export const CSP_DIRECTIVES: Readonly<Record<string, readonly string[]>> = {
   "default-src": ["'self'"],
   "img-src": ["'self'", "data:"],
   "style-src": ["'self'", "'unsafe-inline'"],
+  // Pagefind (the guide's search, SITE-09) needs no 'wasm-unsafe-eval': it runs its WebAssembly inside its
+  // own worker (pagefind-worker.js, same origin), which this policy already allows. e2e/guide-search.spec.ts
+  // searches under this policy, so adding a directive "to make search work" would be a regression to question.
   "script-src": ["'self'", "'unsafe-inline'"],
   "font-src": ["'self'"],
   "connect-src": ["'self'"],

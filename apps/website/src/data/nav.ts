@@ -12,6 +12,8 @@ export interface NavItem {
 
 export const NAV: readonly NavItem[] = [
   { label: "Home", path: "", header: true },
+  { label: "Guide", path: "guide/", header: true },
+  { label: "FAQ", path: "faq/", header: true },
   { label: "Blog", path: "blog/", header: true },
   { label: "Changelog", path: "changelog/", header: false },
 ];

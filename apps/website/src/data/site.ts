@@ -6,6 +6,12 @@ export const SITE_NAME = "CuePoint";
 export const GITHUB_URL = "https://github.com/stuchain/CuePoint";
 
 /**
+ * The branch that repository links (the guide's links to files, "Edit on GitHub") point at. v1 is on
+ * `feature` until it is merged to `main`; change this one line then.
+ */
+export const GITHUB_BRANCH = "feature";
+
+/**
  * The one primary action on every page (DEC-141). Until 1.0.0 the site offers no download (DEC-194):
  * it sends a visitor to the repository's releases, where they can watch for the release.
  * SITE-07 turns this into the download button when the release data holds a normal release.

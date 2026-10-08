@@ -183,6 +183,33 @@ describe("the clean fixture", () => {
   });
 });
 
+describe("Pagefind's generated files (SITE-09)", () => {
+  // They sit in dist/pagefind/, are loaded by script on focus (an address in a data attribute, not a link)
+  // and are never linked, so the link check must neither follow nor demand them.
+  const withPagefind = (f) => {
+    f["pagefind/pagefind.js"] = "export const search = () => {};";
+    f["pagefind/pagefind-entry.json"] = "{}";
+    f["pagefind/wasm.en.pagefind"] = "wasm";
+    f["pagefind/fragment/en_1.pf_fragment"] = "fragment";
+    f["about/index.html"] = f["about/index.html"].replace(
+      "<h1>About</h1>",
+      `<div role="search" data-pagefind-src="${BASE}pagefind/pagefind.js" data-base="${BASE}"></div><h1>About</h1>`,
+    );
+  };
+
+  it("passes with the index in the build and the search box on a page", () => {
+    expect(run(withPagefind)).toEqual([]);
+  });
+
+  it("still reports a real link to a pagefind file that is not there", () => {
+    const edit = (f) => {
+      withPagefind(f);
+      f["about/index.html"] = f["about/index.html"].replace("<h1>About</h1>", `<h1>About</h1><a href="${BASE}pagefind/gone.js">x</a>`);
+    };
+    expect(run(edit).map((r) => r.rule)).toContain("link-broken");
+  });
+});
+
 const replaceIn = (path, from, to) => (f) => {
   if (!f[path].includes(from)) throw new Error(`fixture: "${from}" not in ${path}`);
   f[path] = f[path].replace(from, to);

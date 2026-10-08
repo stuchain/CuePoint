@@ -11,6 +11,13 @@ interface Props {
   currentPath?: string;
 }
 const { currentPath } = Astro.props;
+
+/** "page" for the page itself, "true" for any page inside its section (/guide/ for /guide/library/). */
+function current(path: string): "page" | "true" | undefined {
+  if (currentPath === undefined) return undefined;
+  if (path === currentPath) return "page";
+  return path !== "" && currentPath.startsWith(path) ? "true" : undefined;
+}
 ---
 
 <header class="header">
@@ -25,7 +32,7 @@ const { currentPath } = Astro.props;
         {
           NAV.filter((n) => n.header).map((n) => (
             <li>
-              <a href={hrefFor(n.path)} aria-current={n.path === currentPath ? "page" : undefined}>
+              <a href={hrefFor(n.path)} aria-current={current(n.path)}>
                 {n.label}
               </a>
             </li>
@@ -89,7 +96,7 @@ const { currentPath } = Astro.props;
     text-decoration-thickness: var(--border-width);
     text-underline-offset: 0.25em;
   }
-  .nav a[aria-current="page"] {
+  .nav a[aria-current] {
     text-decoration: underline;
     text-decoration-thickness: var(--border-width-heavy);
     text-underline-offset: 0.25em;

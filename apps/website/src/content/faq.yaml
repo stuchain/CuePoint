@@ -1,0 +1,156 @@
+# The FAQ (SITE-09): what a new visitor asks. The /faq/ page and its FAQPage JSON-LD are both built from
+# this file, so they cannot disagree. An answer is plain text (a blank line starts a new paragraph) and
+# links the guide by page and heading; the build fails if a page or heading does not exist.
+# Facts come from docs/user-guide/, PRIVACY_NOTICE.md and DEC-126, 128, 129, 145, 152, 169, 170, 174.
+# Keep each answer short: it is read before the guide is.
+
+- id: free
+  order: 1
+  question: Is CuePoint free?
+  answer: >-
+    Yes. CuePoint is open source under the Apache License 2.0, so you can download it, use it and read its
+    code at no cost.
+  links:
+    - page: getting-started
+      heading: install
+      label: How to install CuePoint
+
+- id: rekordbox-library
+  order: 2
+  question: Does CuePoint change my Rekordbox library?
+  answer: >-
+    No. CuePoint works on its own copy of your collection, which you bring in from a Rekordbox XML export. It
+    never writes to that file or to Rekordbox's database. When you want your changes in Rekordbox, you export a
+    new file and open it there. Your cue points and beat grids come through untouched.
+
+
+    The one time CuePoint writes to your music files is when you choose Write tags to files, and it shows you a
+    preview first.
+  links:
+    - page: features
+      heading: what-cuepoint-never-does
+      label: What CuePoint never does
+    - page: rekordbox-export
+      label: Exporting to Rekordbox
+
+- id: delete-files
+  order: 3
+  question: Will CuePoint delete or move my tracks?
+  answer: >-
+    Never. Clean shows you tracks whose files have gone missing and tracks that look like duplicates, and it
+    leaves every one of them where it is. To point a track at its new place, use Relocate in Rekordbox.
+  links:
+    - page: clean
+      label: Clean
+
+- id: needs
+  order: 4
+  question: What do I need to run CuePoint?
+  answer: >-
+    A collection exported from Rekordbox as XML, and a computer running Windows 10 or newer (64-bit) or macOS 12
+    or newer. Linux is experimental and has no built-in player. Discover, which finds new music on Beatport, also
+    needs a Beatport token that you enter in Settings.
+  links:
+    - page: support-policy
+      heading: supported-platforms
+      label: Supported platforms
+    - page: discover
+      heading: a-beatport-token
+      label: Getting a Beatport token
+
+- id: mac-chips
+  order: 5
+  question: Does CuePoint run on Apple Silicon and Intel Macs?
+  answer: >-
+    Yes, both. CuePoint for Mac comes as two downloads, one for Apple Silicon and one for Intel, so pick the one
+    that matches your Mac. The Apple menu, then About This Mac, shows which chip you have.
+  links:
+    - page: getting-started
+      heading: install
+      label: Installing on a Mac
+    - page: support-policy
+      heading: supported-platforms
+      label: Supported platforms
+
+- id: what-it-sends
+  order: 6
+  question: What does CuePoint send, and how do I turn it off?
+  answer: >-
+    CuePoint has no analytics and does not track what you do. The only thing it sends by itself is an error
+    report, when it hits an unexpected error. Reports are cleaned on your computer first, so they carry no file,
+    folder, track, artist, label or playlist names, no notes or tags, and no Beatport token. They go to Sentry, in
+    its EU region.
+
+
+    Reports are on by default. To stop them, turn off Settings, then Privacy, then Send error reports. It takes
+    effect at once, and nothing is saved to send later. CuePoint talks to Beatport only when you ask it to.
+  links:
+    - page: the-window
+      heading: privacy-and-error-reports
+      label: Privacy and error reports
+    - page: troubleshooting
+      heading: the-app-reports-errors-on-its-own
+      label: What an error report holds
+
+- id: updates
+  order: 7
+  question: How does CuePoint update?
+  answer: >-
+    CuePoint does not update itself yet. To get a new version, download the new installer and install it over the
+    old one. Your library stays where it is.
+
+
+    Automatic updates are planned for a later release.
+  links:
+    - page: getting-started
+      heading: install
+      label: Installing CuePoint
+    - page: troubleshooting
+      heading: no-in-app-updates
+      label: No in-app updates
+
+- id: where-data
+  order: 8
+  question: Where is my data kept?
+  answer: >-
+    On your computer, and nowhere else. Your library is a single file in your CuePoint home folder
+    (.cuepoint/cuepoint.db), and your settings, cache and logs are kept on your computer too. Nothing is uploaded, and
+    CuePoint backs the library up each time it starts. Help, then Privacy, clears the cache and logs without
+    touching your library.
+  links:
+    - page: library
+      heading: where-the-data-lives
+      label: Where the data lives
+    - page: the-window
+      heading: privacy-and-error-reports
+      label: Privacy and error reports
+
+- id: size
+  order: 9
+  question: How big a collection can CuePoint handle?
+  answer: >-
+    It has been measured on a collection of 50,000 tracks. Importing it took about eleven seconds on a Windows 11
+    desktop with an SSD, and checking an unchanged collection for changes is instant.
+  links:
+    - page: performance
+      heading: the-library
+      label: The measured numbers
+
+- id: report-problem
+  order: 10
+  question: How do I report a problem?
+  answer: >-
+    In CuePoint, choose Help, then Report a problem, write what you were doing and press Send. It sends your
+    note exactly as you wrote it, with the version and the id of the last error report, so leave out anything you
+    do not want read. It is switched off while error reports are off.
+
+
+    You can also open an issue on GitHub. Attach a support bundle from Help, then Export support bundle: it
+    holds diagnostics, logs and your settings with secrets removed, and never your library.
+  links:
+    - page: troubleshooting
+      heading: diagnostics-and-support
+      label: Diagnostics and support
+    - page: support-policy
+      heading: support-diagnostics
+      label: What to send with a report

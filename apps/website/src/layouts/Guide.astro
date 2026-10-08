@@ -1,0 +1,371 @@
+---
+/**
+ * A page of the user guide (SITE-09), inside Page.astro: breadcrumbs, search, a sidebar of every page in
+ * order, "On this page", the page, an Edit on GitHub link and previous/next. The Markdown goes in the
+ * slot. Only the article carries data-pagefind-body, so Pagefind indexes the guide's text and not the
+ * sidebar or the search results.
+ */
+import GuideSearch from "../components/GuideSearch.astro";
+import { GUIDE_ROWS, guidePath, guideSection, guideSections, guideSlug, neighbours, type GuideRow } from "../content/guide";
+import { GITHUB_BRANCH, GITHUB_URL } from "../data/site";
+import { hrefFor } from "../lib/url";
+import Page from "./Page.astro";
+
+interface Props {
+  row: GuideRow;
+  /** The Markdown headings of the page (depth, slug, text), from Astro's render. */
+  headings: readonly { depth: number; slug: string; text: string }[];
+}
+const { row, headings } = Astro.props;
+
+const path = guidePath(guideSlug(row.file));
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const { previous, next } = neighbours(row.file, GUIDE_ROWS);
+const editUrl = `${GITHUB_URL}/edit/${GITHUB_BRANCH}/docs/user-guide/${row.file}`;
+const sectionLabel = guideSection(row.section).label;
+---
+
+<Page
+  title={`${row.title} | CuePoint guide`}
+  description={row.description}
+  path={path}
+  breadcrumbs={[
+    { label: "Home", path: "" },
+    { label: "Guide", path: "guide/" },
+    { label: row.title, path },
+  ]}
+>
+  <div class="guide">
+    <GuideSearch />
+
+    <div class="layout">
+      <details class="pages" data-open-wide>
+        <summary>All guide pages</summary>
+        <nav aria-label="Guide pages">
+          {
+            guideSections(GUIDE_ROWS).map((section) => (
+              <div class="group">
+                <p class="group-label">{section.label}</p>
+                <ul>
+                  {section.pages.map((p) => (
+                    <li>
+                      <a href={hrefFor(guidePath(guideSlug(p.file)))} aria-current={p.file === row.file ? "page" : undefined}>
+                        {p.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          }
+        </nav>
+      </details>
+
+      <div class="main">
+        <p class="eyebrow">{sectionLabel}</p>
+        {
+          toc.length > 0 && (
+            <details class="toc" data-open-wide>
+              <summary>On this page</summary>
+              <nav aria-label="On this page">
+                <ul>
+                  {toc.map((h) => (
+                    <li class={h.depth === 3 ? "sub" : undefined}>
+                      <a href={`#${h.slug}`}>{h.text}</a>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            </details>
+          )
+        }
+        <article class="prose" data-pagefind-body>
+          <slot />
+        </article>
+
+        <p class="edit">
+          <a href={editUrl} rel="noopener noreferrer">Edit this page on GitHub</a>
+        </p>
+
+        <nav class="pager" aria-label="Previous and next guide page">
+          {
+            previous ? (
+              <a class="prev" href={hrefFor(guidePath(guideSlug(previous.file)))} rel="prev">
+                <span class="dir">Previous</span>
+                <span class="to">{previous.title}</span>
+              </a>
+            ) : (
+              <span />
+            )
+          }
+          {
+            next && (
+              <a class="next" href={hrefFor(guidePath(guideSlug(next.file)))} rel="next">
+                <span class="dir">Next</span>
+                <span class="to">{next.title}</span>
+              </a>
+            )
+          }
+        </nav>
+      </div>
+    </div>
+  </div>
+</Page>
+
+<script>
+  // The page list and the contents start folded, so on a phone the page comes first. From 60rem up the
+  // CSS shows them whatever their state; this opens them as well for browsers without ::details-content.
+  if (window.matchMedia("(min-width: 60rem)").matches) {
+    document.querySelectorAll<HTMLDetailsElement>("details[data-open-wide]").forEach((d) => (d.open = true));
+  }
+</script>
+
+<style>
+  .guide {
+    width: min(100% - 2 * var(--gutter), var(--content-max));
+    margin: var(--space-xl) auto;
+  }
+  .layout {
+    display: grid;
+    gap: var(--space-xl);
+    align-items: start;
+  }
+  @media (min-width: 60rem) {
+    .layout {
+      grid-template-columns: 15rem minmax(0, 1fr);
+      gap: calc(var(--space-xl) * 2);
+    }
+    .pages {
+      position: sticky;
+      top: var(--space-lg);
+      max-height: calc(100vh - 2 * var(--space-lg));
+      overflow-y: auto;
+    }
+  }
+  @media (min-width: 60rem) {
+    .pages::details-content,
+    .toc::details-content {
+      content-visibility: visible;
+      display: block;
+    }
+    /* Open by force, so the fold control is not needed (and is not left as a dead tab stop) */
+    .pages > summary,
+    .toc > summary {
+      display: none;
+    }
+    .toc nav::before {
+      content: "On this page";
+      display: block;
+      padding-top: var(--space-md);
+      font-family: var(--font-pixel);
+      font-weight: 600;
+    }
+  }
+
+  .pages,
+  .toc {
+    background: var(--bg-panel);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel);
+  }
+  summary {
+    padding: var(--space-md) var(--space-lg);
+    font-family: var(--font-pixel);
+    font-weight: 600;
+    font-variant-ligatures: none;
+    cursor: pointer;
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+  }
+  .pages nav,
+  .toc nav {
+    padding: 0 var(--space-lg) var(--space-lg);
+  }
+  .group + .group {
+    margin-top: var(--space-lg);
+  }
+  .group-label {
+    margin: 0 0 var(--space-xs);
+    color: var(--fg-primary);
+    font-family: var(--font-pixel);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-variant-ligatures: none;
+  }
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .pages li a,
+  .toc li a {
+    display: block;
+    padding: var(--space-xs) var(--space-sm);
+    text-decoration: none;
+  }
+  .pages li a:hover,
+  .toc li a:hover {
+    text-decoration: underline;
+  }
+  .pages a[aria-current="page"] {
+    background: var(--accent-primary);
+    color: var(--border-outline);
+    font-weight: 700;
+  }
+  .toc {
+    margin-bottom: var(--space-xl);
+  }
+  .toc ul {
+    columns: 16rem 2;
+    column-gap: var(--space-xl);
+  }
+  .toc li {
+    break-inside: avoid;
+  }
+  .toc li.sub {
+    padding-left: var(--space-lg);
+    font-size: var(--font-size-sm);
+  }
+
+  .eyebrow {
+    margin: 0 0 var(--space-sm);
+    color: var(--fg-muted);
+    font-family: var(--font-pixel);
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-variant-ligatures: none;
+  }
+  .main {
+    min-width: 0;
+  }
+
+  /* The Markdown is rendered outside this component's scope, hence :global. */
+  .prose {
+    max-width: 46rem;
+    font-size: 1.0625rem;
+    line-height: 1.7;
+  }
+  .prose :global(h1) {
+    margin-top: 0;
+  }
+  .prose :global(h2) {
+    margin-top: calc(var(--space-xl) * 2);
+    padding-top: var(--space-lg);
+    border-top: var(--hairline) solid var(--border-muted);
+  }
+  .prose :global(h2),
+  .prose :global(h3),
+  .prose :global(h4) {
+    scroll-margin-top: var(--space-lg);
+  }
+  /* inline padding grows the link's box without moving the lines: links in lists meet the 24 px target size */
+  .prose :global(a) {
+    padding-block: 0.2em;
+  }
+  .prose :global(li) {
+    margin-bottom: var(--space-xs);
+  }
+  .prose :global(ul),
+  .prose :global(ol) {
+    padding-left: var(--space-xl);
+  }
+  .prose :global(code) {
+    padding: 0.1em 0.35em;
+    background: var(--bg-panel-alt);
+    border: var(--hairline) solid var(--border-muted);
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.9em;
+    overflow-wrap: anywhere;
+  }
+  .prose :global(pre) {
+    margin: 0 0 var(--space-lg);
+    padding: var(--space-md) var(--space-lg);
+    overflow-x: auto;
+    background: var(--bg-panel);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel);
+    line-height: 1.5;
+  }
+  .prose :global(pre code) {
+    padding: 0;
+    background: none;
+    border: 0;
+    font-size: 0.9375rem;
+    overflow-wrap: normal;
+  }
+  .prose :global(blockquote) {
+    margin: 0 0 var(--space-lg);
+    padding: var(--space-md) var(--space-lg);
+    background: var(--bg-panel);
+    border-left: calc(var(--border-width) * 3) solid var(--accent-info);
+  }
+  .prose :global(blockquote > :last-child) {
+    margin-bottom: 0;
+  }
+  .prose :global(.scroll-x) {
+    margin: 0 0 var(--space-lg);
+    overflow-x: auto;
+  }
+  .prose :global(table) {
+    border-collapse: collapse;
+    min-width: 100%;
+    font-size: var(--font-size-sm);
+  }
+  .prose :global(th),
+  .prose :global(td) {
+    padding: var(--space-sm) var(--space-md);
+    border: var(--hairline) solid var(--border-muted);
+    text-align: left;
+    vertical-align: top;
+  }
+  .prose :global(th) {
+    background: var(--bg-panel);
+    font-weight: 700;
+  }
+  .prose :global(hr) {
+    margin-block: var(--space-xl);
+  }
+
+  .edit {
+    margin: var(--space-xl) 0 var(--space-lg);
+    font-size: var(--font-size-sm);
+  }
+  .edit a {
+    display: inline-block;
+    min-height: 1.5rem;
+  }
+  .pager {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--space-lg);
+    max-width: 46rem;
+  }
+  .pager a {
+    display: block;
+    padding: var(--space-md) var(--space-lg);
+    background: var(--bg-panel);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel);
+    text-decoration: none;
+  }
+  .pager a:hover .to {
+    text-decoration: underline;
+  }
+  .pager .next {
+    text-align: right;
+  }
+  .dir {
+    display: block;
+    color: var(--fg-primary);
+    font-size: var(--font-size-sm);
+  }
+  .to {
+    font-family: var(--font-pixel);
+    font-weight: 600;
+    font-variant-ligatures: none;
+  }
+</style>

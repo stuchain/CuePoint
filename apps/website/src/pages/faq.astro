@@ -1,0 +1,91 @@
+---
+/**
+ * /faq/: the questions a new visitor asks (SITE-09). The page and its FAQPage JSON-LD are both built
+ * from src/content/faq.yaml. Every link into the guide is checked against the guide's headings, so a
+ * renamed heading fails the build instead of leaving a dead link.
+ */
+import { getCollection } from "astro:content";
+import Section from "../components/Section.astro";
+import { faqSchema, paragraphs } from "../lib/faq";
+import { guideLinkConfig } from "../lib/guide-config";
+import { rewriteLink } from "../lib/guide-links";
+import { join } from "node:path";
+import Page from "../layouts/Page.astro";
+import { hrefFor } from "../lib/url";
+
+const cfg = guideLinkConfig();
+const entries = (await getCollection("faq")).sort((a, b) => a.data.order - b.data.order);
+const faqs = await Promise.all(
+  entries.map(async (e) => ({
+    id: e.id,
+    question: e.data.question,
+    answer: e.data.answer,
+    links: await Promise.all(
+      e.data.links.map(async (l) => ({
+        label: l.label,
+        // the same check the guide's own links get: the page and the heading must exist
+        href: await rewriteLink(`${l.page}.md${l.heading ? `#${l.heading}` : ""}`, join(cfg.guideDir, "faq.md"), cfg),
+      })),
+    ),
+  })),
+);
+---
+
+<Page
+  title="FAQ | CuePoint"
+  description="Quick answers about CuePoint: whether it is free, what it does to your Rekordbox library, what it sends, how it updates and how to report a problem."
+  path="faq/"
+  schema={[faqSchema(faqs)]}
+  breadcrumbs={[
+    { label: "Home", path: "" },
+    { label: "FAQ", path: "faq/" },
+  ]}
+>
+  <Section id="faq" width="prose">
+    <h1>Frequently asked questions</h1>
+    <p class="lede">
+      Short answers first, with a link to the part of the <a href={hrefFor("guide/")}>user guide</a> that goes further.
+    </p>
+
+    {
+      faqs.map((f) => (
+        <section class="qa">
+          <h2 id={`q-${f.id}`}>{f.question}</h2>
+          {paragraphs(f.answer).map((p) => (
+            <p>{p}</p>
+          ))}
+          <ul class="more" aria-label={`More about: ${f.question}`}>
+            {f.links.map((l) => (
+              <li>
+                <a href={l.href}>{l.label}</a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+  </Section>
+</Page>
+
+<style>
+  .qa {
+    margin-top: var(--space-xl);
+  }
+  .qa h2 {
+    margin-top: 0;
+    font-size: var(--font-size-lg);
+  }
+  .more {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs) var(--space-lg);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--font-size-sm);
+  }
+  .more a {
+    display: inline-block;
+    min-height: 1.5rem;
+  }
+</style>
