@@ -121,7 +121,6 @@ from typing import (
     Tuple,
     Union,
 )
-from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
 
@@ -975,7 +974,7 @@ def decode_envelope(
     if cancel is not None and cancel():
         raise DecodeCancelled(str(source_path))
     if not decoder_path.is_file():
-        raise DecoderUnavailable(f"no decoder at {quoted(decoder_path)}")
+        raise DecoderUnavailable(f"no decoder at '{decoder_path}'")
     _check_source(source_path)
 
     if not _SWEPT.is_set():

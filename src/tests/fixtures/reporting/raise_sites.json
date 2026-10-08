@@ -234,7 +234,7 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
-  "cuepoint/data/audio_decode.py::decode_envelope::no decoder at {quoted(decoder_path)}": {
+  "cuepoint/data/audio_decode.py::decode_envelope::no decoder at '{decoder_path}'": {
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
   },

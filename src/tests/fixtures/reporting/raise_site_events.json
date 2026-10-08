@@ -870,7 +870,7 @@
     }
   },
   {
-    "name": "cuepoint/data/audio_decode.py::decode_envelope::no decoder at {quoted(decoder_path)}",
+    "name": "cuepoint/data/audio_decode.py::decode_envelope::no decoder at '{decoder_path}'",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
