@@ -206,7 +206,14 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
-            xvfb-run -a npm run test:e2e
+            # No mpv ships for Linux (a distribution mpv via CUEPOINT_MPV_PATH is the documented path)
+            # and the runner has no audio device, so the player tests need mpv plus a PulseAudio null sink.
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends mpv pulseaudio
+            pulseaudio --start --exit-idle-time=-1
+            pactl load-module module-null-sink sink_name=ci_null
+            pactl set-default-sink ci_null
+            CUEPOINT_MPV_PATH=/usr/bin/mpv xvfb-run -a npm run test:e2e
           else
             npm run test:e2e
           fi
