@@ -88,9 +88,9 @@ async function currentTitle(win: Page): Promise<string | null> {
   });
 }
 
-/** The selection strip. The Inspector says the same words, so this is scoped. */
+/** The toolbar row's count. The Inspector says similar words, so this is scoped. */
 function selectionStrip(win: Page) {
-  return win.locator(".cp-selection-actions__count");
+  return win.locator(".library-toolbar__count");
 }
 
 /** The titles the table is showing, top to bottom. */
@@ -196,11 +196,11 @@ test("plays and queues from the Library table", async () => {
     await expect(win.getByRole("menu")).toBeVisible();
     await win.keyboard.press("Escape");
     await expect(win.getByRole("menu")).toBeHidden();
-    await expect(selectionStrip(win)).toContainText("1 track selected");
+    await expect(selectionStrip(win)).toContainText("1 selected");
 
     // --- a multi-row selection acts as one, in the view's order ------------
     await rows.nth(2).click({ modifiers: ["Shift"] });
-    await expect(selectionStrip(win)).toContainText("3 tracks selected");
+    await expect(selectionStrip(win)).toContainText("3 selected");
     await rows.nth(1).click({ button: "right" });
     await win.getByRole("menu").getByRole("menuitem", { name: "Play next" }).click();
 

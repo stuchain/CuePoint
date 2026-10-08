@@ -66,6 +66,24 @@ export function onlySelectedId(selection: Selection, total: number): number | nu
   return [...selection.ids][0] ?? null;
 }
 
+/**
+ * The table row of the one selected track, or -1 when it is not known.
+ *
+ * The anchor is where the last click landed, which after Ctrl-click A, B, B is
+ * the row just un-ticked, not the track left selected. So the anchor counts
+ * only when the row it points at is the selected track itself.
+ */
+export function selectedRowIndex(
+  selection: Selection,
+  total: number,
+  idAt: (index: number) => number | null | undefined,
+): number {
+  const only = onlySelectedId(selection, total);
+  const at = selection.anchor;
+  if (only === null || at === null || at < 0) return -1;
+  return idAt(at) === only ? at : -1;
+}
+
 /** Replace the selection with one track. A plain click. */
 export function selectOnly(id: number, index: number): Selection {
   return {

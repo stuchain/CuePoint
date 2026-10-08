@@ -202,9 +202,9 @@ anywhere you meet a track:
 - **Track details.** A track's artist credit is shown as written, with each
   artist in it a link — "Mara Veil, Kiko" is two links — and its label is a
   link just below. The remixer credit is linked the same way.
-- **The right-click menu, and Actions… in the selection bar**, with one track
-  selected: **Artist page** (a list to choose from when the track credits
-  several artists) and **Label page**.
+- **The right-click menu, and Explore ▸ in the selection bar**: **Artist page**
+  (a list to choose from when the track credits several artists) and **Label
+  page**. With several tracks selected they open the first one's.
 - **A filter chip** that names one artist or label, such as "Credited artist
   is Mara Veil": **Open page**.
 - **A page's own header**, which links an artist's labels and a label's

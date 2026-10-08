@@ -8,7 +8,7 @@
  * - **"Add to Set…"** joins the operations list, with a picker of Sets, and
  *   says what it skipped. "Add to Collection" no longer offers a Set.
  * - **"New Set from…"** a Collection or a Rekordbox playlist asks a name and a
- *   place, makes the Set, and opens it; "New Set from the selection…" takes
+ *   place, makes the Set, and opens it; "New Set from these…" takes
  *   the selected tracks in the table's order (PREP-12).
  * - **A Set's menu**: set lists saved and copied, the export with it ticked.
  * - **The Inspector** opens a Set in Prepare where there is one.
@@ -50,6 +50,7 @@ import {
   WARMUP,
   answered,
 } from "./librarySets.testFixture";
+import { menuItem } from "./menuPick.test.util";
 
 const SUMMARY: LibrarySummary = {
   track_count: 5,
@@ -217,6 +218,12 @@ async function rowMenu(title: string): Promise<HTMLElement> {
 const labels = (menu: HTMLElement) =>
   within(menu).getAllByRole("menuitem").map((item) => item.textContent);
 
+/** The entries of a row menu's Organize submenu, which the menu shows as a parent. */
+const organizeLabels = async (menu: HTMLElement) => {
+  await userEvent.click(within(menu).getByRole("menuitem", { name: /^Organize/ }));
+  return labels(screen.getByRole("menu", { name: "Organize" }));
+};
+
 describe("a Set as the table's scope (DEC-104, fact 3)", () => {
   it("scopes the table as a Collection does, in its running order", async () => {
     renderScreen();
@@ -268,14 +275,31 @@ describe("a Set as the table's scope (DEC-104, fact 3)", () => {
     await ready();
     await userEvent.click(within(treeRow("Friday", "set")).getByText("Friday"));
     await screen.findByRole("note");
-    const inSet = labels(await rowMenu("Warm Two"));
+    const inSet = await organizeLabels(await rowMenu("Warm Two"));
     expect(inSet).toContain("Add to Set…");
     expect(inSet.some((label) => label?.startsWith("Remove from"))).toBe(false);
     await userEvent.keyboard("{Escape}");
 
     await userEvent.click(within(treeRow("Warm-up", "collection")).getByText("Warm-up"));
     await waitFor(() => expect(screen.queryByRole("note")).toBeNull());
-    expect(labels(await rowMenu("Warm Two"))).toContain("Remove from “Warm-up”");
+    expect(await organizeLabels(await rowMenu("Warm Two"))).toContain("Remove from “Warm-up”");
+  });
+
+  it("does not move a row with Alt+↓ inside it, and says nothing", async () => {
+    const reorder = vi.fn();
+    window.cuepoint = { ...window.cuepoint, reorderCollectionEntry: reorder } as typeof window.cuepoint;
+    renderScreen();
+    await ready();
+    await userEvent.click(within(treeRow("Friday", "set")).getByText("Friday"));
+    await screen.findByRole("note");
+    await userEvent.click(screen.getByText("Warm Two"));
+    fireEvent.keyDown(screen.getByRole("table", { name: "Library tracks" }), {
+      key: "ArrowDown",
+      altKey: true,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(reorder).not.toHaveBeenCalled();
+    expect(screen.queryByText(/one at a time|own order|Open a Collection/)).toBeNull();
   });
 
   it("does not take a row dropped inside it, where a Collection does", async () => {
@@ -308,7 +332,7 @@ describe("Add to Set… (DEC-104, DEC-058)", () => {
   it("offers the Sets and the folders they are filed in, and nothing else", async () => {
     renderScreen();
     await ready();
-    await userEvent.click(within(await rowMenu("Close")).getByRole("menuitem", { name: "Add to Set…" }));
+    await userEvent.click((await menuItem("Add to Set…", await rowMenu("Close"))));
     const dialog = await screen.findByRole("dialog", { name: "Add to Set" });
     const options = within(dialog).getAllByRole("option");
     expect(options.map((option) => option.textContent?.replace(/\d+$/, "").trim())).toEqual([
@@ -327,7 +351,7 @@ describe("Add to Set… (DEC-104, DEC-058)", () => {
   it("adds through the batch and says what it skipped, in the engine's counts", async () => {
     renderScreen();
     await ready();
-    await userEvent.click(within(await rowMenu("Close")).getByRole("menuitem", { name: "Add to Set…" }));
+    await userEvent.click((await menuItem("Add to Set…", await rowMenu("Close"))));
     const dialog = await screen.findByRole("dialog", { name: "Add to Set" });
     await userEvent.click(within(dialog).getAllByRole("option")[1]!);
     await waitFor(() =>
@@ -345,7 +369,7 @@ describe("Add to Set… (DEC-104, DEC-058)", () => {
     bridge.applyBatch.mockResolvedValue({ applied: { ...ADDED_TO_SET, changed: 40 } });
     renderScreen();
     await ready();
-    await userEvent.click(within(await rowMenu("Close")).getByRole("menuitem", { name: "Add to Set…" }));
+    await userEvent.click((await menuItem("Add to Set…", await rowMenu("Close"))));
     const dialog = await screen.findByRole("dialog", { name: "Add to Set" });
     await userEvent.click(within(dialog).getAllByRole("option")[1]!);
     expect(
@@ -359,7 +383,7 @@ describe("Add to Set… (DEC-104, DEC-058)", () => {
     renderScreen();
     await ready();
     await userEvent.click(
-      within(await rowMenu("Close")).getByRole("menuitem", { name: "Add to Collection…" }),
+      (await menuItem("Add to Collection…", await rowMenu("Close"))),
     );
     const dialog = await screen.findByRole("dialog", { name: "Add to Collection" });
     const option = (name: string) =>
@@ -432,7 +456,7 @@ describe("New Set from… (DEC-104)", () => {
     fireEvent.click(await screen.findByText("Close"));
     fireEvent.click(screen.getByText("Warm One"), { ctrlKey: true });
     await userEvent.click(
-      within(await rowMenu("Close")).getByRole("menuitem", { name: "New Set from the selection…" }),
+      (await menuItem("New Set from these…", await rowMenu("Close"))),
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from the 2 selected tracks" });
     expect(dialog).toHaveTextContent(/in the order the table shows them/);
@@ -458,7 +482,7 @@ describe("New Set from… (DEC-104)", () => {
     renderScreen();
     await ready();
     await userEvent.click(
-      within(await rowMenu("Close")).getByRole("menuitem", { name: "New Set from the selection…" }),
+      (await menuItem("New Set from these…", await rowMenu("Close"))),
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from the 1 selected track" });
     await userEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
@@ -476,7 +500,7 @@ describe("New Set from… (DEC-104)", () => {
     await userEvent.click(within(treeRow("Friday", "set")).getByText("Friday"));
     await screen.findByRole("note");
     await userEvent.click(
-      within(await rowMenu("Close")).getByRole("menuitem", { name: "New Set from the selection…" }),
+      (await menuItem("New Set from these…", await rowMenu("Close"))),
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from the 1 selected track" });
     expect(within(dialog).getByRole("combobox", { name: "In" })).toHaveValue(String(GIGS.id));
@@ -634,7 +658,7 @@ describe("a shell without the Sets bridge", () => {
     await ready();
     expect(screen.queryByRole("button", { name: "New Set" })).toBeNull();
     expect(labels(await rowMenu("Close"))).not.toContain("Add to Set…");
-    expect(labels(screen.getByRole("menu"))).not.toContain("New Set from the selection…");
+    expect(labels(screen.getByRole("menu"))).not.toContain("New Set from these…");
     await userEvent.keyboard("{Escape}");
     fireEvent.contextMenu(treeRow("Friday", "set"));
     expect(labels(await screen.findByRole("menu"))).toEqual([

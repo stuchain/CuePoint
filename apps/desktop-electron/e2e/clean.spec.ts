@@ -348,7 +348,9 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       await test.step("preview tags, write them into a copied file, and restore them", async () => {
         const before = readFileSync(library.files[0]!);
         await libraryRow(window, "Tone One").getByText("Tone One").click({ button: "right" });
-        await window.getByRole("menu").getByRole("menuitem", { name: "Save changes into the files…" }).click();
+        // The menu's groups are submenus (FLW-8): Fix ▸ holds it.
+        await window.getByRole("menu").getByRole("menuitem", { name: "Fix", exact: true }).click();
+        await window.getByRole("menu", { name: "Fix" }).getByRole("menuitem", { name: "Save changes into the files…" }).click();
         const dialog = window.getByRole("dialog", { name: "Save changes into the files" });
         await dialog.getByRole("button", { name: "Preview" }).click();
         await expect(dialog.getByRole("region", { name: "Preview" })).toContainText(
@@ -366,6 +368,8 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         expect(readFileSync(library.files[0]!).includes(Buffer.from("TKEY"))).toBe(false);
         await dialog.getByRole("button", { name: "Done" }).click();
         await idle(window);
+        // Fix values is on Clean: back to the Library for the refresh below.
+        await window.getByRole("link", { name: "Library", exact: true }).click();
       });
 
       await test.step("a refresh that removes the reviewed track names it first", async () => {

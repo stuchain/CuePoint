@@ -293,7 +293,7 @@ test.describe("Quick filters (PAGES-05B)", () => {
         const seen = (await inside(first)) || ((await more.count()) > 0 && (await inside(more)));
         expect(seen, "the first chip or +N more is on screen").toBe(true);
         expect(await inside(window.getByRole("button", { name: /Save as Smart Collection/ }))).toBe(true);
-        expect(await inside(window.locator(".cp-filter-bar__count"))).toBe(true);
+        expect(await inside(window.locator(".library-toolbar__count"))).toBe(true);
       };
 
       expect(

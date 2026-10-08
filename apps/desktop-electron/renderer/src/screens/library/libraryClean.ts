@@ -19,10 +19,11 @@ import type {
   OverrideField,
   OverrideSource,
   TrackFieldChange,
-  TrackMatchState,
 } from "../../api/cuepointBridge.types";
 import type { TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { APPLY_FIELDS, APPLY_FIELD_LABELS, applyValue } from "../clean/comparison";
+import type { BatchSelection } from "../../api/cuepointBridge.types";
+import type { CleanTracks } from "../clean/cleanTracks";
 import { formatBpm } from "./trackValues";
 
 export { writesLine } from "../../components/shell/activityActions";
@@ -142,15 +143,11 @@ interface CleanMenuContext {
 }
 
 /**
- * The Clean operations, each present only when this build can do it.
- *
- * Absent handlers leave their entries out, which is what a browser-lab render
- * without the engine gets — the same rule `SelectionActions` follows for its
- * Actions button.
+ * What Fix values runs once a person has chosen tracks (FLW-12): the Library
+ * hands these to Clean, which owns the dialogs, and Fix values itself reads
+ * them back. Each is present only when this build can do it.
  */
 export interface CleanMenuHandlers {
-  onMatch?: (rematch: boolean) => void;
-  onDecide?: (decision: "accept" | "reject") => void;
   onApply?: () => void;
   onEdit?: () => void;
   onCheckFiles?: () => void;
@@ -158,66 +155,109 @@ export interface CleanMenuHandlers {
 }
 
 /**
- * The Clean entries of the operations list (CLEAN-13, DEC-072).
- *
- * Appended after the organization entries and offered by the context menu and
- * the Actions button alike, because they are the same array. Revealing a file
- * is not here: the row menu and the toolbar already offer it, once each.
+ * What the Beatport ▸ group does (FLW-8): each opens Clean with the selection,
+ * the match window, Review or Fix values. Absent means this build has no way to
+ * open Clean, and the entry is left out.
  */
-export function cleanMenuItems(
+export interface BeatportMenuHandlers {
+  onMatch?: () => void;
+  onReview?: () => void;
+  onUseBeatport?: () => void;
+}
+
+/** What the Fix ▸ group does (FLW-8). */
+export interface FixMenuHandlers {
+  onEdit?: () => void;
+  onWriteTags?: () => void;
+  onCheckFiles?: () => void;
+}
+
+/**
+ * A batch selection as Clean takes tracks (FLW-8): the ids of the rows picked, or
+ * the question and its count when "everything matching" is selected, so a
+ * 4,213-track selection travels as a question and not as 4,213 numbers
+ * (DEC-045). Clean's tracks cannot name exceptions, so everything-matching
+ * with some taken back out is read as ids, in the table's order, at most
+ * `limit` of them (FLW-8): the ids are held in memory and sent on, and a
+ * library-sized list is neither. Null when nothing is selected.
+ */
+export async function cleanTracksFor(
+  selected: BatchSelection,
+  count: number,
+  gatherIds: (limit: number) => Promise<number[]>,
+  limit: number = Number.POSITIVE_INFINITY,
+): Promise<CleanTracks | null> {
+  if (count <= 0) return null;
+  if (selected.track_ids) {
+    return selected.track_ids.length > 0 ? { ids: [...selected.track_ids] } : null;
+  }
+  if (selected.query && !selected.exclude_track_ids?.length) {
+    return { query: selected.query, count };
+  }
+  const ids = await gatherIds(Math.min(count, limit));
+  return ids.length > 0 ? { ids } : null;
+}
+
+/** What the page says when Clean was handed fewer tracks than were selected. */
+export function cleanCapLine(handed: number, selected: number): string {
+  return `Clean was given the first ${handed.toLocaleString()} of the ${selected.toLocaleString()} tracks selected. Narrow the selection to work on the rest.`;
+}
+
+/**
+ * The Beatport ▸ entries of the one actions list. Accepting and rejecting a
+ * match are Review's job and are not here (FLW-2, FLW-12).
+ */
+export function beatportMenuItems(
   context: CleanMenuContext,
-  handlers: CleanMenuHandlers,
+  handlers: BeatportMenuHandlers,
 ): TrackContextMenuItem[] {
   if (context.count <= 0) return [];
-  const groups: TrackContextMenuItem[][] = [];
-
-  const matching: TrackContextMenuItem[] = [];
+  const items: TrackContextMenuItem[] = [];
   if (handlers.onMatch) {
-    const match = handlers.onMatch;
-    matching.push(
-      { id: "clean-match", label: "Match on Beatport", onSelect: () => match(false) },
-      // Matching skips what is already matched or decided (DEC-065); this is
-      // the one that asks again, and it still leaves a person's decision alone.
-      { id: "clean-rematch", label: "Search Beatport again for this track", onSelect: () => match(true) },
-    );
+    items.push({ id: "beatport-match", label: "Match tracks…", onSelect: handlers.onMatch });
   }
-  if (handlers.onDecide) {
-    const decide = handlers.onDecide;
-    matching.push(
-      { id: "clean-accept", label: "Accept match", onSelect: () => decide("accept") },
-      { id: "clean-reject", label: "Reject match", onSelect: () => decide("reject") },
-    );
-  }
-  if (handlers.onApply) {
-    matching.push({
-      id: "clean-apply",
-      label: "Use Beatport's values…",
-      onSelect: handlers.onApply,
+  if (handlers.onReview) {
+    items.push({
+      id: "beatport-review",
+      label: "Review these matches",
+      onSelect: handlers.onReview,
     });
   }
-  groups.push(matching);
-
-  if (handlers.onEdit) {
-    groups.push([{ id: "clean-edit", label: "Edit values…", onSelect: handlers.onEdit }]);
+  if (handlers.onUseBeatport) {
+    items.push({
+      id: "beatport-values",
+      label: "Use Beatport's values…",
+      onSelect: handlers.onUseBeatport,
+    });
   }
+  return items;
+}
 
-  const files: TrackContextMenuItem[] = [];
-  if (handlers.onCheckFiles) {
-    files.push({ id: "clean-check", label: "Check files", onSelect: handlers.onCheckFiles });
+/** The Fix ▸ entries of the one actions list. */
+export function fixMenuItems(
+  context: CleanMenuContext,
+  handlers: FixMenuHandlers,
+): TrackContextMenuItem[] {
+  if (context.count <= 0) return [];
+  const items: TrackContextMenuItem[] = [];
+  if (handlers.onEdit) {
+    items.push({ id: "fix-edit", label: "Edit values…", onSelect: handlers.onEdit });
   }
   if (handlers.onWriteTags) {
-    files.push({
-      id: "clean-write-tags",
+    items.push({
+      id: "fix-write-tags",
       label: "Save changes into the files…",
       onSelect: handlers.onWriteTags,
     });
   }
-  groups.push(files);
-
-  // Each group opens with a divider; an empty group has nothing to open.
-  return groups.flatMap((group) =>
-    group.map((item, at) => (at === 0 ? { ...item, separatorBefore: true } : item)),
-  );
+  if (handlers.onCheckFiles) {
+    items.push({
+      id: "fix-check",
+      label: "Check the files are still there",
+      onSelect: handlers.onCheckFiles,
+    });
+  }
+  return items;
 }
 
 // ------------------------------------------------------- Beatport zone
@@ -234,11 +274,6 @@ interface BeatportFieldRow {
   effective: string;
   /** Which layer that is: Rekordbox's, or CuePoint's with its source. */
   source: "rekordbox" | OverrideSource | "cuepoint-unknown";
-  /**
-   * Whether applying this field is offered: a candidate a person or the rule
-   * accepted, a value to copy, and not already the value it applied.
-   */
-  canApply: boolean;
 }
 
 /** Where the effective value came from, in words. */
@@ -250,10 +285,8 @@ export function fieldSourceText(source: BeatportFieldRow["source"]): string {
 
 export function beatportFieldRows(
   row: LibraryTrackRow,
-  state: TrackMatchState | null,
   candidate: MatchCandidate | null,
 ): BeatportFieldRow[] {
-  const accepted = state?.state === "accepted" && candidate != null;
   return APPLY_FIELDS.map((field) => {
     const overridden = row.overridden?.includes(field) ?? false;
     const source = overridden ? (row.override_sources?.[field] ?? "cuepoint-unknown") : "rekordbox";
@@ -265,7 +298,6 @@ export function beatportFieldRows(
       beatport,
       effective: effectiveText(row, field),
       source,
-      canApply: accepted && beatport !== "" && source !== "beatport",
     };
   });
 }

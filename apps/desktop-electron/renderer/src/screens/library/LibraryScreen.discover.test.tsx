@@ -29,6 +29,7 @@ import { ToastProvider } from "../../components";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { LibraryScreen, type LibraryScreenProps } from "./LibraryScreen";
+import { menuItem } from "./menuPick.test.util";
 
 const SUMMARY: LibrarySummary = {
   track_count: 2,
@@ -223,67 +224,74 @@ function labels(menu: HTMLElement): string[] {
 }
 
 describe("the operations list's Discover entries", () => {
-  it("offers Similar tracks and both pages for one track, before its organization entries", async () => {
+  it("offers Similar tracks and both pages for one track, in the Explore group after Organize", async () => {
     renderScreen();
     await tableReady();
     const menu = await openMenuOn("Track 1");
-    const all = labels(menu);
-    const at = all.indexOf("Similar tracks");
-    expect(all.slice(at, at + 3)).toEqual(["Similar tracks", "Artist page▸", "Label page"]);
-    expect(all.indexOf("Add to Collection…")).toBeGreaterThan(at);
-    expect(all.slice(0, 3)).toEqual(["Play", "Play next", "Add to queue"]);
+    const top = labels(menu);
+    // Explore is a parent after Organize, with Play's three entries first.
+    expect(top.slice(0, 3)).toEqual(["Play", "Play next", "Add to queue"]);
+    expect(top.indexOf("Organize▸")).toBeLessThan(top.indexOf("Explore▸"));
+    await userEvent.click(within(menu).getByRole("menuitem", { name: /^Explore/ }));
+    expect(labels(screen.getByRole("menu", { name: "Explore" }))).toEqual([
+      "Similar tracks",
+      "Artist page▸",
+      "Label page",
+    ]);
   });
 
   it("opens each: Similar tracks by track, an artist from the submenu, the label", async () => {
     const hooks = renderScreen();
     await tableReady();
-    await userEvent.click(within(await openMenuOn("Track 1")).getByRole("menuitem", { name: "Similar tracks" }));
+    await userEvent.click((await menuItem("Similar tracks", await openMenuOn("Track 1"))));
     expect(hooks.onOpenSimilar).toHaveBeenCalledWith(1);
 
-    await userEvent.click(within(await openMenuOn("Track 1")).getByRole("menuitem", { name: /Artist page/ }));
+    await userEvent.click((await menuItem(/Artist page/, await openMenuOn("Track 1"))));
     await userEvent.click(
       within(screen.getByRole("menu", { name: "Artist page" })).getByRole("menuitem", { name: "Kiko" }),
     );
     expect(hooks.onOpenEntity).toHaveBeenLastCalledWith("artist", "name:kiko");
 
-    await userEvent.click(within(await openMenuOn("Track 1")).getByRole("menuitem", { name: "Label page" }));
+    await userEvent.click((await menuItem("Label page", await openMenuOn("Track 1"))));
     expect(hooks.onOpenEntity).toHaveBeenLastCalledWith("label", "bp:40211");
   });
 
   it("opens a single artist's page directly, and disables a label the track lacks", async () => {
     const hooks = renderScreen();
     await tableReady();
-    const menu = await openMenuOn("Track 2");
-    expect(within(menu).getByRole("menuitem", { name: "Label page" })).toHaveAttribute(
+    await openMenuOn("Track 2");
+    expect((await menuItem("Label page"))).toHaveAttribute(
       "aria-disabled",
       "true",
     );
-    await userEvent.click(within(menu).getByRole("menuitem", { name: "Artist page" }));
+    await userEvent.click((await menuItem("Artist page")));
     expect(hooks.onOpenEntity).toHaveBeenCalledWith("artist", "name:djeff");
   });
 
-  it("is the same list behind the Actions button", async () => {
+  it("is the same list behind the bar's Explore ▸", async () => {
     const hooks = renderScreen();
     await tableReady();
     await userEvent.click(screen.getByText("Track 1"));
-    await userEvent.click(screen.getByRole("button", { name: "Actions…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Explore" }));
     const menu = await screen.findByRole("menu");
-    expect(labels(menu).slice(0, 3)).toEqual(["Similar tracks", "Artist page▸", "Label page"]);
-    await userEvent.click(within(menu).getByRole("menuitem", { name: "Similar tracks" }));
+    expect(labels(menu)).toEqual(["Similar tracks", "Artist page▸", "Label page"]);
+    await userEvent.click((await menuItem("Similar tracks")));
     expect(hooks.onOpenSimilar).toHaveBeenCalledWith(1);
   });
 
-  it("offers nothing of Discover's for several tracks", async () => {
-    renderScreen();
+  it("opens the first track's page when several are selected (FLW-8)", async () => {
+    const hooks = renderScreen();
     await tableReady();
     const table = screen.getByRole("table", { name: "Library tracks" });
-    fireEvent.click(within(table).getByText("Track 1"));
-    fireEvent.click(within(table).getByText("Track 2"), { ctrlKey: true });
-    expect(await screen.findByText("2 tracks selected")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Actions…" }));
+    fireEvent.click(within(table).getByText("Track 2"));
+    fireEvent.click(within(table).getByText("Track 1"), { ctrlKey: true });
+    expect(await screen.findByText("2 selected")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Explore" }));
     const menu = await screen.findByRole("menu");
-    expect(labels(menu)).not.toContain("Similar tracks");
-    expect(labels(menu)).not.toContain("Artist page");
+    expect(labels(menu)).toContain("Similar tracks");
+    await userEvent.click((await menuItem("Similar tracks")));
+    // In the table's order, not the order of the clicks.
+    expect(hooks.onOpenSimilar).toHaveBeenCalledWith(1);
   });
 
   it("offers none of it in a build without Discover, and opens the menu at once", async () => {

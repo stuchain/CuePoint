@@ -1,9 +1,10 @@
 /**
  * What can be done to a selection of tracks (ORG-11).
  *
- * One list, built once, offered from two places: the row context menu and the
- * selection toolbar's Actions button. They are the same entries because they
- * are literally the same array — the spec's "one vocabulary for both surfaces"
+ * One list, built once (`trackActions.ts` joins it to Play, Explore, Beatport,
+ * Fix and More), offered from two places: the row context menu and the
+ * selection bar's Organize ▸. They are the same entries because they are
+ * literally the same array — the spec's "one vocabulary for both surfaces"
  * is a fact about this module rather than a promise about two components
  * staying in step.
  *
@@ -39,7 +40,7 @@ export interface OrganizationMenuHandlers {
    */
   onAddToSet?: () => void;
   /**
-   * "New Set from the selection…" (PREP-12): a new Set holding these tracks in
+   * "New Set from these…" (PREP-12): a new Set holding these tracks in
    * the table's order. Absent where no Set can be made.
    */
   onNewSetFromSelection?: () => void;
@@ -84,7 +85,7 @@ export function organizationMenuItems(
   if (handlers.onNewSetFromSelection) {
     items.push({
       id: "new-set-from-selection",
-      label: "New Set from the selection…",
+      label: "New Set from these…",
       onSelect: handlers.onNewSetFromSelection,
     });
   }

@@ -23,6 +23,11 @@ import "./TrackContextMenu.css";
  * costs the keyboard nothing — ArrowRight opens, ArrowLeft closes, and the
  * arrows inside it behave exactly as they do outside — which is why it is
  * worth having rather than flattening.
+ *
+ * Submenus nest (FLW-8): the Library's menu shows the selection bar's groups as
+ * parents, and Organize ▸ holds Rate ▸. The keys keep their meaning at every
+ * depth — ArrowRight goes in, ArrowLeft or the first Escape comes back out one
+ * level — and only the deepest open list takes them.
  */
 
 export interface TrackContextMenuItem {
@@ -74,28 +79,72 @@ function placeSubmenu(parent: DOMRect, width: number, height: number) {
   return { left, top: clampToViewport(left, parent.top, width, height).top };
 }
 
+/** A list beside the entry that opened it; measured once it exists (ORG-13). */
+function Submenu({ label, children }: { label: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  // Null until measured, which is one frame; it is rendered offscreen rather
+  // than at the wrong place for that frame, so the list never jumps.
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  // A layout effect, so the move happens before the browser paints.
+  useLayoutEffect(() => {
+    const child = ref.current;
+    const parent = child?.parentElement?.querySelector<HTMLElement>('[role="menuitem"]');
+    if (!child || !parent) return;
+    const box = child.getBoundingClientRect();
+    setPos(placeSubmenu(parent.getBoundingClientRect(), box.width, box.height));
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className="cp-track-menu__submenu"
+      role="menu"
+      aria-label={label}
+      style={
+        pos
+          ? { left: pos.left, top: pos.top }
+          : // Out of the way while it is measured, rather than at a guess
+            // that would be visibly corrected.
+            { left: 0, top: 0, visibility: "hidden" }
+      }
+    >
+      {children}
+    </div>
+  );
+}
+
+const hasChildren = (item: TrackContextMenuItem | undefined) =>
+  Boolean(item?.items && item.items.length > 0);
+
 export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ left: x, top: y });
-  const [active, setActive] = useState(0);
-  /** The parent entry whose children are showing, and where the keys go. */
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [subActive, setSubActive] = useState(0);
-  /**
-   * Where the open submenu sits, in viewport coordinates (ORG-13).
-   *
-   * Null until it has been measured, which is one frame; it is rendered
-   * offscreen rather than at the wrong place for that frame, so the list never
-   * appears somewhere and then jumps.
-   */
-  const [subPos, setSubPos] = useState<{ left: number; top: number } | null>(null);
-  const subRef = useRef<HTMLDivElement>(null);
+  /** The parents whose children are showing, outermost first; the keys go to the last. */
+  const [path, setPath] = useState<string[]>([]);
+  /** The highlighted entry at each depth; depth 0 is the menu itself. */
+  const [actives, setActives] = useState<number[]>([0]);
   // Whatever had focus before, so it can have it back.
   const restoreTo = useRef<HTMLElement | null>(null);
 
-  const enabled = items.filter((item) => !item.disabled);
-  const open = openId === null ? null : items.find((item) => item.id === openId) ?? null;
-  const subItems = (open?.items ?? []).filter((item) => !item.disabled);
+  /** The entries listed at a depth: every one, then the ones that can be chosen. */
+  const listAt = (depth: number): TrackContextMenuItem[] => {
+    let list = items;
+    for (let i = 0; i < depth; i += 1) {
+      list = list.find((item) => item.id === path[i])?.items ?? [];
+    }
+    return list;
+  };
+  const enabledAt = (depth: number) => listAt(depth).filter((item) => !item.disabled);
+  const depth = path.length;
+  const activeAt = (at: number) => actives[at] ?? 0;
+  const setActiveAt = (at: number, value: number) =>
+    setActives((current) => {
+      const next = current.slice(0, at);
+      while (next.length < at) next.push(0);
+      next[at] = value;
+      return next;
+    });
 
   useEffect(() => {
     restoreTo.current = document.activeElement as HTMLElement | null;
@@ -110,20 +159,6 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
       restoreTo.current?.focus?.();
     };
   }, [x, y]);
-
-  // Measured after the submenu exists, because its size is what decides the
-  // side. A layout effect, so the move happens before the browser paints.
-  useLayoutEffect(() => {
-    if (openId === null) {
-      setSubPos(null);
-      return;
-    }
-    const child = subRef.current;
-    const parent = child?.parentElement?.querySelector<HTMLElement>('[role="menuitem"]');
-    if (!child || !parent) return;
-    const box = child.getBoundingClientRect();
-    setSubPos(placeSubmenu(parent.getBoundingClientRect(), box.width, box.height));
-  }, [openId]);
 
   const close = useCallback(() => onClose(), [onClose]);
 
@@ -144,23 +179,26 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
     };
   }, [close]);
 
-  const choose = useCallback(
-    (item: TrackContextMenuItem) => {
-      if (item.disabled) return;
-      if (item.items && item.items.length > 0) {
-        // A parent opens; it never acts. Closing the menu here would dismiss
-        // the list the user was reaching for.
-        setOpenId((current) => (current === item.id ? null : item.id));
-        setSubActive(0);
-        return;
-      }
-      // Close first: the action may open a dialog or move focus, and a menu
-      // still on screen underneath it would be stranded.
-      close();
-      item.onSelect();
-    },
-    [close],
-  );
+  /** Open (or shut) a parent listed at `at`. A parent opens; it never acts. */
+  const toggleParent = (item: TrackContextMenuItem, at: number) => {
+    setPath((current) =>
+      current[at] === item.id ? current.slice(0, at) : [...current.slice(0, at), item.id],
+    );
+    setActiveAt(at + 1, 0);
+  };
+
+  const choose = (item: TrackContextMenuItem, at: number) => {
+    if (item.disabled) return;
+    if (hasChildren(item)) {
+      // Closing the menu here would dismiss the list the user was reaching for.
+      toggleParent(item, at);
+      return;
+    }
+    // Close first: the action may open a dialog or move focus, and a menu
+    // still on screen underneath it would be stranded.
+    close();
+    item.onSelect();
+  };
 
   const step = (current: number, by: number, length: number) => {
     const next = current + by;
@@ -170,74 +208,81 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (open) {
-      // Every key belongs to the open list while one is open, so the parent
-      // menu never moves underneath it.
-      if (event.key === "Escape" || event.key === "ArrowLeft") {
-        event.preventDefault();
-        event.stopPropagation();
-        setOpenId(null);
-        return;
-      }
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault();
-        setSubActive((current) =>
-          step(current, event.key === "ArrowDown" ? 1 : -1, subItems.length),
-        );
-        return;
-      }
-      if (event.key === "Home" || event.key === "End") {
-        event.preventDefault();
-        setSubActive(event.key === "Home" ? 0 : Math.max(0, subItems.length - 1));
-        return;
-      }
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        const item = subItems[subActive];
-        if (item) {
-          close();
-          item.onSelect();
-        }
-      }
-      return;
-    }
+    // Every key belongs to the deepest open list, so no list above it moves
+    // underneath it.
+    const enabled = enabledAt(depth);
+    const active = activeAt(depth);
 
-    if (event.key === "Escape") {
+    if (event.key === "Escape" || (event.key === "ArrowLeft" && depth > 0)) {
       event.preventDefault();
       event.stopPropagation();
-      close();
+      if (depth > 0) setPath((current) => current.slice(0, -1));
+      else close();
       return;
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      setActive((current) => step(current, event.key === "ArrowDown" ? 1 : -1, enabled.length));
+      setActiveAt(depth, step(active, event.key === "ArrowDown" ? 1 : -1, enabled.length));
       return;
     }
     if (event.key === "ArrowRight") {
       const item = enabled[active];
-      if (item?.items && item.items.length > 0) {
+      if (item && hasChildren(item)) {
         event.preventDefault();
-        setOpenId(item.id);
-        setSubActive(0);
+        setPath((current) => [...current.slice(0, depth), item.id]);
+        setActiveAt(depth + 1, 0);
       }
       return;
     }
-    if (event.key === "Home") {
+    if (event.key === "Home" || event.key === "End") {
       event.preventDefault();
-      setActive(0);
-      return;
-    }
-    if (event.key === "End") {
-      event.preventDefault();
-      setActive(Math.max(0, enabled.length - 1));
+      setActiveAt(depth, event.key === "Home" ? 0 : Math.max(0, enabled.length - 1));
       return;
     }
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       const item = enabled[active];
-      if (item) choose(item);
+      if (item) choose(item, depth);
     }
   };
+
+  const renderList = (list: TrackContextMenuItem[], at: number): React.ReactNode =>
+    list.map((item) => {
+      const enabled = enabledAt(at);
+      const index = enabled.indexOf(item);
+      const parent = hasChildren(item);
+      const showing = parent && path[at] === item.id;
+      return (
+        <div key={item.id} className="cp-track-menu__group">
+          {item.separatorBefore && <div className="cp-track-menu__separator" role="separator" />}
+          <button
+            type="button"
+            role="menuitem"
+            className={`cp-track-menu__item${index === activeAt(at) ? " cp-track-menu__item--active" : ""}${parent ? " cp-track-menu__item--parent" : ""}`}
+            disabled={item.disabled}
+            aria-disabled={item.disabled || undefined}
+            title={item.title}
+            aria-haspopup={parent ? "menu" : undefined}
+            aria-expanded={parent ? showing : undefined}
+            onMouseEnter={() => {
+              if (index >= 0) setActiveAt(at, index);
+              // Leaving a parent closes what it opened, so two lists at one
+              // depth are never showing at once.
+              if (!parent) setPath((current) => (current.length > at ? current.slice(0, at) : current));
+            }}
+            onClick={() => choose(item, at)}
+          >
+            {item.label}
+            {parent && (
+              <span className="cp-track-menu__arrow" aria-hidden="true">
+                ▸
+              </span>
+            )}
+          </button>
+          {showing && <Submenu label={item.label}>{renderList(item.items!, at + 1)}</Submenu>}
+        </div>
+      );
+    });
 
   return (
     <div
@@ -252,77 +297,7 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
       // open the browser's own on top.
       onContextMenu={(event) => event.preventDefault()}
     >
-      {items.map((item) => {
-        const index = enabled.indexOf(item);
-        const parent = Boolean(item.items && item.items.length > 0);
-        const showing = parent && openId === item.id;
-        return (
-          <div key={item.id} className="cp-track-menu__group">
-            {item.separatorBefore && <div className="cp-track-menu__separator" role="separator" />}
-            <button
-              type="button"
-              role="menuitem"
-              className={`cp-track-menu__item${index === active ? " cp-track-menu__item--active" : ""}${parent ? " cp-track-menu__item--parent" : ""}`}
-              disabled={item.disabled}
-              aria-disabled={item.disabled || undefined}
-              title={item.title}
-              aria-haspopup={parent ? "menu" : undefined}
-              aria-expanded={parent ? showing : undefined}
-              onMouseEnter={() => {
-                if (index >= 0) setActive(index);
-                // Leaving a parent closes what it opened, so two lists are
-                // never showing at once.
-                if (!parent) setOpenId(null);
-              }}
-              onClick={() => choose(item)}
-            >
-              {item.label}
-              {parent && (
-                <span className="cp-track-menu__arrow" aria-hidden="true">
-                  ▸
-                </span>
-              )}
-            </button>
-            {showing && (
-              <div
-                ref={subRef}
-                className="cp-track-menu__submenu"
-                role="menu"
-                aria-label={item.label}
-                style={
-                  subPos
-                    ? { left: subPos.left, top: subPos.top }
-                    : // Out of the way while it is measured, rather than at a
-                      // guess that would be visibly corrected.
-                      { left: 0, top: 0, visibility: "hidden" }
-                }
-              >
-                {item.items!.map((child) => {
-                  const childIndex = subItems.indexOf(child);
-                  return (
-                    <button
-                      key={child.id}
-                      type="button"
-                      role="menuitem"
-                      className={`cp-track-menu__item${childIndex === subActive ? " cp-track-menu__item--active" : ""}`}
-                      disabled={child.disabled}
-                      aria-disabled={child.disabled || undefined}
-                      onMouseEnter={() => childIndex >= 0 && setSubActive(childIndex)}
-                      onClick={() => {
-                        if (child.disabled) return;
-                        close();
-                        child.onSelect();
-                      }}
-                    >
-                      {child.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {renderList(items, 0)}
     </div>
   );
 }

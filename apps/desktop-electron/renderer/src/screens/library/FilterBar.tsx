@@ -94,9 +94,6 @@ interface FilterBarProps {
   query: string;
   onQueryChange: (query: string) => void;
 
-  /** Rows the query matches, from the engine — never counted from a window. */
-  total: number;
-
   /** The values of the field being added, when one has been asked for. */
   facet?: LibraryFacet | null;
   onRequestFacet?: (field: string) => void;
@@ -162,7 +159,6 @@ export function FilterBar({
   onFiltersChange,
   query,
   onQueryChange,
-  total,
   facet = null,
   onRequestFacet,
   collections = [],
@@ -599,10 +595,6 @@ export function FilterBar({
             Keep as a filter
           </Button>
         )}
-
-        <span className="cp-filter-bar__count" role="status">
-          {total.toLocaleString()} {total === 1 ? "track" : "tracks"}
-        </span>
       </div>
 
       {adding && (

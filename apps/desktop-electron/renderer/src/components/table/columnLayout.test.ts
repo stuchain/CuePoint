@@ -303,6 +303,14 @@ describe("storage", () => {
     );
   });
 
+  it("shows a default-visible column in a layout never saved, and keeps a saved choice (LIB-10)", () => {
+    // Rating is shown by default; that reaches a first run only. A user who hid
+    // a column and came back finds it hidden still.
+    expect(loadColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, COLUMNS, 1).find((e) => e.id === "bpm")?.hidden).toBe(false);
+    saveColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, toggleHidden(defaultLayout(COLUMNS, 1), "bpm"));
+    expect(loadColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, COLUMNS, 1).find((e) => e.id === "bpm")?.hidden).toBe(true);
+  });
+
   it("gives the default layout for a corrupt value, without throwing", () => {
     localStorage.setItem(LIBRARY_TABLE_LAYOUT_KEY, "{not json");
     expect(() => loadColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, COLUMNS, 1)).not.toThrow();

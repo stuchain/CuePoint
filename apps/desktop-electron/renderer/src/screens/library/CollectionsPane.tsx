@@ -38,13 +38,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Modal } from "../../components/Modal";
-import { PixelIcon } from "../../components/PixelIcon";
 import {
   TrackContextMenu,
   type TrackContextMenuItem,
 } from "../../components/TrackContextMenu";
 import type { CollectionNode, CollectionSubtree } from "../../api/cuepointBridge.types";
 import { PaneTree, type PaneTreeRow } from "./PaneTree";
+import { useToolbarKeys } from "./useToolbarKeys";
 import {
   canMoveInto,
   describeDeletion,
@@ -453,6 +453,72 @@ export function CollectionsPane({
     return items;
   };
 
+  /** The bar under the tree: one list, so the toolbar's keys and its buttons agree. */
+  const barButtons = (() => {
+    const none = selected === null ? "Select a Collection or Set" : null;
+    const node = selected;
+    // `short` is what the button says in a narrow pane; `label` stays its name.
+    const buttons: {
+      id: string;
+      label: string;
+      short?: string;
+      reason: string | null;
+      run: () => void;
+    }[] = [
+      {
+        id: "rename",
+        label: "Rename",
+        reason: none,
+        run: () => node && setRenamingId(node.id),
+      },
+    ];
+    const canDuplicate = node !== null && (isSet(node) ? onDuplicateSet : node.kind === "smart" ? onDuplicateSmart : undefined);
+    buttons.push({
+      id: "duplicate",
+      label: "Duplicate",
+      reason:
+        none ?? (canDuplicate ? null : "Only a Smart Collection or a Set can be duplicated"),
+      run: () => node && void duplicate(node),
+    });
+    buttons.push({
+      id: "delete",
+      label: "Delete",
+      reason: none,
+      run: () => node && void askToDelete(node),
+    });
+    if (onExport) {
+      buttons.push({
+        id: "export",
+        label: "Export to Rekordbox…",
+        short: "Export…",
+        reason: none,
+        run: () => node && onExport(node),
+      });
+    }
+    if (node !== null && isSet(node)) {
+      if (onOpenInPrepare) {
+        buttons.push({
+          id: "open-in-prepare",
+          label: "Open in Prepare",
+          short: "Prepare",
+          reason: null,
+          run: () => onOpenInPrepare(node),
+        });
+      }
+      if (onSaveSetList) {
+        buttons.push({
+          id: "save-set-list",
+          label: "Save set list…",
+          short: "Set list…",
+          reason: null,
+          run: () => onSaveSetList(node),
+        });
+      }
+    }
+    return buttons;
+  })();
+  const barKeys = useToolbarKeys(barButtons.length);
+
   const treeRows: PaneTreeRow[] = rows.map((row) => ({
     key: String(row.node.id),
     name: row.node.name,
@@ -494,43 +560,47 @@ export function CollectionsPane({
           <span aria-hidden>{collapsed ? "▸" : "▾"}</span>
           <span className="cp-playlist-pane__title">Collections</span>
         </button>
-        <span className="cp-collections__actions">
+      </div>
+
+      {/* The three ways to make something, said in words (FLW-10). Made inside the
+          selected folder when one is selected, straight into the new row's name. */}
+      {!collapsed && (
+        <div className="cp-collections__create" role="group" aria-label="Make something new">
+          {/* "New" once, over three short words: the pane is about 160px wide in
+              the default window, where three full names took a line each. The
+              buttons keep their full names for assistive technology. */}
+          <span className="cp-collections__create-word" aria-hidden>
+            New
+          </span>
           <button
             type="button"
-            className="cp-collections__action"
+            className="cp-collections__make"
             aria-label="New Collection"
-            title="New Collection"
             onClick={() => void create("collection")}
           >
-            <PixelIcon name="collections" />
-            <span aria-hidden>+</span>
+            Collection
           </button>
-          {/* Beside "New Collection", and made the same way: in the selected
-              folder, straight into its name (DEC-104). */}
+          {/* Beside "New Collection", and made the same way (DEC-104). */}
           {canMakeSets && (
             <button
               type="button"
-              className="cp-collections__action"
+              className="cp-collections__make"
               aria-label="New Set"
-              title="New Set"
               onClick={() => void create("set")}
             >
-              <PixelIcon name="prepare" />
-              <span aria-hidden>+</span>
+              Set
             </button>
           )}
           <button
             type="button"
-            className="cp-collections__action"
+            className="cp-collections__make"
             aria-label="New folder"
-            title="New folder"
             onClick={() => void create("folder")}
           >
-            <PixelIcon name="folder" />
-            <span aria-hidden>+</span>
+            Folder
           </button>
-        </span>
-      </div>
+        </div>
+      )}
 
       {!collapsed && status === "error" && (
         <p className="cp-playlist-pane__note cp-playlist-pane__note--error" role="alert">
@@ -676,6 +746,35 @@ export function CollectionsPane({
           onDrop={(event) => void onDrop(null, event)}
           aria-hidden
         />
+      )}
+
+      {/* What can be done to the selected node, always shown (FLW-10). Freeze,
+          "Copy set list" and "New Set from…" stay on the right-click menu. */}
+      {!collapsed && (
+        <div
+          ref={barKeys.ref}
+          className="cp-collections__bar"
+          role="toolbar"
+          aria-label="Selected Collection or Set"
+          onKeyDown={barKeys.onKeyDown}
+        >
+          {barButtons.map((button, index) => (
+            <button
+              key={button.id}
+              type="button"
+              className="cp-collections__bar-button"
+              aria-label={button.short ? button.label : undefined}
+              aria-disabled={button.reason ? true : undefined}
+              title={button.reason ?? (button.short ? button.label : undefined)}
+              {...barKeys.buttonProps(index)}
+              onClick={() => {
+                if (!button.reason) button.run();
+              }}
+            >
+              {button.short ?? button.label}
+            </button>
+          ))}
+        </div>
       )}
 
       {menu && (

@@ -11,20 +11,24 @@ import type {
   LibraryTrackRow,
   MatchCandidate,
   TrackFieldChange,
-  TrackMatchState,
 } from "../../api/cuepointBridge.types";
+import { batchSelection } from "./libraryBatch";
+import { DEFAULT_LIBRARY_QUERY } from "./libraryQuery";
+import { EMPTY_SELECTION, extend, selectAll, selectOnly, toggle } from "./trackSelection";
 import {
   artworkText,
   beatportFieldRows,
   canRevertChange,
-  cleanMenuItems,
+  beatportMenuItems,
+  cleanCapLine,
+  cleanTracksFor,
+  fixMenuItems,
   effectiveText,
   fieldSourceText,
   formatScore,
   importedText,
   overrideMark,
   overrideSourceText,
-  type CleanMenuHandlers,
 } from "./libraryClean";
 
 function row(overrides: Partial<LibraryTrackRow> = {}): LibraryTrackRow {
@@ -97,20 +101,6 @@ function candidate(overrides: Partial<MatchCandidate> = {}): MatchCandidate {
     elapsed_ms: 1,
     mix: "Original Mix",
     differs: null,
-    ...overrides,
-  };
-}
-
-function state(overrides: Partial<TrackMatchState> = {}): TrackMatchState {
-  return {
-    track_id: 7,
-    state: "accepted",
-    decided_by: "auto",
-    attempt_id: 3,
-    candidate_id: 31,
-    newer_attempt_id: null,
-    disputed: false,
-    decided_at: null,
     ...overrides,
   };
 }
@@ -203,65 +193,98 @@ describe("the Clean columns' words", () => {
   });
 });
 
-function allHandlers() {
-  return {
-    onMatch: vi.fn<(rematch: boolean) => void>(),
-    onDecide: vi.fn<(decision: "accept" | "reject") => void>(),
-    onApply: vi.fn<() => void>(),
-    onEdit: vi.fn<() => void>(),
-    onCheckFiles: vi.fn<() => void>(),
-    onWriteTags: vi.fn<() => void>(),
-  } satisfies Required<CleanMenuHandlers>;
-}
+describe("the tracks the bar hands to Clean", () => {
+  const query = { ...DEFAULT_LIBRARY_QUERY, q: "acid", playlistId: 4 };
 
-describe("the Clean entries of the operations list", () => {
-  it("offer every per-track Clean action, in groups", () => {
-    const items = cleanMenuItems({ count: 3 }, allHandlers());
+  it("are the ids when some rows were picked", async () => {
+    const gather = vi.fn();
+    const picked = selectOnly(7, 0);
+    const tracks = await cleanTracksFor(batchSelection(extend(picked, [7, 9], 9), query), 2, gather);
+    expect(tracks).toEqual({ ids: expect.arrayContaining([7, 9]) });
+    expect(gather).not.toHaveBeenCalled();
+  });
+
+  it("are the question and its count when everything matching is selected", async () => {
+    const gather = vi.fn();
+    const tracks = await cleanTracksFor(batchSelection(selectAll(EMPTY_SELECTION), query), 4213, gather);
+    expect(tracks).toEqual({
+      query: expect.objectContaining({ q: "acid", playlist_id: 4 }),
+      count: 4213,
+    });
+    // Never 4,213 numbers for a question (DEC-045).
+    expect(gather).not.toHaveBeenCalled();
+  });
+
+  it("are the ids, read in the table's order, when some were taken back out", async () => {
+    const gather = vi.fn().mockResolvedValue([1, 3]);
+    const without = toggle(selectAll(EMPTY_SELECTION), 2, 1);
+    const tracks = await cleanTracksFor(batchSelection(without, query), 2, gather);
+    expect(gather).toHaveBeenCalledWith(2);
+    expect(tracks).toEqual({ ids: [1, 3] });
+  });
+
+  it("are capped at the limit when taking some back out of a huge selection", async () => {
+    const gather = vi.fn().mockResolvedValue([1, 3]);
+    const without = toggle(selectAll(EMPTY_SELECTION), 2, 1);
+    await cleanTracksFor(batchSelection(without, query), 120_000, gather, 50_000);
+    expect(gather).toHaveBeenCalledWith(50_000);
+    expect(cleanCapLine(50_000, 120_000)).toBe(
+      "Clean was given the first 50,000 of the 120,000 tracks selected. Narrow the selection to work on the rest.",
+    );
+  });
+
+  it("are nothing when nothing is selected", async () => {
+    expect(await cleanTracksFor(batchSelection(EMPTY_SELECTION, query), 0, vi.fn())).toBeNull();
+  });
+});
+
+describe("the Beatport ▸ entries of the operations list", () => {
+  const handlers = () => ({ onMatch: vi.fn(), onReview: vi.fn(), onUseBeatport: vi.fn() });
+
+  it("offer matching, reviewing and Beatport's values, and no deciding", () => {
+    const items = beatportMenuItems({ count: 3 }, handlers());
     expect(items.map((item) => item.label)).toEqual([
-      "Match on Beatport",
-      "Search Beatport again for this track",
-      "Accept match",
-      "Reject match",
+      "Match tracks…",
+      "Review these matches",
       "Use Beatport's values…",
-      "Edit values…",
-      "Check files",
-      "Save changes into the files…",
-    ]);
-    expect(items.filter((item) => item.separatorBefore).map((item) => item.id)).toEqual([
-      "clean-match",
-      "clean-edit",
-      "clean-check",
     ]);
   });
 
   it("do what they say", () => {
-    const spies = allHandlers();
-    const items = cleanMenuItems({ count: 1 }, spies);
-    const pick = (id: string) => items.find((item) => item.id === id)!.onSelect();
-    pick("clean-match");
-    pick("clean-rematch");
-    pick("clean-accept");
-    pick("clean-reject");
-    pick("clean-apply");
-    pick("clean-edit");
-    pick("clean-check");
-    pick("clean-write-tags");
-    expect(spies.onMatch.mock.calls).toEqual([[false], [true]]);
-    expect(spies.onDecide.mock.calls).toEqual([["accept"], ["reject"]]);
-    for (const spy of [spies.onApply, spies.onEdit, spies.onCheckFiles, spies.onWriteTags]) {
-      expect(spy).toHaveBeenCalledTimes(1);
-    }
+    const spies = handlers();
+    for (const item of beatportMenuItems({ count: 1 }, spies)) item.onSelect();
+    for (const spy of Object.values(spies)) expect(spy).toHaveBeenCalledTimes(1);
   });
 
-  it("leave out what this build cannot do, and a group left empty", () => {
-    const items = cleanMenuItems({ count: 2 }, { onCheckFiles: vi.fn() });
-    expect(items.map((item) => item.id)).toEqual(["clean-check"]);
-    expect(items[0]!.separatorBefore).toBe(true);
-    expect(cleanMenuItems({ count: 2 }, {})).toEqual([]);
+  it("leave out what this build cannot open, and offer nothing for nothing", () => {
+    expect(beatportMenuItems({ count: 2 }, { onMatch: vi.fn() }).map((item) => item.id)).toEqual([
+      "beatport-match",
+    ]);
+    expect(beatportMenuItems({ count: 2 }, {})).toEqual([]);
+    expect(beatportMenuItems({ count: 0 }, handlers())).toEqual([]);
+  });
+});
+
+describe("the Fix ▸ entries of the operations list", () => {
+  const handlers = () => ({ onEdit: vi.fn(), onWriteTags: vi.fn(), onCheckFiles: vi.fn() });
+
+  it("offer editing, saving into the files and checking they are there", () => {
+    expect(fixMenuItems({ count: 3 }, handlers()).map((item) => item.label)).toEqual([
+      "Edit values…",
+      "Save changes into the files…",
+      "Check the files are still there",
+    ]);
   });
 
-  it("offer nothing for nothing", () => {
-    expect(cleanMenuItems({ count: 0 }, allHandlers())).toEqual([]);
+  it("do what they say", () => {
+    const spies = handlers();
+    for (const item of fixMenuItems({ count: 1 }, spies)) item.onSelect();
+    for (const spy of Object.values(spies)) expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("offer nothing for nothing, or for a build that can do none", () => {
+    expect(fixMenuItems({ count: 0 }, handlers())).toEqual([]);
+    expect(fixMenuItems({ count: 2 }, {})).toEqual([]);
   });
 });
 
@@ -272,7 +295,7 @@ describe("the Beatport zone's rows", () => {
       effective_genre: "Techno",
       override_sources: { genre: "cuepoint" },
     });
-    const rows = beatportFieldRows(track, state(), candidate());
+    const rows = beatportFieldRows(track, candidate());
     expect(rows.map((entry) => [entry.field, entry.imported, entry.beatport, entry.effective, entry.source])).toEqual([
       ["bpm", "128.0", "128.0", "128.0", "rekordbox"],
       ["genre", "Progressive House", "Progressive House", "Techno", "cuepoint"],
@@ -281,28 +304,12 @@ describe("the Beatport zone's rows", () => {
     ]);
   });
 
-  it("offer applying for an accepted match with a value, not one already applied", () => {
-    const track = row({ overridden: ["year"], effective_year: 2010, override_sources: { year: "beatport" } });
-    const rows = beatportFieldRows(track, state(), candidate({ label: null }));
-    expect(Object.fromEntries(rows.map((entry) => [entry.field, entry.canApply]))).toEqual({
-      bpm: true,
-      genre: true,
-      label: false,
-      year: false,
-    });
-  });
-
-  it("offer nothing to apply before a match is accepted", () => {
-    for (const current of ["needs_review", "rejected", "no_match"] as const) {
-      const rows = beatportFieldRows(row(), state({ state: current }), candidate());
-      expect(rows.some((entry) => entry.canApply)).toBe(false);
-    }
-    expect(beatportFieldRows(row(), state(), null).every((entry) => entry.beatport === "")).toBe(true);
-    expect(beatportFieldRows(row(), null, null).some((entry) => entry.canApply)).toBe(false);
+  it("have no Beatport value without a candidate", () => {
+    expect(beatportFieldRows(row(), null).every((entry) => entry.beatport === "")).toBe(true);
   });
 
   it("name an override whose source is not known as CuePoint's", () => {
-    const [, genre] = beatportFieldRows(row({ overridden: ["genre"] }), null, null);
+    const [, genre] = beatportFieldRows(row({ overridden: ["genre"] }), null);
     expect(genre!.source).toBe("cuepoint-unknown");
     expect(fieldSourceText("cuepoint-unknown")).toBe("set in CuePoint");
     expect(fieldSourceText("rekordbox")).toBe("from Rekordbox");

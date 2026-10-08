@@ -465,9 +465,10 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await titled(picked[0]).click();
       await titled(picked[1]).click({ modifiers: ["ControlOrMeta"] });
       await titled(picked[2]).click({ modifiers: ["ControlOrMeta"] });
-      await expect(win.locator(".cp-selection-actions__count")).toHaveText("3 tracks selected");
-      await titled(picked[2]).click({ button: "right" });
-      await win.getByRole("menuitem", { name: "New Set from the selection…" }).click();
+      await expect(win.locator(".library-toolbar__count")).toContainText("3 selected");
+      // The bar's Organize ▸ holds it (FLW-8).
+      await win.getByRole("toolbar", { name: "Selected tracks" }).getByRole("button", { name: "Organize", exact: true }).click();
+      await win.getByRole("menuitem", { name: "New Set from these…" }).click();
 
       const dialog = win.getByRole("dialog", { name: "New Set from the 3 selected tracks" });
       await expect(dialog.getByRole("textbox", { name: "Name" })).toHaveValue("New Set");

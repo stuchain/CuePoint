@@ -23,6 +23,7 @@ import {
   rangeBetween,
   selectAll,
   selectOnly,
+  selectedRowIndex,
   selectionCount,
   toggle,
 } from "./trackSelection";
@@ -185,5 +186,28 @@ describe("what it says", () => {
     expect(describeSelection(selectAll(EMPTY_SELECTION), 1_234)).toBe(
       "1,234 tracks selected",
     );
+  });
+});
+
+describe("the one selected track's row", () => {
+  const ids = [10, 11, 12];
+  const idAt = (index: number) => ids[index];
+
+  it("is the anchor when the anchor is the selected track", () => {
+    expect(selectedRowIndex(selectOnly(11, 1), 3, idAt)).toBe(1);
+  });
+
+  it("is not the row just un-ticked: ctrl-click A, B, B leaves A selected", () => {
+    let selection = selectOnly(10, 0);
+    selection = toggle(selection, 11, 1);
+    selection = toggle(selection, 11, 1);
+    expect(onlySelectedId(selection, 3)).toBe(10);
+    expect(selection.anchor).toBe(1);
+    expect(selectedRowIndex(selection, 3, idAt)).toBe(-1);
+  });
+
+  it("is -1 for no selection or several", () => {
+    expect(selectedRowIndex(EMPTY_SELECTION, 3, idAt)).toBe(-1);
+    expect(selectedRowIndex(toggle(selectOnly(10, 0), 11, 1), 3, idAt)).toBe(-1);
   });
 });

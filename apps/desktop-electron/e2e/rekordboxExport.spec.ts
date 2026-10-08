@@ -144,7 +144,11 @@ async function openLibrary(window: Page) {
 }
 
 async function exportFromHeader(window: Page) {
-  await window.getByRole("button", { name: "Export to Rekordbox…" }).click();
+  // The tree's bar has an Export to Rekordbox… of its own; this is the header's.
+  await window
+    .locator('[data-slot="library-header"]')
+    .getByRole("button", { name: "Export to Rekordbox…" })
+    .click();
 }
 
 function exportDialog(window: Page) {

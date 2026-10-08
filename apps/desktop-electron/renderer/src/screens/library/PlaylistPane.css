@@ -18,7 +18,9 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-sm);
+  /* "from Rekordbox" goes under the title in a narrow pane, not past its edge. */
+  flex-wrap: wrap;
+  gap: 0 var(--space-sm);
   padding: var(--space-sm);
   border-bottom: var(--hairline) solid var(--border-muted);
   background: var(--bg-toolbar);

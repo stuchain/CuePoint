@@ -19,16 +19,24 @@ A Collection is your own list of tracks: a set you are building, a shortlist,
 anything Rekordbox has no folder for. Folders hold Collections, and Collections
 hold tracks.
 
-- **Make one** with the buttons at the top of the Collections section. A new
-  Collection opens ready for its name.
-- **Put tracks in it** by dragging a selection onto it, or by right-clicking a
-  selection and choosing **Add to Collection…**.
-- **Arrange it** by dragging rows inside it. A Collection opens in the order you
-  arranged, not alphabetically, and that order is saved.
+- **Make one** with the buttons at the top of the Collections section, after the
+  word **New**: **Collection**, **Set** and **Folder**. A new Collection opens
+  ready for its name.
+- **Put tracks in it** by dragging a selection onto it, or by choosing **Add to
+  Collection…** in the selection bar's **Organize ▸** or the right-click menu.
+- **Arrange it** by dragging rows inside it, or by selecting a row and pressing
+  **Alt+Up** or **Alt+Down**. A Collection opens in the order you arranged, not
+  alphabetically, and that order is saved.
 - **Move and file** Collections by dragging them between folders.
-- **Rename** with F2 or the pencil, **delete** with Delete or the ✕.
+- **Act on the one you selected** with the bar under the tree: **Rename**,
+  **Duplicate** (a Smart Collection or a Set), **Delete** and **Export…** (it
+  opens Export to Rekordbox, and its hover text says so), which every Collection, Smart Collection, Set and folder has. The
+  bar is always there; with nothing selected it is dimmed and says "Select a
+  Collection or Set". The pencil, the ✕, F2 and Delete work too.
 - **Right-click** a Collection, Smart Collection or folder — or press the menu
-  key or Shift+F10 — for the same actions and **Export to Rekordbox…**.
+  key or Shift+F10 — for the same actions, plus the few that have no button:
+  **Freeze to a Collection…** on a Smart Collection, **New Set from…**, and
+  **Copy set list** on a Set.
 
 A delete says what it will remove before it removes it — "this folder and the
 three Collections in it" — and **no Collection operation ever deletes a track**.
@@ -42,17 +50,17 @@ skipped rather than quietly making duplicates.
 
 A **Set** is a running order you are preparing to play, and it lives in the
 same tree, filed in folders beside your Collections. It wears Prepare's flag and
-shows how many entries it has. **New Set** sits beside **New Collection**, and
+shows how many entries it has. The **Set** button sits beside **Collection**, and
 **New Set from…** on a Collection, a Smart Collection or a Rekordbox playlist
-copies its tracks into a new Set. **Add to Set…** and **New Set from the
-selection…** are on a selection's right-click menu, beside **Add to
-Collection…**.
+copies its tracks into a new Set. **Add to Set…** and **New Set from these…**
+are in the selection bar's **Organize ▸** and on a selection's right-click menu,
+beside **Add to Collection…**.
 
 Selecting a Set scopes the table as a Collection does, listing each of its
 tracks once; the running order itself, with chapters, planned times, repeats and
 warnings, is edited on the [Prepare](prepare.md) page, which **Open in Prepare**
-opens. A Set's right-click menu also saves or copies its set list and exports it
-to Rekordbox. Everything else here — folders, drag, rename, delete, the refresh
+opens. With a Set selected, the bar under the tree adds **Prepare** (opens it in Prepare) and
+**Set list…** (saves the set list); its right-click menu also copies the set list. Everything else here — folders, drag, rename, delete, the refresh
 warning, rules that name a Collection — treats a Set as it treats a Collection,
 and says "Set" when it means one. See [Prepare](prepare.md).
 
@@ -83,8 +91,8 @@ is shown with a warning marker rather than hidden, and it says which rule broke.
 A tag is a word you put on a track — Peak-time, Opener, Needs a trim — and then
 filter by. A track can carry as many as you like.
 
-- **Add one** from a track's right-click menu, or from Track details on the
-  right. Typing a name that does not exist yet offers to make it.
+- **Add one** from the selection bar's **Organize ▸**, a track's right-click
+  menu, or Track details on the right. Typing a name that does not exist yet offers to make it.
 - **Filter by one** in the filter bar: choose Tag, and pick from the tags your
   library actually uses, with the number of tracks beside each.
 - **Tend the vocabulary** with the **Tags…** button beside the filter bar:
@@ -103,7 +111,8 @@ removes the one you merged away. It is the fix for noticing you have both
 CuePoint keeps its own rating for a track, separate from the one Rekordbox
 imported. Track details shows both, and says which one you are looking at.
 
-- **Rate** from Track details or from a track's right-click menu.
+- **Rate** from Track details, the selection bar's **Organize ▸** or a track's
+  right-click menu.
 - **Clear** a CuePoint rating and the track falls back to Rekordbox's, rather
   than becoming unrated.
 - **Favorite** is a yes-or-no of its own, and filterable.
@@ -117,7 +126,7 @@ there; see [Taking a change back](library.md#taking-a-change-back).
 ## Changing a lot of tracks at once
 
 Select some tracks and the actions apply to all of them. Select **everything
-matching** — the button that appears when you select all — and the actions apply
+matching** — **Select all**, in the row above the table — and the actions apply
 to every track your current search and filters match, which may be tens of
 thousands.
 

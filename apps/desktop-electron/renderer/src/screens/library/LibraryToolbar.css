@@ -1,0 +1,57 @@
+/* The row above the table: the selection bar, then the count and Columns…
+   (FLW-8, LIB-8). One row at the widths the Library is used at; it wraps,
+   rather than running past its column, in a narrower one (DEC-112). */
+.library-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space-xs) / 2) var(--space-xs);
+  padding: calc(var(--space-xs) / 2) var(--space-sm);
+  background: var(--bg-toolbar);
+  border-top: var(--hairline) solid var(--border-muted);
+}
+
+/* The bar and the end cluster add no boxes of their own: their controls wrap in
+   the row together, so the count and Columns… fill the last line of the buttons
+   instead of starting a line each. (`display: contents` keeps the bar's toolbar
+   role.) */
+.library-toolbar__bar,
+.library-toolbar__end {
+  display: contents;
+}
+
+.library-toolbar__count {
+  margin-left: auto;
+}
+
+/* Compact: ten controls share the row, and every line of it is a line the table
+   loses (the Library's height is held, DEC-112). So the buttons take the small
+   type and the small padding, and do not stretch to the hit-target floor the
+   page's primary buttons keep. */
+.library-toolbar .library-toolbar__button {
+  min-width: 0;
+  min-height: 0;
+  padding: calc(var(--space-xs) / 2) var(--space-sm);
+  font-size: var(--font-size-xs);
+  line-height: 1.2;
+}
+
+/* aria-disabled rather than disabled, so the bar's keys still land on it and
+   the reason is readable; it looks and acts as off. */
+.library-toolbar__button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  color: var(--fg-disabled);
+}
+
+.library-toolbar__button[aria-disabled="true"]:hover {
+  filter: none;
+}
+
+.library-toolbar__count {
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--fg-muted);
+}

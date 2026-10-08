@@ -386,3 +386,69 @@ describe("a submenu (ORG-11)", () => {
     expect(screen.getByRole("menu", { name: "Rate" })).toBeInTheDocument();
   });
 });
+
+describe("a submenu inside a submenu (FLW-8)", () => {
+  function nested() {
+    const onRate = vi.fn();
+    const onTag = vi.fn();
+    const view = open({
+      items: [
+        { id: "play", label: "Play", onSelect: vi.fn() },
+        {
+          id: "organize",
+          label: "Organize",
+          onSelect: vi.fn(),
+          items: [
+            { id: "tag", label: "Add tag", onSelect: onTag },
+            {
+              id: "rate",
+              label: "Rate",
+              onSelect: vi.fn(),
+              items: [
+                { id: "one", label: "★", onSelect: () => onRate(1) },
+                { id: "two", label: "★★", onSelect: () => onRate(2) },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    return { ...view, onRate, onTag };
+  }
+
+  it("opens a second level with the pointer, and runs its entry", async () => {
+    const { onRate, onClose } = nested();
+    await userEvent.click(screen.getByRole("menuitem", { name: /Organize/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Rate/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "★★" }));
+    expect(onRate).toHaveBeenCalledWith(2);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("goes in with ArrowRight and back out one level at a time", async () => {
+    const { onRate, onClose } = nested();
+    await userEvent.keyboard("{ArrowDown}{ArrowRight}");
+    await userEvent.keyboard("{ArrowDown}{ArrowRight}");
+    expect(screen.getByRole("menu", { name: "Rate" })).toBeInTheDocument();
+
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(screen.queryByRole("menu", { name: "Rate" })).not.toBeInTheDocument();
+    expect(screen.getByRole("menu", { name: "Organize" })).toBeInTheDocument();
+
+    await userEvent.keyboard("{ArrowRight}{ArrowDown}{Enter}");
+    expect(onRate).toHaveBeenCalledWith(2);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("takes Escape one level at a time", async () => {
+    const { onClose } = nested();
+    await userEvent.keyboard("{ArrowDown}{ArrowRight}{ArrowDown}{ArrowRight}");
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menu", { name: "Rate" })).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menu", { name: "Organize" })).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
+});

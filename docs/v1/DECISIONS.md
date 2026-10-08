@@ -6118,3 +6118,36 @@ and holds the captions level in one place. `npm run mux` puts the user's own cop
 the picture for a private cut; licensed music is never committed or posted.
 
 **Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-217 — The Library's Bar and Tree Bar: Five Precisions to FLW-8 and FLW-10
+
+**Status**: Approved · **Related**: FLW-8, FLW-10, DEC-087, DEC-112, DEC-209, PAGES-05
+
+**Decision**: Five details the Library's selection bar and the Collections tree's bar leave to the
+build are settled, as precisions of FLW-8 and FLW-10 and not as new behavior:
+1. **Duplicate** is offered for a Smart Collection and a Set only. The engine has no plain
+   Collection or folder duplicate, so for those the button is dimmed and says so.
+2. **Review these matches** opens Review on the first selected track, because Review works on
+   one track at a time.
+3. **Check the files are still there** runs where it is, as a job the status strip follows. It
+   does not open Clean.
+4. **Select all with some tracks taken back out** reaches Clean as a list of ids, because Clean's
+   tracks cannot name exceptions. The list is capped at `QUEUE_ACTION_LIMIT` (50,000), the same
+   cap the queue actions use, and when it is cut the Library says "Clean was given the first N of
+   the M tracks selected." Select all with nothing taken out still travels as the question and
+   its count.
+5. **The toolbar's buttons are 30px tall** at 1.5×, under the 44px-scaled hit floor the page's
+   primary buttons keep, because the toolbar is the one place a line costs a table row. In the
+   default window (1,280 × 800 at 1.5×) the Library shows 4 whole rows; a taller button would
+   leave the fourth with 18px of margin or less.
+
+**Reason**: Each was a gap the walkthrough's wording left open, found while building PAGES-05C and
+settled the way the engine and DEC-112's row budget allow.
+
+**Implications**: The spec's selection-bar table and the PAGES-05 outcome note them. The held row
+count in `libraryPage.spec.ts` is 4 on Linux. A change that lowers a toolbar button's height or
+adds a line to the filter row, toolbar row or header re-measures it.
+
+**Decided with**: Claude (a precision of FLW-8 and FLW-10, not a new decision) · **Date**: 2026-10-08

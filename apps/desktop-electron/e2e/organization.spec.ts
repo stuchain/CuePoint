@@ -198,6 +198,9 @@ async function dragRowsOnto(window: Page, rowIndex: number, collectionName: stri
   );
 }
 
+/** Whole Collections nodes the default window shows with six Collections made (measured). */
+const WHOLE_COLLECTION_NODES = 6;
+
 test.describe("Phase 6 end to end (ORG-13)", () => {
   let userDataDir: string;
   let cuepointHome: string;
@@ -252,9 +255,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       const rows = table.getByRole("row").filter({ hasText: /Track/ });
       await rows.nth(0).click();
       await rows.nth(2).click({ modifiers: ["Shift"] });
-      await expect(window.locator(".cp-selection-actions__count")).toHaveText(
-        "3 tracks selected",
-      );
+      await expect(window.locator(".library-toolbar__count")).toContainText("3 selected");
 
       await dragRowsOnto(window, 0, "Openers");
       await expect(window.getByText(/Added 3 tracks to Openers/i).first()).toBeVisible({
@@ -262,7 +263,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       });
 
       await collectionsTree(window).getByText("Openers").click();
-      await expect(window.locator(".cp-filter-bar__count")).toContainText("3 tracks", {
+      await expect(window.locator(".library-toolbar__count")).toContainText("3 tracks", {
         timeout: 30_000,
       });
       // `[data-index]` excludes the header, which carries the same column id.
@@ -304,6 +305,8 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await rows.nth(0).click();
       await rows.nth(2).click({ modifiers: ["Shift"] });
       await rows.nth(0).click({ button: "right" });
+      // The menu's groups are submenus (FLW-8): Organize ▸ holds the tag entries.
+      await window.getByRole("menuitem", { name: "Organize", exact: true }).click();
       await window.getByRole("menuitem", { name: "Add tag…" }).click();
       const picker = window.getByRole("dialog");
       await picker.getByLabel("Type to narrow the list").fill("Peak-time");
@@ -329,6 +332,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // The submenu opens on the parent's click, not on hover: a menu that
       // opened a list under the cursor while it was on its way somewhere else
       // would be a menu that moves when you use it.
+      await window.getByRole("menuitem", { name: "Organize", exact: true }).click();
       await window.getByRole("menuitem", { name: "Rate" }).click();
       await window.getByRole("menuitem", { name: "★★★★", exact: true }).click();
 
@@ -355,7 +359,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await window.locator("#rule").selectOption("is");
       await window.getByLabel("Value").fill("House");
       await window.getByRole("button", { name: "Add", exact: true }).click();
-      await expect(window.locator(".cp-filter-bar__count")).toContainText("6 tracks", {
+      await expect(window.locator(".library-toolbar__count")).toContainText("Showing 6 of 12 tracks", {
         timeout: 30_000,
       });
 
@@ -379,7 +383,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
 
       // It evaluates live rather than holding rows (DEC-061).
       await collectionsTree(window).getByText("House only").click();
-      await expect(window.locator(".cp-filter-bar__count")).toContainText("6 tracks", {
+      await expect(window.locator(".library-toolbar__count")).toContainText("6 tracks", {
         timeout: 30_000,
       });
 
@@ -521,7 +525,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // And the Smart Collection keeps answering over what is left, while the
       // frozen copy of it does not (DEC-061).
       await collectionsTree(window).getByText("House only", { exact: true }).click();
-      await expect(window.locator(".cp-filter-bar__count")).toContainText("5 tracks", {
+      await expect(window.locator(".library-toolbar__count")).toContainText("5 tracks", {
         timeout: 30_000,
       });
       // --------------------------------------------------------------- 10
@@ -572,6 +576,70 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
   });
 
   /**
+   * The Collections pane in the default window (PAGES-05C): 1,280 × 800 at 1.5×
+   * leaves it about 160px wide. Its buttons wrap to a couple of lines, nothing
+   * in it scrolls sideways, and the tree keeps showing nodes instead of giving
+   * its height to its own buttons. Like the Library's held rows, the number is
+   * measured and a change that loses a node here has to say why.
+   */
+  test("keeps the Collections tree on screen beside its buttons at the default size", async () => {
+    test.setTimeout(240_000);
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await importCollection(window, writeExport(workspace, [1, 2, 3, 4]));
+      for (const name of ["Openers", "Warm-up", "Peak", "Closers", "Sunrise", "Late"]) {
+        await window.evaluate(
+          (n) => window.cuepoint!.createCollection!({ name: n, kind: "collection" }),
+          name,
+        );
+      }
+      await window.reload();
+      await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await window.getByRole("link", { name: "Library" }).click();
+      await expect(collectionsTree(window).getByRole("treeitem")).toHaveCount(6, { timeout: 30_000 });
+      await collectionsTree(window).getByText("Openers").click();
+
+      const m = await window.evaluate(() => {
+        const pane = document.querySelector<HTMLElement>(".cp-library-pane")!;
+        const box = pane.getBoundingClientRect();
+        const tree = document.querySelector<HTMLElement>('[role="tree"][aria-label="Collections"]')!;
+        const whole = (el: Element) => {
+          const r = el.getBoundingClientRect();
+          return r.top >= box.top - 0.5 && r.bottom <= box.top + pane.clientHeight + 0.5;
+        };
+        const height = (selector: string) =>
+          Math.round(document.querySelector(selector)!.getBoundingClientRect().height);
+        const lines = (selector: string) =>
+          new Set(
+            [...document.querySelectorAll(selector)].map((b) => Math.round(b.getBoundingClientRect().top)),
+          ).size;
+        return {
+          scale: getComputedStyle(document.documentElement).getPropertyValue("--scale").trim(),
+          window: { width: window.innerWidth, height: window.innerHeight },
+          paneWidth: Math.round(box.width),
+          sideways: pane.scrollWidth - pane.clientWidth,
+          visibleNodes: [...tree.querySelectorAll('[role="treeitem"]')].filter(whole).length,
+          createLines: lines(".cp-collections__create button"),
+          barLines: lines(".cp-collections__bar button"),
+          createHeight: height(".cp-collections__create"),
+          barHeight: height(".cp-collections__bar"),
+        };
+      });
+      console.log("PAGES-05C Collections pane:", JSON.stringify(m));
+      expect(m.scale).toBe("1.5");
+      expect(m.window.width).toBeGreaterThanOrEqual(1270);
+      expect(m.sideways, `the pane scrolls sideways by ${m.sideways}px`).toBeLessThanOrEqual(0);
+      // Two lines at most, for the buttons over the tree and the bar under it.
+      expect(m.createLines).toBeLessThanOrEqual(2);
+      expect(m.barLines).toBeLessThanOrEqual(2);
+      expect(m.visibleNodes, JSON.stringify(m)).toBeGreaterThanOrEqual(WHOLE_COLLECTION_NODES);
+    } finally {
+      await app.close();
+    }
+  });
+
+  /**
    * The phase's seventh acceptance sentence, at the size it names.
    *
    * A change over "everything matching" is the one gesture in Phase 6 that
@@ -598,17 +666,18 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
 
       // Everything matching, which is never a list of ids.
       await window.getByRole("button", { name: "Select all" }).click();
-      await expect(window.locator(".cp-selection-actions__count")).toContainText(
-        "50,000 tracks selected (everything matching)",
+      await expect(window.locator(".library-toolbar__count")).toContainText(
+        "50,000 selected (everything matching)",
       );
 
-      await window.getByRole("button", { name: "Actions…" }).click();
+      await window.getByRole("button", { name: "Organize", exact: true }).click();
       await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
 
       // Above the threshold it asks first, with the number, and says the batch
       // can be reverted as one from Activity (DEC-008, CLEAN-13).
       const confirm = window.getByRole("dialog");
       await expect(confirm).toContainText("Favorite 50,000 tracks?");
+      await expect(confirm).toContainText("Change 50,000 tracks?");
       await expect(confirm).toContainText(/undone from Activity/i);
       await confirm.getByRole("button", { name: "Apply" }).click();
 
@@ -654,10 +723,10 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // the whole batch, and one batch id across the history it wrote. The
       // selection is still what it was — stopping the work does not un-choose
       // the tracks — so this picks up where the last one left off.
-      await expect(window.locator(".cp-selection-actions__count")).toContainText(
+      await expect(window.locator(".library-toolbar__count")).toContainText(
         "(everything matching)",
       );
-      await window.getByRole("button", { name: "Actions…" }).click();
+      await window.getByRole("button", { name: "Organize", exact: true }).click();
       await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
       await window.getByRole("dialog").getByRole("button", { name: "Apply" }).click();
 

@@ -68,10 +68,77 @@
   outline-offset: 2px;
 }
 
-.cp-collections__actions {
+/* "New Collection", "New Set" and "New folder", said in words over the tree
+   (FLW-10). They wrap rather than clip in a narrow pane. */
+.cp-collections__create {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xs);
-  margin-left: auto;
+  padding: var(--space-xs);
+}
+
+.cp-collections__create {
+  align-items: center;
+}
+
+.cp-collections__create-word {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-collections__make,
+.cp-collections__bar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: calc(var(--space-xs) / 2) calc(var(--space-xs) * 0.75);
+  border: var(--border-width) solid var(--border-muted);
+  background: var(--bg-toolbar);
+  color: var(--fg-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  /* Text only and never broken: in the default window the pane is ~160px wide,
+     so the buttons wrap onto at most two lines instead of one each. */
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* The bar's buttons carry whole words ("Duplicate"), so they spend the least
+   on padding: Rename and Duplicate share a line in a pane about 170px wide. */
+.cp-collections__bar-button {
+  padding: calc(var(--space-xs) / 2);
+}
+
+.cp-collections__make:hover,
+.cp-collections__bar-button:hover {
+  border-color: var(--border-outline);
+}
+
+.cp-collections__make:focus-visible,
+.cp-collections__bar-button:focus-visible {
+  outline: var(--border-width) solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+/* The bar for the selected node: always there, so the tree does not move when
+   a node is selected. aria-disabled, so the arrow keys still land on it. */
+.cp-collections__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space-xs) / 2);
+  padding: calc(var(--space-xs) / 2);
+  border-top: var(--hairline) solid var(--border-muted);
+}
+
+.cp-collections__bar-button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  color: var(--fg-disabled);
+}
+
+.cp-collections__bar-button[aria-disabled="true"]:hover {
+  border-color: var(--border-muted);
 }
 
 .cp-collections__action {
@@ -113,6 +180,27 @@
   display: inline-flex;
 }
 
+/* In the default window the pane is about 160px wide, and a row that grew by
+   its buttons scrolled the whole pane sideways while the pointer rested on it.
+   So the buttons take the place of the count, and are no wider than their
+   glyphs need. */
+.cp-collections .cp-playlist-pane__row:hover .cp-playlist-pane__count,
+.cp-collections .cp-playlist-pane__row:focus-within .cp-playlist-pane__count {
+  display: none;
+}
+
+.cp-collections .cp-collections__action {
+  padding: 2px 2px;
+}
+
+.cp-collections .cp-collections__row-actions {
+  margin-left: 0;
+}
+
+.cp-collections .cp-playlist-pane__row {
+  padding: 0 var(--space-xs);
+}
+
 /*
  * The name has to survive its own controls (ORG-13).
  *
@@ -126,7 +214,7 @@
  * smaller loss than a row with no name on it.
  */
 .cp-collections .cp-playlist-pane__name {
-  min-width: 6ch;
+  min-width: 3ch;
 }
 
 /* A Smart Collection whose saved rules cannot be run (ORG-06). */

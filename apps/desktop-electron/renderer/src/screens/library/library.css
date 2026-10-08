@@ -196,7 +196,9 @@
  */
 .library-screen__body {
   display: grid;
-  grid-template-columns: clamp(140px, 22%, 16rem) minmax(0, 1fr);
+  /* 24%, not 22%: at 1.5× in the default window 22% left the tree's buttons and
+     its bar one to a line (PAGES-05C); the table keeps what its toolbar needs. */
+  grid-template-columns: clamp(140px, 24%, 16rem) minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
 }
@@ -204,8 +206,8 @@
 /*
  * The table gets a floor.
  *
- * With `minmax(0, 1fr)` the filter bar, the selection strip and the columns
- * row take what they need first, and in a small window they took all of it —
+ * With `minmax(0, 1fr)` the filter bar and the toolbar row take what they need
+ * first, and in a small window they took all of it —
  * leaving a table exactly zero pixels tall, holding the right rows, invisible.
  * A floor means the column overflows instead, and the column scrolls, which is
  * a thing a user can see and deal with.
@@ -235,7 +237,7 @@
 .library-screen__main {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(calc(140px * var(--scale)), 1fr) auto auto;
+  grid-template-rows: auto auto minmax(calc(140px * var(--scale)), 1fr);
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
@@ -268,14 +270,6 @@
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
-}
-
-.library-screen__columns {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
-  border-top: var(--hairline) solid var(--border-muted);
 }
 
 /* The table's empty state, which is a small paragraph rather than a line

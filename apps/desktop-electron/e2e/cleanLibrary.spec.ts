@@ -268,17 +268,28 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await expect(row(window, "Tone Two")).toBeVisible({ timeout: 30_000 });
 
       await window.getByRole("button", { name: "Select all" }).click();
-      await window.getByRole("button", { name: "Actions…" }).click();
+      // The bar's groups hold the entries the right-click menu does (FLW-8): Beatport ▸
+      // and Fix ▸ open Clean with the selection.
+      const bar = window.getByRole("toolbar", { name: "Selected tracks" });
+      await bar.getByRole("button", { name: "Beatport", exact: true }).click();
+      const beatport = window.getByRole("menu");
+      for (const entry of ["Match tracks…", "Review these matches", "Use Beatport's values…"]) {
+        await expect(beatport.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
+      }
+      await window.keyboard.press("Escape");
+      await bar.getByRole("button", { name: "Fix", exact: true }).click();
       const menu = window.getByRole("menu");
-      for (const entry of ["Match on Beatport", "Accept match", "Edit values…", "Save changes into the files…"]) {
+      for (const entry of ["Edit values…", "Save changes into the files…", "Check the files are still there"]) {
         await expect(menu.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
       }
       await menu.getByRole("menuitem", { name: "Edit values…" }).click();
+      // Clean's Fix values opens with the three tracks chosen, and the editor at once.
       const dialog = window.getByRole("dialog", { name: "Edit values" });
       await dialog.getByRole("textbox", { name: "BPM value" }).fill("126");
       await dialog.getByRole("button", { name: "Apply" }).click();
       await expect(window.getByText(/Set the BPM to 126 on 3 tracks/)).toBeVisible({ timeout: 15_000 });
-      await expect(row(window, "Tone Two")).toContainText("126.0");
+      await window.getByRole("link", { name: "Library" }).click();
+      await expect(row(window, "Tone Two")).toContainText("126.0", { timeout: 15_000 });
 
       // Reverted as one, from the batch's own entry.
       await window.keyboard.press("Control+Shift+A");
@@ -335,7 +346,9 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.reload();
       await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
       await row(window, "Tone One").getByText("Tone One").click({ button: "right" });
-      await window.getByRole("menu").getByRole("menuitem", { name: "Save changes into the files…" }).click();
+      // The menu's groups are submenus (FLW-8): Fix ▸ holds it.
+      await window.getByRole("menu").getByRole("menuitem", { name: "Fix", exact: true }).click();
+      await window.getByRole("menu", { name: "Fix" }).getByRole("menuitem", { name: "Save changes into the files…" }).click();
 
       const dialog = window.getByRole("dialog", { name: "Save changes into the files" });
       // Nothing can be written before a preview has answered.

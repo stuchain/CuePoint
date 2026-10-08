@@ -146,7 +146,6 @@ function show(
       onFiltersChange={onFiltersChange}
       query=""
       onQueryChange={onQueryChange}
-      total={0}
       {...props}
     />,
   );
@@ -180,18 +179,6 @@ describe("the search box", () => {
   });
 });
 
-describe("the count", () => {
-  it("is the engine's number, not a count of rows in hand", () => {
-    show({ total: 47913 });
-    expect(screen.getByRole("status")).toHaveTextContent("47,913 tracks");
-  });
-
-  it("reads properly for one track", () => {
-    show({ total: 1 });
-    expect(screen.getByRole("status")).toHaveTextContent("1 track");
-  });
-});
-
 describe("being asked to open the form (LIB-5)", () => {
   it("stays closed until asked", () => {
     show({ openAddToken: 0 });
@@ -206,7 +193,6 @@ describe("being asked to open the form (LIB-5)", () => {
         onFiltersChange={vi.fn()}
         query=""
         onQueryChange={vi.fn()}
-        total={0}
         openAddToken={0}
       />,
     );
@@ -216,7 +202,6 @@ describe("being asked to open the form (LIB-5)", () => {
       onFiltersChange: vi.fn(),
       query: "",
       onQueryChange: vi.fn(),
-      total: 0,
     };
 
     rerender(<FilterBar {...props} openAddToken={1} />);
@@ -505,7 +490,6 @@ describe("before the vocabulary arrives", () => {
         onFiltersChange={vi.fn()}
         query=""
         onQueryChange={vi.fn()}
-        total={0}
       />,
     );
     openBuilder();
@@ -1171,7 +1155,6 @@ describe("a chip that names one artist or label (DISCOVER-11)", () => {
         onFiltersChange={vi.fn()}
         query=""
         onQueryChange={vi.fn()}
-        total={3}
         onOpenPage={onOpenPage}
       />,
     );

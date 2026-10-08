@@ -64,12 +64,14 @@ import {
 } from "./screens/discover/discoverLinks";
 import {
   cleanFixOpening,
+  cleanFixState,
   cleanMatchOpening,
   cleanMatchState,
   cleanOpening,
   cleanSectionOpening,
   cleanSectionState,
   cleanTrackState,
+  type FixAction,
 } from "./screens/clean/cleanLink";
 import type { CleanTracks } from "./screens/clean/cleanTracks";
 import { MotionProvider } from "./tokens/MotionContext";
@@ -183,6 +185,13 @@ function AppShell() {
     (tracks?: CleanTracks) => navigate("/clean", { state: cleanMatchState(tracks) }),
     [navigate],
   );
+  // The Library's Beatport ▸ and Fix ▸ (FLW-8) open Fix values with the
+  // selected tracks chosen, and may start an action at once (FLW-12).
+  const openFix = useCallback(
+    (tracks: CleanTracks, action: FixAction) =>
+      navigate("/clean", { state: cleanFixState(tracks, action) }),
+    [navigate],
+  );
   const prepareScreen = (
     <PrepareScreen
       onOpenInClean={openInClean}
@@ -221,6 +230,7 @@ function AppShell() {
             onOpenInClean={openInClean}
             onOpenMissingFiles={openMissingFiles}
             onOpenMatch={openMatching}
+            onOpenFix={openFix}
             onOpenEntity={openEntity}
             onOpenSimilar={openSimilar}
             onOpenInPrepare={openInPrepare}
@@ -249,6 +259,7 @@ function AppShell() {
             onOpenInClean={openInClean}
             onOpenMissingFiles={openMissingFiles}
             onOpenMatch={openMatching}
+            onOpenFix={openFix}
             onOpenEntity={openEntity}
             onOpenSimilar={openSimilar}
             onOpenInPrepare={openInPrepare}

@@ -103,7 +103,6 @@ function bar(onFiltersChange = vi.fn(), onRequestFacet = vi.fn()) {
       onFiltersChange={onFiltersChange}
       query=""
       onQueryChange={() => undefined}
-      total={10}
       onRequestFacet={onRequestFacet}
     />,
   );

@@ -20,7 +20,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   Button,
-  Modal,
   Panel,
   TrackContextMenu,
   type TrackContextMenuItem,
@@ -54,7 +53,7 @@ import { LibraryPane } from "./LibraryPane";
 import { RefreshPreviewDialog } from "./RefreshPreviewDialog";
 import { RekordboxExportDialog } from "./RekordboxExportDialog";
 import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
-import { SelectionActions } from "./SelectionActions";
+import { LibraryToolbar } from "./LibraryToolbar";
 import { cleanTracksOf } from "./trackDetailsActions";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
 import { TrackDetailPanel } from "./TrackDetailPanel";
@@ -101,24 +100,32 @@ import { LibraryEmptyState } from "./LibraryEmptyState";
 import { LibraryKeyNote } from "./LibraryKeyNote";
 import { LibraryNoKeyNote } from "./LibraryNoKeyNote";
 import type { CleanTracks } from "../clean/cleanTracks";
+import type { FixAction } from "../clean/cleanLink";
 import { LibraryReadyNote } from "./LibraryReadyNote";
 import { isReadyNoteOpen, readImportedAt, rememberImport } from "./libraryNoticeMemory";
 import type { LibraryOpening, TrackOpening } from "./libraryLink";
-import { batchConsequence, batchSelection, type BatchAction } from "./libraryBatch";
-import { cleanMenuItems } from "./libraryClean";
-import { creditsFor, discoverMenuItems } from "./libraryDiscover";
-import { organizationMenuItems } from "./trackMenu";
+import { batchSelection, type BatchAction } from "./libraryBatch";
+import { cleanCapLine, cleanTracksFor } from "./libraryClean";
+import { creditsFor } from "./libraryDiscover";
+import {
+  menuFromGroups,
+  trackActionGroups,
+  type TrackActionGroup,
+  type TrackActionGroupId,
+} from "./trackActions";
+import { BatchConfirmDialog } from "./BatchConfirmDialog";
 import { useLibraryBatch } from "./useLibraryBatch";
 import { useLibraryClean } from "./useLibraryClean";
 import { useLibraryChanges } from "../../api/libraryChanges";
 import { revealTrack } from "../clean/revealTrack";
 import { forgetWaveforms } from "../../components/waveform/waveformCache";
 import { useCollectionTree } from "./useCollectionTree";
+import { useScopeTotal } from "./useScopeTotal";
 import { followJob } from "./followJob";
 import { appliedLine, jobErrorMessage } from "./libraryFormat";
 import { DEFAULT_LIBRARY_QUERY, type LibraryQuery, queryKey } from "./libraryQuery";
 import { copySummary, gatherTracksAsText, writeClipboard } from "./trackClipboard";
-import { EMPTY_SELECTION, isSelected, onlySelectedId, selectAll } from "./trackSelection";
+import { EMPTY_SELECTION, isSelected, onlySelectedId, selectAll, selectedRowIndex } from "./trackSelection";
 import { useFacet, useFilterVocabulary, useQuickFacets } from "./useFilterVocabulary";
 import { openSource, withSource } from "./savedScope";
 import { sourceKey } from "./filterText";
@@ -218,6 +225,13 @@ export interface LibraryScreenProps {
    */
   onOpenMatch?: (tracks?: CleanTracks) => void;
   /**
+   * Clean's Fix values with these tracks chosen (FLW-12): the selection bar's
+   * Beatport ▸ and Fix ▸, and the right-click menu's. An action starts that
+   * dialog at once. A prop for `focus`'s reason; absent, those entries are left
+   * out.
+   */
+  onOpenFix?: (tracks: CleanTracks, action: FixAction) => void;
+  /**
    * Open an artist's or a label's page (DISCOVER-11): from the Inspector's
    * credits, a filter chip and the operations list. A prop for `focus`'s
    * reason. Absent, none of them is offered.
@@ -244,6 +258,7 @@ export function LibraryScreen({
   onOpenInClean,
   onOpenMissingFiles,
   onOpenMatch,
+  onOpenFix,
   onOpenEntity,
   onOpenSimilar,
   onOpenInPrepare,
@@ -256,7 +271,6 @@ export function LibraryScreen({
   const [lastApplied, setLastApplied] = useState<RefreshApplied | null>(null);
   const [query, setQuery] = useState<LibraryQuery>(DEFAULT_LIBRARY_QUERY);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [copying, setCopying] = useState(false);
   /**
    * The Rekordbox export, open, and what it opened with ticked (EXPORT-07).
    * One dialog for both ways in — the header and a Collection's menu — so
@@ -333,6 +347,7 @@ export function LibraryScreen({
   );
   const window_ = useTrackWindow(query);
   const selection = useTrackSelection(query, window_.total, window_.source.getRow);
+  const scopeTotal = useScopeTotal(query, window_.total, window_.identity.split("\u0000")[0] ?? "");
   const playback = useLibraryPlayback({
     query,
     onMessage: (message) => push(message, "info"),
@@ -343,9 +358,13 @@ export function LibraryScreen({
     rows: LibraryTrackRow[];
     index: number;
     target: BatchTarget;
-    /** A row's menu carries playback; the toolbar's carries the actions only. */
+    /** A row's menu is every group; the bar's is one group's entries. */
     kind: "row" | "selection";
-    /** The one track's credits, for its Artist and Label pages (DISCOVER-11). */
+    /** The bar's group, for a menu opened from the bar. */
+    group: TrackActionGroupId | null;
+    /** The first track acted on, for Explore and Review (FLW-8). */
+    first: number | null;
+    /** The first track's credits, for its Artist and Label pages (DISCOVER-11). */
     credits: TrackCreditLinks | null;
   } | null>(null);
   const [picker, setPicker] = useState<{
@@ -675,24 +694,18 @@ export function LibraryScreen({
    * Copy rows as text, saying what was copied.
    *
    * Takes a gatherer rather than rows because the selection's rows are fetched
-   * (they can name tracks no window holds) while the menu already has its own —
-   * and the busy state has to cover the fetch, not start after it.
+   * (they can name tracks no window holds) while the menu already has its own.
    */
   const copyRows = useCallback(
     async (gather: () => Promise<LibraryTrackRow[]>, requested: number) => {
-      setCopying(true);
-      try {
-        const rows = await gather();
-        const text = await gatherTracksAsText(columns.visible, rows);
-        const wrote = text === "" ? false : await writeClipboard(text);
-        if (!mounted.current) return;
-        push(
-          wrote ? copySummary(rows.length, requested) : "Could not copy to the clipboard",
-          wrote ? "success" : "warning",
-        );
-      } finally {
-        if (mounted.current) setCopying(false);
-      }
+      const rows = await gather();
+      const text = await gatherTracksAsText(columns.visible, rows);
+      const wrote = text === "" ? false : await writeClipboard(text);
+      if (!mounted.current) return;
+      push(
+        wrote ? copySummary(rows.length, requested) : "Could not copy to the clipboard",
+        wrote ? "success" : "warning",
+      );
     },
     [columns.visible, push],
   );
@@ -703,20 +716,18 @@ export function LibraryScreen({
   );
 
   /**
-   * The credits the Discover entries need, for a target of one known track,
-   * or null when no entry needs them.
+   * The credits the Explore entries need, for the first track acted on, or
+   * null when no entry needs them.
    *
    * Read before the menu opens, as a selection's rows are, so the menu never
    * changes shape under the pointer. A menu that needs nothing read opens at
-   * once, as it always has: only the one-track menu of a page that can open
-   * pages waits.
+   * once, as it always has: only a menu of a page that can open pages waits.
+   * With several tracks Explore is about the first (FLW-8).
    */
   const discoverCredits = useCallback(
-    (target: BatchTarget): Promise<TrackCreditLinks | null> | null => {
-      if (!onOpenEntity || !onOpenSimilar || target.count !== 1 || target.trackId == null) {
-        return null;
-      }
-      return creditsFor(target.trackId, detail.detail);
+    (first: number | null): Promise<TrackCreditLinks | null> | null => {
+      if (!onOpenEntity || !onOpenSimilar || first == null) return null;
+      return creditsFor(first, detail.detail);
     },
     [detail.detail, onOpenEntity, onOpenSimilar],
   );
@@ -750,9 +761,10 @@ export function LibraryScreen({
               count: 1,
               trackId: row.id,
             };
-      const reading = discoverCredits(target);
+      const first = rows[0]?.id ?? row.id ?? null;
+      const reading = discoverCredits(first);
       const credits = reading ? await reading : null;
-      setMenu({ x, y, rows, index, target, kind: "row", credits });
+      setMenu({ x, y, rows, index, target, kind: "row", group: null, first, credits });
     },
     [discoverCredits, query, selection],
   );
@@ -910,7 +922,7 @@ export function LibraryScreen({
   );
 
   /**
-   * "New Set from the selection…" (PREP-12, DEC-063): the tracks the menu acts
+   * "New Set from these…" (PREP-12, DEC-063): the tracks the bar or menu acts
    * on, in the table's order, become a Set's one chapter. A Set is an order
    * and a selection is a description, so the ids are read once, here, and the
    * dialog shows how many before anything is written. Too many is refused
@@ -935,125 +947,233 @@ export function LibraryScreen({
     [push, scopedCollection, selection],
   );
 
-  /** The organization entries, for whichever surface asked for them. */
-  const actionItems = useCallback(
-    (target: BatchTarget, credits: TrackCreditLinks | null): TrackContextMenuItem[] => [
-      // Discover's ways out of one track (DISCOVER-11), in the same list.
-      ...(onOpenEntity && onOpenSimilar && target.trackId != null
-        ? discoverMenuItems(
-            { count: target.count, credits },
-            {
-              onSimilar: () => target.trackId != null && onOpenSimilar(target.trackId),
-              onOpenPage: onOpenEntity,
-            },
-          )
-        : []),
-      ...organizationMenuItems(
+  const revealPath = useMemo(() => {
+    const id = onlySelectedId(selection.selection, window_.total);
+    if (id == null) return null;
+    for (let index = 0; index < window_.total; index += 1) {
+      const row = window_.source.getRow(index);
+      if (row?.id === id) return row.file_path;
+    }
+    return detail.detail?.track.id === id ? detail.detail.track.file_path : null;
+  }, [detail.detail, selection.selection, window_.source, window_.total]);
+
+  /**
+   * Hand tracks to Clean (FLW-8, FLW-12): the selection as ids, or as the
+   * question and its count when "everything matching" is selected.
+   */
+  const openInClean = useCallback(
+    async (target: BatchTarget, open: (tracks: CleanTracks) => void) => {
+      const tracks = await cleanTracksFor(
+        target.selection,
+        target.count,
+        selection.gatherIds,
+        QUEUE_ACTION_LIMIT,
+      );
+      if (!tracks || !mounted.current) return;
+      // "Everything matching" with some taken back out travels as ids; past the
+      // cap it is the first of them, and the page says so rather than quietly
+      // working on fewer tracks than were selected.
+      if ("ids" in tracks && target.count > tracks.ids.length && !target.selection.track_ids) {
+        push(cleanCapLine(tracks.ids.length, target.count), "warning");
+      }
+      open(tracks);
+    },
+    [push, selection.gatherIds],
+  );
+
+  /**
+   * Everything that can be done to the tracks a menu is about, as the six
+   * groups (FLW-8). The right-click menu shows them end to end and the bar
+   * shows each as a button, so there is one list and they cannot drift.
+   */
+  const groupsFor = useCallback(
+    (state: NonNullable<typeof menu>): TrackActionGroup[] => {
+      const { target, rows, index, first, credits, kind } = state;
+      const checking = clean.handlersFor(target);
+      const path = kind === "row" ? (rows.length === 1 ? rows[0].file_path : null) : revealPath;
+      const revealId =
+        kind === "row" ? rows[0]?.id : onlySelectedId(selection.selection, window_.total);
+      return trackActionGroups(
         {
           count: target.count,
           collection:
             scopedCollection && !scopedSet
               ? { id: scopedCollection.id, name: scopedCollection.name }
               : null,
+          credits,
+          revealable: target.count === 1 && Boolean(path),
         },
         {
-          onAddToCollection: () => openPicker("collection", target),
-          onAddToSet: setList.available ? () => openPicker("set", target) : undefined,
-          onNewSetFromSelection: setList.available
-            ? () => void openNewSetFromSelection(target)
-            : undefined,
-          onRemoveFromCollection: () =>
-            scopedCollection &&
-            runAction(
-              {
-                kind: "remove_from_collection",
-                value: scopedCollection.id,
-                target: scopedCollection.name,
-              },
-              target,
-            ),
-          onAddTag: () => openPicker("tag-add", target),
-          onRemoveTag: () => openPicker("tag-remove", target),
-          onRate: (starsWanted) =>
-            runAction(
-              {
-                kind: "set_rating",
-                value: starsWanted,
-                target: starsWanted == null ? "no rating" : String(starsWanted),
-              },
-              target,
-            ),
-          onFavorite: (favorite) =>
-            runAction({ kind: "set_favorite", value: favorite, target: "favorite" }, target),
+          play: {
+            // One row plays the view behind it (DEC-012); a selection *is* the
+            // queue, because someone who picked five tracks meant those five.
+            onPlay: () =>
+              void (target.count === 1 && index >= 0
+                ? playback.playRow(index)
+                : playback.playRows(rows)),
+            onPlayNext: () => void playback.playNext(rows),
+            onAddToQueue: () => void playback.addToQueue(rows),
+          },
+          organization: {
+            onAddToCollection: () => openPicker("collection", target),
+            onAddToSet: setList.available ? () => openPicker("set", target) : undefined,
+            onNewSetFromSelection: setList.available
+              ? () => void openNewSetFromSelection(target)
+              : undefined,
+            onRemoveFromCollection: () =>
+              scopedCollection &&
+              runAction(
+                {
+                  kind: "remove_from_collection",
+                  value: scopedCollection.id,
+                  target: scopedCollection.name,
+                },
+                target,
+              ),
+            onAddTag: () => openPicker("tag-add", target),
+            onRemoveTag: () => openPicker("tag-remove", target),
+            onRate: (starsWanted) =>
+              runAction(
+                {
+                  kind: "set_rating",
+                  value: starsWanted,
+                  target: starsWanted == null ? "no rating" : String(starsWanted),
+                },
+                target,
+              ),
+            onFavorite: (favorite) =>
+              runAction({ kind: "set_favorite", value: favorite, target: "favorite" }, target),
+          },
+          // Discover's ways out of a track (DISCOVER-11): the first one acted on.
+          explore:
+            onOpenEntity && onOpenSimilar && first != null
+              ? { onSimilar: () => onOpenSimilar(first), onOpenPage: onOpenEntity }
+              : undefined,
+          // Clean opens with the tracks; deciding a match is Review's (FLW-2).
+          beatport: {
+            onMatch: onOpenMatch
+              ? () => void openInClean(target, (tracks) => onOpenMatch(tracks))
+              : undefined,
+            onReview: onOpenInClean && first != null ? () => onOpenInClean(first) : undefined,
+            onUseBeatport: onOpenFix
+              ? () => void openInClean(target, (tracks) => onOpenFix(tracks, "beatport"))
+              : undefined,
+          },
+          fix: {
+            onEdit: onOpenFix
+              ? () => void openInClean(target, (tracks) => onOpenFix(tracks, "edit"))
+              : undefined,
+            onWriteTags: onOpenFix
+              ? () => void openInClean(target, (tracks) => onOpenFix(tracks, "save"))
+              : undefined,
+            onCheckFiles: checking.onCheckFiles,
+          },
+          more: {
+            // The menu's rows, not the selection's: right-clicking outside a
+            // selection acts on the row under the pointer, and copy is no
+            // exception. COPY_LIMIT still applies — the queue's cap is ten
+            // times the clipboard's, and 50,000 rows of text is not a copy
+            // anyone meant.
+            onCopy: () =>
+              void (kind === "row"
+                ? copyRows(async () => rows.slice(0, COPY_LIMIT), rows.length)
+                : handleCopy()),
+            onReveal: path ? () => reveal(revealId, path) : null,
+          },
         },
-      ),
-      // Clean's entries (CLEAN-13), in the same list both surfaces render.
-      ...cleanMenuItems({ count: target.count }, clean.handlersFor(target)),
-    ],
+      );
+    },
     [
       clean,
+      copyRows,
+      handleCopy,
       onOpenEntity,
+      onOpenFix,
+      onOpenInClean,
+      onOpenMatch,
       onOpenSimilar,
+      openInClean,
       openNewSetFromSelection,
       openPicker,
+      playback,
+      reveal,
+      revealPath,
       runAction,
       scopedCollection,
       scopedSet,
+      selection.selection,
       setList.available,
+      window_.total,
     ],
   );
 
   const menuItems = useMemo((): TrackContextMenuItem[] => {
     if (!menu) return [];
-    const organization = actionItems(menu.target, menu.credits);
-    if (menu.kind === "selection") {
-      // Nothing above them here, so the first entry's divider would be a line
-      // along the top of the menu.
-      return organization.map((item, at) =>
-        at === 0 ? { ...item, separatorBefore: false } : item,
-      );
-    }
-    const { rows, index } = menu;
-    const many = rows.length > 1;
-    const path = rows.length === 1 ? rows[0].file_path : null;
-    return [
-      {
-        id: "play",
-        // One row plays the view behind it (DEC-012); a selection *is* the
-        // queue, because someone who picked five tracks meant those five.
-        label: many ? `Play ${rows.length.toLocaleString()} tracks` : "Play",
-        onSelect: () => void (many ? playback.playRows(rows) : playback.playRow(index)),
-      },
-      {
-        id: "play-next",
-        label: "Play next",
-        onSelect: () => void playback.playNext(rows),
-      },
-      {
-        id: "add-to-queue",
-        label: "Add to queue",
-        onSelect: () => void playback.addToQueue(rows),
-      },
-      {
-        id: "reveal",
-        label: "Show in folder",
-        separatorBefore: true,
-        disabled: !path,
-        onSelect: () => path && reveal(rows[0]?.id, path),
-      },
-      {
-        id: "copy",
-        label: many ? `Copy ${rows.length.toLocaleString()} tracks` : "Copy",
-        // The menu's rows, not the selection's: right-clicking outside a
-        // selection acts on the row under the pointer, and copy is no
-        // exception. COPY_LIMIT still applies — the queue's cap is ten times
-        // the clipboard's, and 50,000 rows of text is not a copy anyone meant.
-        onSelect: () =>
-          void copyRows(async () => rows.slice(0, COPY_LIMIT), rows.length),
-      },
-      ...organization,
-    ];
-  }, [actionItems, copyRows, menu, playback, reveal]);
+    const groups = groupsFor(menu);
+    // The bar opens one group; a row's menu is all of them.
+    if (menu.group) return groups.find((group) => group.id === menu.group)?.items ?? [];
+    return menuFromGroups(groups);
+  }, [groupsFor, menu]);
+
+  /** The tracks the bar acts on: the selection as it is now (FLW-8). */
+  const barTarget = useCallback(
+    (): BatchTarget => ({
+      selection: batchSelection(selection.selection, query),
+      count: selection.count,
+      trackId: selection.count === 1 ? onlySelectedId(selection.selection, window_.total) : null,
+    }),
+    [query, selection.count, selection.selection, window_.total],
+  );
+
+  /** The bar's six buttons, as they stand for this selection. */
+  const barGroups = groupsFor({
+    x: 0,
+    y: 0,
+    rows: [],
+    index: -1,
+    target: barTarget(),
+    kind: "selection",
+    group: null,
+    // Only whether there is a track: the menu is built when a group opens, with
+    // the real first track. 0 keeps Explore and Review from reading as absent.
+    first: selection.count > 0 ? 0 : null,
+    credits: null,
+  });
+
+  /**
+   * Open a group of the bar under its button. What a group needs is read first,
+   * as a row's menu reads its credits, so the menu never changes under the
+   * pointer: the rows to queue for Play, the first track for Explore and Review.
+   */
+  const openGroup = useCallback(
+    async (id: TrackActionGroupId, anchor: { x: number; y: number }) => {
+      const target = barTarget();
+      const needsFirst = id === "explore" || id === "beatport";
+      const rows = id === "play" ? await selection.gatherRows(QUEUE_ACTION_LIMIT) : [];
+      const first = needsFirst
+        ? (target.trackId ?? (await selection.gatherIds(1))[0] ?? null)
+        : null;
+      const reading = id === "explore" ? discoverCredits(first) : null;
+      const credits = reading ? await reading : null;
+      if (!mounted.current) return;
+      setMenu({
+        x: anchor.x,
+        y: anchor.y,
+        rows,
+        // One selected track plays the view behind it, as a click on it does.
+        index:
+          selection.count === 1
+            ? selectedRowIndex(selection.selection, window_.total, (at) => window_.source.getRow(at)?.id)
+            : -1,
+        target,
+        kind: "selection",
+        group: id,
+        first,
+        credits,
+      });
+    },
+    [barTarget, discoverCredits, selection, window_.source, window_.total],
+  );
 
   /**
    * Tracks dropped on a Collection in the pane (ORG-09's target, ORG-11's source).
@@ -1092,9 +1212,9 @@ export function LibraryScreen({
    * reading the whole membership, which is why exactly one row moves and why
    * every other case is refused out loud rather than quietly.
    */
-  const reorderTo = useCallback(
-    async (toIndex: number, transfer: DataTransfer) => {
-      const allowed = canReorder(
+  const reorderCheck = useCallback(
+    () =>
+      canReorder(
         {
           scope: query.scope,
           collectionId: query.collectionId,
@@ -1104,7 +1224,44 @@ export function LibraryScreen({
           filtered: Boolean(query.filters && query.filters.rules.length > 0),
         },
         scopedCollection,
-      );
+      ),
+    [query, scopedCollection],
+  );
+
+  /**
+   * Move the Collection's entry at row `from` to the position it should end at.
+   * The caller has already asked `canReorder`; with no duplicates and no filter,
+   * both of which that insists on, a row's index is its position.
+   */
+  const moveEntry = useCallback(
+    async (from: number, position: number): Promise<boolean> => {
+      const read = window.cuepoint?.getCollectionEntries;
+      const write = window.cuepoint?.reorderCollectionEntry;
+      if (!read || !write || query.collectionId == null) return false;
+      try {
+        // One entry, at the position the move started from.
+        const page = await read({ collectionId: query.collectionId, offset: from, limit: 1 });
+        const entry = page.entries[0];
+        if (!entry) return false;
+        await write({ entry_id: entry.id, position });
+        window_.reload();
+        collections.reload();
+        return true;
+      } catch (error) {
+        reportUnexpected(error);
+        push(
+          error instanceof Error ? error.message : "Could not move that track.",
+          "warning",
+        );
+        return false;
+      }
+    },
+    [collections, push, query.collectionId, window_],
+  );
+
+  const reorderTo = useCallback(
+    async (toIndex: number, transfer: DataTransfer) => {
+      const allowed = reorderCheck();
       if (!allowed.ok) {
         push(allowed.why, "warning");
         return;
@@ -1118,33 +1275,35 @@ export function LibraryScreen({
         return;
       }
 
-      const read = window.cuepoint?.getCollectionEntries;
-      const write = window.cuepoint?.reorderCollectionEntry;
-      if (!read || !write || query.collectionId == null) return;
-
-      try {
-        // One entry, at the position the drag started from. With no duplicates
-        // and no filter — both of which `canReorder` has just insisted on — a
-        // row's index is its position in the Collection.
-        const page = await read({
-          collectionId: query.collectionId,
-          offset: from,
-          limit: 1,
-        });
-        const entry = page.entries[0];
-        if (!entry) return;
-        await write({ entry_id: entry.id, position: movedPosition(from, toIndex) });
-        window_.reload();
-        collections.reload();
-      } catch (error) {
-        reportUnexpected(error);
-        push(
-          error instanceof Error ? error.message : "Could not move that track.",
-          "warning",
-        );
-      }
+      await moveEntry(from, movedPosition(from, toIndex));
     },
-    [collections, push, query, scopedCollection, window_],
+    [moveEntry, push, reorderCheck],
+  );
+
+  /**
+   * Alt+↑ and Alt+↓ on the selected row (FLW-10): the keyboard's way to move a
+   * Collection's track, with the drag's rules and its refusals. The selection
+   * follows the track to where it landed.
+   */
+  const moveRowBy = useCallback(
+    async (index: number, delta: -1 | 1) => {
+      const allowed = reorderCheck();
+      if (!allowed.ok) {
+        push(allowed.why, "warning");
+        return;
+      }
+      if (selection.count !== 1) {
+        push("Tracks are rearranged one at a time.", "warning");
+        return;
+      }
+      const target = index + delta;
+      if (target < 0 || target >= window_.total) return;
+      const id = onlySelectedId(selection.selection, window_.total);
+      if (!(await moveEntry(index, target)) || id == null || !mounted.current) return;
+      const landed = await selection.pickTrack(id, query);
+      if (landed >= 0 && mounted.current) setScrollTo(landed);
+    },
+    [moveEntry, push, query, reorderCheck, selection, window_.total],
   );
 
   const saveTag = useCallback(
@@ -1682,16 +1841,6 @@ export function LibraryScreen({
 
   const emptyState = <LibraryEmptyState view={empty} onAction={doEmptyAction} />;
 
-  const revealPath = useMemo(() => {
-    const id = onlySelectedId(selection.selection, window_.total);
-    if (id == null) return null;
-    for (let index = 0; index < window_.total; index += 1) {
-      const row = window_.source.getRow(index);
-      if (row?.id === id) return row.file_path;
-    }
-    return detail.detail?.track.id === id ? detail.detail.track.file_path : null;
-  }, [detail.detail, selection.selection, window_.source, window_.total]);
-
   const selectedKeys = useMemo(() => {
     const keys = new Set<number>();
     for (let index = 0; index < window_.total; index += 1) {
@@ -1837,7 +1986,6 @@ export function LibraryScreen({
               onFiltersChange={changeFilters}
               query={query.q}
               onQueryChange={(q) => setQuery((previous) => ({ ...previous, q }))}
-              total={window_.total}
               facet={facet.facet}
               onRequestFacet={facet.load}
               collections={filterCollections}
@@ -1884,6 +2032,22 @@ export function LibraryScreen({
               </p>
             )}
           </div>
+
+          {/* One row directly above the table: the selection bar, the count and
+              Columns… (FLW-8, LIB-8, LIB-10). Always there, so the table never
+              moves when a selection is made or let go. */}
+          <LibraryToolbar
+            groups={barGroups}
+            total={window_.total}
+            scopeTotal={scopeTotal}
+            selected={selection.count}
+            describedByQuery={selection.selection.all}
+            openGroup={menu?.kind === "selection" ? menu.group : null}
+            onOpenGroup={(id, anchor) => void openGroup(id, anchor)}
+            onClear={selection.clear}
+            onSelectAll={selection.selectAllMatching}
+            onColumns={() => setPickerOpen(true)}
+          />
 
           <div className="library-screen__table">
             <TrackTable<LibraryTrackRow>
@@ -1941,6 +2105,13 @@ export function LibraryScreen({
                 isTrackDrag(transfer)
               }
               onRowDrop={(toIndex, transfer) => void reorderTo(toIndex, transfer)}
+              // Alt+↑/↓ move a row only in a plain Collection; in a Set or a
+              // Smart Collection the keys do nothing, and say nothing.
+              onRowMove={
+                scopedCollection && !scopedSet
+                  ? (index, delta) => void moveRowBy(index, delta)
+                  : undefined
+              }
               // Shift+F10 and the menu key open it on the last row clicked.
               activeIndex={selection.selection.anchor}
               scrollToIndex={scrollTo}
@@ -1957,8 +2128,8 @@ export function LibraryScreen({
               items={menuItems}
               onClose={() => setMenu(null)}
               label={
-                menu.rows.length > 1
-                  ? `Actions for ${menu.rows.length.toLocaleString()} tracks`
+                menu.target.count > 1
+                  ? `Actions for ${menu.target.count.toLocaleString()} tracks`
                   : "Track actions"
               }
             />
@@ -1990,65 +2161,7 @@ export function LibraryScreen({
             }
           />
 
-          <Modal
-            open={batch.pending !== null}
-            title="That is a lot of tracks"
-            onClose={batch.cancel}
-            primaryAction={{
-              label: "Apply",
-              onClick: () => void batch.confirm(),
-              loading: batch.busy,
-            }}
-            secondaryAction={{ label: "Cancel", onClick: batch.cancel }}
-          >
-            <p>{batch.question}</p>
-            {batch.pending && (
-              <p>{batchConsequence(batch.pending.action.kind, batch.pending.action.holder)}</p>
-            )}
-          </Modal>
-
-          <SelectionActions
-            count={selection.count}
-            describedByQuery={selection.selection.all}
-            revealPath={revealPath}
-            total={window_.total}
-            busy={copying}
-            onCopy={() => void handleCopy()}
-            onReveal={(path) =>
-              reveal(onlySelectedId(selection.selection, window_.total), path)
-            }
-            onClear={selection.clear}
-            onSelectAll={selection.selectAllMatching}
-            onActions={(anchor) => {
-              const target: BatchTarget = {
-                selection: batchSelection(selection.selection, query),
-                count: selection.count,
-                trackId:
-                  selection.count === 1
-                    ? onlySelectedId(selection.selection, window_.total)
-                    : null,
-              };
-              const open = (credits: TrackCreditLinks | null) =>
-                setMenu({
-                  x: anchor.x,
-                  y: anchor.y,
-                  rows: [],
-                  index: -1,
-                  target,
-                  kind: "selection",
-                  credits,
-                });
-              const reading = discoverCredits(target);
-              if (reading) void reading.then(open);
-              else open(null);
-            }}
-          />
-
-          <div className="library-screen__columns">
-            <Button variant="secondary" onClick={() => setPickerOpen(true)}>
-              Columns…
-            </Button>
-          </div>
+          <BatchConfirmDialog batch={batch} />
         </div>
       </div>
 
@@ -2086,8 +2199,6 @@ export function LibraryScreen({
         onSave={(name, parentId) => void saveSmart(name, parentId)}
         onClose={() => setSaveOpen(false)}
       />
-
-      {clean.dialogs}
 
       <NewSetFromDialog
         source={newSetFrom}

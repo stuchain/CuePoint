@@ -259,7 +259,8 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
       // --- a copy: each row's loudness with its unit -----------------------
       await window.locator(".track-table__row").filter({ hasText: "Bands" }).first().click();
       await window.keyboard.press("Control+A");
-      await window.getByRole("button", { name: "Copy", exact: true }).click();
+      await window.getByRole("button", { name: "More", exact: true }).click();
+      await window.getByRole("menuitem", { name: /^Copy/ }).click();
       await expect(window.getByText(`Copied ${TRACKS.length} tracks`)).toBeVisible({ timeout: 15_000 });
       const copied = (await app.evaluate(({ clipboard }) => clipboard.readText())).replace(/\r\n/g, "\n");
       const lines = copied.split("\n");

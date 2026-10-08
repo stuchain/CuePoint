@@ -1,24 +1,26 @@
 /**
  * The Library's Clean operations, wired (CLEAN-13, DEC-072).
  *
- * What each entry of the operations list does once chosen. Deciding, applying
- * and editing go through ORG-11's batch path — the same confirmation above the
- * engine's threshold, the same counts in the toast, the same revert — because
- * they are batch operations. Matching and checking files are jobs the status
- * strip follows. Writing tags has a dialog of its own, since a preview must
- * answer before anything is written.
+ * What each entry does once chosen. Applying and editing go through ORG-11's
+ * batch path — the same confirmation above the engine's threshold, the same
+ * counts in the toast, the same revert — because they are batch operations.
+ * Checking files is a job the status strip follows. Writing tags has a dialog
+ * of its own, since a preview must answer before anything is written.
+ *
+ * Clean's Fix values tab renders the dialogs (FLW-12); the Library's selection
+ * bar opens Clean with the tracks rather than running them here (FLW-8), and
+ * keeps only the file check, which has no dialog.
  */
 import { useCallback, useState, type ReactNode } from "react";
 
 import type {
   BatchSelection,
   FileCheckStarted,
-  MatchStarted,
   OverrideField,
 } from "../../api/cuepointBridge.types";
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { APPLY_FIELD_LABELS } from "../clean/comparison";
-import { matchStartedLine, trackCount } from "../clean/cleanFormat";
+import { trackCount } from "../clean/cleanFormat";
 import { useCleanJob } from "../clean/useCleanJob";
 import { ApplyValuesDialog } from "./ApplyValuesDialog";
 import { EditValuesDialog } from "./EditValuesDialog";
@@ -76,28 +78,8 @@ export function useLibraryClean({ batch, onMessage, onChanged }: LibraryCleanOpt
     (target: CleanTarget): CleanMenuHandlers => {
       const bridge = window.cuepoint;
       const handlers: CleanMenuHandlers = {};
-      if (bridge?.startCleanMatch) {
-        const start = bridge.startCleanMatch;
-        handlers.onMatch = (rematch) =>
-          void jobs.run<MatchStarted>(
-            rematch ? "rematch" : "match",
-            () => start({ selection: target.selection, rematch }),
-            { started: matchStartedLine, succeeded: "Matching finished.", onEnded: ended },
-          );
-      }
-      // Deciding, applying and editing run as batches, and are offered by a
-      // build whose engine has Clean — which its own routes say.
-      if (bridge?.applyBatch && bridge.decideMatch) {
-        handlers.onDecide = (decision) =>
-          void batch.start({
-            action: {
-              kind: decision === "accept" ? "accept_match" : "reject_match",
-              target: "Beatport match",
-            },
-            selection: target.selection,
-            count: target.count,
-          });
-      }
+      // Applying and editing run as batches, and are offered by a build whose
+      // engine has Clean — which its own routes say.
       if (bridge?.applyBatch && bridge.applyMatch) {
         handlers.onApply = () => setOpen({ kind: "apply", target });
       }
@@ -122,7 +104,7 @@ export function useLibraryClean({ batch, onMessage, onChanged }: LibraryCleanOpt
       }
       return handlers;
     },
-    [batch, ended, jobs],
+    [ended, jobs],
   );
 
   const close = useCallback(() => setOpen(null), []);

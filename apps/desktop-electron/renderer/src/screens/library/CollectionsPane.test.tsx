@@ -464,7 +464,10 @@ describe("deleting", () => {
     const { onDelete } = paneWith();
 
     await userEvent.click(screen.getByRole("button", { name: "Delete Sets" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    // The bar under the tree has a Delete of its own (FLW-10): the question's is
+    // the one in the dialog.
+    const dialog = await screen.findByRole("dialog", { name: "Delete Sets?" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith(1));
   });

@@ -101,7 +101,6 @@ function Harness({
       }}
       query=""
       onQueryChange={() => {}}
-      total={0}
       sources={SOURCES}
       names={{
         source: new Map([
@@ -149,7 +148,6 @@ describe("the Field list is grouped by the engine's groups (LIB-7)", () => {
         onFiltersChange={() => {}}
         query=""
         onQueryChange={() => {}}
-        total={0}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Add filter" }));
@@ -176,7 +174,6 @@ describe("the quick filters (FLW-4)", () => {
         onFiltersChange={() => {}}
         query=""
         onQueryChange={() => {}}
-        total={0}
       />,
     );
     expect(screen.queryByRole("button", { name: "Key ▾" })).toBeNull();
@@ -355,7 +352,6 @@ describe("the row's end", () => {
         onFiltersChange={() => {}}
         query=""
         onQueryChange={() => {}}
-        total={0}
         onSaveSmart={() => {}}
       />,
     );

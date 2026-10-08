@@ -241,7 +241,7 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       // rendered only what the table already showed would not pass.
       await expect(inspector).toContainText(/House|Techno/);
       await expect(inspector).toContainText("Album 12");
-      await expect(window.getByText(/1 track selected/)).toBeVisible();
+      await expect(window.getByText(/1 selected/)).toBeVisible();
 
       // --- refresh, then browse again -----------------------------------
       await pageSearch(window).fill("");
@@ -260,7 +260,7 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       await expect
         .poll(async () => (await visibleTitles(window))[0], { timeout: 30_000 })
         .toBe("Track 35");
-      await expect(window.getByText(/tracks selected/)).toHaveCount(0);
+      await expect(window.getByText(/\d selected/)).toHaveCount(0);
     } finally {
       await app.close();
     }

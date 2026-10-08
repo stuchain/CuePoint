@@ -356,7 +356,7 @@ test.describe("Phase 5 end to end", () => {
       // The library works: browsing, sorting and selecting are all unaffected.
       await expect(table).toBeVisible();
       await win.locator(".track-table__row").first().click();
-      await expect(win.locator(".cp-selection-actions__count")).toContainText("1 track selected");
+      await expect(win.locator(".library-toolbar__count")).toContainText("1 selected");
 
       // Playing is refused with something a person can act on, rather than
       // hanging or throwing into the void.

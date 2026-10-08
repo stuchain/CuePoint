@@ -30,6 +30,7 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Library", action: "Play the selected track", shortcut: "Enter" },
   { context: "Library", action: "Clear the selection", shortcut: "Esc" },
   { context: "Library", action: "Open the track menu", shortcut: "Shift+F10" },
+  { context: "Library", action: "Move the selected track up or down in a Collection", shortcut: "Alt+Up / Alt+Down" },
   { context: "Library", action: "Rename the selected Collection", shortcut: "F2" },
   { context: "Library", action: "Delete the selected Collection", shortcut: "Delete" },
   // Prepare's: the Set's source panel has a divider to drag; Mix in and Mix out are typed in

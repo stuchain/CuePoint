@@ -12,6 +12,9 @@
   outside. It lights a track's key and the keys that mix with it: the same number one
   step either way, and the relative key. Open it from the button beside search or from
   the key in the player bar; click a key to see every track in it in the Library.
+- **Selection bar**: The row of buttons above the Library table that act on the
+  selected tracks: Play, Organize, Explore, Beatport, Fix and More, then Clear
+  selection. A track's right-click menu holds the same six groups.
 - **Playlist**: A named collection of tracks inside the Rekordbox XML.
 - **Preflight**: Validation checks that run before processing.
 - **Match**: A Beatport result associated with an input track.

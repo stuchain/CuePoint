@@ -6,7 +6,7 @@
  * - **Two ways in, one dialog.** The header's "Export to Rekordbox…" button opens it
  *   with nothing ticked; a Collection's context menu opens it with that node
  *   ticked. Both previews are asked for exactly that.
- * - **Nowhere else.** Export is in neither the selection Actions menu nor the
+ * - **Nowhere else.** Export is in neither the selection bar nor the
  *   track context menu — DEC-087's amendment, because both are built from one
  *   list scoped to a track selection the export never reads.
  * - **"Refresh first"** closes the dialog and starts a refresh, and queues no
@@ -28,6 +28,7 @@ import { ToastProvider } from "../../components";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import fixture from "./rekordboxExport.fixture.json";
 import { LibraryScreen } from "./LibraryScreen";
+import { menuItem } from "./menuPick.test.util";
 
 const SUMMARY: LibrarySummary = {
   track_count: 3,
@@ -205,7 +206,9 @@ async function ready() {
 
 /** The header's own export button (FLW-11). */
 async function exportFromHeader(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "Export to Rekordbox…" }));
+  // The tree's bar has an Export to Rekordbox… of its own (FLW-10); this is the header's.
+  const header = document.querySelector<HTMLElement>('[data-slot="library-header"]')!;
+  await user.click(within(header).getByRole("button", { name: "Export to Rekordbox…" }));
 }
 
 const exportDialog = () => screen.findByRole("dialog", { name: "Export to Rekordbox" });
@@ -280,8 +283,8 @@ describe("a Collection's context menu (DEC-087)", () => {
     await ready();
 
     fireEvent.contextMenu(collectionRow(name), { clientX: 40, clientY: 200 });
-    const menu = await screen.findByRole("menu");
-    await user.click(within(menu).getByRole("menuitem", { name: "Export to Rekordbox…" }));
+    await screen.findByRole("menu");
+    await user.click((await menuItem("Export to Rekordbox…")));
 
     const dialog = await exportDialog();
     await within(dialog).findByText(/in the exported file/);
@@ -328,15 +331,22 @@ describe("where export is not (DEC-087's amendment)", () => {
     expect(labels.some((label) => /rekordbox|export/i.test(label))).toBe(false);
   });
 
-  it("is not in the selection Actions menu", async () => {
+  it("is not in the selection bar", async () => {
     const user = userEvent.setup();
     renderScreen();
     await ready();
 
     await user.click(screen.getByText("Track 1"));
-    await user.click(screen.getByRole("button", { name: "Actions…" }));
-    const menu = await screen.findByRole("menu");
-    const labels = within(menu).getAllByRole("menuitem").map((item) => item.textContent ?? "");
+    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
+    const labels: string[] = [];
+    for (const group of within(bar).getAllByRole("button")) {
+      if (group.getAttribute("aria-haspopup") !== "menu" || group.getAttribute("aria-disabled")) continue;
+      await user.click(group);
+      const menu = screen.queryByRole("menu");
+      if (!menu) continue;
+      labels.push(...within(menu).getAllByRole("menuitem").map((item) => item.textContent ?? ""));
+      await user.keyboard("{Escape}");
+    }
     expect(labels.length).toBeGreaterThan(0);
     expect(labels.some((label) => /rekordbox|export/i.test(label))).toBe(false);
   });

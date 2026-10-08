@@ -115,21 +115,27 @@ async function importCollection(window: Page, xmlPath: string) {
 }
 
 /**
- * The whole rows the Library table shows at the default window and scale (PAGES-05A).
+ * The whole rows the Library table shows at the default window and scale (PAGES-05A,
+ * PAGES-05C).
  *
  * As DEC-112 holds Prepare's: the number is measured, held, and a change that loses a
  * row fails here and has to say why. The window is as the app opens it (1,280 × 800 at
- * 1.5×), the header is the three-button one (FLW-11), and the notice line and the table
- * toolbar row are absent: the notice shows only after an import, and 05C adds the row.
- * Whoever adds either re-measures and moves this number on purpose.
+ * 1.5×), the header is the three-button one (FLW-11), the filter row is above the table
+ * and the toolbar row (FLW-8) directly over it; the notice line is absent, because it
+ * shows only after an import. Whoever adds a row or a line to any of them re-measures and
+ * moves this number on purpose.
  *
- * Linux measured 2 with a 155px header (179px before the "In sync" sentence was dropped), and the same 2 before this step's header (the
- * three buttons changed no height): 05A holds that number rather than raising it. It is
- * under Prepare's floor of five, which 05C's restructuring of the rows above the table
- * must lift. Windows and macOS are owed a measure and hold one row lower until then.
+ * Linux measured 2 before 05C (a 155px header, then a selection strip and a Columns row of
+ * about 160px under the table), 3 with the toolbar row alone (70px: two lines of 30px
+ * buttons) and measures 4 now: the filter row lost the "Search" word above its box (the
+ * label stays for screen readers) and Add filter and Tags… dropped their full hit-target
+ * floor, which took the filter bar from 162px to 146px and left the table 271px (a 53px
+ * header, four 50px rows and 18px over). The toolbar's buttons stay 30px: a taller button
+ * costs the 4th row's margin (DEC-217). Windows and macOS are owed a measure and hold one
+ * row lower until then.
  */
 const ON_LINUX = process.platform === "linux";
-const WHOLE_ROWS_LIBRARY_MEASURED = 2;
+const WHOLE_ROWS_LIBRARY_MEASURED = 4;
 const WHOLE_ROWS_LIBRARY = ON_LINUX
   ? WHOLE_ROWS_LIBRARY_MEASURED
   : WHOLE_ROWS_LIBRARY_MEASURED - 1;
@@ -212,6 +218,15 @@ test.describe("The Library page (LIBRARY-11)", () => {
       }
       expect(new Set(tops.map(Math.round)).size, `button tops ${tops} (${shown})`).toBe(1);
       console.log("PAGES-05A header labels:", shown);
+      // The toolbar row above the table: the selection bar's six groups and Clear
+      // selection, then the count and Columns… (FLW-8).
+      const bar = window.getByRole("toolbar", { name: "Selected tracks" });
+      await expect(bar.getByRole("button")).toHaveCount(7);
+      await expect(bar.getByRole("button", { name: "Play", exact: true })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+      await expect(window.getByRole("button", { name: "Columns…" })).toBeVisible();
       // The notice line is not on the page while someone works in the table.
       await expect(window.getByRole("status", { name: "Getting your library ready" })).toHaveCount(0);
 
@@ -240,9 +255,25 @@ test.describe("The Library page (LIBRARY-11)", () => {
           scale: getComputedStyle(document.documentElement).getPropertyValue("--scale").trim(),
           window: { width: window.innerWidth, height: window.innerHeight },
           headerHeight: document.querySelector(".library-header")!.getBoundingClientRect().height,
+          parts: Object.fromEntries(
+            [
+              ".library-header",
+              ".cp-filter-bar",
+              ".library-toolbar",
+              ".library-screen__table",
+              ".track-table__header",
+              ".track-table__row",
+              ".cp-status",
+              ".library-screen__main",
+              ".library-screen__body",
+            ].map((selector) => {
+              const found = document.querySelector<HTMLElement>(selector);
+              return [selector, found ? Math.round(found.getBoundingClientRect().height) : null];
+            }),
+          ),
         };
       });
-      console.log("PAGES-05A Library whole rows:", m.whole, JSON.stringify(m));
+      console.log("PAGES-05C Library whole rows:", m.whole, JSON.stringify(m));
       // The default window, whose inner height is what the screen leaves it.
       expect(m.window.width).toBe(1280);
       expect(m.window.height).toBeGreaterThan(700);

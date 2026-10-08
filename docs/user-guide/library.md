@@ -135,7 +135,7 @@ An empty table says why and offers the next step as a button:
 
 ### Choosing columns
 
-**Columns…** opens the list. Nine are shown to start with — the ones a DJ reads —
+**Columns…**, at the right of the row above the table, opens the list. Nine are shown to start with — the ones a DJ reads —
 and fourteen more are there if you want them: remixer, year, plays, date added,
 color, bitrate, comment, the file path, four from
 [Clean](#clean-in-the-library) — **Match**, **Score**, **File status** and
@@ -175,17 +175,35 @@ That means *everything*, not just the rows on screen: select-all over a filtered
 47,000-track view selects 47,000 tracks. **Esc** lets go. **Ctrl+F** puts the
 cursor in the search box.
 
-With something selected you can **Copy** it — the visible columns, in the order
-you have them, ready to paste into a spreadsheet — and, for a single track,
-**Show in folder**. A copy is capped at 5,000 tracks and tells you when it hit
-the cap. If a file is no longer where Rekordbox says it is, **Show in folder**
-opens the nearest folder that still exists, and says so.
+A toolbar sits directly above the table: one line when there is room, two at
+the default window size. On its left is the **selection bar**; on its right are
+the track count ("1,204 tracks · 3 selected", or "Showing 240 of 12,000 tracks"
+while a search or filter narrows the view), **Select all** and **Columns…**. The bar is always there, so the table never moves when you select
+something: with nothing selected its buttons are dimmed and say "Select tracks
+first". It has six groups, each a button that opens a list, and **Clear
+selection**:
 
-**Actions…**, and a track's right-click menu, offer the same list: everything in
-[Organizing your library](organization.md), the Clean actions below, and — for
-one track — **Similar tracks**, **Artist page** and **Label page** (see
-[Discover](discover.md#artist-and-label-pages)). A filter chip that names one
-artist or label, such as "Credited artist is Mara Veil", offers **Open page**.
+| Group | Holds |
+| --- | --- |
+| **Play ▸** | **Play**, **Play next**, **Add to queue**, for the selected tracks in the order the table shows them |
+| **Organize ▸** | **Add to Collection…**, **Add to Set…**, **New Set from these…**, **Remove from "name"** (inside a Collection), **Add tag…**, **Remove tag…**, **Rate ▸**, **Favorite**, **Remove favorite**. See [Organizing your library](organization.md) |
+| **Explore ▸** | **Similar tracks**, **Artist page** and **Label page** (see [Discover](discover.md#artist-and-label-pages)). With several tracks selected they open the first one's |
+| **Beatport ▸** | **Match tracks…**, **Review these matches** and **Use Beatport's values…**. Each opens [Clean](clean.md) with the selected tracks |
+| **Fix ▸** | **Edit values…** and **Save changes into the files…** open Clean's Fix values with the selected tracks; **Check the files are still there** looks for them again |
+| **More ▸** | **Copy** and **Show in folder** |
+
+A track's right-click menu holds the same groups as submenus: **Play**, **Play
+next** and **Add to queue** on its first lines, then **Organize ▸**, **Explore ▸**,
+**Beatport ▸**, **Fix ▸** and **More ▸**. Use
+the Tab key once to reach the bar, then the arrow keys to move between its
+buttons.
+
+**Copy** puts the visible columns, in the order you have them, ready to paste
+into a spreadsheet; it is capped at 5,000 tracks and tells you when it hit the
+cap. **Show in folder** works for a single track; if its file is no longer where
+Rekordbox says it is, it opens the nearest folder that still exists, and says
+so. A filter chip that names one artist or label, such as "Credited artist is
+Mara Veil", offers **Open page**.
 
 ### Track details
 
@@ -461,8 +479,9 @@ inCrate kept a separate copy of its own, which nothing reads any more — see
 ## Clean in the Library
 
 Everything the [Clean](clean.md) page knows about a track is visible here too,
-and every Clean action on a track is in its right-click menu and behind
-**Actions…**.
+and the Clean actions on a track are in the selection bar's **Beatport ▸** and
+**Fix ▸** and in its right-click menu. They open Clean with the tracks you
+selected; deciding a match (accept or reject) is done there, in Review.
 
 ### Columns and filters
 
@@ -482,13 +501,12 @@ fixed list offers them to pick from rather than a box to type into.
 
 | Action | Does |
 | --- | --- |
-| Match on Beatport | Looks the tracks up on Beatport, skipping any already matched or decided. It runs in the background |
-| Search Beatport again for this track | Looks them up again. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
-| Accept match / Reject match | Decides what the matcher proposed, for tracks nobody has decided yet |
-| Use Beatport's values… | Copies the fields you choose from each track's accepted match into your values |
-| Edit values… | Sets or clears your key, BPM, genre, label or year |
-| Check files | Looks for the files again |
-| Save changes into the files… | See [Writing tags to files](#writing-tags-to-files) |
+| Match tracks… | Opens Clean's match window with the selected tracks, to look them up on Beatport. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
+| Review these matches | Opens Clean's Review on the first selected track, where matches are accepted or rejected |
+| Use Beatport's values… | Opens Clean's Fix values to copy the fields you choose from each track's accepted match into your values |
+| Edit values… | Opens Fix values to set or clear your key, BPM, genre, label or year |
+| Check the files are still there | Looks for the files again. It runs in the background |
+| Save changes into the files… | Opens Fix values on the saving step; see [Writing tags to files](#writing-tags-to-files) |
 
 Accepting a match changes no value on its own. **Apply** is what copies
 Beatport's values, and they become your values — Rekordbox's stay underneath.
@@ -563,7 +581,7 @@ Rekordbox's otherwise. A field a file already holds is not written again.
 | WAV files | CuePoint does not write tags into WAV files |
 | Other formats | CuePoint writes MP3, AIFF, FLAC and Ogg Vorbis only |
 | Missing or unreadable files | The last file check did not find them |
-| Files never checked | CuePoint writes only to a file it checked where it is now — run **Check files** first |
+| Files never checked | CuePoint writes only to a file it checked where it is now — run **Check the files are still there** first |
 | Files that already hold these values | Nothing would change |
 | Files that changed since the preview | Neither the old nor the new value is what you confirmed; preview again |
 

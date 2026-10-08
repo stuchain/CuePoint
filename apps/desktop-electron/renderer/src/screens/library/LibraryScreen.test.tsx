@@ -40,6 +40,7 @@ import type {
   LibraryTrackRow,
   RefreshDiff,
 } from "../../api/cuepointBridge.types";
+import { findMenuItem, menuItem } from "./menuPick.test.util";
 
 function category<T>(count = 0, items: T[] = []) {
   return { count, items, truncated: count > items.length };
@@ -526,8 +527,9 @@ async function tableReady() {
 
 /** The most recent browse request, which is the question the page is asking. */
 function lastBrowse(): Record<string, unknown> {
-  const calls = bridge.browseLibrary.mock.calls;
-  return calls[calls.length - 1][0] as Record<string, unknown>;
+  // The id projection is the toolbar's scope count, not the table's question.
+  const calls = bridge.browseLibrary.mock.calls.filter(([params]) => params.fields !== "id");
+  return calls[calls.length - 1]![0] as Record<string, unknown>;
 }
 
 beforeAll(() => {
@@ -1376,7 +1378,7 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
 
     await userEvent.click(screen.getByText("Track 2"));
 
-    expect(await screen.findByText("1 track selected")).toBeInTheDocument();
+    expect(await screen.findByText("1 selected")).toBeInTheDocument();
   });
 
   it("selects everything matching on Ctrl+A, and lets go on Escape", async () => {
@@ -1387,11 +1389,11 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
 
     // "Everything matching" is a description of the query, not a list — the
     // count comes from the total, which is why it can be said at all.
-    expect(await screen.findByText(/3 tracks selected/)).toBeInTheDocument();
+    expect(await screen.findByText(/3 selected/)).toBeInTheDocument();
 
     await userEvent.keyboard("{Escape}");
 
-    await waitFor(() => expect(screen.queryByText(/tracks selected/)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/\d selected/)).toBeNull());
   });
 
   it("leaves Ctrl+A to the text box while a search is being typed", async () => {
@@ -1403,7 +1405,7 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
     await userEvent.keyboard("{Control>}a{/Control}");
 
     // Select-all inside a search box means the text, not the library.
-    expect(screen.queryByText(/tracks selected/)).toBeNull();
+    expect(screen.queryByText(/\d selected/)).toBeNull();
   });
 
   it("puts the focus in the search box on Ctrl+F", async () => {
@@ -1425,7 +1427,7 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
     await tableReady();
 
     await userEvent.click(screen.getByText("Track 2"));
-    await screen.findByText("1 track selected");
+    await screen.findByText("1 selected");
 
     await userEvent.click(screen.getByRole("button", { name: /Check Rekordbox for changes/i }));
     const dialog = await screen.findByRole("dialog");
@@ -1435,7 +1437,7 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
     // that clears regardless would take the selection away as a side effect of
     // declining a refresh.
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(screen.getByText("1 track selected")).toBeInTheDocument();
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
   });
 
   it("forgets the selection when the question changes", async () => {
@@ -1443,12 +1445,12 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
     await tableReady();
 
     await userEvent.click(screen.getByText("Track 2"));
-    await screen.findByText("1 track selected");
+    await screen.findByText("1 selected");
 
     await userEvent.click(within(screen.getByRole("table", { name: "Library tracks" })).getByRole("button", { name: "Title" }));
 
     // What was selected under the old sort is not a subset of the new one.
-    await waitFor(() => expect(screen.queryByText(/track selected/)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/\d selected/)).toBeNull());
   });
 
   it("plays the row and the view behind it on a double-click (DEC-012)", async () => {
@@ -1514,15 +1516,15 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
   async function selectAllThree() {
     await userEvent.click(screen.getByText("Track 1"));
     fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
-    await screen.findByText(/3 tracks selected/);
+    await screen.findByText(/3 selected/);
   }
 
   it("acts on the row under the pointer when nothing is selected", async () => {
     renderScreen();
     await tableReady();
 
-    const menu = await openMenu("Track 2");
-    await userEvent.click(within(menu).getByRole("menuitem", { name: "Add to queue" }));
+    await openMenu("Track 2");
+    await userEvent.click((await menuItem("Add to queue")));
 
     await waitFor(() => expect(bridge.player.addToQueue).toHaveBeenCalledTimes(1));
     expect(bridge.player.addToQueue.mock.calls[0]![0]).toEqual([
@@ -1536,8 +1538,8 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     await tableReady();
     await selectAllThree();
 
-    const menu = await openMenu("Track 2");
-    await userEvent.click(within(menu).getByRole("menuitem", { name: "Play next" }));
+    await openMenu("Track 2");
+    await userEvent.click((await menuItem("Play next")));
 
     await waitFor(() => expect(bridge.player.playNext).toHaveBeenCalledTimes(1));
     // In the view's order, which is the order the selection gathers in.
@@ -1554,10 +1556,10 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     await tableReady();
 
     await userEvent.click(screen.getByText("Track 1"));
-    await screen.findByText("1 track selected");
+    await screen.findByText("1 selected");
 
-    const menu = await openMenu("Track 3");
-    await userEvent.click(within(menu).getByRole("menuitem", { name: "Add to queue" }));
+    await openMenu("Track 3");
+    await userEvent.click((await menuItem("Add to queue")));
 
     await waitFor(() => expect(bridge.player.addToQueue).toHaveBeenCalled());
     expect(bridge.player.addToQueue.mock.calls[0]![0]).toEqual([
@@ -1570,15 +1572,15 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     await tableReady();
 
     // One row: DEC-012, the view is the queue.
-    let menu = await openMenu("Track 2");
-    await userEvent.click(within(menu).getByRole("menuitem", { name: "Play" }));
+    await openMenu("Track 2");
+    await userEvent.click((await menuItem("Play")));
     await waitFor(() => expect(bridge.player.playView).toHaveBeenCalledTimes(1));
     expect(bridge.player.playQueue).not.toHaveBeenCalled();
 
     // Three rows: the selection is the queue, because that is what was picked.
     await selectAllThree();
-    menu = await openMenu("Track 2");
-    await userEvent.click(within(menu).getByRole("menuitem", { name: "Play 3 tracks" }));
+    await openMenu("Track 2");
+    await userEvent.click((await menuItem("Play 3 tracks")));
 
     await waitFor(() => expect(bridge.player.playQueue).toHaveBeenCalledTimes(1));
     expect(bridge.player.playQueue.mock.calls[0]![1]).toBe(0);
@@ -1597,10 +1599,10 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     await tableReady();
 
     await userEvent.click(screen.getByText("Track 1"));
-    await screen.findByText("1 track selected");
+    await screen.findByText("1 selected");
 
-    const menu = await openMenu("Track 3");
-    await userEvent.click(within(menu).getByRole("menuitem", { name: "Copy" }));
+    await openMenu("Track 3");
+    await userEvent.click((await menuItem("Copy")));
 
     expect(await screen.findByText("Copied 1 track")).toBeInTheDocument();
     // The clicked row, not the selected one.
@@ -1613,13 +1615,13 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     renderScreen();
     await tableReady();
 
-    let menu = await openMenu("Track 2");
-    await userEvent.click(within(menu).getByRole("menuitem", { name: "Show in folder" }));
+    await openMenu("Track 2");
+    await userEvent.click((await menuItem("Show in folder")));
     expect(bridge.showItemInFolder).toHaveBeenCalledWith(track(2).file_path);
 
     await selectAllThree();
-    menu = await openMenu("Track 2");
-    expect(within(menu).getByRole("menuitem", { name: "Show in folder" })).toBeDisabled();
+    await openMenu("Track 2");
+    expect((await menuItem("Show in folder"))).toBeDisabled();
   });
 
   it("closes on Escape without letting go of the selection", async () => {
@@ -1634,7 +1636,7 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     await userEvent.type(menu, "{Escape}");
 
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
-    expect(screen.getByText(/3 tracks selected/)).toBeInTheDocument();
+    expect(screen.getByText(/3 selected/)).toBeInTheDocument();
     expect(bridge.player.playQueue).not.toHaveBeenCalled();
   });
 
@@ -1643,15 +1645,15 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     await tableReady();
 
     await userEvent.click(screen.getByText("Track 2"));
-    await screen.findByText("1 track selected");
+    await screen.findByText("1 selected");
 
     fireEvent.keyDown(screen.getByRole("table", { name: "Library tracks" }), {
       key: "F10",
       shiftKey: true,
     });
 
-    const menu = await screen.findByRole("menu");
-    await userEvent.click(within(menu).getByRole("menuitem", { name: "Play next" }));
+    await screen.findByRole("menu");
+    await userEvent.click((await menuItem("Play next")));
 
     await waitFor(() => expect(bridge.player.playNext).toHaveBeenCalled());
     expect(bridge.player.playNext.mock.calls[0]![0]).toEqual([
@@ -1666,10 +1668,10 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     await tableReady();
 
     await userEvent.keyboard("{Control>}a{/Control}");
-    await screen.findByText(/3 tracks selected/);
+    await screen.findByText(/3 selected/);
 
-    const menu = await openMenu("Track 2");
-    await userEvent.click(within(menu).getByRole("menuitem", { name: "Add to queue" }));
+    await openMenu("Track 2");
+    await userEvent.click((await menuItem("Add to queue")));
 
     await waitFor(() => expect(bridge.player.addToQueue).toHaveBeenCalled());
     expect(
@@ -1682,7 +1684,7 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     await tableReady();
 
     await userEvent.click(screen.getByText("Track 2"));
-    await screen.findByText("1 track selected");
+    await screen.findByText("1 selected");
 
     fireEvent.keyDown(screen.getByRole("table", { name: "Library tracks" }), { key: "Enter" });
 
@@ -2001,11 +2003,16 @@ describe("organizing a selection (ORG-11)", () => {
 
       const menu = await openMenuOn("Track 2");
 
-      const labels = within(menu)
+      const top = within(menu)
         .getAllByRole("menuitem")
         .map((node) => node.textContent);
       // Playback first: DEC-013 made it the first-class gesture.
-      expect(labels.slice(0, 3)).toEqual(["Play", "Play next", "Add to queue"]);
+      expect(top.slice(0, 3)).toEqual(["Play", "Play next", "Add to queue"]);
+      expect(top).toContain("Organize▸");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: /^Organize/ }));
+      const labels = within(screen.getByRole("menu", { name: "Organize" }))
+        .getAllByRole("menuitem")
+        .map((node) => node.textContent);
       expect(labels).toContain("Add to Collection…");
       expect(labels).toContain("Add tag…");
       expect(labels).toContain("Favorite");
@@ -2015,16 +2022,16 @@ describe("organizing a selection (ORG-11)", () => {
       renderScreen();
       await tableReady();
 
-      const outside = await openMenuOn("Track 2");
+      await openMenuOn("Track 2");
       expect(
-        within(outside).queryByRole("menuitem", { name: /Remove from/ }),
+        (await findMenuItem(/Remove from/)),
       ).not.toBeInTheDocument();
       await userEvent.keyboard("{Escape}");
 
       await openCollection();
-      const inside = await openMenuOn("Track 2");
+      await openMenuOn("Track 2");
       expect(
-        within(inside).getByRole("menuitem", { name: "Remove from “Warmups”" }),
+        (await menuItem("Remove from “Warmups”")),
       ).toBeInTheDocument();
     });
 
@@ -2037,10 +2044,10 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.click(within(tree).getByText("Recent techno"));
       await waitFor(() => expect(lastBrowse()).toMatchObject({ scope: "smart" }));
 
-      const menu = await openMenuOn("Track 2");
+      await openMenuOn("Track 2");
 
       expect(
-        within(menu).queryByRole("menuitem", { name: /Remove from/ }),
+        (await findMenuItem(/Remove from/)),
       ).not.toBeInTheDocument();
     });
   });
@@ -2051,10 +2058,10 @@ describe("organizing a selection (ORG-11)", () => {
       await tableReady();
       await userEvent.click(screen.getByText("Track 1"));
       fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
-      await screen.findByText(/3 tracks selected/);
+      await screen.findByText(/3 selected/);
 
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Favorite")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect(lastBatch()).toEqual({
@@ -2069,8 +2076,8 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
 
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Favorite")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       const payload = lastBatch().selection as Record<string, unknown>;
@@ -2079,16 +2086,16 @@ describe("organizing a selection (ORG-11)", () => {
     });
 
     it("sends the tracks taken back out of everything matching", async () => {
-      // The toolbar says "2 tracks selected"; the batch has to mean two.
+      // The toolbar says "2 selected"; the batch has to mean two.
       renderScreen();
       await tableReady();
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
       fireEvent.click(screen.getByText("Track 3"), { ctrlKey: true });
-      await screen.findByText(/2 tracks selected/);
+      await screen.findByText(/2 selected/);
 
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Favorite")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect((lastBatch().selection as Record<string, unknown>).exclude_track_ids).toEqual([3]);
@@ -2098,10 +2105,10 @@ describe("organizing a selection (ORG-11)", () => {
       renderScreen();
       await tableReady();
       await userEvent.click(screen.getByText("Track 1"));
-      await screen.findByText("1 track selected");
+      await screen.findByText("1 selected");
 
-      const menu = await openMenuOn("Track 3");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await openMenuOn("Track 3");
+      await userEvent.click((await menuItem("Favorite")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect(lastBatch().selection).toEqual({ track_ids: [3] });
@@ -2114,8 +2121,8 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
 
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Favorite")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect((lastBatch().selection as Record<string, unknown>).query).toMatchObject({
@@ -2130,9 +2137,9 @@ describe("organizing a selection (ORG-11)", () => {
       renderScreen();
       await tableReady();
 
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: /Rate/ }));
-      await userEvent.click(screen.getByRole("menuitem", { name: "★★★★" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem(/Rate/)));
+      await userEvent.click((await menuItem("★★★★")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect(lastBatch().operation).toEqual({ kind: "set_rating", value: 4 });
@@ -2142,9 +2149,9 @@ describe("organizing a selection (ORG-11)", () => {
       renderScreen();
       await tableReady();
 
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: /Rate/ }));
-      await userEvent.click(screen.getByRole("menuitem", { name: "Clear rating" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem(/Rate/)));
+      await userEvent.click((await menuItem("Clear rating")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect(lastBatch().operation).toEqual({ kind: "set_rating", value: null });
@@ -2155,9 +2162,9 @@ describe("organizing a selection (ORG-11)", () => {
       await tableReady();
       await openCollection();
 
-      const menu = await openMenuOn("Track 2");
+      await openMenuOn("Track 2");
       await userEvent.click(
-        within(menu).getByRole("menuitem", { name: "Remove from “Warmups”" }),
+        (await menuItem("Remove from “Warmups”")),
       );
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
@@ -2171,9 +2178,9 @@ describe("organizing a selection (ORG-11)", () => {
       renderScreen();
       await tableReady();
 
-      const menu = await openMenuOn("Track 2");
+      await openMenuOn("Track 2");
       await userEvent.click(
-        within(menu).getByRole("menuitem", { name: "Add to Collection…" }),
+        (await menuItem("Add to Collection…")),
       );
       await userEvent.click(await screen.findByRole("option", { name: /Warmups/ }));
 
@@ -2185,9 +2192,9 @@ describe("organizing a selection (ORG-11)", () => {
       renderScreen();
       await tableReady();
 
-      const menu = await openMenuOn("Track 2");
+      await openMenuOn("Track 2");
       await userEvent.click(
-        within(menu).getByRole("menuitem", { name: "Add to Collection…" }),
+        (await menuItem("Add to Collection…")),
       );
 
       expect(await screen.findByRole("option", { name: /Sets/ })).toBeDisabled();
@@ -2198,8 +2205,8 @@ describe("organizing a selection (ORG-11)", () => {
       renderScreen();
       await tableReady();
 
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Add tag…" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Add tag…")));
       await userEvent.click(await screen.findByRole("option", { name: /Peak-time/ }));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
@@ -2213,8 +2220,8 @@ describe("organizing a selection (ORG-11)", () => {
       renderScreen();
       await tableReady();
 
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Add tag…" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Add tag…")));
       const filter = await screen.findByRole("textbox", { name: "Type to narrow the list" });
       fireEvent.change(filter, { target: { value: "Closer" } });
       await userEvent.click(screen.getByRole("button", { name: /Create “Closer”/ }));
@@ -2240,8 +2247,8 @@ describe("organizing a selection (ORG-11)", () => {
       renderScreen();
       await tableReady();
 
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Add tag…" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Add tag…")));
       await userEvent.click(await screen.findByRole("option", { name: /Peak-time/ }));
 
       expect(await screen.findByText(/40 tracks .* 12 already had it/)).toBeInTheDocument();
@@ -2252,8 +2259,8 @@ describe("organizing a selection (ORG-11)", () => {
       renderScreen();
       await tableReady();
 
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Favorite")));
 
       expect(await screen.findByText("No tag with id 21")).toBeInTheDocument();
     });
@@ -2266,8 +2273,8 @@ describe("organizing a selection (ORG-11)", () => {
       const browses = bridge.browseLibrary.mock.calls.length;
       const trees = bridge.getCollections.mock.calls.length;
 
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Favorite")));
 
       await waitFor(() =>
         expect(bridge.browseLibrary.mock.calls.length).toBeGreaterThan(browses),
@@ -2291,8 +2298,8 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
 
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Favorite")));
 
       expect(await screen.findByText("Favorite 47,913 tracks?")).toBeInTheDocument();
       expect(bridge.applyBatch).not.toHaveBeenCalled();
@@ -2305,8 +2312,8 @@ describe("organizing a selection (ORG-11)", () => {
       await tableReady();
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Favorite")));
 
       expect(await screen.findByText(/undone from Activity/i)).toBeInTheDocument();
       expect(screen.queryByText(/no undo/i)).toBeNull();
@@ -2317,8 +2324,8 @@ describe("organizing a selection (ORG-11)", () => {
       await tableReady();
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Add to Collection…" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Add to Collection…")));
       await userEvent.click(await screen.findByRole("option", { name: /Warmups/ }));
 
       expect(await screen.findByText(/no undo/i)).toBeInTheDocument();
@@ -2330,8 +2337,8 @@ describe("organizing a selection (ORG-11)", () => {
       await tableReady();
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Favorite")));
       await screen.findByText("Favorite 47,913 tracks?");
 
       await userEvent.click(screen.getByRole("button", { name: "Apply" }));
@@ -2344,8 +2351,8 @@ describe("organizing a selection (ORG-11)", () => {
       await tableReady();
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
-      const menu = await openMenuOn("Track 2");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Favorite")));
       await screen.findByText("Favorite 47,913 tracks?");
 
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -2360,9 +2367,9 @@ describe("organizing a selection (ORG-11)", () => {
       renderScreen();
       await tableReady();
       await userEvent.click(screen.getByText("Track 1"));
-      await screen.findByText("1 track selected");
+      await screen.findByText("1 selected");
 
-      await userEvent.click(screen.getByRole("button", { name: "Actions…" }));
+      await userEvent.click(screen.getByRole("button", { name: "Organize" }));
       const menu = await screen.findByRole("menu");
 
       const labels = within(menu)
@@ -2376,8 +2383,7 @@ describe("organizing a selection (ORG-11)", () => {
         "Favorite",
         "Remove favorite",
       ]);
-      // Two dividers, between the three groups — not three, which would draw
-      // a line along the top of a menu with nothing above it.
+      // Two dividers inside the group, none along its top.
       expect(within(menu).getAllByRole("separator")).toHaveLength(2);
     });
 
@@ -2386,14 +2392,32 @@ describe("organizing a selection (ORG-11)", () => {
       await tableReady();
       await userEvent.click(screen.getByText("Track 1"));
       fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
-      await screen.findByText(/3 tracks selected/);
+      await screen.findByText(/3 selected/);
 
-      await userEvent.click(screen.getByRole("button", { name: "Actions…" }));
-      const menu = await screen.findByRole("menu");
-      await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
+      await userEvent.click(screen.getByRole("button", { name: "Organize" }));
+      await screen.findByRole("menu");
+      await userEvent.click((await menuItem("Favorite")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect(lastBatch().selection).toEqual({ track_ids: [1, 2, 3] });
+    });
+
+    it("asks 'Change N tracks?' with LIB-11's one text, above the engine's threshold", async () => {
+      bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+      bridge.browseLibrary.mockImplementation(async (params: Record<string, unknown>) => ({
+        ...browseAnswer(params, TRACKS),
+        total: 47_913,
+      }));
+      renderScreen();
+      await tableReady();
+      await userEvent.keyboard("{Control>}a{/Control}");
+      await screen.findByText(/everything matching/);
+      await userEvent.click(screen.getByRole("button", { name: "Organize" }));
+      await userEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Favorite" }));
+
+      const dialog = await screen.findByRole("dialog", { name: "Change 47,913 tracks?" });
+      expect(within(dialog).getByText(/you can keep working|runs in the background/i)).toBeInTheDocument();
+      expect(screen.queryByText("That is a lot of tracks")).toBeNull();
     });
   });
 });
@@ -2444,7 +2468,7 @@ describe("dragging rows out of the table (ORG-11)", () => {
     await tableReady();
     await userEvent.click(screen.getByText("Track 1"));
     fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
-    await screen.findByText(/3 tracks selected/);
+    await screen.findByText(/3 selected/);
 
     const dataTransfer = transfer();
     fireEvent.dragStart(rowFor("Track 2"), { dataTransfer });
@@ -2459,7 +2483,7 @@ describe("dragging rows out of the table (ORG-11)", () => {
     await tableReady();
     await userEvent.click(screen.getByText("Track 1"));
     fireEvent.click(screen.getByText("Track 2"), { ctrlKey: true });
-    await screen.findByText(/2 tracks selected/);
+    await screen.findByText(/2 selected/);
 
     const dataTransfer = transfer();
     fireEvent.dragStart(rowFor("Track 3"), { dataTransfer });
@@ -2643,7 +2667,7 @@ describe("rearranging a Collection (ORG-11)", () => {
     await openWarmups();
     await userEvent.click(screen.getByText("Track 1"));
     fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
-    await screen.findByText(/3 tracks selected/);
+    await screen.findByText(/3 selected/);
 
     const dataTransfer = transfer();
     fireEvent.dragStart(rowFor("Track 1"), { dataTransfer });
@@ -2652,6 +2676,99 @@ describe("rearranging a Collection (ORG-11)", () => {
 
     expect(await screen.findByText(/one at a time/)).toBeInTheDocument();
     expect(bridge.reorderCollectionEntry).not.toHaveBeenCalled();
+  });
+
+  describe("with Alt+↑ and Alt+↓ (FLW-10)", () => {
+    const table = () => screen.getByRole("table", { name: "Library tracks" });
+
+    it("moves the selected track down one place", async () => {
+      renderScreen();
+      await tableReady();
+      await openWarmups();
+      await userEvent.click(screen.getByText("Track 2"));
+      fireEvent.keyDown(table(), { key: "ArrowDown", altKey: true });
+
+      await waitFor(() =>
+        expect(bridge.getCollectionEntries).toHaveBeenCalledWith({
+          collectionId: 12,
+          offset: 1,
+          limit: 1,
+        }),
+      );
+      // Its position afterwards, not the gap: one place down from the second row.
+      await waitFor(() =>
+        expect(bridge.reorderCollectionEntry).toHaveBeenCalledWith({ entry_id: 500, position: 2 }),
+      );
+    });
+
+    it("moves it up one place", async () => {
+      renderScreen();
+      await tableReady();
+      await openWarmups();
+      await userEvent.click(screen.getByText("Track 2"));
+      fireEvent.keyDown(table(), { key: "ArrowUp", altKey: true });
+      await waitFor(() =>
+        expect(bridge.reorderCollectionEntry).toHaveBeenCalledWith({ entry_id: 500, position: 0 }),
+      );
+    });
+
+    it("stops at the ends instead of writing", async () => {
+      renderScreen();
+      await tableReady();
+      await openWarmups();
+      await userEvent.click(screen.getByText("Track 1"));
+      fireEvent.keyDown(table(), { key: "ArrowUp", altKey: true });
+      await userEvent.click(screen.getByText("Track 3"));
+      fireEvent.keyDown(table(), { key: "ArrowDown", altKey: true });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(bridge.reorderCollectionEntry).not.toHaveBeenCalled();
+    });
+
+    it("re-reads the table and the tree once it has moved", async () => {
+      renderScreen();
+      await tableReady();
+      await openWarmups();
+      const browses = bridge.browseLibrary.mock.calls.length;
+      await userEvent.click(screen.getByText("Track 2"));
+      fireEvent.keyDown(table(), { key: "ArrowDown", altKey: true });
+      await waitFor(() =>
+        expect(bridge.browseLibrary.mock.calls.length).toBeGreaterThan(browses),
+      );
+    });
+
+    it("refuses, out loud, for the same reasons a drag does", async () => {
+      renderScreen();
+      await tableReady();
+      await openWarmups();
+      await userEvent.click(screen.getByRole("button", { name: /^BPM(?! ▾)/ }));
+      await waitFor(() => expect(lastBrowse()).toMatchObject({ sort: "bpm" }));
+      await userEvent.click(screen.getByText("Track 2"));
+      fireEvent.keyDown(table(), { key: "ArrowDown", altKey: true });
+      expect(await screen.findByText(/own order/)).toBeInTheDocument();
+      expect(bridge.reorderCollectionEntry).not.toHaveBeenCalled();
+    });
+
+    it("moves one track at a time", async () => {
+      renderScreen();
+      await tableReady();
+      await openWarmups();
+      await userEvent.click(screen.getByText("Track 1"));
+      fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
+      await screen.findByText("3 selected");
+      fireEvent.keyDown(table(), { key: "ArrowDown", altKey: true });
+      expect(await screen.findByText(/one at a time/)).toBeInTheDocument();
+      expect(bridge.reorderCollectionEntry).not.toHaveBeenCalled();
+    });
+
+    it("does nothing, and says nothing, outside a Collection", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.click(screen.getByText("Track 2"));
+      fireEvent.keyDown(table(), { key: "ArrowDown", altKey: true });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(screen.queryByText(/Open a Collection/)).not.toBeInTheDocument();
+      expect(bridge.reorderCollectionEntry).not.toHaveBeenCalled();
+    });
   });
 
   it("offers no reorder outside a Collection at all", async () => {
@@ -3067,7 +3184,8 @@ describe("the tag manager (ORG-12)", () => {
     await openManager();
     await userEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
     await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
-    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    // The bar under the tree has a Delete of its own; the question's is in the dialog.
+    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete" }));
 
     await waitFor(() => expect(bridge.deleteTag).toHaveBeenCalledWith({ id: 21 }));
     // The engine's count, not the one the confirmation warned about.

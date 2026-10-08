@@ -99,6 +99,16 @@ body {
   color: var(--fg-primary);
   font-family: var(--font-pixel);
   font-size: var(--font-size-md);
+  /* The pixel font ships an "fi" ligature that draws "Add filter" as "Add Alter". */
+  font-variant-ligatures: none;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+}
+
+/* A form control's UA font shorthand resets what the body set. */
+button,
+input,
+select,
+textarea {
+  font-variant-ligatures: none;
 }

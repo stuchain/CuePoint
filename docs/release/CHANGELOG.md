@@ -21,6 +21,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them. The value boxes and the Beatport section's **Apply** buttons are gone,
   and an unmatched track's Beatport section is one sentence and **Match on
   Beatport**. Ratings, file saves, waveform states and cues are in plainer words.
+- **The Library's actions are buttons you can see.** A toolbar above the table (one
+  line when there is room, two at the default window with Track details open) holds
+  the selection bar, always there: **Play ▸**, **Organize ▸**, **Explore ▸**,
+  **Beatport ▸**, **Fix ▸** and **More ▸**, then **Clear selection**, with the
+  right-click menu showing the same groups as submenus. With nothing selected the buttons are
+  dimmed and say "Select tracks first". **Beatport ▸** and **Fix ▸** open Clean with
+  the selected tracks, so **Accept match** and **Reject match** now live in Review.
+  The track count ("1,204 tracks · 3 selected", or "Showing 240 of 12,000 tracks"
+  while a search or filter narrows the view) and **Columns…** share the toolbar, so
+  the table shows more tracks: four whole rows in the default window. Over the
+  Collections tree, **New** with **Collection**, **Set** and **Folder** name what
+  they make, and a bar under it, always there, holds
+  **Rename**, **Duplicate**, **Delete**, **Export to Rekordbox…** and, for a Set,
+  **Open in Prepare** and **Save set list…**. **Alt+Up** and **Alt+Down** move a
+  Collection's selected track. A change to many tracks now asks "Change 4,213
+  tracks?"
 - **Clean can fix many tracks at once, and matches from one window.** A new
   **Fix values** tab has **Edit values…**, **Use Beatport's values…** and **Save
   changes into the files…** for the tracks you came with, the whole library, or

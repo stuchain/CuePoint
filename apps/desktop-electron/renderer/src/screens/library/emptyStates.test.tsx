@@ -71,7 +71,6 @@ describe("a library nobody has tagged yet", () => {
         onFiltersChange={vi.fn()}
         query=""
         onQueryChange={vi.fn()}
-        total={3}
         facet={TAG_FACET}
       />,
     );
@@ -91,7 +90,6 @@ describe("a library nobody has tagged yet", () => {
         onFiltersChange={vi.fn()}
         query=""
         onQueryChange={vi.fn()}
-        total={3}
         facet={TAG_FACET}
       />,
     );

@@ -6,6 +6,7 @@ import { render, screen } from "@testing-library/react";
 
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 
+import { defaultLayout, reconcileLayout } from "../../components/table/columnLayout";
 import { LIBRARY_COLUMNS } from "./libraryColumns";
 
 describe("the Key column", () => {
@@ -38,5 +39,25 @@ describe("the Title column (FLW-5)", () => {
   it("adds nothing beside a row found by its words", () => {
     const { container } = render(<div>{title.render(row({ matched_on: null }))}</div>);
     expect(container.textContent).toBe("Strobe");
+  });
+});
+
+describe("Rating shown by default (LIB-10)", () => {
+  const rating = LIBRARY_COLUMNS.find((column) => column.id === "rating")!;
+
+  it("is not hidden by default, so a layout never saved opens with it", () => {
+    expect(rating.hiddenByDefault).not.toBe(true);
+    const layout = defaultLayout(LIBRARY_COLUMNS, 1);
+    expect(layout.find((entry) => entry.id === "rating")?.hidden).toBe(false);
+  });
+
+  it("is the user's choice in a layout that was saved: hidden stays hidden", () => {
+    const saved = defaultLayout(LIBRARY_COLUMNS, 1).map((entry) =>
+      entry.id === "rating" ? { ...entry, hidden: true } : entry,
+    );
+    const reconciled = reconcileLayout(saved, LIBRARY_COLUMNS, 1);
+    expect(reconciled.find((entry) => entry.id === "rating")?.hidden).toBe(true);
+    // Reloading the saved layout again, as every start does, changes nothing.
+    expect(reconcileLayout(reconciled, LIBRARY_COLUMNS, 1)).toEqual(reconciled);
   });
 });

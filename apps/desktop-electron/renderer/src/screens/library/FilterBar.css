@@ -23,15 +23,6 @@
   border: var(--hairline) solid var(--border-muted);
 }
 
-.cp-filter-bar__count {
-  margin-left: auto;
-  color: var(--fg-muted);
-  font-family: var(--font-data);
-  font-size: var(--font-size-xs);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 .cp-filter-bar__hint {
   align-self: center;
   color: var(--fg-muted);
@@ -190,6 +181,32 @@
 
 .cp-filter-bar__row > * {
   flex: 0 0 auto;
+}
+
+.cp-filter-bar__row > .cp-field {
+  position: relative;
+}
+
+/* Add filter and Tags… sit on the row's second line at the default window, and
+   a full hit-target floor under them is a table row lost (PAGES-05C). */
+.cp-filter-bar__row > .cp-btn {
+  min-height: calc(var(--hit-min) * 0.75);
+  padding-top: var(--space-xs);
+  padding-bottom: var(--space-xs);
+}
+
+/* The search box is named by its placeholder and its label; the word "Search"
+   above it cost the table a row at the default window (PAGES-05C). The label
+   stays for assistive technology. */
+.cp-filter-bar__row > .cp-field > .cp-field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .cp-filter-bar__chips-wrap {

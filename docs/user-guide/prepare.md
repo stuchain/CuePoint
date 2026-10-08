@@ -37,7 +37,7 @@ A Set holds at most 1,000 entries. A Collection holds larger lists.
 ### Making a Set
 
 - **New Set**, in the **New Set ▾** menu in Prepare's header (it works with a
-  Set open) or beside **New Collection** at the top of the Library's
+  Set open) or the **New Set** button beside **New Collection** at the top of the Library's
   Collections section, makes an empty Set in the folder you choose.
 - **New Set from…** copies the tracks of something you already have into a new
   Set, as its one chapter:
@@ -50,8 +50,8 @@ A Set holds at most 1,000 entries. A Collection holds larger lists.
   On the Prepare page, **New Set ▾ → New Set from…** asks what to copy first. In the
   Library, right-click a Collection, a Smart Collection or a Rekordbox playlist
   and choose **New Set from…**.
-- **New Set from the selection…**, in the Library's right-click menu and its
-  **Actions** menu, makes a Set of the tracks you selected, in the order the
+- **New Set from these…**, in the Library's right-click menu and the selection
+  bar's **Organize ▸**, makes a Set of the tracks you selected, in the order the
   table shows them.
 - **Duplicate**, on a Set's right-click menu in the Library, copies a Set
   whole — chapters, times, notes and accepted warnings — which is how last

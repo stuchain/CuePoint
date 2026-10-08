@@ -34,7 +34,7 @@ describe("the Library's shortcuts (LIBUI-10)", () => {
     const library = KEYBOARD_SHORTCUTS.filter((row) => row.context === "Library");
 
     expect(library.map((row) => row.shortcut).sort()).toEqual(
-      ["Ctrl+A", "Ctrl+F", "Delete", "Enter", "Esc", "F2", "Shift+F10"].sort(),
+      ["Alt+Up / Alt+Down", "Ctrl+A", "Ctrl+F", "Delete", "Enter", "Esc", "F2", "Shift+F10"].sort(),
     );
   });
 
@@ -135,6 +135,7 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     ["Enter", "Library", trackTableSource, /key === "Enter" && onRowActivate/],
     ["Esc", "Library", libraryScreenSource, /key === "Escape" && !typing\) selection\.clear/],
     ["Shift+F10", "Library", trackTableSource, /shiftKey && event\.key === "F10"/],
+    ["Alt+Up / Alt+Down", "Library", trackTableSource, /event\.altKey &&\s+onRowMove/],
     ["F2", "Library", collectionsPaneSource, /key === "F2"/],
     ["Delete", "Library", collectionsPaneSource, /key === "Delete"/],
     ["Space", "Player", playerShortcutsSource, /event\.key === " "/],

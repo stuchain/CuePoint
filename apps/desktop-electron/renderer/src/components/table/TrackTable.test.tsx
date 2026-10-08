@@ -244,6 +244,41 @@ describe("rows", () => {
   });
 });
 
+describe("moving the active row with Alt+↑ and Alt+↓ (FLW-10)", () => {
+  const table = () => screen.getByRole("table");
+
+  it("reports the active row and the direction", () => {
+    const onRowMove = vi.fn();
+    renderTable({ source: inMemorySource(tracks(3)), activeIndex: 1, onRowMove });
+
+    fireEvent.keyDown(table(), { key: "ArrowDown", altKey: true });
+    fireEvent.keyDown(table(), { key: "ArrowUp", altKey: true });
+
+    expect(onRowMove.mock.calls).toEqual([
+      [1, 1],
+      [1, -1],
+    ]);
+  });
+
+  it("leaves the plain arrows alone", () => {
+    const onRowMove = vi.fn();
+    renderTable({ source: inMemorySource(tracks(3)), activeIndex: 1, onRowMove });
+    fireEvent.keyDown(table(), { key: "ArrowDown" });
+    expect(onRowMove).not.toHaveBeenCalled();
+  });
+
+  it("does nothing without an active row or a listener", () => {
+    const onRowMove = vi.fn();
+    renderTable({ source: inMemorySource(tracks(3)), activeIndex: null, onRowMove });
+    fireEvent.keyDown(table(), { key: "ArrowDown", altKey: true });
+    expect(onRowMove).not.toHaveBeenCalled();
+    expect(() => {
+      renderTable({ source: inMemorySource(tracks(3)), activeIndex: 0 });
+      fireEvent.keyDown(screen.getAllByRole("table")[1]!, { key: "ArrowDown", altKey: true });
+    }).not.toThrow();
+  });
+});
+
 describe("the context menu gesture (PLAYER-09)", () => {
   it("reports the row and where the pointer was", () => {
     const onRowContextMenu = vi.fn();

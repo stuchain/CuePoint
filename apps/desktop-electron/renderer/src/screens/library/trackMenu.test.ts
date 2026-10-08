@@ -70,7 +70,7 @@ describe("what the menu offers", () => {
     expect(labels(organizationMenuItems(IN_LIBRARY, withSets)).slice(0, 3)).toEqual([
       "Add to Collection…",
       "Add to Set…",
-      "New Set from the selection…",
+      "New Set from these…",
     ]);
     organizationMenuItems(IN_LIBRARY, withSets)
       .find((item) => item.id === "new-set-from-selection")!

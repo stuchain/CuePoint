@@ -64,7 +64,7 @@ export function TrackBeatportSection({ track, matches, onOpenInClean }: TrackBea
     );
   }
 
-  const rows = beatportFieldRows(track, state, candidate);
+  const rows = beatportFieldRows(track, candidate);
   const cover = coverArtText(track.artwork);
 
   return (

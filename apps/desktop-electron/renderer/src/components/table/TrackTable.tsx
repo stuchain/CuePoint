@@ -107,6 +107,13 @@ export interface TrackTableProps<Row> {
   onRowContextMenu?: (row: Row, index: number, anchor: { x: number; y: number }) => void;
 
   /**
+   * Alt+↑ and Alt+↓ on the active row (FLW-10): move it one place. The table
+   * reports the key and the row; whether the rows can be reordered, and doing
+   * it, is the caller's, as a drop's is.
+   */
+  onRowMove?: (index: number, delta: -1 | 1) => void;
+
+  /**
    * The row the keyboard acts on: the last one clicked (LIBUI-09's anchor).
    *
    * Only Shift+F10 and the menu key need it. Arrow-key row navigation is not
@@ -208,6 +215,7 @@ export function TrackTable<Row>({
   onSelect,
   onRowActivate,
   onRowContextMenu,
+  onRowMove,
   onRowDragStart,
   acceptsRowDrop,
   onRowDrop,
@@ -352,6 +360,16 @@ export function TrackTable<Row>({
       if (!row) return;
       event.preventDefault();
       onRowActivate(row, activeIndex);
+      return;
+    }
+    if (
+      event.altKey &&
+      onRowMove &&
+      activeIndex != null &&
+      (event.key === "ArrowUp" || event.key === "ArrowDown")
+    ) {
+      event.preventDefault();
+      onRowMove(activeIndex, event.key === "ArrowUp" ? -1 : 1);
       return;
     }
     const wanted = event.key === "ContextMenu" || (event.shiftKey && event.key === "F10");
