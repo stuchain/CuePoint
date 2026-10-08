@@ -101,7 +101,7 @@ function rewriteExport(file: string, ids: number[]): void {
   utimesSync(file, stat.atime.getTime() / 1000 + 5, stat.mtime.getTime() / 1000 + 5);
 }
 
-function launch(userDataDir: string, cuepointHome: string): Promise<ElectronApplication> {
+async function launch(userDataDir: string, cuepointHome: string): Promise<ElectronApplication> {
   const env = {
     ...process.env,
     NODE_ENV: "production",
@@ -109,11 +109,18 @@ function launch(userDataDir: string, cuepointHome: string): Promise<ElectronAppl
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
 
-  return electron.launch({
+  const app = await electron.launch({
     cwd: DESKTOP_ROOT,
     args: [".", `--user-data-dir=${userDataDir}`],
     env,
   });
+  // Both Macs lose the window mid-test with nothing in the logs: say how the
+  // app went, so the next failure names a crash or a quit.
+  app.process().once("exit", (code, signal) => console.log(`[organization] app exited: code ${code}, signal ${signal}`));
+  app.on("window", (page) => page.on("crash", () => console.log("[organization] renderer crashed")));
+  const first = await app.firstWindow({ timeout: 60_000 });
+  first.on("crash", () => console.log("[organization] renderer crashed"));
+  return app;
 }
 
 async function ready(app: ElectronApplication): Promise<Page> {
