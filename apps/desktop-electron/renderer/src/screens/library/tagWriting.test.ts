@@ -1,5 +1,5 @@
 /**
- * What the "Write tags to files" dialog says (CLEAN-13, DEC-070).
+ * What the "Save changes into the files" dialog says (CLEAN-13, DEC-070).
  */
 import { describe, expect, it } from "vitest";
 

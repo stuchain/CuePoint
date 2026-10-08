@@ -1,5 +1,5 @@
 /**
- * "Write tags to files…" (CLEAN-13, DEC-070).
+ * "Save changes into the files…" (CLEAN-13, DEC-070, PAGES-07B).
  *
  * The one control in the app that writes outside CuePoint's database, so it is
  * built in the order DEC-070 set: choose what to write, preview it — a read
@@ -222,7 +222,7 @@ export function WriteTagsDialog({ open, selection, count, onClose, onChanged }: 
   return (
     <Modal
       open={open}
-      title="Write tags to files"
+      title="Save changes into the files"
       onClose={busy ? () => undefined : onClose}
       size="wide"
       primaryAction={primary}

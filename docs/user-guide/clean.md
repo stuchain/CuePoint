@@ -5,15 +5,17 @@ what it finds: tracks to review, files that have gone missing, possible
 duplicates, and a count of everything that needs you. It works on the library
 you imported on the [Library](library.md) page, so import a collection first.
 
-Clean has four tabs: **Review matches**, **Missing files**, **Duplicates** and
-**Health**. It reopens on the tab you used last. Each tab opens with a line
+Clean has five tabs: **Review matches**, **Fix values**, **Missing files**,
+**Duplicates** and **Health**. It reopens on the tab you used last. Each tab opens with a line
 saying what it is for, and the tabs show where work waits: **Review matches
 (42)** counts the tracks waiting for you plus those that changed since you
 decided, **Missing files (3)** and **Duplicates (5)** count what the last check
 found; Duplicates counts the tracks in duplicate groups, not the groups. A tab shows no number when nothing is waiting, or when that check has
 never run.
 
-Three things hold everywhere on this page:
+**Match tracks…**, in the page's header, opens the window where many tracks are
+matched on Beatport; see [Matching](#matching). Three things hold everywhere on
+this page:
 
 - **Clean deletes nothing.** No track, file or playlist is removed, moved or
   renamed by anything here.
@@ -26,10 +28,12 @@ Three things hold everywhere on this page:
 
 CuePoint looks each track up on Beatport. Sure matches are accepted for you; the
 rest wait here for a yes or no. The first time you open Clean, with nothing
-looked up yet, it offers **Match all N tracks** and says what that does:
+looked up yet, it offers **Match all N tracks…** and says what that does:
 CuePoint searches Beatport for each track to find the right release, key and
-label, in the background, and you can keep using the app. **Choose a playlist
-first** takes you to the **In** menu to match less.
+label, in the background, and you can keep using the app. The offer opens the
+[match window](#matching) with **Tracks not looked up yet** chosen. **Choose a
+playlist first** takes you to the **In** menu; pick one and the match window
+opens on it.
 
 **Save review list as a file…**, in the page's header, is described under
 [Saving the review list](#saving-the-review-list).
@@ -44,13 +48,26 @@ The review queue is a table of tracks, chosen by two menus:
 
 ### Matching
 
-**Match all** looks up every track the queue shows on Beatport. **Match
-selection** looks up the tracks you selected. Each asks what to match first:
-**Only tracks not looked up yet**, or **Look all of them up again**. Matching
-runs in the background: a note above the queue says how many tracks are being
-matched, that the bar at the bottom shows progress and the list updates when it
-finishes, and you can leave the page. The status strip shows **Matching on
-Beatport** with its progress and a **Stop** button.
+**Match tracks…** opens a window that asks which tracks:
+
+- **Tracks not looked up yet**, with how many there are.
+- **All tracks**.
+- **Tracks in chosen playlists, Collections or Sets**: tick any mix of Rekordbox
+  playlists, your Collections and your Sets, the same places the Library's **In
+  playlist** filter offers.
+- **The N tracks you chose**, when you came from somewhere with tracks selected:
+  the Library's notice line or a Health count. In Review matches, **Match tracks…**
+  opens on the tracks you selected, or else on the playlist chosen in **In**.
+
+**Look up tracks that already have a match again** is off unless you turn it on.
+Left off, only the tracks not looked up yet are searched, and the window says how
+many that is for what you chose. The window ends with what it will do, for
+example "CuePoint will search Beatport for 1,204 tracks." Matching runs in the
+background: a note on the page says how many tracks are being matched, that the
+bar at the bottom shows progress and the list updates when it finishes, and you
+can leave the page. The status strip shows **Matching on Beatport** with its
+progress and a **Stop** button. One track is matched in place with **Search
+Beatport again for this track**, in Review, and from the Inspector.
 
 A track already matched or decided is skipped, so matching a playlist twice does
 not look anything up twice, unless you choose to look them all up again. A
@@ -135,6 +152,29 @@ this batch** in the Activity panel for an apply over many tracks. See
 (or the ones you selected) with their match state and Beatport link, as a
 spreadsheet (CSV or Excel) or JSON that you can share or check by hand.
 
+## Fix values
+
+Change many tracks at once. Pick the tracks, then use one of three buttons:
+
+- **Edit values…** sets or clears your key, BPM, genre, label and year on all of
+  them.
+- **Use Beatport's values…** copies the BPM, genre, label and year you choose from
+  each track's accepted match. The key is not on the list: an accepted match
+  already gives a track its key.
+- **Save changes into the files…** writes your values into the audio files. A
+  preview comes first and nothing is written until you read it. See [Writing tags
+  to files](library.md#writing-tags-to-files).
+
+Which tracks: **The whole library**, or **Tracks in chosen playlists,
+Collections or Sets** (tick any mix; the page says how many tracks that is), or
+the tracks you came with from the Library. With nothing chosen the tab says
+"Choose tracks: pick playlists here, or select tracks in the Library and use
+Fix ▸."
+
+A change over more than 1,000 tracks asks first, with the number ("Change 4,213
+tracks?"), and runs in the background. Every change is recorded in each track's
+History, and the whole batch can be undone from **Activity** in the status strip.
+
 ## Missing files
 
 The tracks whose file was **missing** or **unreadable** at the last check. The
@@ -171,10 +211,17 @@ merged or deleted**: to remove a duplicate, remove it in Rekordbox and refresh.
 
 A count of everything that may need you: missing or unreadable files, tracks in
 a duplicate group, tracks not looked up yet, waiting for you or changed since you
-decided, and tracks
-with no Beatport key, or no BPM, genre or artwork. **Each count opens the Library on exactly
-the tracks it counts**, as an ordinary filter you can change or save as a Smart
-Collection.
+decided, and tracks with no Beatport key, or no BPM, genre or artwork. **Each
+count opens what fixes it, and shows exactly that many tracks.** Missing or
+unreadable files open **Missing files**, tracks in a duplicate group open
+**Duplicates**, and **Waiting for you** opens **Review matches**. The rest open the
+Library on exactly the tracks they count, as an ordinary filter you can change or
+save as a Smart Collection.
+
+**No Beatport key** opens the Library on **Key is empty**, and its notice line
+offers **Match tracks…** with those tracks. It is not the same as **Not looked up
+yet**: a track that was matched can still have no key when Beatport's record has
+none.
 
 **Checks** has a line for what each is for and when it last ran, or **Not done
 yet**: **Files on disk** (looks for tracks whose file has moved or been
@@ -207,7 +254,7 @@ Earlier versions matched from a separate **inKey** screen and showed matches on
 | inKey: load an XML or M3U file, choose playlists, match | Import the collection once in the Library, then match a playlist, a Collection or the whole library here |
 | Results: review, pick another candidate | **Review matches**, with the comparison and the keyboard |
 | Export results to CSV, JSON or Excel | **Save review list as a file…** |
-| Sync tags with Rekordbox | [Write tags to files](library.md#writing-tags-to-files), previewed, recorded and restorable |
+| Sync tags with Rekordbox | **Save changes into the files…** on [Fix values](#fix-values) (see [Writing tags to files](library.md#writing-tags-to-files)), previewed, recorded and restorable |
 | Past searches | Match results are kept with each track instead of in files |
 
 The CSV files earlier runs wrote are still where they were saved; CuePoint no

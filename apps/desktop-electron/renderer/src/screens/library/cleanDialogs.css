@@ -43,6 +43,7 @@
   align-items: center;
 }
 
+.clean-dialog__field .clean-dialog__hint,
 .clean-dialog__field .clean-dialog__problem {
   grid-column: 1 / -1;
 }

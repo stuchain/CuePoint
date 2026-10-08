@@ -10,14 +10,15 @@
 
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
 
-export type CleanSection = "review" | "missing" | "duplicates" | "health";
+export type CleanSection = "review" | "fix" | "missing" | "duplicates" | "health";
 
 /**
- * The one list of the page's tabs (CLN-3). PAGES-07B adds Fix values here, and
- * the screen, the intros and the counts all read this list.
+ * The one list of the page's tabs (CLN-3, FLW-12): the screen, the intros and
+ * the counts all read it.
  */
 export const CLEAN_SECTIONS: ReadonlyArray<{ id: CleanSection; label: string }> = [
   { id: "review", label: "Review matches" },
+  { id: "fix", label: "Fix values" },
   { id: "missing", label: "Missing files" },
   { id: "duplicates", label: "Duplicates" },
   { id: "health", label: "Health" },
@@ -59,12 +60,14 @@ export function saveCleanSection(section: CleanSection): void {
 export const CLEAN_INTROS: Record<CleanSection, string> = {
   review:
     "CuePoint looks each track up on Beatport. Sure matches are accepted for you; the rest wait here for a yes or no.",
+  fix:
+    "Change many tracks at once: edit their key, BPM, genre, label and year, fill them in from Beatport's matches, and save the result into the audio files. Every change is recorded and can be reverted.",
   missing:
     "CuePoint finds files that are not where Rekordbox says, and does not move them. Missing means nothing is at that path; Unreadable means the file is there but CuePoint cannot open it.",
   duplicates:
     "Possible duplicates are grouped by what they share. CuePoint deletes nothing: decide which copy to keep in Rekordbox, or mark a group as not duplicates. The number on the tab counts tracks in those groups, not groups.",
   health:
-    "What needs attention in your library, counted. Each number opens the Library on exactly the tracks it counts.",
+    "What needs attention in your library, counted. Each number opens the list that fixes it, with exactly that many tracks.",
 };
 
 /**

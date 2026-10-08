@@ -1,5 +1,9 @@
 /**
- * "Edit metadata…" over a selection (CLEAN-13, DEC-069).
+ * "Edit values…" over a selection (CLEAN-13, DEC-069, PAGES-07B).
+ *
+ * The one editor for your values: Clean's Fix values opens it for many tracks
+ * and the Library's menu for its selection, and Track details can for one
+ * (DEC-205). Above 1,000 tracks it asks first, with the number (LIB-11).
  *
  * Five fields, each left as it is, set, or cleared back to Rekordbox's value.
  * The edits go through the batch path (DEC-063), one batch per field, so each
@@ -12,7 +16,7 @@ import { useEffect, useState } from "react";
 import type { OverrideField } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components";
 import { APPLY_FIELD_LABELS } from "../clean/comparison";
-import type { OverrideEdit } from "./libraryBatch";
+import { BATCH_JOB_THRESHOLD, BATCH_RECORDED_NOTE, type OverrideEdit } from "./libraryBatch";
 import {
   EDIT_FIELDS,
   editsFromDraft,
@@ -23,7 +27,7 @@ import {
 } from "./metadataEdits";
 import "./cleanDialogs.css";
 
-interface EditMetadataDialogProps {
+interface EditValuesDialogProps {
   open: boolean;
   /** How many tracks the edit applies to. */
   count: number;
@@ -33,6 +37,11 @@ interface EditMetadataDialogProps {
    * its refusal in its own words.
    */
   onEdit: (edit: OverrideEdit) => Promise<string | null>;
+  /**
+   * The track's values as they are now, for an edit of one track (Track
+   * details). A field with none reads "none". Left out, nothing is shown.
+   */
+  current?: Partial<Record<OverrideField, string | null>>;
 }
 
 const MODES: Array<{ value: EditMode; label: string }> = [
@@ -41,20 +50,24 @@ const MODES: Array<{ value: EditMode; label: string }> = [
   { value: "clear", label: "Clear mine" },
 ];
 
-export function EditMetadataDialog({ open, count, onClose, onEdit }: EditMetadataDialogProps) {
+export function EditValuesDialog({ open, count, onClose, onEdit, current }: EditValuesDialogProps) {
   const [draft, setDraft] = useState<EditDraft>(emptyEditDraft);
   const [problems, setProblems] = useState<Partial<Record<OverrideField, string>>>({});
   const [general, setGeneral] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // A big batch is asked about once, with its number, before it runs (LIB-11).
+  const [asking, setAsking] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setAsking(false);
     setDraft(emptyEditDraft());
     setProblems({});
     setGeneral(null);
   }, [open]);
 
   const change = (field: OverrideField, patch: Partial<EditDraft[OverrideField]>) => {
+    setAsking(false);
     setDraft((previous) => ({ ...previous, [field]: { ...previous[field], ...patch } }));
     setProblems((previous) => ({ ...previous, [field]: undefined }));
   };
@@ -67,6 +80,10 @@ export function EditMetadataDialog({ open, count, onClose, onEdit }: EditMetadat
     }
     if (built.edits.length === 0) {
       setGeneral("Choose at least one field to set or clear.");
+      return;
+    }
+    if (count > BATCH_JOB_THRESHOLD && !asking) {
+      setAsking(true);
       return;
     }
     setSaving(true);
@@ -104,10 +121,18 @@ export function EditMetadataDialog({ open, count, onClose, onEdit }: EditMetadat
   return (
     <Modal
       open={open}
-      title="Edit metadata"
+      title="Edit values"
       onClose={onClose}
-      primaryAction={{ label: "Apply", onClick: () => void save(), loading: saving }}
-      secondaryAction={{ label: "Cancel", onClick: onClose }}
+      primaryAction={{
+        label: asking ? `Change ${many}` : "Apply",
+        onClick: () => void save(),
+        loading: saving,
+      }}
+      secondaryAction={
+        asking
+          ? { label: "Back", onClick: () => setAsking(false) }
+          : { label: "Cancel", onClick: onClose }
+      }
     >
       <div className="clean-dialog">
         <p className="clean-dialog__lead">
@@ -115,6 +140,14 @@ export function EditMetadataDialog({ open, count, onClose, onEdit }: EditMetadat
           clearing one shows Rekordbox&rsquo;s again. Every change is recorded and can be
           reverted.
         </p>
+        {asking && (
+          <div role="alert">
+            <p className="clean-dialog__headline">{`Change ${many}?`}</p>
+            <p className="clean-dialog__lead">
+              {BATCH_RECORDED_NOTE}
+            </p>
+          </div>
+        )}
         <div className="clean-dialog__fields">
           {EDIT_FIELDS.map((field) => {
             const entry = draft[field];
@@ -155,6 +188,11 @@ export function EditMetadataDialog({ open, count, onClose, onEdit }: EditMetadat
                     })
                   }
                 />
+                {current && (
+                  <p className="clean-dialog__hint">
+                    {`Now: ${current[field] || "none"}`}
+                  </p>
+                )}
                 {problem && (
                   <p className="clean-dialog__problem" role="alert">
                     {problem}

@@ -75,7 +75,13 @@ function renderHealth() {
   return render(
     <ToastProvider>
       <MemoryRouter>
-        <HealthView health={HEALTH} error={null} loading={false} onHealthChanged={() => {}} />
+        <HealthView
+          health={HEALTH}
+          error={null}
+          loading={false}
+          onHealthChanged={() => {}}
+          onOpenSection={() => {}}
+        />
       </MemoryRouter>
     </ToastProvider>,
   );

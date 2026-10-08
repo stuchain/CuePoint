@@ -34,7 +34,7 @@ CuePoint then checks, in the background, that your files are where Rekordbox say
 
 1. Go to **Clean**.
 2. In **In**, choose the playlist to match, or leave it on the whole library.
-3. The first time, choose **Match all N tracks**. To start with one playlist instead, choose **Choose a playlist first**, pick the playlist in **In**, and Clean lists its tracks under **Not looked up yet**; then choose **Match all** there. Later, choose **Match all** or **Match selection** and pick **Only tracks not looked up yet**.
+3. The first time, choose **Match all N tracks**, then **Start matching** with **Tracks not looked up yet** chosen. To start with one playlist instead, choose **Match tracks…** in the header, then **Tracks in chosen playlists, Collections or Sets**, and tick the playlist. Later, use **Match tracks…** the same way.
 
 Matching runs in the background, so you can keep working. Tracks CuePoint is certain about are accepted for you. The rest wait under **Waiting for you**.
 

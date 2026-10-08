@@ -199,8 +199,12 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         await window.getByRole("combobox", { name: "In" }).selectOption({ label: "Journey" });
         await window.getByRole("combobox", { name: "Show" }).selectOption("not_matched");
         await expect(queueRow(window, "Tone Two")).toBeVisible({ timeout: 15_000 });
-        await window.getByRole("button", { name: "Match all 3" }).click();
-        await window.getByRole("dialog").getByRole("button", { name: "Start matching" }).click();
+        await window.getByRole("button", { name: "Match tracks…" }).click();
+        const matchWindow = window.getByRole("dialog", { name: "Match tracks" });
+        await matchWindow.getByRole("radio", { name: /^Tracks in chosen playlists/ }).click();
+        await matchWindow.getByRole("checkbox", { name: "Journey" }).check();
+        await expect(matchWindow).toContainText("CuePoint will search Beatport for 3 tracks.");
+        await matchWindow.getByRole("button", { name: "Start matching" }).click();
         await expect(window.getByText("Matching 3 tracks on Beatport.", { exact: true })).toBeVisible({ timeout: 30_000 });
         await expect(window.getByText("Matching finished.")).toBeVisible({ timeout: 90_000 });
         await idle(window);
@@ -324,26 +328,28 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         await expect(missing.getByText("Tone One")).toHaveCount(0);
       });
 
-      await test.step("see Health's counts and follow one into the Library", async () => {
+      await test.step("see Health's counts and follow one to the tab that fixes it", async () => {
         await window.getByRole("tab", { name: "Health" }).click();
         await expect(
-          window.getByRole("button", { name: "1 Waiting for you: open in the Library" }),
+          window.getByRole("button", { name: "1 Waiting for you: open Review matches" }),
         ).toHaveCount(0);
         await window
-          .getByRole("button", { name: "1 Missing or unreadable files: open in the Library" })
+          .getByRole("button", { name: "1 Missing or unreadable files: open Missing files" })
           .click();
-        const table = window.getByRole("table", { name: "Library tracks" });
+        const table = window.getByRole("table", { name: "Missing files" });
         await expect(table.getByText("Gone")).toBeVisible({ timeout: 15_000 });
         await expect(table.getByText("Tone One")).toHaveCount(0);
-        await window.getByRole("button", { name: "Clear all filters", exact: true }).first().click();
-        await expect(table.getByText("Tone One")).toBeVisible({ timeout: 15_000 });
+        await window.getByRole("link", { name: "Library", exact: true }).click();
+        await expect(
+          window.getByRole("table", { name: "Library tracks" }).getByText("Tone One"),
+        ).toBeVisible({ timeout: 15_000 });
       });
 
       await test.step("preview tags, write them into a copied file, and restore them", async () => {
         const before = readFileSync(library.files[0]!);
         await libraryRow(window, "Tone One").getByText("Tone One").click({ button: "right" });
-        await window.getByRole("menu").getByRole("menuitem", { name: "Write tags to files…" }).click();
-        const dialog = window.getByRole("dialog", { name: "Write tags to files" });
+        await window.getByRole("menu").getByRole("menuitem", { name: "Save changes into the files…" }).click();
+        const dialog = window.getByRole("dialog", { name: "Save changes into the files" });
         await dialog.getByRole("button", { name: "Preview" }).click();
         await expect(dialog.getByRole("region", { name: "Preview" })).toContainText(
           "Writing would change 1 file of 1. Nothing has been written yet.",

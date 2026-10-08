@@ -453,7 +453,7 @@ class TestWhatIsLeftOut:
         assert (draft.planned, draft.excluded, draft.rematch) == (10, 0, True)
 
     def test_a_selection_of_only_settled_tracks_is_refused(self, service, history):
-        with pytest.raises(ValueError, match="already matched or decided"):
+        with pytest.raises(ValueError, match="have already been looked up"):
             service.prepare(BatchSelection.of_ids(history[:3]))
 
 

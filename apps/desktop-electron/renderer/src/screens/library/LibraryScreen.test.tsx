@@ -503,7 +503,7 @@ function install(overrides: Partial<Bridge> = {}) {
 function renderScreen(
   props: {
     onOpenRekordboxInstructions?: () => void;
-    onOpenMatch?: () => void;
+    onOpenMatch?: (tracks?: unknown) => void;
     focus?: "collections";
     openWith?: { rules: FilterRuleSet; token: string } | null;
     refreshWith?: string | null;
@@ -2311,7 +2311,7 @@ describe("organizing a selection (ORG-11)", () => {
       const menu = await openMenuOn("Track 2");
       await userEvent.click(within(menu).getByRole("menuitem", { name: "Favorite" }));
 
-      expect(await screen.findByText(/reverted from Activity/i)).toBeInTheDocument();
+      expect(await screen.findByText(/undone from Activity/i)).toBeInTheDocument();
       expect(screen.queryByText(/no undo/i)).toBeNull();
     });
 
@@ -2325,7 +2325,7 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.click(await screen.findByRole("option", { name: /Warmups/ }));
 
       expect(await screen.findByText(/no undo/i)).toBeInTheDocument();
-      expect(screen.queryByText(/reverted from Activity/i)).toBeNull();
+      expect(screen.queryByText(/undone from Activity/i)).toBeNull();
     });
 
     it("does it once it is confirmed", async () => {
@@ -3315,6 +3315,28 @@ describe("opened on a Health count's rules (CLEAN-12)", () => {
     await tableReady();
     await waitFor(() => expect(lastBrowse()).toMatchObject({ filters: RULES, playlistId: null }));
     expect(lastBrowse().scope).toBeUndefined();
+  });
+
+  it("offers Match tracks… with those tracks on the notice line for Key is empty (FLW-14)", async () => {
+    const NO_KEY: FilterRuleSet = { match: "all", rules: [{ field: "key", operator: "is_empty" }] };
+    const onOpenMatch = vi.fn();
+    renderScreen({ openWith: { rules: NO_KEY, token: "nav-1" }, onOpenMatch });
+    await tableReady();
+    const note = await screen.findByRole("status", { name: "Tracks with no Beatport key" });
+    expect(note).toHaveTextContent("3 tracks have no Beatport key.");
+    expect(note).toHaveTextContent("Beatport's record has none");
+    await userEvent.click(within(note).getByRole("button", { name: "Match tracks…" }));
+    expect(onOpenMatch).toHaveBeenCalledTimes(1);
+    expect(onOpenMatch).toHaveBeenCalledWith({
+      query: expect.objectContaining({ filters: NO_KEY }),
+      count: 3,
+    });
+  });
+
+  it("shows no such note for another rule", async () => {
+    renderScreen({ openWith: { rules: RULES, token: "nav-1" }, onOpenMatch: vi.fn() });
+    await tableReady();
+    expect(screen.queryByRole("status", { name: "Tracks with no Beatport key" })).toBeNull();
   });
 
   it("shows the rules in the bar, where they can be read and changed", async () => {

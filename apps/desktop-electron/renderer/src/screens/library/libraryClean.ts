@@ -175,14 +175,14 @@ export function cleanMenuItems(
   if (handlers.onApply) {
     matching.push({
       id: "clean-apply",
-      label: "Apply Beatport values…",
+      label: "Use Beatport's values…",
       onSelect: handlers.onApply,
     });
   }
   groups.push(matching);
 
   if (handlers.onEdit) {
-    groups.push([{ id: "clean-edit", label: "Edit metadata…", onSelect: handlers.onEdit }]);
+    groups.push([{ id: "clean-edit", label: "Edit values…", onSelect: handlers.onEdit }]);
   }
 
   const files: TrackContextMenuItem[] = [];
@@ -192,7 +192,7 @@ export function cleanMenuItems(
   if (handlers.onWriteTags) {
     files.push({
       id: "clean-write-tags",
-      label: "Write tags to files…",
+      label: "Save changes into the files…",
       onSelect: handlers.onWriteTags,
     });
   }

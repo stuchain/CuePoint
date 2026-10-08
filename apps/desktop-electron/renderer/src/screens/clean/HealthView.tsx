@@ -3,9 +3,10 @@
  *
  * Counts, each a link. There is no score: a number to worry about replaces a
  * list of things to do (DEC-075). Each count arrives with the rule set that
- * produced it, and clicking it opens the Library with exactly those rules —
- * the page never builds a rule of its own, so what Health says and what the
- * click shows are one statement and cannot disagree.
+ * produced it. A count that Clean has a tab for opens that tab (FLW-14):
+ * missing files, duplicates and what waits for you. The rest open the Library
+ * with exactly those rules — the page never builds a rule of its own, so what
+ * Health says and what the click shows are one statement and cannot disagree.
  *
  * Below the counts, when each detection behind them last ran, with a button to
  * run it again. "No missing files" from a check an hour ago and from no check
@@ -29,6 +30,7 @@ import {
 import { useWaveformAnalysis } from "../../components/waveform/useWaveformAnalysis";
 import { libraryRulesState } from "../library/libraryLink";
 import { formatWhen, trackCount } from "./cleanFormat";
+import { CLEAN_SECTIONS, type CleanSection } from "./cleanSections";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
 
 /** What running each detection is called, by the job that runs it. */
@@ -49,6 +51,23 @@ const PURPOSES: Record<string, string> = {
   waveforms: "Draws each track's waveform so you can see its shape before you play it.",
 };
 
+/** The counts Clean has a tab for: the tab fixes what the count says (FLW-14). */
+const COUNT_TABS: Readonly<Record<string, CleanSection>> = {
+  missing_files: "missing",
+  duplicates: "duplicates",
+  needs_review: "review",
+};
+
+/**
+ * What a count means when its name alone invites a wrong guess. "No Beatport
+ * key" is not "Not looked up yet": a matched track whose Beatport record has no
+ * key is in the first and not the second.
+ */
+const COUNT_HINTS: Readonly<Record<string, string>> = {
+  missing_key:
+    "A matched track can still have no key, when Beatport's record has none, so this is not the same as Not looked up yet.",
+};
+
 const FINISHED_LINES: Record<string, string> = {
   file_check: "Finished checking files.",
   duplicate_scan: "Finished looking for duplicates.",
@@ -60,9 +79,17 @@ interface HealthViewProps {
   error: string | null;
   loading: boolean;
   onHealthChanged: () => void;
+  /** Open one of Clean's tabs, for the counts that have one. */
+  onOpenSection: (section: CleanSection) => void;
 }
 
-export function HealthView({ health, error, loading, onHealthChanged }: HealthViewProps) {
+export function HealthView({
+  health,
+  error,
+  loading,
+  onHealthChanged,
+  onOpenSection,
+}: HealthViewProps) {
   const navigate = useNavigate();
   const { push } = useToast();
   const message = useCallback(
@@ -141,20 +168,30 @@ export function HealthView({ health, error, loading, onHealthChanged }: HealthVi
       </p>
 
       <ul className="clean-health__counts" aria-label="Library Health">
-        {health.counts.map((count) => (
-          <li key={count.id}>
-            <button
-              type="button"
-              className="clean-health__count"
-              data-zero={count.count === 0 ? "true" : undefined}
-              aria-label={`${count.count.toLocaleString()} ${count.label}: open in the Library`}
-              onClick={() => navigate("/library", { state: libraryRulesState(count.rules) })}
-            >
-              <span className="clean-health__number">{count.count.toLocaleString()}</span>
-              <span className="clean-health__label">{count.label}</span>
-            </button>
-          </li>
-        ))}
+        {health.counts.map((count) => {
+          const tab = COUNT_TABS[count.id];
+          const tabLabel = tab ? CLEAN_SECTIONS.find((entry) => entry.id === tab)?.label : undefined;
+          const hint = COUNT_HINTS[count.id];
+          return (
+            <li key={count.id}>
+              <button
+                type="button"
+                className="clean-health__count"
+                data-zero={count.count === 0 ? "true" : undefined}
+                aria-label={`${count.count.toLocaleString()} ${count.label}: open ${tabLabel ?? "in the Library"}`}
+                onClick={() =>
+                  tab
+                    ? onOpenSection(tab)
+                    : navigate("/library", { state: libraryRulesState(count.rules) })
+                }
+              >
+                <span className="clean-health__number">{count.count.toLocaleString()}</span>
+                <span className="clean-health__label">{count.label}</span>
+              </button>
+              {hint && <p className="clean-health__count-hint">{hint}</p>}
+            </li>
+          );
+        })}
       </ul>
 
       <h2 className="clean-health__heading">Checks</h2>

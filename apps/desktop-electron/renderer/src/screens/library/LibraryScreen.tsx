@@ -97,6 +97,8 @@ import { describeRule, type ValueNames } from "./filterText";
 import { emptyStateFor, type EmptyActionId } from "./libraryEmpty";
 import { LibraryEmptyState } from "./LibraryEmptyState";
 import { LibraryKeyNote } from "./LibraryKeyNote";
+import { LibraryNoKeyNote } from "./LibraryNoKeyNote";
+import type { CleanTracks } from "../clean/cleanTracks";
 import { LibraryReadyNote } from "./LibraryReadyNote";
 import { isReadyNoteOpen, readImportedAt, rememberImport } from "./libraryNoticeMemory";
 import type { LibraryOpening, TrackOpening } from "./libraryLink";
@@ -114,7 +116,7 @@ import { followJob } from "./followJob";
 import { appliedLine, jobErrorMessage } from "./libraryFormat";
 import { DEFAULT_LIBRARY_QUERY, type LibraryQuery, queryKey } from "./libraryQuery";
 import { copySummary, gatherTracksAsText, writeClipboard } from "./trackClipboard";
-import { isSelected, onlySelectedId } from "./trackSelection";
+import { EMPTY_SELECTION, isSelected, onlySelectedId, selectAll } from "./trackSelection";
 import { useFacet, useFilterVocabulary, useQuickFacets } from "./useFilterVocabulary";
 import { openSource, withSource } from "./savedScope";
 import { sourceKey } from "./filterText";
@@ -207,11 +209,12 @@ export interface LibraryScreenProps {
    */
   onOpenMissingFiles?: () => void;
   /**
-   * Clean's matching, where "No tracks have a Beatport key yet" sends the user
-   * (DEC-201, PAGES-05). A prop for `focus`'s reason; absent, the note offers no
-   * button. PAGES-07 swaps what this opens for the match window.
+   * Clean's match window (FLW-13), where "No tracks have a Beatport key yet" and
+   * the Key is empty list send the user. Called with no tracks, it opens on the
+   * tracks not looked up yet; with some, on those. A prop for `focus`'s reason;
+   * absent, the notes offer no button.
    */
-  onOpenMatch?: () => void;
+  onOpenMatch?: (tracks?: CleanTracks) => void;
   /**
    * Open an artist's or a label's page (DISCOVER-11): from the Inspector's
    * credits, a filter chip and the operations list. A prop for `focus`'s
@@ -453,6 +456,15 @@ export function LibraryScreen({
     !window_.loading &&
     window_.total === 0 &&
     Boolean(barRules?.rules.some((rule) => rule.field === "key"));
+
+  /**
+   * True when the list is Health's "No Beatport key": a Key is empty rule, with
+   * rows to match (FLW-14). Its note offers Match tracks… with these tracks.
+   */
+  const keyIsEmptyList =
+    !window_.loading &&
+    window_.total > 0 &&
+    Boolean(barRules?.rules.some((rule) => rule.field === "key" && rule.operator === "is_empty"));
 
   /** The Collection the table is showing, when it is one that holds rows. */
   const scopedCollection = useMemo(() => {
@@ -1763,18 +1775,31 @@ export function LibraryScreen({
                 DEC-201). Inside the bar's grid row, as the Set note is, so the table
                 keeps the row that grows. The ready note goes first and the key note
                 takes the line when it is done. */}
-            {!keyFilterFoundNothing && isReadyNoteOpen(importedAt) && (
+            {keyIsEmptyList && (
+              <LibraryNoKeyNote
+                count={window_.total}
+                onMatch={
+                  onOpenMatch
+                    ? () => {
+                        const described = batchSelection(selectAll(EMPTY_SELECTION), query).query;
+                        if (described) onOpenMatch({ query: described, count: window_.total });
+                      }
+                    : undefined
+                }
+              />
+            )}
+            {!keyIsEmptyList && !keyFilterFoundNothing && isReadyNoteOpen(importedAt) && (
               <LibraryReadyNote armedAt={importedAt} onShownChange={setReadyShown} />
             )}
             {/* One key note, in either of its two roles. A Key filter that finds
                 nothing in a library with no keys is the answer to a click of the
                 user's own (FLW-4): it shows even if the note was dismissed, and
                 takes the line from the ready note. */}
-            {(keyFilterFoundNothing ||
+            {!keyIsEmptyList && (keyFilterFoundNothing ||
               (importedAt !== null && (!isReadyNoteOpen(importedAt) || readyShown === false))) && (
               <LibraryKeyNote
                 trackCount={summary.track_count}
-                onMatch={onOpenMatch}
+                onMatch={onOpenMatch ? () => onOpenMatch() : undefined}
                 asked={keyFilterFoundNothing}
               />
             )}
@@ -1796,7 +1821,7 @@ export function LibraryScreen({
               quickFacets={quick.facets}
               quickFacetsLoading={quick.loading}
               onRequestQuickFacets={quick.load}
-              onMatchTracks={onOpenMatch}
+              onMatchTracks={onOpenMatch ? () => onOpenMatch() : undefined}
               smart={smart}
               onSaveSmart={() => {
                 setSavingError(null);

@@ -1,11 +1,13 @@
 /**
  * The Clean page (CLEAN-12, DEC-072).
  *
- * Four parts behind tabs — Review matches, Missing files, Duplicates and
- * Health — over one read of Library Health they all share. The part last used
- * is where the page reopens (`cleanSections.ts`). Each part opens with one line
- * saying what it is for (CLN-1), and the tabs say where work waits (CLN-3).
- * The header holds the page's actions: Review puts its own there.
+ * Five parts behind tabs — Review matches, Fix values, Missing files,
+ * Duplicates and Health — over one read of Library Health they all share. The
+ * part last used is where the page reopens (`cleanSections.ts`). Each part
+ * opens with one line saying what it is for (CLN-1), and the tabs say where
+ * work waits (CLN-3). The header holds the page's actions: **Match tracks…**,
+ * which opens the one window where many tracks are matched (FLW-13), and
+ * Review's own.
  *
  * Every table here is the Library's `TrackTable` over the Library's windowed
  * browse with a rule set, and every action goes through a route CLEAN-11 built.
@@ -21,9 +23,17 @@ import { Panel } from "../../components/Panel";
 import { Tabs } from "../../components/Tabs";
 import { DuplicatesView } from "./DuplicatesView";
 import { HealthView } from "./HealthView";
+import { FixValues } from "./FixValues";
+import { MatchWindow } from "./MatchWindow";
 import { MissingFilesView } from "./MissingFilesView";
 import { ReviewView } from "./ReviewView";
-import type { CleanOpening, CleanSectionOpening } from "./cleanLink";
+import type {
+  CleanFixOpening,
+  CleanMatchOpening,
+  CleanOpening,
+  CleanSectionOpening,
+} from "./cleanLink";
+import type { CleanTracks } from "./cleanTracks";
 import { entityPath } from "../discover/discoverLinks";
 import {
   CLEAN_INTROS,
@@ -34,6 +44,7 @@ import {
   type CleanSection,
 } from "./cleanSections";
 import { useCleanHealth } from "./useCleanHealth";
+import { useCleanMatch } from "./useCleanMatch";
 import "../screens.css";
 import "./clean.css";
 
@@ -49,9 +60,24 @@ interface CleanScreenProps {
    * is, and not remembered as the part last used — a link is not a choice.
    */
   openSection?: CleanSectionOpening | null;
+  /**
+   * Tracks to match (FLW-13): the Library's notice line, Health, the Keys page,
+   * the first-run guide and Prepare open the match window with them chosen.
+   */
+  matchWith?: CleanMatchOpening | null;
+  /**
+   * Tracks to fix (FLW-12): the Library's Beatport ▸ and Fix ▸ and Track details
+   * open Fix values with them chosen, and may start an action.
+   */
+  fixWith?: CleanFixOpening | null;
 }
 
-export function CleanScreen({ openWith = null, openSection = null }: CleanScreenProps = {}) {
+export function CleanScreen({
+  openWith = null,
+  openSection = null,
+  matchWith = null,
+  fixWith = null,
+}: CleanScreenProps = {}) {
   const navigate = useNavigate();
   // The Inspector's artist and label links (DISCOVER-11).
   const openEntity = useCallback(
@@ -59,7 +85,7 @@ export function CleanScreen({ openWith = null, openSection = null }: CleanScreen
     [navigate],
   );
   const [section, setSection] = useState<CleanSection>(() =>
-    openWith ? "review" : (openSection?.section ?? loadCleanSection()),
+    fixWith ? "fix" : openWith ? "review" : (openSection?.section ?? loadCleanSection()),
   );
   const opened = useRef<string | null>(null);
   const [focus, setFocus] = useState<CleanOpening | null>(null);
@@ -78,8 +104,37 @@ export function CleanScreen({ openWith = null, openSection = null }: CleanScreen
     opened.current = openSection.token;
     setSection(openSection.section);
   }, [openSection]);
+
+  // The match window: its tracks, and whether it is open (FLW-13).
+  const [matchTracks, setMatchTracks] = useState<CleanTracks | null>(null);
+  const [matchOpen, setMatchOpen] = useState(false);
+  // What Review has chosen (a selection, or the playlist in In): the header's
+  // Match tracks… opens on it.
+  const [reviewTarget, setReviewTarget] = useState<CleanTracks | null>(null);
+  const openMatch = useCallback((tracks: CleanTracks | null = null) => {
+    setMatchTracks(tracks);
+    setMatchOpen(true);
+  }, []);
+  useEffect(() => {
+    if (!matchWith || opened.current === matchWith.token) return;
+    opened.current = matchWith.token;
+    openMatch(matchWith.tracks);
+  }, [matchWith, openMatch]);
+
+  // Fix values opened with tracks chosen. A link is not a choice, so the part
+  // last used is not changed. It is spent once the user moves to another part,
+  // so coming back does not start its action again.
+  const [fixOpening, setFixOpening] = useState<CleanFixOpening | null>(fixWith);
+  useEffect(() => {
+    if (!fixWith || opened.current === fixWith.token) return;
+    opened.current = fixWith.token;
+    setSection("fix");
+    setFixOpening(fixWith);
+  }, [fixWith]);
+
   const cleanHealth = useCleanHealth();
   const { reload: reloadHealth } = cleanHealth;
+  const match = useCleanMatch(reloadHealth);
   const [summary, setSummary] = useState<LibrarySummary | null | undefined>(undefined);
 
   useEffect(() => {
@@ -106,6 +161,7 @@ export function CleanScreen({ openWith = null, openSection = null }: CleanScreen
       const next = CLEAN_SECTIONS.find((entry) => entry.id === id)?.id;
       if (!next) return;
       setSection(next);
+      setFixOpening(null);
       saveCleanSection(next);
       // Counts change with every edit made anywhere, the Library included.
       reloadHealth();
@@ -158,9 +214,23 @@ export function CleanScreen({ openWith = null, openSection = null }: CleanScreen
           activeId={section}
           onChange={choose}
         />
-        <div className="clean-screen__actions" ref={setActionsHost} />
+        <div className="clean-screen__actions">
+          <Button
+            variant="secondary"
+            disabled={match.matching}
+            onClick={() => openMatch(section === "review" ? reviewTarget : null)}
+          >
+            Match tracks…
+          </Button>
+          <span className="clean-screen__actions" ref={setActionsHost} />
+        </div>
       </header>
       <p className="clean-screen__lede">{CLEAN_INTROS[section]}</p>
+      {match.note && (
+        <div className="clean-note" role="region" aria-label="Matching">
+          <p className="clean-note__text">{match.note}</p>
+        </div>
+      )}
       <div className="clean-screen__body" role="tabpanel" aria-label={label}>
         {section === "review" && (
           <ReviewView
@@ -169,6 +239,16 @@ export function CleanScreen({ openWith = null, openSection = null }: CleanScreen
             focus={focus}
             onOpenEntity={openEntity}
             actionsHost={actionsHost}
+            match={match}
+            onMatchTracks={(tracks) => openMatch(tracks ?? null)}
+            onMatchTargetChange={setReviewTarget}
+          />
+        )}
+        {section === "fix" && (
+          <FixValues
+            opening={fixOpening}
+            libraryCount={cleanHealth.health?.track_count ?? null}
+            onChanged={reloadHealth}
           />
         )}
         {section === "missing" && (
@@ -187,9 +267,19 @@ export function CleanScreen({ openWith = null, openSection = null }: CleanScreen
             error={cleanHealth.error}
             loading={cleanHealth.loading}
             onHealthChanged={reloadHealth}
+            onOpenSection={choose}
           />
         )}
       </div>
+      <MatchWindow
+        open={matchOpen}
+        tracks={matchTracks}
+        health={cleanHealth.health}
+        onStart={(selection, again) =>
+          match.start(again ? "rematch-many" : "match-many", selection, again)
+        }
+        onClose={() => setMatchOpen(false)}
+      />
     </div>
   );
 }

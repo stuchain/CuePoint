@@ -21,7 +21,7 @@ import { APPLY_FIELD_LABELS } from "../clean/comparison";
 import { matchStartedLine, trackCount } from "../clean/cleanFormat";
 import { useCleanJob } from "../clean/useCleanJob";
 import { ApplyValuesDialog } from "./ApplyValuesDialog";
-import { EditMetadataDialog } from "./EditMetadataDialog";
+import { EditValuesDialog } from "./EditValuesDialog";
 import type { CleanMenuHandlers } from "./libraryClean";
 import type { OverrideEdit } from "./libraryBatch";
 import { editTarget } from "./metadataEdits";
@@ -181,7 +181,7 @@ export function useLibraryClean({ batch, onMessage, onChanged }: LibraryCleanOpt
         onClose={close}
         onApply={apply}
       />
-      <EditMetadataDialog
+      <EditValuesDialog
         open={open?.kind === "edit"}
         count={open?.target.count ?? 0}
         onClose={close}

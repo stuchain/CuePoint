@@ -964,6 +964,36 @@ page header from the Review view. CLN-5: candidate heads read `#1 · Very likely
 score?**, remembered in `cuepoint-clean-score-open`. Review and Missing files publish the selected track with its
 resolved Camelot key through `useReportSelectedTrack` (moved from Discover to `components/shell/`). DEC: none needed.
 
+**Outcome** (2026-10-08), part B: Clean has five tabs, `CLEAN_SECTIONS` now holding **Fix values** second, with its
+intro in `CLEAN_INTROS`. **Fix values** (`FixValues.tsx`) is the Library's own Clean path pointed at a scope: it
+runs `useLibraryClean`/`useLibraryBatch` over a `BatchSelection` of the tracks passed in, the whole library, or the
+places ticked in `PlacePicker` (the same Rekordbox playlists, Collections and Sets, and the same `in_playlist` rule,
+as the Library's field), counted by the engine (`useTrackCount`, a one-row browse). The editor is one component,
+`EditValuesDialog` (was `EditMetadataDialog`), asking first above 1,000 tracks with the number (LIB-11); "Use
+Beatport's values" never lists Key; "Save changes into the files" is `WriteTagsDialog` with its preview unchanged.
+The Library's menu entries and the three dialogs took the same names (Edit values…, Use Beatport's values…, Save
+changes into the files…). `BatchConfirmDialog` is LIB-11's "Change N tracks?" question; Fix values uses it and
+PAGES-05C should switch `LibraryScreen`'s own question to it. The **match window** (`MatchWindow.tsx`) is in the
+header (**Match tracks…**) and replaces Review's Match all / Match selection and their dialog; matching itself moved
+to `useCleanMatch` (start, resume, the running note, a count of ended matches Review reloads on), and the "Matching"
+note now sits under the page's intro on every tab. Its options are Tracks not looked up yet / All tracks / chosen
+places / the tracks passed in, plus "Look up tracks that already have a match again" (off by default, disabled for
+"not looked up", which have none to look up again). The carried gap is closed: the window says how many tracks it
+will search for and "only the N not looked up yet" for the scope chosen (Health's count, or a count query with the
+not-looked-up rule added); for tracks passed in as bare ids the engine alone knows how many were looked up, so it
+says "those of the N that have not been looked up yet". Openers in `cleanLink.ts`: `cleanFixState(tracks, action?)`
+and `cleanMatchState(tracks?)` take ids or a described selection (`{ query, count }`, e.g. a filter with the count
+shown), are checked on arrival, and open the tab or window once per navigation; they are not remembered as the part
+last used. `App.tsx` passes them as `fixWith`/`matchWith`, and the Library's `onOpenMatch(tracks?)` opens the
+window (the 05A notice line and Keys list open it on "Not looked up yet"). Prepare's no-key line is 09B's to wire.
+Health: `HealthView` opens Missing files, Duplicates and Review matches for their counts and the Library for the
+rest (Changed since you decided stays a Library list: same rule as the count); **No Beatport key** opens the Library
+on Key is empty, where the new `LibraryNoKeyNote` offers Match tracks… with those tracks and says how the list
+differs from "Not looked up yet". The engine already held every count equal to its filter's total
+(`test_every_count_equals_the_librarys_count_of_its_rules`). `match_service.py`'s refusal now reads "…have already
+been looked up: matched, waiting for you, or decided. Choose “Look up tracks that already have a match again” to
+search Beatport again." DEC: none needed.
+
 ---
 
 ## PAGES-08 — Discover

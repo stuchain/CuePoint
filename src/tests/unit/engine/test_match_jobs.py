@@ -302,7 +302,7 @@ class TestStarting:
         self, store, processor, ids
     ):
         finished(start_match_job(store, BatchSelection.of_ids(ids[:2])).job)
-        with pytest.raises(ValueError, match="Re-match them"):
+        with pytest.raises(ValueError, match="search Beatport again"):
             start_match_job(store, BatchSelection.of_ids(ids[:2]))
         # One match job: the refusal started none. The duplicate scan that
         # follows the first match is CLEAN-08's, and is not a match job.

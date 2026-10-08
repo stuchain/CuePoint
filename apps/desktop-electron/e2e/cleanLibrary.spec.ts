@@ -261,11 +261,11 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.getByRole("button", { name: "Select all" }).click();
       await window.getByRole("button", { name: "Actions…" }).click();
       const menu = window.getByRole("menu");
-      for (const entry of ["Match on Beatport", "Accept match", "Edit metadata…", "Write tags to files…"]) {
+      for (const entry of ["Match on Beatport", "Accept match", "Edit values…", "Save changes into the files…"]) {
         await expect(menu.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
       }
-      await menu.getByRole("menuitem", { name: "Edit metadata…" }).click();
-      const dialog = window.getByRole("dialog", { name: "Edit metadata" });
+      await menu.getByRole("menuitem", { name: "Edit values…" }).click();
+      const dialog = window.getByRole("dialog", { name: "Edit values" });
       await dialog.getByRole("textbox", { name: "BPM value" }).fill("126");
       await dialog.getByRole("button", { name: "Apply" }).click();
       await expect(window.getByText(/Set the BPM to 126 on 3 tracks/)).toBeVisible({ timeout: 15_000 });
@@ -326,9 +326,9 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.reload();
       await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
       await row(window, "Tone One").getByText("Tone One").click({ button: "right" });
-      await window.getByRole("menu").getByRole("menuitem", { name: "Write tags to files…" }).click();
+      await window.getByRole("menu").getByRole("menuitem", { name: "Save changes into the files…" }).click();
 
-      const dialog = window.getByRole("dialog", { name: "Write tags to files" });
+      const dialog = window.getByRole("dialog", { name: "Save changes into the files" });
       // Nothing can be written before a preview has answered.
       await expect(dialog.getByRole("button", { name: /^Write/ })).toHaveCount(0);
       await dialog.getByRole("button", { name: "Preview" }).click();

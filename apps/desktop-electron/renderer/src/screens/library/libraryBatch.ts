@@ -35,6 +35,13 @@ import type { Selection } from "./trackSelection";
 export const BATCH_JOB_THRESHOLD = 1_000;
 
 /**
+ * What the question before a big, revertable batch says (LIB-11): one text for
+ * the Library's confirmation, Fix values' and the edit dialog's.
+ */
+export const BATCH_RECORDED_NOTE =
+  "It runs in the background; you can keep working. Every change is recorded in each track's History, and the whole batch can be undone from Activity in the status strip.";
+
+/**
  * The operations the Library's menu and toolbar offer.
  *
  * All ten of the engine's batch operations: ORG-11's six, and since CLEAN-13
@@ -272,7 +279,7 @@ export function batchSummary(action: BatchAction, result: BatchResult): string {
  */
 export function batchConsequence(kind: LibraryBatchKind, holder?: "set"): string {
   if (canRevertKind(kind)) {
-    return "It runs in the background. Every change is recorded in each track’s History, and the whole batch can be reverted from Activity.";
+    return BATCH_RECORDED_NOTE;
   }
   const node = holder === "set" ? "a Set" : "a Collection";
   return `It runs in the background, and there is no undo: adding tracks to or removing them from ${node} cannot be reverted.`;

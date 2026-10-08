@@ -2338,7 +2338,7 @@
     "verdict": "exempt",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers"
   },
-  "cuepoint/services/match_service.py::MatchService.prepare::All {_tracks(len(named))} in that selection are already matched or decided. Re-match them to ask Beatport again.": {
+  "cuepoint/services/match_service.py::MatchService.prepare::All {_tracks(len(named))} in that selection have already been looked up: matched, waiting for you, or decided. Choose “Look up tracks that already have a match again” to search Beatport again.": {
     "holds": "a track count phrase",
     "verdict": "exempt",
     "reason": "a count phrase"

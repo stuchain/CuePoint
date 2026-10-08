@@ -38,7 +38,7 @@ track's waveform, and that you can browse and play while it works. A "Now:" line
 shows the step and how far it is, for example *Now: drawing waveforms, 1,204 of
 12,000*. Close it with **Dismiss**; it goes by itself when the work ends. When
 that work is done and no track has a Beatport key yet, the same line says so and
-offers **Match tracks…**, which opens [Clean](clean.md).
+offers **Match tracks…**, which opens the [match window](clean.md#matching) in Clean.
 
 A 50,000-track collection takes about eleven seconds to import. See
 [Performance](performance.md#the-library) for the measured numbers.
@@ -473,10 +473,10 @@ fixed list offers them to pick from rather than a box to type into.
 | Match on Beatport | Looks the tracks up on Beatport, skipping any already matched or decided. It runs in the background |
 | Search Beatport again for this track | Looks them up again. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
 | Accept match / Reject match | Decides what the matcher proposed, for tracks nobody has decided yet |
-| Apply Beatport values… | Copies the fields you choose from each track's accepted match into your values |
-| Edit metadata… | Sets or clears your key, BPM, genre, label or year |
+| Use Beatport's values… | Copies the fields you choose from each track's accepted match into your values |
+| Edit values… | Sets or clears your key, BPM, genre, label or year |
 | Check files | Looks for the files again |
-| Write tags to files… | See [Writing tags to files](#writing-tags-to-files) |
+| Save changes into the files… | See [Writing tags to files](#writing-tags-to-files) |
 
 Accepting a match changes no value on its own. **Apply** is what copies
 Beatport's values, and they become your values — Rekordbox's stay underneath.
@@ -520,7 +520,7 @@ says so. A revert is itself a change, and can be reverted too.
 
 ## Writing tags to files
 
-**Write tags to files…** puts your values into the audio files themselves, so
+**Save changes into the files…** puts your values into the audio files themselves, so
 Rekordbox and other software can read them. It is the one thing CuePoint does
 outside its own library, so it always goes in the same order:
 

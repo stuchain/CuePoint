@@ -317,8 +317,11 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await window.getByRole("combobox", { name: "In" }).selectOption({ label: "To match" });
         await window.getByRole("combobox", { name: "Show" }).selectOption("not_matched");
         await expect(queueRow(window, "Low Tide")).toBeVisible({ timeout: 15_000 });
-        await window.getByRole("button", { name: "Match all 2" }).click();
-        await window.getByRole("dialog").getByRole("button", { name: "Start matching" }).click();
+        await window.getByRole("button", { name: "Match tracks…" }).click();
+        const matchWindow = window.getByRole("dialog", { name: "Match tracks" });
+        await matchWindow.getByRole("radio", { name: /^Tracks in chosen playlists/ }).click();
+        await matchWindow.getByRole("checkbox", { name: "To match" }).check();
+        await matchWindow.getByRole("button", { name: "Start matching" }).click();
         await expect(window.getByText("Matching finished.")).toBeVisible({ timeout: 90_000 });
         await idle(window);
         await window.getByRole("combobox", { name: "Show" }).selectOption("accepted");

@@ -1,5 +1,5 @@
 /**
- * What the "Write tags to files" dialog says, as pure functions (CLEAN-13, DEC-070).
+ * What the "Save changes into the files" dialog says, as pure functions (CLEAN-13, DEC-070).
  *
  * Writing into a person's files is the one thing in Phase 7 that leaves the
  * database, so the dialog's words carry the design: what will be written, what

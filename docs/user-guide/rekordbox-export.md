@@ -37,7 +37,7 @@ open in Rekordbox.
   [set list](prepare.md#set-lists) carries the times as text or CSV.
 - **Your audio files.** An export writes one file — the XML you choose — and
   never opens an audio file. To put your values into the files themselves, use
-  [Write tags to files](library.md#writing-tags-to-files).
+  [Save changes into the files](library.md#writing-tags-to-files).
 - **The file you imported.** CuePoint never writes over it. Choosing it as the
   destination is refused.
 

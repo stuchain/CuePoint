@@ -1,5 +1,5 @@
 /**
- * "Write tags to files…" (CLEAN-13, DEC-070).
+ * "Save changes into the files…" (CLEAN-13, DEC-070).
  *
  * The property worth the most: **nothing can be written before a preview has
  * answered**, and a preview answers only for the options it was asked with.

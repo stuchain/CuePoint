@@ -54,16 +54,20 @@ function asRule(value: unknown): FilterRule | null {
   return operand === undefined ? { field, operator } : { field, operator, value: operand };
 }
 
-/** The rules a location carries, or null when it carries none that are well formed. */
-export function rulesFromLocationState(state: unknown): FilterRuleSet | null {
-  if (!state || typeof state !== "object") return null;
-  const carried = (state as Record<string, unknown>)[STATE_KEY];
+/** A rule set read from untrusted data, or null when it is not a well-formed one. */
+export function ruleSetFrom(carried: unknown): FilterRuleSet | null {
   if (!carried || typeof carried !== "object") return null;
   const { match, rules } = carried as Record<string, unknown>;
   if (match !== "all" || !Array.isArray(rules) || rules.length === 0) return null;
   const parsed = rules.map(asRule);
   if (parsed.some((rule) => rule === null)) return null;
   return { match: "all", rules: parsed as FilterRule[] };
+}
+
+/** The rules a location carries, or null when it carries none that are well formed. */
+export function rulesFromLocationState(state: unknown): FilterRuleSet | null {
+  if (!state || typeof state !== "object") return null;
+  return ruleSetFrom((state as Record<string, unknown>)[STATE_KEY]);
 }
 
 /**

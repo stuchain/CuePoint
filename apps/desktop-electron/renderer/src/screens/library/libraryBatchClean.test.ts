@@ -108,7 +108,7 @@ describe("what can be reverted", () => {
 
   it.each(kinds)("a %s batch", (kind) => {
     expect(canRevertKind(kind)).toBe(true);
-    expect(batchConsequence(kind)).toMatch(/reverted from Activity/);
+    expect(batchConsequence(kind)).toMatch(/undone from Activity/);
   });
 
   it.each(["add_to_collection", "remove_from_collection"] as const)("not a %s batch", (kind) => {

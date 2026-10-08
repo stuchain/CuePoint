@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Clean can fix many tracks at once, and matches from one window.** A new
+  **Fix values** tab has **Edit values…**, **Use Beatport's values…** and **Save
+  changes into the files…** for the tracks you came with, the whole library, or
+  any mix of playlists, Collections and Sets; a change over 1,000 tracks asks
+  first, with the number. **Match tracks…**, in the header, opens one window for
+  the tracks not looked up yet, all tracks, chosen places or the tracks you came
+  with, and says how many it will search for. Each Health count opens what fixes
+  it, and **No Beatport key** opens the Library on Key is empty with **Match
+  tracks…** for those tracks.
 - **A Medium (1.5×) size, and it is the default.** **Settings → Appearance → Size
   of text and controls** now offers Small (1×), Medium (1.5×), Large (2×) and
   Extra large (3×). If you never chose a size, CuePoint opens at 1.5× and shows

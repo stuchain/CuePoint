@@ -222,10 +222,10 @@ describe("the Clean entries of the operations list", () => {
       "Search Beatport again for this track",
       "Accept match",
       "Reject match",
-      "Apply Beatport values…",
-      "Edit metadata…",
+      "Use Beatport's values…",
+      "Edit values…",
       "Check files",
-      "Write tags to files…",
+      "Save changes into the files…",
     ]);
     expect(items.filter((item) => item.separatorBefore).map((item) => item.id)).toEqual([
       "clean-match",

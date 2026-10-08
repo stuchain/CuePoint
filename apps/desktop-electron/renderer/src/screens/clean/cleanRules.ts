@@ -111,7 +111,7 @@ export function cleanQuery(
 }
 
 /** Nodes in tree order: each parent, then its children by position. */
-function inTreeOrder<Node extends { id: number; parent_id: number | null; position: number }>(
+export function inTreeOrder<Node extends { id: number; parent_id: number | null; position: number }>(
   nodes: readonly Node[],
 ): Node[] {
   const children = new Map<number | null, Node[]>();

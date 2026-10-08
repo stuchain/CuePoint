@@ -398,8 +398,9 @@ class MatchService(IMatchService):
         wanted = tuple(track_id for track_id in named if track_id not in settled)
         if not wanted:
             raise ValueError(
-                f"All {_tracks(len(named))} in that selection are already matched or"
-                " decided. Re-match them to ask Beatport again."
+                f"All {_tracks(len(named))} in that selection have already been looked"
+                " up: matched, waiting for you, or decided. Choose “Look up tracks"
+                " that already have a match again” to search Beatport again."
             )
         return MatchDraft(track_ids=wanted, selected=len(named), rematch=bool(rematch))
 

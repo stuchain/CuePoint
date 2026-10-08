@@ -259,10 +259,10 @@ const CLEAN_ENTRIES = [
   "Search Beatport again for this track",
   "Accept match",
   "Reject match",
-  "Apply Beatport values…",
-  "Edit metadata…",
+  "Use Beatport's values…",
+  "Edit values…",
   "Check files",
-  "Write tags to files…",
+  "Save changes into the files…",
 ];
 
 describe("the operations list", () => {
@@ -340,9 +340,9 @@ describe("what the entries do", () => {
     renderScreen();
     await tableReady();
     await userEvent.click(
-      within(await openMenuOn("Track 2")).getByRole("menuitem", { name: "Apply Beatport values…" }),
+      within(await openMenuOn("Track 2")).getByRole("menuitem", { name: "Use Beatport's values…" }),
     );
-    const dialog = await screen.findByRole("dialog", { name: "Apply Beatport values" });
+    const dialog = await screen.findByRole("dialog", { name: "Use Beatport's values" });
     const apply = within(dialog).getByRole("button", { name: "Apply" });
     expect(apply).toBeDisabled();
     await userEvent.click(within(dialog).getByRole("checkbox", { name: "Year" }));
@@ -362,12 +362,12 @@ describe("what the entries do", () => {
   it("edits one track through its own route", async () => {
     renderScreen();
     await tableReady();
-    await userEvent.click(within(await openMenuOn("Track 3")).getByRole("menuitem", { name: "Edit metadata…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Edit metadata" });
+    await userEvent.click(within(await openMenuOn("Track 3")).getByRole("menuitem", { name: "Edit values…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit values" });
     await userEvent.type(within(dialog).getByRole("textbox", { name: "Genre value" }), "House");
     await userEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
     await waitFor(() => expect(mock("setTrackOverrides")).toHaveBeenCalledWith({ trackId: 3, genre: "House" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Edit metadata" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Edit values" })).toBeNull());
     expect(mock("applyBatch")).not.toHaveBeenCalled();
   });
 
@@ -378,9 +378,9 @@ describe("what the entries do", () => {
     await userEvent.click(screen.getByText("Track 1"));
     fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
     await screen.findByText(/3 tracks selected/);
-    await userEvent.click(within(await openMenuOn("Track 2")).getByRole("menuitem", { name: "Edit metadata…" }));
+    await userEvent.click(within(await openMenuOn("Track 2")).getByRole("menuitem", { name: "Edit values…" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Edit metadata" });
+    const dialog = await screen.findByRole("dialog", { name: "Edit values" });
     expect(within(dialog).getByText(/Your values for 3 tracks/)).toBeInTheDocument();
     await userEvent.type(within(dialog).getByRole("textbox", { name: "BPM value" }), "400");
     await userEvent.selectOptions(within(dialog).getByRole("combobox", { name: "Year" }), "clear");
@@ -400,7 +400,7 @@ describe("what the entries do", () => {
       { selection: { track_ids: [1, 2, 3] }, operation: { kind: "set_override", value: { field: "bpm", value: 126 } } },
       { selection: { track_ids: [1, 2, 3] }, operation: { kind: "set_override", value: { field: "year", value: null } } },
     ]);
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Edit metadata" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Edit values" })).toBeNull());
   });
 
   it("opens the tag write dialog on the target", async () => {
@@ -423,9 +423,9 @@ describe("what the entries do", () => {
     renderScreen();
     await tableReady();
     await userEvent.click(
-      within(await openMenuOn("Track 2")).getByRole("menuitem", { name: "Write tags to files…" }),
+      within(await openMenuOn("Track 2")).getByRole("menuitem", { name: "Save changes into the files…" }),
     );
-    const dialog = await screen.findByRole("dialog", { name: "Write tags to files" });
+    const dialog = await screen.findByRole("dialog", { name: "Save changes into the files" });
     await userEvent.click(within(dialog).getByRole("button", { name: "Preview" }));
     await waitFor(() =>
       expect(mock("previewTagWrite")).toHaveBeenCalledWith(

@@ -17,7 +17,9 @@
 .cp-modal--wide {
   width: min(880px, 92vw);
   max-height: 90vh;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--bg-panel);
   border: var(--border-width-heavy) solid var(--border-outline);
   box-shadow: var(--shadow-bevel-panel), var(--shadow-modal);
@@ -50,6 +52,18 @@
 
 .cp-modal__body {
   padding: var(--space-lg);
+}
+
+/* A tall dialog scrolls its body, so the title and the buttons stay on screen. */
+.cp-modal--wide > .cp-modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.cp-modal--wide > .cp-modal__header,
+.cp-modal--wide > .cp-modal__footer {
+  flex: none;
 }
 
 .cp-modal__footer {

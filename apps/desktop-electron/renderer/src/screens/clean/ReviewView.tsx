@@ -12,21 +12,19 @@
  * and the next track moves into it — which is only right once the queue has
  * been read again, so the page waits for that answer before selecting.
  *
- * **Matching is a job the status strip follows**, like every job. The page
- * waits for it to end to read the queue again, and says what it started and
- * where progress is (CLN-7). Match all / Match selection ask what to match
- * first (CLN-10): the tracks not looked up yet, or all of them again.
+ * **Matching is a job the status strip follows**, like every job, and it is
+ * started from Clean's header (the match window, FLW-13), not from here. This
+ * view reads the queue again when one ends and keeps the decisions: resuming a
+ * stopped match and searching Beatport again for the one track in view.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type {
-  BatchSelection,
   EntityKind,
   LibraryHealth,
   LibraryTrackRow,
   MatchCandidate,
-  MatchStarted,
   OverrideField,
   ReviewExportFormat,
 } from "../../api/cuepointBridge.types";
@@ -34,7 +32,6 @@ import { Button, Modal, useToast } from "../../components";
 import { Select } from "../../components/Select";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { useInspectorSlot } from "../../components/shell";
-import { useActiveJob } from "../../components/shell/useActiveJob";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { SelectionActions } from "../library/SelectionActions";
 import { TrackDetailPanel } from "../library/TrackDetailPanel";
@@ -47,12 +44,12 @@ import { useTrackSelection } from "../library/useTrackSelection";
 import { useTrackWindow } from "../library/useTrackWindow";
 import { REVIEW_COLUMNS, REVIEW_TABLE_LAYOUT_KEY } from "./cleanColumns";
 import { reviewEmptyState } from "./cleanEmpty";
+import type { CleanTracks } from "./cleanTracks";
+import { useTrackCount } from "./useTrackCount";
 import {
   appliedLine,
   decidedLine,
   exportedLine,
-  matchRunningNote,
-  matchStartedLine,
   resumableLine,
   trackCount,
 } from "./cleanFormat";
@@ -74,7 +71,7 @@ import {
 } from "./comparison";
 import { revealTrack } from "./revealTrack";
 import { reviewCommand, type ReviewCommand } from "./reviewKeyboard";
-import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
+import type { CleanMatch } from "./useCleanMatch";
 import { useScopeOptions } from "./useScopeOptions";
 import { useResumableMatches } from "./useResumableMatches";
 import { useTrackMatches } from "./useTrackMatches";
@@ -121,6 +118,15 @@ interface ReviewViewProps {
   onOpenEntity?: (kind: EntityKind, ref: string) => void;
   /** The page header's button slot, where Save review list as a file… goes (CLN-11). */
   actionsHost?: HTMLElement | null;
+  /** The page's matching: running state, how many ended, and resuming (PAGES-07B). */
+  match: CleanMatch;
+  /** Open the match window: on the library (CLN-2's offer), or on the tracks given. */
+  onMatchTracks: (tracks?: CleanTracks) => void;
+  /**
+   * The tracks the header's Match tracks… should open the window on: the
+   * selection, else the playlist chosen in In, else none (the whole library).
+   */
+  onMatchTargetChange?: (tracks: CleanTracks | null) => void;
 }
 
 export function ReviewView({
@@ -129,6 +135,9 @@ export function ReviewView({
   focus = null,
   onOpenEntity,
   actionsHost = null,
+  match,
+  onMatchTracks,
+  onMatchTargetChange,
 }: ReviewViewProps) {
   const { push } = useToast();
   const [scope, setScope] = useState<ReviewScope>(DEFAULT_REVIEW_SCOPE);
@@ -137,22 +146,49 @@ export function ReviewView({
     sort: "artist",
     dir: "asc",
   });
-  // Which match the dialog is asking about, and what it was answered.
-  const [matchAsk, setMatchAsk] = useState<"selection" | "all" | null>(null);
-  const [lookUpAgain, setLookUpAgain] = useState(false);
   // "Choose a playlist first" was pressed: the playlist picked next is for matching.
   const [choosingPlaylist, setChoosingPlaylist] = useState(false);
-  // What a running match says about itself on the page (CLN-7).
-  const [runningNote, setRunningNote] = useState<string | null>(null);
-  // A match running now, started here or before the page was left and came back to.
-  const activeMatch = useActiveJob().jobs.find((job) => job.type === "clean_match") ?? null;
+  const [matchOnPick, setMatchOnPick] = useState(false);
   const query = useMemo(() => cleanQuery(where, reviewRules(scope), order), [where, scope, order]);
+  // The tracks in the place chosen in In, whatever their state: what Match tracks… offers.
+  const placeQuery = useMemo(
+    () => (where === WHOLE_LIBRARY ? null : cleanQuery(where, { match: "all", rules: [] })),
+    [where],
+  );
+  const placeCount = useTrackCount(placeQuery);
 
   const scopes = useScopeOptions();
   const columns = useColumnLayout<LibraryTrackRow>(REVIEW_TABLE_LAYOUT_KEY, REVIEW_COLUMNS);
   const window_ = useTrackWindow(query);
   const selection = useTrackSelection(query, window_.total, window_.source.getRow);
   const [focused, setFocused] = useState<number | null>(null);
+
+  const selected = selection.selection;
+  const selectedCount = selection.count;
+  const matchTarget = useMemo<CleanTracks | null>(() => {
+    if (selectedCount > 0) {
+      const chosen = batchSelection(selected, query);
+      if (chosen.track_ids) return { ids: chosen.track_ids };
+      if (chosen.query) return { query: chosen.query, count: selectedCount };
+    }
+    if (placeQuery && placeCount !== null) {
+      const described = batchSelection(selectAll(EMPTY_SELECTION), placeQuery).query;
+      if (described) return { query: described, count: placeCount };
+    }
+    return null;
+  }, [selected, selectedCount, query, placeQuery, placeCount]);
+  useEffect(() => {
+    onMatchTargetChange?.(matchTarget);
+    return () => onMatchTargetChange?.(null);
+  }, [matchTarget, onMatchTargetChange]);
+
+  // "Choose a playlist first": the playlist picked next is for matching, so the
+  // window opens on it as soon as its track count is known.
+  useEffect(() => {
+    if (!matchOnPick || !matchTarget || !placeQuery) return;
+    setMatchOnPick(false);
+    onMatchTracks(matchTarget);
+  }, [matchOnPick, matchTarget, placeQuery, onMatchTracks]);
   const trackId = selection.selection.lastId ?? focused;
 
   // Opened on one track: its own state's queue, the whole library, and the
@@ -185,11 +221,6 @@ export function ReviewView({
   const matches = useTrackMatches(trackId);
   const detail = useTrackDetail(trackId);
 
-  const message = useCallback(
-    (text: string, tone: CleanMessageTone) => push(text, tone),
-    [push],
-  );
-  const jobs = useCleanJob(message);
 
   const [chosenId, setChosenId] = useState<number | null>(null);
   const [showAll, setShowAll] = useState(false);
@@ -206,20 +237,18 @@ export function ReviewView({
   const [matchesEnded, setMatchesEnded] = useState(0);
   const resumable = useResumableMatches(matchesEnded);
 
-  // A match that ends while this page is open but was not started from it (the
-  // page was left and came back) has no callback to refresh the list.
-  const activeMatchId = activeMatch?.id ?? null;
-  const lastMatchId = useRef<string | null>(null);
+  // A match ending, wherever it was started, changes the queue, the comparison and
+  // the counts.
+  const endedSeen = useRef(match.ended);
   useEffect(() => {
-    const ended = lastMatchId.current !== null && activeMatchId === null;
-    lastMatchId.current = activeMatchId;
-    if (!ended) return;
+    if (endedSeen.current === match.ended) return;
+    endedSeen.current = match.ended;
     window_.reload();
     matches.reload();
     detail.reload();
     onHealthChanged();
     setMatchesEnded((count) => count + 1);
-  }, [activeMatchId, detail, matches, onHealthChanged, window_]);
+  }, [detail, match.ended, matches, onHealthChanged, window_]);
 
   const state = matches.matches?.state ?? null;
   const cursorRow = cursor == null ? null : (window_.source.getRow(cursor) ?? null);
@@ -366,50 +395,6 @@ export function ReviewView({
     [afterChange, push, row, trackId],
   );
 
-  const followMatch = useCallback(
-    (key: string, start: () => Promise<MatchStarted>) => {
-      void jobs.run<MatchStarted>(key, start, {
-        started: (answer) => {
-          setRunningNote(matchRunningNote(answer));
-          return matchStartedLine(answer);
-        },
-        succeeded: "Matching finished.",
-        onEnded: () => {
-          setRunningNote(null);
-          window_.reload();
-          matches.reload();
-          detail.reload();
-          onHealthChanged();
-          setMatchesEnded((count) => count + 1);
-        },
-      });
-    },
-    [detail, jobs, matches, onHealthChanged, window_],
-  );
-
-  const startMatch = useCallback(
-    (key: string, target: BatchSelection, again: boolean) => {
-      const bridge = window.cuepoint?.startCleanMatch;
-      if (!bridge) {
-        push("Matching needs the desktop app with CuePoint's library service running.", "warning");
-        return;
-      }
-      followMatch(key, () => bridge({ selection: target, rematch: again }));
-    },
-    [followMatch, push],
-  );
-
-  // A match that stopped keeps its plan; resuming asks only about what it had
-  // not reached (DEC-065).
-  const resumeMatch = useCallback(
-    (jobId: string) => {
-      const bridge = window.cuepoint?.resumeCleanMatch;
-      if (!bridge) return;
-      followMatch("resume", () => bridge({ job_id: jobId }));
-    },
-    [followMatch],
-  );
-
   const everything = useMemo(
     () => batchSelection(selectAll(EMPTY_SELECTION), query),
     [query],
@@ -444,7 +429,7 @@ export function ReviewView({
     [busy, chosenId, cursor, decide, moveTo, shown, trackId],
   );
 
-  const dialogOpen = exportOpen || columnsOpen || matchAsk !== null;
+  const dialogOpen = exportOpen || columnsOpen;
   // A layout effect, not a passive one: the listener is replaced in the same
   // commit that shows the rows its command reads. As a passive effect it was
   // replaced only after that commit, and a key pressed in between reached the
@@ -560,18 +545,7 @@ export function ReviewView({
     health,
     error: window_.error,
   });
-  // The first visit matches what was never looked up, which is not the queue
-  // on screen: that one is empty.
-  const notLookedUp = useMemo(
-    () =>
-      batchSelection(
-        selectAll(EMPTY_SELECTION),
-        cleanQuery(WHOLE_LIBRARY, reviewRules("not_matched")),
-      ),
-    [],
-  );
   const scopeHint = REVIEW_SCOPES.find((option) => option.id === scope)?.hint;
-  const matching = jobs.running !== null || activeMatch !== null;
   const trackTotal = health?.track_count ?? 0;
   const emptyState = (
     <div className="clean-empty">
@@ -581,11 +555,10 @@ export function ReviewView({
         <div className="clean-empty__actions">
           {empty.offer === "match_all" && (
             <Button
-              disabled={matching}
-              loading={jobs.running === "match-all"}
-              onClick={() => startMatch("match-all", notLookedUp, false)}
+              disabled={match.matching}
+              onClick={() => onMatchTracks()}
             >
-              {`Match all ${trackCount(trackTotal)}`}
+              {`Match all ${trackCount(trackTotal)}…`}
             </Button>
           )}
           {empty.secondary === "choose_playlist" && (
@@ -609,8 +582,6 @@ export function ReviewView({
       ? row.file_path
       : null;
   useReportSelectedTrack(row?.id != null ? { id: row.id, key: row.effective_key ?? null } : null);
-
-  const matchCount = matchAsk === "selection" ? selection.count : window_.total;
 
   return (
     <div className="clean-review">
@@ -643,46 +614,22 @@ export function ReviewView({
             onChange={(event) => {
               setWhere(event.target.value);
               // Its queue is empty, so show the tracks to match there instead.
-              if (choosingPlaylist && event.target.value !== WHOLE_LIBRARY) setScope("not_matched");
+              if (choosingPlaylist && event.target.value !== WHOLE_LIBRARY) {
+                setScope("not_matched");
+                setMatchOnPick(true);
+              }
               setChoosingPlaylist(false);
             }}
             options={scopes}
           />
           <span className="clean-toolbar__spacer" />
-          <Button
-            variant="secondary"
-            disabled={selection.count === 0 || matching}
-            loading={jobs.running === "match-selection"}
-            onClick={() => {
-              setLookUpAgain(false);
-              setMatchAsk("selection");
-            }}
-          >
-            Match selection
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={window_.total === 0 || matching}
-            loading={jobs.running === "match-all"}
-            onClick={() => {
-              setLookUpAgain(false);
-              setMatchAsk("all");
-            }}
-          >
-            {`Match all ${window_.total.toLocaleString()}`}
-          </Button>
         </div>
         {scopeHint && window_.total > 0 && <p className="clean-hint-line">{scopeHint}</p>}
-        {(runningNote || activeMatch) && (
-          <div className="clean-note" role="region" aria-label="Matching">
-            <p className="clean-note__text">{runningNote ?? matchRunningNote()}</p>
-          </div>
-        )}
-        {resumable.jobs[0] && !matching && Boolean(window.cuepoint?.resumeCleanMatch) && (
+        {resumable.jobs[0] && !match.matching && Boolean(window.cuepoint?.resumeCleanMatch) && (
           <div className="clean-note clean-note--resume" role="region" aria-label="Resume a match">
             <p className="clean-note__text">{resumableLine(resumable.jobs[0], resumable.total)}</p>
             <div>
-              <Button variant="secondary" onClick={() => resumeMatch(resumable.jobs[0]!.job_id)}>
+              <Button variant="secondary" onClick={() => match.resume(resumable.jobs[0]!.job_id)}>
                 Resume
               </Button>
             </div>
@@ -741,7 +688,7 @@ export function ReviewView({
         onReject={() => void decide("reject")}
         onClear={() => void decide("clear")}
         onApply={(fields) => void apply(fields)}
-        onRematch={() => trackId != null && startMatch("rematch", { track_ids: [trackId] }, true)}
+        onRematch={() => trackId != null && match.start("rematch", { track_ids: [trackId] }, true)}
         onNext={() => command("skip")}
       />
 
@@ -754,51 +701,6 @@ export function ReviewView({
         onNudge={columns.nudge}
         onReset={columns.reset}
       />
-
-      <Modal
-        open={matchAsk !== null}
-        title="Match on Beatport"
-        onClose={() => setMatchAsk(null)}
-        primaryAction={{
-          label: "Start matching",
-          onClick: () => {
-            const target =
-              matchAsk === "selection" ? batchSelection(selection.selection, query) : everything;
-            const key = matchAsk === "selection" ? "match-selection" : "match-all";
-            setMatchAsk(null);
-            startMatch(key, target, lookUpAgain);
-          },
-        }}
-        secondaryAction={{ label: "Cancel", onClick: () => setMatchAsk(null) }}
-      >
-        <p>
-          {matchAsk === "selection"
-            ? `CuePoint will search Beatport for ${lookUpAgain ? "the" : "those of the"} ${trackCount(selection.count)} selected${lookUpAgain ? "" : " that have not been looked up yet"}.`
-            : `CuePoint will search Beatport for ${lookUpAgain ? "the" : "those of the"} ${trackCount(window_.total)} shown${lookUpAgain ? "" : " that have not been looked up yet"}.`}{" "}
-          It runs in the background, and you can keep using the app.
-        </p>
-        <fieldset className="clean-match-choice">
-          <legend className="clean-visually-hidden">What to match</legend>
-          <label>
-            <input
-              type="radio"
-              name="clean-match-choice"
-              checked={!lookUpAgain}
-              onChange={() => setLookUpAgain(false)}
-            />
-            Only tracks not looked up yet
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="clean-match-choice"
-              checked={lookUpAgain}
-              onChange={() => setLookUpAgain(true)}
-            />
-            {matchCount === 1 ? "Look it up again" : `Look all ${matchCount.toLocaleString()} of them up again`}
-          </label>
-        </fieldset>
-      </Modal>
 
       <Modal
         open={exportOpen}

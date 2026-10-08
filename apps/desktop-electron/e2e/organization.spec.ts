@@ -609,7 +609,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // can be reverted as one from Activity (DEC-008, CLEAN-13).
       const confirm = window.getByRole("dialog");
       await expect(confirm).toContainText("Favorite 50,000 tracks?");
-      await expect(confirm).toContainText(/reverted from Activity/i);
+      await expect(confirm).toContainText(/undone from Activity/i);
       await confirm.getByRole("button", { name: "Apply" }).click();
 
       // It is a job, it says so from the shell, and it can be stopped there.

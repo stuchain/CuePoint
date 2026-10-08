@@ -19,6 +19,7 @@ describe("the Clean page's parts", () => {
   it("are the CLN-3 names, in order", () => {
     expect(CLEAN_SECTIONS.map((section) => section.label)).toEqual([
       "Review matches",
+      "Fix values",
       "Missing files",
       "Duplicates",
       "Health",

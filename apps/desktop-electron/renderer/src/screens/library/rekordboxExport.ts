@@ -6,7 +6,7 @@
  * mechanism: a preview that undersells a warning is how someone exports what
  * they did not mean to. Every sentence the dialog shows is therefore made
  * here, from the engine's preview and nothing else, in the shape `tagWriting.ts`
- * set for "Write tags to files" — so a test can hold each sentence against a
+ * set for "Save changes into the files" — so a test can hold each sentence against a
  * real engine answer without drawing a pixel.
  *
  * The engine counts; this names what it counted. No number is computed here

@@ -50,7 +50,7 @@ can be taken back. See [Your own values](library.md#your-own-values).
   exactly those tracks.
 - **Artwork**: read from your files and, for accepted matches, from Beatport.
 
-### Write tags to files
+### Save changes into the files
 
 Put your values into the audio files themselves, after a preview, with a record
 that lets every file be restored. Rekordbox shows the new values after it
@@ -100,7 +100,7 @@ analysis can be paused and carries on after a restart. See
   database. An export to Rekordbox is always a new file you choose.
 - It never deletes, moves or renames a track or a file. Moving a file is done in
   Rekordbox with **Relocate**.
-- It never writes to an audio file unless you choose **Write tags to files**,
+- It never writes to an audio file unless you choose **Save changes into the files**,
   after a preview.
 
 ## The command line

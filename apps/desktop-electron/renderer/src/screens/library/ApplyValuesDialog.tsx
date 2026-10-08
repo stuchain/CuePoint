@@ -1,5 +1,5 @@
 /**
- * "Apply Beatport values…" over a selection (CLEAN-13, DEC-068).
+ * "Use Beatport's values…" over a selection (CLEAN-13, DEC-068, PAGES-07B).
  *
  * Accepting a match writes nothing; applying copies the chosen fields from
  * each track's accepted match into CuePoint's layer, as one batch. A track
@@ -36,7 +36,7 @@ export function ApplyValuesDialog({ open, count, onClose, onApply }: ApplyValues
   return (
     <Modal
       open={open}
-      title="Apply Beatport values"
+      title="Use Beatport's values"
       onClose={onClose}
       primaryAction={{
         label: "Apply",
@@ -51,7 +51,8 @@ export function ApplyValuesDialog({ open, count, onClose, onApply }: ApplyValues
       <div className="clean-dialog">
         <p className="clean-dialog__lead">
           Copy these from the accepted Beatport match of each of {many}. Tracks without an
-          accepted match are left as they are, and so is a field Beatport has no value for.
+          accepted match are left as they are, and so is a field Beatport has no value for. The
+          key is not listed: an accepted match already gives a track its key.
         </p>
         <fieldset className="clean-dialog__group">
           <legend>Fields</legend>

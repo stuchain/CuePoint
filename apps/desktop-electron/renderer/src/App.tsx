@@ -63,11 +63,15 @@ import {
   similarPath,
 } from "./screens/discover/discoverLinks";
 import {
+  cleanFixOpening,
+  cleanMatchOpening,
+  cleanMatchState,
   cleanOpening,
   cleanSectionOpening,
   cleanSectionState,
   cleanTrackState,
 } from "./screens/clean/cleanLink";
+import type { CleanTracks } from "./screens/clean/cleanTracks";
 import { MotionProvider } from "./tokens/MotionContext";
 import { ScaleProvider } from "./tokens/ScaleContext";
 import { ThemeProvider } from "./tokens/ThemeContext";
@@ -173,10 +177,10 @@ function AppShell() {
     () => navigate("/clean", { state: cleanSectionState("missing") }),
     [navigate],
   );
-  // "No tracks have a Beatport key yet" sends the user to matching, which Clean's
-  // Review part starts (PAGES-07 puts the match window there).
+  // "No tracks have a Beatport key yet" and the Key is empty list send the user to
+  // Clean's match window, with the tracks to match when there are some (FLW-13).
   const openMatching = useCallback(
-    () => navigate("/clean", { state: cleanSectionState("review") }),
+    (tracks?: CleanTracks) => navigate("/clean", { state: cleanMatchState(tracks) }),
     [navigate],
   );
   const prepareScreen = (
@@ -229,6 +233,8 @@ function AppShell() {
           <CleanScreen
             openWith={cleanOpening(location)}
             openSection={cleanSectionOpening(location)}
+            matchWith={cleanMatchOpening(location)}
+            fixWith={cleanFixOpening(location)}
           />
         );
       // DEC-062: Collections is a way into the Library page, not a second

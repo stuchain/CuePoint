@@ -140,11 +140,11 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await expect(window.getByText("Match your library on Beatport")).toBeVisible({
         timeout: 30_000,
       });
-      await expect(window.getByRole("button", { name: "Match all 3 tracks" })).toBeEnabled();
+      await expect(window.getByRole("button", { name: "Match all 3 tracks…" })).toBeEnabled();
       await window.getByRole("combobox", { name: "Show" }).selectOption("not_matched");
       const queue = window.getByRole("table", { name: "Review queue" });
       await expect(queue.getByText("Present One")).toBeVisible();
-      await expect(window.getByRole("button", { name: "Match all 3" })).toBeEnabled();
+      await expect(window.getByRole("button", { name: "Match tracks…" })).toBeEnabled();
 
       await window.getByRole("tab", { name: "Missing files" }).click();
       const missing = window.getByRole("table", { name: "Missing files" });
@@ -153,15 +153,48 @@ test.describe("The Clean page (CLEAN-12)", () => {
 
       await window.getByRole("tab", { name: "Health" }).click();
       await expect(window.getByRole("list", { name: "Checks" }).getByText("Files on disk")).toBeVisible();
+      // A count opens the tab that fixes it (FLW-14)...
       await window
-        .getByRole("button", { name: "1 Missing or unreadable files: open in the Library" })
+        .getByRole("button", { name: "1 Missing or unreadable files: open Missing files" })
         .click();
+      await expect(window.getByRole("tab", { name: /^Missing files/, selected: true })).toBeVisible();
+      await expect(window.getByRole("table", { name: "Missing files" }).getByText("Gone")).toBeVisible();
 
-      // The count and the Library agree, because they are one rule set.
+      // ...and one without a tab opens the Library on the same rule as its count.
+      await window.getByRole("tab", { name: "Health" }).click();
+      await window
+        .getByRole("button", { name: /Not looked up yet: open in the Library$/ })
+        .click();
       const library = window.getByRole("table", { name: "Library tracks" });
-      await expect(library.getByText("Gone")).toBeVisible();
-      await expect(library.getByText("Present One")).toHaveCount(0);
-      await expect(window.getByText(/File status is any of Missing, Unreadable/)).toBeVisible();
+      await expect(library.getByText("Present One")).toBeVisible();
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("fixes values from the Fix values tab and opens the match window, from the real engine", async () => {
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await importAndCheck(window, writeExport(workspace));
+      await window.getByRole("link", { name: "Clean" }).click();
+
+      await window.getByRole("tab", { name: "Fix values" }).click();
+      await expect(
+        window.getByText("Choose tracks: pick playlists here, or select tracks in the Library and use Fix ▸."),
+      ).toBeVisible({ timeout: 30_000 });
+      await expect(window.getByRole("button", { name: "Edit values…" })).toBeDisabled();
+      await window.getByRole("radio", { name: "The whole library" }).click();
+      await expect(window.getByRole("status").filter({ hasText: "3 tracks" })).toBeVisible();
+      await window.getByRole("button", { name: "Edit values…" }).click();
+      const editor = window.getByRole("dialog", { name: "Edit values" });
+      await expect(editor).toBeVisible();
+      await editor.getByRole("button", { name: "Cancel" }).click();
+
+      await window.getByRole("button", { name: "Match tracks…" }).click();
+      const matching = window.getByRole("dialog", { name: "Match tracks" });
+      await expect(matching.getByRole("radio", { name: /^Tracks not looked up yet/ })).toBeChecked();
+      await expect(matching).toContainText("CuePoint will search Beatport for 3 tracks.");
     } finally {
       await app.close();
     }
@@ -192,6 +225,71 @@ test.describe("The Clean page (CLEAN-12)", () => {
       }));
       expect(widths.main).toBeGreaterThan(1300);
       expect(widths.page).toBeGreaterThanOrEqual(widths.main - 2);
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("keeps the match window on screen and each tab's intro clear of its body at 1280x800", async () => {
+    test.setTimeout(240_000);
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await app.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0]?.setSize(1280, 800);
+      });
+      await importAndCheck(window, writeExport(workspace));
+      await window.getByRole("link", { name: "Clean" }).click();
+      await expect(window.getByRole("tab", { name: /^Review matches/ })).toBeVisible({ timeout: 30_000 });
+
+      const inViewport = async (locator: ReturnType<Page["locator"]>) => {
+        const box = await locator.boundingBox();
+        const height = await window.evaluate(() => window.innerHeight);
+        return box !== null && box.y >= 0 && box.y + box.height <= height;
+      };
+      const shots = process.env.CUEPOINT_E2E_SHOTS;
+
+      for (const scale of [1.5, 2]) {
+        await window.evaluate((value) => localStorage.setItem("cuepoint-ui-lab-scale", String(value)), scale);
+        await window.reload();
+        await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+        await expect(window.getByRole("tab", { name: /^Review matches/ })).toBeVisible({ timeout: 30_000 });
+        expect(
+          await window.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--scale").trim()),
+        ).toBe(String(scale));
+
+        // Each tab's one-line introduction sits above its body, not under it.
+        for (const tab of ["Review matches", "Fix values", "Missing files", "Duplicates", "Health"]) {
+          await window.getByRole("tab", { name: new RegExp(`^${tab}`) }).click();
+          const lede = window.locator(".clean-screen__lede");
+          await expect(lede).toBeVisible();
+          const apart = await window.evaluate(() => {
+            const intro = document.querySelector(".clean-screen__lede")!.getBoundingClientRect();
+            const body = document.querySelector(".clean-screen__body")!.getBoundingClientRect();
+            return { introHeight: intro.height, introBottom: intro.bottom, bodyTop: body.top };
+          });
+          expect(apart.introHeight, `${tab} intro has height at ${scale}x`).toBeGreaterThan(8);
+          expect(apart.introBottom, `${tab} intro ends above its body at ${scale}x`).toBeLessThanOrEqual(
+            apart.bodyTop + 1,
+          );
+          if (shots) await window.screenshot({ path: path.join(shots, `tab-${tab.split(" ")[0]}-${scale}.png`) });
+        }
+
+        // The match window keeps its title and Start matching on screen, also
+        // with the places list open.
+        await window.getByRole("button", { name: "Match tracks…" }).click();
+        const matching = window.getByRole("dialog", { name: "Match tracks" });
+        await expect(matching).toBeVisible();
+        const title = matching.getByRole("heading", { name: "Match tracks" });
+        const start = matching.getByRole("button", { name: "Start matching" });
+        expect(await inViewport(title), `title in view at ${scale}x`).toBe(true);
+        expect(await inViewport(start), `Start matching in view at ${scale}x`).toBe(true);
+        await matching.getByRole("radio", { name: /^Tracks in chosen playlists/ }).click();
+        expect(await inViewport(title), `title in view with places at ${scale}x`).toBe(true);
+        expect(await inViewport(start), `Start matching in view with places at ${scale}x`).toBe(true);
+        if (shots) await window.screenshot({ path: path.join(shots, `match-places-${scale}.png`) });
+        await matching.getByRole("button", { name: "Cancel" }).click();
+      }
     } finally {
       await app.close();
     }
