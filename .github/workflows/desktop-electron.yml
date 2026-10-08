@@ -231,6 +231,16 @@ jobs:
             npm run test:e2e
           fi
 
+      # Each failure's error-context.md holds what the page showed, which the log does not.
+      - name: Upload Playwright failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failures-${{ matrix.leg }}
+          path: apps/desktop-electron/test-results/**
+          if-no-files-found: ignore
+          retention-days: 7
+
       # No map ships: electron-builder's `files` excludes them too, and this keeps them off the disk
       # that is packed from, uploaded or not.
       - name: Delete source maps
