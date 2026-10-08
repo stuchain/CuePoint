@@ -225,6 +225,11 @@ class DatabaseService(IDatabaseService):
                 f"PRAGMA busy_timeout={int(self._busy_timeout_seconds * 1000)}"
             )
             connection.execute("PRAGMA journal_mode=WAL")
+            # WAL with NORMAL survives the app crashing and never corrupts the
+            # file; a power cut can lose the last commits. FULL waited for the
+            # disk on every commit, which on Windows made each save slow
+            # (DEC-218). The waveform store already runs this way.
+            connection.execute("PRAGMA synchronous=NORMAL")
             connection.execute("PRAGMA foreign_keys=ON")
             register_sql_functions(connection)
             # Surfaces a corrupt or non-database file here, with context, rather

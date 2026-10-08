@@ -193,6 +193,10 @@ class TestPragmas:
         mode = service.connect().execute("PRAGMA journal_mode").fetchone()[0]
         assert mode.lower() == "wal"
 
+    def test_synchronous_normal_with_wal(self, service):
+        # DEC-218: a commit waits for the WAL, not for the disk; 1 is NORMAL.
+        assert service.connect().execute("PRAGMA synchronous").fetchone()[0] == 1
+
     def test_foreign_keys_enforced(self, service):
         assert service.connect().execute("PRAGMA foreign_keys").fetchone()[0] == 1
 

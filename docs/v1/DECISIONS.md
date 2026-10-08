@@ -6151,3 +6151,22 @@ count in `libraryPage.spec.ts` is 4 on Linux. A change that lowers a toolbar but
 adds a line to the filter row, toolbar row or header re-measures it.
 
 **Decided with**: Claude (a precision of FLW-8 and FLW-10, not a new decision) · **Date**: 2026-10-08
+
+---
+
+## DEC-218 — The Library Database Commits With synchronous=NORMAL
+
+**Status**: Approved · **Related**: ADR-010 (the waveform store already runs this way)
+
+**Decision**: `DatabaseService` sets `PRAGMA synchronous=NORMAL` beside `journal_mode=WAL`. A
+commit waits for the write-ahead log, not for the disk; the disk is synced at each checkpoint.
+
+**Reason**: With SQLite's default (FULL) every commit waited for the disk. On Windows that made
+each save slow, and the unit suite timed out at 30 minutes on both Windows Release Gates legs,
+each time interrupted inside `commit()`. SQLite recommends NORMAL with WAL: the file survives the
+app crashing and is never corrupted; a power cut can lose the last few commits.
+
+**Implications**: Edits and imports save faster on Windows for users too. The waveform store
+already made the same choice for the same reason.
+
+**Decided with**: User (chose the recommended option, 2026-10-08) · **Date**: 2026-10-08
