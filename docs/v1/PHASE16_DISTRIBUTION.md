@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 16: Distribution, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. DIST-09 built 2026-10-08 (packaged checks owed); the other steps are not implemented yet.** Nine steps, DIST-01…DIST-09 (DIST-09, the app's icon, added by DEC-198 on 2026-10-07).
+Status: **Specified 2026-10-07. DIST-09 built 2026-10-08 (packaged checks owed). DIST-01…DIST-05 built 2026-10-08, ahead of Phases 14 and 15 (DEC-214); their CI and first-tag checks are owed. DIST-06…DIST-08 wait for Phase 14.** Nine steps, DIST-01…DIST-09 (DIST-09, the app's icon, added by DEC-198 on 2026-10-07).
 Writing the steps raised ten questions that Decision Round 14 did not answer. They were asked as
 Decision Round 19 (Q-170…Q-179) and settled the same day as DEC-169…DEC-178: nine as recommended,
 and Q-171 otherwise. There is no Apple Developer account, so the Macs ship unsigned and update
@@ -251,6 +251,16 @@ tag exists, as the runbook already says.
 
 **Complexity**: **S**
 
+**Outcome (2026-10-08, built early by DEC-214)**: `version.py` and `package.json` `version` are
+`1.0.0-test.1`; `__version_local_dev__` and `cuepoint.engineVersion` are gone, and main builds the
+release name from `app.getVersion()` (`electron/buildInfo.ts`, `main.ts`). The coupling check also
+refuses a `package.json` version outside the scheme. `validate_version.py` accepts exactly the scheme
+(`fullmatch`) and has `--tag`. Two things differ from the design: About's fallback string
+`DESKTOP_ENGINE_VERSION` stays (its value changed; the renderer is Phase 14's), and no new
+`desktopContract.test.ts` channel was added, since About already reads `app:buildInfo`. The grep in
+the DoD still finds a React state variable named `engineVersion` in `AboutDialog.tsx`, which reads no
+package key, and `1.0.0-feb1` as refused test data. Commits a01a217, d5f5e95.
+
 ---
 
 ## DIST-02 — The Intel Mac Build
@@ -298,6 +308,14 @@ Intel machine or Rosetta, and DEC-129 is revisited. PyInstaller's hidden imports
 the leg's packaged smoke test finds that.
 
 **Complexity**: **S**
+
+**Outcome (2026-10-08, built early by DEC-214)**: four legs (`windows-x64`, `linux-x64`,
+`macos-arm64`, `macos-x64` on `macos-15-intel`), the chip passed to electron-builder on Macs,
+`scripts/check_bundle_arch.py` and `verify_macos_bundle.py` on both Mac legs, and the specs that can
+launch a packaged app run against the Intel one. Building it found that electron-builder 25 signs
+nothing without an identity, so the bundle's seal was broken; `build/signNestedBinaries.cjs` now signs
+it ad hoc (DEC-214). A failed Mac check keeps the leg's files. **Owed:** the first green four-leg run.
+Commits 13484e6, e357aff.
 
 ---
 
@@ -350,6 +368,13 @@ File names name the system and the chip.
 **Risks**: Low. The manifests' shape is `electron-updater`'s, and the merge test pins it.
 
 **Complexity**: **S**
+
+**Outcome (2026-10-08, built early by DEC-214)**: Mac targets are DMG and zip; names say the system
+and chip; a generic `publish` entry pinned to the `latest` channel (a `-test.N` version would otherwise
+make electron-builder write `test*.yml`), with `--publish never` on every build script;
+`scripts/merge_update_manifests.py`; `SHA256SUMS-<leg>.txt` over the top-level files only. The
+AppImage's block map is embedded in it, so it has no `.blockmap` file. **Owed:** a real run's
+manifests checked. Commit a265b48.
 
 ---
 
@@ -413,6 +438,16 @@ is no notarization wait.
 
 **Complexity**: **M**
 
+**Outcome (2026-10-08, built early by DEC-214)**: `release.yml` (gate, build through
+`desktop-electron.yml` called with `release: true`, Mac checks on the unzipped apps, then publish: merge
+the Mac manifests, point the Mac checksums at the merged one, check every expected file, reuse or
+create a draft, upload, and publish last). A release without the Sentry secret fails the leg.
+`scripts/release_notes.py`, `scripts/prepare_release_assets.py`, the mpv mirror tried first by
+`fetch_player_sidecar.py`, and `mirror-player-sidecar.yml` (run by hand once per mpv pin) to fill it.
+The runbook's publish path is "push the tag". **Owed:** the mirror workflow's first run, a
+`## [1.0.0-test.1]` changelog section, and the first tag, which is the user's call.
+Commits acfc340, 2be94fb.
+
 ---
 
 ## DIST-05 — The Rule: Which Release Is Offered
@@ -472,6 +507,13 @@ went with `update/` in Phase 12, `PHASE12_AUDIT.md`).
 **Risks**: Low. The function is pure and the tests are its specification.
 
 **Complexity**: **S**
+
+**Outcome (2026-10-08, built early by DEC-214)**: `electron/updateRule.ts` and
+`electron/releaseList.ts`, with a test for every DEC-145 row and example. Beyond the design: version
+parts above 2^53 are refused, a list none of whose releases can be read is "could not check", the list
+follows GitHub's next-page links up to 5 pages, and each release carries its page's address for
+Linux's **Download**. Both files are allowlisted in the dead-code guard until DIST-06 wires them in.
+Commits 5367072, d5f5e95.
 
 ---
 

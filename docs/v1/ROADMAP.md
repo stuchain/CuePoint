@@ -972,6 +972,10 @@ notes.
 The user took the recommendation on nine (DEC-169, DEC-171…DEC-178). For the tenth there is no
 Apple Developer account, so the Macs ship unsigned and update the way the retired app did, replacing
 themselves at quit (DEC-170, which amends DEC-129). Nothing is open.
+DIST-01…DIST-05 were built on 2026-10-08, ahead of Phases 14 and 15 (DEC-214): the version is
+`1.0.0-test.1`, CI builds an Intel Mac beside Apple Silicon (both signed ad hoc), every build writes
+its update manifest, a pushed tag publishes the release, and the update rule is written and tested.
+DIST-06…DIST-08 wait for Phase 14. Nothing has been tagged.
 
 - **An auto-updater** (DEC-145). DEC-019 left it as a future item, and this schedules it.
   - **A test build** (`X.Y.Z-test.N`) updates to the highest newer release, test or normal.

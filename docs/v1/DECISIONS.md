@@ -6038,3 +6038,35 @@ for the final address now means launch changes no link.
   no site.
 
 **Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-214 — Phase 16's Release Setup (DIST-01…DIST-05) Is Built Ahead of Phases 14 and 15
+
+**Status**: Approved · **Amends**: DEC-140 · **Related**: DEC-145, DEC-169, DEC-170, DEC-211, DEC-212, Phase 16
+
+**Decision**: DIST-01…DIST-05 (one version, the Intel Mac build, update metadata, the tag-driven
+release workflow, and the update rule with GitHub's release list) are built now, while Phase 14 is
+still being built, rather than after Phase 15 as DEC-140 orders the phases. DIST-06…DIST-08 (the
+updater in main, **Update ready** and Settings' **About & updates**, and the real update) wait for
+Phase 14, because they touch Settings and the app shell.
+
+**Reason**: These steps are build, CI and pure main-process code; they touch none of the renderer
+pages or Settings that Phase 14 changes, beyond the one version string About shows before main
+answers. The user chose on 2026-10-08 to start them early.
+
+**Implications**:
+- The version is `1.0.0-test.1` from now on (DEC-176), in source and packaged builds alike.
+- No release is made or tagged by building these steps: the first tag is the user's call.
+- **electron-builder 25 does not sign a Mac app ad hoc when there is no identity** (it signs nothing),
+  which fact 5 of `PHASE16_DISTRIBUTION.md` had inferred it would. So `build/signNestedBinaries.cjs`
+  signs the whole bundle ad hoc itself, inside out, with the hardened runtime and the entitlements the
+  build is configured with. DEC-170 stands; this is how it is met.
+- The upgrade to electron-builder 26 stays deferred: the Phase 13 workaround (the copied
+  `@sentry/browser-utils`, held by `packagedDependencies.test.ts`) still applies, and the upgrade
+  would change signing settings that DIST-02 just fixed. It is revisited with DIST-06.
+- Mac and Linux legs, the release workflow and the mpv mirror workflow are proven only by a real CI
+  run and the first tag; nothing in them could run in the cloud container.
+
+**Decided with**: User · **Date**: 2026-10-08
+
