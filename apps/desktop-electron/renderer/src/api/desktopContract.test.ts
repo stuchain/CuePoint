@@ -1900,7 +1900,7 @@ describe("desktop contract", () => {
     });
 
     it("is told to the SDK and to the engine from the one value", () => {
-      expect(main).toContain("const build = currentBuildInfo(app.isPackaged)");
+      expect(main).toContain("const build = currentBuildInfo(app.isPackaged, app.getVersion())");
       expect(main).toMatch(/setupMainReporting\(\{[^}]*\bbuild,/s);
       expect(main).toMatch(/new EngineSupervisor\(\{[\s\S]*?\n  build,/);
     });
