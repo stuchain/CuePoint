@@ -31,6 +31,8 @@ function context(platform = "darwin") {
 }
 
 const APP = () => path.join(root, "CuePoint.app");
+/** A signed path with forward slashes, so the suffix checks read the same on Windows. */
+const slashed = (p: string) => p.split(path.sep).join("/");
 
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "sign-test-"));
@@ -55,7 +57,7 @@ describe("ad hoc signing without an identity", () => {
     const calls: string[][] = [];
     await hook.default(context(), { exec: (_c: string, args: string[]) => calls.push(args) });
     const targets = calls.map((a) => a[a.length - 1]);
-    const at = (suffix: string) => targets.findIndex((t) => t.endsWith(suffix));
+    const at = (suffix: string) => targets.findIndex((t) => slashed(t).endsWith(suffix));
 
     expect(targets[targets.length - 1]).toBe(APP());
     expect(targets.filter((t) => t === APP())).toHaveLength(1);
@@ -83,7 +85,7 @@ describe("ad hoc signing without an identity", () => {
         "--force", "--sign", "-", "--options", "runtime", "--timestamp=none", "--entitlements",
       ]);
     }
-    const ent = (suffix: string) => calls.find((a) => a[a.length - 1].endsWith(suffix))![7];
+    const ent = (suffix: string) => calls.find((a) => slashed(a[a.length - 1]).endsWith(suffix))![7];
     expect(ent("engine/cuepoint-engine")).toBe(path.join(buildDir, "entitlements.mac.plist"));
     expect(ent("Electron Helper.app")).toBe(path.join(buildDir, "entitlements.mac.inherit.plist"));
     expect(calls[calls.length - 1][7]).toBe(path.join(buildDir, "entitlements.mac.plist"));
@@ -96,7 +98,7 @@ describe("ad hoc signing without an identity", () => {
     );
     const calls: string[][] = [];
     await hook.default(context(), { exec: (_c: string, args: string[]) => calls.push(args) });
-    expect(calls.some((a) => a[a.length - 1].endsWith("/link"))).toBe(false);
+    expect(calls.some((a) => slashed(a[a.length - 1]).endsWith("/link"))).toBe(false);
   });
 
   it("does nothing off macOS", async () => {
@@ -114,7 +116,7 @@ describe("signing with an identity (unchanged)", () => {
     const targets = calls.map((a) => a[a.length - 1]);
     expect(targets.some((t) => t.includes("Frameworks"))).toBe(false);
     expect(targets).not.toContain(APP());
-    expect(targets.some((t) => t.endsWith("engine/cuepoint-engine"))).toBe(true);
+    expect(targets.some((t) => slashed(t).endsWith("engine/cuepoint-engine"))).toBe(true);
     for (const args of calls) {
       expect(args.slice(0, 6)).toEqual([
         "--force", "--sign", "Developer ID Application: Someone (TEAM)", "--options", "runtime", "--timestamp",
