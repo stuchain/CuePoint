@@ -29,6 +29,7 @@ from typing import (
 )
 
 from cuepoint.models.preflight import PreflightResult
+from cuepoint.models.refresh_diff import DEFAULT_DETAIL_LIMIT
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
 from cuepoint.compat.gui_types import ProcessingController, ProgressCallback
@@ -3897,6 +3898,12 @@ class IMarksBackfillService(ABC):
         ...
 
 
+# The same shapes ``library_import_service`` declares: progress is
+# ``(done, total, message)`` and a cancel check answers "stop now?".
+LibraryImportProgress = Callable[[int, int, str], None]
+LibraryImportCancelCheck = Callable[[], bool]
+
+
 class ILibraryImportService(ABC):
     """Interface for importing a Rekordbox export into the library.
 
@@ -3906,7 +3913,12 @@ class ILibraryImportService(ABC):
     """
 
     @abstractmethod
-    def import_rekordbox_xml(self, xml_path: str) -> "ImportSummary":
+    def import_rekordbox_xml(
+        self,
+        xml_path: str,
+        on_progress: Optional[LibraryImportProgress] = None,
+        should_cancel: Optional[LibraryImportCancelCheck] = None,
+    ) -> "ImportSummary":
         """Import an export, returning what the import did."""
         ...
 
@@ -3916,7 +3928,13 @@ class ILibraryImportService(ABC):
         ...
 
     @abstractmethod
-    def compute_refresh_diff(self, xml_path: Optional[str] = None) -> "RefreshDiff":
+    def compute_refresh_diff(
+        self,
+        xml_path: Optional[str] = None,
+        detail_limit: int = DEFAULT_DETAIL_LIMIT,
+        should_cancel: Optional[LibraryImportCancelCheck] = None,
+        force: bool = False,
+    ) -> "RefreshDiff":
         """Return what a refresh would change, having changed nothing (DEC-032).
 
         Answers from the file's recorded state when the export demonstrably has
@@ -3927,7 +3945,11 @@ class ILibraryImportService(ABC):
 
     @abstractmethod
     def apply_refresh(
-        self, diff: "RefreshDiff", confirm_references: bool = False
+        self,
+        diff: "RefreshDiff",
+        confirm_references: bool = False,
+        on_progress: Optional[LibraryImportProgress] = None,
+        should_cancel: Optional[LibraryImportCancelCheck] = None,
     ) -> "RefreshSummary":
         """Apply a previewed diff, deleting what the export dropped (DEC-003)."""
         ...
