@@ -77,7 +77,7 @@ const UPDATED = "2026-10-08";
     <li><strong>Bug report:</strong> your email address, the version of the app, your system and chip, and what happened, what you expected and the steps.</li>
   </ul>
   <p>
-    The forms use a hidden field and a fill-time check to stop spam, and no puzzle. The publisher uses what you send only to reply to
+    The forms use a hidden field and a fill-time check to stop spam, and no puzzle: a form filled in faster than a person could type it is not sent. Web3Forms also filters spam itself. The publisher uses what you send only to reply to
     you and to fix a problem. Web3Forms acts as a processor for the publisher, who decides what is done with the messages. Its privacy
     page (<a href="https://web3forms.com/privacy" rel="noopener noreferrer">web3forms.com/privacy</a>) says it stores submissions, on Amazon Web
     Services, for up to 3 years, and that it may pass your IP address and email address to spam-filtering services (CleanTalk and
@@ -87,10 +87,13 @@ const UPDATED = "2026-10-08";
   <h3 id="storage">Cookies and your browser's storage</h3>
   <p>
     The site sets no cookies. It remembers your choice of theme in your browser's local storage, on your device. That
-    choice is not sent anywhere. Clear your browser's site data to remove it.
+    choice is not sent anywhere. If the site ever finds a cookie it did not set itself, it asks whether it may count visits, and remembers
+    your answer the same way, in local storage under the name <code>cuepoint-site-consent</code>. Clear your browser's site data to remove
+    either.
   </p>
   <p>
-    The site's fonts and scripts come from the site itself. It loads nothing from Google, and no advertising or social
+    The site's fonts and its own scripts come from the site itself, with one exception: Umami's counting script, from cloud.umami.is.
+    It loads nothing from Google, and no advertising or social
     network code. Links to other sites, such as GitHub, lead to places with their own policies.
   </p>
 

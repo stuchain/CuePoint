@@ -544,8 +544,12 @@ describe("the 404 page's canonical", () => {
   });
 });
 
-describe("publisher placeholders (DEC-144)", () => {
-  const source = (email, publisher) => `export const PUBLISHER = "${publisher}";\nexport const CONTACT_EMAIL = "${email}";\n`;
+describe("publisher placeholders (DEC-144) and the service keys (DEC-192, DEC-193)", () => {
+  const UMAMI = "c1b7a806-c974-4e97-aed1-f94f53b6326c";
+  const KEY = "06f937df-8912-4a4f-b495-9686e5714d68";
+  const source = (email, publisher, umami = UMAMI, key = KEY) =>
+    `export const PUBLISHER = "${publisher}";\nexport const CONTACT_EMAIL = "${email}";\n` +
+    `export const UMAMI_WEBSITE_ID = "${umami}";\nexport const WEB3FORMS_ACCESS_KEY: string = "${key}";\n`;
 
   it("flags the placeholder email and publisher", () => {
     const results = checkPublisherPlaceholders(source("contact@example.com", "stuchain"));
@@ -558,8 +562,24 @@ describe("publisher placeholders (DEC-144)", () => {
     expect(checkPublisherPlaceholders(source("hello@usecuepoint.com", "Jane Doe"))).toEqual([]);
   });
 
+  it.each(["TODO-umami-website-id", "", "not-an-id", "00000000-0000-0000-0000-000000000000"])("flags the Umami Website ID %j", (value) => {
+    const results = checkPublisherPlaceholders(source("hello@usecuepoint.com", "Jane Doe", value));
+    expect(results.map((r) => r.rule)).toEqual(["placeholder"]);
+    expect(results[0].message).toMatch(/UMAMI_WEBSITE_ID/);
+  });
+
+  it.each(["TODO-web3forms-access-key", "", "YOUR_ACCESS_KEY_HERE", "00000000-0000-0000-0000-000000000000"])("flags the Web3Forms key %j", (value) => {
+    const results = checkPublisherPlaceholders(source("hello@usecuepoint.com", "Jane Doe", UMAMI, value));
+    expect(results.map((r) => r.rule)).toEqual(["placeholder"]);
+    expect(results[0].message).toMatch(/WEB3FORMS_ACCESS_KEY/);
+  });
+
   it("fails loudly when the constants move", () => {
     expect(checkPublisherPlaceholders("export const X = 1;")[0].message).toMatch(/could not read/);
+  });
+
+  it("fails loudly when only the service keys are missing", () => {
+    expect(checkPublisherPlaceholders('export const PUBLISHER = "Jane";\nexport const CONTACT_EMAIL = "a@b.co";')[0].message).toMatch(/could not read/);
   });
 });
 

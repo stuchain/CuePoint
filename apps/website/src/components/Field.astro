@@ -1,0 +1,89 @@
+---
+/**
+ * One labelled field of a form (SITE-12): the label, an optional hint, the control, and the empty
+ * message line that form-client.ts fills when the field is wrong. The control is described by the hint
+ * and by the message, so a screen reader reads both. `id` is also the field's `name`.
+ */
+interface Props {
+  id: string;
+  label: string;
+  control: "input" | "textarea" | "select";
+  type?: "text" | "email";
+  required?: boolean;
+  /** The words under the label that help (where to find a value, its format). */
+  hint?: string;
+  autocomplete?: string;
+  /** For a select: the value and words of each choice. The first, empty one is added here. */
+  options?: readonly { value: string; label: string }[];
+  rows?: number;
+  placeholder?: string;
+  /** For an input: the browser's own pattern (the no-script check); form-client.ts applies the same rule. */
+  pattern?: string;
+}
+const { id, label, control, type = "text", required = false, hint, autocomplete, options = [], rows = 5, placeholder, pattern } = Astro.props;
+const describedBy = [hint ? `${id}-hint` : undefined, `${id}-error`].filter(Boolean).join(" ");
+---
+
+<div class="field">
+  <label for={id}>{label}</label>
+  {hint && <p class="hint" id={`${id}-hint`}>{hint}</p>}
+  {
+    control === "textarea" ? (
+      <textarea id={id} name={id} rows={rows} required={required} aria-describedby={describedBy} autocomplete={autocomplete}></textarea>
+    ) : control === "select" ? (
+      <select id={id} name={id} required={required} aria-describedby={describedBy}>
+        <option value="">Choose one</option>
+        {options.map((o) => <option value={o.value}>{o.label}</option>)}
+      </select>
+    ) : (
+      <input id={id} name={id} type={type} required={required} aria-describedby={describedBy} autocomplete={autocomplete} placeholder={placeholder} pattern={pattern} />
+    )
+  }
+  <p class="error" id={`${id}-error`} hidden></p>
+</div>
+
+<style is:global>
+  .field {
+    display: grid;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-lg);
+  }
+  .field label {
+    font-family: var(--font-pixel);
+    font-weight: 600;
+  }
+  .field .hint {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: var(--fg-muted);
+  }
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: var(--space-sm) var(--space-md);
+    color: var(--fg-primary);
+    background: var(--bg-panel-alt);
+    border: var(--border-width) solid var(--border-outline);
+    border-radius: 0;
+    box-shadow: var(--focus-halo);
+  }
+  .field textarea {
+    resize: vertical;
+  }
+  .field [aria-invalid="true"] {
+    border-left: calc(var(--border-width) * 3) solid var(--accent-danger);
+  }
+  .field .error {
+    margin: 0;
+    padding: var(--space-xs) var(--space-sm);
+    background: var(--bg-panel);
+    color: var(--fg-primary);
+    border-left: calc(var(--border-width) * 3) solid var(--accent-danger);
+    font-size: var(--font-size-sm);
+  }
+  .field .error[hidden] {
+    display: none;
+  }
+</style>

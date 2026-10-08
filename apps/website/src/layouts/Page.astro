@@ -3,6 +3,7 @@ import { Font } from "astro:assets";
 import { PUBLIC, SITE_URL } from "../../site.config";
 import { ogImagePath } from "../../scripts/og-path.mjs";
 import { neoDarkTokens } from "../../scripts/theme-colors.mjs";
+import Analytics from "../components/Analytics.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
@@ -95,6 +96,7 @@ const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c"
       <slot />
     </main>
     <Footer />
+    <Analytics />
   </body>
 </html>
 

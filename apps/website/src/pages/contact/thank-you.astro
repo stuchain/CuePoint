@@ -1,0 +1,21 @@
+---
+import Button from "../../components/Button.astro";
+import Section from "../../components/Section.astro";
+import Page from "../../layouts/Page.astro";
+import { hrefFor } from "../../lib/url";
+
+/** Shown after the contact form is sent (SITE-12). noindex, and not in the sitemap. */
+---
+
+<Page
+  title="Message sent"
+  description="Your message to the maker of CuePoint was sent. Thank you for writing; replies come by email to the address you gave."
+  path="contact/thank-you/"
+  noindex="thank-you"
+>
+  <Section id="thank-you" width="prose">
+    <h1>Message sent</h1>
+    <p class="lede">Thank you. Your message was sent, and the reply will come by email to the address you gave.</p>
+    <p><Button href={hrefFor("")}>Back to the home page</Button></p>
+  </Section>
+</Page>

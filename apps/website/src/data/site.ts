@@ -43,3 +43,21 @@ export const CONTACT_EMAIL = "contact@example.com";
  * disagree.
  */
 export const UPDATES_IN_APP = false;
+
+/**
+ * Umami Cloud's Website ID (DEC-192). It identifies the site in the account, is public by design (it
+ * sits in the page's script tag), and is not a secret. The script is loaded only by a public build
+ * (`PUBLIC` in site.config.ts), so a preview build never sends an event to the real account.
+ * check-site refuses a value that is not a real id in a public build.
+ */
+export const UMAMI_WEBSITE_ID = "c1b7a806-c974-4e97-aed1-f94f53b6326c";
+export const UMAMI_SCRIPT_URL = "https://cloud.umami.is/script.js";
+
+/**
+ * Web3Forms' access key for the "CuePoint" form (DEC-193). It names the inbox, is public by design
+ * (it sits in the form's HTML) and, on Web3Forms' free plan, unrestricted: anyone can post with it.
+ * Spam is held back by the honeypot, the fill-time check and Web3Forms' own filter. check-site refuses a
+ * value that is not a real id in a public build. The tests never reach the service: e2e stubs `WEB3FORMS_ENDPOINT`.
+ */
+export const WEB3FORMS_ACCESS_KEY = "06f937df-8912-4a4f-b495-9686e5714d68";
+export const WEB3FORMS_ENDPOINT = "https://api.web3forms.com/submit";

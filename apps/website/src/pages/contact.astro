@@ -1,0 +1,39 @@
+---
+import Field from "../components/Field.astro";
+import Form from "../components/Form.astro";
+import Section from "../components/Section.astro";
+import { CONTACT_EMAIL, SITE_NAME } from "../data/site";
+import Page from "../layouts/Page.astro";
+import { SUBJECTS } from "../lib/forms";
+import { hrefFor } from "../lib/url";
+
+/** /contact/: write to the publisher (SITE-12, DEC-143). Sends through Web3Forms (DEC-193). */
+const subjects = SUBJECTS.map((s) => ({ value: s, label: s }));
+---
+
+<Page
+  title="Contact"
+  description="Write to the person who makes CuePoint: feedback, a question, or anything else. Your message goes to one inbox, and you get a reply by email."
+  path="contact/"
+  breadcrumbs={[{ label: "Home", path: "" }, { label: "Contact", path: "contact/" }]}
+>
+  <Section id="contact" width="prose">
+    <h1>Contact</h1>
+    <p class="lede" data-form-intro>
+      Feedback, a question, or something else about {SITE_NAME}: write here and the message goes to one inbox. Found a bug? The{" "}
+      <a href={hrefFor("report-a-bug/")}>bug report form</a> asks for the details that help.
+    </p>
+    <p>
+      The form is sent through a service called Web3Forms. The{" "}
+      <a href={hrefFor("privacy/#forms")}>privacy policy</a> says what it receives and keeps. You can also write to{" "}
+      <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+    </p>
+
+    <Form kind="contact" thanks="contact/thank-you/" send="Send message" noun="message">
+      <Field id="name" label="Name (optional)" control="input" autocomplete="name" />
+      <Field id="email" label="Email" control="input" type="email" required autocomplete="email" hint="Where the reply goes." />
+      <Field id="subject" label="Subject" control="select" required options={subjects} />
+      <Field id="message" label="Message" control="textarea" required rows={7} />
+    </Form>
+  </Section>
+</Page>

@@ -60,7 +60,8 @@ export default defineConfig({
   integrations: [
     sitemap({
       // The style guide exists only in preview builds; keep it out of the sitemap whatever happens.
-      filter: (page) => !isStyleguide(new URL(page).pathname),
+      // The thank-you pages (SITE-12) carry noindex and stay out of the sitemap too.
+      filter: (page) => !isStyleguide(new URL(page).pathname) && !/\/thank-you\/?$/.test(new URL(page).pathname),
     }),
     // draws every page's sharing picture into dist/ once the pages are built (SITE-11)
     ogCards(),

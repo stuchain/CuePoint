@@ -128,3 +128,24 @@ npm run check:lighthouse  # Lighthouse CI: LCP, TBT, CLS, four category scores, 
   Markdown file on the site, not just the guide. Keep `@astrojs/markdown-satteri` pinned to the version `astro` pins
   (check `npm ls @astrojs/markdown-satteri`), so there is one processor.
 - `WEBSITE_PORT` (default 4321) picks the port `test:e2e` and `check:lighthouse` preview on.
+
+## Forms and analytics (SITE-12)
+
+- **Forms:** `/contact/` and `/report-a-bug/` are plain HTML forms (`components/Form.astro`, `Field.astro`) that post to
+  Web3Forms (DEC-193) with the access key from `src/data/site.ts`, so they work with no script. `src/lib/form-client.ts`
+  adds the checks (rules in `src/lib/forms.ts`, shared with the tests), sends in the background with `fetch`, and shows the
+  thank-you page (`/contact/thank-you/`, `/report-a-bug/thank-you/`: noindex, out of the sitemap). The hidden `redirect`
+  field is for the no-script post only and is absolute because Web3Forms requires that; the script deletes it before its send.
+- **Spam:** a hidden `botcheck` field, a 3 second minimum fill time and Web3Forms' own filter. A send that trips either of
+  the first two shows the thank-you page and sends nothing. The key is on the free plan: public and not restricted to a domain.
+- **Analytics:** Umami Cloud (DEC-192). `src/lib/analytics-client.ts` forwards `cuepoint:download` (SITE-07),
+  `cuepoint:form-sent` and the theme switch to `window.umami.track`; `src/lib/analytics.ts` lets each event carry only its
+  fixed keys. The Umami script is added (deferred, with `data-domains`) only when the build is public (`PUBLIC`), and the
+  CSP names Umami's hosts only then too, so preview builds and tests never reach the real account.
+- **Consent component:** built and off. If `document.cookie` holds a name outside the allow list in `src/lib/consent.ts`
+  (empty today), a banner shows and Umami waits for "Allow counting". The answer is in local storage
+  (`cuepoint-site-consent`).
+- **Tests never reach the services:** `e2e/forms.spec.ts` routes the Web3Forms address to a stand-in; `e2e/analytics.spec.ts`
+  injects a fake `window.umami`, and its public-path tests rewrite `data-public` to `true` and stub `cloud.umami.is`.
+- **The live check is manual**, on the deployed site (SITE-13): send each form once and see it arrive. There is no
+  server-side script, because Web3Forms refuses server sends on the free plan.

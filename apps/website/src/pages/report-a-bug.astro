@@ -1,0 +1,56 @@
+---
+import Field from "../components/Field.astro";
+import Form from "../components/Form.astro";
+import Section from "../components/Section.astro";
+import { GITHUB_URL, SITE_NAME } from "../data/site";
+import Page from "../layouts/Page.astro";
+import { VERSION_HELP, VERSION_PATTERN } from "../lib/forms";
+import { hrefFor } from "../lib/url";
+
+/**
+ * /report-a-bug/ (SITE-12, DEC-143). Says first what the app already reports for itself (DEC-126) and
+ * what Report a problem in the app attaches (DEC-152), as docs/user-guide/troubleshooting.md describes.
+ */
+const systems = [
+  { value: "windows", label: "Windows" },
+  { value: "macos", label: "macOS" },
+  { value: "linux", label: "Linux" },
+];
+const chips = [
+  { value: "x64", label: "Intel or AMD (x64)" },
+  { value: "arm64", label: "Apple Silicon or Arm (arm64)" },
+];
+---
+
+<Page
+  title="Report a bug"
+  description="Tell us what went wrong in CuePoint: your version, system and chip, what happened, what you expected, and the steps to repeat it."
+  path="report-a-bug/"
+  breadcrumbs={[{ label: "Home", path: "" }, { label: "Report a bug", path: "report-a-bug/" }]}
+>
+  <Section id="report-a-bug" width="prose">
+    <h1>Report a bug</h1>
+    <div data-form-intro>
+      <p class="lede">
+        Released versions of {SITE_NAME} report their own errors when they hit one, unless you turned that off in <strong>Settings → Privacy → Send error reports</strong>.
+        You do not need to do anything for those.
+      </p>
+      <p>
+        To tell us more, use <strong>Help → Report a problem</strong> in the app. It sends your note with the app's version and the id of the
+        last error report, which helps find it. If you cannot do that, or want a reply by email, fill in this form. You can also{" "}
+        <a href={`${GITHUB_URL}/issues/new?template=bug_report.yml`} rel="noopener noreferrer">open an issue on GitHub</a>. The{" "}
+        <a href={hrefFor("privacy/#forms")}>privacy policy</a> says what happens to what you send.
+      </p>
+    </div>
+
+    <Form kind="bug" subject="CuePoint bug report" thanks="report-a-bug/thank-you/" send="Send report" noun="report">
+      <Field id="email" label="Email" control="input" type="email" required autocomplete="email" hint="Where the reply goes." />
+      <Field id="version" label="App version" control="input" required hint={`${VERSION_HELP} A test build looks like 1.0.0-test.2.`} placeholder="1.0.0" pattern={VERSION_PATTERN} />
+      <Field id="system" label="System" control="select" required options={systems} />
+      <Field id="chip" label="Chip" control="select" required options={chips} hint="On a Mac, Apple menu → About This Mac shows it. If you are not sure, say so in the description." />
+      <Field id="happened" label="What happened" control="textarea" required />
+      <Field id="expected" label="What you expected" control="textarea" required />
+      <Field id="steps" label="Steps to reproduce" control="textarea" required />
+    </Form>
+  </Section>
+</Page>

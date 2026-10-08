@@ -672,7 +672,8 @@ function pngSize(path) {
 
 /**
  * The placeholders in src/data/site.ts that must not reach a public site (DEC-144): the contact
- * address is still example.com, or the publisher is still the GitHub owner name. Read from the
+ * address is still example.com, the publisher is still the GitHub owner name, or the Umami Website ID or
+ * the Web3Forms access key is not a real id. Read from the
  * source because Node 22.12 cannot import .ts. Only called for a public build.
  * @returns {{ rule: string, page: string, message: string, severity: string }[]}
  */
@@ -680,12 +681,19 @@ export function checkPublisherPlaceholders(source) {
   const read = (name) => new RegExp(`^export const ${name}\\s*(?::\\s*string\\s*)?=\\s*(["'])(.*?)\\1`, "m").exec(source)?.[2];
   const email = read("CONTACT_EMAIL");
   const publisher = read("PUBLISHER");
+  const umami = read("UMAMI_WEBSITE_ID");
+  const formKey = read("WEB3FORMS_ACCESS_KEY");
   const results = [];
   const problem = (message) => results.push({ rule: "placeholder", page: "src/data/site.ts", message, severity: "error" });
-  if (email === undefined || publisher === undefined) problem("could not read CONTACT_EMAIL and PUBLISHER from src/data/site.ts");
-  else {
+  // a real id is a UUID that is not all zeros; anything else (TODO-..., empty) is a placeholder
+  const isRealId = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.trim()) && !/^[0-]+$/.test(v.trim());
+  if (email === undefined || publisher === undefined || umami === undefined || formKey === undefined) {
+    problem("could not read CONTACT_EMAIL, PUBLISHER, UMAMI_WEBSITE_ID and WEB3FORMS_ACCESS_KEY from src/data/site.ts");
+  } else {
     if (/example\.(com|org|net)$/i.test(email.trim())) problem(`CONTACT_EMAIL is still the placeholder "${email}": the user gives the real address (DEC-144)`);
     if (publisher.trim() === "stuchain") problem('PUBLISHER is still the placeholder "stuchain": the user gives the name to print (DEC-144)');
+    if (!isRealId(umami)) problem(`UMAMI_WEBSITE_ID is still a placeholder ("${umami}"): the user gives the Website ID from Umami Cloud (DEC-192)`);
+    if (!isRealId(formKey)) problem(`WEB3FORMS_ACCESS_KEY is still a placeholder ("${formKey}"): the user gives the access key from Web3Forms (DEC-193)`);
   }
   return results;
 }

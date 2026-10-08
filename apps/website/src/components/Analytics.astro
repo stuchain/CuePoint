@@ -1,0 +1,56 @@
+---
+/**
+ * The analytics and the consent component, once per page (SITE-12; DEC-142, DEC-192).
+ *
+ * `data-public` is the build's PUBLIC flag: analytics-client.ts adds Umami's script only when it is
+ * "true", so a preview build never sends an event to the real account. The banner is built and off:
+ * it turns on only if the page has a cookie that is not on the allow list (src/lib/consent.ts).
+ */
+import { PUBLIC, SITE_URL } from "../../site.config";
+import { UMAMI_SCRIPT_URL, UMAMI_WEBSITE_ID } from "../data/site";
+---
+
+<div data-analytics data-public={String(PUBLIC)} data-script={UMAMI_SCRIPT_URL} data-website-id={UMAMI_WEBSITE_ID} data-domains={new URL(SITE_URL).hostname}>
+  <section class="consent" data-consent-banner role="region" aria-labelledby="consent-title" hidden>
+    <h2 id="consent-title" class="consent-title">Counting visits</h2>
+    <p>
+      This site found a cookie it did not set itself: <span data-consent-names></span>. Counting visits waits until you choose.
+    </p>
+    <div class="actions">
+      <button type="button" class="btn" data-variant="primary" data-consent-yes>Allow counting</button>
+      <button type="button" class="btn" data-variant="secondary" data-consent-no>No thanks</button>
+    </div>
+  </section>
+</div>
+
+<script>
+  import "../lib/analytics-client";
+</script>
+
+<style>
+  .consent {
+    position: fixed;
+    inset-inline: var(--gutter);
+    bottom: var(--space-md);
+    z-index: 50;
+    max-width: 40rem;
+    margin-inline: auto;
+    padding: var(--space-md) var(--space-lg);
+    background: var(--bg-panel);
+    color: var(--fg-primary);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel);
+  }
+  .consent[hidden] {
+    display: none;
+  }
+  .consent-title {
+    margin: 0 0 var(--space-xs);
+    font-size: var(--font-size-md);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+</style>

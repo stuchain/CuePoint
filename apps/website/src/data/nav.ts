@@ -17,6 +17,8 @@ export const NAV: readonly NavItem[] = [
   { label: "Download", path: "download/", header: true },
   { label: "Blog", path: "blog/", header: true },
   { label: "Changelog", path: "changelog/", header: false },
+  { label: "Contact", path: "contact/", header: false },
+  { label: "Report a bug", path: "report-a-bug/", header: false },
   { label: "Privacy", path: "privacy/", header: false },
   { label: "Terms", path: "terms/", header: false },
 ];

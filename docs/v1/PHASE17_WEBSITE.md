@@ -917,6 +917,16 @@ visits counted.
 
 **Complexity**: **M**
 
+**Outcome (2026-10-08)**: `/contact/` and `/report-a-bug/` are plain HTML forms posting to Web3Forms
+(they work without JS); with JS they validate inline and send in the background. Spam is held back by a hidden
+trap field, a 3-second minimum fill time (a faster send is dropped) and Web3Forms' own filter. The key and the
+Umami ID live in `src/data/site.ts` (not `site.config.ts`). The site stays on Web3Forms' free plan by default,
+where the key cannot be locked to the domain and server-side test sends are refused, so the live send is a
+manual check on the deployed site at SITE-13. Umami loads only in a public build, with `data-domains`; it
+counts downloads, form sends and theme changes, and its hosts enter the CSP only in a public build. A consent
+banner exists but stays off while the site sets no cookie. Owed: confirm at SITE-13 that Umami's send passes
+the CSP (`connect-src`) and both forms reach the inbox; count the sound button once it exists.
+
 ---
 
 ## SITE-13 — Deploy, Launch, and the Checks No Machine Can Make

@@ -11,6 +11,8 @@
         "http://localhost:4321/blog/",
         "http://localhost:4321/changelog/",
         "http://localhost:4321/faq/",
+        "http://localhost:4321/contact/",
+        "http://localhost:4321/report-a-bug/",
         "http://localhost:4321/styleguide/three/"
       ],
       "numberOfRuns": 3,
