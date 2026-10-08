@@ -310,8 +310,10 @@ describeWithMpv("a queue playing through real mpv", () => {
 
   it("takes over immediately when the playing track is removed", async () => {
     const { controller } = makeController();
+    // Six-second fixtures: the tones last a third of a second, so on a slow
+    // runner "one" ended, "two" took over and ended too before the removal.
     await controller.playQueue(
-      [{ filePath: fixture("tone.flac"), title: "one" }, { filePath: fixture("tone.wav"), title: "two" }],
+      [{ filePath: fixture("bands.flac"), title: "one" }, { filePath: fixture("bands.flac"), title: "two" }],
       0,
     );
     const playingId = controller.snapshot().queue.currentId!;
