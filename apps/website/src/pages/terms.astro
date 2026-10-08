@@ -1,0 +1,84 @@
+---
+import PolicyLayout from "../components/PolicyLayout.astro";
+import { CONTACT_EMAIL, GITHUB_URL, PUBLISHER, SITE_NAME } from "../data/site";
+import { hrefFor } from "../lib/url";
+
+/**
+ * The terms for the website and the downloads (SITE-11, DEC-144), from docs/policy/terms-of-use.md
+ * and the Apache-2.0 LICENSE. The publisher approves this text before launch.
+ */
+const UPDATED = "2026-10-08";
+const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`;
+---
+
+<PolicyLayout
+  title="Terms of use"
+  description="The terms for using the CuePoint website and downloading the app: the Apache 2.0 license, no warranty, and where to ask questions."
+  path="terms/"
+  updated={UPDATED}
+>
+  <p class="lede">
+    By using this website or {SITE_NAME}, you agree to these terms. {SITE_NAME} is free, open-source software. It is
+    provided as it is, under the license below.
+  </p>
+
+  <h2 id="publisher">Who these terms are from</h2>
+  <p>
+    The website and {SITE_NAME} are published by {PUBLISHER}, as an individual. You can reach the publisher at{" "}
+    <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+  </p>
+
+  <h2 id="license">The license</h2>
+  <p>
+    {SITE_NAME} and its source code are licensed under the Apache License, Version 2.0. The full text is in the{" "}
+    <a href={LICENSE_URL} rel="noopener noreferrer">LICENSE file</a> in the repository, and in copies of the project. In short,
+    it lets you use, copy, change and share {SITE_NAME}, under the conditions the license sets out.
+  </p>
+  <p>
+    The third-party libraries the app is built with have their own licenses. Their licenses and notices are in the repository and in
+    each library's own package, and they are separate from {SITE_NAME}'s own license.
+  </p>
+
+  <h2 id="use">Using {SITE_NAME}</h2>
+  <ul>
+    <li>You may use {SITE_NAME} on your own devices, for personal or commercial work.</li>
+    <li>Downloads come from the project's releases on GitHub. Each one is the app as published there, and its license is the one above.</li>
+    <li>When a feature uses an outside service, such as a Beatport lookup, you are also bound by that service's own terms and privacy policy.</li>
+  </ul>
+
+  <h2 id="site">Using this website</h2>
+  <p>
+    You may read, link to and share the pages of this site. Please do not use the site in a way that harms it or other visitors.
+  </p>
+
+  <h2 id="disclaimer">No warranty</h2>
+  <p>
+    For the software, Sections 7 (Disclaimer of Warranty) and 8 (Limitation of Liability) of the{" "}
+    <a href={LICENSE_URL} rel="noopener noreferrer">Apache License, Version 2.0</a> apply. In plain words: {SITE_NAME} is provided as it
+    is, without promises that it will be free of errors, will run without interruption, or will suit any particular purpose. You use it
+    at your own risk. Keep a copy of your Rekordbox collection before you work on it.
+  </p>
+
+  <h2 id="liability">Limit of liability</h2>
+  <p>
+    For the software, Section 8 of the license sets the limit. For this website, to the extent the law allows, the publisher is not
+    liable for any indirect, incidental, special, consequential or punitive damages that come from your use of the site.
+  </p>
+
+  <h2 id="data">Your data</h2>
+  <p>
+    {SITE_NAME} works on your computer, on your own library. What the site and the app collect, and how to turn it off, is in the{" "}
+    <a href={hrefFor("privacy/")}>privacy policy</a>.
+  </p>
+
+  <h2 id="changes">Changes</h2>
+  <p>
+    These terms may be updated from time to time. The "last updated" date at the top says when they last changed. If you keep using {SITE_NAME} or the site after a change, you accept the updated terms.
+  </p>
+
+  <h2 id="contact">Contact</h2>
+  <p>
+    Questions about these terms: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>, or open an issue at{" "}
+    <a href={`${GITHUB_URL}/issues`} rel="noopener noreferrer">{GITHUB_URL.replace("https://", "")}/issues</a>.
+  </p>
+</PolicyLayout>

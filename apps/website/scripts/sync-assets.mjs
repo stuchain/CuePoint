@@ -11,6 +11,7 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import sharp from "sharp";
+import { neoDarkTokens } from "./theme-colors.mjs";
 
 const attr = (tag, name) => new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1];
 
@@ -76,8 +77,9 @@ const PUBLIC_DIR = join(HERE, "..", "public");
 /**
  * The favicon set in public/ (SITE-03; SITE-11 polishes it). The app's own icon files (DIST-09) are
  * copied, not redrawn: icon.ico becomes favicon.ico and icons/512x512.png becomes icon-512.png. The
- * 192 px icon, also used as the apple-touch-icon, is the optimized mark drawn at a whole multiple of
- * its 32-cell grid (6x), so every cell stays a sharp square.
+ * 192 px icon is the optimized mark drawn at a whole multiple of its 32-cell grid (6x), so every
+ * cell stays a sharp square; the 180 px apple-touch-icon is the mark at 5x on a padded canvas
+ * (SITE-11). favicon.ico keeps the app's 16, 24, 32, 48, 64, 128 and 256 px sizes.
  */
 export async function syncIcons(svg, outDir = PUBLIC_DIR) {
   mkdirSync(outDir, { recursive: true });
@@ -89,7 +91,18 @@ export async function syncIcons(svg, outDir = PUBLIC_DIR) {
     .png()
     .toBuffer();
   writeFileSync(join(outDir, "icon-192.png"), png);
-  writeFileSync(join(outDir, "apple-touch-icon.png"), png);
+  // iOS wants 180 px. 180 is not a multiple of the 32-cell grid, so the mark is drawn at 5x (160 px,
+  // every cell a whole 5 px square) and centered on a 180 px canvas of the app's background, not
+  // scaled by a fraction that would blur the cells.
+  const mark160 = await sharp(Buffer.from(svg), { density: 72 * (160 / 32) })
+    .resize(160, 160, { kernel: "nearest" })
+    .png()
+    .toBuffer();
+  const apple = await sharp({ create: { width: 180, height: 180, channels: 3, background: neoDarkTokens()["--bg-app"] } })
+    .composite([{ input: mark160, left: 10, top: 10 }])
+    .png()
+    .toBuffer();
+  writeFileSync(join(outDir, "apple-touch-icon.png"), apple);
 }
 
 async function main() {

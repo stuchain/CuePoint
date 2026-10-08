@@ -49,7 +49,17 @@ describe("favicon set", () => {
       expect([big.width, big.height]).toEqual([512, 512]);
       const small = await sharp(join(dir, "icon-192.png")).metadata();
       expect([small.width, small.height]).toEqual([192, 192]);
-      expect(read(join(dir, "apple-touch-icon.png"))).toEqual(read(join(dir, "icon-192.png")));
+      // the apple-touch icon is 180 px: the mark on whole cells (5x = 160 px) centered on a padded canvas
+      const apple = await sharp(join(dir, "apple-touch-icon.png")).metadata();
+      expect([apple.width, apple.height]).toEqual([180, 180]);
+      const raw = await sharp(join(dir, "apple-touch-icon.png")).removeAlpha().raw().toBuffer();
+      expect([...raw.subarray(0, 3)]).toEqual([0x18, 0x18, 0x1b]); // the Neo Dark app color pads the canvas
+      expect(new Set(Array.from({ length: 180 * 180 }, (_, i) => raw.readUIntBE(i * 3, 3))).size).toBeGreaterThan(3); // the mark is on it
+      // the icon.ico holds the 16, 32 and 48 px sizes
+      const ico = read(join(dir, "favicon.ico"));
+      const count = ico.readUInt16LE(4);
+      const sizes = Array.from({ length: count }, (_, i) => ico[6 + 16 * i] || 256);
+      for (const size of [16, 32, 48]) expect(sizes).toContain(size);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

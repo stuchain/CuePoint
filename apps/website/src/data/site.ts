@@ -28,3 +28,10 @@ export const PRIMARY_ACTION = {
  * launch (SITE-11, SITE-13).
  */
 export const PUBLISHER = "stuchain";
+
+/**
+ * The address people write to about privacy, the terms and anything else the publisher is asked.
+ * TODO(DEC-144): a placeholder. The user gives the real address before launch; the privacy policy
+ * and the terms render it from here (SITE-11, SITE-13). Never ship this value.
+ */
+export const CONTACT_EMAIL = "contact@example.com";

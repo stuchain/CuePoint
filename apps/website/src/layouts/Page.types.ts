@@ -17,8 +17,10 @@ export interface PageProps {
   description: string;
   /** The page's path relative to the base, no leading slash: "" is home, "download/" is /download/. */
   path: string;
-  /** The social card; the placeholder default is used when left out. */
+  /** A ready-made social card; leave it out and the page's card is drawn at build from its title. */
   ogImage?: ImageMetadata;
+  /** An app picture drawn on the generated card (SITE-11); ignored when `ogImage` is given. */
+  ogPicture?: ImageMetadata;
   /** JSON-LD objects, one `<script>` each. */
   schema?: readonly JsonLd[];
   /** The trail shown above the page; the layout also writes it as a BreadcrumbList. */

@@ -32,15 +32,14 @@ When CuePoint hits an unexpected error, a released build sends one error report 
 
 **How long it is kept:** for as long as Sentry keeps error events on our plan: 30 days on the free plan, 90 days on a paid one, after which Sentry deletes them. We read reports only to fix bugs.
 
-**How to turn it off:** **Settings → Privacy → Send error reports**, or **Help → Privacy → Change in Settings**. It takes effect at once, with no restart: nothing is sent after that, and nothing is saved to send later. A report that has already reached Sentry stays there until Sentry deletes it.
+**How to turn it off:** **Settings → Privacy → Send error reports**, or **Help → Privacy**, then **Change these in Settings → Privacy**. It takes effect at once, with no restart: nothing is sent after that, and nothing is saved to send later. A report that has already reached Sentry stays there until Sentry deletes it.
 
 CuePoint's CLI has its own usage telemetry, which is separate, opt-in and off unless you enable it (see the [Telemetry Policy](telemetry.md)).
 
 ### User-initiated network requests
 CuePoint may make network requests when you use features that require them:
-- **Beatport lookups**: when you run processing/search that queries Beatport for metadata.
-- **DuckDuckGo** (if you use the related search integration): user-initiated.
-- **Update checking**: if/when you use update checking features (and when enabled).
+- **Beatport and DuckDuckGo**: when you run a match, CuePoint searches Beatport, directly and through DuckDuckGo, with text built from the tracks' title and artist. Features that use your Beatport account send your Beatport token to api.beatport.com.
+- **Updates**: CuePoint does not check for updates. You download new versions by hand from GitHub releases, and GitHub sees that request like any download. When automatic updates arrive, this notice will describe them first.
 
 These requests go directly from your device to the third-party service.
 
@@ -63,7 +62,7 @@ CuePoint may store the following **locally**:
 - **Exports**: files you export (CSV/Excel/JSON) to a location you choose.
 
 You can manage and delete local data in the app:
-- **Help → Privacy**: clear cache/logs/config and set “clear on exit” options.
+- **Help → Privacy**: clear the cache and the logs now. Whether CuePoint clears them when it quits is chosen in **Settings → Privacy → When CuePoint quits**.
   These do **not** touch the library database: clearing a cache should never
   delete your library, tags or ratings. To remove it, delete
   `~/.cuepoint/cuepoint.db` yourself.
@@ -78,12 +77,12 @@ its shape — schema version, pending migrations and row counts — never track
 titles, artists, file paths, tags, ratings or notes.
 
 ## Your choices and controls
-- Clear cache/logs/config from **Help → Privacy**.
-- Optionally enable “clear cache on exit” and “clear logs on exit”.
+- Clear the cache and logs now from **Help → Privacy**.
+- Optionally clear them each time CuePoint quits, in **Settings → Privacy → When CuePoint quits**.
 - Turn error reports off in **Settings → Privacy → Send error reports**.
 
 ## Third-party services
-CuePoint may interact with third-party services you choose to use (e.g., Beatport, DuckDuckGo, GitHub hosting for updates), and sends error reports to Sentry unless you turn them off. Their privacy practices are governed by their own policies.
+CuePoint may interact with third-party services you choose to use (e.g., Beatport, DuckDuckGo, and GitHub when you download a new version), and sends error reports to Sentry unless you turn them off. Their privacy practices are governed by their own policies.
 
 ## Changes to this notice
 If data practices change in a future version, this notice will be updated and the “Last updated” date will change.

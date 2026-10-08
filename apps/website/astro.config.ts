@@ -2,6 +2,7 @@ import { defineConfig, fontProviders } from "astro/config";
 import sitemap from "@astrojs/sitemap";
 import type { Plugin } from "vite";
 import { satteri } from "@astrojs/markdown-satteri";
+import ogCards from "./scripts/og-integration.mjs";
 import { SITE_URL, addressParts, isStyleguide } from "./site.config";
 import { guideLinkConfig } from "./src/lib/guide-config";
 import { guideLinksPlugin } from "./src/lib/guide-links";
@@ -61,6 +62,8 @@ export default defineConfig({
       // The style guide exists only in preview builds; keep it out of the sitemap whatever happens.
       filter: (page) => !isStyleguide(new URL(page).pathname),
     }),
+    // draws every page's sharing picture into dist/ once the pages are built (SITE-11)
+    ogCards(),
   ],
   fonts: [
     {

@@ -1,0 +1,63 @@
+---
+import Page from "../layouts/Page.astro";
+import { formatDate } from "../lib/dates";
+import DraftBanner from "./DraftBanner.astro";
+import Section from "./Section.astro";
+
+interface Props {
+  title: string;
+  description: string;
+  /** The page's path relative to the base, e.g. "privacy/". */
+  path: string;
+  /** The "last updated" date, YYYY-MM-DD: a constant in the page that uses this. */
+  updated: string;
+}
+const { title, description, path, updated } = Astro.props;
+---
+
+<Page
+  title={title}
+  description={description}
+  path={path}
+  breadcrumbs={[{ label: "Home", path: "" }, { label: title, path }]}
+>
+  <Section id="policy" width="prose">
+    <div class="policy">
+      <h1>{title}</h1>
+      <p class="updated">Last updated: <time datetime={updated}>{formatDate(updated)}</time></p>
+      <DraftBanner />
+      <slot />
+    </div>
+  </Section>
+</Page>
+
+<style>
+  .updated {
+    color: var(--fg-muted);
+  }
+  .policy :global(h2) {
+    font-size: var(--font-size-lg);
+    margin: var(--space-xl) 0 var(--space-md);
+  }
+  .policy :global(h3) {
+    font-size: var(--font-size-md);
+    margin: var(--space-lg) 0 var(--space-sm);
+  }
+  .policy :global(ul) {
+    padding-left: 1.25rem;
+  }
+  .policy :global(li) {
+    margin-bottom: var(--space-sm);
+  }
+  .policy :global(.lede) {
+    font-size: var(--font-size-md);
+  }
+  .policy :global(code) {
+    font-family: var(--font-data);
+    font-size: 0.9em;
+    overflow-wrap: anywhere;
+  }
+  .policy :global(.callout) {
+    margin-block: var(--space-lg);
+  }
+</style>

@@ -847,6 +847,13 @@ and every page's OG image, favicons and manifest.
 
 **Complexity**: **M**
 
+**Outcome (2026-10-08)**: `/privacy/` and `/terms/` render the publisher and contact address from
+`src/data/site.ts`; the privacy text matches the app (no update checks yet, Beatport and DuckDuckGo matching,
+Help → Privacy clears cache and logs) and `PRIVACY_NOTICE.md` says the same. Terms point to Apache-2.0
+Sections 7 and 8. The 404 has no canonical. Every page gets a generated 1200×630 sharing picture, and
+check-site's new `placeholder` rule refuses a public build while the contact address is a placeholder.
+Owed: the user's approval of the policy and terms text and the real contact address (DEC-144).
+
 ---
 
 ## SITE-12 — The Forms and the Analytics

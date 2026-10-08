@@ -1,0 +1,13 @@
+---
+import { PUBLIC } from "../../site.config";
+import Callout from "./Callout.astro";
+---
+
+{
+  /* Preview builds only: it goes when PUBLIC becomes true at launch (SITE-13), after the publisher approves the text. */
+  !PUBLIC && (
+    <Callout kind="warning" title="Draft: awaiting the publisher's approval (DEC-144)">
+      <p>This page is a draft for the publisher to read. It is not final, and it is not shown on the live site.</p>
+    </Callout>
+  )
+}

@@ -1,0 +1,198 @@
+---
+import PolicyLayout from "../components/PolicyLayout.astro";
+import { CONTACT_EMAIL, GITHUB_URL, PUBLISHER, SITE_NAME } from "../data/site";
+import { hrefFor } from "../lib/url";
+
+/**
+ * The privacy policy for the website and the app (SITE-11, DEC-144). Drafted from what each does,
+ * and held to PRIVACY_NOTICE.md (the app's notice, which this page never contradicts) by
+ * privacy.test.ts. The publisher approves this text before launch.
+ */
+const UPDATED = "2026-10-08";
+---
+
+<PolicyLayout
+  title="Privacy policy"
+  description="What CuePoint's website and desktop app collect and send, to whom, why, and how to turn it off. Written in plain words."
+  path="privacy/"
+  updated={UPDATED}
+>
+  <p class="lede">
+    This page covers two things: this website, and the {SITE_NAME} desktop app. For each it says what is collected, who
+    receives it, and what you can do about it.
+  </p>
+
+  <h2 id="summary">The short version</h2>
+  <ul>
+    <li><strong>This website</strong> sets no cookies. It counts visits with Umami Cloud, which says it uses no cookies and stores no personally identifiable information.</li>
+    <li><strong>The forms</strong> on this site send what you type, and only that, to the publisher's email through Web3Forms.</li>
+    <li><strong>The app</strong> has no analytics and no usage tracking. Your Rekordbox collection stays on your computer.</li>
+    <li><strong>The app sends an error report to Sentry</strong> (EU region) when it hits an unexpected error, unless you turn that off in <strong>Settings → Privacy → Send error reports</strong>. Reports are cleaned on your computer first, and are built not to carry file, folder, track, artist, label or playlist names.</li>
+    <li>Nothing is sold or rented to anyone.</li>
+  </ul>
+
+  <h2 id="publisher">Who publishes {SITE_NAME}</h2>
+  <p>
+    {SITE_NAME} is published by {PUBLISHER}, as an individual, who is also the person to write to about privacy. The app is
+    open-source software, and its code is public at{" "}
+    <a href={GITHUB_URL} rel="noopener noreferrer">{GITHUB_URL.replace("https://", "")}</a>.
+  </p>
+  <p>
+    Contact: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. You can also open an issue in the repository.
+  </p>
+
+  <h2 id="website">This website</h2>
+
+  <h3 id="hosting">Hosting</h3>
+  <p>
+    The site's pages are served by GitHub Pages. Like any web server, GitHub receives each request, which includes your IP
+    address and the page you asked for, and keeps logs of it. The publisher does not receive those logs. See{" "}
+    <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener noreferrer">GitHub's privacy statement</a>.
+  </p>
+
+  <h3 id="analytics">Visit counts</h3>
+  <p>
+    To learn how many people visit, where they come from and whether the download is used, the site uses Umami Cloud
+    (umami.is). The site sets no cookies and stores nothing on your device for it. It counts:
+  </p>
+  <ul>
+    <li>page views, and which page;</li>
+    <li>the site you came from (the referrer);</li>
+    <li>a few actions, as events: a click on a download, a form being sent, and a change of the site's theme. If a sound button is added, a press of it will be counted the same way.</li>
+  </ul>
+  <p>
+    Umami's own FAQ (<a href="https://docs.umami.is/docs/faq" rel="noopener noreferrer">docs.umami.is/docs/faq</a>) says it uses no
+    cookies, does not store personally identifiable information, and identifies a visit by an anonymous session id. These counts are
+    not tied to your name or email, and the publisher uses them only to see how the site is doing.
+  </p>
+
+  <h3 id="forms">The forms</h3>
+  <p>
+    The contact form and the bug-report form send through Web3Forms (web3forms.com), a form service, because this site
+    is static and has no server of its own. When you press Send, your browser sends the fields you filled in to Web3Forms,
+    which passes them to the publisher as an email:
+  </p>
+  <ul>
+    <li><strong>Contact and feedback:</strong> your name (optional), your email address, the subject you chose and your message.</li>
+    <li><strong>Bug report:</strong> your email address, the version of the app, your system and chip, and what happened, what you expected and the steps.</li>
+  </ul>
+  <p>
+    The forms use a hidden field and a fill-time check to stop spam, and no puzzle. The publisher uses what you send only to reply to
+    you and to fix a problem. Web3Forms acts as a processor for the publisher, who decides what is done with the messages. Its privacy
+    page (<a href="https://web3forms.com/privacy" rel="noopener noreferrer">web3forms.com/privacy</a>) says it stores submissions, on Amazon Web
+    Services, for up to 3 years, and that it may pass your IP address and email address to spam-filtering services (CleanTalk and
+    Akismet). If you want a message you sent deleted, write to <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> and ask.
+  </p>
+
+  <h3 id="storage">Cookies and your browser's storage</h3>
+  <p>
+    The site sets no cookies. It remembers your choice of theme in your browser's local storage, on your device. That
+    choice is not sent anywhere. Clear your browser's site data to remove it.
+  </p>
+  <p>
+    The site's fonts and scripts come from the site itself. It loads nothing from Google, and no advertising or social
+    network code. Links to other sites, such as GitHub, lead to places with their own policies.
+  </p>
+
+  <h2 id="app">The {SITE_NAME} app</h2>
+
+  <h3 id="app-local">Your library stays on your computer</h3>
+  <p>
+    {SITE_NAME} reads your Rekordbox collection and does its work on your computer. The app has no analytics and no usage
+    tracking. It makes network requests only for the things listed below.
+  </p>
+
+  <h3 id="errors">Error reports (on by default; you can turn them off)</h3>
+  <p>
+    When a released build of {SITE_NAME} hits an unexpected error, it sends one error report so the bug can be found and
+    fixed. Builds run from source do not send them, and neither does the command-line tool.
+  </p>
+  <p><strong>A report carries:</strong></p>
+  <ul>
+    <li>the kind of error and its message, with file and folder names, your user, home and computer names, and track, artist, label and playlist names removed on your computer before it is sent;</li>
+    <li>where in {SITE_NAME}'s code it happened (the stack trace);</li>
+    <li>a short description of each of the last steps before it, for example a screen was opened or a lookup failed, cleaned the same way;</li>
+    <li>{SITE_NAME}'s version and build, and basic details about your computer: operating system and version, processor and graphics hardware, memory, screen size, when the app was last started, language and time zone;</li>
+    <li>when the part of {SITE_NAME} that does the work, or the audio player, stops unexpectedly, the last lines of what it wrote, with the same removals applied;</li>
+    <li>if you use <strong>Help → Report a problem</strong>, the note you write there, the app's version and the id of the last report. That is sent only when you press Send, and the note is sent exactly as you write it, so leave out anything you do not want read.</li>
+  </ul>
+  <p>
+    <strong>A report is built not to carry</strong> (the note you choose to send with Report a problem is the one exception):
+    file or folder names (a path is reduced to its depth and file extension), your user, home or computer name, track, artist,
+    label or playlist names, the notes and tags you keep in {SITE_NAME}, tokens or passwords, the values of variables in the
+    code, your library or Rekordbox collection, screenshots, recordings or memory dumps. The app sends no user id, name or email
+    and does not put your IP address in a report. As with any server you connect to, Sentry receives the network address a
+    request comes from, and works out from it the country a report came from.
+  </p>
+  <p>
+    <strong>Where it goes:</strong> to Sentry (sentry.io), in Sentry's EU region. Sentry is the only service that receives error reports.
+  </p>
+  <p>
+    <strong>How long it is kept:</strong> for as long as Sentry keeps error events on the project's plan: 30 days on the free plan,
+    90 days on a paid one, after which Sentry deletes them. Reports are read only to fix bugs.
+  </p>
+  <p>
+    <strong>How to turn it off:</strong> <strong>Settings → Privacy → Send error reports</strong>, or{" "}
+    <strong>Help → Privacy</strong>, then <strong>Change these in Settings → Privacy</strong>. It takes effect at once, with no restart: nothing is sent after that, and
+    nothing is saved to send later. A report that has already reached Sentry stays there until Sentry deletes it.
+  </p>
+
+  <h3 id="updates">Updates</h3>
+  <p>
+    The app does not check for updates. You download new versions by hand from the project's releases on GitHub, and GitHub sees that
+    request like any download, including your IP address. When automatic updates arrive, this page will describe them first.
+  </p>
+
+  <h3 id="lookups">Beatport and DuckDuckGo</h3>
+  <p>
+    When you run a match, {SITE_NAME} searches Beatport, directly and through DuckDuckGo, with text built from the tracks' title and
+    artist. Features that use your Beatport account send your Beatport token to api.beatport.com. These requests go straight from your
+    computer to Beatport or DuckDuckGo, only when you start them, and each service handles them under its own privacy policy.
+  </p>
+
+  <h3 id="cli">The command-line tool</h3>
+  <p>
+    {SITE_NAME}'s command-line tool has its own usage telemetry. It is separate from the app, opt-in, and off unless you turn it on.
+  </p>
+
+  <h3 id="stored">What the app keeps on your computer</h3>
+  <ul>
+    <li><strong>Settings and preferences</strong>, in <code>~/.cuepoint/config.yaml</code>. If you set up a Beatport token, it is kept there too.</li>
+    <li><strong>Your library database:</strong> the Rekordbox library you imported, with the tags, ratings, notes, match decisions and change history {SITE_NAME} records about it. It is stored at <code>~/.cuepoint/cuepoint.db</code>, with its backups in <code>~/.cuepoint/backups/</code>.</li>
+    <li><strong>A cache</strong> of lookups, to make repeated ones faster: <code>~/Library/Caches/CuePoint</code> on macOS, <code>%LOCALAPPDATA%\CuePoint</code> on Windows, <code>~/.cache/CuePoint</code> on Linux.</li>
+    <li><strong>Logs</strong>, rotated and cleaned of secrets and tokens, to help diagnose problems: a <code>Logs</code> folder in <code>~/Library/Application Support/CuePoint</code> on macOS, <code>%LOCALAPPDATA%\CuePoint</code> on Windows, <code>~/.local/share/CuePoint</code> on Linux.</li>
+    <li><strong>Exports</strong> you make (CSV, Excel or JSON), in the place you choose.</li>
+  </ul>
+  <p>
+    <strong>Help → Privacy</strong> clears the cache and the logs now. Whether {SITE_NAME} clears them each time it quits is chosen in
+    <strong>Settings → Privacy → When CuePoint quits</strong>. Neither touches the library database: to remove your library and everything
+    else {SITE_NAME} keeps in your home folder, delete the <code>~/.cuepoint</code> folder yourself.
+  </p>
+  <p>
+    <strong>Help → Export support bundle</strong> makes a file with diagnostics, cleaned logs and your settings with secrets removed.
+    You decide whether to share it. It does not contain your library, only the shape of it, such as the number of rows, and never track
+    titles, artists, file paths, tags, ratings or notes.
+  </p>
+
+  <h2 id="choices">Your choices</h2>
+  <ul>
+    <li>Turn error reports off any time in <strong>Settings → Privacy → Send error reports</strong>.</li>
+    <li>Clear the app's cache and logs in <strong>Help → Privacy</strong>, or have it do so each time it quits in <strong>Settings → Privacy → When CuePoint quits</strong>.</li>
+    <li>Delete everything the app keeps, library included, by deleting the <code>~/.cuepoint</code> folder.</li>
+    <li>If you wrote to the publisher through a form or by email and want your message deleted, write to <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.</li>
+  </ul>
+  <p>Nothing you send, and nothing the app or the site collects, is sold or rented.</p>
+
+  <h2 id="changes">Changes to this policy</h2>
+  <p>
+    If what the site or the app does with information changes, this page is updated and its date changes. The app's own notice is in the
+    repository as <code>PRIVACY_NOTICE.md</code>, and this page says the same about the app. The{" "}
+    <a href={hrefFor("terms/")}>terms of use</a> cover the rest.
+  </p>
+
+  <h2 id="contact">Contact</h2>
+  <p>
+    Questions about privacy: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>, or open an issue at{" "}
+    <a href={`${GITHUB_URL}/issues`} rel="noopener noreferrer">{GITHUB_URL.replace("https://", "")}/issues</a>.
+  </p>
+</PolicyLayout>

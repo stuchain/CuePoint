@@ -16,6 +16,8 @@ export const NAV: readonly NavItem[] = [
   { label: "FAQ", path: "faq/", header: true },
   { label: "Blog", path: "blog/", header: true },
   { label: "Changelog", path: "changelog/", header: false },
+  { label: "Privacy", path: "privacy/", header: false },
+  { label: "Terms", path: "terms/", header: false },
 ];
 
 /** Links that leave the site. */

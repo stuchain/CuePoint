@@ -77,7 +77,7 @@ describe("Page", () => {
     expect(meta(html, "property", "og:title")).toBe("Test page");
     expect(meta(html, "property", "og:description")).toBe("A test page.");
     expect(meta(html, "property", "og:type")).toBe("website");
-    expect(meta(html, "property", "og:image")).toMatch(/^https:\/\/usecuepoint\.com\/.*default/);
+    expect(meta(html, "property", "og:image")).toBe(`${SITE_URL}og/download.png`);
     expect(meta(html, "name", "twitter:card")).toBe("summary_large_image");
   });
 
@@ -144,5 +144,25 @@ describe("Page", () => {
   it("never asks Google for fonts", async () => {
     const html = await render({});
     expect(html).not.toMatch(/googleapis|gstatic/);
+  });
+});
+
+describe("Page head (SITE-11)", () => {
+  it("names the toolbar color as the theme color and the favicon with sizes=any", async () => {
+    const html = await render({});
+    expect(meta(html, "name", "theme-color")).toBe("#1f1f23");
+    expect(html).toMatch(/<link rel="icon" sizes="any" href="[^"]*favicon\.ico"/);
+  });
+
+  it("gives the 404 no canonical and no og:url", async () => {
+    const html = await render({ noindex: "404", path: "404.html" });
+    expect(html).not.toContain('rel="canonical"');
+    expect(html).not.toContain('property="og:url"');
+  });
+
+  it("points og:image at the page's own picture and marks an app picture for the build", async () => {
+    const html = await render({ path: "blog/a/", ogPicture: { src: "/_astro/pic.png", width: 10, height: 10, format: "png" } });
+    expect(meta(html, "property", "og:image")).toBe(`${SITE_URL}og/blog/a.png`);
+    expect(meta(html, "name", "og-picture")).toBe("/_astro/pic.png");
   });
 });

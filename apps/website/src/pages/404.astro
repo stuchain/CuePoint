@@ -1,0 +1,91 @@
+---
+import mark from "../assets/mark/mark-32.svg";
+import Button from "../components/Button.astro";
+import Section from "../components/Section.astro";
+import { NAV } from "../data/nav";
+import { SITE_NAME } from "../data/site";
+import Page from "../layouts/Page.astro";
+import { hrefFor } from "../lib/url";
+
+// The main pages come from nav.ts, so a page another step adds shows up here without an edit.
+// The guide, when it exists, leads the list and is offered as a search.
+const guide = NAV.find((n) => n.path === "guide/" || n.path.startsWith("guide/"));
+const main = NAV.filter((n) => n.header && n !== guide);
+---
+
+<Page
+  title="Page not found"
+  description="That page is not on the CuePoint website. It may have moved, or the link may be wrong. These pages will get you back on track."
+  path="404.html"
+  noindex="404"
+>
+  <Section id="not-found" width="prose">
+    <div class="lost">
+      <img class="mark" src={mark.src} width="96" height="96" alt="" />
+      <div>
+        <p class="code" aria-hidden="true">404</p>
+        <h1>That page is not here</h1>
+      </div>
+    </div>
+    <p class="lede">
+      The link may be old or mistyped, or the page may have moved. {SITE_NAME} is still right where you left it.
+    </p>
+
+    {
+      guide && (
+        <p>
+          <Button href={hrefFor(guide.path)}>Search the guide</Button>
+        </p>
+      )
+    }
+
+    <h2>Try one of these</h2>
+    <ul class="links">
+      {main.map((n) => <li><a href={hrefFor(n.path)}>{n.label === "Home" ? `${SITE_NAME} home` : n.label}</a></li>)}
+    </ul>
+  </Section>
+</Page>
+
+<style>
+  .lost {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xl);
+    margin-bottom: var(--space-lg);
+  }
+  .mark {
+    flex: none;
+    image-rendering: pixelated;
+    filter: drop-shadow(var(--space-xs) var(--space-xs) 0 var(--border-shadow));
+  }
+  .code {
+    margin: 0;
+    font-family: var(--font-pixel);
+    font-weight: 700;
+    font-size: var(--font-size-lg);
+    color: var(--fg-muted);
+  }
+  h1 {
+    margin: 0;
+  }
+  .lede {
+    font-size: var(--font-size-md);
+  }
+  h2 {
+    font-size: var(--font-size-lg);
+    margin: var(--space-xl) 0 var(--space-md);
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm) var(--space-xl);
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-pixel);
+    font-weight: 600;
+  }
+  .links a {
+    display: inline-block;
+    padding-block: var(--space-xs);
+  }
+</style>

@@ -10,7 +10,7 @@
  *   title-missing, description-missing, canonical-missing, title-duplicate, description-duplicate,
  *   title-length (<= 60), description-length (70-160), h1-count (exactly one), heading-skip,
  *   img-alt, noindex-unexpected, sitemap-noindex, sitemap-missing, link-broken, http-url,
- *   jsonld-parse, jsonld-properties, og-image, favicon, manifest, robots-sitemap, orphan-js (warning),
+ *   jsonld-parse, jsonld-properties, og-image (exists, a 1200x630 PNG), placeholder (public builds only), favicon, manifest, robots-sitemap, orphan-js (warning),
  *   canonical-invalid, sitemap-excluded, noindex-missing, feed-invalid, feed-link-missing
  *
  * Every result has a `severity`: "error" (the CLI exits 1) or "warning" (printed, never fails).
@@ -304,7 +304,8 @@ export function checkSite(distDir, { base, siteUrl, preview }) {
     const canonical = linkTag((el) => relTokens(el).includes("canonical"));
     const canonicalHref = canonical ? attr(canonical, "href")?.trim() : undefined;
     if (!canonicalHref) {
-      report("canonical-missing", file, "the page has no canonical link");
+      // the 404 is served at any address, so a canonical would point one lost address at another
+      if (!is404(file)) report("canonical-missing", file, "the page has no canonical link");
     } else if (!/^https:\/\//i.test(canonicalHref) || !canonicalHref.startsWith(siteUrl)) {
       report("canonical-invalid", file, `the canonical ${canonicalHref} is not an absolute address under ${siteUrl}`);
     } else if (isIndexableRole(file) && canonicalHref !== pageAddress(file)) {
@@ -418,6 +419,13 @@ export function checkSite(distDir, { base, siteUrl, preview }) {
       const resolved = resolveInternal(og, file);
       if (!resolved) report("og-image", file, `og:image is not on this site: ${og}`);
       else if (!resolved.target) report("og-image", file, `og:image ${resolved.problem}`);
+      else if (resolved.target.endsWith(".png")) {
+        const size = pngSize(join(dist, resolved.target));
+        if (!size) report("og-image", file, `og:image ${og} is not a PNG file`);
+        else if (size.width !== OG_WIDTH || size.height !== OG_HEIGHT) {
+          report("og-image", file, `og:image is ${size.width}x${size.height}, not ${OG_WIDTH}x${OG_HEIGHT}: ${og}`);
+        }
+      }
     }
 
     // favicon links
@@ -650,6 +658,38 @@ export function checkSite(distDir, { base, siteUrl, preview }) {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
+/** The sharing picture's size (SITE-11). */
+const OG_WIDTH = 1200;
+const OG_HEIGHT = 630;
+
+/** { width, height } from a PNG's header, or null when the file is not a PNG. */
+function pngSize(path) {
+  const bytes = readFileSync(path);
+  const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (bytes.length < 24 || signature.some((b, i) => bytes[i] !== b)) return null;
+  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+}
+
+/**
+ * The placeholders in src/data/site.ts that must not reach a public site (DEC-144): the contact
+ * address is still example.com, or the publisher is still the GitHub owner name. Read from the
+ * source because Node 22.12 cannot import .ts. Only called for a public build.
+ * @returns {{ rule: string, page: string, message: string, severity: string }[]}
+ */
+export function checkPublisherPlaceholders(source) {
+  const read = (name) => new RegExp(`^export const ${name}\\s*(?::\\s*string\\s*)?=\\s*(["'])(.*?)\\1`, "m").exec(source)?.[2];
+  const email = read("CONTACT_EMAIL");
+  const publisher = read("PUBLISHER");
+  const results = [];
+  const problem = (message) => results.push({ rule: "placeholder", page: "src/data/site.ts", message, severity: "error" });
+  if (email === undefined || publisher === undefined) problem("could not read CONTACT_EMAIL and PUBLISHER from src/data/site.ts");
+  else {
+    if (/example\.(com|org|net)$/i.test(email.trim())) problem(`CONTACT_EMAIL is still the placeholder "${email}": the user gives the real address (DEC-144)`);
+    if (publisher.trim() === "stuchain") problem('PUBLISHER is still the placeholder "stuchain": the user gives the name to print (DEC-144)');
+  }
+  return results;
+}
+
 /** SITE_URL and PUBLIC read from site.config.ts (Node 22.12 cannot import .ts), failing loudly if they move. */
 export function readSiteConfig(path = join(HERE, "..", "site.config.ts")) {
   const source = readFileSync(path, "utf8");
@@ -670,6 +710,7 @@ function main() {
   }
   const config = readSiteConfig();
   const results = checkSite(distDir, config);
+  if (!config.preview) results.push(...checkPublisherPlaceholders(readFileSync(join(HERE, "..", "src", "data", "site.ts"), "utf8")));
   const pageCount = walk(distDir).filter((f) => f.endsWith(".html")).length;
   if (results.length === 0) {
     console.log(`check-site: ${pageCount} pages, no problems${config.preview ? " (preview build: noindex expected)" : ""}.`);

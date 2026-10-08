@@ -2,7 +2,18 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { checkSite, readSiteConfig } from "./check-site.mjs";
+import { checkPublisherPlaceholders, checkSite, readSiteConfig } from "./check-site.mjs";
+
+/** A PNG header with the given size: all the rule reads. */
+function png(width, height) {
+  const b = Buffer.alloc(33);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b);
+  b.writeUInt32BE(13, 8);
+  b.write("IHDR", 12);
+  b.writeUInt32BE(width, 16);
+  b.writeUInt32BE(height, 20);
+  return b;
+}
 
 const SITE_URL = "https://example.test/Base/";
 const BASE = "/Base/";
@@ -130,7 +141,7 @@ function cleanFiles() {
     "_astro/site.css": "body{margin:0}",
     "_astro/pic.png": "png",
     "_astro/pic2.png": "png",
-    "og.png": "png",
+    "og.png": png(1200, 630),
     "icon.svg": "<svg xmlns='http://www.w3.org/2000/svg'/>",
     "favicon.ico": "ico",
     "apple-touch-icon.png": "png",
@@ -303,6 +314,8 @@ const FAULTS = [
   ["BlogPosting with no datePublished", "jsonld-properties", replaceIn("blog/post/index.html", '"datePublished":"2026-10-01",', ""), "blog/post/index.html"],
   ["JSON-LD without a context", "jsonld-properties", replaceIn("faq/index.html", '"@context":"https://schema.org",', ""), "faq/index.html"],
   ["no og:image", "og-image", replaceIn("about/index.html", `<meta property="og:image" content="${SITE_URL}og.png">`, ""), "about/index.html"],
+  ["og:image is the wrong size", "og-image", (f) => { f["og.png"] = png(1200, 600); }, "about/index.html"],
+  ["og:image is not a PNG", "og-image", (f) => { f["og.png"] = "png"; }, "about/index.html"],
   ["og:image file missing", "og-image", replaceIn("about/index.html", `${SITE_URL}og.png`, `${SITE_URL}missing.png`), "about/index.html"],
   ["no favicon link", "favicon", replaceIn("about/index.html", `<link rel="icon" type="image/svg+xml" href="${BASE}icon.svg"><link rel="icon" sizes="any" href="${BASE}favicon.ico">`, ""), "about/index.html"],
   ["favicon.ico missing", "favicon", (f) => {
@@ -518,6 +531,35 @@ describe("SoftwareApplication without a rating", () => {
   it("marks every failure as an error", () => {
     const results = run(replaceIn("index.html", '"applicationCategory":"MultimediaApplication",', ""));
     expect(results.every((r) => r.severity === "error")).toBe(true);
+  });
+});
+
+describe("the 404 page's canonical", () => {
+  it("may be left out, but no other page may", () => {
+    const noCanonical = (path) => (f) => {
+      f[path] = f[path].replace(/<link rel="canonical"[^>]*>/, "");
+    };
+    expect(run(noCanonical("404.html"))).toEqual([]);
+    expect(run(noCanonical("about/index.html")).map((r) => r.rule)).toContain("canonical-missing");
+  });
+});
+
+describe("publisher placeholders (DEC-144)", () => {
+  const source = (email, publisher) => `export const PUBLISHER = "${publisher}";\nexport const CONTACT_EMAIL = "${email}";\n`;
+
+  it("flags the placeholder email and publisher", () => {
+    const results = checkPublisherPlaceholders(source("contact@example.com", "stuchain"));
+    expect(results.map((r) => r.rule)).toEqual(["placeholder", "placeholder"]);
+    expect(results[0].message).toMatch(/CONTACT_EMAIL/);
+    expect(results[1].message).toMatch(/PUBLISHER/);
+  });
+
+  it("passes real values", () => {
+    expect(checkPublisherPlaceholders(source("hello@usecuepoint.com", "Jane Doe"))).toEqual([]);
+  });
+
+  it("fails loudly when the constants move", () => {
+    expect(checkPublisherPlaceholders("export const X = 1;")[0].message).toMatch(/could not read/);
   });
 });
 

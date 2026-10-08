@@ -1,7 +1,8 @@
 ---
 import { Font } from "astro:assets";
 import { PUBLIC, SITE_URL } from "../../site.config";
-import ogDefault from "../assets/og/default.png";
+import { ogImagePath } from "../../scripts/og-path.mjs";
+import { neoDarkTokens } from "../../scripts/theme-colors.mjs";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
@@ -15,10 +16,15 @@ import "../styles/global.css";
 
 type Props = PageProps;
 
-const { title, description, path, ogImage, schema = [], breadcrumbs, noindex, ogType = "website", publishedTime, tags = [] } = Astro.props as PageProps;
+const { title, description, path, ogImage, ogPicture, schema = [], breadcrumbs, noindex, ogType = "website", publishedTime, tags = [] } = Astro.props as PageProps;
 
 const canonical = canonicalFor(path);
-const image = ogImage ?? ogDefault;
+// the browser's own chrome takes the header's color in the default theme (Neo Dark's toolbar token)
+const THEME_COLOR = neoDarkTokens()["--bg-toolbar"];
+// the 404 is served at any address, so it names no canonical address (check-site allows that)
+const has404 = noindex === "404";
+// Every page has its own sharing picture, drawn at build (scripts/og.mjs, SITE-11); `ogImage` overrides it.
+const image = ogImage ?? { src: ogImagePath(path), width: 1200, height: 630 };
 const imageUrl = new URL(image.src, SITE_URL).href;
 const robots = !PUBLIC || noindex !== undefined ? "noindex, nofollow" : undefined;
 
@@ -49,10 +55,11 @@ const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c"
     <script is:inline set:html={themeInitScript()} />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
+    {!has404 && <link rel="canonical" href={canonical} />}
     {robots && <meta name="robots" content={robots} />}
     <link rel="icon" type="image/svg+xml" href={hrefFor("icon.svg")} />
-    <link rel="icon" sizes="32x32" href={hrefFor("favicon.ico")} />
+    <link rel="icon" sizes="any" href={hrefFor("favicon.ico")} />
+    <meta name="theme-color" content={THEME_COLOR} />
     <link rel="apple-touch-icon" href={hrefFor("apple-touch-icon.png")} />
     <link rel="manifest" href={hrefFor("site.webmanifest")} />
     <link rel="alternate" type="application/rss+xml" title={`${SITE_NAME} blog`} href={hrefFor("blog/rss.xml")} />
@@ -63,10 +70,11 @@ const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c"
     {ogType === "article" && tags.map((tag) => <meta property="article:tag" content={tag} />)}
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical} />
+    {!has404 && <meta property="og:url" content={canonical} />}
     <meta property="og:image" content={imageUrl} />
     <meta property="og:image:width" content={String(image.width)} />
     <meta property="og:image:height" content={String(image.height)} />
+    {!ogImage && ogPicture && <meta name="og-picture" content={ogPicture.src} />}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
