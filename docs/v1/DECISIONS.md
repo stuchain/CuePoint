@@ -5951,3 +5951,22 @@ buttons are disabled and say what to select.
 - Prepare's buttons sit on a line it already has, so DEC-112's floor is not spent on them.
 
 **Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-210 — The App's Icon Is the Camelot Wheel
+
+**Status**: Approved · **Related**: DEC-198, DIST-09, SITE-11, DEC-189
+
+**Decision**: Of three pixel marks (a record with a cue tick, the Camelot wheel, a waveform with a cue
+flag), the user picked the Camelot wheel: the twelve Camelot key colours in a black-outlined ring
+around a dark centre with a white cue pip, on Neo Dark's violet tile with the black outline, bevel
+and hard shadow. It is drawn on its own 16, 24, 32, 48 and 64 pixel grids.
+
+**Reason**: The user's choice on 2026-10-08. It reads at 16 px and ties the app to the site's
+crate-becomes-wheel opening scene (DEC-189).
+
+**Implications**: DIST-09 builds every icon file from these grids. SITE-11 reuses them for the
+favicon set and OG images.
+
+**Decided with**: User · **Date**: 2026-10-08

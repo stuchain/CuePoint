@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 16: Distribution, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. No step is implemented yet.** Nine steps, DIST-01…DIST-09 (DIST-09, the app's icon, added by DEC-198 on 2026-10-07).
+Status: **Specified 2026-10-07. DIST-09 built 2026-10-08 (packaged checks owed); the other steps are not implemented yet.** Nine steps, DIST-01…DIST-09 (DIST-09, the app's icon, added by DEC-198 on 2026-10-07).
 Writing the steps raised ten questions that Decision Round 14 did not answer. They were asked as
 Decision Round 19 (Q-170…Q-179) and settled the same day as DEC-169…DEC-178: nine as recommended,
 and Q-171 otherwise. There is no Apple Developer account, so the Macs ship unsigned and update
@@ -739,6 +739,16 @@ where the system shows one.
 **Risks**: Low in code. The mark is the user's to approve.
 
 **Complexity**: **S**
+
+**Outcome (2026-10-08)**: Built ahead of the rest of the phase, at the user's request. The user picked
+the Camelot wheel from three candidates (DEC-210): twelve key colours around a dark centre with a
+white cue pip, on Neo Dark's violet tile. Grids are drawn for 16, 24, 32 and 48 as well as 64
+(`build/icon-source/mark-*.svg`), so every small `.ico` size is its own drawing.
+`scripts/build_app_icons.py` is standard-library only; its tests check every pixel of every entry.
+The window icon ships as an extra resource (`resources/icon.png`) and is read from there when
+packaged. Still owed: the Windows check through Remote Control, the macOS DMG/Dock/Finder check
+(including whether Finder uses the hand-drawn 16 and 32 grids from the PNG `icp4`/`icp5` entries)
+and the Linux AppImage check. The 64 px mark in Settings › About & updates rides PAGES-01.
 
 ---
 

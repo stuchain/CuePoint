@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
+import { resolveAppIconPath } from "./appIcon";
 import { beatportPageUrl } from "./externalLinks";
 import { MediaKeyBinding } from "./mediaKeys";
 import type { PlayerNotice } from "./playbackFailures";
@@ -1012,9 +1013,17 @@ async function createWindow(): Promise<void> {
     ? testWindowPlacement(testDisplay, screen.getAllDisplays(), screen.getPrimaryDisplay(), size)
     : null;
 
+  const appIconPath = resolveAppIconPath({
+    platform: process.platform,
+    isPackaged: app.isPackaged,
+    appPath: app.getAppPath(),
+    resourcesPath: process.resourcesPath,
+  });
   const win = new BrowserWindow({
     ...size,
     ...(placement ? { ...placement, show: false } : {}),
+    // Windows and Linux show the window's own icon; macOS uses the bundle's (DIST-09).
+    ...(appIconPath ? { icon: appIconPath } : {}),
     webPreferences: {
       preload: resolvePreloadPath(),
       contextIsolation: true,

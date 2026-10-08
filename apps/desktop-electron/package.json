@@ -70,13 +70,22 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
       }
     ],
     "asar": true,
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     },
     "afterPack": "build/signNestedBinaries.cjs",
     "afterSign": "build/notarize.cjs",
@@ -84,6 +93,7 @@
       "target": [
         "dmg"
       ],
+      "icon": "build/icon.icns",
       "category": "public.app-category.music",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
@@ -98,7 +108,8 @@
     "linux": {
       "target": [
         "AppImage"
-      ]
+      ],
+      "icon": "build/icons"
     }
   },
   "devDependencies": {

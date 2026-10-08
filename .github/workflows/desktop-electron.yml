@@ -132,6 +132,9 @@ jobs:
           PYTHONPATH: src
         run: python scripts/check_desktop_version_coupling.py
 
+      - name: App icons match their sources
+        run: python scripts/build_app_icons.py --check
+
       - name: Install Playwright Chromium
         working-directory: apps/desktop-electron
         run: npx playwright install chromium
