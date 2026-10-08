@@ -309,6 +309,8 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       await test.step("revert the apply", async () => {
         await libraryRow(window, "Tone Two").getByText("Tone Two").click();
         const inspector = window.locator(".cp-track-detail");
+        // History starts folded in Track details (PAGES-06): open it first.
+        await inspector.getByRole("button", { name: /^History/ }).click();
         await inspector
           .getByRole("button", { name: /^Revert: .*BPM/i })
           .first()
