@@ -168,9 +168,12 @@ def measure_once(
                             f"was healthy: {detail.strip()[-500:]}"
                         )
                     time.sleep(POLL_SECONDS)
-                raise StartError(
-                    f"the engine did not answer /health within {timeout:.0f}s"
-                )
+                log.flush()
+                detail = log_path.read_text(encoding="utf-8", errors="replace")
+                message = f"the engine did not answer /health within {timeout:.0f}s"
+                if detail.strip():
+                    message += f"; its log ends: {detail.strip()[-500:]}"
+                raise StartError(message)
             finally:
                 stop_process_tree(proc)
 

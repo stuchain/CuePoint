@@ -46,7 +46,7 @@ pytestmark = pytest.mark.unit
 #: environment it was given to ``seen.json`` in its working directory.
 FAKE_ENGINE = textwrap.dedent(
     """
-    import http.server, json, os, sys, time
+    import http.server, json, os, socketserver, sys, time
 
     mode = sys.argv[1]
     with open("seen.json", "w") as fh:
@@ -60,6 +60,8 @@ FAKE_ENGINE = textwrap.dedent(
         sys.stderr.write("x" * 200_000)
     time.sleep(float(os.environ.get("DELAY", "0.2")))
     if mode == "hang":
+        sys.stderr.write("still waiting on the reverse lookup\\n")
+        sys.stderr.flush()
         time.sleep(60)
 
     class Health(http.server.BaseHTTPRequestHandler):
@@ -72,8 +74,15 @@ FAKE_ENGINE = textwrap.dedent(
         def log_message(self, *args):
             pass
 
+    class Server(http.server.HTTPServer):
+        def server_bind(self):
+            # HTTPServer.server_bind asks getfqdn() for the host's name, which
+            # blocks on reverse DNS for tens of seconds on some macOS runners.
+            socketserver.TCPServer.server_bind(self)
+            self.server_name, self.server_port = self.server_address[:2]
+
     port = int(os.environ["CUEPOINT_PORT"])
-    http.server.HTTPServer(("127.0.0.1", port), Health).serve_forever()
+    Server(("127.0.0.1", port), Health).serve_forever()
     """
 )
 
@@ -123,6 +132,16 @@ class TestMeasure:
         monkeypatch.setenv("DELAY", "0")
         with pytest.raises(bench.StartError, match="did not answer /health within 1s"):
             bench.measure_once(fake_engine("hang"), timeout=1)
+
+    def test_a_timeout_carries_the_tail_of_the_engines_own_log(
+        self, fake_engine, monkeypatch
+    ):
+        # "did not answer" alone says nothing about where the engine was stuck.
+        monkeypatch.setenv("DELAY", "0")
+        with pytest.raises(
+            bench.StartError, match="within 2s.*still waiting on the reverse lookup"
+        ):
+            bench.measure_once(fake_engine("hang"), timeout=2)
 
     def test_runs_must_be_positive(self, fake_engine):
         with pytest.raises(ValueError):
