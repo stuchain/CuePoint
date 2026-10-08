@@ -710,6 +710,18 @@ features overview linking them.
 
 **Complexity**: **M**
 
+**Outcome (2026-10-08)**: `/features/` and eight feature pages (clean, library, keys, discover, prepare,
+statistics, waveforms, export) are built from `src/data/features.ts`, one search query each
+(`apps/website/docs/content-plan.md`). Features the app does not ship yet (the Camelot wheel button, PAGES-10;
+the Keys page, PAGES-16; Statistics, STATS-02..07) carry an `unshipped` marker and a visible preview note, and
+check-site refuses a public build while any marker remains; lines written from decisions rather than the guide
+are listed in `fromDecisions`. Comparison pages: `/compare/lexicon/`, `/compare/mixed-in-key/` and
+`/compare/openkeyscan/`, every fact sourced and dated (check-site's `compare-source` rule). There is no
+rekordcloud page: rekordcloud is the company that makes Lexicon and OpenKeyScan, so the Lexicon page covers
+that search and OpenKeyScan (its free key detector) takes the slot DEC-197 gave rekordcloud. The header folds
+into a Menu below 62.5rem. Owed: the user's review of the comparison pages (DEC-197), the real screenshots
+(SITE-04), and removing the markers as PAGES-10, PAGES-16 and STATS-02..07 ship.
+
 ---
 
 ## SITE-09 — The Guide and the FAQ

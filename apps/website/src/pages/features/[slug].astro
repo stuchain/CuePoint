@@ -1,0 +1,122 @@
+---
+/*
+ * One feature page (SITE-08), at /features/<slug>/. Everything it says is in src/data/features.ts:
+ * the problem in the DJ's words, how CuePoint solves it, the app's picture (a labelled placeholder until
+ * SITE-04), what it does not do, the guide page, two related pages and the download.
+ *
+ * A page or a section for something the app does not ship yet shows a preview note and carries
+ * `data-unshipped` (components/Unshipped.astro); a public build fails while any remains.
+ */
+import AppShot from "../../components/AppShot.astro";
+import HomeAction from "../../components/HomeAction.astro";
+import Section from "../../components/Section.astro";
+import Unshipped from "../../components/Unshipped.astro";
+import { FEATURE_PAGES, featureBySlug, featureHref, type FeaturePage } from "../../data/features";
+import Page from "../../layouts/Page.astro";
+import { guidePath } from "../../content/guide";
+import { hrefFor } from "../../lib/url";
+
+export function getStaticPaths() {
+  return FEATURE_PAGES.map((page) => ({ params: { slug: page.slug }, props: { page } }));
+}
+
+interface Props {
+  page: FeaturePage;
+}
+const { page } = Astro.props;
+const related = page.related.map((slug) => featureBySlug(slug)!);
+---
+
+<Page
+  title={page.title}
+  description={page.description}
+  path={featureHref(page.slug)}
+  breadcrumbs={[
+    { label: "Home", path: "" },
+    { label: "Features", path: "features/" },
+    { label: page.name, path: featureHref(page.slug) },
+  ]}
+>
+  <Section id="intro">
+    <div class="prose">
+      <h1>{page.heading}</h1>
+      {page.unshipped && <Unshipped step={page.unshipped.step} />}
+      {page.problem.map((p) => <p>{p}</p>)}
+    </div>
+  </Section>
+
+  <Section id="how" heading={`How CuePoint helps: ${page.name}`}>
+    <div class="how">
+      <div class="copy">
+        {
+          page.how.map((s) => (
+            <section class="step">
+              <h3>{s.heading}</h3>
+              {s.unshipped && <Unshipped step={s.unshipped.step} />}
+              {s.paragraphs.map((p) => <p>{p}</p>)}
+            </section>
+          ))
+        }
+      </div>
+      <AppShot id={page.shot} />
+    </div>
+  </Section>
+
+  <Section id="not" heading="What it does not do">
+    <ul class="prose not">
+      {page.doesNot.map((line) => <li>{line}</li>)}
+    </ul>
+  </Section>
+
+  <Section id="next" heading="Keep going">
+    <ul class="prose links">
+      {page.guide && <li><a href={hrefFor(guidePath(page.guide.page))}>{page.guide.label}</a></li>}
+      {
+        related.map((r) => (
+          <li>
+            <a href={hrefFor(featureHref(r.slug))}>
+              {r.name}: {r.summary}
+            </a>
+          </li>
+        ))
+      }
+      <li><a href={hrefFor("features/")}>All of CuePoint's features</a></li>
+    </ul>
+    <p class="action"><HomeAction /></p>
+  </Section>
+</Page>
+
+<style>
+  .prose {
+    max-width: 42rem;
+  }
+  .how {
+    display: grid;
+    gap: var(--space-xl);
+  }
+  .step h3 {
+    margin-top: var(--space-lg);
+  }
+  .step:first-child h3 {
+    margin-top: 0;
+  }
+  .not {
+    padding-left: var(--space-lg);
+  }
+  .links {
+    list-style: none;
+    padding: 0;
+  }
+  .links li {
+    margin-block: var(--space-sm);
+  }
+  .action {
+    margin-top: var(--space-xl);
+  }
+  @media (min-width: 60rem) {
+    .how {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      align-items: start;
+    }
+  }
+</style>

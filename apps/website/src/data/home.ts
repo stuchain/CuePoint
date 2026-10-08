@@ -1,4 +1,4 @@
-import { guidePath } from "../content/guide";
+import { featureHref, type Unshipped } from "./features";
 
 /**
  * What the home page says (SITE-06). Plain American English for a DJ (DEC-132, DEC-158); never "engine"
@@ -52,7 +52,7 @@ export interface AppShotDef {
 
 const WINDOW = { width: 1280, height: 800 } as const;
 
-export type AppShotId = "window" | "clean" | "library" | "keys" | "discover" | "prepare" | "statistics" | "export";
+export type AppShotId = "window" | "clean" | "library" | "keys" | "discover" | "prepare" | "statistics" | "waveforms" | "export";
 
 export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
   window: {
@@ -90,6 +90,11 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
     alt: "The Statistics page: most played tracks, top artists and labels, and how the library spreads by genre and key.",
     ...WINDOW,
   },
+  waveforms: {
+    label: "Waveforms and the player",
+    alt: "The player bar with a track's waveform, and the Inspector showing its cues, beat grid and loudness.",
+    ...WINDOW,
+  },
   export: {
     label: "Export to Rekordbox",
     alt: "The export preview, listing what will be written into the new Rekordbox file.",
@@ -108,14 +113,14 @@ export interface Feature {
   readonly text: string;
   readonly shot: AppShotId;
   /**
-   * Where "Read the guide" goes. SITE-08 builds a page for each feature; this section then links that
-   * page as well, and the guide stays the place for the details. Left out for Keys and Statistics until the
-   * guide has a page for them (the guide does not describe those two pages yet).
+   * Where "Learn more" goes: the section's feature page (SITE-08), which links the guide page for the details.
    */
   readonly learnMore?: { readonly label: string; readonly path: string };
+  /** Set while the app does not ship this page yet (SITE-08): the section carries a marker a public build refuses. */
+  readonly unshipped?: Unshipped;
 }
 
-const guide = (slug: string) => ({ label: "Read the guide", path: guidePath(slug) });
+const more = (slug: string) => ({ label: "Learn more", path: featureHref(slug) });
 
 export const FEATURES: readonly Feature[] = [
   {
@@ -124,7 +129,7 @@ export const FEATURES: readonly Feature[] = [
     heading: "Match your tracks to Beatport and fix what is wrong",
     text: "Match a playlist, a Collection or your whole library to Beatport. CuePoint keeps every candidate it found and accepts a match by itself only when it is certain, so you review the rest with the keyboard. It also finds missing files and possible duplicates, and it deletes nothing.",
     shot: "clean",
-    learnMore: guide("clean"),
+    learnMore: more("clean"),
   },
   {
     id: "library",
@@ -132,7 +137,7 @@ export const FEATURES: readonly Feature[] = [
     heading: "Browse, filter and see your keys",
     text: "Search and filter the whole collection, choose your columns, and click a key on the Camelot wheel to see only the tracks in it. A matched track gets Beatport's key, and you can apply its tempo, genre, label and year too. Your own values stay on top of Rekordbox's.",
     shot: "library",
-    learnMore: guide("library"),
+    learnMore: more("library"),
   },
   {
     id: "keys",
@@ -140,6 +145,8 @@ export const FEATURES: readonly Feature[] = [
     heading: "See the keys of any playlist",
     text: "Pick one or several playlists, Collections or Sets and see how many tracks you have in each key, on the Camelot wheel and as a list. Click a key to list its tracks.",
     shot: "keys",
+    learnMore: more("keys"),
+    unshipped: { shipped: false, step: "PAGES-16" },
   },
   {
     id: "discover",
@@ -147,7 +154,7 @@ export const FEATURES: readonly Feature[] = [
     heading: "Find new music from artists and labels you play",
     text: "Discover looks on Beatport for new music from the artists and labels already in your library. Keep a wantlist, send tracks to a Beatport playlist, and find tracks in your own library that are similar to one you like.",
     shot: "discover",
-    learnMore: guide("discover"),
+    learnMore: more("discover"),
   },
   {
     id: "prepare",
@@ -155,7 +162,7 @@ export const FEATURES: readonly Feature[] = [
     heading: "Plan a set before the gig",
     text: "Lay out a set as a running order in chapters, with planned times. CuePoint checks each transition, points out a key clash or a tempo that does not fit, and suggests tracks for a gap. When it is ready, make a set list.",
     shot: "prepare",
-    learnMore: guide("prepare"),
+    learnMore: more("prepare"),
   },
   {
     id: "statistics",
@@ -163,6 +170,8 @@ export const FEATURES: readonly Feature[] = [
     heading: "See what your library holds",
     text: "Statistics shows your most played tracks, your top artists and labels, and the tracks you have never played. It also shows how your library spreads by genre, tempo, year and rating, with a key summary that opens Keys.",
     shot: "statistics",
+    learnMore: more("statistics"),
+    unshipped: { shipped: false, step: "STATS-02..07" },
   },
   {
     id: "export",
@@ -170,7 +179,7 @@ export const FEATURES: readonly Feature[] = [
     heading: "Send it back to Rekordbox",
     text: "Export writes a new Rekordbox XML file with your key, tempo, genre, label, year and rating, and the Collections you choose as playlists. Cue points and beat grids are kept exactly as Rekordbox wrote them. A preview shows what will be written first, and the file you imported is never changed.",
     shot: "export",
-    learnMore: guide("rekordbox-export"),
+    learnMore: more("export"),
   },
 ];
 

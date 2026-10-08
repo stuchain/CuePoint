@@ -1,0 +1,49 @@
+---
+/**
+ * A note on a page or section that describes a feature the app does not ship yet (SITE-08). It is for
+ * the preview only: its wrapper carries `data-unshipped`, and scripts/check-site.mjs fails a public build
+ * while any remains. Remove it, and the marker in the data, in the step that ships the feature.
+ */
+interface Props {
+  /** The step that ships the feature, for example "PAGES-16". */
+  step: string;
+  /** A short note beside a card or a heading, instead of the full callout. */
+  compact?: boolean;
+}
+const { step, compact = false } = Astro.props;
+---
+
+{
+  compact ? (
+    <p class="compact" data-unshipped={step}>
+      Preview note: not in the app yet (ships with {step}).
+    </p>
+  ) : (
+    <aside class="note" data-unshipped={step}>
+      <p>
+        <strong>Preview note: not in the app yet.</strong> This describes something that ships with {step}. A public
+        build fails until this note is removed.
+      </p>
+    </aside>
+  )
+}
+
+<style>
+  .note {
+    margin-block: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
+    background: var(--bg-panel);
+    color: var(--fg-primary);
+    border: var(--border-width) solid var(--border-outline);
+    border-left: calc(var(--border-width) * 3) solid var(--accent-warning);
+    box-shadow: var(--shadow-bevel-panel);
+  }
+  .note p,
+  .compact {
+    margin: 0;
+  }
+  .compact {
+    font-size: var(--font-size-sm);
+    color: var(--fg-primary);
+  }
+</style>

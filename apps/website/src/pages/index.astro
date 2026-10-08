@@ -23,6 +23,7 @@ import HomeAction from "../components/HomeAction.astro";
 import Panel from "../components/Panel.astro";
 import Scene from "../components/Scene.astro";
 import Section from "../components/Section.astro";
+import Unshipped from "../components/Unshipped.astro";
 import SoundButton from "../components/SoundButton.astro";
 import { FEATURES, HERO, OPENING_STEPS, TRUST } from "../data/home";
 import { GITHUB_URL, SITE_NAME } from "../data/site";
@@ -118,7 +119,7 @@ const PLAIN_SCRIPT = plainStoryScript();
 
   <Section id="window" heading="And then it is your library, in CuePoint">
     <div class="window">
-      <p class="window-text">
+      <p class="window-text" data-unshipped="PAGES-10">
         The Camelot wheel is part of the app too. Open it from the header on any page, and click a key to
         see only the tracks in it.
       </p>
@@ -132,6 +133,7 @@ const PLAIN_SCRIPT = plainStoryScript();
         <div class="feature" data-flip={i % 2 === 1 ? "true" : undefined}>
           <div class="copy">
             <p>{f.text}</p>
+            {f.unshipped && <Unshipped step={f.unshipped.step} compact />}
             <p class="more">
               {f.learnMore && (
                 <a href={hrefFor(f.learnMore.path)}>
@@ -336,6 +338,12 @@ const PLAIN_SCRIPT = plainStoryScript();
       width: 100%;
       max-width: 26rem;
       scroll-margin-top: 30svh;
+    }
+    /* A shorter track on a wide screen: the first step sits at 13% of it, so a 230svh track left about
+       250px of empty column under the hero's buttons. The steps keep their places as fractions of the
+       track, so the scene and the text stay in step. */
+    .steps {
+      height: 160svh;
     }
   }
 

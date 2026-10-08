@@ -12,10 +12,12 @@ export interface NavItem {
 
 export const NAV: readonly NavItem[] = [
   { label: "Home", path: "", header: true },
+  { label: "Features", path: "features/", header: true },
   { label: "Guide", path: "guide/", header: true },
   { label: "FAQ", path: "faq/", header: true },
   { label: "Download", path: "download/", header: true },
   { label: "Blog", path: "blog/", header: true },
+  { label: "Compare", path: "compare/", header: false },
   { label: "Changelog", path: "changelog/", header: false },
   { label: "Contact", path: "contact/", header: false },
   { label: "Report a bug", path: "report-a-bug/", header: false },

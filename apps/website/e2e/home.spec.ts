@@ -396,7 +396,7 @@ test.describe("the page as a document", () => {
     expect(by("WebSite")?.url).toMatch(/^https:\/\//);
   });
 
-  test("has one h1, headings in order, and every section links to a guide page", async ({ page }) => {
+  test("has one h1, headings in order, and every section links to its feature page", async ({ page }) => {
     await page.goto("");
     await expect(page.locator("h1")).toHaveCount(1);
     const levels = await page.locator("main h1, main h2, main h3").evaluateAll((els) => els.map((e) => Number(e.tagName[1])));
@@ -404,10 +404,8 @@ test.describe("the page as a document", () => {
     for (const id of ["clean", "library", "keys", "discover", "prepare", "statistics", "export"]) {
       const section = page.locator(`#feature-${id}`);
       await expect(section.getByRole("heading")).toHaveCount(1);
-      // Keys and Statistics have no guide page yet, so they link nothing rather than something untrue
-      const links = section.getByRole("link", { name: /Read the guide/ });
-      if (id === "keys" || id === "statistics") await expect(links).toHaveCount(0);
-      else await expect(links).toHaveAttribute("href", /\/guide\//);
+      // every section links its feature page (SITE-08), which links the guide
+      await expect(section.getByRole("link", { name: /Learn more/ })).toHaveAttribute("href", new RegExp(`/features/${id}/$`));
     }
   });
 

@@ -1,0 +1,167 @@
+---
+/*
+ * One comparison page (SITE-08, DEC-197), at /compare/<tool>/. Everything it says is in
+ * src/data/compare.ts. The comparison is a table: each row is a topic (a row header), the other tool's
+ * fact and CuePoint's answer. Each fact (`data-compare-fact`) holds exactly one source link with the date
+ * it was read (`data-compare-source`); scripts/check-site.mjs fails the build otherwise.
+ * The user reviews each page before launch.
+ */
+import Section from "../../components/Section.astro";
+import HomeAction from "../../components/HomeAction.astro";
+import { COMPARE_TOOLS, compareHref, type CompareTool } from "../../data/compare";
+import { featureHref } from "../../data/features";
+import Page from "../../layouts/Page.astro";
+import { hrefFor } from "../../lib/url";
+
+export function getStaticPaths() {
+  return COMPARE_TOOLS.map((tool) => ({ params: { tool: tool.slug }, props: { tool } }));
+}
+
+interface Props {
+  tool: CompareTool;
+}
+const { tool } = Astro.props;
+---
+
+<Page
+  title={tool.title}
+  description={tool.description}
+  path={compareHref(tool.slug)}
+  breadcrumbs={[
+    { label: "Home", path: "" },
+    { label: "Compare", path: "compare/" },
+    { label: tool.name, path: compareHref(tool.slug) },
+  ]}
+>
+  <Section id="intro">
+    <div class="prose">
+      <h1>{tool.heading}</h1>
+      <p>{tool.intro}</p>
+    </div>
+  </Section>
+
+  <Section id="side" heading="Side by side">
+    <table class="compare">
+      <caption class="sr-only">CuePoint and {tool.name}, topic by topic</caption>
+      <thead>
+        <tr>
+          <th scope="col">Topic</th>
+          <th scope="col">{tool.name}</th>
+          <th scope="col">CuePoint</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          tool.rows.map((row) => (
+            <tr>
+              <th scope="row">{row.topic}</th>
+              <td data-label={tool.name} data-compare-fact>
+                <p>{row.other.text}</p>
+                <p class="src" data-compare-source>
+                  Source: <a href={row.other.source.url} rel="noopener noreferrer">{row.other.source.label}</a>, read
+                  on <time datetime={row.other.checked}>{row.other.checked}</time>.
+                </p>
+              </td>
+              <td data-label="CuePoint">
+                <p>{row.cuepoint}</p>
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </Section>
+
+  <Section id="not" heading="What CuePoint does not do">
+    <ul class="prose not">
+      {tool.cuepointDoesNot.map((line) => <li>{line}</li>)}
+    </ul>
+  </Section>
+
+  <Section id="choose" heading="Which one fits">
+    <div class="prose">
+      <h3>Choose {tool.name} if</h3>
+      <p>{tool.chooseOther}</p>
+      <h3>Choose CuePoint if</h3>
+      <p>{tool.chooseCuePoint}</p>
+      <p class="note">
+        What we say about {tool.name} comes from {tool.name}'s own public pages on the dates shown, and tools change.
+        See <a href={hrefFor(featureHref("clean"))}>what CuePoint's Clean page does</a>{" or "}
+        <a href={hrefFor("compare/")}>the other comparisons</a>.
+      </p>
+      <p class="action"><HomeAction /></p>
+    </div>
+  </Section>
+</Page>
+
+<style>
+  .prose {
+    max-width: 42rem;
+  }
+  .not {
+    padding-left: var(--space-lg);
+  }
+  .compare {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .compare th,
+  .compare td {
+    padding: var(--space-md);
+    border: var(--border-width) solid var(--border-outline);
+    text-align: left;
+    vertical-align: top;
+  }
+  .compare thead th {
+    background: var(--bg-toolbar);
+  }
+  .compare tbody th {
+    background: var(--bg-panel);
+    width: 14%;
+  }
+  .compare td p {
+    margin: 0;
+  }
+  .compare td p + p {
+    margin-top: var(--space-sm);
+  }
+  .src {
+    font-size: var(--font-size-sm);
+    color: var(--fg-muted);
+  }
+  .action {
+    margin-top: var(--space-xl);
+  }
+  /* on a phone each row stacks: the topic, then the two answers, each labelled */
+  @media (max-width: 47.99rem) {
+    .compare,
+    .compare tbody,
+    .compare tr,
+    .compare th,
+    .compare td {
+      display: block;
+      width: auto;
+    }
+    .compare thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    .compare tr {
+      margin-bottom: var(--space-lg);
+    }
+    .compare tbody th {
+      width: auto;
+    }
+    .compare td::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: var(--space-xs);
+      font-family: var(--font-pixel);
+      font-weight: 700;
+    }
+  }
+</style>

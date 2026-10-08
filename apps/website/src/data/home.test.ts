@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { GUIDE_ROWS } from "../content/guide";
 import { APP_SHOTS, FEATURES, OPENING_STEPS, TRUST } from "./home";
 
 /** The words DEC-155 and DEC-158 keep out of the site. */
@@ -29,15 +28,17 @@ describe("the home page's content", () => {
     }
   });
 
-  it("links each section that has a guide page to a page that exists (SITE-08 will add the feature pages)", () => {
-    const slugs = new Set(GUIDE_ROWS.map((r) => r.file.replace(/\.md$/, "")));
-    for (const f of FEATURES.filter((x) => x.learnMore)) {
-      const path = f.learnMore!.path;
-      expect(path, f.id).toMatch(/^guide\/[\w-]+\/$/);
-      expect(slugs.has(path.split("/")[1]!), `${f.id} links ${path}`).toBe(true);
+  it("links every section to its feature page (SITE-08; features.test.ts checks the page exists)", () => {
+    for (const f of FEATURES) {
+      expect(f.learnMore, f.id).toEqual({ label: "Learn more", path: `features/${f.id}/` });
     }
-    // the guide does not describe these two pages yet, so there is nothing true to link
-    expect(FEATURES.filter((f) => !f.learnMore).map((f) => f.id)).toEqual(["keys", "statistics"]);
+  });
+
+  it("marks the sections for pages the app does not ship yet, with the step that ships each", () => {
+    expect(FEATURES.filter((f) => f.unshipped).map((f) => [f.id, f.unshipped!.step])).toEqual([
+      ["keys", "PAGES-16"],
+      ["statistics", "STATS-02..07"],
+    ]);
   });
 
   it("keeps the words the site never uses out of every line of copy", () => {

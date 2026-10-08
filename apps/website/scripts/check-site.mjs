@@ -2,7 +2,7 @@
 /**
  * DEC-141's checks on the built site (SITE-03): `npm run check:site` runs them on dist/.
  *
- * `checkSite(distDir, { base, siteUrl, preview })` is pure with respect to the build: it reads the
+ * `checkSite(distDir, { base, siteUrl, preview, today })` is pure with respect to the build: it reads the
  * files under distDir and returns a list of { rule, page, message }, empty when the site is clean.
  * The CLI prints them and exits 1 if there are any. HTML is read with node-html-parser, never regexes.
  *
@@ -11,7 +11,7 @@
  *   title-length (<= 60), description-length (70-160), h1-count (exactly one), heading-skip,
  *   img-alt, noindex-unexpected, sitemap-noindex, sitemap-missing, link-broken, http-url,
  *   jsonld-parse, jsonld-properties, og-image (exists, a 1200x630 PNG), placeholder (public builds only), favicon, manifest, robots-sitemap, orphan-js (warning),
- *   canonical-invalid, sitemap-excluded, noindex-missing, feed-invalid, feed-link-missing
+ *   canonical-invalid, sitemap-excluded, noindex-missing, feed-invalid, feed-link-missing, compare-source, unshipped
  *
  * Every result has a `severity`: "error" (the CLI exits 1) or "warning" (printed, never fails).
  *
@@ -188,7 +188,7 @@ function* urlRefs(root) {
  * @param {{ base: string, siteUrl: string, preview: boolean }} options
  * @returns {{ rule: string, page: string, message: string, severity: "error" | "warning" }[]}
  */
-export function checkSite(distDir, { base, siteUrl, preview }) {
+export function checkSite(distDir, { base, siteUrl, preview, today = new Date().toISOString().slice(0, 10) }) {
   const dist = resolve(distDir);
   const origin = new URL(siteUrl).origin;
   const results = [];
@@ -456,11 +456,63 @@ export function checkSite(distDir, { base, siteUrl, preview }) {
   checkManifest();
   checkRobots();
   checkFeed();
+  checkCompare();
+  checkUnshipped();
   checkOrphanScripts();
 
   return results;
 
   // -------------------------------------------------------------------------------------------
+
+  /**
+   * The comparison pages (SITE-08, DEC-197): every page at compare/<tool>/ must have at least one
+   * [data-compare-fact], and each fact must hold exactly one [data-compare-source], which holds an https
+   * link to the other tool's page and a <time> with an ISO date that is not later than the build's day
+   * (`today`). A fact about another product never appears without its source and the day it was read.
+   * The index at compare/ is not checked.
+   */
+  function checkCompare() {
+    for (const [file, root] of pages) {
+      if (!/^compare\/[^/]+\/index\.html$/.test(file)) continue;
+      const facts = [...elements(root)].filter((el) => attr(el, "data-compare-fact") !== undefined);
+      if (facts.length === 0) {
+        report("compare-source", file, "the comparison page has no [data-compare-fact]: a fact about another tool needs its source and date");
+      }
+      for (const fact of facts) {
+        const label = fact.text.trim().slice(0, 40);
+        const sources = [...elements(fact)].filter((el) => attr(el, "data-compare-source") !== undefined);
+        if (sources.length !== 1) {
+          report("compare-source", file, `a fact has ${sources.length} [data-compare-source], expected exactly one: "${label}"`);
+          continue;
+        }
+        const nodes = [...elements(sources[0])];
+        const linked = nodes.some((n) => n.rawTagName.toLowerCase() === "a" && /^https:\/\//i.test((attr(n, "href") ?? "").trim()));
+        const dates = nodes.filter((n) => n.rawTagName.toLowerCase() === "time").map((n) => (attr(n, "datetime") ?? "").trim());
+        const dated = dates.some((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
+        if (!linked) report("compare-source", file, `a source has no https link: "${label}"`);
+        if (!dated) report("compare-source", file, `a source has no <time datetime="YYYY-MM-DD">: "${label}"`);
+        for (const d of dates) {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d > today) report("compare-source", file, `a source is dated ${d}, after the build's day ${today}: "${label}"`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Features the app does not ship yet (SITE-08): a page or a section that describes one carries
+   * [data-unshipped="<step that ships it>"]. A preview build may carry them; a public build may not,
+   * like the placeholder rule: the marker is removed in the step that ships the feature.
+   */
+  function checkUnshipped() {
+    if (preview) return;
+    for (const [file, root] of pages) {
+      for (const el of elements(root)) {
+        const step = attr(el, "data-unshipped");
+        if (step === undefined) continue;
+        report("unshipped", file, `describes a feature the app does not ship yet (ships with ${step || "an unnamed step"}): "${el.text.trim().slice(0, 40)}"`);
+      }
+    }
+  }
 
   /**
    * The RSS feed (SITE-10): when the build has blog/rss.xml it must be RSS 2.0, and every page must

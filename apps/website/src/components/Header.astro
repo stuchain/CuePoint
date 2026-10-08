@@ -35,7 +35,7 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
       <span class="name">{SITE_NAME}</span>
     </a>
 
-    <!-- On a phone the nav and the theme switch sit in a menu (a <details>: it works without JavaScript). From 40rem up they are in the bar as before. -->
+    <!-- On a phone the nav and the theme switch sit in a menu (a <details>: it works without JavaScript). From 62.5rem up they are in the bar as before. -->
     <details class="menu">
       <summary class="menu-toggle">Menu</summary>
       <div class="menu-body">
@@ -126,7 +126,7 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
     text-decoration-thickness: var(--border-width-heavy);
     text-underline-offset: 0.25em;
   }
-  /* the menu: a disclosure on a phone, the bar's own items from 40rem up */
+  /* the menu: a disclosure on a phone, the bar's own items from 62.5rem up */
   .bar {
     position: relative;
   }
@@ -176,12 +176,12 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
     padding-block: var(--space-sm);
   }
   /* the home page has its own call to action: on a phone the bar is the mark and the menu */
-  @media (max-width: 39.99rem) {
+  @media (max-width: 62.49rem) {
     .bar[data-home="true"] :global(.action) {
       display: none;
     }
   }
-  @media (min-width: 40rem) {
+  @media (min-width: 62.5rem) {
     .menu,
     .menu-body {
       display: contents;

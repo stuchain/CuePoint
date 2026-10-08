@@ -149,3 +149,25 @@ npm run check:lighthouse  # Lighthouse CI: LCP, TBT, CLS, four category scores, 
   injects a fake `window.umami`, and its public-path tests rewrite `data-public` to `true` and stub `cloud.umami.is`.
 - **The live check is manual**, on the deployed site (SITE-13): send each form once and see it arrive. There is no
   server-side script, because Web3Forms refuses server sends on the free plan.
+
+## Features and comparisons (SITE-08)
+
+- **Feature pages** are `/features/<slug>/`, written in `src/data/features.ts` (the problem, how CuePoint
+  helps, what it does not do, the guide page, two related pages). The search each page answers is in
+  `docs/content-plan.md`; `src/content/features.test.ts` keeps the queries unique. Every claim is held to
+  `docs/user-guide/`. A line the guide does not cover yet is written from the decisions and listed in the page's
+  `fromDecisions`, so it is re-checked when the guide gains the page.
+- **`shipped: false` markers.** A page or a section that describes something the app does not ship yet
+  (`unshipped: { shipped: false, step }` in `features.ts` and `home.ts`: the Camelot wheel, PAGES-10; Keys,
+  PAGES-16; Statistics, STATS-02..07) shows a preview note and carries `data-unshipped="<step>"`. A preview build
+  may have them; **a public build fails** (the `unshipped` rule in `check-site`) until the step ships and the
+  marker is removed. The overview's description and `featureList` leave unshipped features out. A page for an
+  unshipped feature has no guide link until the guide has a page for it.
+- **Comparison pages** are `/compare/<tool>/`, written in `src/data/compare.ts` (DEC-197). Each fact about
+  another tool has a `source` (one of the tool's own public pages) and a `checked` date; `COMPARE_CHECKED` is
+  the day all of them were last read. To re-check: read each source, fix the text, set the date. Leave out what
+  you cannot verify. No ranking words, ratings, reviews or invented prices.
+- **The `compare-source` rule** in `check-site`: every comparison page has facts (`data-compare-fact`), each with
+  exactly one source (`data-compare-source`) holding an https link and a `<time datetime>` that is not after the
+  build's day.
+- **The header** folds into the Menu below 62.5rem, so it never wraps to two rows (`e2e/features.spec.ts`).

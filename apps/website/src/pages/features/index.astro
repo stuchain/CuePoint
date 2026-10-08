@@ -1,0 +1,117 @@
+---
+/*
+ * /features/ (SITE-08): the overview. One card for each feature page, the comparison pages below, and
+ * a SoftwareApplication whose featureList names only what the app ships today (a feature marked
+ * unshipped in src/data/features.ts is left out until its step ships it).
+ */
+import { SITE_URL } from "../../../site.config";
+import HomeAction from "../../components/HomeAction.astro";
+import Panel from "../../components/Panel.astro";
+import Section from "../../components/Section.astro";
+import Unshipped from "../../components/Unshipped.astro";
+import { COMPARE_TOOLS, compareHref } from "../../data/compare";
+import { FEATURE_PAGES, OVERVIEW, featureHref, shippedPages } from "../../data/features";
+import { HERO } from "../../data/home";
+import { SITE_NAME } from "../../data/site";
+import Page from "../../layouts/Page.astro";
+import { canonicalFor, hrefFor } from "../../lib/url";
+
+const schema = [
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: SITE_NAME,
+    description: HERO.description,
+    applicationCategory: "MultimediaApplication",
+    operatingSystem: "Windows, macOS, Linux",
+    url: SITE_URL,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    featureList: shippedPages().map((p) => `${p.name}: ${p.summary}`),
+    mainEntityOfPage: canonicalFor("features/"),
+  },
+];
+---
+
+<Page
+  title={OVERVIEW.title}
+  description={OVERVIEW.description}
+  path="features/"
+  schema={schema}
+  breadcrumbs={[
+    { label: "Home", path: "" },
+    { label: "Features", path: "features/" },
+  ]}
+>
+  <Section id="features">
+    <div class="prose">
+      <h1>What CuePoint does for your library</h1>
+      <p>
+        CuePoint is a free desktop app that takes the collection you export from Rekordbox, matches it to Beatport and
+        helps you keep it clean. Each part has its own page.
+      </p>
+    </div>
+  </Section>
+
+  <Section id="list" heading="The features">
+    <ul class="cards">
+      {
+        FEATURE_PAGES.map((p) => (
+          <li>
+            <Panel tone="flat">
+              <h3>
+                <a href={hrefFor(featureHref(p.slug))}>{p.name}</a>
+              </h3>
+              <p>{p.summary}</p>
+              {p.unshipped && <Unshipped step={p.unshipped.step} compact />}
+            </Panel>
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+
+  <Section id="compare" heading="Compared with other tools">
+    <div class="prose">
+      <p>
+        Not sure CuePoint is the right tool? These pages set it beside others, with every fact about the other tool
+        linked to its own page and dated.
+      </p>
+      <ul>
+        {
+          COMPARE_TOOLS.map((t) => (
+            <li>
+              <a href={hrefFor(compareHref(t.slug))}>CuePoint and {t.name}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </Section>
+
+  <Section id="get" heading="Get CuePoint">
+    <p><HomeAction /></p>
+  </Section>
+</Page>
+
+<style>
+  .prose {
+    max-width: 42rem;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--space-lg);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .cards h3 {
+    margin-top: 0;
+  }
+  .cards p {
+    margin-bottom: 0;
+  }
+  .cards p + p {
+    margin-top: var(--space-sm);
+  }
+</style>

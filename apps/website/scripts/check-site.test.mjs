@@ -664,6 +664,79 @@ describe("the RSS feed (SITE-10)", () => {
   });
 });
 
+describe("comparison pages (SITE-08, DEC-197)", () => {
+  const source = (date = "2026-10-08", href = "https://tool.test/page") =>
+    `<p data-compare-source>Source: <a href="${href}" rel="noopener noreferrer">Their page</a>, read on <time datetime="${date}">${date}</time>.</p>`;
+  const fact = (inner) => `<div data-compare-fact>A fact. ${inner}</div>`;
+  const withCompare = (body) => (f) => {
+    f["sitemap-0.xml"] = f["sitemap-0.xml"].replace("</urlset>", `<url><loc>${SITE_URL}compare/tool/</loc></url></urlset>`);
+    f["compare/tool/index.html"] = page({
+      title: "CuePoint and a tool",
+      description: `Compare. ${LONG_DESC}`,
+      canonicalPath: "compare/tool/",
+      body: `<h1>Compare</h1><h2>Rows</h2>${body}`,
+    });
+  };
+  const rules = (edit, opts) => run(edit, opts).map((r) => `${r.rule} ${r.page}`);
+  const WANT = ["compare-source compare/tool/index.html"];
+
+  it("accepts a page whose every fact has exactly one source naming its page and the date it was read", () => {
+    expect(run(withCompare(fact(source())))).toEqual([]);
+  });
+
+  it("fails a comparison page with no fact", () => {
+    expect(rules(withCompare("<p>Nothing</p>"))).toEqual(WANT);
+  });
+
+  it("fails a fact with no source, or with two", () => {
+    expect(rules(withCompare(fact("")))).toEqual(WANT);
+    expect(rules(withCompare(fact(source() + source())))).toEqual(WANT);
+  });
+
+  it("fails a source with no date, no link, a link that is not https, or a date in the future", () => {
+    expect(rules(withCompare(fact('<p data-compare-source>No link, <time datetime="2026-10-08">x</time></p>')))).toEqual(WANT);
+    expect(rules(withCompare(fact('<p data-compare-source><a href="https://tool.test/x">Link</a> but no date</p>')))).toEqual(WANT);
+    expect(rules(withCompare(fact('<p data-compare-source><a href="https://tool.test/x">Link</a> <time datetime="soon">soon</time></p>')))).toEqual(WANT);
+    expect(rules(withCompare(fact(source("2026-10-08", "http://tool.test/x"))))).toContain("http-url compare/tool/index.html");
+    expect(rules(withCompare(fact(source("2030-01-01"))))).toEqual(WANT);
+  });
+
+  it("measures a future date against the build's own day", () => {
+    expect(rules(withCompare(fact(source("2026-10-08"))), { today: "2026-10-08" })).toEqual([]);
+    expect(rules(withCompare(fact(source("2026-10-09"))), { today: "2026-10-08" })).toEqual(WANT);
+  });
+
+  it("leaves the index of comparisons alone", () => {
+    const edit = (f) => {
+      f["sitemap-0.xml"] = f["sitemap-0.xml"].replace("</urlset>", `<url><loc>${SITE_URL}compare/</loc></url></urlset>`);
+      f["compare/index.html"] = page({ title: "Compare tools", description: `Index. ${LONG_DESC}`, canonicalPath: "compare/", body: "<h1>Compare</h1>" });
+    };
+    expect(run(edit)).toEqual([]);
+  });
+});
+
+describe("features not shipped yet (SITE-08)", () => {
+  const marked = (f) => {
+    f["about/index.html"] = f["about/index.html"].replace("<h1>About</h1>", '<h1>About</h1><p data-unshipped="PAGES-16">Keys page</p>');
+  };
+
+  it("lets a preview build carry an unshipped marker", () => {
+    const edit = (f) => {
+      marked(f);
+      f["about/index.html"] = f["about/index.html"].replace('<link rel="canonical"', '<meta name="robots" content="noindex, nofollow"><link rel="canonical"');
+    };
+    const problems = run(edit, { preview: true }).filter((r) => r.rule === "unshipped");
+    expect(problems).toEqual([]);
+  });
+
+  it("fails a public build while any page carries one, naming the step", () => {
+    const problems = run(marked).filter((r) => r.rule === "unshipped");
+    expect(problems).toHaveLength(1);
+    expect(problems[0].page).toBe("about/index.html");
+    expect(problems[0].message).toContain("PAGES-16");
+  });
+});
+
 describe("lighthouserc.json", () => {
   it("does not skip is-crawlable once the site is public", () => {
     const rc = JSON.parse(readFileSync(new URL("../lighthouserc.json", import.meta.url), "utf8"));

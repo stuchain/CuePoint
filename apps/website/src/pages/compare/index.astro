@@ -1,0 +1,54 @@
+---
+/*
+ * /compare/ (SITE-08, DEC-197): the index of the comparison pages, and how they are written.
+ */
+import Section from "../../components/Section.astro";
+import { COMPARE_CHECKED, COMPARE_TOOLS, compareHref } from "../../data/compare";
+import Page from "../../layouts/Page.astro";
+import { hrefFor } from "../../lib/url";
+---
+
+<Page
+  title="CuePoint compared with other DJ tools"
+  description="CuePoint next to Lexicon, Mixed In Key and OpenKeyScan: facts about each tool linked to its own page and dated, and what CuePoint does not do."
+  path="compare/"
+  breadcrumbs={[
+    { label: "Home", path: "" },
+    { label: "Compare", path: "compare/" },
+  ]}
+>
+  <Section id="compare">
+    <div class="prose">
+      <h1>CuePoint compared with other tools</h1>
+      <p>
+        DJs already use good tools to look after a library. These pages set CuePoint beside three of them, so you can
+        see what each one does and pick the one that fits.
+      </p>
+      <h2>How these pages are written</h2>
+      <ul>
+        <li>Every fact about another tool links the page of that tool it was read on, and says the date we read it.</li>
+        <li>Every page says what CuePoint does not do.</li>
+        <li>
+          Tools change. These pages were last checked on <time datetime={COMPARE_CHECKED}>{COMPARE_CHECKED}</time>. If
+          something is out of date, <a href={hrefFor("contact/")}>tell us</a> and we will fix it.
+        </li>
+      </ul>
+      <h2>The comparisons</h2>
+      <ul>
+        {
+          COMPARE_TOOLS.map((t) => (
+            <li>
+              <a href={hrefFor(compareHref(t.slug))}>CuePoint and {t.name}</a>: {t.summary}
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </Section>
+</Page>
+
+<style>
+  .prose {
+    max-width: 42rem;
+  }
+</style>

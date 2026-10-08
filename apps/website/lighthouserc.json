@@ -13,6 +13,9 @@
         "http://localhost:4321/faq/",
         "http://localhost:4321/contact/",
         "http://localhost:4321/report-a-bug/",
+        "http://localhost:4321/features/",
+        "http://localhost:4321/features/clean/",
+        "http://localhost:4321/compare/lexicon/",
         "http://localhost:4321/styleguide/three/"
       ],
       "numberOfRuns": 3,
