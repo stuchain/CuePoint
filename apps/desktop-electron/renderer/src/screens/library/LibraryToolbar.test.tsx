@@ -185,9 +185,21 @@ describe("the count and Columns…", () => {
     expect(screen.queryByRole("button", { name: "Select all" })).toBeNull();
   });
 
-  it("stops offering it once every track is selected", () => {
-    renderBar({ total: 3, selected: 3 });
-    expect(screen.queryByRole("button", { name: "Select all" })).toBeNull();
+  it("keeps Select all in place once every track is selected, disabled with the reason", async () => {
+    const { onSelectAll } = renderBar({ total: 3, selected: 3 });
+    const button = screen.getByRole("button", { name: "Select all" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toHaveAttribute("title", "Every track is selected");
+    await userEvent.click(button);
+    expect(onSelectAll).not.toHaveBeenCalled();
+  });
+
+  it("holds the count's longest form, so a first selection does not lengthen the line (DEC-112)", () => {
+    renderBar({ total: 1204, selected: 0 });
+    const reserve = document.querySelector(".library-toolbar__count-reserve");
+    expect(reserve).toHaveAttribute("aria-hidden");
+    expect(reserve).toHaveAttribute("data-reserve", "1,204 tracks · 1,204 selected");
+    expect(screen.getByRole("status")).toHaveTextContent(/^1,204 tracks$/);
   });
 
   it("opens the column list", async () => {

@@ -20,8 +20,23 @@
   display: contents;
 }
 
-.library-toolbar__count {
+.library-toolbar__count-box {
+  display: inline-grid;
   margin-left: auto;
+}
+
+.library-toolbar__count,
+.library-toolbar__count-reserve {
+  grid-area: 1 / 1;
+  justify-self: end;
+}
+
+.library-toolbar__count-reserve {
+  visibility: hidden;
+}
+
+.library-toolbar__count-reserve::before {
+  content: attr(data-reserve);
 }
 
 /* Compact: ten controls share the row, and every line of it is a line the table
@@ -48,7 +63,8 @@
   filter: none;
 }
 
-.library-toolbar__count {
+.library-toolbar__count,
+.library-toolbar__count-reserve {
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;

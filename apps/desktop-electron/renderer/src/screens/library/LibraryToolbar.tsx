@@ -40,6 +40,9 @@ interface LibraryToolbarProps {
   onColumns: () => void;
 }
 
+/** Why Select all is disabled once every track is. */
+export const EVERYTHING_SELECTED = "Every track is selected";
+
 export function LibraryToolbar({
   groups,
   total,
@@ -111,6 +114,23 @@ export function LibraryToolbar({
       </div>
 
       <div className="library-toolbar__end">
+        {/* The count keeps the width of its longest form ("1,204 tracks · 1,204
+            selected"), held by an invisible copy in the same grid cell (drawn from an attribute, so
+            it is no text a reader or a query finds), so a first
+            selection never lengthens the line, wraps it, and moves the rows under
+            the pointer before a double-click's second click lands (DEC-112). */}
+        <span className="library-toolbar__count-box">
+          <span
+            className="library-toolbar__count-reserve"
+            aria-hidden
+            data-reserve={`${
+              scopeTotal > total
+                ? `Showing ${total.toLocaleString()} of ${scopeTotal.toLocaleString()} tracks`
+                : `${total.toLocaleString()} ${total === 1 ? "track" : "tracks"}`
+            } · ${Math.max(total, scopeTotal).toLocaleString()} selected${
+              describedByQuery ? " (everything matching)" : ""
+            }`}
+          />
         <span className="library-toolbar__count" role="status">
           <span>
             {scopeTotal > total
@@ -127,8 +147,19 @@ export function LibraryToolbar({
             </>
           )}
         </span>
-        {total > 0 && selected < total && (
-          <Button variant="secondary" className="library-toolbar__button" onClick={onSelectAll}>
+        </span>
+        {/* Always there once there is anything to select, disabled when all is:
+            a button that vanished on the last selection would move Columns… */}
+        {total > 0 && (
+          <Button
+            variant="secondary"
+            className="library-toolbar__button"
+            aria-disabled={selected >= total ? true : undefined}
+            title={selected >= total ? EVERYTHING_SELECTED : undefined}
+            onClick={() => {
+              if (selected < total) onSelectAll();
+            }}
+          >
             Select all
           </Button>
         )}
