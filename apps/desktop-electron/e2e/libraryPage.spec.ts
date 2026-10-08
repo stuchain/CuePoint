@@ -278,7 +278,9 @@ test.describe("The Library page (LIBRARY-11)", () => {
       });
       console.log("PAGES-05C Library whole rows:", m.whole, JSON.stringify(m));
       // The default window, whose inner height is what the screen leaves it.
-      expect(m.window.width).toBe(1280);
+      // 1,280 wide outside: a Windows frame takes 16 px of the page's width.
+      expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.getSize()[0])).toBe(1280);
+      expect(m.window.width).toBeGreaterThanOrEqual(1264);
       expect(m.window.height).toBeGreaterThan(700);
       expect(m.scale).toBe("1.5");
       expect(m.whole, "whole rows the Library shows").toBeGreaterThanOrEqual(WHOLE_ROWS_LIBRARY);

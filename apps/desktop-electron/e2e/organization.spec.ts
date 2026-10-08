@@ -635,7 +635,9 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       });
       console.log("PAGES-05C Collections pane:", JSON.stringify(m));
       expect(m.scale).toBe("1.5");
-      expect(m.window.width).toBeGreaterThanOrEqual(1270);
+      // The default 1,280-wide window, less a Windows frame's 16 px.
+      expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.getSize()[0])).toBe(1280);
+      expect(m.window.width).toBeGreaterThanOrEqual(1264);
       expect(m.sideways, `the pane scrolls sideways by ${m.sideways}px`).toBeLessThanOrEqual(0);
       // Two lines at most, for the buttons over the tree and the bar under it.
       expect(m.createLines).toBeLessThanOrEqual(2);

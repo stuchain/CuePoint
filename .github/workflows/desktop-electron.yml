@@ -202,6 +202,12 @@ jobs:
       - name: App icons match their sources
         run: python scripts/build_app_icons.py --check
 
+      # The Windows runner has no sound device, so mpv opens no output and every player test
+      # fails; Scream is a virtual one.
+      - name: Give the Windows runner a sound device
+        if: runner.os == 'Windows'
+        uses: LABSN/sound-ci-helpers@v1
+
       - name: Install Playwright Chromium
         working-directory: apps/desktop-electron
         run: npx playwright install chromium

@@ -239,6 +239,8 @@ export function TrackYours({
             id={tagId}
             className="cp-track-yours__tag-input"
             list={listId}
+            // As the Library's filter value: no spell checker beside a suggestion list.
+            spellCheck={false}
             value={draftTag}
             maxLength={TAG_NAME_MAX_LENGTH}
             placeholder="Type a name"

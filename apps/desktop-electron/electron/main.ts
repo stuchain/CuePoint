@@ -1096,6 +1096,13 @@ async function createWindow(): Promise<void> {
   }
 }
 
+// A test window is shown without focus and often behind another. Windows then
+// counts it hidden and stops painting it, and the Library's rows never drew.
+if (displayChoice(process.env[E2E_DISPLAY_ENV]) !== null) {
+  app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
+  app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
+}
+
 app.whenReady().then(() => {
   breadcrumb("app", "ready");
   appMenu = installAppMenu({

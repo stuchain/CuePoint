@@ -462,6 +462,9 @@ export function FilterBar({
         label={arity === "pair" ? "From" : arity === "list" ? "Values" : "Value"}
         value={draft.value}
         list={suggestions.length > 0 ? "cp-filter-values" : undefined}
+        // macOS's spell checker and a suggestion list on the same field took
+        // the whole app down as a value was typed (organization e2e, SIGSEGV).
+        spellCheck={false}
         placeholder={arity === "list" ? "One, another, a third" : field.label}
         onChange={(event) =>
           setDraft((previous) => ({ ...previous, value: event.target.value }))
