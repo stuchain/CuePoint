@@ -11,6 +11,7 @@
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
 import type {
@@ -102,6 +103,13 @@ function renderAt(path: string) {
 
 function where(): string {
   return screen.getByTestId("where").textContent ?? "";
+}
+
+/** Escape out of every open menu and submenu. */
+function closeMenus() {
+  for (let guard = 0; guard < 5 && screen.queryAllByRole("menu").length > 0; guard += 1) {
+    fireEvent.keyDown(screen.getAllByRole("menu").at(-1)!, { key: "Escape" });
+  }
 }
 
 function table() {
@@ -216,7 +224,7 @@ describe("the seed and its suggestions", () => {
     expect(
       await screen.findByText("Nothing in your library is close enough to suggest.", {}, LOADED),
     ).toBeInTheDocument();
-    expect(screen.getByText("0 suggestions")).toBeInTheDocument();
+    expect(screen.getByText("0 tracks")).toBeInTheDocument();
   });
 
   it("says when the index is still being built", async () => {
@@ -249,7 +257,7 @@ describe("the seed and its suggestions", () => {
     renderAt(similarPath(1));
     await listed();
     expect(within(table()).queryByText(TITLES[1])).toBeNull();
-    expect(screen.getByText(`${TITLES.length - 1} suggestions`)).toBeInTheDocument();
+    expect(screen.getByText(`${TITLES.length - 1} tracks`)).toBeInTheDocument();
   });
 });
 
@@ -273,9 +281,7 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
       "Play",
       "Play next",
       "Add to queue",
-      "Similar tracks",
-      expect.stringMatching(/^Artist page/),
-      "Label page",
+      expect.stringMatching(/^Explore/),
     ]);
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Play next" }));
     await waitFor(() => expect(player.playNext).toHaveBeenCalledWith([items()[1]]));
@@ -288,12 +294,28 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
     expect(player.playQueue).not.toHaveBeenCalled();
   });
 
-  it("plays a selection as the queue, from its Actions button too", async () => {
+  it("shows the selection bar always, disabled until something is selected (DEC-209)", async () => {
+    renderAt(similarPath(1));
+    await listed();
+    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
+    // Play and Explore only: Organize is the Library's, Beatport and Fix are Clean's.
+    const names = within(bar).getAllByRole("button").map((button) => button.textContent);
+    expect(names).toEqual(["Play ▸", "Explore ▸", "Clear selection"]);
+    for (const name of ["Play", "Explore"]) {
+      expect(within(bar).getByRole("button", { name })).toHaveAttribute("aria-disabled", "true");
+      expect(within(bar).getByRole("button", { name })).toHaveAttribute("title", "Select tracks first");
+    }
+    expect(screen.queryByRole("button", { name: "Actions…" })).toBeNull();
+    fireEvent.click(within(table()).getByText(TITLES[0]));
+    expect(within(bar).getByRole("button", { name: "Play" })).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("plays a selection as the queue, from the bar's Play too", async () => {
     renderAt(similarPath(1));
     await listed();
     fireEvent.click(within(table()).getByText(TITLES[0]));
     fireEvent.click(within(table()).getByText(TITLES[3]), { ctrlKey: true });
-    fireEvent.click(screen.getByRole("button", { name: "Actions…" }));
+    fireEvent.click(within(screen.getByRole("toolbar", { name: "Selected tracks" })).getByRole("button", { name: "Play" }));
     const menu = await screen.findByRole("menu", {}, LOADED);
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Play 2 tracks" }));
     await waitFor(() =>
@@ -307,7 +329,8 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
     const next = SIMILAR.value!.suggestions[0].track_id;
     fireEvent.contextMenu(rowOf(TITLES[0]), { clientX: 10, clientY: 10 });
     const menu = await screen.findByRole("menu", {}, LOADED);
-    fireEvent.click(within(menu).getByRole("menuitem", { name: "Similar tracks" }));
+    await userEvent.click(within(menu).getByRole("menuitem", { name: /^Explore/ }));
+    fireEvent.click(within(await screen.findByRole("menu", { name: "Explore" })).getByRole("menuitem", { name: "Similar tracks" }));
     expect(where()).toBe(similarPath(next));
     await waitFor(() =>
       expect(mock("getSimilarTracks")).toHaveBeenLastCalledWith({
@@ -322,7 +345,8 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
     await listed();
     fireEvent.contextMenu(rowOf(TITLES[0]), { clientX: 10, clientY: 10 });
     const menu = await screen.findByRole("menu", {}, LOADED);
-    fireEvent.click(within(menu).getByRole("menuitem", { name: "Label page" }));
+    await userEvent.click(within(menu).getByRole("menuitem", { name: /^Explore/ }));
+    fireEvent.click(within(await screen.findByRole("menu", { name: "Explore" })).getByRole("menuitem", { name: "Label page" }));
     const label = DETAILS[String(SIMILAR.value!.suggestions[0].track_id)].credits!.label!;
     expect(where()).toBe(entityPath("label", label.ref));
   });
@@ -335,7 +359,7 @@ describe("the selected track (DEC-157)", () => {
     fireEvent.click(within(table()).getByText(TITLES[1]));
     const track = DETAILS[String(SIMILAR.value!.suggestions[1].track_id)].track;
     expect(getSelectedTrack()).toEqual({ id: track.id, key: track.effective_key });
-    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
     expect(getSelectedTrack()).toBeNull();
   });
 
@@ -361,5 +385,46 @@ describe("the Inspector on Similar tracks", () => {
     expect(
       await within(inspector).findByRole("heading", { name: TITLES[1] }, LOADED),
     ).toBeInTheDocument();
+  });
+
+  it("shows the same groups in the right-click menu as in the bar, for one row and for several (FLW-8)", async () => {
+    renderAt(similarPath(1));
+    await listed();
+    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
+    const barNames = within(bar).getAllByRole("button").map((button) => button.textContent!.replace(" ▸", ""));
+    const entriesOf = (menu: HTMLElement) => within(menu).getAllByRole("menuitem").map((item) => item.textContent!);
+
+    for (const picked of [[0], [0, 3]]) {
+      fireEvent.click(within(table()).getByText(TITLES[picked[0]]));
+      if (picked.length > 1) fireEvent.click(within(table()).getByText(TITLES[picked[1]]), { ctrlKey: true });
+
+      // The menu: Play's entries, then a submenu for each of the bar's other groups.
+      fireEvent.contextMenu(rowOf(TITLES[picked[0]]), { clientX: 10, clientY: 10 });
+      const menu = await screen.findByRole("menu", {}, LOADED);
+      const top = entriesOf(menu).map((name) => name.replace(/\s*▸$/, "").trim());
+      const groups = barNames.filter((name) => name !== "Play" && name !== "Clear selection");
+      expect(top.slice(-groups.length)).toEqual(groups);
+      const inMenu: Record<string, string[]> = { Play: top.slice(0, top.length - groups.length) };
+      for (const group of groups) {
+        await userEvent.click(within(menu).getByRole("menuitem", { name: new RegExp(`^${group}`) }));
+        inMenu[group] = entriesOf(await screen.findByRole("menu", { name: group }));
+      }
+      closeMenus();
+
+      // Each bar button opens the same entries.
+      for (const group of ["Play", ...groups]) {
+        fireEvent.click(within(bar).getByRole("button", { name: group }));
+        const opened = await screen.findByRole("menu", { name: group }, LOADED);
+        expect(entriesOf(opened)).toEqual(inMenu[group]);
+        closeMenus();
+      }
+    }
+  });
+
+  it("opens the Library on the seed, the way the library half opens it", async () => {
+    renderAt(similarPath(1));
+    await listed();
+    fireEvent.click(screen.getByRole("button", { name: "Open in Library" }));
+    expect(where()).toBe("/library");
   });
 });

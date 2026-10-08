@@ -23,7 +23,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { Panel } from "../../components/Panel";
-import { TrackContextMenu } from "../../components/TrackContextMenu";
+import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import {
@@ -35,6 +35,8 @@ import {
 import { CreditLinks } from "../library/CreditLinks";
 import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
 import { pluralize } from "../library/libraryFormat";
+import { libraryTrackState } from "../library/libraryLink";
+import { playItems, type TrackActionGroupId } from "../library/trackActions";
 import { TrackDetailPanel } from "../library/TrackDetailPanel";
 import { toQueueItem } from "../library/useLibraryPlayback";
 import { useTrackDetail } from "../library/useTrackDetail";
@@ -42,7 +44,8 @@ import { entityPath, similarPath, trackIdFromRoute } from "./discoverLinks";
 import { refusalText } from "./discoverFormat";
 import { NO_ENGINE } from "./discoverTools";
 import { consideredLine, seedFacts, SIMILAR_INDEX_BUILDING } from "./entityFormat";
-import { libraryRowMenuItems } from "./libraryRowMenu";
+import { DiscoverSelectionBar } from "./DiscoverSelectionBar";
+import { libraryRowMenu } from "./libraryRowMenu";
 import { SIMILAR_COLUMNS, SIMILAR_TABLE_LAYOUT_KEY, type SimilarRow } from "./similarColumns";
 import { describeUnused } from "./similarReasons";
 import { useBeatportSelection } from "./useBeatportSelection";
@@ -50,6 +53,9 @@ import { useReportSelectedTrack } from "../../components/shell/useReportSelected
 import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";
+
+/** The groups the bar and the menu hold (FLW-8): no More, the suggestions are not files to copy. */
+const GROUPS: readonly TrackActionGroupId[] = ["play", "explore"];
 
 /** How many suggestions the view asks for: the engine's own default. */
 export const SIMILAR_LIMIT = 50;
@@ -220,31 +226,65 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
     async (row: SimilarRow, index: number, x: number, y: number) => {
       selection.onRowMenu(row, index);
       const chosen = selection.keys.has(row.id) && selection.count > 1 ? selection.rows : [row];
-      const credits = chosen.length === 1 ? await creditsFor(chosen[0].id, detail.detail) : null;
+      const credits = await creditsFor(chosen[0].id, detail.detail);
       setMenu({ x, y, rows: chosen, index: chosen.length === 1 ? index : -1, credits });
     },
     [detail.detail, selection],
   );
 
-  const menuItems = useMemo(() => {
-    if (!menu) return [];
-    const { rows: chosen, index, credits } = menu;
-    const one = chosen.length === 1 ? chosen[0] : null;
-    return libraryRowMenuItems(
-      chosen.length,
-      {
-        onPlay: () => void (one && index >= 0 ? playFrom(index) : playRows(chosen)),
-        onPlayNext: () => void append(chosen, "next"),
-        onAddToQueue: () => void append(chosen, "end"),
-      },
-      one
-        ? discoverMenuItems(
-            { count: 1, credits },
-            { onSimilar: () => openSimilar(one.id), onOpenPage: openEntity },
+  /**
+   * One group's entries for these rows: what the bar's button opens and what the
+   * right-click menu's submenu holds are this one list (FLW-8).
+   */
+  const groupItems = useCallback(
+    (
+      group: TrackActionGroupId,
+      chosen: SimilarRow[],
+      index: number,
+      credits: TrackCreditLinks | null,
+    ): TrackContextMenuItem[] => {
+      const first = chosen[0];
+      if (!first) return [];
+      if (group === "play") {
+        return playItems(chosen.length, {
+          onPlay: () => void (chosen.length === 1 && index >= 0 ? playFrom(index) : playRows(chosen)),
+          onPlayNext: () => void append(chosen, "next"),
+          onAddToQueue: () => void append(chosen, "end"),
+        });
+      }
+      if (group === "explore") {
+        // Several suggestions: the first, as in the Library.
+        return discoverMenuItems(
+          { count: 1, credits },
+          { onSimilar: () => openSimilar(first.id), onOpenPage: openEntity },
+        );
+      }
+      return [];
+    },
+    [append, openEntity, openSimilar, playFrom, playRows],
+  );
+
+  const menuItems = useMemo(
+    () =>
+      menu
+        ? libraryRowMenu(GROUPS, menu.rows.length, (group) =>
+            groupItems(group, menu.rows, menu.index, menu.credits),
           )
         : [],
-    );
-  }, [append, menu, openEntity, openSimilar, playFrom, playRows]);
+    [groupItems, menu],
+  );
+
+  /** What each group of the bar opens, for the rows selected now (FLW-8). */
+  const itemsFor = useCallback(
+    async (group: TrackActionGroupId): Promise<TrackContextMenuItem[]> => {
+      const chosen = selection.rows;
+      const first = chosen[0];
+      if (!first) return [];
+      const credits = group === "explore" ? await creditsFor(first.id, detail.detail) : null;
+      return groupItems(group, chosen, chosen.length === 1 ? rows.indexOf(first) : -1, credits);
+    },
+    [detail.detail, groupItems, rows, selection.rows],
+  );
 
   if (!shown) {
     return (
@@ -294,6 +334,15 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
         </p>
         <p className="discover-note">{consideredLine(answer)}</p>
         {unused && <p className="discover-note">{unused}</p>}
+        <div className="discover-page__actions">
+          <Button
+            variant="secondary"
+            disabled={seed.track.id == null}
+            onClick={() => seed.track.id != null && navigate("/library", { state: libraryTrackState(seed.track.id) })}
+          >
+            Open in Library
+          </Button>
+        </div>
         {!answer.index_current && (
           <p className="discover-note discover-note--warning" role="status">
             {SIMILAR_INDEX_BUILDING}
@@ -326,44 +375,16 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
             ariaLabel="Similar tracks"
           />
         </div>
-        <div className="discover-table__actions" role="toolbar" aria-label="Similar tracks: actions">
-          <span className="discover-table__count" role="status">
-            {selection.count > 0
-              ? `${pluralize(selection.count, "track")} selected`
-              : pluralize(rows.length, "suggestion")}
-          </span>
-          {selection.count > 0 && (
-            <>
-              <Button
-                variant="secondary"
-                aria-haspopup="menu"
-                onClick={(event) => {
-                  const rect = event.currentTarget.getBoundingClientRect();
-                  const chosen = selection.rows;
-                  const one = chosen.length === 1 ? chosen[0] : null;
-                  void (one ? creditsFor(one.id, detail.detail) : Promise.resolve(null)).then(
-                    (credits) =>
-                      setMenu({
-                        x: rect.left,
-                        y: rect.bottom,
-                        rows: chosen,
-                        index: one ? rows.indexOf(one) : -1,
-                        credits,
-                      }),
-                  );
-                }}
-              >
-                Actions…
-              </Button>
-              <Button variant="secondary" onClick={selection.clear}>
-                Clear
-              </Button>
-            </>
-          )}
-          <span className="discover-table__spacer" />
-          <Button variant="secondary" onClick={() => setPicking(true)}>
-            Columns…
-          </Button>
+        <div className="discover-page__library-actions">
+          <DiscoverSelectionBar
+            groups={GROUPS}
+            total={rows.length}
+            selected={selection.count}
+            itemsFor={itemsFor}
+            onClear={selection.clear}
+            onSelectAll={selection.selectAll}
+            onColumns={() => setPicking(true)}
+          />
         </div>
       </div>
 

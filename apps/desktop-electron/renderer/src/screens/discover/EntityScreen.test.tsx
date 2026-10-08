@@ -604,9 +604,8 @@ describe("the library half: library rows", () => {
       "Play",
       "Play next",
       "Add to queue",
-      "Similar tracks",
-      "Artist page▸",
-      "Label page",
+      "Explore▸",
+      "More▸",
     ]);
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Add to queue" }));
     await waitFor(() => expect(player.addToQueue).toHaveBeenCalledWith([toQueueItem(row)]));
@@ -614,7 +613,8 @@ describe("the library half: library rows", () => {
 
     fireEvent.contextMenu(rowOf("Harbour Lights"), { clientX: 10, clientY: 10 });
     menu = await screen.findByRole("menu", {}, LOADED);
-    await userEvent.click(within(menu).getByRole("menuitem", { name: /Artist page/ }));
+    await userEvent.click(within(menu).getByRole("menuitem", { name: /Explore/ }));
+    await userEvent.click(within(screen.getByRole("menu", { name: "Explore" })).getByRole("menuitem", { name: /Artist page/ }));
     await userEvent.click(
       within(screen.getByRole("menu", { name: "Artist page" })).getByRole("menuitem", {
         name: "Kiko",
@@ -629,22 +629,69 @@ describe("the library half: library rows", () => {
     await within(yourTracks()).findByText("Harbour Lights", {}, LOADED);
     fireEvent.contextMenu(rowOf("Harbour Lights"), { clientX: 10, clientY: 10 });
     const menu = await screen.findByRole("menu", {}, LOADED);
-    fireEvent.click(within(menu).getByRole("menuitem", { name: "Similar tracks" }));
+    await userEvent.click(within(menu).getByRole("menuitem", { name: /Explore/ }));
+    fireEvent.click(within(screen.getByRole("menu", { name: "Explore" })).getByRole("menuitem", { name: "Similar tracks" }));
     expect(where()).toBe("/discover/similar/1");
   });
 
-  it("plays the one track selected from the Actions button, with the table behind it", async () => {
+  it("plays the one track selected from the bar's Play, with the table behind it", async () => {
     renderAt(entityPath("artist", "bp:301001"));
     await opened("Mara Veil");
     fireEvent.click(await within(yourTracks()).findByText("Low Tide", {}, LOADED));
     const library = screen.getByRole("region", { name: "Your tracks" });
-    fireEvent.click(within(library).getByRole("button", { name: "Actions…" }));
+    const bar = within(library).getByRole("toolbar", { name: "Selected tracks" });
+    expect(within(bar).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Play ▸",
+      "Explore ▸",
+      "More ▸",
+      "Clear selection",
+    ]);
+    fireEvent.click(within(bar).getByRole("button", { name: "Play" }));
     const menu = await screen.findByRole("menu", {}, LOADED);
     // Taken from the table, not gathered by reading it all again.
     expect(mock("browseLibrary").mock.calls.every((call) => call[0].limit !== 500)).toBe(true);
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Play" }));
     await waitFor(() => expect(player.playView).toHaveBeenCalledTimes(1));
     expect(player.playView.mock.calls[0][1]).toBe(1);
+  });
+
+  it("shows the same groups in the right-click menu as in the bar, for one row and for several (FLW-8)", async () => {
+    renderAt(entityPath("artist", "bp:301001"));
+    await opened("Mara Veil");
+    fireEvent.click(await within(yourTracks()).findByText("Harbour Lights", {}, LOADED));
+    const bar = within(screen.getByRole("region", { name: "Your tracks" })).getByRole("toolbar", {
+      name: "Selected tracks",
+    });
+    const entriesOf = (menu: HTMLElement) => within(menu).getAllByRole("menuitem").map((item) => item.textContent!);
+    const closeMenus = () => {
+      for (let guard = 0; guard < 5 && screen.queryAllByRole("menu").length > 0; guard += 1) {
+        fireEvent.keyDown(screen.getAllByRole("menu").at(-1)!, { key: "Escape" });
+      }
+    };
+
+    for (const several of [false, true]) {
+      if (several) fireEvent.click(within(yourTracks()).getByText("Low Tide"), { ctrlKey: true });
+      fireEvent.contextMenu(within(yourTracks()).getByText("Harbour Lights").closest("[role=row]")!, {
+        clientX: 10,
+        clientY: 10,
+      });
+      const menu = await screen.findByRole("menu", {}, LOADED);
+      const top = entriesOf(menu);
+      expect(top.slice(-2)).toEqual(["Explore▸", "More▸"]);
+      const inMenu: Record<string, string[]> = { Play: top.slice(0, -2) };
+      for (const group of ["Explore", "More"]) {
+        await userEvent.click(within(menu).getByRole("menuitem", { name: new RegExp(`^${group}`) }));
+        inMenu[group] = entriesOf(await screen.findByRole("menu", { name: group }));
+      }
+      closeMenus();
+
+      for (const group of ["Play", "Explore", "More"]) {
+        fireEvent.click(within(bar).getByRole("button", { name: group }));
+        const opened_ = await screen.findByRole("menu", { name: group }, LOADED);
+        expect(entriesOf(opened_)).toEqual(inMenu[group]);
+        closeMenus();
+      }
+    }
   });
 
   it("plays a selection of rows as the queue", async () => {
@@ -654,11 +701,13 @@ describe("the library half: library rows", () => {
     fireEvent.click(within(yourTracks()).getByText("Low Tide"), { ctrlKey: true });
     fireEvent.contextMenu(rowOf("Low Tide"), { clientX: 10, clientY: 10 });
     const menu = await screen.findByRole("menu", {}, LOADED);
-    // Two tracks: no pages to lead to, only playback.
+    // Two tracks: the bar's groups too, Explore for the first of them.
     expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
       "Play 2 tracks",
       "Play next",
       "Add to queue",
+      "Explore▸",
+      "More▸",
     ]);
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Play 2 tracks" }));
     await waitFor(() => expect(player.playQueue).toHaveBeenCalledTimes(1));
@@ -732,7 +781,7 @@ describe("the Inspector on a page", () => {
     const inspector = screen.getByRole("complementary", { name: "Inspector" });
     await within(inspector).findByRole("heading", { name: "Harbour Lights" }, LOADED);
     const library = screen.getByRole("region", { name: "Your tracks" });
-    expect(within(library).getByText("1 track selected")).toBeInTheDocument();
+    expect(within(library).getByText("1 selected")).toBeInTheDocument();
 
     const table = await beatportRows(/Beatport's releases/);
     const cell = await within(table).findByText("Track 9 (Original Mix)", {}, LOADED);
@@ -744,6 +793,6 @@ describe("the Inspector on a page", () => {
       await within(inspector).findByText(/Tracks on Beatport are not in your library/, {}, LOADED),
     ).toBeInTheDocument();
     // The library half let go of its selection.
-    await waitFor(() => expect(within(library).queryByText("1 track selected")).toBeNull());
+    await waitFor(() => expect(within(library).queryByText("1 selected")).toBeNull());
   });
 });

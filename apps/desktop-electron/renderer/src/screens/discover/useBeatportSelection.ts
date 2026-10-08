@@ -43,6 +43,7 @@ export interface BeatportSelection<Row> {
   onRowMenu: (row: Row, index: number) => void;
   /** Select this one row, as a plain click would, from outside the table. */
   select: (row: Row, index: number) => void;
+  selectAll: () => void;
   clear: () => void;
 }
 
@@ -137,6 +138,16 @@ export function useBeatportSelection<Row>({
 
   const clear = useCallback(() => setState(NOTHING), []);
 
+  /** Every row the table holds, for the bar's Select all. */
+  const selectAll = useCallback(() => {
+    const everything = loadedRows();
+    if (everything.length === 0) return;
+    setState({
+      picked: new Map(everything.map((entry) => [idOf(entry.row), entry])),
+      anchor: everything[0]?.index ?? null,
+    });
+  }, [idOf, loadedRows]);
+
   const rows = useMemo(
     () =>
       [...state.picked.values()]
@@ -161,6 +172,7 @@ export function useBeatportSelection<Row>({
     onRowClick,
     onRowMenu,
     select,
+    selectAll,
     clear,
   };
 }

@@ -235,7 +235,7 @@ of the entry before it.
 or folder, a Collection, a Smart Collection or a Set. The page remembers the
 choice.
 
-**Suggestions are scored against both neighbours.** A suggestion must fit the
+**Suggestions are scored against both neighbors.** A suggestion must fit the
 track before the gap and the track after it, and each side's reasons are shown
 in their own column, **Fits after** (how well the track follows the one before
 the gap) and **Fits before** (how well it leads into the one after): the tempo,

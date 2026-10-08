@@ -79,7 +79,7 @@ function tracks(count: number): string {
   return `${count.toLocaleString()} tracks`;
 }
 
-function playItems(
+export function playItems(
   count: number,
   handlers: NonNullable<TrackActionHandlers["play"]>,
 ): TrackContextMenuItem[] {
@@ -96,7 +96,7 @@ function playItems(
   ];
 }
 
-function moreItems(
+export function moreItems(
   context: TrackActionContext,
   handlers: TrackActionHandlers["more"],
 ): TrackContextMenuItem[] {
@@ -157,6 +157,22 @@ export function trackActionGroups(
         count <= 0 ? SELECT_TRACKS_FIRST : items.length === 0 ? "Not available here" : null,
     };
   });
+}
+
+/**
+ * The bar's buttons for a page that offers only some of the six groups (Discover's
+ * library half and Similar tracks): the same labels, always all shown, disabled with
+ * "Select tracks first" until something is selected (DEC-209). What each opens is the
+ * page's to build when it is pressed, from the same `playItems`, `moreItems` and
+ * `discoverMenuItems` the Library's list is made of.
+ */
+export function barGroups(count: number, ids: readonly TrackActionGroupId[]): TrackActionGroup[] {
+  return ACTION_GROUPS.filter(({ id }) => ids.includes(id)).map(({ id, label }) => ({
+    id,
+    label,
+    items: [],
+    disabledReason: count <= 0 ? SELECT_TRACKS_FIRST : null,
+  }));
 }
 
 /** The id of the parent entry that stands for a group in the right-click menu. */

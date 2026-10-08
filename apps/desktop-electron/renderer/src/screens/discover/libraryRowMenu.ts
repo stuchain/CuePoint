@@ -1,13 +1,33 @@
 /**
- * What a library row offers off the Library page (DISCOVER-11).
+ * What a library row offers off the Library page (DISCOVER-11, FLW-8).
  *
  * An Artist or Label page's library half and a Similar tracks list hold
  * library rows, so a row plays and queues as it does in the Library (DEC-012,
  * DEC-013) and leads to its Similar tracks and its pages. The organization
  * entries stay the Library's: tagging and collecting from a page would be a
  * second Library, and **Open in Library** is one click away.
+ *
+ * The menu is the selection bar's groups, drawn as the Library's menu draws
+ * its own (`menuFromGroups`): Play's entries on top, then one submenu for each
+ * of the bar's other buttons. A page gives the one function that builds a
+ * group's entries, and both the bar and this menu call it, so the two cannot
+ * differ.
  */
 import type { TrackContextMenuItem } from "../../components/TrackContextMenu";
+import { barGroups, menuFromGroups, type TrackActionGroupId } from "../library/trackActions";
+
+/**
+ * The right-click menu for `count` tracks of a page whose bar holds `ids`.
+ * `build` answers the entries of one group, as the bar's button opens them.
+ */
+export function libraryRowMenu(
+  ids: readonly TrackActionGroupId[],
+  count: number,
+  build: (group: TrackActionGroupId) => TrackContextMenuItem[],
+): TrackContextMenuItem[] {
+  if (count <= 0) return [];
+  return menuFromGroups(barGroups(count, ids).map((group) => ({ ...group, items: build(group.id) })));
+}
 
 interface RowPlaybackHandlers {
   /** One row: play it with the view behind it. Several: play those. */
@@ -16,7 +36,10 @@ interface RowPlaybackHandlers {
   onAddToQueue: () => void;
 }
 
-/** Playback first, as the Library's menu has it, then whatever follows. */
+/**
+ * Playback first, then whatever follows: the flat list of Prepare's source
+ * table, which has no selection bar to match.
+ */
 export function libraryRowMenuItems(
   count: number,
   playback: RowPlaybackHandlers,

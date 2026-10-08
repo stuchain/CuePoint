@@ -229,7 +229,7 @@ figure in each pair from the second run.
 **Suggestions in the busiest band are the one number you might notice**, for the
 same reason Similar tracks is: a gap between two tracks at 124 BPM has most of
 the library inside its tempo window, and every candidate is scored against both
-neighbours. It is well inside the half-second budget it is held to, and it only
+neighbors. It is well inside the half-second budget it is held to, and it only
 happens when you select a new gap. The end of the Set and a gap nothing bridges
 are each answered in about 30 ms.
 
@@ -240,7 +240,7 @@ checks that on every copy it upgrades.
 ## Cue points and beat grids
 
 Measured with `python scripts/bench_marks.py` on a generated 50,000-track
-collection, in two shapes: a **typical** one (every track analysed with a grid,
+collection, in two shapes: a **typical** one (every track analyzed with a grid,
 40% of them prepared with five cues, 3.3 marks a track) and one where **every
 track is prepared** with a grid and seven cues. Two runs, the second figure in
 each pair from the second run.
@@ -284,15 +284,15 @@ shown records no task long enough to make the window stutter.
 with two workers on a 16-core Windows desktop (5,712 and 5,977 in two runs), so
 about eight and a half hours for 50,000 tracks. That includes measuring each
 track's loudness, which costs about a third of the rate: the waveforms alone ran
-about 8,400 an hour. A library analysed before loudness was measured is measured
+about 8,400 an hour. A library analyzed before loudness was measured is measured
 once more at the same rate. It runs at low priority: while it ran, the
 Library's search stayed within 1.4 times its idle speed (1.07 and 1.37) and the
 player had no dropouts. After that only
-new and changed files are analysed. See [Waveforms](waveforms.md).
+new and changed files are analyzed. See [Waveforms](waveforms.md).
 
 ## Memory while browsing
 
-The numbers above are the engine's. This one is the window's, measured in the
+The numbers above are for the work done behind the window. This one is the window's, measured in the
 packaged app with `CUEPOINT_E2E_MEMORY=1 npx playwright test e2e/libraryBrowse.spec.ts
 -g memory` from `apps/desktop-electron/`, which imports a 50,000-track
 collection and scrolls the length of it twice.
@@ -412,7 +412,6 @@ Worker count is capped by `performance.max_workers` to avoid overloading low-end
 
 - **ETA**: Estimated time remaining based on average time per track. Updates every 50 tracks.
 - **Throttling**: Progress UI updates every 200ms to avoid stutter.
-- **Display**: "Estimating..." during warmup. ETA shown in status bar after first tracks complete.
 
 ## Cache Metrics
 

@@ -242,6 +242,11 @@ export function PrepareScreen({
   }, [rows, selection.keys]);
   const picked = selection.rows.filter(isEntryRow);
   const lastPicked = picked[picked.length - 1];
+  useEffect(() => setHeadingAt(null), [rows]);
+
+  // A chapter's heading is no entry, so it is never selected; the one last clicked is
+  // the table's active row all the same, so Enter on it opens Edit as a double-click does.
+  const [headingAt, setHeadingAt] = useState<number | null>(null);
   const focused =
     (lastPicked && selected.find((row) => row.entry.entry_id === lastPicked.entry.entry_id)) ??
     selected[selected.length - 1] ??
@@ -438,22 +443,20 @@ export function PrepareScreen({
   const buttons = useMemo(() => entryButtons(rows, selectedIds), [rows, selectedIds]);
 
   // One step for every selected entry, a move at a time: each is the engine's
-  // answer to the one before, so a refusal stops the rest.
-  const moving = useRef(false);
-  const moveSelected = useCallback(
-    async (direction: -1 | 1) => {
-      if (moving.current) return;
-      moving.current = true;
-      try {
-        for (const move of stepMoves(rows, selectedIds, direction)) {
-          if ((await edit((sets) => sets.moveEntry(move))) === null) break;
-        }
-      } finally {
-        moving.current = false;
-      }
-    },
-    [edit, rows, selectedIds],
-  );
+  // answer to the one before, so a refusal stops the rest. `edit` settles once
+  // the page has re-read the Set, and a press that comes meanwhile waits its
+  // turn and is worked out from the order then on screen, never the old one.
+  const stepRef = useRef<(direction: -1 | 1) => Promise<void>>(async () => {});
+  stepRef.current = async (direction) => {
+    for (const move of stepMoves(rows, selectedIds, direction)) {
+      if ((await edit((sets) => sets.moveEntry(move), { settle: true })) === null) break;
+    }
+  };
+  const moving = useRef<Promise<void>>(Promise.resolve());
+  const moveSelected = useCallback((direction: -1 | 1) => {
+    moving.current = moving.current.then(() => stepRef.current(direction));
+    return moving.current;
+  }, []);
 
   const pressEntryButton = useCallback(
     (id: EntryButton["id"]) => {
@@ -562,10 +565,10 @@ export function PrepareScreen({
       } else if (plain && (event.key === "Delete" || event.key === "Backspace")) {
         if (selected.length > 0) act(() => void removeEntries(selected));
       } else if (plain && (event.key === "Enter" || event.key === "F2")) {
-        if (focused) act(() => startTimeEdit(focused.entry.entry_id, "in"));
+        if (focused && headingAt === null) act(() => startTimeEdit(focused.entry.entry_id, "in"));
       }
     },
-    [focused, moveSelected, removeEntries, selected, startTimeEdit],
+    [focused, headingAt, moveSelected, removeEntries, selected, startTimeEdit],
   );
 
   /**
@@ -1070,7 +1073,11 @@ export function PrepareScreen({
             // Picking is only picking. A Set's entry does not move into the Inspector as a shared
             // element: a view transition sends the pointer to the page root while it plays, which
             // would swallow the second click of a double-click-to-play and a shift-click range.
-            if (row.kind !== "entry") return;
+            if (row.kind !== "entry") {
+              setHeadingAt(index);
+              return;
+            }
+            setHeadingAt(null);
             setChosenIn("set");
             selection.onRowClick(row, index, event);
           }}
@@ -1085,7 +1092,7 @@ export function PrepareScreen({
             if (row.kind === "entry") void openEntryMenu(row, index, anchor.x, anchor.y);
             else setMenu({ kind: "heading", x: anchor.x, y: anchor.y, row });
           }}
-          activeIndex={selection.anchor}
+          activeIndex={headingAt ?? selection.anchor}
           canDragRow={(row) => row.kind === "entry"}
           onRowDragStart={(row, _index, transfer) => {
             if (row.kind !== "entry") return;

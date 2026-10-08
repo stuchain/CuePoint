@@ -132,7 +132,7 @@ The keys do nothing while you are typing in a field or have a dialog open.
 
 **Accepting a match gives the track its key and changes no other value on its
 own.** The key is Beatport's, from the accepted match, whether you or CuePoint
-accepted it (a re-match can change an automatic accept's key); rejecting the
+accepted it (matching again can change an automatic accept's key); rejecting the
 match takes it away again. Once a track has an accepted match,
 **Apply from the accepted match** lists its BPM, genre, label and
 year, and says what applying does: it copies the values into CuePoint, and your

@@ -38,6 +38,11 @@ interface LibraryToolbarProps {
   /** Select everything the view matches (LIB-8 keeps Select all). */
   onSelectAll: () => void;
   onColumns: () => void;
+  /**
+   * Keep the row to one line, the count giving way (cut short with an ellipsis)
+   * before a button wraps: the narrower bars on Discover and Similar.
+   */
+  oneLine?: boolean;
 }
 
 /** Why Select all is disabled once every track is. */
@@ -54,6 +59,7 @@ export function LibraryToolbar({
   onClear,
   onSelectAll,
   onColumns,
+  oneLine = false,
 }: LibraryToolbarProps) {
   const keys = useToolbarKeys(groups.length + 1);
 
@@ -71,7 +77,7 @@ export function LibraryToolbar({
   const none = selected === 0;
 
   return (
-    <div className="library-toolbar">
+    <div className={oneLine ? "library-toolbar library-toolbar--one-line" : "library-toolbar"}>
       <div
         ref={keys.ref}
         className="library-toolbar__bar"

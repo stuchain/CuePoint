@@ -21,20 +21,21 @@ import type {
   TrackCreditLinks,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
-import { TrackContextMenu } from "../../components/TrackContextMenu";
+import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { revealTrack } from "../clean/revealTrack";
 import { LIBRARY_COLUMNS } from "../library/libraryColumns";
 import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
 import { DEFAULT_LIBRARY_QUERY, queryKey, type LibraryQuery } from "../library/libraryQuery";
-import { SelectionActions } from "../library/SelectionActions";
+import { moreItems, playItems, type TrackActionGroupId } from "../library/trackActions";
 import { copySummary, gatherTracksAsText, writeClipboard } from "../library/trackClipboard";
 import { isSelected, onlySelectedId } from "../library/trackSelection";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "../library/useLibraryPlayback";
 import { COPY_LIMIT, useTrackSelection } from "../library/useTrackSelection";
 import { useTrackWindow } from "../library/useTrackWindow";
-import { libraryRowMenuItems } from "./libraryRowMenu";
+import { DiscoverSelectionBar } from "./DiscoverSelectionBar";
+import { libraryRowMenu } from "./libraryRowMenu";
 import { nounOf } from "./entityFormat";
 
 /** The page's library table keeps a layout of its own, apart from the Library's. */
@@ -67,9 +68,15 @@ interface MenuState {
   rows: LibraryTrackRow[];
   /** The row's place in the view, for DEC-012's Play; -1 for a selection. */
   index: number;
-  trackId: number | null;
+  /** The first row's credits, for Explore. */
   credits: TrackCreditLinks | null;
 }
+
+/** The tracks a group's entries act on, and what Explore needs of the first. */
+type Target = Pick<MenuState, "rows" | "index" | "credits">;
+
+/** The groups the bar and the menu hold (FLW-8). */
+const GROUPS: readonly TrackActionGroupId[] = ["play", "explore", "more"];
 
 export function LibraryHalf({
   kind,
@@ -85,7 +92,6 @@ export function LibraryHalf({
   const { push } = useToast();
   const [order, setOrder] = useState<{ sort: string; dir: "asc" | "desc" }>(PAGE_ORDER);
   const [picking, setPicking] = useState(false);
-  const [copying, setCopying] = useState(false);
   const [menu, setMenu] = useState<MenuState | null>(null);
 
   const query = useMemo<LibraryQuery>(
@@ -120,85 +126,44 @@ export function LibraryHalf({
       const inSelection = row.id != null && isSelected(selection.selection, row.id);
       const rows =
         inSelection && selection.count > 1 ? await selection.gatherRows(QUEUE_ACTION_LIMIT) : [row];
-      const trackId = rows.length === 1 ? rows[0].id : null;
-      const credits = trackId == null ? null : await creditsFor(trackId, heldDetail);
-      setMenu({ x, y, rows, index: rows.length === 1 ? index : -1, trackId, credits });
+      const firstId = rows[0]?.id;
+      const credits = firstId == null ? null : await creditsFor(firstId, heldDetail);
+      setMenu({ x, y, rows, index: rows.length === 1 ? index : -1, credits });
     },
     [heldDetail, onActivate, selection],
   );
 
   /**
-   * The Actions button's menu, for the selection. One track the table holds is
-   * taken from it — with its place, so Play keeps the table behind it — rather
-   * than found by reading the whole table again; a larger selection is
-   * gathered, as the Library gathers one.
+   * The tracks the bar acts on. One track the table holds is taken from it, with its
+   * place, so Play keeps the table behind it; a larger selection is gathered, as the
+   * Library gathers one.
    */
-  const openSelectionMenu = useCallback(
-    async (anchor: { x: number; y: number }) => {
-      const only = onlySelectedId(selection.selection, window_.total);
-      let loaded: { row: LibraryTrackRow; index: number } | null = null;
-      for (let index = 0; only != null && index < window_.total; index += 1) {
-        const row = window_.source.getRow(index);
-        if (row?.id === only) {
-          loaded = { row, index };
-          break;
-        }
+  const selectedRows = useCallback(async () => {
+    const only = onlySelectedId(selection.selection, window_.total);
+    let loaded: { row: LibraryTrackRow; index: number } | null = null;
+    for (let index = 0; only != null && index < window_.total; index += 1) {
+      const row = window_.source.getRow(index);
+      if (row?.id === only) {
+        loaded = { row, index };
+        break;
       }
-      const rows = loaded ? [loaded.row] : await selection.gatherRows(QUEUE_ACTION_LIMIT);
-      const trackId = rows.length === 1 ? rows[0].id : null;
-      const credits = trackId == null ? null : await creditsFor(trackId, heldDetail);
-      setMenu({ ...anchor, rows, index: loaded ? loaded.index : -1, trackId, credits });
-    },
-    [heldDetail, selection, window_.source, window_.total],
-  );
+    }
+    const rows = loaded ? [loaded.row] : await selection.gatherRows(QUEUE_ACTION_LIMIT);
+    return { rows, index: loaded ? loaded.index : -1 };
+  }, [selection, window_.source, window_.total]);
 
-  const menuItems = useMemo(() => {
-    if (!menu) return [];
-    const { rows, index, trackId, credits } = menu;
-    const one = rows.length === 1;
-    return libraryRowMenuItems(
-      rows.length,
-      {
-        // One row plays the page's table behind it (DEC-012); a selection is
-        // the queue, as in the Library.
-        onPlay: () =>
-          void (one && index >= 0 ? playback.playRow(index) : playback.playRows(rows)),
-        onPlayNext: () => void playback.playNext(rows),
-        onAddToQueue: () => void playback.addToQueue(rows),
-      },
-      trackId == null
-        ? []
-        : discoverMenuItems(
-            { count: rows.length, credits },
-            { onSimilar: () => onOpenSimilar(trackId), onOpenPage: onOpenEntity },
-          ),
-    );
-  }, [menu, onOpenEntity, onOpenSimilar, playback]);
-
-  const copy = useCallback(async () => {
-    setCopying(true);
-    try {
-      const rows = await selection.gatherRows(COPY_LIMIT);
-      const text = await gatherTracksAsText(columns.visible, rows);
+  const copyRows = useCallback(
+    async (rows: LibraryTrackRow[]) => {
+      const copied = rows.slice(0, COPY_LIMIT);
+      const text = await gatherTracksAsText(columns.visible, copied);
       const wrote = text === "" ? false : await writeClipboard(text);
       push(
-        wrote ? copySummary(rows.length, selection.count) : "Could not copy to the clipboard",
+        wrote ? copySummary(copied.length, rows.length) : "Could not copy to the clipboard",
         wrote ? "success" : "warning",
       );
-    } finally {
-      setCopying(false);
-    }
-  }, [columns.visible, push, selection]);
-
-  const onlyId = onlySelectedId(selection.selection, window_.total);
-  const revealPath = useMemo(() => {
-    if (onlyId == null) return null;
-    for (let index = 0; index < window_.total; index += 1) {
-      const row = window_.source.getRow(index);
-      if (row?.id === onlyId) return row.file_path;
-    }
-    return heldDetail?.track.id === onlyId ? heldDetail.track.file_path : null;
-  }, [heldDetail, onlyId, window_.source, window_.total]);
+    },
+    [columns.visible, push],
+  );
 
   const selectedKeys = useMemo(() => {
     const keys = new Set<number>();
@@ -208,6 +173,69 @@ export function LibraryHalf({
     }
     return keys;
   }, [selection.selection, window_.source, window_.total]);
+
+  /**
+   * One group's entries for these tracks: what the bar's button opens and what the
+   * right-click menu's submenu holds are this one list (FLW-8).
+   */
+  const groupItems = useCallback(
+    (group: TrackActionGroupId, { rows, index, credits }: Target): TrackContextMenuItem[] => {
+      const first = rows[0];
+      if (!first || first.id == null) return [];
+      const firstId = first.id;
+      if (group === "play") {
+        return playItems(rows.length, {
+          // One row plays the page's table behind it (DEC-012); a selection is
+          // the queue, as in the Library.
+          onPlay: () =>
+            void (rows.length === 1 && index >= 0 ? playback.playRow(index) : playback.playRows(rows)),
+          onPlayNext: () => void playback.playNext(rows),
+          onAddToQueue: () => void playback.addToQueue(rows),
+        });
+      }
+      if (group === "explore") {
+        // Several tracks: the first, as in the Library.
+        return discoverMenuItems(
+          { count: 1, credits },
+          { onSimilar: () => onOpenSimilar(firstId), onOpenPage: onOpenEntity },
+        );
+      }
+      if (group === "more") {
+        const one = rows.length === 1;
+        return moreItems(
+          { count: rows.length, collection: null, credits: null, revealable: one && first.file_path !== "" },
+          {
+            onCopy: () => void copyRows(rows),
+            onReveal: one
+              ? () => {
+                  void revealTrack(firstId).then((outcome) => {
+                    if (outcome) push(outcome.message, outcome.tone);
+                  });
+                }
+              : null,
+          },
+        );
+      }
+      return [];
+    },
+    [copyRows, onOpenEntity, onOpenSimilar, playback, push],
+  );
+
+  const menuItems = useMemo(
+    () => (menu ? libraryRowMenu(GROUPS, menu.rows.length, (group) => groupItems(group, menu)) : []),
+    [groupItems, menu],
+  );
+
+  /** What each group of the bar opens, for the selection as it is now (FLW-8). */
+  const itemsFor = useCallback(
+    async (group: TrackActionGroupId): Promise<TrackContextMenuItem[]> => {
+      const { rows, index } = await selectedRows();
+      const firstId = rows[0]?.id;
+      const credits = group === "explore" && firstId != null ? await creditsFor(firstId, heldDetail) : null;
+      return groupItems(group, { rows, index, credits });
+    },
+    [groupItems, heldDetail, selectedRows],
+  );
 
   const emptyState = (
     <div className="discover-empty">
@@ -258,30 +286,19 @@ export function LibraryHalf({
       </div>
 
       <div className="discover-page__library-actions">
-        <SelectionActions
-          count={selection.count}
-          describedByQuery={selection.selection.all}
-          revealPath={revealPath}
+        <DiscoverSelectionBar
+          groups={GROUPS}
           total={window_.total}
-          busy={copying}
-          onCopy={() => void copy()}
-          onReveal={() => {
-            if (onlyId == null) return;
-            void revealTrack(onlyId).then((outcome) => {
-              if (outcome) push(outcome.message, outcome.tone);
-            });
-          }}
+          selected={selection.count}
+          describedByQuery={selection.selection.all}
+          itemsFor={itemsFor}
           onClear={selection.clear}
           onSelectAll={() => {
             onActivate();
             selection.selectAllMatching();
           }}
-          onActions={(anchor) => void openSelectionMenu(anchor)}
+          onColumns={() => setPicking(true)}
         />
-        <span className="discover-table__spacer" />
-        <Button variant="secondary" onClick={() => setPicking(true)}>
-          Columns…
-        </Button>
       </div>
 
       {menu && (

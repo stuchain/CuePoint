@@ -1025,6 +1025,29 @@ describe("the entry buttons (FLW-17)", () => {
     await waitFor(() => expect(sets.moveEntry).toHaveBeenLastCalledWith({ entry_id: E2, position: 1, chapter_id: 2 }));
   });
 
+  it("work a second move out from the order the first one made, not the one before it", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    // The server's answer after E2 moves up: E2 and E1 swapped in their chapter.
+    const [first, ...others] = FRIDAY.plan.chapters;
+    const [one, two, ...rest] = FRIDAY.entries.entries;
+    expect([first.entry_ids, one.entry_id, two.entry_id]).toEqual([[E1, E2], E1, E2]);
+    sets.moveEntry.mockImplementationOnce(async () => {
+      sets.entries.mockImplementation(async () => answered({ ...FRIDAY.entries, entries: [{ ...two, position: 0 }, { ...one, position: 1 }, ...rest] }));
+      sets.plan.mockImplementation(async () =>
+        answered({ ...FRIDAY.plan, chapters: [{ ...first, entry_ids: [E2, E1] }, ...others] }),
+      );
+      return answered(EDITS.moved);
+    });
+    fireEvent.click(rowAt(2));
+    // Both presses land at once, as a quick second keystroke does.
+    fireEvent.click(button("Move up"));
+    fireEvent.click(button("Move down"));
+    await waitFor(() => expect(sets.moveEntry).toHaveBeenCalledTimes(2));
+    // From the new order E2 is first in its chapter, so down is one step, inside it.
+    expect(sets.moveEntry).toHaveBeenLastCalledWith({ entry_id: E2, position: 1, chapter_id: 1 });
+  });
+
   it("move several selected entries together", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
@@ -1106,6 +1129,26 @@ describe("the entry buttons (FLW-17)", () => {
     fireEvent.click(heading.getByRole("button", { name: "Edit chapter" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(player.playQueue).not.toHaveBeenCalled();
+  });
+
+  it("let the keyboard reach a chapter's buttons, and Enter on one press it", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    const heading = within(rowAt(3));
+    // Tab stops, not tabindex -1: a keyboard user can land on each one.
+    for (const name of ["Edit chapter", "Move chapter up", "Move chapter down", "Delete chapter"]) {
+      expect(heading.getByRole("button", { name })).not.toHaveAttribute("tabindex", "-1");
+    }
+    // Enter on a button is that button's, not the table's Enter on the row.
+    const down = heading.getByRole("button", { name: "Move chapter down" });
+    down.focus();
+    expect(fireEvent.keyDown(down, { key: "Enter" })).toBe(true);
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    // Enter on the heading row itself still opens Edit.
+    fireEvent.click(rowAt(3));
+    tableKey({ key: "Enter" });
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
   it("delete a chapter after saying where its entries go", async () => {

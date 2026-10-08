@@ -560,17 +560,9 @@
   flex: 1 1 0;
 }
 
+/* The Library's selection bar draws its own row and rule (FLW-8). */
 .discover-page__library-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
-  border-top: var(--hairline) solid var(--border-muted);
-}
-
-.discover-page__library-actions > .cp-selection-actions {
-  flex: 0 1 auto;
+  display: block;
 }
 
 .discover-page__beatport {

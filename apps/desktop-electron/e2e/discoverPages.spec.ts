@@ -264,7 +264,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
 
       // --- Similar tracks for one of her tracks ----------------------------
       await row(window, "Your tracks", "Harbour Lights").click({ button: "right" });
-      await window.getByRole("menu").getByRole("menuitem", { name: "Similar tracks" }).click();
+      await window.getByRole("menu").getByRole("menuitem", { name: /^Explore/ }).click();
+      await window.getByRole("menu", { name: "Explore" }).getByRole("menuitem", { name: "Similar tracks" }).click();
       await expect(window).toHaveURL(/#\/discover\/similar\/\d+$/);
       await expect(window.getByRole("heading", { name: "Harbour Lights", level: 1 })).toBeVisible({
         timeout: 30_000,
@@ -447,7 +448,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
 
       await test.step("open Similar tracks, and queue a suggestion", async () => {
         await row(window, "Your tracks", "Signal").click({ button: "right" });
-        await window.getByRole("menu").getByRole("menuitem", { name: "Similar tracks" }).click();
+        await window.getByRole("menu").getByRole("menuitem", { name: /^Explore/ }).click();
+        await window.getByRole("menu", { name: "Explore" }).getByRole("menuitem", { name: "Similar tracks" }).click();
         await expect(window).toHaveURL(/#\/discover\/similar\/\d+$/);
         await expect(window.getByRole("heading", { name: "Signal", level: 1 })).toBeVisible({
           timeout: 30_000,

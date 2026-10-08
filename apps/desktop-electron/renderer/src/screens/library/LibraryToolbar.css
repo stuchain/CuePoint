@@ -39,6 +39,30 @@
   content: attr(data-reserve);
 }
 
+/* One line: the buttons keep their width and the count, which is the only thing
+   here that can be shortened without losing a control, shrinks to an ellipsis. */
+.library-toolbar--one-line {
+  flex-wrap: nowrap;
+}
+
+.library-toolbar--one-line .library-toolbar__button {
+  flex: none;
+  white-space: nowrap;
+}
+
+.library-toolbar--one-line .library-toolbar__count-box {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.library-toolbar--one-line .library-toolbar__count,
+.library-toolbar--one-line .library-toolbar__count-reserve {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Compact: ten controls share the row, and every line of it is a line the table
    loses (the Library's height is held, DEC-112). So the buttons take the small
    type and the small padding, and do not stretch to the hit-target floor the

@@ -236,8 +236,17 @@ their genres, and an artist's labels or a label's artists.
 The first half is the Library's own table, over exactly the tracks the header
 counts, newest first. These are your tracks, so they behave as they do in the
 Library: double-click one to play it with the rest of the table queued after
-it, and use the right-click menu for **Play next**, **Add to queue**, **Similar
-tracks** and the track's pages. Selecting a track shows it in Track details.
+it. Selecting a track shows it in Track details.
+
+Under the table is the Library's selection bar, always there and grayed out
+("Select tracks first") until you select some: **Play ▸** (Play, Play next, Add
+to queue), **Explore ▸** (Similar tracks, the artist and label pages; with
+several tracks selected they open the first one's), **More ▸** (Copy, Show in
+folder) and **Clear selection**, with the count, **Select all** and
+**Columns…** at its right. The right-click menu on a track (or on several) holds
+the same groups: Play, Play next and Add to queue first, then **Explore ▸** and
+**More ▸**. Organizing is the Library's, and matching and fixing values are
+Clean's, so those groups are not here.
 
 **Open in Library** opens the Library filtered to this page's tracks, so you
 can tag, rate or collect them there. **Save as Smart Collection…** saves the
@@ -303,8 +312,11 @@ same track again is not a suggestion.
 
 Selecting a suggestion lights its key on the Camelot wheel in the header.
 Suggestions are your own tracks: double-click one to play the list from there,
-and use the right-click menu to **Play next** or **Add to queue**. **Similar
-tracks** on a suggestion's menu makes it the next track to compare with. The
+and use the bar under the table (**Play ▸**, **Explore ▸**, always shown and grayed
+out until you select some) or the right-click menu, which holds the same two groups,
+to **Play next** or **Add to queue**. **Similar tracks** under Explore makes a suggestion
+the next track to compare with. **Open in Library** shows the track you are comparing with
+in the Library, where organizing happens. The
 Track details shows the track you are comparing with until you select a suggestion.
 
 ## Where inCrate went

@@ -17,6 +17,7 @@
  * - Anything else (`INVALID_REQUEST`): the engine's words, and nothing moves.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import type {
   SetAnalysis,
@@ -40,6 +41,12 @@ export type Tone = "success" | "warning";
 
 interface EditOptions {
   onRefused?: (message: string) => void;
+  /**
+   * Answer only once the page has re-read the Set and drawn it, so the next gesture
+   * (a second Move down) is worked out from what is now on screen. Everything else
+   * goes on at once and the page catches up.
+   */
+  settle?: boolean;
 }
 
 interface PreparedSetOptions {
@@ -122,27 +129,53 @@ export function usePreparedSet({
 
   const reload = useCallback(() => setReads((n) => n + 1), []);
 
+  // Reads are numbered so a slow one never lands over a newer one.
+  const started = useRef(0);
+  const applied = useRef(0);
+
+  const apply = useCallback(
+    (result: Read, ticket: number, sync: boolean) => {
+      if (ticket < applied.current) return;
+      applied.current = ticket;
+      const show = () => {
+        setLoading(false);
+        if (result.kind === "read") {
+          setSet(result.set);
+          setProblem(null);
+        } else if (result.kind === "refused" && result.refusal.code === "SET_NOT_FOUND") {
+          latest.current.onGone(result.refusal);
+        } else {
+          setProblem(result.kind === "refused" ? result.refusal.message : result.message);
+        }
+      };
+      if (sync) flushSync(show);
+      else show();
+    },
+    [],
+  );
+
   useEffect(() => {
     const sets = window.cuepoint?.sets;
     if (setId === null || !sets) return;
     let current = true;
+    const ticket = ++started.current;
     setLoading(true);
     void readSet(sets, setId).then((result) => {
-      if (!current) return;
-      setLoading(false);
-      if (result.kind === "read") {
-        setSet(result.set);
-        setProblem(null);
-      } else if (result.kind === "refused" && result.refusal.code === "SET_NOT_FOUND") {
-        latest.current.onGone(result.refusal);
-      } else {
-        setProblem(result.kind === "refused" ? result.refusal.message : result.message);
-      }
+      if (current) apply(result, ticket, false);
     });
     return () => {
       current = false;
     };
-  }, [reads, setId]);
+  }, [apply, reads, setId]);
+
+  // The re-read an edit waits for: the page has drawn the new order when this
+  // settles, so the next gesture is worked out from it, not from the old one.
+  const refresh = useCallback(async () => {
+    const sets = window.cuepoint?.sets;
+    if (setId === null || !sets) return;
+    const ticket = ++started.current;
+    apply(await readSet(sets, setId), ticket, true);
+  }, [apply, setId]);
 
   // A track edited anywhere — a BPM typed in the Inspector, a match applied,
   // a batch reverted — changes what this Set's rows and warnings say.
@@ -179,9 +212,12 @@ export function usePreparedSet({
         const answer = await run(sets);
         if (answer.refusal) {
           refused(answer.refusal, options);
+          // A refusal that moved things re-reads too; the next press waits for it.
+          if (options?.settle) await refresh();
           return null;
         }
-        reload();
+        if (options?.settle) await refresh();
+        else reload();
         return answer.value;
       } catch (cause) {
         reportUnexpected(cause);
@@ -189,7 +225,7 @@ export function usePreparedSet({
         return null;
       }
     },
-    [onMessage, refused, reload],
+    [onMessage, refresh, refused, reload],
   );
 
   const write = useCallback(

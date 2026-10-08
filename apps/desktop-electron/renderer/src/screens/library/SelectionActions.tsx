@@ -24,13 +24,6 @@ interface SelectionActionsProps {
   onReveal: (path: string) => void;
   onClear: () => void;
   onSelectAll: () => void;
-  /**
-   * Open the organization menu, anchored under the button (ORG-11).
-   *
-   * Absent means the build has nothing to offer, and the button is not drawn —
-   * which is what a browser-lab render without the engine gets.
-   */
-  onActions?: (anchor: { x: number; y: number }) => void;
   /** Tracks the query matches, for "select all". */
   total: number;
   busy?: boolean;
@@ -44,7 +37,6 @@ export function SelectionActions({
   onReveal,
   onClear,
   onSelectAll,
-  onActions,
   total,
   busy = false,
 }: SelectionActionsProps) {
@@ -69,22 +61,6 @@ export function SelectionActions({
         {count.toLocaleString()} {count === 1 ? "track" : "tracks"} selected
         {describedByQuery && count > 1 ? " (everything matching)" : ""}
       </span>
-
-      {onActions && (
-        <Button
-          variant="secondary"
-          aria-haspopup="menu"
-          onClick={(event) => {
-            // Anchored under the button rather than at the pointer: this menu
-            // is opened by a control with a place on the page, and the
-            // keyboard opens it with no pointer position at all.
-            const rect = event.currentTarget.getBoundingClientRect();
-            onActions({ x: rect.left, y: rect.bottom });
-          }}
-        >
-          Actions…
-        </Button>
-      )}
 
       <Button variant="secondary" onClick={onCopy} loading={busy}>
         Copy

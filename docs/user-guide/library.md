@@ -283,7 +283,7 @@ name. **Not checked yet** means CuePoint could not tell, so check to be sure.
 | New tracks | In the export, not yet in CuePoint |
 | Updated tracks | In both, with something different in Rekordbox |
 | **Tracks removed from Rekordbox** | In CuePoint, no longer in the export — **these get deleted** |
-| Re-linked after renumbering | Rekordbox gave the track a new ID; CuePoint recognised the file and kept everything |
+| Re-linked after renumbering | Rekordbox gave the track a new ID; CuePoint recognized the file and kept everything |
 | Tracks whose cues or beat grid changed | Tracks you kept whose cue points or grid are different in Rekordbox |
 | New / edited / deleted playlists | The same, for your playlist tree |
 
@@ -356,7 +356,7 @@ Each track ends up with a **File status** you can filter by in the Library:
 | Unreadable | Something is there but cannot be opened — usually a permissions problem, or a folder where the file should be |
 | Not checked | Not checked yet, or Rekordbox has given the track a new path since the last check |
 
-**File checked** filters by the day a file was last checked.
+**Last checked on disk** filters by the day a file was last checked.
 
 **An unplugged drive is one line, not thousands.** If every track on a drive is
 missing because the drive itself is not there, the Activity panel says so once —
@@ -386,8 +386,8 @@ were put together:
 | Beatport track | Two tracks were matched to the same Beatport track |
 | Artist and title | The same artist, title and mix, with lengths within two seconds of each other |
 
-Filter the Library with **In a duplicate group**, or with **Duplicate signal**
-to see one kind. A track can be in more than one group, for example when a file
+Filter the Library with **Possible duplicate**, or with
+**Why it looks like a duplicate** to see one kind. A track can be in more than one group, for example when a file
 imported twice is also the same title twice.
 
 The artist-and-title signal is the one that can be wrong: two different
@@ -459,7 +459,7 @@ Beat grid · 128.00 BPM
   Rekordbox, export, and refresh.
 - A refresh replaces a track's cues and grid with the export's, and the preview
   counts the tracks whose cues or grid changed, in one line.
-- A mark CuePoint does not recognise, or one Rekordbox wrote incompletely, is
+- A mark CuePoint does not recognize, or one Rekordbox wrote incompletely, is
   skipped rather than guessed at, and the import says how many it skipped.
 
 **A library imported before this release** has its cues read once from the
@@ -493,9 +493,9 @@ selected; deciding a match (accept or reject) is done there, in Review.
 | Artwork | The track's picture, or where it would come from |
 
 Each of the first three sorts by what needs you first. The same facts are
-filters: **Match state**, **Match decided by**, **Match disputed**,
-**Match score**, **File status** and **Artwork**. A filter whose values are a
-fixed list offers them to pick from rather than a box to type into.
+filters: **Beatport match**, **Match decided by (you or CuePoint)**,
+**Changed since you decided**, **Beatport match score**, **File status** and
+**Artwork**. A filter whose values are a fixed list offers them to pick from rather than a box to type into.
 
 ### The Clean actions
 

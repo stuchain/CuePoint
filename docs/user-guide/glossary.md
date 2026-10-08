@@ -17,12 +17,15 @@
   each key's track count; Ctrl+Click or Shift+Click chooses several keys.
 - **Selection bar**: The row of buttons above the Library table that act on the
   selected tracks: Play, Organize, Explore, Beatport, Fix and More, then Clear
-  selection. A track's right-click menu holds the same six groups.
+  selection. A track's right-click menu holds the same six groups. On Discover's
+  artist and label pages and on Similar tracks the bar is shorter (Play and
+  Explore, and More on an artist's or label's tracks), and the right-click menu there
+  holds the same groups.
 - **Playlist**: A named collection of tracks inside the Rekordbox XML.
-- **Preflight**: Validation checks that run before processing.
+- **Preflight**: In the command-line tool, validation checks that run before processing.
 - **Match**: A Beatport result associated with an input track.
 - **Low-confidence**: A match with a score below the acceptance threshold.
-- **Run summary**: A post-run report with counts, duration, and output paths.
+- **Run summary**: In the command-line tool, a post-run report with counts, duration, and output paths.
 - **Set**: A running order prepared on the [Prepare](prepare.md) page: tracks in
   the order you will play them, in chapters, with planned times. It sits in the
   Collections tree beside Collections, and a track may be in it more than once.

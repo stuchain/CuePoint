@@ -131,11 +131,11 @@ focus outline is drawn around the waveform. Until the waveform is ready, or for
 a file CuePoint could not read, the bar shows the plain slider, and hovering it
 says why ("Waveform not drawn yet", "File missing"). The bar does not get taller.
 
-A track you start playing that is still waiting for the analysis is analysed
+A track you start playing that is still waiting for the analysis is analyzed
 next, ahead of the rest of the library, even while the analysis is paused.
 
 Waveforms also appear in Track details, in a Library column and in Prepare's
-transition strip. [Waveforms](waveforms.md) covers all four, what the colours
+transition strip. [Waveforms](waveforms.md) covers all four, what the colors
 mean, how the analysis runs and how to pause it, and **Settings → Waveforms**.
 
 ## When a track will not play

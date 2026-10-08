@@ -126,13 +126,20 @@ export function ChapterButtons({ row }: { row: HeadingRow }) {
     { label: "×", name: "Delete chapter", disabled: chapters.count <= 1, run: () => chapters.remove(chapter) },
   ];
   return (
-    <span className="prepare-heading__buttons" onClick={quiet} onDoubleClick={quiet} onMouseDown={quiet}>
+    // Each is a Tab stop. Their keys stay theirs: Enter on one presses it, and does not reach the
+    // table, where Enter on a heading opens Edit.
+    <span
+      className="prepare-heading__buttons"
+      onClick={quiet}
+      onDoubleClick={quiet}
+      onMouseDown={quiet}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
       {buttons.map((button) => (
         <button
           key={button.name}
           type="button"
           className="prepare-heading__button"
-          tabIndex={-1}
           aria-label={button.name}
           title={button.name}
           disabled={button.disabled}

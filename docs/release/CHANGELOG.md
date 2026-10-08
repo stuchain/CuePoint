@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Prepare's chapter buttons work from the keyboard, and Discover has the Library's selection bar.** Edit, up, down and delete on a chapter's heading are reached with Tab, and Enter on one presses it. An artist's or label's "Your tracks" and the Similar tracks page replace "Actions…" with Play, Explore (and More on the first) in the bar the Library uses, always shown and grayed out until you select tracks; right-clicking a row shows the same groups, Play's entries first, then Explore ▸ and More ▸. Similar tracks has an Open in Library button.
 - **Every kind of motion is built, each behind its own switch in Settings > Motion.** Buttons,
   checkboxes and stars press; hovered and focused things step; rows you pick up and drop lift and
   settle; badges, tabs and Track details sections change with a short step; dialogs, menus, the
@@ -483,6 +484,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **Moving a Set's entry twice in a row puts it where you meant.** A second Move up or Move down (or Alt+Up and Alt+Down) pressed right after the first used to be worked out from the order before the first one, and could move the wrong way. It now waits for the first and uses the order you see.
 - **Table rows are as tall as the size says.** Rows in the Library, Collections,
   Clean, Discover and Prepare tables were 36 pixels at every size, so at Extra
   large the text in them had no room. They are now 33, 50, 66 and 99 pixels at
