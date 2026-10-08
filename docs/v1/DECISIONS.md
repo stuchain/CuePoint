@@ -5991,3 +5991,29 @@ could be.
   `play_counts` rows that read stored.
 
 **Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-212 — Phase 17, the Website, Is Built Ahead of Phases 14 to 16
+
+**Status**: Approved · **Amends**: DEC-140 · **Related**: DEC-139, DEC-195, DEC-211, Phase 17
+
+**Decision**: Phase 17's steps are built now, while Phase 14 is still being built and alongside
+Phase 16's release plumbing, rather than after Phase 16 as DEC-140 orders the phases. Steps that need
+a finished Phase 14 or 16 wait for it: SITE-04's screenshots (Phases 14 and 15's pages), the app
+pictures SITE-06 and SITE-08 place, SITE-07's release data from DIST-03 and DIST-04, and SITE-13's
+launch and the release-triggered deploy.
+
+**Reason**: The site is its own code in `apps/website/`, with its own pages and its own CI job; it
+touches none of the renderer pages or Settings that Phase 14 changes, nor the build and release
+config Phase 16 changes. The user chose on 2026-10-08 to start it early.
+
+**Implications**:
+- Nothing is public until SITE-13 still holds: every build stays a `noindex` preview artifact, and
+  the old page stays live.
+- Where a page needs an app picture that does not exist yet, it builds with the scene's still and
+  the picture is added when SITE-04 runs.
+- The download page has no normal release to offer before 1.0.0 anyway (DEC-194), so building it
+  early changes nothing it shows.
+
+**Decided with**: User · **Date**: 2026-10-08
