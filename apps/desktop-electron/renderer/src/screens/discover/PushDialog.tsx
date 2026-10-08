@@ -1,15 +1,15 @@
 /**
- * "Push to Beatport playlist…" (DISCOVER-10, DEC-099).
+ * "Make a Beatport playlist…" (DISCOVER-10, DEC-099, DSC-7).
  *
- * Makes a new playlist on the user's Beatport account and adds the tracks, as
- * a job the status strip follows. The dialog asks only what the job needs: the
- * name, defaulted to the engine's, and whether tracks the library already owns
- * go too — by default they do not, since buying one twice is the mistake a
- * wantlist exists to prevent (DEC-092).
+ * Makes a new playlist on the user's Beatport account, each time, and adds the
+ * tracks, as work the status strip follows. The dialog asks only what it needs:
+ * the name, defaulted to the engine's, and whether tracks already in the
+ * library go too — by default they do not, since buying one twice is the
+ * mistake a wantlist exists to prevent (DEC-092).
  *
- * A refusal — no token, too many tracks, a name too long, a push already
- * running — is shown here in the engine's words, and the dialog stays open, so
- * the person can change what was refused rather than start again.
+ * A refusal — no token, too many tracks, a name too long, a playlist already
+ * being made — is shown here in the engine's words, and the dialog stays open,
+ * so the person can change what was refused rather than start again.
  */
 import { useEffect, useState } from "react";
 
@@ -21,7 +21,7 @@ import { reportUnexpected } from "../../reporting/reporting";
 
 interface PushDialogProps {
   open: boolean;
-  /** What will be pushed, as a phrase: "the 3 selected tracks". */
+  /** What goes in the playlist, as a phrase: "the 3 selected tracks". */
   what: string;
   defaultName: string;
   maxNameLength: number;
@@ -70,11 +70,11 @@ export function PushDialog({
   return (
     <Modal
       open={open}
-      title="Push to a Beatport playlist"
+      title="Make a playlist on Beatport"
       onClose={onClose}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
       primaryAction={{
-        label: "Push",
+        label: "Make playlist",
         onClick: () => void push(),
         loading: pushing,
         disabled: trimmed === "" || tooLong,
@@ -82,7 +82,7 @@ export function PushDialog({
     >
       <div className="discover-dialog">
         <p className="discover-dialog__text">
-          Makes a new playlist on your Beatport account with {what}, in the order the table shows.
+          Makes a new playlist on your Beatport account with {what}, in the order the table shows. Each time makes another new playlist.
         </p>
         <TextField
           label="Playlist name"
@@ -104,7 +104,7 @@ export function PushDialog({
             checked={includeOwned}
             onChange={(event) => setIncludeOwned(event.target.checked)}
           />
-          Include tracks you already own
+          Include tracks already in your library
         </label>
         {refusal && (
           <p className="discover-dialog__refusal" role="alert">

@@ -25,15 +25,20 @@ export interface Picked<Row> {
   index: number;
 }
 
+/** The modifier keys a selection reads: a click carries them, so does a key press. */
+export type SelectModifiers = Pick<KeyboardEvent, "shiftKey" | "ctrlKey" | "metaKey">;
+
 export interface BeatportSelection<Row> {
   /** Selected ids, for the table's highlight. */
   keys: ReadonlySet<number>;
   /** Selected rows, in the table's order. */
   rows: Row[];
   count: number;
+  /** The row last clicked, if it is still selected: the one the Inspector and the wheel follow. */
+  anchorRow: Row | null;
   /** The row a Shift-click extends from, for the table's keyboard menu. */
   anchor: number | null;
-  onRowClick: (row: Row, index: number, event: React.MouseEvent) => void;
+  onRowClick: (row: Row, index: number, event: SelectModifiers) => void;
   /** A right-click on a row outside the selection selects that row first. */
   onRowMenu: (row: Row, index: number) => void;
   /** Select this one row, as a plain click would, from outside the table. */
@@ -88,7 +93,7 @@ export function useBeatportSelection<Row>({
   }, [idOf, loadedRows]);
 
   const onRowClick = useCallback(
-    (row: Row, index: number, event: React.MouseEvent) => {
+    (row: Row, index: number, event: SelectModifiers) => {
       const id = idOf(row);
       setState((previous) => {
         if (event.shiftKey && previous.anchor !== null) {
@@ -141,10 +146,17 @@ export function useBeatportSelection<Row>({
   );
   const keys = useMemo(() => new Set(state.picked.keys()), [state.picked]);
 
+  const anchorRow = useMemo(() => {
+    if (state.anchor === null) return null;
+    for (const entry of state.picked.values()) if (entry.index === state.anchor) return entry.row;
+    return null;
+  }, [state.anchor, state.picked]);
+
   return {
     keys,
     rows,
     count: rows.length,
+    anchorRow,
     anchor: state.anchor,
     onRowClick,
     onRowMenu,

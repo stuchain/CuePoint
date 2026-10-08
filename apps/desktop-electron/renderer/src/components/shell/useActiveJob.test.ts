@@ -96,7 +96,7 @@ describe("jobLabel", () => {
       "Discovering on Beatport",
     );
     expect(jobLabel(job({ type: "beatport_playlist", progress: undefined }))).toBe(
-      "Pushing to Beatport",
+      "Making a playlist on Beatport",
     );
     expect(jobLabel(job({ type: "beatport_resolve" }))).toBe(
       "Linking tracks to Beatport · 3 of 10",

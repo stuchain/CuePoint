@@ -73,11 +73,6 @@ ROOT = Path(__file__).resolve().parent.parent
 #: scan cannot see belongs here; otherwise delete the file or wire it in. An
 #: entry whose file is gone or is now reached fails the guard, so this cannot rot.
 ALLOWLIST: dict[str, str] = {
-    "apps/desktop-electron/renderer/src/components/shell/selectedTrack.ts": (
-        "PAGES-03A adds the selected-track store before any page feeds it; the page "
-        "steps (PAGES-05, 07, 08, 09, 16) and the wheel (PAGES-10) read it. Remove "
-        "this entry when the first one does."
-    ),
     "apps/desktop-electron/electron/releaseList.ts": "DIST-05; main's updater wires it in at DIST-06",
     "apps/desktop-electron/electron/updateRule.ts": "DIST-05; main's updater wires it in at DIST-06",
 }

@@ -19,13 +19,15 @@ import type {
 } from "../../api/cuepointBridge.types";
 import fixture from "./discoverPage.fixture.json";
 import { MAX_OPEN_PAGES, runActions, wantlistActions } from "./beatportActions";
+import { camelotOf } from "./beatportKey";
 import { RUN_COLUMNS, WANTLIST_COLUMNS } from "./beatportColumns";
 import { beatportNotice, beatportUsable, refusalState, unusableReason } from "./beatportState";
 import {
   artistsText,
   chartsLine,
   discoveryEnded,
-  hiddenLine,
+  foundLine,
+  lookingUpLine,
   pushOutcome,
   refusalText,
   releasesLine,
@@ -36,6 +38,7 @@ import {
   runStateLabel,
   runSummary,
   scopeLine,
+  searchTitle,
   sourceText,
   sourcesText,
   stoppedBecause,
@@ -44,10 +47,11 @@ import {
 import {
   DEFAULT_DISCOVER_SECTION,
   DISCOVER_SECTION_STORAGE_KEY,
+  DISCOVER_SECTIONS,
   loadDiscoverSection,
   saveDiscoverSection,
 } from "./discoverSections";
-import { defaultForm, formProblems, runRequest, type NewRunForm } from "./newRun";
+import { chartsWindowText, defaultForm, formProblems, runRequest, type NewRunForm } from "./newRun";
 
 const OPTIONS = fixture.options_ok.value as unknown as DiscoverOptions;
 const LIMITS: DiscoverLimits = OPTIONS.limits;
@@ -72,16 +76,28 @@ function refusal(code: DiscoverRefusal["code"], extra: Partial<DiscoverRefusal> 
 afterEach(() => localStorage.clear());
 
 describe("the remembered tab", () => {
-  it("opens on Runs the first time, and on the tab last used after", () => {
-    expect(loadDiscoverSection()).toBe(DEFAULT_DISCOVER_SECTION);
-    expect(DEFAULT_DISCOVER_SECTION).toBe("runs");
-    saveDiscoverSection("wantlist");
-    expect(loadDiscoverSection()).toBe("wantlist");
+  it("has the three tabs FLW-15 names, and never says Run", () => {
+    expect(DISCOVER_SECTIONS.map((section) => section.label)).toEqual([
+      "New search",
+      "Results",
+      "Wantlist",
+    ]);
   });
 
-  it("opens on Runs for anything stored that is not a tab", () => {
+  it("opens on Results the first time, and on the tab last used after", () => {
+    expect(loadDiscoverSection()).toBe(DEFAULT_DISCOVER_SECTION);
+    expect(DEFAULT_DISCOVER_SECTION).toBe("results");
+    saveDiscoverSection("wantlist");
+    expect(loadDiscoverSection()).toBe("wantlist");
+    saveDiscoverSection("new");
+    expect(loadDiscoverSection()).toBe("new");
+  });
+
+  it("opens on Results for anything stored that is not a tab, the old Runs included", () => {
     localStorage.setItem(DISCOVER_SECTION_STORAGE_KEY, "charts");
-    expect(loadDiscoverSection()).toBe("runs");
+    expect(loadDiscoverSection()).toBe("results");
+    localStorage.setItem(DISCOVER_SECTION_STORAGE_KEY, "runs");
+    expect(loadDiscoverSection()).toBe("results");
   });
 });
 
@@ -92,7 +108,7 @@ describe("Beatport's state", () => {
   });
 
   it.each([
-    ["options_no_token", "Beatport is not connected", "settings"],
+    ["options_no_token", "Connect your Beatport account", "settings"],
     ["options_rejected", "Beatport rejected the token", "settings"],
     ["options_forbidden", "Beatport refused this token", "settings"],
     ["options_rate_limited", "Beatport is limiting requests", "retry"],
@@ -103,7 +119,19 @@ describe("Beatport's state", () => {
     expect(notice.headline).toBe(headline);
     expect(notice.action).toBe(action);
     // Every one says the page still works without Beatport (DEC-098).
-    expect(notice.hint).toContain("Past runs and your wantlist still open without it.");
+    expect(notice.hint).toContain("Your past searches and wantlist still open without it.");
+  });
+
+  it("explains the token in plain words, and where to find out how to get one (DSC-3)", () => {
+    const notice = beatportNotice("no_token")!;
+    expect(notice.hint).toBe(
+      "Discover reads Beatport's charts and releases with your Beatport sign-in key (a “token”). " +
+        "Paste it in Settings, where “How do I get a token?” shows where to find it. " +
+        "Your past searches and wantlist still open without it.",
+    );
+    const refused = beatportNotice("forbidden")!;
+    expect(refused.hint).toContain("Beatport accepted the key but won't allow this action with it.");
+    expect(refused.hint).not.toMatch(/scope/i);
   });
 
   it("says how long a rate limit asked for, and why Beatport was out of reach", () => {
@@ -116,7 +144,7 @@ describe("Beatport's state", () => {
     );
   });
 
-  it("offers runs and pushes unless the token is missing or refused", () => {
+  it("offers searches and playlists unless the token is missing or refused", () => {
     expect(beatportUsable("ok")).toBe(true);
     expect(beatportUsable("rate_limited")).toBe(true);
     expect(beatportUsable("unavailable")).toBe(true);
@@ -137,19 +165,31 @@ describe("Beatport's state", () => {
 
 describe("what a selection offers", () => {
   const usable = { pushable: true, pushReason: null, total: 5 };
+  const labels = (list: Array<{ label: string }>) => list.map((a) => a.label);
 
-  it("offers a run's whole table to a push when nothing is selected", () => {
-    expect(runActions(0, usable).map((a) => a.id)).toEqual(["push"]);
-    expect(runActions(0, { ...usable, total: 0 })[0]!.disabled).toBe(true);
-  });
-
-  it("offers a run's rows the wantlist, a push and Beatport's page", () => {
-    expect(runActions(1, usable).map((a) => a.label)).toEqual([
+  it("always shows a run's three actions; those that need rows wait for them (DEC-209)", () => {
+    const none = runActions(0, usable);
+    expect(labels(none)).toEqual([
       "Add to wantlist",
-      "Push to Beatport playlist…",
+      "Make a Beatport playlist…",
       "Open on Beatport",
     ]);
-    expect(runActions(3, usable).map((a) => a.id)).toEqual(["add_to_wantlist", "push", "open"]);
+    expect(none.map((a) => a.disabled)).toEqual([true, false, true]);
+    expect(none[0]!.reason).toBe("Select tracks in the table first.");
+    expect(none[2]!.reason).toBe("Select tracks in the table first.");
+    const some = runActions(3, usable);
+    expect(some.map((a) => a.disabled)).toEqual([false, false, false]);
+    expect(some.map((a) => a.reason)).toEqual([null, null, null]);
+  });
+
+  it("makes a playlist of every row shown when nothing is selected, and says so", () => {
+    const playlist = (count: number, total: number) =>
+      runActions(count, { ...usable, total }).find((a) => a.id === "push")!;
+    expect(playlist(0, 48).note).toBe("All 48 shown");
+    expect(playlist(0, 1).note).toBe("All 1 shown");
+    expect(playlist(3, 48).note).toBe("3 selected");
+    expect(playlist(0, 0)).toMatchObject({ disabled: true, reason: "Nothing to put in a playlist." });
+    expect(playlist(0, 0).note).toBeNull();
   });
 
   it("opens at most ten pages at once", () => {
@@ -159,23 +199,28 @@ describe("what a selection offers", () => {
     expect(open(MAX_OPEN_PAGES + 1).reason).toBe("Opens at most 10 pages at once.");
   });
 
-  it("does not offer a push without a token Beatport accepts", () => {
+  it("does not offer a playlist without a token Beatport accepts", () => {
     const push = runActions(2, { pushable: false, pushReason: "Needs a token.", total: 5 })[1]!;
     expect(push).toMatchObject({ id: "push", disabled: true, reason: "Needs a token." });
   });
 
-  it("offers a wanted track a note, a bought mark and leaving, by how many", () => {
-    expect(wantlistActions([], usable).map((a) => a.id)).toEqual(["push"]);
-    expect(wantlistActions([{ bought_at: null }], usable).map((a) => a.id)).toEqual([
-      "push",
-      "open",
-      "note",
-      "bought",
-      "remove",
+  it("always shows the wantlist's actions, with the reason for each that waits", () => {
+    const none = wantlistActions([], usable);
+    expect(none.map((a) => a.id)).toEqual(["push", "open", "note", "bought", "remove"]);
+    expect(none.map((a) => a.disabled)).toEqual([false, true, true, true, true]);
+    expect(none[2]!.reason).toBe("Select one track to edit its note.");
+    expect(none[4]!.reason).toBe("Select tracks in the table first.");
+    const one = wantlistActions([{ bought_at: null }], usable);
+    expect(one.map((a) => a.disabled)).toEqual([false, false, false, false, false]);
+    const two = wantlistActions([{ bought_at: null }, { bought_at: null }], usable);
+    expect(two.map((a) => [a.id, a.disabled])).toEqual([
+      ["push", false],
+      ["open", false],
+      ["note", true],
+      ["bought", false],
+      ["remove", false],
     ]);
-    expect(
-      wantlistActions([{ bought_at: null }, { bought_at: null }], usable).map((a) => a.id),
-    ).toEqual(["push", "open", "bought", "remove"]);
+    expect(two[2]!.reason).toBe("Select one track to edit its note.");
   });
 
   it("undoes a bought mark when everything selected is marked", () => {
@@ -185,10 +230,11 @@ describe("what a selection offers", () => {
     expect(wantlistActions([bought, notBought], usable).map((a) => a.label)).toContain(
       "Mark bought",
     );
+    expect(wantlistActions([], usable).map((a) => a.label)).toContain("Mark bought");
   });
 });
 
-describe("the New run form", () => {
+describe("the New search form", () => {
   const form = (patch: Partial<NewRunForm> = {}): NewRunForm => ({
     ...defaultForm(OPTIONS.defaults),
     ...patch,
@@ -206,6 +252,13 @@ describe("the New run form", () => {
       pickedLabels: [],
     });
     expect(formProblems(form(), LIMITS)).toEqual([]);
+  });
+
+  it("says the engine's default 30-day window as 30 days, and other windows by their dates", () => {
+    expect(chartsWindowText(form(), OPTIONS.defaults)).toBe("Charts from the last 30 days.");
+    expect(chartsWindowText(form({ chartsFrom: "2026-09-01" }), OPTIONS.defaults)).toBe(
+      `Charts from 2026-09-01 to ${OPTIONS.defaults.charts_to}.`,
+    );
   });
 
   it("asks the engine for the whole library as null, none as an empty list", () => {
@@ -245,10 +298,10 @@ describe("the New run form", () => {
     [{ days: "3.5" }, "Releases reach back from 1 to 366 days."],
     [{ artists: "picked" }, "Choose at least one artist, or look for every one."],
     [{ labels: "picked" }, "Choose at least one label, or look for every one."],
-    [{ artists: "none", labels: "none" }, "A run needs artists or labels to look for."],
+    [{ artists: "none", labels: "none" }, "A search needs artists or labels to look for."],
     [
       { artists: "none", genreIds: [5] },
-      "Charts are found through your artists: choose some, or no genres.",
+      "Charts come from your artists. Choose some artists, or untick every genre.",
     ],
   ] as Array<[Partial<NewRunForm>, string]>)("refuses %j", (patch, problem) => {
     expect(formProblems(form(patch), LIMITS)).toEqual([problem]);
@@ -315,48 +368,54 @@ describe("the sentences", () => {
     expect(trackName({ title: "Dub", mix_name: null })).toBe("Dub");
     expect(artistsText({ artists: ["A", "B"], remixers: [] })).toBe("A, B");
     expect(artistsText({ artists: ["A"], remixers: ["C"] })).toBe("A (remixed by C)");
-    expect(sourcesText(first!.sources)).toBe("Chart “Mara's September” by Mara Veil");
+    expect(sourcesText(first!.sources)).toBe("On a chart by Mara Veil: “Mara's September”");
     const release = HIDDEN.rows.flatMap((row) => row.sources).find(
       (source) => source.source_type === "label_release",
     )!;
-    expect(sourceText(release)).toBe(`${release.matched_on}: “${release.source_name}”`);
+    expect(sourceText(release)).toBe(`New on ${release.matched_on}: “${release.source_name}”`);
     expect(sourceText({ ...release, source_name: null })).toBe(`New on ${release.matched_on}`);
     expect(
       sourceText({ ...first!.sources[0]!, source_name: null }),
-    ).toBe("A chart by Mara Veil");
+    ).toBe("On a chart by Mara Veil");
   });
 
-  it("counts owned tracks hidden (DEC-092)", () => {
-    expect(hiddenLine(HIDDEN.hidden)).toBe("2 owned tracks hidden");
-    expect(hiddenLine(1)).toBe("1 owned track hidden");
-    expect(hiddenLine(0)).toBe("");
+  it("titles a search by its date, and counts what it found on one line (DSC-2, DSC-6)", () => {
+    expect(searchTitle(FINISHED.started_at)).toMatch(/^Search of /);
+    expect(searchTitle(FINISHED.started_at)).not.toMatch(/run/i);
+    expect(foundLine(40, 12, true)).toBe("40 found · 12 already in your library (hidden)");
+    expect(foundLine(40, 12, false)).toBe("40 found · 12 already in your library");
+    expect(foundLine(40, 0, true)).toBe("40 found");
+    expect(foundLine(1, 1, true)).toBe("1 found · 1 already in your library (hidden)");
   });
 
   it("says what a push, a resolve and a discovery did, from their results", () => {
     expect(pushOutcome(fixture.playlist_result as BeatportPlaylistResult)).toBe(
-      "Added 2 tracks to “Friday finds” on Beatport. 1 track you own was left out.",
+      "Made “Friday finds” on Beatport with 2 tracks. 1 track already in your library was left out.",
     );
     expect(pushOutcome(fixture.playlist_refused as BeatportPlaylistResult)).toBe(
-      "The push stopped because Beatport refused the token for this, before “Friday” was made.",
+      "Making the playlist stopped because Beatport refused the token for this, before “Friday” was made.",
     );
     expect(
       pushOutcome({ ...(fixture.playlist_result as BeatportPlaylistResult), outcome: "cancelled" }),
-    ).toMatch(/^The push stopped when asked, after adding 2 tracks/);
+    ).toMatch(/^Making the playlist stopped when asked, after adding 2 tracks/);
     expect(resolveOutcome(fixture.resolve_result as BeatportResolveResult)).toBe(
-      "Read 2 tracks from Beatport.",
+      "Looked up 2 tracks on Beatport.",
     );
     expect(discoveryEnded(fixture.discovery_result as DiscoveryRunResult)).toBe(
-      "Discovery found 7 tracks from 3 charts and 2 releases.",
+      "The search found 7 tracks from 3 charts and 2 releases.",
     );
     expect(stoppedBecause(null)).toBe("of an error");
   });
 
   it("words a busy refusal for a person, and every other as CuePoint did", () => {
     expect(refusalText(fixture.refusal_busy.refusal as DiscoverRefusal)).toBe(
-      "A discovery run is already running. It is in the list of runs.",
+      "A search is already running. It is in the Results tab.",
     );
-    expect(refusalText(refusal("DISCOVER_BUSY", { job_type: "beatport_playlist" }))).toMatch(
-      /^A push to Beatport is already running/,
+    expect(refusalText(refusal("DISCOVER_BUSY", { job_type: "beatport_playlist" }))).toBe(
+      "A Beatport playlist is already being made. Try again when it has finished.",
+    );
+    expect(refusalText(refusal("DISCOVER_BUSY", { job_type: "beatport_resolve" }))).toBe(
+      "Tracks are already being looked up on Beatport.",
     );
     expect(refusalText(refusal("DISCOVER_BUSY", { job_type: "something" }))).toMatch(
       /^Another Discover task is running/,
@@ -366,11 +425,18 @@ describe("the sentences", () => {
     );
   });
 
-  it("offers a resolve for the tracks the engine counted", () => {
-    expect(resolvePrompt(OPTIONS.resolve.to_read)).toMatch(
-      /^2 matched tracks have not been read from Beatport yet\./,
+  it("offers a lookup for the tracks the engine counted, in plain words (DSC-4)", () => {
+    expect(resolvePrompt(OPTIONS.resolve.to_read)).toBe(
+      "2 of your matched tracks still need their Beatport artist and label looked up. " +
+        "This makes artist pages and searches more accurate.",
     );
-    expect(resolvePrompt(1)).toMatch(/^1 matched track has not been read/);
+    expect(resolvePrompt(1)).toMatch(/^1 of your matched tracks still needs their Beatport/);
+    expect(lookingUpLine(2)).toBe("Looking up 2 tracks on Beatport…");
+    expect(lookingUpLine(1)).toBe("Looking up 1 track on Beatport…");
+    expect(lookingUpLine(0)).toBe("Looking up tracks on Beatport…");
+    for (const words of [resolvePrompt(2), lookingUpLine(2)]) {
+      expect(words).not.toMatch(/\bid\b|resolve|identit/i);
+    }
   });
 });
 
@@ -392,8 +458,8 @@ describe("the columns", () => {
       "BPM",
       "Key",
       "Genre",
-      "Found in",
-      "Owned",
+      "Why it's here",
+      "In your library",
       "Wantlist",
     ]);
   });
@@ -405,11 +471,12 @@ describe("the columns", () => {
     expect(cell("bpm")).toBe("124.0");
     expect(cell("owned")).toBe("");
     expect(cell("on_wantlist")).toBe("");
+    expect(RUN_COLUMNS.find((c) => c.id === "owned")!.header).toBe("In your library");
     const all = fixture.run_tracks_all.value as unknown as DiscoverRunTracksPage;
     const owned = all.rows.find((r) => r.owned)!;
     const wanted = all.rows.find((r) => r.on_wantlist)!;
-    expect(RUN_COLUMNS.find((c) => c.id === "owned")!.render(owned)).toBe("Owned");
-    expect(RUN_COLUMNS.find((c) => c.id === "on_wantlist")!.render(wanted)).toBe("Wanted");
+    expect(RUN_COLUMNS.find((c) => c.id === "owned")!.render(owned)).toBe("In your library");
+    expect(RUN_COLUMNS.find((c) => c.id === "on_wantlist")!.render(wanted)).toBe("On wantlist");
   });
 
   it("draws the wantlist's note and marks", () => {
@@ -419,5 +486,39 @@ describe("the columns", () => {
     );
     const bought = WANTED.rows.find((row) => row.bought_at)!;
     expect(WANTLIST_COLUMNS.find((c) => c.id === "bought")!.render(bought)).not.toBe("");
+  });
+});
+
+describe("Beatport's key as the Camelot code the wheel lights (DEC-201)", () => {
+  it.each([
+    ["Am", "8A"],
+    ["C", "8B"],
+    ["F#m", "11A"],
+    ["Gb", "2B"],
+    ["Ebm", "2A"],
+    ["Bbm", "3A"],
+    ["G#m", "1A"],
+    ["B", "1B"],
+    ["A Minor", "8A"],
+    ["F# Major", "2B"],
+    ["Eb Minor", "2A"],
+    ["8A", "8A"],
+    ["12b", "12B"],
+    ["  9A ", "9A"],
+  ])("reads %s as %s", (text, camelot) => {
+    expect(camelotOf(text)).toBe(camelot);
+  });
+
+  it.each([null, undefined, "", "  ", "H", "13A", "0B", "loud", "Cmaj7"])(
+    "reads %j as no key",
+    (text) => {
+      expect(camelotOf(text)).toBeNull();
+    },
+  );
+
+  it("draws a row's key as Camelot, and the wheel is told the same code", () => {
+    const row = { ...HIDDEN.rows[0]!, key: "Am" };
+    expect(RUN_COLUMNS.find((c) => c.id === "key")!.render(row)).toBe("8A");
+    expect(RUN_COLUMNS.find((c) => c.id === "key")!.render({ ...row, key: null })).toBe("");
   });
 });

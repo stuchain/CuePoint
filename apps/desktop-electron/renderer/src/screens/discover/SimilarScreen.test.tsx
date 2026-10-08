@@ -21,12 +21,13 @@ import type {
 import { ToastProvider } from "../../components";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
+import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
 import { toQueueItem } from "../library/useLibraryPlayback";
 import { SimilarScreen, SIMILAR_LIMIT } from "./SimilarScreen";
 import { SIMILAR_ROUTE, entityPath, similarPath } from "./discoverLinks";
 import { consideredLine } from "./entityFormat";
 import { reasonsText } from "./similarColumns";
-import { describeUnused } from "./similarReasons";
+import { describeUnused, matchBand } from "./similarReasons";
 import pages from "./discoverPages.fixture.json";
 
 const LOADED = { timeout: 3000 };
@@ -138,6 +139,7 @@ afterAll(() => {
 
 beforeEach(() => {
   localStorage.clear();
+  setSelectedTrack(null);
   install();
 });
 
@@ -156,7 +158,7 @@ describe("the seed and its suggestions", () => {
     }
   });
 
-  it("draws the suggestions best first, each with its score and its reasons in words", async () => {
+  it("draws the suggestions best first, each with its match and its reasons in words", async () => {
     renderAt(similarPath(1));
     await listed();
     const rows = [...table().querySelectorAll('.track-table__row [data-column="title"]')].map(
@@ -166,8 +168,29 @@ describe("the seed and its suggestions", () => {
     const [best] = SIMILAR.value!.suggestions;
     const first = rowOf(TITLES[0]);
     expect(first).toHaveTextContent(reasonsText(best.reasons));
-    expect(first).toHaveTextContent(String(best.score));
-    expect(first).toHaveTextContent("One step on the wheel: 8A → 9A");
+    expect(first).toHaveTextContent("Strong");
+    expect(first).toHaveTextContent("Mixes well (next key): 8A → 9A");
+    // The number is in the tooltip, not a bare column of figures (DSC-10).
+    expect(within(first).getByText(matchBand(best.score))).toHaveAttribute(
+      "title",
+      `Score ${best.score} out of 100`,
+    );
+    expect(first).not.toHaveTextContent(String(best.score));
+  });
+
+  it("names the match column Match, and says what the list is", async () => {
+    renderAt(similarPath(1));
+    await listed();
+    const headers = [...table().querySelectorAll('[role="columnheader"]')].map(
+      (cell) => cell.textContent,
+    );
+    expect(headers).toContain("Match");
+    expect(headers).not.toContain("Score");
+    expect(
+      screen.getByText("Tracks from your library that would mix well after this one."),
+    ).toBeInTheDocument();
+    const bands = SIMILAR.value!.suggestions.map((entry) => matchBand(entry.score));
+    expect(bands).toEqual(["Strong", "Strong", "Good", "Some", "Some"]);
   });
 
   it("says what the seed is and what it was compared with", async () => {
@@ -302,6 +325,27 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Label page" }));
     const label = DETAILS[String(SIMILAR.value!.suggestions[0].track_id)].credits!.label!;
     expect(where()).toBe(entityPath("label", label.ref));
+  });
+});
+
+describe("the selected track (DEC-157)", () => {
+  it("is the suggestion clicked, with its key, and nothing once it is let go", async () => {
+    renderAt(similarPath(1));
+    await listed();
+    fireEvent.click(within(table()).getByText(TITLES[1]));
+    const track = DETAILS[String(SIMILAR.value!.suggestions[1].track_id)].track;
+    expect(getSelectedTrack()).toEqual({ id: track.id, key: track.effective_key });
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(getSelectedTrack()).toBeNull();
+  });
+
+  it("is let go when the page is", async () => {
+    const view = renderAt(similarPath(1));
+    await listed();
+    fireEvent.click(within(table()).getByText(TITLES[0]));
+    expect(getSelectedTrack()).not.toBeNull();
+    view.unmount();
+    expect(getSelectedTrack()).toBeNull();
   });
 });
 

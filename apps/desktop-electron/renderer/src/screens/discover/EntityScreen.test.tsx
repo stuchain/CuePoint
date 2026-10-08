@@ -28,6 +28,7 @@ import type {
 import { ToastProvider } from "../../components";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
+import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
 import { libraryOpening } from "../library/libraryLink";
 import { toQueueItem } from "../library/useLibraryPlayback";
 import { settingsFocus } from "../settingsLink";
@@ -262,6 +263,7 @@ afterAll(() => {
 
 beforeEach(() => {
   localStorage.clear();
+  setSelectedTrack(null);
   install();
 });
 
@@ -276,8 +278,8 @@ describe("a page's identity (DEC-095)", () => {
     await opened("Kiko");
     // The name as typed is replaced with the page's own reference.
     await waitFor(() => expect(where()).toBe(entityPath("artist", "name:kiko")));
-    expect(screen.getByText("Grouped by name")).toBeInTheDocument();
-    expect(screen.getByText(/does not know this artist's Beatport id/)).toBeInTheDocument();
+    expect(screen.getByText("Your tracks by this name")).toBeInTheDocument();
+    expect(screen.getByText(/has not linked this artist to Beatport yet/)).toBeInTheDocument();
     expect(screen.getByText("3 tracks in your library")).toBeInTheDocument();
     for (const title of ["Harbour Lights", "Night Bus", "Untimed"]) {
       expect(await within(yourTracks()).findByText(title, {}, LOADED)).toBeInTheDocument();
@@ -292,7 +294,7 @@ describe("a page's identity (DEC-095)", () => {
     renderAt(entityPath("artist", "name:Mara Veil"));
     await opened("Mara Veil");
     await waitFor(() => expect(where()).toBe(entityPath("artist", "bp:301001")));
-    expect(screen.getByText("Beatport artist")).toBeInTheDocument();
+    expect(screen.getByText("Linked to Beatport")).toBeInTheDocument();
     expect(screen.getByText(/Opened by name/)).toBeInTheDocument();
     expect(screen.getByText(/credited as Mara Veil/)).toBeInTheDocument();
     // The page answered for the id is not asked for again at the id's address.
@@ -303,13 +305,32 @@ describe("a page's identity (DEC-095)", () => {
   it("draws a label page in both identities", async () => {
     const view = renderAt(entityPath("label", "bp:40211"));
     await opened("Nightfall Audio");
-    expect(screen.getByText("Beatport label")).toBeInTheDocument();
+    expect(screen.getByText("Linked to Beatport")).toBeInTheDocument();
     expect(screen.getByText(/Artists:/)).toBeInTheDocument();
     view.unmount();
     renderAt(entityPath("label", "name:Cold Room"));
     await opened("Cold Room");
-    expect(screen.getByText("Grouped by name")).toBeInTheDocument();
+    expect(screen.getByText("Your tracks by this name")).toBeInTheDocument();
     expect(screen.getByText(/whose label spells this name/)).toBeInTheDocument();
+  });
+
+  it("is never titled by an id: an artist with no name anywhere is Unknown artist (DSC-9)", async () => {
+    const page = pageOf("page_artist_id");
+    mock("getEntityPage").mockResolvedValue(
+      value({ ...page, name: null, names: [], display_name: "Unknown artist" }),
+    );
+    renderAt(entityPath("artist", "bp:301001"));
+    await opened("Unknown artist");
+    expect(screen.queryByRole("heading", { level: 1, name: /301001/ })).toBeNull();
+  });
+
+  it("takes its title from the engine's display name", async () => {
+    const page = pageOf("page_artist_id");
+    mock("getEntityPage").mockResolvedValue(
+      value({ ...page, name: null, display_name: "MARA VEIL" }),
+    );
+    renderAt(entityPath("artist", "bp:301001"));
+    await opened("MARA VEIL");
   });
 
   it("links the header's related names to their pages", async () => {
@@ -350,13 +371,13 @@ describe("a page's identity (DEC-095)", () => {
 
 describe("the Beatport half, in every state", () => {
   const STANDING_IN: Array<[Fixture, string, string | null]> = [
-    ["half_no_token", "Beatport is not connected", "Open Settings"],
+    ["half_no_token", "Connect your Beatport account", "Open Settings"],
     ["half_rejected", "Beatport rejected the token", "Open Settings"],
     ["half_forbidden", "Beatport refused this token", "Open Settings"],
     ["half_rate_limited", "Beatport is limiting requests", "Try again"],
     ["half_unavailable", "Beatport cannot be reached", "Try again"],
-    ["half_not_resolved_resolvable", "Known by name only", "Resolve Beatport identities"],
-    ["half_not_resolved", "Known by name only", null],
+    ["half_not_resolved_resolvable", "Not linked to Beatport yet", "Look them up now"],
+    ["half_not_resolved", "Not linked to Beatport yet", null],
     ["half_not_on_beatport", "Not found on Beatport", null],
   ];
 
@@ -393,12 +414,10 @@ describe("the Beatport half, in every state", () => {
     expect(await beatportRows(/Beatport's releases/)).toBeInTheDocument();
   });
 
-  it("starts the resolve job for a name it could link, and reads the page again after", async () => {
+  it("starts the lookup for a name it could link, and reads the page again after", async () => {
     mock("getEntityBeatport").mockResolvedValue(pages.half_not_resolved_resolvable);
     renderAt(entityPath("artist", "name:Kiko"));
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Resolve Beatport identities" }, LOADED),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Look them up now" }, LOADED));
     await waitFor(() => expect(mock("startBeatportResolve")).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mock("getEntityPage")).toHaveBeenCalledTimes(2), LOADED);
   });
@@ -414,24 +433,101 @@ describe("the Beatport half, in every state", () => {
     expect(where()).toBe(entityPath("artist", pageOf("page_artist_shared").links[0].ref));
   });
 
-  it("shows Beatport's releases, each marked owned, and hides the owned when asked", async () => {
+  it("hides the tracks already in your library until asked, with the one switch Results has (DSC-6)", async () => {
     renderAt(entityPath("label", "bp:40211"));
     const table = await beatportRows(/Beatport's releases/);
+    const hide = screen.getByRole("checkbox", { name: "Hide tracks already in your library" });
+    expect(hide).toBeChecked();
+    expect(mock("getEntityBeatport")).toHaveBeenCalledWith(
+      expect.objectContaining({ owned: "hide" }),
+    );
+    expect(await within(table).findByText("Track 9 (Original Mix)", {}, LOADED)).toBeInTheDocument();
+    expect(within(table).queryByText("Track 7 (Original Mix)")).toBeNull();
+    expect(
+      screen.getByText(/3 tracks released since .* · 2 already in your library \(hidden\)/),
+    ).toBeInTheDocument();
+
+    fireEvent.click(hide);
+    await waitFor(() =>
+      expect(mock("getEntityBeatport")).toHaveBeenLastCalledWith(
+        expect.objectContaining({ owned: "all" }),
+      ),
+    );
     for (const title of ["Track 7 (Original Mix)", "Track 8 (Original Mix)", "Track 9 (Original Mix)"]) {
       expect(await within(table).findByText(title, {}, LOADED)).toBeInTheDocument();
     }
-    expect(rowOf("Track 7 (Original Mix)")).toHaveTextContent("Owned");
-    expect(rowOf("Track 8 (Original Mix)")).toHaveTextContent("Owned");
-    expect(rowOf("Track 9 (Original Mix)")).not.toHaveTextContent("Owned");
-    expect(screen.getByText(/3 tracks released since .*, 2 owned\./)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Hide tracks you own" }));
+    expect(rowOf("Track 7 (Original Mix)")).toHaveTextContent("In your library");
+    expect(rowOf("Track 8 (Original Mix)")).toHaveTextContent("In your library");
+    expect(rowOf("Track 9 (Original Mix)")).not.toHaveTextContent("In your library");
+    expect(screen.getByText(/3 tracks released since .* · 2 already in your library$/)).toBeInTheDocument();
+  });
+
+  it("explains what 'in your library' means, once", async () => {
+    renderAt(entityPath("label", "bp:40211"));
+    await beatportRows(/Beatport's releases/);
+    const hide = screen.getByRole("checkbox", { name: "Hide tracks already in your library" });
+    expect(hide.closest("label")).toHaveAttribute(
+      "title",
+      "Tracks you've matched on the Clean page. Match more tracks there to hide more of what you already have.",
+    );
+  });
+
+  it("offers Check Beatport again, and says a saved listing is saved", async () => {
+    mock("getEntityBeatport").mockResolvedValue({
+      value: { ...halfOf("half_label_ok"), from_cache: true },
+      refusal: null,
+    });
+    renderAt(entityPath("label", "bp:40211"));
+    await beatportRows(/Beatport's releases/);
+    expect(
+      screen.getByText("Saved earlier from Beatport. Check Beatport again for the latest."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Read again" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Check Beatport again" }));
     await waitFor(() =>
       expect(mock("getEntityBeatport")).toHaveBeenLastCalledWith(
-        expect.objectContaining({ owned: "hide" }),
+        expect.objectContaining({ refresh: true }),
       ),
     );
-    await waitFor(() => expect(within(table).queryByText("Track 7 (Original Mix)")).toBeNull());
-    expect(within(table).getByText("Track 9 (Original Mix)")).toBeInTheDocument();
+  });
+
+  it("sets the selected track from a Beatport row, with its key as Camelot, and lets go", async () => {
+    const half = halfOf("half_label_ok");
+    const keyed = {
+      ...half,
+      page: { ...half.page!, rows: half.page!.rows.map((row) => ({ ...row, key: "Am" })) },
+    };
+    mock("getEntityBeatport").mockResolvedValue({ value: keyed, refusal: null });
+    renderAt(entityPath("label", "bp:40211"));
+    const table = await beatportRows(/Beatport's releases/);
+    const cell = await within(table).findByText("Track 9 (Original Mix)", {}, LOADED);
+    fireEvent.mouseDown(cell);
+    fireEvent.click(cell);
+    expect(getSelectedTrack()).toEqual({ id: "bp-9", key: "8A" });
+    const actions = screen.getByRole("toolbar", { name: /Beatport's releases by this label: actions/ });
+    fireEvent.click(within(actions).getByRole("button", { name: "Clear" }));
+    expect(getSelectedTrack()).toBeNull();
+  });
+
+  it("sets the selected track to a library row's key, and to nothing for a keyless one", async () => {
+    renderAt(entityPath("artist", "bp:301001"));
+    await opened("Mara Veil");
+    fireEvent.click(await within(yourTracks()).findByText("Low Tide", {}, LOADED));
+    const row = (pages.library_artist_id.tracks as unknown as LibraryTrackRow[]).find(
+      (track) => track.title === "Low Tide",
+    )!;
+    await waitFor(() =>
+      expect(getSelectedTrack()).toEqual({ id: row.id, key: row.effective_key ?? null }),
+    );
+  });
+
+  it("links the artist and label names in its table to their pages (FLW-16)", async () => {
+    renderAt(entityPath("label", "bp:40211"));
+    const table = await beatportRows(/Beatport's releases/);
+    await within(table).findByText("Track 9 (Original Mix)", {}, LOADED);
+    const row = rowOf("Track 9 (Original Mix)");
+    fireEvent.click(within(row).getByRole("button", { name: "Mara Veil" }));
+    expect(where()).toBe(entityPath("artist", "name:Mara Veil"));
   });
 
   it("says a label was found by name on Beatport", async () => {
@@ -458,21 +554,22 @@ describe("the Beatport half, in every state", () => {
     );
   });
 
-  it("pushes every track it shows, with the engine's default name, and says how it went", async () => {
+  it("makes a playlist of every track it shows, with the engine's default name, and says how it went", async () => {
     renderAt(entityPath("label", "bp:40211"));
     await beatportRows(/Beatport's releases/);
     const actions = screen.getByRole("toolbar", { name: /Beatport's releases by this label: actions/ });
-    fireEvent.click(within(actions).getByRole("button", { name: "Push to Beatport playlist…" }));
+    fireEvent.click(within(actions).getByRole("button", { name: "Make a Beatport playlist…" }));
     const dialog = await screen.findByRole("dialog", {}, LOADED);
     expect(mock("getDiscoverOptions")).toHaveBeenCalledTimes(1);
     const name = within(dialog).getByRole("textbox") as HTMLInputElement;
     expect(name.value).toBe(discover.options_ok.value.defaults.playlist_name);
-    fireEvent.click(within(dialog).getByRole("button", { name: /^Push/ }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Make playlist" }));
+    // The table hides what is in the library, so the playlist is what it shows.
     await waitFor(() =>
       expect(mock("startBeatportPlaylistPush")).toHaveBeenCalledWith({
         name: discover.options_ok.value.defaults.playlist_name,
         include_owned: false,
-        track_ids: [7, 8, 9],
+        track_ids: [9],
       }),
     );
     const banner = await screen.findByRole("status", { name: "Beatport playlist" }, LOADED);

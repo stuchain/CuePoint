@@ -22,10 +22,12 @@ from cuepoint.engine import beatport_resolve_jobs as jobs
 from cuepoint.engine.beatport_resolve_jobs import (
     JOB_TYPE_BEATPORT_RESOLVE,
     PROGRESS_MESSAGE,
+    resolve_after_matches,
     start_beatport_resolve_job,
 )
 from cuepoint.engine.jobs import JobState, JobStore, JobTypeBusyError
 from cuepoint.engine.library_jobs import JOB_TYPE_LIBRARY_IMPORT
+from cuepoint.engine.match_jobs import JOB_TYPE_CLEAN_MATCH
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError, DatabaseError
 from cuepoint.services import database_service as database_service_module
 from cuepoint.services.beatport_api import BeatportApi
@@ -289,10 +291,91 @@ class TestWhatWaitsForWhat:
         assert job.state == JobState.SUCCEEDED
 
 
-class TestNothingStartsItButAPerson:
+def resolves(store: JobStore) -> list:
+    return [j for j in store.list_all() if j.type == JOB_TYPE_BEATPORT_RESOLVE]
+
+
+def match_ends(store: JobStore, runner=lambda _job: None) -> None:
+    """A Clean match that runs ``runner`` and has ended when this returns."""
+    job = store.create_job(job_type=JOB_TYPE_CLEAN_MATCH, runner=runner)
+    wait_until(
+        lambda: store.get(job.id).state in TERMINAL, f"the match {job.id} to end"
+    )
+
+
+class TestAfterAMatch:
+    """DSC-4 (PAGES-08): a finished match with a token looks the tracks up."""
+
+    def test_a_finished_match_with_a_token_starts_one_resolve(self, store, owned):
+        use_beatport(FakeBeatport(set(owned)))
+        resolve_after_matches(store)
+        match_ends(store)
+        wait_until(lambda: len(resolves(store)) == 1, "the resolve to start")
+        job = finished(store, resolves(store)[0])
+        assert job.state == JobState.SUCCEEDED
+        assert job.result["resolved"] == 250
+
+    def test_without_a_token_nothing_starts(self, store, owned):
+        use_beatport(BeatportApiClient("https://api.beatport.com/v4", ""))
+        resolve_after_matches(store)
+        match_ends(store)
+        wait_until_settled(store, "the match")
+        assert resolves(store) == []
+
+    def test_a_match_that_failed_or_was_stopped_starts_none(self, store, owned):
+        use_beatport(FakeBeatport(set(owned)))
+        resolve_after_matches(store)
+
+        def fails(_job):
+            raise RuntimeError("boom")
+
+        match_ends(store, fails)
+        wait_until_settled(store, "the failed match")
+        assert resolves(store) == []
+
+    def test_nothing_to_read_starts_none(self, store, library_db):
+        use_beatport(FakeBeatport(set()))
+        resolve_after_matches(store)
+        match_ends(store)
+        wait_until_settled(store, "the match")
+        assert resolves(store) == []
+
+    def test_other_jobs_ending_start_none(self, store, owned):
+        use_beatport(FakeBeatport(set(owned)))
+        resolve_after_matches(store)
+        done = store.create_job(job_type="file_check", runner=lambda _job: None)
+        wait_until(lambda: store.get(done.id).state in TERMINAL, "the job to end")
+        wait_until_settled(store, "the job")
+        assert resolves(store) == []
+
+    def test_never_two_at_once(self, store, owned):
+        beatport = GatedBeatport(set(owned))
+        use_beatport(beatport)
+        resolve_after_matches(store)
+        match_ends(store)
+        assert beatport.waiting.wait(30)
+        # A resolve is running; two more matches end beside it.
+        match_ends(store)
+        match_ends(store)
+        assert len(resolves(store)) == 1
+        beatport.release.set()
+        wait_until_settled(store, "the resolve")
+        assert len(resolves(store)) == 1
+
+    def test_registering_twice_does_not_double_it(self, store, owned):
+        use_beatport(FakeBeatport(set(owned)))
+        resolve_after_matches(store)
+        resolve_after_matches(store)
+        match_ends(store)
+        wait_until_settled(store, "the resolve")
+        assert len(resolves(store)) == 1
+
+
+class TestNothingStartsItButAPersonOrAMatch:
     def test_no_module_starts_it(self):
-        """DEC-095: never at engine start, never by browsing. DISCOVER-09's
-        ``resolve/start`` route is its one caller."""
+        """DEC-095, amended by DSC-4: never at engine start, never by browsing.
+        DISCOVER-09's ``resolve/start`` route starts it when asked, and this
+        module starts it after a Clean match, which is a person's own work."""
         package = Path(jobs.__file__).resolve().parents[1]
         callers = sorted(
             path.relative_to(package).as_posix()

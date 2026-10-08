@@ -329,14 +329,14 @@ describe("Suggestions", () => {
       [
         "Bridge Deep · score 69.8",
         "With the one before: Close tempo: 124 → 125 · Same key: 8A · Same genre: House",
-        "With the one after: Close tempo: 126 → 125 · One step on the wheel: 9A → 8A · Same genre: House",
+        "With the one after: Close tempo: 126 → 125 · Mixes well (next key): 9A → 8A · Same genre: House",
         "Already in this Set once: inserting it plays it again",
       ].join("\n"),
     );
     const previous = first.querySelector('[data-column="before"]')!;
     const next = first.querySelector('[data-column="after"]')!;
     expect(previous.textContent).toMatch(/Same key: 8A/);
-    expect(next.textContent).toMatch(/One step on the wheel: 9A → 8A/);
+    expect(next.textContent).toMatch(/Mixes well \(next key\): 9A → 8A/);
   });
 
   it("marks a track already in the Set, and not one that is not", async () => {

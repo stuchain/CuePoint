@@ -5,7 +5,8 @@
  * (DEC-041), with the pieces every Discover table shares: a selection by
  * Beatport id, the actions for it drawn once as buttons and once as the
  * right-click menu, and a column picker whose layout is remembered per table
- * (DEC-042).
+ * (DEC-042). The buttons are always there (DEC-209): one that needs rows says
+ * why it waits, in a Hint, until some are selected.
  *
  * **Double-click does nothing, on purpose.** The player plays library files
  * (DEC-097), and a Beatport row has none; a double-click that did something
@@ -14,6 +15,7 @@
 import { useState, type ReactNode } from "react";
 
 import { Button } from "../../components/Button";
+import { Hint } from "../../components/Hint";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
 import {
   ColumnPicker,
@@ -68,6 +70,34 @@ export function BeatportTable<Row>({
   const [picking, setPicking] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 
+  /**
+   * The keyboard's way through the rows: the table is the one tab stop and the
+   * last clicked row is the active one. Up and Down move it (Shift extends),
+   * Enter or Space selects it (Ctrl or Cmd with Space adds or removes it). A
+   * key pressed on a name link inside a row is the link's, not the table's.
+   */
+  const onRowKeys = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).getAttribute("role") !== "table") return;
+    const total = source.total;
+    if (total === 0) return;
+    const active = selection.anchor;
+    let to: number | null = null;
+    if (event.key === "ArrowDown") to = active === null ? 0 : Math.min(active + 1, total - 1);
+    else if (event.key === "ArrowUp") to = active === null ? 0 : Math.max(active - 1, 0);
+    else if ((event.key === "Enter" || event.key === " ") && active !== null) to = active;
+    if (to === null) return;
+    const row = source.getRow(to);
+    event.preventDefault();
+    if (!row) return;
+    const arrow = event.key.startsWith("Arrow");
+    // An arrow without Shift moves the selection; Shift extends; Space with
+    // Ctrl toggles the active row; Enter and plain Space select it alone.
+    const modifiers = arrow
+      ? { shiftKey: event.shiftKey, ctrlKey: false, metaKey: false }
+      : { shiftKey: false, ctrlKey: event.ctrlKey && event.key === " ", metaKey: event.metaKey && event.key === " " };
+    selection.onRowClick(row, to, modifiers);
+  };
+
   const run = (id: BeatportActionId) => {
     setMenu(null);
     onAction(id);
@@ -75,7 +105,7 @@ export function BeatportTable<Row>({
 
   return (
     <div className="discover-table">
-      <div className="discover-table__rows">
+      <div className="discover-table__rows" onKeyDown={onRowKeys}>
         <TrackTable<Row>
           columns={layout.visible}
           source={source}
@@ -92,6 +122,7 @@ export function BeatportTable<Row>({
             setMenu(anchor);
           }}
           activeIndex={selection.anchor}
+          scrollToIndex={selection.anchor}
           emptyState={emptyState}
           resetKey={resetKey}
           ariaLabel={label}
@@ -105,15 +136,18 @@ export function BeatportTable<Row>({
             : summary}
         </span>
         {actions.map((action) => (
-          <Button
-            key={action.id}
-            variant="secondary"
-            disabled={action.disabled || busy}
-            title={action.reason ?? undefined}
-            onClick={() => run(action.id)}
-          >
-            {action.label}
-          </Button>
+          <span key={action.id} className="discover-table__action">
+            <Hint text={action.reason ?? undefined}>
+              <Button
+                variant="secondary"
+                disabled={action.disabled || busy}
+                onClick={() => run(action.id)}
+              >
+                {action.label}
+              </Button>
+            </Hint>
+            {action.note && <span className="discover-note">{action.note}</span>}
+          </span>
         ))}
         {selection.count > 0 && (
           <Button variant="secondary" onClick={selection.clear}>

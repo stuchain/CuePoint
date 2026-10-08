@@ -1,26 +1,26 @@
 /**
- * Discover's Runs tab (DISCOVER-10, DEC-091).
+ * Discover's Results tab (DISCOVER-10, DEC-091, FLW-15).
  *
- * The runs kept, beside either the one open or the New run panel. A run
- * started here is a job: the status strip follows it, and it appears in the
- * list as soon as the engine begins it, opened, with its tracks arriving while
- * it runs. The list is asked again while anything in it is running, which is
- * the only thing here that polls — and it stops the moment nothing is.
+ * The past searches on the left, the chosen one's tracks on the right; the
+ * newest is chosen when none is. With none yet it says so and leads to New
+ * search. A search started on the New search tab is a job: the status strip
+ * follows it, and it appears in the list as soon as the engine begins it,
+ * opened, with its tracks arriving while it runs. The list is asked again while
+ * anything in it is running, which is the only thing here that polls — and it
+ * stops the moment nothing is.
+ *
+ * **Deleting a search lives on its row**, so the confirmation is here, beside
+ * the list, and the search's own page has no delete of its own.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type {
-  DiscoverRefusal,
-  DiscoverRun,
-  DiscoverRunRequest,
-} from "../../api/cuepointBridge.types";
+import type { DiscoverRun } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Modal } from "../../components/Modal";
 import { JOB_POLL_MS } from "../../components/shell/useActiveJob";
-import { NewRunPanel } from "./NewRunPanel";
 import { RunDetail } from "./RunDetail";
 import { RunList } from "./RunList";
 import { useNarrow } from "./useNarrow";
-import { beatportUsable, unusableReason } from "./beatportState";
 import { refusalText } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -40,8 +40,9 @@ interface RunsViewProps {
   runningJobId: string | null;
   /** Changes when a discovery job ends, so the list and the run are read again. */
   runsVersion: number;
-  startRun: (request: DiscoverRunRequest) => Promise<DiscoverRefusal | null>;
-  /** How often to ask while a run runs; the status strip's interval by default. */
+  /** Opens the New search tab, from "No searches yet". */
+  onNewSearch: () => void;
+  /** How often to ask while a search runs; the status strip's interval by default. */
   pollMs?: number;
 }
 
@@ -49,13 +50,15 @@ export function RunsView({
   tools,
   runningJobId,
   runsVersion,
-  startRun,
+  onNewSearch,
   pollMs = JOB_POLL_MS,
 }: RunsViewProps) {
   const [runs, setRuns] = useState<DiscoverRun[] | null>(null);
   const [total, setTotal] = useState(0);
   const [listError, setListError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<number | "new" | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<DiscoverRun | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
   const [detailVersion, setDetailVersion] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   // The job a start here began, until its run is in the list to open.
@@ -83,18 +86,16 @@ export function RunsView({
       setRuns(listed);
       setTotal(answer.value.total);
       setListError(null);
-      // A run open beside the list that is running, or has just stopped, has
+      // A search open beside the list that is running, or has just stopped, has
       // new tracks and a new header.
       const current = selectedRef.current;
       const running = new Set(listed.filter((run) => run.running).map((run) => run.id));
-      if (typeof current === "number" && (running.has(current) || wasRunning.current.has(current))) {
+      if (current !== null && (running.has(current) || wasRunning.current.has(current))) {
         setDetailVersion((value) => value + 1);
       }
       wasRunning.current = running;
-      setSelected((previous) => {
-        if (previous !== null) return previous;
-        return listed[0]?.id ?? "new";
-      });
+      // The newest search is chosen when none is.
+      setSelected((previous) => previous ?? listed[0]?.id ?? null);
     } catch (cause) {
       reportUnexpected(cause);
       setListError(cause instanceof Error ? cause.message : String(cause));
@@ -106,7 +107,7 @@ export function RunsView({
     void load();
   }, [load]);
 
-  // A discovery that ended: the list, and the run if it is open, again.
+  // A search that ended: the list, and the search if it is open, again.
   useEffect(() => {
     if (runsVersion === 0) return;
     // A job that ended without making a run — refused as it began — leaves
@@ -123,7 +124,7 @@ export function RunsView({
     return () => window.clearInterval(timer);
   }, [active, load, pollMs]);
 
-  // The run a start began, opened as soon as the engine has made it.
+  // The search a start began, opened as soon as the engine has made it.
   useEffect(() => {
     if (!awaiting || !runs) return;
     const started = runs.find((run) => run.job_id === awaiting);
@@ -131,19 +132,6 @@ export function RunsView({
     setAwaiting(null);
     setSelected(started.id);
   }, [awaiting, runs]);
-
-  const start = async (request: DiscoverRunRequest) => {
-    const refused = await startRun(request);
-    if (refused?.code === "DISCOVER_BUSY" && refused.job_id) {
-      // One is already running: open it, if the list has it.
-      setAwaiting(refused.job_id);
-      void load();
-      return refused;
-    }
-    if (refused) return refused;
-    void load();
-    return null;
-  };
 
   // The page learns the job's id from the start; the run it makes follows.
   useEffect(() => {
@@ -157,7 +145,7 @@ export function RunsView({
     setLoadingMore(false);
   };
 
-  // The newest run left opens in its place, once the list has been read again.
+  // The newest search left opens in its place, once the list has been read again.
   const afterRemoval = useCallback(
     (removed: number | null) => {
       setRuns((previous) => (previous ?? []).filter((run) => run.id !== removed));
@@ -167,15 +155,57 @@ export function RunsView({
     [load],
   );
   const onGone = useCallback(() => {
-    const current = selectedRef.current;
-    afterRemoval(typeof current === "number" ? current : null);
+    afterRemoval(selectedRef.current);
   }, [afterRemoval]);
 
+  const remove = async () => {
+    const target = deleting;
+    const bridge = window.cuepoint?.deleteDiscoveryRun;
+    if (!target || !bridge) return;
+    setDeletePending(true);
+    try {
+      const answer = await bridge({ run_id: target.id });
+      if (answer.refusal) {
+        tools.notify(refusalText(answer.refusal), "warning");
+      } else {
+        tools.notify("Deleted the search. Tracks on your wantlist stay there.", "success");
+        afterRemoval(target.id);
+      }
+    } catch (cause) {
+      reportUnexpected(cause);
+      tools.notify(cause instanceof Error ? cause.message : String(cause), "warning");
+    } finally {
+      setDeletePending(false);
+      setDeleting(null);
+    }
+  };
+
   if (runs === null) {
-    return <p className="discover-note discover-runs-view__waiting">Reading your runs…</p>;
+    return <p className="discover-note discover-runs-view__waiting">Reading your searches…</p>;
   }
 
-  const usable = beatportUsable(tools.beatportState);
+  // A search just started is on its way to the list: not "none yet".
+  const starting = awaiting !== null || runningJobId !== null;
+  if (runs.length === 0 && !starting) {
+    return (
+      <div className="discover-empty">
+        {listError && (
+          <div className="discover-note discover-note--warning" role="alert">
+            <p>{listError}</p>
+            <Button variant="secondary" onClick={() => void load()}>
+              Try again
+            </Button>
+          </div>
+        )}
+        <p className="discover-empty__headline">No searches yet</p>
+        <p className="discover-note">
+          Choose genres, artists or labels, and CuePoint looks for what is new from your artists
+          and labels. What it finds appears here.
+        </p>
+        <Button onClick={onNewSearch}>New search</Button>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -197,32 +227,41 @@ export function RunsView({
           genres={tools.options.genres}
           selected={selected}
           onSelect={setSelected}
+          onDelete={setDeleting}
           onShowMore={() => void showMore()}
           loadingMore={loadingMore}
         />
       </div>
       <div className="discover-runs-view__detail">
         {selected === null ? (
-          <p className="discover-note">Reading your runs…</p>
-        ) : selected === "new" ? (
-          <NewRunPanel
-            options={tools.options}
-            usable={usable}
-            unusableReason={unusableReason(tools.beatportState)}
-            busy={active}
-            onStart={start}
-          />
+          <p className="discover-note">Reading your searches…</p>
         ) : (
           <RunDetail
             key={selected}
             runId={selected}
             tools={tools}
             version={detailVersion}
-            onDeleted={(id) => afterRemoval(id)}
             onGone={onGone}
           />
         )}
       </div>
+
+      <Modal
+        open={deleting !== null}
+        title="Delete this search?"
+        onClose={() => setDeleting(null)}
+        secondaryAction={{ label: "Keep it", onClick: () => setDeleting(null) }}
+        primaryAction={{
+          label: "Delete search",
+          onClick: () => void remove(),
+          loading: deletePending,
+        }}
+      >
+        <p className="discover-dialog__text">
+          The search and the list of what it found go. Tracks you added to your wantlist from it
+          stay there.
+        </p>
+      </Modal>
     </div>
   );
 }

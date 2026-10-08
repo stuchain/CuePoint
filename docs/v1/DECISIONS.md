@@ -3143,6 +3143,12 @@ the signal that grouped something.
 
 **Decided with**: User · **Date**: 2026-09-21
 
+**Amendment** (2026-10-08, PAGES-08, DSC-4): "never started by browsing" stands, and the job is still
+explicit and cancellable, but the engine now also starts it on its own after a Clean match finishes
+successfully, when a Beatport token is present and tracks still need looking up. With no token, or one
+already queued or running, nothing starts. The Discover page says it is happening and offers "Look them up
+now" otherwise.
+
 ---
 
 ## DEC-096 — Similar Tracks Are Local, Deterministic and Explained

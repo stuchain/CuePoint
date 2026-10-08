@@ -584,7 +584,7 @@
       "found_by_name": false,
       "from_cache": false,
       "kind": "artist",
-      "message": "CuePoint knows this artist only by name. Resolving 1 matched track will find them on Beatport",
+      "message": "CuePoint knows this artist only by name. Looking up 1 matched track on Beatport will find them",
       "page": null,
       "reason": "not_resolved",
       "ref": "name:djeff",
@@ -1116,6 +1116,7 @@
     "refusal": null,
     "value": {
       "beatport_id": 301001,
+      "display_name": "Mara Veil",
       "identity": "beatport",
       "kind": "artist",
       "library": {
@@ -1176,6 +1177,7 @@
     "refusal": null,
     "value": {
       "beatport_id": null,
+      "display_name": "Kiko",
       "identity": "name",
       "kind": "artist",
       "library": {
@@ -1242,6 +1244,7 @@
     "refusal": null,
     "value": {
       "beatport_id": 301001,
+      "display_name": "Mara Veil",
       "identity": "beatport",
       "kind": "artist",
       "library": {
@@ -1302,6 +1305,7 @@
     "refusal": null,
     "value": {
       "beatport_id": null,
+      "display_name": "Someone",
       "identity": "name",
       "kind": "artist",
       "library": {
@@ -1373,6 +1377,7 @@
     "refusal": null,
     "value": {
       "beatport_id": 40211,
+      "display_name": "Nightfall Audio",
       "identity": "beatport",
       "kind": "label",
       "library": {
@@ -1445,6 +1450,7 @@
     "refusal": null,
     "value": {
       "beatport_id": null,
+      "display_name": "Cold Room",
       "identity": "name",
       "kind": "label",
       "library": {

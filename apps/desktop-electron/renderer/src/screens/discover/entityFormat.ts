@@ -27,11 +27,12 @@ export function kindTitle(kind: EntityKind): string {
 }
 
 /**
- * Which identity the page is (DEC-095): an id, or a group of tracks by name.
- * The page always says which, because a name can be two people.
+ * Which identity the page is (DEC-095): linked to Beatport, or a group of the
+ * library's tracks by name. The page always says which, because a name can be
+ * two people. No id is ever said aloud (DSC-9).
  */
 export function identityLabel(page: Pick<EntityPage, "kind" | "identity">): string {
-  return page.identity === "beatport" ? `Beatport ${nounOf(page.kind)}` : "Grouped by name";
+  return page.identity === "beatport" ? "Linked to Beatport" : "Your tracks by this name";
 }
 
 /** What the identity means, in a sentence. */
@@ -40,24 +41,25 @@ export function identityHint(page: Pick<EntityPage, "kind" | "identity" | "names
   if (page.identity === "name") {
     return (
       `These are your tracks whose ${page.kind === "label" ? "label spells" : "credits spell"} this ` +
-      `name, whatever the case or accents. CuePoint does not know this ${noun}'s Beatport id yet.`
+      `name, whatever the case or accents. CuePoint has not linked this ${noun} to Beatport yet.`
     );
   }
   const spellings = page.names.map((entry) => entry.name);
   if (spellings.length === 0) {
-    return `Known by its Beatport id, from your tracks matched on Beatport.`;
+    return "Linked to Beatport, from your tracks matched there.";
   }
   return (
-    `Known by its Beatport id, from your tracks matched on Beatport. It includes your other ` +
+    `Linked to Beatport, from your tracks matched there. It includes your other ` +
     `tracks credited as ${spellings.join(", ")}.`
   );
 }
 
-/** What to call a page, when neither Beatport nor the library spells it. */
-export function pageTitle(page: Pick<EntityPage, "kind" | "name" | "name_key" | "beatport_id">): string {
-  if (page.name) return page.name;
-  if (page.beatport_id !== null) return `Beatport ${nounOf(page.kind)} ${page.beatport_id}`;
-  return page.name_key ?? "";
+/**
+ * What to call a page: the engine's `display_name` (DSC-9), which is the
+ * library's most common spelling, or "Unknown artist" — never an id.
+ */
+export function pageTitle(page: Pick<EntityPage, "display_name">): string {
+  return page.display_name;
 }
 
 /** "2014–2024", "2019", or null when no track has a year. */
@@ -95,7 +97,7 @@ export const INDEX_BUILDING =
 
 /** Said above the Beatport half when a page was opened by a name now known by id. */
 export function redirectedLine(kind: EntityKind): string {
-  return `Opened by name. CuePoint has since found this ${nounOf(kind)} on Beatport, so the page is its Beatport ${nounOf(kind)}.`;
+  return `Opened by name. CuePoint has since linked this ${nounOf(kind)} to Beatport, so the page now shows the Beatport ${nounOf(kind)}.`;
 }
 
 /** The headline over a Beatport half that has no tracks to show. */
@@ -103,16 +105,16 @@ export function beatportHeadline(half: Pick<EntityBeatportHalf, "state" | "reaso
   if (half.state === "name_only") {
     if (half.reason === "shared") return `Several Beatport ${nounOf(half.kind)}s share this name`;
     if (half.reason === "not_on_beatport") return `Not found on Beatport`;
-    return "Known by name only";
+    return "Not linked to Beatport yet";
   }
   if (half.state === "ok") return "On Beatport";
   return beatportNotice(half.state)?.headline ?? "Beatport could not answer";
 }
 
-/** "Read from Beatport" or "From CuePoint's copy", with when. */
+/** Where the Beatport listing came from. */
 export function freshnessLine(half: Pick<EntityBeatportHalf, "from_cache" | "fetched_at">): string | null {
   if (!half.fetched_at) return null;
-  return half.from_cache ? "From CuePoint's copy of Beatport's listing." : "Just read from Beatport.";
+  return half.from_cache ? "Saved earlier from Beatport. Check Beatport again for the latest." : "Just read from Beatport.";
 }
 
 /** A seed's header facts: "128.0 BPM · 8A · House". */

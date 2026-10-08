@@ -2,9 +2,10 @@
  * Similar tracks' columns (DISCOVER-11, DEC-096).
  *
  * A suggestion is a library row, so it has the Library's columns, and two of
- * its own after the title: its score, and a **Reasons** column that says in
- * words why it scored — "Same key", "One step on the wheel: 8A → 9A", "Half
- * time: 128 → 64" — from DISCOVER-08's reasons, through `describeSimilarReason`.
+ * its own after the title: its **Match**, as a word (Strong, Good or Some, the
+ * number in its tooltip), and a **Reasons** column that says in words why it
+ * scored — "Same key: 8A", "Mixes well (next key): 8A → 9A", "Half the tempo:
+ * 128 → 64" — from DISCOVER-08's reasons, through `describeSimilarReason`.
  * A suggestion that says why can be discounted; one that does not can only be
  * distrusted.
  *
@@ -18,7 +19,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
 import { LIBRARY_COLUMNS } from "../library/libraryColumns";
-import { describeSimilarReason } from "./similarReasons";
+import { describeSimilarReason, matchBand, matchWords } from "./similarReasons";
 
 /** A suggestion: its library row, and what the engine said about it. */
 export type SimilarRow = LibraryTrackRow & { id: number; suggestion: SimilarTrack };
@@ -58,12 +59,16 @@ export const SIMILAR_COLUMNS: readonly TrackColumnDef<SimilarRow>[] = [
     text: (row) => reasonsText(row.suggestion.reasons),
   },
   {
+    // The id stays `score`, which a saved column layout keeps.
     id: "score",
-    header: "Score",
-    minWidthPx: 56,
-    defaultWidthPx: 64,
-    align: "right",
-    render: (row) => String(row.suggestion.score),
+    header: "Match",
+    minWidthPx: 64,
+    defaultWidthPx: 76,
+    render: (row) => {
+      const { band, detail } = matchWords(row.suggestion.score);
+      return <span title={detail}>{band}</span>;
+    },
+    text: (row) => matchBand(row.suggestion.score),
   },
   ...REST.map(unsorted),
 ];

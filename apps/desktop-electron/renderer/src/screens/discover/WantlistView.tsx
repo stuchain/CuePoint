@@ -1,11 +1,14 @@
 /**
- * The wantlist (DISCOVER-10, DEC-093).
+ * The Wantlist tab (DISCOVER-10, DEC-093, DSC-6).
  *
  * Beatport tracks a person wants and does not have yet: the same table as a
- * run's, with a note, the date each was added, and a bought mark. Bought is
- * the person's word and owned is the library's (DEC-092): a track marked bought
- * reads as owned once the file is imported and matched, and the two filters
- * are independent, so "bought, not in the library yet" is one choice of each.
+ * search's, with a note, the date each was added, and a bought mark. "Marked
+ * bought" is the person's word and "In your library" is the library's
+ * (DEC-092): a track marked bought reads as in the library once the file is
+ * imported and matched, and the two filters are independent, so "bought, not
+ * in the library yet" is one choice of each. Unlike Results, the wantlist does
+ * not hide what the library has: it shows every wanted track (the filter is
+ * Any) and marks the ones it now has.
  */
 import { useCallback, useMemo, useState } from "react";
 
@@ -23,6 +26,7 @@ import { Select } from "../../components/Select";
 import type { TrackTableSort } from "../../components/table";
 import { formatCount, pluralize } from "../library/libraryFormat";
 import { BeatportTable } from "./BeatportTable";
+import { IN_LIBRARY_EXPLAINER } from "./HideOwnedSwitch";
 import { NoteDialog } from "./NoteDialog";
 import { PushDialog } from "./PushDialog";
 import { wantlistActions, type BeatportActionId } from "./beatportActions";
@@ -42,17 +46,14 @@ interface WantlistViewProps {
 
 const WANTLIST_SORTS: readonly WantlistSort[] = ["added_at", "release_date", "artist", "title"];
 
+/** Any, No or Yes, in the wire's words (DSC-6): `hide` is No, `only` is Yes. */
 const OWNED_CHOICES = [
-  { value: "all", label: "Owned or not" },
-  { value: "hide", label: "Not owned" },
-  { value: "only", label: "Owned only" },
+  { value: "all", label: "Any" },
+  { value: "hide", label: "No" },
+  { value: "only", label: "Yes" },
 ];
 
-const BOUGHT_CHOICES = [
-  { value: "all", label: "Bought or not" },
-  { value: "hide", label: "Not bought" },
-  { value: "only", label: "Bought only" },
-];
+const BOUGHT_CHOICES = OWNED_CHOICES;
 
 const idOf = (row: WantlistRow) => row.beatport_track_id;
 
@@ -228,7 +229,7 @@ export function WantlistView({ tools }: WantlistViewProps) {
         <>
           <p className="discover-empty__headline">Your wantlist is empty.</p>
           <p className="discover-note">
-            Select tracks in a run and choose Add to wantlist to keep them here.
+            Add tracks from Results or an artist page.
           </p>
         </>
       ) : (
@@ -254,14 +255,15 @@ export function WantlistView({ tools }: WantlistViewProps) {
     <section className="discover-wantlist" aria-label="Wantlist">
       <div className="discover-toolbar" role="toolbar" aria-label="Wantlist filters">
         <Select
-          label="Owned"
+          label="In your library"
+          title={IN_LIBRARY_EXPLAINER}
           id="discover-wantlist-owned"
           options={OWNED_CHOICES}
           value={owned}
           onChange={(event) => isFilter(event.target.value) && setOwned(event.target.value)}
         />
         <Select
-          label="Bought"
+          label="Marked bought"
           id="discover-wantlist-bought"
           options={BOUGHT_CHOICES}
           value={bought}
@@ -270,7 +272,7 @@ export function WantlistView({ tools }: WantlistViewProps) {
         {page && (
           <span className="discover-note" role="status">
             {pluralize(page.entries, "wanted track")}, {formatCount(page.bought)} bought,{" "}
-            {formatCount(page.owned)} owned
+            {formatCount(page.owned)} in your library
           </span>
         )}
       </div>

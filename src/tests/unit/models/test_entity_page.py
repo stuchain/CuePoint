@@ -223,6 +223,46 @@ class TestResolution:
             LinkedEntity(3, "x", -1)
 
 
+class TestDisplayName:
+    """DSC-9: a page is never titled "Beatport artist 12345"."""
+
+    def _resolution(self, kind, ref, name, names=()):
+        return EntityResolution(
+            ref=ref, requested=ref, name=name, rules=_rules(), names=names
+        )
+
+    def test_a_known_name_is_the_title(self):
+        ref = EntityRef("artist", beatport_id=7)
+        assert self._resolution("artist", ref, "Âme").to_dict()["display_name"] == "Âme"
+
+    def test_an_id_the_catalog_lacks_takes_the_librarys_commonest_spelling(self):
+        ref = EntityRef("artist", beatport_id=7)
+        names = (
+            LinkedName("ame", "Ame", 1),
+            LinkedName("dixon", "DIXON", 4),
+            LinkedName("dix", "Dix", 4),
+        )
+        data = self._resolution("artist", ref, None, names).to_dict()
+        assert data["display_name"] == "DIXON"
+        assert data["name"] is None
+
+    def test_with_no_name_at_all_it_says_unknown_for_the_kind(self):
+        artist = EntityRef("artist", beatport_id=7)
+        label = EntityRef("label", beatport_id=7)
+        assert self._resolution("artist", artist, None).to_dict()["display_name"] == (
+            "Unknown artist"
+        )
+        assert self._resolution("label", label, None).to_dict()["display_name"] == (
+            "Unknown label"
+        )
+
+    def test_a_name_page_without_a_library_spelling_is_unknown_too(self):
+        ref = EntityRef("artist", name_key="ame")
+        assert self._resolution("artist", ref, None).to_dict()["display_name"] == (
+            "Unknown artist"
+        )
+
+
 class TestSummary:
     def _facet(self, field: str) -> Facet:
         return Facet(field=field, values=(FacetValue("House", 3),), total_values=1)

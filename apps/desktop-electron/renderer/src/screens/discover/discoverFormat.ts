@@ -1,9 +1,10 @@
 /**
  * The sentences the Discover page shows (DISCOVER-10).
  *
- * Pure functions, as the Library's and Clean's wording is: what a run looked
+ * Pure functions, as the Library's and Clean's wording is: what a search looked
  * for, how it ended and what it found is what a person decides from, and it
- * deserves tests that read like the sentences.
+ * deserves tests that read like the sentences. "Run" is the engine's word for a
+ * search and appears in no sentence here (DSC-2).
  */
 import type {
   BeatportErrorClass,
@@ -34,7 +35,12 @@ export function stoppedBecause(errorClass: BeatportErrorClass | null): string {
   return errorClass ? STOPPED_BECAUSE[errorClass] : "of an error";
 }
 
-/** A run's state, as its badge says it. */
+/** A past search's title: "Search of Sep 27, 2026, 9:14 AM" (DSC-2). */
+export function searchTitle(startedAt: string): string {
+  return `Search of ${formatWhen(startedAt)}`;
+}
+
+/** A search's state, as its badge says it. */
 export function runStateLabel(run: DiscoverRun): string {
   if (run.running) return "Running";
   switch (run.outcome) {
@@ -110,12 +116,12 @@ export function releasesLine(run: DiscoverRun): string {
   return "Releases";
 }
 
-/** What a discovery job's end says, from the run it kept. */
+/** What a search's end says, from the run it kept. */
 export function discoveryEnded(result: DiscoveryRunResult): string {
   const found = runFound(result);
-  if (result.outcome === "succeeded") return `Discovery found ${found}.`;
-  if (result.outcome === "cancelled") return `Discovery stopped when asked, after ${found}.`;
-  return `Discovery stopped because ${stoppedBecause(result.error_class)}, after ${found}.`;
+  if (result.outcome === "succeeded") return `The search found ${found}.`;
+  if (result.outcome === "cancelled") return `The search stopped when asked, after ${found}.`;
+  return `The search stopped because ${stoppedBecause(result.error_class)}, after ${found}.`;
 }
 
 /** One line for the run list: what the run looked for, briefly. */
@@ -143,52 +149,60 @@ export function artistsText(row: Pick<BeatportTrackRow, "artists" | "remixers">)
   return `${artists} (remixed by ${row.remixers.join(", ")})`;
 }
 
-/** Why a run found a track: a chart and whose, or a label's release. */
+/**
+ * Why a search found a track (DSC-8): "On a chart by {artist}: “{chart}”" or
+ * "New on {label}: “{release}”", so the first name is never a guess.
+ */
 export function sourceText(source: DiscoverRunSource): string {
   const name = source.source_name ? `“${source.source_name}”` : null;
-  if (source.source_type === "chart") {
-    return name ? `Chart ${name} by ${source.matched_on}` : `A chart by ${source.matched_on}`;
-  }
-  return name ? `${source.matched_on}: ${name}` : `New on ${source.matched_on}`;
+  const lead =
+    source.source_type === "chart"
+      ? `On a chart by ${source.matched_on}`
+      : `New on ${source.matched_on}`;
+  return name ? `${lead}: ${name}` : lead;
 }
 
-/** Every reason, in the engine's order, for the Sources column. */
+/** Every reason, in the engine's order, for the "Why it's here" column. */
 export function sourcesText(sources: readonly DiscoverRunSource[]): string {
   return sources.map(sourceText).join("; ");
 }
 
-/** "12 owned tracks hidden" (DEC-092), or nothing when none are. */
-export function hiddenLine(hidden: number): string {
-  if (hidden <= 0) return "";
-  return `${pluralize(hidden, "owned track")} hidden`;
+/**
+ * The one count line over a table (DSC-6, DEC-092): "40 found · 12 already in
+ * your library (hidden)". Said once, so the number hidden is never a second line.
+ */
+export function foundLine(found: number, inLibrary: number, hiding: boolean): string {
+  const count = `${formatCount(found)} found`;
+  if (inLibrary <= 0) return count;
+  return `${count} · ${formatCount(inLibrary)} already in your library${hiding ? " (hidden)" : ""}`;
 }
 
-/** What a push did, for the page's notice. */
+/** What making a playlist did, for the page's notice (DSC-7). */
 export function pushOutcome(result: BeatportPlaylistResult): string {
   const name = `“${result.name}”`;
   const skipped =
     result.skipped_owned > 0
-      ? ` ${pluralize(result.skipped_owned, "track")} you own ${result.skipped_owned === 1 ? "was" : "were"} left out.`
+      ? ` ${pluralize(result.skipped_owned, "track")} already in your library ${result.skipped_owned === 1 ? "was" : "were"} left out.`
       : "";
   const failed =
     result.failed > 0
       ? ` ${pluralize(result.failed, "track")} could not be added.`
       : "";
   if (result.outcome === "succeeded") {
-    return `Added ${pluralize(result.added, "track")} to ${name} on Beatport.${skipped}${failed}`;
+    return `Made ${name} on Beatport with ${pluralize(result.added, "track")}.${skipped}${failed}`;
   }
   const before = result.playlist_id
     ? `after adding ${pluralize(result.added, "track")} to ${name}`
     : `before ${name} was made`;
   if (result.outcome === "cancelled" || result.cancelled) {
-    return `The push stopped when asked, ${before}.${skipped}`;
+    return `Making the playlist stopped when asked, ${before}.${skipped}`;
   }
-  return `The push stopped because ${stoppedBecause(result.error_class)}, ${before}.${skipped}${failed}`;
+  return `Making the playlist stopped because ${stoppedBecause(result.error_class)}, ${before}.${skipped}${failed}`;
 }
 
-/** What a resolve did, for the page's notice. */
+/** What a lookup of tracks on Beatport did, for the page's notice (DSC-4). */
 export function resolveOutcome(result: BeatportResolveResult): string {
-  const read = `Read ${pluralize(result.resolved, "track")} from Beatport`;
+  const read = `Looked up ${pluralize(result.resolved, "track")} on Beatport`;
   const missing =
     result.not_found > 0 ? `; Beatport no longer has ${formatCount(result.not_found)}` : "";
   if (result.outcome === "succeeded") return `${read}${missing}.`;
@@ -198,9 +212,9 @@ export function resolveOutcome(result: BeatportResolveResult): string {
 
 /** What each Discover job is, for a sentence saying one is already running. */
 const RUNNING_ALREADY: Record<string, string> = {
-  discovery: "A discovery run is already running. It is in the list of runs.",
-  beatport_playlist: "A push to Beatport is already running. Try again when it has finished.",
-  beatport_resolve: "Beatport identities are already being resolved.",
+  discovery: "A search is already running. It is in the Results tab.",
+  beatport_playlist: "A Beatport playlist is already being made. Try again when it has finished.",
+  beatport_resolve: "Tracks are already being looked up on Beatport.",
 };
 
 /**
@@ -219,11 +233,17 @@ export function refusalText(refusal: DiscoverRefusal): string {
   return refusal.message;
 }
 
-/** The resolve prompt's sentence, for `to_read` tracks. */
+/** The lookup prompt's sentence, for `toRead` tracks (DSC-4). */
 export function resolvePrompt(toRead: number): string {
   return (
-    `${pluralize(toRead, "matched track")} ${toRead === 1 ? "has" : "have"} not been read from ` +
-    "Beatport yet. Reading them tells Discover which Beatport artists and labels your library " +
-    "holds, so runs and pages find them by id rather than by name."
+    `${formatCount(toRead)} of your matched ${toRead === 1 ? "tracks still needs" : "tracks still need"} ` +
+    "their Beatport artist and label looked up. This makes artist pages and searches more accurate."
   );
+}
+
+/** What the prompt says while the lookup works (DSC-12). */
+export function lookingUpLine(toRead: number): string {
+  // The count was read before the lookup began; once it has caught up it is 0.
+  if (toRead <= 0) return "Looking up tracks on Beatport…";
+  return `Looking up ${pluralize(toRead, "track")} on Beatport…`;
 }

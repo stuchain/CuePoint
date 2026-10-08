@@ -539,7 +539,7 @@
   "playlist_refused": {
     "added": 0,
     "cancelled": false,
-    "error": "Beatport refused to create a playlist (403): the token may not have playlist scope",
+    "error": "Beatport accepted the token but won't allow making playlists with it.",
     "error_class": "forbidden",
     "failed": 0,
     "failed_track_ids": [],

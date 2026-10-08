@@ -6,8 +6,12 @@
  * one it refused for this, a rate limit, Beatport out of reach — and never the
  * token itself. Each is a different sentence and a different next step: a token
  * is fixed in Settings, and waiting is the only fix for the other two. The page
- * stays usable in every one of them: past runs and the wantlist are CuePoint's
- * own, and read without Beatport.
+ * stays usable in every one of them: past searches and the wantlist are
+ * CuePoint's own, and read without Beatport.
+ *
+ * The words are a DJ's (DSC-3): the token is "your Beatport sign-in key", named
+ * once as a "token" so the Settings field it is pasted into is recognized, and
+ * a refusal never says "scope".
  */
 import type {
   BeatportErrorClass,
@@ -34,7 +38,7 @@ function waitFor(seconds: number | null): string {
   return `in ${minutes} minutes`;
 }
 
-const STILL_USABLE = "Past runs and your wantlist still open without it.";
+const STILL_USABLE = "Your past searches and wantlist still open without it.";
 
 /**
  * The notice for a state, or null when Beatport answered.
@@ -53,9 +57,11 @@ export function beatportNotice(
     case "no_token":
       return {
         state,
-        headline: "Beatport is not connected",
+        headline: "Connect your Beatport account",
         hint:
-          "Discover needs a Beatport token to run and to push playlists. " + STILL_USABLE,
+          "Discover reads Beatport's charts and releases with your Beatport sign-in key (a “token”). " +
+          "Paste it in Settings, where “How do I get a token?” shows where to find it. " +
+          STILL_USABLE,
         action: "settings",
       };
     case "rejected":
@@ -70,8 +76,8 @@ export function beatportNotice(
         state,
         headline: "Beatport refused this token",
         hint:
-          "The token works but is not allowed to do this; it may be missing a scope. " +
-          `Enter one that is in Settings. ${STILL_USABLE}`,
+          "Beatport accepted the key but won't allow this action with it. " +
+          `Enter a different one in Settings. ${STILL_USABLE}`,
         action: "settings",
       };
     case "rate_limited":
@@ -100,8 +106,8 @@ export function refusalState(refusal: DiscoverRefusal | null): BeatportErrorClas
 /**
  * Whether an action that asks Beatport is worth offering.
  *
- * A rate limit and an unreachable Beatport end by themselves, so a run or a
- * push is still offered and its refusal says so; a missing or refused token
+ * A rate limit and an unreachable Beatport end by themselves, so a search or a
+ * playlist is still offered and its refusal says so; a missing or refused token
  * does not, and offering a button that can only fail teaches nothing.
  */
 export function beatportUsable(state: DiscoverBeatportState): boolean {

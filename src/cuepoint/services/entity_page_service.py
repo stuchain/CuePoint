@@ -259,7 +259,7 @@ class EntityPageService(IEntityPageService):
                 for k, n, t in self._credits.linked_names(kind, ref.beatport_id)
             )
             name = self._catalog.entity_name(kind, ref.beatport_id) or (
-                names[0].name if names else None
+                max(names, key=lambda gathered: gathered.tracks).name if names else None
             )
             rules = RuleSet(
                 rules=(FilterRule(ID_FIELDS[kind], OP_IS, ref.beatport_id),)
@@ -466,9 +466,9 @@ class EntityPageService(IEntityPageService):
             message = f"Beatport has no {noun} by this name"
         elif resolvable:
             message = (
-                f"CuePoint knows this {noun} only by name. Resolving"
+                f"CuePoint knows this {noun} only by name. Looking up"
                 f" {_count(resolvable, 'matched track', 'matched tracks')}"
-                " will find them on Beatport"
+                " on Beatport will find them"
             )
             action = ACTION_RESOLVE
         else:

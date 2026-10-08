@@ -13,9 +13,11 @@
  * artist is never looked up by name (DEC-095), so a name page says so rather
  * than guessing who it is.
  *
- * Owned tracks are shown here, marked, unlike a run's: a page is about the
- * artist, and which of their releases a person already has is part of that.
- * "Hide tracks you own" narrows it to what is left to find.
+ * The tracks already in the library are hidden until asked, with the one
+ * switch Results has, in the same words and on by default (DSC-6): what is
+ * left is what is new. Turned off, they are shown and marked "In your library".
+ * The artist and label names in the table are links (FLW-16), and the row last
+ * chosen lights the wheel with Beatport's own key (DEC-157).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -26,7 +28,6 @@ import type {
   BeatportTrackRow,
   DiscoverAnswer,
   DiscoverOptions,
-  DiscoverOwnedFilter,
   EntityBeatportHalf,
   EntityKind,
   EntityLink,
@@ -36,7 +37,11 @@ import { useToast } from "../../components/Toast";
 import { formatCount, pluralize } from "../library/libraryFormat";
 import { settingsFocusState } from "../settingsLink";
 import { BeatportTable } from "./BeatportTable";
+import { HideOwnedSwitch } from "./HideOwnedSwitch";
+import { useHideOwned } from "./useHideOwned";
 import { PushDialog } from "./PushDialog";
+import { beatportRowKey } from "./beatportKey";
+import { beatportSelectedId, useReportSelectedTrack } from "./useReportSelectedTrack";
 import { runActions, type BeatportActionId } from "./beatportActions";
 import { ENTITY_COLUMNS, ENTITY_TABLE_LAYOUT_KEY } from "./beatportColumns";
 import { entityPath } from "./discoverLinks";
@@ -88,7 +93,7 @@ export function BeatportHalf({
 }: BeatportHalfProps) {
   const navigate = useNavigate();
   const { push: notify } = useToast();
-  const [owned, setOwned] = useState<DiscoverOwnedFilter>("all");
+  const [owned, setHiding] = useHideOwned();
   const [working, setWorking] = useState(false);
   const [pushing, setPushing] = useState<{ options: DiscoverOptions } | null>(null);
   const [readingOptions, setReadingOptions] = useState(false);
@@ -150,6 +155,13 @@ export function BeatportHalf({
     loadedRows: tracks.loadedRows,
   });
   const clearSelection = selection.clear;
+  const lastRow = selection.anchorRow;
+  useReportSelectedTrack(
+    lastRow
+      ? { id: beatportSelectedId(lastRow.beatport_track_id), key: beatportRowKey(lastRow) }
+      : null,
+    active,
+  );
   // One selection per page: the library half took it.
   useEffect(() => {
     if (!active) clearSelection();
@@ -164,7 +176,7 @@ export function BeatportHalf({
       });
     } else if (finished.state !== "succeeded") {
       setPushNotice({
-        text: finished.error?.message ?? "The push did not finish.",
+        text: finished.error?.message ?? "The playlist was not made.",
         url: null,
         tone: "warning",
       });
@@ -175,7 +187,7 @@ export function BeatportHalf({
     if (result) {
       notify(resolveOutcome(result), result.outcome === "succeeded" ? "success" : "warning");
     } else if (finished.state !== "succeeded") {
-      notify(finished.error?.message ?? "Resolving did not finish.", "warning");
+      notify(finished.error?.message ?? "The lookup did not finish.", "warning");
     }
     onResolved();
     reload();
@@ -187,7 +199,7 @@ export function BeatportHalf({
     () =>
       runActions(selection.count, {
         pushable: playlist.jobId === null,
-        pushReason: playlist.jobId === null ? null : "A push is already running.",
+        pushReason: playlist.jobId === null ? null : "A Beatport playlist is already being made.",
         total: tracks.total,
       }),
     [playlist.jobId, selection.count, tracks.total],
@@ -261,7 +273,7 @@ export function BeatportHalf({
     if (!refused) {
       setPushing(null);
       setPushNotice(null);
-      notify("Pushing to Beatport. The status bar shows how far it has got.", "info");
+      notify("Making the playlist on Beatport… The status bar shows how far it has got.", "info");
     }
     return refused;
   };
@@ -391,7 +403,7 @@ export function BeatportHalf({
             loading={resolve.jobId !== null}
             onClick={() => void startResolve()}
           >
-            Resolve Beatport identities
+            Look them up now
           </Button>
         )}
         {(half.state === "rate_limited" || half.state === "unavailable") && (
@@ -412,23 +424,23 @@ export function BeatportHalf({
     <div className="discover-page__beatport">
       {pushBanner}
       <div className="discover-toolbar" role="toolbar" aria-label="Beatport's releases">
-        <span className="discover-note">
+        <HideOwnedSwitch
+          hiding={owned === "hide"}
+          onChange={setHiding}
+        />
+        <span className="discover-note" role="status">
           {half.found_by_name ? "Found by name on Beatport. " : ""}
           {page
-            ? `${pluralize(page.tracks, "track")} released since ${half.since ?? "—"}, ${formatCount(page.owned)} owned.`
+            ? `${pluralize(page.tracks, "track")} released since ${half.since ?? "—"}${
+                page.owned > 0
+                  ? ` · ${formatCount(page.owned)} already in your library${owned === "hide" ? " (hidden)" : ""}`
+                  : ""
+              }`
             : half.message}
         </span>
-        <label className="discover-toolbar__check">
-          <input
-            type="checkbox"
-            checked={owned === "hide"}
-            onChange={(event) => setOwned(event.target.checked ? "hide" : "all")}
-          />
-          Hide tracks you own
-        </label>
         {freshness && <span className="discover-note">{freshness}</span>}
         <Button variant="secondary" onClick={readAgain}>
-          Read again
+          Check Beatport again
         </Button>
       </div>
 
@@ -455,7 +467,7 @@ export function BeatportHalf({
               ) : (
                 <p className="discover-empty__headline">
                   {owned === "hide" && (page?.tracks ?? 0) > 0
-                    ? "You own every track released in this window."
+                    ? "Every track released in this window is already in your library."
                     : `Nothing released on Beatport since ${half.since ?? "then"}.`}
                 </p>
               )}

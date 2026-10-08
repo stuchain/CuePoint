@@ -18,6 +18,24 @@ import type { SimilarComponent, SimilarReason } from "../../api/cuepointBridge.t
 // (DISCOVER-09); re-exported so a caller of this module needs one import.
 export type { SimilarComponent, SimilarReason };
 
+/**
+ * The three key relations, written once (fact 2, DSC-10).
+ *
+ * Similar tracks builds its reasons from these, and Prepare's Suggestions and
+ * the wheel reuse them (PAGES-09, PAGES-10), so one relation has one name
+ * everywhere. "Neighbouring key" is not a name for any of them.
+ */
+export const KEY_WORDS = {
+  same: "Same key",
+  adjacent: "Next key",
+  relative: "Relative key",
+} as const;
+
+/** "Next key" as it reads inside a sentence: "next key". */
+function inSentence(words: string): string {
+  return words.charAt(0).toLowerCase() + words.slice(1);
+}
+
 /** What a component is called when a sentence names it. */
 const COMPONENT_WORDS: Record<SimilarComponent, string> = {
   tempo: "BPM",
@@ -32,7 +50,7 @@ export function formatBpm(bpm: number): string {
   return String(Number(bpm.toFixed(2)));
 }
 
-/** A reason as a sentence, e.g. "One step on the wheel: 8A → 9A". */
+/** A reason as a sentence, e.g. "Mixes well (next key): 8A → 9A". */
 export function describeSimilarReason(reason: SimilarReason): string {
   switch (reason.component) {
     case "tempo": {
@@ -44,20 +62,20 @@ export function describeSimilarReason(reason: SimilarReason): string {
         case "close":
           return `Close tempo: ${from} → ${to}`;
         case "half":
-          return `Half time: ${from} → ${to}`;
+          return `Half the tempo: ${from} → ${to}`;
         case "double":
-          return `Double time: ${from} → ${to}`;
+          return `Double the tempo: ${from} → ${to}`;
       }
       break;
     }
     case "key":
       switch (reason.detail) {
         case "same":
-          return `Same key: ${reason.from}`;
+          return `${KEY_WORDS.same}: ${reason.from}`;
         case "adjacent":
-          return `One step on the wheel: ${reason.from} → ${reason.to}`;
+          return `Mixes well (${inSentence(KEY_WORDS.adjacent)}): ${reason.from} → ${reason.to}`;
         case "relative":
-          return `Relative key: ${reason.from} → ${reason.to}`;
+          return `Mixes well (${inSentence(KEY_WORDS.relative)}): ${reason.from} → ${reason.to}`;
       }
       break;
     case "genre":
@@ -89,4 +107,19 @@ function either(words: string[]): string {
 export function describeUnused(unused: SimilarComponent[]): string | null {
   if (unused.length === 0) return null;
   return `This track has no ${either(unused.map((c) => COMPONENT_WORDS[c]))} to compare.`;
+}
+
+/** How good a match a score is, as the word the column shows (DSC-10). */
+export type MatchBand = "Strong" | "Good" | "Some";
+
+/** Scores run to 100: a tempo, a key, a genre, a label and an artist all agreeing. */
+export function matchBand(score: number): MatchBand {
+  if (score >= 70) return "Strong";
+  if (score >= 45) return "Good";
+  return "Some";
+}
+
+/** The band, and the number it stands for, which the column keeps for its tooltip. */
+export function matchWords(score: number): { band: MatchBand; detail: string } {
+  return { band: matchBand(score), detail: `Score ${score} out of 100` };
 }

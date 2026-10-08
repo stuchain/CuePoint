@@ -5,10 +5,11 @@
  * from a filter chip, and from another page's header. Its address is its
  * reference, `bp:<id>` or `name:<key>`, under the `discover` destination.
  *
- * **Which identity it is, it says** (DEC-095): a Beatport artist or label, or
- * tracks grouped by name. A name the engine has since linked to one id is
- * that id's page, and the address is replaced with the id's, so a page has
- * one address however it was reached.
+ * **Which identity it is, it says** (DEC-095): linked to Beatport, or the
+ * library's tracks by that name. A name the engine has since linked to one id
+ * is that id's page, and the address is replaced with the id's, so a page has
+ * one address however it was reached. The title is the engine's `display_name`
+ * (DSC-9): never an id.
  *
  * Two halves. **Your tracks** are the Library's own table over the engine's
  * rule set, playable and queueable as library rows are. **On Beatport** is
@@ -57,6 +58,7 @@ import {
   tracksLine,
   yearsText,
 } from "./entityFormat";
+import { useReportSelectedTrack } from "./useReportSelectedTrack";
 import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";
@@ -153,6 +155,15 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
   // --- the Inspector: the library half's track, or why there is none
 
   const detail = useTrackDetail(focus === "library" ? inspected.id : null);
+  // The wheel lights the library track chosen, with its key (DEC-157); a
+  // Beatport row reports its own from the Beatport half.
+  const chosen = detail.detail?.track;
+  useReportSelectedTrack(
+    focus === "library" && inspected.id !== null && chosen && chosen.id === inspected.id
+      ? { id: inspected.id, key: chosen.effective_key ?? null }
+      : null,
+    focus === "library",
+  );
   const onSelectTrack = useCallback(
     (id: number | null, count: number) => setInspected({ id, count }),
     [],

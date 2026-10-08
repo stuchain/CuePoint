@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -370,6 +371,10 @@ def test_the_pages_cover_both_identities_both_kinds_and_a_redirect():
     assert redirected["redirected_from"] == "name:mara veil"
     assert redirected["ref"] == "bp:301001"
     assert len(_value("page_artist_shared")["links"]) == 2
+    # DSC-9: every page has a title to show, and none of them is an id.
+    for page in pages:
+        assert page["display_name"]
+        assert not re.search(r"\d{4,}", page["display_name"])
     assert _committed()["page_refused"]["refusal"]["code"] == "INVALID_REQUEST"
 
 

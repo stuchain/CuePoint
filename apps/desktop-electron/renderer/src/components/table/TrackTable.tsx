@@ -31,8 +31,8 @@ import {
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
-import { useScale } from "../../tokens/ScaleContext";
 import { Hint } from "../Hint";
+import { useScale } from "../../tokens/ScaleContext";
 import {
   gridTemplate,
   orderedWidths,
@@ -450,7 +450,10 @@ export function TrackTable<Row>({
                   <button
                     type="button"
                     className="track-table__header-cell"
-                    disabled={!column.sortKey}
+                    // A hinted header stays focusable, so the keyboard reaches
+                    // its hint; it just does not sort.
+                    disabled={!column.sortKey && !column.hint}
+                    aria-disabled={!column.sortKey && column.hint ? true : undefined}
                     title={column.header}
                     onClick={() => handleSort(column)}
                   >

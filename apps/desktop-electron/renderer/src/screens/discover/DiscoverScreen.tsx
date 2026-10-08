@@ -1,22 +1,24 @@
 /**
- * The Discover page (DISCOVER-10, DEC-021, DEC-091…DEC-093).
+ * The Discover page (DISCOVER-10, DEC-021, DEC-091…DEC-093, FLW-15).
  *
- * Runs and the wantlist, behind tabs, the one last used remembered. Everything
- * the page shows is DISCOVER-09's wire: `options` when it opens, the runs and
- * their tracks, the wantlist; every action is one of its routes. It adds
- * surface, not rules.
+ * Three tabs, the one last used remembered: New search, Results (the past
+ * searches) and Wantlist. Everything the page shows is DISCOVER-09's wire:
+ * `options` when it opens, the searches and their tracks, the wantlist; every
+ * action is one of its routes. It adds surface, not rules. "Run" is the
+ * engine's word for a search and is never shown (DSC-2).
  *
  * **Beatport's state is the page's, not a tab's.** With no token, or a token
- * Beatport refused, the page says so once, above both tabs, with a way to
- * Settings — and stays usable: past runs and the wantlist are CuePoint's own
- * (DEC-098). A resolve prompt sits beside it when the library has matched
- * tracks Discover has not read from Beatport yet (DISCOVER-04).
+ * Beatport refused, the page says so once, above the tabs, with a way to
+ * Settings — and stays usable: past searches and the wantlist are CuePoint's
+ * own (DEC-098). A lookup prompt sits beside it when the library has matched
+ * tracks Discover has not read from Beatport yet (DISCOVER-04); the engine
+ * also does that lookup by itself when a match finishes (DSC-4).
  *
  * **Rows from Beatport are not library rows**, so the Inspector shows its
  * empty state here rather than the last library track: it must never appear to
  * describe a row it does not.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type {
@@ -31,12 +33,15 @@ import type {
 import { Button } from "../../components/Button";
 import { Panel } from "../../components/Panel";
 import { Tabs } from "../../components/Tabs";
+import { jobExplainer, useActiveJob } from "../../components/shell/useActiveJob";
 import { useToast } from "../../components/Toast";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { settingsFocusState } from "../settingsLink";
+import { DiscoverHintCard } from "./DiscoverHintCard";
+import { NewRunPanel } from "./NewRunPanel";
 import { RunsView } from "./RunsView";
 import { WantlistView } from "./WantlistView";
-import { beatportNotice, beatportUsable, refusalState } from "./beatportState";
+import { beatportNotice, beatportUsable, refusalState, unusableReason } from "./beatportState";
 import {
   DISCOVER_SECTIONS,
   loadDiscoverSection,
@@ -45,6 +50,7 @@ import {
 } from "./discoverSections";
 import {
   discoveryEnded,
+  lookingUpLine,
   pushOutcome,
   refusalText,
   resolveOutcome,
@@ -73,6 +79,10 @@ interface PushNotice {
   url: string | null;
   tone: "success" | "warning";
 }
+
+/** What the page says under its title (DSC-1). */
+export const DISCOVER_INTRO =
+  "Find new music from the artists and labels already in your library, keep what you want on a wantlist, and send it to a Beatport playlist.";
 
 export function DiscoverScreen() {
   const navigate = useNavigate();
@@ -137,7 +147,7 @@ export function DiscoverScreen() {
     if (result) {
       toast(discoveryEnded(result), result.outcome === "succeeded" ? "success" : "warning");
     } else if (finished.state !== "succeeded") {
-      toast(finished.error?.message ?? "The run did not finish.", "warning");
+      toast(finished.error?.message ?? "The search did not finish.", "warning");
     }
   });
 
@@ -150,7 +160,7 @@ export function DiscoverScreen() {
       });
     } else if (finished.state !== "succeeded") {
       setPushNotice({
-        text: finished.error?.message ?? "The push did not finish.",
+        text: finished.error?.message ?? "The playlist was not made.",
         url: null,
         tone: "warning",
       });
@@ -161,10 +171,23 @@ export function DiscoverScreen() {
     if (result) {
       toast(resolveOutcome(result), result.outcome === "succeeded" ? "success" : "warning");
     } else if (finished.state !== "succeeded") {
-      toast(finished.error?.message ?? "Resolving did not finish.", "warning");
+      toast(finished.error?.message ?? "The lookup did not finish.", "warning");
     }
     reloadOptions();
   });
+
+  // A lookup the engine started on its own (after a Clean match, DSC-4) is
+  // followed like one started here, so the banner and the options catch up
+  // when it ends. Each job is followed once.
+  const activeJobs = useActiveJob().jobs;
+  const followedLookups = useRef(new Set<string>());
+  const followLookup = resolve.follow;
+  useEffect(() => {
+    const found = activeJobs.find((job) => job.type === "beatport_resolve");
+    if (!found || followedLookups.current.has(found.id)) return;
+    followedLookups.current.add(found.id);
+    followLookup(found.id);
+  }, [activeJobs, followLookup]);
 
   const startDiscovery = discovery.start;
   const startPush = playlist.start;
@@ -178,6 +201,11 @@ export function DiscoverScreen() {
       if (refusal && beatport) {
         setRefused({ state: beatport, retryAfter: refusal.retry_after, message: refusal.message });
       }
+      // The search is on its way: Results is where it appears (FLW-15).
+      if (!refusal) {
+        setSection("results");
+        saveDiscoverSection("results");
+      }
       return refusal;
     },
     [startDiscovery],
@@ -190,7 +218,7 @@ export function DiscoverScreen() {
       const refusal = await startPush(() => bridge(request));
       if (!refusal) {
         setPushNotice(null);
-        toast("Pushing to Beatport. The status bar shows how far it has got.", "info");
+        toast("Making the playlist on Beatport… The status bar shows how far it has got.", "info");
       }
       return refusal;
     },
@@ -234,6 +262,13 @@ export function DiscoverScreen() {
     [options, playlist.jobId, pushTracks, state, toast],
   );
 
+  // The New search tab is mounted when first opened and kept, so a form half
+  // filled in is still there when the tab is come back to.
+  const [newSearchSeen, setNewSearchSeen] = useState(section === "new");
+  useEffect(() => {
+    if (section === "new") setNewSearchSeen(true);
+  }, [section]);
+
   const choose = (id: string) => {
     const next = DISCOVER_SECTIONS.find((entry) => entry.id === id)?.id;
     if (!next) return;
@@ -264,12 +299,13 @@ export function DiscoverScreen() {
   }
 
   const toRead = tools.options.resolve.to_read;
-  const label = DISCOVER_SECTIONS.find((entry) => entry.id === section)?.label ?? "";
+  const looking = resolve.jobId !== null;
 
   return (
     <div className="screen discover-screen">
       <header className="discover-screen__header">
         <h1 className="screen__title">Discover</h1>
+        <p className="discover-screen__intro">{DISCOVER_INTRO}</p>
         <Tabs
           tabs={DISCOVER_SECTIONS.map((entry) => ({ id: entry.id, label: entry.label }))}
           activeId={section}
@@ -298,15 +334,20 @@ export function DiscoverScreen() {
         </div>
       )}
 
-      {toRead > 0 && beatportUsable(state) && (
-        <div className="discover-banner" role="status" aria-label="Resolve Beatport identities">
-          <span className="discover-banner__text">{resolvePrompt(toRead)}</span>
-          <Button
-            variant="secondary"
-            loading={resolve.jobId !== null}
-            onClick={() => void startResolve()}
-          >
-            Resolve Beatport identities
+      {(toRead > 0 || looking) && beatportUsable(state) && (
+        <div className="discover-banner" role="status" aria-label="Beatport lookup">
+          <div className="discover-banner__text">
+            {looking ? (
+              <>
+                <strong>{lookingUpLine(toRead)}</strong>
+                <span>{jobExplainer("beatport_resolve")}</span>
+              </>
+            ) : (
+              <span>{resolvePrompt(toRead)}</span>
+            )}
+          </div>
+          <Button variant="secondary" loading={looking} onClick={() => void startResolve()}>
+            Look them up now
           </Button>
         </div>
       )}
@@ -338,16 +379,39 @@ export function DiscoverScreen() {
         </div>
       )}
 
-      <div className="discover-screen__body" role="tabpanel" aria-label={label}>
-        {section === "runs" ? (
-          <RunsView
-            tools={tools}
-            runningJobId={discovery.jobId}
-            runsVersion={runsVersion}
-            startRun={startRun}
-          />
-        ) : (
-          <WantlistView tools={tools} />
+      <DiscoverHintCard />
+
+      <div className="discover-screen__body">
+        {newSearchSeen && (
+          <div
+            role="tabpanel"
+            aria-label="New search"
+            hidden={section !== "new"}
+            className="discover-screen__panel"
+          >
+            <NewRunPanel
+              options={tools.options}
+              usable={beatportUsable(state)}
+              unusableReason={unusableReason(state)}
+              busy={discovery.jobId !== null}
+              onStart={startRun}
+            />
+          </div>
+        )}
+        {section === "results" && (
+          <div role="tabpanel" aria-label="Results" className="discover-screen__panel">
+            <RunsView
+              tools={tools}
+              runningJobId={discovery.jobId}
+              runsVersion={runsVersion}
+              onNewSearch={() => choose("new")}
+            />
+          </div>
+        )}
+        {section === "wantlist" && (
+          <div role="tabpanel" aria-label="Wantlist" className="discover-screen__panel">
+            <WantlistView tools={tools} />
+          </div>
         )}
       </div>
     </div>

@@ -159,9 +159,9 @@ class TestPlanning:
 
     def test_a_push_of_only_owned_tracks_is_refused(self, db, service, world):
         own(db, 501, 502)
-        with pytest.raises(ValueError, match="already owns all 2 tracks"):
+        with pytest.raises(ValueError, match="Already in your library: all 2 tracks"):
             service.plan([501, 502])
-        with pytest.raises(ValueError, match="already owns that track"):
+        with pytest.raises(ValueError, match="Already in your library: that track"):
             service.plan([501])
         assert world.requests == []
 
@@ -362,17 +362,19 @@ class TestSomeFailing:
 
 
 class TestCreateRefused:
-    def test_a_403_is_forbidden_and_says_playlist_scope(self, db, service, world):
+    def test_a_403_is_forbidden_and_says_beatport_will_not_allow_playlists(
+        self, db, service, world
+    ):
         fail(world, 403, route="my/playlists")
         result = service.push(service.plan([501, 502], name="Crate"))
         assert (result.outcome, result.error_class) == (OUTCOME_FAILED, "forbidden")
-        assert "playlist scope" in result.error
+        assert "won't allow making playlists" in result.error
         assert (result.playlist_id, result.playlist_url) == (None, None)
         assert (result.added, result.not_attempted) == (0, 2)
         assert world.playlists == {}
         ((summary, detail),) = events(db)
         assert summary.startswith("Could not create the Beatport playlist “Crate”:")
-        assert "playlist scope" in summary
+        assert "won't allow making playlists" in summary
         assert detail["playlist_url"] is None
 
     @pytest.mark.parametrize(

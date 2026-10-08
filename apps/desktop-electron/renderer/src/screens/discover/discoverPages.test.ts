@@ -52,7 +52,7 @@ import {
 } from "./entityFormat";
 import { libraryRowMenuItems } from "./libraryRowMenu";
 import { SIMILAR_COLUMNS, reasonsText } from "./similarColumns";
-import { describeSimilarReason } from "./similarReasons";
+import { describeSimilarReason, matchBand } from "./similarReasons";
 import pages from "./discoverPages.fixture.json";
 import reasonsFixture from "./similarReasons.fixture.json";
 
@@ -135,27 +135,41 @@ describe("addresses (DEC-094: routes under Discover)", () => {
 
 describe("what a page says (DEC-095: it says which identity it is)", () => {
   it("names its identity", () => {
-    expect(identityLabel(page("page_artist_id"))).toBe("Beatport artist");
-    expect(identityLabel(page("page_label_id"))).toBe("Beatport label");
-    expect(identityLabel(page("page_artist_name"))).toBe("Grouped by name");
-    expect(identityLabel(page("page_label_name"))).toBe("Grouped by name");
+    expect(identityLabel(page("page_artist_id"))).toBe("Linked to Beatport");
+    expect(identityLabel(page("page_label_id"))).toBe("Linked to Beatport");
+    expect(identityLabel(page("page_artist_name"))).toBe("Your tracks by this name");
+    expect(identityLabel(page("page_label_name"))).toBe("Your tracks by this name");
   });
 
   it("explains a name group, and an id with the spellings it gathers", () => {
-    expect(identityHint(page("page_artist_name"))).toContain("does not know this artist's Beatport id");
+    expect(identityHint(page("page_artist_name"))).toContain(
+      "CuePoint has not linked this artist to Beatport yet",
+    );
     expect(identityHint(page("page_label_name"))).toContain("whose label spells this name");
     expect(identityHint(page("page_artist_name"))).toContain("whose credits spell this name");
     expect(identityHint(page("page_artist_id"))).toContain("credited as Mara Veil");
     expect(identityHint({ ...page("page_artist_id"), names: [] })).toBe(
-      "Known by its Beatport id, from your tracks matched on Beatport.",
+      "Linked to Beatport, from your tracks matched there.",
     );
-    expect(redirectedLine("artist")).toContain("its Beatport artist");
+    expect(redirectedLine("artist")).toContain("linked this artist to Beatport");
+    // No id is ever said aloud (DSC-9).
+    for (const words of [
+      identityHint(page("page_artist_name")),
+      identityHint(page("page_artist_id")),
+      redirectedLine("label"),
+    ]) {
+      expect(words).not.toMatch(/\bid\b/);
+    }
   });
 
-  it("titles a page by its name, its id, or its key", () => {
+  it("titles a page by the engine's display name, and never by an id (DSC-9)", () => {
     expect(pageTitle(page("page_artist_id"))).toBe("Mara Veil");
-    expect(pageTitle({ ...page("page_artist_id"), name: null })).toBe("Beatport artist 301001");
-    expect(pageTitle({ ...page("page_label_name"), name: null })).toBe("cold room");
+    expect(pageTitle(page("page_label_name"))).toBe("Cold Room");
+    expect(pageTitle({ display_name: "Unknown artist" })).toBe("Unknown artist");
+    for (const name of Object.keys(pages).filter((key) => key.startsWith("page_"))) {
+      const shown = (pages[name as keyof typeof pages] as { value: EntityPage | null }).value;
+      if (shown) expect(pageTitle(shown)).not.toMatch(/\d{4,}/);
+    }
   });
 
   it("says the header's facts", () => {
@@ -183,13 +197,13 @@ describe("what a page says (DEC-095: it says which identity it is)", () => {
       half_label_ok: "On Beatport",
       half_label_owned_hidden: "On Beatport",
       half_found_by_name: "On Beatport",
-      half_no_token: "Beatport is not connected",
+      half_no_token: "Connect your Beatport account",
       half_rejected: "Beatport rejected the token",
       half_forbidden: "Beatport refused this token",
       half_rate_limited: "Beatport is limiting requests",
       half_unavailable: "Beatport cannot be reached",
-      half_not_resolved_resolvable: "Known by name only",
-      half_not_resolved: "Known by name only",
+      half_not_resolved_resolvable: "Not linked to Beatport yet",
+      half_not_resolved: "Not linked to Beatport yet",
       half_shared: "Several Beatport artists share this name",
       half_not_on_beatport: "Not found on Beatport",
     });
@@ -198,7 +212,7 @@ describe("what a page says (DEC-095: it says which identity it is)", () => {
   it("says where a listing came from", () => {
     expect(freshnessLine(half("half_label_ok"))).toBe("Just read from Beatport.");
     expect(freshnessLine({ ...half("half_label_ok"), from_cache: true })).toBe(
-      "From CuePoint's copy of Beatport's listing.",
+      "Saved earlier from Beatport. Check Beatport again for the latest.",
     );
     expect(freshnessLine(half("half_no_token"))).toBeNull();
   });
@@ -420,8 +434,9 @@ describe("the pages' columns", () => {
     expect(SIMILAR_COLUMNS.filter((column) => column.sortKey)).toEqual([]);
     const similar = (pages.similar as { value: unknown }).value as SimilarTracks;
     const score = SIMILAR_COLUMNS.find((column) => column.id === "score")!;
-    expect(score.render({ suggestion: similar.suggestions[0] } as never)).toBe(
-      String(similar.suggestions[0].score),
+    expect(score.header).toBe("Match");
+    expect(score.text!({ suggestion: similar.suggestions[0] } as never)).toBe(
+      matchBand(similar.suggestions[0].score),
     );
   });
 
@@ -434,6 +449,8 @@ describe("the pages' columns", () => {
     expect(ENTITY_COLUMNS.filter((column) => column.sortKey)).toEqual([]);
     const row = half("half_label_ok").page!.rows[0];
     const owned = ENTITY_COLUMNS.find((column) => column.id === "owned")!;
-    expect(owned.render(row)).toBe("Owned");
+    expect(owned.header).toBe("In your library");
+    expect(owned.render({ ...row, owned: true })).toBe("In your library");
+    expect(owned.render({ ...row, owned: false })).toBe("");
   });
 });

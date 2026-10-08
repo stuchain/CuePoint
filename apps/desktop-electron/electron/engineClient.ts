@@ -1776,6 +1776,8 @@ export interface EntityPage {
   beatport_id: number | null;
   name_key: string | null;
   name: string | null;
+  /** What to title the page: a name, else the library's commonest spelling, else "Unknown artist" (DSC-9). */
+  display_name: string;
   redirected_from: string | null;
   links: EntityLink[];
   names: EntityLinkedName[];

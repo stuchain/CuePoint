@@ -46,6 +46,7 @@ import { libraryRowMenuItems } from "./libraryRowMenu";
 import { SIMILAR_COLUMNS, SIMILAR_TABLE_LAYOUT_KEY, type SimilarRow } from "./similarColumns";
 import { describeUnused } from "./similarReasons";
 import { useBeatportSelection } from "./useBeatportSelection";
+import { useReportSelectedTrack } from "./useReportSelectedTrack";
 import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";
@@ -158,7 +159,11 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
   const openSimilar = useCallback((trackId: number) => navigate(similarPath(trackId)), [navigate]);
 
   // The Inspector: the suggestion last clicked, or the seed.
-  const lastSelected = selection.rows.length > 0 ? selection.rows[selection.rows.length - 1] : null;
+  const lastSelected = selection.anchorRow;
+  // The wheel lights the suggestion last clicked (DEC-157); none, none.
+  useReportSelectedTrack(
+    lastSelected ? { id: lastSelected.id, key: lastSelected.effective_key ?? null } : null,
+  );
   const detail = useTrackDetail(lastSelected ? lastSelected.id : seedId);
   useInspectorSlot(
     <TrackDetailPanel
@@ -284,6 +289,9 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
           )}
         </p>
         {facts && <p className="discover-note">{facts}</p>}
+        <p className="discover-note">
+          Tracks from your library that would mix well after this one.
+        </p>
         <p className="discover-note">{consideredLine(answer)}</p>
         {unused && <p className="discover-note">{unused}</p>}
         {!answer.index_current && (

@@ -8,10 +8,13 @@ the service decides what a resolve does; this decides where it runs.
 
 When it runs
 ------------
-Only when asked. Nothing starts it at engine start or when a page is browsed:
-it spends Beatport requests on the user's token, and DEC-095 makes it an
-explicit action — offered on the Discover page and on a name-matched Artist or
-Label page, whose routes are DISCOVER-09's.
+When asked, and after a Clean match (DSC-4, PAGES-08). Nothing starts it at
+engine start or when a page is browsed: it spends Beatport requests on the
+user's token, and DEC-095 makes it an explicit action — offered on the Discover
+page and on a name-matched Artist or Label page, whose routes are DISCOVER-09's.
+A finished match is the person's own work, and the tracks it accepted are what
+a resolve reads, so :func:`resolve_after_matches` starts one then, with a token
+set and something to read, and never beside another.
 
 Refused before it exists
 ------------------------
@@ -33,11 +36,18 @@ from __future__ import annotations
 
 import logging
 import time
+import weakref
 from typing import TYPE_CHECKING
 
 from cuepoint.compat.gui_types import ProgressInfo
-from cuepoint.engine.jobs import Job, JobState, JobStore, _ensure_services
-from cuepoint.exceptions.cuepoint_exceptions import CuePointException
+from cuepoint.engine.jobs import (
+    Job,
+    JobState,
+    JobStore,
+    JobTypeBusyError,
+    _ensure_services,
+)
+from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError, CuePointException
 from cuepoint.services.beatport_resolve_service import BeatportResolveResult
 
 if TYPE_CHECKING:
@@ -50,6 +60,13 @@ JOB_TYPE_BEATPORT_RESOLVE = "beatport_resolve"
 
 #: What the status strip says while it runs; the count goes beside it.
 PROGRESS_MESSAGE = "Resolving Beatport identities"
+
+#: The ``jobs`` table discriminator of a Clean match (``match_jobs``). Written
+#: here rather than imported so this module does not depend on the match's.
+_JOB_TYPE_CLEAN_MATCH = "clean_match"
+
+#: The stores :func:`resolve_after_matches` already watches.
+_WATCHED: "weakref.WeakSet[JobStore]" = weakref.WeakSet()
 
 #: How often progress is handed to the job store at most.
 _PROGRESS_INTERVAL_SECONDS = 0.1
@@ -172,3 +189,34 @@ def start_beatport_resolve_job(store: JobStore) -> Job:
         runner=runner,
         exclusive=True,
     )
+
+
+def resolve_after_matches(store: JobStore) -> None:
+    """Start a resolve whenever a Clean match finishes (DSC-4).
+
+    Observes ``store``'s end listeners. A match that succeeded, with a token
+    configured and tracks the cache lacks, starts one resolve; with no token,
+    nothing to read, a match that failed or was stopped, or a resolve already
+    queued or running, it starts none. The store's exclusive check is what
+    keeps it to one at a time, under the lock that registers the job. Watching
+    a store twice is the same as once.
+    """
+    if store in _WATCHED:
+        return
+    _WATCHED.add(store)
+
+    def ended(job: Job) -> None:
+        if job.type != _JOB_TYPE_CLEAN_MATCH or job.state is not JobState.SUCCEEDED:
+            return
+        try:
+            if _resolve_service().plan().to_read <= 0:
+                return
+            start_beatport_resolve_job(store)
+        except BeatportAPIError:
+            # No token (or one Beatport will not take): the Discover page says
+            # so, and a resolve that can only fail is not started.
+            return
+        except JobTypeBusyError:
+            return
+
+    store.add_listeners(ended=ended)

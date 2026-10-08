@@ -1,29 +1,32 @@
 /**
- * The Discover page's two parts, and which one it opens on (DISCOVER-10).
+ * The Discover page's three tabs, and which one it opens on (DISCOVER-10, FLW-15).
  *
- * Runs and the wantlist are two tables a person works through, so they are
- * tabs, as Clean's parts are (CLEAN-12). The part last used is remembered with
- * the same `localStorage` pattern, so the page reopens where the work was.
+ * Setting up a search, reading what past searches found, and the wantlist are
+ * three jobs, so they are three tabs (FLW-3). The tab last used is remembered
+ * with the same `localStorage` pattern Clean's parts use (CLEAN-12), so the
+ * page reopens where the work was. "Run" is the engine's word and is never
+ * shown (DSC-2): the ids here are the page's own.
  */
 
-export type DiscoverSection = "runs" | "wantlist";
+export type DiscoverSection = "new" | "results" | "wantlist";
 
 export const DISCOVER_SECTIONS: ReadonlyArray<{ id: DiscoverSection; label: string }> = [
-  { id: "runs", label: "Runs" },
+  { id: "new", label: "New search" },
+  { id: "results", label: "Results" },
   { id: "wantlist", label: "Wantlist" },
 ];
 
 export const DISCOVER_SECTION_STORAGE_KEY = "cuepoint-discover-section";
 
-export const DEFAULT_DISCOVER_SECTION: DiscoverSection = "runs";
+export const DEFAULT_DISCOVER_SECTION: DiscoverSection = "results";
 
 function isSection(value: string | null): value is DiscoverSection {
   return DISCOVER_SECTIONS.some((section) => section.id === value);
 }
 
 /**
- * The part to open on. Anything stored that is not a part — a renamed id, a
- * hand-edited value, storage that cannot be read — opens on Runs.
+ * The tab to open on. Anything stored that is not a tab — the old "runs", a
+ * hand-edited value, storage that cannot be read — opens on Results.
  */
 export function loadDiscoverSection(): DiscoverSection {
   try {

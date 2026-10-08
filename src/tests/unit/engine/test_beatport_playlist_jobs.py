@@ -167,7 +167,7 @@ class TestRefusedBeforeItExists:
 
     def test_every_track_owned(self, store, world):
         own(*TRACKS)
-        with pytest.raises(ValueError, match="already owns all 3 tracks"):
+        with pytest.raises(ValueError, match="Already in your library: all 3 tracks"):
             start_beatport_playlist_job(store, track_ids=TRACKS, name="Crate")
         assert store.list_all() == [] and world.playlists == {}
 
@@ -240,7 +240,7 @@ class TestWhenItStops:
         )
         assert job.state == JobState.FAILED
         assert job.error["code"] == "BEATPORT_FORBIDDEN"
-        assert "playlist scope" in job.error["message"]
+        assert "won't allow making playlists" in job.error["message"]
         assert job.result["outcome"] == OUTCOME_FAILED
         assert job.result["playlist_url"] is None
         assert world.playlists == {}

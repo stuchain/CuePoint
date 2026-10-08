@@ -1001,7 +1001,7 @@ class TestPushingAPlaylist:
             post(engine, api.PLAYLIST_START_PATH, {"track_ids": [3]}),
             400,
             "INVALID_REQUEST",
-            "already owns",
+            "Already in your library",
         )
         assert [
             j for j in store.list_all() if j.type == JOB_TYPE_BEATPORT_PLAYLIST

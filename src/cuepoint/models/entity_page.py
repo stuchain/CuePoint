@@ -276,11 +276,26 @@ class EntityResolution:
         """True when the name asked for is now known by an id."""
         return self.ref != self.requested
 
+    @property
+    def display_name(self) -> str:
+        """What the page is titled (DSC-9): never an id.
+
+        The name Beatport or the library spells it with, else the most common
+        spelling among the library names an id page gathers, else "Unknown
+        artist" or "Unknown label".
+        """
+        if self.name:
+            return self.name
+        if self.names:
+            return max(self.names, key=lambda gathered: gathered.tracks).name
+        return f"Unknown {self.ref.kind}"
+
     def to_dict(self) -> Dict[str, Any]:
         """Serialize for the API."""
         return {
             **self.ref.to_dict(),
             "name": self.name,
+            "display_name": self.display_name,
             "redirected_from": self.requested.token if self.redirected else None,
             "links": [link.to_dict() for link in self.links],
             "names": [name.to_dict() for name in self.names],

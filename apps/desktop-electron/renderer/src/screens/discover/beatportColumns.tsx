@@ -7,7 +7,8 @@
  *
  * Every Beatport table sends one row shape (DISCOVER-09's `BeatportTrackRow`),
  * so the shared columns are written once over it and each table adds its own:
- * a run's order and sources, the wantlist's note, date added and bought mark.
+ * a search's order and reasons, the wantlist's note, date added and bought mark.
+ * Artist and label names are links to their pages (FLW-16).
  * A column sorts by the engine's own sort names; one the engine cannot order
  * by has no `sortKey`. Each table keeps its own layout (DEC-042).
  */
@@ -18,6 +19,9 @@ import type {
 } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
 import { formatBpm } from "../library/trackValues";
+import { ArtistLinks, LabelLink } from "./BeatportNameLinks";
+import { beatportRowKey } from "./beatportKey";
+import { IN_LIBRARY_EXPLAINER } from "./HideOwnedSwitch";
 import { artistsText, formatWhen, sourcesText, trackName } from "./discoverFormat";
 
 export const RUN_TABLE_LAYOUT_KEY = "cuepoint-discover-run-table-layout";
@@ -42,14 +46,16 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
       sortKey: "artist",
       minWidthPx: 100,
       defaultWidthPx: 190,
-      render: (row) => artistsText(row),
+      render: (row) => <ArtistLinks row={row} />,
+      text: (row) => artistsText(row),
     },
     {
       id: "label",
       header: "Label",
       minWidthPx: 90,
       defaultWidthPx: 150,
-      render: (row) => row.label_name ?? "",
+      render: (row) => <LabelLink row={row} />,
+      text: (row) => row.label_name ?? "",
     },
     {
       id: "release_date",
@@ -72,7 +78,8 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
       header: "Key",
       minWidthPx: 56,
       defaultWidthPx: 70,
-      render: (row) => row.key ?? "",
+      // Camelot, as every key in the app is shown (DEC-201); Beatport's own.
+      render: (row) => beatportRowKey(row) ?? "",
     },
     {
       id: "genre",
@@ -92,25 +99,29 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
   ];
 }
 
-/** "Owned" when the library has it (DEC-092), computed by the engine on read. */
+/**
+ * "In your library" when the library has it (DEC-092, DSC-6), computed by the
+ * engine on read. The id stays `owned`, which a saved column layout keeps.
+ */
 function ownedColumn<Row extends BeatportTrackRow>(): TrackColumnDef<Row> {
   return {
     id: "owned",
-    header: "Owned",
-    minWidthPx: 60,
-    defaultWidthPx: 76,
-    render: (row) => (row.owned ? "Owned" : ""),
+    header: "In your library",
+    hint: IN_LIBRARY_EXPLAINER,
+    minWidthPx: 90,
+    defaultWidthPx: 110,
+    render: (row) => (row.owned ? "In your library" : ""),
   };
 }
 
-/** "Wanted" when the track is on the wantlist now (DISCOVER-06). */
+/** "On wantlist" when the track is on the wantlist now (DISCOVER-06). */
 function wantedColumn<Row extends BeatportTrackRow>(): TrackColumnDef<Row> {
   return {
     id: "on_wantlist",
     header: "Wantlist",
     minWidthPx: 70,
-    defaultWidthPx: 84,
-    render: (row) => (row.on_wantlist ? "Wanted" : ""),
+    defaultWidthPx: 96,
+    render: (row) => (row.on_wantlist ? "On wantlist" : ""),
   };
 }
 
@@ -128,7 +139,7 @@ export const RUN_COLUMNS: readonly TrackColumnDef<DiscoverRunTrackRow>[] = [
   ...sharedColumns<DiscoverRunTrackRow>(),
   {
     id: "sources",
-    header: "Found in",
+    header: "Why it's here",
     minWidthPx: 120,
     defaultWidthPx: 260,
     render: (row) => sourcesText(row.sources),

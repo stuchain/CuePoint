@@ -19,7 +19,7 @@ rather than creating an empty playlist.
 Through the API only
 --------------------
 There is no browser fallback (DEC-099). A 403 when creating the playlist is
-refused as ``forbidden``, saying the token may not have playlist scope. The
+refused as ``forbidden``, saying Beatport accepted the token but won't allow making playlists with it. The
 URL reported is the real one, ``BeatportApi.playlist_url``'s, never a
 placeholder.
 
@@ -105,8 +105,7 @@ _CREATE_REFUSED = {
     ERROR_NO_TOKEN: "no Beatport token is configured",
     ERROR_REJECTED: "Beatport rejected the token; it may have expired",
     ERROR_FORBIDDEN: (
-        "Beatport refused to create a playlist (403): the token may not have"
-        " playlist scope"
+        "Beatport accepted the token but won't allow making playlists with it."
     ),
     ERROR_RATE_LIMITED: "Beatport asked CuePoint to slow down; try again later",
 }
@@ -344,9 +343,9 @@ class BeatportPlaylistService(IBeatportPlaylistService):
         skipped = tuple(i for i in ids if i in owned)
         if not to_add:
             raise ValueError(
-                "The library already owns "
+                "Already in your library: "
                 + ("that track" if len(ids) == 1 else f"all {_tracks(len(ids))}")
-                + "; include owned tracks to push them anyway"
+                + ". Include tracks already in your library to make the playlist anyway"
             )
         return PlaylistPush(
             name=title,

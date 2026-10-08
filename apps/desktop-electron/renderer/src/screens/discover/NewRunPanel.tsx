@@ -1,14 +1,16 @@
 /**
- * The "New run" panel (DISCOVER-10, DEC-091).
+ * The New search tab's form (DISCOVER-10, DEC-091, FLW-15).
  *
- * What a discovery run reads: charts in the chosen genres, curated by artists
- * in the library, and recent releases on the library's labels — every artist
- * and label, or only those picked from the Library's own facets, with how many
+ * What a search reads: charts in the chosen genres, curated by artists in the
+ * library, and recent releases on the library's labels — every artist and
+ * label, or only those picked from the Library's own facets, with how many
  * tracks each has. Every field starts from the engine's defaults (`options`),
- * and the form refuses what the engine would, from the bounds it sends.
+ * and the form refuses what the engine would, from the bounds it sends. The
+ * chart dates are two more fields a beginner does not need, so they fold under
+ * "More options" with the default said in words (DSC-5).
  *
- * Starting a run hands it to the engine as a job: the status strip shows it,
- * and it joins the list of runs as soon as it begins.
+ * **Start looking** hands the search to the engine as a job: the status strip
+ * shows it, and the page opens Results on it as soon as the engine begins it.
  */
 import { useMemo, useState } from "react";
 
@@ -23,7 +25,14 @@ import { TextField } from "../../components/TextField";
 import { formatCount, pluralize } from "../library/libraryFormat";
 import { ScopeDialog } from "./ScopeDialog";
 import { refusalText } from "./discoverFormat";
-import { defaultForm, formProblems, runRequest, type NewRunForm, type ScopeMode } from "./newRun";
+import {
+  chartsWindowText,
+  defaultForm,
+  formProblems,
+  runRequest,
+  type NewRunForm,
+  type ScopeMode,
+} from "./newRun";
 import { reportUnexpected } from "../../reporting/reporting";
 
 interface NewRunPanelProps {
@@ -139,19 +148,18 @@ export function NewRunPanel({
   };
 
   return (
-    <section className="discover-new" aria-label="New run">
+    <section className="discover-new" aria-label="New search">
       <header className="discover-new__header">
-        <h2 className="discover-section__title">New run</h2>
+        <h2 className="discover-section__title">New search</h2>
         <p className="discover-note">
-          A run reads charts your artists made in the genres you choose, and recent releases on
-          your labels, and keeps what it finds.
+          Pick artists, labels or charts, then press Start looking.
         </p>
       </header>
 
       {emptyLibrary && (
         <p className="discover-note discover-note--warning">
           Your library has no artists or labels yet. Import a Rekordbox collection in the Library
-          first: a run looks for music by them.
+          first: a search looks for music by them.
         </p>
       )}
       {!options.index_current && (
@@ -163,8 +171,12 @@ export function NewRunPanel({
       <div className="discover-new__grid">
         <fieldset className="discover-new__genres">
           <legend className="cp-field__label">
-            Chart genres ({formatCount(form.genreIds.length)} chosen)
+            Genres for DJ charts ({formatCount(form.genreIds.length)} chosen)
           </legend>
+          <p className="discover-note">
+            On Beatport, artists publish charts — short lists of tracks they play. CuePoint reads
+            the charts made by artists in your library, in the genres you tick.
+          </p>
           {options.genres.length === 0 ? (
             <p className="discover-note">
               Beatport's genres could not be read, so no charts can be chosen now.
@@ -193,24 +205,28 @@ export function NewRunPanel({
               </ul>
             </>
           )}
-          <div className="discover-new__dates">
-            <TextField
-              label="Charts from"
-              id="discover-charts-from"
-              type="date"
-              value={form.chartsFrom}
-              disabled={form.genreIds.length === 0}
-              onChange={(event) => change({ chartsFrom: event.target.value })}
-            />
-            <TextField
-              label="Charts to"
-              id="discover-charts-to"
-              type="date"
-              value={form.chartsTo}
-              disabled={form.genreIds.length === 0}
-              onChange={(event) => change({ chartsTo: event.target.value })}
-            />
-          </div>
+          <p className="discover-note">{chartsWindowText(form, options.defaults)}</p>
+          <details className="discover-new__more">
+            <summary>More options</summary>
+            <div className="discover-new__dates">
+              <TextField
+                label="Charts from"
+                id="discover-charts-from"
+                type="date"
+                value={form.chartsFrom}
+                disabled={form.genreIds.length === 0}
+                onChange={(event) => change({ chartsFrom: event.target.value })}
+              />
+              <TextField
+                label="Charts to"
+                id="discover-charts-to"
+                type="date"
+                value={form.chartsTo}
+                disabled={form.genreIds.length === 0}
+                onChange={(event) => change({ chartsTo: event.target.value })}
+              />
+            </div>
+          </details>
         </fieldset>
 
         <div className="discover-new__column">
@@ -262,11 +278,11 @@ export function NewRunPanel({
           disabled={!usable || busy || problems.length > 0}
           title={usable ? undefined : (unusableReason ?? undefined)}
         >
-          Start run
+          Start looking
         </Button>
         {!usable && unusableReason && <span className="discover-note">{unusableReason}</span>}
         {usable && busy && !starting && (
-          <span className="discover-note">A run is already running.</span>
+          <span className="discover-note">A search is already running.</span>
         )}
       </div>
 

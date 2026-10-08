@@ -1,5 +1,5 @@
 /**
- * The "New run" form's rules (DISCOVER-10).
+ * The New search form's rules (DISCOVER-10).
  *
  * The form refuses what the engine would, from the bounds `options` sends, so
  * a person learns what is wrong before pressing Start rather than after. The
@@ -80,12 +80,12 @@ export function formProblems(form: NewRunForm, limits: DiscoverLimits): string[]
     problems.push("Choose at least one label, or look for every one.");
   }
   // Two rules the engine does not make, because it can run them and find
-  // nothing: a run's charts are the ones your artists curated, and a run with
-  // neither artists nor labels has nothing to look for.
+  // nothing: a search's charts are the ones your artists curated, and a search
+  // with neither artists nor labels has nothing to look for.
   if (form.artists === "none" && form.labels === "none") {
-    problems.push("A run needs artists or labels to look for.");
+    problems.push("A search needs artists or labels to look for.");
   } else if (form.artists === "none" && form.genreIds.length > 0) {
-    problems.push("Charts are found through your artists: choose some, or no genres.");
+    problems.push("Charts come from your artists. Choose some artists, or untick every genre.");
   }
   return problems;
 }
@@ -109,4 +109,20 @@ export function runRequest(form: NewRunForm): DiscoverRunRequest {
     request.charts_to = form.chartsTo;
   }
   return request;
+}
+
+/**
+ * The chart dates in words, for the line shown above "More options" (DSC-5):
+ * "Charts from the last 30 days." while they are the engine's default window,
+ * the two dates once they are not.
+ */
+export function chartsWindowText(form: NewRunForm, defaults: DiscoverDefaults): string {
+  const from = dayOf(form.chartsFrom);
+  const to = dayOf(form.chartsTo);
+  if (from === null || to === null) return "Charts from the dates below.";
+  const isDefault =
+    form.chartsFrom === defaults.charts_from && form.chartsTo === defaults.charts_to;
+  const days = to - from;
+  if (isDefault && days >= 1) return `Charts from the last ${days} days.`;
+  return `Charts from ${form.chartsFrom} to ${form.chartsTo}.`;
 }

@@ -1,17 +1,17 @@
 /**
- * One discovery run: what it looked for, how it ended, what it found
- * (DISCOVER-10, DEC-091, DEC-092).
+ * One search: what it looked for, how it ended, what it found (DISCOVER-10,
+ * DEC-091, DEC-092). The engine calls it a run; the user never reads that.
  *
- * The header is the run as the engine kept it, scope included, so a run can
- * be read long after its settings have changed. The table is the run's tracks
- * in `TrackTable`, owned tracks hidden by default and counted — "12 owned
- * tracks hidden" — because a list of music to buy that quietly includes
- * music already bought is the mistake DEC-092 exists to prevent.
+ * The header is the search as the engine kept it, scope included, so one can
+ * be read long after its settings have changed. The table is its tracks in
+ * `TrackTable`, the ones already in the library hidden by default and counted
+ * on one line — "40 found · 12 already in your library (hidden)" — because a
+ * list of music to buy that quietly includes music already bought is the
+ * mistake DEC-092 exists to prevent.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
-  DiscoverOwnedFilter,
   DiscoverRunHeader,
   DiscoverRunSort,
   DiscoverRunTrackRow,
@@ -20,9 +20,8 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
-import { Modal } from "../../components/Modal";
 import type { TrackTableSort } from "../../components/table";
-import { formatCount, pluralize } from "../library/libraryFormat";
+import { pluralize } from "../library/libraryFormat";
 import { BeatportTable } from "./BeatportTable";
 import { PushDialog } from "./PushDialog";
 import { runActions, type BeatportActionId } from "./beatportActions";
@@ -30,19 +29,24 @@ import { RUN_COLUMNS, RUN_TABLE_LAYOUT_KEY } from "./beatportColumns";
 import { beatportUsable, unusableReason } from "./beatportState";
 import {
   chartsLine,
-  formatWhen,
-  hiddenLine,
+  foundLine,
   refusalText,
   releasesLine,
   runOutcome,
   runStateLabel,
   runStateTone,
   scopeLine,
+  searchTitle,
 } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
 import { openOnBeatport } from "./openOnBeatport";
 import { useBeatportSelection } from "./useBeatportSelection";
 import { useBeatportWindow } from "./useBeatportWindow";
+import { beatportRowKey } from "./beatportKey";
+import { HideOwnedSwitch } from "./HideOwnedSwitch";
+import { useHideOwned } from "./useHideOwned";
+import { beatportSelectedId, useReportSelectedTrack } from "./useReportSelectedTrack";
+import { jobExplainer } from "../../components/shell/useActiveJob";
 import { reportUnexpected } from "../../reporting/reporting";
 
 interface RunDetailProps {
@@ -50,9 +54,7 @@ interface RunDetailProps {
   tools: DiscoverTools;
   /** Changes when the run may have changed: it is running, or just ended. */
   version: number;
-  /** The run was deleted here. */
-  onDeleted: (runId: number) => void;
-  /** The run is not there any more: deleted elsewhere. */
+  /** The search is not there any more: deleted elsewhere. */
   onGone: () => void;
 }
 
@@ -80,17 +82,15 @@ function ScopeNames({ names, noun }: { names: DiscoverRunHeader["artists"]; noun
   );
 }
 
-export function RunDetail({ runId, tools, version, onDeleted, onGone }: RunDetailProps) {
+export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
   const [header, setHeader] = useState<DiscoverRunHeader | null>(null);
   const [headerError, setHeaderError] = useState<string | null>(null);
-  const [owned, setOwned] = useState<DiscoverOwnedFilter>("hide");
+  const [owned, setHiding] = useHideOwned();
   const [order, setOrder] = useState<{ sort: DiscoverRunSort; dir: DiscoverSortDirection }>({
     sort: "position",
     dir: "asc",
   });
   const [pushOpen, setPushOpen] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [working, setWorking] = useState(false);
   const { notify } = tools;
 
@@ -168,6 +168,14 @@ export function RunDetail({ runId, tools, version, onDeleted, onGone }: RunDetai
     loadedRows: tracks.loadedRows,
   });
 
+  // The wheel lights the row last clicked, with Beatport's own key (DEC-157).
+  const lastRow = selection.anchorRow;
+  useReportSelectedTrack(
+    lastRow
+      ? { id: beatportSelectedId(lastRow.beatport_track_id), key: beatportRowKey(lastRow) }
+      : null,
+  );
+
   const pushable = beatportUsable(tools.beatportState);
   const actions = useMemo(
     () =>
@@ -226,54 +234,32 @@ export function RunDetail({ runId, tools, version, onDeleted, onGone }: RunDetai
     return refused;
   };
 
-  const remove = async () => {
-    const bridge = window.cuepoint?.deleteDiscoveryRun;
-    if (!bridge) return;
-    setDeleting(true);
-    try {
-      const answer = await bridge({ run_id: runId });
-      if (answer.refusal) {
-        notify(refusalText(answer.refusal), "warning");
-      } else {
-        notify("Deleted the run. Tracks on your wantlist stay there.", "success");
-        onDeleted(runId);
-      }
-    } catch (cause) {
-      reportUnexpected(cause);
-      notify(cause instanceof Error ? cause.message : String(cause), "warning");
-    } finally {
-      setDeleting(false);
-      setConfirmDelete(false);
-    }
-  };
-
   const run = header?.run ?? null;
   const page = tracks.page;
   const sort: TrackTableSort = { key: order.sort, direction: order.dir };
-  const hidden = page?.hidden ?? 0;
 
   const emptyState = (
     <div className="discover-empty">
       {tracks.status === "error" ? (
         <>
-          <p className="discover-empty__headline">The run's tracks could not be read.</p>
+          <p className="discover-empty__headline">The search's tracks could not be read.</p>
           <p className="discover-note">{tracks.error}</p>
           <Button variant="secondary" onClick={reload}>
             Try again
           </Button>
         </>
       ) : tracks.loading ? (
-        <p className="discover-note">Reading the run's tracks…</p>
+        <p className="discover-note">Reading the search's tracks…</p>
       ) : (page?.tracks ?? 0) === 0 ? (
         <p className="discover-empty__headline">
-          {run?.running ? "Nothing found yet." : "This run found nothing."}
+          {run?.running ? "Nothing found yet." : "This search found nothing."}
         </p>
       ) : (
         <>
           <p className="discover-empty__headline">
-            You own every track this run found.
+            Every track this search found is already in your library.
           </p>
-          <Button variant="secondary" onClick={() => setOwned("all")}>
+          <Button variant="secondary" onClick={() => setHiding(false)}>
             Show them
           </Button>
         </>
@@ -282,31 +268,29 @@ export function RunDetail({ runId, tools, version, onDeleted, onGone }: RunDetai
   );
 
   return (
-    <section className="discover-run" aria-label="Run">
+    <section className="discover-run" aria-label="Search">
       <header className="discover-run__header">
         {headerError ? (
           <p className="discover-note discover-note--warning" role="alert">
             {headerError}
           </p>
         ) : !run || !header ? (
-          <p className="discover-note">Reading the run…</p>
+          <p className="discover-note">Reading the search…</p>
         ) : (
           <>
             <div className="discover-run__title-row">
-              <h2 className="discover-section__title">Run of {formatWhen(run.started_at)}</h2>
+              <h2 className="discover-section__title">{searchTitle(run.started_at)}</h2>
               <Badge variant={BADGE[runStateTone(run)]}>{runStateLabel(run)}</Badge>
-              <span className="discover-table__spacer" />
-              <Button
-                variant="secondary"
-                disabled={run.running}
-                title={run.running ? "A running run cannot be deleted." : undefined}
-                onClick={() => setConfirmDelete(true)}
-              >
-                Delete run…
-              </Button>
             </div>
             <p className="discover-run__outcome">{runOutcome(run)}</p>
-            <ul className="discover-run__looked" aria-label="What this run looked for">
+            {run.running && (
+              <p className="discover-run__explainer">
+                {jobExplainer("discovery")} This can take a few minutes, and the bar at the bottom
+                shows how far it has got.
+              </p>
+            )}
+            <p className="discover-run__looked-title">What it looked for</p>
+            <ul className="discover-run__looked" aria-label="What it looked for">
               <li>{chartsLine(run, tools.options.genres)}</li>
               <li>{releasesLine(run)}</li>
               <li>Artists: {scopeLine(run.params.artists, "artist", "artists")}</li>
@@ -318,23 +302,14 @@ export function RunDetail({ runId, tools, version, onDeleted, onGone }: RunDetai
         )}
       </header>
 
-      <div className="discover-toolbar" role="toolbar" aria-label="Run's tracks">
-        <label className="discover-toolbar__check">
-          <input
-            type="checkbox"
-            checked={owned === "all"}
-            onChange={(event) => setOwned(event.target.checked ? "all" : "hide")}
-          />
-          Show tracks you own
-        </label>
-        {owned === "hide" && hidden > 0 && (
-          <span className="discover-toolbar__hidden" role="status">
-            {hiddenLine(hidden)}
-          </span>
-        )}
+      <div className="discover-toolbar" role="toolbar" aria-label="This search's tracks">
+        <HideOwnedSwitch
+          hiding={owned === "hide"}
+          onChange={setHiding}
+        />
         {page && (
-          <span className="discover-note">
-            {formatCount(page.tracks)} found, {formatCount(page.owned)} owned
+          <span className="discover-note" role="status">
+            {foundLine(page.tracks, page.owned, owned === "hide")}
           </span>
         )}
       </div>
@@ -352,7 +327,7 @@ export function RunDetail({ runId, tools, version, onDeleted, onGone }: RunDetai
         }}
         actions={actions}
         onAction={onAction}
-        label="Tracks this run found"
+        label="Tracks this search found"
         summary={pluralize(tracks.total, "track")}
         emptyState={emptyState}
         resetKey={windowKey}
@@ -372,18 +347,6 @@ export function RunDetail({ runId, tools, version, onDeleted, onGone }: RunDetai
         onClose={() => setPushOpen(false)}
       />
 
-      <Modal
-        open={confirmDelete}
-        title="Delete this run?"
-        onClose={() => setConfirmDelete(false)}
-        secondaryAction={{ label: "Keep it", onClick: () => setConfirmDelete(false) }}
-        primaryAction={{ label: "Delete run", onClick: () => void remove(), loading: deleting }}
-      >
-        <p className="discover-dialog__text">
-          The run and the list of what it found go. Tracks you added to your wantlist from it
-          stay there.
-        </p>
-      </Modal>
     </section>
   );
 }

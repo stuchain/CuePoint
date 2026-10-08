@@ -2,14 +2,14 @@
  * The Discover page, end to end (DISCOVER-10).
  *
  * The specification's journey against a real engine, a real preload and a
- * real library: start a run, watch it in the status strip, open it, add two
+ * real library: start a search, watch it in the status strip, open it, add two
  * tracks to the wantlist, and mark one bought. And the state a first visit
  * meets: no Beatport token, said plainly, with a way to the token field.
  *
  * Beatport is stubbed at the engine: `CUEPOINT_BEATPORT_FIXTURE` names
  * `src/tests/fixtures/beatport/discover/fixture.json`, whose `api` entries
  * answer the v4 catalog through the real client — two genres, one chart by the
- * library's artist, its three tracks, held back four seconds so the run can be
+ * library's artist, its three tracks, held back four seconds so the search can be
  * watched. `test_discover_journey_fixture.py` holds the file to this journey.
  * The token set here is a placeholder in a sandboxed config: nothing reaches
  * Beatport, and a developer's own token is never read.
@@ -124,9 +124,10 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       const window = await ready(app);
       await window.getByRole("link", { name: "Discover" }).click();
       await expect(window.getByRole("heading", { name: "Discover", level: 1 })).toBeVisible();
-      await expect(window.getByText("Beatport is not connected")).toBeVisible({ timeout: 30_000 });
-      // Usable without a token: the runs and the wantlist are CuePoint's own.
-      await expect(window.getByRole("button", { name: "Start run" })).toBeDisabled();
+      await expect(window.getByText("Connect your Beatport account")).toBeVisible({ timeout: 30_000 });
+      // Usable without a token: past searches and the wantlist are CuePoint's own.
+      await window.getByRole("tab", { name: "New search" }).click();
+      await expect(window.getByRole("button", { name: "Start looking" })).toBeDisabled();
       await window.getByRole("tab", { name: "Wantlist" }).click();
       await expect(window.getByText("Your wantlist is empty.")).toBeVisible();
 
@@ -137,7 +138,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
     }
   });
 
-  test("runs, is watched, and keeps two tracks on the wantlist, one bought", async () => {
+  test("searches, is watched, and keeps two tracks on the wantlist, one bought", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
@@ -145,44 +146,45 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await window.evaluate(() => window.cuepoint!.setBeatportToken("e2e-not-a-real-token"));
 
       await window.getByRole("link", { name: "Discover" }).click();
-      const panel = window.getByRole("region", { name: "New run" });
+      await window.getByRole("tab", { name: "New search" }).click();
+      const panel = window.getByRole("region", { name: "New search" });
       await expect(panel).toBeVisible({ timeout: 30_000 });
-      await expect(window.getByText("Beatport is not connected")).toHaveCount(0);
+      await expect(window.getByText("Connect your Beatport account")).toHaveCount(0);
       await panel.getByRole("checkbox", { name: "House" }).check();
-      await panel.getByRole("button", { name: "Start run" }).click();
+      await panel.getByRole("button", { name: "Start looking" }).click();
 
-      // The run is a job the status strip follows, stage and all.
+      // The search is a job the status strip follows, stage and all.
       await expect(window.locator(".cp-status")).toContainText(
         /Reading charts|Discovering on Beatport/,
         { timeout: 15_000 },
       );
 
-      // It opens as soon as the engine has made it, and ends with its tracks.
+      // Results opens on it as soon as the engine has made it, and ends with its tracks.
       await expect(window.getByText("Found 3 tracks from 1 chart and 0 releases.", { exact: true })).toBeVisible({
         timeout: 60_000,
       });
-      const found = "Tracks this run found";
+      const found = "Tracks this search found";
       await expect(row(window, found, /Harbour Lights/)).toBeVisible({ timeout: 15_000 });
       await expect(window.getByRole("table", { name: found }).getByRole("row")).toHaveCount(4);
-      await expect(row(window, found, /Harbour Lights/)).toContainText("Chart “Journey Selects” by Mara Veil");
+      await expect(row(window, found, /Harbour Lights/)).toContainText("On a chart by Mara Veil: “Journey Selects”");
       // A Beatport row is not a library row: the Inspector says so.
       await expect(window.getByText(/Tracks found on Beatport are not in your library/)).toBeVisible();
 
-      await row(window, found, /Harbour Lights/).click();
-      await row(window, found, /Low Tide/).click({ modifiers: ["ControlOrMeta"] });
+      await row(window, found, /Harbour Lights/).locator('[data-column="title"]').click();
+      await row(window, found, /Low Tide/).locator('[data-column="title"]').click({ modifiers: ["ControlOrMeta"] });
       await window.getByRole("button", { name: "Add to wantlist" }).click();
       await expect(window.getByText("Added 2 tracks to the wantlist")).toBeVisible();
-      await expect(row(window, found, /Harbour Lights/)).toContainText("Wanted");
+      await expect(row(window, found, /Harbour Lights/)).toContainText("On wantlist");
 
       await window.getByRole("tab", { name: "Wantlist" }).click();
       await expect(window.getByRole("table", { name: "Wantlist" }).getByRole("row")).toHaveCount(3, {
         timeout: 15_000,
       });
-      await row(window, "Wantlist", /Low Tide/).click();
+      await row(window, "Wantlist", /Low Tide/).locator('[data-column="title"]').click();
       await window.getByRole("button", { name: "Mark bought" }).click();
       await expect(window.getByText(/Marked “Low Tide \(Original Mix\)” .* bought/)).toBeVisible();
 
-      await window.getByRole("combobox", { name: "Bought" }).selectOption("only");
+      await window.getByRole("combobox", { name: "Marked bought" }).selectOption("only");
       await expect(window.getByRole("table", { name: "Wantlist" }).getByRole("row")).toHaveCount(2);
       await expect(row(window, "Wantlist", /Low Tide/)).toBeVisible();
     } finally {

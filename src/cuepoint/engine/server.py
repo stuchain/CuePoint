@@ -119,6 +119,7 @@ from cuepoint.engine.waveforms_api import (
     handles_post as waveforms_handles_post,
     status_for as waveforms_status,
 )
+from cuepoint.engine.beatport_resolve_jobs import resolve_after_matches
 from cuepoint.engine.jobs import JobStore, JobTypeBusyError
 from cuepoint.reporting.engine_reporting import (
     breadcrumb,
@@ -1303,6 +1304,7 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     # output tail; after it, a bounded buffer holds reports, breadcrumbs and logged errors until
     # the setup has finished (see engine_reporting's docstring for what is not covered).
     watch_jobs(_JOB_STORE)
+    resolve_after_matches(_JOB_STORE)
     cfg = config or EngineConfig.from_env()
     if cfg.host not in ALLOWED_HOSTS:
         raise ValueError(f"Refusing to bind engine to non-loopback host: {cfg.host!r}")

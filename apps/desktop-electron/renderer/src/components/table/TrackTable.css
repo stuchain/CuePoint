@@ -101,11 +101,16 @@
   text-overflow: ellipsis;
 }
 
-.track-table__header-cell:disabled {
+.track-table__header-cell-wrap > .cp-hint {
+  display: flex;
+}
+
+.track-table__header-cell:disabled,
+.track-table__header-cell[aria-disabled="true"] {
   cursor: default;
 }
 
-.track-table__header-cell:not(:disabled):hover {
+.track-table__header-cell:not(:disabled):not([aria-disabled="true"]):hover {
   color: var(--fg-primary);
   background: color-mix(in srgb, var(--bg-panel) 30%, var(--bg-toolbar));
 }

@@ -105,7 +105,7 @@ const JOB_VERBS: Record<string, string> = {
   // DISCOVER-09's routes). Each spends requests on the user's token, so the
   // strip says Beatport, as the match does.
   discovery: "Discovering on Beatport",
-  beatport_playlist: "Pushing to Beatport",
+  beatport_playlist: "Making a playlist on Beatport",
   beatport_resolve: "Linking tracks to Beatport",
   // WAVE-03's waveform analysis, which starts on its own after every file
   // check and can run for hours on a large library.

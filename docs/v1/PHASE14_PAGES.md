@@ -1018,6 +1018,86 @@ supersedes DSC-2's tab names: there is no "New music" tab, and "Run" is still ne
 
 **Complexity**: **M**
 
+**Outcome** (2026-10-08): Built as specified; "run" stays in routes, job types, stored rows, bridge names and
+CSS classes, and no user-visible string says "run", "engine" or "job" (`userWords.test.ts` guards the last two, a
+`DiscoverScreen.test.tsx` test reads the page's text for the first).
+`DiscoverScreen.tsx` holds the intro line (DSC-1), the three tabs (`discoverSections.ts`: `new`, `results`,
+`wantlist`; a stored `runs` opens Results, which is the default), the token banner (`beatportState.ts`: "Connect
+your Beatport account", the "Beatport sign-in key (a “token”)" and "How do I get a token?" in Settings, no "scope"),
+a lookup banner (aria-label "Beatport lookup", **Look them up now**, and while it works "Looking up N tracks on
+Beatport…" with `jobExplainer("beatport_resolve")`), and `DiscoverHintCard.tsx` (DSC-11, role note, **Got it**,
+remembered in `localStorage`, pointing at the artist and label links and at Similar tracks in Track details). The New
+search form (`NewRunPanel.tsx`) is mounted when first opened and kept, so it survives a tab change; **Start looking**
+opens Results, which selects the new search as soon as the engine lists it. **Delete this search…** sits on each row
+of the list (`RunList.tsx`, `RunsView.tsx` owns the confirmation), so the search's own page has no delete. One
+`HideOwnedSwitch.tsx` ("Hide tracks already in your library", on by default, titled with what "in your library"
+means) serves Results and the artist and label pages' Beatport half (their library half has no such list), one
+stored value (`useHideOwned.ts`, localStorage `cuepoint-discover-hide-owned`) shared by them, and its explanation also
+sits on the "In your library" column header (`TrackColumnDef.hint`, a `Hint`) and the Wantlist filter. Beatport tables
+select by keyboard (Up/Down move, Shift extends, Enter or Space selects, Ctrl+Space toggles; `BeatportTable.tsx`), and
+the wheel follows the row last clicked (`anchorRow`). The page follows a lookup the engine started itself (via
+`useActiveJob`). Also, `foundLine` is the one count line
+("40 found · 12 already in your library (hidden)"); the Wantlist keeps its filters as **In your library** and **Marked
+bought**, each Any, No or Yes (the wire's `all`, `hide`, `only`), set to Any, and marks owned rows. Actions
+(`beatportActions.ts`) are always shown, disabled with their reason through `Hint` until rows are selected; **Make a
+Beatport playlist…** stays enabled and says "All 48 shown" or "3 selected". Columns: "Why it's here" (`sourceText`
+names a chart's artist or a label's release), "In your library", Match. `BeatportNameLinks.tsx` makes artist and label
+names links (FLW-16): real buttons reached by Tab inside the row, whose click navigates and neither selects nor
+activates the row, while Enter on the row itself still selects it (a focused link takes its own Enter).
+`useReportSelectedTrack.ts` sets the `selectedTrack` store from a Results or artist-page Beatport row
+(`bp-<id>`, Beatport's key as Camelot through `beatportKey.ts`, null when it has none or cannot be read), from the
+library half of an artist page and from a Similar tracks row, and clears it when the selection or the page goes;
+`keyReaders.test.ts` lists `beatportKey.ts` as the one place a Beatport row's key is read. Similar tracks reads "Mixes
+well": `similarReasons.ts` writes **Same key**, **Next key** and **Relative key** once (`KEY_WORDS`), and the Match
+column is **Strong**, **Good** or **Some** with the number in its tooltip; Prepare's Suggestions show the same
+reasons, so `PrepareSource.test.tsx` quotes "Mixes well (next key)" now (its own strip and warnings, `keyRelationWords`,
+still say "One step on the wheel" until PAGES-09). Artist and label pages say "Linked to Beatport" or "Your tracks by
+this name", "Not linked to Beatport yet", "Check Beatport again" and "Saved earlier from Beatport…", and are titled by
+`display_name`. A running search is explained on the page with `jobExplainer("discovery")`, and `useActiveJob.ts`
+now says the playlist job is "Making a playlist on Beatport". Engine: `EntityResolution.display_name` (the catalog's
+name, else the linked spelling used by most tracks, else "Unknown artist", never an id) is in `to_dict`, the
+contract types (`cuepointBridge.types.ts`, `engineClient.ts`) and the regenerated `discoverPages.fixture.json`;
+`beatport_resolve_jobs.resolve_after_matches(store)`, registered after `watch_jobs` in `server.py`, adds a
+`JobStore` end listener that starts one resolve when a `clean_match` job succeeds, a token is present and
+`plan().to_read > 0` (it does not test that Beatport accepts the token), and does nothing otherwise (no token, or a
+resolve already queued or running, which `JobTypeBusyError` reports). The playlist service's refusal and the entity half's messages were reworded to match
+("Already in your library: …", "Looking up N matched tracks on Beatport will find them"). `docs/user-guide/discover.md`
+is rewritten for the three tabs. Nothing in `screens/library/` changed: the credit links on the Inspector (`CreditLinks`
+hints) are PAGES-05's, and the Similar tracks card text names Track details, which PAGES-06 builds.
+
+DEC-130's inventory, re-marked against the three tabs (the user's mark kept for each part):
+
+| # | Part | Now lives in | Mark | State |
+|---|---|---|---|---|
+| 1 | Page header and tabs | the page | Change | Intro line; tabs New search, Results, Wantlist (FLW-15) |
+| 2 | Token banner and variants | the page, above the tabs | Change | Plain words, token explained, link to Settings → Beatport |
+| 3 | Resolve banner | the page | Change | **Look them up now** in plain words; the engine also does it after a match |
+| 4 | Push result banner | the page | Keep | Reworded: "Made “X” on Beatport with N tracks" |
+| 5 | Run list | Results | Keep | "Search of {date}", **Delete this search…** on the row, **Show older searches**; empty text leads to New search |
+| 6 | New run panel | New search | Change | Charts explained; **Start looking** |
+| 7 | Chart dates | New search, under More options | Remove from default view | Default stated in words |
+| 8 | Choose artists/labels dialog | New search | Keep | Unchanged |
+| 9 | Run detail header, "What it looked for" | Results | Keep | "Search of …" title and the running explanation |
+| 10 | Run tracks toolbar | Results | Change | One switch and one count line |
+| 11 | Beatport table, actions, menu | Results, Wantlist, artist and label pages | Keep | Always-shown actions; **Make a Beatport playlist…** |
+| 12 | Columns | the same tables | Change | "Why it's here", "In your library", the wantlist mark |
+| 13 | Push dialog | Results, Wantlist, pages | Keep | "Make a playlist on Beatport", **Make playlist** |
+| 14 | Delete-run dialog | Results (the list row) | Keep | "Delete this search?" **Keep it** / **Delete search** |
+| 15 | Wantlist filters, summary, table | Wantlist | Change | **In your library** and **Marked bought**, Any/No/Yes; one count line |
+| 16 | Note dialog, Mark bought, Remove | Wantlist | Keep | Unchanged |
+| 17 | Inspector empty text | the page | Keep | Unchanged |
+| 18 | Artist/Label page | its own route | Change | `display_name` title, plain identity words, links |
+| 19 | Similar tracks | its own route | Change | "Mixes well", Match as a word, key words once |
+| 20 | Way into the sub-pages | the page | Add | The hint card, and the names that are links |
+| 21 | Loading and could-not-open | the page | Keep | Unchanged |
+
+Tests: `DiscoverScreen.test.tsx`, `discoverPure.test.ts`, `discoverPages.test.ts`, `EntityScreen.test.tsx`,
+`SimilarScreen.test.tsx`, `similarReasons.test.ts`, `useActiveJob.test.ts` and `keyReaders.test.ts` are rewritten for the
+words; the engine tests are `TestAfterAMatch` (a finished match with a token starts one resolve; none without one, none
+for another job type, a failed match, nothing to read or a resolve already running), `TestDisplayName` and the fixture
+test. `e2e/discover.spec.ts` and `e2e/discoverPages.spec.ts` use the new names; the second now expects the lookup to
+have happened by itself after the match instead of clicking it.
+
 ---
 
 ## PAGES-09 — Prepare

@@ -246,7 +246,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         timeout: 30_000,
       });
       await expect(window).toHaveURL(/#\/discover\/artist\/name%3Amara%20veil$/);
-      await expect(window.getByText("Grouped by name")).toBeVisible();
+      await expect(window.getByText("Your tracks by this name")).toBeVisible();
       await expect(window.getByText("2 tracks in your library")).toBeVisible();
       await expect(window.getByRole("link", { name: "Discover" })).toHaveAttribute(
         "aria-current",
@@ -254,8 +254,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
       );
       // Newest first; the page is the Library's own query over her name.
       await expect.poll(() => titlesIn(window, "Your tracks")).toEqual(["Harbour Lights", "Low Tide"]);
-      // Known by name only, and never looked up on Beatport by name.
-      await expect(window.getByText("Known by name only")).toBeVisible();
+      // Not linked to Beatport yet, and never looked up on Beatport by name.
+      await expect(window.getByText("Not linked to Beatport yet")).toBeVisible();
 
       // --- play a track from the page (DEC-012) ----------------------------
       await row(window, "Your tracks", "Low Tide").dblclick();
@@ -275,9 +275,9 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         .toEqual(["Low Tide", "Night Bus", "Signal"]);
       // Each suggestion says why, in words.
       await expect(row(window, "Similar tracks", "Low Tide")).toContainText(
-        "One step on the wheel: 8A → 9A",
+        "Mixes well (next key): 8A → 9A",
       );
-      await expect(row(window, "Similar tracks", "Night Bus")).toContainText("Half time: 124 → 62");
+      await expect(row(window, "Similar tracks", "Night Bus")).toContainText("Half the tempo: 124 → 62");
 
       // --- queue a suggestion without interrupting (DEC-013) ---------------
       await row(window, "Similar tracks", "Night Bus").click({ button: "right" });
@@ -295,7 +295,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
   test("the whole of Phase 9, in the order a person meets it (DISCOVER-12)", async () => {
     test.setTimeout(420_000);
     const nav = (window: Page) => window.getByRole("navigation", { name: /main navigation/i });
-    const found = "Tracks this run found";
+    const found = "Tracks this search found";
     const app = await launch(userDataDir, cuepointHome, PHASE_BEATPORT);
     try {
       const window = await ready(app);
@@ -325,26 +325,31 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(queueRow(window, "Low Tide")).toBeVisible();
       });
 
-      await test.step("resolve identities", async () => {
+      await test.step("the lookup on Beatport has already happened by itself (DSC-4)", async () => {
+        // A token was set before the match, so the finished match started the
+        // lookup without being asked; there is nothing left to offer.
         await nav(window).getByRole("link", { name: "Discover" }).click();
-        const banner = window.getByRole("status", { name: "Resolve Beatport identities" });
-        await expect(banner).toContainText("2 matched tracks have not been read from Beatport yet", {
-          timeout: 30_000,
-        });
-        await banner.getByRole("button", { name: "Resolve Beatport identities" }).click();
-        await expect(banner).toHaveCount(0, { timeout: 60_000 });
+        await expect(window.getByRole("tab", { name: "Results" })).toBeVisible({ timeout: 30_000 });
         await idle(window);
+        await expect(window.getByRole("status", { name: "Beatport lookup" })).toHaveCount(0, {
+          timeout: 60_000,
+        });
       });
 
-      await test.step("run discovery, and see the two accepted tracks hidden as owned", async () => {
-        const panel = window.getByRole("region", { name: "New run" });
+      await test.step("search, and see the two accepted tracks hidden as already in the library", async () => {
+        await window.getByRole("tab", { name: "New search" }).click();
+        const panel = window.getByRole("region", { name: "New search" });
         await expect(panel).toBeVisible({ timeout: 30_000 });
         await panel.getByRole("checkbox", { name: "House" }).check();
-        await panel.getByRole("button", { name: "Start run" }).click();
+        await panel.getByRole("button", { name: "Start looking" }).click();
         // A job the status strip follows (acceptance 2).
         await expect(window.locator(".cp-status")).toContainText(
           /Reading charts|Discovering on Beatport/,
           { timeout: 15_000 },
+        );
+        await expect(window.getByRole("tab", { name: "Results" })).toHaveAttribute(
+          "aria-selected",
+          "true",
         );
         await expect(
           window.getByText("Found 4 tracks from 1 chart and 0 releases.", { exact: true }),
@@ -354,35 +359,38 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(rows).toHaveCount(3, { timeout: 15_000 });
         await expect(bpRow(window, found, "Undertow")).toBeVisible();
         await expect(bpRow(window, found, "Salt Air")).toBeVisible();
-        await expect(window.getByText("2 owned tracks hidden")).toBeVisible();
-        const show = window.getByRole("checkbox", { name: "Show tracks you own" });
-        await show.check();
+        await expect(
+          window.getByText("4 found · 2 already in your library (hidden)"),
+        ).toBeVisible();
+        const hide = window.getByRole("checkbox", { name: "Hide tracks already in your library" });
+        await expect(hide).toBeChecked();
+        await hide.uncheck();
         await expect(rows).toHaveCount(5, { timeout: 15_000 });
-        await expect(bpRow(window, found, "Harbour Lights")).toContainText("Owned");
-        await expect(bpRow(window, found, "Low Tide")).toContainText("Owned");
-        await show.uncheck();
+        await expect(bpRow(window, found, "Harbour Lights")).toContainText("In your library");
+        await expect(bpRow(window, found, "Low Tide")).toContainText("In your library");
+        await hide.check();
         await expect(rows).toHaveCount(3, { timeout: 15_000 });
       });
 
-      await test.step("add a track to the wantlist, and push two to a Beatport playlist", async () => {
-        await bpRow(window, found, "Undertow").click();
+      await test.step("add a track to the wantlist, and make a playlist of two on Beatport", async () => {
+        await bpRow(window, found, "Undertow").locator('[data-column="title"]').click();
         await window.getByRole("button", { name: "Add to wantlist" }).click();
         // One track is named, not counted.
         await expect(window.getByText(/Added .*Undertow.* to the wantlist/)).toBeVisible({
           timeout: 15_000,
         });
         // The add reloads the table; select again only once it has.
-        await expect(bpRow(window, found, "Undertow")).toContainText("Wanted", { timeout: 15_000 });
-        await bpRow(window, found, "Salt Air").click({ modifiers: ["ControlOrMeta"] });
-        await window.getByRole("button", { name: "Push to Beatport playlist…" }).click();
-        const dialog = window.getByRole("dialog", { name: "Push to a Beatport playlist" });
+        await expect(bpRow(window, found, "Undertow")).toContainText("On wantlist", { timeout: 15_000 });
+        await bpRow(window, found, "Salt Air").locator('[data-column="title"]').click({ modifiers: ["ControlOrMeta"] });
+        await window.getByRole("button", { name: "Make a Beatport playlist…" }).click();
+        const dialog = window.getByRole("dialog", { name: "Make a playlist on Beatport" });
         await expect(dialog).toContainText("the 2 selected tracks");
-        await dialog.getByLabel("Playlist name").fill("Journey push");
-        await dialog.getByRole("button", { name: "Push", exact: true }).click();
+        await dialog.getByLabel("Playlist name").fill("Journey list");
+        await dialog.getByRole("button", { name: "Make playlist", exact: true }).click();
         // A refusal would keep the dialog open, saying why.
         await expect(dialog).toHaveCount(0, { timeout: 15_000 });
         const notice = window.getByRole("status", { name: "Beatport playlist" });
-        await expect(notice).toContainText("Added 2 tracks to “Journey push” on Beatport.", {
+        await expect(notice).toContainText("Made “Journey list” on Beatport with 2 tracks.", {
           timeout: 60_000,
         });
         await expect(notice.getByRole("button", { name: "Open the playlist" })).toBeVisible();
@@ -402,14 +410,17 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await inspector.getByRole("button", { name: "Mara Veil" }).click();
         await expect(window).toHaveURL(/#\/discover\/artist\/bp%3A301001$/, { timeout: 30_000 });
         await expect(window.getByRole("heading", { name: "Mara Veil", level: 1 })).toBeVisible();
-        await expect(window.getByText("Beatport artist", { exact: true })).toBeVisible();
+        await expect(window.getByText("Linked to Beatport", { exact: true })).toBeVisible();
         await expect.poll(() => titlesIn(window, "Your tracks")).toEqual(["Harbour Lights", "Low Tide"]);
         const releases = "Beatport's releases by this artist";
-        await expect(window.getByText(/4 tracks released since .*, 2 owned\./)).toBeVisible({
-          timeout: 30_000,
+        await expect(
+          window.getByText(/4 tracks released since .* · 2 already in your library \(hidden\)/),
+        ).toBeVisible({ timeout: 30_000 });
+        await expect(bpRow(window, releases, "Salt Air")).not.toContainText("In your library");
+        await window.getByRole("checkbox", { name: "Hide tracks already in your library" }).uncheck();
+        await expect(bpRow(window, releases, "Low Tide")).toContainText("In your library", {
+          timeout: 15_000,
         });
-        await expect(bpRow(window, releases, "Low Tide")).toContainText("Owned");
-        await expect(bpRow(window, releases, "Salt Air")).not.toContainText("Owned");
       });
 
       await test.step("open a label page by name, and play from it", async () => {
@@ -422,7 +433,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(window).toHaveURL(/#\/discover\/label\/name%3Acold%20room$/, {
           timeout: 30_000,
         });
-        await expect(window.getByText("Grouped by name")).toBeVisible();
+        await expect(window.getByText("Your tracks by this name")).toBeVisible();
         await expect.poll(() => titlesIn(window, "Your tracks")).toEqual(["Night Bus", "Signal"]);
         await expect(window.getByText("Not found on Beatport")).toBeVisible({ timeout: 30_000 });
         await row(window, "Your tracks", "Signal").dblclick();
@@ -475,7 +486,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
           nav(window).getByRole("link", { name: "Library", exact: true }),
         ).toHaveAttribute("aria-current", "page");
         await expect(row(window, "Library tracks", "Harbour Lights")).toBeVisible({ timeout: 60_000 });
-        // What the session made is kept: the wantlist and the run (acceptance 2, 5).
+        // What the session made is kept: the wantlist and the search (acceptance 2, 5).
         await nav(window).getByRole("link", { name: "Discover" }).click();
         // Discover reopens on the tab used last, which was the wantlist.
         await expect(window.getByRole("tab", { name: "Wantlist" })).toHaveAttribute(
@@ -484,14 +495,19 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
           { timeout: 30_000 },
         );
         await expect(bpRow(window, "Wantlist", "Undertow")).toBeVisible({ timeout: 15_000 });
-        await window.getByRole("tab", { name: "Runs" }).click();
+        await window.getByRole("tab", { name: "Results" }).click();
         await window
-          .getByRole("navigation", { name: "Runs" })
+          .getByRole("navigation", { name: "Past searches" })
           .getByRole("button", { name: /4 tracks found/ })
           .click();
         await expect(window.getByText("Found 4 tracks from 1 chart and 0 releases.")).toBeVisible({
           timeout: 30_000,
         });
+        // The hide switch was left off before quitting, and is remembered (DSC-6);
+        // turning it back on is what hides the owned tracks again.
+        const hideAgain = window.getByRole("checkbox", { name: "Hide tracks already in your library" });
+        await expect(hideAgain).not.toBeChecked();
+        await hideAgain.check();
         // The same tracks, still owned where they were, and why each was found.
         await expect(window.getByRole("table", { name: found }).getByRole("row")).toHaveCount(3, {
           timeout: 15_000,

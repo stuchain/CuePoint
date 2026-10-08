@@ -617,3 +617,86 @@
 .discover-page--similar > .discover-page__similar {
   flex: 1 1 0;
 }
+
+/* DSC-11: the card that points at the artist, label and Similar tracks pages. */
+.discover-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--border-width) solid var(--border-muted);
+  background: var(--bg-panel-alt);
+}
+
+.discover-hint__text {
+  flex: 1;
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+/* DSC-1: the line under the title. */
+.discover-screen__intro {
+  margin: 0;
+  max-width: 70ch;
+  font-size: var(--font-size-sm);
+  color: var(--fg-muted);
+}
+
+/* An action and the few words beside it ("All 48 shown"). */
+.discover-table__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+/* DSC-5: chart dates folded under "More options". */
+.discover-new__more {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.discover-new__more > summary {
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+
+/* DSC-12: what a running search is doing, under its outcome. */
+.discover-run__explainer {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--fg-muted);
+}
+
+/* A past search's row: the search, and the way to delete it. */
+.discover-runs__row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-xs);
+}
+
+.discover-runs__row > .discover-runs__item {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.discover-run__looked-title {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  font-weight: bold;
+}
+
+/* A tab's panel fills the body; one that is not showing takes no room, which
+   the `hidden` attribute alone would not do once `display` is set here. */
+.discover-screen__panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.discover-screen__panel[hidden] {
+  display: none;
+}
