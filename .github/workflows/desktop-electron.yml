@@ -97,6 +97,28 @@ jobs:
         working-directory: apps/desktop-electron
         run: npm run build
 
+      # REPORT-07. Each OS leg builds its own bundles, so each uploads its own maps: the debug id
+      # that `inject` writes into every file and its map ties a stack frame to its map whatever the
+      # leg, so the same release and dist from three legs do not collide. Must run after the last
+      # `npm run build` (a rebuild would drop the debug ids) and before electron-builder packs. It
+      # runs straight after the build so a failing test or end-to-end step never holds the maps back.
+      - name: Upload source maps to Sentry
+        # Pushes only (a pull request builds from code nobody has merged), and only with the secret.
+        if: github.event_name == 'push' && env.HAS_SENTRY_TOKEN == 'true'
+        # A Sentry outage must not stop the installers; a tag build is the release, so it must succeed.
+        continue-on-error: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+        working-directory: apps/desktop-electron
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: cuepoint
+          SENTRY_PROJECT: electron
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          dist="${CUEPOINT_BUILD_COMMIT:0:7}"
+          npx sentry-cli sourcemaps inject electron-dist renderer/dist
+          npx sentry-cli sourcemaps upload --release "cuepoint@${version}" --dist "${dist}" electron-dist renderer/dist
+
       - name: Build engine sidecar (packaged smoke)
         run: python scripts/build_engine_sidecar.py
 
@@ -161,27 +183,6 @@ jobs:
       - name: Playwright Electron smoke
         working-directory: apps/desktop-electron
         run: npm run test:e2e
-
-      # REPORT-07. Each OS leg builds its own bundles, so each uploads its own maps: the debug id
-      # that `inject` writes into every file and its map ties a stack frame to its map whatever the
-      # leg, so the same release and dist from three legs do not collide. Must run after the last
-      # `npm run build` (a rebuild would drop the debug ids) and before electron-builder packs.
-      - name: Upload source maps to Sentry
-        # Pushes only (a pull request builds from code nobody has merged), and only with the secret.
-        if: github.event_name == 'push' && env.HAS_SENTRY_TOKEN == 'true'
-        # A Sentry outage must not stop the installers; a tag build is the release, so it must succeed.
-        continue-on-error: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        shell: bash
-        working-directory: apps/desktop-electron
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: cuepoint
-          SENTRY_PROJECT: electron
-        run: |
-          version="$(node -p "require('./package.json').version")"
-          dist="${CUEPOINT_BUILD_COMMIT:0:7}"
-          npx sentry-cli sourcemaps inject electron-dist renderer/dist
-          npx sentry-cli sourcemaps upload --release "cuepoint@${version}" --dist "${dist}" electron-dist renderer/dist
 
       # No map ships: electron-builder's `files` excludes them too, and this keeps them off the disk
       # that is packed from, uploaded or not.

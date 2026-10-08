@@ -79,6 +79,8 @@ class TestSourceMapSteps:
         delete = _index(steps, "Delete source maps")
         package = _index(steps, "Build Electron installers + artifacts")
         assert build < upload < delete < package
+        # Straight after the build: no test step can fail first and skip it.
+        assert upload == build + 1
         # `npm run dist` rebuilds first, which would replace the files `inject` wrote ids into.
         assert steps[package]["run"].startswith("npm run package")
         assert "npm run build" not in steps[package]["run"]
