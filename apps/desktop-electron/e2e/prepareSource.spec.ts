@@ -157,6 +157,13 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
         writeLibrary(workspace),
       );
       await finished(win, started.job_id);
+      // Keys come from corrections or accepted matches, not Rekordbox (PAGES-15): type each one.
+      await win.evaluate(async () => {
+        const c = (window as never as Bridge).cuepoint;
+        for (const track of (await c.browseLibrary({ limit: 200 })).tracks) {
+          if (track.key) await c.setTrackOverrides({ trackId: track.id, key: track.key });
+        }
+      });
       const setId: number = await win.evaluate(async () => {
         const c = (window as never as Bridge).cuepoint;
         const friday = (await c.getLibraryPlaylists()).playlists.find((node: { name: string }) => node.name === "Friday");

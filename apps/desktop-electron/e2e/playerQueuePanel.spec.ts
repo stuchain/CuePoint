@@ -20,7 +20,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
 const AUDIO = path.resolve(DESKTOP_ROOT, "../../src/tests/fixtures/audio");
 
-const FIXTURES = ["tone.flac", "tone.wav", "tone.aiff", "tone.m4a"];
+// Six seconds each: the jump below plays one, and a quarter-second tone could end,
+// and empty the queue, before Clear queue is pressed.
+const FIXTURES = ["bands.flac", "bands.flac", "bands.flac", "bands.flac"];
 
 async function dismissOnboarding(window: Page): Promise<void> {
   await window.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
@@ -105,6 +107,7 @@ test("the queue panel shows the real queue and edits it", async () => {
         }),
       )
       .toBe("Queued 2");
+    await window.evaluate(() => (window as never as Record<string, any>).cuepoint.player.pause());
 
     // Clear queue asks first, then leaves only the track that is playing.
     await panel.getByRole("button", { name: "Clear queue" }).click();

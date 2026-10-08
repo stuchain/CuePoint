@@ -15,7 +15,8 @@
  * - with the Library's "Waveform" column shown, scrolling 5,000 rows records no
  *   long task over 50 ms while waveforms paint.
  *
- * Skips where no `mpv` was fetched; desktop CI fetches it on Windows and macOS.
+ * Skips where no `mpv` was fetched; desktop CI fetches it on Windows and macOS,
+ * and sets `CUEPOINT_MPV_PATH` to the distribution's `mpv` on Linux.
  * `CUEPOINT_E2E_EXECUTABLE` runs it against a packaged build, and
  * `CUEPOINT_MPV_PATH` names the `mpv` a Linux build uses. Each launch gets its
  * own `--user-data-dir` and `CUEPOINT_HOME`.
@@ -329,6 +330,7 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
       const columns = await barColumns(window);
       const box = (await window.getByTestId("player-waveform").boundingBox())!;
       await window.mouse.click(box.x + (box.width * HOT_CUE_SECONDS) / 6, box.y + box.height / 2);
+      // The click lands on the seek slider, which snaps to its 0.5 s step: 2.0 s exactly.
       const column = 6 / columns;
       await expect
         .poll(async () => Math.abs(((await playerState(window)).position ?? -1) - HOT_CUE_SECONDS) <= column, {
@@ -369,17 +371,24 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
         }, { timeout: 15_000 })
         .not.toBeNull();
       const found = cue as unknown as { x: number; columns: number; unit: number };
-      const expected = Math.floor((HOT_CUE_SECONDS / 6) * found.columns);
+      // While it plays, the Inspector lays the track over the player's duration (6.06 s, not 6).
+      const length = await playerDuration(window);
+      const expected = Math.floor((HOT_CUE_SECONDS / length) * found.columns);
       expect(Math.abs(found.x / found.unit - expected)).toBeLessThanOrEqual(1);
 
       // The playing track's Inspector waveform seeks on a click.
       await expect(inspector).toHaveAttribute("data-playing", "true");
-      const area = (await inspector.locator("canvas").boundingBox())!;
-      await inspector.click({ position: { x: (area.width * 5) / 6, y: area.height / 2 } });
+      // The seek measures from the canvas's own box, so click the canvas, not the bordered holder.
+      const canvas = inspector.locator("canvas");
+      const area = (await canvas.boundingBox())!;
+      await canvas.click({ position: { x: (area.width * 5) / 6, y: area.height / 2 } });
+      // No step here: the click's fraction of the width, times the player's duration.
+      const inspectorWanted = (5 / 6) * length;
       await expect
-        .poll(async () => Math.abs(((await playerState(window)).position ?? -1) - 5) <= 6 / found.columns, {
-          timeout: 10_000,
-        })
+        .poll(
+          async () => Math.abs(((await playerState(window)).position ?? -1) - inspectorWanted) <= length / found.columns,
+          { timeout: 10_000 },
+        )
         .toBe(true);
     } finally {
       await app.close();
