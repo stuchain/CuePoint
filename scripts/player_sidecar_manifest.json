@@ -2,8 +2,8 @@
   "component": "mpv",
   "repo": "mpv-player/mpv",
   "tag": "git-release",
-  "version": "v0.41.0-dev-geb0ee1031",
-  "commit": "eb0ee1031",
+  "version": "v0.41.0-dev-g36abaa32d",
+  "commit": "36abaa32d",
   "required_decoders": [
     "flac",
     "alac",
@@ -44,15 +44,15 @@
       "LICENSE.GPL",
       "LICENSE.LGPL"
     ],
-    "source_url": "https://github.com/mpv-player/mpv/tree/eb0ee1031"
+    "source_url": "https://github.com/mpv-player/mpv/tree/36abaa32d"
   },
   "targets": {
     "darwin-arm64": {
       "platform_dir": "mac-arm64",
-      "asset": "mpv-v0.41.0-dev-geb0ee1031-37471512912-macos-14-arm.zip",
-      "url": "https://github.com/mpv-player/mpv/releases/download/git-release/mpv-v0.41.0-dev-geb0ee1031-37471512912-macos-14-arm.zip",
-      "sha256": "1ebf622586a7034cc527d188f57f2bac8bccf58241c2080bcc454299c781438e",
-      "size": 47328010,
+      "asset": "mpv-v0.41.0-dev-g36abaa32d-37706623532-macos-14-arm.zip",
+      "url": "https://github.com/mpv-player/mpv/releases/download/git-release/mpv-v0.41.0-dev-g36abaa32d-37706623532-macos-14-arm.zip",
+      "sha256": "30132b1559819fc58004971ea1262be0d2b5fca82cab679eb43c5b845cd02b0f",
+      "size": 47325474,
       "archive": "zip+tar.gz",
       "inner_archive": "mpv.tar.gz",
       "install": [
@@ -62,10 +62,10 @@
     },
     "darwin-x64": {
       "platform_dir": "mac-x64",
-      "asset": "mpv-v0.41.0-dev-geb0ee1031-37471512912-macos-15-intel.zip",
-      "url": "https://github.com/mpv-player/mpv/releases/download/git-release/mpv-v0.41.0-dev-geb0ee1031-37471512912-macos-15-intel.zip",
-      "sha256": "85195b741aafae08c67cadb90c7388e420f8822f1949cf9d77bf3e73ff9b2b4c",
-      "size": 52286566,
+      "asset": "mpv-v0.41.0-dev-g36abaa32d-37706623532-macos-15-intel.zip",
+      "url": "https://github.com/mpv-player/mpv/releases/download/git-release/mpv-v0.41.0-dev-g36abaa32d-37706623532-macos-15-intel.zip",
+      "sha256": "e4f21545de4563eaffa39a5877ef580412bfcc9e64cd9aa9db3554acd48934b3",
+      "size": 52295021,
       "archive": "zip+tar.gz",
       "inner_archive": "mpv.tar.gz",
       "install": [
@@ -75,10 +75,10 @@
     },
     "win32-x64": {
       "platform_dir": "win-x64",
-      "asset": "mpv-v0.41.0-dev-geb0ee1031-37471512912-x86_64-pc-windows-msvc.zip",
-      "url": "https://github.com/mpv-player/mpv/releases/download/git-release/mpv-v0.41.0-dev-geb0ee1031-37471512912-x86_64-pc-windows-msvc.zip",
-      "sha256": "09ccf5b74ecaba9997049dfc55fbb6018acd628d2db338c4c1b44ca1ebbaaa36",
-      "size": 28564687,
+      "asset": "mpv-v0.41.0-dev-g36abaa32d-37706623532-x86_64-pc-windows-msvc.zip",
+      "url": "https://github.com/mpv-player/mpv/releases/download/git-release/mpv-v0.41.0-dev-g36abaa32d-37706623532-x86_64-pc-windows-msvc.zip",
+      "sha256": "9c565cf6ee873a9ee3639107b2fdabca53a43a72af2aba94b0015d3dd25b6a7e",
+      "size": 28571136,
       "archive": "zip",
       "inner_archive": "",
       "install": [
