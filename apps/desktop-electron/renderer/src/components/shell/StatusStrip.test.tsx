@@ -292,6 +292,20 @@ describe("background work", () => {
     );
   });
 
+  it("shows the running job, not newer work queued behind it", async () => {
+    listJobs.mockResolvedValue({
+      jobs: [
+        job({ id: "job-2", type: "waveform_analysis", state: "queued", progress: {} }),
+        job(),
+      ],
+      active_count: 2,
+    });
+
+    render(<StatusStrip />);
+
+    expect(await screen.findByText("Matching on Beatport · 3 of 10")).toBeInTheDocument();
+  });
+
   it("picks up work it never started, as after a reload", async () => {
     // The reason the list endpoint exists: this job's id was never handed to
     // this renderer.

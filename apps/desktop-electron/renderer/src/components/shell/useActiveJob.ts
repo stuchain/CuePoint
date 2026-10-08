@@ -259,7 +259,9 @@ export function useActiveJob(pollMs: number = JOB_POLL_MS): ActiveJobState {
       void list({ state: "active", limit: 5 })
         .then((result) => {
           if (cancelled) return;
-          const job = result.jobs[0] ?? null;
+          // The newest running job, else the newest: background work queued
+          // behind an import (waveforms wait for it) must not hide the import.
+          const job = result.jobs.find((candidate) => candidate.state === "running") ?? result.jobs[0] ?? null;
           setState({ job, activeCount: result.active_count, jobs: result.jobs, loaded: true });
         })
         .catch(() => {
