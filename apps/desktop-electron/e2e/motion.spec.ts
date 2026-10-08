@@ -201,20 +201,20 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
         )!;
         const main = document.querySelector("main.app-main")!;
         const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-        // Counted from the frame the route changes in, not from the click: how
-        // long the click takes to become a route depends on the machine, and
-        // the claim is that the page does not wait once it has (no data first).
+        // The page's phase is set in the same render as the route (PAGES-12), so
+        // the commit that changes it is the page change itself. The heading must
+        // already be in that commit: a page that waited for its data first would
+        // draw the phase with no heading. Read in the commit, not by frames, which
+        // a loaded machine stretches.
         const hashBefore = location.hash;
+        const phaseBefore = main.getAttribute("data-page-phase");
         const inserted = new Promise<number>((resolve) => {
-          let frames = 0;
-          let routeFrame = -1;
-          const tick = () => {
-            frames += 1;
-            if (routeFrame < 0 && location.hash !== hashBefore) routeFrame = frames;
-            if (main.querySelector("h1")?.textContent === "Settings") resolve(frames - Math.max(routeFrame, 0));
-            else requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
+          const observer = new MutationObserver(() => {
+            if (main.getAttribute("data-page-phase") === phaseBefore) return;
+            observer.disconnect();
+            resolve(main.querySelector("h1")?.textContent === "Settings" ? 0 : 1);
+          });
+          observer.observe(main, { attributes: true, attributeFilter: ["data-page-phase"] });
         });
         link.click();
         const framesToHeading = await inserted;
@@ -235,8 +235,8 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
       });
       test.info().annotations.push({ type: "frames", description: JSON.stringify(result) });
       expect(result.hashChanged).toBe(true);
-      // The heading is there in the frame the route changes in, or the next.
-      expect(result.framesToHeading).toBeLessThanOrEqual(1);
+      // The heading is there in the commit that changes the page.
+      expect(result.framesToHeading).toBe(0);
       expect(result.headingWidth).toBeGreaterThan(0);
       expect(result.phase).toMatch(/^[ab]$/);
       expect(result.animation).toMatch(/cp-page-step-[ab], cp-page-fade-[ab]/);
