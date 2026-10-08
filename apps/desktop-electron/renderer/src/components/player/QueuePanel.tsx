@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { QueueItem } from "../../api/cuepointBridge.types";
+import { Button } from "../Button";
+import { Hint } from "../Hint";
+import { Modal } from "../Modal";
+import { PixelIcon } from "../PixelIcon";
 import { formatTime, formatTrackMeta } from "./playerFormat";
 import { useQueueWindow } from "./useQueueWindow";
 import "./QueuePanel.css";
@@ -103,6 +107,15 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
   );
 
   const dragFrom = useRef<number | null>(null);
+  // Where a drop would land, for the accent line (BAR-8); null when not dragging.
+  const [dropAt, setDropAt] = useState<number | null>(null);
+  const [confirmingClear, setConfirmingClear] = useState(false);
+
+  const clear = useCallback(async () => {
+    setConfirmingClear(false);
+    await bridge()?.clearQueue();
+    refresh();
+  }, [refresh]);
 
   return (
     <aside className="cp-queue" aria-label="Playback queue">
@@ -110,10 +123,35 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
         <h2 className="cp-queue__title">
           Queue{total > 0 ? ` · ${total.toLocaleString()}` : ""}
         </h2>
-        <button type="button" className="cp-queue__close" onClick={onClose} aria-label="Close queue">
-          ×
-        </button>
+        {total > 1 && (
+          <Button variant="secondary" onClick={() => setConfirmingClear(true)}>
+            Clear queue
+          </Button>
+        )}
+        <Hint text="Close the queue">
+          <button
+            type="button"
+            className="cp-queue__close"
+            onClick={onClose}
+            aria-label="Close the queue"
+          >
+            <PixelIcon name="close" />
+          </button>
+        </Hint>
       </header>
+      <p className="cp-queue__hint">
+        Drag to reorder · Alt+↑/↓ moves · Delete removes · Enter plays
+      </p>
+
+      <Modal
+        open={confirmingClear}
+        title="Clear queue"
+        onClose={() => setConfirmingClear(false)}
+        primaryAction={{ label: "Clear queue", onClick: () => void clear() }}
+        secondaryAction={{ label: "Cancel", onClick: () => setConfirmingClear(false) }}
+      >
+        <p>Clear the queue? The playing track keeps playing.</p>
+      </Modal>
 
       {total === 0 ? (
         <p className="cp-queue__empty">
@@ -153,11 +191,19 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                   onDragStart={() => {
                     dragFrom.current = index;
                   }}
-                  onDragOver={(event) => event.preventDefault()}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    if (dragFrom.current !== null && dragFrom.current !== index) setDropAt(index);
+                  }}
+                  onDragEnd={() => {
+                    dragFrom.current = null;
+                    setDropAt(null);
+                  }}
                   onDrop={(event) => {
                     event.preventDefault();
                     const from = dragFrom.current;
                     dragFrom.current = null;
+                    setDropAt(null);
                     if (from !== null && from !== index) void move(from, index);
                   }}
                   onDoubleClick={() => void play(index)}
@@ -166,26 +212,40 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                   <span className="cp-queue__position">{index + 1}</span>
                   <span className="cp-queue__text">
                     <span className="cp-queue__row-title">{item.title || "Untitled"}</span>
-                    <span className="cp-queue__row-meta">{formatTrackMeta(item)}</span>
+                    {item.status === "failed" ? (
+                      // DEC-054: the skip stays visible after the toast is gone,
+                      // and BAR-9 says why, as text and not only a title. It
+                      // takes the meta line's place so the row keeps its height.
+                      <span className="cp-queue__row-meta cp-queue__failed">
+                        {item.failure ? `Couldn't play: ${item.failure}` : "Couldn't play this track"}
+                      </span>
+                    ) : (
+                      <span className="cp-queue__row-meta">{formatTrackMeta(item)}</span>
+                    )}
                   </span>
                   <span className="cp-queue__duration">{formatTime(item.durationSeconds)}</span>
-                  {item.status === "failed" && (
-                    // DEC-054: the skip stays visible after the toast is gone.
-                    <span className="cp-queue__failed" title="This track could not be played">
-                      failed
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    className="cp-queue__remove"
-                    onClick={() => void remove(item)}
-                    aria-label={`Remove ${item.title || "track"} from queue`}
-                  >
-                    ×
-                  </button>
+                  <Hint text="Remove from the queue">
+                    <button
+                      type="button"
+                      className="cp-queue__remove"
+                      onClick={() => void remove(item)}
+                      aria-label={`Remove ${item.title || "track"} from the queue`}
+                    >
+                      <PixelIcon name="close" />
+                    </button>
+                  </Hint>
                 </div>
               );
             })}
+            {dropAt !== null && dragFrom.current !== null && (
+              // Where the dragged row would land (BAR-8): below the row it
+              // moves down onto, above the row it moves up onto. No animation.
+              <div
+                className="cp-queue__drop"
+                aria-hidden="true"
+                style={{ top: (dropAt > dragFrom.current ? dropAt + 1 : dropAt) * rowHeight }}
+              />
+            )}
           </div>
         </div>
       )}

@@ -493,3 +493,141 @@ describe("shuffle and repeat (PLAYER-07, DEC-052)", () => {
     );
   });
 });
+
+describe("every control names itself (BAR-1)", () => {
+  const titleOf = (name: string, role: "button" | "slider" = "button") =>
+    screen.getByRole(role, { name }).getAttribute("title");
+
+  it("gives each button a title with its shortcut", async () => {
+    installBridge(snapshot({ items: [item(), item({ id: "q2" }), item({ id: "q3" })] }));
+    render(<PlayerBar onToggleQueue={() => undefined} />);
+    await screen.findByText("Strobe");
+
+    expect(titleOf("Previous track")).toBe("Previous track (Ctrl+←)");
+    expect(titleOf("Pause")).toBe("Pause (Space)");
+    expect(titleOf("Next track")).toBe("Next track (Ctrl+→)");
+    expect(titleOf("Shuffle off")).toBe("Shuffle: off");
+    expect(titleOf("Repeat off")).toBe("Repeat: off");
+    expect(titleOf("Show the queue (3 tracks)")).toBe("Show the queue (3 tracks)");
+    expect(titleOf("Mute")).toBe("Mute");
+    expect(titleOf("Volume", "slider")).toBe("Volume (Ctrl+↑/↓)");
+  });
+
+  it("follows the state: Play, Shuffle on, Repeat all and one, Hide, Unmute", async () => {
+    const harness = installBridge(snapshot());
+    const { rerender } = render(<PlayerBar queueOpen onToggleQueue={() => undefined} />);
+    await screen.findByText("Strobe");
+    expect(titleOf("Hide the queue")).toBe("Hide the queue");
+
+    harness.push(
+      snapshot({
+        playback: { playing: false, paused: true, muted: true },
+        shuffle: true,
+        repeat: "all",
+      }),
+    );
+    rerender(<PlayerBar queueOpen onToggleQueue={() => undefined} />);
+    expect(await screen.findByRole("button", { name: "Play" })).toHaveAttribute("title", "Play (Space)");
+    expect(titleOf("Shuffle on")).toBe("Shuffle: on");
+    expect(titleOf("Repeat all")).toBe("Repeat: all tracks");
+    expect(titleOf("Unmute")).toBe("Unmute");
+
+    harness.push(snapshot({ repeat: "one" }));
+    expect(await screen.findByRole("button", { name: "Repeat one" })).toHaveAttribute(
+      "title",
+      "Repeat: one track",
+    );
+  });
+
+  it("shows the name on keyboard focus too, through Hint", async () => {
+    installBridge(snapshot());
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    screen.getByRole("button", { name: "Next track" }).focus();
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Next track (Ctrl+→)");
+  });
+});
+
+describe("the queue button's count (BAR-2)", () => {
+  const badge = (container: HTMLElement) => container.querySelector(".cp-player-bar__count");
+
+  it("shows how many tracks are queued", async () => {
+    installBridge(snapshot({ items: [item(), item({ id: "q2" }), item({ id: "q3" })] }));
+    const { container } = render(<PlayerBar onToggleQueue={() => undefined} />);
+    await screen.findByText("Strobe");
+
+    expect(badge(container)).toHaveTextContent("3");
+    expect(badge(container)?.className).toContain("cp-badge");
+  });
+
+  it("is hidden at 0", async () => {
+    installBridge(snapshot({ items: [], currentId: null }));
+    const { container } = render(<PlayerBar onToggleQueue={() => undefined} />);
+    await screen.findByText("Nothing playing");
+
+    expect(badge(container)).toBeNull();
+  });
+});
+
+describe("repeat says its state in words (BAR-3)", () => {
+  const label = (container: HTMLElement) => container.querySelector(".cp-player-bar__repeat-label");
+
+  it("says nothing when repeat is off", async () => {
+    installBridge(snapshot());
+    const { container } = render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    expect(label(container)).toBeNull();
+  });
+
+  it("says All, then One, as main reports them", async () => {
+    const harness = installBridge(snapshot({ repeat: "all" }));
+    const { container } = render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    expect(label(container)).toHaveTextContent("All");
+
+    harness.push(snapshot({ repeat: "one" }));
+    await waitFor(() => expect(label(container)).toHaveTextContent("One"));
+  });
+});
+
+describe("the title and artist open things (BAR-4)", () => {
+  it("opens the track in the Library from its title", async () => {
+    installBridge(snapshot());
+    const onOpenTrack = vi.fn();
+    render(<PlayerBar onOpenTrack={onOpenTrack} onOpenArtist={() => undefined} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Strobe" }));
+
+    expect(onOpenTrack).toHaveBeenCalledWith(1);
+  });
+
+  it("opens the artist's page from the artist", async () => {
+    installBridge(snapshot());
+    const onOpenArtist = vi.fn();
+    render(<PlayerBar onOpenTrack={() => undefined} onOpenArtist={onOpenArtist} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "deadmau5" }));
+
+    expect(onOpenArtist).toHaveBeenCalledWith("deadmau5");
+  });
+
+  it("keeps plain text for a queue item without a track id", async () => {
+    installBridge(snapshot({ items: [item({ trackId: null })] }));
+    render(<PlayerBar onOpenTrack={() => undefined} onOpenArtist={() => undefined} />);
+
+    await screen.findByText("Strobe");
+    expect(screen.queryByRole("button", { name: "Strobe" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "deadmau5" })).toBeNull();
+    expect(screen.getByText(/deadmau5 · 8A/)).toBeInTheDocument();
+  });
+
+  it("keeps the track line as it was, key and tempo included", async () => {
+    installBridge(snapshot());
+    render(<PlayerBar onOpenTrack={() => undefined} onOpenArtist={() => undefined} />);
+    await screen.findByRole("button", { name: "Strobe" });
+
+    expect(screen.getByText(/8A · 128\.0 BPM/)).toBeInTheDocument();
+  });
+});

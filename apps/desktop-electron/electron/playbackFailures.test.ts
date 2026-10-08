@@ -5,6 +5,7 @@ import {
   MAX_SETTLING_WINDOWS,
   FailureReporter,
   failureMessage,
+  failureWords,
   type FailureReport,
 } from "./playbackFailures";
 
@@ -240,5 +241,18 @@ describe("coalescing", () => {
     instance.record({ title: "a", reason: null });
 
     expect(unrefs).toHaveLength(1);
+  });
+});
+
+describe("failureWords", () => {
+  it("writes each known reason as a plain sentence fragment", () => {
+    expect(failureWords("no file path")).toBe("the track has no file");
+    expect(failureWords("no audio output")).toBe("no audio output is available");
+    expect(failureWords("loading failed")).toBe("the file is missing or could not be opened");
+  });
+
+  it("never shows an unknown code", () => {
+    expect(failureWords("ao_init: 0x8007")).toBe("the file could not be opened");
+    expect(failureWords(null)).toBe("the file could not be opened");
   });
 });

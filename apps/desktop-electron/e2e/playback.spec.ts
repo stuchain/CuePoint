@@ -200,7 +200,7 @@ test.describe("Phase 5 end to end", () => {
       await expect.poll(() => currentTitle(win), { timeout: 15_000 }).toBe(shown[1]);
 
       // --- the queue panel, reordered without a mouse (PLAYER-08) -----------
-      await win.getByRole("button", { name: /Show queue/ }).click();
+      await win.getByRole("button", { name: /Show the queue/ }).click();
       const panel = win.getByRole("complementary", { name: "Playback queue" });
       await expect(panel).toBeVisible();
       await expect(panel.getByRole("option")).toHaveCount(FILES.length);
@@ -209,7 +209,7 @@ test.describe("Phase 5 end to end", () => {
       await expect
         .poll(() => queueTitles(win), { timeout: 15_000 })
         .toEqual([shown[0], shown[1], shown[3], shown[2]]);
-      await panel.getByRole("button", { name: "Close queue" }).click();
+      await panel.getByRole("button", { name: "Close the queue" }).click();
 
       // --- Space is play/pause, and only where it should be (PLAYER-12) -----
       // Repeat-one comes off first, and the state is *set* before each press

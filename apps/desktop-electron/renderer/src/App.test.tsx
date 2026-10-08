@@ -126,6 +126,64 @@ describe("App shell", () => {
     expect(player).toBeEmptyDOMElement();
   });
 
+  it("opens the playing track in the Library, and its artist in Discover, from the bar (BAR-4)", async () => {
+    const user = userEvent.setup();
+    const playing = {
+      id: "q1",
+      trackId: 7,
+      filePath: "/music/strobe.flac",
+      title: "Strobe",
+      artist: "deadmau5",
+      key: "8A",
+      bpm: 128,
+      durationSeconds: 600,
+      status: "playing",
+    };
+    const state = {
+      status: { available: true, running: true, reconnecting: false, restartAttempts: 0 },
+      playback: {
+        filePath: playing.filePath,
+        playing: true,
+        paused: false,
+        positionSeconds: 1,
+        durationSeconds: 600,
+        volume: 80,
+        muted: false,
+      },
+      queue: {
+        length: 1,
+        currentId: "q1",
+        currentIndex: 0,
+        currentItem: playing,
+        shuffle: false,
+        repeat: "off",
+      },
+      audio: {},
+    };
+    window.cuepoint = {
+      player: {
+        getState: vi.fn().mockResolvedValue(state),
+        subscribeState: vi.fn((onState: (s: unknown) => void) => {
+          onState(state);
+          return vi.fn();
+        }),
+      },
+    } as unknown as typeof window.cuepoint;
+    try {
+      render(<App />);
+      await user.click(navLink("Settings"));
+      await screen.findByRole("heading", { level: 1, name: "Settings" });
+
+      await user.click(await screen.findByRole("button", { name: "Strobe" }));
+      expect(window.location.hash).toBe("#/library");
+
+      await user.click(await screen.findByRole("button", { name: "deadmau5" }));
+      expect(window.location.hash).toBe(`#/discover/artist/${encodeURIComponent("name:deadmau5")}`);
+    } finally {
+      delete (window as { cuepoint?: unknown }).cuepoint;
+    }
+  });
+
   it("renders the status strip", () => {
     const { container } = render(<App />);
 

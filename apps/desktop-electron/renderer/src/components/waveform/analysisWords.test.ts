@@ -8,6 +8,7 @@ import type {
 import {
   ACTION_LABELS,
   DECODER_MISSING_WORDS,
+  FAILURE_WORDS,
   analysisAction,
   analysisWords,
   deleteDataWords,
@@ -114,9 +115,9 @@ describe("analysisAction", () => {
 describe("a track's waveform in words (WAVE-05)", () => {
   it.each([
     ["ready", null, false, ""],
-    ["waiting", null, false, "Waiting for analysis"],
+    ["waiting", null, false, "Waveform not drawn yet"],
     ["waiting", null, true, "Analysis paused"],
-    ["failed", "undecodable", false, "This file could not be read (undecodable)"],
+    ["failed", "undecodable", false, "This file's audio could not be read."],
     ["missing", "missing", false, "File missing"],
     ["missing", "no_path", false, "No file for this track"],
     ["missing", "unreadable", false, "File could not be opened"],
@@ -230,7 +231,28 @@ describe("why an answer draws no picture (WAVE-06)", () => {
     expect(waveformEntryWords({ kind: "track", paused: true, track: track("waiting") })).toBe("Analysis paused");
     expect(
       waveformEntryWords({ kind: "track", paused: false, track: track("failed", { reason: "timeout" }) }),
-    ).toBe("This file could not be read (timeout)");
+    ).toBe("This file took too long to read.");
+  });
+
+  it("has a sentence for every reason code the engine stores, and none shows a code", () => {
+    for (const reason of ["undecodable", "no_audio", "timeout"]) {
+      const words = waveformStateWords({ state: "failed", reason }, false);
+      expect(words).toBe(FAILURE_WORDS[reason]);
+      expect(words).not.toContain(reason);
+      expect(words).not.toMatch(/[()_]/);
+    }
+  });
+
+  it("reads an unknown or missing reason code as the generic sentence", () => {
+    for (const reason of ["something_new", "toString", "", null]) {
+      const words = waveformStateWords({ state: "failed", reason }, false);
+      expect(words).toBe("This file could not be read.");
+      expect(words).not.toContain("something_new");
+    }
+  });
+
+  it("says the build cannot draw waveforms in plain words", () => {
+    expect(DECODER_MISSING_WORDS).toBe("This version of CuePoint can't draw waveforms.");
   });
 
   it("says a failed read, and a track that is gone", () => {

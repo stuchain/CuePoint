@@ -64,6 +64,7 @@ interface Harness {
   jumpTo: ReturnType<typeof vi.fn>;
   removeFromQueue: ReturnType<typeof vi.fn>;
   moveInQueue: ReturnType<typeof vi.fn>;
+  clearQueue: ReturnType<typeof vi.fn>;
   push: (state: PlayerSnapshot) => void;
   /** Every window request the panel made. */
   requests: Array<{ offset: number; limit: number }>;
@@ -85,6 +86,7 @@ function install(total: number, items?: QueueItem[]): Harness {
   const jumpTo = vi.fn().mockResolvedValue(undefined);
   const removeFromQueue = vi.fn().mockResolvedValue(undefined);
   const moveInQueue = vi.fn().mockResolvedValue(undefined);
+  const clearQueue = vi.fn().mockResolvedValue(undefined);
 
   window.cuepoint = {
     player: {
@@ -98,6 +100,7 @@ function install(total: number, items?: QueueItem[]): Harness {
       jumpTo,
       removeFromQueue,
       moveInQueue,
+      clearQueue,
     },
   } as unknown as typeof window.cuepoint;
 
@@ -106,6 +109,7 @@ function install(total: number, items?: QueueItem[]): Harness {
     jumpTo,
     removeFromQueue,
     moveInQueue,
+    clearQueue,
     requests,
     push: (state) => push?.(state),
   };
@@ -168,7 +172,7 @@ describe("what it shows", () => {
     await waitFor(() => expect(rows().length).toBe(2));
 
     expect(rows()[0]).toHaveAttribute("data-status", "failed");
-    expect(within(rows()[0]).getByText("failed")).toBeInTheDocument();
+    expect(within(rows()[0]).getByText("Couldn't play this track")).toBeInTheDocument();
   });
 
   it("shows each track's position, name and length", async () => {
@@ -202,7 +206,7 @@ describe("what it shows", () => {
     render(<QueuePanel onClose={onClose} />);
     await waitFor(() => expect(rows().length).toBe(2));
 
-    fireEvent.click(screen.getByRole("button", { name: "Close queue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close the queue" }));
 
     expect(onClose).toHaveBeenCalled();
   });
@@ -234,7 +238,7 @@ describe("acting on a track", () => {
     render(<QueuePanel onClose={() => undefined} />);
     await waitFor(() => expect(rows().length).toBe(3));
 
-    fireEvent.click(screen.getByRole("button", { name: "Remove Track 1 from queue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Track 1 from the queue" }));
 
     await waitFor(() => expect(harness.removeFromQueue).toHaveBeenCalledWith("q1"));
   });
@@ -390,5 +394,128 @@ describe("without a bridge", () => {
   it("renders its empty state rather than throwing", () => {
     expect(() => render(<QueuePanel onClose={() => undefined} />)).not.toThrow();
     expect(screen.getByText(/Nothing queued/i)).toBeInTheDocument();
+  });
+});
+
+describe("managing the queue (BAR-8)", () => {
+  it("says the gestures in a hint line", async () => {
+    install(2);
+    render(<QueuePanel onClose={() => undefined} />);
+    expect(
+      await screen.findByText("Drag to reorder · Alt+↑/↓ moves · Delete removes · Enter plays"),
+    ).toBeInTheDocument();
+  });
+
+  it("asks before clearing, then clears once", async () => {
+    const harness = install(3);
+    render(<QueuePanel onClose={() => undefined} />);
+    await waitFor(() => expect(rows().length).toBe(3));
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear queue" }));
+    expect(harness.clearQueue).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Clear the queue? The playing track keeps playing.");
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Clear queue" }));
+
+    await waitFor(() => expect(harness.clearQueue).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("clears nothing when the question is declined", async () => {
+    const harness = install(3);
+    render(<QueuePanel onClose={() => undefined} />);
+    await waitFor(() => expect(rows().length).toBe(3));
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear queue" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
+
+    expect(harness.clearQueue).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("offers no Clear queue for an empty queue", () => {
+    install(0);
+    render(<QueuePanel onClose={() => undefined} />);
+    expect(screen.queryByRole("button", { name: "Clear queue" })).toBeNull();
+  });
+
+  it("offers no Clear queue when the playing track is the only row", async () => {
+    install(1);
+    render(<QueuePanel onClose={() => undefined} />);
+    await waitFor(() => expect(rows().length).toBe(1));
+    expect(screen.queryByRole("button", { name: "Clear queue" })).toBeNull();
+  });
+
+  it("draws a drop line at the row being dragged over, and removes it on drop", async () => {
+    const harness = install(4);
+    const { container } = render(<QueuePanel onClose={() => undefined} />);
+    await waitFor(() => expect(rows().length).toBe(4));
+
+    fireEvent.dragStart(rows()[0]);
+    expect(container.querySelector(".cp-queue__drop")).toBeNull();
+    fireEvent.dragOver(rows()[2]);
+    const line = container.querySelector(".cp-queue__drop") as HTMLElement;
+    expect(line).not.toBeNull();
+    expect(line.getAttribute("aria-hidden")).toBe("true");
+
+    fireEvent.drop(rows()[2]);
+    expect(container.querySelector(".cp-queue__drop")).toBeNull();
+    await waitFor(() => expect(harness.moveInQueue).toHaveBeenCalledWith(0, 2));
+  });
+
+  it("removes the line when the drag ends elsewhere", async () => {
+    install(4);
+    const { container } = render(<QueuePanel onClose={() => undefined} />);
+    await waitFor(() => expect(rows().length).toBe(4));
+
+    fireEvent.dragStart(rows()[0]);
+    fireEvent.dragOver(rows()[2]);
+    fireEvent.dragEnd(rows()[0]);
+
+    expect(container.querySelector(".cp-queue__drop")).toBeNull();
+  });
+
+  it("draws the close and remove controls as icons, not letters", async () => {
+    install(2);
+    const { container } = render(<QueuePanel onClose={() => undefined} />);
+    await waitFor(() => expect(rows().length).toBe(2));
+
+    expect(container.querySelector(".cp-queue__close [data-icon='close']")).not.toBeNull();
+    expect(container.querySelectorAll(".cp-queue__remove [data-icon='close']")).toHaveLength(2);
+    expect(container.textContent).not.toContain("×");
+    expect(screen.getByRole("button", { name: "Close the queue" })).toHaveAttribute(
+      "title",
+      "Close the queue",
+    );
+    expect(screen.getAllByRole("button", { name: /^Remove / })[0]).toHaveAttribute(
+      "title",
+      "Remove from the queue",
+    );
+  });
+});
+
+describe("a track that could not be played (BAR-9)", () => {
+  it("says why, as text on the row", async () => {
+    install(3, [
+      makeItem(0, { status: "playing" }),
+      makeItem(1, { status: "failed", failure: "the file is missing or could not be opened" }),
+      makeItem(2),
+    ]);
+    render(<QueuePanel onClose={() => undefined} />);
+    await waitFor(() => expect(rows().length).toBe(3));
+
+    const failed = within(rows()[1]);
+    expect(failed.getByText("Couldn't play: the file is missing or could not be opened")).toBeVisible();
+    expect(within(rows()[0]).queryByText(/Couldn't play/)).toBeNull();
+    expect(within(rows()[2]).queryByText(/Couldn't play/)).toBeNull();
+  });
+
+  it("still says it failed when no reason came", async () => {
+    install(2, [makeItem(0), makeItem(1, { status: "failed" })]);
+    render(<QueuePanel onClose={() => undefined} />);
+    await waitFor(() => expect(rows().length).toBe(2));
+
+    expect(within(rows()[1]).getByText("Couldn't play this track")).toBeInTheDocument();
   });
 });

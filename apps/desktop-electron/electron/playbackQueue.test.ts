@@ -212,6 +212,45 @@ describe("removing items", () => {
   });
 });
 
+describe("clearing but the playing track", () => {
+  it("drops played rows and keeps only the current one, playing", () => {
+    const queue = queueOf("a", "b", "c", "d");
+    queue.jumpTo(2);
+
+    queue.clearExceptCurrent();
+
+    expect(titles(queue)).toEqual(["c"]);
+    expect(statuses(queue)).toEqual(["playing"]);
+    expect(queue.current?.title).toBe("c");
+  });
+
+  it("with shuffle on, play order is just the current track", () => {
+    const queue = queueOf("a", "b", "c");
+    queue.setShuffle(true);
+    queue.clearExceptCurrent();
+
+    expect(titles(queue)).toEqual(["a"]);
+    expect(queue.shuffle).toBe(true);
+  });
+
+  it("repeat-all loops the current track", () => {
+    const queue = queueOf("a", "b");
+    queue.setRepeat("all");
+    queue.clearExceptCurrent();
+
+    expect(queue.next()?.title).toBe("a");
+    expect(queue.repeat).toBe("all");
+  });
+
+  it("empties everything when nothing is playing", () => {
+    const queue = queueOf("a", "b");
+    queue.clear();
+    queue.append(tracks("x"));
+    queue.clearExceptCurrent();
+    expect(queue.length).toBe(0);
+  });
+});
+
 describe("reordering", () => {
   it("moves an item in view order", () => {
     const queue = queueOf("a", "b", "c");
@@ -517,6 +556,17 @@ describe("failures", () => {
     queue.markFailed(queue.currentId!);
     expect(queue.window(0, 1_000).items[0].status).toBe("failed");
     expect(queue.length).toBe(2);
+  });
+
+  it("carries the reason on the failed item and drops it when the item plays again", () => {
+    const queue = queueOf("a", "b");
+    const id = queue.currentId!;
+    queue.markFailed(id, "The file is missing.");
+    expect(queue.window(0, 1_000).items[0].failure).toBe("The file is missing.");
+    expect(queue.window(0, 1_000).items[1].failure).toBeUndefined();
+    queue.jumpToId(id);
+    expect(queue.itemById(id)?.failure).toBeUndefined();
+    expect(queue.itemById(id)?.status).toBe("playing");
   });
 
   it("a failed item stays failed when passed over", () => {

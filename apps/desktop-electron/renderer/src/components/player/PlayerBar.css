@@ -260,3 +260,62 @@
     width: 4rem;
   }
 }
+
+/* Hint wraps the seek slider so its reason shows on focus (BAR-7); the wrapper
+   must take the slider's place in the row. */
+.cp-player-bar__wave > .cp-hint {
+  flex: 1 1 auto;
+}
+
+/* The queue count (BAR-2): a small square badge on the button's corner, hidden
+   by the markup at 0. */
+.cp-player-bar__button {
+  position: relative;
+}
+
+.cp-player-bar__count {
+  position: absolute;
+  top: calc(var(--border-width) * -1);
+  right: calc(var(--border-width) * -1);
+  padding: 0 var(--space-xs);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* Repeat's state in words beside its icon (BAR-3). */
+.cp-player-bar__repeat-label {
+  margin-left: var(--space-xs);
+  padding-right: var(--space-xs);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* The playing track's title and artist open things (BAR-4): buttons that read
+   as the text they replace, underlined on hover and on focus. */
+.cp-player-bar__link {
+  display: inline;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cp-player-bar__link:hover,
+.cp-player-bar__link:focus-visible {
+  text-decoration: underline;
+}
+
+.cp-player-bar__link:focus-visible {
+  outline: var(--border-width) solid var(--accent-primary);
+  outline-offset: 2px;
+}

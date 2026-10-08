@@ -178,7 +178,7 @@ describe("the waveform analysis on the Health view", () => {
 
     expect(
       await within(row).findByText(
-        "Waveforms need the player's decoder, which this build does not include",
+        "This version of CuePoint can't draw waveforms.",
       ),
     ).toBeInTheDocument();
     expect(within(row).queryByRole("button")).toBeNull();

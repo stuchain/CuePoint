@@ -35,13 +35,21 @@ computer.
 
 Along the bottom: what is playing, how far through it is, and the controls.
 
+- **The title and artist** open things. Click the title to show the track in
+  the Library, or the artist to open their page in Discover. A track that is not
+  in your library stays plain text.
+- **Every button names itself.** Hover over a button, or Tab to it, and a note
+  says what it does and its shortcut, for example "Next track (Ctrl+→)".
 - **Play/pause, previous, next.** Previous within the first few seconds goes
   back a track; after that it restarts the one playing, which is what you
   meant if you just missed the intro.
 - **The position bar** can be dragged to seek.
 - **Shuffle** reorders the queue without changing the view it came from.
-- **Repeat** cycles off → all → one. Repeat-one replays the current track when
-  it *ends*; pressing next still moves on.
+- **Repeat** cycles off → all → one, and says which in words beside its icon
+  ("All" or "One"). Repeat-one replays the current track when it *ends*;
+  pressing next still moves on.
+- **The queue button** shows how many tracks are queued, and hides the number
+  when there are none.
 - **Volume** is CuePoint's own, separate from your system volume.
 
 Shuffle and repeat are remembered between sessions. What was playing, and where
@@ -53,10 +61,18 @@ Open the queue from the bar. It is a place to work rather than a list to look
 at: what has played stays above what is playing, so you can see where you have
 been and jump back.
 
+The panel says the gestures under its title: "Drag to reorder · Alt+↑/↓ moves
+· Delete removes · Enter plays".
+
 - **Enter** plays the selected track.
 - **Alt+Up** / **Alt+Down** move a track through the queue.
 - **Delete** removes one.
-- Dragging works too.
+- Dragging works too; a line shows where the track will land.
+- **Clear queue** removes everything except the track that is playing, which
+  keeps playing. It asks first, so a stray click does not throw away a queue you
+  built, and it is hidden when the playing track is the only one left.
+- The cross at the top closes the queue; the cross on a row removes just that
+  track.
 
 ## From the keyboard
 
@@ -110,7 +126,7 @@ find a place and let go to jump once, exactly as with the slider. The slider is
 still underneath, so the keyboard and screen readers seek as before, and the
 focus outline is drawn around the waveform. Until the waveform is ready, or for
 a file CuePoint could not read, the bar shows the plain slider, and hovering it
-says why ("Waiting for analysis", "File missing"). The bar does not get taller.
+says why ("Waveform not drawn yet", "File missing"). The bar does not get taller.
 
 A track you start playing that is still waiting for the analysis is analysed
 next, ahead of the rest of the library, even while the analysis is paused.
@@ -123,7 +139,8 @@ mean, how the analysis runs and how to pause it, and **Settings → Waveforms**.
 
 Files move, drives get unplugged, and CuePoint finds out when it tries to play
 one. A track that will not play is skipped, marked in the queue, and the next
-one starts.
+one starts. The row says why, for example "Couldn't play: the file is missing
+or could not be opened".
 
 You get **one message**, not one per track: a disconnected drive with a
 thousand tracks queued says "1,000 tracks could not be played" once. If a

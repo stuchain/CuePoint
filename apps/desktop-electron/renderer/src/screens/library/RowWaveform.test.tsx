@@ -232,9 +232,9 @@ describe("a row's waveform", () => {
   });
 
   it.each<[WaveformTrackState, string | null, boolean, string, string]>([
-    ["waiting", null, false, "Waiting", "Waiting for analysis"],
+    ["waiting", null, false, "Waiting", "Waveform not drawn yet"],
     ["waiting", null, true, "Paused", "Analysis paused"],
-    ["failed", "undecodable", false, "Unreadable", "This file could not be read (undecodable)"],
+    ["failed", "undecodable", false, "Unreadable", "This file's audio could not be read."],
     ["missing", "not_found", false, "Missing", "File missing"],
     ["unchecked", null, false, "Unchecked", "Not checked yet"],
     ["unavailable", "decoder_missing", false, "Unavailable", DECODER_MISSING_WORDS],

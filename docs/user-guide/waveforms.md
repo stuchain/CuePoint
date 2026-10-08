@@ -22,8 +22,10 @@ hot cues (each with its letter), memory cues, loops and beat grid. When that
 track is the one playing, the playhead is drawn and a click seeks; otherwise
 the waveform is only a picture, and clicking it does not start playback
 (double-click the row for that). A track without a waveform says why in words:
-"Waiting for analysis", "Analysis paused", "File missing", "This file could not
-be read" and so on.
+"Waveform not drawn yet", "Analysis paused", "File missing", "This file's audio
+could not be read." and so on. A file that cannot be read says which kind of
+trouble it is (its audio, no audio at all, or taking too long); a reason
+CuePoint does not recognize reads "This file could not be read."
 
 **The Library.** **Columns…** offers a **Waveform** column, hidden until you
 choose it. Each row draws its track at the column's width; drag the column wider
@@ -184,8 +186,8 @@ changed file.
 
 ## When there are no waveforms
 
-A build without the player's decoder says so once, in words: "Waveforms need the
-player's decoder, which this build does not include". Nothing else errors, and
+A build without the player's decoder says so once, in words: "This version of
+CuePoint can't draw waveforms." Nothing else errors, and
 the bar keeps its plain slider. On Linux, CuePoint does not include the player;
 name your own `mpv` with `CUEPOINT_MPV_PATH` and both playback and waveforms
 work.

@@ -45,6 +45,10 @@ describe("pixel icon artwork", () => {
     );
   });
 
+  it("draws a close mark for the queue's buttons (BAR-8)", () => {
+    expect(PIXEL_ICON_NAMES).toContain("close");
+  });
+
   it("draws the two chevrons as mirror images", () => {
     const flipped = PIXEL_ICONS["chevron-left"].map((row) => [...row].reverse().join(""));
     expect(PIXEL_ICONS["chevron-right"]).toEqual(flipped);

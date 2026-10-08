@@ -6,6 +6,7 @@ type PlayerEvent =
   | { kind: "idle" };
 import {
   FailureReporter,
+  failureWords,
   type FailureReport,
   type PlayerNotice,
 } from "./playbackFailures";
@@ -248,7 +249,7 @@ export class PlaybackController {
     // fifty thousand such items would otherwise be fifty thousand stack frames.
     let current = this.queue.current;
     while (current && current.filePath.trim() === "") {
-      this.queue.markFailed(current.id);
+      this.queue.markFailed(current.id, failureWords("no file path"));
       this.failures.record({ title: current.title, reason: "no file path" });
       const upcoming = this.stillWorthTrying() ? this.queue.next() : null;
       if (!upcoming) {
@@ -385,6 +386,21 @@ export class PlaybackController {
     const itemId = this.entryToItem.get(info.playlistEntryId);
     if (!itemId || itemId === this.queue.currentId) return;
 
+    if (!this.queue.itemById(itemId)) {
+      // An entry for a track that has left the queue (Clear queue cannot
+      // un-append what mpv already holds). It is not ours: follow the queue.
+      this.preloadedItemId = null;
+      this.failedAwaitingAdvance = null;
+      if (this.queue.peekNext() === null) {
+        this.queue.next();
+        void this.stop();
+      } else {
+        this.queue.next();
+        void this.playCurrent();
+      }
+      return;
+    }
+
     this.queue.jumpToId(itemId);
     this.preloadedItemId = null;
     // mpv answered the failure by walking into the next entry itself, so the
@@ -422,7 +438,7 @@ export class PlaybackController {
       const failedId = this.entryToItem.get(info.playlistEntryId ?? -1) ?? this.queue.currentId;
       if (failedId) {
         const item = this.queue.itemById(failedId);
-        this.queue.markFailed(failedId);
+        this.queue.markFailed(failedId, failureWords(info.error ?? null));
         this.failures.record({ title: item?.title ?? "", reason: info.error ?? null });
         this.failedAwaitingAdvance = failedId;
         // mpv may have said it was idle *before* sending this. `idle-active`
@@ -523,7 +539,7 @@ export class PlaybackController {
     const failedId = this.queue.currentId;
     if (failedId) {
       const item = this.queue.itemById(failedId);
-      this.queue.markFailed(failedId);
+      this.queue.markFailed(failedId, failureWords("no audio output"));
       this.failures.record({ title: item?.title ?? "", reason: "no audio output" });
       this.failedAwaitingAdvance = failedId;
       if (this.player.isIdle) this.onPlayerIdle();
@@ -634,9 +650,22 @@ export class PlaybackController {
     this.publish();
   }
 
+  /**
+   * Clear the queue; the playing track keeps playing (BAR-8).
+   *
+   * mpv has no way here to take back an entry already appended, so its mapping
+   * is kept and `onStartFile` recognises the stale entry when mpv reaches it.
+   */
   async clearQueue(): Promise<void> {
-    this.queue.clear();
-    await this.stop();
+    if (this.queue.currentId === null) {
+      this.queue.clear();
+      await this.stop();
+      return;
+    }
+    this.queue.clearExceptCurrent();
+    this.preloadedItemId = null;
+    await this.refreshPreload();
+    this.publish();
   }
 
   // -------------------------------------------------------------------------

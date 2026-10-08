@@ -261,9 +261,9 @@ describe("the waveform as the seek control's picture", () => {
 
 describe("without a picture, the slider exactly as before", () => {
   it.each<[string, WaveformTrackState, string | null, boolean, string]>([
-    ["waiting", "waiting", null, false, "Waiting for analysis"],
+    ["waiting", "waiting", null, false, "Waveform not drawn yet"],
     ["waiting while paused", "waiting", null, true, "Analysis paused"],
-    ["failed", "failed", "undecodable", false, "This file could not be read (undecodable)"],
+    ["failed", "failed", "undecodable", false, "This file's audio could not be read."],
     ["missing", "missing", "not_found", false, "File missing"],
     ["unchecked", "unchecked", null, false, "Not checked yet"],
     ["without a decoder", "unavailable", "decoder_missing", false, DECODER_MISSING_WORDS],

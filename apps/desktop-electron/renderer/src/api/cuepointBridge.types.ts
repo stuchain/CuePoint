@@ -52,6 +52,8 @@ export interface QueueItem {
   bpm: number | null;
   durationSeconds: number | null;
   status: QueueItemStatus;
+  /** Why it could not be played, in plain words, while `status` is "failed" (BAR-9). */
+  failure?: string;
 }
 
 /**

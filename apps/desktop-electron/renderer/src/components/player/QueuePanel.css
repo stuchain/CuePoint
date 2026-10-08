@@ -39,6 +39,33 @@
   cursor: pointer;
 }
 
+/* The gestures, said once under the title (BAR-8). */
+.cp-queue__hint {
+  margin: 0;
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: var(--border-width) solid var(--border-outline);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-queue__close svg,
+.cp-queue__remove svg {
+  display: block;
+  margin: auto;
+}
+
+/* The drop position while a row is dragged (BAR-8): a 2px line at 1x, scaled
+   with the app, and still. */
+.cp-queue__drop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: calc(2px * var(--scale));
+  transform: translateY(-50%);
+  background: var(--accent-primary);
+  pointer-events: none;
+}
+
 .cp-queue__empty {
   margin: 0;
   padding: var(--space-lg);
@@ -129,10 +156,8 @@
 }
 
 .cp-queue__failed {
-  flex: 0 0 auto;
-  font-size: var(--font-size-xs);
+  font-weight: 400;
   color: var(--accent-danger);
-  text-transform: uppercase;
 }
 
 .cp-queue__remove {

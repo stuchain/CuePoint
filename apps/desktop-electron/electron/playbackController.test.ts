@@ -344,6 +344,19 @@ describe("failures", () => {
     expect(controller.queueWindow(0, 1_000).items).toHaveLength(2);
   });
 
+  it("says why on the item, in plain words and never as mpv's code", async () => {
+    const { player, finish } = fakePlayer();
+    const controller = new PlaybackController(player);
+    await controller.playQueue(tracks("a", "b"), 0);
+
+    finish("error", 1, "loading failed");
+
+    const failure = controller.queueWindow(0, 1_000).items[0].failure;
+    expect(failure).toBeTruthy();
+    expect(failure).not.toContain("loading failed");
+    expect(controller.queueWindow(0, 1_000).items[1].failure).toBeUndefined();
+  });
+
   it("marks the preloaded track when it is the one that failed", async () => {
     const { player, finish } = fakePlayer();
     const controller = new PlaybackController(player);
@@ -1048,10 +1061,58 @@ describe("editing the queue while it plays", () => {
     expect(enqueued(calls)).toEqual(["/music/c.flac"]);
   });
 
-  it("clearing stops and empties", async () => {
+  it("clearing keeps the playing track playing", async () => {
     const { player, calls } = fakePlayer();
     const controller = new PlaybackController(player);
+    await controller.playQueue(tracks("a", "b", "c"), 1);
+    const playing = controller.snapshot().queue.currentId;
+    calls.length = 0;
+
+    await controller.clearQueue();
+
+    expect(calls.some((c) => c.kind === "stop")).toBe(false);
+    expect(played(calls)).toEqual([]);
+    const window = controller.queueWindow(0, 1_000).items;
+    expect(window.map((item) => item.title)).toEqual(["b"]);
+    expect(controller.snapshot().queue.currentId).toBe(playing);
+  });
+
+  it("does not follow the stale preload after clearing", async () => {
+    const { player, calls, advanceTo } = fakePlayer();
+    const controller = new PlaybackController(player);
+    await controller.playQueue(tracks("a", "b"), 0); // a is entry 1, b is entry 2
+    await controller.clearQueue();
+    calls.length = 0;
+
+    advanceTo(2); // mpv starts the stale entry for b
+    await Promise.resolve();
+
+    expect(controller.queueWindow(0, 1_000).items.map((item) => item.title)).toEqual(["a"]);
+    expect(calls.some((c) => c.kind === "stop")).toBe(true);
+    expect(controller.snapshot().queue.currentId).toBeNull();
+  });
+
+  it("replays the current track after clearing when repeat is on", async () => {
+    const { player, calls, advanceTo } = fakePlayer();
+    const controller = new PlaybackController(player);
     await controller.playQueue(tracks("a", "b"), 0);
+    await controller.setRepeat("all");
+    calls.length = 0;
+
+    await controller.clearQueue();
+    expect(enqueued(calls)).toEqual(["/music/a.flac"]);
+
+    advanceTo(2); // stale b
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(played(calls)).toEqual(["/music/a.flac"]);
+    expect(controller.snapshot().queue.currentId).not.toBeNull();
+  });
+
+  it("clearing a queue with nothing playing still stops", async () => {
+    const { player, calls, finish } = fakePlayer();
+    const controller = new PlaybackController(player);
+    await controller.playQueue(tracks("only"), 0);
+    finish("eof");
     calls.length = 0;
 
     await controller.clearQueue();

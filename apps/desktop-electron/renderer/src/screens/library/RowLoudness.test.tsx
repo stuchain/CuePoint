@@ -162,7 +162,7 @@ describe("a row's loudness", () => {
 
     expect(cell(1)).toHaveTextContent("");
     expect(cell(1)).toHaveAttribute("title", LOUDNESS_PENDING_WORDS);
-    expect(cell(2)).toHaveAttribute("title", "Waiting for analysis");
+    expect(cell(2)).toHaveAttribute("title", "Waveform not drawn yet");
   });
 
   it("never puts a track first in the analysis", async () => {

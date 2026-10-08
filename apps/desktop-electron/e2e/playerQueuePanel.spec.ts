@@ -63,7 +63,7 @@ test("the queue panel shows the real queue and edits it", async () => {
     await window.waitForSelector(".cp-player-bar", { timeout: 15_000 });
 
     // The bar's toggle opens it, and it lists what main is actually holding.
-    await window.getByRole("button", { name: /Show queue/ }).click();
+    await window.getByRole("button", { name: /Show the queue/ }).click();
     const panel = window.getByRole("complementary", { name: "Playback queue" });
     await expect(panel).toBeVisible();
     await expect(panel.getByRole("option")).toHaveCount(FIXTURES.length);
@@ -83,7 +83,7 @@ test("the queue panel shows the real queue and edits it", async () => {
       .toEqual(["Queued 0", "Queued 1", "Queued 3", "Queued 2"]);
 
     // Remove one, and check both the panel and main lost it.
-    await panel.getByRole("button", { name: /Remove Queued 1 from queue/ }).click();
+    await panel.getByRole("button", { name: /Remove Queued 1 from the queue/ }).click();
     await expect(panel.getByRole("option")).toHaveCount(3);
     expect(
       await window.evaluate(async () => {
@@ -104,8 +104,20 @@ test("the queue panel shows the real queue and edits it", async () => {
       )
       .toBe("Queued 2");
 
+    // Clear queue asks first, then leaves only the track that is playing.
+    await panel.getByRole("button", { name: "Clear queue" }).click();
+    await window.getByRole("dialog").getByRole("button", { name: "Clear queue" }).click();
+    await expect(panel.getByRole("option")).toHaveCount(1);
+    await expect(panel.getByText("Queued 2")).toBeVisible();
+    const afterClear = await window.evaluate(async () => {
+      const state = await (window as never as Record<string, any>).cuepoint.player.getState();
+      return { title: state.queue.currentItem?.title ?? null, file: state.playback.filePath };
+    });
+    expect(afterClear.title).toBe("Queued 2");
+    expect(afterClear.file).not.toBeNull();
+
     // And it closes again.
-    await panel.getByRole("button", { name: "Close queue" }).click();
+    await panel.getByRole("button", { name: "Close the queue" }).click();
     await expect(panel).toBeHidden();
   } finally {
     await app.close();

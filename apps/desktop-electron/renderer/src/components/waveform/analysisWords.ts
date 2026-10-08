@@ -29,7 +29,7 @@ export const NOTHING_TO_ANALYZE_WORDS =
 
 /** The sentence a build without a decoder shows instead of a state. */
 export const DECODER_MISSING_WORDS =
-  "Waveforms need the player's decoder, which this build does not include";
+  "This version of CuePoint can't draw waveforms.";
 
 function count(value: number): string {
   return value.toLocaleString();
@@ -87,6 +87,26 @@ export const ACTION_LABELS: Record<Exclude<WaveformAnalysisAction, null>, string
   start: "Analyze waveforms",
 };
 
+/** What a file the decoder could not read says, whatever the code. */
+export const UNREADABLE_WORDS = "This file could not be read.";
+
+/**
+ * The sentence for each reason code a failed analysis stores (BAR-7). A code
+ * the engine adds later, or one this build does not know, reads as the generic
+ * sentence; the code itself is never shown.
+ */
+export const FAILURE_WORDS: Readonly<Record<string, string>> = {
+  undecodable: "This file's audio could not be read.",
+  no_audio: "This file has no audio to draw.",
+  timeout: "This file took too long to read.",
+};
+
+function failedWords(reason: string | null | undefined): string {
+  return (reason !== null && reason !== undefined && Object.hasOwn(FAILURE_WORDS, reason)
+    ? FAILURE_WORDS[reason]
+    : undefined) ?? UNREADABLE_WORDS;
+}
+
 /**
  * Why a track shows no waveform, in words; empty for a ready one.
  *
@@ -101,9 +121,9 @@ export function waveformStateWords(
     case "ready":
       return "";
     case "waiting":
-      return paused ? "Analysis paused" : "Waiting for analysis";
+      return paused ? "Analysis paused" : "Waveform not drawn yet";
     case "failed":
-      return `This file could not be read (${track.reason ?? "unknown"})`;
+      return failedWords(track.reason);
     case "missing":
       switch (track.reason) {
         case "no_path":

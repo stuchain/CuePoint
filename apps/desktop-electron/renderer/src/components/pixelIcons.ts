@@ -508,6 +508,22 @@ const chevronLeft = [
   "............",
 ];
 
+/** Close: a diagonal cross, for dismissing and removing (BAR-8). */
+const close = [
+  "............",
+  "............",
+  "..##....##..",
+  "...##..##...",
+  "....####....",
+  ".....##.....",
+  ".....##.....",
+  "....####....",
+  "...##..##...",
+  "..##....##..",
+  "............",
+  "............",
+];
+
 const chevronRight = [
   "............",
   "............",
@@ -578,6 +594,7 @@ export const PIXEL_ICONS = {
   // NAV-2, HDR-6: the sidebar's toggle and its brand.
   "chevron-left": chevronLeft,
   "chevron-right": chevronRight,
+  close,
   logo,
 } as const satisfies Record<string, readonly string[]>;
 

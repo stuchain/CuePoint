@@ -35,6 +35,8 @@ export interface QueueItem {
   bpm: number | null;
   durationSeconds: number | null;
   status: QueueItemStatus;
+  /** Why it failed, in plain words, while `status` is "failed" (BAR-9). */
+  failure?: string;
 }
 
 /** What a caller supplies; the queue assigns ids and status. */
@@ -249,6 +251,22 @@ export class PlaybackQueue {
     this.currentIdValue = null;
   }
 
+  /**
+   * Clear the queue but keep what is playing (BAR-8: "The playing track keeps
+   * playing"). Everything else, played rows included, is dropped. With nothing
+   * playing this is `clear`. Shuffle and repeat are settings, not contents, and
+   * stay as they were; the track keeps its status and any failure.
+   */
+  clearExceptCurrent(): void {
+    const current = this.current;
+    if (!current) {
+      this.clear();
+      return;
+    }
+    this.items = [current];
+    this.order = [current.id];
+  }
+
   // -------------------------------------------------------------------------
   // Editing the queue (PLAYER-08 drives these)
   // -------------------------------------------------------------------------
@@ -312,9 +330,12 @@ export class PlaybackQueue {
     return true;
   }
 
-  markFailed(id: string): void {
+  markFailed(id: string, failure?: string): void {
     const item = this.itemById(id);
-    if (item) item.status = "failed";
+    if (!item) return;
+    item.status = "failed";
+    if (failure) item.failure = failure;
+    else delete item.failure;
   }
 
   // -------------------------------------------------------------------------
@@ -418,6 +439,7 @@ export class PlaybackQueue {
     // the drive may well be back. Leaving the mark on would make the panel
     // claim a track is broken while it is playing.
     item.status = "playing";
+    delete item.failure;
     return item;
   }
 

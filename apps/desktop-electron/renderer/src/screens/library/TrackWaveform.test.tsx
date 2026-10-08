@@ -258,9 +258,9 @@ describe("the Inspector's waveform", () => {
   });
 
   it.each<[string, WaveformTrackState, string | null, boolean, string]>([
-    ["waiting", "waiting", null, false, "Waiting for analysis"],
+    ["waiting", "waiting", null, false, "Waveform not drawn yet"],
     ["paused", "waiting", null, true, "Analysis paused"],
-    ["undecodable", "failed", "undecodable", false, "This file could not be read (undecodable)"],
+    ["undecodable", "failed", "undecodable", false, "This file's audio could not be read."],
     ["missing", "missing", "not_found", false, "File missing"],
     ["unchecked", "unchecked", null, false, "Not checked yet"],
     ["without a decoder", "unavailable", "decoder_missing", false, DECODER_MISSING_WORDS],
@@ -335,7 +335,7 @@ describe("its loudness (WAVE-08)", () => {
   it("has no line for a track without a waveform, whose box says why", async () => {
     install({ answer: (id) => waveform(id, "waiting") });
     render(<TrackWaveform trackId={7} />);
-    await waitFor(() => expect(box()).toHaveTextContent("Waiting for analysis"));
+    await waitFor(() => expect(box()).toHaveTextContent("Waveform not drawn yet"));
 
     expect(line()).toBeNull();
   });
@@ -397,7 +397,7 @@ describe("in the Inspector", () => {
 
     expect(screen.getAllByTestId("inspector-waveform")).toHaveLength(1);
     expect(box().querySelector("canvas")).toBeNull();
-    expect(await within(box()).findByText("Waiting for analysis")).toBeInTheDocument();
+    expect(await within(box()).findByText("Waveform not drawn yet")).toBeInTheDocument();
     expect(errors.mock.calls.flat().join(" ")).not.toMatch(/same key/);
   });
 });

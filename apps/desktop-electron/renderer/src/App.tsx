@@ -43,6 +43,7 @@ import {
   libraryImportState,
   libraryOpening,
   libraryRefreshState,
+  libraryTrackState,
   refreshOpening,
   trackOpening,
 } from "./screens/library/libraryLink";
@@ -58,6 +59,7 @@ import {
   LABEL_PAGE_ROUTE,
   SIMILAR_ROUTE,
   entityPath,
+  nameRef,
   similarPath,
 } from "./screens/discover/discoverLinks";
 import {
@@ -136,6 +138,16 @@ function AppShell() {
   const openEntity = useCallback(
     (kind: "artist" | "label", ref: string) => navigate(entityPath(kind, ref)),
     [navigate],
+  );
+  // BAR-4: the player bar's title opens the track in the Library, its artist the
+  // artist's page.
+  const openPlayingTrack = useCallback(
+    (trackId: number) => navigate("/library", { state: libraryTrackState(trackId) }),
+    [navigate],
+  );
+  const openPlayingArtist = useCallback(
+    (artist: string) => openEntity("artist", nameRef(artist)),
+    [openEntity],
   );
   const openSimilar = useCallback(
     (trackId: number) => navigate(similarPath(trackId)),
@@ -278,7 +290,7 @@ function AppShell() {
             <InspectorSlotOutlet />
           </TrackInspector>
         }
-        player={<PlayerSlot />}
+        player={<PlayerSlot onOpenTrack={openPlayingTrack} onOpenArtist={openPlayingArtist} />}
         statusBar={<StatusStrip />}
       >
         <Routes>

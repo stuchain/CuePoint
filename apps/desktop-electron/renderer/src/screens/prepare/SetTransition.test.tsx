@@ -281,7 +281,7 @@ describe("the transition strip", () => {
     render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByTestId("transition-to")).toHaveTextContent("File missing"));
-    expect(screen.getByTestId("transition-from")).toHaveTextContent("Waiting for analysis");
+    expect(screen.getByTestId("transition-from")).toHaveTextContent("Waveform not drawn yet");
     expect(screen.getByTestId("transition-to")).toHaveAttribute("title", "File missing");
     // The times are said whether or not there is a picture.
     expect(screen.getByTestId("transition-words")).toHaveTextContent("Out 0:04 → In 0:01");

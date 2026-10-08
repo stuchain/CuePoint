@@ -58,6 +58,24 @@ export interface FailureReport {
   message: string;
 }
 
+/**
+ * Why a track failed, in plain words for its queue row (BAR-9): mpv's own
+ * explanation and the controller's internal reasons are codes, which the row
+ * must not show. Reads after "Couldn't play: ".
+ */
+export function failureWords(reason: string | null): string {
+  switch (reason) {
+    case "no file path":
+      return "the track has no file";
+    case "no audio output":
+      return "no audio output is available";
+    case "loading failed":
+      return "the file is missing or could not be opened";
+    default:
+      return "the file could not be opened";
+  }
+}
+
 /** What the user is told. */
 export function failureMessage(
   count: number,

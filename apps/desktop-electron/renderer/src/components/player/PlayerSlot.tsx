@@ -29,7 +29,13 @@ import "./PlayerSlot.css";
  * place to work — reorder, remove, jump — not something glanced at, and it
  * must not cover the table the queue was built from.
  */
-export function PlayerSlot() {
+interface PlayerSlotProps {
+  /** Open the playing track in the Library, or its artist's page (BAR-4). */
+  onOpenTrack?: (trackId: number) => void;
+  onOpenArtist?: (artist: string) => void;
+}
+
+export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) {
   // Mounted here rather than in the bar, because the bar does not exist yet the
   // first time a track fails — and "the file you just double-clicked will not
   // play" is exactly the moment the user most needs to be told (PLAYER-10).
@@ -64,7 +70,12 @@ export function PlayerSlot() {
             <QueuePanel onClose={() => setQueueOpen(false)} />
           </div>
         )}
-        <PlayerBar queueOpen={queueOpen} onToggleQueue={() => setQueueOpen((open) => !open)} />
+        <PlayerBar
+          queueOpen={queueOpen}
+          onToggleQueue={() => setQueueOpen((open) => !open)}
+          onOpenTrack={onOpenTrack}
+          onOpenArtist={onOpenArtist}
+        />
       </div>
     </PlayerRegion>
   );
