@@ -12,6 +12,7 @@
     "sync-tokens": "node scripts/sync-tokens.mjs",
     "sync-assets": "node scripts/sync-assets.mjs",
     "og-image": "node scripts/make-og.mjs",
+    "stills": "npm run sync-tokens && node scripts/stills.mjs",
     "search-index": "pagefind --site dist && node scripts/prune-pagefind.mjs",
     "preview": "astro preview",
     "check": "astro check && tsc --noEmit",

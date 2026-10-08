@@ -10,7 +10,7 @@
  *   title-missing, description-missing, canonical-missing, title-duplicate, description-duplicate,
  *   title-length (<= 60), description-length (70-160), h1-count (exactly one), heading-skip,
  *   img-alt, noindex-unexpected, sitemap-noindex, sitemap-missing, link-broken, http-url,
- *   jsonld-parse, jsonld-properties, og-image, favicon, manifest, robots-sitemap,
+ *   jsonld-parse, jsonld-properties, og-image, favicon, manifest, robots-sitemap, orphan-js (warning),
  *   canonical-invalid, sitemap-excluded, noindex-missing, feed-invalid, feed-link-missing
  *
  * Every result has a `severity`: "error" (the CLI exits 1) or "warning" (printed, never fails).
@@ -448,6 +448,7 @@ export function checkSite(distDir, { base, siteUrl, preview }) {
   checkManifest();
   checkRobots();
   checkFeed();
+  checkOrphanScripts();
 
   return results;
 
@@ -529,6 +530,46 @@ export function checkSite(distDir, { base, siteUrl, preview }) {
     for (const icon of manifest.icons) {
       const resolved = resolveInternal(String(icon.src ?? ""), "index.html");
       if (!resolved?.target) report("favicon", "site.webmanifest", `the manifest icon ${icon.src} ${resolved?.problem ?? "is not on this site"}`);
+    }
+  }
+
+  /**
+   * orphan-js (warning): a script in _astro/ that no page reaches. Astro bundles the scripts of every page
+   * file, including a preview-only page (/styleguide/...) that a public build does not render, so a public
+   * build can carry the 3D runtime's chunks with no page that loads them. Harmless to visitors (nothing
+   * requests them) but it is weight in the deploy, so it is named here. A script is reached when a page
+   * names it, or a reached script names it (static import, dynamic import or preload URL).
+   */
+  function checkOrphanScripts() {
+    const scripts = files.filter((f) => /^_astro\/.+\.m?js$/.test(f));
+    if (scripts.length === 0) return;
+    const text = new Map(scripts.map((f) => [f, readFileSync(join(dist, f), "utf8")]));
+    const reached = new Set();
+    const queue = [];
+    const reach = (name) => {
+      const file = scripts.find((s) => s.endsWith(`/${name}`));
+      if (file && !reached.has(file)) {
+        reached.add(file);
+        queue.push(file);
+      }
+    };
+    for (const html of pages.values()) {
+      for (const el of html.querySelectorAll("script[src], link[href]")) {
+        const ref = el.getAttribute("src") ?? el.getAttribute("href") ?? "";
+        const name = /([^/]+\.m?js)(?:[?#].*)?$/.exec(ref)?.[1];
+        if (name) reach(name);
+      }
+      // a module script written inline can import a chunk
+      for (const el of html.querySelectorAll("script:not([src])")) {
+        for (const m of el.textContent.matchAll(/([\w.@-]+\.m?js)/g)) reach(m[1]);
+      }
+    }
+    while (queue.length > 0) {
+      const body = text.get(queue.pop());
+      for (const m of body.matchAll(/([\w.@-]+\.m?js)/g)) reach(m[1]);
+    }
+    for (const s of scripts) {
+      if (!reached.has(s)) report("orphan-js", s, "no page loads this script (a preview-only page's script left in a public build)", "warning");
     }
   }
 

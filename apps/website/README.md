@@ -65,6 +65,47 @@ npm run check:lighthouse  # Lighthouse CI: LCP, TBT, CLS, four category scores, 
 - `website-links.yml` runs lychee over the external links of the built site every Monday and on demand,
   and opens an issue when one is dead.
 
+## The 3D runtime (SITE-05)
+
+`src/three/` is the one runtime every scene uses; `<Scene name="cubes" />` puts a scene in a page
+(`priority` on the one at the top).
+
+- The page is HTML and a still first. `boot.ts` (the only 3D code in the first scripts) decides when to
+  start. The cheap gate (`gate.ts`: no WebGL 2, reduced motion, saveData, under 4 GB or 4 cores) comes
+  first. After `load` and an idle callback it runs the software-GL gate (a throwaway context with
+  `failIfMajorPerformanceCaveat`, then the unmasked renderer name: SwiftShader, llvmpipe and the like
+  block, there is no GPU to draw with), then fetches the 3D chunk with `<link rel=modulepreload>` and sets
+  `performance.mark("cuepoint:3d-start")`. The import itself runs only when the section is within one
+  viewport AND the visitor has scrolled, touched, clicked or pressed a key. `Stage.ts` then starts in small
+  steps (yield between import, renderer, each compile, scene, first draw) and stops, keeping the still, if
+  the first half second runs under 20 fps or three frames in a row take over 66 ms, or the first two
+  seconds run under 30 fps.
+- The frame budget (`budget.ts`) steps down while frames run long: pixel ratio, then shadow map 1024, 512,
+  off, then scene pixels of 4, 5, 6 CSS pixels. The backbuffer is always a whole number of device pixels
+  per scene pixel.
+- Page lifecycle: `pagehide` into the back/forward cache only sleeps (`pageshow` wakes it, or starts the
+  scene again if the browser took the context); any other `pagehide` disposes and releases the context.
+  `prefers-reduced-motion` turning on cancels pending starts and stops a running stage.
+- **What Lighthouse measures here.** Lighthouse's lab run has no GPU (software GL) and does no gesture, so
+  it measures the still path: the HTML, the still and the idle prefetch. `/styleguide/three/` therefore
+  asserts LCP, TBT, CLS and the category scores, but not `resource-summary:script:size` (the prefetch loads
+  the 3D chunk, which is by design not part of the page's own scripts). The "JS before the 3D loads <= 50 KB"
+  rule is `e2e/js-budget.spec.ts` (gzip, scripts requested before the `cuepoint:3d-start` mark, every
+  page). The real-GPU cost of running the 3D is the definition-of-done check on a real phone (30 fps or the
+  still) and a PC (60 fps), not something a lab run can show.
+- **Stills.** `npm run stills` renders each scene's resting frame, in each theme, at the scene's own pixel
+  size (320 x 180, indexed PNG, a couple of KB) to `src/assets/stills/`, and records in `manifest.json` a hash
+  of the scene source, the pixel-look files, the theme tokens, the three.js version in the lockfile and
+  `scripts/stills.mjs`. They are served as they are (no resizing, no AVIF or WebP). They are committed and
+  hashed rather than rendered in CI because a software-GL render is not guaranteed to be byte-identical on
+  another machine, and CI has no need to draw them: `npm test` fails when one is missing or its hash is
+  stale. Run `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run stills` and commit the result.
+- `/styleguide/three/` is the test scene (one scene in the first screen, one far down);
+  `/styleguide/stills/` is the page the stills script drives. Preview only. A public build does not render
+  them but Astro still bundles their scripts; `check:site` names those as `orphan-js` warnings.
+- Preview builds expose `window.__cuepointStage` and read `window.__cuepointStageConfig` (`minFps`,
+  `allowSoftwareGL`) for `e2e/three.spec.ts`; a public build has neither.
+- On a shared machine other checkouts may hold port 4321: run the e2e with `WEBSITE_PORT=4401`.
 ## The guide and the FAQ (SITE-09)
 
 - `/guide/` is built from `../../docs/user-guide/*.md` where they are; the files are never edited for the site.

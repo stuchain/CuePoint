@@ -1,0 +1,42 @@
+---
+/*
+ * /styleguide/stills/: the page `npm run stills` opens in headless Chromium (SITE-05, fact 8).
+ * It exposes window.__renderStill(sceneName) -> PNG data URL, drawn in the page's current theme.
+ * Preview builds only. It imports no stills, so it works before any still exists.
+ */
+import { PUBLIC } from "../../../../site.config";
+import Section from "../../../components/Section.astro";
+import Page from "../../../layouts/Page.astro";
+
+export function getStaticPaths() {
+  return PUBLIC ? [] : [{ params: { slug: undefined } }];
+}
+---
+
+<Page
+  title="Scene stills"
+  description="The page that renders each 3D scene's resting frame for the CuePoint site's stills. Preview builds only."
+  path="styleguide/stills/"
+  breadcrumbs={[
+    { label: "Home", path: "" },
+    { label: "Style guide", path: "styleguide/" },
+    { label: "Scene stills", path: "styleguide/stills/" },
+  ]}
+>
+  <Section id="stills" width="prose">
+    <h1>Scene stills</h1>
+    <p>
+      This page draws each scene's resting frame in the current theme. The stills build step reads
+      the pictures from here; there is nothing to look at.
+    </p>
+  </Section>
+</Page>
+
+<script>
+  // this page is a 3D page: the import is the 3D start (js-budget.spec.ts counts the scripts before it)
+  performance.mark("cuepoint:3d-start");
+  void import("../../../three/still").then(({ renderStill }) => {
+    Object.assign(window, { __renderStill: renderStill });
+    document.documentElement.setAttribute("data-stills-ready", "");
+  });
+</script>

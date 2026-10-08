@@ -359,6 +359,27 @@ describe("the sitemap files", () => {
   });
 });
 
+describe("orphan-js", () => {
+  const withScripts = (f) => {
+    f["index.html"] = f["index.html"].replace("</head>", `<script type="module" src="${BASE}_astro/page.AAA.js"></script></head>`);
+    f["_astro/page.AAA.js"] = 'import("./chunk.BBB.js");';
+    f["_astro/chunk.BBB.js"] = "export const x = 1;";
+  };
+
+  it("passes when every script is reached from a page, through imports", () => {
+    expect(run(withScripts)).toEqual([]);
+  });
+
+  it("warns about a script no page reaches, and never fails the build", () => {
+    const edit = (f) => {
+      withScripts(f);
+      f["_astro/entry.CCC.js"] = "export const y = 2;";
+    };
+    const results = run(edit);
+    expect(results.map((r) => [r.rule, r.page, r.severity])).toEqual([["orphan-js", "_astro/entry.CCC.js", "warning"]]);
+  });
+});
+
 describe("preview builds", () => {
   const noindexAll = (f) => {
     for (const p of ["index.html", "about/index.html", "faq/index.html", "blog/post/index.html"]) {

@@ -1,0 +1,106 @@
+---
+// A 3D scene (SITE-05). The page is HTML and a picture first: the scene's still, rendered from the
+// scene itself in each theme, is an <img> with a fixed width and height. The canvas is added over
+// it only if and when the 3D starts (src/three/boot.ts), so with no WebGL, no GPU, reduced motion,
+// saveData, a small device or a slow first two seconds, the still is the scene. The canvas is
+// aria-hidden: say what the scene shows in the text next to it.
+//
+// A still is the scene's own render target (320 x 180, a few KB), served as it is: no resizing and no
+// AVIF or WebP, so its pixels stay the scene's pixels. Only the default theme's still is ever loaded
+// eagerly, and only for a scene at the top of the page (`priority`); the others are lazy images in
+// elements that are display:none, so a browser never fetches them.
+import { DEFAULT_THEME, THEMES } from "../lib/themes";
+import type { SceneName } from "../three/scenes";
+import { STILL_HEIGHT, STILL_WIDTH } from "../three/still-size";
+
+interface Props {
+  /** A scene in src/three/scenes/. */
+  name: SceneName;
+  /** The still's description, when the page's own text does not already say what the scene shows. */
+  alt?: string;
+  /** A scene at the top of the page: its default-theme still loads first (it can be the largest paint). */
+  priority?: boolean;
+  class?: string;
+}
+
+const { name, alt = "", priority = false, class: className } = Astro.props;
+
+const files = import.meta.glob<string>("../assets/stills/*.png", { eager: true, query: "?url&no-inline", import: "default" });
+const stills = THEMES.map((theme) => {
+  const src = files[`../assets/stills/${name}-${theme.id}.png`];
+  if (!src) throw new Error(`Scene "${name}" has no still for ${theme.id}: run \`npm run stills\``);
+  return { theme: theme.id, src };
+});
+---
+
+<div
+  class:list={["scene", className]}
+  data-scene={name}
+  data-scene-state="still"
+  style={`--scene-ratio: ${STILL_WIDTH} / ${STILL_HEIGHT}`}
+>
+  {
+    stills.map(({ theme, src }) => {
+      const first = priority && theme === DEFAULT_THEME;
+      return (
+        <span class="still" data-still-theme={theme}>
+          <img
+            src={src}
+            alt={alt}
+            width={STILL_WIDTH}
+            height={STILL_HEIGHT}
+            loading={first ? "eager" : "lazy"}
+            fetchpriority={first ? "high" : "auto"}
+            decoding="async"
+          />
+        </span>
+      );
+    })
+  }
+  <div class="layer" data-scene-layer aria-hidden="true"></div>
+</div>
+
+<script>
+  import { boot } from "../three/boot";
+  boot();
+</script>
+
+<style>
+  .scene {
+    position: relative;
+    width: 100%;
+    aspect-ratio: var(--scene-ratio);
+    overflow: hidden;
+    background: var(--bg-app);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-panel);
+  }
+  .still {
+    display: none;
+    position: absolute;
+    inset: 0;
+  }
+  :global(:root[data-theme="neoDark"]) .still[data-still-theme="neoDark"],
+  :global(:root[data-theme="retro16"]) .still[data-still-theme="retro16"],
+  :global(:root[data-theme="qtEvolved"]) .still[data-still-theme="qtEvolved"],
+  :global(:root[data-theme="clubNeon"]) .still[data-still-theme="clubNeon"],
+  :global(:root[data-theme="mutedPro"]) .still[data-still-theme="mutedPro"] {
+    display: block;
+  }
+  .still img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+  .layer {
+    position: absolute;
+    inset: 0;
+  }
+  .layer :global(canvas) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+</style>

@@ -520,6 +520,14 @@ real scene exists.
 
 **Complexity**: **L**
 
+**Outcome (2026-10-08)**: `src/three/` holds the runtime. A gate refuses 3D for reduced motion, saveData,
+two cores or fewer, a software GL renderer, or a failed context, and the page keeps its still. Three.js
+loads only after the first gesture, with yields so it never blocks the main thread. A frame budget steps
+quality down (shadows off, then bigger pixels) and stops the scene if the first half second is slow.
+The scene sleeps in the back/forward cache, rebuilds a lost context on pageshow and releases it on
+pagehide. Stills are 320×180 indexed PNGs made by `npm run stills`. On `/styleguide/three/` Lighthouse
+gives LCP 1.5 s and TBT 0. Owed: the 60 fps PC and 30 fps phone check on real devices.
+
 ---
 
 ## SITE-06 — Home

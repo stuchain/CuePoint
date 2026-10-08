@@ -1,0 +1,68 @@
+---
+/*
+ * /styleguide/three/: the 3D runtime's test scene (SITE-05). Preview builds only, like /styleguide/
+ * (a rest-parameter route, so getStaticPaths can return nothing in a public build).
+ * A field of voxel cubes that rises with the scroll, in the first screen as a home page's opening scene
+ * would be, and a second one far down the page for the "does not start while far away" check. The text
+ * says what the scene shows, because the canvas is aria-hidden and nothing may be only in the 3D.
+ */
+import { PUBLIC } from "../../../../site.config";
+import Scene from "../../../components/Scene.astro";
+import Section from "../../../components/Section.astro";
+import Page from "../../../layouts/Page.astro";
+
+export function getStaticPaths() {
+  return PUBLIC ? [] : [{ params: { slug: undefined } }];
+}
+---
+
+<Page
+  title="3D test scene"
+  description="The test scene for the CuePoint site's 3D runtime: a field of pixel cubes that rises as you scroll. Preview builds only."
+  path="styleguide/three/"
+  breadcrumbs={[
+    { label: "Home", path: "" },
+    { label: "Style guide", path: "styleguide/" },
+    { label: "3D test scene", path: "styleguide/three/" },
+  ]}
+>
+  <Section id="scene" width="prose">
+    <h1>Cubes that rise with the scroll</h1>
+    <Scene name="cubes" priority />
+    <p class="caption">
+      The picture shows a square field of eleven by eleven blocks seen from above and to the side. The
+      blocks at the center are tallest and the ones at the edges stay low. Their shadows fall hard on
+      the floor, and each block is outlined in black. Scroll, and the blocks grow and the view turns.
+      If 3D does not run on your device, this is a still picture of the same field.
+    </p>
+  </Section>
+  <Section id="between" heading="Room to scroll" width="prose">
+    <p class="run-up">
+      The 3D starts only when a scene is within a screen of where you are and you have scrolled,
+      touched or pressed a key. This page has a second field far below, which stays a picture until you
+      get close.
+    </p>
+  </Section>
+  <Section id="far" heading="A second field" width="prose">
+    <Scene name="cubes" />
+    <p class="caption tall">
+      The same field of blocks again. Nothing on this page depends on the picture or on the 3D.
+    </p>
+  </Section>
+</Page>
+
+<style>
+  .caption {
+    max-width: 42rem;
+    margin-top: var(--space-md);
+    color: var(--fg-muted);
+    font-size: var(--font-size-sm);
+  }
+  .run-up {
+    min-height: 220vh;
+  }
+  /* room to scroll far past the scene, so its loop can be seen to sleep */
+  .tall {
+    min-height: 100vh;
+  }
+</style>
