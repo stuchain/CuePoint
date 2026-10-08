@@ -1,0 +1,61 @@
+# Type-checks, tests and builds the website (apps/website) and uploads the built site.
+# There is no deploy job yet (SITE-13).
+name: Website
+
+on:
+  push:
+    paths:
+      - 'apps/website/**'
+      - 'docs/user-guide/**'
+      - 'docs/release/CHANGELOG.md'
+      - '.github/workflows/website.yml'
+  pull_request:
+    paths:
+      - 'apps/website/**'
+      - 'docs/user-guide/**'
+      - 'docs/release/CHANGELOG.md'
+      - '.github/workflows/website.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  website:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/website
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/website/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check types
+        run: npm run check
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload built site
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-dist
+          path: apps/website/dist
+          if-no-files-found: error

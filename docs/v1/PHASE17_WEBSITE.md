@@ -251,6 +251,12 @@ the design skills read.
 
 **Complexity**: **S**
 
+**Outcome (2026-10-08, built early by DEC-212)**: Astro 7.3 in `apps/website/` with
+`astro.config.ts` (not `.mjs`, so it is type-checked) deriving `site` and `base` from
+`site.config.ts`; `PUBLIC = false` puts `noindex` on every page; TypeScript is held at 6 because
+`@astrojs/check` 0.9 does not accept 7 yet; Node 22.12 or newer. `website.yml` runs check, test and
+build and uploads `dist/`. `PRODUCT.md` written for the design skills.
+
 ---
 
 ## SITE-02 — The App's Look on the Web, and the Layout Every Page Uses

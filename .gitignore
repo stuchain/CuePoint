@@ -422,3 +422,8 @@ collection-january.xml
 
 # Player sidecar (PLAYER-01): fetched by scripts/fetch_player_sidecar.py, never committed
 apps/desktop-electron/resources/player/
+
+# Website (Phase 17)
+apps/website/node_modules/
+apps/website/dist/
+apps/website/.astro/
