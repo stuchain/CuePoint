@@ -100,17 +100,17 @@ HEALTH_RULES: Tuple[HealthRule, ...] = (
     ),
     HealthRule(
         "not_matched",
-        "Not matched",
+        "Not looked up yet",
         _rules(FilterRule("match_state", OP_IS, STATE_NOT_MATCHED)),
     ),
     HealthRule(
         "needs_review",
-        "Needs review",
+        "Waiting for you",
         _rules(FilterRule("match_state", OP_IS, STATE_NEEDS_REVIEW)),
     ),
     HealthRule(
         "disputed",
-        "Disputed by a newer match",
+        "Changed since you decided",
         _rules(FilterRule("match_disputed", OP_IS, True)),
     ),
     HealthRule(
@@ -148,19 +148,21 @@ class HealthDetection:
 #: whatever started it — an import, a refresh, a match or a person — and the
 #: feed is what the Activity panel shows, so the two cannot disagree.
 HEALTH_DETECTIONS: Tuple[HealthDetection, ...] = (
-    HealthDetection("files", "Files checked", "file_check", EVENT_FILES_CHECKED),
+    HealthDetection("files", "Files on disk", "file_check", EVENT_FILES_CHECKED),
     HealthDetection(
         "duplicates",
-        "Duplicates looked for",
+        "Duplicate search",
         "duplicate_scan",
         EVENT_DUPLICATES_SCANNED,
     ),
-    HealthDetection("artwork", "Artwork read", "artwork_scan", EVENT_ARTWORK_SCANNED),
+    HealthDetection(
+        "artwork", "Cover art in your files", "artwork_scan", EVENT_ARTWORK_SCANNED
+    ),
     # WAVE-03: the waveform analysis, which runs on its own after every check
     # and can be paused; the panel offers Pause and Resume for it.
     HealthDetection(
         "waveforms",
-        "Waveforms analysed",
+        "Waveform drawing",
         "waveform_analysis",
         EVENT_WAVEFORMS_ANALYSED,
     ),

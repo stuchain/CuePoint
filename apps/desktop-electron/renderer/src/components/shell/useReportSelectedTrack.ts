@@ -11,7 +11,7 @@
  */
 import { useEffect } from "react";
 
-import { setSelectedTrack, type SelectedTrack } from "../../components/shell/selectedTrack";
+import { setSelectedTrack, type SelectedTrack } from "./selectedTrack";
 
 export function useReportSelectedTrack(track: SelectedTrack | null, enabled = true): void {
   const { id = null, key: camelot = null } = track ?? {};

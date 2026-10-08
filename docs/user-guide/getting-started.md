@@ -34,13 +34,13 @@ CuePoint then checks, in the background, that your files are where Rekordbox say
 
 1. Go to **Clean**.
 2. In **In**, choose the playlist to match, or leave it on the whole library.
-3. Choose **Show what is not matched**, then **Match all**.
+3. The first time, choose **Match all N tracks**. To start with one playlist instead, choose **Choose a playlist first**, pick the playlist in **In**, and Clean lists its tracks under **Not looked up yet**; then choose **Match all** there. Later, choose **Match all** or **Match selection** and pick **Only tracks not looked up yet**.
 
-Matching runs in the background, so you can keep working. Tracks CuePoint is certain about are accepted for you. The rest wait under **Needs review**.
+Matching runs in the background, so you can keep working. Tracks CuePoint is certain about are accepted for you. The rest wait under **Waiting for you**.
 
 ### 4. Review
 
-1. In **Show**, choose **Needs review**.
+1. In **Show**, choose **Waiting for you**.
 2. Select a track. The comparison below shows it beside Beatport's candidates, with differences marked.
 3. Press **Left** or **Right** to choose a candidate and **A** to accept it, or **R** to reject the match. **Down** moves to the next track.
 
@@ -55,7 +55,7 @@ CuePoint never deletes or moves tracks or files, and never writes to your Rekord
 - **Start small.** Match one playlist first, so you see how matching behaves on your music.
 - **Review before you apply.** Look at each candidate beside your track before you accept it.
 - **Find a track fast.** Press **Ctrl+K** to search your whole library (**Enter** opens a result in the Library, **Shift+Enter** plays it), or **Ctrl+F** to search the table in front of you. All shortcuts are in [The CuePoint window](the-window.md#keyboard-shortcuts).
-- **Save your work.** **Export review list...** on the Clean page saves the list as CSV, JSON or Excel. To put your values into the audio files, see [Writing tags to files](library.md#writing-tags-to-files); Rekordbox shows them after **Reload Tag**.
+- **Save your work.** **Save review list as a file…** on the Clean page saves the list as a spreadsheet or JSON. To put your values into the audio files, see [Writing tags to files](library.md#writing-tags-to-files); Rekordbox shows them after **Reload Tag**.
 
 ## CLI quick start
 

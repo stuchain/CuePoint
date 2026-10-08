@@ -195,12 +195,13 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
 
       await test.step("match a playlist", async () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
-        await expect(window.getByText("Nothing is matched yet.")).toBeVisible({ timeout: 30_000 });
+        await expect(window.getByText("Match your library on Beatport")).toBeVisible({ timeout: 30_000 });
         await window.getByRole("combobox", { name: "In" }).selectOption({ label: "Journey" });
         await window.getByRole("combobox", { name: "Show" }).selectOption("not_matched");
         await expect(queueRow(window, "Tone Two")).toBeVisible({ timeout: 15_000 });
         await window.getByRole("button", { name: "Match all 3" }).click();
-        await expect(window.getByText("Matching 3 tracks on Beatport.")).toBeVisible({ timeout: 30_000 });
+        await window.getByRole("dialog").getByRole("button", { name: "Start matching" }).click();
+        await expect(window.getByText("Matching 3 tracks on Beatport.", { exact: true })).toBeVisible({ timeout: 30_000 });
         await expect(window.getByText("Matching finished.")).toBeVisible({ timeout: 90_000 });
         await idle(window);
       });
@@ -240,10 +241,10 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         const comparison = window.getByRole("region", { name: "Comparison" });
         await expect(comparison.getByRole("heading", { name: "Tone Two" })).toBeVisible();
         const decide = comparison.getByRole("group", { name: "Decide" });
-        // The page opens on the matcher's proposal, the 94.0. Candidates are
+        // The page opens on the matcher's proposal, the 94 out of 100. Candidates are
         // listed in the order the matcher scored them, which depends on which
         // page its workers fetched first, so the proposal is #1 or #2.
-        const proposal = comparison.getByRole("button", { name: /^#\d · 94\.0/ });
+        const proposal = comparison.getByRole("button", { name: /^#\d · Very likely \(94\/100\)/ });
         await expect(proposal).toHaveAttribute("aria-pressed", "true", { timeout: 15_000 });
         const proposed = Number(/#(\d)/.exec(await proposal.innerText())![1]);
         const other = proposed === 1 ? 2 : 1;
@@ -254,7 +255,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         await window.keyboard.press(proposed === 1 ? "ArrowRight" : "ArrowLeft");
         await expect(decide.getByRole("button", { name: `Accept #${other}` })).toBeVisible();
         await expect(
-          comparison.getByRole("button", { name: new RegExp(`^#${other} · 91\\.1`) }),
+          comparison.getByRole("button", { name: new RegExp(`^#${other} · Very likely \\(91/100\\)`) }),
         ).toHaveAttribute("aria-pressed", "true");
         await window.keyboard.press("a");
 
@@ -326,7 +327,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       await test.step("see Health's counts and follow one into the Library", async () => {
         await window.getByRole("tab", { name: "Health" }).click();
         await expect(
-          window.getByRole("button", { name: "1 Needs review: open in the Library" }),
+          window.getByRole("button", { name: "1 Waiting for you: open in the Library" }),
         ).toHaveCount(0);
         await window
           .getByRole("button", { name: "1 Missing or unreadable files: open in the Library" })

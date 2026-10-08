@@ -1,15 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { MatchCandidate, TrackMatchState } from "../../api/cuepointBridge.types";
 import {
   APPLY_FIELDS,
   CANDIDATE_LIMIT,
+  SCORE_OPEN_STORAGE_KEY,
   SCORE_ROWS,
   VALUE_ROWS,
   applyValue,
   candidateBadges,
   cellText,
   defaultChoice,
+  loadScoreOpen,
+  saveScoreOpen,
+  scoreLine,
   stepChoice,
   visibleCandidates,
 } from "./comparison";
@@ -123,20 +127,20 @@ describe("what a candidate is called", () => {
     ]);
     expect(
       candidateBadges(candidate(1, { is_winner: true }), state({ candidate_id: 1 })),
-    ).toEqual(["Proposed"]);
+    ).toEqual(["Suggested"]);
   });
 
-  it("is the matcher's pick when a person chose another", () => {
+  it("is the best score when a person chose another", () => {
     expect(
       candidateBadges(
         candidate(1, { is_winner: true }),
         state({ state: "accepted", candidate_id: 2 }),
       ),
-    ).toEqual(["Matcher's pick"]);
+    ).toEqual(["Best score"]);
   });
 
-  it("says a guard refused it", () => {
-    expect(candidateBadges(candidate(2, { guard_ok: false }), state())).toEqual(["Refused"]);
+  it("says a guard ruled it out", () => {
+    expect(candidateBadges(candidate(2, { guard_ok: false }), state())).toEqual(["Ruled out"]);
   });
 });
 
@@ -193,7 +197,7 @@ describe("the rows", () => {
     expect(text("guard", candidate(1))).toBe("Passed");
     expect(
       text("guard", candidate(1, { guard_ok: false, reject_reason: "guard_artist_sim_no_overlap" })),
-    ).toBe("Refused: no artist in common");
+    ).toBe("Ruled out: no artist in common");
     expect(cellText("")).toBe("—");
   });
 });
@@ -209,5 +213,69 @@ describe("what applying copies", () => {
       null,
       "2020",
     ]);
+  });
+});
+
+describe("one plain line per candidate", () => {
+  it.each([
+    [94.2, "Very likely (94/100)"],
+    [71.1, "Possible (71/100)"],
+    [41.6, "Unlikely (42/100)"],
+  ])("says %s as %s", (score, line) => {
+    expect(scoreLine(candidate(1, { score }))).toBe(line);
+  });
+
+  it("says why a candidate was ruled out instead of a score", () => {
+    expect(
+      scoreLine(candidate(1, { guard_ok: false, reject_reason: "guard_artist_sim_no_overlap" })),
+    ).toBe("Ruled out: no artist in common");
+  });
+
+  it("keeps the matcher's internals out of the plain line", () => {
+    expect(scoreLine(candidate(1, { score: 94 }))).not.toMatch(/bonus|similarity|guard/i);
+  });
+});
+
+describe("the scoring rows folded under Why this score?", () => {
+  afterEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("hold everything the plain line leaves out, the key bonus included", () => {
+    expect(SCORE_ROWS.map((row) => row.label)).toEqual([
+      "Score",
+      "Before bonuses",
+      "Title similarity",
+      "Artist similarity",
+      "Year bonus",
+      "Key bonus",
+      "Guards",
+      "Found by",
+    ]);
+  });
+
+  it("start folded", () => {
+    expect(loadScoreOpen()).toBe(false);
+  });
+
+  it("are remembered open and closed in one key", () => {
+    saveScoreOpen(true);
+    expect(localStorage.getItem(SCORE_OPEN_STORAGE_KEY)).toBe("open");
+    expect(loadScoreOpen()).toBe(true);
+    saveScoreOpen(false);
+    expect(localStorage.getItem(SCORE_OPEN_STORAGE_KEY)).toBe("closed");
+    expect(loadScoreOpen()).toBe(false);
+  });
+
+  it("work when storage cannot be used", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("denied");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("denied");
+    });
+    expect(loadScoreOpen()).toBe(false);
+    expect(() => saveScoreOpen(true)).not.toThrow();
   });
 });

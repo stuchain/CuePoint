@@ -276,7 +276,7 @@ describe("the Beatport zone", () => {
     bridge.getTrackMatches.mockResolvedValue(matches({ state: "needs_review", decided_by: null }));
     panel();
     const zone = await screen.findByRole("region", { name: "Beatport" });
-    await within(zone).findByText("Needs review");
+    await within(zone).findByText("Waiting for you");
     expect(within(zone).queryByRole("button", { name: /^Apply/ })).toBeNull();
   });
 
@@ -294,7 +294,7 @@ describe("the Beatport zone", () => {
     bridge.getTrackMatches.mockResolvedValue(matches({ disputed: true, newer_attempt_id: 9 }));
     panel();
     expect(
-      await screen.findByText("Accepted by you — a newer match disagrees"),
+      await screen.findByText("Accepted by you — changed since you decided"),
     ).toBeInTheDocument();
   });
 

@@ -7,11 +7,13 @@
  * exists; "check again" runs CLEAN-07's check over what is shown.
  *
  * **Nothing here fixes a file.** Relocation is Rekordbox's (DEC-073), and the
- * page says so in one sentence rather than offering a control that would have
- * to be undone by the next refresh. A disconnected drive is one line above the
+ * page gives the fix in three steps (CLN-8) rather than offering a control that
+ * would have to be undone by the next refresh. The last step is a button to the
+ * Library's Check Rekordbox for changes. A disconnected drive is one line above the
  * table, not four thousand rows to scroll past.
  */
 import { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import type {
   BatchSelection,
@@ -24,6 +26,8 @@ import type {
 import { Button, useToast } from "../../components";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { useInspectorSlot } from "../../components/shell";
+import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
+import { libraryRefreshState } from "../library/libraryLink";
 import { SelectionActions } from "../library/SelectionActions";
 import { TrackDetailPanel } from "../library/TrackDetailPanel";
 import { batchSelection } from "../library/libraryBatch";
@@ -59,6 +63,7 @@ export function MissingFilesView({
   onOpenEntity,
 }: MissingFilesViewProps) {
   const { push } = useToast();
+  const navigate = useNavigate();
   const [order, setOrder] = useState<{ sort: string; dir: SortDirection }>({
     sort: "artist",
     dir: "asc",
@@ -163,6 +168,8 @@ export function MissingFilesView({
     return null;
   }, [onlyId, window_.source, window_.total]);
 
+  useReportSelectedTrack(onlyRow?.id != null ? { id: onlyRow.id, key: onlyRow.effective_key ?? null } : null);
+
   const running = jobs.running !== null;
   const empty = missingEmptyState(health, window_.error);
   const roots = health?.unavailable_roots ?? [];
@@ -186,10 +193,22 @@ export function MissingFilesView({
   return (
     <div className="clean-missing">
       <div className="clean-note">
-        <p className="clean-note__text">
-          CuePoint finds files that are not where Rekordbox says, and does not move them. To fix
-          one, use Relocate in Rekordbox, export your collection again, then refresh the Library.
-        </p>
+        <ol className="clean-note__steps" aria-label="How to fix a missing file">
+          <li>
+            In Rekordbox, right-click the track, choose Relocate and point it at the file.
+          </li>
+          <li>In Rekordbox, choose File, then Export Collection in xml format.</li>
+          <li>
+            Here,{" "}
+            <Button
+              variant="secondary"
+              onClick={() => navigate("/library", { state: libraryRefreshState() })}
+            >
+              Check Rekordbox for changes
+            </Button>
+            .
+          </li>
+        </ol>
         {roots.map((root) => (
           <p key={root.root} className="clean-note__finding" role="status">
             At the last check: {root.summary}.

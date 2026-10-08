@@ -10,7 +10,7 @@
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
 import { effective, formatBpm } from "../library/trackValues";
-import { fileStatusLabel, matchStateLabel } from "./cleanFormat";
+import { DISPUTED_HINT, fileStatusHint, fileStatusLabel, matchStateLabel } from "./cleanFormat";
 
 export const REVIEW_TABLE_LAYOUT_KEY = "cuepoint-clean-review-table-layout";
 export const MISSING_TABLE_LAYOUT_KEY = "cuepoint-clean-missing-table-layout";
@@ -36,7 +36,7 @@ const artist: TrackColumnDef<LibraryTrackRow> = {
 
 export function matchCell(track: LibraryTrackRow): string {
   const label = matchStateLabel(track.match_state);
-  return track.match_disputed ? `${label} · disputed` : label;
+  return track.match_disputed ? `${label} · changed since you decided` : label;
 }
 
 export const REVIEW_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
@@ -45,6 +45,7 @@ export const REVIEW_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
   {
     id: "match_state",
     header: "Match",
+    hint: `Changed since you decided: ${DISPUTED_HINT}`,
     minWidthPx: 90,
     defaultWidthPx: 150,
     render: matchCell,
@@ -103,6 +104,7 @@ export const MISSING_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
   {
     id: "file_status",
     header: "File",
+    hint: `Missing: ${fileStatusHint("missing")}. Unreadable: ${fileStatusHint("unreadable")}.`,
     minWidthPx: 80,
     defaultWidthPx: 100,
     render: (track) => fileStatusLabel(track.file_status),

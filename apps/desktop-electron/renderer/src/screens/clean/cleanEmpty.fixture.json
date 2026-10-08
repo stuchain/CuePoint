@@ -39,7 +39,7 @@
         {
           "count": 3,
           "id": "not_matched",
-          "label": "Not matched",
+          "label": "Not looked up yet",
           "rules": {
             "match": "all",
             "rules": [
@@ -54,7 +54,7 @@
         {
           "count": 0,
           "id": "needs_review",
-          "label": "Needs review",
+          "label": "Waiting for you",
           "rules": {
             "match": "all",
             "rules": [
@@ -69,7 +69,7 @@
         {
           "count": 0,
           "id": "disputed",
-          "label": "Disputed by a newer match",
+          "label": "Changed since you decided",
           "rules": {
             "match": "all",
             "rules": [
@@ -143,28 +143,28 @@
         {
           "id": "files",
           "job_type": "file_check",
-          "label": "Files checked",
+          "label": "Files on disk",
           "last_run_at": "<recorded>",
           "last_summary": "Checked 3 files: 3 present, 0 missing"
         },
         {
           "id": "duplicates",
           "job_type": "duplicate_scan",
-          "label": "Duplicates looked for",
+          "label": "Duplicate search",
           "last_run_at": null,
           "last_summary": null
         },
         {
           "id": "artwork",
           "job_type": "artwork_scan",
-          "label": "Artwork read",
+          "label": "Cover art in your files",
           "last_run_at": null,
           "last_summary": null
         },
         {
           "id": "waveforms",
           "job_type": "waveform_analysis",
-          "label": "Waveforms analysed",
+          "label": "Waveform drawing",
           "last_run_at": null,
           "last_summary": null
         }
@@ -252,7 +252,7 @@
         {
           "count": 0,
           "id": "not_matched",
-          "label": "Not matched",
+          "label": "Not looked up yet",
           "rules": {
             "match": "all",
             "rules": [
@@ -267,7 +267,7 @@
         {
           "count": 0,
           "id": "needs_review",
-          "label": "Needs review",
+          "label": "Waiting for you",
           "rules": {
             "match": "all",
             "rules": [
@@ -282,7 +282,7 @@
         {
           "count": 0,
           "id": "disputed",
-          "label": "Disputed by a newer match",
+          "label": "Changed since you decided",
           "rules": {
             "match": "all",
             "rules": [
@@ -356,28 +356,28 @@
         {
           "id": "files",
           "job_type": "file_check",
-          "label": "Files checked",
+          "label": "Files on disk",
           "last_run_at": "<recorded>",
           "last_summary": "Checked 3 files: 3 present, 0 missing"
         },
         {
           "id": "duplicates",
           "job_type": "duplicate_scan",
-          "label": "Duplicates looked for",
+          "label": "Duplicate search",
           "last_run_at": "<recorded>",
           "last_summary": "Found no possible duplicates"
         },
         {
           "id": "artwork",
           "job_type": "artwork_scan",
-          "label": "Artwork read",
+          "label": "Cover art in your files",
           "last_run_at": null,
           "last_summary": null
         },
         {
           "id": "waveforms",
           "job_type": "waveform_analysis",
-          "label": "Waveforms analysed",
+          "label": "Waveform drawing",
           "last_run_at": null,
           "last_summary": null
         }
@@ -490,7 +490,7 @@
         {
           "count": 3,
           "id": "not_matched",
-          "label": "Not matched",
+          "label": "Not looked up yet",
           "rules": {
             "match": "all",
             "rules": [
@@ -505,7 +505,7 @@
         {
           "count": 0,
           "id": "needs_review",
-          "label": "Needs review",
+          "label": "Waiting for you",
           "rules": {
             "match": "all",
             "rules": [
@@ -520,7 +520,7 @@
         {
           "count": 0,
           "id": "disputed",
-          "label": "Disputed by a newer match",
+          "label": "Changed since you decided",
           "rules": {
             "match": "all",
             "rules": [
@@ -594,28 +594,28 @@
         {
           "id": "files",
           "job_type": "file_check",
-          "label": "Files checked",
+          "label": "Files on disk",
           "last_run_at": "<recorded>",
           "last_summary": "Checked 3 files: 3 present, 0 missing"
         },
         {
           "id": "duplicates",
           "job_type": "duplicate_scan",
-          "label": "Duplicates looked for",
+          "label": "Duplicate search",
           "last_run_at": "<recorded>",
           "last_summary": "Found no possible duplicates"
         },
         {
           "id": "artwork",
           "job_type": "artwork_scan",
-          "label": "Artwork read",
+          "label": "Cover art in your files",
           "last_run_at": null,
           "last_summary": null
         },
         {
           "id": "waveforms",
           "job_type": "waveform_analysis",
-          "label": "Waveforms analysed",
+          "label": "Waveform drawing",
           "last_run_at": null,
           "last_summary": null
         }
@@ -669,7 +669,7 @@
         {
           "count": 3,
           "id": "not_matched",
-          "label": "Not matched",
+          "label": "Not looked up yet",
           "rules": {
             "match": "all",
             "rules": [
@@ -684,7 +684,7 @@
         {
           "count": 0,
           "id": "needs_review",
-          "label": "Needs review",
+          "label": "Waiting for you",
           "rules": {
             "match": "all",
             "rules": [
@@ -699,7 +699,7 @@
         {
           "count": 0,
           "id": "disputed",
-          "label": "Disputed by a newer match",
+          "label": "Changed since you decided",
           "rules": {
             "match": "all",
             "rules": [
@@ -773,28 +773,28 @@
         {
           "id": "files",
           "job_type": "file_check",
-          "label": "Files checked",
+          "label": "Files on disk",
           "last_run_at": null,
           "last_summary": null
         },
         {
           "id": "duplicates",
           "job_type": "duplicate_scan",
-          "label": "Duplicates looked for",
+          "label": "Duplicate search",
           "last_run_at": null,
           "last_summary": null
         },
         {
           "id": "artwork",
           "job_type": "artwork_scan",
-          "label": "Artwork read",
+          "label": "Cover art in your files",
           "last_run_at": null,
           "last_summary": null
         },
         {
           "id": "waveforms",
           "job_type": "waveform_analysis",
-          "label": "Waveforms analysed",
+          "label": "Waveform drawing",
           "last_run_at": null,
           "last_summary": null
         }

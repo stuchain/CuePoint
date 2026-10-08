@@ -22,6 +22,7 @@ import pytest
 from cuepoint.persistence.activity_repository import ActivityEvent
 from cuepoint.services.health_service import (
     HEALTH_DETECTIONS,
+    HEALTH_RULES,
     HealthService,
     unavailable_roots,
 )
@@ -97,6 +98,23 @@ class TestLastRuns:
             # WAVE-03: the waveform analysis, paused and resumed from the panel.
             ("waveforms", "waveform_analysis", "waveforms.analysed"),
         ]
+
+    def test_the_checks_are_named_in_plain_words(self):
+        # CLN-9: the ids, jobs and events above stay; only the labels change.
+        assert {d.id: d.label for d in HEALTH_DETECTIONS} == {
+            "files": "Files on disk",
+            "duplicates": "Duplicate search",
+            "artwork": "Cover art in your files",
+            "waveforms": "Waveform drawing",
+        }
+
+    def test_the_match_counts_use_the_match_state_words(self):
+        # CLN-4: the stored states and count ids stay; the words change.
+        labels = {rule.id: rule.label for rule in HEALTH_RULES}
+        assert labels["not_matched"] == "Not looked up yet"
+        assert labels["needs_review"] == "Waiting for you"
+        assert labels["disputed"] == "Changed since you decided"
+        assert labels["missing_key"] == "No Beatport key"
 
     def test_without_a_feed_nothing_is_claimed(self):
         report = HealthService(Tracks()).report().to_dict()

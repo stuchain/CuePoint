@@ -6,8 +6,10 @@ import {
   decidedLine,
   decisionLine,
   exportedLine,
+  fileStatusHint,
   fileStatusLabel,
   formatWhen,
+  matchRunningNote,
   matchStartedLine,
   matchStateLabel,
   resumableLine,
@@ -35,35 +37,43 @@ describe("where a track stands", () => {
     expect(decisionLine(state({ decided_by: "auto" }))).toBe("Accepted automatically");
     expect(decisionLine(state({ decided_by: "user" }))).toBe("Accepted by you");
     expect(decisionLine(state({ state: "rejected", decided_by: "user" }))).toBe("Rejected by you");
-    expect(decisionLine(state({ state: "needs_review", decided_by: null }))).toBe("Needs review");
-    expect(decisionLine(state({ state: "no_match" }))).toBe("Beatport found nothing to match");
-    expect(decisionLine(state({ state: "not_matched" }))).toBe("Not matched yet");
+    expect(decisionLine(state({ state: "needs_review", decided_by: null }))).toBe("Waiting for you");
+    expect(decisionLine(state({ state: "no_match" }))).toBe("Not found on Beatport");
+    expect(decisionLine(state({ state: "not_matched" }))).toBe("Not looked up yet");
   });
 
   it("says when a newer match disagrees", () => {
     expect(decisionLine(state({ decided_by: "user", disputed: true }))).toBe(
-      "Accepted by you — a newer match disagrees",
+      "Accepted by you — changed since you decided",
     );
   });
 
   it("labels every state and nothing for none", () => {
-    expect(matchStateLabel("no_match")).toBe("No match");
+    // CLN-4: one set of words for the Review queue, the Library and the Inspector.
+    expect(matchStateLabel("needs_review")).toBe("Waiting for you");
+    expect(matchStateLabel("accepted")).toBe("Accepted");
+    expect(matchStateLabel("rejected")).toBe("Rejected (no match)");
+    expect(matchStateLabel("no_match")).toBe("Not found on Beatport");
+    expect(matchStateLabel("not_matched")).toBe("Not looked up yet");
     expect(matchStateLabel(null)).toBe("");
     expect(fileStatusLabel("unreadable")).toBe("Unreadable");
     expect(fileStatusLabel(undefined)).toBe("");
+    expect(fileStatusHint("unreadable")).toBe("the file is there but CuePoint cannot open it");
+    expect(fileStatusHint("missing")).toMatch(/nothing is at that path/);
+    expect(fileStatusHint("present")).toBe("");
   });
 });
 
-describe("why a guard refused a candidate", () => {
+describe("why a guard ruled out a candidate", () => {
   it.each([
-    ["guard_artist_sim_no_overlap", "Refused: no artist in common"],
-    ["guard_title_subset_match", "Refused: its title is only part of this track's title"],
-    ["guard_title_token_coverage", "Refused: too few words of the title match"],
-    ["title_only_too_low", "Refused: no artist to compare, and the title is not close enough"],
-    ["no_title", "Refused: Beatport gave it no title"],
-    ["", "Refused by a guard"],
-    [null, "Refused by a guard"],
-    ["a_new_guard", "Refused: a new guard"],
+    ["guard_artist_sim_no_overlap", "Ruled out: no artist in common"],
+    ["guard_title_subset_match", "Ruled out: its title is only part of this track's title"],
+    ["guard_title_token_coverage", "Ruled out: too few words of the title match"],
+    ["title_only_too_low", "Ruled out: no artist to compare, and the title is not close enough"],
+    ["no_title", "Ruled out: Beatport gave it no title"],
+    ["", "Ruled out by a check"],
+    [null, "Ruled out by a check"],
+    ["a_new_guard", "Ruled out: a new guard"],
   ])("%s", (reason, text) => {
     expect(rejectReasonText(reason)).toBe(text);
   });
@@ -107,10 +117,24 @@ describe("sentences about what was done", () => {
     expect(matchStartedLine({ planned: 2, excluded: 1 })).toMatch(/1 already matched or decided is/);
   });
 
+  it("explains a running match on the page, in the job's own words", () => {
+    // CLN-7: the started line, where progress is, and the shared explainer.
+    const note = matchRunningNote({ planned: 1200, excluded: 3 });
+    expect(note).toMatch(/^Matching 1,200 tracks on Beatport\. 3 already matched or decided are left out\./);
+    expect(note).toMatch(/bar at the bottom shows progress/);
+    expect(note).toMatch(/list updates when it finishes/);
+    expect(note).toMatch(/You can keep working/);
+    expect(note).not.toMatch(/engine|job/i);
+  });
+
+  it("still explains a running match when the count is gone (back on the page)", () => {
+    expect(matchRunningNote()).toMatch(/^A match is running on Beatport\. The bar at the bottom/);
+  });
+
   it("says what was decided, applied and exported", () => {
     expect(decidedLine("accept", "Strobe")).toBe("Accepted a match for “Strobe”.");
     expect(decidedLine("reject", "Strobe")).toBe("Rejected the match for “Strobe”.");
-    expect(decidedLine("clear", "Strobe")).toBe("Cleared your decision for “Strobe”.");
+    expect(decidedLine("clear", "Strobe")).toBe("Undid your decision for “Strobe”.");
     expect(appliedLine(["Key", "BPM"], "Strobe")).toBe("Applied Key, BPM to “Strobe”.");
     expect(exportedLine(2, "C:\\out\\review-list.csv")).toBe(
       "Exported 2 tracks to review-list.csv.",

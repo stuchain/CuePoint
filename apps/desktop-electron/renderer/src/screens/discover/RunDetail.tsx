@@ -45,7 +45,7 @@ import { useBeatportWindow } from "./useBeatportWindow";
 import { beatportRowKey } from "./beatportKey";
 import { HideOwnedSwitch } from "./HideOwnedSwitch";
 import { useHideOwned } from "./useHideOwned";
-import { beatportSelectedId, useReportSelectedTrack } from "./useReportSelectedTrack";
+import { beatportSelectedId, useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { jobExplainer } from "../../components/shell/useActiveJob";
 import { reportUnexpected } from "../../reporting/reporting";
 

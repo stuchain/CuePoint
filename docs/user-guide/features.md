@@ -66,10 +66,10 @@ exactly as Rekordbox wrote them. A preview says what will be written first;
 tags, notes and favorites are not exported; the imported file is never written.
 See [Exporting to Rekordbox](rekordbox-export.md).
 
-### Export a review list
+### Save a review list
 
-**Export review list…** on the Clean page saves tracks with their match state,
-score and Beatport match as CSV, JSON or Excel.
+**Save review list as a file…** on the Clean page saves tracks with their match
+state and Beatport link as a spreadsheet (CSV or Excel) or JSON.
 
 ### Organize
 

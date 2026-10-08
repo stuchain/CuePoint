@@ -43,6 +43,19 @@
   min-width: min(100%, calc(320px * var(--scale)));
 }
 
+.clean-screen__actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.clean-screen__lede {
+  margin: 0;
+  padding: var(--space-sm) var(--space-md) 0;
+  max-width: 80ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
 .clean-screen__intro {
   display: flex;
   flex-direction: column;
@@ -88,15 +101,6 @@
   font-size: var(--font-size-sm);
 }
 
-.clean-toolbar__check {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  align-self: center;
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-}
-
 .clean-note {
   display: flex;
   flex-direction: column;
@@ -105,6 +109,7 @@
   border-bottom: var(--border-width) solid var(--border-muted);
 }
 
+.clean-hint-line,
 .clean-note__text {
   margin: 0;
   max-width: 80ch;
@@ -136,6 +141,29 @@
 
 .clean-empty__headline {
   margin: 0;
+}
+
+.clean-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
+.clean-match-choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.clean-match-choice label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  cursor: pointer;
 }
 
 .clean-empty__hint {
@@ -392,6 +420,33 @@
   font-family: var(--font-data);
 }
 
+.clean-compare__more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.clean-compare__explain {
+  margin: 0;
+  flex-basis: 100%;
+  font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+.clean-compare__keys-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--fg-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.clean-compare__keys p {
+  margin: var(--space-xs) 0 0;
+}
+
 .clean-compare__keys,
 .clean-compare__status {
   margin: 0;
@@ -610,6 +665,7 @@
 }
 
 .clean-health__detection-when,
+.clean-health__detection-purpose,
 .clean-health__detection-summary {
   font-size: var(--font-size-xs);
   color: var(--fg-muted);
@@ -620,6 +676,18 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+.clean-note__steps {
+  margin: 0;
+  padding-left: var(--space-lg);
+  max-width: 80ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.clean-note__steps li {
+  margin: var(--space-xs) 0;
 }
 
 .clean-note--resume {

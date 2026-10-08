@@ -11,7 +11,11 @@
  * Decisions and applying are separate acts (DEC-004): accepting chooses a
  * candidate and writes no metadata; applying copies chosen fields from the
  * accepted one into CuePoint's layer (DEC-068), and is offered only once a
- * candidate is accepted.
+ * candidate is accepted. The panel says so beside each (CLN-6).
+ *
+ * The matcher's scoring is folded under "Why this score?" (CLN-5): each
+ * candidate carries one plain line, and the rows behind it open on request and
+ * stay as the reviewer left them.
  *
  * Artwork is the track's own, through the guarded route (DEC-076). A
  * candidate's image is on Beatport, and is said to exist rather than drawn.
@@ -35,6 +39,9 @@ import {
   VALUE_ROWS,
   applyValue,
   candidateBadges,
+  loadScoreOpen,
+  saveScoreOpen,
+  scoreLine,
 } from "./comparison";
 import { REVIEW_KEYS } from "./reviewKeyboard";
 import { useTrackArtwork } from "./useTrackArtwork";
@@ -63,9 +70,9 @@ interface ComparisonPanelProps {
 const BADGE_VARIANTS: Record<string, BadgeVariant> = {
   Accepted: "success",
   Rejected: "danger",
-  Refused: "warning",
-  Proposed: "info",
-  "Matcher's pick": "info",
+  "Ruled out": "warning",
+  Suggested: "info",
+  "Best score": "info",
 };
 
 function attemptLabel(
@@ -109,6 +116,12 @@ export function ComparisonPanel({
   const trackId = row?.id ?? null;
   const artwork = useTrackArtwork(trackId, "inspector");
   const [unpicked, setUnpicked] = useState<ReadonlySet<OverrideField>>(() => new Set());
+  const [scoreOpen, setScoreOpen] = useState(loadScoreOpen);
+  const [keysOpen, setKeysOpen] = useState(false);
+  const toggleScore = () => {
+    setScoreOpen(!scoreOpen);
+    saveScoreOpen(!scoreOpen);
+  };
 
   const payload = matches.matches;
   const state = payload?.state ?? null;
@@ -214,7 +227,7 @@ export function ComparisonPanel({
                         aria-pressed={picked}
                         onClick={() => onChoose(candidate.id)}
                       >
-                        #{candidate.rank + 1} · {candidate.score.toFixed(1)}
+                        #{candidate.rank + 1} · {scoreLine(candidate)}
                       </button>
                       <span className="clean-compare__badges">
                         {candidateBadges(candidate, state).map((badge) => (
@@ -275,7 +288,7 @@ export function ComparisonPanel({
                   })}
                 </tr>
               ))}
-              {SCORE_ROWS.map((scoreRow) => (
+              {(scoreOpen ? SCORE_ROWS : []).map((scoreRow) => (
                 <tr key={scoreRow.id} className="clean-compare__score-row">
                   <th scope="row">{scoreRow.label}</th>
                   <td aria-hidden />
@@ -300,12 +313,23 @@ export function ComparisonPanel({
         </div>
       )}
 
-      {matches.candidates.length > CANDIDATE_LIMIT && (
-        <Button variant="secondary" onClick={() => onShowAll(!showAll)}>
-          {showAll
-            ? `Show the first ${CANDIDATE_LIMIT}`
-            : `Show all ${matches.candidates.length} candidates`}
-        </Button>
+      {payload && shown.length > 0 && (
+        <div className="clean-compare__more">
+          <Button
+            variant="secondary"
+            aria-expanded={scoreOpen}
+            onClick={toggleScore}
+          >
+            Why this score?
+          </Button>
+          {matches.candidates.length > CANDIDATE_LIMIT && (
+            <Button variant="secondary" onClick={() => onShowAll(!showAll)}>
+              {showAll
+                ? `Show the first ${CANDIDATE_LIMIT}`
+                : `Show all ${matches.candidates.length} candidates`}
+            </Button>
+          )}
+        </div>
       )}
 
       <div className="clean-compare__actions" role="group" aria-label="Decide">
@@ -323,19 +347,26 @@ export function ComparisonPanel({
           Reject
         </Button>
         <Button variant="secondary" onClick={onClear} disabled={busy || !decidedByUser}>
-          Clear decision
+          Undo my decision
         </Button>
         <Button variant="secondary" onClick={onRematch} disabled={busy}>
-          Re-match
+          Search Beatport again for this track
         </Button>
         <Button variant="secondary" onClick={onNext}>
           Next
         </Button>
       </div>
+      <p className="clean-compare__explain">
+        Accepting links this track to the Beatport release. It changes no values.
+      </p>
 
       {accepted && (
         <fieldset className="clean-compare__apply">
           <legend>Apply from the accepted match</legend>
+          <p className="clean-compare__explain">
+            Copies these values into CuePoint. Your audio files and Rekordbox are unchanged until
+            you export; you can revert from the track's History.
+          </p>
           {APPLY_FIELDS.map((field) => {
             const value = applyValue(field, accepted);
             return (
@@ -364,10 +395,23 @@ export function ComparisonPanel({
         </fieldset>
       )}
 
-      <p className="clean-compare__keys">
-        {REVIEW_KEYS.accept} accept · {REVIEW_KEYS.reject} reject · {REVIEW_KEYS.skip} next ·
-        ← → candidate · ↑ ↓ track
-      </p>
+      <div className="clean-compare__keys">
+        <button
+          type="button"
+          className="clean-compare__keys-toggle"
+          aria-expanded={keysOpen}
+          onClick={() => setKeysOpen((open) => !open)}
+        >
+          Keyboard shortcuts
+        </button>
+        {keysOpen && (
+          <p>
+            {REVIEW_KEYS.accept} = accept, {REVIEW_KEYS.reject} =
+            reject, {REVIEW_KEYS.skip} = next · ← → choose a candidate · ↑ ↓ choose a
+            track
+          </p>
+        )}
+      </div>
       {status && (
         <p className="clean-compare__status" role="status">
           {status}

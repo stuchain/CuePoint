@@ -942,6 +942,26 @@ choices).
 **Complexity**: **L**, in two parts. **PAGES-07A**: CLN-1…CLN-12. **PAGES-07B**: the Fix values tab,
 the match window and Health's links (FLW-12…14).
 
+**Outcome** (2026-10-08), part A: CLN-1…CLN-12 are in `screens/clean/`; Fix values, the match window and Health's
+links stay with 07B. The tab list is still `CLEAN_SECTIONS` in `cleanSections.ts`, now beside `CLEAN_INTROS` (one
+line per tab, drawn by `CleanScreen` under the header, so the views' own notes were dropped) and `sectionCounts`
+(Review matches = Waiting for you + Changed since you decided; Missing files and Duplicates only after their check
+has run; nothing at zero). The match-state words live in `matchStateLabel`/`decisionLine` and flow to the Review
+queue, the Library's Match column and the Inspector; Health's labels and the four check names changed in
+`health_service.py` (ids, jobs, events and stored states unchanged) and `cleanEmpty.fixture.json` was regenerated.
+The Library's filter value labels (`filter_rule.py`) are 05B's and still say "Needs review". CLN-2: the first-visit
+empty state is `Match your library on Beatport` with **Match all N tracks** (matches the whole library's "Not looked
+up yet" set, not the empty queue) and **Choose a playlist first** (focuses In; the playlist picked next switches Show to "Not looked up yet", so Match all is within reach). CLN-10: the checkbox is gone; Match
+all / Match selection open a small window, "Only tracks not looked up yet" (default) or "Look all N of them up
+again"; the sentence follows the choice ("those of the N shown that have not been looked up yet" vs "the N shown"), but the first option carries no count because the renderer cannot know it for an arbitrary scope without a
+second query, so 07B's match window should add it. A running match is read from the active `clean_match` job
+(`useActiveJob`), so the note, the disabled buttons and the reload on finish survive leaving and returning. The
+"Changed since you decided" hint shows as the Match column's hint and as a line under Show. CLN-11: **Save review list as a file…** is portaled into the
+page header from the Review view. CLN-5: candidate heads read `#1 · Very likely (94/100)` (85 and over, 60 and over
+"Possible", else "Unlikely", or the ruled-out reason); the score rows, Key bonus included, fold under **Why this
+score?**, remembered in `cuepoint-clean-score-open`. Review and Missing files publish the selected track with its
+resolved Camelot key through `useReportSelectedTrack` (moved from Discover to `components/shell/`). DEC: none needed.
+
 ---
 
 ## PAGES-08 — Discover

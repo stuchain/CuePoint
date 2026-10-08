@@ -431,7 +431,7 @@ and every Clean action on a track is in its right-click menu and behind
 
 | Column | Shows |
 | --- | --- |
-| Match | Where the track stands with Beatport: Needs review, Accepted, Rejected, No match or Not matched — and *disputed* when a newer match disagrees with your decision |
+| Match | Where the track stands with Beatport: Waiting for you, Accepted, Rejected (no match), Not found on Beatport or Not looked up yet — and *changed since you decided* when a newer search found a different best match than the one you chose |
 | Score | The score of the Beatport match the track points at |
 | File status | What the last file check found |
 | Artwork | The track's picture, or where it would come from |
@@ -446,7 +446,7 @@ fixed list offers them to pick from rather than a box to type into.
 | Action | Does |
 | --- | --- |
 | Match on Beatport | Looks the tracks up on Beatport, skipping any already matched or decided. It runs in the background |
-| Re-match | Looks them up again. A decision you made is kept, and a newer match that disagrees marks the track *disputed* |
+| Re-match | Looks them up again. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
 | Accept match / Reject match | Decides what the matcher proposed, for tracks nobody has decided yet |
 | Apply Beatport values… | Copies the fields you choose from each track's accepted match into your values |
 | Edit metadata… | Sets or clears your key, BPM, genre, label or year |

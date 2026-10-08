@@ -331,13 +331,6 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
 
   return (
     <div className="clean-duplicates">
-      <div className="clean-note">
-        <p className="clean-note__text">
-          Possible duplicates are grouped by what they share. CuePoint deletes nothing: decide which
-          copy to keep in Rekordbox, or mark a group as not duplicates.
-        </p>
-      </div>
-
       <div className="clean-toolbar" role="toolbar" aria-label="Duplicates">
         <span className="clean-toolbar__count">
           {total === 1 ? "1 group" : `${total.toLocaleString()} groups`}

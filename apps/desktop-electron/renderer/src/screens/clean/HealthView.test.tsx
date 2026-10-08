@@ -16,7 +16,7 @@ import { HealthView } from "./HealthView";
  * The waveform analysis on the Health view (WAVE-03).
  *
  * Its row says how far the analysis has got and offers the one thing that
- * makes sense now: Pause while it runs, Resume while it is paused, "Analyse
+ * makes sense now: Pause while it runs, Resume while it is paused, "Analyze
  * waveforms" while it is idle, and nothing without a decoder. The analysis
  * starts on its own, so it never offers a button that only starts it once.
  */
@@ -49,14 +49,14 @@ const HEALTH: LibraryHealth = {
   detections: [
     {
       id: "artwork",
-      label: "Artwork read",
+      label: "Cover art in your files",
       job_type: "artwork_scan",
       last_run_at: null,
       last_summary: null,
     },
     {
       id: "waveforms",
-      label: "Waveforms analysed",
+      label: "Waveform drawing",
       job_type: "waveform_analysis",
       last_run_at: "2026-10-03T10:00:00Z",
       last_summary: "Analysed 2 waveforms; 1 file could not be read. Finished.",
@@ -82,7 +82,7 @@ function renderHealth() {
 }
 
 async function waveformRow(): Promise<HTMLElement> {
-  const label = await screen.findByText("Waveforms analysed");
+  const label = await screen.findByText("Waveform drawing");
   return label.closest("li") as HTMLElement;
 }
 
@@ -197,7 +197,33 @@ describe("the waveform analysis on the Health view", () => {
     install({ waveforms: waveforms as unknown as WaveformsBridge, startArtworkScan: vi.fn() });
     renderHealth();
 
-    const artwork = (await screen.findByText("Artwork read")).closest("li") as HTMLElement;
-    expect(within(artwork).getByRole("button", { name: "Read artwork" })).toBeInTheDocument();
+    const artwork = (await screen.findByText("Cover art in your files")).closest("li") as HTMLElement;
+    expect(within(artwork).getByRole("button", { name: "Read cover art" })).toBeInTheDocument();
+  });
+
+  it("says what each check is for, and 'Not done yet' for one never run (CLN-9)", async () => {
+    install({ waveforms: waveforms as unknown as WaveformsBridge, startArtworkScan: vi.fn() });
+    renderHealth();
+
+    const artwork = (await screen.findByText("Cover art in your files")).closest("li") as HTMLElement;
+    expect(
+      within(artwork).getByText("Reads the cover pictures stored inside your audio files."),
+    ).toBeInTheDocument();
+    expect(within(artwork).getByText("Not done yet")).toBeInTheDocument();
+    expect(within(artwork).queryByText(/Never run/)).toBeNull();
+
+    const drawing = await waveformRow();
+    expect(
+      within(drawing).getByText(
+        "Draws each track's waveform so you can see its shape before you play it.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(drawing).getByText(/^Last run /)).toBeInTheDocument();
+  });
+
+  it("describes the Health tab itself in the page's intro line, not in its own", () => {
+    renderHealth();
+    expect(screen.getByText("3 tracks in your library.")).toBeInTheDocument();
+    expect(screen.queryByText(/Each number opens the Library/)).toBeNull();
   });
 });

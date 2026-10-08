@@ -37,6 +37,20 @@ describe("the review scopes", () => {
     },
   );
 
+  it("are named in the words CLN-4 chose, the stored states unchanged", () => {
+    expect(REVIEW_SCOPES.map((scope) => [scope.id, scope.label])).toEqual([
+      ["needs_review", "Waiting for you"],
+      ["disputed", "Changed since you decided"],
+      ["accepted", "Accepted"],
+      ["rejected", "Rejected (no match)"],
+      ["no_match", "Not found on Beatport"],
+      ["not_matched", "Not looked up yet"],
+    ]);
+    expect(REVIEW_SCOPES.find((scope) => scope.id === "disputed")!.hint).toBe(
+      "A newer search found a different best match than the one you chose.",
+    );
+  });
+
   it("reads disputed from its own field, as Health counts it", () => {
     expect(reviewRules("disputed")).toEqual({
       match: "all",

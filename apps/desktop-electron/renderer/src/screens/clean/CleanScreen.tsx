@@ -1,9 +1,11 @@
 /**
  * The Clean page (CLEAN-12, DEC-072).
  *
- * Four parts behind tabs — Review, Missing files, Duplicates and Health — over
- * one read of Library Health they all share. The part last used is where the
- * page reopens (`cleanSections.ts`).
+ * Four parts behind tabs — Review matches, Missing files, Duplicates and
+ * Health — over one read of Library Health they all share. The part last used
+ * is where the page reopens (`cleanSections.ts`). Each part opens with one line
+ * saying what it is for (CLN-1), and the tabs say where work waits (CLN-3).
+ * The header holds the page's actions: Review puts its own there.
  *
  * Every table here is the Library's `TrackTable` over the Library's windowed
  * browse with a rule set, and every action goes through a route CLEAN-11 built.
@@ -24,8 +26,10 @@ import { ReviewView } from "./ReviewView";
 import type { CleanOpening, CleanSectionOpening } from "./cleanLink";
 import { entityPath } from "../discover/discoverLinks";
 import {
+  CLEAN_INTROS,
   CLEAN_SECTIONS,
   loadCleanSection,
+  sectionCounts,
   saveCleanSection,
   type CleanSection,
 } from "./cleanSections";
@@ -59,6 +63,8 @@ export function CleanScreen({ openWith = null, openSection = null }: CleanScreen
   );
   const opened = useRef<string | null>(null);
   const [focus, setFocus] = useState<CleanOpening | null>(null);
+  // Where the Review part puts its header buttons (CLN-11).
+  const [actionsHost, setActionsHost] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!openWith || opened.current === openWith.token) return;
@@ -135,17 +141,26 @@ export function CleanScreen({ openWith = null, openSection = null }: CleanScreen
   }
 
   const label = CLEAN_SECTIONS.find((entry) => entry.id === section)?.label ?? "";
+  const counts = sectionCounts(cleanHealth.health);
 
   return (
     <div className="screen clean-screen">
-      <header className="clean-screen__header">
+      <header className="clean-screen__header" data-testid="clean-header">
         <h1 className="screen__title">Clean</h1>
         <Tabs
-          tabs={CLEAN_SECTIONS.map((entry) => ({ id: entry.id, label: entry.label }))}
+          tabs={CLEAN_SECTIONS.map((entry) => {
+            const waiting = counts[entry.id];
+            return {
+              id: entry.id,
+              label: waiting === undefined ? entry.label : `${entry.label} (${waiting.toLocaleString()})`,
+            };
+          })}
           activeId={section}
           onChange={choose}
         />
+        <div className="clean-screen__actions" ref={setActionsHost} />
       </header>
+      <p className="clean-screen__lede">{CLEAN_INTROS[section]}</p>
       <div className="clean-screen__body" role="tabpanel" aria-label={label}>
         {section === "review" && (
           <ReviewView
@@ -153,6 +168,7 @@ export function CleanScreen({ openWith = null, openSection = null }: CleanScreen
             onHealthChanged={reloadHealth}
             focus={focus}
             onOpenEntity={openEntity}
+            actionsHost={actionsHost}
           />
         )}
         {section === "missing" && (

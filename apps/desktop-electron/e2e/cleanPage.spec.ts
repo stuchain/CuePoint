@@ -135,9 +135,13 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await importAndCheck(window, writeExport(workspace));
       await window.getByRole("link", { name: "Clean" }).click();
 
-      // Nothing is matched yet, and the queue says so rather than "no tracks".
-      await expect(window.getByText("Nothing is matched yet.")).toBeVisible({ timeout: 30_000 });
-      await window.getByRole("button", { name: "Show what is not matched" }).click();
+      // Nothing is matched yet, and the page offers to match every track
+      // rather than saying "no tracks".
+      await expect(window.getByText("Match your library on Beatport")).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(window.getByRole("button", { name: "Match all 3 tracks" })).toBeEnabled();
+      await window.getByRole("combobox", { name: "Show" }).selectOption("not_matched");
       const queue = window.getByRole("table", { name: "Review queue" });
       await expect(queue.getByText("Present One")).toBeVisible();
       await expect(window.getByRole("button", { name: "Match all 3" })).toBeEnabled();
@@ -148,7 +152,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await expect(missing.getByText("Present One")).toHaveCount(0);
 
       await window.getByRole("tab", { name: "Health" }).click();
-      await expect(window.getByRole("list", { name: "Checks" }).getByText("Files checked")).toBeVisible();
+      await expect(window.getByRole("list", { name: "Checks" }).getByText("Files on disk")).toBeVisible();
       await window
         .getByRole("button", { name: "1 Missing or unreadable files: open in the Library" })
         .click();
@@ -181,7 +185,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await app.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()[0]!.webContents.setZoomFactor(0.4),
       );
-      await window.getByRole("tab", { name: "Review" }).click();
+      await window.getByRole("tab", { name: "Review matches" }).click();
       const widths = await window.evaluate(() => ({
         main: document.querySelector(".app-main")!.getBoundingClientRect().width,
         page: document.querySelector(".clean-screen")!.getBoundingClientRect().width,

@@ -58,7 +58,7 @@ import {
   tracksLine,
   yearsText,
 } from "./entityFormat";
-import { useReportSelectedTrack } from "./useReportSelectedTrack";
+import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";

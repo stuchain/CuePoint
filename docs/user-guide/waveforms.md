@@ -143,7 +143,7 @@ resume it:
 
 - from the status strip while it runs (its button is **Pause**);
 - from **Settings → Waveforms**;
-- from **Clean → Health**, where **Waveforms analysed** says how far it has got.
+- from **Clean → Health**, where **Waveform drawing** says how far it has got.
 
 A paused analysis keeps everything it did. Resuming carries on where it
 stopped, not from the start. A track you play or select is still analyzed while

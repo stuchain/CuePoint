@@ -13,24 +13,29 @@
  * responses the real engine gave (`cleanEmpty.fixture.json`).
  */
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
-import { formatWhen } from "./cleanFormat";
+import { DISPUTED_HINT, formatWhen, trackCount } from "./cleanFormat";
 import type { ReviewScope } from "./cleanRules";
 
 /** The one thing an empty state offers to do about itself, when there is one. */
-type CleanEmptyOffer = "show_not_matched" | "check_files" | "find_duplicates";
+type CleanEmptyOffer = "match_all" | "check_files" | "find_duplicates";
+
+/** A second thing an empty state can offer, beside the first. */
+type CleanEmptySecondary = "choose_playlist";
 
 interface CleanEmptyView {
   headline: string;
   hint: string | null;
   offer: CleanEmptyOffer | null;
+  secondary: CleanEmptySecondary | null;
 }
 
 function view(
   headline: string,
   hint: string | null = null,
   offer: CleanEmptyOffer | null = null,
+  secondary: CleanEmptySecondary | null = null,
 ): CleanEmptyView {
-  return { headline, hint, offer };
+  return { headline, hint, offer, secondary };
 }
 
 function countOf(health: LibraryHealth, id: string): number | null {
@@ -68,11 +73,15 @@ export function reviewEmptyState(input: ReviewEmptyInput): CleanEmptyView {
     countOf(health, "not_matched") === health.track_count;
 
   if (nothingMatched && input.scope !== "not_matched") {
+    // CLN-2: the first thing Clean shows a new user starts the work, and says
+    // what the work is and that it goes online.
     return view(
-      "Nothing is matched yet.",
-      "Match the library, a playlist or a Collection on Beatport. Tracks the " +
-        "matcher is not sure about wait here for you.",
-      "show_not_matched",
+      "Match your library on Beatport",
+      `CuePoint searches Beatport for each of your ${trackCount(health?.track_count ?? 0)} to find the ` +
+        "right release, key and label. It runs in the background and can take a while " +
+        "for a big library; you can keep using the app.",
+      "match_all",
+      "choose_playlist",
     );
   }
 
@@ -80,25 +89,22 @@ export function reviewEmptyState(input: ReviewEmptyInput): CleanEmptyView {
   switch (input.scope) {
     case "needs_review":
       return view(
-        `Nothing needs review${where}.`,
+        `Nothing is waiting for you${where}.`,
         "Every match was accepted automatically, decided by you, or found nothing.",
       );
     case "disputed":
-      return view(
-        `Nothing is disputed${where}.`,
-        "A match is disputed when a newer match disagrees with a decision you made.",
-      );
+      return view(`Nothing has changed since you decided${where}.`, DISPUTED_HINT);
     case "accepted":
       return view(`Nothing is accepted${where}.`);
     case "rejected":
       return view(`Nothing is rejected${where}.`);
     case "no_match":
       return view(
-        `Every match${where} found something.`,
+        `Beatport had something for every track${where}.`,
         "Tracks Beatport found nothing for are listed here.",
       );
     case "not_matched":
-      return view(`Every track${where} has been matched.`);
+      return view(`Every track${where} has been looked up.`);
   }
 }
 

@@ -107,7 +107,7 @@ async function healthRow(window: Page) {
   await window.getByRole("link", { name: "Clean" }).click();
   await window.getByRole("tab", { name: "Health" }).click();
   return window.getByRole("list", { name: "Checks" }).getByRole("listitem").filter({
-    hasText: "Waveforms analysed",
+    hasText: "Waveform drawing",
   });
 }
 

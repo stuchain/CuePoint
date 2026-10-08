@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import { MISSING_COLUMNS, REVIEW_COLUMNS, matchCell } from "./cleanColumns";
+import { DISPUTED_HINT } from "./cleanFormat";
 
 function row(overrides: Partial<LibraryTrackRow>): LibraryTrackRow {
   return {
@@ -36,9 +37,9 @@ const cell = (columns: typeof REVIEW_COLUMNS, id: string, track: LibraryTrackRow
 
 describe("the review queue's columns", () => {
   it("say where a track stands, and when a newer match disagrees", () => {
-    expect(matchCell(row({ match_state: "needs_review" }))).toBe("Needs review");
+    expect(matchCell(row({ match_state: "needs_review" }))).toBe("Waiting for you");
     expect(matchCell(row({ match_state: "accepted", match_disputed: true }))).toBe(
-      "Accepted · disputed",
+      "Accepted · changed since you decided",
     );
     expect(matchCell(row({ match_state: null }))).toBe("");
   });
@@ -63,5 +64,19 @@ describe("the missing files columns", () => {
     expect(cell(MISSING_COLUMNS, "file_status", track)).toBe("Unreadable");
     expect(cell(MISSING_COLUMNS, "file_path", track)).toBe("E:\\music\\strobe.mp3");
     expect(cell(MISSING_COLUMNS, "album", track)).toBe("");
+  });
+
+  it("say what Missing and Unreadable mean beside the header", () => {
+    const hint = MISSING_COLUMNS.find((column) => column.id === "file_status")!.hint;
+    expect(hint).toMatch(/Missing: nothing is at that path/);
+    expect(hint).toMatch(/Unreadable: the file is there but CuePoint cannot open it/);
+  });
+});
+
+describe("the Match column's hint", () => {
+  it("says what changed since you decided means", () => {
+    const column = REVIEW_COLUMNS.find((entry) => entry.id === "match_state");
+    expect(column?.hint).toContain("Changed since you decided");
+    expect(column?.hint).toContain(DISPUTED_HINT);
   });
 });

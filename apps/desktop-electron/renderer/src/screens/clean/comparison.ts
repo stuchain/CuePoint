@@ -139,6 +139,37 @@ export const SCORE_ROWS: readonly ScoreRow[] = [
   { id: "query", label: "Found by", candidate: (c) => cellText(c.query_text) },
 ];
 
+/**
+ * One plain line for a candidate (CLN-5): how likely it is, on a scale a
+ * person can read, or why it was ruled out. The matcher's own numbers are the
+ * rows folded under "Why this score?".
+ */
+export function scoreLine(candidate: MatchCandidate): string {
+  if (!candidate.guard_ok) return rejectReasonText(candidate.reject_reason);
+  const score = Math.round(candidate.score);
+  const word = score >= 85 ? "Very likely" : score >= 60 ? "Possible" : "Unlikely";
+  return `${word} (${score}/100)`;
+}
+
+/** Whether "Why this score?" is open, remembered in one key (CLN-5). */
+export const SCORE_OPEN_STORAGE_KEY = "cuepoint-clean-score-open";
+
+export function loadScoreOpen(): boolean {
+  try {
+    return localStorage.getItem(SCORE_OPEN_STORAGE_KEY) === "open";
+  } catch {
+    return false;
+  }
+}
+
+export function saveScoreOpen(open: boolean): void {
+  try {
+    localStorage.setItem(SCORE_OPEN_STORAGE_KEY, open ? "open" : "closed");
+  } catch {
+    // Remembering is a convenience; the panel works without it.
+  }
+}
+
 /** Candidates shown before "show all": enough to compare, few enough to read at 1×. */
 export const CANDIDATE_LIMIT = 5;
 
@@ -193,11 +224,11 @@ export function candidateBadges(
   if (state?.candidate_id === candidate.id) {
     if (state.state === "accepted") badges.push("Accepted");
     else if (state.state === "rejected") badges.push("Rejected");
-    else if (candidate.is_winner) badges.push("Proposed");
+    else if (candidate.is_winner) badges.push("Suggested");
   } else if (candidate.is_winner) {
-    badges.push("Matcher's pick");
+    badges.push("Best score");
   }
-  if (!candidate.guard_ok) badges.push("Refused");
+  if (!candidate.guard_ok) badges.push("Ruled out");
   return badges;
 }
 

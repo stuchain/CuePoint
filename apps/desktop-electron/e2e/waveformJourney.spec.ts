@@ -265,7 +265,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       await window.getByRole("link", { name: "Clean" }).click();
       await window.getByRole("tab", { name: "Health" }).click();
       const health = window.getByRole("list", { name: "Checks" }).getByRole("listitem").filter({
-        hasText: "Waveforms analysed",
+        hasText: "Waveform drawing",
       });
       await expect(health.getByText(new RegExp(`^All ${TOTAL} analyzed`))).toBeVisible({ timeout: 15_000 });
       const ids = await trackIds(window);

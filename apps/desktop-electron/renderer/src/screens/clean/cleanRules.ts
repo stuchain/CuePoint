@@ -18,6 +18,7 @@ import type {
   LibraryPlaylistNode,
 } from "../../api/cuepointBridge.types";
 import type { SelectOption } from "../../components/Select";
+import { DISPUTED_HINT, matchStateLabel } from "./cleanFormat";
 import { DEFAULT_LIBRARY_QUERY, type LibraryQuery, type SortDirection } from "../library/libraryQuery";
 
 /** What the review queue can show. */
@@ -32,16 +33,18 @@ export type ReviewScope =
 interface ReviewScopeOption {
   id: ReviewScope;
   label: string;
+  /** What the state means, when its words alone do not say (CLN-4). */
+  hint?: string;
 }
 
 /** In the order a reviewer works through them: what needs a person first. */
 export const REVIEW_SCOPES: readonly ReviewScopeOption[] = [
-  { id: "needs_review", label: "Needs review" },
-  { id: "disputed", label: "Disputed" },
-  { id: "accepted", label: "Accepted" },
-  { id: "rejected", label: "Rejected" },
-  { id: "no_match", label: "No match" },
-  { id: "not_matched", label: "Not matched" },
+  { id: "needs_review", label: matchStateLabel("needs_review") },
+  { id: "disputed", label: "Changed since you decided", hint: DISPUTED_HINT },
+  { id: "accepted", label: matchStateLabel("accepted") },
+  { id: "rejected", label: matchStateLabel("rejected") },
+  { id: "no_match", label: matchStateLabel("no_match") },
+  { id: "not_matched", label: matchStateLabel("not_matched") },
 ];
 
 export const DEFAULT_REVIEW_SCOPE: ReviewScope = "needs_review";
@@ -53,7 +56,7 @@ export function isReviewScope(value: string): value is ReviewScope {
 /**
  * The rule set behind a review scope.
  *
- * "Disputed" is its own field rather than a state: a disputed track is still
+ * "Changed since you decided" (stored as disputed) is its own field rather than a state: a disputed track is still
  * accepted or rejected, by a person, and a newer match disagrees (DEC-067).
  * The same rule Health counts, so a count and this queue agree.
  */

@@ -5,6 +5,7 @@
  * feature. "Accepted" on its own does not say whether a person or the matcher
  * decided, and a reviewer about to override a decision needs to know which.
  */
+import { jobExplainer } from "../../components/shell/useActiveJob";
 import type {
   DuplicateSignal,
   FileStatus,
@@ -18,22 +19,32 @@ function count(number: number, noun: string): string {
   return `${number.toLocaleString()} ${noun}${number === 1 ? "" : "s"}`;
 }
 
+/**
+ * Where a track stands, in the words every page uses for it (CLN-4).
+ *
+ * The Review queue, the Library's Match column and the Inspector's Beatport
+ * section all draw this one function, so a state is called one thing wherever
+ * it is seen. The stored states (`needs_review`, `no_match`, ...) do not change.
+ */
 export function matchStateLabel(state: MatchState | null | undefined): string {
   switch (state) {
     case "needs_review":
-      return "Needs review";
+      return "Waiting for you";
     case "accepted":
       return "Accepted";
     case "rejected":
-      return "Rejected";
+      return "Rejected (no match)";
     case "no_match":
-      return "No match";
+      return "Not found on Beatport";
     case "not_matched":
-      return "Not matched";
+      return "Not looked up yet";
     default:
       return "";
   }
 }
+
+/** What "changed since you decided" means, where a hint can say it. */
+export const DISPUTED_HINT = "A newer search found a different best match than the one you chose.";
 
 /** Where a track stands and who put it there, in one line. */
 export function decisionLine(state: TrackMatchState): string {
@@ -47,19 +58,19 @@ export function decisionLine(state: TrackMatchState): string {
       line = `Rejected ${by}`;
       break;
     case "needs_review":
-      line = "Needs review";
+      line = "Waiting for you";
       break;
     case "no_match":
-      line = "Beatport found nothing to match";
+      line = "Not found on Beatport";
       break;
     default:
-      line = "Not matched yet";
+      line = "Not looked up yet";
   }
-  return state.disputed ? `${line} — a newer match disagrees` : line;
+  return state.disputed ? `${line} — changed since you decided` : line;
 }
 
 /**
- * Why a guard refused a candidate, in words (DEC-066).
+ * Why a guard ruled out a candidate, in words (DEC-066, CLN-5).
  *
  * The matcher records a code. The four guards and the missing title are the
  * codes it writes; anything else is shown as its code in words, rather than
@@ -68,21 +79,21 @@ export function decisionLine(state: TrackMatchState): string {
 export function rejectReasonText(reason: string | null | undefined): string {
   switch (reason) {
     case "guard_title_subset_match":
-      return "Refused: its title is only part of this track's title";
+      return "Ruled out: its title is only part of this track's title";
     case "guard_title_token_coverage":
-      return "Refused: too few words of the title match";
+      return "Ruled out: too few words of the title match";
     case "title_only_too_low":
-      return "Refused: no artist to compare, and the title is not close enough";
+      return "Ruled out: no artist to compare, and the title is not close enough";
     case "guard_artist_sim_no_overlap":
-      return "Refused: no artist in common";
+      return "Ruled out: no artist in common";
     case "no_title":
-      return "Refused: Beatport gave it no title";
+      return "Ruled out: Beatport gave it no title";
     case null:
     case undefined:
     case "":
-      return "Refused by a guard";
+      return "Ruled out by a check";
     default:
-      return `Refused: ${reason.replace(/_/g, " ")}`;
+      return `Ruled out: ${reason.replace(/_/g, " ")}`;
   }
 }
 
@@ -124,6 +135,18 @@ export function fileStatusLabel(status: FileStatus | null | undefined): string {
   }
 }
 
+/** What a file status means, when its word alone does not say (CLN-8). */
+export function fileStatusHint(status: FileStatus | null | undefined): string {
+  switch (status) {
+    case "missing":
+      return "nothing is at that path";
+    case "unreadable":
+      return "the file is there but CuePoint cannot open it";
+    default:
+      return "";
+  }
+}
+
 /**
  * A recorded time, as a person reads one.
  *
@@ -143,6 +166,22 @@ export function matchStartedLine(started: Pick<MatchStarted, "planned" | "exclud
   if (started.excluded <= 0) return head;
   const verb = started.excluded === 1 ? "is" : "are";
   return `${head} ${started.excluded.toLocaleString()} already matched or decided ${verb} left out.`;
+}
+
+/**
+ * A running match, explained where the reviewer is looking (CLN-7, DEC-132).
+ *
+ * The started line says how many, the shared explainer says what it is doing
+ * and that the person can carry on, and the middle sentence says where
+ * progress is and when the list changes.
+ */
+export function matchRunningNote(started?: Pick<MatchStarted, "planned" | "excluded">): string {
+  // Back on the page after leaving it, the count is no longer to hand.
+  const head = started ? matchStartedLine(started) : "A match is running on Beatport.";
+  return (
+    `${head} The bar at the bottom shows progress, and the list updates ` +
+    `when it finishes. ${jobExplainer("clean_match")}`
+  );
 }
 
 /**
@@ -167,7 +206,7 @@ export function decidedLine(decision: "accept" | "reject" | "clear", title: stri
     case "reject":
       return `Rejected the match for “${title}”.`;
     case "clear":
-      return `Cleared your decision for “${title}”.`;
+      return `Undid your decision for “${title}”.`;
   }
 }
 

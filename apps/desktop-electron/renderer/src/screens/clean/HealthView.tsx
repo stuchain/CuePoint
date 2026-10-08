@@ -13,7 +13,7 @@
  *
  * The waveform analysis (WAVE-03) is a detection of another kind: it runs on
  * its own after every check and can take hours, so its row says how far it has
- * got and offers Pause, Resume, or "Analyse waveforms" when it is idle, rather
+ * got and offers Pause, Resume, or "Analyze waveforms" when it is idle, rather
  * than a button that starts it once.
  */
 import { useCallback } from "react";
@@ -35,16 +35,24 @@ import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
 const RUN_LABELS: Record<string, string> = {
   file_check: "Check every file",
   duplicate_scan: "Find duplicates",
-  artwork_scan: "Read artwork",
+  artwork_scan: "Read cover art",
 };
 
 /** The detection the waveform analysis's own controls stand in for. */
 const WAVEFORM_ANALYSIS = "waveform_analysis";
 
+/** What each check is for, in a line (CLN-9); the check's own name comes from the engine. */
+const PURPOSES: Record<string, string> = {
+  files: "Looks for tracks whose file has moved or been deleted.",
+  duplicates: "Groups tracks that share a file, a Beatport track, or an artist and title.",
+  artwork: "Reads the cover pictures stored inside your audio files.",
+  waveforms: "Draws each track's waveform so you can see its shape before you play it.",
+};
+
 const FINISHED_LINES: Record<string, string> = {
   file_check: "Finished checking files.",
   duplicate_scan: "Finished looking for duplicates.",
-  artwork_scan: "Finished reading artwork.",
+  artwork_scan: "Finished reading cover art.",
 };
 
 interface HealthViewProps {
@@ -129,8 +137,7 @@ export function HealthView({ health, error, loading, onHealthChanged }: HealthVi
       )}
 
       <p className="clean-health__intro">
-        {trackCount(health.track_count)} in your library. Each number opens the Library on exactly
-        the tracks it counts.
+        {trackCount(health.track_count)} in your library.
       </p>
 
       <ul className="clean-health__counts" aria-label="Library Health">
@@ -159,8 +166,11 @@ export function HealthView({ health, error, loading, onHealthChanged }: HealthVi
               <span className="clean-health__detection-when">
                 {detection.last_run_at
                   ? `Last run ${formatWhen(detection.last_run_at)}`
-                  : "Never run"}
+                  : "Not done yet"}
               </span>
+              {PURPOSES[detection.id] && (
+                <span className="clean-health__detection-purpose">{PURPOSES[detection.id]}</span>
+              )}
               {detection.last_summary && (
                 <span className="clean-health__detection-summary">{detection.last_summary}</span>
               )}

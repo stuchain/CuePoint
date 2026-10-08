@@ -41,7 +41,7 @@ import { HideOwnedSwitch } from "./HideOwnedSwitch";
 import { useHideOwned } from "./useHideOwned";
 import { PushDialog } from "./PushDialog";
 import { beatportRowKey } from "./beatportKey";
-import { beatportSelectedId, useReportSelectedTrack } from "./useReportSelectedTrack";
+import { beatportSelectedId, useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { runActions, type BeatportActionId } from "./beatportActions";
 import { ENTITY_COLUMNS, ENTITY_TABLE_LAYOUT_KEY } from "./beatportColumns";
 import { entityPath } from "./discoverLinks";

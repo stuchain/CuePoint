@@ -46,7 +46,7 @@ import { libraryRowMenuItems } from "./libraryRowMenu";
 import { SIMILAR_COLUMNS, SIMILAR_TABLE_LAYOUT_KEY, type SimilarRow } from "./similarColumns";
 import { describeUnused } from "./similarReasons";
 import { useBeatportSelection } from "./useBeatportSelection";
-import { useReportSelectedTrack } from "./useReportSelectedTrack";
+import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";
