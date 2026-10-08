@@ -286,11 +286,14 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
       const setTable = window.getByRole("table", { name: "Set entries" });
       await setTable.locator(".track-table__row").first().click({ position: { x: 60, y: 10 } });
       const words = window.getByTestId("transition-words");
-      await expect(words).toHaveText("No out time → no times · −16.5 LU", { timeout: 15_000 });
+      // The fixtures carry no Beatport key, so the strip first says the key was not checked (PAGES-09B).
+      await expect(words).toHaveText("No Beatport key: key not checked · No out time → no times · −16.5 LU", {
+        timeout: 15_000,
+      });
       await expect(window.getByTestId("transition-loudness")).toHaveText([" · −3.5 LUFS", " · −20.0 LUFS"]);
       // Sine into silence: no difference without two values.
       await window.getByTestId("transition-to").click();
-      await expect(words).toHaveText("No out time → no times");
+      await expect(words).toHaveText("No Beatport key: key not checked · No out time → no times");
       await expect(window.getByTestId("transition-loudness")).toHaveText([" · −20.0 LUFS"]);
     } finally {
       await app.close();

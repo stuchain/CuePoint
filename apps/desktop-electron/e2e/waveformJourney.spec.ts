@@ -379,16 +379,21 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       const setTable = window.getByRole("table", { name: "Set entries" });
       await setTable.locator(".track-table__row").first().click({ position: { x: 60, y: 10 } });
       // Step 7 made the second track a copy of bands.flac: the two sit level.
-      await expect(window.getByTestId("transition-words")).toHaveText("Out 0:05 → In 0:00 · 0.0 LU");
+      // The fixtures carry no Beatport key, so the strip first says the key was not checked (PAGES-09B).
+      await expect(window.getByTestId("transition-words")).toHaveText(
+        "No Beatport key: key not checked · Out 0:05 → In 0:00 · 0.0 LU",
+      );
       await expect(strip).toContainText("In 0:01 · Out 0:05 · −3.5 LUFS");
       await expect(strip).toContainText("In 0:00 · no out time · −3.5 LUFS");
       const from = "[data-testid=transition-from] canvas";
       await expect(window.locator(from)).toBeVisible({ timeout: 20_000 });
       await expect(window.locator("[data-testid=transition-to] canvas")).toBeVisible({ timeout: 20_000 });
       // Bands, in 0:01 and out 0:05: the picture outside them is shaded, inside is not.
+      // Inside is read at 0:04, clear of the hot cue's marker at 0:02: beside the caption
+      // (PAGES-09B) each half is narrow enough that the marker reaches past 0:02.6.
       await expect
         .poll(async () => {
-          const painted = await tops(window, from, [0.5 / BANDS_SECONDS, 2.6 / BANDS_SECONDS, 5.5 / BANDS_SECONDS]);
+          const painted = await tops(window, from, [0.5 / BANDS_SECONDS, 4 / BANDS_SECONDS, 5.5 / BANDS_SECONDS]);
           if (!painted) return "not painted";
           const [before, inside, after] = painted.tops;
           return [
@@ -403,7 +408,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       // A click on the next half selects that entry.
       await window.getByTestId("transition-to").click();
       await expect(setTable.locator(".track-table__row").nth(1)).toHaveAttribute("aria-selected", "true");
-      await expect(window.getByTestId("transition-words")).toHaveText(/^No out time → /);
+      await expect(window.getByTestId("transition-words")).toHaveText(/^No Beatport key: key not checked · No out time → /);
 
       // --- 9. delete waveform data, and the library analysed again ----------
       await window.getByRole("link", { name: "Settings" }).click();
