@@ -753,8 +753,10 @@ the Start menu shortcut points at) each hold all seven sizes, read back from the
 crisp drawing on a dark and a light background. The check found the window passing the 512 px PNG,
 so the title bar and the taskbar shrank it and the wheel blurred at 16 to 32 px. The window now takes
 `icon.ico`, and reading the running window's icons back gives the hand-drawn 16 and 32 px images.
-The tile is opaque with a dark outline, so it reads on both taskbar themes. The installer was not
-run, so the Start menu and taskbar were judged from the files and the window's icons, not by eye.
+The installed build of `77c65aae` was then checked by eye on the user's PC: the Start menu search, the
+Start menu and desktop shortcuts at 16, 32 and 48 px, the title bar and the dark taskbar each show the
+hand-drawn wheel. The light taskbar was judged from the tile, opaque with a dark outline, rather than
+by switching the user's theme.
 
 Still owed: the macOS DMG/Dock/Finder check
 (including whether Finder uses the hand-drawn 16 and 32 grids from the PNG `icp4`/`icp5` entries)
