@@ -57,11 +57,11 @@ describe("useNarrow", () => {
   });
 
   it("is narrow below the width times the scale, and follows resizes", () => {
-    // The default scale is 2: 560 at scale 1 is 1120 pixels here.
-    width = 1000;
+    // The default scale is 1.5: 560 at scale 1 is 840 pixels here.
+    width = 800;
     mount(560);
     expect(screen.getByTestId("probe")).toHaveTextContent("narrow");
-    width = 1300;
+    width = 900;
     act(() => observed.forEach((notify) => notify()));
     expect(screen.getByTestId("probe")).toHaveTextContent("wide");
   });

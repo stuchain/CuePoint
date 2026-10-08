@@ -1411,6 +1411,21 @@ thinner than a strict 1.5× would make it; that is DEC-161's accepted cost.
 
 **Complexity**: **M**
 
+**Outcome** (2026-10-08): The row-height defect is fixed in its own change: `layout.css` registers `--row-height`
+(`@property`, `<length>`, inherited, 36px initial) and the value is `round(nearest, calc(var(--hit-min) * 0.75), 1px)`,
+so `readRowHeight` reads 33, 50, 66 and 99 at the four sizes. The size follows: `SCALE_OPTIONS = [1, 1.5, 2, 3]`,
+`DEFAULT_SCALE = 1.5`, read with `Number`; `--hairline` replaces all 47 `calc(1px * var(--scale))` and the one negative
+(`calc(-1 * var(--hairline))`); `--bevel-size-sm`, `--border-width-heavy` and the badge's `--space-xs * 0.75` padding
+round to whole pixels; `cssScale.test.ts` guards it (it reads every stylesheet, so `vite.config.ts`'s `css.include`
+now covers stylesheets imported with `?raw`). Measured on Linux only, 1,280 × 800, 36 tracks, whole rows in `e2e/prepare.spec.ts`, at 1.5× (the
+new default) and at 2×: the Set 8 and 4; with the player's bar 6 and 2; the source panel 6 and 2; with the lanes 6 and 2;
+with the transition strip 5 and 1; with the player's bar and the lanes 4 and 2, and with the bar and the strip 3 and 2
+(at 2× the page scrolls with the strip open). DEC-112's floor of five holds at 1.5× for the Set, and now for the player's
+bar too (6). `prepare.spec.ts` holds Linux at 7, 5, 5, 4 and 5 (Set, player, lanes, strip, source). `e2e/scale.spec.ts`
+(new) passes: a fresh profile opens at 1.5×, no border width or shadow length is fractional on the Library and Settings at
+1.5×, nothing scrolls sideways at 1×, 1.5×, 2× or 3× on the Library or Settings, and body rows equal the header cells and
+`--row-height` (33, 50, 66, 99) with no cell cut. `playerBar.spec.ts` fits at all four sizes. Windows re-measure owed.
+
 ---
 
 ## PAGES-15 — Beatport's Key Is the Key

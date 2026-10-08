@@ -48,7 +48,7 @@
 /* ------------------------------------------------------------------ header */
 
 /* Two short lines, whatever the width: the controls, then the facts. Every
-   pixel here is a row the Set does not show at scale 2 (DEC-112). */
+   pixel here is a row the Set does not show at the default size (DEC-112). */
 .prepare-header {
   display: flex;
   flex-direction: column;
@@ -337,7 +337,7 @@ body.prepare-resizing {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
   background: var(--bg-panel);
   color: var(--fg-muted);
   font: inherit;
@@ -355,7 +355,7 @@ body.prepare-resizing {
 
 .prepare-transition__half:focus-visible {
   outline: var(--focus-ring-width) solid var(--accent-info);
-  outline-offset: calc(-1px * var(--scale));
+  outline-offset: calc(-1 * var(--hairline));
 }
 
 .prepare-transition__state,

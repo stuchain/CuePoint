@@ -43,7 +43,7 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
   const [rowHeight, setRowHeight] = useState(QUEUE_ROW_HEIGHT);
   const [visible, setVisible] = useState({ start: 0, end: 30 });
 
-  // Row height follows the app's integer scale, so the virtual geometry and
+  // Row height follows the app's scale, so the virtual geometry and
   // what is actually drawn cannot disagree.
   useEffect(() => {
     const scale = Number(document.documentElement.dataset.scale ?? "1") || 1;

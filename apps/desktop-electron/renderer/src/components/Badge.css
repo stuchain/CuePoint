@@ -1,7 +1,7 @@
 .cp-badge {
   display: inline-flex;
   align-items: center;
-  padding: calc(var(--space-xs) * 0.75) var(--space-sm);
+  padding: round(nearest, calc(var(--space-xs) * 0.75), 1px) var(--space-sm);
   border: var(--border-width) solid var(--border-outline);
   font-size: var(--font-size-xs);
   font-weight: 700;

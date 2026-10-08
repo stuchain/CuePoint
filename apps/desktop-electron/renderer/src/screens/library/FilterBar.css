@@ -20,7 +20,7 @@
 .cp-filter-bar__builder {
   padding: var(--space-sm);
   background: var(--bg-panel);
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
 }
 
 .cp-filter-bar__count {
@@ -61,7 +61,7 @@
   gap: var(--space-xs);
   padding: calc(2px * var(--scale)) var(--space-xs);
   background: var(--bg-input);
-  border: calc(1px * var(--scale)) solid var(--border-outline);
+  border: var(--hairline) solid var(--border-outline);
   box-shadow: var(--shadow-badge);
   font-size: var(--font-size-xs);
 }
@@ -118,7 +118,7 @@
   gap: var(--space-xs);
   padding: calc(2px * var(--scale)) var(--space-xs);
   background: var(--bg-input);
-  border: calc(1px * var(--scale)) solid var(--border-outline);
+  border: var(--hairline) solid var(--border-outline);
   color: var(--fg-primary);
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
@@ -172,7 +172,7 @@
   gap: var(--space-xs);
   padding: var(--space-xs) var(--space-sm);
   background: var(--bg-input);
-  border: calc(1px * var(--scale)) solid var(--accent-danger);
+  border: var(--hairline) solid var(--accent-danger);
   color: var(--accent-danger);
   font-size: var(--font-size-xs);
 }

@@ -13,7 +13,7 @@ npm run build
 
 ## Structure
 
-- `src/tokens/` — CSS design tokens, integer scale helper
+- `src/tokens/` — CSS design tokens, scale helper (1×, 1.5×, 2×, 3×)
 - `src/components/` — Phase 1 component library + Storybook stories
 - `src/screens/` — The pages: Library (home), Prepare, Clean, Discover and Settings
 - `src/api/` — The bridge types and the pure helpers the pages share

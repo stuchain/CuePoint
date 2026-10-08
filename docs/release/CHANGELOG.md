@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **A Medium (1.5×) size, and it is the default.** **Settings → Appearance → Size
+  of text and controls** now offers Small (1×), Medium (1.5×), Large (2×) and
+  Extra large (3×). If you never chose a size, CuePoint opens at 1.5× and shows
+  more of your tracks at once; a size you chose is kept
 - **About shows the app's version and its build.** The build is the short commit
   the app was made from, or "not recorded" for a build made by hand
 - **An error screen instead of a blank window.** When part of the app fails
@@ -382,6 +386,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **Table rows are as tall as the size says.** Rows in the Library, Collections,
+  Clean, Discover and Prepare tables were 36 pixels at every size, so at Extra
+  large the text in them had no room. They are now 33, 50, 66 and 99 pixels at
+  1×, 1.5×, 2× and 3×
 - **A good file could be recorded as having no audio, or lose its loudness.** On a
   busy machine `mpv` sometimes exits before its log is all on disk, and the
   waveform analysis read the missing lines as "no audio was decoded" or "loudness

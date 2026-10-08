@@ -13,7 +13,7 @@ describe("setAreaFloor", () => {
 
   it("is what is above, the table's header and edges, and two rows", () => {
     expect(ROWS_KEPT).toBe(2);
-    // The strip at scale 2: three rows of 36 and its edge; the table's header.
+    // The strip: three rows and its edge; the table's header.
     // (The chrome is the header, its borders and a scrollbar; 66 here.)
     expect(setAreaFloor([114], 66, 36)).toBe(114 + 66 + 72);
     // The lanes and the strip together.

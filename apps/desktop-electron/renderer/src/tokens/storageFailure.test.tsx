@@ -30,7 +30,7 @@ afterEach(() => {
 
 describe("storage that throws", () => {
   it("reads the scale and the theme as their defaults", () => {
-    expect(getStoredScale()).toBe(2);
+    expect(getStoredScale()).toBe(1.5);
     expect(getStoredThemeId()).toBe(DEFAULT_THEME);
   });
 
@@ -52,7 +52,7 @@ describe("storage that throws", () => {
     );
     expect(screen.getByText("started")).toBeInTheDocument();
     expect(document.documentElement.dataset.theme).toBe(DEFAULT_THEME);
-    expect(document.documentElement.dataset.scale).toBe("2");
+    expect(document.documentElement.dataset.scale).toBe("1.5");
 
     const scale = renderHook(() => useScale(), { wrapper: ScaleProvider });
     act(() => scale.result.current.setScale(1));

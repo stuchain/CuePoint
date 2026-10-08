@@ -3,7 +3,7 @@
  * Color values live in themes/*.css (data-theme on html).
  */
 :root {
-  --scale: 2;
+  --scale: 1.5;
   --unit: calc(4px * var(--scale));
 
   /* Motion (DEC-135): durations, step counts, one distance unit and the fade. */
@@ -18,9 +18,13 @@
 
   /* Pixel-art chrome (structural) */
   --border-width: calc(2px * var(--scale));
-  --border-width-heavy: calc(3px * var(--scale));
+  /* Borders are drawn at a whole pixel and Chromium floors them, so the 1px line
+     rounds down too: 1, 1, 2 and 3 at 1x, 1.5x, 2x and 3x. A border and a
+     shadow of this token then agree (DEC-161). */
+  --hairline: max(1px, round(down, calc(1px * var(--scale)), 1px));
+  --border-width-heavy: round(down, calc(3px * var(--scale)), 1px);
   --bevel-size: calc(2px * var(--scale));
-  --bevel-size-sm: calc(1px * var(--scale));
+  --bevel-size-sm: var(--hairline);
   --focus-ring-width: calc(2px * var(--scale));
   --radius-sm: 0;
 

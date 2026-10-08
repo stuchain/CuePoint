@@ -22,5 +22,5 @@
 
 .cp-credit-link:focus-visible {
   outline: var(--border-width) solid var(--accent-info);
-  outline-offset: calc(1px * var(--scale));
+  outline-offset: var(--hairline);
 }

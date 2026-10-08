@@ -15,7 +15,7 @@
   overflow-y: auto;
   list-style: none;
   background: var(--bg-input);
-  border: calc(1px * var(--scale)) solid var(--border-outline);
+  border: var(--hairline) solid var(--border-outline);
 }
 
 .cp-tag-manager__row {
@@ -46,7 +46,7 @@
   flex: 0 0 auto;
   width: calc(8px * var(--scale));
   height: calc(8px * var(--scale));
-  border: calc(1px * var(--scale)) solid var(--border-outline);
+  border: var(--hairline) solid var(--border-outline);
 }
 
 .cp-tag-manager__name {
@@ -101,7 +101,7 @@
   margin-top: var(--space-md);
   padding: var(--space-sm);
   background: var(--bg-panel-alt);
-  border: calc(1px * var(--scale)) solid var(--accent-danger);
+  border: var(--hairline) solid var(--accent-danger);
 }
 
 .cp-tag-manager__confirm p {

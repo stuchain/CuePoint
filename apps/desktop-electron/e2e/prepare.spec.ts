@@ -2,7 +2,7 @@
  * The Prepare page at the size people open it (PREP-10, DEC-112).
  *
  * The screen is crowded: the sidebar, the Set, the Inspector, across the
- * default 1,280 × 800 window at `--scale: 2`. Stacking two tables would have
+ * default 1,280 × 800 window at `--scale: 1.5`. Stacking two tables would have
  * halved the height Phase 8 already found too small, so DEC-112 put them side
  * by side and asked for a test that holds how many whole rows the Set shows.
  * This is that test. It measures the rows that are wholly inside the Set
@@ -54,6 +54,8 @@ const ON_LINUX = process.platform === "linux";
  * that loses a row fails here and has to say why.
  *
  * Linux measured 8, held at 7; Windows measured 6 expanded and 7 as a rail.
+ * PAGES-14 re-measured on Linux at the new default, 1.5×: 8 again (4 at 2×);
+ * Windows' re-measure is owed. DEC-112's floor moved with the default.
  */
 const WHOLE_ROWS = ON_LINUX ? 7 : 6;
 const FLOOR = 5;
@@ -67,8 +69,9 @@ const FLOOR = 5;
  * smaller control or a smaller scale, which DEC-112 leaves alone. The step's
  * outcome records it.
  */
-// Linux measured 5, held at 4; Windows 3 expanded and 4 as a rail.
-const WHOLE_ROWS_PLAYING = ON_LINUX ? 4 : 3;
+// Linux measured 5, held at 4; Windows 3 expanded and 4 as a rail. At 1.5×
+// (PAGES-14) Linux measures 6 (2 at 2×), held at 5; Windows' re-measure is owed.
+const WHOLE_ROWS_PLAYING = ON_LINUX ? 5 : 3;
 
 /**
  * The same with the tempo and key lanes open (PREP-11, DEC-111), sidebar
@@ -77,9 +80,10 @@ const WHOLE_ROWS_PLAYING = ON_LINUX ? 4 : 3;
  *
  * Measured 5 on Linux, held at 4. Windows measured 3 with the sidebar expanded
  * and 4 as a rail (WAVE-08; WAVE-06's commit measures the same), as the
- * transition strip does, since both take three of the Set's rows.
+ * transition strip does, since both take three of the Set's rows. At 1.5×
+ * (PAGES-14) Linux measures 6 (2 at 2×), held at 5.
  */
-const WHOLE_ROWS_LANES = ON_LINUX ? 4 : 3;
+const WHOLE_ROWS_LANES = ON_LINUX ? 5 : 3;
 
 /**
  * The same with the transition strip open (WAVE-07, DEC-120), sidebar expanded
@@ -90,9 +94,9 @@ const WHOLE_ROWS_LANES = ON_LINUX ? 4 : 3;
  * what the lanes measure there, since both take three of the Set's rows. Every
  * count above sits one lower on Windows than on Linux, so Linux holds this
  * with a row to spare; held at the Windows figure until the Linux run records
- * its own.
+ * its own. PAGES-14: Linux measured 5 at 1.5× (1 at 2×), held at 4.
  */
-const WHOLE_ROWS_TRANSITION = 3;
+const WHOLE_ROWS_TRANSITION = ON_LINUX ? 4 : 3;
 
 /**
  * The rows the Set keeps under the lanes or the strip whatever else is on
@@ -104,8 +108,10 @@ const ROWS_KEPT = 2;
 /**
  * The whole rows the source panel's Suggestions show beside the Set, the page
  * as it opens (PREP-11). Measured 4 on Linux; held at 3 for the same reason.
+ * At 1.5× (PAGES-14) Linux measures 6 (2 at 2×), held at 5; the other
+ * platforms keep 3 until they are measured.
  */
-const SOURCE_ROWS = 3;
+const SOURCE_ROWS = ON_LINUX ? 5 : 3;
 
 /** Enough tracks that the Set is always taller than its pane. */
 const TRACKS = 36;
@@ -340,7 +346,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         await setSidebar(win, collapsed);
         const m = await measure(win, "Set entries");
         measured[collapsed ? "rail" : "expanded"] = m;
-        expect(m.scale).toBe("2");
+        expect(m.scale).toBe("1.5");
         expect(m.overflowX, "nothing spills sideways").toBeLessThanOrEqual(0);
         expect(m.offscreenControls, "every header and panel control is on screen").toEqual([]);
         // PREP-11: the source panel is beside the Set, the narrower of the two

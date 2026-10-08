@@ -1,6 +1,10 @@
-/** Integer pixel scale factors for crisp bitmap rendering (Phase 1 DS-2). */
+/**
+ * The app's sizes (Phase 1 DS-2; 1.5 added by DEC-161). Every CSS size that would
+ * land on half a pixel at 1.5 is rounded in the stylesheet (`--hairline`), so the
+ * pixel style stays crisp at each of them.
+ */
 
-export const SCALE_OPTIONS = [1, 2, 3] as const;
+export const SCALE_OPTIONS = [1, 1.5, 2, 3] as const;
 export type ScaleFactor = (typeof SCALE_OPTIONS)[number];
 
 const STORAGE_KEY = "cuepoint-ui-lab-scale";
@@ -9,7 +13,7 @@ function isScaleFactor(value: number): value is ScaleFactor {
   return SCALE_OPTIONS.includes(value as ScaleFactor);
 }
 
-export const DEFAULT_SCALE: ScaleFactor = 2;
+export const DEFAULT_SCALE: ScaleFactor = 1.5;
 
 const SCALE_NAMES: Record<number, string> = {
   1: "Small",
@@ -40,7 +44,7 @@ export function getStoredScale(): ScaleFactor {
   } catch {
     return DEFAULT_SCALE;
   }
-  const parsed = raw ? Number.parseInt(raw, 10) : DEFAULT_SCALE;
+  const parsed = raw ? Number(raw) : DEFAULT_SCALE;
   return isScaleFactor(parsed) ? parsed : DEFAULT_SCALE;
 }
 

@@ -112,7 +112,7 @@ re-staging. mypy is excluded from it deliberately; `.pre-commit-config.yaml` exp
   inputs and preserve non-destructive, backup, and audit behavior.
 - Matching remains deterministic and reviewable: retain candidates, rejection reasons,
   confidence, and original display values. Mock external services in automated tests.
-- Use existing renderer tokens, themes, and integer scale patterns; test pure UI logic.
+- Use existing renderer tokens, themes, and scale patterns; test pure UI logic.
 - Keep `src/cuepoint/version.py` and desktop `package.json` engine version coupled.
 
 ## Change quality

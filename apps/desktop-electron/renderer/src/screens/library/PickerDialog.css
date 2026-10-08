@@ -115,5 +115,5 @@
 
 .cp-picker__create:focus-visible {
   outline: var(--focus-ring-width) solid var(--accent-primary);
-  outline-offset: calc(1px * var(--scale));
+  outline-offset: var(--hairline);
 }

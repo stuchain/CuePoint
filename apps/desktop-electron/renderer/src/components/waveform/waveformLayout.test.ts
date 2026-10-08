@@ -80,7 +80,9 @@ describe("the grid of scale pixels", () => {
     [3, 2, 6],
     [1, 1.5, 2],
     [1, 0, 1],
-  ])("a unit at scale %i and ratio %f is %i device pixels", (scale, ratio, unit) => {
+    [1.5, 1, 2],
+    [1.5, 2, 3],
+  ])("a unit at scale %s and ratio %f is %i device pixels", (scale, ratio, unit) => {
     expect(waveformUnit(scale, ratio)).toBe(unit);
   });
 
@@ -91,7 +93,9 @@ describe("the grid of scale pixels", () => {
     [1, 2, 300],
     [2, 2, 150],
     [3, 2, 100],
-  ])("300 CSS pixels at scale %i and ratio %i draw %i columns", (scale, ratio, columns) => {
+    [1.5, 1, 150],
+    [1.5, 2, 200],
+  ])("300 CSS pixels at scale %f and ratio %i draw %i columns", (scale, ratio, columns) => {
     expect(waveformColumns(300, scale, ratio)).toBe(columns);
     const layout = layoutWaveform(input({ cssWidth: 300, scale, devicePixelRatio: ratio }));
     expect(layout.columns).toBe(columns);
@@ -116,7 +120,7 @@ describe("the grid of scale pixels", () => {
     });
   });
 
-  it.each([1, 2, 3])("heights snap to whole scale pixels at scale %i", (scale) => {
+  it.each([1, 1.5, 2, 3])("heights snap to whole scale pixels at scale %f", (scale) => {
     const data = picture(Array.from({ length: 50 }, (_, i) => [i * 5, i * 5, i * 3, i]));
     for (const ratio of [1, 2, 1.25]) {
       const layout = layoutWaveform(input({ data, scale, devicePixelRatio: ratio, cssHeight: 47 }));
@@ -145,7 +149,7 @@ describe("the grid of scale pixels", () => {
     // 1.5 device pixels per CSS pixel at scale 2: a unit of 3, so 100 columns.
     expect(requestWidth(200, 2, 1.5)).toBe(112);
     for (const css of [48, 120, 333, 999, 2_400]) {
-      for (const scale of [1, 2, 3]) {
+      for (const scale of [1, 1.5, 2, 3]) {
         for (const ratio of [1, 1.25, 2]) {
           const width = requestWidth(css, scale, ratio);
           expect(width % 16).toBe(0);

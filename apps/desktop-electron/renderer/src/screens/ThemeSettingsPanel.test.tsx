@@ -113,6 +113,26 @@ describe("size of text and controls", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers four sizes in order, with 1.5 selected by default", () => {
+    renderPanel();
+    const options = within(size()).getAllByRole("option") as HTMLOptionElement[];
+    expect(options.map((o) => o.textContent)).toEqual([
+      "Small (1×)",
+      "Medium (1.5×) — default",
+      "Large (2×)",
+      "Extra large (3×)",
+    ]);
+    expect(size()).toHaveValue("1.5");
+  });
+
+  it("sets --scale and data-scale to 1.5 when 1.5 is chosen", async () => {
+    renderPanel();
+    await userEvent.selectOptions(size(), "3");
+    await userEvent.selectOptions(size(), "1.5");
+    expect(document.documentElement.dataset.scale).toBe("1.5");
+    expect(document.documentElement.style.getPropertyValue("--scale")).toBe("1.5");
+  });
+
   it("changes the size", async () => {
     renderPanel();
     await userEvent.selectOptions(size(), "3");

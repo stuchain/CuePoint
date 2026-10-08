@@ -3,7 +3,7 @@
  *
  * The Set, wider, and the source panel (PREP-11) beside it, not below: two
  * tables stacked would halve a height Phase 8 already found too small at
- * `--scale: 2`. The divider between them is dragged or moved with the arrow
+ * `--scale: 2`, then the default. The divider between them is dragged or moved with the arrow
  * keys, and its width is remembered as the Inspector's is (DEC-018): stored
  * as chosen, clamped when read, so a width chosen on a wide monitor returns
  * when there is room for it again. It is clamped against the layout's own

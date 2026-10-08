@@ -77,7 +77,7 @@ export interface WaveformLayoutInput {
   /** The box, in CSS pixels. */
   cssWidth: number;
   cssHeight: number;
-  /** The app's integer scale (`--scale`). */
+  /** The app's scale (`--scale`). */
   scale: number;
   devicePixelRatio: number;
   mode: WaveformColourMode;

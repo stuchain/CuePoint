@@ -18,7 +18,7 @@
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-sm);
   background: var(--bg-input);
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
 }
 
 .cp-column-picker__label {

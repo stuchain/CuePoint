@@ -153,7 +153,7 @@ export function join(
  * @param shape The engine's shape: every entry in order, and each transition.
  * @param titles Each entry's title, for its column's label.
  * @param available The width the lanes have, in pixels.
- * @param scale The design system's integer scale.
+ * @param scale The app's scale (1, 1.5, 2 or 3); the lanes draw on its nearest whole pixel.
  */
 export function laneLayout(
   shape: SetShape,

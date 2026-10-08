@@ -26,7 +26,7 @@
   flex-direction: column;
   gap: calc(2px * var(--scale));
   padding-bottom: var(--space-sm);
-  border-bottom: calc(1px * var(--scale)) solid var(--border-muted);
+  border-bottom: var(--hairline) solid var(--border-muted);
 }
 
 .cp-track-detail__title {
@@ -149,7 +149,7 @@
 
 .cp-track-waveform {
   height: calc(var(--row-height) * 2);
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
   background: var(--bg-panel);
   overflow: hidden;
 }
@@ -215,7 +215,7 @@
   flex: none;
   width: calc(6px * var(--scale));
   height: calc(6px * var(--scale));
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
 }
 
 /*
@@ -233,7 +233,7 @@
   flex-direction: column;
   gap: var(--space-sm);
   padding: var(--space-sm);
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
   background: var(--bg-panel-alt);
 }
 
@@ -256,7 +256,7 @@
 }
 
 .cp-track-yours__star {
-  padding: 0 calc(1px * var(--scale));
+  padding: 0 var(--hairline);
   border: none;
   background: transparent;
   color: var(--fg-disabled);
@@ -275,7 +275,7 @@
 .cp-track-yours__tag-remove:focus-visible,
 .cp-track-yours__tag-add:focus-visible {
   outline: var(--focus-ring-width) solid var(--accent-primary);
-  outline-offset: calc(1px * var(--scale));
+  outline-offset: var(--hairline);
 }
 
 .cp-track-yours__clear {
@@ -307,7 +307,7 @@
   align-self: flex-start;
   min-height: var(--hit-min);
   padding: var(--space-xs) var(--space-sm);
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
   background: var(--bg-input);
   color: var(--fg-muted);
   font-family: var(--font-pixel);
@@ -330,7 +330,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: var(--space-xs);
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
   background: var(--bg-input);
   color: var(--fg-primary);
   font-family: var(--font-data);
@@ -364,8 +364,8 @@
   display: inline-flex;
   align-items: center;
   gap: calc(2px * var(--scale));
-  padding: calc(1px * var(--scale)) var(--space-xs);
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  padding: var(--hairline) var(--space-xs);
+  border: var(--hairline) solid var(--border-muted);
   background: var(--bg-input);
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
@@ -409,7 +409,7 @@
   flex: 1 1 auto;
   min-width: calc(80px * var(--scale));
   padding: var(--space-xs);
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
   background: var(--bg-input);
   color: var(--fg-primary);
   font-family: var(--font-data);
@@ -418,7 +418,7 @@
 
 .cp-track-yours__tag-add {
   padding: var(--space-xs) var(--space-sm);
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
   background: var(--bg-input);
   color: var(--fg-primary);
   font-family: var(--font-pixel);
@@ -499,7 +499,7 @@
   width: calc(96px * var(--scale));
   height: calc(96px * var(--scale));
   margin-bottom: var(--space-xs);
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
   background: var(--bg-input);
   overflow: hidden;
 }
@@ -522,7 +522,7 @@
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-sm);
-  border: calc(1px * var(--scale)) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
 }
 
 .cp-track-beatport__state,
@@ -571,7 +571,7 @@
 .cp-track-beatport__values {
   display: flex;
   flex-direction: column;
-  gap: calc(1px * var(--scale));
+  gap: var(--hairline);
   margin: 0;
   min-width: 0;
   font-family: var(--font-data);
@@ -641,7 +641,7 @@
 
 .cp-track-history__revert:focus-visible {
   outline: var(--focus-ring-width) solid var(--accent-primary);
-  outline-offset: calc(1px * var(--scale));
+  outline-offset: var(--hairline);
 }
 
 .cp-track-history__writes {

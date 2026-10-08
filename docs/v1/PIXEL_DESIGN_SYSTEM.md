@@ -12,13 +12,25 @@ properties — no styled-components, no Tailwind, no CSS modules.
 
 ## Scale mechanism
 
-`--scale` is the root CSS custom property (default `2`); nearly every size token
+`--scale` is the root CSS custom property (default `1.5`); nearly every size token
 (`--space-*`, `--font-size-*`, `--border-width*`, `--bevel-size*`, `--hit-min`, `--shadow-*`) is
-`calc(<base-px> * var(--scale))`. `SCALE_OPTIONS = [1, 2, 3]` — **integer-only by design**, applied
-via `document.documentElement.dataset.scale` + a `style.setProperty`, deliberately not
+`calc(<base-px> * var(--scale))`. `SCALE_OPTIONS = [1, 1.5, 2, 3]` and `DEFAULT_SCALE = 1.5`
+(DEC-161); the stored value is read with `Number` and anything not on the list reads as the default,
+so a stored 1, 2 or 3 is kept. Applied via `document.documentElement.dataset.scale` + a `style.setProperty`, deliberately not
 `transform: scale()` (keeps borders crisp). Persisted to `localStorage` key
 `cuepoint-ui-lab-scale`. Controls live in Settings → Appearance only (moved off the top-right
 chrome per `docs/ui-overhaul/decisions.md`).
+
+**Whole pixels at 1.5×.** An even base is whole at 1.5×; an odd one is not. `tokens.css` therefore
+has one hairline token, `--hairline: max(1px, round(down, calc(1px * var(--scale)), 1px))`: 1, 1, 2
+and 3 pixels at the four sizes. Every 1px line (borders, the small bevel, outline offsets) uses it.
+It rounds **down** because Chromium floors a border width: a 1.5px border is drawn 1px, and a shadow
+of the same token must agree with it, not blur across two device pixels. The other odd sizes round to
+a whole pixel in the stylesheet (`--border-width-heavy`, `--row-height`, the badge's padding). A
+renderer test (`cssScale.test.ts`) reads every stylesheet and fails on a `calc(<n>px * var(--scale))`
+whose base times 1.5 is not whole, unless it sits inside `round(`. `--row-height` is registered with
+`@property` (`<length>`) so `getComputedStyle` answers a resolved length, which the table reads.
+Canvases round the scale themselves (`round(scale × devicePixelRatio)`, `round(scale)`).
 
 ## Color palette — 5 built-in themes
 

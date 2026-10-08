@@ -175,9 +175,11 @@ app gains motion.
 **Neo dark**, **Retro 16-bit**, **Classic**, **Club neon** or **Muted**, or a
 custom theme you made: **Create custom theme…** asks for nine colors, and the
 borders and bevels are made from them. **Delete** asks first. **Size of text and
-controls** is **Small (1×)**, **Large (2×)** (the default) or **Extra large
-(3×)**. The interface is pixel art, so it scales in whole steps and edges snap to
-whole pixels at every size, which keeps it sharp.
+controls** is **Small (1×)**, **Medium (1.5×)** (the default), **Large (2×)** or
+**Extra large (3×)**. Edges and lines snap to whole pixels at every size, so the
+pixel style stays sharp. Table rows are as tall as the size says, so the text in
+them is never cut. If you chose a size before, CuePoint keeps it; if you never
+did, it opens at Medium.
 
 **Reset to defaults** sets Neo dark at the default size after asking, and the
 message that follows has **Undo**. Your custom themes are kept.

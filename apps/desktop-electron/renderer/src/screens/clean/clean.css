@@ -183,7 +183,7 @@
   justify-content: space-between;
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-sm);
-  border-top: calc(1px * var(--scale)) solid var(--border-muted);
+  border-top: var(--hairline) solid var(--border-muted);
 }
 
 /* ------------------------------------------------------------ comparison */
@@ -224,7 +224,7 @@
 }
 
 /* The Inspector thumbnail size CLEAN-09 made, drawn at a whole-pixel size so
-   the pixel system's integer scales never blur it. */
+   the pixel system's sizes never blur it. */
 .clean-compare__art {
   width: calc(64px * var(--scale));
   height: calc(64px * var(--scale));
@@ -282,7 +282,7 @@
 .clean-compare__table th,
 .clean-compare__table td {
   padding: var(--space-xs) var(--space-sm);
-  border-bottom: calc(1px * var(--scale)) solid var(--border-muted);
+  border-bottom: var(--hairline) solid var(--border-muted);
   text-align: left;
   vertical-align: top;
   min-width: calc(120px * var(--scale));
@@ -481,7 +481,7 @@
   align-items: center;
   gap: 2px var(--space-sm);
   padding-bottom: var(--space-xs);
-  border-bottom: calc(1px * var(--scale)) solid var(--border-muted);
+  border-bottom: var(--hairline) solid var(--border-muted);
 }
 
 .clean-group__track {

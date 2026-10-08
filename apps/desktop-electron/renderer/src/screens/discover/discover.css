@@ -416,7 +416,7 @@
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-sm);
-  border-top: calc(1px * var(--scale)) solid var(--border-muted);
+  border-top: var(--hairline) solid var(--border-muted);
 }
 
 .discover-table__count {
@@ -566,7 +566,7 @@
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-sm);
-  border-top: calc(1px * var(--scale)) solid var(--border-muted);
+  border-top: var(--hairline) solid var(--border-muted);
 }
 
 .discover-page__library-actions > .cp-selection-actions {

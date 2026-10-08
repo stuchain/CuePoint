@@ -222,7 +222,7 @@
 /* The focus ring goes around the waveform, since the input itself is not seen. */
 .cp-player-bar__wave--drawn:has(.cp-player-bar__slider:focus-visible) {
   outline: var(--focus-ring-width) solid var(--accent-primary);
-  outline-offset: calc(1px * var(--scale));
+  outline-offset: var(--hairline);
 }
 
 .cp-player-bar__order {

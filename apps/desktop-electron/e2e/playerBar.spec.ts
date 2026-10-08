@@ -4,7 +4,7 @@
  * Component tests can say what the bar renders; only the real shell can say
  * whether it *fits*. This checks the two things that break silently: the region
  * still occupies no space before the first play (DEC-025, DEC-053), and at 1x,
- * 2x and 3x nothing overflows, nothing is clipped, and the transport meets the
+ * 1.5x, 2x and 3x nothing overflows, nothing is clipped, and the transport meets the
  * hit-target floor the design sign-off measures against.
  *
  * Scale is applied the way the app applies it — the `data-scale` attribute
@@ -58,7 +58,7 @@ test("the player bar fits the shell at every scale", async () => {
     }, [path.join(AUDIO, "tone.flac"), path.join(AUDIO, "tone.wav")]);
     await win.waitForSelector(".cp-player-bar", { timeout: 10_000 });
 
-    for (const scale of [1, 2, 3]) {
+    for (const scale of [1, 1.5, 2, 3]) {
       const report = await win.evaluate((s) => {
         // Scale drives sizes through BOTH the attribute and the CSS variable.
         document.documentElement.dataset.scale = String(s);
@@ -87,8 +87,8 @@ test("the player bar fits the shell at every scale", async () => {
       expect(report.clipped, `nothing clipped at ${scale}x`).toBe(false);
     }
     await win.evaluate(() => {
-      document.documentElement.dataset.scale = "2";
-      document.documentElement.style.setProperty("--scale", "2");
+      document.documentElement.dataset.scale = "1.5";
+      document.documentElement.style.setProperty("--scale", "1.5");
     });
   } finally { await app.close(); }
 });
