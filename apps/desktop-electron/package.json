@@ -26,9 +26,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder",
-    "package": "electron-builder"
+    "pack": "npm run build && electron-builder --dir --publish never",
+    "dist": "npm run build && electron-builder --publish never",
+    "package": "electron-builder --publish never"
   },
   "build": {
     "appId": "com.cuepoint.desktop",
@@ -86,14 +86,17 @@
     },
     "nsis": {
       "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "CuePoint-${version}-win-${arch}-setup.${ext}"
     },
     "afterPack": "build/signNestedBinaries.cjs",
     "afterSign": "build/notarize.cjs",
     "mac": {
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
+      "artifactName": "CuePoint-${version}-mac-${arch}.${ext}",
       "icon": "build/icon.icns",
       "category": "public.app-category.music",
       "hardenedRuntime": true,
@@ -110,8 +113,17 @@
       "target": [
         "AppImage"
       ],
-      "icon": "build/icons"
-    }
+      "icon": "build/icons",
+      "artifactName": "CuePoint-${version}-linux-${arch}.${ext}"
+    },
+    "detectUpdateChannel": false,
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/stuchain/CuePoint/releases/latest/download",
+        "channel": "latest"
+      }
+    ]
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
