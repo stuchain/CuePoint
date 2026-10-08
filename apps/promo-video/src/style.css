@@ -41,6 +41,26 @@ body {
   inset: 0;
 }
 
+/* every shot but the opening starts hidden; the timeline shows each at its own time */
+.shot {
+  visibility: hidden;
+}
+
+/* words that change over time: stacked, the first shown until the timeline switches */
+.track {
+  display: grid;
+}
+
+/* display, not visibility: a child set visible would show through a hidden shot */
+.track > span {
+  grid-area: 1 / 1;
+  display: none;
+}
+
+.track > span.is-first {
+  display: block;
+}
+
 canvas.scene3d {
   position: absolute;
   inset: 0;
@@ -239,8 +259,17 @@ canvas.scene3d {
   font-weight: 600;
   font-size: 26px;
   color: var(--fg-muted);
-  min-width: 190px;
-  text-align: right;
+  min-width: 300px;
+  justify-items: end;
+}
+
+.tall .toolbar {
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.tall .toolbar .count {
+  min-width: 0;
 }
 
 /* ---- the track table ---- */
@@ -306,8 +335,10 @@ canvas.scene3d {
 .cell .new {
   position: absolute;
   left: 0;
-  top: 50%;
-  translate: 0 -50%;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
   opacity: 0;
 }
 
@@ -328,6 +359,7 @@ canvas.scene3d {
 }
 
 .status {
+  align-self: stretch; /* its words are positioned inside it: give it the row's height */
   font-family: var(--font-pixel);
   font-weight: 600;
   font-size: 24px;
@@ -470,6 +502,23 @@ canvas.scene3d {
   font-family: var(--font-data);
 }
 
+.preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--fg-primary);
+}
+
+.preview b {
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 24px;
+  padding: 4px 10px 6px;
+  color: var(--border-outline);
+  background: var(--accent-info);
+  border: 3px solid var(--border-outline);
+}
+
 .check {
   display: flex;
   align-items: center;
@@ -516,8 +565,10 @@ canvas.scene3d {
 
 .caption {
   position: absolute;
-  left: 50%;
-  translate: -50% 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
   max-width: 88%;
   padding: 14px 30px 18px;
   font-family: var(--font-pixel);
@@ -537,6 +588,7 @@ canvas.scene3d {
   font-size: 66px;
   white-space: normal;
   width: 92%;
+  max-width: 92%;
 }
 
 /* ---- the end card ---- */

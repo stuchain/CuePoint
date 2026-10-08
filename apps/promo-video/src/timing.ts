@@ -39,12 +39,35 @@ export const CAPTIONS = [
   { text: "Sorted on the Camelot wheel.", from: at(3, 1), to: at(5) },
   { text: "Missing or wrong keys and tempos, fixed.", from: at(5, 1), to: at(8) },
   { text: "Plan sets that mix in key.", from: at(8, 1), to: at(11) },
-  { text: "Back to Rekordbox. Your fixes on top.", from: at(11, 1), to: at(13) },
+  { text: "Back to Rekordbox. Your corrections stay on top.", from: at(11, 1), to: at(13) },
 ] as const;
 
-/** How hard the kick is hitting at time t, 0 to 1: a sharp attack on every beat, decaying fast. */
+/**
+ * Where the kick drum hits, in seconds: four to the bar from bar 1, dropping out for the riser in the
+ * second half of bar 4, and one last hit on the third beat of the final bar. The music
+ * (scripts/beat.mjs) and the wheel's pulse both read this one list.
+ */
+export const KICKS: readonly number[] = (() => {
+  const out: number[] = [];
+  for (let bar = 1; bar < BARS; bar++) {
+    for (let beat = 0; beat < 4; beat++) {
+      if (bar === 4 && beat >= 2) continue;
+      if (bar === BARS - 1 && beat >= 2) continue;
+      out.push(at(bar, beat));
+    }
+  }
+  out.push(at(BARS - 1, 2));
+  return out;
+})();
+
+/** How hard the kick is hitting at time t, 0 to 1: a sharp attack on each hit, decaying fast. */
 export function kickLevel(t: number): number {
   if (t < 0 || t >= DURATION) return 0;
-  const into = t % BEAT;
-  return Math.exp(-into * 9);
+  let last = -1;
+  for (const k of KICKS) {
+    if (k > t + 1e-9) break;
+    last = k;
+  }
+  if (last < 0) return 0;
+  return Math.exp(-(t - last) * 9);
 }

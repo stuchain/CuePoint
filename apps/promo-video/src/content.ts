@@ -12,19 +12,22 @@ export const APP_PREVIEW = true;
 export interface CleanRow {
   readonly title: string;
   readonly artist: string;
-  /** [before, after]; no "after" means Beatport did not change it. "—" is a missing value. */
+  /**
+   * [before, after]; no "after" means it stays. "—" is a missing value. The key changes when the match
+   * is accepted; tempo and genre only when Apply takes them from the accepted match.
+   */
   readonly key: readonly [string, string?];
   readonly bpm: readonly [string, string?];
   readonly genre: readonly [string, string?];
-  readonly status: "matched" | "review";
+  readonly status: "accepted" | "review";
 }
 
 export const CLEAN_ROWS: readonly CleanRow[] = [
-  { title: "Night Drive", artist: "Lumen Coast", key: ["—", "8A"], bpm: ["61", "122"], genre: ["—", "Deep House"], status: "matched" },
-  { title: "Saltwater", artist: "Odd Harbor", key: ["—", "8B"], bpm: ["62", "124"], genre: ["Afro House"], status: "matched" },
-  { title: "Low Orbit", artist: "Kessler Drift", key: ["—", "9B"], bpm: ["126"], genre: ["—", "Tech House"], status: "matched" },
-  { title: "Glass Hours", artist: "Mira Vale", key: ["2A", "9A"], bpm: ["126"], genre: ["Melodic House"], status: "matched" },
-  { title: "Paper Moon", artist: "Tessa Rowe", key: ["10A"], bpm: ["—", "125"], genre: ["—", "Progressive House"], status: "matched" },
+  { title: "Night Drive", artist: "Lumen Coast", key: ["—", "8A"], bpm: ["61", "122"], genre: ["—", "Deep House"], status: "accepted" },
+  { title: "Saltwater", artist: "Odd Harbor", key: ["—", "8B"], bpm: ["62", "124"], genre: ["Afro House"], status: "accepted" },
+  { title: "Low Orbit", artist: "Kessler Drift", key: ["—", "9B"], bpm: ["126"], genre: ["—", "Tech House"], status: "accepted" },
+  { title: "Glass Hours", artist: "Mira Vale", key: ["2A", "9A"], bpm: ["126"], genre: ["Melodic House"], status: "accepted" },
+  { title: "Paper Moon", artist: "Tessa Rowe", key: ["10A"], bpm: ["—", "125"], genre: ["—", "Progressive House"], status: "accepted" },
   { title: "Afterglow (Extended Mix)", artist: "Dunes & Delta", key: ["—"], bpm: ["—"], genre: ["—"], status: "review" },
 ];
 

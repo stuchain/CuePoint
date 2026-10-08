@@ -40,7 +40,7 @@ node scripts/render.mjs --format=tall --frames=90  # the first three seconds of 
   Chromium (software WebGL), screenshots the stage, and pipes the frames to ffmpeg, with the audio
   normalized to -14 LUFS.
 
-Needs Node 22.12+ and ffmpeg (with libx264, libvpx-vp9, libopus) on the PATH.
+Needs Node 22.18+ (the scripts import the TypeScript timing directly) and ffmpeg (with libx264, libvpx-vp9, libopus) on the PATH.
 
 ## When the redesigned pages land
 

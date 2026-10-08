@@ -2,6 +2,7 @@ import { readPalette } from "../../website/src/three/palette";
 import { PIXEL_SIZE, PixelPipeline } from "../../website/src/three/pixel";
 import { createRenderer } from "../../website/src/three/renderer";
 import { create as createOpening } from "../../website/src/three/scenes/opening";
+import { PHASES } from "../../website/src/three/phases";
 import { at, kickLevel } from "./timing";
 
 /**
@@ -9,14 +10,21 @@ import { at, kickLevel } from "./timing";
  * drawn through the site's pixel pipeline, driven by time instead of scroll.
  */
 
-/** Time to the scene's progress, as keyframes: the crate, the tags, the flight, the wheel facing us. */
-const KEYS: ReadonlyArray<readonly [number, number]> = [
+/**
+ * Time to the scene's progress, as keyframes built from the site's own story table (phases.ts), so the
+ * captions stay on their beats if the site retunes the scene: the crate, each record taking its tag,
+ * the flight into the wheel, the wheel facing us.
+ */
+export const KEYS: ReadonlyArray<readonly [number, number]> = [
   [0, 0],
-  [at(0, 2), 0.06],
-  [at(2), 0.3],
-  [at(3, 1), 0.5],
+  [at(0, 2), PHASES.lift[0]],
+  [at(2), (PHASES.tag[0] + PHASES.tag[1]) / 2 - 0.08],
+  [at(3, 1), PHASES.fly[0]],
   [at(4, 2), 1],
 ];
+
+/** From here the wheel is lit, and the kick pumps it (the site does this with the visitor's sound). */
+export const PULSE_FROM = PHASES.fly[1];
 
 export function progressAt(t: number): number {
   if (t <= KEYS[0]![0]) return KEYS[0]![1];
@@ -61,8 +69,7 @@ export function createOpeningShot(width: number, height: number): Opening {
     draw(t) {
       const p = progressAt(t);
       instance.setProgress(p);
-      // once the wheel is lit, the kick pumps it (the site does this with the visitor's sound)
-      instance.setLevel?.(p >= 0.8 ? kickLevel(t) * 0.7 : 0);
+      instance.setLevel?.(p >= PULSE_FROM ? kickLevel(t) * 0.7 : 0);
       pixel.render(renderer, instance.scene, instance.camera);
     },
     async compile() {

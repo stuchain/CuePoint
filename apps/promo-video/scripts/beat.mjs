@@ -2,14 +2,14 @@
 /**
  * `npm run beat`: writes out/beat.wav, the promo's music, made here from nothing but math, so there is
  * no sample or track to license. A 128 BPM house groove in A minor (8A on the wheel), 16 bars, on the
- * same grid as the picture (src/timing.ts): chip arpeggio from the first beat, kick from bar 2, a
+ * same grid as the picture (src/timing.ts): chip arpeggio from the first beat, kick from bar 1, a
  * riser into the app shots at bar 5 where the bass and claps come in, and a crash on the end card.
  * Deterministic: the noise is seeded, so every run writes the same file.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BAR, BARS, BEAT, DURATION } from "../src/timing.ts";
+import { BAR, BARS, BEAT, DURATION, KICKS } from "../src/timing.ts";
 
 const RATE = 44100;
 const N = Math.round(DURATION * RATE);
@@ -49,7 +49,8 @@ function kick(t) {
   add(t, 0.42, 0.95, 0, (s) => {
     const f = 45 + 110 * Math.exp(-s * 28);
     phase += (2 * Math.PI * f) / RATE;
-    return Math.sin(phase) * Math.exp(-s * 7.5) + (s < 0.004 ? (rnd() * 2 - 1) * 0.4 : 0);
+    const release = Math.min(1, (0.42 - s) * 100); // fade the tail out instead of cutting it
+    return (Math.sin(phase) * Math.exp(-s * 7.5) + (s < 0.004 ? (rnd() * 2 - 1) * 0.4 : 0)) * release;
   });
 }
 
@@ -79,9 +80,10 @@ function chip(t, note, seconds, gain, pan, cutoff = 1, duty = 0.25) {
   let lp = 0;
   const a = Math.min(1, 0.02 + cutoff * cutoff);
   add(t, seconds, gain, pan, (s) => {
-    const v = (s * f) % 1 < duty ? 1 : -1;
+    // centred on zero (a pulse wave's mean is 2·duty − 1), with a short attack and release: no clicks
+    const v = ((s * f) % 1 < duty ? 1 : -1) - (2 * duty - 1);
     lp += a * (v - lp);
-    return lp * Math.min(1, s * 400) * Math.exp(-s * 6);
+    return lp * Math.min(1, s * 400, (seconds - s) * 400) * Math.exp(-s * 6);
   });
 }
 
@@ -126,7 +128,6 @@ for (let bar = 0; bar < BARS; bar++) {
   }
   for (let b = 0; b < 4; b++) {
     if (last && b >= 2) break;
-    if (bar >= 1 && !(bar === 4 && b >= 2)) kick(at(bar, b));
     if (bar >= 2 && !(bar === 4 && b >= 2)) hat(at(bar, b + 0.5), bar >= 5 && b === 3);
     if (bar >= 5 && (b === 1 || b === 3)) clap(at(bar, b));
     if (bar >= 5) {
@@ -139,8 +140,9 @@ for (let bar = 0; bar < BARS; bar++) {
 noiseSweep(at(4, 0), BAR, 0.5, true);
 noiseSweep(at(5), BAR * 1.5, 0.35, false);
 noiseSweep(at(13), BAR * 2, 0.35, false);
-// the last beat: one low hit and the chord, ringing out
-kick(at(15, 2));
+// the kick, on the list the picture pulses to (src/timing.ts)
+for (const t of KICKS) kick(t);
+// the last hit: the chord, ringing out
 for (const n of chordAt(15).tones) chip(at(15, 2), n, BEAT * 2, 0.1, 0, 0.8, 0.5);
 
 // master: gentle saturation, normalize to -1 dBFS, 20 ms fades

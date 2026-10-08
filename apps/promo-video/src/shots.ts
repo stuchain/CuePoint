@@ -58,26 +58,47 @@ const cellHtml = (cls: string, oldV: string, newV: string | undefined, render: (
 
 // ---- Clean: match on Beatport, the values fill in ----
 
+/**
+ * Words that change over time, as stacked spans switched with tl.set: every frame depends only on the
+ * time it is drawn at, whichever way the timeline was seeked to get there.
+ */
+function textTrack(host: Element, tl: Timeline, steps: ReadonlyArray<readonly [number, string]>): void {
+  host.classList.add("track");
+  const spans = steps.map(([, text], i) => {
+    const span = h(`<span${i === 0 ? ' class="is-first"' : ""}>${esc(text)}</span>`);
+    host.append(span);
+    return span;
+  });
+  steps.forEach(([t], i) => {
+    if (i === 0) return;
+    tl.set(spans[i - 1]!, { display: "none" }, t);
+    tl.set(spans[i]!, { display: "block" }, t);
+  });
+}
+
 function buildClean(format: FormatId, tl: Timeline): HTMLElement {
+  // a match gives the track Beatport's key and nothing else; tempo and genre come only from Apply
+  // (docs/user-guide/clean.md, "Accepting a match gives the track its key and changes no other value")
   const rows = CLEAN_ROWS.map(
     (r) => `
-    <div class="row ${r.status === "matched" ? "is-bad" : ""}">
+    <div class="row ${r.key[1] !== undefined ? "is-bad" : ""}">
       <span class="c-title">${esc(r.title)}</span>
       <span class="c-artist">${esc(r.artist)}</span>
       ${cellHtml("c-key", r.key[0], r.key[1], keyBadge)}
-      ${cellHtml("c-bpm", r.bpm[0], r.bpm[1])}
-      ${cellHtml("c-genre", r.genre[0], r.genre[1])}
-      <span class="status cell"><span class="new ${r.status === "matched" ? "ok" : "review"}">${
-        r.status === "matched" ? "Matched" : "To review"
+      ${cellHtml("c-bpm apply", r.bpm[0], r.bpm[1])}
+      ${cellHtml("c-genre apply", r.genre[0], r.genre[1])}
+      <span class="status cell"><span class="new ${r.status === "accepted" ? "ok" : "review"}">${
+        r.status === "accepted" ? "Accepted" : "Needs review"
       }</span></span>
     </div>`,
   ).join("");
   const page = `
     <div class="page__head"><h2>Clean</h2><p>Fix values with Beatport</p></div>
     <div class="toolbar">
-      <span class="px-button">Match on Beatport</span>
+      <span class="px-button match">Match all</span>
       <div class="px-progress"><i></i></div>
-      <span class="count">Ready</span>
+      <span class="count"></span>
+      <span class="px-button apply">Apply</span>
     </div>
     <div class="table">
       <div class="row head"><span class="c-title">Title</span><span class="c-artist">Artist</span><span>Key</span><span>BPM</span><span class="c-genre">Genre</span><span>Status</span></div>
@@ -87,50 +108,48 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
   el.append(windowShell(format, "Clean", page));
 
   const { start } = shot("clean");
-  const button = el.querySelector(".px-button")!;
+  const match = el.querySelector(".px-button.match")!;
+  const apply = el.querySelector(".px-button.apply")!;
   const bar = el.querySelector(".px-progress > i")!;
-  const count = el.querySelector(".count")!;
   const rowEls = [...el.querySelectorAll<HTMLElement>(".row:not(.head)")];
+  const n = rowEls.length;
+  const accepted = CLEAN_ROWS.filter((r) => r.status === "accepted").length;
 
   // the window steps up into place under the wipe
   tl.from(el.querySelector(".window"), { y: 80, duration: BEAT, ease: "steps(4)" }, start);
-  tl.set(button, { attr: { "data-pressed": "1" } }, at(5, 1));
-  tl.set(button, { attr: { "data-pressed": "0" } }, at(5, 1.5));
+  tl.set(match, { attr: { "data-pressed": "1" } }, at(5, 1));
+  tl.set(match, { attr: { "data-pressed": "0" } }, at(5, 1.5));
   const first = at(5, 2);
-  const step = BEAT;
-  const n = rowEls.length;
+  const step = BEAT / 1.5;
   tl.to(bar, { width: "100%", duration: step * n, ease: `steps(${n * 4})` }, first);
-  const counter = { v: 0 };
-  tl.to(
-    counter,
-    {
-      v: n,
-      duration: step * n,
-      ease: `steps(${n})`,
-      onUpdate: () => {
-        count.textContent = `Matching ${Math.round(counter.v)} of ${n}`;
-      },
-    },
-    first,
-  );
+  const matchedAt = (i: number): number => first + step * (i + 1) - step / 2;
+  const applyAt = at(7, 1);
+  textTrack(el.querySelector(".count")!, tl, [
+    [0, "Ready"],
+    ...rowEls.map((_, i) => [matchedAt(i), `Matching ${i + 1} of ${n}`] as const),
+    [first + step * n, `${accepted} accepted, ${n - accepted} to review`],
+    [applyAt + BEAT / 2, `Applied to ${accepted} tracks`],
+  ]);
+
+  const oldOf = (cells: Element[]): Element[] => cells.map((c) => c.querySelector(".old")).filter((o): o is Element => o !== null);
   rowEls.forEach((row, i) => {
-    const t = first + step * (i + 1) - step / 2;
-    const news = row.querySelectorAll(".cell .new, .status .new");
-    const changed = [...row.querySelectorAll(".cell")].filter((c) => c.querySelector(".new"))
-      .map((c) => c.querySelector(".old"))
-      .filter((o) => o !== null);
-    tl.to(changed, { opacity: 0, duration: BEAT / 4, ease: "steps(2)" }, t);
-    tl.fromTo(news, { ...POP }, { ...IN }, t);
+    const t = matchedAt(i);
+    const keyCell = [...row.querySelectorAll(".c-key")].filter((c) => c.querySelector(".new"));
+    tl.to(oldOf(keyCell), { opacity: 0, duration: BEAT / 4, ease: "steps(2)" }, t);
+    tl.fromTo(row.querySelectorAll(".c-key .new, .status .new"), { ...POP }, { ...IN }, t);
     if (row.classList.contains("is-bad")) tl.to(row, { backgroundColor: "rgba(0,0,0,0)", duration: BEAT / 2, ease: "steps(2)" }, t);
   });
-  const matched = CLEAN_ROWS.filter((r) => r.status === "matched").length;
-  tl.call(
-    () => {
-      count.textContent = `${matched} matched, ${n - matched} to review`;
-    },
-    [],
-    first + step * n + BEAT / 4,
-  );
+  // Apply from the accepted matches: tempo and genre, row by row
+  tl.from(apply, { scale: 0, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, at(6, 3));
+  tl.set(apply, { attr: { "data-pressed": "1" } }, applyAt);
+  tl.set(apply, { attr: { "data-pressed": "0" } }, applyAt + BEAT / 2);
+  rowEls.forEach((row, i) => {
+    const t = applyAt + BEAT / 2 + (i * BEAT) / 4;
+    const cells = [...row.querySelectorAll(".apply")].filter((c) => c.querySelector(".new"));
+    if (cells.length === 0) return;
+    tl.to(oldOf(cells), { opacity: 0, duration: BEAT / 4, ease: "steps(2)" }, t);
+    tl.fromTo(cells.map((c) => c.querySelector(".new")!), { ...POP }, { ...IN }, t);
+  });
   return el;
 }
 
@@ -199,9 +218,9 @@ function buildExport(format: FormatId, tl: Timeline): HTMLElement {
         <h3>Export to Rekordbox</h3>
         <div class="inner">
           <div class="field">CuePoint library.xml</div>
-          <div class="check"><b></b><span>Keep my own values on top</span></div>
+          <div class="preview"><b>Preview</b><span>Your own key, BPM and genre go with every track.</span></div>
           <div class="px-progress"><i></i></div>
-          <div class="actions"><span class="px-button">Export</span></div>
+          <div class="actions"><span class="px-button">Export ${CLEAN_ROWS.length} tracks</span></div>
         </div>
       </div>
       <div class="toast" style="left:${wide ? 1230 : 120}px;top:${wide ? 760 : 1290}px">Ready for Rekordbox</div>
@@ -302,8 +321,11 @@ export function buildShots(stage: HTMLElement, format: FormatId, tl: Timeline): 
   ];
   for (const [el, from, to] of layers) {
     stage.append(el);
-    tl.set(el, { visibility: "hidden" }, 0);
-    tl.set(el, { visibility: "visible" }, from);
+    // .shot starts hidden in CSS; a set at time 0 would never render from a paused timeline at 0
+    if (from > 0) {
+      el.classList.add("shot");
+      tl.set(el, { visibility: "visible" }, from);
+    }
     if (to < shot("end").end) tl.set(el, { visibility: "hidden" }, to);
   }
   stage.append(buildCaptions(format, tl));

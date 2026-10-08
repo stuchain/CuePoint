@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { at, BAR, CAPTIONS, DURATION, FRAMES, FPS, kickLevel, SHOTS } from "./timing";
+import { at, BAR, BEAT, CAPTIONS, DURATION, FRAMES, FPS, KICKS, kickLevel, SHOTS } from "./timing";
 
 describe("the promo's clock", () => {
   it("is exactly 30 seconds at 30 fps", () => {
@@ -29,10 +29,16 @@ describe("the promo's clock", () => {
     for (let i = 1; i < sorted.length; i++) expect(sorted[i]!.from).toBeGreaterThanOrEqual(sorted[i - 1]!.to - 1e-9);
   });
 
-  it("hits on the beat and decays between", () => {
-    expect(kickLevel(0)).toBe(1);
-    expect(kickLevel(at(4, 2))).toBeCloseTo(1, 9);
-    expect(kickLevel(at(4, 2) + 0.3)).toBeLessThan(0.1);
+  it("pulses only where the music has a kick", () => {
+    expect(kickLevel(0)).toBe(0); // bar 0 is the arpeggio alone
+    expect(kickLevel(at(1))).toBeCloseTo(1, 9);
+    expect(kickLevel(at(1) + 0.3)).toBeLessThan(0.1);
+    expect(kickLevel(at(4, 2) + 0.05)).toBeLessThan(0.15); // the riser: no kick
+    expect(kickLevel(at(5))).toBeCloseTo(1, 9);
     expect(kickLevel(DURATION)).toBe(0);
+  });
+
+  it("puts every kick on the beat grid", () => {
+    for (const k of KICKS) expect((k / BEAT) % 1).toBeCloseTo(0, 6);
   });
 });
