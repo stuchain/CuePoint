@@ -259,10 +259,21 @@ _PATHOLOGICAL = [
     "text", _PATHOLOGICAL, ids=[f"input-{i}" for i in range(len(_PATHOLOGICAL))]
 )
 def test_pathological_inputs_scrub_in_linear_time(text: str) -> None:
+    # Linear means four times the input takes about four times as long; a
+    # quadratic scrub takes sixteen. A fixed wall-clock limit measured the
+    # runner instead: the same input took 0.25 s here and 1.02 s on a macOS one.
     ctx = ScrubContext(home="/Users/anna", user_name="anna", tokens=("tokentoken",))
-    started = time.perf_counter()
-    scrub_text(text, ctx)
-    assert time.perf_counter() - started < 1.0
+
+    def fastest(sample: str) -> float:
+        times = []
+        for _ in range(3):
+            started = time.perf_counter()
+            scrub_text(sample, ctx)
+            times.append(time.perf_counter() - started)
+        return min(times)
+
+    once, four_times = fastest(text), fastest(text * 4)
+    assert four_times < 8 * once + 0.05, (once, four_times)
 
 
 def test_a_home_folder_with_a_space_leaves_nothing_of_it() -> None:
