@@ -6092,3 +6092,24 @@ checked by hand on the deployed site at SITE-13.
 on a personal project do not justify the cost.
 
 **Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-216 — A 30-Second Promo Video, Rendered From Code
+
+**Status**: Approved · **Related**: DEC-189, DEC-190, DEC-210, SITE-04, SITE-06
+
+**Decision**: CuePoint gets a 30-second promo in two cuts, 16:9 for the website and YouTube and 9:16
+for Reels, TikTok and Shorts, built in `apps/promo-video` and rendered by `npm run render`. It is
+pixel art in the app's look: the opening is the website's own crate-becomes-wheel scene (imported
+read-only), the app shots are stand-ins drawn with the app's theme tokens and marked "Preview" until
+the Phase 14 and 15 pages can be captured, the captions say only what the home page says, and the
+music is synthesized in code so nothing needs a license.
+
+**Reason**: The user's choice of every recommended option on 2026-10-08. Made from code, it can be
+re-rendered when the redesigned pages land instead of re-edited by hand.
+
+**Implications**: Embedding it on the site belongs to Phase 17's thread. When real captures exist,
+the stand-ins are swapped and `APP_PREVIEW` turned off.
+
+**Decided with**: User · **Date**: 2026-10-08
