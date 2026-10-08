@@ -267,6 +267,11 @@ test.describe("The Camelot wheel (PAGES-10)", () => {
       });
       await wheel.getByRole("button", { name: "Match tracks…" }).click();
       await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
+      // It opens Clean's match window (PAGES-07B); close it before leaving the page.
+      const matchWindow = window.getByRole("dialog", { name: "Match tracks" });
+      await expect(matchWindow).toBeVisible();
+      await window.keyboard.press("Escape");
+      await expect(matchWindow).toHaveCount(0);
 
       // A selected track with no key lights nothing and says why.
       await window.getByRole("link", { name: "Library" }).click();
