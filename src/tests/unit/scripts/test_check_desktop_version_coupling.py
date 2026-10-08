@@ -76,7 +76,12 @@ class TestCoupling:
         pkg, info = _write(tmp_path)
         pkg.write_text("{}", encoding="utf-8")
         assert coupling.check(
-            pkg, info, lambda: {}, "1.0.0", tmp_path / "AboutDialog.tsx", tmp_path / "main.ts"
+            pkg,
+            info,
+            lambda: {},
+            "1.0.0",
+            tmp_path / "AboutDialog.tsx",
+            tmp_path / "main.ts",
         ) == ["apps/desktop-electron/package.json missing version"]
 
     def test_a_placeholder_version_fails(self, tmp_path):
@@ -140,7 +145,9 @@ class TestCoupling:
             'export const DESKTOP_ENGINE_VERSION = "0.9.0";', encoding="utf-8"
         )
         health = lambda: {"release": "cuepoint@1.0.0"}  # noqa: E731
-        (error,) = coupling.check(pkg, info, health, "1.0.0", about, tmp_path / "main.ts")
+        (error,) = coupling.check(
+            pkg, info, health, "1.0.0", about, tmp_path / "main.ts"
+        )
         assert "DESKTOP_ENGINE_VERSION='0.9.0'" in error
 
     def test_an_about_dialog_without_the_constant_fails(self, tmp_path):
@@ -148,7 +155,9 @@ class TestCoupling:
         about = tmp_path / "AboutDialog.tsx"
         about.write_text("export {};", encoding="utf-8")
         health = lambda: {"release": "cuepoint@1.0.0"}  # noqa: E731
-        (error,) = coupling.check(pkg, info, health, "1.0.0", about, tmp_path / "main.ts")
+        (error,) = coupling.check(
+            pkg, info, health, "1.0.0", about, tmp_path / "main.ts"
+        )
         assert "does not declare DESKTOP_ENGINE_VERSION" in error
 
     def test_the_real_engine_reports_the_release_main_builds(self):

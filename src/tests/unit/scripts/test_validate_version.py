@@ -15,7 +15,9 @@ import validate_version as validator  # noqa: E402
 
 @pytest.mark.unit
 class TestScheme:
-    @pytest.mark.parametrize("version", ["1.0.0", "0.0.3", "1.0.0-test.1", "1.2.3-test.10"])
+    @pytest.mark.parametrize(
+        "version", ["1.0.0", "0.0.3", "1.0.0-test.1", "1.2.3-test.10"]
+    )
     def test_versions_in_the_scheme_pass(self, version):
         assert validator.validate_scheme(version) == (True, None)
 
@@ -64,7 +66,9 @@ class TestTag:
         self._version(monkeypatch, "1.0.0-test.1")
         assert validator.check_tag("1.0.0-test.1")
 
-    def test_a_version_outside_the_scheme_fails_even_when_the_tag_matches(self, monkeypatch):
+    def test_a_version_outside_the_scheme_fails_even_when_the_tag_matches(
+        self, monkeypatch
+    ):
         self._version(monkeypatch, "1.0.0-feb1")
         assert validator.check_tag("v1.0.0-feb1")
 
@@ -75,7 +79,9 @@ class TestTag:
     def test_main_with_tag_skips_the_git_tag_comparison(self, monkeypatch, capsys):
         self._version(monkeypatch, "1.0.0-test.1")
         monkeypatch.setattr(
-            validator, "get_version_from_git_tag", lambda: pytest.fail("compared git tags")
+            validator,
+            "get_version_from_git_tag",
+            lambda: pytest.fail("compared git tags"),
         )
         assert validator.main(["--tag", "v1.0.0-test.1"]) == 0
         assert "1.0.0-test.1" in capsys.readouterr().out
