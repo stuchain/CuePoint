@@ -15,7 +15,7 @@
  * run started later never brings it back. The page mounts it only while an
  * import is armed and neither done nor dismissed (`isReadyNoteOpen`, in `libraryNoticeMemory`).
  */
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 import { Button } from "../../components";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
@@ -84,7 +84,7 @@ export function LibraryReadyNote({
     setDoneFor(armedAt);
   }, [armedAt, chainEnded]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     onShownChange?.(loaded ? shown : null);
   }, [loaded, onShownChange, shown]);
 

@@ -35,3 +35,23 @@ describe("a toast with an action", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 });
+
+describe("leaving", () => {
+  it("clears its toasts' timers when it goes, so none fires on a page that is gone", () => {
+    vi.useFakeTimers();
+    try {
+      const { unmount } = render(
+        <ToastProvider>
+          <Grab />
+        </ToastProvider>,
+      );
+      act(() => push("Saved."));
+      act(() => push("Undo this?", "info", { label: "Undo", onClick: () => {} }));
+      expect(vi.getTimerCount()).toBe(2);
+      unmount();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

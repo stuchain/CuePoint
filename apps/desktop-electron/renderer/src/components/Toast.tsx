@@ -2,7 +2,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -35,6 +37,16 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  // Each toast's timer, cleared when the provider goes, so none fires on a
+  // page (or a test's document) that is no longer there.
+  const timers = useRef(new Set<number>());
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      for (const timer of pending) window.clearTimeout(timer);
+      pending.clear();
+    };
+  }, []);
 
   const dismiss = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -45,7 +57,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     // A step before an error report, by its kind: the words may carry a name (REPORT-06).
     if (variant === "error" || variant === "warning") reportToast(variant);
     setToasts((prev) => [...prev, { id, message, variant, action }]);
-    window.setTimeout(() => dismiss(id), action ? ACTION_TOAST_MS : 4000);
+    const timer = window.setTimeout(() => {
+      timers.current.delete(timer);
+      dismiss(id);
+    }, action ? ACTION_TOAST_MS : 4000);
+    timers.current.add(timer);
   }, [dismiss]);
 
   const value = useMemo(() => ({ push }), [push]);

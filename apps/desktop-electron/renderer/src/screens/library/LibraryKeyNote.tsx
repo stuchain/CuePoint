@@ -11,7 +11,7 @@
  * rows on screen: a note that is wrong about the user's own library is worse
  * than none, so it stays quiet when the engine cannot say.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
 import { Button } from "../../components";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -54,7 +54,9 @@ export function LibraryKeyNote({ trackCount, onMatch, asked = false, onShownChan
   }, [trackCount]);
 
   const shown = none && !(dismissed && !asked);
-  useEffect(() => {
+  // Told before paint, in the commit that shows the note, so the notice line
+  // never draws the first steps beside it for a frame (RUN-3).
+  useLayoutEffect(() => {
     onShownChange?.(shown);
     return () => onShownChange?.(false);
   }, [onShownChange, shown]);
