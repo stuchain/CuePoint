@@ -117,6 +117,8 @@ interface FilterBarProps {
   onRequestQuickFacets?: () => void;
   /** Open matching, for the Key list of a library nobody has matched. */
   onMatchTracks?: () => void;
+  /** Open the Keys page on this view's playlist or Collection (PAGES-16). */
+  onOpenKeys?: () => void;
 
   /** The Smart Collection these rules came from, when they came from one. */
   smart?: SmartAttachment | null;
@@ -168,6 +170,7 @@ export function FilterBar({
   quickFacetsLoading = false,
   onRequestQuickFacets,
   onMatchTracks,
+  onOpenKeys,
   smart = null,
   onSaveSmart,
   onUpdateSmart,
@@ -494,6 +497,7 @@ export function FilterBar({
             loading={quickFacetsLoading}
             onOpen={onRequestQuickFacets}
             onMatchTracks={onMatchTracks}
+            onOpenKeys={onOpenKeys}
           />
         )}
 

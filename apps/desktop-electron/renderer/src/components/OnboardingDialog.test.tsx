@@ -93,7 +93,7 @@ describe("the five screens", () => {
     mount();
     await goTo(5);
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText(/Keys shows the keys of your playlists on the Camelot wheel/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/The keys in your playlists, Collections and Sets/)).toBeInTheDocument();
     expect(within(dialog).getByText(/Put tracks in the order you will play them/)).toBeInTheDocument();
     expect(within(dialog).getByText(/Double-click a track to play it/)).toBeInTheDocument();
     expect(within(dialog).getByText(/The strip at the bottom shows what CuePoint is doing/)).toBeInTheDocument();
@@ -109,6 +109,18 @@ describe("the five screens", () => {
       expect(picture!.querySelector("img")).toBeNull();
       if (step < 5) await next();
     }
+  });
+
+  it("lists Keys from the registry, between Library and Clean as the sidebar does", async () => {
+    mount();
+    await goTo(5);
+    const pages = screen.getByRole("list", { name: "Pages" });
+    const names = within(pages)
+      .getAllByRole("listitem")
+      .map((item) => item.querySelector("strong")?.textContent);
+    expect(names.indexOf("Keys")).toBeGreaterThan(names.indexOf("Library"));
+    expect(names.indexOf("Keys")).toBeLessThan(names.indexOf("Clean"));
+    expect(names.filter((name) => name === "Keys")).toHaveLength(1);
   });
 
   it("names Prepare once on the last screen, with the Set sentence as its text", async () => {

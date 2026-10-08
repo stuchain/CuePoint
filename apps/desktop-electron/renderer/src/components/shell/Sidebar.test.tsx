@@ -91,7 +91,7 @@ describe("Sidebar", () => {
     expect(within(nav()).queryByText("Tools")).not.toBeInTheDocument();
     expect(within(nav()).queryByRole("link", { name: "inCrate" })).not.toBeInTheDocument();
     const links = destinationNames();
-    expect(links).toEqual(["Library", "Collections", "Clean", "Discover", "Prepare", "Settings"]);
+    expect(links).toEqual(["Library", "Collections", "Keys", "Clean", "Discover", "Prepare", "Settings"]);
   });
 
   it("marks the active destination with aria-current", () => {
@@ -277,10 +277,36 @@ describe("Sidebar", () => {
     });
   });
 
-  describe("before the first import (NAV-5)", () => {
-    const dimmed = ["Collections", "Clean", "Discover", "Prepare"];
+  describe("Keys, a page of its own after the Collections (PAGES-16, DEC-200)", () => {
+    it("comes after Library and its nested Collections, at the top level", () => {
+      renderSidebar();
+      const keys = within(nav()).getByRole("link", { name: "Keys" });
+      expect(keys).toHaveAttribute("href", "/keys");
+      // DEC-156 nests Collections because it is the Library's own tree; Keys is not.
+      expect(keys).not.toHaveAttribute("data-sub");
+      const order = destinationNames();
+      expect(order.indexOf("Keys")).toBe(order.indexOf("Collections") + 1);
+    });
 
-    it("dims Collections, Clean, Discover and Prepare, still clickable, with the reason", async () => {
+    it("says what it is for, under its name and in its title", () => {
+      renderSidebar();
+      const keys = within(nav()).getByRole("link", { name: "Keys" });
+      expect(within(keys).getByText("The keys in your playlists, Collections and Sets")).toBeInTheDocument();
+      expect(keys).toHaveAttribute("title", "The keys in your playlists, Collections and Sets");
+    });
+
+    it("draws a pixel icon, and is lit on its page", () => {
+      renderSidebar("/keys");
+      const keys = within(nav()).getByRole("link", { name: "Keys" });
+      expect(keys).toHaveAttribute("aria-current", "page");
+      expect(keys.querySelector("svg")).not.toBeNull();
+    });
+  });
+
+  describe("before the first import (NAV-5)", () => {
+    const dimmed = ["Collections", "Keys", "Clean", "Discover", "Prepare"];
+
+    it("dims Collections, Keys, Clean, Discover and Prepare, still clickable, with the reason", async () => {
       libraryIs(true);
       renderSidebar();
 

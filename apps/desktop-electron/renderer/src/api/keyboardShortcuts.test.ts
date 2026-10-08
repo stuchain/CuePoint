@@ -15,6 +15,7 @@ import prepareLayoutSource from "../screens/prepare/PrepareLayout.tsx?raw";
 import entryZoneSource from "../screens/prepare/SetEntryZone.tsx?raw";
 import prepareScreenSource from "../screens/prepare/PrepareScreen.tsx?raw";
 import timeCellSource from "../screens/prepare/prepareEditing.tsx?raw";
+import keysScreenSource from "../screens/keys/KeysScreen.tsx?raw";
 import appMenuSource from "../../../electron/appMenu.ts?raw";
 
 describe("keyboardShortcuts", () => {
@@ -150,6 +151,14 @@ describe("only shortcuts that work (PAGES-03B)", () => {
   it.each(handlers)("%s (%s) has a handler", (shortcut, context, source, pattern) => {
     expect(KEYBOARD_SHORTCUTS.some((row) => row.shortcut === shortcut && row.context === context)).toBe(true);
     expect(source).toMatch(pattern);
+  });
+
+  it("lists the Keys page's Ctrl, Command and Shift clicks, and answers them in its code (PAGES-16)", () => {
+    const keys = rows("Keys");
+    expect(keys.map((row) => row.shortcut)).toEqual(["Ctrl+Click", "Shift+Click"]);
+    expect(keys[0]!.action).toBe("Add or remove a key from the choice");
+    expect(keys[1]!.action).toBe("Choose every key between the last one and this one");
+    expect(keysScreenSource).toMatch(/modeFromEvent/);
   });
 
   it("answers Prepare's keys in Prepare's code", () => {

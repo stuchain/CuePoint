@@ -561,6 +561,27 @@ export interface CompatibleKeys {
   wheel: CompatibleKey[];
 }
 
+/** One source the Keys page counts: the whole library, a playlist, a Collection or a Set (PAGES-16). */
+export interface KeySource {
+  kind: "all" | "playlist" | "collection" | "set";
+  /** Absent for the whole library. */
+  id?: number;
+}
+
+/** One Camelot key and how many tracks in the sources hold it. */
+export interface KeyPopulationEntry {
+  code: string;
+  count: number;
+}
+
+/** The keys of chosen sources in Camelot order; a track in several sources counts once. */
+export interface KeysPopulation {
+  total: number;
+  keys: KeyPopulationEntry[];
+  /** Tracks with no Beatport key. */
+  no_key: number;
+}
+
 export interface LibraryFacetValue {
   /** Null is the "no value" bucket, which the `is_empty` operator filters by. */
   value: string | null;
@@ -3072,6 +3093,8 @@ export interface CuePointBridge {
   }) => Promise<LibraryQuickFacets>;
   /** The keys that mix with a key, by the engine's rule (PAGES-10). */
   getCompatibleKeys?: (params: { key: string }) => Promise<CompatibleKeys>;
+  /** The keys of chosen sources, counted once per track (PAGES-16). */
+  getKeysPopulation?: (params: { sources: KeySource[] }) => Promise<KeysPopulation>;
   getLibraryFilterFields?: () => Promise<LibraryFilterVocabulary>;
   getLibraryTrack?: (params: { trackId: number }) => Promise<LibraryTrackDetail>;
   /**

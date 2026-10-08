@@ -184,3 +184,52 @@ export function segmentShape(code: string): SegmentShape {
     },
   };
 }
+
+/**
+ * How much of the accent each counts level mixes into the panel's fill (PAGES-16): a key with
+ * no tracks is unmixed, and the most-held key is the last. The stylesheet writes the same
+ * numbers (`wheelContrast.test.ts` checks it does) and they stop at 40% because the label
+ * on top, in the theme's text color, has to stay at 4.5:1 on the mix in every theme.
+ */
+export const COUNT_LEVEL_MIX = [0, 12, 22, 31, 40] as const;
+
+/**
+ * The level a count draws at, from 0 (nothing) to the last: darker for more, relative to
+ * the biggest count on the wheel. Any key with a track is at least level 1, so it never
+ * reads as empty.
+ */
+export function countLevel(count: number, max: number): number {
+  if (count <= 0 || max <= 0) return 0;
+  const last = COUNT_LEVEL_MIX.length - 1;
+  return Math.min(last, Math.max(1, Math.ceil((count / max) * last)));
+}
+
+/** A count short enough for a wedge: 999, 1.2k, 12k. The list beside it writes the whole number. */
+export function compactCount(count: number): string {
+  if (count < 1000) return String(count);
+  if (count < 10_000) {
+    const tenths = Math.floor(count / 100) / 10;
+    return `${Number.isInteger(tenths) ? tenths.toFixed(0) : tenths.toFixed(1)}k`;
+  }
+  return `${Math.floor(count / 1000)}k`;
+}
+
+/** "1 track", "1,234 tracks". */
+export function tracksWord(count: number): string {
+  return `${count.toLocaleString()} ${count === 1 ? "track" : "tracks"}`;
+}
+
+/**
+ * A key's name for assistive technology, with its count in words and whether it is chosen or
+ * mixes with the key asked about. The wheel's segment and the list's row say the same thing.
+ */
+export function countedName(
+  code: string,
+  count: number,
+  chosen: boolean,
+  relation?: "same" | "adjacent" | "relative",
+): string {
+  const held = count > 0 ? tracksWord(count) : "no tracks";
+  const mix = relation === "same" ? ", the key to mix with" : relation ? ", mixes" : "";
+  return `${code}, ${keyName(code)}, ${held}${chosen ? ", chosen" : ""}${mix}`;
+}

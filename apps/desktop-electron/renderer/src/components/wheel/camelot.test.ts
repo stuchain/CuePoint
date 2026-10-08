@@ -6,11 +6,16 @@ import { describe, expect, it } from "vitest";
 
 import {
   CAMELOT_CODES,
+  COUNT_LEVEL_MIX,
   GRID_CELLS,
+  compactCount,
+  countLevel,
+  countedName,
   keyName,
   moveOnRing,
   parseCode,
   segmentShape,
+  tracksWord,
 } from "./camelot";
 
 describe("the wheel's places", () => {
@@ -114,5 +119,51 @@ describe("the shapes", () => {
   it("gives no two keys the same shape", () => {
     const shapes = CAMELOT_CODES.map((code) => JSON.stringify(segmentShape(code).cells));
     expect(new Set(shapes).size).toBe(24);
+  });
+});
+
+describe("the counts mode's levels (PAGES-16)", () => {
+  it("gives a key with no tracks no level, and any key with tracks at least the first", () => {
+    expect(countLevel(0, 50)).toBe(0);
+    expect(countLevel(1, 50_000)).toBe(1);
+  });
+
+  it("is darker for more, up to the last level at the biggest count", () => {
+    expect(countLevel(50, 50)).toBe(COUNT_LEVEL_MIX.length - 1);
+    const levels = [1, 10, 20, 30, 40, 50].map((count) => countLevel(count, 50));
+    expect(levels).toEqual([...levels].sort((a, b) => a - b));
+    expect(new Set(levels).size).toBeGreaterThan(2);
+  });
+
+  it("gives no level when nothing is counted", () => {
+    expect(countLevel(0, 0)).toBe(0);
+  });
+
+  it("starts unmixed and rises", () => {
+    expect(COUNT_LEVEL_MIX[0]).toBe(0);
+    expect([...COUNT_LEVEL_MIX]).toEqual([...COUNT_LEVEL_MIX].sort((a, b) => a - b));
+  });
+});
+
+describe("the words for counts (PAGES-16)", () => {
+  it("writes a count short enough for a wedge", () => {
+    expect(compactCount(0)).toBe("0");
+    expect(compactCount(999)).toBe("999");
+    expect(compactCount(1000)).toBe("1k");
+    expect(compactCount(1234)).toBe("1.2k");
+    expect(compactCount(12_500)).toBe("12k");
+  });
+
+  it("says track or tracks", () => {
+    expect(tracksWord(1)).toBe("1 track");
+    expect(tracksWord(2)).toBe("2 tracks");
+    expect(tracksWord(1234)).toBe("1,234 tracks");
+  });
+
+  it("names a key with its count, whether it is chosen and how it mixes", () => {
+    expect(countedName("8A", 3, false)).toBe("8A, A minor, 3 tracks");
+    expect(countedName("8A", 0, true)).toBe("8A, A minor, no tracks, chosen");
+    expect(countedName("9A", 1, false, "adjacent")).toBe("9A, E minor, 1 track, mixes");
+    expect(countedName("8A", 1, false, "same")).toBe("8A, A minor, 1 track, the key to mix with");
   });
 });

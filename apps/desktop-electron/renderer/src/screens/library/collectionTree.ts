@@ -295,6 +295,33 @@ export function kindLabel(kind: CollectionKind): string {
 }
 
 /**
+ * The tree the Keys page's source picker offers for Collections (PAGES-16): the Collections,
+ * and the folders on the way to them. A Set and a Smart Collection are left out here (a Set has
+ * its own section, a Smart Collection holds a question and not tracks), and a folder with no
+ * Collection under it is left out so the list does not draw places that lead nowhere.
+ */
+export function collectionPickerNodes(
+  nodes: readonly CollectionTreeNode[],
+): CollectionTreeNode[] {
+  const out: CollectionTreeNode[] = [];
+  const walk = (list: readonly CollectionTreeNode[]): void => {
+    for (const node of list) {
+      if (isCollection(node)) {
+        out.push(node);
+      } else if (
+        node.kind === "folder" &&
+        flattenCollections(node.children).some((child) => isCollection(child))
+      ) {
+        out.push(node);
+        walk(node.children);
+      }
+    }
+  };
+  walk(nodes);
+  return out;
+}
+
+/**
  * The tree an "Add to Set" picker offers: the Sets, and the folders on the
  * way to them (PREP-09).
  *

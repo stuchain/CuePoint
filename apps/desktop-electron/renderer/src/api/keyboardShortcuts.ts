@@ -33,6 +33,9 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Library", action: "Move the selected track up or down in a Collection", shortcut: "Alt+Up / Alt+Down" },
   { context: "Library", action: "Rename the selected Collection", shortcut: "F2" },
   { context: "Library", action: "Delete the selected Collection", shortcut: "Delete" },
+  // The Keys page (PAGES-16): the wheel and the list both choose keys the same way.
+  { context: "Keys", action: "Add or remove a key from the choice", shortcut: "Ctrl+Click" },
+  { context: "Keys", action: "Choose every key between the last one and this one", shortcut: "Shift+Click" },
   // Prepare's: the Set's source panel has a divider to drag; Mix in and Mix out are typed in
   // the table (FLW-18) and the entry keys are the queue's (FLW-17), answered while the Set
   // table has focus. Plain Enter and the arrows are the field's and the divider's own.

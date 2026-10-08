@@ -122,7 +122,7 @@ describe("navRegistry", () => {
   it("renders exactly what has been built", () => {
     // Tools and inCrate retired in DISCOVER-12 (DEC-100).
     const enabled = enabledDestinations().map((d) => d.id);
-    expect(enabled).toEqual(["library", "collections", "clean", "discover", "prepare", "settings"]);
+    expect(enabled).toEqual(["library", "collections", "keys", "clean", "discover", "prepare", "settings"]);
   });
 
   describe("a destination that renders another's page (DEC-062)", () => {
@@ -331,6 +331,7 @@ describe("groupedDestinations", () => {
       expect(hints).toEqual({
         library: "Your Rekordbox tracks",
         collections: "Your own groups and smart lists",
+        keys: "The keys in your playlists, Collections and Sets",
         clean: "Fix values with Beatport",
         discover: "Find new music",
         prepare: "Plan a set",
@@ -356,8 +357,25 @@ describe("groupedDestinations", () => {
 
     it("names the pages that need a library before the first import (NAV-5)", () => {
       const needing = NAV_DESTINATIONS.filter((d) => d.needsLibrary).map((d) => d.id);
-      expect(needing).toEqual(["collections", "clean", "discover", "prepare"]);
+      expect(needing).toEqual(["collections", "keys", "clean", "discover", "prepare"]);
       expect(EMPTY_LIBRARY_HINT).toBe("Import your Rekordbox collection first");
+    });
+
+    it("declares Keys at the top level, after Library and its Collections (PAGES-16, DEC-200)", () => {
+      const keys = findDestinationById("keys")!;
+      expect(keys).toMatchObject({
+        label: "Keys",
+        path: "/keys",
+        group: "workspace",
+        icon: "keys",
+        enabled: true,
+        needsLibrary: true,
+      });
+      expect(keys.parentId).toBeUndefined();
+      expect(keys.pageId).toBeUndefined();
+      const ids = NAV_DESTINATIONS.map((d) => d.id);
+      expect(ids.indexOf("keys")).toBe(ids.indexOf("collections") + 1);
+      expect(pageDestination(keys).id).toBe("keys");
     });
 
     it("keeps Settings last, in its own group, for the pinned bottom (NAV-6)", () => {

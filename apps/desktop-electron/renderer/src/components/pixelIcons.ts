@@ -574,6 +574,22 @@ const wheel = [
   "....####....",
 ];
 
+/** A key, for the Keys page (PAGES-16): a ring head and a toothed shaft. */
+const keys = [
+  "............",
+  "..####......",
+  ".#....#.....",
+  ".#....#.....",
+  ".#....#.....",
+  "..####......",
+  "....##......",
+  "....##......",
+  "....#####...",
+  "....##......",
+  "....#####...",
+  "............",
+];
+
 export const PIXEL_ICONS = {
   play,
   pause,
@@ -594,6 +610,7 @@ export const PIXEL_ICONS = {
   // SHELL-09: the concept icons FOUNDATION-14 deferred "until there is a
   // screen to draw them against". The sidebar is that screen.
   collections,
+  keys,
   clean,
   discover,
   prepare,

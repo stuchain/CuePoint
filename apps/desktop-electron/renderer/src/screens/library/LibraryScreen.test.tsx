@@ -506,6 +506,7 @@ function renderScreen(
     onOpenRekordboxInstructions?: () => void;
     onOpenMatch?: (tracks?: unknown) => void;
     onOpenToken?: () => void;
+    onOpenKeys?: (sources: Array<{ kind: "playlist" | "collection" | "set"; id: number }>) => void;
     focus?: "collections";
     openWith?: { rules: FilterRuleSet; token: string } | null;
     refreshWith?: string | null;
@@ -3661,5 +3662,91 @@ describe("quick filters and saving (PAGES-05B)", () => {
       rules: { rules: Array<{ field: string }> };
     };
     expect(saved.rules.rules.map((rule) => rule.field)).toEqual(["genre"]);
+  });
+});
+
+describe("the Key list's link to the Keys page (PAGES-16)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  async function seeOnKeysPage() {
+    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    await userEvent.click(await screen.findByRole("button", { name: "See these on the Keys page" }));
+  }
+
+  it("opens Keys on the whole library when no playlist or Collection is open", async () => {
+    const onOpenKeys = vi.fn();
+    renderScreen({ onOpenKeys });
+    await tableReady();
+    await seeOnKeysPage();
+    expect(onOpenKeys).toHaveBeenCalledWith([]);
+  });
+
+  it("opens Keys with the open playlist ticked", async () => {
+    const onOpenKeys = vi.fn();
+    renderScreen({ onOpenKeys });
+    await tableReady();
+    const tree = await screen.findByRole("tree", { name: "Playlists" });
+    await userEvent.click(within(tree).getByText("Friday"));
+    await seeOnKeysPage();
+    expect(onOpenKeys).toHaveBeenCalledWith([{ kind: "playlist", id: 10 }]);
+  });
+
+  it("opens Keys with the open Collection ticked", async () => {
+    const onOpenKeys = vi.fn();
+    renderScreen({ onOpenKeys });
+    await tableReady();
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
+    await userEvent.click(within(tree).getByText("Warmups"));
+    await seeOnKeysPage();
+    expect(onOpenKeys).toHaveBeenCalledWith([{ kind: "collection", id: 12 }]);
+  });
+
+  it("carries the sources of an 'In playlist' rule, with the open playlist, once each", async () => {
+    const onOpenKeys = vi.fn();
+    renderScreen({
+      onOpenKeys,
+      openWith: {
+        token: "nav-1",
+        rules: {
+          match: "all",
+          rules: [
+            {
+              field: "in_playlist",
+              operator: "any_of",
+              value: [
+                { kind: "playlist", id: 10 },
+                { kind: "set", id: 5 },
+              ],
+            },
+          ],
+        },
+      },
+    });
+    await tableReady();
+    await seeOnKeysPage();
+    expect(onOpenKeys).toHaveBeenCalledWith([
+      { kind: "playlist", id: 10 },
+      { kind: "set", id: 5 },
+    ]);
+  });
+
+  it("is not offered on a Smart Collection, whose rules are not a place", async () => {
+    renderScreen({ onOpenKeys: vi.fn() });
+    await tableReady();
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByText("Recent techno"));
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ scope: "smart" }));
+    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    expect(screen.queryByRole("button", { name: "See these on the Keys page" })).toBeNull();
+  });
+
+  it("offers no link where the page has nowhere to send it", async () => {
+    renderScreen();
+    await tableReady();
+    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    expect(screen.queryByRole("button", { name: "See these on the Keys page" })).toBeNull();
   });
 });

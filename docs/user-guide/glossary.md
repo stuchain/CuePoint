@@ -8,10 +8,13 @@
 - **Track details**: The panel on the right that shows the selected track: buttons to
   play it, your own values, what Rekordbox sent, its cue points, where it is, its Beatport
   match and its history. Hide it with Ctrl+I; it stays as a tab you can click.
+- **Keys page**: Shows the keys in the playlists, Collections and Sets you tick, with a
+  count for each, and the tracks in the keys you click. See [Keys](keys.md).
 - **Camelot wheel**: The 24 keys drawn as two rings, minor (A) inside and major (B)
   outside. It lights a track's key and the keys that mix with it: the same number one
   step either way, and the relative key. Open it from the button beside search or from
-  the key in the player bar; click a key to see every track in it in the Library.
+  the key in the player bar; click a key to see every track in it in the Library. On the Keys page it also carries
+  each key's track count; Ctrl+Click or Shift+Click chooses several keys.
 - **Selection bar**: The row of buttons above the Library table that act on the
   selected tracks: Play, Organize, Explore, Beatport, Fix and More, then Clear
   selection. A track's right-click menu holds the same six groups.

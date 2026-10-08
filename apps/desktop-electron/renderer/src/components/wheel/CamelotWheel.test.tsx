@@ -17,6 +17,7 @@ import { cleanMatchOpening } from "../../screens/clean/cleanLink";
 import { setSelectedTrack } from "../shell/selectedTrack";
 import { EMPTY_AUDIO_STATE } from "../player/playerFormat";
 import { resetPlayerStore } from "../player/playerStore";
+import { CamelotWheel } from "./CamelotWheel";
 import { WheelButton } from "./WheelButton";
 import { closeWheel, openWheel } from "./wheelStore";
 
@@ -414,5 +415,89 @@ describe("the keyboard", () => {
     await waitFor(() => expect(segment("12A")).toHaveFocus());
     await userEvent.keyboard("{ArrowRight}");
     expect(segment("1A")).toHaveFocus();
+  });
+});
+
+
+describe("the wheel in counts mode (PAGES-16)", () => {
+  const counts = new Map([
+    ["8A", 12],
+    ["9A", 3],
+    ["11B", 1234],
+  ]);
+
+  function drawn(props: Partial<React.ComponentProps<typeof CamelotWheel>> = {}) {
+    const onPick = vi.fn();
+    render(
+      <CamelotWheel
+        lit={new Map()}
+        focusCode="8A"
+        onFocusCode={() => undefined}
+        onPick={onPick}
+        counts={counts}
+        {...props}
+      />,
+    );
+    return onPick;
+  }
+
+  it("writes each key's count on its segment, and 0 where there are none", () => {
+    drawn();
+    const label = (code: string) => document.querySelector(`[data-label-for="${code}"]`)!;
+    expect(label("8A")).toHaveTextContent("8A12");
+    expect(label("9A")).toHaveTextContent("9A3");
+    expect(label("1A")).toHaveTextContent("1A0");
+    // Short enough for a wedge; the list beside it writes the whole number.
+    expect(label("11B")).toHaveTextContent("11B1.2k");
+  });
+
+  it("is darker where there are more, by level on the shape", () => {
+    drawn();
+    const level = (code: string) =>
+      document.querySelector(`[data-shape="${code}"]`)!.getAttribute("data-level");
+    expect(level("1A")).toBeNull();
+    expect(Number(level("11B"))).toBeGreaterThan(Number(level("8A")));
+    expect(Number(level("8A"))).toBeGreaterThanOrEqual(Number(level("9A")));
+  });
+
+  it("says the count in each key's name, not on hover alone", () => {
+    drawn();
+    expect(screen.getByRole("button", { name: /^8A, A minor, 12 tracks$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^9A, .*, 3 tracks$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^1A, .*, no tracks$/ })).toBeInTheDocument();
+  });
+
+  it("marks the chosen keys in the drawing and to assistive technology", () => {
+    drawn({ chosen: new Set(["8A", "11B"]) });
+    expect(document.querySelector('[data-shape="8A"]')).toHaveAttribute("data-chosen", "true");
+    expect(document.querySelector('[data-shape="9A"]')).not.toHaveAttribute("data-chosen");
+    expect(screen.getByRole("button", { name: /^8A,.*12 tracks, chosen$/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /^9A,/ })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("still lights the keys that mix, over the counts", () => {
+    drawn({ lit: new Map([["9A", "adjacent" as const]]) });
+    expect(document.querySelector('[data-shape="9A"]')).toHaveAttribute("data-lit", "adjacent");
+    expect(screen.getByRole("button", { name: /^9A,.*3 tracks, mixes$/ })).toBeInTheDocument();
+  });
+
+  it("hands the click's Ctrl, Command and Shift to the page", () => {
+    const onPick = drawn();
+    fireEvent.click(screen.getByRole("button", { name: /^8A,/ }));
+    expect(onPick).toHaveBeenLastCalledWith("8A", { ctrlKey: false, metaKey: false, shiftKey: false });
+    fireEvent.click(screen.getByRole("button", { name: /^9A,/ }), { ctrlKey: true });
+    expect(onPick).toHaveBeenLastCalledWith("9A", { ctrlKey: true, metaKey: false, shiftKey: false });
+    fireEvent.click(screen.getByRole("button", { name: /^11B,/ }), { shiftKey: true });
+    expect(onPick).toHaveBeenLastCalledWith("11B", { ctrlKey: false, metaKey: false, shiftKey: true });
+  });
+
+  it("leaves the header's wheel as it was: no counts, the old names and hints", () => {
+    render(<CamelotWheel lit={new Map()} focusCode="8A" onFocusCode={() => undefined} onPick={() => undefined} />);
+    expect(screen.getByRole("button", { name: "8A, A minor" })).toBeInTheDocument();
+    expect(document.querySelector('[data-label-for="8A"]')).toHaveTextContent(/^8A$/);
+    expect(document.querySelector('[data-shape="8A"]')).not.toHaveAttribute("data-level");
   });
 });

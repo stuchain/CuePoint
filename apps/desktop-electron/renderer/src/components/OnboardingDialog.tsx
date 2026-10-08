@@ -7,9 +7,6 @@ import { NAV_DESTINATIONS } from "./shell/navRegistry";
 import { markOnboardingDone, markPhase14NoteSeen } from "./firstRunMemory";
 import "./OnboardingDialog.css";
 
-/** The Keys page's line in the guide's last screen; PAGES-16 adjusts it here. */
-export const KEYS_PAGE_LINE = "Keys shows the keys of your playlists on the Camelot wheel.";
-
 const PLAY_LINE = "Double-click a track to play it.";
 const PREPARE_LINE =
   "Put tracks in the order you will play them. CuePoint suggests what fits next, checks every change of tempo and key, and plays the Set as the queue.";
@@ -60,7 +57,7 @@ const SCREENS: Screen[] = [
 /** The last screen: the sidebar's pages with their hints, then how to play and where work shows. */
 function Around() {
   const pages = NAV_DESTINATIONS.filter(
-    (d) => d.enabled && d.group === "workspace" && !d.parentId && d.id !== "keys",
+    (d) => d.enabled && d.group === "workspace" && !d.parentId,
   );
   return (
     <div className="onboarding-dialog__around">
@@ -70,7 +67,6 @@ function Around() {
             <strong>{page.label}</strong> {page.id === "prepare" ? PREPARE_LINE : page.hint}
           </li>
         ))}
-        <li>{KEYS_PAGE_LINE}</li>
       </ul>
       <p className="onboarding-dialog__body">{PLAY_LINE}</p>
       <p className="onboarding-dialog__body">{BACKGROUND_LINE}</p>

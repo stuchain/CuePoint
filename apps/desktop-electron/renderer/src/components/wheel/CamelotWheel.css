@@ -32,6 +32,27 @@
   vector-effect: non-scaling-stroke;
 }
 
+/*
+ * The counts mode (PAGES-16): a wedge is mixed with the accent the more it holds. The
+ * numbers are camelot.ts's COUNT_LEVEL_MIX, and stop where the theme's text color is
+ * still at 4.5:1 on the mix (wheelContrast.test.ts reads both).
+ */
+.cp-wheel__shape[data-level="1"] {
+  fill: color-mix(in srgb, var(--accent-primary) 12%, var(--bg-panel-alt));
+}
+
+.cp-wheel__shape[data-level="2"] {
+  fill: color-mix(in srgb, var(--accent-primary) 22%, var(--bg-panel-alt));
+}
+
+.cp-wheel__shape[data-level="3"] {
+  fill: color-mix(in srgb, var(--accent-primary) 31%, var(--bg-panel-alt));
+}
+
+.cp-wheel__shape[data-level="4"] {
+  fill: color-mix(in srgb, var(--accent-primary) 40%, var(--bg-panel-alt));
+}
+
 /* The keys that mix with the track's. */
 .cp-wheel__shape[data-lit] {
   fill: var(--accent-success);
@@ -39,8 +60,9 @@
   stroke: var(--accent-success);
 }
 
-/* The track's own key. */
-.cp-wheel__shape[data-lit="same"] {
+/* The track's own key, and a key chosen on the Keys page. */
+.cp-wheel__shape[data-lit="same"],
+.cp-wheel__shape[data-chosen] {
   fill: var(--accent-primary);
   stroke: var(--accent-primary);
 }
@@ -88,6 +110,25 @@
 }
 
 .cp-wheel__key[data-lit="same"] + .cp-wheel__label {
+  font-weight: 700;
+}
+
+/* A chosen key sits on the solid accent, like the track's own. */
+.cp-wheel__key[data-chosen] + .cp-wheel__label {
+  color: var(--border-outline);
+  font-weight: 700;
+}
+
+/* The counts mode writes the count under the key, both centered on the wedge. */
+.cp-wheel__label[data-counted] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.cp-wheel__count {
+  font-size: var(--font-size-xs);
   font-weight: 700;
 }
 

@@ -214,6 +214,7 @@ describe("desktop contract", () => {
       "getLibraryFilterFields",
       "getLibraryTrack",
       "getCompatibleKeys",
+      "getKeysPopulation",
     ];
 
     it.each(methods)("exposes %s on the preload", (method) => {
@@ -252,6 +253,15 @@ describe("desktop contract", () => {
       expect(method).not.toContain("postJson");
       expect(bridgeTypes).toContain("interface CompatibleKeys");
       expect(bridgeTypes).toContain("interface CompatibleKey ");
+    });
+
+    it("counts the keys of chosen sources with a POST of the sources (PAGES-16)", () => {
+      const start = engineClient.indexOf("async getKeysPopulation(");
+      const method = engineClient.slice(start, engineClient.indexOf("async ", start + 10));
+      expect(method).toContain("postJson");
+      expect(method).toContain("/api/v1/library/keys/population");
+      expect(bridgeTypes).toContain("interface KeysPopulation");
+      expect(bridgeTypes).toContain("interface KeySource");
     });
 
     it("asks for the quick filters with a POST of the view (FLW-4)", () => {

@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   done**) that opens the list, until all four are done. If you update from an earlier version, a single
   note, **What changed**, tells you the app is now Medium size (1.5×) and that keys
   now come only from Beatport, with how many of your tracks have a key.
+- **A Keys page.** A new page after Library and Collections shows which keys your
+  playlists, Collections and Sets hold. Tick the sources (the whole library to start),
+  and the Camelot wheel writes each key's track count on it, darker for more, beside
+  a list of the same counts in Camelot order with **No Beatport key** on its own
+  line. Click a key (Ctrl+Click or Shift+Click for several) to see its tracks in the
+  usual table with the Library's buttons; **Show keys that mix with 8A** lights the
+  keys that go with it, and **Open in Library** and **Save as Smart Collection…**
+  carry the choice on. The Library's Key list gains **See these on the Keys page**.
 - **Track details, in a calmer order.** The panel beside every page is now named
   **Track details**; hidden, it is a tab down the right edge that shows the
   selected title, and one click brings it back. Under the title, **Play**, **Play

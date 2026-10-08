@@ -27,6 +27,7 @@ import {
   canMoveInto,
   canReorder,
   collectionAncestors,
+  collectionPickerNodes,
   collectionRows,
   collectionSortLabel,
   defaultSortForCollection,
@@ -424,5 +425,27 @@ describe("where a dragged row lands", () => {
 
   it("lands at the end when it is dropped past the last row", () => {
     expect(movedPosition(0, 10)).toBe(9);
+  });
+});
+
+describe("the Collections the Keys page can count (PAGES-16)", () => {
+  it("offers the Collections and the folders on the way, and no Set or Smart Collection", () => {
+    const tree = buildCollectionTree([
+      ...NODES,
+      node(6, "Friday", "set", 1),
+      node(7, "Empty folder", "folder", null),
+      node(8, "Sets only", "folder", null),
+      node(9, "Saturday", "set", 8),
+    ]);
+    expect(collectionPickerNodes(tree).map((n) => n.name)).toEqual([
+      "Sets",
+      "Warmups",
+      "Peak",
+      "Closers",
+    ]);
+  });
+
+  it("is empty when there is no Collection at all", () => {
+    expect(collectionPickerNodes(buildCollectionTree([node(1, "Only a Smart", "smart", null)]))).toEqual([]);
   });
 });

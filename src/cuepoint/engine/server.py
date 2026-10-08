@@ -50,9 +50,12 @@ from cuepoint.engine.library_api import (
     LibraryUnavailableError,
     MODE_BROWSE,
     SEARCH_LIMIT_DEFAULT,
+    SourceNotFoundError,
     library_compatible_keys,
+    library_keys_population,
     library_facet,
     library_quick_facets,
+    parse_key_population_body,
     parse_quick_facets_body,
     parse_collection_id,
     parse_optional_sort,
@@ -1110,6 +1113,30 @@ def make_handler(
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_unexpected(exc, error_payload("FACET_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
+                return
+
+            if path == "/api/v1/library/keys/population":
+                # PAGES-16: the Keys page's counts for the ticked sources. A POST
+                # because the sources are a list; it reads and changes nothing.
+                try:
+                    payload = library_keys_population(
+                        parse_key_population_body(self._read_body())
+                    )
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except SourceNotFoundError as exc:
+                    self._send_json(404, error_payload("SOURCE_NOT_FOUND", str(exc)))
+                    return
+                except LibraryUnavailableError as exc:
+                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_unexpected(
+                        exc, error_payload("KEYS_POPULATION_FAILED", str(exc))
+                    )
                     return
                 self._send_json(200, payload)
                 return

@@ -101,5 +101,6 @@ If something goes wrong, see [Troubleshooting](troubleshooting.md) and the [FAQ]
 ## Next steps
 
 - [Your library](library.md): importing, browsing and Track details.
+- [Keys](keys.md): the keys in your playlists, Collections and Sets.
 - [Clean](clean.md): matching and review in detail.
 - [The CuePoint window](the-window.md): the sidebar, the status strip and shortcuts.

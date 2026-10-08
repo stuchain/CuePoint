@@ -11,6 +11,8 @@ import {
   type EngineJobList,
   type LibraryBrowseParams,
   type CompatibleKeys,
+  type KeySource,
+  type KeysPopulation,
   type LibraryFacet,
   type LibraryQuickFacets,
   type LibraryFilterVocabulary,
@@ -721,6 +723,10 @@ export class EngineSupervisor {
 
   async getCompatibleKeys(params: { key: string }): Promise<CompatibleKeys> {
     return (await this.readyClient()).getCompatibleKeys(params);
+  }
+
+  async getKeysPopulation(params: { sources: KeySource[] }): Promise<KeysPopulation> {
+    return (await this.readyClient()).getKeysPopulation(params);
   }
 
   async getLibraryFilterFields(): Promise<LibraryFilterVocabulary> {

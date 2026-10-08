@@ -18,7 +18,7 @@ them here would be exactly the "no fake implementation" this project rules out.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from cuepoint.models.collection import KIND_COLLECTION, KIND_SET
 from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet, field_spec
@@ -503,6 +503,28 @@ class LibraryService(ILibraryService):
             genres_total=genre.total_values,
             genres_truncated=genre.truncated,
         )
+
+    def key_population(
+        self, rules: Optional[RuleSet] = None
+    ) -> Tuple[int, Tuple[Tuple[str, int], ...], int]:
+        """Return how many tracks each key holds in a view (PAGES-16).
+
+        The Keys page's counts: ``(total, keys, no_key)`` with the keys in
+        Camelot order. One grouped read of the same effective key every key
+        filter uses (PAGES-15), so a count is the number of rows the Library
+        shows when filtered the same way.
+        """
+        browse = self._browse_query("", None, None, rules, DEFAULT_SORT, "asc")
+        facet = self._tracks.facet_values(browse, "key", limit=len(CAMELOT_ORDER))
+        rank = {code: index for index, code in enumerate(CAMELOT_ORDER)}
+        keyed = tuple(
+            sorted(
+                ((value.value, value.count) for value in facet.values if value.value),
+                key=lambda item: rank.get(item[0], len(rank)),
+            )
+        )
+        no_key = sum(value.count for value in facet.values if value.value is None)
+        return sum(count for _, count in keyed) + no_key, keyed, no_key
 
     def browse_count(
         self,

@@ -128,7 +128,7 @@ import { DEFAULT_LIBRARY_QUERY, type LibraryQuery, queryKey } from "./libraryQue
 import { copySummary, gatherTracksAsText, writeClipboard } from "./trackClipboard";
 import { EMPTY_SELECTION, isSelected, onlySelectedId, selectAll, selectedRowIndex } from "./trackSelection";
 import { useFacet, useFilterVocabulary, useQuickFacets } from "./useFilterVocabulary";
-import { openSource, withSource } from "./savedScope";
+import { keysSources, openSource, withSource } from "./savedScope";
 import { sourceKey } from "./filterText";
 import { usePlaylistTree } from "./usePlaylistTree";
 import { useTrackDetail } from "./useTrackDetail";
@@ -226,6 +226,11 @@ export interface LibraryScreenProps {
    */
   onOpenMatch?: (tracks?: CleanTracks) => void;
   /**
+   * Open the Keys page on the playlist, Collection or Set the table is open on, or on the whole
+   * library when it is open on none (PAGES-16): the Key list's "See these on the Keys page".
+   */
+  onOpenKeys?: (sources: Array<{ kind: "playlist" | "collection" | "set"; id: number }>) => void;
+  /**
    * Clean's Fix values with these tracks chosen (FLW-12): the selection bar's
    * Beatport ▸ and Fix ▸, and the right-click menu's. An action starts that
    * dialog at once. A prop for `focus`'s reason; absent, those entries are left
@@ -261,6 +266,7 @@ export function LibraryScreen({
   onOpenInClean,
   onOpenMissingFiles,
   onOpenMatch,
+  onOpenKeys,
   onOpenFix,
   onOpenEntity,
   onOpenSimilar,
@@ -2014,6 +2020,12 @@ export function LibraryScreen({
               quickFacetsLoading={quick.loading}
               onRequestQuickFacets={quick.load}
               onMatchTracks={onOpenMatch ? () => onOpenMatch() : undefined}
+              onOpenKeys={
+                // Not on a Smart Collection: its rules choose the tracks, and they are no place.
+                onOpenKeys && smart === null && scopedCollection?.kind !== "smart"
+                  ? () => onOpenKeys(keysSources(query.playlistId, scopedCollection, barRules))
+                  : undefined
+              }
               smart={smart}
               onSaveSmart={() => {
                 setSavingError(null);

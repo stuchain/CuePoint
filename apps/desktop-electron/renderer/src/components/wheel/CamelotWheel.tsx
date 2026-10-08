@@ -1,7 +1,18 @@
 import { Fragment, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 
 import { keyHint } from "./wheelLink";
-import { CAMELOT_CODES, GRID_CELLS, keyName, moveOnRing, segmentShape, type WheelMove } from "./camelot";
+import {
+  CAMELOT_CODES,
+  GRID_CELLS,
+  countLevel,
+  compactCount,
+  countedName,
+  keyName,
+  moveOnRing,
+  segmentShape,
+  tracksWord,
+  type WheelMove,
+} from "./camelot";
 import "./CamelotWheel.css";
 
 export type KeyRelation = "same" | "adjacent" | "relative";
@@ -12,10 +23,28 @@ interface CamelotWheelProps {
   /** The one key in the tab order; the arrows move it. */
   focusCode: string;
   onFocusCode: (code: string) => void;
-  /** A key was chosen, by a click or Enter. */
-  onPick: (code: string) => void;
+  /**
+   * A key was chosen, by a click or Enter. The click's Ctrl, Command and Shift come with it, for
+   * the Keys page's choosing of several; the header's wheel takes the code alone.
+   */
+  onPick: (code: string, modifiers: PickModifiers) => void;
   /** What the hole in the middle shows. */
   center?: ReactNode;
+  /**
+   * The counts mode (PAGES-16): how many tracks each key holds. Each segment writes its count
+   * beside its name and is drawn darker the more it holds; a key not in the map holds none.
+   * Without it the wheel is the header's, as it was.
+   */
+  counts?: ReadonlyMap<string, number>;
+  /** In the counts mode, the keys chosen on the page: drawn solid and named so. */
+  chosen?: ReadonlySet<string>;
+}
+
+/** Which of Ctrl, Command and Shift were down for a pick. */
+export interface PickModifiers {
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
 }
 
 const MOVES: Record<string, WheelMove> = {
@@ -39,11 +68,20 @@ function nameOf(code: string, relation: KeyRelation | undefined): string {
  * mix with it are lit. It draws what it is given and knows nothing of tracks or the
  * Library, so PAGES-16's Keys page can draw on it as well.
  */
-export function CamelotWheel({ lit, focusCode, onFocusCode, onPick, center }: CamelotWheelProps) {
+export function CamelotWheel({
+  lit,
+  focusCode,
+  onFocusCode,
+  onPick,
+  center,
+  counts,
+  chosen,
+}: CamelotWheelProps) {
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   // Which key has focus or the pointer: drawn as an outline round its wedge, never a fill.
   const [focused, setFocused] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const biggest = counts ? Math.max(0, ...counts.values()) : 0;
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const move = MOVES[event.key];
@@ -56,6 +94,8 @@ export function CamelotWheel({ lit, focusCode, onFocusCode, onPick, center }: Ca
     buttons.current.get(next)?.focus();
   };
 
+  const levelOf = (code: string) => (counts ? countLevel(counts.get(code) ?? 0, biggest) : 0);
+
   return (
     <div className="cp-wheel" role="group" aria-label="Keys" onKeyDown={onKeyDown}>
       <svg className="cp-wheel__art" viewBox={`0 0 ${GRID_CELLS} ${GRID_CELLS}`} aria-hidden="true">
@@ -66,6 +106,8 @@ export function CamelotWheel({ lit, focusCode, onFocusCode, onPick, center }: Ca
             d={SHAPES.get(code)!.path}
             data-shape={code}
             data-lit={lit.get(code) ?? undefined}
+            data-level={levelOf(code) || undefined}
+            data-chosen={chosen?.has(code) ? "true" : undefined}
           />
         ))}
         {/* The marks go last so they lie over the neighbors' fills. */}
@@ -79,6 +121,8 @@ export function CamelotWheel({ lit, focusCode, onFocusCode, onPick, center }: Ca
       {CAMELOT_CODES.map((code) => {
         const shape = SHAPES.get(code)!;
         const relation = lit.get(code);
+        const count = counts ? (counts.get(code) ?? 0) : null;
+        const isChosen = chosen?.has(code) ?? false;
         return (
           <Fragment key={code}>
             <button
@@ -91,9 +135,11 @@ export function CamelotWheel({ lit, focusCode, onFocusCode, onPick, center }: Ca
               data-key={code}
               data-ring={code.slice(-1)}
               data-lit={relation ?? undefined}
+              data-chosen={isChosen ? "true" : undefined}
               aria-current={relation === "same" ? "true" : undefined}
-              aria-label={nameOf(code, relation)}
-              title={keyHint(code)}
+              aria-label={count === null ? nameOf(code, relation) : countedName(code, count, isChosen, relation)}
+              aria-pressed={count === null ? undefined : isChosen}
+              title={count === null ? keyHint(code) : `${code}: ${tracksWord(count)}`}
               tabIndex={code === focusCode ? 0 : -1}
               style={
                 {
@@ -102,7 +148,9 @@ export function CamelotWheel({ lit, focusCode, onFocusCode, onPick, center }: Ca
                   "--wheel-y": `${shape.label.y}%`,
                 } as CSSProperties
               }
-              onClick={() => onPick(code)}
+              onClick={(event) =>
+                onPick(code, { ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey })
+              }
               onFocus={() => {
                 onFocusCode(code);
                 setFocused(code);
@@ -117,9 +165,11 @@ export function CamelotWheel({ lit, focusCode, onFocusCode, onPick, center }: Ca
               className="cp-wheel__label"
               aria-hidden="true"
               data-label-for={code}
+              data-counted={count === null ? undefined : "true"}
               style={{ "--wheel-x": `${shape.label.x}%`, "--wheel-y": `${shape.label.y}%` } as CSSProperties}
             >
               {code}
+              {count !== null && <span className="cp-wheel__count">{compactCount(count)}</span>}
             </span>
           </Fragment>
         );

@@ -20,14 +20,19 @@ from typing import Any, Dict, List, Optional, Tuple
 from cuepoint.models.filter_rule import (
     FACETABLE_FIELDS,
     KEY_SOURCE_YOURS,
+    SOURCE_COLLECTION,
+    SOURCE_PLAYLIST,
+    SOURCE_SET,
     TYPE_NUMBER,
     Facet,
     FacetRange,
+    FilterRule,
     RuleSet,
     describe_fields,
     describe_operators,
     field_spec,
 )
+from cuepoint.models.collection import KIND_COLLECTION, KIND_SET
 from cuepoint.models.library_track import LibraryTrack, QueueTrack
 from cuepoint.models.track_clean_state import TrackCleanState
 from cuepoint.models.track_metadata import (
@@ -810,6 +815,91 @@ def library_compatible_keys(raw: Optional[str]) -> Dict[str, Any]:
         wheel.append({"code": f"{number}{letter}", "relation": key_relation(seed, key)})
     number, letter = seed.camelot
     return {"key": f"{number}{letter}", "wheel": wheel}
+
+
+class SourceNotFoundError(LookupError):
+    """A playlist, Collection or Set the Keys page named does not exist."""
+
+
+#: What a key-population source may name besides the three kinds a rule takes.
+SOURCE_ALL = "all"
+
+
+def parse_key_population_body(raw: bytes) -> List[Dict[str, Any]]:
+    """Parse the body of ``POST /api/v1/library/keys/population`` (PAGES-16).
+
+    ``{"sources": [{"kind": "all" | "playlist" | "collection" | "set", "id"}]}``.
+    An empty list, or a list holding ``all``, is the whole library.
+
+    Raises:
+        ValueError: If the body is not that, or a source names a kind that does
+            not exist or an id that is not a positive whole number.
+    """
+    try:
+        data = json.loads(raw.decode("utf-8")) if raw.strip() else {}
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise ValueError("Invalid JSON body") from None
+    if not isinstance(data, dict):
+        raise ValueError("JSON body must be an object")
+    items = data.get("sources", [])
+    if not isinstance(items, list):
+        raise ValueError("sources must be a list")
+    sources: List[Dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("each source must be an object with a kind and an id")
+        kind = str(item.get("kind") or "").strip().lower()
+        if kind == SOURCE_ALL:
+            sources.append({"kind": SOURCE_ALL})
+            continue
+        if kind not in (SOURCE_PLAYLIST, SOURCE_COLLECTION, SOURCE_SET):
+            raise ValueError(
+                f"source kind {kind!r} is not one of: all, playlist, collection, set"
+            )
+        ident = item.get("id")
+        if isinstance(ident, bool) or not isinstance(ident, int) or ident <= 0:
+            raise ValueError(f"a {kind} source needs a positive whole-number id")
+        sources.append({"kind": kind, "id": ident})
+    return sources
+
+
+def library_keys_population(sources: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Count each Camelot key over the chosen sources (PAGES-16, DEC-200).
+
+    The sources are one "In playlist is any of" rule, so a track filed in
+    several counts once and the numbers are the ones the Library shows when it
+    is filtered the same way. Keys are Beatport's (PAGES-15).
+
+    Raises:
+        SourceNotFoundError: If a named playlist, Collection or Set is gone.
+    """
+    named = [s for s in sources if s["kind"] != SOURCE_ALL]
+    rules = RuleSet()
+    if named and len(named) == len(sources):
+        _require_sources(named)
+        rules = RuleSet(rules=(FilterRule("in_playlist", "any_of", named),))
+    total, keys, no_key = _resolve_library_service().key_population(rules)
+    return {
+        "total": total,
+        "keys": [{"code": code, "count": count} for code, count in keys],
+        "no_key": no_key,
+    }
+
+
+def _require_sources(named: List[Dict[str, Any]]) -> None:
+    """Raise :class:`SourceNotFoundError` for the first source that is gone."""
+    playlists = _resolve_playlist_repository()
+    collections = _resolve_collection_service()
+    for source in named:
+        kind, ident = source["kind"], source["id"]
+        if kind == SOURCE_PLAYLIST:
+            found = playlists.get(ident) is not None
+        else:
+            node = collections.get(ident)
+            wanted = KIND_COLLECTION if kind == SOURCE_COLLECTION else KIND_SET
+            found = node is not None and node.kind == wanted
+        if not found:
+            raise SourceNotFoundError(f"No {kind} with id {ident}")
 
 
 def library_filter_fields() -> Dict[str, Any]:

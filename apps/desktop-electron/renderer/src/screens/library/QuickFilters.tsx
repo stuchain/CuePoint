@@ -44,6 +44,8 @@ interface QuickFiltersProps {
   onOpen: () => void;
   /** Open matching, for the Key list of a library nobody has matched. */
   onMatchTracks?: () => void;
+  /** Open the Keys page on this view's playlist or Collection (PAGES-16). */
+  onOpenKeys?: () => void;
 }
 
 const LABELS: Record<QuickKind, string> = { key: "Key", bpm: "BPM", genre: "Genre" };
@@ -71,6 +73,7 @@ export function QuickFilters({
   loading = false,
   onOpen,
   onMatchTracks,
+  onOpenKeys,
 }: QuickFiltersProps) {
   const [open, setOpen] = useState<QuickKind | null>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -134,6 +137,14 @@ export function QuickFilters({
                         ? () => {
                             setOpen(null);
                             onMatchTracks();
+                          }
+                        : undefined
+                    }
+                    onOpenKeys={
+                      onOpenKeys
+                        ? () => {
+                            setOpen(null);
+                            onOpenKeys();
                           }
                         : undefined
                     }
@@ -239,7 +250,8 @@ function KeyList({
   loading,
   onFiltersChange,
   onMatchTracks,
-}: ListProps & { onMatchTracks?: () => void }) {
+  onOpenKeys,
+}: ListProps & { onMatchTracks?: () => void; onOpenKeys?: () => void }) {
   if (!facets) {
     return <p className="cp-quick__note">{loading ? "Reading the keys…" : "Keys are not available."}</p>;
   }
@@ -264,6 +276,11 @@ function KeyList({
           checked={asksForNone(filters, KEY_FIELD)}
           onChange={() => onFiltersChange(toggleNone(filters, KEY_FIELD))}
         />
+      )}
+      {onOpenKeys && (
+        <Button variant="secondary" className="cp-quick__keys-link" onClick={onOpenKeys}>
+          See these on the Keys page
+        </Button>
       )}
     </div>
   );

@@ -354,6 +354,7 @@ function registerIpcHandlers(): void {
     engine.getLibraryQuickFacets(params),
   );
   handle("engine:getCompatibleKeys", (_event, params) => engine.getCompatibleKeys(params));
+  handle("engine:getKeysPopulation", (_event, params) => engine.getKeysPopulation(params));
   handle("engine:getLibraryFilterFields", () => engine.getLibraryFilterFields());
   handle("engine:getLibraryTrack", (_event, params) =>
     engine.getLibraryTrack(params),

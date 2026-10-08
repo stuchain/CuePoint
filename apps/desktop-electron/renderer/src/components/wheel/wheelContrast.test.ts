@@ -7,6 +7,7 @@ import qtEvolved from "../../tokens/themes/qtEvolved.css?raw";
 import retro16 from "../../tokens/themes/retro16.css?raw";
 import { contrastRatio } from "../../tokens/themeDerivation";
 import wheelCss from "./CamelotWheel.css?raw";
+import { COUNT_LEVEL_MIX } from "./camelot";
 
 /**
  * The wheel's colors in every built-in theme (PAGES-10): each label at 4.5:1 or
@@ -36,6 +37,43 @@ describe.each(Object.entries(THEMES))("the wheel in %s", (_name, css) => {
 
   it("outlines every wedge against the panel at 3:1", () => {
     expect(contrastRatio(t["fg-muted"]!, t["bg-panel"]!)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+/** `color-mix(in srgb, <top> <percent>%, <base>)` in sRGB, as the stylesheet writes it. */
+function mix(top: string, base: string, percent: number): string {
+  const channel = (hex: string, at: number) => parseInt(hex.slice(1 + at * 2, 3 + at * 2), 16);
+  const out = [0, 1, 2].map((at) =>
+    Math.round((channel(top, at) * percent + channel(base, at) * (100 - percent)) / 100)
+      .toString(16)
+      .padStart(2, "0"),
+  );
+  return `#${out.join("")}`;
+}
+
+describe.each(Object.entries(THEMES))("the counts mode in %s (PAGES-16)", (_name, css) => {
+  const t = tokens(css);
+
+  it("reads each count at 4.5:1 on the fill its level mixes", () => {
+    COUNT_LEVEL_MIX.forEach((percent, level) => {
+      const fill = mix(t["accent-primary"]!, t["bg-panel-alt"]!, percent);
+      expect(contrastRatio(t["fg-primary"]!, fill), `level ${level} (${percent}%)`).toBeGreaterThanOrEqual(4.5);
+    });
+  });
+
+  it("tells a chosen key from a counted one: its label sits on the track's-key fill", () => {
+    expect(contrastRatio(t["border-outline"]!, t["accent-primary"]!)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("the counts mode's styles", () => {
+  it("writes each level's mix into the stylesheet, from the same numbers", () => {
+    COUNT_LEVEL_MIX.forEach((percent, level) => {
+      if (level === 0) return;
+      expect(wheelCss).toMatch(
+        new RegExp(`data-level="${level}"\\][^{]*\\{[^}]*accent-primary\\)\\s*${percent}%`),
+      );
+    });
   });
 });
 

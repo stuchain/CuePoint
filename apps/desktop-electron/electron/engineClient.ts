@@ -631,6 +631,27 @@ export interface CompatibleKeys {
   wheel: CompatibleKey[];
 }
 
+/** One source the Keys page counts: the whole library, a playlist, a Collection or a Set (PAGES-16). */
+export interface KeySource {
+  kind: "all" | "playlist" | "collection" | "set";
+  /** Absent for the whole library. */
+  id?: number;
+}
+
+/** One Camelot key and how many tracks in the sources hold it. */
+export interface KeyPopulationEntry {
+  code: string;
+  count: number;
+}
+
+/** The keys of chosen sources in Camelot order; a track in several sources counts once. */
+export interface KeysPopulation {
+  total: number;
+  keys: KeyPopulationEntry[];
+  /** Tracks with no Beatport key. */
+  no_key: number;
+}
+
 export interface LibraryFacetValue {
   /** Null is the "no value" bucket, which `is_empty` filters by. */
   value: string | null;
@@ -2723,6 +2744,14 @@ export class EngineClient {
     return this.getJson(
       `/api/v1/library/keys/compatible?${new URLSearchParams({ key: params.key }).toString()}`,
     );
+  }
+
+  /**
+   * The keys of chosen playlists, Collections and Sets, each counted once
+   * (PAGES-16). A POST because the sources are a list; it changes nothing.
+   */
+  async getKeysPopulation(params: { sources: KeySource[] }): Promise<KeysPopulation> {
+    return this.postJson("/api/v1/library/keys/population", { sources: params.sources });
   }
 
   /** What can be filtered, and with which operators (DEC-043). */

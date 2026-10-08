@@ -82,12 +82,14 @@ function Harness({
   initial = null,
   onChange,
   onMatchTracks,
+  onOpenKeys,
   onRequest = () => {},
 }: {
   quickFacets?: LibraryQuickFacets | null;
   initial?: FilterRuleSet | null;
   onChange?: (next: FilterRuleSet | null) => void;
   onMatchTracks?: () => void;
+  onOpenKeys?: () => void;
   onRequest?: () => void;
 }) {
   const [filters, setFilters] = useState<FilterRuleSet | null>(initial);
@@ -112,6 +114,7 @@ function Harness({
       quickFacets={quickFacets}
       onRequestQuickFacets={onRequest}
       onMatchTracks={onMatchTracks}
+      onOpenKeys={onOpenKeys}
     />
   );
 }
@@ -416,5 +419,34 @@ describe("In playlist (FLW-7)", () => {
     pick();
     expect(onChange).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+});
+
+describe("the Key list's link to the Keys page (PAGES-16)", () => {
+  it("offers 'See these on the Keys page' under the keys, and opens the page", () => {
+    const onOpenKeys = vi.fn();
+    render(<Harness onOpenKeys={onOpenKeys} />);
+    fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    const panel = within(screen.getByRole("dialog", { name: "Key" }));
+    fireEvent.click(panel.getByRole("button", { name: "See these on the Keys page" }));
+    expect(onOpenKeys).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog", { name: "Key" })).toBeNull();
+  });
+
+  it("leaves the in-place filter as it was: the ticks are still rules", () => {
+    const onChange = vi.fn();
+    render(<Harness onOpenKeys={() => {}} onChange={onChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /8A/ }));
+    expect(onChange).toHaveBeenCalledWith({
+      match: "all",
+      rules: [{ field: "key", operator: "is", value: "8A" }],
+    });
+  });
+
+  it("is not drawn where the page has no Keys page to open", () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    expect(screen.queryByRole("button", { name: "See these on the Keys page" })).toBeNull();
   });
 });

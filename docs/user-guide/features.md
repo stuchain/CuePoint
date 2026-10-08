@@ -11,6 +11,7 @@ shortcuts — see [The CuePoint window](the-window.md).
 | --- | --- | --- |
 | **Library** | Your imported Rekordbox collection: browse, search, filter, sort, play, and edit your own values | [Your library](library.md) |
 | **Collections** | CuePoint's own Collections and Smart Collections, beside Rekordbox's playlists | [Organizing your library](organization.md) |
+| **Keys** | See which keys your playlists, Collections and Sets hold, with a count for each, and open the tracks in any of them | [Keys](keys.md) |
 | **Clean** | Match tracks on Beatport, review the matches, find missing files and possible duplicates, and see what needs you | [Clean](clean.md) |
 | **Discover** | Find new music on Beatport from your artists and labels, keep a wantlist, push tracks to a Beatport playlist, open an artist's or label's page, and find similar tracks in your library | [Discover](discover.md) |
 | **Prepare** | Plan a set: a running order in chapters, with planned times, transition checks, suggestions for any gap, and set lists | [Prepare](prepare.md) |

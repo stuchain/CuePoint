@@ -284,6 +284,41 @@ def _median_ms(call) -> float:
     return round(statistics.median(samples), 2)
 
 
+def _give_beatport_keys(track_repo: TrackRepository, total: int) -> None:
+    """Accept a Beatport match carrying a key for about 70% of the tracks.
+
+    The rows the matcher writes (PAGES-15): an attempt, a candidate with the
+    key, and an accepted state pointing at it. Done in bulk, so the library the
+    Keys page counts looks like a matched one.
+    """
+    keys = [f"{(i % 12) + 1}{'AB'[i % 2]}" for i in range(24)]
+    with track_repo._db.transaction(join_existing=True) as conn:
+        ids = [
+            int(row[0])
+            for row in conn.execute("SELECT id FROM tracks ORDER BY id").fetchall()
+        ]
+        for index, track_id in enumerate(ids):
+            if index % 10 >= 7:
+                continue
+            attempt = conn.execute(
+                "INSERT INTO match_attempts (track_id, started_at, finished_at,"
+                " outcome, input_json) VALUES (?, 't', 't', 'matched', '{}')",
+                (track_id,),
+            ).lastrowid
+            candidate = conn.execute(
+                "INSERT INTO match_candidates (attempt_id, rank, beatport_track_id,"
+                " url, key, score, guard_ok, is_winner)"
+                " VALUES (?, 0, ?, ?, ?, 96, 1, 1)",
+                (attempt, f"bp{track_id}", f"https://bp/{track_id}", keys[index % 24]),
+            ).lastrowid
+            conn.execute(
+                "INSERT OR REPLACE INTO track_match (track_id, state, decided_by,"
+                " attempt_id, candidate_id, decided_at)"
+                " VALUES (?, 'accepted', 'auto', ?, ?, 't')",
+                (track_id, attempt, candidate),
+            )
+
+
 def measure_browse(
     track_repo: TrackRepository, playlist_repo: PlaylistRepository, total: int
 ) -> List[Dict[str, Any]]:
@@ -418,6 +453,34 @@ def measure_browse(
             lambda: track_repo.facet_values(BrowseQuery(rules=narrow), "genre"),
         ),
         ("facet: bpm range", lambda: track_repo.facet_range(field="bpm")),
+    ]
+
+    # PAGES-16: the Keys page's counts. A track's key is its accepted Beatport
+    # match's, so most of the library is given one first (the export has none),
+    # then the grouped read is timed over the whole library and over ticked
+    # playlists, the two things the page asks.
+    _give_beatport_keys(track_repo, total)
+    ticked = [n for n in nodes if not n.is_folder][:3]
+    ticked_rule = RuleSet(
+        rules=(
+            FilterRule(
+                "in_playlist",
+                "any_of",
+                [{"kind": "playlist", "id": int(n.id)} for n in ticked],
+            ),
+        )
+    )
+    cases += [
+        (
+            "key population, whole library",
+            lambda: track_repo.facet_values(BrowseQuery(), "key", limit=24),
+        ),
+        (
+            "key population, three playlists",
+            lambda: track_repo.facet_values(
+                BrowseQuery(rules=ticked_rule), "key", limit=24
+            ),
+        ),
     ]
 
     measured: List[Dict[str, Any]] = []

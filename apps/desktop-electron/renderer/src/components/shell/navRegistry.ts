@@ -111,6 +111,9 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
   // The Library is home (DEC-100).
   { id: "library", label: "Library", hint: "Your Rekordbox tracks", path: "/library", group: "workspace", icon: "library", enabled: true },
   { id: "collections", label: "Collections", hint: "Your own groups and smart lists", path: "/collections", group: "workspace", icon: "collections", parentId: "library", needsLibrary: true, enabled: true, pageId: "library" },
+  // A page of its own, not a part of the Library's tree (DEC-200): it sits after the Library and
+  // the Collections that nest under it, at the top level.
+  { id: "keys", label: "Keys", hint: "The keys in your playlists, Collections and Sets", path: "/keys", group: "workspace", icon: "keys", needsLibrary: true, enabled: true },
   { id: "clean", label: "Clean", hint: "Fix values with Beatport", path: "/clean", group: "workspace", icon: "clean", needsLibrary: true, enabled: true },
   { id: "discover", label: "Discover", hint: "Find new music", path: "/discover", group: "workspace", icon: "discover", needsLibrary: true, enabled: true, nested: true },
   { id: "prepare", label: "Prepare", hint: "Plan a set", path: "/prepare", group: "workspace", icon: "prepare", needsLibrary: true, enabled: true, nested: true },

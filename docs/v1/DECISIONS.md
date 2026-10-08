@@ -487,7 +487,7 @@ the repeated IA reshuffling that a grow-as-you-go nav would cause.
 ### Amended (2026-10-08, DEC-200) — Keys
 
 The registry gains one destination, **Keys** (`/keys`), after Library and its nested Collections,
-built in PAGES-16.
+built in PAGES-16 (2026-10-08): `/keys`, after Collections, dimmed before the first import.
 
 ---
 

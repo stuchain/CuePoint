@@ -1,0 +1,340 @@
+/*
+ * The Keys page (PAGES-16). Sources on the left, the wheel in the middle, the counts list
+ * beside it, the tracks below. The top row wraps instead of scrolling sideways, and the
+ * wheel keeps its whole-pixel size at every scale: it is never squeezed to fit.
+ */
+.keys-page {
+  --keys-wheel: calc(48 * 4px * var(--scale));
+  flex: none;
+  gap: 0;
+  width: 100%;
+  min-height: auto;
+  padding: 0;
+}
+
+.app-main .screen.keys-page {
+  max-width: none;
+}
+
+/* At 3× the wheel's usual size is wider than the middle column of a 1280-wide window, so its
+   cell is 3 points there: still a whole number of pixels, and nothing scrolls sideways. */
+:root[data-scale="3"] .keys-page {
+  --keys-wheel: calc(48 * 3px * var(--scale));
+}
+
+:root[data-scale="3"] .keys-page .cp-wheel {
+  --wheel-cell: round(calc(3px * var(--scale)), 1px);
+}
+
+.keys-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-xs) var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--border-width) solid var(--border-muted);
+}
+
+/* Sources, wheel and counts share one row at the default size (1.5x in a 1,280-wide window with
+   Track details open): the Sources column is narrow, and the wheel's size is the only one that
+   is not given up. At the larger sizes the row wraps instead of scrolling sideways. */
+.keys-page__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.keys-page__state {
+  flex: 1 1 calc(240px * var(--scale));
+  align-self: center;
+}
+
+.keys-page__wheel {
+  flex: 0 0 var(--keys-wheel);
+  width: var(--keys-wheel);
+}
+
+.keys-page__wheel .cp-wheel__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.keys-page__wheel .cp-wheel__center small {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* The three actions are one row at the default size; the buttons are short, as the filter
+   bar's are, because a tall row is a table row lost. */
+.keys-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md) var(--space-sm);
+}
+
+.keys-page__actions > .cp-btn {
+  min-height: calc(var(--hit-min) * 0.75);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-xs);
+}
+
+.keys-page__tracks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md) var(--space-md);
+  border-top: var(--border-width) solid var(--border-muted);
+}
+
+.keys-section-title {
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+
+.keys-note {
+  margin: 0;
+  max-width: 80ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* ---------------------------------------------------------------- sources */
+
+.keys-sources {
+  display: flex;
+  flex: 0 1 calc(100px * var(--scale));
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.keys-sources__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  max-height: var(--keys-wheel);
+  padding: var(--space-xs);
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: var(--border-width) solid var(--border-muted);
+}
+
+/* The label stays for assistive technology; the placeholder names the box, and a box of one
+   line is the height the list under it needs (as the Library's search box does). */
+.keys-sources__filter > .cp-field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.keys-sources__filter .cp-field__input {
+  min-height: 0;
+  padding: var(--space-xs);
+  font-size: var(--font-size-xs);
+}
+
+.keys-sources__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.keys-sources__row--whole {
+  font-weight: 700;
+}
+
+.keys-sources__title {
+  margin: var(--space-xs) 0 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.keys-sources__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.keys-sources__item {
+  padding-left: calc(var(--keys-depth, 0) * var(--space-md));
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.keys-sources__place {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* ------------------------------------------------------------ counts list */
+
+.keys-counts {
+  display: flex;
+  flex: 1 1 calc(130px * var(--scale));
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+  max-height: var(--keys-wheel);
+  overflow-y: auto;
+}
+
+.keys-counts__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.keys-counts__row {
+  display: grid;
+  grid-template-columns: 3ch minmax(0, 1fr) minmax(0, 0.6fr) 4ch;
+  align-items: center;
+  gap: var(--space-xs);
+  width: 100%;
+  padding: 0 var(--space-xs);
+  border: var(--hairline) solid transparent;
+  background: none;
+  color: var(--fg-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.keys-counts__row[aria-pressed="true"] {
+  background: var(--accent-primary);
+  color: var(--border-outline);
+  font-weight: 700;
+}
+
+.keys-counts__row:focus-visible {
+  outline: var(--border-width) solid var(--fg-primary);
+  outline-offset: calc(-2px * var(--scale));
+}
+
+.keys-counts__code {
+  font-family: var(--font-data);
+}
+
+.keys-counts__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The keys that mix are marked by words as well as the light. */
+.keys-counts__mix {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  color: var(--fg-muted);
+}
+
+.keys-counts__row[data-lit] {
+  border-color: var(--accent-success);
+}
+
+.keys-counts__row[aria-pressed="true"] .keys-counts__mix {
+  color: var(--border-outline);
+}
+
+.keys-counts__bar {
+  display: block;
+  height: calc(6px * var(--scale));
+  background: var(--bg-panel-alt);
+}
+
+.keys-counts__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-primary);
+}
+
+.keys-counts__row[aria-pressed="true"] .keys-counts__bar > span {
+  background: var(--border-outline);
+}
+
+.keys-counts__count {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.keys-counts__none {
+  padding-top: var(--space-xs);
+  border-top: var(--hairline) solid var(--border-muted);
+}
+
+.keys-counts__row--none {
+  display: block;
+}
+
+/* ------------------------------------------------------------ the tracks */
+
+.keys-tracks {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  height: calc(360px * var(--scale));
+  min-height: 0;
+}
+
+.keys-tracks__rows {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.keys-tracks__rows > .track-table {
+  flex: 1;
+}
+
+.keys-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  max-width: 56ch;
+  padding: var(--space-md);
+}
+
+.keys-empty--page {
+  margin: 0 auto;
+  align-items: center;
+  text-align: center;
+}
+
+.keys-empty__headline {
+  margin: 0;
+}
+
+.keys-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.keys-counts__row[aria-disabled="true"] {
+  color: var(--fg-muted);
+  cursor: default;
+}

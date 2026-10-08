@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { FilterRuleSet } from "../../api/cuepointBridge.types";
-import { openSource, withSource } from "./savedScope";
+import { keysSources, openSource, withSource } from "./savedScope";
 
 const key: FilterRuleSet = {
   match: "all",
@@ -49,5 +49,34 @@ describe("withSource", () => {
       { kind: "playlist", id: 4 },
     ]);
     expect(withSource(joined, { kind: "playlist", id: 4 })).toBe(joined);
+  });
+});
+
+describe("keysSources", () => {
+  it("is the open place plus the places an 'In playlist' rule names, each once", () => {
+    const rules: FilterRuleSet = {
+      match: "all",
+      rules: [
+        { field: "genre", operator: "is", value: "House" },
+        {
+          field: "in_playlist",
+          operator: "any_of",
+          value: [
+            { kind: "playlist", id: 3 },
+            { kind: "set", id: 5 },
+          ],
+        },
+      ],
+    };
+    expect(keysSources(3, null, rules)).toEqual([
+      { kind: "playlist", id: 3 },
+      { kind: "set", id: 5 },
+    ]);
+    expect(keysSources(null, { id: 9, kind: "collection" }, rules)).toEqual([
+      { kind: "collection", id: 9 },
+      { kind: "playlist", id: 3 },
+      { kind: "set", id: 5 },
+    ]);
+    expect(keysSources(null, null, null)).toEqual([]);
   });
 });

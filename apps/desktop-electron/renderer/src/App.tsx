@@ -33,6 +33,7 @@ import { useRestorePlayerOrder } from "./components/player/playerOrderState";
 import {
   CleanScreen,
   DiscoverScreen,
+  KeysScreen,
   LibraryScreen,
   PrepareScreen,
   SettingsScreen,
@@ -47,6 +48,7 @@ import {
   refreshOpening,
   trackOpening,
 } from "./screens/library/libraryLink";
+import { keysOpening, keysState } from "./screens/keys/keysLink";
 import { settingsFocusState } from "./screens/settingsLink";
 import { hasShortcutModifier } from "./components/shell/platformKeys";
 import { emitShellCommand } from "./components/shell/shellCommands";
@@ -179,6 +181,11 @@ function AppShell() {
     (setId: number) => navigate(preparePath(setId)),
     [navigate],
   );
+  // The Library's Key list leads to the Keys page with the open playlist or Collection ticked.
+  const openKeys = useCallback(
+    (sources: Parameters<typeof keysState>[0]) => navigate("/keys", { state: keysState(sources) }),
+    [navigate],
+  );
   const openMissingFiles = useCallback(
     () => navigate("/clean", { state: cleanSectionState("missing") }),
     [navigate],
@@ -240,6 +247,7 @@ function AppShell() {
             onOpenEntity={openEntity}
             onOpenSimilar={openSimilar}
             onOpenInPrepare={openInPrepare}
+            onOpenKeys={openKeys}
           />
         );
       case "clean":
@@ -269,8 +277,13 @@ function AppShell() {
             onOpenEntity={openEntity}
             onOpenSimilar={openSimilar}
             onOpenInPrepare={openInPrepare}
+            onOpenKeys={openKeys}
           />
         );
+      // PAGES-16 (DEC-200): the keys of chosen playlists, Collections and Sets. The Library's Key
+      // list opens it with the open playlist or Collection ticked.
+      case "keys":
+        return <KeysScreen openWith={keysOpening(location)} onOpeningApplied={clearOpening} />;
       // DISCOVER-10. inCrate retired into it in DISCOVER-12 (DEC-100).
       case "discover":
         return <DiscoverScreen />;

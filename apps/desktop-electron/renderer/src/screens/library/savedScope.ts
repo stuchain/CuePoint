@@ -49,3 +49,36 @@ export function withSource(
   const joined: FilterRule = { ...all[at]!, value: [...existing, source] };
   return { match: "all", rules: all.map((rule, index) => (index === at ? joined : rule)) };
 }
+
+/**
+ * The places to open the Keys page on: the open playlist or Collection, then the places an
+ * "In playlist" rule names, each once. A Smart Collection is not a place (its rules decide the
+ * tracks), so the caller does not offer the link there.
+ */
+export function keysSources(
+  playlistId: number | null,
+  scoped: { id: number; kind: string } | null,
+  rules: FilterRuleSet | null,
+): RuleSource[] {
+  const out: RuleSource[] = [];
+  const add = (source: RuleSource | null) => {
+    if (source && !out.some((item) => item.kind === source.kind && item.id === source.id)) {
+      out.push(source);
+    }
+  };
+  add(openSource(playlistId, scoped));
+  for (const rule of rules?.rules ?? []) {
+    if (rule.field !== IN_PLAYLIST_FIELD || rule.operator !== "any_of") continue;
+    if (!Array.isArray(rule.value)) continue;
+    for (const item of rule.value as Array<Partial<RuleSource>>) {
+      if (
+        item &&
+        (item.kind === "playlist" || item.kind === "collection" || item.kind === "set") &&
+        typeof item.id === "number"
+      ) {
+        add({ kind: item.kind, id: item.id });
+      }
+    }
+  }
+  return out;
+}
