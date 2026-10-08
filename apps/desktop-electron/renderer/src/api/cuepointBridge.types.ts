@@ -549,6 +549,18 @@ export interface LibraryPlaylistTree {
   total: number;
 }
 
+/** One key on the Camelot wheel and how it relates to the asked key (PAGES-10). */
+export interface CompatibleKey {
+  code: string;
+  relation: "same" | "adjacent" | "relative";
+}
+
+/** What mixes with a key: the key in Camelot, and the wheel's lit keys. */
+export interface CompatibleKeys {
+  key: string;
+  wheel: CompatibleKey[];
+}
+
 export interface LibraryFacetValue {
   /** Null is the "no value" bucket, which the `is_empty` operator filters by. */
   value: string | null;
@@ -3058,6 +3070,8 @@ export interface CuePointBridge {
     scope?: "collection" | "smart";
     collectionId?: number | null;
   }) => Promise<LibraryQuickFacets>;
+  /** The keys that mix with a key, by the engine's rule (PAGES-10). */
+  getCompatibleKeys?: (params: { key: string }) => Promise<CompatibleKeys>;
   getLibraryFilterFields?: () => Promise<LibraryFilterVocabulary>;
   getLibraryTrack?: (params: { trackId: number }) => Promise<LibraryTrackDetail>;
   /**

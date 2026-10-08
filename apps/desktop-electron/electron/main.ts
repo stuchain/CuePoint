@@ -353,6 +353,7 @@ function registerIpcHandlers(): void {
   handle("engine:getLibraryQuickFacets", (_event, params) =>
     engine.getLibraryQuickFacets(params),
   );
+  handle("engine:getCompatibleKeys", (_event, params) => engine.getCompatibleKeys(params));
   handle("engine:getLibraryFilterFields", () => engine.getLibraryFilterFields());
   handle("engine:getLibraryTrack", (_event, params) =>
     engine.getLibraryTrack(params),

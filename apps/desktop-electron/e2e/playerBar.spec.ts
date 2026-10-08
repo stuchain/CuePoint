@@ -67,12 +67,26 @@ test("the player bar fits the shell at every scale", async () => {
         document.documentElement.style.setProperty("--scale", String(s));
         const bar = document.querySelector(".cp-player-bar") as HTMLElement;
         const rect = bar.getBoundingClientRect();
-        const buttons = [...bar.querySelectorAll("button")].map((b) => {
+        // The title and artist links in the track line are words, not transport; the key
+        // button is counted.
+        const buttons = [...bar.querySelectorAll("button:not(.cp-player-bar__link)")].map((b) => {
           const r = b.getBoundingClientRect();
           return { w: Math.round(r.width), h: Math.round(r.height) };
         });
+        // The key button's whole box takes the click: inside what its line clips to
+        // (the line's box plus its clip margin, up and down), so no part of the button is cut off.
+        const key = bar.querySelector<HTMLElement>("[data-wheel-opener]");
+        const kr = key?.getBoundingClientRect();
+        const line = key?.closest(".cp-player-bar__meta")?.getBoundingClientRect();
+        const margin = 8;
+        const keyHit =
+          kr !== undefined &&
+          line !== undefined &&
+          kr.top >= line.top - margin &&
+          kr.bottom <= line.bottom + margin;
         return {
           scale: s,
+          keyHit,
           barHeight: Math.round(rect.height),
           overflowsRight: Math.round(rect.right) > Math.round(document.documentElement.clientWidth),
           docScrollsX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -85,6 +99,7 @@ test("the player bar fits the shell at every scale", async () => {
       }, scale);
       expect(report.docScrollsX, `no horizontal scroll at ${scale}x`).toBe(false);
       expect(report.overflowsRight, `bar within viewport at ${scale}x`).toBe(false);
+      expect(report.keyHit, `the key button is not clipped at ${scale}x`).toBe(true);
       expect(report.minButton, `hit targets at ${scale}x`).toBeGreaterThanOrEqual(24);
       expect(report.clipped, `nothing clipped at ${scale}x`).toBe(false);
     }

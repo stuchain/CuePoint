@@ -1,7 +1,7 @@
 /**
  * The shell header (HDR-6, PAGES-10's slot).
  *
- * It holds the search and an empty place for the Camelot wheel's button; the
+ * It holds the search and the Camelot wheel's button; the
  * `search` landmark belongs to the search field's container, so the wheel is not
  * inside it.
  */
@@ -28,12 +28,12 @@ describe("ShellHeader", () => {
     expect(screen.getByRole("combobox", { name: /search library/i })).toBeInTheDocument();
   });
 
-  it("leaves an empty slot for the wheel button, outside the search landmark", () => {
+  it("puts the wheel button in its slot, outside the search landmark", () => {
     const { container } = mount();
-    const slot = container.querySelector("[data-slot='wheel']");
+    const slot = container.querySelector("[data-slot='wheel']") as HTMLElement;
     expect(slot).not.toBeNull();
-    expect(slot).toBeEmptyDOMElement();
-    expect(screen.getByRole("search")).not.toContainElement(slot as HTMLElement);
+    expect(slot).toContainElement(screen.getByRole("button", { name: "Camelot wheel" }));
+    expect(screen.getByRole("search")).not.toContainElement(slot);
   });
 
   it("has exactly one search landmark, and it is the search field's own", () => {

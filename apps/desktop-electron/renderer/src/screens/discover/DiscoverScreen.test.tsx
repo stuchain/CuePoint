@@ -668,9 +668,17 @@ describe("Results", () => {
     const [first, second] = rowsOf("Tracks this search found");
     expect(getSelectedTrack()).toBeNull();
     fireEvent.click(first!);
-    expect(getSelectedTrack()).toEqual({ id: `bp-${HIDDEN.rows[0]!.beatport_track_id}`, key: "8A" });
+    expect(getSelectedTrack()).toEqual({
+      id: `bp-${HIDDEN.rows[0]!.beatport_track_id}`,
+      key: "8A",
+      title: HIDDEN.rows[0]!.title,
+    });
     fireEvent.click(second!);
-    expect(getSelectedTrack()).toEqual({ id: `bp-${HIDDEN.rows[1]!.beatport_track_id}`, key: null });
+    expect(getSelectedTrack()).toEqual({
+      id: `bp-${HIDDEN.rows[1]!.beatport_track_id}`,
+      key: null,
+      title: HIDDEN.rows[1]!.title,
+    });
     fireEvent.click(within(actionsBar("Tracks this search found")).getByRole("button", { name: "Clear" }));
     expect(getSelectedTrack()).toBeNull();
   });

@@ -619,6 +619,18 @@ export interface LibraryPlaylistTree {
   total: number;
 }
 
+/** One key on the Camelot wheel and how it relates to the asked key (PAGES-10). */
+export interface CompatibleKey {
+  code: string;
+  relation: "same" | "adjacent" | "relative";
+}
+
+/** What mixes with a key: the key in Camelot, and the wheel's lit keys. */
+export interface CompatibleKeys {
+  key: string;
+  wheel: CompatibleKey[];
+}
+
 export interface LibraryFacetValue {
   /** Null is the "no value" bucket, which `is_empty` filters by. */
   value: string | null;
@@ -2701,6 +2713,16 @@ export class EngineClient {
       scope: params.scope ?? null,
       collection_id: params.collectionId ?? null,
     });
+  }
+
+  /**
+   * The keys that mix with a key, from the engine's rule (PAGES-10, DEC-096).
+   * Any notation the app parses; an unparseable key is a 400 the caller sees as an error.
+   */
+  async getCompatibleKeys(params: { key: string }): Promise<CompatibleKeys> {
+    return this.getJson(
+      `/api/v1/library/keys/compatible?${new URLSearchParams({ key: params.key }).toString()}`,
+    );
   }
 
   /** What can be filtered, and with which operators (DEC-043). */

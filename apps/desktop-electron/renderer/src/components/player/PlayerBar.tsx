@@ -1,8 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Badge } from "../Badge";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
 import { modifierName } from "../shell/platformKeys";
+import { toggleWheel } from "../wheel/wheelStore";
 import { waveformEntryWords } from "../waveform/analysisWords";
 import { useWaveform } from "../waveform/useWaveforms";
 import { useWaveformRequest } from "../waveform/useWaveformRequest";
@@ -11,6 +12,7 @@ import { useWaveformBox } from "../waveform/waveformEnvironment";
 import {
   formatTime,
   formatTrackMeta,
+  playingKey,
   sameItem,
   selectCurrentItem,
   selectDuration,
@@ -77,6 +79,33 @@ const REPEAT_TITLES: Record<string, string> = {
   all: "Repeat: all tracks",
   one: "Repeat: one track",
 };
+
+/**
+ * The track line with its key as a button that opens the Camelot wheel (BAR-5).
+ *
+ * The line is joined as text (`formatTrackMeta`), so the key is found in it from
+ * `from`, past the artist, rather than rebuilt: an artist named "8A" is not the key.
+ */
+function withKeyButton(text: string, from: number, key: string | null): ReactNode {
+  const at = key === null ? -1 : text.indexOf(key, from);
+  if (key === null || at < 0) return text;
+  return (
+    <>
+      {text.slice(0, at)}
+      <button
+        type="button"
+        className="cp-player-bar__keybtn"
+        data-wheel-opener=""
+        title="Show this key on the Camelot wheel"
+        aria-label={`Show ${key} on the Camelot wheel`}
+        onClick={() => toggleWheel("player")}
+      >
+        {key}
+      </button>
+      {text.slice(at + key.length)}
+    </>
+  );
+}
 
 export function PlayerBar({
   queueOpen = false,
@@ -158,6 +187,7 @@ export function PlayerBar({
   // included (BAR-4).
   const openableTrack = onOpenTrack && item && item.trackId !== null ? item.trackId : null;
   const meta = formatTrackMeta(item);
+  const keyText = playingKey(item);
   // The artist leads the line (`playerFormat.ts`); the button replaces just its
   // words, and what follows (key, BPM) stays text.
   const artistText = item?.artist.trim() ?? "";
@@ -235,11 +265,11 @@ export function PlayerBar({
             >
               {artistText}
             </button>
-            {artistSplit}
+            {withKeyButton(artistSplit, 0, keyText)}
           </span>
         ) : (
           <span className="cp-player-bar__meta" title={meta}>
-            {meta}
+            {withKeyButton(meta, artistText.length, keyText)}
           </span>
         )}
       </div>

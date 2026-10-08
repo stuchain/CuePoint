@@ -213,6 +213,7 @@ describe("desktop contract", () => {
       "getLibraryQuickFacets",
       "getLibraryFilterFields",
       "getLibraryTrack",
+      "getCompatibleKeys",
     ];
 
     it.each(methods)("exposes %s on the preload", (method) => {
@@ -242,6 +243,15 @@ describe("desktop contract", () => {
       expect(engineClient).toContain("/api/v1/library/filter-fields");
       expect(engineClient).toContain("async getLibraryTrack(");
       expect(engineClient).toContain("/api/v1/library/tracks/");
+    });
+
+    it("asks what mixes with a key with a GET, and the engine answers (PAGES-10)", () => {
+      const start = engineClient.indexOf("async getCompatibleKeys(");
+      const method = engineClient.slice(start, engineClient.indexOf("async ", start + 10));
+      expect(method).toContain("/api/v1/library/keys/compatible");
+      expect(method).not.toContain("postJson");
+      expect(bridgeTypes).toContain("interface CompatibleKeys");
+      expect(bridgeTypes).toContain("interface CompatibleKey ");
     });
 
     it("asks for the quick filters with a POST of the view (FLW-4)", () => {

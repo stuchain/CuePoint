@@ -10,6 +10,7 @@ import {
   type ActivityFeed,
   type EngineJobList,
   type LibraryBrowseParams,
+  type CompatibleKeys,
   type LibraryFacet,
   type LibraryQuickFacets,
   type LibraryFilterVocabulary,
@@ -716,6 +717,10 @@ export class EngineSupervisor {
     collectionId?: number | null;
   }): Promise<LibraryQuickFacets> {
     return (await this.readyClient()).getLibraryQuickFacets(params);
+  }
+
+  async getCompatibleKeys(params: { key: string }): Promise<CompatibleKeys> {
+    return (await this.readyClient()).getCompatibleKeys(params);
   }
 
   async getLibraryFilterFields(): Promise<LibraryFilterVocabulary> {

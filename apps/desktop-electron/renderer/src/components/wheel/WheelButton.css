@@ -1,0 +1,35 @@
+/* Positions the wheel's popover; the button itself matches the search field's height. */
+.cp-wheel-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cp-wheel-button__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--hit-min);
+  min-height: var(--hit-min);
+  padding: 0;
+  background: var(--bg-app);
+  border: var(--border-width) solid var(--border-outline);
+  box-shadow: var(--shadow-bevel-sm);
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.cp-wheel-button__button .cp-pixel-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.cp-wheel-button__button:hover,
+.cp-wheel-button__button[aria-expanded="true"] {
+  background: var(--bg-panel-alt);
+}
+
+.cp-wheel-button__button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}

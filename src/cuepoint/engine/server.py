@@ -50,6 +50,7 @@ from cuepoint.engine.library_api import (
     LibraryUnavailableError,
     MODE_BROWSE,
     SEARCH_LIMIT_DEFAULT,
+    library_compatible_keys,
     library_facet,
     library_quick_facets,
     parse_quick_facets_body,
@@ -801,6 +802,20 @@ def make_handler(
                     )
                     return
                 self._send_json(200, library_filter_fields())
+                return
+            if path == "/api/v1/library/keys/compatible":
+                if not self._authorized():
+                    self._send_json(
+                        401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                    )
+                    return
+                params = parse_qs(parsed.query)
+                try:
+                    payload = library_compatible_keys(params.get("key", [None])[0])
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                self._send_json(200, payload)
                 return
             if path == "/api/v1/library/facets":
                 if not self._authorized():

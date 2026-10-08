@@ -38,6 +38,9 @@ Along the bottom: what is playing, how far through it is, and the controls.
 - **The title and artist** open things. Click the title to show the track in
   the Library, or the artist to open their page in Discover. A track that is not
   in your library stays plain text.
+- **The key** in the line under the title opens the [Camelot
+  wheel](the-window.md#the-camelot-wheel), lit for the track that is playing and
+  captioned "Playing: …".
 - **Every button names itself.** Hover over a button, or Tab to it, and a note
   says what it does and its shortcut, for example "Next track (Ctrl+→)".
 - **Play/pause, previous, next.** Previous within the first few seconds goes

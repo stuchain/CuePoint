@@ -5,6 +5,10 @@
   minor") in Track details. It is the key you typed, or else the key of the
   track's accepted Beatport match. Rekordbox's key is never used; a track with
   neither has "No Beatport key".
+- **Camelot wheel**: The 24 keys drawn as two rings, minor (A) inside and major (B)
+  outside. It lights a track's key and the keys that mix with it: the same number one
+  step either way, and the relative key. Open it from the button beside search or from
+  the key in the player bar; click a key to see every track in it in the Library.
 - **Playlist**: A named collection of tracks inside the Rekordbox XML.
 - **Preflight**: Validation checks that run before processing.
 - **Match**: A Beatport result associated with an input track.

@@ -45,7 +45,9 @@ from cuepoint.persistence.track_query import (
     search_bpm,
     search_key,
 )
+from cuepoint.core.similarity import MusicalKey, compatible_keys, key_relation
 from cuepoint.services.key_resolver import resolve_key
+from cuepoint.services.override_values import parse_key
 from cuepoint.utils.quoting import quoted
 
 # Kept in step with LibraryService's own clamp; declared here too so a caller
@@ -786,6 +788,28 @@ def library_quick_facets(
     )
     payload: Dict[str, Any] = answer.to_dict()
     return payload
+
+
+def library_compatible_keys(raw: Optional[str]) -> Dict[str, Any]:
+    """Return the keys that mix with ``raw``, on the Camelot wheel (PAGES-10).
+
+    DEC-096's rule, read from ``core/similarity`` so the renderer keeps no copy:
+    the key itself, the same number one step either way, and the relative key.
+
+    Raises:
+        ValueError: If ``raw`` is missing or is not a key in any notation the
+            app parses.
+    """
+    parsed = parse_key(raw) if raw and raw.strip() else None
+    if parsed is None:
+        raise ValueError("key must be a musical key such as 8A or A minor")
+    seed = MusicalKey(*parsed)
+    wheel = []
+    for key in compatible_keys(seed):
+        number, letter = key.camelot
+        wheel.append({"code": f"{number}{letter}", "relation": key_relation(seed, key)})
+    number, letter = seed.camelot
+    return {"key": f"{number}{letter}", "wheel": wheel}
 
 
 def library_filter_fields() -> Dict[str, Any]:

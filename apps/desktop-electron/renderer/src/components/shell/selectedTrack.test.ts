@@ -47,3 +47,13 @@ describe("the selected-track store", () => {
     expect(getSelectedTrack()).toBeNull();
   });
 });
+
+describe("the selected track's title (PAGES-10)", () => {
+  it("is optional, and a new title is a new selection", () => {
+    const { result } = renderHook(() => useSelectedTrack());
+    act(() => setSelectedTrack({ id: 1, key: "1B" }));
+    expect(result.current).toEqual({ id: 1, key: "1B" });
+    act(() => setSelectedTrack({ id: 1, key: "1B", title: "Strobe" }));
+    expect(result.current).toEqual({ id: 1, key: "1B", title: "Strobe" });
+  });
+});

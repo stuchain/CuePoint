@@ -1,7 +1,7 @@
 /*
  * The header bar: the toolbar surface the search used to draw for itself. The row inside is
- * centered and no wider than the content, with the search taking what the wheel's slot
- * leaves; an empty slot takes no room.
+ * centered and no wider than the content, with the search taking what the wheel's button
+ * leaves.
  */
 .cp-shell-header {
   display: flex;
@@ -30,8 +30,4 @@
   display: flex;
   align-items: center;
   flex: none;
-}
-
-.cp-shell-header__wheel:empty {
-  display: none;
 }

@@ -172,7 +172,11 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
   const lastRow = selection.anchorRow;
   useReportSelectedTrack(
     lastRow
-      ? { id: beatportSelectedId(lastRow.beatport_track_id), key: beatportRowKey(lastRow) }
+      ? {
+          id: beatportSelectedId(lastRow.beatport_track_id),
+          key: beatportRowKey(lastRow),
+          title: lastRow.title,
+        }
       : null,
   );
 

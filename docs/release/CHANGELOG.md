@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with, and says how many it will search for. Each Health count opens what fixes
   it, and **No Beatport key** opens the Library on Key is empty with **Match
   tracks…** for those tracks.
+- **A Camelot wheel beside search.** The button opens a pixel-art wheel of the 24
+  keys, lit for the track you selected (else the one playing) and the keys that mix
+  with it; a line says which track and key. Click a key to see every track in that
+  key in the Library. A track with no Beatport key says so, with **Match on
+  Beatport**. The key in the player bar's track line opens the same wheel for the
+  playing track.
 - **A Medium (1.5×) size, and it is the default.** **Settings → Appearance → Size
   of text and controls** now offers Small (1×), Medium (1.5×), Large (2×) and
   Extra large (3×). If you never chose a size, CuePoint opens at 1.5× and shows

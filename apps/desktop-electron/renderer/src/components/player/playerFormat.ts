@@ -56,6 +56,12 @@ export function formatTrackMeta(item: QueueItem | null): string {
     .join(" · ");
 }
 
+/** The key the player bar shows for a queue item: its Camelot key, or null (BAR-5). */
+export function playingKey(item: QueueItem | null): string | null {
+  const key = item?.key?.trim();
+  return key ? key : null;
+}
+
 /** How far through the track, 0–1. Zero when either end is unknown. */
 export function progressFraction(
   positionSeconds: number | null,

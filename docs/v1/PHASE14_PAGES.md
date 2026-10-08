@@ -1328,6 +1328,30 @@ wheel says so, with **Match tracks…**. PAGES-16 reuses the drawing.
 
 **Complexity**: **M**
 
+**Outcome** (2026-10-08): `GET /api/v1/library/keys/compatible?key=` (`library_compatible_keys` in `engine/library_api.py`)
+parses with `override_values.parse_key` and answers from `compatible_keys` and `key_relation`; an unparseable or missing key is
+a 400 `INVALID_REQUEST`. The bridge method is `getCompatibleKeys({ key })` in the six contract files and
+`desktopContract.test.ts`. The wheel lives in `renderer/src/components/wheel/`: `camelot.ts` (the 24 places, key names,
+stepped wedges built from whole cells of a 48-cell grid, so every edge is horizontal or vertical; the arrow keys' moves), `CamelotWheel.tsx` (the drawing, reusable by PAGES-16; each
+key is a button the size of the square cut to its wedge with `clip-path`, so a click lands only inside its wedge; the button is the rim and an inner fill sits one cell in),
+`WheelPopover.tsx` (the dialog, caption and Match buttons), `WheelButton.tsx` (the header button, Escape, outside click),
+`wheelStore.ts` (open state shared with the player bar's key, `toggleWheel("player")`), `useWheelSubject.ts` (selected, else
+playing, DEC-157; the engine's lit set; "no keys in the library") and `wheelLink.ts` (the one place the wheel navigates:
+`keyRulesState` and `openMatching`). `openMatching(navigate, trackId?)` opens Clean's match window (PAGES-07B's `cleanMatchState`)
+on the track for a library track, and on the tracks not looked up yet otherwise. The cells are 4 px times the
+size (6 px at 1.5×), so the wheel is 288, 384 and 576 px at 1.5×, 2× and 3×. No tokens were added: the wheel uses
+`--accent-primary` (the track's key), `--accent-success` (the keys that mix), `--bg-panel-alt` (unlit fill) and `--fg-muted`
+(every wedge's rim, so an unlit key never vanishes); hover and keyboard focus mark the label (panel background, and a
+`--fg-primary` outline for focus), never the fill, so a key's state always shows. Labels are in `--font-data`;
+`wheelContrast.test.ts` holds every label at 4.5:1 and every rim at 3:1 in the five themes. The popover is capped to the
+window below the header and scrolls (its scrollbar hidden so the cells stay whole pixels). Every theme and custom theme
+colors it; the A and B rings and the three states are also told apart by
+the labels and each key's accessible name, not by color alone. `SelectedTrack` gained an optional `title` for the caption
+(the Library, Run detail and the Beatport half send it; the wheel looks a numeric id up when a page sends none), and the
+Library now reports its selected track, which PAGES-05 had not wired. The player bar's key is a 24 px button (`withKeyButton`,
+found in the line from past the artist); `playerBar.spec.ts` no longer counts the track line's text links as transport
+buttons. Open under `entrance` and light under `state` (transform only).
+
 ---
 
 ## PAGES-11 — The First-Run Guide

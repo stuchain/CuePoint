@@ -7,6 +7,7 @@ import { PlayerSlot } from "./PlayerSlot";
 import { ToastProvider } from "../Toast";
 import { PLAYER_REPEAT_STORAGE_KEY, PLAYER_SHUFFLE_STORAGE_KEY } from "./playerOrderState";
 import { resetPlayerStore } from "./playerStore";
+import { closeWheel, getWheelState } from "../wheel/wheelStore";
 import { EMPTY_AUDIO_STATE } from "./playerFormat";
 
 /**
@@ -67,6 +68,13 @@ function snapshot(overrides: {
     },
     audio: EMPTY_AUDIO_STATE,
   };
+}
+
+/** The artist, key and tempo line under the title. */
+function metaLine(): HTMLElement {
+  const line = document.querySelector<HTMLElement>(".cp-player-bar__meta");
+  if (!line) throw new Error("the track line is not drawn");
+  return line;
 }
 
 interface Harness {
@@ -172,7 +180,7 @@ describe("what it shows", () => {
     installBridge(snapshot());
     render(<PlayerBar />);
     expect(await screen.findByText("Strobe")).toBeInTheDocument();
-    expect(screen.getByText("deadmau5 · 8A · 128.0 BPM")).toBeInTheDocument();
+    expect(metaLine()).toHaveTextContent("deadmau5 · 8A · 128.0 BPM");
   });
 
   it("shows elapsed and total time", async () => {
@@ -620,7 +628,7 @@ describe("the title and artist open things (BAR-4)", () => {
     await screen.findByText("Strobe");
     expect(screen.queryByRole("button", { name: "Strobe" })).toBeNull();
     expect(screen.queryByRole("button", { name: "deadmau5" })).toBeNull();
-    expect(screen.getByText(/deadmau5 · 8A/)).toBeInTheDocument();
+    expect(metaLine()).toHaveTextContent("deadmau5 · 8A");
   });
 
   it("keeps the track line as it was, key and tempo included", async () => {
@@ -628,6 +636,50 @@ describe("the title and artist open things (BAR-4)", () => {
     render(<PlayerBar onOpenTrack={() => undefined} onOpenArtist={() => undefined} />);
     await screen.findByRole("button", { name: "Strobe" });
 
-    expect(screen.getByText(/8A · 128\.0 BPM/)).toBeInTheDocument();
+    expect(metaLine()).toHaveTextContent("8A · 128.0 BPM");
+  });
+});
+
+describe("the key opens the Camelot wheel (BAR-5, PAGES-10)", () => {
+  afterEach(() => {
+    closeWheel();
+  });
+
+  it("makes the key a button that opens the wheel for the playing track", async () => {
+    installBridge(snapshot());
+    render(<PlayerBar />);
+    const key = await screen.findByRole("button", { name: "Show 8A on the Camelot wheel" });
+    expect(key).toHaveTextContent("8A");
+    // The words around it are as they were.
+    expect(metaLine()).toHaveTextContent("deadmau5 · 8A · 128.0 BPM");
+
+    fireEvent.click(key);
+    expect(getWheelState()).toEqual({ open: true, source: "player" });
+    fireEvent.click(key);
+    expect(getWheelState().open).toBe(false);
+  });
+
+  it("leaves the artist's own button alone", async () => {
+    installBridge(snapshot());
+    const onOpenArtist = vi.fn();
+    render(<PlayerBar onOpenTrack={() => undefined} onOpenArtist={onOpenArtist} />);
+    fireEvent.click(await screen.findByRole("button", { name: "deadmau5" }));
+    expect(onOpenArtist).toHaveBeenCalledWith("deadmau5");
+    expect(getWheelState().open).toBe(false);
+  });
+
+  it("does not make a button of a key the track does not have", async () => {
+    installBridge(snapshot({ items: [item({ key: null })] }));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    expect(screen.queryByRole("button", { name: /Camelot wheel/ })).toBeNull();
+  });
+
+  it("is not fooled by an artist whose name is the key", async () => {
+    installBridge(snapshot({ items: [item({ artist: "8A", key: "8A" })] }));
+    render(<PlayerBar />);
+    const key = await screen.findByRole("button", { name: "Show 8A on the Camelot wheel" });
+    expect(metaLine()).toHaveTextContent("8A · 8A · 128.0 BPM");
+    expect(key.previousSibling?.textContent).toBe("8A · ");
   });
 });

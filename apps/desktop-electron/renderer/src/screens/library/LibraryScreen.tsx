@@ -33,6 +33,7 @@ import {
   useColumnLayout,
 } from "../../components/table";
 import { useInspectorSlot } from "../../components/shell";
+import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import type {
   BatchSelection,
   CollectionNode,
@@ -450,6 +451,27 @@ export function LibraryScreen({
   /** Where a row drag started, which is the only Collection position in hand. */
   const draggingRow = useRef<{ index: number; count: number } | null>(null);
   const detail = useTrackDetail(selection.selection.lastId);
+  // The header's wheel lights the selected track's key (DEC-157). It is read from the
+  // selected table row, which is in hand the moment the row is clicked, so the wheel
+  // never waits for (or loses to a failure of) the details.
+  const lastId = selection.selection.lastId;
+  const selectedRow = useMemo(() => {
+    if (lastId == null) return null;
+    const anchored = selection.selection.anchor === null ? null : window_.source.getRow(selection.selection.anchor);
+    if (anchored?.id === lastId) return anchored;
+    for (let index = 0; index < window_.total; index += 1) {
+      const row = window_.source.getRow(index);
+      if (row?.id === lastId) return row;
+    }
+    return null;
+  }, [lastId, selection.selection.anchor, window_.source, window_.total]);
+  useReportSelectedTrack(
+    lastId == null
+      ? null
+      : selectedRow
+        ? { id: lastId, key: selectedRow.effective_key ?? null, title: selectedRow.title }
+        : null,
+  );
 
   /** True when a Key rule is on and nothing matches it (FLW-4). */
   const keyFilterFoundNothing =

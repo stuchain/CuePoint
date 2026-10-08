@@ -17,6 +17,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { ToastProvider } from "../../components";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
+import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { LibraryScreen } from "./LibraryScreen";
 
@@ -200,6 +201,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  setSelectedTrack(null);
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
   vi.restoreAllMocks();
 });
@@ -279,5 +281,31 @@ describe("the Library opened on a track", () => {
     renderScreen({ trackWith: { trackId: 3, token: "nav-1" }, onOpeningApplied });
     await waitFor(() => expect(rowFor("Track 3")).toHaveAttribute("aria-selected", "true"));
     expect(onOpeningApplied).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the Library tells the header's wheel which track is selected (PAGES-10, DEC-157)", () => {
+  it("reports the selected track's id, key and title, and clears it with the selection", async () => {
+    const view = renderScreen({ trackWith: { trackId: 3, token: "nav-1" } });
+    await waitFor(() =>
+      expect(getSelectedTrack()).toEqual({ id: 3, key: "8A", title: "Track 3" }),
+    );
+    fireEvent.click(rowFor("Track 1"));
+    await waitFor(() => expect(getSelectedTrack()).toMatchObject({ id: 1, title: "Track 1" }));
+    view.unmount();
+    expect(getSelectedTrack()).toBeNull();
+  });
+
+  it("reports the clicked row at once, before its details load and when they fail", async () => {
+    renderScreen();
+    await waitFor(() => expect(rowFor("Track 1")).toBeTruthy());
+    // The details never come: the row alone is enough for the wheel.
+    mock("getLibraryTrack").mockImplementation(() => new Promise(() => {}));
+    fireEvent.click(rowFor("Track 1"));
+    expect(getSelectedTrack()).toEqual({ id: 1, key: "8A", title: "Track 1" });
+    mock("getLibraryTrack").mockRejectedValue(new Error("no details"));
+    fireEvent.click(rowFor("Track 2"));
+    await waitFor(() => expect(mock("getLibraryTrack")).toHaveBeenCalledWith({ trackId: 2 }));
+    expect(getSelectedTrack()).toMatchObject({ id: 2, title: "Track 2" });
   });
 });

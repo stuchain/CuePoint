@@ -503,7 +503,7 @@ describe("the Beatport half, in every state", () => {
     const cell = await within(table).findByText("Track 9 (Original Mix)", {}, LOADED);
     fireEvent.mouseDown(cell);
     fireEvent.click(cell);
-    expect(getSelectedTrack()).toEqual({ id: "bp-9", key: "8A" });
+    expect(getSelectedTrack()).toMatchObject({ id: "bp-9", key: "8A" });
     const actions = screen.getByRole("toolbar", { name: /Beatport's releases by this label: actions/ });
     fireEvent.click(within(actions).getByRole("button", { name: "Clear" }));
     expect(getSelectedTrack()).toBeNull();

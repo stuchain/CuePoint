@@ -114,8 +114,10 @@
 
 .cp-player-bar__title,
 .cp-player-bar__meta {
-  /* One line each: a long title must not grow the bar and reflow the app. */
-  overflow: hidden;
+  /* One line each: a long title must not grow the bar and reflow the app. The clip
+     margin lets the key button's hit area reach past the line (BAR-5). */
+  overflow: clip;
+  overflow-clip-margin: 8px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -318,4 +320,36 @@
 .cp-player-bar__link:focus-visible {
   outline: var(--border-width) solid var(--accent-primary);
   outline-offset: 2px;
+}
+
+/* The key opens the Camelot wheel (BAR-5): text on the line, with a hit area of at
+   least 24 CSS pixels each way. The negative margins cancel the box's extra size,
+   so the line is no taller and does not move. */
+.cp-player-bar__keybtn {
+  --keybtn-size: 24px;
+  --keybtn-pad: var(--space-xs);
+  display: inline-block;
+  box-sizing: border-box;
+  min-inline-size: var(--keybtn-size);
+  min-block-size: var(--keybtn-size);
+  margin: calc(-0.5 * var(--keybtn-size)) calc(-1 * var(--keybtn-pad));
+  padding: 0 var(--keybtn-pad);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: var(--keybtn-size);
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.cp-player-bar__keybtn:hover,
+.cp-player-bar__keybtn:focus-visible {
+  text-decoration: underline;
+}
+
+.cp-player-bar__keybtn:focus-visible {
+  outline: var(--border-width) solid var(--accent-primary);
+  outline-offset: -2px;
 }

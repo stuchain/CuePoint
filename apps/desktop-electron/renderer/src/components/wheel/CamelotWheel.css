@@ -1,0 +1,122 @@
+/*
+ * The Camelot wheel's drawing (PAGES-10). One square of 48 cells; a cell is
+ * 4 CSS pixels times the size, so a whole number at every size the app offers
+ * (6 at 1.5x). Each key is a button as big as the square, cut to its stepped wedge
+ * with clip-path, so a click only lands inside its own wedge.
+ */
+.cp-wheel {
+  --wheel-cell: calc(4px * var(--scale));
+  --wheel-size: calc(48 * var(--wheel-cell));
+  position: relative;
+  width: 100%;
+  max-width: var(--wheel-size);
+  aspect-ratio: 1;
+  margin-inline: auto;
+}
+
+/* The drawing: one SVG on the 48-cell grid, so every edge falls on a whole pixel. */
+.cp-wheel__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  shape-rendering: crispEdges;
+  pointer-events: none;
+}
+
+.cp-wheel__shape {
+  fill: var(--bg-panel-alt);
+  /* The unlit wedges carry an outline, so they never vanish into the panel. */
+  stroke: var(--fg-muted);
+  stroke-width: var(--hairline);
+  vector-effect: non-scaling-stroke;
+}
+
+/* The keys that mix with the track's. */
+.cp-wheel__shape[data-lit] {
+  fill: var(--accent-success);
+  /* The same color, so a lit wedge is as big as an unlit one with its outline. */
+  stroke: var(--accent-success);
+}
+
+/* The track's own key. */
+.cp-wheel__shape[data-lit="same"] {
+  fill: var(--accent-primary);
+  stroke: var(--accent-primary);
+}
+
+/* Hover and focus draw a ring round the wedge and never change its fill. */
+.cp-wheel__mark {
+  fill: none;
+  stroke: var(--fg-muted);
+  stroke-width: var(--border-width);
+  vector-effect: non-scaling-stroke;
+}
+
+.cp-wheel__mark[data-mark="focus"] {
+  stroke: var(--fg-primary);
+}
+
+/* Each key is a transparent button cut to its wedge, so a click lands only inside it. */
+.cp-wheel__key {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  outline: none;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cp-wheel__label {
+  position: absolute;
+  left: var(--wheel-x);
+  top: var(--wheel-y);
+  transform: translate(-50%, -50%);
+  color: var(--fg-primary);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* The fills that are lit are light: their labels use the dark outline color. */
+.cp-wheel__key[data-lit] + .cp-wheel__label {
+  color: var(--border-outline);
+}
+
+.cp-wheel__key[data-lit="same"] + .cp-wheel__label {
+  font-weight: 700;
+}
+
+/* The hole in the middle: the key the wheel is lit for. */
+.cp-wheel__center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(14 * var(--wheel-cell));
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--fg-primary);
+  font-family: var(--font-data);
+  font-size: var(--font-size-lg);
+  pointer-events: none;
+}
+
+/* Lighting a key under "state" motion: a step up in size, nothing but transform (PAGES-02). */
+@keyframes cp-wheel-light {
+  from {
+    transform: scale(0.94);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+:root[data-motion-state] .cp-wheel__shape[data-lit] {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cp-wheel-light var(--motion-base) steps(var(--motion-steps-short));
+}

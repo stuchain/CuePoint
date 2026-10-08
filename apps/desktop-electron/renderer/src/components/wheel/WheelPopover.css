@@ -1,0 +1,68 @@
+/*
+ * The wheel's popover, positioned the way search's results are: absolute under its
+ * button, so opening it never moves the page (HDR-4).
+ */
+.cp-wheel-pop {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 940;
+  box-sizing: border-box;
+  /* The wheel's 48 cells, then the padding and the border around them. */
+  width: calc(48 * 4px * var(--scale) + 2 * var(--space-md) + 2 * var(--border-width));
+  max-width: calc(100vw - 2 * var(--space-md));
+  padding: var(--space-md);
+  background: var(--bg-panel);
+  border: var(--border-width) solid var(--border-outline);
+  box-shadow: var(--shadow-panel);
+  /*
+   * Never taller than the window below the header: at the largest size the wheel
+   * and its caption are taller than a laptop screen, so the popover scrolls (the
+   * component sets the exact cap). The scrollbar is hidden because it would take
+   * width from the wheel and break its whole-pixel cells; the wheel, the caption and
+   * the buttons are all reachable by the mouse wheel and by Tab.
+   */
+  max-height: calc(100vh - 2 * var(--space-md));
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.cp-wheel-pop__caption {
+  margin: var(--space-sm) 0 0;
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.cp-wheel-pop__actions {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-sm);
+}
+
+@keyframes cp-wheel-pop-in {
+  from {
+    transform: translateY(calc(var(--motion-step-px) * -2));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-wheel-pop-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Opening is "entrance" motion: the slide steps, the fade does not (DEC-135). */
+:root[data-motion-entrance] .cp-wheel-pop {
+  animation:
+    cp-wheel-pop-in var(--motion-base) steps(var(--motion-steps-short)),
+    cp-wheel-pop-fade var(--motion-base) var(--motion-fade);
+}

@@ -9,6 +9,7 @@ page you are on changes; everything around it does not.
 | --- | --- | --- |
 | Menu bar | Top | CuePoint's one menu bar: File, Edit, View and Help (see [The menu bar](#the-menu-bar)) |
 | Search | Top of the window | Searches your library — see [Searching](#searching) |
+| Camelot wheel | Top of the window, beside search | Shows which keys mix with a track — see [The Camelot wheel](#the-camelot-wheel) |
 | Sidebar | Left | The CuePoint logo, then the pages; collapses to an icon rail |
 | Page | Middle | Whatever you are working on |
 | Track Inspector | Right | Details for a selected track; can be resized or hidden |
@@ -72,6 +73,41 @@ didn't work. Try again."
 
 **Ctrl+K searches your whole library. Ctrl+F searches the table in front of
 you.** They are deliberately different keys, because they do different things.
+
+## The Camelot wheel
+
+The button beside the search field opens a wheel of the 24 keys, drawn in pixels: the
+minor keys (A) in the inner ring and the major keys (B) in the outer one, 12 at the
+top like a clock. It lights the key of the track you have selected, or, with nothing
+selected, the track that is playing, and the keys that mix with it: one step either
+way round the wheel in the same ring, and the relative key in the other ring. A line
+under the wheel names the track and its key, for example "Selected: Strobe · 8A" or
+"Playing: Strobe · 8A".
+
+The key is the track's Beatport key (see [Library](library.md)); Rekordbox's key is
+not used. So the wheel says what is missing:
+
+- With no track selected or playing it lights nothing and says "Select or play a
+  track to light its key."
+- A selected track with no Beatport key lights nothing and says "This track has no
+  Beatport key yet", with **Match on Beatport**, which opens Clean. It does this even
+  while a track with a key plays: the track you selected wins.
+- If no track in your library has a key yet, it says "No track in your library has a
+  Beatport key yet." with **Match tracks…**.
+
+**Click a key** to open the whole Library on every track in that key, in any
+notation: the click replaces the search, the filters, the quick-filter chips and the
+playlist or Collection you had open, with one filter, "Key is 9A". Each key's tooltip
+says so ("9A: show every 9A track in the Library"). The Library's **Key** list can then
+add the other keys that were lit.
+
+From the keyboard, **Tab** to the wheel button and press **Enter**; inside, the
+**Left** and **Right** arrows move round the ring, **Up** and **Down** switch rings,
+and **Enter** filters. **Esc**, a click outside or the button again closes it. Each
+key is a button named for what it is, for example "8A, A minor, compatible".
+
+The key in the [player bar](player.md#the-player-bar)'s track line opens the same
+wheel for the playing track, whatever is selected, captioned "Playing: …".
 
 ## The menu bar
 

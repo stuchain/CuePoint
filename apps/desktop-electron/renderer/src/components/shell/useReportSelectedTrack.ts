@@ -14,11 +14,11 @@ import { useEffect } from "react";
 import { setSelectedTrack, type SelectedTrack } from "./selectedTrack";
 
 export function useReportSelectedTrack(track: SelectedTrack | null, enabled = true): void {
-  const { id = null, key: camelot = null } = track ?? {};
+  const { id = null, key: camelot = null, title = null } = track ?? {};
   useEffect(() => {
     if (!enabled) return;
-    setSelectedTrack(id === null ? null : { id, key: camelot });
-  }, [enabled, id, camelot]);
+    setSelectedTrack(id === null ? null : title === null ? { id, key: camelot } : { id, key: camelot, title });
+  }, [enabled, id, camelot, title]);
   useEffect(() => {
     if (!enabled) return;
     return () => setSelectedTrack(null);

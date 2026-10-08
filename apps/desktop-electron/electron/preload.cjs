@@ -196,6 +196,7 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   getLibraryPlaylists: () => ipcRenderer.invoke("engine:getLibraryPlaylists"),
   getLibraryFacet: (params) => ipcRenderer.invoke("engine:getLibraryFacet", params),
   getLibraryQuickFacets: (params) => ipcRenderer.invoke("engine:getLibraryQuickFacets", params),
+  getCompatibleKeys: (params) => ipcRenderer.invoke("engine:getCompatibleKeys", params),
   getLibraryFilterFields: () => ipcRenderer.invoke("engine:getLibraryFilterFields"),
   getLibraryTrack: (params) => ipcRenderer.invoke("engine:getLibraryTrack", params),
   // A track's artwork (CLEAN-09). The engine's JPEG bytes become an object URL

@@ -558,6 +558,22 @@ const logo = [
   "............",
 ];
 
+/** The Camelot wheel (HDR-4): a ring cut into quarters, the way the wheel is divided. */
+const wheel = [
+  "....####....",
+  "..##.##.##..",
+  ".##..##..##.",
+  ".#...##...#.",
+  ".#...##...#.",
+  "############",
+  "############",
+  ".#...##...#.",
+  ".#...##...#.",
+  ".##..##..##.",
+  "..##.##.##..",
+  "....####....",
+];
+
 export const PIXEL_ICONS = {
   play,
   pause,
@@ -596,6 +612,8 @@ export const PIXEL_ICONS = {
   "chevron-right": chevronRight,
   close,
   logo,
+  // HDR-4: the header's Camelot wheel button.
+  wheel,
 } as const satisfies Record<string, readonly string[]>;
 
 export type PixelIconName = keyof typeof PIXEL_ICONS;
