@@ -14,12 +14,17 @@ const hook = require("../build/signNestedBinaries.cjs");
 const notarize = require("../build/notarize.cjs");
 
 let root: string;
+/** Files made executable: Windows keeps no execute bit, so their mode is reported from here. */
+let executables: Set<string>;
 
 function touch(rel: string, exec = false) {
   const full = path.join(root, rel);
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, "x");
-  if (exec) fs.chmodSync(full, 0o755);
+  if (exec) {
+    fs.chmodSync(full, 0o755);
+    executables.add(full);
+  }
 }
 
 function context(platform = "darwin") {
@@ -36,6 +41,15 @@ const slashed = (p: string) => p.split(path.sep).join("/");
 
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "sign-test-"));
+  executables = new Set();
+  if (process.platform === "win32") {
+    const statSync = fs.statSync;
+    vi.spyOn(fs, "statSync").mockImplementation(((target: fs.PathLike, options?: fs.StatSyncOptions) => {
+      const stats = statSync(target, options) as fs.Stats;
+      if (executables.has(String(target))) stats.mode |= 0o111;
+      return stats;
+    }) as typeof fs.statSync);
+  }
   touch("CuePoint.app/Contents/MacOS/CuePoint", true);
   touch("CuePoint.app/Contents/Resources/engine/cuepoint-engine", true);
   touch("CuePoint.app/Contents/Resources/engine/data.txt");
