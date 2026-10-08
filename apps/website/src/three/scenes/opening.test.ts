@@ -5,6 +5,7 @@ import { paletteUniforms } from "../palette";
 import {
   CRATE,
   KEYS,
+  LABEL_HOLD,
   PHASES,
   RECORD_COUNT,
   TAG,
@@ -162,26 +163,52 @@ describe("the records' tags can be read", () => {
   // the stage is 16:9 at the page's width: 343 CSS px on a 375 px phone, about 700 on a 1440 px screen; one scene pixel is 4 CSS px
   const SCENE_PIXEL_CSS = 4;
   const FOV = 32; // the camera's vertical field of view (create(); a 16:9 stage never widens it)
+  // A phone's stage is 86 scene pixels wide and 48 tall, and 24 keys at 2 pixels a texel would cover over 90% of it
+  // (see TAG), so a phone keeps one whole pixel per texel; a desktop's stage has room for two.
+  const MIN_PIXELS_PER_TEXEL: Record<number, number> = { 343: 1, 700: 2 };
+  const pixelsPerTexel = (stage: number): number => {
+    const cam = cameraPose(0.4); // the tags' shot: held from the end of the lift to the start of the fly
+    const labelZ = 0.5; // the sleeves hang within 0.3 of z = 0, and the tag sits just in front
+    const distance = cam.position[2] - labelZ;
+    const worldWidth = 2 * Math.tan((FOV / 2) * (Math.PI / 180)) * distance * (16 / 9);
+    return TAG.texel / (worldWidth / (stage / SCENE_PIXEL_CSS));
+  };
   for (const stage of [343, 700]) {
-    it(`covers at least one scene pixel per texel on a ${stage} px stage`, () => {
-      const cam = cameraPose(0.4); // the tags' shot: held from the end of the lift to the start of the fly
-      const labelZ = 0.5; // the sleeves hang within 0.3 of z = 0, and the tag sits just in front
-      const distance = cam.position[2] - labelZ;
-      const worldWidth = 2 * Math.tan((FOV / 2) * (Math.PI / 180)) * distance * (16 / 9);
-      const worldPerScenePixel = worldWidth / (stage / SCENE_PIXEL_CSS);
-      expect(TAG.texel / worldPerScenePixel).toBeGreaterThanOrEqual(1);
+    it(`covers at least ${MIN_PIXELS_PER_TEXEL[stage]} scene pixel(s) per texel on a ${stage} px stage`, () => {
+      expect(pixelsPerTexel(stage)).toBeGreaterThanOrEqual(MIN_PIXELS_PER_TEXEL[stage]!);
     });
   }
 
+  it("keeps a texel close to a whole number of scene pixels, so a letter's stems are one even width", () => {
+    for (const stage of [343, 700]) {
+      const r = pixelsPerTexel(stage);
+      expect(Math.abs(r - Math.round(r)), `${stage} px stage: ${r}`).toBeLessThan(0.1);
+    }
+  });
+
   it("shows only the key, and the longest tag still fits its sleeve and its column", () => {
     const widest = Math.max(...records.map((i) => tagTexels(i).width)) * TAG.texel;
-    expect(widest).toBeLessThanOrEqual(3.0 + 1e-9); // the hung sleeve's width
-    expect(widest).toBeLessThan(3.3); // the column pitch
+    expect(widest).toBeLessThanOrEqual(3.2 - 0.2); // the hung sleeve's width, and a margin each side
+    expect(widest).toBeLessThan(3.5); // the column pitch
     expect(tagTexels(KEYS.indexOf("8A")).height).toBe(5);
   });
 
   it("holds the tags' camera still through the tagging, so the texel size stays true", () => {
-    expect(cameraPose(0.34)).toEqual(cameraPose(0.5));
+    expect(cameraPose(LABEL_HOLD[0])).toEqual(cameraPose(LABEL_HOLD[1]));
+  });
+
+  it("has every key on show, whole, through the whole label hold", () => {
+    for (const i of records) {
+      for (const p of [LABEL_HOLD[0], 0.4, 0.45, LABEL_HOLD[1]]) expect(labelAmount(i, p), `record ${i} at ${p}`).toBe(1);
+    }
+  });
+
+  it("keeps every sleeve still through the label hold, so a key never sits between two pixels", () => {
+    for (const i of records) {
+      const a = recordPose(i, LABEL_HOLD[0]);
+      const b = recordPose(i, LABEL_HOLD[1]);
+      expect(b, `record ${i}`).toEqual(a);
+    }
   });
 });
 

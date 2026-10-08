@@ -52,7 +52,7 @@ export const WHEEL = { innerRadius: 3.2, outerRadius: 5, cell: 0.7, radial: 1.5,
 
 const SLEEVE = { thick: 0.28, size: 3 } as const;
 /** While the tags show, the sleeves hang smaller, in a grid, so no tag is hidden. */
-const HUNG = { width: 3, height: 2.2, cols: 6, pitchX: 3.3, pitchY: 2.6, bottom: 3.4 } as const;
+const HUNG = { width: 3.2, height: 2.2, cols: 6, pitchX: 3.5, pitchY: 2.6, bottom: 3.4 } as const;
 const PITCH = 0.3; // between records in the crate
 
 const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
@@ -187,10 +187,17 @@ export function recordPose(i: number, progress: number): RecordPose {
   };
 }
 
-/** How much of record i's tag shows, 0 to 1: it pops in during the tagging and goes as the record lands. */
+/** The label hold: the camera is still, every sleeve has stopped and every key is on show at full size. */
+export const LABEL_HOLD = [0.34, PHASES.tag[1]] as const;
+
+/**
+ * How much of record i's tag shows, 0 to 1: it pops in as the record settles into the hang (between the start of
+ * the tagging and the start of the hold, so that the whole hold shows every key at one fixed size) and goes as the
+ * record flies off.
+ */
 export function labelAmount(i: number, progress: number): number {
   const p = clamp01(progress);
-  const appear = staggered(p, PHASES.tag, arrivalOrder(i));
+  const appear = staggered(p, [PHASES.tag[0], LABEL_HOLD[0]], liftOrder(i));
   // the tag is gone before the record has turned far
   const leaving = smooth(clamp01((staggered(p, PHASES.fly, arrivalOrder(i)) - 0.15) / 0.3));
   return Math.max(0, Math.min(smooth(appear), 1 - leaving));
@@ -254,10 +261,14 @@ const WHEEL_SLOTS = [SLOT.primary, SLOT.success, SLOT.warning, SLOT.danger, SLOT
 /**
  * One tag texel, in world units. A tag shows the key only ("8A"), because a texel that covers less than one
  * scene pixel cannot be read: at the tags' camera (cameraPose: 22 units away, 32 degrees of view) a scene
- * pixel is about 0.26 units on a phone's stage and 0.13 on a desktop's, so a texel of 0.27 covers one pixel
- * or more on both (opening.test.ts projects it). Tempo and genre are in the step's text.
+ * pixel is about 0.26 units on a phone's stage (343 px wide) and 0.13 on a desktop's (about 700), so a texel
+ * of 0.26 covers one scene pixel on a phone and two on a desktop, both close to whole numbers, so a letter's
+ * stems stay one even width (opening.test.ts projects it). Tempo and genre are in the step's text.
+ *
+ * Two scene pixels per texel on a phone would need 24 keys of up to 11 texels in a stage 86 pixels wide and
+ * 48 tall: the keys alone would cover over nine tenths of it. The tags therefore keep a whole pixel there.
  */
-export const TAG = { texel: 0.27 } as const;
+export const TAG = { texel: 0.26 } as const;
 const toColor = (c: readonly [number, number, number]): Color => new Color(c[0], c[1], c[2]);
 const rgb255 = (c: readonly [number, number, number]): [number, number, number] => [Math.round(c[0] * 255), Math.round(c[1] * 255), Math.round(c[2] * 255)];
 
@@ -428,8 +439,8 @@ export function create(): SceneInstance {
       if (tag.mesh.visible) {
         // a sticker on the sleeve's face
         tag.mesh.position.set(r.x, r.y + 0.1, r.z + SLEEVE.thick / 2 + 0.06);
-        const grow = 0.55 + 0.45 * a;
-        tag.mesh.scale.set(tag.width * TAG.texel * grow, tag.height * TAG.texel * grow, 1);
+        // always whole texels at one size: a tag that grew in would sit between pixels and break its letters
+        tag.mesh.scale.set(tag.width * TAG.texel, tag.height * TAG.texel, 1);
       }
     }
     records.instanceMatrix.needsUpdate = true;
