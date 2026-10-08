@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 
 /**
  * A view becomes a playing queue, through the whole stack (PLAYER-05, DEC-012).
@@ -63,6 +64,7 @@ ${entries}
 }
 
 test("playing a view queues exactly what the table shows, in its order", async () => {
+  test.skip(!hasPlayer, NO_PLAYER);
   const userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-pv-"));
   const cuepointHome = mkdtempSync(path.join(tmpdir(), "cuepoint-home-"));
   const workspace = mkdtempSync(path.join(tmpdir(), "cuepoint-xml-"));

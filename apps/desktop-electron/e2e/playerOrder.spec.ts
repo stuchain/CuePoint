@@ -4,6 +4,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 
 /**
  * Shuffle and repeat, pressed and remembered (PLAYER-07, DEC-052).
@@ -68,6 +69,7 @@ async function orderState(window: Page): Promise<{ shuffle: boolean; repeat: str
 }
 
 test("shuffle and repeat reach the queue and survive a restart", async () => {
+  test.skip(!hasPlayer, NO_PLAYER);
   const userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-order-"));
   const home = mkdtempSync(path.join(tmpdir(), "cuepoint-home-"));
 

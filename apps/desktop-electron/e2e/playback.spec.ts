@@ -11,6 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 
 /**
  * Phase 5 end to end, in the running app (PLAYER-12).
@@ -163,6 +164,7 @@ test.describe("Phase 5 end to end", () => {
   });
 
   test("plays, queues, reorders, takes the keyboard — and remembers nothing", async () => {
+    test.skip(!hasPlayer, NO_PLAYER);
     test.setTimeout(240_000);
     let app = await launch(userDataDir, home);
     try {

@@ -18,11 +18,13 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const AUDIO = path.resolve(ROOT, "../../src/tests/fixtures/audio");
 
 test("the player bar fits the shell at every scale", async () => {
+  test.skip(!hasPlayer, NO_PLAYER);
   const env = { ...process.env, NODE_ENV: "production",
     CUEPOINT_HOME: mkdtempSync(path.join(tmpdir(), "cp-home-")) } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;

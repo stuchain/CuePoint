@@ -4,6 +4,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 
 /**
  * Files that will not play, in the running app (PLAYER-10, DEC-054).
@@ -63,6 +64,7 @@ async function clearToasts(win: Page): Promise<void> {
 }
 
 test("a queue of files that are not there says one thing and stops", async () => {
+  test.skip(!hasPlayer, NO_PLAYER);
   test.setTimeout(180_000);
   const userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-pf-"));
   const home = mkdtempSync(path.join(tmpdir(), "cuepoint-home-"));

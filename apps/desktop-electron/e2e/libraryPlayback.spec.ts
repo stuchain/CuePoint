@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 
 /**
  * Playing from the Library table, by hand (PLAYER-09, DEC-012, DEC-013).
@@ -101,6 +102,7 @@ async function tableTitles(win: Page): Promise<string[]> {
 }
 
 test("plays and queues from the Library table", async () => {
+  test.skip(!hasPlayer, NO_PLAYER);
   test.setTimeout(240_000);
   const userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-lp-"));
   const cuepointHome = mkdtempSync(path.join(tmpdir(), "cuepoint-home-"));

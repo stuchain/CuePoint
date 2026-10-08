@@ -29,6 +29,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -296,6 +297,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
   });
 
   test("shows its whole rows, fits its width, and plays the row double-clicked", async () => {
+    test.skip(!hasPlayer, NO_PLAYER);
     const app = await launch(userDataDir, cuepointHome);
     try {
       const win = await app.firstWindow({ timeout: 60_000 });

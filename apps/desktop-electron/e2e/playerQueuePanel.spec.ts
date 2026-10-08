@@ -4,6 +4,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 
 /**
  * The queue panel in the running app (PLAYER-08, DEC-013).
@@ -28,6 +29,7 @@ async function dismissOnboarding(window: Page): Promise<void> {
 }
 
 test("the queue panel shows the real queue and edits it", async () => {
+  test.skip(!hasPlayer, NO_PLAYER);
   const userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-qp-"));
   const home = mkdtempSync(path.join(tmpdir(), "cuepoint-home-"));
   const env = {

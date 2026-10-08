@@ -4,6 +4,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 
 /**
  * Audio output settings in the running app (PLAYER-11, DEC-055).
@@ -95,6 +96,7 @@ async function audioState(win: Page) {
 }
 
 test("choosing an output device, keeping it, and surviving it going away", async () => {
+  test.skip(!hasPlayer, NO_PLAYER);
   test.setTimeout(240_000);
   const userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-pa-"));
   const home = mkdtempSync(path.join(tmpdir(), "cuepoint-home-"));
