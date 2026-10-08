@@ -54,6 +54,11 @@ jobs:
       - name: Run unit tests
         run: |
           pytest src/tests/unit/ -v --cov=src/cuepoint --cov-report=xml
+        # Python 3.12's line tracer is slower than 3.11's: the Windows 3.12 leg ran
+        # the whole suite in 30 minutes against 23 on 3.11. sys.monitoring (3.12+)
+        # measures the same line coverage about a quarter faster.
+        env:
+          COVERAGE_CORE: ${{ matrix.python-version == '3.11' && 'ctrace' || 'sysmon' }}
         timeout-minutes: 30
         continue-on-error: false
 

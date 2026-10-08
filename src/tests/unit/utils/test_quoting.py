@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path, PureWindowsPath
+from pathlib import PurePosixPath, PureWindowsPath
 
 import pytest
 
@@ -20,7 +20,8 @@ class TestQuoted:
         assert quoted(str(path)) == r"'C:\Users\anna\set lists\list.txt'"
 
     def test_a_path_object_is_its_text(self):
-        assert quoted(Path("/music/a.flac")) == "'/music/a.flac'"
+        # A pure POSIX path, so Windows does not turn the slashes round.
+        assert quoted(PurePosixPath("/music/a.flac")) == "'/music/a.flac'"
 
     def test_an_apostrophe_takes_double_quotes(self):
         assert quoted(r"C:\Music\Lovin' You.mp3") == r'''"C:\Music\Lovin' You.mp3"'''
