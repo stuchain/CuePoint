@@ -169,7 +169,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await expect(window.getByText(/Tracks found on Beatport are not in your library/)).toBeVisible();
 
       await row(window, found, /Harbour Lights/).click();
-      await row(window, found, /Low Tide/).click({ modifiers: ["Control"] });
+      await row(window, found, /Low Tide/).click({ modifiers: ["ControlOrMeta"] });
       await window.getByRole("button", { name: "Add to wantlist" }).click();
       await expect(window.getByText("Added 2 tracks to the wantlist")).toBeVisible();
       await expect(row(window, found, /Harbour Lights/)).toContainText("Wanted");

@@ -373,7 +373,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         });
         // The add reloads the table; select again only once it has.
         await expect(bpRow(window, found, "Undertow")).toContainText("Wanted", { timeout: 15_000 });
-        await bpRow(window, found, "Salt Air").click({ modifiers: ["Control"] });
+        await bpRow(window, found, "Salt Air").click({ modifiers: ["ControlOrMeta"] });
         await window.getByRole("button", { name: "Push to Beatport playlist…" }).click();
         const dialog = window.getByRole("dialog", { name: "Push to a Beatport playlist" });
         await expect(dialog).toContainText("the 2 selected tracks");

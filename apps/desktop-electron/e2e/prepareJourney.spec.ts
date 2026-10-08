@@ -419,8 +419,8 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const picked = ["Peak Jump", "Warm Two", "Close"];
       // Clicked in an order the table does not show them in.
       await titled(picked[0]).click();
-      await titled(picked[1]).click({ modifiers: ["Control"] });
-      await titled(picked[2]).click({ modifiers: ["Control"] });
+      await titled(picked[1]).click({ modifiers: ["ControlOrMeta"] });
+      await titled(picked[2]).click({ modifiers: ["ControlOrMeta"] });
       await expect(win.locator(".cp-selection-actions__count")).toHaveText("3 tracks selected");
       await titled(picked[2]).click({ button: "right" });
       await win.getByRole("menuitem", { name: "New Set from the selection…" }).click();
