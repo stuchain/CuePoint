@@ -1,0 +1,37 @@
+---
+/**
+ * The home page's primary action (SITE-06). It follows the header's (SITE-07): until the release data
+ * holds a normal release it is "Get notified of 1.0", a link to the repository's releases (DEC-194);
+ * once one exists it is the Download button, with the same `js-download` hook and `DownloadLabel`, so
+ * src/lib/download-client.ts names the visitor's system on it and points it at that system's
+ * "What happens next" on the download page, with no change here.
+ *
+ * The anchor carries Button's own classes rather than rendering <Button>, because <Button> passes no
+ * extra attributes through and this one needs `data-primary-action` (the e2e check finds it by that).
+ * Button's styles are global, and the header already includes Button on every page.
+ */
+import { PRIMARY_ACTION } from "../data/site";
+import { loadReleases } from "../lib/releases";
+import { hrefFor } from "../lib/url";
+import DownloadLabel from "./DownloadLabel.astro";
+
+interface Props {
+  /** The page's one primary action is marked; the same action repeated further down is `repeat`. */
+  repeat?: boolean;
+}
+const { repeat = false } = Astro.props;
+const hasRelease = loadReleases().release !== null;
+const mark = repeat ? { "data-closing-action": "" } : { "data-primary-action": "" };
+---
+
+{
+  hasRelease ? (
+    <a class="btn js-download" data-variant="primary" href={hrefFor("download/")} {...mark}>
+      <DownloadLabel />
+    </a>
+  ) : (
+    <a class="btn" data-variant="primary" href={PRIMARY_ACTION.href} rel="noopener noreferrer" {...mark}>
+      {PRIMARY_ACTION.label}
+    </a>
+  )
+}

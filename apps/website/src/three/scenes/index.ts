@@ -6,6 +6,7 @@ import type { SceneModule } from "./types";
  */
 export const SCENE_LOADERS = {
   cubes: () => import("./cubes"),
+  opening: () => import("./opening"),
 } as const satisfies Record<string, () => Promise<SceneModule>>;
 
 export type SceneName = keyof typeof SCENE_LOADERS;

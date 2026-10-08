@@ -29,27 +29,33 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
 ---
 
 <header class="header">
-  <div class="bar">
+  <div class="bar" data-home={currentPath === "" ? "true" : undefined}>
     <a class="brand" href={hrefFor("")}>
       <img class="mark" src={mark.src} width="32" height="32" alt="" />
       <span class="name">{SITE_NAME}</span>
     </a>
 
-    <nav class="nav" aria-label="Main">
-      <ul>
-        {
-          NAV.filter((n) => n.header).map((n) => (
-            <li>
-              <a href={hrefFor(n.path)} aria-current={current(n.path)}>
-                {n.label}
-              </a>
-            </li>
-          ))
-        }
-      </ul>
-    </nav>
+    <!-- On a phone the nav and the theme switch sit in a menu (a <details>: it works without JavaScript). From 40rem up they are in the bar as before. -->
+    <details class="menu">
+      <summary class="menu-toggle">Menu</summary>
+      <div class="menu-body">
+        <nav class="nav" aria-label="Main">
+          <ul>
+            {
+              NAV.filter((n) => n.header).map((n) => (
+                <li>
+                  <a href={hrefFor(n.path)} aria-current={current(n.path)}>
+                    {n.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
 
-    <ThemeSwitch />
+        <ThemeSwitch />
+      </div>
+    </details>
 
     {
       hasRelease ? (
@@ -120,9 +126,80 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
     text-decoration-thickness: var(--border-width-heavy);
     text-underline-offset: 0.25em;
   }
-  @media (max-width: 40rem) {
-    .brand {
-      flex: 1 1 auto;
+  /* the menu: a disclosure on a phone, the bar's own items from 40rem up */
+  .bar {
+    position: relative;
+  }
+  .menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: var(--space-xs) var(--space-md);
+    background: var(--bg-panel);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--focus-halo), var(--shadow-bevel);
+    font-family: var(--font-pixel);
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+  }
+  .menu-toggle::-webkit-details-marker {
+    display: none;
+  }
+  .menu-toggle::after {
+    content: "\25BE";
+    margin-left: var(--space-sm);
+  }
+  .menu[open] .menu-toggle::after {
+    content: "\25B4";
+  }
+  .menu-body {
+    position: absolute;
+    z-index: 50;
+    left: 0;
+    right: 0;
+    top: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-md);
+    padding: var(--space-md) var(--gutter);
+    background: var(--bg-toolbar);
+    border-bottom: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-panel);
+  }
+  .menu-body .nav ul {
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+  .menu-body .nav a {
+    padding-block: var(--space-sm);
+  }
+  /* the home page has its own call to action: on a phone the bar is the mark and the menu */
+  @media (max-width: 39.99rem) {
+    .bar[data-home="true"] :global(.action) {
+      display: none;
+    }
+  }
+  @media (min-width: 40rem) {
+    .menu,
+    .menu-body {
+      display: contents;
+    }
+    .menu-toggle {
+      display: none;
+    }
+    /* a closed <details> hides its content; the browsers that can show it always do, on a wide screen */
+    .menu::details-content {
+      content-visibility: visible;
+      display: contents;
+    }
+    .menu-body .nav ul {
+      flex-direction: row;
+      gap: var(--space-lg);
+    }
+    .menu-body .nav a {
+      padding-block: var(--space-xs);
     }
   }
 </style>

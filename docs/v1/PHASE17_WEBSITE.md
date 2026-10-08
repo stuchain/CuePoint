@@ -579,6 +579,16 @@ does for them, then shows it, then offers the download.
 
 **Complexity**: **L**
 
+**Outcome (2026-10-08)**: The home page opens on the crate-to-wheel scene (`src/three/scenes/opening.ts`):
+24 records lift out of a crate, show their key as a pixel label, fly into a Camelot wheel that lights up, and
+the wheel stands and hands off to the app-window slot. The story is a pure function of scroll progress, and the
+step text beside it is placed from the same phases. Devices the gate refuses get a compact layout with the
+still. Every app picture is a labelled placeholder until SITE-04: dropping `src/assets/app/<id>-<theme>.png`
+swaps it in. The primary action follows the header ("Get notified of 1.0" until a release exists). Below
+40rem the header folds into a Menu. The sound button appears only once a loop file is added (DEC-191).
+Skipped on purpose: small scenes in the feature sections and an animated headline, to keep the budgets.
+Owed: the user's approval of the page, the real-device frame-rate check, and counting the sound button.
+
 ---
 
 ## SITE-07 — Download

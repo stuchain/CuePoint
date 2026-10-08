@@ -31,9 +31,15 @@ export function themeIds() {
   return [...block[1].matchAll(/id:\s*"(\w+)"/g)].map((m) => m[1]);
 }
 
+/** Files only some scenes read, beyond the shared ones (a scene's hash must not change for files it does not use). */
+const EXTRA_SOURCES = {
+  opening: ["src/three/pixel-font.ts", "src/three/phases.ts"],
+};
+
 /** The files whose content changes how a scene's still looks. Paths are relative to the app root. */
 export function sourceFiles(scene) {
   return [
+    ...(EXTRA_SOURCES[scene] ?? []),
     `src/three/scenes/${scene}.ts`,
     "src/three/scenes/types.ts",
     "src/three/voxel.ts",

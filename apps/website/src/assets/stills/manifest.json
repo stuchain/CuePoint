@@ -1,6 +1,16 @@
 {
   "cubes": {
-    "sourceHash": "213dfaaa1f7b2a8420a032d69dd0e4b80f4796a7f9e3ab8b60b635cee91381ce",
+    "sourceHash": "88041ed002fd658e57b7aada89bc9088c9a70f4491b08eb5d40f08c5a5527122",
+    "themes": [
+      "neoDark",
+      "retro16",
+      "qtEvolved",
+      "clubNeon",
+      "mutedPro"
+    ]
+  },
+  "opening": {
+    "sourceHash": "00321c8f55bb48463f041c78e08e2b837f1b3fa3ef977012117a98a3adfcda10",
     "themes": [
       "neoDark",
       "retro16",

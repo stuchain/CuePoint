@@ -14,6 +14,8 @@ export interface SceneInstance {
    * Optional: a scene without shadows ignores it.
    */
   setShadowSize?(size: number): void;
+  /** The sound the visitor switched on, 0 to 1 (home page, DEC-191). A scene that ignores sound leaves it out. */
+  setLevel?(level: number): void;
   /** The canvas's width / height changed. */
   resize(aspect: number): void;
   /** Frees every geometry, material and texture the scene made. */

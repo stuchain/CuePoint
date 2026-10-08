@@ -2,6 +2,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { WebGLRenderer } from "three";
 import { PUBLIC } from "../../site.config";
+import { AUDIO_LEVEL_EVENT } from "../lib/loop";
 import { THEME_EVENT } from "../lib/themes";
 import { FrameBudget } from "./budget";
 import { FpsProbe } from "./gate";
@@ -29,6 +30,22 @@ import { yieldToMain } from "./yield";
  */
 
 gsap.registerPlugin(ScrollTrigger);
+
+/**
+ * The scroll range that drives a scene. By default the scene's own travel across the screen. A scene
+ * that sticks while a taller section scrolls past (the home page's opening) names that section with
+ * `data-scene-trigger="#id"`: its progress then runs from the section's top at the top of the screen to
+ * its bottom at the bottom of the screen, which is exactly how long the scene sticks.
+ */
+function scrollRange(host: HTMLElement): ScrollTrigger.Vars {
+  const selector = host.dataset["sceneTrigger"];
+  const section = selector ? document.querySelector(selector) : null;
+  // `data-scene-range="top 50%,bottom 50%"` says where on the screen the section's top and bottom count
+  const [start = "top top", end = "bottom bottom"] = (host.dataset["sceneRange"] ?? "").split(",").map((v) => v.trim());
+  return section
+    ? { trigger: section, start, end, scrub: true }
+    : { trigger: host, start: "top bottom", end: "bottom top", scrub: true };
+}
 
 export type StageStatus = "running" | "sleeping" | "stopped" | "disposed";
 
@@ -155,6 +172,7 @@ export class Stage {
     this.appliedShadow = this.budget.shadowSize;
     this.resizeObserver = new ResizeObserver(() => this.resize());
     document.addEventListener(THEME_EVENT, this.onTheme);
+    document.addEventListener(AUDIO_LEVEL_EVENT, this.onAudioLevel);
     document.addEventListener("visibilitychange", this.onVisibility);
     window.addEventListener("pagehide", this.onPageHide);
     window.addEventListener("pageshow", this.onPageShow);
@@ -184,7 +202,7 @@ export class Stage {
     const tween = gsap.to(progress, {
       p: 1,
       ease: "none",
-      scrollTrigger: { trigger: host, start: "top bottom", end: "bottom top", scrub: true },
+      scrollTrigger: scrollRange(host),
       onUpdate: show,
     });
     instance.setProgress(rest);
@@ -352,6 +370,13 @@ export class Stage {
     this.draw();
   };
 
+  private readonly onAudioLevel = (event: Event): void => {
+    const level = Number((event as CustomEvent<number>).detail);
+    if (this.disposed || !this.active || !Number.isFinite(level)) return;
+    this.active.instance.setLevel?.(level);
+    this.dirty = true;
+  };
+
   private readonly onVisibility = (): void => {
     if (document.hidden) this.sleep();
     else {
@@ -405,6 +430,7 @@ export class Stage {
     this.disposed = true;
     this.sleep();
     document.removeEventListener(THEME_EVENT, this.onTheme);
+    document.removeEventListener(AUDIO_LEVEL_EVENT, this.onAudioLevel);
     document.removeEventListener("visibilitychange", this.onVisibility);
     window.removeEventListener("pagehide", this.onPageHide);
     window.removeEventListener("pageshow", this.onPageShow);

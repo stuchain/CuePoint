@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EARLY_MS, FpsProbe, MIN_FPS, PROBE_MS, blockers, canStart, isSoftwareRenderer, readEnv, type GateEnv } from "./gate";
+import { plainStoryScript, EARLY_MS, FpsProbe, MIN_FPS, PROBE_MS, blockers, canStart, isSoftwareRenderer, readEnv, type GateEnv } from "./gate";
 
 const clear: GateEnv = {
   webgl2: true,
@@ -163,5 +163,39 @@ describe("the two second frame-rate probe", () => {
     let t = 30_000;
     while (v === "pending" && t < 40_000) v = p.frame((t += 16.6));
     expect(v).toBe("pass");
+  });
+});
+
+describe("the page's inline script", () => {
+  /** Runs the script as a browser would, against a made-up environment; true when it marks the page plain. */
+  function marksPlain(env: GateEnv): boolean {
+    const attrs: Record<string, string> = {};
+    const nav = {
+      connection: { saveData: env.saveData },
+      deviceMemory: env.deviceMemory,
+      hardwareConcurrency: env.hardwareConcurrency,
+    };
+    const doc = { documentElement: { setAttribute: (k: string, v: string) => void (attrs[k] = v) } };
+    const run = new Function("navigator", "document", "matchMedia", "WebGL2RenderingContext", plainStoryScript());
+    run(nav, doc, () => ({ matches: env.reducedMotion }), env.webgl2 ? class {} : undefined);
+    return attrs["data-story"] === "plain";
+  }
+
+  it("agrees with blockers() for every condition it can know at once", () => {
+    const cases: Partial<GateEnv>[] = [
+      {},
+      { webgl2: false },
+      { reducedMotion: true },
+      { saveData: true },
+      { deviceMemory: 2 },
+      { deviceMemory: 4 },
+      { hardwareConcurrency: 2 },
+      { hardwareConcurrency: 4 },
+      { deviceMemory: undefined, hardwareConcurrency: undefined },
+    ];
+    for (const change of cases) {
+      const env = { ...clear, ...change };
+      expect(marksPlain(env), JSON.stringify(change)).toBe(!canStart(env));
+    }
   });
 });

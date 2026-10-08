@@ -20,10 +20,17 @@ interface Props {
   alt?: string;
   /** A scene at the top of the page: its default-theme still loads first (it can be the largest paint). */
   priority?: boolean;
+  /**
+   * A selector for a taller section whose scroll drives the scene, for a scene that sticks while that
+   * section passes (the home page's opening). Left out, the scene's own travel across the screen drives it.
+   */
+  trigger?: string;
+  /** With `trigger`: where the section's top and bottom count on the screen, "top top,bottom bottom" by default. */
+  range?: string;
   class?: string;
 }
 
-const { name, alt = "", priority = false, class: className } = Astro.props;
+const { name, alt = "", priority = false, trigger, range, class: className } = Astro.props;
 
 const files = import.meta.glob<string>("../assets/stills/*.png", { eager: true, query: "?url&no-inline", import: "default" });
 const stills = THEMES.map((theme) => {
@@ -37,6 +44,8 @@ const stills = THEMES.map((theme) => {
   class:list={["scene", className]}
   data-scene={name}
   data-scene-state="still"
+  data-scene-trigger={trigger}
+  data-scene-range={range}
   style={`--scene-ratio: ${STILL_WIDTH} / ${STILL_HEIGHT}`}
 >
   {

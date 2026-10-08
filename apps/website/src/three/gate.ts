@@ -81,6 +81,17 @@ export function readEnv(win: EnvWindow = window as unknown as EnvWindow): GateEn
   };
 }
 
+/**
+ * The home page's inline script, which runs before first paint (so nothing moves when the page loads) and
+ * marks `<html data-story="plain">` when the cheap conditions above already rule 3D out. It is built from
+ * this file's own constants and `gate.test.ts` runs it against `blockers()`'s cases, so the two cannot
+ * drift apart. The software-GL condition needs a context and is learned later (boot.ts); the page then
+ * keeps its tall layout with the still.
+ */
+export function plainStoryScript(): string {
+  return `(function(){var n=navigator,c=n.connection||{},m=n.deviceMemory,h=n.hardwareConcurrency;if(typeof WebGL2RenderingContext==="undefined"||matchMedia("(prefers-reduced-motion: reduce)").matches||c.saveData===true||(m!==undefined&&m<${MIN_DEVICE_MEMORY})||(h!==undefined&&h<${MIN_CORES}))document.documentElement.setAttribute("data-story","plain")})()`;
+}
+
 export type ProbeVerdict = "pending" | "pass" | "fail";
 
 /** After this long a clearly slow scene is stopped without waiting for the full probe. */

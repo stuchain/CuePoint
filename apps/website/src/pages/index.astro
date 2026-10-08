@@ -1,18 +1,426 @@
 ---
-import Section from "../components/Section.astro";
+/*
+ * The home page (SITE-06): what CuePoint does for a DJ, in one screen; then the opening scene that shows
+ * it (DEC-189: the crate becomes the wheel); then one section for each thing the app does, the reasons
+ * to trust it, and the download.
+ *
+ * The opening is a tall section. Its scene sticks while a track of three steps scrolls past, and the
+ * scene's scroll range is that track (`trigger`, from its top at the middle of the screen to its bottom
+ * at the middle), so each step, placed at the middle of its span of src/three/phases.ts, is centered on
+ * the screen exactly while the scene shows what it says. The steps say the whole story in words, so
+ * nothing is only in the 3D. In the last phase the stuck scene cross-fades into the app window's slot
+ * (DEC-189: the wheel becomes the window). Where 3D does not run the scene is its still; with reduced
+ * motion, saveData, a small device or no WebGL 2 the section is compact (the inline script).
+ * The app's pictures are labelled placeholders until SITE-04 (components/AppShot.astro).
+ */
+import { SITE_URL } from "../../site.config";
+import { plainStoryScript } from "../three/gate";
+import { stepMid, type StepId } from "../three/phases";
+import { shotImages } from "../lib/app-shots";
+import AppShot from "../components/AppShot.astro";
 import Button from "../components/Button.astro";
-import { PRIMARY_ACTION } from "../data/site";
+import HomeAction from "../components/HomeAction.astro";
+import Panel from "../components/Panel.astro";
+import Scene from "../components/Scene.astro";
+import Section from "../components/Section.astro";
+import SoundButton from "../components/SoundButton.astro";
+import { FEATURES, HERO, OPENING_STEPS, TRUST } from "../data/home";
+import { GITHUB_URL, SITE_NAME } from "../data/site";
 import Page from "../layouts/Page.astro";
+import { loadReleases } from "../lib/releases";
+import { canonicalFor, hrefFor } from "../lib/url";
+
+const hasRelease = loadReleases().release !== null;
+const screenshot = shotImages("window")[0]?.image;
+
+const schema = [
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: SITE_NAME,
+    description: HERO.description,
+    applicationCategory: "MultimediaApplication",
+    operatingSystem: "Windows, macOS, Linux",
+    url: canonicalFor(""),
+    downloadUrl: canonicalFor("download/"),
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    // a screenshot is named only once SITE-04 has captured a real one
+    ...(screenshot ? { screenshot: new URL(screenshot.src, SITE_URL).href } : {}),
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: SITE_URL,
+    logo: new URL("apple-touch-icon.png", SITE_URL).href,
+    sameAs: [GITHUB_URL],
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: SITE_URL,
+  },
+];
+
+/**
+ * Where 3D is not going to run for a reason known at once, the opening is compact: a still beside plain
+ * steps. The script is built from src/three/gate.ts's own constants (and tested against its blockers), and
+ * runs before first paint so nothing moves when the page loads.
+ */
+const PLAIN_SCRIPT = plainStoryScript();
 ---
 
-<Page
-  title="CuePoint: clean up your Rekordbox library"
-  description="CuePoint is a free desktop app for DJs that cleans up a Rekordbox library."
-  path=""
->
-  <Section id="intro" width="prose">
-    <h1>CuePoint</h1>
-    <p>CuePoint is a free desktop app for DJs. It cleans up a Rekordbox library.</p>
-    <Button href={PRIMARY_ACTION.href} external>{PRIMARY_ACTION.label}</Button>
+<Page title={HERO.title} description={HERO.description} path="" schema={schema}>
+  <script is:inline set:html={PLAIN_SCRIPT} />
+
+  <section class="opening" id="opening" aria-labelledby="home-heading">
+    <div class="grid">
+      <div class="hero">
+        <h1 id="home-heading">{HERO.heading}</h1>
+        <p class="lead">{HERO.lead}</p>
+        <div class="actions">
+          <HomeAction />
+          <Button href="#story" variant="secondary">See how it works</Button>
+        </div>
+      </div>
+
+      <div class="stage" data-stage>
+        <div class="scene-wrap">
+          <Scene
+            name="opening"
+            priority
+            trigger="#story-track"
+            range="top 50%,bottom 50%"
+            alt="A crate of records in blank sleeves of mismatched colors."
+          />
+          <div class="handoff" data-handoff aria-hidden="true"><AppShot id="window" bare /></div>
+        </div>
+        <SoundButton />
+      </div>
+
+      <div class="steps" id="story-track">
+        <h2 class="sr-only">How it works</h2>
+        <ol>
+          {
+            OPENING_STEPS.map((step, i) => (
+              <li class="step" id={i === 0 ? "story" : undefined} data-step={step.id} style={`--mid: ${stepMid(step.id as StepId)}`}>
+                <span class="num" aria-hidden="true">{i + 1}</span>
+                <h3>{step.title}</h3>
+                <p>{step.text}</p>
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <Section id="window" heading="And then it is your library, in CuePoint">
+    <div class="window">
+      <p class="window-text">
+        The Camelot wheel is part of the app too. Open it from the header on any page, and click a key to
+        see only the tracks in it.
+      </p>
+      <AppShot id="window" />
+    </div>
+  </Section>
+
+  {
+    FEATURES.map((f, i) => (
+      <Section id={`feature-${f.id}`} heading={f.heading}>
+        <div class="feature" data-flip={i % 2 === 1 ? "true" : undefined}>
+          <div class="copy">
+            <p>{f.text}</p>
+            <p class="more">
+              {f.learnMore && (
+                <a href={hrefFor(f.learnMore.path)}>
+                  {f.learnMore.label}<span class="sr-only"> about {f.name}</span>
+                </a>
+              )}
+            </p>
+          </div>
+          <AppShot id={f.shot} />
+        </div>
+      </Section>
+    ))
+  }
+
+  <Section id="trust" heading="What you can count on">
+    <ul class="trust">
+      {
+        TRUST.map((t) => (
+          <li>
+            <Panel tone="flat">
+              <h3>{t.title}</h3>
+              <p>{t.text}</p>
+              {t.id === "open" && (
+                <p>
+                  <a href={GITHUB_URL} rel="noopener noreferrer">See the code on GitHub</a>
+                </p>
+              )}
+            </Panel>
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+
+  <Section id="get" heading="Get CuePoint" width="prose">
+    <p>
+      {
+        hasRelease
+          ? "CuePoint is free for Windows, Mac and Linux."
+          : "CuePoint 1.0 is not out yet. Get notified on GitHub when it is, and it will be free for Windows, Mac and Linux."
+      }
+    </p>
+    <p class="closing"><HomeAction repeat /></p>
   </Section>
 </Page>
+
+<script>
+  // From the last phase the stuck scene cross-fades into the app window's slot. Only while the 3D runs:
+  // otherwise the slot below the scene is the window, and nothing here changes.
+  import { HANDOFF_FROM } from "../three/phases";
+
+  const stage = document.querySelector<HTMLElement>("[data-stage]");
+  const track = document.getElementById("story-track");
+  const scene = stage?.querySelector<HTMLElement>("[data-scene]");
+  if (stage && track && scene) {
+    let queued = false;
+    const update = () => {
+      queued = false;
+      let level = 0;
+      if (scene.dataset["sceneState"] === "running") {
+        const r = track.getBoundingClientRect();
+        const p = (innerHeight / 2 - r.top) / r.height; // the scene's own progress: the track's top to its bottom at the screen's middle
+        level = Math.min(1, Math.max(0, (p - HANDOFF_FROM) / (1 - HANDOFF_FROM)));
+      }
+      stage.style.setProperty("--handoff", String(level));
+    };
+    const schedule = () => {
+      if (!queued) {
+        queued = true;
+        requestAnimationFrame(update);
+      }
+    };
+    addEventListener("scroll", schedule, { passive: true });
+    addEventListener("resize", schedule, { passive: true });
+    new MutationObserver(schedule).observe(scene, { attributes: true, attributeFilter: ["data-scene-state"] });
+    schedule();
+  }
+</script>
+
+<style>
+  .opening {
+    width: min(100% - 2 * var(--gutter), var(--content-max));
+    margin-inline: auto;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "hero" "stage" "steps";
+  }
+  .hero {
+    grid-area: hero;
+    padding-block: var(--space-lg) var(--space-md);
+  }
+  .hero h1 {
+    margin: 0 0 var(--space-md);
+    font-size: clamp(var(--font-size-xl), 0.8rem + 3vw, 2.75rem);
+  }
+  .lead {
+    max-width: 36rem;
+    margin: 0 0 var(--space-lg);
+    font-size: var(--font-size-md);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+  }
+
+  /* the scene sticks while the steps pass; on a phone it stays at the top, over a solid band */
+  .stage {
+    grid-area: stage;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding-block: var(--space-sm);
+    background: var(--bg-app);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-md);
+  }
+  .stage :global(.scene) {
+    align-self: stretch;
+  }
+
+  .scene-wrap {
+    position: relative;
+    align-self: stretch;
+  }
+  /* the window's slot, over the scene, faded in by the script above while the 3D runs */
+  .handoff {
+    position: absolute;
+    inset: 0 0 auto 0;
+    opacity: var(--handoff, 0);
+    pointer-events: none;
+  }
+  .handoff :global(.shot) {
+    margin: 0;
+  }
+
+  /* the track of steps: as tall as the story is long; each step sits at the middle of its span */
+  .steps {
+    grid-area: steps;
+    position: relative;
+    height: 230svh;
+  }
+  .steps ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .step {
+    position: absolute;
+    left: 0;
+    top: calc(var(--mid) * 100%);
+    transform: translateY(-50%);
+    width: min(100%, 28rem);
+    display: flex;
+    flex-direction: column;
+    /* "See how it works" lands on the first step: below the stuck scene on a phone, a little above the middle on a wide screen */
+    scroll-margin-top: calc((100vw - 2 * var(--gutter)) * 9 / 16 + 2 * var(--space-sm) + var(--space-md));
+  }
+  .step h3 {
+    margin: var(--space-sm) 0;
+  }
+  .step p {
+    margin: 0;
+  }
+  .num {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    background: var(--accent-primary);
+    color: var(--border-outline);
+    border: var(--border-width) solid var(--border-outline);
+    font-family: var(--font-pixel);
+    font-weight: 700;
+  }
+
+  @media (min-width: 40rem) {
+    .lead {
+      font-size: var(--font-size-lg);
+    }
+  }
+  @media (min-width: 60rem) {
+    .grid {
+      grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+      grid-template-areas: "hero stage" "steps stage";
+      column-gap: var(--space-xl);
+    }
+    .hero {
+      padding-block: var(--space-xl) var(--space-lg);
+    }
+    .stage {
+      align-self: start;
+      top: var(--space-lg);
+      padding-block: var(--space-xl) 0;
+      background: none;
+    }
+    .step {
+      width: 100%;
+      max-width: 26rem;
+      scroll-margin-top: 30svh;
+    }
+  }
+
+  /* where no 3D will run for a reason known at once, the opening is compact: a still beside the steps */
+  :global(:root[data-story="plain"]) .stage {
+    position: static;
+  }
+  :global(:root[data-story="plain"]) .steps {
+    height: auto;
+  }
+  :global(:root[data-story="plain"]) .step {
+    position: static;
+    transform: none;
+    padding-block: var(--space-md);
+  }
+  :global(:root[data-story="plain"]) .handoff {
+    display: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stage {
+      position: static;
+    }
+    .steps {
+      height: auto;
+    }
+    .step {
+      position: static;
+      transform: none;
+      padding-block: var(--space-md);
+    }
+    .handoff {
+      display: none;
+    }
+  }
+
+  .window {
+    display: grid;
+    gap: var(--space-lg);
+  }
+  .window-text {
+    max-width: 40rem;
+    margin: 0;
+  }
+
+  .feature {
+    display: grid;
+    gap: var(--space-lg);
+    align-items: center;
+  }
+  .copy p {
+    max-width: 34rem;
+    margin: 0 0 var(--space-md);
+  }
+  .more {
+    font-family: var(--font-pixel);
+    font-weight: 600;
+  }
+  @media (min-width: 60rem) {
+    .feature {
+      grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+      gap: var(--space-xl);
+    }
+    .feature[data-flip="true"] {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+    }
+    .feature[data-flip="true"] .copy {
+      order: 2;
+    }
+  }
+
+  .trust {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: var(--space-lg);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .trust h3 {
+    margin: 0 0 var(--space-sm);
+  }
+  .trust p {
+    margin: 0 0 var(--space-sm);
+  }
+  .closing {
+    margin-top: var(--space-lg);
+  }
+</style>

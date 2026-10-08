@@ -1,0 +1,69 @@
+---
+/**
+ * The pixel speaker button (DEC-191). It renders only when the user has added a loop they own the rights
+ * to, as src/assets/audio/home-loop.<ext>: until then the page has no button, no audio element and no
+ * script for it. Off by default; pressed, it plays the loop and the voxels move to it
+ * (src/lib/sound-client.ts: Web Audio's analyser). No sound ever plays unasked.
+ */
+import { pickLoop } from "../lib/loop";
+
+// the literal glob must equal LOOP_FILE_PATTERN in src/lib/loop.ts
+const files = import.meta.glob<string>("../assets/audio/home-loop.{mp3,m4a,ogg,webm,wav}", {
+  eager: true,
+  query: "?url",
+  import: "default",
+});
+const loop = pickLoop(files);
+---
+
+{
+  loop && (
+    <>
+      <button type="button" class="sound" data-sound-toggle data-loop-src={loop} aria-pressed="false">
+        <svg class="icon" viewBox="0 0 8 8" width="24" height="24" shape-rendering="crispEdges" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M0 3h2V2h1V1h1v6H3V6H2V5H0z" />
+          <path class="wave" fill="currentColor" d="M5 3h1v2H5zM6 2h1v4H6z" />
+          <path class="mute" fill="currentColor" d="M5 2h1v1h1V2h1v1H7v1h1v1H7V4H6v1H5V4h1V3H5z" />
+        </svg>
+        <span class="label">Sound</span>
+      </button>
+    </>
+  )
+}
+
+<script>
+  // the behavior is a separate chunk, fetched only when the button is on the page (and run on a press)
+  if (document.querySelector("[data-sound-toggle]")) void import("../lib/sound-client");
+</script>
+
+<style>
+  .sound {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    min-height: 2.75rem;
+    padding: var(--space-xs) var(--space-md);
+    background: var(--bg-panel);
+    color: var(--fg-primary);
+    border: var(--border-width) solid var(--border-outline);
+    border-radius: 0;
+    font-family: var(--font-pixel);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--focus-halo), var(--shadow-bevel);
+  }
+  .sound[aria-pressed="true"] {
+    background: var(--accent-primary);
+    color: var(--border-outline);
+  }
+  .icon .wave {
+    display: none;
+  }
+  .sound[aria-pressed="true"] .wave {
+    display: inline;
+  }
+  .sound[aria-pressed="true"] .mute {
+    display: none;
+  }
+</style>
