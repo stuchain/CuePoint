@@ -239,7 +239,7 @@ test.describe("What inCrate left behind (DISCOVER-12)", () => {
         window.location.hash = "#/incrate";
       });
       await expect(window).toHaveURL(/#\/discover$/, { timeout: 15_000 });
-      await expect(window.getByText("Beatport is not connected")).toBeVisible({ timeout: 30_000 });
+      await expect(window.getByText("Connect your Beatport account")).toBeVisible({ timeout: 30_000 });
       await window.getByRole("link", { name: "Settings" }).click();
       await expect(window.locator("#settings-beatport-token")).toBeVisible({ timeout: 15_000 });
       await idle(window);
