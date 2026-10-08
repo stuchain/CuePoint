@@ -56,7 +56,7 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
             {build?.environment === "development" ? " (development)" : ""}
           </li>
           <li>
-            Engine:{" "}
+            Library service:{" "}
             {engineConnected
               ? `connected${engineVersion ? ` (${engineVersion})` : ""}`
               : "not connected"}

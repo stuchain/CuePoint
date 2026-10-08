@@ -78,7 +78,7 @@ export function useCleanJob(
       const jobId = answer.job_id ?? answer.id;
       if (!jobId) {
         if (alive.current) setRunning(null);
-        onMessage("The engine answered without a job to follow.", "warning");
+        onMessage("CuePoint did not say which task to follow.", "warning");
         return false;
       }
       const line = options.started?.(answer);

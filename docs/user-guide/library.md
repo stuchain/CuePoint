@@ -68,7 +68,7 @@ for an artist or a label rather than for text:
 Both ignore capitals, accents on letters like é and Â, and punctuation, and
 both offer the names in your library to choose from. The first time CuePoint
 starts after this update it takes a few seconds to index your artists and
-labels — **Indexing artists and labels** in the status bar — and until then
+labels — **Getting artist and label pages ready** in the status strip — and until then
 these two filters may find fewer tracks than they should.
 
 **Beatport artist** and **Beatport label** find an artist's or a label's tracks
@@ -88,7 +88,7 @@ else and then going back to **All tracks** does not carry that sort over.
 
 **Columns…** opens the list. Nine are shown to start with — the ones a DJ reads —
 and fourteen more are there if you want them: remixer, year, plays, date added,
-colour, bitrate, comment, the file path, four from
+color, bitrate, comment, the file path, four from
 [Clean](#clean-in-the-library) — **Match**, **Score**, **File status** and
 **Artwork** — **Waveform**, which draws each track's waveform, and
 **Loudness**, which says how loud each track is, in LUFS (see
@@ -141,7 +141,7 @@ Selecting one track fills the Inspector. From the top:
   you see now, with where that came from. See
   [The Beatport zone](#the-beatport-zone).
 - **From Rekordbox** — everything the import captured: remixer, album, label,
-  genre, key, BPM, year, length, rating, plays, colour, comment, bitrate, when
+  genre, key, BPM, year, length, rating, plays, color, comment, bitrate, when
   it was added and where the file is. **This part is read-only.** It is what
   Rekordbox sent, and a refresh replaces it.
 - **Cues and beat grid**, also from Rekordbox and also read-only: every hot cue,
@@ -353,7 +353,7 @@ Beat grid · 128.00 BPM
 - A hot cue is its letter, **A** to **H**; a memory cue says **Memory**. A
   loop shows where it starts and ends; a fade-in, fade-out or load point says
   which it is. Times are to a tenth of a second, and the square is the cue's
-  colour in Rekordbox.
+  color in Rekordbox.
 - A grid that changes tempo says **variable**, with the range.
 - **They are read-only.** Nothing in CuePoint edits a cue or a grid, and an
   [export to Rekordbox](rekordbox-export.md) never writes one: it leaves every
@@ -366,7 +366,7 @@ Beat grid · 128.00 BPM
 
 **A library imported before this release** has its cues read once from the
 collection file it was imported from, the first time CuePoint starts, if that
-file is still exactly as it was. The status strip shows **Reading cue points**
+file is still exactly as it was. The status strip shows **Reading your cue points**
 while it does, and Activity records it. If the file has changed since, the
 Inspector says *Cues and the beat grid arrive with the next refresh*, and they
 do.

@@ -828,6 +828,12 @@ def _check(root: Path, capsys, *extra: str) -> tuple[int, str]:
 
 
 class TestTheGuard:
+    @pytest.fixture(autouse=True)
+    def _no_repository_allowlist(self, monkeypatch):
+        # These run on a fixture tree; the repository's own entries name files
+        # that are not in it and would read as stale.
+        monkeypatch.setattr(audit, "ALLOWLIST", {})
+
     def test_a_clean_tree_passes(self, clean, capsys):
         code, out = _check(clean, capsys)
         assert code == 0, out

@@ -170,7 +170,7 @@ export function TagManagerDialog({
 
         <div className="cp-tag-manager__editor">
           {!selected || !draft ? (
-            <p className="cp-tag-manager__note">Choose a tag to rename or recolour it.</p>
+            <p className="cp-tag-manager__note">Choose a tag to rename or recolor it.</p>
           ) : (
             <>
               <TextField
@@ -197,7 +197,7 @@ export function TagManagerDialog({
               />
 
               <Select
-                label="Colour"
+                label="Color"
                 value={draft.colour ?? ""}
                 options={[
                   { value: "", label: colourLabel(null) },

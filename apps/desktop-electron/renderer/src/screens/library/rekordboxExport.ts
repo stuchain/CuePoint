@@ -386,7 +386,7 @@ export function refusalText(refusal: RekordboxExportRefusal): string {
       break;
   }
   if (refusal.code === "LIBRARY_BUSY") {
-    const name = (refusal.job_type && BUSY_JOB_NAMES[refusal.job_type]) ?? "Another library job";
+    const name = (refusal.job_type && BUSY_JOB_NAMES[refusal.job_type]) ?? "Another library task";
     return `${name} is running. The export waits for it, and the preview answers when it ends.`;
   }
   return refusal.message;

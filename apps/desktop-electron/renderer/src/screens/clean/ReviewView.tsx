@@ -285,7 +285,7 @@ export function ReviewView({
       if (trackId == null) return;
       const bridge = window.cuepoint?.decideMatch;
       if (!bridge) {
-        push("Deciding a match needs the desktop app with the engine connected.", "warning");
+        push("Deciding a match needs the desktop app with CuePoint's library service running.", "warning");
         return;
       }
       const title = row?.title ?? "this track";
@@ -314,7 +314,7 @@ export function ReviewView({
       if (trackId == null || fields.length === 0) return;
       const bridge = window.cuepoint?.applyMatch;
       if (!bridge) {
-        push("Applying needs the desktop app with the engine connected.", "warning");
+        push("Applying needs the desktop app with CuePoint's library service running.", "warning");
         return;
       }
       const title = row?.title ?? "this track";
@@ -355,7 +355,7 @@ export function ReviewView({
     (key: string, target: BatchSelection, again: boolean) => {
       const bridge = window.cuepoint?.startCleanMatch;
       if (!bridge) {
-        push("Matching needs the desktop app with the engine connected.", "warning");
+        push("Matching needs the desktop app with CuePoint's library service running.", "warning");
         return;
       }
       followMatch(key, () => bridge({ selection: target, rematch: again }));
@@ -455,7 +455,7 @@ export function ReviewView({
     const save = window.cuepoint?.saveExportFileDialog;
     const write = window.cuepoint?.exportReviewList;
     if (!save || !write) {
-      push("Exporting needs the desktop app with the engine connected.", "warning");
+      push("Exporting needs the desktop app with CuePoint's library service running.", "warning");
       return;
     }
     const extension = exportFormat === "excel" ? "xlsx" : exportFormat;

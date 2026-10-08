@@ -1310,7 +1310,7 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     # visible trail rather than healing silently.
     record_activity(
         "engine.started",
-        f"Engine started (v{__version__})",
+        f"CuePoint started (v{__version__})",
         {"version": __version__, "port": cfg.port},
     )
     # DISCOVER-03: a library the running name rule did not index — one upgraded

@@ -44,7 +44,7 @@ export function setListCopiedLine(setName: string): string {
 export const CLIPBOARD_REFUSED = "Could not copy to the clipboard.";
 
 /** Said when the shell has no `sets` namespace: a browser tab, an older shell. */
-export const NO_SET_LISTS = "Set lists need the desktop app with the engine connected.";
+export const NO_SET_LISTS = "Set lists need the desktop app with CuePoint's library service running.";
 
 /**
  * Whether a refused save should reopen the dialog (PREP-08).

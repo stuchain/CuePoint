@@ -94,7 +94,7 @@ describe("editing one", () => {
     choose("Peak-time");
     expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("Peak-time");
     expect((screen.getByLabelText("Category") as HTMLInputElement).value).toBe("Energy");
-    expect((screen.getByLabelText("Colour") as HTMLSelectElement).value).toBe("danger");
+    expect((screen.getByLabelText("Color") as HTMLSelectElement).value).toBe("danger");
   });
 
   it("saves only the field that changed", () => {
@@ -116,7 +116,7 @@ describe("editing one", () => {
   it("clears a colour with null", () => {
     const { onSave } = show();
     choose("Peak-time");
-    fireEvent.change(screen.getByLabelText("Colour"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith(1, { colour: null });
   });

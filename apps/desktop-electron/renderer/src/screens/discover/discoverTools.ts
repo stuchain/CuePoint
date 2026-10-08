@@ -23,4 +23,4 @@ export interface DiscoverTools {
 }
 
 /** The message for a bridge this build does not have. */
-export const NO_ENGINE = "Discover needs the desktop app with the engine connected.";
+export const NO_ENGINE = "Discover needs the desktop app with CuePoint's library service running.";

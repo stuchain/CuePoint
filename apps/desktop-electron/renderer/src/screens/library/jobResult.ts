@@ -8,13 +8,13 @@ export async function jobResult<T>(jobId: string): Promise<T> {
   const finished = await handle.finished;
   if (finished.state === "failed") throw jobFailureError(jobErrorMessage(finished.error), finished.error);
   const read = window.cuepoint?.getJobResults;
-  if (!read) throw new Error("The engine is not connected.");
+  if (!read) throw new Error("CuePoint's library service is not connected.");
   const payload = await read(jobId);
   if (payload.result == null) {
     // A job the user stopped is not a failure; one that answered nothing is.
     throw finished.state === "cancelled"
       ? cancelledError("Stopped before it had an answer.")
-      : new Error("The job answered nothing.");
+      : new Error("That task finished without an answer.");
   }
   return payload.result as T;
 }

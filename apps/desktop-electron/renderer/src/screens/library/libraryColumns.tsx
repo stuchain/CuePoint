@@ -152,7 +152,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
   {
     id: "colour",
     hiddenByDefault: true,
-    header: "Colour",
+    header: "Color",
     minWidthPx: 70,
     defaultWidthPx: 90,
     render: (track) => track.colour ?? "",

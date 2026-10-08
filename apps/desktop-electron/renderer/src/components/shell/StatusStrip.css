@@ -129,10 +129,74 @@
   opacity: 0.6;
 }
 
+/* A button since STR-5: it opens the list of everything running. */
 .cp-status__more {
   flex: none;
+  min-height: var(--icon-size);
   padding: 0 var(--space-xs);
+  background: transparent;
   border: var(--border-width) solid var(--border-outline);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.cp-status__more:hover,
+.cp-status__more[aria-expanded="true"] {
+  color: var(--fg-primary);
+  background: var(--bg-app);
+}
+
+.cp-status__more:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+/* The Hint wrappers (components/Hint.tsx) carry the layout their child had. */
+.cp-status__job > .cp-hint {
+  overflow: hidden;
+}
+
+.cp-status > .cp-hint:last-child {
+  flex: none;
+  margin-left: auto;
+}
+
+/* Everything running, above "+N more". Fixed, as the strip clips its overflow. */
+.cp-status__running {
+  position: fixed;
+  z-index: 60;
+  min-width: calc(260px * var(--scale));
+  max-width: min(calc(480px * var(--scale)), calc(100vw - 8px));
+  padding: var(--space-xs);
+  background: var(--bg-panel);
+  border: var(--border-width) solid var(--border-outline);
+  color: var(--fg-primary);
+  white-space: normal;
+}
+
+.cp-status__running-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cp-status__running-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs);
+}
+
+.cp-status__running-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cp-status__running-note {
+  margin: 0;
+  padding: var(--space-xs);
   color: var(--fg-muted);
 }
 
@@ -142,4 +206,9 @@
 .cp-status__player {
   margin-left: var(--space-sm);
   white-space: nowrap;
+}
+
+/* Wraps the status text only, so it is the one live region; takes no box of its own. */
+.cp-status__live {
+  display: contents;
 }

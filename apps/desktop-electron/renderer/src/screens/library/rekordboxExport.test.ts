@@ -417,7 +417,7 @@ describe("refusals", () => {
       "An import is running. The export waits for it, and the preview answers when it ends.",
     );
     const other = { ...refusal("library_busy"), job_type: "something_new" };
-    expect(refusalText(other)).toContain("Another library job is running");
+    expect(refusalText(other)).toContain("Another library task is running");
   });
 
   it("fall back to the engine's own words for anything unforeseen", () => {

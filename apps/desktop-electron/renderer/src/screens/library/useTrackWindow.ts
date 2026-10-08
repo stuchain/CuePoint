@@ -186,7 +186,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
       const bridge = window.cuepoint?.browseLibrary;
       if (!bridge) {
         setStatus("error");
-        setError("CuePoint's engine is not available in this window");
+        setError("CuePoint's library service is not available in this window");
         return false;
       }
 

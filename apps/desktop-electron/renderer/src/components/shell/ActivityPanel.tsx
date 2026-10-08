@@ -3,8 +3,10 @@ import { Modal } from "../Modal";
 import type { ActivityFeed } from "../../api/cuepointBridge.types";
 import {
   formatEventDetail,
+  formatEventExtras,
   formatEventTime,
   formatEventType,
+  groupByDay,
   sortNewestFirst,
 } from "./activityFormat";
 import { ActivityOffer } from "./ActivityOffer";
@@ -81,13 +83,18 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
 
         {status === "unavailable" && (
           <p className="cp-activity__note">
-            Activity needs the CuePoint engine, which is not connected.
+            Activity will show once CuePoint has finished starting.
           </p>
         )}
 
         {status === "error" && (
-          <p className="cp-activity__note cp-activity__note--error" role="alert">
-            Could not load activity: {error}
+          <p
+            className="cp-activity__note cp-activity__note--error"
+            role="alert"
+            // The raw reason stays out of the sentence (STR-8).
+            title={error ?? undefined}
+          >
+            Couldn't load the list. Try Refresh.
           </p>
         )}
 
@@ -104,22 +111,46 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
                 ? `${feed?.total} ${feed?.total === 1 ? "event" : "events"}`
                 : `Showing ${events.length} of ${feed?.total}`}
             </p>
-            <ul className="cp-activity__list">
-              {events.map((event) => {
-                const detail = formatEventDetail(event.detail);
-                return (
-                  <li className="cp-activity__row" key={event.id ?? `${event.created_at}-${event.summary}`}>
-                    <span className="cp-activity__time">{formatEventTime(event.created_at)}</span>
-                    <span className="cp-activity__type">{formatEventType(event.type)}</span>
-                    <span className="cp-activity__summary-text">
-                      {event.summary}
-                      {detail && <span className="cp-activity__detail"> {detail}</span>}
-                      <ActivityOffer event={event} onDone={() => load(true)} />
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="cp-activity__list">
+              {groupByDay(events).map((group) => (
+                <section className="cp-activity__day" key={group.heading}>
+                  <h3 className="cp-activity__day-heading">{group.heading}</h3>
+                  <ul className="cp-activity__rows">
+                    {group.events.map((event) => {
+                      const detail = formatEventDetail(event.detail);
+                      const extras = formatEventExtras(event.detail);
+                      const word = formatEventType(event.type);
+                      return (
+                        <li
+                          className="cp-activity__row"
+                          key={event.id ?? `${event.created_at}-${event.summary}`}
+                        >
+                          <span className="cp-activity__time">
+                            {formatEventTime(event.created_at)}
+                          </span>
+                          {word && <span className="cp-activity__type">{word}</span>}
+                          <span className="cp-activity__summary-text">
+                            {event.summary}
+                            {detail && <span className="cp-activity__detail"> {detail}</span>}
+                            {extras.length > 0 && (
+                              <details className="cp-activity__more">
+                                <summary>Details</summary>
+                                <ul className="cp-activity__extras">
+                                  {extras.map((line) => (
+                                    <li key={line}>{line}</li>
+                                  ))}
+                                </ul>
+                              </details>
+                            )}
+                            <ActivityOffer event={event} onDone={() => load(true)} />
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              ))}
+            </div>
           </>
         )}
       </div>

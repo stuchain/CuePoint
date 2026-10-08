@@ -53,7 +53,7 @@ export function useTrackMatches(trackId: number | null, version = 0): TrackMatch
       setMatches(null);
       setAttemptId(null);
       setCandidates([]);
-      setError(trackId == null ? null : "CuePoint's engine is not available in this window");
+      setError(trackId == null ? null : "CuePoint's library service is not available in this window");
       setLoading(false);
       return;
     }

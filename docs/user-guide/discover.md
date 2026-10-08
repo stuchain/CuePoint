@@ -39,7 +39,7 @@ is narrow, the list sits above the run instead of beside it.
   ones you choose (from a list of the names in your library, with how many
   tracks each has), or none.
 
-**Start run** hands the run to CuePoint's engine. It runs in the background:
+**Start run** hands the run to CuePoint. It runs in the background:
 the status strip shows **Reading charts**, **Resolving labels** or **Reading
 releases** with its progress and a **Stop** button, and you can keep working.
 The run appears in the list as soon as it starts, and its tracks appear while
@@ -160,13 +160,13 @@ CuePoint does not refresh it: when Discover says **Beatport rejected the
 token**, get a new one as above, or use the refresh token you got with the first
 (see the reference), and save it.
 
-### Resolving Beatport identities
+### Linking tracks to Beatport
 
 When your library has matched tracks that Discover has not read from Beatport
 yet, the page says how many and offers **Resolve Beatport identities**. It reads
 those tracks from Beatport — which artists and labels they credit, by their
 Beatport ids — so runs find your artists and labels by id rather than by name.
-It runs in the background, shown as **Resolving Beatport identities**, and only
+It runs in the background, shown as **Linking tracks to Beatport**, and only
 when you ask.
 
 ## Artist and label pages
@@ -196,7 +196,7 @@ always says how it knows who it is about:
   CuePoint does not know this artist's Beatport id yet.
 - **Beatport artist** or **Beatport label** — CuePoint knows the Beatport id,
   from your tracks that are matched on Beatport and whose identities it has
-  resolved (see [Resolving Beatport identities](#resolving-beatport-identities)).
+  resolved (see [Linking tracks to Beatport](#linking-tracks-to-beatport)).
   The page holds the tracks Beatport credits to that id, and your other tracks
   spelled the same way, and says which spellings it includes. A name page you
   open for someone CuePoint has since identified becomes their Beatport page,

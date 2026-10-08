@@ -48,6 +48,7 @@ import { mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { waitForEngine } from "./engineReady";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -120,9 +121,7 @@ async function ready(app: ElectronApplication): Promise<Page> {
   await window.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
   await window.reload();
   await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
-  await expect(window.locator(".cp-status")).toContainText(/Engine connected/i, {
-    timeout: 60_000,
-  });
+  await waitForEngine(window);
   return window;
 }
 
@@ -618,7 +617,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await expect(strip.locator(".cp-status__job-label")).toContainText(/Updating/, {
         timeout: 60_000,
       });
-      await expect(strip.getByRole("progressbar", { name: /job progress/i })).toBeVisible();
+      await expect(strip.getByRole("progressbar", { name: /^progress/i })).toBeVisible();
       const stop = strip.getByRole("button", { name: /^stop /i });
       await expect(stop).toBeVisible({ timeout: 30_000 });
       await stop.click();

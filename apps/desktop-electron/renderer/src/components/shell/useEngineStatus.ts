@@ -39,7 +39,7 @@ export function useEngineStatus(pollMs: number = ENGINE_POLL_MS): EngineStatus |
         })
         .catch(() => {
           // A failed status read *is* a status: the engine is not reachable.
-          if (!cancelled) setStatus({ connected: false, error: "Engine unreachable" });
+          if (!cancelled) setStatus({ connected: false, error: "Library service unreachable" });
         });
     };
 

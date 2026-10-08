@@ -102,7 +102,7 @@ export function useLibraryBatch({
     ): Promise<boolean> => {
       const bridge = window.cuepoint?.applyBatch;
       if (!bridge) {
-        onMessage("Editing tracks needs the desktop app with the engine connected.", "warning");
+        onMessage("Editing tracks needs the desktop app with CuePoint's library service running.", "warning");
         return false;
       }
 
@@ -132,7 +132,7 @@ export function useLibraryBatch({
       const jobId = outcome.job_id ?? outcome.id;
       if (!jobId) {
         if (alive.current) setBusy(false);
-        onMessage("The engine answered without counts and without a job.", "warning");
+        onMessage("CuePoint answered with neither counts nor a task to follow.", "warning");
         return false;
       }
 

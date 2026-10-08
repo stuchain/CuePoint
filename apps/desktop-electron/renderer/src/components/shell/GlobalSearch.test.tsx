@@ -150,12 +150,12 @@ describe("GlobalSearch", () => {
     expect(await screen.findByText("Showing 1 of 340")).toBeInTheDocument();
   });
 
-  it("says so when the engine bridge is absent", async () => {
+  it("says so when the library service is absent", async () => {
     delete (window as unknown as { cuepoint?: unknown }).cuepoint;
 
     await type("strobe");
 
-    expect(await screen.findByText(/engine, which is not connected/i)).toBeInTheDocument();
+    expect(await screen.findByText(/library service, which is not connected/i)).toBeInTheDocument();
   });
 
   it("surfaces a failed search instead of showing nothing", async () => {

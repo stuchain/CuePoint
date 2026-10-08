@@ -264,7 +264,7 @@ describe("when it cannot run at all", () => {
     });
 
     expect(onMessage).toHaveBeenCalledWith(
-      expect.stringContaining("without counts and without a job"),
+      expect.stringContaining("neither counts nor a task to follow"),
       "warning",
     );
   });

@@ -1231,7 +1231,7 @@ export function LibraryScreen({
       } catch (error) {
         reportUnexpected(error);
         if (mounted.current) setBusy(null);
-        push(error instanceof Error ? error.message : "The engine refused that", "warning");
+        push(error instanceof Error ? error.message : "CuePoint could not do that", "warning");
         return null;
       }
 
@@ -1264,7 +1264,7 @@ export function LibraryScreen({
   const handleImport = useCallback(async () => {
     const start = window.cuepoint?.startLibraryImport;
     if (!start) {
-      push("Importing needs the desktop app with the engine connected.", "warning");
+      push("Importing needs the desktop app with CuePoint's library service running.", "warning");
       return;
     }
     const xmlPath = await pickFile();
@@ -1289,7 +1289,7 @@ export function LibraryScreen({
     const start = window.cuepoint?.startLibraryRefreshPreview;
     const results = window.cuepoint?.getJobResults;
     if (!start || !results) {
-      push("Refreshing needs the desktop app with the engine connected.", "warning");
+      push("Refreshing needs the desktop app with CuePoint's library service running.", "warning");
       return;
     }
 
@@ -1370,7 +1370,7 @@ export function LibraryScreen({
   const openExport = useCallback(
     (ids: readonly number[]) => {
       if (!rekordboxExportBridge()) {
-        push("Exporting to Rekordbox needs the desktop app with the engine connected.", "warning");
+        push("Exporting to Rekordbox needs the desktop app with CuePoint's library service running.", "warning");
         return;
       }
       setExporting({ ids });

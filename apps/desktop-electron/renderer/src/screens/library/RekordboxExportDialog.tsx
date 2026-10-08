@@ -373,7 +373,7 @@ export function RekordboxExportDialog({
       <div className="clean-dialog rekordbox-export">
         {!bridge && (
           <p className="clean-dialog__problem" role="alert">
-            Exporting needs the desktop app with the engine connected.
+            Exporting needs the desktop app with CuePoint's library service running.
           </p>
         )}
 

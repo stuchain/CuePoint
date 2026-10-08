@@ -28,7 +28,7 @@ export function useCleanHealth(): CleanHealth {
     const bridge = window.cuepoint?.getLibraryHealth;
     if (!bridge) {
       setLoading(false);
-      setError("CuePoint's engine is not available in this window");
+      setError("CuePoint's library service is not available in this window");
       return;
     }
     let cancelled = false;

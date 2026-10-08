@@ -93,7 +93,7 @@ export function GlobalSearch() {
 
           {status === "unavailable" && (
             <p className="cp-global-search__note">
-              Search needs the CuePoint engine, which is not connected.
+              Search needs CuePoint's library service, which is not connected.
             </p>
           )}
 

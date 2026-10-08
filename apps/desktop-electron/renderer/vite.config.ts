@@ -16,8 +16,15 @@ export default defineConfig({
       // to check that a feature crossing the engine boundary moved every file it
       // has to. Named explicitly rather than allowing the parent directory
       // wholesale. `expected.test.ts` reads the engine's list of expected job
-      // errors the same way.
-      allow: [".", "../electron", "../../../src/cuepoint/reporting"],
+      // errors the same way. `activityFormat.test.ts` reads the Python files that
+      // record Activity events, so every event type has a word (STR-6).
+      allow: [
+        ".",
+        "../electron",
+        "../../../src/cuepoint/reporting",
+        "../../../src/cuepoint/services",
+        "../../../src/cuepoint/engine",
+      ],
     },
   },
   test: {

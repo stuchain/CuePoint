@@ -274,7 +274,7 @@ describe("the Library header's entry (DEC-087)", () => {
 
     await exportFromHeader(user);
     expect(
-      await screen.findByText("Exporting to Rekordbox needs the desktop app with the engine connected."),
+      await screen.findByText("Exporting to Rekordbox needs the desktop app with CuePoint's library service running."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Export to Rekordbox" })).toBeNull();
   });

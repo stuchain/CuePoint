@@ -1,7 +1,7 @@
 # Playing music
 
 CuePoint plays your tracks. Not a preview and not a browser's audio player —
-the same engine the audiophile players use, playing the file on your disk at
+the same playback program the audiophile players use, playing the file on your disk at
 its own sample rate, gaplessly, and out of whichever audio device you choose.
 
 Nothing plays until you ask it to, and until then the player takes no space at

@@ -5,7 +5,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 
 /**
- * How often the strip asks what jobs are running.
+ * How often the strip asks what background work is running.
  *
  * This one *is* an HTTP round trip, unlike the engine-status read, so it is
  * deliberately not tight — the strip is mounted for the life of the app, and a
@@ -24,11 +24,13 @@ export const JOB_POLL_MS = 2000;
 
 interface ActiveJobState {
   job: EngineJobSummary | null;
-  /** Active jobs in total, so the strip can say "1 of 3" rather than lying. */
+  /** Active jobs in total, so the strip can say "+2 more" rather than lying. */
   activeCount: number;
+  /** The active jobs the poll listed (at most five), the first being `job` (STR-5). */
+  jobs: EngineJobSummary[];
 }
 
-const EMPTY: ActiveJobState = { job: null, activeCount: 0 };
+const EMPTY: ActiveJobState = { job: null, activeCount: 0, jobs: [] };
 
 /** Percent complete for a job, or null when it cannot be known yet. */
 export function jobPercent(job: EngineJobSummary | null): number | null {
@@ -60,12 +62,12 @@ export function jobPercent(job: EngineJobSummary | null): number | null {
  */
 const JOB_VERBS: Record<string, string> = {
   library_import: "Importing",
-  library_refresh_preview: "Checking",
+  library_refresh_preview: "Checking your Rekordbox export for changes",
   library_refresh_apply: "Refreshing",
   // ORG-07's batch. Without its own verb it fell through to "Working", which
   // is the fallback for a job type this build has never heard of — and this
   // build writes them.
-  library_batch: "Updating",
+  library_batch: "Updating tracks",
   // CLEAN-07's file check. It follows every import and refresh on its own, so
   // it appears here whether or not anyone asked for it, and has to say what it
   // is doing: "Checking" alone is already the refresh preview's verb.
@@ -92,30 +94,21 @@ const JOB_VERBS: Record<string, string> = {
   // DISCOVER-03's name index, which the engine builds on its own when a
   // library predates it or its rule changed. Unasked-for, so it says plainly
   // what it is doing rather than falling through to "Working".
-  credit_index: "Indexing artists and labels",
+  credit_index: "Getting artist and label pages ready",
   // WAVE-04's one-time read of a library's cue points and beat grids, which
   // the engine starts on its own the first time it opens a library imported
   // before they were read.
-  marks_backfill: "Reading cue points",
+  marks_backfill: "Reading your cue points",
   // Discover's three Beatport jobs (DISCOVER-04 to DISCOVER-06, started over
   // DISCOVER-09's routes). Each spends requests on the user's token, so the
   // strip says Beatport, as the match does.
   discovery: "Discovering on Beatport",
   beatport_playlist: "Pushing to Beatport",
-  beatport_resolve: "Resolving Beatport identities",
+  beatport_resolve: "Linking tracks to Beatport",
   // WAVE-03's waveform analysis, which starts on its own after every file
   // check and can run for hours on a large library.
   waveform_analysis: "Analyzing waveforms",
 };
-
-/**
- * Jobs whose count is the library's, read in words: "1,234 of 50,000".
- *
- * The waveform analysis counts every present track, analysed before it
- * started or not, so its count is how much of the library has a waveform —
- * and at 50,000 tracks "1234/50000" is a number nobody can read at a glance.
- */
-const COUNTED_IN_WORDS: ReadonlySet<string> = new Set(["waveform_analysis"]);
 
 /**
  * Jobs whose Stop is a Pause (WAVE-03).
@@ -135,28 +128,29 @@ const PAUSED_BY_STOP: ReadonlySet<string> = new Set(["waveform_analysis"]);
  */
 const STAGED_JOBS: ReadonlySet<string> = new Set(["discovery", "beatport_playlist"]);
 
+/** "120 of 4,000": every count is written in words, in the American style (STR-3). */
+function countInWords(done: number, total: number): string {
+  return `${done.toLocaleString("en-US")} of ${total.toLocaleString("en-US")}`;
+}
+
 /** A short description of what a job is doing, for the strip. */
 export function jobLabel(job: EngineJobSummary | null): string {
   if (!job) return "";
   const done = job.progress?.completed_tracks;
   const total = job.progress?.total_tracks;
-  const counted =
-    typeof done === "number" && typeof total === "number" && total > 0
-      ? COUNTED_IN_WORDS.has(job.type)
-        ? ` · ${done.toLocaleString()} of ${total.toLocaleString()}`
-        : ` ${done}/${total}`
-      : "";
+  const known = typeof done === "number" && typeof total === "number" && total > 0;
   const stage = job.progress?.status_message;
-  // An unknown type falls back to "Working" rather than to "Matching": a job
-  // this build has not heard of is not necessarily a match, and guessing wrong
-  // tells the user something untrue about their library.
+  // An unknown type falls back to "Working on it" rather than to "Matching": a
+  // job this build has not heard of is not necessarily a match, and guessing
+  // wrong tells the user something untrue about their library.
+  if (job.state === "queued") return known ? `Waiting to start · ${countInWords(done, total)}` : "Waiting to start";
+  // A batch says how many tracks it is changing, which is its count.
+  if (job.type === "library_batch" && known) return `Updating ${total.toLocaleString("en-US")} tracks`;
   const verb =
-    job.state === "queued"
-      ? "Queued"
-      : STAGED_JOBS.has(job.type) && typeof stage === "string" && stage.trim()
-        ? stage.trim()
-        : (JOB_VERBS[job.type] ?? "Working");
-  return `${verb}${counted}`;
+    STAGED_JOBS.has(job.type) && typeof stage === "string" && stage.trim()
+      ? stage.trim()
+      : (JOB_VERBS[job.type] ?? "Working on it");
+  return known ? `${verb} · ${countInWords(done, total)}` : verb;
 }
 
 /** What the strip's stop button says for a job: "Pause" where stopping pauses. */
@@ -173,25 +167,68 @@ export function aboutDuration(seconds: number): string {
   return `about ${hours} hour${hours === 1 ? "" : "s"}`;
 }
 
+/** What a kind of background work is for, and that the user can carry on (STR-3, DEC-132). */
+export const JOB_EXPLAINERS: Record<string, string> = {
+  library_import:
+    "CuePoint is reading your Rekordbox collection into its library. You can keep working while it finishes.",
+  library_refresh_preview:
+    "CuePoint is comparing your Rekordbox export with its library. Nothing changes yet, and you can keep working.",
+  library_refresh_apply:
+    "CuePoint is applying the changes from your Rekordbox export. You can keep working.",
+  library_batch:
+    "CuePoint is changing the tracks you chose. Work already done stays done if you stop, and you can keep working.",
+  file_check:
+    "CuePoint is checking that each track's file is still where your library says. You can keep working.",
+  duplicate_scan: "CuePoint is looking for tracks you have twice. You can keep working.",
+  artwork_scan: "CuePoint is reading the artwork in your tracks. You can keep working.",
+  clean_match:
+    "CuePoint is looking your tracks up on Beatport to fill in what is missing. You can keep working.",
+  tag_write_preview:
+    "CuePoint is reading the tags in your files to show what would change. Nothing is written, and you can keep working.",
+  tag_write: "CuePoint is writing tags into your audio files. Please keep CuePoint open until it finishes.",
+  tag_restore:
+    "CuePoint is putting the earlier tags back into your audio files. Please keep CuePoint open until it finishes.",
+  rekordbox_export:
+    "CuePoint is writing your changes to a Rekordbox file. You can keep working.",
+  credit_index:
+    "CuePoint is getting artist and label pages ready so Discover can open them. You can keep working.",
+  marks_backfill:
+    "CuePoint is reading the cue points and beat grids in your Rekordbox collection. You can keep working.",
+  discovery: "CuePoint is searching Beatport for tracks you may like. You can keep working.",
+  beatport_playlist: "CuePoint is building your playlist on Beatport. You can keep working.",
+  beatport_resolve:
+    "CuePoint is matching your tracks to their Beatport pages. You can keep working.",
+  waveform_analysis:
+    "CuePoint is drawing each track's waveform. You can keep working; it pauses itself for imports.",
+};
+
+const GENERIC_EXPLAINER = "CuePoint is working in the background. You can keep working.";
+
+/** The plain reason for a kind of work; PAGES-05's ready note reuses it. */
+export function jobExplainer(type: string): string {
+  return Object.hasOwn(JOB_EXPLAINERS, type) ? JOB_EXPLAINERS[type]! : GENERIC_EXPLAINER;
+}
+
 /**
- * The strip's title for a job, where there is more to say than its label.
- *
- * For the waveform analysis, its rate and the time left (WAVE-03). The engine
- * computes the time left as the remaining tracks at the rate over the last ten
- * minutes, so the rate is that ratio read back, not a second estimate.
+ * The strip's title for a job: what it is for, and for the waveform analysis its
+ * rate and the time left (WAVE-03). The time left is the remaining tracks at the
+ * rate over the last ten minutes, so the rate is that ratio read back, not a
+ * second estimate.
  */
 export function jobTitle(job: EngineJobSummary | null): string | undefined {
-  if (!job || job.type !== "waveform_analysis") return undefined;
+  if (!job) return undefined;
+  const reason = jobExplainer(job.type);
+  if (job.type !== "waveform_analysis") return reason;
   const done = job.progress?.completed_tracks;
   const total = job.progress?.total_tracks;
   const eta = job.progress?.eta_seconds;
   if (typeof done !== "number" || typeof total !== "number" || typeof eta !== "number") {
-    return undefined;
+    return reason;
   }
   const remaining = total - done;
-  if (!(eta > 0) || remaining <= 0) return undefined;
+  if (!(eta > 0) || remaining <= 0) return reason;
   const perHour = Math.round((remaining * 3600) / eta);
-  return `About ${perHour.toLocaleString()} an hour · ${aboutDuration(eta)} left`;
+  return `${reason} About ${perHour.toLocaleString("en-US")} an hour · ${aboutDuration(eta)} left`;
 }
 
 /**
@@ -221,7 +258,7 @@ export function useActiveJob(pollMs: number = JOB_POLL_MS): ActiveJobState {
         .then((result) => {
           if (cancelled) return;
           const job = result.jobs[0] ?? null;
-          setState({ job, activeCount: result.active_count });
+          setState({ job, activeCount: result.active_count, jobs: result.jobs });
         })
         .catch(() => {
           // The engine being unreachable is reported by the engine-status half
@@ -256,14 +293,12 @@ export function useActiveJob(pollMs: number = JOB_POLL_MS): ActiveJobState {
     unsubscribe.current = subscribe(id, (event: JobStatus) => {
       setState((prev) => {
         if (!prev.job || prev.job.id !== event.id) return prev;
-        return {
-          ...prev,
-          job: {
-            ...prev.job,
-            state: event.state ?? prev.job.state,
-            progress: event.progress ?? prev.job.progress,
-          },
+        const job = {
+          ...prev.job,
+          state: event.state ?? prev.job.state,
+          progress: event.progress ?? prev.job.progress,
         };
+        return { ...prev, job, jobs: [job, ...prev.jobs.slice(1)] };
       });
     });
   }, [state.job?.id]);

@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { EngineJobSummary } from "../../api/cuepointBridge.types";
+import { Hint } from "../Hint";
 import { ActivityPanel } from "./ActivityPanel";
 import { jobLabel, jobPercent, jobStopLabel, jobTitle, useActiveJob } from "./useActiveJob";
 import { useEngineStatus } from "./useEngineStatus";
@@ -21,12 +23,116 @@ import "./StatusStrip.css";
  * strip is the only entry point to a feed that has been recorded since Phase 1
  * and never shown.
  */
+/** The Activity button's reason, with the shortcut the keyboard handler below answers to. */
+function activityHint(): string {
+  const mac = typeof navigator !== "undefined" && /mac/i.test(navigator.platform ?? "");
+  return `Activity: what CuePoint has done (${mac ? "Cmd" : "Ctrl"}+Shift+A)`;
+}
+
+/**
+ * Everything that is running, from "+N more" (STR-5).
+ *
+ * A popover, not a modal: it names the work and stops it, and the rest of the
+ * window stays usable. It closes on Escape (returning focus to its button) and on
+ * a click anywhere outside it. Fixed to the viewport because the strip clips what
+ * overflows it.
+ */
+function RunningList({
+  jobs,
+  activeCount,
+  button,
+  onStop,
+  stopping,
+  canStop,
+  onClose,
+}: {
+  jobs: EngineJobSummary[];
+  activeCount: number;
+  button: HTMLButtonElement | null;
+  onStop: (job: EngineJobSummary) => void;
+  stopping: string | null;
+  canStop: (job: EngineJobSummary) => boolean;
+  onClose: () => void;
+}) {
+  const box = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+        button?.focus();
+      }
+    };
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (target && (box.current?.contains(target) || button?.contains(target))) return;
+      onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("mousedown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("mousedown", onPointerDown);
+    };
+  }, [button, onClose]);
+
+  const rect = button?.getBoundingClientRect();
+  const style = rect
+    ? { left: Math.max(4, rect.left), bottom: Math.max(4, window.innerHeight - rect.top + 4) }
+    : undefined;
+  const hidden = activeCount - jobs.length;
+
+  return (
+    <div className="cp-status__running" role="dialog" aria-label="Running now" ref={box} style={style}>
+      <ul className="cp-status__running-list">
+        {jobs.map((job) => {
+          const percent = jobPercent(job);
+          return (
+            <li className="cp-status__running-item" key={job.id}>
+              <span className="cp-status__running-label" title={jobTitle(job)}>
+                {jobLabel(job)}
+              </span>
+              {percent !== null && (
+                <progress
+                  className="cp-status__progress"
+                  value={percent}
+                  max={100}
+                  aria-label={`Progress: ${jobLabel(job)}`}
+                />
+              )}
+              {canStop(job) && (
+                <button
+                  type="button"
+                  className="cp-status__cancel"
+                  onClick={() => onStop(job)}
+                  disabled={stopping === job.id}
+                  aria-label={`${jobStopLabel(job)} ${jobLabel(job).toLowerCase()}`}
+                >
+                  {jobStopLabel(job)}
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {hidden > 0 && <p className="cp-status__running-note">and {hidden} more</p>}
+    </div>
+  );
+}
+
 export function StatusStrip() {
   const status = useEngineStatus();
   // The message, not the snapshot: the strip must not repaint every time the
   // playback position moves (PLAYER-06).
   const playerMessage = usePlayerStatusMessage();
-  const { job, activeCount } = useActiveJob();
+  const { job, jobs, activeCount } = useActiveJob();
+  const [listOpen, setListOpen] = useState(false);
+  // The popover belongs to "+N more"; once that is gone it must not come back
+  // unasked the next time two things run.
+  useEffect(() => {
+    if (activeCount <= 1) setListOpen(false);
+  }, [activeCount]);
+  const moreButton = useRef<HTMLButtonElement | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
 
   const percent = jobPercent(job);
@@ -56,7 +162,7 @@ export function StatusStrip() {
   };
 
   /**
-   * Stopping the job the strip is reporting (ORG-13).
+   * Stopping the work the strip is reporting (ORG-13).
    *
    * Here rather than on the page that started it, because this is where a
    * running job is visible from anywhere in the app — and because a batch over
@@ -68,21 +174,20 @@ export function StatusStrip() {
    * Work already applied stays applied and the job reports how far it got
    * (DEC-063), so this asks rather than undoes — which is what the label says.
    */
-  const [cancelling, setCancelling] = useState(false);
-  const canCancel =
-    job !== null && job.state === "running" && Boolean(window.cuepoint?.cancelJob);
+  const [cancelling, setCancelling] = useState<string | null>(null);
+  const canCancel = (candidate: EngineJobSummary) =>
+    candidate.state === "running" && Boolean(window.cuepoint?.cancelJob);
 
-  const cancel = async () => {
-    if (!job) return;
-    setCancelling(true);
+  const cancel = async (target: EngineJobSummary) => {
+    setCancelling(target.id);
     try {
-      await window.cuepoint?.cancelJob?.(job.id);
+      await window.cuepoint?.cancelJob?.(target.id);
     } catch {
       // A cancel that cannot be delivered is not worth an error of its own:
       // the job carries on and the strip keeps saying so, which is the honest
       // outcome either way.
     } finally {
-      setCancelling(false);
+      setCancelling(null);
     }
   };
 
@@ -103,7 +208,13 @@ export function StatusStrip() {
     // refused to wrap — a dialog silently picking up the styling of whatever
     // happened to render it.
     <>
-      <div className="cp-status" role="status" aria-live="polite">
+      {/*
+        The live region is only the status text. The Hint tooltip and the running
+        list open from inside the strip and would otherwise be announced as
+        status updates.
+      */}
+      <div className="cp-status">
+        <span className="cp-status__live" role="status" aria-live="polite">
         <span
           className={`cp-status__engine ${
             connected
@@ -112,29 +223,34 @@ export function StatusStrip() {
                 ? "cp-status__engine--reconnecting"
                 : "cp-status__engine--error"
           }`}
+          // The raw reason is for the hover and Diagnostics, never the strip's
+          // text (DEC-155).
+          title={connected || reconnecting || starting ? undefined : status?.error}
         >
           {status === null
-            ? "Engine status unknown"
+            ? "Connecting…"
             : connected
-              ? `Engine connected${status.version ? ` · v${status.version}` : ""}`
+              ? "Ready"
               : reconnecting
-                ? `Reconnecting to engine…${
-                    status.restartAttempts ? ` (${status.restartAttempts}/3)` : ""
+                ? `Reconnecting…${
+                    status.restartAttempts ? ` (attempt ${status.restartAttempts} of 3)` : ""
                   }`
                 : starting
-                  ? "Starting engine…"
-                  : `Engine offline${status.error ? `: ${status.error}` : ""}`}
+                  ? "Starting up…"
+                  : "CuePoint's library service stopped"}
         </span>
 
         {/*
           The player speaks only when it was in use and broke (PLAYER-03).
-          "Audio player unavailable" is a different sentence from "Engine
-          offline" and must not read as one: the engine being down stops
-          everything, while a dead player leaves the whole library usable.
+          "Audio player unavailable" is a different sentence from "CuePoint's
+          library service stopped" and must not read as one: the service being
+          down stops everything, while a dead player leaves the whole library
+          usable.
         */}
         {playerMessage && (
           <span className="cp-status__player cp-status__engine--error">{playerMessage}</span>
         )}
+        </span>
 
         {canRestart && (
           <button
@@ -143,15 +259,18 @@ export function StatusStrip() {
             onClick={() => void restart()}
             disabled={restarting}
           >
-            {restarting ? "Restarting…" : "Restart engine"}
+            {restarting ? "Restarting…" : "Restart library service"}
           </button>
         )}
 
         {job ? (
           <span className="cp-status__job">
-            <span className="cp-status__job-label" title={jobTitle(job)}>
-              {jobLabel(job)}
-            </span>
+            {/* Focusable, so the reason it carries is shown to the keyboard too. */}
+            <Hint text={jobTitle(job)}>
+              <span className="cp-status__job-label" tabIndex={0} aria-live="polite">
+                {jobLabel(job)}
+              </span>
+            </Hint>
             {percent !== null && (
               <>
                 {/*
@@ -163,27 +282,49 @@ export function StatusStrip() {
                   className="cp-status__progress"
                   value={percent}
                   max={100}
-                  aria-label="Job progress"
+                  aria-label="Progress"
                 />
                 <span className="cp-status__percent">{percent}%</span>
               </>
             )}
             {activeCount > 1 && (
-              <span className="cp-status__more">+{activeCount - 1} more</span>
+              <>
+                <button
+                  type="button"
+                  className="cp-status__more"
+                  ref={moreButton}
+                  aria-expanded={listOpen}
+                  aria-haspopup="dialog"
+                  onClick={() => setListOpen((open) => !open)}
+                >
+                  +{activeCount - 1} more
+                </button>
+                {listOpen && (
+                  <RunningList
+                    jobs={jobs}
+                    activeCount={activeCount}
+                    button={moreButton.current}
+                    onStop={(target) => void cancel(target)}
+                    stopping={cancelling}
+                    canStop={canCancel}
+                    onClose={() => setListOpen(false)}
+                  />
+                )}
+              </>
             )}
-            {canCancel && (
+            {canCancel(job) && (
               <button
                 type="button"
                 className="cp-status__cancel"
-                onClick={() => void cancel()}
-                disabled={cancelling}
+                onClick={() => void cancel(job)}
+                disabled={cancelling === job.id}
                 // Named, because the strip can be reporting any of four kinds
                 // of work and "Cancel" alone would not say which stops. The
                 // waveform analysis's Stop is a Pause, kept across a restart
                 // (WAVE-03), and says so.
                 aria-label={`${jobStopLabel(job)} ${jobLabel(job).toLowerCase()}`}
               >
-                {cancelling
+                {cancelling === job.id
                   ? jobStopLabel(job) === "Pause"
                     ? "Pausing…"
                     : "Stopping…"
@@ -191,17 +332,17 @@ export function StatusStrip() {
               </button>
             )}
           </span>
-        ) : (
-          <span className="cp-status__idle">No jobs running</span>
-        )}
+        ) : null}
 
-        <button
-          type="button"
-          className="cp-status__activity"
-          onClick={() => setActivityOpen(true)}
-        >
-          Activity
-        </button>
+        <Hint text={activityHint()}>
+          <button
+            type="button"
+            className="cp-status__activity"
+            onClick={() => setActivityOpen(true)}
+          >
+            Activity
+          </button>
+        </Hint>
       </div>
 
       <ActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} />

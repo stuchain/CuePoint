@@ -78,7 +78,7 @@ export function checkDraft(draft: TagDraft): DraftCheck {
     };
   }
   if (draft.colour !== null && !TAG_COLOURS.includes(draft.colour as TagColour)) {
-    return { ok: false, reason: "That is not a colour a tag can have" };
+    return { ok: false, reason: "That is not a color a tag can have" };
   }
   return { ok: true };
 }

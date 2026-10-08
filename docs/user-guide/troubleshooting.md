@@ -195,7 +195,7 @@ If a command-line run is interrupted:
 
 The **Help** menu has the tools you need to find out what went wrong and to report it.
 
-- **Diagnostics...** shows whether the engine is connected, its version and the session ID.
+- **Diagnostics...** shows whether CuePoint's library service is connected, its version and the session ID.
 - **Log Viewer...** shows the application log. Filter by **Level**, **Search** the text, turn on **Auto-refresh**, or use **Refresh**, **Clear logs**, **Export...** (saves what you see to a text file) and **Open logs folder**.
 - **Export support bundle...** (then **Generate Bundle**) saves a ZIP with diagnostics, logs and your configuration with sensitive values removed, and shows it in your file manager. From the CLI, run `python main.py --export-support-bundle`; it prints the path of the bundle.
 - **Report a problem...** sends a note you write, with the app's version and the id of the last error report, when you press **Send**. It is disabled while error reports are off.

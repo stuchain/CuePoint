@@ -58,8 +58,48 @@
   font-size: var(--font-size-sm);
 }
 
-.cp-activity__row:last-child {
+.cp-activity__rows > .cp-activity__row:last-child {
   border-bottom: none;
+}
+
+/* A day heading (STR-8) above its rows; the rows' own borders do the rest. */
+.cp-activity__day-heading {
+  margin: 0;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-panel);
+  border-bottom: var(--border-width) solid var(--border-outline);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.cp-activity__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* The raw keys behind a row (STR-7). */
+.cp-activity__more {
+  margin-top: var(--space-xs);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-activity__more > summary {
+  cursor: pointer;
+}
+
+.cp-activity__more > summary:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline-offset: var(--hairline);
+}
+
+.cp-activity__extras {
+  list-style: none;
+  margin: var(--space-xs) 0 0;
+  padding: 0;
+  font-family: var(--font-mono, monospace);
 }
 
 .cp-activity__time {
@@ -79,6 +119,8 @@
 
 /* Wraps rather than truncating: a summary is the point of the row. */
 .cp-activity__summary-text {
+  /* Column 3 whether or not the row has a type badge before it. */
+  grid-column: 3;
   min-width: 0;
   color: var(--fg-primary);
   overflow-wrap: anywhere;

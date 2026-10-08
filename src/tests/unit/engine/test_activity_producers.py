@@ -112,7 +112,7 @@ class TestEngineStart:
 
         _populated(library)
         bootstrap_services()
-        server.record_activity("engine.started", "Engine started (test)", {"port": 1})
+        server.record_activity("engine.started", "CuePoint started (test)", {"port": 1})
 
         assert [e.type for e in _events()] == ["engine.started"]
 

@@ -89,7 +89,7 @@ export function useFacet(query: LibraryQuery): FacetState {
     (field: string) => {
       const bridge = window.cuepoint?.getLibraryFacet;
       if (!bridge) {
-        setError("CuePoint's engine is not available in this window");
+        setError("CuePoint's library service is not available in this window");
         return;
       }
       setLoading(true);

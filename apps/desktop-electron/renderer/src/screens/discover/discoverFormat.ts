@@ -213,7 +213,7 @@ export function refusalText(refusal: DiscoverRefusal): string {
   if (refusal.code === "DISCOVER_BUSY") {
     return (
       (refusal.job_type && RUNNING_ALREADY[refusal.job_type]) ??
-      "Another Discover job is running. Try again when it has finished."
+      "Another Discover task is running. Try again when it has finished."
     );
   }
   return refusal.message;

@@ -88,7 +88,7 @@ filter by. A track can carry as many as you like.
 - **Filter by one** in the filter bar: choose Tag, and pick from the tags your
   library actually uses, with the number of tracks beside each.
 - **Tend the vocabulary** with the **Tags…** button beside the filter bar:
-  rename, recolour, give a category, merge two into one, or delete.
+  rename, recolor, give a category, merge two into one, or delete.
 
 Every tag shows how many tracks carry it, and both destructive actions say so
 before they happen: deleting Peak-time is one thing when three tracks have it
@@ -182,7 +182,7 @@ Windows). CuePoint backs it up on launch and keeps the last several backups.
 **Those backups are the only copy of this work.** A track can be re-imported
 from Rekordbox; a rating, a note, a tag, a Collection and a Set's plan cannot be
 recovered from anything else. Restoring a backup brings all of it back
-together — the tree, the membership and its order, the tags with their colours
+together — the tree, the membership and its order, the tags with their colors
 and categories, the ratings, the notes, the history behind them, and each Set's
 chapters, planned times, notes and accepted warnings.
 

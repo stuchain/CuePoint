@@ -244,7 +244,7 @@ describe("the page", () => {
     delete (window as unknown as { cuepoint?: unknown }).cuepoint;
     renderDiscover();
     expect(
-      await screen.findByText("Discover needs the desktop app with the engine connected."),
+      await screen.findByText("Discover needs the desktop app with CuePoint's library service running."),
     ).toBeInTheDocument();
   });
 

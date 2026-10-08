@@ -187,7 +187,7 @@ export const WHAT_A_SET_IS =
   "transition and plays the Set as the queue.";
 
 /** Said in a shell without the Sets bridge: a browser tab, an older shell. */
-export const NO_SETS = "Prepare needs the desktop app with the engine connected.";
+export const NO_SETS = "Prepare needs the desktop app with CuePoint's library service running.";
 
 /** An empty Set's table. */
 export const EMPTY_SET =

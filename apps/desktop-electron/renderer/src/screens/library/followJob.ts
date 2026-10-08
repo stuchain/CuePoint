@@ -83,7 +83,7 @@ export function followJob(jobId: string, pollMs = POLL_INTERVAL_MS): FollowHandl
   if (!bridge?.getJob) {
     finish({
       state: "failed",
-      error: { code: "NO_BRIDGE", message: "The engine is not connected." },
+      error: { code: "NO_BRIDGE", message: "CuePoint's library service is not connected." },
     });
     return { finished, stop: () => finish({ state: "cancelled" }) };
   }
@@ -96,7 +96,7 @@ export function followJob(jobId: string, pollMs = POLL_INTERVAL_MS): FollowHandl
       finish({
         state: "failed",
         error: {
-          message: error instanceof Error ? error.message : "Lost track of the job.",
+          message: error instanceof Error ? error.message : "Lost track of that task.",
         },
       });
     }

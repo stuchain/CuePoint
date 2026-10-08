@@ -341,7 +341,7 @@ export function TrackDetailPanel({
           value={track.rating == null ? "—" : starsFor(track.rating)}
         />
         <Row label="Plays" value={number(track.play_count)} />
-        <Row label="Colour" value={text(track.colour)} />
+        <Row label="Color" value={text(track.colour)} />
         <Row label="Added" value={text(track.date_added)} />
         <Row label="Bitrate" value={number(track.bitrate, " kbps")} />
         <Row label="Comment" value={text(track.comment)} />

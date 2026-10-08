@@ -43,7 +43,7 @@ export function useTrackDetail(trackId: number | null): TrackDetailState {
       setState({
         detail: null,
         loading: false,
-        error: "CuePoint's engine is not available in this window",
+        error: "CuePoint's library service is not available in this window",
       });
       return;
     }

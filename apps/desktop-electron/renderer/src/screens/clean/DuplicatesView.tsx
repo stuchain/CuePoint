@@ -147,7 +147,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
     const bridge = window.cuepoint?.getDuplicateGroups;
     if (!bridge) {
       setLoading(false);
-      setError("CuePoint's engine is not available in this window");
+      setError("CuePoint's library service is not available in this window");
       return;
     }
     let cancelled = false;
@@ -305,7 +305,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
   const scan = useCallback(() => {
     const bridge = window.cuepoint?.startDuplicateScan;
     if (!bridge) {
-      push("Finding duplicates needs the desktop app with the engine connected.", "warning");
+      push("Finding duplicates needs the desktop app with CuePoint's library service running.", "warning");
       return;
     }
     void jobs.run<CleanJobStarted>("scan", () => bridge({}), {

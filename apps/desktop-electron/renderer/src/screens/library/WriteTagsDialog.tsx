@@ -105,7 +105,7 @@ export function WriteTagsDialog({ open, selection, count, onClose, onChanged }: 
   const runPreview = async () => {
     const bridge = window.cuepoint?.previewTagWrite;
     if (!bridge || !selection) {
-      setProblem("Writing tags needs the desktop app with the engine connected.");
+      setProblem("Writing tags needs the desktop app with CuePoint's library service running.");
       return;
     }
     const invalid = optionsProblem(options);
@@ -122,7 +122,7 @@ export function WriteTagsDialog({ open, selection, count, onClose, onChanged }: 
         answer = outcome.preview;
       } else {
         const id = outcome.job_id ?? outcome.id;
-        if (!id) throw new Error("The engine answered without a preview and without a job.");
+        if (!id) throw new Error("CuePoint answered with neither a preview nor a task to follow.");
         setJobId(id);
         answer = await jobResult<TagWritePreview>(id);
       }

@@ -95,7 +95,7 @@ export function HealthView({ health, error, loading, onHealthChanged }: HealthVi
         start = () => begin({ selection: { query: {} } });
       }
       if (!start) {
-        push("That needs the desktop app with the engine connected.", "warning");
+        push("That needs the desktop app with CuePoint's library service running.", "warning");
         return;
       }
       void jobs.run(detection.job_type, start, {

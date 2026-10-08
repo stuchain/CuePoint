@@ -351,7 +351,7 @@ describe("the sentences", () => {
     expect(stoppedBecause(null)).toBe("of an error");
   });
 
-  it("words a busy refusal for a person, and every other as the engine did", () => {
+  it("words a busy refusal for a person, and every other as CuePoint did", () => {
     expect(refusalText(fixture.refusal_busy.refusal as DiscoverRefusal)).toBe(
       "A discovery run is already running. It is in the list of runs.",
     );
@@ -359,7 +359,7 @@ describe("the sentences", () => {
       /^A push to Beatport is already running/,
     );
     expect(refusalText(refusal("DISCOVER_BUSY", { job_type: "something" }))).toMatch(
-      /^Another Discover job is running/,
+      /^Another Discover task is running/,
     );
     expect(refusalText(fixture.refusal_note_too_long.refusal as DiscoverRefusal)).toBe(
       "A note is at most 1000 characters",

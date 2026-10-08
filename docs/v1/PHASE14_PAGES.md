@@ -532,6 +532,25 @@ app). The sidebar gains **Keys** in PAGES-16.
 strip, Activity, the store and `Hint` (STR-1…3, STR-5…9). **PAGES-03B**: the sidebar, the header,
 search and the menu (NAV, HDR, FLW-20).
 
+**Outcome** (2026-10-08), part A: every e2e spec now waits through `waitForEngine()`, so none reads the strip's
+words. The strip says "Ready", "Starting up…", "Reconnecting… (attempt 2 of 3)" and "CuePoint's library service
+stopped" (the raw error in the hover title only), offers "Restart library service", drops the version, and shows
+nothing when idle. `useActiveJob.ts` has the reworded verbs, counts written "120 of 4,000" for every job type
+(a batch says "Updating 4,000 tracks"), `JOB_EXPLAINERS` and `jobExplainer(type)` (the reason `jobTitle()` returns, for
+LIB-1 to reuse), and exposes `jobs`; "+N more" is a button opening a "Running now" popover (Escape, outside click,
+Stop or Pause per running job). Activity maps all 34 recorded event types to a badge word (and shows no badge for an
+unknown one), groups rows under "Today", "Yesterday" and "Oct 3", prints only labeled counts and names on the row,
+keeps the other keys behind "Details", and says "Activity will show once CuePoint has finished starting." and
+"Couldn't load the list. Try Refresh." The Activity button's reason and the job reason go through the new `Hint`
+(title on hover, a tooltip tied by `aria-describedby` on focus); the job label became focusable for it. The
+selected-track store `components/shell/selectedTrack.ts` exists and nothing feeds it; it is on the dead-code
+allowlist until a page does (remove the entry then). About 30 user-visible strings that said engine or job now say
+"CuePoint's library service" or "task", and Colour is Color (library columns, tag manager, Inspector row).
+`userWords.test.ts` fails on engine, job(s) or a British spelling in any string or JSX text outside the Diagnostics
+and log-viewer dialogs. The engine's "Engine started" Activity summary is now "CuePoint started". Decisions made:
+the popover is a non-modal `dialog`; the Activity shortcut reads Cmd on macOS, Ctrl elsewhere; the Python event
+sources are read by `activityFormat.test.ts`, so `vite.config.ts` allows those two folders.
+
 ---
 
 ## PAGES-04 — The Player Bar and the Queue

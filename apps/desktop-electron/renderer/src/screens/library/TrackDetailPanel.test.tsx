@@ -117,7 +117,7 @@ describe("what the panel shows", () => {
       "Length",
       "Rating",
       "Plays",
-      "Colour",
+      "Color",
       "Added",
       "Bitrate",
       "Comment",
@@ -137,7 +137,7 @@ describe("what the panel shows", () => {
   it("reads a missing field as absent, not as zero", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
     expect(within(rowFor("Remixer")).getByText("—")).toBeInTheDocument();
-    expect(within(rowFor("Colour")).getByText("—")).toBeInTheDocument();
+    expect(within(rowFor("Color")).getByText("—")).toBeInTheDocument();
   });
 
   it("reads a real zero as a zero", () => {

@@ -115,7 +115,7 @@ export async function readEntries(
     let message: string | null = null;
     try {
       const answer = bridge ? await bridge.get(askFor(batch, query)) : null;
-      if (!answer) message = "The engine is not available";
+      if (!answer) message = "CuePoint's library service is not available";
       else if (answer.refusal) message = answer.refusal.message;
       else {
         for (const track of answer.value.waveforms) {

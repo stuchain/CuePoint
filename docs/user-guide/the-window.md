@@ -12,7 +12,7 @@ page you are on changes; everything around it does not.
 | Navigation | Left | Moves between pages; collapses to an icon rail |
 | Page | Middle | Whatever you are working on |
 | Track Inspector | Right | Details for a selected track; can be resized or hidden |
-| Status strip | Bottom | Engine connection, running jobs, and the Activity panel |
+| Status strip | Bottom | Whether CuePoint is ready, what is running in the background, and the Activity panel |
 
 The window remembers how you leave it. Collapse the navigation, resize or hide
 the Inspector, and it will look the same the next time you open CuePoint. It
@@ -68,19 +68,28 @@ sent, and its history. See [The Inspector](library.md#the-inspector).
 
 ## The status strip
 
-The strip along the bottom always shows whether the CuePoint engine is
-connected.
+The strip along the bottom says **Ready** when CuePoint is working normally. While
+it starts it says **Starting up…**, and when its library service stops and comes
+back it says **Reconnecting… (attempt 2 of 3)**. The version number is in
+**Help > About** and in Settings → About & updates.
 
-If the engine stops unexpectedly, CuePoint restarts it for you — the strip
-shows **Reconnecting to engine…** with the attempt count while it tries. After
-three failed attempts it stops trying and offers a **Restart engine** button,
-rather than retrying forever and hiding a real fault. Every start is listed in
-Activity, so an engine that keeps dying is visible rather than silently patched
-over.
+If CuePoint's library service stops unexpectedly, CuePoint restarts it for you.
+After three failed attempts it stops trying, says **CuePoint's library service
+stopped** and offers a **Restart library service** button, rather than retrying
+forever and hiding a real fault. Hover over the message for the technical reason.
+Every start is listed in Activity, so a service that keeps stopping is visible
+rather than silently patched over.
 
-While a job is running — matching a playlist, for example — the strip shows its
-progress from wherever you are in the app, including a job that was already
-running before the window was reloaded.
+When nothing is running the strip shows nothing more. While something is running
+in the background — matching a playlist, for example — the strip names it and shows
+its progress from wherever you are in the app, including work that was already
+running before the window was reloaded. Each count is written the same way:
+**Matching on Beatport · 120 of 4,000**. Hover over the name, or tab to it, for
+what CuePoint is doing and whether you can keep working.
+
+When more than one thing is running, **+2 more** opens a small list of all of it,
+each with its progress and a **Stop** button where the work can be stopped. Press
+**Esc** or click elsewhere to close it.
 
 The waveform analysis shows as **Analyzing waveforms · 1,234 of 50,000**, counting
 your whole library; hover over it for the rate and the time left. Its button is
@@ -93,9 +102,11 @@ file check or a tag write, and carries on after them. See
 ## Activity
 
 Click **Activity** in the status strip, or press **Ctrl+Shift+A**, for a list of
-what CuePoint has done, newest first: backups, engine starts, imports and
-refreshes, file checks, matches, edits to many tracks at once, and tags written
-to files.
+what CuePoint has done, newest first and grouped by day (**Today**, **Yesterday**,
+then dates such as **Oct 3**): backups, app starts, imports and refreshes, file
+checks, matches, edits to many tracks at once, and tags written to files. Each
+entry has a short word for its kind and the counts and names that matter; the
+rest of what was recorded is behind its **Details**.
 
 Some entries can be acted on where they are listed. A change to many tracks
 offers **Revert this batch**, and a tag write offers **Restore**; each asks once

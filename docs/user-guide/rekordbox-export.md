@@ -93,7 +93,7 @@ Rekordbox export** shows where your exports went.
 
 Some things stop an export until they are dealt with, and the preview says what
 to do: the file you imported has been moved or deleted (import it again from
-where it is now), or another library job — an import, a refresh, a batch edit —
+where it is now), or another library task — an import, a refresh, a batch edit —
 is running (the preview waits for it and answers when it ends).
 
 ## Key notation

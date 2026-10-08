@@ -92,7 +92,7 @@ export function MissingFilesView({
     (key: string, target: BatchSelection) => {
       const bridge = window.cuepoint?.startFileCheck;
       if (!bridge) {
-        push("Checking files needs the desktop app with the engine connected.", "warning");
+        push("Checking files needs the desktop app with CuePoint's library service running.", "warning");
         return;
       }
       void jobs.run<FileCheckStarted & CleanJobStarted>(

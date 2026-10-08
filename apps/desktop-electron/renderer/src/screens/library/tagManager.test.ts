@@ -126,7 +126,7 @@ describe("a draft the engine would refuse", () => {
   it("refuses a colour that is not one of the engine's tokens", () => {
     expect(checkDraft({ ...ok, colour: "#ff0000" })).toEqual({
       ok: false,
-      reason: "That is not a colour a tag can have",
+      reason: "That is not a color a tag can have",
     });
   });
 
