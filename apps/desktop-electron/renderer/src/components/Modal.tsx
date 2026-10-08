@@ -20,10 +20,21 @@ interface ModalProps {
   };
   secondaryAction?: { label: string; onClick: () => void };
   /**
+   * A step back in a multi-screen dialog (the first-run guide), in the footer between
+   * the secondary and the primary action, so the buttons keep their places. Disabled
+   * rather than absent on the first screen, for the same reason.
+   */
+  backAction?: { label: string; onClick: () => void; disabled?: boolean };
+  /**
    * `"wide"` for content that is a table or a log rather than a message or a
    * form. The default 520px is right for a question and too narrow for rows.
    */
   size?: "default" | "wide";
+  /**
+   * False when a stray click must not end the dialog (the first-run guide, RUN-1):
+   * the backdrop then does nothing. Escape and the close button still call `onClose`.
+   */
+  closeOnBackdrop?: boolean;
 }
 
 const FOCUSABLE =
@@ -44,7 +55,9 @@ export function Modal({
   onClose,
   primaryAction,
   secondaryAction,
+  backAction,
   size = "default",
+  closeOnBackdrop = true,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   // Where focus was before the dialog opened, so it can be put back.
@@ -101,7 +114,7 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="cp-modal__backdrop" role="presentation" onClick={onClose}>
+    <div className="cp-modal__backdrop" role="presentation" onClick={closeOnBackdrop ? onClose : undefined}>
       <div
         ref={dialogRef}
         className={`cp-modal ${size === "wide" ? "cp-modal--wide" : ""}`.trim()}
@@ -122,11 +135,16 @@ export function Modal({
           </button>
         </header>
         <div className="cp-modal__body">{children}</div>
-        {(primaryAction || secondaryAction) && (
+        {(primaryAction || secondaryAction || backAction) && (
           <footer className="cp-modal__footer">
             {secondaryAction && (
               <Button variant="secondary" onClick={secondaryAction.onClick}>
                 {secondaryAction.label}
+              </Button>
+            )}
+            {backAction && (
+              <Button variant="secondary" onClick={backAction.onClick} disabled={backAction.disabled}>
+                {backAction.label}
               </Button>
             )}
             {primaryAction && (

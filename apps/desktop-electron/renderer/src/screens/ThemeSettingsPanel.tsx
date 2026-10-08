@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Modal, Panel, Select, TextField } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import {
@@ -49,7 +49,10 @@ function ColorField({
   );
 }
 
-export function ThemeSettingsPanel() {
+/** The size control's id: what the update note's Change size focuses (DEC-207). */
+export const SIZE_FIELD_ID = "settings-ui-size";
+
+export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?: string | null } = {}) {
   const {
     activeThemeId,
     themeOptions,
@@ -62,6 +65,15 @@ export function ThemeSettingsPanel() {
   } = useTheme();
   const { scale, setScale, scaleOptions } = useScale();
   const [saved, markSaved] = useSavedSignal();
+  // A link that asks for the size control gets it scrolled into view and focused, once.
+  const focusedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusSizeToken || focusedFor.current === focusSizeToken) return;
+    focusedFor.current = focusSizeToken;
+    const field = document.getElementById(SIZE_FIELD_ID);
+    field?.scrollIntoView?.({ block: "center" });
+    field?.focus();
+  }, [focusSizeToken]);
   const [deleting, setDeleting] = useState<CustomTheme | null>(null);
 
   const [editorOpen, setEditorOpen] = useState(false);
@@ -157,6 +169,7 @@ export function ThemeSettingsPanel() {
         />
 
         <Select
+          id={SIZE_FIELD_ID}
           label="Size of text and controls"
           value={String(scale)}
           onChange={(e) => {

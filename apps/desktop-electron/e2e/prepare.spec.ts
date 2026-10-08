@@ -302,7 +302,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
     try {
       const win = await app.firstWindow({ timeout: 60_000 });
       await waitForEngine(win);
-      await win.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
+      await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
 
       // --- a library and a Set with three chapters, through the bridge ------
       const started = await win.evaluate(

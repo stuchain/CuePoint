@@ -68,6 +68,11 @@ describe("settingsFocus", () => {
     expect(settingsFocus({ state })).toEqual({ focus: "waveforms", token: state.token });
   });
 
+  it("reads the size control as a place a link can ask for", () => {
+    const state = settingsFocusState("size");
+    expect(settingsFocus({ state })).toEqual({ focus: "size", token: state.token });
+  });
+
   it("reads nothing from an ordinary visit or a stranger's state", () => {
     expect(settingsFocus({ state: null })).toBeNull();
     expect(settingsFocus({ state: { settingsFocus: "password" } })).toBeNull();

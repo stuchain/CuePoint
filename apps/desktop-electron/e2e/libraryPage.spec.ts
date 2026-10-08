@@ -81,7 +81,7 @@ function launch(userDataDir: string, cuepointHome: string): Promise<ElectronAppl
 
 async function ready(app: ElectronApplication): Promise<Page> {
   const window = await app.firstWindow({ timeout: 60_000 });
-  await window.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
+  await window.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await window.reload();
   await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
   await waitForEngine(window);
@@ -195,6 +195,9 @@ test.describe("The Library page (LIBRARY-11)", () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
+      // Measured with the notice line hidden: the first steps' entry (RUN-3) shares that
+      // line, and a library whose first steps are done shows none.
+      await window.evaluate(() => localStorage.setItem("cuepoint-first-steps-done", "1"));
       await importCollection(
         window,
         writeExport(

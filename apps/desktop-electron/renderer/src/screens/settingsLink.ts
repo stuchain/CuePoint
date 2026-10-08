@@ -7,12 +7,13 @@
  * carries which field it is about in the location's state, as Clean's links
  * do, and Settings scrolls to it and focuses it. Help → Privacy links to the
  * error-reporting switch the same way (REPORT-01), and to the Privacy section
- * as a whole for the exit-clearing choices (SET-7).
+ * as a whole for the exit-clearing choices (SET-7). The update note's **Change
+ * size** (DEC-207) links to the size control the same way.
  */
 import type { Location } from "react-router-dom";
 
 /** The fields a link can open Settings on. */
-type SettingsFocus = "beatport-token" | "error-reporting" | "privacy" | "waveforms";
+type SettingsFocus = "beatport-token" | "error-reporting" | "privacy" | "size" | "waveforms";
 
 interface SettingsFocusState {
   settingsFocus: SettingsFocus;
@@ -34,6 +35,7 @@ export function settingsFocus(
     state.settingsFocus !== "beatport-token" &&
     state.settingsFocus !== "error-reporting" &&
     state.settingsFocus !== "privacy" &&
+    state.settingsFocus !== "size" &&
     state.settingsFocus !== "waveforms"
   ) {
     return null;

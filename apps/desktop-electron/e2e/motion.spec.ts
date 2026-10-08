@@ -35,7 +35,7 @@ function launch(userDataDir: string): Promise<ElectronApplication> {
 /** Dismisses onboarding, optionally stores motion switches, and opens Settings. */
 async function openSettings(window: Page, motion?: Record<string, boolean>): Promise<void> {
   await window.evaluate((stored) => {
-    localStorage.setItem("cuepoint-onboarding-complete", "1");
+    (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1"));
     if (stored) localStorage.setItem("cuepoint-motion", JSON.stringify(stored));
   }, motion);
   await window.reload();

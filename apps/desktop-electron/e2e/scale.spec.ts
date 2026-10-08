@@ -155,7 +155,7 @@ test.describe("the sizes (PAGES-14)", () => {
         })),
       ).toEqual({ attribute: "1.5", scale: "1.5" });
 
-      await win.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
+      await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
       const started = await win.evaluate(
         (xml) => (window as never as Bridge).cuepoint.startLibraryImport({ xml_path: xml }),
         writeLibrary(workspace),
@@ -231,7 +231,7 @@ test.describe("the sizes (PAGES-14)", () => {
       const win = await app.firstWindow({ timeout: 60_000 });
       await waitForEngine(win);
       await win.waitForSelector(".app-shell", { timeout: 30_000 });
-      await win.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
+      await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
       await openAt(win, 3);
       await win.getByRole("link", { name: "Settings", exact: true }).click();
       await expect(win.getByLabel("Size of text and controls")).toBeVisible({ timeout: 30_000 });

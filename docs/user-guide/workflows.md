@@ -4,7 +4,7 @@ Common workflows for using CuePoint effectively.
 
 ## Basic Workflow
 
-1. **First run**: Review the onboarding tour (shown once)
+1. **First run**: Go through the first-run guide (shown once; **Help > Getting started** opens it again)
 2. **Import**: Load your Rekordbox XML file
 3. **Preflight**: Fix any validation errors or proceed past warnings
 4. **Process**: Enrich tracks with Beatport data

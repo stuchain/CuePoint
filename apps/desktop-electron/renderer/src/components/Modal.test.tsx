@@ -140,3 +140,39 @@ describe("Modal", () => {
     expect(screen.getByRole("dialog")).not.toHaveClass("cp-modal--wide");
   });
 });
+
+describe("the backdrop", () => {
+  it("closes the dialog on a click, as it always has", async () => {
+    const user = userEvent.setup();
+    const { onClose } = open();
+    await user.click(screen.getByRole("presentation"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does nothing on a click when the dialog says a stray click must not end it", async () => {
+    const user = userEvent.setup();
+    const { onClose } = open({ closeOnBackdrop: false });
+    await user.click(screen.getByRole("presentation"));
+    expect(onClose).not.toHaveBeenCalled();
+    // Escape and the close button still work.
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the footer", () => {
+  it("puts a back action between the secondary and the primary one", () => {
+    open({
+      primaryAction: { label: "Next", onClick: () => {} },
+      secondaryAction: { label: "Skip", onClick: () => {} },
+      backAction: { label: "Back", onClick: () => {}, disabled: true },
+    });
+    const footer = screen.getByRole("dialog").querySelector(".cp-modal__footer")!;
+    expect([...footer.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
+      "Skip",
+      "Back",
+      "Next",
+    ]);
+    expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
+  });
+});

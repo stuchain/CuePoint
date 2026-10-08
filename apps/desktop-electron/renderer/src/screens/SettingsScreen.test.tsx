@@ -159,6 +159,12 @@ describe("Discover's deep link", () => {
     await waitFor(() => expect(scrolled).toContain("settings-privacy"));
   });
 
+  it("focuses the size control when the update note's Change size asks for it", async () => {
+    renderSettings({ state: settingsFocusState("size") });
+    const field = screen.getByLabelText("Size of text and controls");
+    await waitFor(() => expect(field).toHaveFocus());
+  });
+
   it("scrolls to the Waveforms section when Prepare's waiting waveform asks for it", async () => {
     const scrolled: string[] = [];
     Element.prototype.scrollIntoView = vi.fn(function (this: Element) {

@@ -1,0 +1,88 @@
+/* The first-steps checklist under the empty Library (RUN-3). */
+.first-steps__heading {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-md);
+}
+
+.first-steps__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.first-steps__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm);
+  background: var(--bg-panel);
+  border: var(--hairline) solid var(--border-muted);
+}
+
+.first-steps__item[data-done="true"] {
+  color: var(--fg-muted);
+}
+
+.first-steps__tick {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--unit) * 5);
+  height: calc(var(--unit) * 5);
+  border: var(--hairline) solid var(--border-muted);
+  background: var(--bg-input);
+  color: var(--accent-success);
+  font-size: var(--font-size-sm);
+}
+
+.first-steps__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--space-xs);
+}
+
+.first-steps__label {
+  font-size: var(--font-size-sm);
+}
+
+.first-steps__hint {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* Read by a screen reader as "(done)" or "(not yet)", never drawn. */
+.first-steps__state {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The loaded Library's entry on the notice line: a button, and the list in a popover
+   under it, absolutely positioned so the table below never moves. */
+.first-steps-note {
+  position: relative;
+  justify-content: flex-start;
+}
+
+.first-steps-note__popover {
+  position: absolute;
+  top: 100%;
+  left: var(--space-sm);
+  z-index: 20;
+  width: min(calc(var(--unit) * 120), calc(100vw - var(--space-lg)));
+  max-height: 70vh;
+  overflow: auto;
+  padding: var(--space-sm);
+  background: var(--bg-panel);
+  border: var(--border-width) solid var(--border-outline);
+  box-shadow: var(--shadow-panel);
+}

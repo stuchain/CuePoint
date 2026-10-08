@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **A first-run guide that gets you to a matched library.** Five screens: what
+  CuePoint does, how to get your collection out of Rekordbox (**Show me how**),
+  **Import your Rekordbox collection...**, **Match tracks...**, and where
+  everything is, with pictures drawn in the app's pixel icons. A click outside it
+  no longer ends it, and Esc closes it without marking it done. **Help > Getting
+  started** always opens it at the first screen. **First steps** (import, match your tracks, play a
+  track, add your Beatport token) tick as each becomes true: a list on the empty
+  Library, then one entry on the Library's notice line (**First steps: 2 of 4
+  done**) that opens the list, until all four are done. If you update from an earlier version, a single
+  note, **What changed**, tells you the app is now Medium size (1.5×) and that keys
+  now come only from Beatport, with how many of your tracks have a key.
 - **Track details, in a calmer order.** The panel beside every page is now named
   **Track details**; hidden, it is a tab down the right edge that shows the
   selected title, and one click brings it back. Under the title, **Play**, **Play

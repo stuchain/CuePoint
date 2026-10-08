@@ -66,7 +66,7 @@ function launch(userDataDir: string, cuepointHome: string): Promise<ElectronAppl
 
 async function ready(app: ElectronApplication): Promise<Page> {
   const window = await app.firstWindow({ timeout: 60_000 });
-  await window.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
+  await window.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await window.reload();
   await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
   await waitForEngine(window);

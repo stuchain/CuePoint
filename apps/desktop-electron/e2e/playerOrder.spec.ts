@@ -29,7 +29,7 @@ const AUDIO = path.resolve(DESKTOP_ROOT, "../../src/tests/fixtures/audio");
  * the same reason `shell.spec.ts` dismisses it through storage.
  */
 async function dismissOnboarding(window: Page): Promise<void> {
-  await window.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
+  await window.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await window.reload();
   await window.locator("main.app-main").waitFor({ timeout: 30_000 });
 }

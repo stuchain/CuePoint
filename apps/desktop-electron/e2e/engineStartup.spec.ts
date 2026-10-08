@@ -85,7 +85,7 @@ test.describe("Engine startup", () => {
     let app = await launch(userDataDir, home);
     try {
       const window = await app.firstWindow({ timeout: 60_000 });
-      await window.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
+      await window.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
       await waitForEngine(window);
       const started = await window.evaluate(
         (file) => window.cuepoint!.startLibraryImport!({ xml_path: file }),

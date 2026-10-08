@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_SCALE, SCALE_OPTIONS, getStoredScale } from "./scale";
+import { DEFAULT_SCALE, SCALE_OPTIONS, getStoredScale, hasStoredScale } from "./scale";
 
 const KEY = "cuepoint-ui-lab-scale";
 
@@ -29,5 +29,26 @@ describe("the stored scale", () => {
   it.each(["2.5", "abc", "", "0", "-1"])("reads %j as the default", (value) => {
     localStorage.setItem(KEY, value);
     expect(getStoredScale()).toBe(1.5);
+  });
+});
+
+describe("whether a size was ever chosen (DEC-207)", () => {
+  it("is false with nothing stored, and true once a size is stored", () => {
+    expect(hasStoredScale()).toBe(false);
+    localStorage.setItem(KEY, "2");
+    expect(hasStoredScale()).toBe(true);
+  });
+
+  it("counts a stored 1.5 as chosen: it was picked, not left alone", () => {
+    localStorage.setItem(KEY, "1.5");
+    expect(hasStoredScale()).toBe(true);
+  });
+
+  it("is false when storage throws", () => {
+    const spy = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("storage disabled");
+    });
+    expect(hasStoredScale()).toBe(false);
+    spy.mockRestore();
   });
 });

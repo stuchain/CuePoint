@@ -54,6 +54,7 @@ describe("App shell", () => {
     // The onboarding dialog would otherwise open over the shell on first run
     // and swallow the navigation clicks.
     localStorage.setItem("cuepoint-onboarding-complete", "1");
+    localStorage.setItem("cuepoint-phase14-note-seen", "1");
     // The app uses a hash router, and jsdom keeps `location.hash` for the whole
     // file. Clearing it is what makes each test start like a fresh launch
     // rather than inheriting the previous test's route.

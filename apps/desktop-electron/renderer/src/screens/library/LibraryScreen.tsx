@@ -96,6 +96,7 @@ import { smartQuery, type SmartAttachment } from "./smartFilter";
 import { deletedLine, mergedLine, type TagPatch } from "./tagManager";
 import { describeRule, type ValueNames } from "./filterText";
 import { emptyStateFor, type EmptyActionId } from "./libraryEmpty";
+import { FirstSteps, FirstStepsNote } from "./FirstSteps";
 import { LibraryEmptyState } from "./LibraryEmptyState";
 import { LibraryKeyNote } from "./LibraryKeyNote";
 import { LibraryNoKeyNote } from "./LibraryNoKeyNote";
@@ -245,6 +246,8 @@ export interface LibraryScreenProps {
    * reason. Absent, nothing offers it.
    */
   onOpenInPrepare?: (setId: number) => void;
+  /** Open Settings at the Beatport token (RUN-3's checklist). A prop for `focus`'s reason. */
+  onOpenToken?: () => void;
 }
 
 export function LibraryScreen({
@@ -262,6 +265,7 @@ export function LibraryScreen({
   onOpenEntity,
   onOpenSimilar,
   onOpenInPrepare,
+  onOpenToken,
 }: LibraryScreenProps) {
   const { push } = useToast();
   const [summary, setSummary] = useState<LibrarySummary | null>(null);
@@ -285,6 +289,7 @@ export function LibraryScreen({
   const [importedAt, setImportedAt] = useState<number | null>(readImportedAt);
   /** Whether the ready note holds the notice line; null until it has been asked. */
   const [readyShown, setReadyShown] = useState<boolean | null>(null);
+  const [keyNoteShown, setKeyNoteShown] = useState(false);
   /** Bumped by an empty Smart Collection's "Edit the rules" to open Add filter. */
   const [openAdd, setOpenAdd] = useState(0);
 
@@ -1864,7 +1869,7 @@ export function LibraryScreen({
   }
 
   // Nothing imported: the header's one button, and the guide for what it does (LIB-2).
-  // PAGES-11 makes the three steps tick; this writes the words.
+  // The checklist under it ticks from real state (RUN-3, PAGES-11).
   if (!summary || summary.library_empty || summary.source === null) {
     return (
       <div className="screen screen--stack screen--scroll library-screen">
@@ -1901,6 +1906,11 @@ export function LibraryScreen({
             </div>
           )}
         </Panel>
+        <FirstSteps
+          imported={false}
+          onMatch={() => onOpenMatch?.()}
+          onAddToken={() => onOpenToken?.()}
+        />
         <RefreshPreviewDialog
           open={diff !== null}
           diff={diff}
@@ -1975,8 +1985,17 @@ export function LibraryScreen({
                 trackCount={summary.track_count}
                 onMatch={onOpenMatch ? () => onOpenMatch() : undefined}
                 asked={keyFilterFoundNothing}
+                onShownChange={setKeyNoteShown}
               />
             )}
+            {/* The first steps take the line only when no other notice has it (RUN-3). */}
+            {!keyIsEmptyList && !keyFilterFoundNothing && !keyNoteShown &&
+              !(isReadyNoteOpen(importedAt) && readyShown !== false) && (
+                <FirstStepsNote
+                  onMatch={() => onOpenMatch?.()}
+                  onAddToken={() => onOpenToken?.()}
+                />
+              )}
             <FilterBar
               vocabulary={vocabulary}
               // The bar's rules, not the query's: a Smart Collection that is

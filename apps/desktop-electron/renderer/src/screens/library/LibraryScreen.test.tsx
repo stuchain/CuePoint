@@ -505,6 +505,7 @@ function renderScreen(
   props: {
     onOpenRekordboxInstructions?: () => void;
     onOpenMatch?: (tracks?: unknown) => void;
+    onOpenToken?: () => void;
     focus?: "collections";
     openWith?: { rules: FilterRuleSet; token: string } | null;
     refreshWith?: string | null;
@@ -607,6 +608,16 @@ describe("the empty state", () => {
     ).toBeInTheDocument();
     // One import button on the page, and it is the header's.
     expect(screen.getAllByRole("button", { name: /Import your Rekordbox collection/ })).toHaveLength(1);
+  });
+
+  it("shows the first-steps checklist under the guide, and its token step goes to Settings (RUN-3)", async () => {
+    const onOpenToken = vi.fn();
+    renderScreen({ onOpenToken });
+
+    const steps = await screen.findByRole("list", { name: "First steps" });
+    expect(within(steps).getAllByRole("listitem")).toHaveLength(4);
+    await userEvent.click(within(steps).getByRole("button", { name: "Add your Beatport token…" }));
+    expect(onOpenToken).toHaveBeenCalledTimes(1);
   });
 
   it("omits the instructions button when the shell has none to offer", async () => {
@@ -801,6 +812,39 @@ describe("the notice line (LIB-1, DEC-201)", () => {
 
     await screen.findByText(/No tracks have a Beatport key yet/);
     expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
+  });
+
+  it("lists the first steps as one entry on the line once imported (RUN-3)", async () => {
+    const onOpenMatch = vi.fn();
+    renderScreen({ onOpenMatch });
+    await tableReady();
+
+    const entry = await screen.findByRole("button", { name: "First steps: 1 of 4 done" });
+    expect(screen.queryByRole("dialog", { name: "First steps" })).toBeNull();
+    await userEvent.click(entry);
+    const list = within(screen.getByRole("dialog", { name: "First steps" }));
+    await userEvent.click(list.getByRole("button", { name: "Match tracks…" }));
+    expect(onOpenMatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the line to another notice, and takes it when the line is free", async () => {
+    keyFacet([{ value: null, count: 3880 }]);
+    renderScreen({ onOpenMatch: vi.fn() });
+    await tableReady();
+    await importAnother();
+
+    const note = await screen.findByRole("status", { name: "No Beatport keys yet" });
+    expect(screen.queryByRole("button", { name: /First steps:/ })).toBeNull();
+
+    await userEvent.click(within(note).getByRole("button", { name: "Dismiss this note" }));
+    expect(await screen.findByRole("button", { name: /First steps:/ })).toBeInTheDocument();
+  });
+
+  it("is gone for good once the first steps were all done", async () => {
+    localStorage.setItem("cuepoint-first-steps-done", "1");
+    renderScreen({ onOpenMatch: vi.fn() });
+    await tableReady();
+    expect(screen.queryByRole("button", { name: /First steps:/ })).toBeNull();
   });
 
   it("is silent about keys when some track has one", async () => {

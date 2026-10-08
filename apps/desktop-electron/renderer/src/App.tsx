@@ -78,7 +78,8 @@ import { MotionProvider } from "./tokens/MotionContext";
 import { ScaleProvider } from "./tokens/ScaleContext";
 import { ThemeProvider } from "./tokens/ThemeContext";
 import { E2eCrashProbe, ErrorBoundary, useNavigationBreadcrumbs } from "./reporting";
-import { shouldShowOnboarding } from "./components/OnboardingDialog";
+import { Phase14Note } from "./components/Phase14Note";
+import { phase14NoteDue, shouldShowOnboarding } from "./components/firstRunMemory";
 import "./App.css";
 
 function AppShell() {
@@ -91,7 +92,10 @@ function AppShell() {
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  // A new user sees the guide; someone who finished the old tour sees the note once
+  // (DEC-207). Never both: the guide marks the note seen when it is finished.
   const [onboardingOpen, setOnboardingOpen] = useState(() => shouldShowOnboarding());
+  const [noteOpen, setNoteOpen] = useState(() => !shouldShowOnboarding() && phase14NoteDue());
   const [rekordboxOpen, setRekordboxOpen] = useState(false);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
   const [reportProblemOpen, setReportProblemOpen] = useState(false);
@@ -192,6 +196,7 @@ function AppShell() {
       navigate("/clean", { state: cleanFixState(tracks, action) }),
     [navigate],
   );
+  const closeNote = useCallback(() => setNoteOpen(false), []);
   const prepareScreen = (
     <PrepareScreen
       onOpenInClean={openInClean}
@@ -231,6 +236,7 @@ function AppShell() {
             onOpenMissingFiles={openMissingFiles}
             onOpenMatch={openMatching}
             onOpenFix={openFix}
+            onOpenToken={() => navigate("/settings", { state: settingsFocusState("beatport-token") })}
             onOpenEntity={openEntity}
             onOpenSimilar={openSimilar}
             onOpenInPrepare={openInPrepare}
@@ -378,7 +384,20 @@ function AppShell() {
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <ReportProblemDialog open={reportProblemOpen} onClose={() => setReportProblemOpen(false)} />
       <DiagnosticsDialog open={diagnosticsOpen} onClose={() => setDiagnosticsOpen(false)} />
-      <OnboardingDialog open={onboardingOpen} onComplete={() => setOnboardingOpen(false)} />
+      <OnboardingDialog
+        open={onboardingOpen}
+        covered={rekordboxOpen}
+        onComplete={() => setOnboardingOpen(false)}
+        onShowExport={() => setRekordboxOpen(true)}
+        onImport={() => navigate("/library", { state: libraryImportState() })}
+        onMatch={() => openMatching()}
+      />
+      <Phase14Note
+        open={noteOpen}
+        onClose={closeNote}
+        onChangeSize={() => navigate("/settings", { state: settingsFocusState("size") })}
+        onMatch={() => openMatching()}
+      />
       <RekordboxInstructionsDialog open={rekordboxOpen} onClose={() => setRekordboxOpen(false)} />
       <LogViewerDialog open={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
     </>

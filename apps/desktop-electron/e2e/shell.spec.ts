@@ -58,7 +58,7 @@ function launch(userDataDir: string): Promise<ElectronApplication> {
  * in-app navigation rewrote the file:// URL to a path that does not exist.
  */
 async function dismissOnboarding(window: Page): Promise<void> {
-  await window.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
+  await window.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await window.reload();
   await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
 }
@@ -328,7 +328,7 @@ test.describe("Application shell navigation", () => {
         const window = await first.firstWindow({ timeout: 60_000 });
         await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
         await window.evaluate((id) => {
-          localStorage.setItem("cuepoint-onboarding-complete", "1");
+          (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1"));
           localStorage.setItem("cuepoint-ui-shell-last-destination", id);
         }, stored);
       } finally {

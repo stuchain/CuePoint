@@ -25,6 +25,7 @@ function command(id: string) {
 
 beforeEach(() => {
   localStorage.setItem("cuepoint-onboarding-complete", "1");
+  localStorage.setItem("cuepoint-phase14-note-seen", "1");
   window.location.hash = "";
   window.scrollTo = vi.fn();
   Element.prototype.scrollTo = vi.fn();

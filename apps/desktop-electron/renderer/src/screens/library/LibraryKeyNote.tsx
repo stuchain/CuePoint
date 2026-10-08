@@ -30,9 +30,11 @@ interface LibraryKeyNoteProps {
    * import does not hide it, and it has nothing to dismiss.
    */
   asked?: boolean;
+  /** Whether the note is on the page, for the notice line to know when it is free. */
+  onShownChange?: (shown: boolean) => void;
 }
 
-export function LibraryKeyNote({ trackCount, onMatch, asked = false }: LibraryKeyNoteProps) {
+export function LibraryKeyNote({ trackCount, onMatch, asked = false, onShownChange }: LibraryKeyNoteProps) {
   const [none, setNone] = useState(false);
   const [dismissed, setDismissed] = useState(wasKeyNoteDismissed);
 
@@ -51,7 +53,13 @@ export function LibraryKeyNote({ trackCount, onMatch, asked = false }: LibraryKe
     };
   }, [trackCount]);
 
-  if (!none || (dismissed && !asked)) return null;
+  const shown = none && !(dismissed && !asked);
+  useEffect(() => {
+    onShownChange?.(shown);
+    return () => onShownChange?.(false);
+  }, [onShownChange, shown]);
+
+  if (!shown) return null;
 
   const dismiss = () => {
     rememberKeyNoteDismissal();

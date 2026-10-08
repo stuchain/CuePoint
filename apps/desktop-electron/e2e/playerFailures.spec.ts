@@ -83,7 +83,7 @@ test("a queue of files that are not there says one thing and stops", async () =>
   try {
     const win = await app.firstWindow({ timeout: 60_000 });
     await expect(win).toHaveTitle(/CuePoint/i, { timeout: 30_000 });
-    await win.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
+    await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
     await win.reload();
     await win.locator("main.app-main").waitFor({ timeout: 30_000 });
     await watchToasts(win);

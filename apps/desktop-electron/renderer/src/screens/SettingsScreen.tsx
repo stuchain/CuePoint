@@ -91,6 +91,7 @@ export function SettingsScreen({
   const asked = settingsFocus(location);
   const focusToken = asked?.focus === "beatport-token" ? asked.token : null;
   const focusReporting = asked?.focus === "error-reporting" ? asked.token : null;
+  const focusSize = asked?.focus === "size" ? asked.token : null;
   // A section a link names is scrolled to: Privacy, and Waveforms (Prepare's
   // "See progress" on a waveform that is not made yet, PRP-12).
   const sectionAsked = asked?.focus === "privacy" || asked?.focus === "waveforms" ? asked.focus : null;
@@ -131,7 +132,7 @@ export function SettingsScreen({
 
         <div className="settings-page__sections">
           <Section id="settings-appearance">
-            <ThemeSettingsPanel />
+            <ThemeSettingsPanel focusSizeToken={focusSize} />
           </Section>
 
           <Section id="settings-motion">

@@ -24,6 +24,7 @@ vi.mock("./components/player/PlayerSlot", () => ({
 describe("a page that throws", () => {
   beforeEach(() => {
     localStorage.setItem("cuepoint-onboarding-complete", "1");
+    localStorage.setItem("cuepoint-phase14-note-seen", "1");
     // The app reopens on the stored destination, whatever the hash says.
     localStorage.setItem(LAST_DESTINATION_STORAGE_KEY, "settings");
     window.location.hash = "#/settings";

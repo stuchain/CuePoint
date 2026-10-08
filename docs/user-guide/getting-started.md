@@ -16,7 +16,11 @@ CuePoint does not update itself yet. To get a new version, download the new inst
 
 ## First run
 
-CuePoint opens with a short tour. You can skip it, and open it again from **Help > Getting started**.
+CuePoint opens with a short guide of five screens: what CuePoint does, how to get your collection out of Rekordbox (**Show me how**), how to import it (**Import your Rekordbox collection...** closes the guide and starts the import), how to match your tracks on Beatport (**Match tracks...** opens Clean's match window), and where everything is. Clicking outside the guide does not close it. **Skip** ends it, and **Esc** or the close button closes it for now and shows it again at the next start. Open it again, always from its first screen, with **Help > Getting started**.
+
+The Library also shows **First steps**, a checklist that ticks itself: import your collection, match your tracks, play a track, and add your Beatport token. Before you import it is listed on the page. After you import, it is one entry on the line above the filters, **First steps: 2 of 4 done**; click it to see the list (with **Match tracks...**), and press **Esc** or click elsewhere to close it. When another note, such as the one about your music files being checked, is on that line, that note stays and First steps comes back when the line is free. Once all four are done it never shows again.
+
+If you updated from an earlier version, CuePoint shows one note the first time you start it, **What changed**. It says that CuePoint is now Medium size (1.5×) with **Change size** (only if you never chose a size), and that keys now come only from Beatport, with how many of your tracks have a key and **Match tracks...**. It does not appear again.
 
 ### 1. Export your collection from Rekordbox
 
@@ -74,11 +78,10 @@ Optional flags:
 
 ## Configuration examples
 
-Settings live in `~/.cuepoint/config.yaml`. These are some of the keys:
+Settings live in `~/.cuepoint/config.yaml`. These are some of the keys (the desktop app keeps whether you have seen the guide in its own storage, not here):
 
 ```yaml
 product:
-  onboarding_seen: false
   preflight_enabled: true
   last_xml_path: ""
   last_output_dir: ""

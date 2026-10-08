@@ -128,7 +128,7 @@ test("plays and queues from the Library table", async () => {
     await app.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0]?.setSize(1440, 900);
     });
-    await win.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
+    await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
     await win.reload();
     await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
 

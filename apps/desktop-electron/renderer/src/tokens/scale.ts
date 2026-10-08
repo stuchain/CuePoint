@@ -48,6 +48,19 @@ export function getStoredScale(): ScaleFactor {
   return isScaleFactor(parsed) ? parsed : DEFAULT_SCALE;
 }
 
+/**
+ * Whether a size was ever chosen (DEC-207): the update note offers **Change size**
+ * only to someone who never did. A stored 1.5 counts, because it was picked.
+ * Storage that throws reads as not chosen.
+ */
+export function hasStoredScale(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
 /** Apply a scale, and remember it where storage allows. */
 export function setStoredScale(scale: ScaleFactor): void {
   applyScale(scale);

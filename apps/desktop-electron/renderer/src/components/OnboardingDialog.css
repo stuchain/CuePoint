@@ -28,3 +28,88 @@
   font-size: var(--font-size-xs);
   color: var(--fg-muted);
 }
+
+.onboarding-dialog__picture {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin: 0 0 var(--space-md);
+  padding: var(--space-md);
+  background: var(--bg-input);
+  border: var(--hairline) solid var(--border-muted);
+  color: var(--accent-primary);
+}
+
+.onboarding-dialog__icon {
+  /* Twice the icon size keeps a grid cell a whole number of pixels at every scale. */
+  width: calc(var(--icon-size) * 2);
+  height: calc(var(--icon-size) * 2);
+}
+
+.onboarding-dialog__actions {
+  margin: 0 0 var(--space-md);
+}
+
+.onboarding-dialog__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.onboarding-dialog__pages {
+  margin: 0 0 var(--space-sm);
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.onboarding-dialog__pages li {
+  color: var(--fg-muted);
+}
+
+.onboarding-dialog__pages strong {
+  color: var(--fg-primary);
+  margin-right: var(--space-xs);
+}
+
+.onboarding-dialog__around .onboarding-dialog__body {
+  margin-bottom: var(--space-sm);
+}
+
+.phase14-note__line {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  margin: 0 0 var(--space-md);
+}
+
+.phase14-note__line p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+/* The last screen has the most to say, so its picture is the icons at their own size. */
+.onboarding-dialog__picture--small {
+  padding: var(--space-sm);
+}
+
+.onboarding-dialog__picture--small .onboarding-dialog__icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+/* As tall as the longest screen (the last), so the dialog does not change height between
+   screens and Skip, Back and Next stay where the pointer left them. */
+.onboarding-dialog {
+  min-height: calc(var(--unit) * 70);
+}
+
+.onboarding-dialog__pages li + li {
+  margin-top: var(--space-xs);
+}
