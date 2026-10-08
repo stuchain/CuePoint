@@ -17,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **An error screen instead of a blank window.** When part of the app fails
   while drawing, it says "Something went wrong" with **Reload**; a failing page
   leaves the sidebar and the player bar working
+- **Prepare says what things mean, and starts a second Set.** **New Set ▾** in
+  Prepare's header makes a Set, or one from something you have, with a Set open.
+  The header says "No times planned yet" until you type one; the columns are
+  **Mix in**, **Mix out**, **Starts at** and **Plays for**; warnings are
+  accepted with **Accept** (**Undo accept** takes it back); **Files not checked — check now**
+  starts the file check; Suggestions show **Fit** out of 100 under **Fits after**
+  and **Fits before**; the insertion line sits above the tabs, and the Insert
+  button reads **Pick tracks** until you pick; **Notes** and **View ▾** are
+  buttons; a chapter is explained where you make one; and a waveform that is not
+  made yet says how far the analysis is, with **See progress**
 - **Help → Report a problem.** Send a note, as you wrote it, with the app's
   version and the last error report's id. It is off when error reports are off
 - **Waveform analysis.** After every file check, CuePoint works out a waveform

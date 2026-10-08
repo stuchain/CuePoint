@@ -9,7 +9,7 @@
  * key are the Library's own cells, effective values and override marks
  * included: a track reads the same in the panel as in the Set beside it.
  *
- * **Suggestions** add the score and each side's reasons in words, through
+ * **Suggestions** add the fit, out of 100, and each side's reasons in words, through
  * `describeSimilarReason` (DEC-105 lists them per side, so a list that suits
  * one neighbour better says so), and mark a track already in the Set. The
  * engine's order is kept: nothing sorts it (DISCOVER-11's rule).
@@ -21,7 +21,7 @@ import type { LibraryTrackRow, SetSuggestion, SetSuggestionSide } from "../../ap
 import type { TrackColumnDef } from "../../components/table";
 import { reasonsText } from "../discover/similarColumns";
 import { LIBRARY_COLUMNS } from "../library/libraryColumns";
-import { inSetText } from "./prepareSource";
+import { fitText, inSetText } from "./prepareSource";
 
 /** A suggestion: its library row, and what the engine said about it. */
 export type SuggestionRow = LibraryTrackRow & { id: number; suggestion: SetSuggestion };
@@ -51,7 +51,7 @@ function sideText(side: SetSuggestionSide | null): string {
 
 function sideCell(side: SetSuggestionSide | null) {
   const text = sideText(side);
-  return text ? <span title={`${text} (${side?.score ?? 0})`}>{text}</span> : "";
+  return text ? <span title={`${text} (${side?.score ?? 0}/100)`}>{text}</span> : "";
 }
 
 /**
@@ -61,9 +61,9 @@ function sideCell(side: SetSuggestionSide | null) {
  */
 function suggestionSummary(row: SuggestionRow): string {
   const { before, after, score, in_set: inSet } = row.suggestion;
-  const lines = [`${row.title} · score ${score}`];
-  if (before) lines.push(`With the one before: ${sideText(before)}`);
-  if (after) lines.push(`With the one after: ${sideText(after)}`);
+  const lines = [`${row.title} · fit ${fitText(score)}`];
+  if (before) lines.push(`Fits after the one before: ${sideText(before)}`);
+  if (after) lines.push(`Fits before the one after: ${sideText(after)}`);
   const again = inSetText(inSet);
   if (again) lines.push(again);
   return lines.join("\n");
@@ -93,7 +93,8 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
   },
   {
     id: SIDE_COLUMN.before,
-    header: "With previous",
+    header: "Fits after",
+    hint: "How well this track follows the one before the gap: tempo, key, genre, label and artist",
     minWidthPx: 100,
     defaultWidthPx: 200,
     render: (row) => sideCell(row.suggestion.before),
@@ -101,7 +102,8 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
   },
   {
     id: SIDE_COLUMN.after,
-    header: "With next",
+    header: "Fits before",
+    hint: "How well this track leads into the one after the gap: tempo, key, genre, label and artist",
     minWidthPx: 100,
     defaultWidthPx: 200,
     render: (row) => sideCell(row.suggestion.after),
@@ -109,9 +111,10 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
   },
   {
     id: "score",
-    header: "Score",
-    minWidthPx: 48,
-    defaultWidthPx: 56,
+    header: "Fit",
+    hint: "How well this track fits the gap, out of 100. With a track on each side it is the mean of how well it fits after one and before the other.",
+    minWidthPx: 56,
+    defaultWidthPx: 68,
     align: "right",
     render: (row) => {
       const sides = [row.suggestion.before, row.suggestion.after].filter(
@@ -119,9 +122,9 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
       );
       const title =
         sides.length === 2 ? `The mean of ${sides[0].score} and ${sides[1].score}` : undefined;
-      return <span title={title}>{row.suggestion.score}</span>;
+      return <span title={title}>{fitText(row.suggestion.score)}</span>;
     },
-    text: (row) => String(row.suggestion.score),
+    text: (row) => fitText(row.suggestion.score),
   },
   unsorted<SuggestionRow>(libraryColumn("bpm")),
   unsorted<SuggestionRow>(libraryColumn("key")),

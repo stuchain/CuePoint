@@ -48,11 +48,11 @@ See [Prepare](prepare.md) for each step in full.
 2. On **Prepare**, right-click where each section begins and choose **Start a
    chapter here**; give a chapter a target length and a BPM range from its
    heading's menu
-3. Select an entry and type its planned **In** and **Out** times in the
-   Inspector; the running time and **Starts** follow
+3. Select an entry and type its **Mix in** and **Mix out** times in the
+   Inspector; the running time and **Starts at** follow
 4. Select the entry before a gap and take a track from **Suggestions**, with
    **Insert here** or a drag
-5. Read the **Transition** column; **Acknowledge** a warning you have heard and
+5. Read the **Transition** column; **Accept** a warning you have heard and
    are happy with
 6. **Play Set** to hear it through, then **Export ▾** to save a set list or
    export it to Rekordbox as one playlist

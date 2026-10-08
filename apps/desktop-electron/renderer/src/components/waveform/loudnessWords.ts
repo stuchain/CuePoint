@@ -62,6 +62,23 @@ export function loudnessDifference(
   return `${signedTenths(tenths / 10, true)} LU`;
 }
 
+/**
+ * What the strip's loudness numbers mean, as a title (PRP-8): LUFS is how loud
+ * a track measures, LU is the difference between two. Given a difference it
+ * reads that one aloud, "+2.1 LU means the next track is 2.1 dB louder".
+ */
+export function loudnessUnitsTitle(difference: string | null): string {
+  if (!difference) {
+    return "Loudness (LUFS): how loud the whole track measures. A difference in LU is how much louder or quieter the next track is.";
+  }
+  const size = difference.replace(/^[+−-]/, "").replace(" LU", "");
+  const meaning =
+    Number(size) === 0
+      ? "the two tracks are equally loud"
+      : `the next track is ${size} dB ${difference.startsWith("+") ? "louder" : "quieter"}`;
+  return `Loudness (LUFS). ${difference} means ${meaning}.`;
+}
+
 /** Why a measured track has no value, in words; null when it has one. */
 function loudnessReasonWords(loudness: WaveformLoudness): string | null {
   switch (loudness.reason) {

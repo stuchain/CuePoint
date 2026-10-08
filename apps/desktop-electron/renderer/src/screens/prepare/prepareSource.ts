@@ -25,7 +25,7 @@ import type {
   SimilarComponent,
 } from "../../api/cuepointBridge.types";
 import { WHOLE_LIBRARY, parseScope } from "../clean/cleanRules";
-import { formatBpm } from "../discover/similarReasons";
+import { KEY_WORDS, formatBpm } from "../discover/similarReasons";
 import { chapterName, showsHeadings } from "./prepareRows";
 
 // ------------------------------------------------------------ the point
@@ -121,6 +121,15 @@ export function pointText(words: PointWords): string {
     case "end":
       return `After “${words.before}”, at the end of the Set${where(words.chapter)}`;
   }
+}
+
+/**
+ * The panel's first line: "Inserting: between “A” and “B”, in Peak" (PRP-9).
+ * It sits above the tabs so the reason Insert is off is on screen.
+ */
+export function insertingText(words: PointWords): string {
+  const text = pointText(words);
+  return `Inserting: ${text.charAt(0).toLowerCase()}${text.slice(1)}`;
 }
 
 // ------------------------------------------------------------ the pool
@@ -241,11 +250,11 @@ export function unusedNotes(
 export function keyRelationWords(relation: SetKeyRelation | null): string {
   switch (relation) {
     case "same":
-      return "Same key";
+      return KEY_WORDS.same;
     case "adjacent":
-      return "One step on the wheel";
+      return KEY_WORDS.adjacent;
     case "relative":
-      return "Relative key";
+      return KEY_WORDS.relative;
     default:
       return "Keys clash";
   }
@@ -298,6 +307,11 @@ export function emptyAnswerText(answer: Pick<SetSuggestions, "bpm_range">, pool:
     : `Nothing in ${pool} fits here.`;
 }
 
+/** A suggestion's fit as the table says it: out of 100, whole (PRP-7). */
+export function fitText(score: number): string {
+  return `${Math.round(score)}/100`;
+}
+
 /** "In this Set" for a suggestion already played, with how often. */
 export function inSetText(count: number): string | null {
   if (count <= 0) return null;
@@ -322,8 +336,12 @@ export function roomFor(count: number, current: number, limit: number): string |
   );
 }
 
-/** The panel's one action: "Insert here", or "Insert 3 here" for several. */
+/**
+ * The panel's one action: "Insert here", or "Insert 3 here" for several.
+ * With nothing picked it says what to do instead of sitting off (PRP-9).
+ */
 export function insertLabel(count: number): string {
+  if (count <= 0) return "Pick tracks";
   return count > 1 ? `Insert ${count.toLocaleString()} here` : "Insert here";
 }
 

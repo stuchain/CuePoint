@@ -1193,6 +1193,33 @@ PAGES-11.
 **Complexity**: **L**, in two parts. **PAGES-09A**: PRP-1…PRP-12. **PAGES-09B**: the entry buttons,
 In and Out in the table, the strip's caption and the key notice (FLW-17…19).
 
+**Outcome** (2026-10-08), part A: PRP-1…PRP-12 built. **New Set ▾** (New Set…, New Set from…) leads the header's
+controls and opens the dialogs `PrepareScreen` already mounts, with a Set open. The empty-Set messages point at the
+Library tab (`EMPTY_SET`, `EMPTY_SET_SUGGESTIONS`). `runningTimeLine` says "No times planned yet" (title: type Mix in and
+Mix out under "In this Set" in Track details, times are optional, true until 09B) and otherwise "N without times" (a chapter's heading says "· 2 without times"); the
+strip's "Untimed" became "No out time" / "no times". Columns are Starts at, Mix in, Mix out, Plays for, each with a hint;
+the Inspector fields share the words. "Accept" / "Undo accept" / "(accepted)" everywhere, with the one-line hint above
+the list. The files fact is a link-button, "Files not checked — check now" (`HeaderFact.action`), that runs
+`startFileCheck({selection:{query:{}}})` through `useCleanJob` (the job **Check every file** starts), says "Checking N
+tracks." and reads the Set again when it ends. Suggestions' columns are Fit ("72/100"), Fits after, Fits before, each with
+a `hint`; the first-show note ("Ranked by fit with both neighbors", the full sentence as its title, once, remembered in
+`localStorage`) takes one note line of the panel the first time only. `keyRelationWords` reuses `KEY_WORDS` ("Next key", never "One step on the wheel"); the lanes'
+gutter reads "Key (Camelot)" with a title; the strip's words carry `loudnessUnitsTitle`. The insertion line moved above
+the tabs ("Inserting: …", its aria-label too; the neighbors' unused-genre detail still rides its title) and the button
+reads "Pick tracks" until a row is picked (enabled, not dimmed: a click focuses the table); the line's title holds the whole
+sentence on both tabs. Notes and View are small secondary buttons on the facts line ("Notes
+(1)" once the Set has notes). The chapter dialog opens with what a chapter is, and "Start a chapter here" has a title
+(`TrackContextMenuItem.title`). A waiting half says "Not made yet — 312 of 4,000" (`waitingWaveformShort`; the sentence from
+`waitingWaveformWords` is its title) with **See progress** under the words, in the flow, which opens Settings at Waveforms (`settingsFocusState("waveforms")`);
+the page's bare "Reading…" lines are in a `Panel` with `role="status"` (class `prepare-loading`: the pixel loading motion
+is PAGES-12's, so none plays yet). The selected-track store is set from the Set and from the source panel, whichever was
+chosen last (`SourcePanel.onPickedChange`). `e2e/prepareSource.spec.ts` already seeds user keys (c2f7a34) and passes.
+**Measured on Linux at 1.5×** (`e2e/prepare.spec.ts`, all passing, floor 5): the Set shows 9 whole rows with the sidebar
+expanded and as a rail, 7 with the player's bar; 7 with the lanes, 6 with the transition strip; crowded with the player
+bar, 5 under the lanes and 4 under the strip; the panel's Suggestions show 7 (as on `feature`; 6 on the one visit that
+shows the ranking note). Notes and View keep to the facts line (`line-height: 1`, hairline border), so the header does not
+grow. Windows is not re-measured here.
+
 ---
 
 ## PAGES-10 — The Camelot Wheel

@@ -28,6 +28,8 @@ import "./TrackContextMenu.css";
 export interface TrackContextMenuItem {
   id: string;
   label: string;
+  /** What the entry does, for a hover; the label stays the name. */
+  title?: string;
   onSelect: () => void;
   disabled?: boolean;
   /** Draws a divider above this entry. */
@@ -263,6 +265,7 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
               className={`cp-track-menu__item${index === active ? " cp-track-menu__item--active" : ""}${parent ? " cp-track-menu__item--parent" : ""}`}
               disabled={item.disabled}
               aria-disabled={item.disabled || undefined}
+              title={item.title}
               aria-haspopup={parent ? "menu" : undefined}
               aria-expanded={parent ? showing : undefined}
               onMouseEnter={() => {

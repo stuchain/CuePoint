@@ -12,6 +12,7 @@ import {
   loudnessCell,
   loudnessCopyText,
   loudnessDifference,
+  loudnessUnitsTitle,
   loudnessLine,
   loudnessShort,
   signedTenths,
@@ -163,5 +164,19 @@ describe("against the engine's own answers", () => {
       LOUDNESS_PENDING_WORDS,
       null,
     ]);
+  });
+});
+
+describe("loudnessUnitsTitle (PRP-8)", () => {
+  it("explains LUFS and what a difference in LU means", () => {
+    expect(loudnessUnitsTitle("+2.1 LU")).toBe("Loudness (LUFS). +2.1 LU means the next track is 2.1 dB louder.");
+    expect(loudnessUnitsTitle("−0.6 LU")).toBe("Loudness (LUFS). −0.6 LU means the next track is 0.6 dB quieter.");
+    expect(loudnessUnitsTitle("0.0 LU")).toBe("Loudness (LUFS). 0.0 LU means the two tracks are equally loud.");
+  });
+
+  it("explains LUFS alone with no difference to read", () => {
+    expect(loudnessUnitsTitle(null)).toBe(
+      "Loudness (LUFS): how loud the whole track measures. A difference in LU is how much louder or quieter the next track is.",
+    );
   });
 });

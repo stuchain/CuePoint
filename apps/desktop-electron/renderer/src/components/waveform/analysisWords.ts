@@ -168,6 +168,34 @@ export function waveformStateWord(
   }
 }
 
+/**
+ * Where a waveform waits for the analysis, in place (PRP-12): how far the
+ * analysis has got, so "not drawn yet" is not a dead end. A paused analysis is
+ * said paused, a build without a decoder says so once, and nothing is claimed
+ * about progress that has not been read.
+ */
+export function waitingWaveformWords(status: WaveformAnalysisStatus | null | undefined): string {
+  const lead = "Waveform not made yet";
+  if (!status) return lead;
+  if (status.state === "unavailable") return DECODER_MISSING_WORDS;
+  if (status.state === "paused") return `${lead} — analysis is paused`;
+  if (status.present <= 0) return lead;
+  return `${lead} — analysis is ${count(status.analysed + status.failed)} of ${count(status.present)}`;
+}
+
+/**
+ * The same, short enough for the half of a transition strip (about a hundred
+ * pixels wide); the full sentence is that half's title.
+ */
+export function waitingWaveformShort(status: WaveformAnalysisStatus | null | undefined): string {
+  const lead = "Not made yet";
+  if (!status) return lead;
+  if (status.state === "unavailable") return DECODER_MISSING_WORDS;
+  if (status.state === "paused") return `${lead} — paused`;
+  if (status.present <= 0) return lead;
+  return `${lead} — ${count(status.analysed + status.failed)} of ${count(status.present)}`;
+}
+
 /** The Inspector's title over a waveform that is a picture only (WAVE-06). */
 export const INSPECTOR_PICTURE_TITLE = "The track's waveform. Play the track to seek in it here.";
 

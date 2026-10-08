@@ -26,6 +26,7 @@ import { ToastProvider } from "../../components";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { TRACK_DETAIL } from "../library/librarySets.testFixture";
+import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
 import { toQueueItem } from "../library/useLibraryPlayback";
 import { PrepareScreen, SET_ENTRY_MIME, SET_GONE_LINE } from "./PrepareScreen";
 import { EDITS, FRIDAY, IDS, PLAIN, REFUSALS, TREE, answered, refused } from "./prepare.testFixture";
@@ -119,6 +120,8 @@ function install(tree: CollectionNode[] = TREE) {
     })),
     insertTrackInCollection: vi.fn().mockResolvedValue(EDITS.repeatInserted),
     removeCollectionEntries: vi.fn().mockResolvedValue(EDITS.removed),
+    startFileCheck: vi.fn().mockResolvedValue({ job_id: "check-1", id: "check-1", state: "queued", tracks: 5 }),
+    getJob: vi.fn().mockResolvedValue({ id: "check-1", state: "succeeded" }),
   };
   (window as unknown as { cuepoint: unknown }).cuepoint = bridge;
 }
@@ -309,6 +312,99 @@ describe("with no Sets", () => {
   });
 });
 
+describe("New Set from the header (PRP-1)", () => {
+  it("opens the New Set dialog with a Set open, and makes the Set", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    const menuButton = screen.getByRole("button", { name: "New Set ▾" });
+    expect(menuButton).toHaveAttribute("aria-haspopup", "menu");
+    // Beside the picker, before Play Set.
+    const header = menuButton.closest("header") as HTMLElement;
+    const names = within(header).getAllByRole("button").map((button) => button.textContent);
+    expect(names.slice(0, 3)).toEqual(["New Set ▾", "Play Set", "Export ▾"]);
+    fireEvent.click(menuButton);
+    expect(within(screen.getByRole("menu")).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "New Set…",
+      "New Set from…",
+    ]);
+    fireEvent.click(await menuItem("New Set…"));
+    const dialog = await screen.findByRole("dialog", { name: "New Set" });
+    fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Saturday" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+    await waitFor(() => expect(where()).toBe(preparePath(50)));
+    expect(sets.create).toHaveBeenCalledWith({ name: "Saturday", parent_id: null });
+  });
+
+  it("copies a Set from a source, from the same menu", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(screen.getByRole("button", { name: "New Set ▾" }));
+    fireEvent.click(await menuItem("New Set from…"));
+    const picker = await screen.findByRole("dialog", { name: "New Set from…" });
+    expect(within(picker).getByText("Copy the tracks of")).toBeInTheDocument();
+  });
+});
+
+describe("the header's facts and buttons (PRP-3, PRP-6, PRP-10)", () => {
+  it("starts Clean's file check from the files fact, for the whole library, and reads the Set again", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    const reads = sets.analysis.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Files not checked — check now" }));
+    await waitFor(() => expect(bridge.startFileCheck).toHaveBeenCalledWith({ selection: { query: {} } }));
+    expect(await screen.findByText("Checking 5 tracks.", {}, LOADED)).toBeInTheDocument();
+    await waitFor(() => expect(sets.analysis.mock.calls.length).toBeGreaterThan(reads), LOADED);
+  });
+
+  it("says no times are planned until one is typed", async () => {
+    renderAt(preparePath(IDS.plain));
+    await opened("Plain");
+    const facts = screen.getByRole("status", { name: "" });
+    expect(within(facts).getByText("No times planned yet")).toHaveAttribute(
+      "title",
+      expect.stringMatching(/In this Set/),
+    );
+  });
+
+  it("draws Notes and View as buttons on the facts line", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    for (const name of ["Notes (1)", "View ▾"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button).toHaveClass("cp-btn", "cp-btn--secondary", "prepare-header__button");
+      expect(button.parentElement).toBe(screen.getByRole("status", { name: "" }));
+    }
+  });
+});
+
+describe("while a Set is read (PRP-12)", () => {
+  it("says it inside a panel, not as bare text", async () => {
+    sets.plan.mockImplementation(() => new Promise(() => undefined));
+    renderAt(preparePath(IDS.friday));
+    const loading = await screen.findByText("Reading the Set…", {}, LOADED);
+    expect(loading.closest(".cp-panel")).not.toBeNull();
+    expect(loading.closest("[role='status']")).not.toBeNull();
+  });
+});
+
+describe("the selected track (PAGES-03)", () => {
+  afterEach(() => setSelectedTrack(null));
+
+  it("is the selected entry's track, with its key, and goes with the selection and the page", async () => {
+    const view = renderAt(preparePath(IDS.friday));
+    await opened();
+    expect(getSelectedTrack()).toBeNull();
+    fireEvent.click(rowAt(2));
+    const entry = FRIDAY.entries.entries.find((candidate) => candidate.entry_id === E2)!;
+    await waitFor(() =>
+      expect(getSelectedTrack()).toEqual({ id: entry.track_id, key: entry.track.effective_key ?? null }),
+    );
+    fireEvent.click(rowAt(0));
+    view.unmount();
+    expect(getSelectedTrack()).toBeNull();
+  });
+});
+
 describe("which Set opens", () => {
   it("opens the first Set in the tree when none was open before", async () => {
     renderAt(PREPARE_PATH);
@@ -375,14 +471,14 @@ describe("the Set", () => {
     await opened();
     const facts = screen.getByRole("status", { name: "" });
     expect(facts).toHaveTextContent(
-      "6 entries · 9:00 planned · 4 untimed · 5 warnings · 1 accepted · Files never checked",
+      "6 entries · 9:00 planned · 4 without times · 5 warnings · 1 accepted · Files not checked — check now",
     );
     // Each short fact carries its sentence.
     expect(within(facts).getByText(/5 warnings/)).toHaveAttribute(
       "title",
       "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range",
     );
-    expect(within(facts).getByText(/Files never checked/)).toHaveAttribute(
+    expect(within(facts).getByRole("button", { name: "Files not checked — check now" })).toHaveAttribute(
       "title",
       expect.stringMatching(/^Files in this Set have never been checked/),
     );
@@ -402,7 +498,7 @@ describe("the Set", () => {
     sets.setNotes.mockResolvedValue(answered(EDITS.setNotes));
     renderAt(preparePath(IDS.friday));
     await opened();
-    const link = within(screen.getByRole("status", { name: "" })).getByRole("button", { name: "Notes…" });
+    const link = within(screen.getByRole("status", { name: "" })).getByRole("button", { name: "Notes (1)" });
     // The notes themselves are the link's title, so a glance does not open a dialog.
     expect(link).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
     fireEvent.click(link);
@@ -424,7 +520,7 @@ describe("the Set", () => {
     );
     renderAt(preparePath(IDS.friday));
     await opened();
-    fireEvent.click(screen.getByRole("button", { name: "Notes…" }));
+    fireEvent.click(screen.getByRole("button", { name: "Notes (1)" }));
     const dialog = await screen.findByRole("dialog", { name: "Notes for “Friday”" });
     fireEvent.change(within(dialog).getByLabelText("Notes"), { target: { value: "   " } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
@@ -435,7 +531,7 @@ describe("the Set", () => {
   it("says what the notes are for when there are none", async () => {
     renderAt(preparePath(IDS.plain));
     await opened("Plain");
-    expect(screen.getByRole("button", { name: "Notes…" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Notes" })).toHaveAttribute(
       "title",
       expect.stringMatching(/^Notes for the whole Set/),
     );
@@ -674,6 +770,12 @@ describe("a heading's menu", () => {
     fireEvent.contextMenu(rowAt(0));
     fireEvent.click(await menuItem("Rename, targets and notes…"));
     const dialog = await screen.findByRole("dialog", { name: "Chapter “Warm-up”" });
+    // What a chapter is, before the fields that set it (PRP-11).
+    expect(
+      within(dialog).getByText(
+        "A chapter is a part of the Set — warm-up, peak, closing — with its own target length and tempo range.",
+      ),
+    ).toBeInTheDocument();
     expect(within(dialog).getByLabelText(/^Name/)).toHaveValue("Warm-up");
     expect(within(dialog).getByLabelText(/^Target length/)).toHaveValue("8:00");
     expect(within(dialog).getByLabelText("Lowest BPM")).toHaveValue("120");
@@ -753,8 +855,8 @@ describe("the entry's plan in the Inspector", () => {
 
   it("shows the entry's times and note above the track", async () => {
     const zone = await select(1);
-    expect(within(zone).getByLabelText("In")).toHaveValue("0:30");
-    expect(within(zone).getByLabelText("Out")).toHaveValue("4:30");
+    expect(within(zone).getByLabelText("Mix in")).toHaveValue("0:30");
+    expect(within(zone).getByLabelText("Mix out")).toHaveValue("4:30");
     expect(within(zone).getByText("Plays for 4:00")).toBeInTheDocument();
     expect(within(zone).getByText(/Entry 1, in Warm-up · starts at 0:00/)).toBeInTheDocument();
     // Above "Yours", which is about the track.
@@ -764,7 +866,7 @@ describe("the entry's plan in the Inspector", () => {
 
   it("saves both times together when a field is left", async () => {
     const zone = await select(1);
-    const out = within(zone).getByLabelText("Out");
+    const out = within(zone).getByLabelText("Mix out");
     fireEvent.change(out, { target: { value: "4:00" } });
     fireEvent.blur(out);
     await waitFor(() =>
@@ -775,7 +877,7 @@ describe("the entry's plan in the Inspector", () => {
   it("keeps a refused time in the field, marked, and says why", async () => {
     sets.setEntryTimes.mockResolvedValue(refused(REFUSALS.badTime));
     const zone = await select(1);
-    const inField = within(zone).getByLabelText("In");
+    const inField = within(zone).getByLabelText("Mix in");
     fireEvent.change(inField, { target: { value: "4:30" } });
     fireEvent.keyDown(inField, { key: "Enter" });
     expect(await screen.findByText(REFUSALS.badTime.message)).toBeInTheDocument();
@@ -786,7 +888,7 @@ describe("the entry's plan in the Inspector", () => {
 
   it("does not write times nobody changed", async () => {
     const zone = await select(1);
-    fireEvent.blur(within(zone).getByLabelText("In"));
+    fireEvent.blur(within(zone).getByLabelText("Mix in"));
     expect(sets.setEntryTimes).not.toHaveBeenCalled();
   });
 
@@ -810,15 +912,32 @@ describe("the entry's plan in the Inspector", () => {
   it("acknowledges a transition warning, and withdraws an acknowledged one", async () => {
     const zone = await select(5);
     const jump = within(zone).getByText(/Tempo jumps 9.4% faster/).closest("li") as HTMLElement;
-    fireEvent.click(within(jump).getByRole("button", { name: "Acknowledge" }));
+    fireEvent.click(within(jump).getByRole("button", { name: "Accept" }));
     await waitFor(() =>
       expect(sets.acknowledge).toHaveBeenCalledWith({ from_entry_id: E3, to_entry_id: E4, warning: "tempo_jump" }),
     );
-    const clash = within(zone).getByText(/Keys clash: 8A → 3B \(acknowledged\)/).closest("li") as HTMLElement;
-    fireEvent.click(within(clash).getByRole("button", { name: "Withdraw" }));
+    const clash = within(zone).getByText(/Keys clash: 8A → 3B \(accepted\)/).closest("li") as HTMLElement;
+    fireEvent.click(within(clash).getByRole("button", { name: "Undo accept" }));
     await waitFor(() =>
       expect(sets.unacknowledge).toHaveBeenCalledWith({ from_entry_id: E3, to_entry_id: E4, warning: "key_clash" }),
     );
+  });
+
+  it("says what accepting does, once, above the warnings (PRP-5)", async () => {
+    const zone = await select(5);
+    const list = within(zone).getByRole("list", { name: "What the checks found" });
+    const hint = within(zone).getByText(
+      "Accept a warning once you have heard the mix work. It comes back if either track changes.",
+    );
+    expect(hint.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(zone).queryByText(/acknowledge/i)).toBeNull();
+  });
+
+  it("asks for an out time in words when there is none (PRP-3)", async () => {
+    const zone = await select(4);
+    expect(
+      within(zone).getByText("No out time yet: type one to count this track in the Set's length."),
+    ).toBeInTheDocument();
   });
 
   it("says a repeat is played again, where", async () => {

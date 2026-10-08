@@ -12,13 +12,16 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { CollectionNode, LibraryPlaylistNode, SetWarning } from "../../api/cuepointBridge.types";
 import { buildCollectionTree } from "../library/collectionTree";
 import { CHAPTER_NAME_MAX_LENGTH, chapterUpdate, readBpm } from "./chapterForm";
+import { PREPARE_COLUMNS } from "./prepareColumns";
 import { newSetSources, sourceKey } from "./newSetSources";
 import { FRIDAY, IDS, PLAIN, TREE } from "./prepare.testFixture";
 import {
   bpmRangeText,
   chapterTimeText,
   deletionLine,
+  EMPTY_SET,
   headerFacts,
+  notesLinkLabel,
   runningTimeLine,
   shortWarning,
   summarizeWarnings,
@@ -195,7 +198,7 @@ describe("chapter starts and repeats", () => {
 
 describe("the words", () => {
   it("counts the timed entries and says how many are not (DEC-107)", () => {
-    expect(runningTimeLine(FRIDAY.plan.running_time)).toBe("9:00 planned · 4 untimed");
+    expect(runningTimeLine(FRIDAY.plan.running_time)).toBe("9:00 planned · 4 without times");
     expect(runningTimeLine({ seconds: 5660, timed: 3, untimed: 0 })).toBe("1:34:20 planned");
   });
 
@@ -210,7 +213,7 @@ describe("the words", () => {
   it("states a chapter's time against its target, and its range", () => {
     const [warmUp, peak] = FRIDAY.plan.chapters;
     expect(chapterTimeText(warmUp)).toBe("9:00 of 8:00");
-    expect(chapterTimeText(peak)).toBe("0:00 · 2 untimed");
+    expect(chapterTimeText(peak)).toBe("0:00 · 2 without times");
     expect(bpmRangeText(warmUp)).toBe("120–123");
     expect(bpmRangeText(peak)).toBe("");
     expect(bpmRangeText({ bpm_min: 126, bpm_max: null })).toBe("from 126");
@@ -253,10 +256,13 @@ describe("the words", () => {
     const facts = headerFacts(6, FRIDAY.plan.running_time, FRIDAY.analysis);
     expect(facts.map((fact) => fact.text)).toEqual([
       "6 entries",
-      "9:00 planned · 4 untimed",
+      "9:00 planned · 4 without times",
       "5 warnings · 1 accepted",
-      "Files never checked",
+      "Files not checked — check now",
     ]);
+    // The files fact is the one that acts: it starts Clean's file check (PRP-6).
+    expect(facts[3]).toMatchObject({ action: "check_files" });
+    expect(facts[3].title).toContain("never been checked");
     // Transitions, then entries, then chapters, in words that count.
     expect(facts[2]).toEqual({
       text: "5 warnings · 1 accepted",
@@ -265,12 +271,52 @@ describe("the words", () => {
     });
     const partly = { ...FRIDAY.analysis.files, never_checked: false, checked: 3, unchecked: 2 };
     expect(headerFacts(1, FRIDAY.plan.running_time, { ...FRIDAY.analysis, files: partly })[3].text).toBe(
-      "2 files never checked",
+      "2 files not checked — check now",
     );
     const checked = { ...FRIDAY.analysis.files, never_checked: false, checked: 5, unchecked: 0 };
     const quiet = headerFacts(1, FRIDAY.plan.running_time, { ...FRIDAY.analysis, counts: {}, files: checked });
-    expect(quiet.map((fact) => fact.text)).toEqual(["1 entry", "9:00 planned · 4 untimed", "No warnings · 1 accepted"]);
+    expect(quiet.map((fact) => fact.text)).toEqual(["1 entry", "9:00 planned · 4 without times", "No warnings · 1 accepted"]);
     expect(quiet[2].strong).toBe(false);
+  });
+
+  it("says no times are planned until one is typed, and that times are optional (PRP-3)", () => {
+    const none = { seconds: 0, timed: 0, untimed: 6 };
+    const facts = headerFacts(6, none, FRIDAY.analysis);
+    expect(facts[1].text).toBe("No times planned yet");
+    // True now that Track details holds the fields; the table's own cells come with FLW-18.
+    expect(facts[1].title).toBe(
+      "Select an entry and type its Mix in and Mix out under “In this Set” in Track details to plan the Set's length. Times are optional.",
+    );
+    expect(runningTimeLine(none)).toBe("No times planned yet");
+    // One timed entry is a plan; an empty Set has no entries to be untimed.
+    expect(headerFacts(6, { seconds: 0, timed: 1, untimed: 5 }, FRIDAY.analysis)[1].text).toBe(
+      "0:00 planned · 5 without times",
+    );
+    expect(headerFacts(0, { seconds: 0, timed: 0, untimed: 0 }, FRIDAY.analysis)[1].text).toBe("0:00 planned");
+  });
+
+  it("labels Notes with a count mark once the Set has notes (PRP-10)", () => {
+    expect(notesLinkLabel(null)).toBe("Notes");
+    expect(notesLinkLabel("Bring the long cable")).toBe("Notes (1)");
+  });
+
+  it("points the empty Set at the panel beside it (PRP-2)", () => {
+    expect(EMPTY_SET).toBe(
+      "This Set is empty. Pick tracks on the right under Library and choose Insert here, or drag them in from the Library or the Collections tree.",
+    );
+  });
+
+  it("names the columns for what the user types (PRP-4)", () => {
+    const header = (id: string) => PREPARE_COLUMNS.find((column) => column.id === id)?.header;
+    expect([header("starts_at"), header("in"), header("out"), header("planned")]).toEqual([
+      "Starts at",
+      "Mix in",
+      "Mix out",
+      "Plays for",
+    ]);
+    expect(PREPARE_COLUMNS.find((column) => column.id === "in")?.hint).toBe(
+      "When you plan to bring this track in, as m:ss into the track",
+    );
   });
 
   it("writes a planned time, or nothing", () => {
@@ -314,6 +360,10 @@ describe("the menus", () => {
     ]);
     expect(items[0].label).toBe("Play Set from here");
     expect(items.find((item) => item.id === "split")?.disabled).toBe(false);
+    // PRP-11: what a chapter is, where the menu starts one.
+    expect(items.find((item) => item.id === "split")?.title).toBe(
+      "Splits the Set here; this track begins a new chapter.",
+    );
   });
 
   it("does not start a chapter where one starts", () => {

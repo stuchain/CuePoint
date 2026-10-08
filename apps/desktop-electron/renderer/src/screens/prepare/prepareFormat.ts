@@ -2,7 +2,8 @@
  * The Prepare page in words (PREP-10, DEC-106, DEC-107).
  *
  * The running time counts timed entries only and says how many are not
- * (DEC-107): "1:34:20 planned · 3 untimed". A heading states its chapter's
+ * (DEC-107): "1:34:20 planned · 3 without times", or "No times planned yet"
+ * while none is typed (PRP-3). A heading states its chapter's
  * time against its target and its BPM range. A transition is summed up in a
  * few words for its cell; the whole sentence, `describeSetWarning`'s, is the
  * cell's title and the Inspector's line.
@@ -22,10 +23,19 @@ function counted(count: number, one: string, many: string): string {
   return `${count.toLocaleString()} ${count === 1 ? one : many}`;
 }
 
-/** "1:34:20 planned · 3 untimed"; "0:00 planned" says nothing is timed yet. */
+/** Said until a time is typed, when "0:00 planned" would read as a plan (PRP-3). */
+const NO_TIMES_YET = "No times planned yet";
+
+/**
+ * "1:34:20 planned · 3 without times"; "No times planned yet" while no entry
+ * has one. An empty Set has nothing to time, so it reads "0:00 planned".
+ */
 export function runningTimeLine(running: SetRunningTime): string {
+  if (running.seconds === 0 && running.timed === 0 && running.untimed > 0) return NO_TIMES_YET;
   const planned = `${formatTime(running.seconds)} planned`;
-  return running.untimed > 0 ? `${planned} · ${running.untimed.toLocaleString()} untimed` : planned;
+  return running.untimed > 0
+    ? `${planned} · ${running.untimed.toLocaleString()} without times`
+    : planned;
 }
 
 /** The header's count: warnings still open, and how many were accepted. */
@@ -40,6 +50,8 @@ interface HeaderFact {
   text: string;
   title?: string;
   strong?: boolean;
+  /** Set when the fact is a button: what it starts. */
+  action?: "check_files";
 }
 
 /**
@@ -70,7 +82,13 @@ export function headerFacts(
 ): HeaderFact[] {
   const facts: HeaderFact[] = [
     { text: counted(entryCount, "entry", "entries") },
-    { text: runningTimeLine(running) },
+    {
+      text: runningTimeLine(running),
+      title:
+        runningTimeLine(running) === NO_TIMES_YET
+          ? "Select an entry and type its Mix in and Mix out under “In this Set” in Track details to plan the Set's length. Times are optional."
+          : undefined,
+    },
   ];
   const kinds = (Object.keys(KIND_WORDS) as SetWarning["kind"][])
     .filter((kind) => (analysis.counts[kind] ?? 0) > 0)
@@ -84,8 +102,11 @@ export function headerFacts(
   if (files) {
     const { unchecked, never_checked: never } = analysis.files;
     facts.push({
-      text: never ? "Files never checked" : `${counted(unchecked, "file", "files")} never checked`,
+      text: never
+        ? "Files not checked — check now"
+        : `${counted(unchecked, "file", "files")} not checked — check now`,
       title: files,
+      action: "check_files",
     });
   }
   if (analysis.without_key > 0) {
@@ -103,7 +124,7 @@ export function chapterTimeText(chapter: Pick<SetChapterPlan, "running_time" | "
   const planned =
     chapter.target_seconds == null ? run : `${run} of ${formatTime(chapter.target_seconds)}`;
   const untimed = chapter.running_time.untimed;
-  return untimed > 0 ? `${planned} · ${untimed.toLocaleString()} untimed` : planned;
+  return untimed > 0 ? `${planned} · ${untimed.toLocaleString()} without times` : planned;
 }
 
 /** A chapter's BPM range: "120–123", "from 120", "to 123", or "" with none. */
@@ -178,7 +199,12 @@ export function notesToSend(text: string): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
-/** The header's "Notes…" title: the notes themselves, or what the link is for. */
+/** The facts line's Notes button: a mark once the Set has notes (PRP-10). */
+export function notesLinkLabel(notes: string | null): string {
+  return notes ? "Notes (1)" : "Notes";
+}
+
+/** The header's "Notes" title: the notes themselves, or what the link is for. */
 export function notesLinkTitle(notes: string | null): string {
   return notes ?? "Notes for the whole Set: the venue, the times, anything to remember";
 }
@@ -194,7 +220,7 @@ export const NO_SETS = "Prepare needs the desktop app with CuePoint's library se
 
 /** An empty Set's table. */
 export const EMPTY_SET =
-  "This Set is empty. Add tracks with “Add to Set…” in the Library, or drop them on the Set in the Collections tree.";
+  "This Set is empty. Pick tracks on the right under Library and choose Insert here, or drag them in from the Library or the Collections tree.";
 
 /**
  * What deleting a chapter does, before it is done (DEC-103): its entries join

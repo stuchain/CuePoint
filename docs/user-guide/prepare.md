@@ -36,9 +36,9 @@ A Set holds at most 1,000 entries. A Collection holds larger lists.
 
 ### Making a Set
 
-- **New Set**, on the Prepare page or beside **New Collection** at the top of
-  the Library's Collections section, makes an empty Set in the folder you
-  choose.
+- **New Set**, in the **New Set ▾** menu in Prepare's header (it works with a
+  Set open) or beside **New Collection** at the top of the Library's
+  Collections section, makes an empty Set in the folder you choose.
 - **New Set from…** copies the tracks of something you already have into a new
   Set, as its one chapter:
   - a **Collection**, in its order and with any repeats;
@@ -47,7 +47,7 @@ A Set holds at most 1,000 entries. A Collection holds larger lists.
   - a **Rekordbox playlist**, in its order — refreshing from Rekordbox never
     changes the Set.
 
-  On the Prepare page, **New Set from…** asks what to copy first. In the
+  On the Prepare page, **New Set ▾ → New Set from…** asks what to copy first. In the
   Library, right-click a Collection, a Smart Collection or a Rekordbox playlist
   and choose **New Set from…**.
 - **New Set from the selection…**, in the Library's right-click menu and its
@@ -91,19 +91,21 @@ running order with its repeats is the Prepare page's.
 
 ## The page
 
-The header's picker names the Set open. Beside it are **Play Set** and
-**Export ▾**. Under them, one line says how many entries the Set has, its
-planned running time, how many warnings its checks found and how many you
-accepted, and — when it applies — that its files have never been checked.
-**Notes…** holds notes for the whole Set: the venue, the set times, anything you
-want to remember. **View ▾** shows or hides the tempo and key lanes and the
+The header's picker names the Set open. Beside it are **New Set ▾**, **Play
+Set** and **Export ▾**. Under them, one line says how many entries the Set has,
+its planned running time ("No times planned yet" until you type one), how many
+warnings its checks found and how many you accepted, and — when it applies —
+**Files not checked — check now**, which starts the same check as **Check every
+file** on the [Clean](clean.md) page. **Notes** holds notes for the whole Set:
+the venue, the set times, anything you want to remember; it reads **Notes (1)**
+once the Set has some. **View ▾** shows or hides the tempo and key lanes and the
 transition strip, and chooses the table's columns.
 
-The Set's table has one row per entry: its number, when it **Starts**, its
-planned **In** and **Out** times, how long it is **Planned** to play, the track,
-its BPM and key, the **Transition** into it, and its note. Each chapter has a
-heading row that states the chapter's facts under the same columns. Nothing
-sorts: the order is the Set.
+The Set's table has one row per entry: its number, when it **Starts at**, the
+**Mix in** and **Mix out** times you plan, how long it **Plays for**, the track,
+its BPM and key, the **Transition** into it, and its note. Hover a heading for
+what it means. Each chapter has a heading row that states the chapter's facts
+under the same columns. Nothing sorts: the order is the Set.
 
 Beside the Set is the panel you add tracks from. Drag the divider between them,
 or move it with the arrow keys; the width you choose is remembered.
@@ -113,12 +115,13 @@ entry's times, note and chapter, and what the checks found about it.
 
 ## Chapters
 
-A chapter is a stretch of the Set: a warm-up, a peak, a close. Every entry
+A chapter is a part of the Set, such as a warm-up, a peak or a close, with its own
+target length and tempo range. Every entry
 belongs to exactly one chapter, and a chapter's entries are always together in
 the running order.
 
-- **Start a chapter here**, on an entry's right-click menu, splits its chapter
-  at that entry.
+- **Start a chapter here**, on an entry's right-click menu, splits the Set
+  there: that track begins a new chapter.
 - A chapter's heading row has **Rename, targets and notes…** (or double-click
   the heading), **Move chapter up**, **Move chapter down** — its entries move
   with it — and **Delete chapter…**, which says which chapter its entries join
@@ -134,20 +137,21 @@ range.
 
 ## Planned times
 
-Each entry can carry a planned **in** time and **out** time: where in the track
-you plan to bring it in and take it out. Type them in the Inspector's **In this
-Set** as `m:ss` or `h:mm:ss` — `0:30`, `4:30`, `1:02:00` — and press Enter or
-leave the field. A blank **In** means the start of the track; a blank field
+Each entry can carry a planned **mix in** time and **mix out** time: where in the
+track you plan to bring it in and take it out. Type them under **In this Set** in
+Track details (the Inspector) as `m:ss` or `h:mm:ss` — `0:30`, `4:30`, `1:02:00` — and press Enter or
+leave the field. A blank **Mix in** means the start of the track; a blank field
 clears a time. A time that cannot be read, an out time before the in time, or an
 out time past the end of the track is refused with the reason.
 
 - **An entry is timed when it has an out time.** It plays for its out time less
-  its in time, which the **Planned** column shows.
+  its in time, which the **Plays for** column shows.
 - **The running time counts timed entries only**, and says how many it did not
-  count: "9:00 planned · 4 untimed". It never guesses how long an untimed entry
+  count: "9:00 planned · 4 without times", or "No times planned yet" while none is typed.
+  Times are optional. It never guesses how long an entry without an out time
   will play.
-- **Starts** is when each entry begins, counted from the Set's start. It stops at
-  the first untimed entry: that entry's start is known, and every one after it
+- **Starts at** is when each entry begins, counted from the Set's start. It stops at
+  the first entry without an out time: that entry's start is known, and every one after it
   is left blank rather than showing a time that would be wrong.
 
 Each entry can also carry a note — "loop the break", "let it run" — typed in the
@@ -172,13 +176,13 @@ export a Set with every warning still open.
 The **Transition** column shows the warnings into each entry in a few words, and
 its tooltip gives each one in full. The header's count names every kind it
 counted. A Set whose files were never checked says so rather than claiming none
-are missing; run **Check files** in the Library, or **Check every file** on the
-[Clean](clean.md) page.
+are missing; choose **Files not checked — check now** in the header's line, or run
+**Check every file** on the [Clean](clean.md) page.
 
 **Accepting a transition warning.** Select the entry, and in **In this Set**
-choose **Acknowledge** beside the warning: you have heard the mix and it works.
-It stays visible, muted and marked accepted, and **Withdraw** takes the
-acceptance back. An accepted warning comes back on its own when either track, or
+choose **Accept** beside the warning once you have heard the mix work. It stays
+visible, muted and marked accepted, and **Undo accept** takes the acceptance
+back. An accepted warning comes back on its own when either track, or
 the value it compared, changes — a different track in the slot, a corrected BPM
 or key — because what you accepted is no longer what is there.
 
@@ -192,8 +196,8 @@ The panel beside the Set fills it from two places, on two tabs:
 
 **The insertion point** is where a track from either tab goes: the gap after
 the entry selected in the Set, between it and the next one — or the end of the
-Set with nothing selected. A line at the top of the tab names it: "Between
-“Warm Two” and “Warm One”, in Warm-up". A track inserted there joins the chapter
+Set with nothing selected. A line at the top of the panel, above the tabs, names it:
+"Inserting: between “Warm Two” and “Warm One”, in Warm-up". A track inserted there joins the chapter
 of the entry before it.
 
 **From** chooses where both tabs look: your whole library, a Rekordbox playlist
@@ -202,8 +206,11 @@ choice.
 
 **Suggestions are scored against both neighbours.** A suggestion must fit the
 track before the gap and the track after it, and each side's reasons are shown
-in their own column: the tempo, the key's relation on the wheel, and a shared
-genre, label or artist. It uses the same rule as the warnings, so a track
+in their own column, **Fits after** (how well the track follows the one before
+the gap) and **Fits before** (how well it leads into the one after): the tempo,
+the key's relation on the wheel ("Same key", "Next key", "Relative key"), and a
+shared genre, label or artist. **Fit** is out of 100, "72/100"; with a track on
+each side it is the mean of the two. It uses the same rule as the warnings, so a track
 suggested for a gap never has a tempo warning there. Key only adds points, so a
 suggestion can still clash in key, and its reasons say so. A track already in
 the Set is marked: "Already in this Set once: inserting it plays it again".
@@ -219,7 +226,8 @@ An empty Set has nothing to fit against, so Suggestions starts once it has its
 first track; add that one from the Library tab.
 
 **Putting a track in.** Select one or more rows and choose **Insert here**
-(**Insert 3 here** for three), or drag them into the Set where you want them.
+(**Insert 3 here** for three; it reads **Pick tracks** until you select
+one, and clicking it takes you to the table), or drag them into the Set where you want them.
 Double-click a row to hear it; its right-click menu also queues it, and opens its
 Similar tracks and its artist's or label's page.
 
@@ -229,7 +237,7 @@ Similar tracks and its artist's or label's page.
 
 - **Tempo**: each entry's BPM as a mark, stepping from one to the next, so a
   jump is a step you can see.
-- **Key**: each entry's place on the Camelot wheel, joined to the next by a line
+- **Key (Camelot)**: each entry's place on the Camelot wheel, where neighbors mix well, joined to the next by a line
   that says how the two keys relate — solid for the same key or one step, dashed
   for the relative key, dotted for a clash.
 
@@ -245,15 +253,19 @@ in words; they add no fact of their own.
 after it, so you can see how one track ends and the next begins:
 
 - **A row of titles**: each entry's track and its planned times, "In 0:16 ·
-  Out 5:42", or "Untimed" for one without an out time, then its loudness,
-  "−8.4 LUFS", once it is measured.
+  Out 5:42", or "No out time" for one without an out time, then its loudness,
+  "−8.4 LUFS" (how loud the track measures), once it is measured.
 - **Two waveforms**, each the whole track with its cue points, the part before
   its planned in and after its planned out dimmed.
+  A track whose waveform has not been made yet says so in place, with how far
+  the analysis has got ("Not made yet — 312 of 4,000"; hover for the whole
+  sentence), and **See progress** under the words opens Settings at Waveforms.
 - **Between them**, in words, how the one goes out and the next comes in:
-  "Out 5:42 → In 0:16". "Untimed" stands for an out time not typed yet, and
-  "untimed" for a next entry with no times at all. When both tracks have a
+  "Out 5:42 → In 0:16". "No out time" stands for an out time not typed yet, and
+  "no times" for a next entry with none planned at all. When both tracks have a
   loudness, the words end with how much louder or quieter the next one is:
-  "Out 5:42 → In 0:16 · +2.1 LU". CuePoint changes neither track's volume; see
+  "Out 5:42 → In 0:16 · +2.1 LU", which means the next track is 2.1 dB louder
+  (hover the words for this). CuePoint changes neither track's volume; see
   [Loudness](waveforms.md#loudness).
 
 With nothing selected the strip says to select an entry; with the last entry

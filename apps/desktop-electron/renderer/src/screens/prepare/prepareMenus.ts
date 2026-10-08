@@ -47,6 +47,7 @@ export function entryMenuItems(
       {
         id: "split",
         label: "Start a chapter here",
+        title: "Splits the Set here; this track begins a new chapter.",
         onSelect: handlers.onSplit,
         // At a chapter's first entry a chapter already starts there; the
         // engine would refuse it and say to rename instead.

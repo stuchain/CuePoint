@@ -6,10 +6,10 @@
  * says in words is decided here, so it is tested without a canvas:
  *
  * - **Each half's times** (DEC-107): "In 0:16 · Out 5:42". An empty in time is
- *   the start of the track, and an entry without an out time is untimed.
+ *   the start of the track, and an entry without an out time has "No out time".
  * - **The words between the halves:** the first entry's out and the next
- *   one's in, "Out 5:42 → In 0:16". "Untimed" stands for an out time that was
- *   never typed, and "untimed" for a next entry with no planned times at all.
+ *   one's in, "Out 5:42 → In 0:16". "No out time" stands for an out time that
+ *   was never typed, and "no times" for a next entry with none planned at all.
  *   The last entry's words are its out alone; its second half reads "End of
  *   Set".
  * - **Its shading:** the planned times in milliseconds, for the drawing's
@@ -75,23 +75,26 @@ function unplanned(half: TransitionHalf): boolean {
   return half.inSeconds === null && half.outSeconds === null;
 }
 
-/** A half's planned times in words: "In 0:16 · Out 5:42", "In 0:16 · untimed", "Untimed". */
+/** What an out time never typed reads as (PRP-3): the count stays honest without a word to decode. */
+const NO_OUT_TIME = "No out time";
+
+/** A half's planned times in words: "In 0:16 · Out 5:42", "In 0:16 · no out time", "No out time". */
 export function halfTimesWords(half: TransitionHalf): string {
   if (half.outSeconds !== null) {
     return `In ${formatTime(half.inSeconds ?? 0)} · Out ${formatTime(half.outSeconds)}`;
   }
-  if (half.inSeconds !== null) return `In ${formatTime(half.inSeconds)} · untimed`;
-  return "Untimed";
+  if (half.inSeconds !== null) return `In ${formatTime(half.inSeconds)} · no out time`;
+  return NO_OUT_TIME;
 }
 
-/** The out half of the words: "Out 5:42", or "Untimed". */
+/** The out half of the words: "Out 5:42", or "No out time". */
 export function outWords(half: TransitionHalf): string {
-  return half.outSeconds !== null ? `Out ${formatTime(half.outSeconds)}` : "Untimed";
+  return half.outSeconds !== null ? `Out ${formatTime(half.outSeconds)}` : NO_OUT_TIME;
 }
 
-/** The in half of the words: "In 0:16", "In 0:00" for a timed entry from its start, or "untimed". */
+/** The in half of the words: "In 0:16", "In 0:00" for a timed entry from its start, or "no times". */
 export function inWords(half: TransitionHalf): string {
-  if (unplanned(half)) return "untimed";
+  if (unplanned(half)) return "no times";
   return `In ${formatTime(half.inSeconds ?? 0)}`;
 }
 

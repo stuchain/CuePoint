@@ -18,6 +18,10 @@ import { chapterName } from "./prepareRows";
 import { formatTime } from "./setTime";
 import "./prepare.css";
 
+/** What a chapter is, before the fields that set it (PRP-11). */
+const CHAPTER_LEAD =
+  "A chapter is a part of the Set — warm-up, peak, closing — with its own target length and tempo range.";
+
 interface ChapterDialogProps {
   /** The chapter, or null when the dialog is closed. */
   chapter: SetChapterPlan | null;
@@ -73,6 +77,7 @@ export function ChapterDialog({ chapter, busy = false, error = null, onSave, onC
       onClose={onClose}
     >
       <div className="prepare-dialog">
+        <p className="prepare-note">{CHAPTER_LEAD}</p>
         <TextField
           id={`${ids}-name`}
           label="Name"

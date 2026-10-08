@@ -381,7 +381,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       // Step 7 made the second track a copy of bands.flac: the two sit level.
       await expect(window.getByTestId("transition-words")).toHaveText("Out 0:05 → In 0:00 · 0.0 LU");
       await expect(strip).toContainText("In 0:01 · Out 0:05 · −3.5 LUFS");
-      await expect(strip).toContainText("In 0:00 · untimed · −3.5 LUFS");
+      await expect(strip).toContainText("In 0:00 · no out time · −3.5 LUFS");
       const from = "[data-testid=transition-from] canvas";
       await expect(window.locator(from)).toBeVisible({ timeout: 20_000 });
       await expect(window.locator("[data-testid=transition-to] canvas")).toBeVisible({ timeout: 20_000 });
@@ -403,7 +403,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       // A click on the next half selects that entry.
       await window.getByTestId("transition-to").click();
       await expect(setTable.locator(".track-table__row").nth(1)).toHaveAttribute("aria-selected", "true");
-      await expect(window.getByTestId("transition-words")).toHaveText(/^Untimed → /);
+      await expect(window.getByTestId("transition-words")).toHaveText(/^No out time → /);
 
       // --- 9. delete waveform data, and the library analysed again ----------
       await window.getByRole("link", { name: "Settings" }).click();

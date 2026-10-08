@@ -22,10 +22,16 @@
  */
 import { useMemo } from "react";
 
-import type { SetEntry, WaveformLoudness } from "../../api/cuepointBridge.types";
+import type { SetEntry, WaveformAnalysisStatus, WaveformLoudness } from "../../api/cuepointBridge.types";
 import { readRowHeight } from "../../components/table/trackTableLayout";
-import { WAVEFORM_LOADING_WORDS, waveformEntryWords } from "../../components/waveform/analysisWords";
-import { loudnessDifference, loudnessShort } from "../../components/waveform/loudnessWords";
+import {
+  WAVEFORM_LOADING_WORDS,
+  waitingWaveformShort,
+  waitingWaveformWords,
+  waveformEntryWords,
+} from "../../components/waveform/analysisWords";
+import { loudnessDifference, loudnessShort, loudnessUnitsTitle } from "../../components/waveform/loudnessWords";
+import { useWaveformAnalysis } from "../../components/waveform/useWaveformAnalysis";
 import { useWaveform, useWaveforms } from "../../components/waveform/useWaveforms";
 import { useWaveformRequest } from "../../components/waveform/useWaveformRequest";
 import { WaveformCanvas } from "../../components/waveform/WaveformCanvas";
@@ -47,41 +53,68 @@ interface SetTransitionProps {
   entries: readonly SetEntry[];
   selectedEntryId: number | null;
   onSelect: (entryId: number) => void;
+  /** Opens where the analysis can be followed: a waiting waveform links there (PRP-12). */
+  onSeeProgress?: () => void;
 }
 
-function Half({ half, side, onSelect }: { half: TransitionHalf; side: "from" | "to"; onSelect: (entryId: number) => void }) {
+interface HalfProps {
+  half: TransitionHalf;
+  side: "from" | "to";
+  onSelect: (entryId: number) => void;
+  analysis: WaveformAnalysisStatus | null;
+  onSeeProgress?: () => void;
+}
+
+function Half({ half, side, onSelect, analysis, onSeeProgress }: HalfProps) {
   const { box, width } = useWaveformBox<HTMLButtonElement>();
   const entry = useWaveform(half.trackId, width, { marks: true, loudness: true });
   useWaveformRequest(half.trackId, entry, { loudness: true });
 
   const track = entry?.kind === "track" ? entry.track : null;
   const picture = track?.state === "ready" ? track.data : null;
-  const words = picture ? null : (waveformEntryWords(entry) ?? WAVEFORM_LOADING_WORDS);
+  // A waveform waiting for the analysis says how far it is, in place, and
+  // links to where it is followed (PRP-12).
+  const waiting = track?.state === "waiting" && analysis?.state !== "unavailable";
+  const waitingState = !picture && track?.state === "waiting";
+  // The half is narrow: it says the short words, and the sentence is its title.
+  const words = picture
+    ? null
+    : waitingState
+      ? waitingWaveformShort(analysis)
+      : (waveformEntryWords(entry) ?? WAVEFORM_LOADING_WORDS);
+  const sentence = waitingState ? waitingWaveformWords(analysis) : words;
   const { inMs, outMs } = shadedTimes(half);
 
   return (
-    <button
-      ref={box}
-      type="button"
-      className="prepare-transition__half"
-      data-testid={`transition-${side}`}
-      data-entry={half.entryId}
-      aria-label={`${half.title}, ${halfTimesWords(half)}`}
-      title={words ?? `Select “${half.title}”`}
-      onClick={() => onSelect(half.entryId)}
-    >
-      {picture ? (
-        <WaveformCanvas
-          data={picture}
-          durationMs={track?.duration_ms ?? 0}
-          cues={track?.marks?.cues}
-          inMs={inMs}
-          outMs={outMs}
-        />
-      ) : (
-        <span className="prepare-transition__state">{words}</span>
+    <div className="prepare-transition__cell">
+      <button
+        ref={box}
+        type="button"
+        className="prepare-transition__half"
+        data-testid={`transition-${side}`}
+        data-entry={half.entryId}
+        aria-label={`${half.title}, ${halfTimesWords(half)}`}
+        title={sentence ?? `Select “${half.title}”`}
+        onClick={() => onSelect(half.entryId)}
+      >
+        {picture ? (
+          <WaveformCanvas
+            data={picture}
+            durationMs={track?.duration_ms ?? 0}
+            cues={track?.marks?.cues}
+            inMs={inMs}
+            outMs={outMs}
+          />
+        ) : (
+          <span className="prepare-transition__state">{words}</span>
+        )}
+      </button>
+      {waiting && onSeeProgress && (
+        <button type="button" className="prepare-link prepare-link--inline prepare-transition__progress" onClick={onSeeProgress}>
+          See progress
+        </button>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -102,7 +135,11 @@ function Title({ half, entry }: { half: TransitionHalf; entry: WaveformEntry | u
         {halfTimesWords(half)}
         {/* The times' line ends with the loudness, so the title stays two lines. */}
         {loudness ? (
-          <span className="prepare-transition__loudness" data-testid="transition-loudness">
+          <span
+            className="prepare-transition__loudness"
+            data-testid="transition-loudness"
+            title={loudnessUnitsTitle(null)}
+          >
             {` · ${loudness}`}
           </span>
         ) : null}
@@ -111,7 +148,8 @@ function Title({ half, entry }: { half: TransitionHalf; entry: WaveformEntry | u
   );
 }
 
-export function SetTransition({ entries, selectedEntryId, onSelect }: SetTransitionProps) {
+export function SetTransition({ entries, selectedEntryId, onSelect, onSeeProgress }: SetTransitionProps) {
+  const { status: analysis } = useWaveformAnalysis();
   const transition = transitionOf(entries, selectedEntryId);
   const scale = useScaleFactor();
   // As the table reads it, and when: the row height derives from the scale.
@@ -138,8 +176,19 @@ export function SetTransition({ entries, selectedEntryId, onSelect }: SetTransit
           <Title half={transition.from} entry={fromEntry} />
           <span aria-hidden="true" />
           {transition.to ? <Title half={transition.to} entry={toEntry} /> : <span aria-hidden="true" />}
-          <Half key={transition.from.entryId} half={transition.from} side="from" onSelect={onSelect} />
-          <p className="prepare-transition__words" data-testid="transition-words">
+          <Half
+            key={transition.from.entryId}
+            half={transition.from}
+            side="from"
+            onSelect={onSelect}
+            analysis={analysis}
+            onSeeProgress={onSeeProgress}
+          />
+          <p
+            className="prepare-transition__words"
+            data-testid="transition-words"
+            title={loudnessUnitsTitle(difference)}
+          >
             {transitionWords(transition, difference).map((part, index) => (
               <span key={part + index}>
                 {index > 0 && " "}
@@ -148,7 +197,14 @@ export function SetTransition({ entries, selectedEntryId, onSelect }: SetTransit
             ))}
           </p>
           {transition.to ? (
-            <Half key={transition.to.entryId} half={transition.to} side="to" onSelect={onSelect} />
+            <Half
+              key={transition.to.entryId}
+              half={transition.to}
+              side="to"
+              onSelect={onSelect}
+              analysis={analysis}
+              onSeeProgress={onSeeProgress}
+            />
           ) : (
             <p className="prepare-transition__end" data-testid="transition-to">
               {END_OF_SET}

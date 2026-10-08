@@ -6,7 +6,7 @@
  * - **Suggestions**: what fits the gap after the selected entry, scored
  *   against the entries on either side (DEC-105), each side's reasons in words
  *   and a mark on a track already in the Set. A gap nothing bridges says how
- *   far apart its neighbours are and offers each side's own list; the gate is
+ *   far apart its neighbors are and offers each side's own list; the gate is
  *   never loosened. An empty Set has nothing to fit against, and says so.
  * - **Library**: a search over the one browse query (DEC-023), in the pool.
  *
@@ -15,7 +15,7 @@
  * Every row inserts at the point, drags into the Set, and plays on a
  * double-click (`SourceTable`).
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   CollectionNode,
@@ -38,6 +38,7 @@ import {
   emptyAnswerText,
   gapKey,
   insertLabel,
+  insertingText,
   noFitText,
   pointText,
   pointWords,
@@ -63,8 +64,10 @@ import {
   type SuggestionRow,
 } from "./sourceColumns";
 import {
+  hasSeenSuggestionsNote,
   loadSourcePool,
   loadSourceTab,
+  saveSeenSuggestionsNote,
   saveSourcePool,
   saveSourceTab,
   type SourceTab,
@@ -73,7 +76,14 @@ import { useSetSuggestions } from "./useSetSuggestions";
 
 /** What Suggestions says in an empty Set (DEC-105). */
 export const EMPTY_SET_SUGGESTIONS =
-  "An empty Set has nothing to fit against. Add its first track from the Library tab, and Suggestions will fit the next one to it.";
+  "Suggestions need a track to fit against. Add the first one from the Library tab.";
+
+/** The one line that says what Suggestions are ranked by, the first time they show (PRP-7). */
+export const SUGGESTIONS_RANKING_TITLE =
+  "Ranked by how well each track follows the one before and leads into the one after: tempo, key, genre, label and artist.";
+
+/** The same on one short line (DEC-112 gives the panel no more); the sentence is its title. */
+export const SUGGESTIONS_RANKING_NOTE = "Ranked by fit with both neighbors";
 
 /** How long the search box waits for typing to stop. */
 const SEARCH_DELAY_MS = 200;
@@ -99,23 +109,26 @@ interface SourcePanelProps {
   onMessage: (message: string, tone: "info" | "warning") => void;
   onOpenSimilar: (trackId: number) => void;
   onOpenEntity: (kind: EntityKind, ref: string) => void;
+  /** The rows picked in the panel, whenever they change (the selected-track store). */
+  onPickedChange?: (rows: LibraryTrackRow[]) => void;
 }
 
 /** Where an insert goes, in words, the titles set apart. */
-function PointLine({ words, title }: { words: PointWords; title?: string }) {
+function PointLine({ words, title }: { words: PointWords; title: string }) {
   const where = (chapter: string | null) => (chapter ? `, in ${chapter}` : "");
   return (
-    <p className="prepare-source__point" role="status" aria-label={`Insert: ${pointText(words)}`} title={title}>
-      {words.kind === "empty" && "At the start of the empty Set"}
+    <p className="prepare-source__point" role="status" aria-label={insertingText(words)} title={title}>
+      Inserting:{" "}
+      {words.kind === "empty" && "at the start of the empty Set"}
       {words.kind === "between" && (
         <>
-          Between <em>{words.before}</em> and <em>{words.after}</em>
+          between <em>{words.before}</em> and <em>{words.after}</em>
           {where(words.chapter)}
         </>
       )}
       {words.kind === "end" && (
         <>
-          After <em>{words.before}</em>, at the end of the Set{where(words.chapter)}
+          after <em>{words.before}</em>, at the end of the Set{where(words.chapter)}
         </>
       )}
     </p>
@@ -165,9 +178,28 @@ export function SourcePanel(props: SourcePanelProps) {
   // on the pool's own line, so the panel's height stays rows (DEC-112).
   const [picked, setPicked] = useState<LibraryTrackRow[]>([]);
   useEffect(() => setPicked([]), [tab]);
+  const { onPickedChange } = props;
+  useEffect(() => onPickedChange?.(picked), [onPickedChange, picked]);
+  // What the neighbors could not be compared by, which Suggestions finds out
+  // and the point line (now above the tabs) carries as its title.
+  const [pointDetail, setPointDetail] = useState<string | undefined>(undefined);
+  // The line above the tabs is one truncated line: its title holds the whole
+  // sentence on both tabs, and the neighbors' detail on Suggestions.
+  const pointTitle = [pointText(words), tab === "suggestions" ? pointDetail : undefined]
+    .filter(Boolean)
+    .join("\n");
+  // Suggestions' first showing explains the ranking, once (PRP-7).
+  const [explain] = useState(() => !hasSeenSuggestionsNote());
+  const explaining = explain && tab === "suggestions" && words.kind !== "empty";
+  useEffect(() => {
+    if (explaining) saveSeenSuggestionsNote();
+  }, [explaining]);
+  const body = useRef<HTMLDivElement>(null);
+  const pickTracks = () => body.current?.querySelector<HTMLElement>('[role="table"]')?.focus();
 
   return (
     <section className="prepare-source" aria-label="Add to the Set">
+      <PointLine words={words} title={pointTitle} />
       <Tabs tabs={TABS} activeId={tab} onChange={chooseTab} />
       <div className="prepare-source__controls">
         <select
@@ -186,11 +218,11 @@ export function SourcePanel(props: SourcePanelProps) {
         <button
           type="button"
           className="prepare-source__insert"
-          disabled={picked.length === 0}
-          onClick={() => props.onInsert(picked)}
+          data-idle={picked.length === 0 ? "" : undefined}
+          onClick={() => (picked.length === 0 ? pickTracks() : props.onInsert(picked))}
           title={
             picked.length === 0
-              ? "Select tracks below to insert them where the Set's selection points"
+              ? `Select tracks below, then insert them. ${insertingText(words)}`
               : pointText(words)
           }
         >
@@ -198,6 +230,7 @@ export function SourcePanel(props: SourcePanelProps) {
         </button>
       </div>
       <div
+        ref={body}
         className="prepare-source__body"
         role="tabpanel"
         aria-label={tab === "suggestions" ? "Suggestions" : "Library"}
@@ -207,12 +240,13 @@ export function SourcePanel(props: SourcePanelProps) {
             {...props}
             pool={pool}
             poolWords={poolWords}
-            words={words}
             onPicked={setPicked}
+            onPointDetail={setPointDetail}
             onOpenLibrary={() => chooseTab("library")}
+            explain={explaining}
           />
         ) : (
-          <LibraryTab {...props} pool={pool} poolWords={poolWords} words={words} onPicked={setPicked} />
+          <LibraryTab {...props} pool={pool} poolWords={poolWords} onPicked={setPicked} />
         )}
       </div>
     </section>
@@ -222,7 +256,6 @@ export function SourcePanel(props: SourcePanelProps) {
 interface TabProps extends SourcePanelProps {
   pool: PoolValue;
   poolWords: string;
-  words: PointWords;
   /** The rows selected in this tab, whenever they change. */
   onPicked: (rows: LibraryTrackRow[]) => void;
 }
@@ -262,7 +295,6 @@ function SuggestionsTab({
   point,
   pool,
   poolWords,
-  words,
   revision,
   onInsert,
   onStale,
@@ -271,8 +303,14 @@ function SuggestionsTab({
   onOpenSimilar,
   onOpenEntity,
   onPicked,
+  onPointDetail,
   onOpenLibrary,
-}: TabProps & { onOpenLibrary: () => void }) {
+  explain,
+}: TabProps & {
+  onOpenLibrary: () => void;
+  onPointDetail: (detail: string | undefined) => void;
+  explain: boolean;
+}) {
   const gap = gapKey(point);
   // Each side's own list belongs to the gap it was asked for.
   const [side, setSide] = useState<{ gap: string; against: SetSuggestionSideName } | null>(null);
@@ -306,6 +344,14 @@ function SuggestionsTab({
   }, [answer, layout.visible]);
   const { play, queue } = useQueueActions(onMessage);
 
+  // What the neighbors could not be compared by: the notes are drawn here, the
+  // rest rides the point line above the tabs as its title.
+  const unused = answer
+    ? unusedNotes(answer, { before: point.before?.track.title, after: point.after?.track.title })
+    : { notes: [], detail: [] };
+  const detail = unused.detail.join("\n") || undefined;
+  useEffect(() => onPointDetail(detail), [detail, onPointDetail]);
+
   if (!point.before) {
     return (
       <div className="prepare-source__empty">
@@ -319,9 +365,6 @@ function SuggestionsTab({
 
   const beforeTitle = point.before.track.title;
   const afterTitle = point.after?.track.title ?? "";
-  const unused = answer
-    ? unusedNotes(answer, { before: beforeTitle, after: afterTitle })
-    : { notes: [], detail: [] };
   const range = answer ? rangeNote(answer, point.chapter) : null;
 
   let empty: React.ReactNode;
@@ -356,7 +399,6 @@ function SuggestionsTab({
 
   return (
     <>
-      <PointLine words={words} title={unused.detail.join("\n") || undefined} />
       {against && (
         <p className="prepare-source__note">
           {sideOnlyText(against, against === "before" ? beforeTitle : afterTitle)}
@@ -366,6 +408,9 @@ function SuggestionsTab({
           </button>
         </p>
       )}
+      {explain && <p className="prepare-source__note prepare-source__note--line" title={SUGGESTIONS_RANKING_TITLE}>
+          {SUGGESTIONS_RANKING_NOTE}
+        </p>}
       {range && <p className="prepare-source__note">{range}</p>}
       {unused.notes.map((note) => (
         <p key={note} className="prepare-source__note">
@@ -404,7 +449,6 @@ function SuggestionsTab({
 function LibraryTab({
   pool,
   poolWords,
-  words,
   onInsert,
   onPicked,
   onMessage,
@@ -464,7 +508,6 @@ function LibraryTab({
           aria-label="Search"
         />
       </label>
-      <PointLine words={words} />
       <SourceTable<LibraryTrackRow>
         ariaLabel="Library tracks to add"
         columns={layout.visible}

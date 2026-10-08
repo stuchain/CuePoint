@@ -12,7 +12,7 @@
 import type { Location } from "react-router-dom";
 
 /** The fields a link can open Settings on. */
-type SettingsFocus = "beatport-token" | "error-reporting" | "privacy";
+type SettingsFocus = "beatport-token" | "error-reporting" | "privacy" | "waveforms";
 
 interface SettingsFocusState {
   settingsFocus: SettingsFocus;
@@ -33,7 +33,8 @@ export function settingsFocus(
   if (
     state.settingsFocus !== "beatport-token" &&
     state.settingsFocus !== "error-reporting" &&
-    state.settingsFocus !== "privacy"
+    state.settingsFocus !== "privacy" &&
+    state.settingsFocus !== "waveforms"
   ) {
     return null;
   }

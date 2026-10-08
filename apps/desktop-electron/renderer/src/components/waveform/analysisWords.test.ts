@@ -14,6 +14,8 @@ import {
   deleteDataWords,
   deletedWords,
   sizeWords,
+  waitingWaveformShort,
+  waitingWaveformWords,
   waveformEntryWords,
   waveformStateWord,
   waveformStateWords,
@@ -266,5 +268,41 @@ describe("why an answer draws no picture (WAVE-06)", () => {
     expect(waveformEntryWords({ kind: "track", paused: false, track: track("ready", { data: null }) })).toBe(
       "No waveform yet",
     );
+  });
+});
+
+describe("waitingWaveformShort (PRP-12)", () => {
+  it("is short enough for a strip's half", () => {
+    expect(waitingWaveformShort(status({ state: "running", present: 4000, analysed: 312 }))).toBe(
+      "Not made yet — 312 of 4,000",
+    );
+    expect(waitingWaveformShort(status({ state: "paused", present: 4000, analysed: 312 }))).toBe(
+      "Not made yet — paused",
+    );
+    expect(waitingWaveformShort(null)).toBe("Not made yet");
+  });
+});
+
+describe("waitingWaveformWords (PRP-12)", () => {
+  it("says how far the analysis has got, where a waveform waits for it", () => {
+    expect(waitingWaveformWords(status({ state: "running", present: 4000, analysed: 312 }))).toBe(
+      "Waveform not made yet — analysis is 312 of 4,000",
+    );
+    // Failed files are done with, as the analysis line counts them.
+    expect(waitingWaveformWords(status({ state: "idle", present: 4000, analysed: 300, failed: 12 }))).toBe(
+      "Waveform not made yet — analysis is 312 of 4,000",
+    );
+  });
+
+  it("says a paused analysis is paused, and a missing decoder once", () => {
+    expect(waitingWaveformWords(status({ state: "paused", present: 4000, analysed: 312 }))).toBe(
+      "Waveform not made yet — analysis is paused",
+    );
+    expect(waitingWaveformWords(status({ state: "unavailable" }))).toBe(DECODER_MISSING_WORDS);
+  });
+
+  it("makes no claim about progress it has not read", () => {
+    expect(waitingWaveformWords(null)).toBe("Waveform not made yet");
+    expect(waitingWaveformWords(status({ present: 0, analysed: 0 }))).toBe("Waveform not made yet");
   });
 });

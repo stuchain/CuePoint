@@ -58,7 +58,7 @@ describe("every warning the engine gives", () => {
       "Planned out at 5:30, after the track ends at 5:00",
       "Planned in at 5:10, after the track ends at 5:00",
       "1:00 over the 5:00 target",
-      "1:00 over the 5:00 target, before 1 entry still untimed",
+      "1:00 over the 5:00 target, before 1 entry still without times",
       "5:00 under the 10:00 target",
       "1 track slower than 118 BPM",
       "1 track faster than 122 BPM",
@@ -118,7 +118,7 @@ describe("the words", () => {
         compared: { target: 2400, planned: 2700, untimed: 3 },
         acknowledged: false,
       }),
-    ).toBe("5:00 over the 40:00 target, before 3 entries still untimed");
+    ).toBe("5:00 over the 40:00 target, before 3 entries still without times");
   });
 
   it("names an unknown warning rather than saying nothing", () => {

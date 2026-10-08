@@ -125,7 +125,7 @@ async function clickRow(win: Page, row: ReturnType<typeof rowTitled>) {
 }
 
 function point(win: Page) {
-  return win.getByRole("region", { name: "Add to the Set" }).getByRole("status", { name: /^Insert: / });
+  return win.getByRole("region", { name: "Add to the Set" }).getByRole("status", { name: /^Inserting: / });
 }
 
 test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
@@ -181,11 +181,11 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
 
       // --- the end of the Set, with nothing selected ----------------------------
-      await expect(point(win)).toHaveAccessibleName("Insert: After “Track 10”, at the end of the Set, in Peak");
+      await expect(point(win)).toHaveAccessibleName("Inserting: after “Track 10”, at the end of the Set, in Peak");
 
       // --- a gap from Suggestions, and the selection follows what went in ------
       await clickRow(win, rowTitled(win, "Set entries", "Track 02"));
-      await expect(point(win)).toHaveAccessibleName(/^Insert: Between “Track 02” and “Track 03”/);
+      await expect(point(win)).toHaveAccessibleName(/^Inserting: between “Track 02” and “Track 03”/);
       const suggestions = win.getByRole("table", { name: "Suggestions" }).locator(".track-table__row");
       await expect(suggestions.first()).toBeVisible({ timeout: 30_000 });
       const first = suggestions.first();
@@ -199,7 +199,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
         title,
         "Track 03",
       ]);
-      await expect(point(win)).toHaveAccessibleName(new RegExp(`^Insert: Between “${title}” and “Track 03”`));
+      await expect(point(win)).toHaveAccessibleName(new RegExp(`^Inserting: between “${title}” and “Track 03”`));
 
       // --- a gap nothing bridges, and each side's own list ----------------------
       await clickRow(win, rowTitled(win, "Set entries", "Track 04"));
@@ -238,7 +238,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       await lanes.locator(`[data-entry="${ninth.id}"]`).click();
       const inspector = win.getByRole("complementary", { name: "Track inspector" });
       await expect(inspector.getByText(`Entry ${order.indexOf(ninth) + 1}, in Peak`)).toBeVisible({ timeout: 15_000 });
-      await expect(point(win)).toHaveAccessibleName(/^Insert: Between “Track 09” and “Track 10”, in Peak$/);
+      await expect(point(win)).toHaveAccessibleName(/^Inserting: between “Track 09” and “Track 10”, in Peak$/);
 
       // --- a reload keeps the tab and the lanes -------------------------------------
       await win.reload();

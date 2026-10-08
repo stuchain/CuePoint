@@ -30,7 +30,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useNavigate, useParams } from "react-router-dom";
 
 import type {
+  CleanJobStarted,
   EntityKind,
+  FileCheckStarted,
   LibraryPlaylistNode,
   LibraryTrackRow,
   SetChapterPlan,
@@ -45,10 +47,14 @@ import { Panel } from "../../components/Panel";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
+import { settingsFocusState } from "../settingsLink";
 import { ColumnPicker, TrackTable, inMemorySource, useColumnLayout } from "../../components/table";
 import { readRowHeight } from "../../components/table/trackTableLayout";
 import { useScaleFactor } from "../../tokens/ScaleContext";
+import { trackCount } from "../clean/cleanFormat";
+import { useCleanJob } from "../clean/useCleanJob";
 import { entityPath, similarPath } from "../discover/discoverLinks";
+import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { useBeatportSelection } from "../discover/useBeatportSelection";
 import { NewSetFromDialog } from "../library/NewSetFromDialog";
 import { RekordboxExportDialog } from "../library/RekordboxExportDialog";
@@ -78,6 +84,7 @@ import {
   WHAT_A_SET_IS,
   deletionLine,
   headerFacts,
+  notesLinkLabel,
   notesLinkTitle,
 } from "./prepareFormat";
 import {
@@ -140,6 +147,20 @@ type Menu =
   | { kind: "heading"; x: number; y: number; row: HeadingRow };
 
 const idOfRow = (row: PrepareRow) => rowKey(row);
+
+/**
+ * A page still reading says so inside a panel, not as bare text (PRP-12). The
+ * pixel loading motion (DEC-134) is PAGES-12's; this is where it will play.
+ */
+function LoadingPanel({ title, words }: { title: string; words: string }) {
+  return (
+    <Panel title={title}>
+      <p className="prepare-note prepare-loading" role="status">
+        {words}
+      </p>
+    </Panel>
+  );
+}
 
 export function PrepareScreen({
   onOpenInClean,
@@ -220,6 +241,7 @@ export function PrepareScreen({
     const index = rows.findIndex((row) => isEntryRow(row) && row.entry.entry_id === toSelect);
     if (index < 0) return;
     select(rows[index], index);
+    setChosenIn("set");
     setScrollTo(index);
     setToSelect(null);
   }, [rows, select, toSelect]);
@@ -228,6 +250,23 @@ export function PrepareScreen({
   useEffect(() => {
     if (scrollTo !== null) setScrollTo(null);
   }, [scrollTo]);
+
+  // The wheel lights the track last chosen in either table (PAGES-03, DEC-157):
+  // an entry of the Set, or a row picked in the source panel beside it.
+  const [panelPicked, setPanelPicked] = useState<LibraryTrackRow[]>([]);
+  const [chosenIn, setChosenIn] = useState<"set" | "panel">("set");
+  const onPanelPicked = useCallback((picked: LibraryTrackRow[]) => {
+    setPanelPicked(picked);
+    if (picked.length > 0) setChosenIn("panel");
+  }, []);
+  const panelTrack = panelPicked[panelPicked.length - 1];
+  useReportSelectedTrack(
+    chosenIn === "panel" && panelTrack?.id != null
+      ? { id: panelTrack.id, key: panelTrack.effective_key ?? null }
+      : focused
+        ? { id: focused.entry.track_id, key: focused.entry.track.effective_key ?? null }
+        : null,
+  );
 
   const point = useMemo(
     () => (shown ? insertionPoint(shown.plan, entries, focused ? focused.entry.entry_id : null) : null),
@@ -271,6 +310,28 @@ export function PrepareScreen({
   // --- editing
 
   const { edit, write } = prepared;
+
+  // "Files not checked — check now" starts the job Clean's "Check every file"
+  // starts, for the whole library, and reads the Set again when it ends so the
+  // fact below it is true (PRP-6).
+  const fileJobs = useCleanJob(push);
+  const { reload: reloadSet } = prepared;
+  const checkFiles = useCallback(() => {
+    const start = window.cuepoint?.startFileCheck;
+    if (!start) {
+      push("Checking files needs the desktop app with CuePoint's library service running.", "warning");
+      return;
+    }
+    void fileJobs.run<FileCheckStarted & CleanJobStarted>(
+      "check-all",
+      () => start({ selection: { query: {} } }),
+      {
+        started: (answer) => `Checking ${trackCount(answer.tracks)}.`,
+        succeeded: "Finished checking files.",
+        onEnded: reloadSet,
+      },
+    );
+  }, [fileJobs, push, reloadSet]);
   const [chapterEditing, setChapterEditing] = useState<SetChapterPlan | null>(null);
   const [chapterError, setChapterError] = useState<string | null>(null);
   const [chapterDeleting, setChapterDeleting] = useState<SetChapterPlan | null>(null);
@@ -480,10 +541,11 @@ export function PrepareScreen({
 
   const [menu, setMenu] = useState<Menu | null>(null);
   const [exportMenu, setExportMenu] = useState<{ x: number; y: number } | null>(null);
-  // The facts line holds two links, the Set's notes and "View ▾": the lanes,
-  // the transition strip and the columns share the second's menu, so the line
-  // stays one line and the Set keeps its rows (DEC-112).
+  // The facts line holds two small buttons, the Set's notes and "View ▾": the
+  // lanes, the transition strip and the columns share the second's menu, so the
+  // line stays one line and the Set keeps its rows (DEC-112).
   const [viewMenu, setViewMenu] = useState<{ x: number; y: number } | null>(null);
+  const [newMenu, setNewMenu] = useState<{ x: number; y: number } | null>(null);
 
   const openEntryMenu = useCallback(
     async (row: EntryRow, index: number, x: number, y: number) => {
@@ -713,7 +775,7 @@ export function PrepareScreen({
             </Button>
           </Panel>
         ) : (
-          <p className="prepare-note">Reading your Sets…</p>
+          <LoadingPanel title="Prepare" words="Reading your Sets…" />
         )}
         {dialogs}
       </div>
@@ -738,7 +800,7 @@ export function PrepareScreen({
             </Button>
           </Panel>
         ) : (
-          <p className="prepare-note">Reading the Set…</p>
+          <LoadingPanel title="Prepare" words="Reading the Set…" />
         )}
       </div>
     );
@@ -774,6 +836,7 @@ export function PrepareScreen({
           entries={entries}
           selectedEntryId={focused ? focused.entry.entry_id : null}
           onSelect={setToSelect}
+          onSeeProgress={() => navigate("/settings", { state: settingsFocusState("waveforms") })}
         />
       )}
       <div className="prepare-set__rows">
@@ -787,7 +850,9 @@ export function PrepareScreen({
           getRowKey={idOfRow}
           rowClassName={(row) => (row.kind === "heading" ? "prepare-heading" : undefined)}
           onSelect={(row, index, event) => {
-            if (row.kind === "entry") selection.onRowClick(row, index, event);
+            if (row.kind !== "entry") return;
+            setChosenIn("set");
+            selection.onRowClick(row, index, event);
           }}
           onRowActivate={(row) => {
             if (row.kind === "entry") void playFrom(indexOfEntry(row.entry.entry_id));
@@ -861,6 +926,17 @@ export function PrepareScreen({
               ))}
             </select>
           </label>
+          <Button
+            variant="secondary"
+            aria-haspopup="menu"
+            aria-expanded={newMenu !== null}
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              setNewMenu({ x: rect.left, y: rect.bottom });
+            }}
+          >
+            New Set ▾
+          </Button>
           <Button onClick={() => void playFrom(0)} disabled={entries.length === 0 || !player}>
             Play Set
           </Button>
@@ -878,14 +954,26 @@ export function PrepareScreen({
         </div>
         <p className="prepare-header__facts" role="status">
           {headerFacts(entries.length, plan.running_time, analysis).map((fact, index) => (
-            <span key={fact.text} title={fact.title} className={fact.strong ? "prepare-header__warnings" : undefined}>
+            <span key={fact.text} className={fact.strong ? "prepare-header__warnings" : undefined}>
               {index > 0 && <span aria-hidden="true"> · </span>}
-              {fact.text}
+              {fact.action === "check_files" ? (
+                <button
+                  type="button"
+                  className="prepare-link prepare-link--inline"
+                  title={fact.title}
+                  disabled={fileJobs.running !== null}
+                  onClick={checkFiles}
+                >
+                  {fact.text}
+                </button>
+              ) : (
+                <span title={fact.title}>{fact.text}</span>
+              )}
             </span>
           ))}
-          <button
-            type="button"
-            className="prepare-link"
+          <Button
+            variant="secondary"
+            className="prepare-header__button"
             aria-haspopup="dialog"
             title={notesLinkTitle(plan.notes)}
             onClick={() => {
@@ -893,11 +981,11 @@ export function PrepareScreen({
               setNotesOpen(true);
             }}
           >
-            Notes…
-          </button>
-          <button
-            type="button"
-            className="prepare-link"
+            {notesLinkLabel(plan.notes)}
+          </Button>
+          <Button
+            variant="secondary"
+            className="prepare-header__button"
             aria-haspopup="menu"
             aria-expanded={viewMenu !== null}
             onClick={(event) => {
@@ -906,7 +994,7 @@ export function PrepareScreen({
             }}
           >
             View ▾
-          </button>
+          </Button>
         </p>
       </header>
 
@@ -929,6 +1017,7 @@ export function PrepareScreen({
               onMessage={(message, tone) => push(message, tone)}
               onOpenSimilar={(trackId) => navigate(similarPath(trackId))}
               onOpenEntity={openEntity}
+              onPickedChange={onPanelPicked}
             />
           )
         }
@@ -964,6 +1053,26 @@ export function PrepareScreen({
               onSelect: () => setExporting(true),
               separatorBefore: true,
             },
+          ]}
+        />
+      )}
+
+      {newMenu && (
+        <TrackContextMenu
+          x={newMenu.x}
+          y={newMenu.y}
+          label="New Set"
+          onClose={() => setNewMenu(null)}
+          items={[
+            {
+              id: "new",
+              label: "New Set…",
+              onSelect: () => {
+                setCreateError(null);
+                setCreating(true);
+              },
+            },
+            { id: "new-from", label: "New Set from…", onSelect: () => void chooseSource() },
           ]}
         />
       )}

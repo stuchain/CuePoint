@@ -69,8 +69,7 @@ export function SetLanes({ shape, titles, chapters, selectedEntryId, onSelect }:
           <span className="prepare-lanes__range">{rangeText(layout.tempo.range)}</span>
         </span>
         <span className="prepare-lanes__name" style={{ height: layout.keyHeight, marginTop: layout.keyTop - layout.tempoHeight }}>
-          Key
-          <span className="prepare-lanes__range">1A–12B</span>
+          <span title="Keys on the Camelot wheel: neighbors mix well">Key (Camelot)</span>
         </span>
       </div>
       <div className="prepare-lanes__plot" ref={box}>

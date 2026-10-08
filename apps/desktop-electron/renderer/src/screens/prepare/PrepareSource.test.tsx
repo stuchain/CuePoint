@@ -32,6 +32,7 @@ import type {
   SetSuggestionsRequest,
 } from "../../api/cuepointBridge.types";
 import { ToastProvider } from "../../components";
+import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { TRACK_IDS_MIME } from "../library/collectionDrag";
@@ -52,10 +53,11 @@ import {
   SUGGESTIONS,
 } from "./prepareSource.testFixture";
 import { PREPARE_PATH, PREPARE_SET_ROUTE, preparePath } from "./prepareLink";
-import { EMPTY_SET_SUGGESTIONS } from "./SourcePanel";
+import { EMPTY_SET_SUGGESTIONS, SUGGESTIONS_RANKING_NOTE, SUGGESTIONS_RANKING_TITLE } from "./SourcePanel";
 import {
   LANES_STORAGE_KEY,
   SOURCE_POOL_STORAGE_KEY,
+  SUGGESTIONS_NOTE_STORAGE_KEY,
   SOURCE_TAB_STORAGE_KEY,
   TRANSITION_STORAGE_KEY,
 } from "./sourcePanelState";
@@ -203,7 +205,7 @@ function panel() {
 }
 
 function point() {
-  return within(panel()).getByRole("status", { name: /^Insert: / });
+  return within(panel()).getByRole("status", { name: /^Inserting: / });
 }
 
 async function suggestionRows(): Promise<HTMLElement[]> {
@@ -266,10 +268,31 @@ afterEach(() => {
 });
 
 describe("the insertion point", () => {
+  it("sits above the tabs, in the panel's first line (PRP-9)", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    const line = point();
+    const tabs = within(panel()).getByRole("tablist");
+    expect(line.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(line).toHaveTextContent("Inserting:");
+    // One line, whichever tab is open.
+    fireEvent.click(within(panel()).getByRole("tab", { name: "Library" }));
+    expect(within(panel()).getAllByRole("status", { name: /^Inserting: / })).toHaveLength(1);
+  });
+
+  it("holds its whole sentence as a title on both tabs", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    const sentence = "After “Peak Two”, at the end of the Set, in Peak";
+    expect(point().getAttribute("title")).toContain(sentence);
+    fireEvent.click(within(panel()).getByRole("tab", { name: "Library" }));
+    expect(point()).toHaveAttribute("title", sentence);
+  });
+
   it("is the end of the Set with nothing selected, and Suggestions asks for exactly that", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
-    expect(point()).toHaveAccessibleName("Insert: After “Peak Two”, at the end of the Set, in Peak");
+    expect(point()).toHaveAccessibleName("Inserting: after “Peak Two”, at the end of the Set, in Peak");
     await suggestionRows();
     expect(lastRequest()).toMatchObject({
       set_id: SOURCE_IDS.build,
@@ -285,7 +308,7 @@ describe("the insertion point", () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
     fireEvent.click(setRow(OPEN_ONE));
-    expect(point()).toHaveAccessibleName("Insert: Between “Open One” and “Open Two”, in Open");
+    expect(point()).toHaveAccessibleName("Inserting: between “Open One” and “Open Two”, in Open");
     await waitFor(() =>
       expect(lastRequest()).toMatchObject({ before_entry_id: OPEN_ONE, after_entry_id: OPEN_TWO, chapter_id: OPEN }),
     );
@@ -304,6 +327,29 @@ describe("the insertion point", () => {
   });
 });
 
+describe("the ranking note (PRP-7)", () => {
+  it("shows the first time Suggestions show, then never again", async () => {
+    const first = renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    const note = await within(panel()).findByText(SUGGESTIONS_RANKING_NOTE);
+    expect(note).toHaveAttribute("title", SUGGESTIONS_RANKING_TITLE);
+    expect(localStorage.getItem(SUGGESTIONS_NOTE_STORAGE_KEY)).toBe("1");
+    first.unmount();
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    await suggestionRows();
+    expect(within(panel()).queryByText(SUGGESTIONS_RANKING_NOTE)).toBeNull();
+  });
+
+  it("is not shown again once the person has seen it", async () => {
+    localStorage.setItem(SUGGESTIONS_NOTE_STORAGE_KEY, "1");
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    await suggestionRows();
+    expect(within(panel()).queryByText(SUGGESTIONS_RANKING_NOTE)).toBeNull();
+  });
+});
+
 describe("Suggestions", () => {
   async function between() {
     renderAt(preparePath(SOURCE_IDS.build));
@@ -319,17 +365,23 @@ describe("Suggestions", () => {
     expect(rows.map(titleOf)).toEqual(SUGGESTIONS.both.suggestions.map((s) => s.track.title));
     const first = rows[0];
     const [best] = SUGGESTIONS.both.suggestions;
-    expect(within(first).getByText(String(best.score))).toHaveAttribute(
+    // The fit is out of 100 and the column explains itself (PRP-7).
+    expect(within(first).getByText(`${Math.round(best.score)}/100`)).toHaveAttribute(
       "title",
       `The mean of ${best.before!.score} and ${best.after!.score}`,
     );
+    const header = (name: string) => within(screen.getByRole("table", { name: "Suggestions" })).getByText(name);
+    expect(header("Fit")).toHaveAttribute("title", expect.stringContaining("out of 100"));
+    expect(header("Fits after")).toHaveAttribute("title", expect.stringContaining("the one before"));
+    expect(header("Fits before")).toHaveAttribute("title", expect.stringContaining("the one after"));
+    expect(within(screen.getByRole("table", { name: "Suggestions" })).queryByText("Score")).toBeNull();
     // The title says it all again, for a panel too narrow to show the columns.
     expect(first.querySelector('[data-column="title"] [title]')).toHaveAttribute(
       "title",
       [
-        "Bridge Deep · score 69.8",
-        "With the one before: Close tempo: 124 → 125 · Same key: 8A · Same genre: House",
-        "With the one after: Close tempo: 126 → 125 · Mixes well (next key): 9A → 8A · Same genre: House",
+        "Bridge Deep · fit 70/100",
+        "Fits after the one before: Close tempo: 124 → 125 · Same key: 8A · Same genre: House",
+        "Fits before the one after: Close tempo: 126 → 125 · Mixes well (next key): 9A → 8A · Same genre: House",
         "Already in this Set once: inserting it plays it again",
       ].join("\n"),
     );
@@ -410,6 +462,9 @@ describe("Suggestions", () => {
   it("says an empty Set has nothing to fit against, and asks the engine nothing", async () => {
     renderAt(preparePath(SOURCE_IDS.blank));
     await opened("Blank");
+    expect(EMPTY_SET_SUGGESTIONS).toBe(
+      "Suggestions need a track to fit against. Add the first one from the Library tab.",
+    );
     expect(within(panel()).getByText(EMPTY_SET_SUGGESTIONS)).toBeInTheDocument();
     expect(sets.suggestions).not.toHaveBeenCalled();
     fireEvent.click(within(panel()).getByRole("button", { name: "Open the Library tab" }));
@@ -426,16 +481,47 @@ describe("Suggestions", () => {
   });
 });
 
+describe("the selected track (PAGES-03)", () => {
+  afterEach(() => setSelectedTrack(null));
+
+  it("is the row picked in the panel, then the entry picked in the Set, whichever was touched last", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    fireEvent.click(setRow(OPEN_ONE));
+    await waitFor(() => expect(titleOf(rowsOf("Suggestions")[0])).toBe("Bridge Deep"), LOADED);
+    const entry = BUILD.entries.entries.find((candidate) => candidate.entry_id === OPEN_ONE)!;
+    await waitFor(() =>
+      expect(getSelectedTrack()).toEqual({ id: entry.track_id, key: entry.track.effective_key ?? null }),
+    );
+
+    const picked = SUGGESTIONS.both.suggestions[0].track;
+    fireEvent.click(rowsOf("Suggestions")[0]);
+    await waitFor(() => expect(getSelectedTrack()).toEqual({ id: picked.id, key: picked.effective_key ?? null }));
+
+    fireEvent.click(setRow(OPEN_TWO));
+    const second = BUILD.entries.entries.find((candidate) => candidate.entry_id === OPEN_TWO)!;
+    await waitFor(() =>
+      expect(getSelectedTrack()).toEqual({ id: second.track_id, key: second.track.effective_key ?? null }),
+    );
+  });
+});
+
 describe("inserting", () => {
   it("puts the selected suggestion at the point, selects it, and says so", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
     fireEvent.click(setRow(OPEN_ONE));
     await waitFor(() => expect(titleOf(rowsOf("Suggestions")[1])).toBe("Deep Spare"), LOADED);
-    const insert = within(panel()).getByRole("button", { name: "Insert here" });
-    expect(insert).toBeDisabled();
+    // With nothing picked the button says what to do, not just that it is off (PRP-9).
+    const insert = within(panel()).getByRole("button", { name: "Pick tracks" });
+    // Not dimmed or disabled: a click takes you to the table to pick from.
+    expect(insert).toBeEnabled();
+    fireEvent.click(insert);
+    expect(within(panel()).getByRole("table", { name: "Suggestions" })).toHaveFocus();
+    expect(bridge.insertTrackInCollection).not.toHaveBeenCalled();
     fireEvent.click(rowsOf("Suggestions")[1]);
     expect(insert).toBeEnabled();
+    expect(insert).toHaveAccessibleName("Insert here");
     const reads = sets.plan.mock.calls.length;
     fireEvent.click(insert);
     await waitFor(() => expect(bridge.insertTrackInCollection).toHaveBeenCalledTimes(1));
@@ -488,7 +574,7 @@ describe("inserting", () => {
       fireEvent.click(rowsOf("Suggestions")[1]);
       fireEvent.click(within(panel()).getByRole("button", { name: "Insert here" }));
       await waitFor(() =>
-        expect(point()).toHaveAccessibleName(/^Insert: Between “Open One” and “Open Two”/),
+        expect(point()).toHaveAccessibleName(/^Inserting: between “Open One” and “Open Two”/),
       );
       // The new entry is the selection: its row is highlighted and the gap follows it.
       await waitFor(() => expect(lastRequest()).toMatchObject({ before_entry_id: 99, after_entry_id: OPEN_TWO }), LOADED);
@@ -701,6 +787,21 @@ describe("the lanes", () => {
     expect(localStorage.getItem(LANES_STORAGE_KEY)).toBe("0");
   });
 
+  it("name the key lane for what it draws, and say what the wheel's neighbors are (PRP-8)", async () => {
+    localStorage.setItem(LANES_STORAGE_KEY, "1");
+    const { container } = renderAt(preparePath(SOURCE_IDS.shape));
+    await opened("Shape");
+    const lanes = screen.getByRole("group", { name: "Tempo and key lanes" });
+    expect(within(lanes).getByText("Key (Camelot)")).toHaveAttribute(
+      "title",
+      "Keys on the Camelot wheel: neighbors mix well",
+    );
+    expect(lanes).not.toHaveTextContent("1A–12B");
+    // A link's own title uses the key words the other pages use.
+    const titles = [...container.querySelectorAll("[data-relation] title")].map((title) => title.textContent);
+    expect(titles).toEqual(["Same key", "Next key", "Relative key", "Keys clash"]);
+  });
+
   it("draw the engine's shape: every relation in its style, a gap for the unknown", async () => {
     localStorage.setItem(LANES_STORAGE_KEY, "1");
     const { container } = renderAt(preparePath(SOURCE_IDS.shape));
@@ -720,7 +821,7 @@ describe("the lanes", () => {
     const column = container.querySelector(`[data-entry="${OPEN_TWO}"]`) as SVGElement;
     expect(column.querySelector("title")?.textContent).toBe("2 · Open Two · 126 BPM · 9A");
     fireEvent.click(column);
-    await waitFor(() => expect(point()).toHaveAccessibleName("Insert: Between “Open Two” and “Bridge Deep”, in Open"));
+    await waitFor(() => expect(point()).toHaveAccessibleName("Inserting: between “Open Two” and “Bridge Deep”, in Open"));
     expect(setRow(OPEN_TWO)).toHaveAttribute("aria-selected", "true");
     const inspector = screen.getByRole("complementary", { name: "Inspector" });
     expect(await within(inspector).findByText(/Entry 2/, {}, LOADED)).toBeInTheDocument();
@@ -798,7 +899,7 @@ describe("the transition strip (WAVE-07)", () => {
     expect(screen.getByTestId("transition-to")).toHaveAttribute("data-entry", String(OPEN_TWO));
     expect(within(strip()!).getByText("Open One")).toBeInTheDocument();
     expect(within(strip()!).getByText("Open Two")).toBeInTheDocument();
-    expect(screen.getByTestId("transition-words")).toHaveTextContent("Untimed → untimed");
+    expect(screen.getByTestId("transition-words")).toHaveTextContent("No out time → no times");
 
     fireEvent.click(screen.getByTestId("transition-to"));
     await waitFor(() => expect(setRow(OPEN_TWO)).toHaveAttribute("aria-selected", "true"));
@@ -806,7 +907,7 @@ describe("the transition strip (WAVE-07)", () => {
     expect(screen.getByTestId("transition-from")).toHaveAttribute("data-entry", String(OPEN_TWO));
     expect(screen.getByTestId("transition-to")).toHaveAttribute("data-entry", String(BRIDGE));
     // The insertion point follows the selection, as a lane's column moves it.
-    await waitFor(() => expect(point()).toHaveAccessibleName("Insert: Between “Open Two” and “Bridge Deep”, in Open"));
+    await waitFor(() => expect(point()).toHaveAccessibleName("Inserting: between “Open Two” and “Bridge Deep”, in Open"));
   });
 
   it("reads End of Set for the last entry, across a chapter", async () => {

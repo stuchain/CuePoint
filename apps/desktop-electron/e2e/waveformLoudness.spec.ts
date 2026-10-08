@@ -285,11 +285,11 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
       const setTable = window.getByRole("table", { name: "Set entries" });
       await setTable.locator(".track-table__row").first().click({ position: { x: 60, y: 10 } });
       const words = window.getByTestId("transition-words");
-      await expect(words).toHaveText("Untimed → untimed · −16.5 LU", { timeout: 15_000 });
+      await expect(words).toHaveText("No out time → no times · −16.5 LU", { timeout: 15_000 });
       await expect(window.getByTestId("transition-loudness")).toHaveText([" · −3.5 LUFS", " · −20.0 LUFS"]);
       // Sine into silence: no difference without two values.
       await window.getByTestId("transition-to").click();
-      await expect(words).toHaveText("Untimed → untimed");
+      await expect(words).toHaveText("No out time → no times");
       await expect(window.getByTestId("transition-loudness")).toHaveText([" · −20.0 LUFS"]);
     } finally {
       await app.close();

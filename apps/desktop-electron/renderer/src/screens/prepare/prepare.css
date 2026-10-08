@@ -110,6 +110,27 @@
   margin-left: 0;
 }
 
+.prepare-link:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Notes and View: real buttons, a facts line tall (PRP-10, DEC-112). */
+.prepare-header__button.cp-btn {
+  min-width: 0;
+  min-height: 0;
+  margin-left: 0;
+  padding: 0 var(--space-sm);
+  border-width: var(--hairline);
+  font-size: var(--font-size-xs);
+  /* Inside the facts line's own height: the button grows the header by nothing. */
+  line-height: 1;
+}
+
+.prepare-header__facts > .prepare-header__button:first-of-type {
+  margin-left: auto;
+}
+
 .prepare-visually-hidden {
   position: absolute;
   width: 1px;
@@ -328,6 +349,30 @@ body.prepare-resizing {
   font-variant-numeric: tabular-nums;
 }
 
+/* A half and, when its waveform waits, the link to the analysis beside it. */
+.prepare-transition__cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+}
+
+.prepare-transition__cell > .prepare-transition__half {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
+/* Under the words, in the flow: it never covers them. */
+.prepare-transition__progress {
+  flex: none;
+  align-self: flex-start;
+  padding: 0 var(--space-sm);
+  background: var(--bg-panel);
+  font-size: var(--font-size-xs);
+  line-height: 1.2;
+}
+
 .prepare-transition__half,
 .prepare-transition__end {
   display: block;
@@ -425,6 +470,7 @@ body.prepare-resizing {
 
 .prepare-entry-zone__place,
 .prepare-entry-zone__planned,
+.prepare-entry-zone__hint,
 .prepare-entry-zone__refused {
   margin: 0;
   color: var(--fg-muted);
@@ -598,6 +644,8 @@ body.prepare-resizing {
 }
 
 .prepare-source__select {
+  /* Wide enough to read "The whole library" before the Insert button takes the rest. */
+  min-width: calc(112px * var(--scale));
   cursor: pointer;
 }
 
@@ -649,15 +697,22 @@ body.prepare-resizing {
   background: var(--accent-primary-hover);
 }
 
-.prepare-source__insert:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+/* Nothing picked: still a button (it takes you to the table), no longer dim. */
+.prepare-source__insert[data-idle] {
+  background: var(--bg-input);
+  color: var(--fg-primary);
 }
 
 .prepare-source__note {
   margin: 0;
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
+}
+
+.prepare-source__note--line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .prepare-source__table {

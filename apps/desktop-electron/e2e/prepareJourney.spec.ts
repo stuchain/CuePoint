@@ -8,7 +8,7 @@
  * 2. Split into three chapters; one given a target length and a BPM range;
  *    the Set's own notes typed.
  * 3. Entries timed in the Inspector, one reordered by drag; the running time
- *    and "Starts" move.
+ *    and "Starts at" move.
  * 4. A gap filled from Suggestions, and a key warning accepted.
  * 5. The Set played from its third entry, the repeat in the queue.
  * 6. The set list saved as text, CSV and M3U8, and copied.
@@ -253,28 +253,28 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       expect(plan2.chapters.map((c: { name: string }) => c.name)).toEqual(["Warm-up", "", ""]);
       expect([plan2.chapters[0].target_seconds, plan2.chapters[0].bpm_min, plan2.chapters[0].bpm_max]).toEqual([480, 120, 127]);
       // The Set's own notes, from the header's facts line.
-      await win.getByRole("button", { name: "Notes…" }).click();
+      await win.getByRole("button", { name: "Notes", exact: true }).click();
       const notes = win.getByRole("dialog", { name: "Notes for “Friday”" });
       await notes.getByLabel("Notes").fill("The Loft, 23:00 to 01:00");
       await notes.getByRole("button", { name: "Save" }).click();
       await expect(notes).toBeHidden({ timeout: 15_000 });
-      await expect(win.getByRole("button", { name: "Notes…" })).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
+      await expect(win.getByRole("button", { name: "Notes (1)" })).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
       expect((await readSet(win, setId)).plan.notes).toBe("The Loft, 23:00 to 01:00");
 
-      // --- 3. times, a reorder, and the running time and "Starts" moving ------------
+      // --- 3. times, a reorder, and the running time and "Starts at" moving ------------
       async function time(title: string, inTime: string, outTime: string) {
         await at(win, row(win, title));
         const zone = inspector(win).getByRole("region", { name: "In this Set" });
         await expect(zone).toBeVisible({ timeout: 15_000 });
-        await zone.getByRole("textbox", { name: "In", exact: true }).fill(inTime);
-        const out = zone.getByRole("textbox", { name: "Out", exact: true });
+        await zone.getByRole("textbox", { name: "Mix in", exact: true }).fill(inTime);
+        const out = zone.getByRole("textbox", { name: "Mix out", exact: true });
         await out.fill(outTime);
         await out.press("Enter");
       }
       await time("Warm One", "0:30", "4:30");
-      await expect(facts(win)).toContainText("4:00 planned · 5 untimed", { timeout: 15_000 });
+      await expect(facts(win)).toContainText("4:00 planned · 5 without times", { timeout: 15_000 });
       await time("Warm Two", "", "5:00");
-      await expect(facts(win)).toContainText("9:00 planned · 4 untimed", { timeout: 15_000 });
+      await expect(facts(win)).toContainText("9:00 planned · 4 without times", { timeout: 15_000 });
       await expect(startsOf(win, "Build")).toHaveText("9:00");
       await expect(startsOf(win, "Warm Two")).toHaveText("4:00");
       // Warm Two dragged above Warm One: it opens now, and Warm One starts at 5:00.
@@ -290,7 +290,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       // --- 4. a gap from Suggestions, and a key warning accepted -------------------
       await at(win, row(win, "Warm Two"));
       const panel = win.getByRole("region", { name: "Add to the Set" });
-      await expect(panel.getByRole("status", { name: /^Insert: Between “Warm Two” and “Warm One”/ })).toBeVisible();
+      await expect(panel.getByRole("status", { name: /^Inserting: between “Warm Two” and “Warm One”/ })).toBeVisible();
       const suggestion = win.getByRole("table", { name: "Suggestions" }).locator(".track-table__row").first();
       await expect(suggestion).toBeVisible({ timeout: 30_000 });
       const suggested = ((await suggestion.locator('[data-column="title"]').textContent()) ?? "").replace("↻", "").trim();
@@ -302,9 +302,9 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await at(win, row(win, "Peak Jump"));
       const zone = inspector(win).getByRole("region", { name: "In this Set" });
       const clash = zone.getByRole("listitem").filter({ hasText: /Keys clash/ });
-      await clash.getByRole("button", { name: "Acknowledge" }).click();
+      await clash.getByRole("button", { name: "Accept" }).click();
       await expect(facts(win)).toContainText("1 accepted", { timeout: 15_000 });
-      await expect(clash.getByRole("button", { name: "Withdraw" })).toBeVisible();
+      await expect(clash.getByRole("button", { name: "Undo accept" })).toBeVisible();
       expect((await readSet(win, setId)).analysis.acknowledged).toBe(1);
 
       // --- 5. played from the third entry, the repeat in the queue ------------------
@@ -378,7 +378,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
       await expect(row(win, "Warm-up")).toBeVisible({ timeout: 30_000 });
       await expect(facts(win)).toContainText("1 accepted");
-      await expect(win.getByRole("button", { name: "Notes…" })).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
+      await expect(win.getByRole("button", { name: "Notes (1)" })).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
       expect(await readSet(win, setId)).toEqual(before);
 
       // --- 9. a refresh that deletes one of its tracks ---------------------------------

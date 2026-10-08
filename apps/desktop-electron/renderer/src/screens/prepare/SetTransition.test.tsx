@@ -196,13 +196,13 @@ describe("the transition strip", () => {
     ]);
   });
 
-  it("says untimed for an entry with no times, and shades nothing on it", async () => {
+  it("says there is no out time for an entry with no times, and shades nothing on it", async () => {
     install();
     render(<SetTransition entries={ENTRIES} selectedEntryId={2} onSelect={vi.fn()} />);
     await drawn("from", "to");
 
-    expect(screen.getByTestId("transition-words")).toHaveTextContent("Out 0:05 → untimed");
-    expect(within(screen.getByRole("region", { name: "Transition" })).getByText("Untimed")).toBeInTheDocument();
+    expect(screen.getByTestId("transition-words")).toHaveTextContent("Out 0:05 → no times");
+    expect(within(screen.getByRole("region", { name: "Transition" })).getByText("No out time")).toBeInTheDocument();
     expect(fillsOf("to").some((fill) => fill.colour === PLAYED)).toBe(false);
   });
 
@@ -213,7 +213,7 @@ describe("the transition strip", () => {
 
     expect(screen.getByTestId("transition-to")).toHaveTextContent(END_OF_SET);
     expect(screen.getByTestId("transition-to").tagName).toBe("P");
-    expect(screen.getByTestId("transition-words")).toHaveTextContent(/^Untimed$/);
+    expect(screen.getByTestId("transition-words")).toHaveTextContent(/^No out time$/);
     expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(waveforms.get).toHaveBeenCalledWith({ track_ids: [40], width: 160, marks: true });
   });
@@ -258,7 +258,7 @@ describe("the transition strip", () => {
 
     expect(screen.getByTestId("transition-from")).toHaveAttribute("data-entry", "2");
     expect(screen.getByTestId("transition-to")).toHaveAttribute("data-entry", "3");
-    expect(screen.getByTestId("transition-words")).toHaveTextContent("Out 0:05 → untimed");
+    expect(screen.getByTestId("transition-words")).toHaveTextContent("Out 0:05 → no times");
     await drawn("from", "to");
   });
 
@@ -281,10 +281,57 @@ describe("the transition strip", () => {
     render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByTestId("transition-to")).toHaveTextContent("File missing"));
-    expect(screen.getByTestId("transition-from")).toHaveTextContent("Waveform not drawn yet");
+    expect(screen.getByTestId("transition-from")).toHaveTextContent("Not made yet");
     expect(screen.getByTestId("transition-to")).toHaveAttribute("title", "File missing");
     // The times are said whether or not there is a picture.
     expect(screen.getByTestId("transition-words")).toHaveTextContent("Out 0:04 → In 0:01");
+  });
+});
+
+describe("a waveform that is waiting (PRP-12)", () => {
+  const running = {
+    state: "running",
+    paused: false,
+    job_id: "a",
+    present: 4000,
+    analysed: 312,
+    failed: 0,
+    remaining: 3688,
+    rate_per_hour: null,
+    eta_seconds: null,
+    reason: null,
+    store_bytes: 0,
+  };
+
+  it("says how far the analysis is, in place, and links to its progress", async () => {
+    const waveforms = install((id) => waveform(id, "waiting"));
+    waveforms.analysis.mockResolvedValue({ value: running, refusal: null });
+    const onSeeProgress = vi.fn();
+    render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} onSeeProgress={onSeeProgress} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("transition-from")).toHaveTextContent(
+        "Not made yet — 312 of 4,000",
+      ),
+    );
+    expect(screen.getByTestId("transition-from")).toHaveAttribute(
+      "title",
+      "Waveform not made yet — analysis is 312 of 4,000",
+    );
+    const links = screen.getAllByRole("button", { name: "See progress" });
+    expect(links).toHaveLength(2);
+    // Beside the half, not inside it: a button does not hold a button.
+    expect(screen.getByTestId("transition-from")).not.toContainElement(links[0]);
+    fireEvent.click(links[0]);
+    expect(onSeeProgress).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers no link for a half with a picture, or a file that is missing", async () => {
+    const waveforms = install((id) => (id === 10 ? waveform(id) : waveform(id, "missing")));
+    waveforms.analysis.mockResolvedValue({ value: running, refusal: null });
+    render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} onSeeProgress={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("transition-to")).toHaveTextContent("File missing"));
+    expect(screen.queryByRole("button", { name: "See progress" })).toBeNull();
   });
 });
 
@@ -319,12 +366,23 @@ describe("the strip's loudness (WAVE-08)", () => {
     await drawn("from", "to");
   });
 
+  it("explains the loudness units in a title (PRP-8)", async () => {
+    install((id) => waveform(id, "ready", { loudness: measured(id === 10 ? -10.5 : -8.4) }));
+    render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("transition-words")).toHaveTextContent("+2.1 LU"));
+    expect(screen.getByTestId("transition-words")).toHaveAttribute(
+      "title",
+      "Loudness (LUFS). +2.1 LU means the next track is 2.1 dB louder.",
+    );
+    await drawn("from", "to");
+  });
+
   it("says no difference for the last entry, which has no next", async () => {
     install();
     render(<SetTransition entries={ENTRIES} selectedEntryId={4} onSelect={vi.fn()} />);
 
     await waitFor(() => expect(screen.getAllByTestId("transition-loudness")).toHaveLength(1));
-    expect(screen.getByTestId("transition-words")).toHaveTextContent(/^Untimed$/);
+    expect(screen.getByTestId("transition-words")).toHaveTextContent(/^No out time$/);
     await drawn("from");
   });
 

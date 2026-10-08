@@ -76,7 +76,7 @@ export function describeSetWarning(warning: SetWarning): string {
         return `${formatTime(target - planned)} under the ${formatTime(target)} target`;
       }
       const over = `${formatTime(planned - target)} over the ${formatTime(target)} target`;
-      return warning.detail === "partly_timed" ? `${over}, before ${entries(untimed)} still untimed` : over;
+      return warning.detail === "partly_timed" ? `${over}, before ${entries(untimed)} still without times` : over;
     }
     case "bpm_outside_range": {
       // A track is below only a range with a floor, and above only one with a

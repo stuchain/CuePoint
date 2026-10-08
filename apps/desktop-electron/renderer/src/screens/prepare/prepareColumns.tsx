@@ -7,8 +7,8 @@
  * values and override marks included, so a track reads the same on both pages.
  *
  * A heading row puts each fact about its chapter under the column it is about:
- * its name under Title, its start under Starts, its time against its target
- * under Planned, its BPM range under BPM, its own warnings under Transition and
+ * its name under Title, its start under Starts at, its time against its target
+ * under Plays for, its BPM range under BPM, its own warnings under Transition and
  * its notes under Note. Nothing sorts: the order is the Set.
  */
 import type { TrackColumnDef } from "../../components/table";
@@ -49,7 +49,8 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
   },
   {
     id: "starts_at",
-    header: "Starts",
+    header: "Starts at",
+    hint: "When this track starts if every planned time holds, counted from the start of the Set",
     minWidthPx: 56,
     defaultWidthPx: 72,
     align: "right",
@@ -58,7 +59,8 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
   },
   {
     id: "in",
-    header: "In",
+    header: "Mix in",
+    hint: "When you plan to bring this track in, as m:ss into the track",
     minWidthPx: 48,
     defaultWidthPx: 60,
     align: "right",
@@ -66,7 +68,8 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
   },
   {
     id: "out",
-    header: "Out",
+    header: "Mix out",
+    hint: "When you plan to take this track out, as m:ss into the track",
     minWidthPx: 48,
     defaultWidthPx: 60,
     align: "right",
@@ -74,8 +77,9 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
   },
   {
     id: "planned",
-    header: "Planned",
-    minWidthPx: 64,
+    header: "Plays for",
+    hint: "How long this track plays in the Set, from its Mix in to its Mix out",
+    minWidthPx: 72,
     defaultWidthPx: 84,
     align: "right",
     render: (row) =>

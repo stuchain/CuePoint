@@ -71,6 +71,17 @@ export function saveLanesOpen(open: boolean): void {
   write(LANES_STORAGE_KEY, open ? "1" : "0");
 }
 
+export const SUGGESTIONS_NOTE_STORAGE_KEY = "cuepoint-prepare-suggestions-note";
+
+/** Whether Suggestions' ranking note has been shown already (PRP-7). */
+export function hasSeenSuggestionsNote(): boolean {
+  return read(SUGGESTIONS_NOTE_STORAGE_KEY) === "1";
+}
+
+export function saveSeenSuggestionsNote(): void {
+  write(SUGGESTIONS_NOTE_STORAGE_KEY, "1");
+}
+
 export const TRANSITION_STORAGE_KEY = "cuepoint-prepare-transition";
 
 /**

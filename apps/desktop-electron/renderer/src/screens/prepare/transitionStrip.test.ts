@@ -91,29 +91,29 @@ describe("the words", () => {
     expect(transitionWords(transitionOf(ENTRIES, 1)!).join(" ")).toBe("Out 5:42 → In 0:16");
   });
 
-  it("say untimed for an out never typed, and for a next entry with no times planned", () => {
-    expect(transitionWords(transitionOf(ENTRIES, 2)!).join(" ")).toBe("Out 6:10 → untimed");
-    expect(transitionWords(transitionOf(ENTRIES, 3)!).join(" ")).toBe("Untimed → In 1:00");
+  it("say there is no out time for an out never typed, and for a next entry with no times planned", () => {
+    expect(transitionWords(transitionOf(ENTRIES, 2)!).join(" ")).toBe("Out 6:10 → no times");
+    expect(transitionWords(transitionOf(ENTRIES, 3)!).join(" ")).toBe("No out time → In 1:00");
   });
 
   it("are the last entry's out alone", () => {
-    expect(transitionWords(transitionOf(ENTRIES, 4)!)).toEqual(["Untimed"]);
+    expect(transitionWords(transitionOf(ENTRIES, 4)!)).toEqual(["No out time"]);
     expect(transitionWords(transitionOf(ENTRIES.slice(0, 1), 1)!)).toEqual(["Out 5:42"]);
   });
 
   it("read an empty in time as the start of the track, for an entry that is timed", () => {
     expect(inWords(half(null, 300))).toBe("In 0:00");
     expect(inWords(half(16, null))).toBe("In 0:16");
-    expect(inWords(half(null, null))).toBe("untimed");
-    expect(outWords(half(16, null))).toBe("Untimed");
+    expect(inWords(half(null, null))).toBe("no times");
+    expect(outWords(half(16, null))).toBe("No out time");
     expect(outWords(half(null, 3_725))).toBe("Out 1:02:05");
   });
 
   it("give each half its planned times", () => {
     expect(halfTimesWords(half(16, 342))).toBe("In 0:16 · Out 5:42");
     expect(halfTimesWords(half(null, 342))).toBe("In 0:00 · Out 5:42");
-    expect(halfTimesWords(half(16, null))).toBe("In 0:16 · untimed");
-    expect(halfTimesWords(half(null, null))).toBe("Untimed");
+    expect(halfTimesWords(half(16, null))).toBe("In 0:16 · no out time");
+    expect(halfTimesWords(half(null, null))).toBe("No out time");
   });
 });
 

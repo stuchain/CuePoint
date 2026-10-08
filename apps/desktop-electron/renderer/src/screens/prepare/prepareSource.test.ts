@@ -15,6 +15,7 @@ import {
   SUGGESTION_LIMIT,
   emptyAnswerText,
   gapKey,
+  fitText,
   insertLabel,
   insertedLine,
   insertionPoint,
@@ -22,6 +23,7 @@ import {
   keyRelationWords,
   noFitText,
   placeOf,
+  insertingText,
   pointText,
   pointWords,
   poolName,
@@ -117,6 +119,7 @@ describe("the point in words", () => {
   it("says an empty Set", () => {
     const words = pointWords(insertionPoint(BLANK.plan, [], null), BLANK.plan.chapters);
     expect(pointText(words)).toBe("At the start of the empty Set");
+    expect(insertingText(words)).toBe("Inserting: at the start of the empty Set");
   });
 });
 
@@ -177,7 +180,7 @@ describe("what an answer says", () => {
         "apart, and no tempo is close to both. Keys clash: 8A → 3B.",
     );
     const related = { ...SUGGESTIONS.noFit.no_fit!, key: { from: "8A", to: "9A", relation: "adjacent" as const } };
-    expect(noFitText(related, "A", "B")).toMatch(/One step on the wheel: 8A → 9A\.$/);
+    expect(noFitText(related, "A", "B")).toMatch(/Next key: 8A → 9A\.$/);
     expect(noFitText({ ...related, key: null }, "A", "B")).toMatch(/close to both\.$/);
   });
 
@@ -222,7 +225,7 @@ describe("what an answer says", () => {
 
   it("uses the reasons' and warnings' words for key relations", () => {
     expect(keyRelationWords("same")).toBe("Same key");
-    expect(keyRelationWords("adjacent")).toBe("One step on the wheel");
+    expect(keyRelationWords("adjacent")).toBe("Next key");
     expect(keyRelationWords("relative")).toBe("Relative key");
     expect(keyRelationWords(null)).toBe("Keys clash");
   });
@@ -244,9 +247,14 @@ describe("inserting", () => {
   });
 
   it("names the button for what is selected", () => {
-    expect(insertLabel(0)).toBe("Insert here");
+    expect(insertLabel(0)).toBe("Pick tracks");
     expect(insertLabel(1)).toBe("Insert here");
     expect(insertLabel(1200)).toBe("Insert 1,200 here");
+  });
+
+  it("writes a fit out of 100 (PRP-7)", () => {
+    expect(fitText(72)).toBe("72/100");
+    expect(fitText(0)).toBe("0/100");
   });
 
   it("says what went in", () => {

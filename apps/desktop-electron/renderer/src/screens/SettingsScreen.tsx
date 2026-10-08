@@ -91,13 +91,16 @@ export function SettingsScreen({
   const asked = settingsFocus(location);
   const focusToken = asked?.focus === "beatport-token" ? asked.token : null;
   const focusReporting = asked?.focus === "error-reporting" ? asked.token : null;
-  const privacyAsked = asked?.focus === "privacy" ? asked.token : null;
+  // A section a link names is scrolled to: Privacy, and Waveforms (Prepare's
+  // "See progress" on a waveform that is not made yet, PRP-12).
+  const sectionAsked = asked?.focus === "privacy" || asked?.focus === "waveforms" ? asked.focus : null;
+  const sectionToken = sectionAsked ? asked?.token : null;
   const scrolledTo = useRef<string | null>(null);
   useEffect(() => {
-    if (!privacyAsked || scrolledTo.current === privacyAsked) return;
-    scrolledTo.current = privacyAsked;
-    document.getElementById("settings-privacy")?.scrollIntoView?.({ block: "start" });
-  }, [privacyAsked]);
+    if (!sectionAsked || !sectionToken || scrolledTo.current === sectionToken) return;
+    scrolledTo.current = sectionToken;
+    document.getElementById(`settings-${sectionAsked}`)?.scrollIntoView?.({ block: "start" });
+  }, [sectionAsked, sectionToken]);
 
   // The links are plain anchors, but a hash router owns the address bar: the
   // click scrolls the section into view and moves focus there, and leaves the

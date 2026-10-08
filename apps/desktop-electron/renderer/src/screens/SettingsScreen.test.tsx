@@ -158,6 +158,15 @@ describe("Discover's deep link", () => {
     renderSettings({ state: settingsFocusState("privacy") });
     await waitFor(() => expect(scrolled).toContain("settings-privacy"));
   });
+
+  it("scrolls to the Waveforms section when Prepare's waiting waveform asks for it", async () => {
+    const scrolled: string[] = [];
+    Element.prototype.scrollIntoView = vi.fn(function (this: Element) {
+      scrolled.push(this.id);
+    });
+    renderSettings({ state: settingsFocusState("waveforms") });
+    await waitFor(() => expect(scrolled).toContain("settings-waveforms"));
+  });
 });
 
 describe("the Beatport test result", () => {

@@ -4,7 +4,7 @@
  * Drawn above "Yours" when an entry is selected, because it is about the entry
  * rather than the track: the same track twice in a Set is planned twice. Its
  * in and out times, its note, its chapter, and what the checks found about it
- * and about the change into it, each transition warning with "Acknowledge".
+ * and about the change into it, each transition warning with "Accept" (PRP-5).
  * Kept in the Inspector so the Set pane's height stays for rows (DEC-112).
  *
  * The times are typed as a DJ writes them and saved together, as the engine
@@ -31,6 +31,9 @@ interface SetEntryZoneProps {
   /** Accept a transition warning into this entry, or withdraw the acceptance. */
   onAcknowledge: (warning: SetWarning, acknowledge: boolean) => void;
 }
+
+/** What accepting a warning means, once above the list (PRP-5). */
+const ACCEPT_HINT = "Accept a warning once you have heard the mix work. It comes back if either track changes.";
 
 function blankToNull(text: string): string | null {
   const trimmed = text.trim();
@@ -96,7 +99,7 @@ export function SetEntryZone({
 
       <div className="prepare-entry-zone__times">
         <label className="prepare-entry-zone__field" htmlFor={`${ids}-in`}>
-          <span className="cp-field__label">In</span>
+          <span className="cp-field__label">Mix in</span>
           <input
             id={`${ids}-in`}
             className="cp-field__input"
@@ -109,7 +112,7 @@ export function SetEntryZone({
           />
         </label>
         <label className="prepare-entry-zone__field" htmlFor={`${ids}-out`}>
-          <span className="cp-field__label">Out</span>
+          <span className="cp-field__label">Mix out</span>
           <input
             id={`${ids}-out`}
             className="cp-field__input"
@@ -124,7 +127,7 @@ export function SetEntryZone({
         <p className="prepare-entry-zone__planned" role="status">
           {entry.planned_seconds != null
             ? `Plays for ${timeCell(entry.planned_seconds)}`
-            : "Untimed: set an out time to count it"}
+            : "No out time yet: type one to count this track in the Set's length."}
         </p>
       </div>
       {timesRefused && (
@@ -162,6 +165,7 @@ export function SetEntryZone({
         </label>
       )}
 
+      {found.some(isAcknowledgeable) && <p className="prepare-entry-zone__hint">{ACCEPT_HINT}</p>}
       {(found.length > 0 || row.notices.length > 0) && (
         <ul className="prepare-entry-zone__warnings" aria-label="What the checks found">
           {found.map((warning) => (
@@ -171,14 +175,14 @@ export function SetEntryZone({
             >
               <span>
                 {describeSetWarning(warning)}
-                {warning.acknowledged ? " (acknowledged)" : ""}
+                {warning.acknowledged ? " (accepted)" : ""}
               </span>
               {isAcknowledgeable(warning) && (
                 <Button
                   variant="secondary"
                   onClick={() => onAcknowledge(warning, !warning.acknowledged)}
                 >
-                  {warning.acknowledged ? "Withdraw" : "Acknowledge"}
+                  {warning.acknowledged ? "Undo accept" : "Accept"}
                 </Button>
               )}
             </li>

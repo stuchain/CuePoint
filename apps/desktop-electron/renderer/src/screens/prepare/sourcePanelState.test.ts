@@ -13,12 +13,15 @@ import {
   LANES_STORAGE_KEY,
   SOURCE_POOL_STORAGE_KEY,
   SOURCE_TAB_STORAGE_KEY,
+  SUGGESTIONS_NOTE_STORAGE_KEY,
   TRANSITION_STORAGE_KEY,
+  hasSeenSuggestionsNote,
   loadLanesOpen,
   loadSourcePool,
   loadSourceTab,
   loadTransitionOpen,
   saveLanesOpen,
+  saveSeenSuggestionsNote,
   saveSourcePool,
   saveSourceTab,
   saveTransitionOpen,
@@ -68,6 +71,13 @@ describe("the remembered source panel", () => {
     }
   });
 
+  it("remembers that the ranking note was shown", () => {
+    expect(hasSeenSuggestionsNote()).toBe(false);
+    saveSeenSuggestionsNote();
+    expect(localStorage.getItem(SUGGESTIONS_NOTE_STORAGE_KEY)).toBe("1");
+    expect(hasSeenSuggestionsNote()).toBe(true);
+  });
+
   it("survives storage that refuses to read or write", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("denied");
@@ -79,6 +89,8 @@ describe("the remembered source panel", () => {
     expect(() => saveSourcePool("collection:3")).not.toThrow();
     expect(() => saveLanesOpen(true)).not.toThrow();
     expect(() => saveTransitionOpen(true)).not.toThrow();
+    expect(() => saveSeenSuggestionsNote()).not.toThrow();
+    expect(hasSeenSuggestionsNote()).toBe(false);
     expect([loadSourceTab(), loadSourcePool(), loadLanesOpen(), loadTransitionOpen()]).toEqual([
       "suggestions",
       "library",
