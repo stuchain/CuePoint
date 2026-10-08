@@ -92,7 +92,7 @@ for (const width of WIDTHS) {
 
     for (const path of pages) {
       test(`/${path} has no axe violations, no horizontal scroll and big enough targets`, async ({ page }) => {
-        await page.goto(path);
+        expect((await page.goto(path))?.ok(), `${path} did not load`).toBe(true);
         await expectPageOk(page);
       });
     }
@@ -107,7 +107,7 @@ test.describe("every theme at 1440px", () => {
     for (const path of pages) {
       test(`/${path} in the ${theme} theme`, async ({ page }) => {
         await page.addInitScript(([key, value]) => localStorage.setItem(key!, value!), [THEME_KEY, theme]);
-        await page.goto(path);
+        expect((await page.goto(path))?.ok(), `${path} did not load`).toBe(true);
         await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
         await expectPageOk(page);
       });

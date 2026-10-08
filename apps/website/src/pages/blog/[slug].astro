@@ -1,0 +1,159 @@
+---
+import { render } from "astro:content";
+import type { GetStaticPaths } from "astro";
+import { SITE_URL } from "../../../site.config";
+import Badge from "../../components/Badge.astro";
+import Img from "../../components/Img.astro";
+import { altText } from "../../components/Img.types";
+import Section from "../../components/Section.astro";
+import ShareLinks from "../../components/ShareLinks.astro";
+import { NAV } from "../../data/nav";
+import { PUBLISHER } from "../../data/site";
+import Page from "../../layouts/Page.astro";
+import { readingMinutes, relatedLinks } from "../../lib/blog";
+import { formatDate, isoDay } from "../../lib/dates";
+import { getPosts, summaryOf } from "../../lib/posts";
+import { canonicalFor, hrefFor } from "../../lib/url";
+
+export const getStaticPaths = (async () => {
+  const posts = await getPosts();
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post, all: posts } }));
+}) satisfies GetStaticPaths;
+
+const { post, all } = Astro.props;
+const { Content } = await render(post);
+const { title, description, date, updated, author, image, imageAlt, tags, draft } = post.data;
+
+// The publisher's page (DEC-144: the user, as an individual)
+const PUBLISHER_URL = "https://github.com/stuchain";
+const path = `blog/${post.id}/`;
+const url = canonicalFor(path);
+const minutes = readingMinutes(post.body ?? "");
+const related = relatedLinks(summaryOf(post), all.map(summaryOf), NAV);
+const imageUrl = new URL(image.src, SITE_URL).href;
+
+const schema = [
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: title,
+    description,
+    datePublished: date.toISOString(),
+    dateModified: (updated ?? date).toISOString(),
+    author: { "@type": "Person", name: author, url: PUBLISHER_URL },
+    // The publisher is the user as an individual (DEC-144)
+    publisher: { "@type": "Person", name: PUBLISHER, url: PUBLISHER_URL },
+    image: [imageUrl],
+    keywords: tags.join(", "),
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+  },
+];
+---
+
+<Page
+  title={title}
+  description={description}
+  path={path}
+  ogImage={image /* TODO(SITE-11): replace with the post's generated social card */}
+  schema={schema}
+  ogType="article"
+  publishedTime={date.toISOString()}
+  tags={tags}
+  breadcrumbs={[
+    { label: "Home", path: "" },
+    { label: "Blog", path: "blog/" },
+    { label: title, path },
+  ]}
+>
+  <Section id="post" width="prose">
+    <article class="post">
+      <header>
+        <h1>{title}</h1>
+        <p class="meta">
+          <span>By {author}</span>
+          <time datetime={isoDay(date)}>{formatDate(date)}</time>
+          <span>{minutes} min read</span>
+          {draft && <Badge variant="warning">Draft: preview builds only</Badge>}
+        </p>
+      </header>
+
+      <figure class="hero">
+        <Img src={image} alt={altText(imageAlt)} sizes="(min-width: 46rem) 42rem, 100vw" loading="eager" />
+      </figure>
+
+      <div class="prose"><Content /></div>
+
+      {
+        tags.length > 0 && (
+          <ul class="tags" aria-label="Tags">
+            {tags.map((t) => <li><Badge>{t}</Badge></li>)}
+          </ul>
+        )
+      }
+
+      <aside class="after" aria-labelledby="share-heading">
+        <h2 id="share-heading">Share this post</h2>
+        <ShareLinks url={url} title={title} />
+      </aside>
+
+      <aside class="after" aria-labelledby="more-heading">
+        <h2 id="more-heading">Keep reading</h2>
+        <ul class="related">
+          {related.map((r) => <li><a href={hrefFor(r.path)}>{r.label}</a></li>)}
+        </ul>
+        <p><a href={hrefFor("blog/")}>All posts</a></p>
+      </aside>
+    </article>
+  </Section>
+</Page>
+
+<style>
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm) var(--space-lg);
+    margin: 0 0 var(--space-lg);
+    color: var(--fg-muted);
+  }
+  .hero {
+    margin: 0 0 var(--space-xl);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-panel);
+  }
+  .hero :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .prose :global(h2) {
+    font-size: var(--font-size-lg);
+    margin-top: var(--space-xl);
+  }
+  .prose :global(ul) {
+    padding-left: 1.25rem;
+  }
+  .prose :global(li) {
+    margin-bottom: var(--space-sm);
+  }
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    list-style: none;
+    padding: 0;
+    margin: var(--space-xl) 0 0;
+  }
+  .after {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-lg);
+    border-top: var(--border-width) solid var(--border-outline);
+  }
+  .after h2 {
+    font-size: var(--font-size-md);
+    margin: 0 0 var(--space-md);
+  }
+  .related {
+    padding-left: 1.25rem;
+  }
+</style>

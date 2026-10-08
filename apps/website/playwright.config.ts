@@ -6,6 +6,8 @@ import { defineConfig } from "@playwright/test";
  * browser installed by `npx playwright install --with-deps chromium` is used.
  */
 const executablePath = process.env["PW_CHROMIUM_PATH"] || undefined;
+/** The preview server's port; set WEBSITE_PORT when another checkout already holds 4321. */
+const port = Number(process.env["WEBSITE_PORT"] || 4321);
 
 export default defineConfig({
   testDir: "e2e",
@@ -14,14 +16,14 @@ export default defineConfig({
   retries: 0,
   reporter: process.env["CI"] ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL: "http://localhost:4321/",
+    baseURL: `http://localhost:${port}/`,
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
   webServer: {
-    command: "npx astro preview --port 4321 --ignore-lock",
-    url: "http://localhost:4321/",
-    reuseExistingServer: !process.env["CI"],
+    command: `npx astro preview --port ${port} --ignore-lock`,
+    url: `http://localhost:${port}/`,
+    reuseExistingServer: false,
     timeout: 60_000,
   },
 });

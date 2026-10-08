@@ -1,0 +1,128 @@
+---
+import Badge from "../components/Badge.astro";
+import Section from "../components/Section.astro";
+import { loadChangelog, renderInline } from "../content/changelog";
+import Page from "../layouts/Page.astro";
+import { formatDate } from "../lib/dates";
+
+const versions = loadChangelog();
+// Production shows new-app normal versions only, and today there are none (DEC-194: 1.0 is not out).
+const hasNormal = versions.some((v) => !v.unreleased && !v.retired && !v.prerelease);
+---
+
+<Page
+  title="Changelog"
+  description="What changed in each version of CuePoint, newest first. Test builds and their notes are on GitHub Releases."
+  path="changelog/"
+  breadcrumbs={[{ label: "Home", path: "" }, { label: "Changelog", path: "changelog/" }]}
+>
+  <Section id="changelog" width="prose">
+    <h1>Changelog</h1>
+    <p class="lede">What changed in each version of CuePoint, newest first.</p>
+
+    {
+      !hasNormal && (
+        <>
+          <p>
+            CuePoint 1.0 is coming. Test builds and their notes are on{" "}
+            <a href="https://github.com/stuchain/CuePoint/releases" rel="noopener noreferrer">GitHub Releases</a>.
+          </p>
+          <p class="lede">
+            Versions before 1.0 belong to the retired app. Their notes are in{" "}
+            <a href="https://github.com/stuchain/CuePoint/blob/main/docs/release/CHANGELOG.md" rel="noopener noreferrer">
+              CHANGELOG.md on GitHub
+            </a>.
+          </p>
+        </>
+      )
+    }
+
+    {versions.length > 0 && (
+    <ol class="versions">
+      {
+        versions.map((v) => (
+          <li class="version" id={v.anchor}>
+            <h2>
+              <a class="anchor" href={`#${v.anchor}`}>{v.unreleased ? "Unreleased" : `Version ${v.version}`}</a>
+            </h2>
+            <p class="meta">
+              {v.date && <time datetime={v.date}>{formatDate(v.date)}</time>}
+              {v.unreleased && <Badge variant="warning">Preview builds only</Badge>}
+              {v.retired && <Badge variant="warning">Retired app</Badge>}
+              {v.prerelease && !v.retired && <Badge variant="info">Test build</Badge>}
+              {v.releaseUrl && (
+                <a href={v.releaseUrl} rel="noopener noreferrer">
+                  GitHub release<span class="sr-only"> for version {v.version}</span>
+                </a>
+              )}
+            </p>
+            {v.sections.map((s) => (
+              <>
+                <h3>{s.title}</h3>
+                <ul>
+                  {s.items.map((item) => (
+                    <li set:html={renderInline(item)} />
+                  ))}
+                </ul>
+              </>
+            ))}
+          </li>
+        ))
+      }
+    </ol>
+    )}
+  </Section>
+</Page>
+
+<style>
+  .lede {
+    color: var(--fg-muted);
+  }
+  .versions {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-xl) 0 0;
+  }
+  .version {
+    padding-block: var(--space-lg);
+    border-top: var(--border-width) solid var(--border-outline);
+    scroll-margin-top: var(--space-lg);
+  }
+  .version h2 {
+    margin: 0 0 var(--space-sm);
+  }
+  .version h2 .anchor {
+    text-decoration: none;
+  }
+  .version h2 .anchor:hover {
+    text-decoration: underline;
+  }
+  .version h3 {
+    font-size: var(--font-size-md);
+    margin: var(--space-lg) 0 var(--space-sm);
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm) var(--space-lg);
+    margin: 0;
+    color: var(--fg-muted);
+  }
+  .meta a {
+    color: var(--fg-primary);
+  }
+  .version ul {
+    padding-left: 1.25rem;
+  }
+  .version ul li {
+    margin-bottom: var(--space-sm);
+  }
+  .version :global(code) {
+    font-family: var(--font-data, monospace);
+    font-size: 0.92em;
+    padding: 0 0.25em;
+    background: var(--bg-panel);
+    border: var(--hairline, 1px) solid var(--border-muted);
+  }
+</style>

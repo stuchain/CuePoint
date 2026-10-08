@@ -1,0 +1,102 @@
+---
+import { shareLinks } from "../lib/blog";
+
+interface Props {
+  /** The page's absolute address. */
+  url: string;
+  title: string;
+}
+const { url, title } = Astro.props;
+const links = shareLinks(url, title);
+---
+
+<div class="share">
+  <ul>
+    {
+      links.map((l) => (
+        <li>
+          <a class="chip" href={l.href} rel="noopener noreferrer">
+            {l.label}<span class="sr-only"> (opens the share page)</span>
+          </a>
+        </li>
+      ))
+    }
+    <li>
+      <!-- Without script this is a plain link to the post's own address; with script it becomes the button. -->
+      <a class="chip" data-copy-fallback href={url}>Link to this post</a>
+      <button class="chip" type="button" data-copy={url} hidden>Copy link</button>
+      <span class="note" role="status" data-copy-status></span>
+    </li>
+  </ul>
+</div>
+
+<script>
+  const root = document.querySelector<HTMLElement>(".share");
+  const button = root?.querySelector<HTMLButtonElement>("button[data-copy]");
+  const fallback = root?.querySelector<HTMLElement>("[data-copy-fallback]");
+  const status = root?.querySelector<HTMLElement>("[data-copy-status]");
+  if (root && button && fallback && navigator.clipboard) {
+    button.hidden = false;
+    fallback.hidden = true;
+    let clear: ReturnType<typeof setTimeout> | undefined;
+    button.addEventListener("click", async () => {
+      let message: string;
+      try {
+        await navigator.clipboard.writeText(button.dataset.copy ?? "");
+        message = "Link copied";
+      } catch {
+        message = "Could not copy the link";
+      }
+      if (!status) return;
+      // Emptied first, then set, so a second copy is announced again. The button's label never changes.
+      status.textContent = "";
+      clearTimeout(clear);
+      setTimeout(() => {
+        status.textContent = message;
+      }, 60);
+      clear = setTimeout(() => {
+        status.textContent = "";
+      }, 3000);
+    });
+  }
+</script>
+
+<style>
+  .share ul {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    padding: 0;
+    margin: 0;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--hit-min);
+    padding: 0 var(--space-lg);
+    background: var(--bg-panel);
+    color: var(--fg-primary);
+    border: var(--border-width) solid var(--border-outline);
+    border-radius: 0;
+    box-shadow: var(--shadow-bevel-sm);
+    font-family: var(--font-pixel);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .chip:hover {
+    background: var(--bg-panel-alt);
+  }
+  .chip:focus-visible {
+    box-shadow: var(--shadow-bevel-sm), var(--focus-halo);
+  }
+  .note {
+    margin-left: var(--space-sm);
+    font-size: var(--font-size-sm);
+  }
+  [hidden] {
+    display: none !important;
+  }
+</style>

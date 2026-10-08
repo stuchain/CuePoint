@@ -24,4 +24,10 @@ export interface PageProps {
   /** The trail shown above the page; the layout also writes it as a BreadcrumbList. */
   breadcrumbs?: readonly Crumb[];
   noindex?: NoindexReason;
+  /** Open Graph type: "website" (the default) or "article" for a blog post. */
+  ogType?: "website" | "article";
+  /** For an article: its publication time, written as article:published_time (ISO 8601). */
+  publishedTime?: string;
+  /** For an article: its tags, one article:tag each. */
+  tags?: readonly string[];
 }

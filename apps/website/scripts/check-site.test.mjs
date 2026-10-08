@@ -504,6 +504,56 @@ export const PUBLIC: boolean = true;
   });
 });
 
+describe("the RSS feed (SITE-10)", () => {
+  const ALTERNATE = `<link rel="alternate" type="application/rss+xml" title="Feed" href="${BASE}blog/rss.xml">`;
+  const FEED = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>T</title><link>${SITE_URL}blog/</link><description>D</description><item><title>P</title><link>${SITE_URL}blog/post/</link><guid>${SITE_URL}blog/post/</guid><pubDate>Mon, 05 Oct 2026 00:00:00 GMT</pubDate></item></channel></rss>`;
+  const PAGES = ["index.html", "about/index.html", "faq/index.html", "blog/post/index.html", "contact/thank-you/index.html", "404.html"];
+  const withFeed = (feed = FEED, skip = []) => (f) => {
+    for (const p of PAGES) if (!skip.includes(p)) f[p] = f[p].replace('<link rel="manifest"', `${ALTERNATE}<link rel="manifest"`);
+    f["blog/rss.xml"] = feed;
+  };
+
+  it("passes when every page links a valid feed", () => {
+    expect(run(withFeed())).toEqual([]);
+  });
+
+  it("fails a feed that is not RSS 2.0", () => {
+    const results = run(withFeed(FEED.replace('version="2.0"', 'version="0.91"')));
+    expect(results.map((r) => r.rule)).toEqual(["feed-invalid"]);
+    expect(results[0].page).toBe("blog/rss.xml");
+  });
+
+  it("fails a feed link that is in the body, or points at another file", () => {
+    const inBody = (f) => {
+      withFeed(FEED, ["about/index.html"])(f);
+      f["about/index.html"] = f["about/index.html"].replace("<main", `<main>${ALTERNATE}</main><main`);
+    };
+    expect(run(inBody).map((r) => `${r.rule} ${r.page}`)).toContain("feed-link-missing about/index.html");
+    const wrong = (f) => {
+      withFeed()(f);
+      f["about/index.html"] = f["about/index.html"].replace(`${BASE}blog/rss.xml`, `${BASE}icon.svg`);
+    };
+    expect(run(wrong).map((r) => `${r.rule} ${r.page}`)).toContain("feed-link-missing about/index.html");
+  });
+
+  it("accepts the absolute address of the feed", () => {
+    const edit = (f) => {
+      withFeed()(f);
+      f["about/index.html"] = f["about/index.html"].replace(`href="${BASE}blog/rss.xml"`, `href="${SITE_URL}blog/rss.xml"`);
+    };
+    expect(run(edit)).toEqual([]);
+  });
+
+  it("fails a page that does not link the feed, and a link to a feed that is not built", () => {
+    expect(run(withFeed(FEED, ["about/index.html"])).map((r) => `${r.rule} ${r.page}`)).toEqual(["feed-link-missing about/index.html"]);
+    const broken = run((f) => {
+      withFeed()(f);
+      f["blog/rss.xml"] = null;
+    });
+    expect(broken.some((r) => r.rule === "link-broken")).toBe(true);
+  });
+});
+
 describe("lighthouserc.json", () => {
   it("does not skip is-crawlable once the site is public", () => {
     const rc = JSON.parse(readFileSync(new URL("../lighthouserc.json", import.meta.url), "utf8"));

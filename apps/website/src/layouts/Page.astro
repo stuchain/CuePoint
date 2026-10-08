@@ -15,7 +15,7 @@ import "../styles/global.css";
 
 type Props = PageProps;
 
-const { title, description, path, ogImage, schema = [], breadcrumbs, noindex } = Astro.props as PageProps;
+const { title, description, path, ogImage, schema = [], breadcrumbs, noindex, ogType = "website", publishedTime, tags = [] } = Astro.props as PageProps;
 
 const canonical = canonicalFor(path);
 const image = ogImage ?? ogDefault;
@@ -55,9 +55,12 @@ const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c"
     <link rel="icon" sizes="32x32" href={hrefFor("favicon.ico")} />
     <link rel="apple-touch-icon" href={hrefFor("apple-touch-icon.png")} />
     <link rel="manifest" href={hrefFor("site.webmanifest")} />
+    <link rel="alternate" type="application/rss+xml" title={`${SITE_NAME} blog`} href={hrefFor("blog/rss.xml")} />
 
     <meta property="og:site_name" content={SITE_NAME} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
+    {ogType === "article" && publishedTime && <meta property="article:published_time" content={publishedTime} />}
+    {ogType === "article" && tags.map((tag) => <meta property="article:tag" content={tag} />)}
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
@@ -70,7 +73,7 @@ const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c"
     <meta name="twitter:image" content={imageUrl} />
 
     <Font cssVariable="--font-pixelify" preload={[{ weight: "700" }, { weight: "600" }]} />
-    <Font cssVariable="--font-prose" />
+    <Font cssVariable="--font-prose" preload={[{ style: "normal" }]} />
 
     {jsonLd.map((item) => <script type="application/ld+json" set:html={toScript(item)} />)}
   </head>

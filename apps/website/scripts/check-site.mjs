@@ -11,7 +11,7 @@
  *   title-length (<= 60), description-length (70-160), h1-count (exactly one), heading-skip,
  *   img-alt, noindex-unexpected, sitemap-noindex, sitemap-missing, link-broken, http-url,
  *   jsonld-parse, jsonld-properties, og-image, favicon, manifest, robots-sitemap,
- *   canonical-invalid, sitemap-excluded, noindex-missing
+ *   canonical-invalid, sitemap-excluded, noindex-missing, feed-invalid, feed-link-missing
  *
  * Every result has a `severity`: "error" (the CLI exits 1) or "warning" (printed, never fails).
  *
@@ -24,6 +24,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parse } from "node-html-parser";
+import { validateRss } from "./check-feed.mjs";
 
 export const TITLE_MAX = 60;
 export const DESCRIPTION_MIN = 70;
@@ -446,10 +447,40 @@ export function checkSite(distDir, { base, siteUrl, preview }) {
   }
   checkManifest();
   checkRobots();
+  checkFeed();
 
   return results;
 
   // -------------------------------------------------------------------------------------------
+
+  /**
+   * The RSS feed (SITE-10): when the build has blog/rss.xml it must be RSS 2.0, and every page must
+   * link it with <link rel="alternate" type="application/rss+xml">. A page linking a feed that is
+   * not built is caught by the link check above.
+   */
+  function checkFeed() {
+    const feedFile = "blog/rss.xml";
+    if (!isFile(join(dist, feedFile))) return;
+    for (const problem of validateRss(readFileSync(join(dist, feedFile), "utf8"))) {
+      report("feed-invalid", feedFile, problem);
+    }
+    for (const [file, root] of pages) {
+      const head = root.querySelector("head");
+      const wanted = [`${siteUrl}${feedFile}`, `${base}${feedFile}`];
+      const links = head
+        ? [...elements(head)].some(
+            (el) =>
+              el.rawTagName.toLowerCase() === "link" &&
+              relTokens(el).includes("alternate") &&
+              (attr(el, "type") ?? "").toLowerCase() === "application/rss+xml" &&
+              wanted.includes((attr(el, "href") ?? "").trim()),
+          )
+        : false;
+      if (!links) {
+        report("feed-link-missing", file, `the head does not link the feed: <link rel="alternate" type="application/rss+xml" href="${base}${feedFile}">`);
+      }
+    }
+  }
 
   function readSitemap() {
     const indexPath = join(dist, "sitemap-index.xml");

@@ -10,7 +10,11 @@ export interface NavItem {
   readonly header: boolean;
 }
 
-export const NAV: readonly NavItem[] = [{ label: "Home", path: "", header: true }];
+export const NAV: readonly NavItem[] = [
+  { label: "Home", path: "", header: true },
+  { label: "Blog", path: "blog/", header: true },
+  { label: "Changelog", path: "changelog/", header: false },
+];
 
 /** Links that leave the site. */
 export const EXTERNAL_NAV: readonly { readonly label: string; readonly href: string }[] = [

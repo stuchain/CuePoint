@@ -1,0 +1,82 @@
+---
+import Badge from "../../components/Badge.astro";
+import Panel from "../../components/Panel.astro";
+import Section from "../../components/Section.astro";
+import Page from "../../layouts/Page.astro";
+import { readingMinutes } from "../../lib/blog";
+import { formatDate, isoDay } from "../../lib/dates";
+import { getPosts } from "../../lib/posts";
+import { hrefFor } from "../../lib/url";
+
+const posts = await getPosts();
+---
+
+<Page
+  title="Blog"
+  description="News and notes about CuePoint, the free desktop app that cleans up a Rekordbox library. Follow along by RSS."
+  path="blog/"
+  breadcrumbs={[{ label: "Home", path: "" }, { label: "Blog", path: "blog/" }]}
+>
+  <Section id="blog" width="prose">
+    <h1>Blog</h1>
+    <p class="lede">
+      News and notes about CuePoint. <a href={hrefFor("blog/rss.xml")}>Follow by RSS</a>.
+    </p>
+
+    {
+      posts.length === 0 ? (
+        <p>There are no posts yet. Check back soon.</p>
+      ) : (
+        <ul class="posts">
+          {posts.map((post) => (
+            <li>
+              <Panel as="article">
+                <h2><a href={hrefFor(`blog/${post.id}/`)}>{post.data.title}</a></h2>
+                <p class="meta">
+                  <time datetime={isoDay(post.data.date)}>{formatDate(post.data.date)}</time>
+                  <span>{readingMinutes(post.body ?? "")} min read</span>
+                  {post.data.draft && <Badge variant="warning">Draft: preview builds only</Badge>}
+                </p>
+                <p>{post.data.description}</p>
+              </Panel>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </Section>
+</Page>
+
+<style>
+  .lede {
+    color: var(--fg-muted);
+  }
+  .posts {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-xl) 0 0;
+    display: grid;
+    gap: var(--space-lg);
+  }
+  .posts h2 {
+    margin: 0 0 var(--space-sm);
+    font-size: var(--font-size-lg);
+  }
+  .posts h2 a {
+    text-decoration: none;
+  }
+  .posts h2 a:hover {
+    text-decoration: underline;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm) var(--space-lg);
+    margin: 0 0 var(--space-sm);
+    font-size: var(--font-size-sm);
+  }
+  .posts p:last-child {
+    margin-bottom: 0;
+  }
+</style>

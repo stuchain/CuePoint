@@ -51,6 +51,20 @@ describe("Page", () => {
     expect(html).toContain('href="#main"');
   });
 
+  it("links the blog's RSS feed from the head of every page", async () => {
+    const html = await render({});
+    expect(html).toMatch(/<link rel="alternate" type="application\/rss\+xml"[^>]*href="[^"]*blog\/rss\.xml"/);
+  });
+
+  it("is og:type website by default and article with its time and tags when asked", async () => {
+    expect(meta(await render({}), "property", "og:type")).toBe("website");
+    expect(await render({})).not.toContain("article:published_time");
+    const html = await render({ ogType: "article", publishedTime: "2026-10-08T00:00:00.000Z", tags: ["a", "b"] });
+    expect(meta(html, "property", "og:type")).toBe("article");
+    expect(meta(html, "property", "article:published_time")).toBe("2026-10-08T00:00:00.000Z");
+    expect(html.match(/property="article:tag"/g)).toHaveLength(2);
+  });
+
   it("makes the canonical the address plus the path, and og:url the same", async () => {
     const html = await render({});
     const canonical = /<link rel="canonical" href="([^"]*)"/.exec(html)?.[1];

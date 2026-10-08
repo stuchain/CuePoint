@@ -19,7 +19,7 @@
     "pretest": "npm run sync-tokens && npm run sync-assets",
     "check:site": "node scripts/check-site.mjs",
     "test:e2e": "playwright test",
-    "check:lighthouse": "lhci autorun"
+    "check:lighthouse": "lhci autorun --config=./lighthouserc.cjs"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
@@ -27,11 +27,13 @@
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "1.56.1",
     "@types/three": "^0.186.0",
+    "fast-xml-parser": "^5.11.2",
     "node-html-parser": "^9.0.4",
     "typescript": "^6.0.3",
     "vitest": "^5.0.3"
   },
   "dependencies": {
+    "@astrojs/rss": "^4.0.19",
     "@astrojs/sitemap": "^3.7.4",
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
     "@fontsource/pixelify-sans": "^5.3.0",

@@ -766,6 +766,15 @@ shares well and feeds readers.
 
 **Complexity**: **S**
 
+**Outcome (2026-10-08)**: `/changelog/` parses `CHANGELOG.md` strictly (a duplicate or unreadable
+version heading fails the build) and, in production, shows only the new app's normal versions,
+1.0.0 and later (DEC-176, DEC-194); today that is none, so it says 1.0 is coming and links GitHub
+Releases. A version links its release only when the release exists. `/blog/` with typed front
+matter, `BlogPosting` (publisher a Person, DEC-144), `og:type` article, share links with no
+third-party script, and `/blog/rss.xml` linked from every page and checked by `check-site`.
+"Introducing CuePoint" is written and stays a draft until the user approves it. The body font is
+preloaded, which fixed a layout shift on long pages.
+
 ---
 
 ## SITE-11 — Privacy, Terms, the 404, and the Sharing Pictures
