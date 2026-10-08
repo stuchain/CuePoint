@@ -128,6 +128,7 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
   const rowEls = [...el.querySelectorAll<HTMLElement>(".row:not(.head)")];
   const n = rowEls.length;
   const accepted = CLEAN_ROWS.filter((r) => r.status === "accepted").length;
+  const applied = CLEAN_ROWS.filter((r) => r.bpm[1] !== undefined || r.genre[1] !== undefined).length;
 
   swoop(tl, rig, start, end, { rotationY: -55, rotationX: 25 }, { rotationY: -16, rotationX: 9 }, { rotationY: 12, rotationX: 4 });
   tl.set(match, { attr: { "data-pressed": "1" } }, at(3, 1));
@@ -141,7 +142,7 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
     [0, "Ready"],
     ...rowEls.map((_, i) => [matchedAt(i), `Matching ${i + 1} of ${n}`] as const),
     [first + step * n, `${accepted} accepted, ${n - accepted} to review`],
-    [applyAt + BEAT / 2, `Applied to ${accepted} tracks`],
+    [applyAt + BEAT / 2, `Applied to ${applied} tracks`],
   ]);
 
   const oldOf = (cells: Element[]): Element[] => cells.map((c) => c.querySelector(".old")).filter((o): o is Element => o !== null);
@@ -154,8 +155,9 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
   });
   // Apply from the accepted matches: tempo and genre, row by row
   tl.from(apply, { scale: 0, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, at(4, 2));
-  tl.set(apply, { attr: { "data-pressed": "1" } }, applyAt);
-  tl.set(apply, { attr: { "data-pressed": "0" } }, applyAt + BEAT / 2);
+  // GSAP owns this button's transform (it pops in), so the press moves it through GSAP as well
+  tl.set(apply, { x: 4, y: 4, attr: { "data-pressed": "1" } }, applyAt);
+  tl.set(apply, { x: 0, y: 0, attr: { "data-pressed": "0" } }, applyAt + BEAT / 2);
   rowEls.forEach((row, i) => {
     const t = applyAt + BEAT / 2 + (i * BEAT) / 6;
     const cells = [...row.querySelectorAll(".apply")].filter((c) => c.querySelector(".new"));
@@ -181,6 +183,7 @@ function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
     const a = (n / 12) * Math.PI * 2 - Math.PI / 2;
     return `<span class="tile" data-key="${n}${ring}" style="left:${Math.cos(a) * r}px;top:${Math.sin(a) * r}px;background:${keyColor(`${n}${ring}`)}">${n}${ring}</span>`;
   }).join("");
+  if (APP_PREVIEW) el.append(h(`<span class="px-badge preview corner">Preview</span>`));
   rig.innerHTML = `<div class="disc"><img src="${markUrl}" alt="" style="width:${mark}px;height:${mark}px;margin:${-mark / 2}px 0 0 ${-mark / 2}px" />${tiles}</div>`;
   const disc = rig.querySelector(".disc")!;
   const { start, end } = shot("keys");
@@ -196,7 +199,8 @@ function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
     const key = tile.dataset["key"]!;
     if (key === "8A") tl.to(tile, { z: 170, scale: 1.5, duration: BEAT / 2, ease: "steps(3)" }, lift);
     else if (mixesInKey("8A", key)) tl.to(tile, { z: 120, scale: 1.25, duration: BEAT / 2, ease: "steps(3)" }, lift + BEAT / 2);
-    else tl.to(tile, { opacity: 0.3, duration: BEAT / 4, ease: "steps(2)" }, lift);
+    // from an explicit start: the rise sweep's last tiles are still landing at `lift`
+    else tl.fromTo(tile, { opacity: 1 }, { opacity: 0.3, duration: BEAT / 4, ease: "steps(2)", immediateRender: false }, lift + BEAT / 4);
   }
   tl.to(rig, { z: 1600, duration: BEAT, ease: "power3.in" }, end - BEAT);
   return el;
@@ -269,7 +273,7 @@ function buildExport(format: FormatId, tl: Timeline): HTMLElement {
   const { el, rig } = space("shot-export", 1600);
   rig.innerHTML = `
       <div class="dialog px-panel" style="width:${width}px;margin-left:${-width / 2}px">
-        <h3>Export to Rekordbox</h3>
+        <h3>Export to Rekordbox ${APP_PREVIEW ? `<span class="px-badge preview">Preview</span>` : ""}</h3>
         <div class="inner">
           <div class="field">CuePoint library.xml</div>
           <div class="preview"><b>Preview</b><span>Your own key, BPM and genre go with every track.</span></div>

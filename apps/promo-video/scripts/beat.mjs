@@ -23,6 +23,8 @@ const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "out", "beat.wav
 
 /** The dry mix, a reverb send and a delay send, each stereo. */
 const dry = [new Float32Array(N), new Float32Array(N)];
+/** Pads and sub: mixed like `dry`, but ducked by the kick (the pump). */
+const pumped = [new Float32Array(N), new Float32Array(N)];
 const verb = [new Float32Array(N), new Float32Array(N)];
 const echo = [new Float32Array(N), new Float32Array(N)];
 
@@ -58,8 +60,9 @@ function add(t, seconds, gain, pan, fn, sends = {}) {
     const env = Math.min(1, (i + 1) / edge, (len - i) / edge);
     const v = fn(i / RATE, i) * env;
     const j = start + i;
-    dry[0][j] += v * gl;
-    dry[1][j] += v * gr;
+    const bus = sends.pump ? pumped : dry;
+    bus[0][j] += v * gl;
+    bus[1][j] += v * gr;
     if (rv) {
       verb[0][j] += v * gl * rv;
       verb[1][j] += v * gr * rv;
@@ -128,7 +131,7 @@ function pad(t, notes, seconds, gain, bright) {
         lp += cut * (saw - lp);
         lp2 += cut * (lp - lp2);
         return lp2 * swell;
-      }, { verb: 0.5 });
+      }, { verb: 0.5, pump: true });
     }
   }
 }
@@ -148,7 +151,7 @@ function pluck(t, note, gain, pan, bright) {
 /** The sub: a sine with a little drive, ducked by the kick. */
 function sub(t, note, seconds) {
   const f = midi(note);
-  add(t, seconds, 0.55, 0, (s) => Math.tanh(Math.sin(2 * Math.PI * f * s) * 1.6) * Math.min(1, s * 40));
+  add(t, seconds, 0.55, 0, (s) => Math.tanh(Math.sin(2 * Math.PI * f * s) * 1.6) * Math.min(1, s * 40, (seconds - s) / 0.02), { pump: true });
 }
 
 function riser(t, seconds) {
@@ -204,8 +207,11 @@ for (let bar = 0; bar < BARS; bar++) {
   // the sub follows the chord's root on the kick's pattern, from the drop
   if (inDrop) {
     const steps = last ? [0] : [0, 1.75, 2.5];
-    steps.forEach((b, i) => sub(at(bar, b), c.root - 12, (i === 2 ? 1.4 : steps[i + 1] - b) * BEAT * 0.95));
-    rim(at(bar, 3.5));
+    steps.forEach((b, i) => {
+      const beats = i === steps.length - 1 ? (last ? 2.5 : 1.4) : steps[i + 1] - b;
+      sub(at(bar, b), c.root - 12, beats * BEAT * 0.95);
+    });
+    if (!last) rim(at(bar, 3.5));
   }
 }
 
@@ -257,19 +263,25 @@ function room(input, offset) {
 const wetL = room(verb[0], 0);
 const wetR = room(verb[1], 23);
 
-// ---- master: sidechain the pads and room to the kick, saturate, normalize to -1 dBFS ----
+// ---- master: sidechain the pads, sub, delay and room to the kick, saturate, normalize to -1 dBFS ----
 
 const duck = new Float32Array(N).fill(1);
 for (const k of KICKS) {
   const s = Math.round(k * RATE);
-  for (let i = 0; i < Math.round(0.3 * RATE) && s + i < N; i++) duck[s + i] = Math.min(duck[s + i], 0.35 + 0.65 * (i / (0.3 * RATE)) ** 1.5);
+  const attack = Math.round(0.004 * RATE);
+  for (let i = -attack; i < Math.round(0.3 * RATE) && s + i < N; i++) {
+    if (s + i < 0) continue;
+    // a 4 ms slope down into the duck, then the slow release back up
+    const g = i < 0 ? 1 - 0.65 * ((i + attack) / attack) : 0.35 + 0.65 * (i / (0.3 * RATE)) ** 1.5;
+    duck[s + i] = Math.min(duck[s + i], g);
+  }
 }
 const L = new Float32Array(N);
 const R = new Float32Array(N);
 let peak = 0;
 for (let i = 0; i < N; i++) {
-  L[i] = Math.tanh((dry[0][i] + echo[0][i] * 0.5 * duck[i] + wetL[i] * 0.9 * duck[i]) * 0.55);
-  R[i] = Math.tanh((dry[1][i] + echo[1][i] * 0.5 * duck[i] + wetR[i] * 0.9 * duck[i]) * 0.55);
+  L[i] = Math.tanh((dry[0][i] + pumped[0][i] * duck[i] + echo[0][i] * 0.5 * duck[i] + wetL[i] * 0.9 * duck[i]) * 0.55);
+  R[i] = Math.tanh((dry[1][i] + pumped[1][i] * duck[i] + echo[1][i] * 0.5 * duck[i] + wetR[i] * 0.9 * duck[i]) * 0.55);
   peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
 }
 const norm = 10 ** (-1 / 20) / (peak || 1);

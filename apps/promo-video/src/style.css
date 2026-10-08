@@ -477,6 +477,9 @@ canvas.scene3d {
 }
 
 .dialog h3 {
+  display: flex;
+  align-items: center;
+  gap: 18px;
   margin: 0;
   padding: 18px 28px;
   font-family: var(--font-pixel);
@@ -814,6 +817,13 @@ canvas.backdrop {
 
 .px-badge.preview {
   background: var(--accent-warning);
+}
+
+.px-badge.corner {
+  position: absolute;
+  left: 40px;
+  top: 40px;
+  font-size: 28px;
 }
 
 /* Export: the dialog in space, the file flying out */
