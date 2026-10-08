@@ -1693,6 +1693,18 @@ during a verification pass. The two specs are reported failing on macOS rather t
   unplug, and somebody to listen.
 - **The Library screen's vertical fit at scale 2**, above.
 
+### Re-checked in a packaged Windows build (2026-10-08)
+
+`rekordboxExport.spec.ts` passes three times in a row against a packaged Windows build of `20cd90b5`
+(`electron-builder --win --dir`, with the PyInstaller engine and the pinned `mpv`), 3 of 3, alongside
+Phase 10's and Phase 11's packaged runs. Nothing in the file's points has regressed since 2026-09-21.
+
+**Still owed, and the user's own step**: opening an exported file in Rekordbox itself (acceptance
+1–6). It was not done from here for the same reason as before: importing the file changes the
+Imported Library setting of the user's own Rekordbox. The check is to export a real library from
+CuePoint, open the file in Rekordbox as the Imported Library, and confirm the tree, a track's hot cues,
+memory cues and beat grid, an overridden key, BPM, genre, label or year, and a CuePoint rating.
+
 ## Deferred, with reasons
 
 - **Writing CuePoint tags, notes or favorites anywhere outside the database** — DEC-080, DEC-085.

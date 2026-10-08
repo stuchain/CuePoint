@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 11: Waveforms, Detailed Step Specifications
 
-Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30), WAVE-03 (2026-10-03), WAVE-04 to WAVE-07 (2026-10-05). WAVE-08, loudness, was added 2026-10-05 (DEC-124) and implemented the same day. Acceptance points 1–16 are met on Windows in the development build; their packaged runs are owed (see the end of WAVE-07).** The first seven steps below replace the
+Status: **Specified 2026-09-29. WAVE-01 and WAVE-02 are implemented (2026-09-30), WAVE-03 (2026-10-03), WAVE-04 to WAVE-07 (2026-10-05). WAVE-08, loudness, was added 2026-10-05 (DEC-124) and implemented the same day. Acceptance points 1–16 are met on Windows in the development build and, from 2026-10-08, in a packaged Windows build; the packaged Linux and macOS runs are owed (see point 15).** The first seven steps below replace the
 roadmap's placeholder inventory (WAVE-01…WAVE-07), keeping its count; WAVE-08 was added after them. Per the process, no
 implementation happens from this document: each step needs an explicit "Implement WAVE-NN"
 instruction, scoped to exactly that step, and its outcome is recorded under the step afterwards.
@@ -2203,18 +2203,22 @@ Points 1 to 15 are the phase as specified; point 16 is WAVE-08's (DEC-124), chec
     *WAVE-03 (the unavailable state), WAVE-05 and WAVE-06 (the decoder sentence in Settings, the bar's
     title and the Inspector).*
 15. ✅ The measurements are inside budget at 50,000 tracks, twice (above). The journey passes three times
-    in a row in the development build on Windows. **Owed:** the journey three times in a packaged Linux
-    build with `CUEPOINT_MPV_PATH` (both journey specs take `CUEPOINT_E2E_EXECUTABLE`), the packaged
-    Windows and macOS runs, and `bench_decoder.py` on the pinned macOS build, recorded with Phase 5's
-    and Phase 10's owed runs.
+    in a row in the development build on Windows. **The packaged Windows run is done (2026-10-08):**
+    against a packaged Windows build of `20cd90b5` (`electron-builder --win --dir`, the PyInstaller
+    engine and the pinned `mpv`), `waveformJourney.spec.ts`, `waveformLoudness.spec.ts` and
+    `waveformPlaces.spec.ts` pass three times in a row, 15 of 15, the 5,000-row scroll with no long
+    task over 50 ms. **Owed:** the journey three times in a packaged Linux build with
+    `CUEPOINT_MPV_PATH`, the packaged macOS run, and `bench_decoder.py` on the pinned macOS build,
+    recorded with Phase 5's owed runs.
 16. ✅ Every analysed track's integrated loudness and peak are measured in the same pass and shown,
     read-only, in the Inspector, a Library column and Prepare's strip, or the reason there is none. A
     library analysed before keeps every waveform while it is measured. *WAVE-08:*
     `waveformLoudness.spec.ts` in the running app, each fixture's reading in all three places and a
     store from before upgraded with every picture kept; the release check's EBU Tech 3341 case on the
     pinned Windows build; the analysis's rate a third lower, inside the half allowed, with the
-    search and playback budgets held. **Owed** with point 15: the release check on the pinned macOS
-    build in desktop CI, and the packaged runs.
+    search and playback budgets held. `waveformLoudness.spec.ts` passes in the packaged Windows build
+    too (point 15). **Owed** with point 15: the release check on the pinned macOS build in desktop
+    CI, and the packaged Linux and macOS runs.
 
 ## Deferred, with reasons
 

@@ -1,7 +1,8 @@
 # CuePoint v1.0.0 — Phase 10: Prepare, Detailed Step Specifications
 
 Status: **Specified 2026-09-28. PREP-01 to PREP-12 are implemented (2026-09-28 to 2026-09-29), and the
-phase acceptance is checked below: met on Linux, with the packaged Windows and macOS runs owed.** The twelve steps below replace the roadmap's
+phase acceptance is checked below: met on Linux and in a packaged Windows build (2026-10-08), with the
+packaged macOS runs owed.** The twelve steps below replace the roadmap's
 placeholder inventory (PREP-01…PREP-12), keeping its count. Per the process, no implementation
 happens from this document: each step needs an explicit "Implement PREP-NN" instruction, scoped to
 exactly that step, and its outcome is recorded under the step afterwards. There are no open points.
@@ -3145,6 +3146,12 @@ engine), not in a packaged Windows build: this step ran in a Linux container. **
 runs are owed**, with the macOS packaged checks owed alongside Phases 5, 7, 8 and 9, and with Phase 5's
 own acceptance, which this document asked to be closed before "Play Set" was wired.
 
+**The packaged Windows runs, done (2026-10-08).** Against a packaged Windows build of `20cd90b5`
+(`electron-builder --win --dir`, with the PyInstaller engine and the pinned `mpv`, named by
+`CUEPOINT_E2E_EXECUTABLE`), `prepareJourney.spec.ts` (both tests), `prepare.spec.ts` and
+`prepareSource.spec.ts` pass three times in a row, 12 of 12. Every point below holds there too.
+The macOS packaged runs stay owed.
+
 1. **Met.** m0025 was run on five copies of a version-24 library holding folders, Collections, Smart
    Collections, a frozen Collection, repeats and 400 export records, at 50,000 tracks (500 nodes,
    100,000 entries). Every row's fingerprint is unchanged and the foreign-key check is clean on each copy
@@ -3197,6 +3204,9 @@ own acceptance, which this document asked to be closed before "Play Set" was wir
       now holds each platform's own counts (Linux's as before; Windows's, and macOS's until measured,
       as above). It had been failing on Windows since PREP-11, on the lanes' count, which stopped it
       before the rest were checked.
+    - **The packaged Windows counts (2026-10-08)** equal the development build's: 6 and 7, 3 and 4
+      with the player's bar, 3 and 4 with the lanes, the source panel at 3, and the page never
+      scrolls. The double-clicked row plays.
 14. **Met.** CLEAN-10's file-write boundary test names every module that can write, with
     `data/set_list_file.py` as a text writer that opens no audio file. Both journeys assert the source
     XML is byte for byte unchanged after every Phase 10 action.
