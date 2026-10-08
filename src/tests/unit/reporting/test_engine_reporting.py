@@ -11,6 +11,7 @@ import json
 import logging
 import re
 import socket
+import sys
 import threading
 import time
 import urllib.error
@@ -886,12 +887,20 @@ def _raw_status(port: int, payload: bytes) -> int:
         sock.sendall(payload)
         data = b""
         while True:
-            chunk = sock.recv(4096)
+            try:
+                chunk = sock.recv(4096)
+            except ConnectionResetError:
+                # Windows can reset after the reply when request bytes went unread.
+                if data:
+                    break
+                raise
             if not chunk:
                 break
             data += chunk
     if data.startswith(b"HTTP/"):
         return int(data.split(b" ", 2)[1])
+    # Only an older http.server answers without a status line.
+    assert sys.version_info < (3, 13), data
     match = re.search(rb"Error code: (\d{3})", data)
     assert match, data
     return int(match.group(1))

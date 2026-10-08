@@ -6,11 +6,11 @@ import json
 import logging
 import os
 import re
+import socketserver
 import sys
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import socketserver
 from http.server import BaseHTTPRequestHandler
 from http.server import ThreadingHTTPServer as _StdlibThreadingHTTPServer
 from pathlib import Path

@@ -21,7 +21,12 @@ _HOOKS = Path(__file__).resolve().parents[4] / ".claude" / "hooks"
 _BASH4_ONLY = {
     "lowercase expansion ${x,,}": r"\$\{[A-Za-z_][A-Za-z_0-9]*(,,?)\}",
     "uppercase expansion ${x^^}": r"\$\{[A-Za-z_][A-Za-z_0-9]*(\^\^?)\}",
-    "associative array (declare -A)": r"\bdeclare\s+-[a-zA-Z]*A",
+    "associative array (declare/local/typeset -A)": r"\b(declare|local|typeset)\s+-[a-zA-Z]*A",
+    "nameref (-n)": r"\b(declare|local|typeset)\s+-[a-zA-Z]*n\b",
+    "${x@Q} transform": r"\$\{[A-Za-z_][A-Za-z_0-9]*@[QEPAKa]\}",
+    "negative array index": r"\[-[0-9]+\]\}",
+    "coproc": r"\bcoproc\b",
+    "globstar": r"\bglobstar\b",
     "mapfile": r"\bmapfile\b",
     "readarray": r"\breadarray\b",
     "|& pipe": r"\|&",
@@ -54,4 +59,10 @@ def test_a_hook_uses_no_bash_4_only_syntax(hook: Path):
 def test_the_checker_catches_what_it_is_for():
     assert re.search(_BASH4_ONLY["lowercase expansion ${x,,}"], 'echo "${p,,}"')
     assert re.search(_BASH4_ONLY["uppercase expansion ${x^^}"], "echo ${p^^}")
-    assert re.search(_BASH4_ONLY["associative array (declare -A)"], "declare -A m")
+    arrays = _BASH4_ONLY["associative array (declare/local/typeset -A)"]
+    assert re.search(arrays, "declare -A m")
+    assert re.search(arrays, "local -A m")
+    assert re.search(_BASH4_ONLY["nameref (-n)"], "local -n ref=x")
+    assert re.search(_BASH4_ONLY["${x@Q} transform"], 'echo "${p@Q}"')
+    assert re.search(_BASH4_ONLY["negative array index"], 'echo "${a[-1]}"')
+    assert not re.search(_BASH4_ONLY["nameref (-n)"], "local name=x")

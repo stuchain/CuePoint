@@ -128,3 +128,4 @@ class TestLoggingIntegration:
             assert mock_logging.warning.called
             call_args = mock_logging.warning.call_args
             assert call_args[1]["exc_info"] is not None
+            assert "Failed to search Beatport" in call_args[0][0]

@@ -60,7 +60,7 @@ FAKE_ENGINE = textwrap.dedent(
         sys.stderr.write("x" * 200_000)
     time.sleep(float(os.environ.get("DELAY", "0.2")))
     if mode == "hang":
-        sys.stderr.write("still waiting on the reverse lookup\\n")
+        sys.stderr.write("still starting up\\n")
         sys.stderr.flush()
         time.sleep(60)
 
@@ -138,9 +138,7 @@ class TestMeasure:
     ):
         # "did not answer" alone says nothing about where the engine was stuck.
         monkeypatch.setenv("DELAY", "0")
-        with pytest.raises(
-            bench.StartError, match="within 2s.*still waiting on the reverse lookup"
-        ):
+        with pytest.raises(bench.StartError, match="within 2s.*still starting up"):
             bench.measure_once(fake_engine("hang"), timeout=2)
 
     def test_runs_must_be_positive(self, fake_engine):
