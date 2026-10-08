@@ -8,12 +8,16 @@ on:
       - 'apps/website/**'
       - 'docs/user-guide/**'
       - 'docs/release/CHANGELOG.md'
+      - 'apps/desktop-electron/renderer/src/tokens/**'
+      - 'apps/desktop-electron/build/icon-source/**'
       - '.github/workflows/website.yml'
   pull_request:
     paths:
       - 'apps/website/**'
       - 'docs/user-guide/**'
       - 'docs/release/CHANGELOG.md'
+      - 'apps/desktop-electron/renderer/src/tokens/**'
+      - 'apps/desktop-electron/build/icon-source/**'
       - '.github/workflows/website.yml'
 
 permissions:

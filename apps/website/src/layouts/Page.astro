@@ -1,0 +1,93 @@
+---
+import { Font } from "astro:assets";
+import { PUBLIC, SITE_URL } from "../../site.config";
+import ogDefault from "../assets/og/default.png";
+import mark from "../assets/mark/mark-32.svg";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
+import Footer from "../components/Footer.astro";
+import Header from "../components/Header.astro";
+import { SITE_NAME } from "../data/site";
+import { CSP } from "../lib/csp";
+import { DEFAULT_THEME, themeInitScript } from "../lib/themes";
+import { canonicalFor } from "../lib/url";
+import type { PageProps } from "./Page.types";
+import "../styles/tokens.generated.css";
+import "../styles/global.css";
+
+type Props = PageProps;
+
+const { title, description, path, ogImage, schema = [], breadcrumbs, noindex } = Astro.props as PageProps;
+
+const canonical = canonicalFor(path);
+const image = ogImage ?? ogDefault;
+const imageUrl = new URL(image.src, SITE_URL).href;
+const robots = !PUBLIC || noindex !== undefined ? "noindex, nofollow" : undefined;
+
+const breadcrumbSchema =
+  breadcrumbs && breadcrumbs.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: breadcrumbs.map((crumb, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          name: crumb.label,
+          item: canonicalFor(crumb.path),
+        })),
+      }
+    : undefined;
+const jsonLd = [...schema, ...(breadcrumbSchema ? [breadcrumbSchema] : [])];
+// "<" is escaped so a string in the data can never close the script tag
+const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c");
+---
+
+<!doctype html>
+<html lang="en" data-theme={DEFAULT_THEME}>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content={CSP} />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline set:html={themeInitScript()} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {robots && <meta name="robots" content={robots} />}
+    <link rel="icon" type="image/svg+xml" href={mark.src} />
+
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:width" content={String(image.width)} />
+    <meta property="og:image:height" content={String(image.height)} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
+
+    <Font cssVariable="--font-pixelify" preload={[{ weight: "700" }, { weight: "600" }]} />
+    <Font cssVariable="--font-prose" />
+
+    {jsonLd.map((item) => <script type="application/ld+json" set:html={toScript(item)} />)}
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <Header currentPath={path} />
+    <main id="main" tabindex="-1">
+      {breadcrumbs && breadcrumbs.length > 0 && (
+        <div class="crumbs-wrap"><Breadcrumbs items={breadcrumbs} /></div>
+      )}
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>
+
+<style>
+  .crumbs-wrap {
+    width: min(100% - 2 * var(--gutter), var(--content-max));
+    margin: var(--space-lg) auto 0;
+  }
+</style>

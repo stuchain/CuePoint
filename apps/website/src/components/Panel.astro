@@ -1,0 +1,25 @@
+---
+interface Props {
+  as?: "div" | "section" | "article" | "aside";
+  /** `raised` adds the hard shadow the app gives its panels. */
+  tone?: "flat" | "raised";
+  class?: string;
+}
+const { as: Tag = "div", tone = "raised", class: className } = Astro.props;
+---
+
+<Tag class:list={["panel", className]} data-tone={tone}><slot /></Tag>
+
+<style>
+  .panel {
+    background: var(--bg-panel);
+    color: var(--fg-primary);
+    border: var(--border-width) solid var(--border-outline);
+    border-radius: 0;
+    padding: var(--space-lg);
+    box-shadow: var(--shadow-bevel-panel);
+  }
+  .panel[data-tone="raised"] {
+    box-shadow: var(--shadow-bevel-panel), var(--shadow-panel);
+  }
+</style>

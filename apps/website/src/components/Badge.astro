@@ -1,0 +1,30 @@
+---
+interface Props {
+  variant?: "neutral" | "accent" | "success" | "warning" | "danger" | "info";
+}
+const { variant = "neutral" } = Astro.props;
+---
+
+<span class="badge" data-variant={variant}><slot /></span>
+
+<style>
+  .badge {
+    display: inline-block;
+    padding: 0 var(--space-sm);
+    border: var(--border-width) solid var(--border-outline);
+    border-radius: 0;
+    font-family: var(--font-pixel);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    line-height: 1.5;
+    box-shadow: var(--shadow-badge);
+    background: var(--bg-panel-alt);
+    color: var(--fg-primary);
+  }
+  /* Black text on the status colors: >= 4.5:1 in all five themes. */
+  .badge[data-variant="accent"] { background: var(--accent-primary); color: var(--border-outline); }
+  .badge[data-variant="success"] { background: var(--accent-success); color: var(--border-outline); }
+  .badge[data-variant="warning"] { background: var(--accent-warning); color: var(--border-outline); }
+  .badge[data-variant="danger"] { background: var(--accent-danger); color: var(--border-outline); }
+  .badge[data-variant="info"] { background: var(--accent-info); color: var(--border-outline); }
+</style>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addressParts } from "../site.config";
+import { addressParts, isStyleguide } from "../site.config";
 
 describe("addressParts", () => {
   it("splits the GitHub Pages address into site and base", () => {
@@ -28,5 +28,16 @@ describe("addressParts", () => {
   it("throws on a URL with a query or hash", () => {
     expect(() => addressParts("https://example.com/?a=1")).toThrow();
     expect(() => addressParts("https://example.com/#top")).toThrow();
+  });
+});
+
+describe("isStyleguide", () => {
+  it("matches /styleguide/ at the start of the path after the base only", () => {
+    expect(isStyleguide("/CuePoint/styleguide/")).toBe(true);
+    expect(isStyleguide("/CuePoint/styleguide/buttons/")).toBe(true);
+    expect(isStyleguide("/CuePoint/guides/styleguide/")).toBe(false);
+    expect(isStyleguide("/CuePoint/styleguides/")).toBe(false);
+    expect(isStyleguide("/CuePoint/")).toBe(false);
+    expect(isStyleguide("/styleguide/")).toBe(false);
   });
 });

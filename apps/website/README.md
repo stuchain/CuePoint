@@ -13,6 +13,8 @@ npm run build    # static site into dist/
 npm run preview  # serve dist/ locally
 npm run check    # astro check and tsc --noEmit
 npm test         # vitest
+npm run sync-tokens  # regenerate src/styles/tokens.generated.css from the app (build and dev do this first)
+npm run og-image     # remake the placeholder social card
 ```
 
 ## The address and the `/CuePoint/` base

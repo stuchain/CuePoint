@@ -1,0 +1,102 @@
+---
+import { NAV } from "../data/nav";
+import { PRIMARY_ACTION, SITE_NAME } from "../data/site";
+import { hrefFor } from "../lib/url";
+import mark from "../assets/mark/mark-32.svg";
+import Button from "./Button.astro";
+import ThemeSwitch from "./ThemeSwitch.astro";
+
+interface Props {
+  /** The current page's path, relative to the base, to mark its link. */
+  currentPath?: string;
+}
+const { currentPath } = Astro.props;
+---
+
+<header class="header">
+  <div class="bar">
+    <a class="brand" href={hrefFor("")}>
+      <img class="mark" src={mark.src} width="32" height="32" alt="" />
+      <span class="name">{SITE_NAME}</span>
+    </a>
+
+    <nav class="nav" aria-label="Main">
+      <ul>
+        {
+          NAV.filter((n) => n.header).map((n) => (
+            <li>
+              <a href={hrefFor(n.path)} aria-current={n.path === currentPath ? "page" : undefined}>
+                {n.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <ThemeSwitch />
+
+    <Button href={PRIMARY_ACTION.href} external class="action">{PRIMARY_ACTION.label}</Button>
+  </div>
+</header>
+
+<style>
+  .header {
+    background: var(--bg-toolbar);
+    color: var(--fg-primary);
+    border-bottom: var(--border-width) solid var(--border-outline);
+    box-shadow: inset 0 calc(-1 * var(--bevel-size-sm)) 0 var(--bevel-shadow);
+  }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-md) var(--space-lg);
+    width: min(100% - 2 * var(--gutter), var(--content-max));
+    margin-inline: auto;
+    padding-block: var(--space-md);
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-right: auto;
+    font-family: var(--font-pixel);
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .mark {
+    display: block;
+    image-rendering: pixelated;
+  }
+  .nav ul {
+    display: flex;
+    gap: var(--space-lg);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-pixel);
+    font-weight: 600;
+  }
+  .nav a {
+    display: inline-block;
+    padding-block: var(--space-xs);
+    text-decoration: none;
+  }
+  .nav a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: var(--border-width);
+    text-underline-offset: 0.25em;
+  }
+  .nav a[aria-current="page"] {
+    text-decoration: underline;
+    text-decoration-thickness: var(--border-width-heavy);
+    text-underline-offset: 0.25em;
+  }
+  @media (max-width: 40rem) {
+    .brand {
+      flex: 1 1 auto;
+    }
+  }
+</style>

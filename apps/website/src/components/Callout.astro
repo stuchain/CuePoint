@@ -1,0 +1,35 @@
+---
+interface Props {
+  kind?: "note" | "success" | "warning" | "danger";
+  title?: string;
+}
+const { kind = "note", title } = Astro.props;
+---
+
+<aside class="callout" data-kind={kind}>
+  {title && <p class="title">{title}</p>}
+  <div class="body"><slot /></div>
+</aside>
+
+<style>
+  .callout {
+    --stripe: var(--accent-info);
+    padding: var(--space-md) var(--space-lg);
+    background: var(--bg-panel);
+    color: var(--fg-primary);
+    border: var(--border-width) solid var(--border-outline);
+    border-left: calc(var(--border-width) * 3) solid var(--stripe);
+    border-radius: 0;
+    box-shadow: var(--shadow-bevel-panel);
+  }
+  .callout[data-kind="success"] { --stripe: var(--accent-success); }
+  .callout[data-kind="warning"] { --stripe: var(--accent-warning); }
+  .callout[data-kind="danger"] { --stripe: var(--accent-danger); }
+  .title {
+    margin: 0 0 var(--space-xs);
+    font-family: var(--font-pixel);
+    font-weight: 600;
+  }
+  .body > :global(:first-child) { margin-top: 0; }
+  .body > :global(:last-child) { margin-bottom: 0; }
+</style>

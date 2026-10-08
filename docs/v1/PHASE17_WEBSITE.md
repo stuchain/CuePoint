@@ -323,6 +323,17 @@ The generator converts sizes, and the test pins it.
 
 **Complexity**: **M**
 
+**Outcome (2026-10-08)**: `scripts/sync-tokens.mjs` generates `tokens.generated.css` from every CSS
+file in the app's tokens folder at a web scale of 1.25 (body text 17.5 px), hairlines in whole px
+rounded down as the app does, PAGES-14's `round()`/`max()`/`@property` resolved; a drift test fails
+when the app's tokens change, and `website.yml` also runs on changes to them. Prose font: Atkinson
+Hyperlegible Next; Pixelify Sans for chrome, ligatures off. Fonts are self-hosted through Astro's
+Fonts API with local files. The mark is DIST-09's 32 px grid, re-encoded as one path per color and
+tested pixel-identical. `Page.astro` types `noindex` as `"404" | "thank-you"`; `Img` needs `alt` or
+`decorative`. The publisher shows as "stuchain" until the user's name is given (DEC-144, SITE-11).
+Contrast: black text on accent fills (the app's inverse text fails in Neo Dark), and the focus ring
+has a text-colored halo. `@playwright/test` is pinned at 1.56.1 to match the container's Chromium.
+
 ---
 
 ## SITE-03 — DEC-141's Checks, Failing the Build

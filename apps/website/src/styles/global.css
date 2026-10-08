@@ -1,0 +1,164 @@
+/*
+ * Base styles for every page. Tokens come from tokens.generated.css (the app's, fixed for the web).
+ * Rule of thumb for color: muted text only on --bg-app (4.7:1 or more in all five themes);
+ * on panels and bars use --fg-primary. Black text on accents (--border-outline).
+ */
+:root {
+  --font-pixel: var(--font-pixelify), "Pixelify Sans", "Segoe UI", sans-serif;
+  --font-body: var(--font-prose), system-ui, sans-serif;
+  --gutter: 1rem;
+  --content-max: 72rem;
+  --focus-halo: 0 0 #0000;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 1rem;
+}
+
+/* Pixelify's fi and fl ligatures read as other letters at small sizes */
+h1, h2, h3, h4, .btn, .badge, .brand, .nav, .kbd, .skip-link {
+  font-variant-ligatures: none;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--bg-app);
+  color: var(--fg-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-md);
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
+}
+
+main {
+  flex: 1 0 auto;
+}
+main:focus {
+  outline: none;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  line-height: 1.15;
+  text-wrap: balance;
+  margin: var(--space-xl) 0 var(--space-md);
+}
+h1 {
+  font-size: clamp(var(--font-size-xl), 1rem + 4vw, 3.25rem);
+}
+h2 {
+  font-size: clamp(var(--font-size-lg), 0.9rem + 2vw, var(--font-size-xl));
+}
+h3 {
+  font-size: var(--font-size-lg);
+}
+h4 {
+  font-size: var(--font-size-md);
+}
+
+p,
+ul,
+ol {
+  margin: 0 0 var(--space-md);
+}
+
+a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: var(--bevel-size-sm);
+  text-underline-offset: 0.2em;
+}
+a:hover {
+  text-decoration-thickness: var(--border-width);
+}
+
+img,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+hr {
+  border: 0;
+  border-top: var(--border-width) solid var(--border-outline);
+  margin: var(--space-xl) 0;
+}
+
+/* Text for screen readers only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-md);
+  top: var(--space-md);
+  z-index: 100;
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--accent-primary);
+  color: var(--border-outline);
+  border: var(--border-width) solid var(--border-outline);
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  transform: translateY(-300%);
+}
+.skip-link:focus {
+  transform: none;
+}
+
+/*
+ * Focus: the theme's accent ring on every interactive element (width from the app's token),
+ * inside a --fg-primary halo. The accent alone is 3.7:1 to 4.2:1 on the page in two themes; the halo
+ * keeps the ring's outer edge at 12:1 or more against the page in all five.
+ */
+:focus-visible {
+  --focus-halo: 0 0 0 calc(var(--focus-ring-width) * 2 + 2px) var(--fg-primary);
+  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline-offset: 2px;
+}
+/* Elements with no shadow of their own take the halo here; components that draw bevels list
+   var(--focus-halo) in their own box-shadow. */
+:where(a:not(.btn), summary, input, select, textarea):focus-visible {
+  box-shadow: var(--focus-halo);
+}
+
+/* Reduced motion: no transitions, no animations, fades included (as in the app, PAGES-02). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

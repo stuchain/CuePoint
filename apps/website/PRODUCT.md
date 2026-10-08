@@ -53,7 +53,16 @@ The 3D extends the app's look and never replaces it. The opening scene is the cr
 Camelot wheel (DEC-189): a voxel crate of unlabeled records, which take their key, tempo and genre and
 fly into a lit Camelot wheel. The mark is the Camelot wheel icon (DEC-210). It is the app's icon (DIST-09); the site reuses it and draws no new mark (DEC-198). The source grids are `apps/desktop-electron/build/icon-source/mark-*.svg`.
 
-Prose font: chosen in SITE-02.
+### Prose font
+
+**Atkinson Hyperlegible Next** (OFL, variable, self-hosted from `@fontsource-variable/atkinson-hyperlegible-next`) for long text: the guide, the blog, paragraphs. Pixelify Sans stays for headings, navigation, buttons and badges (weights 600 and 700, ligatures off: its `fi` and `fl` ligatures read as other letters).
+Why: it was drawn by the Braille Institute for letter recognition (distinct `I`, `l`, `1`, `0`, `O`), so it holds up at length and on small screens, and it is a clear step away from Pixelify's chrome without borrowing the app's own data face, Inter, or the default families every generated page reaches for. Both fonts load through Astro's Fonts API from `node_modules` (no CDN, no Google request), `font-display: swap`, with metric-matched fallbacks, and the heading font is preloaded.
+
+### Tokens on the web
+
+`scripts/sync-tokens.mjs` writes `src/styles/tokens.generated.css` from the app's tokens (never edit it). It fixes the app's `--scale` at **WEB_SCALE = 1.25**: sizes become `rem`, so body text (`--font-size-md`, 14px) is 1.0938rem (17.5px). Hairlines (border widths, bevels, the focus ring, shadow offsets) stay in whole `px`, at least 1px, so outlines stay crisp. `round()`, `max()`, `min()`, `clamp()` and `@property` initial values are resolved at that scale where computable and passed through otherwise.
+
+Color rules that keep every theme at 4.5:1: muted text only on the page background (not on panels or bars); black (`--border-outline`) text on accent fills; links and headings in `--fg-primary`. The focus ring is the accent inside a `--fg-primary` halo.
 
 ## Constraints
 

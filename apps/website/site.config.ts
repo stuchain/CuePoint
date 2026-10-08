@@ -16,3 +16,11 @@ export function addressParts(url: string): { site: string; base: string } {
   const path = parsed.pathname.endsWith("/") ? parsed.pathname : `${parsed.pathname}/`;
   return { site: parsed.origin, base: path };
 }
+
+/** True for the style guide's pages: `/styleguide/` at the start of the path after the base. */
+export function isStyleguide(pathname: string, url: string = SITE_URL): boolean {
+  const { base } = addressParts(url);
+  if (!pathname.startsWith(base)) return false;
+  const rest = pathname.slice(base.length);
+  return rest === "styleguide" || rest.startsWith("styleguide/");
+}

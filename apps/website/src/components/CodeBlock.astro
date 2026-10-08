@@ -1,0 +1,28 @@
+---
+interface Props {
+  code: string;
+  /** Names the block for a screen reader, e.g. "Terminal command". */
+  label: string;
+}
+const { code, label } = Astro.props;
+// tabindex="0" below: a block that scrolls sideways must be reachable by keyboard
+---
+
+<pre class="code" tabindex="0" role="region" aria-label={label}><code>{code}</code></pre>
+
+<style>
+  .code {
+    margin: 0;
+    padding: var(--space-md) var(--space-lg);
+    overflow-x: auto;
+    background: var(--bg-input);
+    color: var(--fg-primary);
+    border: var(--border-width) solid var(--border-outline);
+    border-radius: 0;
+    box-shadow: var(--focus-halo), var(--shadow-inset-deep);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    tab-size: 2;
+  }
+</style>

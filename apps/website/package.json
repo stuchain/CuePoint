@@ -7,20 +7,28 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
+    "dev": "npm run sync-tokens && npm run sync-assets && astro dev",
+    "build": "npm run sync-tokens && npm run sync-assets && astro build",
+    "sync-tokens": "node scripts/sync-tokens.mjs",
+    "sync-assets": "node scripts/sync-assets.mjs",
+    "og-image": "node scripts/make-og.mjs",
     "preview": "astro preview",
     "check": "astro check && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "precheck": "npm run sync-tokens && npm run sync-assets",
+    "pretest": "npm run sync-tokens && npm run sync-assets"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@playwright/test": "1.56.1",
     "@types/three": "^0.186.0",
     "typescript": "^6.0.3",
     "vitest": "^5.0.3"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
+    "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
+    "@fontsource/pixelify-sans": "^5.3.0",
     "astro": "^7.3.7",
     "gsap": "^3.15.0",
     "sharp": "^0.35.5",

@@ -1,0 +1,35 @@
+---
+interface Props {
+  id: string;
+  /** The section's heading; leave out for a section that labels itself some other way. */
+  heading?: string;
+  level?: 2 | 3;
+  /** `prose` caps the line length for reading. */
+  width?: "wide" | "prose";
+}
+const { id, heading, level = 2, width = "wide" } = Astro.props;
+const Heading = `h${level}` as "h2" | "h3";
+---
+
+<section class="section" id={id} aria-labelledby={heading ? `${id}-heading` : undefined} data-width={width}>
+  <div class="inner">
+    {heading && <Heading id={`${id}-heading`}>{heading}</Heading>}
+    <slot />
+  </div>
+</section>
+
+<style>
+  .section {
+    padding-block: var(--space-xl);
+  }
+  .inner {
+    width: min(100% - 2 * var(--gutter), var(--content-max));
+    margin-inline: auto;
+  }
+  .section[data-width="prose"] .inner {
+    max-width: 42rem;
+  }
+  .inner > :global(:first-child) {
+    margin-top: 0;
+  }
+</style>

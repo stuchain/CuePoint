@@ -1,0 +1,78 @@
+---
+import type { ButtonProps } from "./Button.types";
+
+type Props = ButtonProps;
+
+const props = Astro.props as ButtonProps;
+const variant = props.variant ?? "primary";
+const className = props.class;
+---
+
+{
+  props.href !== undefined ? (
+    <a
+      class:list={["btn", className]}
+      data-variant={variant}
+      href={props.href}
+      rel={props.external ? "noopener noreferrer" : undefined}
+    >
+      <slot />
+    </a>
+  ) : (
+    <button
+      class:list={["btn", className]}
+      data-variant={variant}
+      type={props.type ?? "button"}
+      disabled={props.disabled}
+    >
+      <slot />
+    </button>
+  )
+}
+
+<style is:global>
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    min-height: 2.75rem;
+    padding: var(--space-sm) var(--space-lg);
+    border: var(--border-width) solid var(--border-outline);
+    border-radius: 0;
+    font-family: var(--font-pixel);
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: var(--focus-halo), var(--shadow-bevel), var(--shadow-badge);
+  }
+  /* Black on the accent is >= 4.5:1 in all five themes; --fg-inverse is not (Neo Dark 4.06). */
+  .btn[data-variant="primary"] {
+    background: var(--accent-primary);
+    color: var(--border-outline);
+  }
+  .btn[data-variant="secondary"] {
+    background: var(--accent-secondary);
+    color: var(--fg-primary);
+  }
+  .btn[data-variant="primary"]:hover {
+    filter: brightness(1.12);
+  }
+  .btn[data-variant="secondary"]:hover {
+    background: var(--accent-secondary-hover);
+  }
+  .btn:active {
+    transform: translate(1px, 1px);
+    box-shadow: var(--focus-halo), var(--shadow-bevel-pressed);
+  }
+  .btn:disabled {
+    background: var(--bg-panel-alt);
+    color: var(--fg-primary);
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: none;
+  }
+</style>

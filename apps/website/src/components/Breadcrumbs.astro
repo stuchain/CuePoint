@@ -1,0 +1,49 @@
+---
+import type { Crumb } from "./Breadcrumbs.types";
+import { hrefFor } from "../lib/url";
+
+interface Props {
+  items: readonly Crumb[];
+}
+const { items } = Astro.props;
+const last = items.length - 1;
+---
+
+<nav class="crumbs" aria-label="Breadcrumb">
+  <ol>
+    {
+      items.map((item, i) => (
+        <li>
+          {i === last ? (
+            <a href={hrefFor(item.path)} aria-current="page">
+              {item.label}
+            </a>
+          ) : (
+            <a href={hrefFor(item.path)}>{item.label}</a>
+          )}
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+
+<style>
+  .crumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs) var(--space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--font-size-sm);
+  }
+  .crumbs li + li::before {
+    content: "/";
+    margin-right: var(--space-sm);
+    color: var(--fg-muted);
+  }
+  .crumbs a[aria-current="page"] {
+    font-weight: 600;
+    text-decoration: none;
+  }
+</style>

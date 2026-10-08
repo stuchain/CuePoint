@@ -1,0 +1,23 @@
+/**
+ * The Content-Security-Policy, as a `<meta>` tag (GitHub Pages sets no headers, fact 2).
+ * `frame-ancestors` is not allowed in a meta tag, so it is left out.
+ * Later steps extend the directives here (analytics, SITE-12), not in the layout.
+ */
+export const CSP_DIRECTIVES: Readonly<Record<string, readonly string[]>> = {
+  "default-src": ["'self'"],
+  "img-src": ["'self'", "data:"],
+  "style-src": ["'self'", "'unsafe-inline'"],
+  "script-src": ["'self'", "'unsafe-inline'"],
+  "font-src": ["'self'"],
+  "connect-src": ["'self'"],
+  "base-uri": ["'self'"],
+  "form-action": ["'self'", "https://api.web3forms.com"],
+};
+
+export function buildCsp(directives: Readonly<Record<string, readonly string[]>>): string {
+  return Object.entries(directives)
+    .map(([name, sources]) => `${name} ${sources.join(" ")}`)
+    .join("; ");
+}
+
+export const CSP = buildCsp(CSP_DIRECTIVES);

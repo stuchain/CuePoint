@@ -1,0 +1,109 @@
+---
+// The pixel theme switch (DEC-190): five buttons, one per theme of the app. Each swatch is a
+// child with its own data-theme, so it paints with that theme's real tokens.
+import { DEFAULT_THEME, THEMES } from "../lib/themes";
+---
+
+<div class="switch" role="group" aria-label="Color theme" data-theme-switch>
+  {
+    THEMES.map((t) => (
+      <button
+        type="button"
+        class="choice"
+        data-theme-choice={t.id}
+        aria-pressed={t.id === DEFAULT_THEME ? "true" : "false"}
+        title={t.label}
+      >
+        <span class="swatch" data-theme={t.id} aria-hidden="true">
+          <span class="chip"></span>
+        </span>
+        <span class="sr-only">{t.label}</span>
+      </button>
+    ))
+  }
+</div>
+
+<script>
+  import { THEMES, THEME_EVENT, THEME_STORAGE_KEY, applyTheme, isThemeId, type ThemeId } from "../lib/themes";
+
+  const buttons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>("[data-theme-switch] [data-theme-choice]"),
+  );
+
+  function current(): ThemeId {
+    const value = document.documentElement.getAttribute("data-theme");
+    return isThemeId(value) ? value : THEMES[0].id;
+  }
+  function sync(): void {
+    const now = current();
+    for (const b of buttons) b.setAttribute("aria-pressed", String(b.dataset.themeChoice === now));
+  }
+
+  sync();
+  for (const b of buttons) {
+    b.addEventListener("click", () => {
+      const id = b.dataset.themeChoice;
+      if (isThemeId(id)) {
+        applyTheme(id);
+        sync();
+      }
+    });
+  }
+  // the 3D (or another switch on the page) changed it
+  document.addEventListener(THEME_EVENT, sync);
+  // another tab changed it: follow a valid theme id, ignore anything else
+  window.addEventListener("storage", (e) => {
+    if (e.key !== THEME_STORAGE_KEY || !isThemeId(e.newValue)) return;
+    document.documentElement.setAttribute("data-theme", e.newValue);
+    sync();
+    document.dispatchEvent(new CustomEvent(THEME_EVENT, { detail: { theme: e.newValue } }));
+  });
+</script>
+
+<style>
+  .switch {
+    display: inline-flex;
+    gap: var(--space-xs);
+  }
+  .choice {
+    display: inline-grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: var(--border-width) solid var(--border-outline);
+    border-radius: 0;
+    background: var(--bg-panel-alt);
+    color: var(--fg-primary);
+    cursor: pointer;
+    box-shadow: var(--focus-halo);
+  }
+  .swatch {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-panel);
+    box-shadow: var(--shadow-bevel-sm);
+    position: relative;
+  }
+  /* the accent corner: the theme's own color */
+  .chip {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 55%;
+    height: 55%;
+    background: var(--accent-primary);
+    border-top: var(--bevel-size-sm) solid var(--border-outline);
+    border-left: var(--bevel-size-sm) solid var(--border-outline);
+  }
+  /* the chosen one: pressed in and ringed in the text color, so it is not told by hue alone */
+  .choice[aria-pressed="true"] {
+    transform: translate(1px, 1px);
+  }
+  /* not while focused: the keyboard focus ring (accent) keeps its own outline */
+  .choice[aria-pressed="true"]:not(:focus-visible) {
+    outline: var(--border-width) solid var(--fg-primary);
+    outline-offset: 1px;
+  }
+</style>

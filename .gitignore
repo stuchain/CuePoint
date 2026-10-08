@@ -17,6 +17,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+# The website's source folder is not Python build output
+!apps/website/src/lib/
 lib64/
 parts/
 sdist/

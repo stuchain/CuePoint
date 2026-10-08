@@ -1,0 +1,13 @@
+---
+import { Image } from "astro:assets";
+import type { ImgProps } from "./Img.types";
+
+type Props = ImgProps;
+
+const { alt, decorative, class: className, ...rest } = Astro.props as ImgProps;
+if (alt.trim() === "" && decorative !== true) {
+  throw new Error("Img: alt is empty but the image is not marked decorative. Describe it or pass decorative.");
+}
+---
+
+<Image alt={alt} class={className} {...rest} />

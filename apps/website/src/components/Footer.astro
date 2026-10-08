@@ -1,0 +1,59 @@
+---
+import { EXTERNAL_NAV, NAV } from "../data/nav";
+import { PUBLISHER, SITE_NAME } from "../data/site";
+import { hrefFor } from "../lib/url";
+
+const year = new Date().getFullYear();
+// TODO(DEC-144): the publisher is the user, as an individual; PUBLISHER is a placeholder name.
+---
+
+<footer class="footer">
+  <div class="inner">
+    <nav aria-label="Footer">
+      <ul>
+        {NAV.map((n) => <li><a href={hrefFor(n.path)}>{n.label}</a></li>)}
+        {
+          EXTERNAL_NAV.map((n) => (
+            <li>
+              <a href={n.href} rel="noopener noreferrer">{n.label}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <p class="legal">© {year} {PUBLISHER}. {SITE_NAME} is free software for DJs.</p>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    margin-top: var(--space-xl);
+    background: var(--bg-toolbar);
+    color: var(--fg-primary);
+    border-top: var(--border-width) solid var(--border-outline);
+    box-shadow: inset 0 var(--bevel-size-sm) 0 var(--bevel-highlight);
+  }
+  .inner {
+    width: min(100% - 2 * var(--gutter), var(--content-max));
+    margin-inline: auto;
+    padding-block: var(--space-xl);
+  }
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm) var(--space-lg);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-pixel);
+    font-weight: 600;
+  }
+  a {
+    display: inline-block;
+    padding-block: var(--space-xs);
+  }
+  .legal {
+    margin: var(--space-lg) 0 0;
+    font-size: var(--font-size-sm);
+  }
+</style>
