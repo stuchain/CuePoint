@@ -189,7 +189,9 @@ def accept_with_artwork(track_ids: List[int]) -> None:
             label=None,
             release_date=None,
             bpm=None,
-            key=None,
+            # The key a write carries is the accepted match's Beatport key
+            # (DEC-201), the one the library rows used to hold.
+            key="8A",
             genre=None,
             score=97.0,
             title_sim=90,

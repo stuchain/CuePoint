@@ -43,6 +43,7 @@ from cuepoint.services.batch_service import BatchSelection
 from cuepoint.services.beatport_api import BeatportApi
 from cuepoint.services.beatport_api_client import BeatportApiClient
 from cuepoint.utils.di_container import get_container
+from tests.unit.key_support import accept_with_key
 from tests.unit.engine.test_engine_discover_api import (  # noqa: F401
     engine,
     finished,
@@ -157,6 +158,11 @@ def journey(monkeypatch, library_db, offline) -> Dict[str, int]:  # noqa: F811
             )
         )
         ids[title] = int(added.id)
+    # A track's key is its accepted match's Beatport key (DEC-201), never the
+    # Rekordbox one above. Harbour Lights and Low Tide are matched by the
+    # journey itself; the other two get the keys the export gave them.
+    for title, key in (("Night Bus", "8A"), ("Signal", "8B")):
+        accept_with_key(resolve("IDatabaseService"), ids[title], key)
     return ids
 
 

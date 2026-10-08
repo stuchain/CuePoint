@@ -130,6 +130,15 @@ def test_the_phase_journey(engine, library_db, tmp_path):  # noqa: F811
             "tracks"
         ]
     }
+    # The keys are Beatport's (DEC-201): the Rekordbox ones in the export are
+    # never read, so each track gets an accepted match carrying its key.
+    from cuepoint.services.interfaces import IDatabaseService
+    from cuepoint.utils.di_container import get_container
+    from tests.unit.key_support import accept_with_key
+
+    database = get_container().resolve(IDatabaseService)
+    for _id, title, _bpm, key, _seconds in TRACKS:
+        accept_with_key(database, tracks[title], key)
 
     # --- 1. a Set from a Collection with a repeat --------------------------
     gigs = ok(engine, "/api/v1/collections/create", {"kind": "folder", "name": "Gigs"})[
