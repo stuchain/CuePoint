@@ -23,11 +23,10 @@ export const PRIMARY_ACTION = {
 
 /**
  * The publisher named in the footer, the privacy policy and the terms: the user, as an individual
- * (DEC-144). TODO(DEC-144): this is the neutral GitHub owner name until the user gives the name to
- * print; the user's full name replaces it in SITE-11, and the user approves the policy text before
- * launch (SITE-11, SITE-13).
+ * (DEC-144). The name the user gave on 2026-10-08; the user approves the policy text before launch
+ * (SITE-11, SITE-13).
  */
-export const PUBLISHER = "stuchain";
+export const PUBLISHER = "Stelios Vasileiou";
 
 /**
  * The address people write to about privacy, the terms and anything else the publisher is asked.
