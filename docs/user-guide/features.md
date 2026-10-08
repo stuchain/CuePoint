@@ -36,7 +36,7 @@ keyboard. See [Clean](clean.md).
 
 ### Your values over Rekordbox's
 
-Apply Beatport's key, BPM, genre, label or year, or type your own. Rekordbox's
+An accepted match gives a track Beatport's key. Apply Beatport's BPM, genre, label or year, or type your own. Rekordbox's
 values stay underneath, every change is in the track's history, and any change
 can be taken back. See [Your own values](library.md#your-own-values).
 

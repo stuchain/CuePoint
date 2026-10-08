@@ -32,7 +32,7 @@ export function toQueueItem(row: LibraryTrackRow): QueueItemInput {
     filePath: row.file_path,
     title: row.title,
     artist: row.artist,
-    key: row.key ?? null,
+    key: row.effective_key ?? null,
     bpm: row.bpm ?? null,
     durationSeconds: row.duration_seconds ?? null,
   };

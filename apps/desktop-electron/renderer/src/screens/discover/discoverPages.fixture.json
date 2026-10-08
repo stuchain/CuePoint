@@ -35,7 +35,7 @@
       "read": false
     },
     "metadata": {
-      "created_at": null,
+      "created_at": "2026-09-20T12:00:00+00:00",
       "effective_rating": null,
       "favorite": false,
       "notes": null,
@@ -43,7 +43,7 @@
       "rating_source": null,
       "rekordbox_rating": null,
       "track_id": 1,
-      "updated_at": null
+      "updated_at": "2026-09-20T12:00:00+00:00"
     },
     "playlist_count": 0,
     "playlists": [],
@@ -70,12 +70,18 @@
       "genre": "House",
       "id": 1,
       "key": "8A",
+      "key_name": "A minor",
+      "key_source": "yours",
       "label": "Nightfall Audio",
       "match_disputed": false,
       "match_score": null,
       "match_state": "accepted",
-      "overridden": [],
-      "override_sources": {},
+      "overridden": [
+        "key"
+      ],
+      "override_sources": {
+        "key": "cuepoint"
+      },
       "play_count": null,
       "rating": null,
       "rating_source": null,
@@ -122,7 +128,7 @@
       "read": false
     },
     "metadata": {
-      "created_at": null,
+      "created_at": "2026-09-20T12:00:00+00:00",
       "effective_rating": null,
       "favorite": false,
       "notes": null,
@@ -130,7 +136,7 @@
       "rating_source": null,
       "rekordbox_rating": null,
       "track_id": 3,
-      "updated_at": null
+      "updated_at": "2026-09-20T12:00:00+00:00"
     },
     "playlist_count": 0,
     "playlists": [],
@@ -157,12 +163,18 @@
       "genre": "Techno",
       "id": 3,
       "key": "8A",
+      "key_name": "A minor",
+      "key_source": "yours",
       "label": "Cold Room",
       "match_disputed": false,
       "match_score": null,
       "match_state": "not_matched",
-      "overridden": [],
-      "override_sources": {},
+      "overridden": [
+        "key"
+      ],
+      "override_sources": {
+        "key": "cuepoint"
+      },
       "play_count": null,
       "rating": null,
       "rating_source": null,
@@ -718,12 +730,18 @@
         "genre": "House",
         "id": 1,
         "key": "8A",
+        "key_name": "A minor",
+        "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
         "match_score": null,
         "match_state": "accepted",
-        "overridden": [],
-        "override_sources": {},
+        "overridden": [
+          "key"
+        ],
+        "override_sources": {
+          "key": "cuepoint"
+        },
         "play_count": null,
         "rating": null,
         "rating_source": null,
@@ -754,12 +772,18 @@
         "genre": "House",
         "id": 2,
         "key": "9A",
+        "key_name": "E minor",
+        "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
         "match_score": null,
         "match_state": "not_matched",
-        "overridden": [],
-        "override_sources": {},
+        "overridden": [
+          "key"
+        ],
+        "override_sources": {
+          "key": "cuepoint"
+        },
         "play_count": null,
         "rating": null,
         "rating_source": null,
@@ -825,12 +849,18 @@
         "genre": "House",
         "id": 1,
         "key": "8A",
+        "key_name": "A minor",
+        "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
         "match_score": null,
         "match_state": "accepted",
-        "overridden": [],
-        "override_sources": {},
+        "overridden": [
+          "key"
+        ],
+        "override_sources": {
+          "key": "cuepoint"
+        },
         "play_count": null,
         "rating": null,
         "rating_source": null,
@@ -861,12 +891,18 @@
         "genre": "Techno",
         "id": 3,
         "key": "8A",
+        "key_name": "A minor",
+        "key_source": "yours",
         "label": "Cold Room",
         "match_disputed": false,
         "match_score": null,
         "match_state": "not_matched",
-        "overridden": [],
-        "override_sources": {},
+        "overridden": [
+          "key"
+        ],
+        "override_sources": {
+          "key": "cuepoint"
+        },
         "play_count": null,
         "rating": null,
         "rating_source": null,
@@ -897,6 +933,8 @@
         "genre": "Techno",
         "id": 7,
         "key": null,
+        "key_name": null,
+        "key_source": null,
         "label": null,
         "match_disputed": false,
         "match_score": null,
@@ -968,12 +1006,18 @@
         "genre": "House",
         "id": 1,
         "key": "8A",
+        "key_name": "A minor",
+        "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
         "match_score": null,
         "match_state": "accepted",
-        "overridden": [],
-        "override_sources": {},
+        "overridden": [
+          "key"
+        ],
+        "override_sources": {
+          "key": "cuepoint"
+        },
         "play_count": null,
         "rating": null,
         "rating_source": null,
@@ -1004,12 +1048,18 @@
         "genre": "House",
         "id": 2,
         "key": "9A",
+        "key_name": "E minor",
+        "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
         "match_score": null,
         "match_state": "not_matched",
-        "overridden": [],
-        "override_sources": {},
+        "overridden": [
+          "key"
+        ],
+        "override_sources": {
+          "key": "cuepoint"
+        },
         "play_count": null,
         "rating": null,
         "rating_source": null,
@@ -1040,12 +1090,18 @@
         "genre": "Deep House",
         "id": 5,
         "key": "3A",
+        "key_name": "B♭ minor",
+        "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
         "match_score": null,
         "match_state": "accepted",
-        "overridden": [],
-        "override_sources": {},
+        "overridden": [
+          "key"
+        ],
+        "override_sources": {
+          "key": "cuepoint"
+        },
         "play_count": null,
         "rating": null,
         "rating_source": null,
@@ -1627,7 +1683,7 @@
         "read": false
       },
       "metadata": {
-        "created_at": null,
+        "created_at": "2026-09-20T12:00:00+00:00",
         "effective_rating": null,
         "favorite": false,
         "notes": null,
@@ -1635,7 +1691,7 @@
         "rating_source": null,
         "rekordbox_rating": null,
         "track_id": 2,
-        "updated_at": null
+        "updated_at": "2026-09-20T12:00:00+00:00"
       },
       "playlist_count": 0,
       "playlists": [],
@@ -1662,12 +1718,18 @@
         "genre": "House",
         "id": 2,
         "key": "9A",
+        "key_name": "E minor",
+        "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
         "match_score": null,
         "match_state": "not_matched",
-        "overridden": [],
-        "override_sources": {},
+        "overridden": [
+          "key"
+        ],
+        "override_sources": {
+          "key": "cuepoint"
+        },
         "play_count": null,
         "rating": null,
         "rating_source": null,
@@ -1714,7 +1776,7 @@
         "read": false
       },
       "metadata": {
-        "created_at": null,
+        "created_at": "2026-09-20T12:00:00+00:00",
         "effective_rating": null,
         "favorite": false,
         "notes": null,
@@ -1722,7 +1784,7 @@
         "rating_source": null,
         "rekordbox_rating": null,
         "track_id": 3,
-        "updated_at": null
+        "updated_at": "2026-09-20T12:00:00+00:00"
       },
       "playlist_count": 0,
       "playlists": [],
@@ -1749,12 +1811,18 @@
         "genre": "Techno",
         "id": 3,
         "key": "8A",
+        "key_name": "A minor",
+        "key_source": "yours",
         "label": "Cold Room",
         "match_disputed": false,
         "match_score": null,
         "match_state": "not_matched",
-        "overridden": [],
-        "override_sources": {},
+        "overridden": [
+          "key"
+        ],
+        "override_sources": {
+          "key": "cuepoint"
+        },
         "play_count": null,
         "rating": null,
         "rating_source": null,
@@ -1793,7 +1861,7 @@
         "read": false
       },
       "metadata": {
-        "created_at": null,
+        "created_at": "2026-09-20T12:00:00+00:00",
         "effective_rating": null,
         "favorite": false,
         "notes": null,
@@ -1801,7 +1869,7 @@
         "rating_source": null,
         "rekordbox_rating": null,
         "track_id": 4,
-        "updated_at": null
+        "updated_at": "2026-09-20T12:00:00+00:00"
       },
       "playlist_count": 0,
       "playlists": [],
@@ -1828,12 +1896,18 @@
         "genre": "House",
         "id": 4,
         "key": "8B",
+        "key_name": "C major",
+        "key_source": "yours",
         "label": "Cold Room",
         "match_disputed": false,
         "match_score": null,
         "match_state": "not_matched",
-        "overridden": [],
-        "override_sources": {},
+        "overridden": [
+          "key"
+        ],
+        "override_sources": {
+          "key": "cuepoint"
+        },
         "play_count": null,
         "rating": null,
         "rating_source": null,
@@ -1872,7 +1946,7 @@
         "read": false
       },
       "metadata": {
-        "created_at": null,
+        "created_at": "2026-09-20T12:00:00+00:00",
         "effective_rating": null,
         "favorite": false,
         "notes": null,
@@ -1880,7 +1954,7 @@
         "rating_source": null,
         "rekordbox_rating": null,
         "track_id": 5,
-        "updated_at": null
+        "updated_at": "2026-09-20T12:00:00+00:00"
       },
       "playlist_count": 0,
       "playlists": [],
@@ -1907,12 +1981,18 @@
         "genre": "Deep House",
         "id": 5,
         "key": "3A",
+        "key_name": "B♭ minor",
+        "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
         "match_score": null,
         "match_state": "accepted",
-        "overridden": [],
-        "override_sources": {},
+        "overridden": [
+          "key"
+        ],
+        "override_sources": {
+          "key": "cuepoint"
+        },
         "play_count": null,
         "rating": null,
         "rating_source": null,
@@ -1951,7 +2031,7 @@
         "read": false
       },
       "metadata": {
-        "created_at": null,
+        "created_at": "2026-09-20T12:00:00+00:00",
         "effective_rating": null,
         "favorite": false,
         "notes": null,
@@ -1959,7 +2039,7 @@
         "rating_source": null,
         "rekordbox_rating": null,
         "track_id": 6,
-        "updated_at": null
+        "updated_at": "2026-09-20T12:00:00+00:00"
       },
       "playlist_count": 0,
       "playlists": [],
@@ -1986,12 +2066,18 @@
         "genre": "Deep House",
         "id": 6,
         "key": "3A",
+        "key_name": "B♭ minor",
+        "key_source": "yours",
         "label": "Elsewhere",
         "match_disputed": false,
         "match_score": null,
         "match_state": "accepted",
-        "overridden": [],
-        "override_sources": {},
+        "overridden": [
+          "key"
+        ],
+        "override_sources": {
+          "key": "cuepoint"
+        },
         "play_count": null,
         "rating": null,
         "rating_source": null,

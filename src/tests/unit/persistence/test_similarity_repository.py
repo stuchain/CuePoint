@@ -27,6 +27,7 @@ from cuepoint.persistence.track_query import BrowseQuery, build_select_scoped
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
+from tests.unit.key_support import accept_with_key
 
 pytestmark = pytest.mark.unit
 
@@ -48,6 +49,7 @@ def repo(db) -> SimilarityRepository:
 
 class Adder:
     def __init__(self, db) -> None:
+        self.db = db
         self.tracks = TrackRepository(db)
         self.count = 0
 
@@ -71,12 +73,14 @@ class Adder:
                 artist=artist,
                 remixer=remixer,
                 bpm=bpm,
-                key=key,
                 genre=genre,
                 label=label,
             )
         )
         assert stored.id is not None
+        if key is not None:
+            # Beatport's key by an accepted match (DEC-201), not Rekordbox's.
+            accept_with_key(self.db, stored.id, key)
         return stored.id
 
 
@@ -262,7 +266,9 @@ class TestSpellings:
     def test_keys_and_labels(self, add, repo):
         add(key="8A", label="L")
         add(key="Am", label="M")
-        assert repo.spellings("key") == ["8A", "Am"]
+        add(key="C", label="M")
+        # Keys are Camelot, one spelling for one key (DEC-201).
+        assert repo.spellings("key") == ["8A", "8B"]
         assert repo.spellings("label") == ["L", "M"]
 
     def test_only_the_three_fields(self, repo):

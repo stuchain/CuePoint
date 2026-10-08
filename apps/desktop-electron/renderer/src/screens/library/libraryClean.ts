@@ -61,7 +61,8 @@ export function effectiveText(row: LibraryTrackRow, field: OverrideField): strin
     label: row.effective_label,
     year: row.effective_year,
   }[field];
-  if (resolved === undefined) return importedText(row, field);
+  // The key never falls back to Rekordbox's (DEC-201).
+  if (resolved === undefined) return field === "key" ? "" : importedText(row, field);
   if (resolved === null) return "";
   return field === "bpm" ? formatBpm(resolved as number) : String(resolved);
 }
@@ -82,6 +83,10 @@ export function overrideMark(
   const underneath = importedText(row, field);
   const label = APPLY_FIELD_LABELS[field];
   const said = overrideSourceText(source);
+  if (field === "key") {
+    // Rekordbox's key is not the track's key (DEC-201); say so rather than quote it.
+    return { source, title: `${label} ${said}. Rekordbox's key is not used.` };
+  }
   return {
     source,
     title: `${label} ${said}. Rekordbox has ${underneath === "" ? "none" : underneath}.`,

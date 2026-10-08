@@ -58,6 +58,7 @@ from cuepoint.services.tag_write_options import TagWriteOptions
 from cuepoint.services.tag_write_service import NOTHING_TO_RESTORE, NOTHING_TO_WRITE
 from cuepoint.utils.di_container import get_container, reset_container
 from tests.fixtures.audio_files import audio_copy, tag_dump
+from tests.unit.key_support import accept_with_key
 
 TERMINAL = (JobState.SUCCEEDED, JobState.FAILED, JobState.CANCELLED)
 NOW = "2026-09-15T12:00:00+00:00"
@@ -134,6 +135,9 @@ def add_tracks(paths: Sequence[Path], key: str = "Am") -> List[int]:
         row["rekordbox_track_id"]: (int(row["id"]), row["file_path"]) for row in rows
     }
     ids = [found[f"{prefix}-{index}"][0] for index in range(len(paths))]
+    for track_id in ids:
+        # Beatport's key by an accepted match: the only key a write carries.
+        accept_with_key(database(), track_id, key)
     with database().transaction():
         resolve(IFileStatusRepository).record(
             [

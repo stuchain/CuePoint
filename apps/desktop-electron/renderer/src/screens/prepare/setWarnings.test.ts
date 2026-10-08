@@ -25,9 +25,9 @@ const NOTICES = fixture.notices as SetNotice[];
 const FILES = fixture.files as SetFileCheck[];
 
 describe("every warning the engine gives", () => {
-  it("has twenty, one per kind and detail", () => {
+  it("has seventeen, one per kind and detail", () => {
     const kinds = WARNINGS.map((w) => `${w.kind}:${w.detail}`);
-    expect(new Set(kinds).size).toBe(20);
+    expect(new Set(kinds).size).toBe(17);
   });
 
   it.each(WARNINGS.map((w) => [`${w.kind}:${w.detail}`, w] as const))(
@@ -52,9 +52,6 @@ describe("every warning the engine gives", () => {
       "The track before has no BPM to compare",
       "This track has no BPM to compare",
       "Neither track has a BPM to compare",
-      "The track before has no key to compare",
-      "This track has no key to compare",
-      "Neither track has a key to compare",
       "The file was missing when files were last checked",
       "The file's drive was not connected when files were last checked",
       "The file could not be read when files were last checked",
@@ -72,7 +69,7 @@ describe("every warning the engine gives", () => {
   it("offers acknowledging only a transition's warnings", () => {
     const transitions = WARNINGS.filter(isAcknowledgeable).map((w) => w.kind);
     expect(new Set(transitions)).toEqual(
-      new Set(["tempo_jump", "key_clash", "tempo_unknown", "key_unknown"]),
+      new Set(["tempo_jump", "key_clash", "tempo_unknown"]),
     );
   });
 });

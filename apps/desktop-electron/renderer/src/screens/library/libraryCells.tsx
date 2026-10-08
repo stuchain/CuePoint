@@ -21,7 +21,8 @@ import { LOUDNESS_QUERY } from "./libraryLoudness";
 
 /** A value CuePoint may override, marked when it does. */
 export function OverriddenValue({ row, field }: { row: LibraryTrackRow; field: OverrideField }) {
-  const value = effectiveText(row, field);
+  // A track with no Beatport key shows a dash, not a blank (DEC-201).
+  const value = effectiveText(row, field) || (field === "key" ? "—" : "");
   const mark = overrideMark(row, field);
   if (!mark) return <>{value}</>;
   return (

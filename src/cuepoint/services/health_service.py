@@ -22,8 +22,10 @@ What each count reads
 - Duplicates: the groups a user is shown — two or more members, not dismissed
   (CLEAN-08).
 - Matching: the state (CLEAN-04). "Not matched" is a track with no state row.
-- Key, BPM and genre: the effective value (DEC-068), so a key applied from
-  Beatport is not missing.
+- BPM and genre: the effective value (DEC-068).
+- Key: "No Beatport key" counts tracks with no resolved key (DEC-201): neither
+  the user's correction nor an accepted match's key. Rekordbox's key does not
+  count, so a library that has not been matched is all missing.
 - Artwork: ``none`` only — a file read and found to hold no picture, with no
   Beatport image for an accepted match. ``unknown``, a file not read yet, is not
   counted as missing, for the file count's reason.
@@ -111,7 +113,9 @@ HEALTH_RULES: Tuple[HealthRule, ...] = (
         "Disputed by a newer match",
         _rules(FilterRule("match_disputed", OP_IS, True)),
     ),
-    HealthRule("missing_key", "No key", _rules(FilterRule("key", OP_IS_EMPTY))),
+    HealthRule(
+        "missing_key", "No Beatport key", _rules(FilterRule("key", OP_IS_EMPTY))
+    ),
     HealthRule("missing_bpm", "No BPM", _rules(FilterRule("bpm", OP_IS_EMPTY))),
     HealthRule("missing_genre", "No genre", _rules(FilterRule("genre", OP_IS_EMPTY))),
     HealthRule(

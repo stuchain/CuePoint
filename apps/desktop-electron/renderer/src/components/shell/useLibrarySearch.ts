@@ -115,9 +115,10 @@ export function trackSubtitle(track: {
   album: string | null;
   label: string | null;
   bpm: number | null;
-  key: string | null;
+  /** The resolved key (DEC-201), never Rekordbox's imported one. */
+  effective_key?: string | null;
 }): string {
-  return [track.album, track.label, track.bpm ? `${track.bpm} BPM` : null, track.key]
+  return [track.album, track.label, track.bpm ? `${track.bpm} BPM` : null, track.effective_key]
     .filter((part): part is string => Boolean(part))
     .join(" · ");
 }

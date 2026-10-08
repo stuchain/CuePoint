@@ -146,33 +146,6 @@
     {
       "acknowledged": false,
       "compared": {
-        "from": null,
-        "to": "8A"
-      },
-      "detail": "from",
-      "kind": "key_unknown"
-    },
-    {
-      "acknowledged": false,
-      "compared": {
-        "from": "8A",
-        "to": null
-      },
-      "detail": "to",
-      "kind": "key_unknown"
-    },
-    {
-      "acknowledged": false,
-      "compared": {
-        "from": null,
-        "to": null
-      },
-      "detail": "both",
-      "kind": "key_unknown"
-    },
-    {
-      "acknowledged": false,
-      "compared": {
         "checked_at": "2026-09-20T09:00:00+00:00"
       },
       "detail": "not_found",

@@ -11,7 +11,8 @@ import { APPLY_FIELDS } from "../clean/comparison";
 import type { OverrideEdit } from "./libraryBatch";
 
 /** The five fields, in the order the Library shows them. */
-export const EDIT_FIELDS: readonly OverrideField[] = APPLY_FIELDS;
+/** What a hand edit can set: a correction of the key (DEC-201) as well as what applying copies. */
+export const EDIT_FIELDS: readonly OverrideField[] = ["key", ...APPLY_FIELDS];
 
 /** What a person asked for one field in the selection dialog. */
 export type EditMode = "keep" | "set" | "clear";

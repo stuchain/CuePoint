@@ -24,6 +24,7 @@ from typing import Dict, List, Optional, Tuple
 
 import pytest
 
+from tests.unit.key_support import accept_with_key
 from cuepoint.core.entity_names import ENTITY_NAMES_VERSION, name_key, split_credit
 from cuepoint.core.similarity import (
     REASONS,
@@ -106,6 +107,9 @@ class Library:
             )
         )
         assert stored.id is not None
+        if key:
+            # The key is Beatport's, by an accepted match (PAGES-15).
+            accept_with_key(self.db, stored.id, key)
         return stored.id
 
 
@@ -167,7 +171,7 @@ class TestTheAnswer:
         other = lib.add(bpm=128.0)
         assert service.similar(seed).to_dict() == {
             "seed_id": seed,
-            "notation": "classic",
+            "notation": "camelot",
             "unused": ["key", "genre", "label"],
             "considered": 1,
             "duplicates_excluded": 0,
@@ -315,18 +319,20 @@ class TestNotation:
             "to": "9A",
         }
 
-    def test_a_classic_library_reads_classic(self, lib, service):
+    def test_a_classic_library_still_reads_camelot(self, lib, service):
+        # Keys are Beatport's and shown in Camelot, whatever the library's
+        # notation setting (PAGES-15).
         seed = lib.add("A", bpm=128.0, key="Am")
         other = lib.add("B", bpm=128.0, key="C")
         lib.add("C", key="G#m")
         result = service.similar(seed)
-        assert result.notation == "classic"
+        assert result.notation == "camelot"
         assert reasons_of(result, other)[1] == {
             "component": "key",
             "detail": "relative",
             "points": 20.0,
-            "from": "Am",
-            "to": "C",
+            "from": "8A",
+            "to": "8B",
         }
 
 

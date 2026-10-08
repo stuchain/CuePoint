@@ -60,7 +60,8 @@ turned down, so you can pick another one later.
 
 Select a track and the **Comparison** below the queue shows it beside its
 candidates: key, BPM, genre, label, year, release and the scores. A value that
-differs from your track is marked with **≠** as well as a colour.
+differs from your track is marked with **≠** as well as a colour. The Key row
+shows Rekordbox's key against Beatport's, and says Rekordbox's is not used.
 
 Choose a candidate by clicking its heading, then **Accept**. **Reject** says
 none of them is right. **Clear decision** hands the track back to what the
@@ -80,8 +81,11 @@ The keys do nothing while you are typing in a field or have a dialog open.
 
 ### Applying Beatport's values
 
-**Accepting a match changes no value on its own.** Once a track has an accepted
-match, **Apply from the accepted match** lists its key, BPM, genre, label and
+**Accepting a match gives the track its key and changes no other value on its
+own.** The key is Beatport's, from the accepted match, whether you or CuePoint
+accepted it (a re-match can change an automatic accept's key); rejecting the
+match takes it away again. Once a track has an accepted match,
+**Apply from the accepted match** lists its BPM, genre, label and
 year. Untick what you want to keep and choose **Apply**. The applied values
 become your values: the Library shows, sorts and filters by them, marked with
 where they came from, and Rekordbox's values stay underneath. Title, artist,
@@ -129,7 +133,7 @@ merged or deleted**: to remove a duplicate, remove it in Rekordbox and refresh.
 
 A count of everything that may need you: missing or unreadable files, tracks in
 a duplicate group, tracks not matched, needing review or disputed, and tracks
-with no key, BPM, genre or artwork. **Each count opens the Library on exactly
+with no Beatport key, or no BPM, genre or artwork. **Each count opens the Library on exactly
 the tracks it counts**, as an ordinary filter you can change or save as a Smart
 Collection.
 

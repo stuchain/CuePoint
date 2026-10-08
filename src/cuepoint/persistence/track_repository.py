@@ -23,6 +23,11 @@ from cuepoint.models.library_track import (
     utc_now_iso,
 )
 from cuepoint.models.filter_rule import (
+    KEY_BEATPORT_SQL,
+    KEY_LATEST_SOURCE_SQL,
+    MATCH_ALIAS,
+    MATCH_CANDIDATE_ALIAS,
+    METADATA_ALIAS,
     TYPE_TAG,
     Facet,
     FacetRange,
@@ -125,14 +130,20 @@ _EXPORT_VALUES_SQL = (
     " tracks.label AS label,"
     " tracks.year AS year,"
     " tracks.rating AS rating,"
-    " track_metadata.key AS override_key,"
-    " track_metadata.bpm AS override_bpm,"
-    " track_metadata.genre AS override_genre,"
-    " track_metadata.label AS override_label,"
-    " track_metadata.year AS override_year,"
-    " track_metadata.rating AS cuepoint_rating"
+    " meta.key AS override_key,"
+    " meta.bpm AS override_bpm,"
+    " meta.genre AS override_genre,"
+    " meta.label AS override_label,"
+    " meta.year AS override_year,"
+    " meta.rating AS cuepoint_rating,"
+    # The key is not DEC-079's two layers (DEC-201): Rekordbox's own `key` above
+    # is never exported as the track's key, so the row carries the pieces the
+    # resolver needs instead (``services/key_resolver.py``).
+    f" CASE WHEN meta.key IS NULL THEN NULL ELSE {KEY_LATEST_SOURCE_SQL} END"
+    " AS override_key_source,"
+    f" {KEY_BEATPORT_SQL} AS beatport_key"
     " FROM tracks"
-    " LEFT JOIN track_metadata ON track_metadata.track_id = tracks.id"
+    f"{JOINS[METADATA_ALIAS]}{JOINS[MATCH_ALIAS]}{JOINS[MATCH_CANDIDATE_ALIAS]}"
     " ORDER BY tracks.id"
 )
 

@@ -22,7 +22,8 @@ function row(id: number, overrides: Partial<LibraryTrackRow> = {}): LibraryTrack
     album: null,
     genre: null,
     bpm: 128,
-    key: "8A",
+    key: "5B", // Rekordbox's: the queue never carries it (DEC-201)
+    effective_key: "8A",
     rating: null,
     duration_seconds: 300,
     year: null,
@@ -196,7 +197,7 @@ describe("the queue item a row becomes", () => {
   it("turns missing fields into nulls rather than undefined", () => {
     // They cross an IPC boundary: `undefined` disappears on the way and the
     // difference between "no key" and "field absent" is lost.
-    const bare = toQueueItem(row(6, { id: null, key: null, bpm: null, duration_seconds: null }));
+    const bare = toQueueItem(row(6, { id: null, effective_key: null, bpm: null, duration_seconds: null }));
     expect(bare).toEqual({
       trackId: null,
       filePath: "C:\\music\\6.mp3",

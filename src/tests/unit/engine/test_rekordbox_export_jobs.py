@@ -62,6 +62,7 @@ from cuepoint.services.rekordbox_export_service import (
 )
 from cuepoint.utils.di_container import get_container, reset_container
 from tests.fixtures.job_settling import wait_until_settled
+from tests.unit.key_support import accept_with_key
 
 TERMINAL = (JobState.SUCCEEDED, JobState.FAILED, JobState.CANCELLED)
 
@@ -255,7 +256,31 @@ class TestAnExportJob:
         assert event["job_id"] == job.id
         assert event["export_id"] == row["id"]
 
+    def test_without_a_beatport_key_nothing_is_rewritten(
+        self, store, imported, destination
+    ):
+        # Rekordbox's own keys are not keys (DEC-201): with no accepted match
+        # and no correction there is nothing to write, and the file keeps them.
+        job = finished(
+            store, start_rekordbox_export(store, [], "camelot", str(destination)).job
+        )
+
+        assert job.result["changed_track_count"] == 0
+        written = destination.read_text(encoding="utf-8")
+        assert 'Tonality="Am"' in written and 'Tonality="8A"' not in written
+
     def test_its_answer_is_the_exports_own(self, store, imported, destination):
+        # Each track's key is Beatport's, by an accepted match.
+        for track_id, key in zip(
+            [
+                int(row["id"])
+                for row in database()
+                .connect()
+                .execute("SELECT id FROM tracks ORDER BY id")
+            ],
+            ["A Minor", "F# Minor", "G Minor"],
+        ):
+            accept_with_key(database(), track_id, key)
         job = finished(
             store, start_rekordbox_export(store, [], "camelot", str(destination)).job
         )

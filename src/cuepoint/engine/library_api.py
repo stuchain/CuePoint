@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from cuepoint.models.filter_rule import (
     FACETABLE_FIELDS,
+    KEY_SOURCE_YOURS,
     TYPE_NUMBER,
     Facet,
     FacetRange,
@@ -42,6 +43,7 @@ from cuepoint.persistence.track_query import (
     DEFAULT_SORT,
     SORTABLE_COLUMNS,
 )
+from cuepoint.services.key_resolver import resolve_key
 from cuepoint.utils.quoting import quoted
 
 # Kept in step with LibraryService's own clamp; declared here too so a caller
@@ -170,10 +172,27 @@ def track_to_dict(
     # override without asking again. The plain names above stay what Rekordbox
     # imported, as ``rating`` does.
     for name in OVERRIDE_FIELDS:
+        if name == "key":
+            continue
         payload[f"effective_{name}"] = effective_value(
             getattr(track, name), getattr(metadata, name) if metadata else None
         )
-    payload["overridden"] = list(overridden_fields(metadata))
+    # PAGES-15 (DEC-201): the key is the user's correction, else the accepted
+    # match's Beatport key, else none. ``key`` above stays Rekordbox's.
+    key = resolve_key(
+        metadata.key if metadata else None,
+        (sources or {}).get("key"),
+        clean.beatport_key if clean is not None else None,
+    )
+    payload["effective_key"] = key.camelot
+    payload["key_source"] = key.source
+    payload["key_name"] = key.name
+    # A key applied from a match is Beatport's, not an override of the user's.
+    payload["overridden"] = [
+        name
+        for name in overridden_fields(metadata)
+        if name != "key" or key.source == KEY_SOURCE_YOURS
+    ]
     # CLEAN-13: where each of those came from — ``beatport`` or ``cuepoint`` —
     # so a marked cell can say so. Only overridden fields are named, and one
     # whose source was not read is left out rather than guessed.

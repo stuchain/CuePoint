@@ -189,6 +189,7 @@ class TestApplyingAQueryAboveTheThreshold:
             everything(),
             BatchOperation(OPERATION_APPLY_MATCH, ["key", "bpm", "label"]),
         )
+        # The key is named and left out: an accepted match already gave it.
         assert result is None and job is not None
         return finished(job)
 
@@ -204,15 +205,21 @@ class TestApplyingAQueryAboveTheThreshold:
         rows = history()
         assert {row["batch_id"] for row in rows} == {job.result["batch_id"]}
         assert {row["source"] for row in rows} == {"beatport"}
-        # Key and BPM on all thirty, label only on the fifteen that have one.
-        assert len(rows) == 30 + 30 + 15
+        # BPM on all thirty, label only on the fifteen that have one; no key.
+        assert len(rows) == 30 + 15
+        assert "cuepoint_key" not in {row["field"] for row in rows}
 
-    def test_the_values_are_stored_in_the_librarys_notation(self, library, job):
+    def test_the_key_comes_from_the_accepted_match_not_from_applying(
+        self, library, job
+    ):
         metadata = get_container().resolve(IMetadataService)
         for track_id in library["accepted"]:
             record = metadata.get(track_id)
-            assert (record.key, record.bpm) == ("4A", 126.0)
+            assert (record.key, record.bpm) == (None, 126.0)
+        # Thirty accepted matches carry "F Minor", the only keys there are.
         assert count("key", "is", "4A") == 30
+        assert count("key", "is", "Fm") == 30
+        assert count("key", "is", "8A") == 0
         assert count("key_rekordbox", "is", "8A") == 40
 
     def test_a_missing_label_is_skipped_rather_than_written_empty(self, library, job):
@@ -233,7 +240,7 @@ class TestApplyingAQueryAboveTheThreshold:
     def test_one_event_names_what_was_applied(self, job):
         (summary,) = events()
         # ORG-07's summaries add what was left alone after the count.
-        assert summary.startswith("Applied the Beatport key, BPM, label to 30 tracks")
+        assert summary.startswith("Applied the Beatport BPM, label to 30 tracks")
         assert summary.endswith("10 unchanged")
 
     def test_applying_again_changes_nothing_and_writes_no_history(
@@ -287,8 +294,10 @@ class TestTypingAnOverrideOverAQuery:
             BatchOperation(OPERATION_SET_OVERRIDE, {"field": "key", "value": "Fm"}),
         )
         assert result.changed == 5
-        assert count("key", "is", "4A") == 5
-        assert count("key", "is", "8A") == 35
+        # The five never matched now have the key typed; the thirty accepted
+        # ones have Beatport's; the five needing review have none.
+        assert count("key", "is", "4A") == 35
+        assert count("key", "is", "8A") == 0
         assert count("cuepoint_key", "is", "4A") == 5
 
 

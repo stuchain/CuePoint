@@ -268,6 +268,8 @@ corrections included. The **Reasons** column says which, in words:
 
 **Score** adds up the points of its reasons, out of 100. A track with no BPM or
 key is compared by what it has, and the page says what it could not compare by.
+Keys are Beatport's (or your own correction), shown in Camelot, so a track that
+has not been matched has no key to compare.
 Other copies of the same track (the ones Clean groups as duplicates) are left
 out, because the same track again is not a suggestion.
 

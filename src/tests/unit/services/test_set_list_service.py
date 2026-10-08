@@ -25,6 +25,7 @@ from typing import List, Optional
 
 import pytest
 
+from tests.unit.key_support import accept_with_key
 from cuepoint.exceptions.cuepoint_exceptions import ValidationError
 from cuepoint.data.set_list_file import (
     FILE_MISSING,
@@ -115,6 +116,9 @@ class Library:
             )
         )
         assert stored.id is not None
+        if key:
+            # The key is Beatport's, by an accepted match (PAGES-15).
+            accept_with_key(self.db, stored.id, key)
         return stored.id
 
     def check(self, track_id: int, status: str, path: Optional[str] = None) -> None:
@@ -218,11 +222,9 @@ class TestWhatItReads:
         )
         assert read.missing_files == 1
 
-    def test_keys_are_written_in_the_librarys_notation(self, lib):
+    def test_keys_are_written_in_camelot_and_an_unreadable_one_is_none(self, lib):
         set_id = lib.make_set([lib.add(key="8A"), lib.add(key="Am"), lib.add(key="x")])
-        for _ in range(3):
-            lib.add(key="C")  # the library reads classic
-        assert [r.key for r in lib.service.set_list(set_id).rows] == ["Am", "Am", "x"]
+        assert [r.key for r in lib.service.set_list(set_id).rows] == ["8A", "8A", None]
 
     def test_a_check_of_a_path_the_track_no_longer_has_is_no_check(self, lib):
         track = lib.add()

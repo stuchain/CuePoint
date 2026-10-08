@@ -67,7 +67,7 @@ from cuepoint.models.rekordbox_export_values import (
     EXPORT_VALUE_COLUMNS,
     ExportTrackValues,
 )
-from cuepoint.persistence.track_query import JOINS
+from cuepoint.persistence.track_query import joins_sql
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.rekordbox_export_service import (
     DEFAULT_KEY_FORMAT,
@@ -81,6 +81,7 @@ from cuepoint.services.rekordbox_export_service import (
     SOURCE_UNREADABLE,
     ExportSourceError,
 )
+from cuepoint.services.key_resolver import resolve_key
 from cuepoint.services.tag_write_options import KEY_FORMATS
 from cuepoint.services.tag_write_service import key_text
 
@@ -569,7 +570,9 @@ class TestTheKeyNotation:
 
     def test_a_key_the_converter_cannot_read_writes_nothing(self, service, db, ids):
         db.connect().execute(
-            "UPDATE tracks SET key = ? WHERE id = ?", ("Open 1m", ids["1"])
+            "UPDATE match_candidates SET key = ? WHERE attempt_id IN"
+            " (SELECT id FROM match_attempts WHERE track_id = ?)",
+            ("Open 1m", ids["1"]),
         )
 
         plan = service.plan([], "camelot")
@@ -580,7 +583,9 @@ class TestTheKeyNotation:
         self, service, db, ids
     ):
         db.connect().execute(
-            "UPDATE tracks SET key = ? WHERE id = ?", ("Open 1m", ids["1"])
+            "UPDATE match_candidates SET key = ? WHERE attempt_id IN"
+            " (SELECT id FROM match_attempts WHERE track_id = ?)",
+            ("Open 1m", ids["1"]),
         )
 
         preview = service.preview([], "normal")
@@ -1252,13 +1257,17 @@ class TestTheValueLayers:
         rows = {
             int(row["id"]): dict(row)
             for row in db.connect().execute(
-                f"SELECT tracks.id AS id, {columns} FROM tracks{JOINS['meta']}"
+                f"SELECT tracks.id AS id, {columns} FROM tracks"
+                f"{joins_sql(('meta', *field_spec('key').joins))}"
             )
         }
 
         for values in tracks.iter_export_values():
             row = rows[values.track_id]
-            assert values.effective_key == row["key"]
+            resolved = resolve_key(
+                values.override_key, values.override_key_source, values.beatport_key
+            )
+            assert resolved.camelot == row["key"]
             assert values.effective_bpm == row["bpm"]
             assert values.effective_genre == row["genre"]
             assert values.effective_label == row["label"]
@@ -1297,7 +1306,8 @@ class TestTheValueLayers:
         )
 
         assert values.effective_genre == "Minimal"
-        assert values.effective_key == "Am"
+        # Rekordbox's own key is never the export's key (PAGES-15).
+        assert values.key == "Am"
 
     def test_a_cuepoint_rating_of_zero_wins_over_the_imported_one(self):
         values = ExportTrackValues(
@@ -1333,7 +1343,8 @@ class TestTheValueLayers:
                 " track_metadata.genre AS override_genre,"
                 " track_metadata.label AS override_label,"
                 " track_metadata.year AS override_year,"
-                " track_metadata.rating AS cuepoint_rating"
+                " track_metadata.rating AS cuepoint_rating,"
+                " NULL AS override_key_source, NULL AS beatport_key"
                 " FROM tracks LEFT JOIN track_metadata"
                 " ON track_metadata.track_id = tracks.id LIMIT 1"
             )

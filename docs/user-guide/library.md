@@ -95,10 +95,18 @@ color, bitrate, comment, the file path, four from
 [Waveforms](waveforms.md#loudness)). Turn them on and off, drag a heading to move
 a column, drag its edge to resize it. CuePoint remembers all of it.
 
-Key, BPM, genre, label and year show **your** value when you have set one. A
+BPM, genre, label and year show **your** value when you have set one. A
 small mark beside the value says so — **B** when it was applied from Beatport,
 a dot when you typed it — and pointing at the mark says where it came from and
 what Rekordbox has underneath.
+
+**Key is Beatport's key.** A track's key is the one you typed, or else the key
+of its accepted Beatport match, shown in Camelot (8A). Rekordbox's key is never
+used, so a track with no accepted match shows "—" in the Key column, and every
+key filter, count, check and export leaves it out. After a fresh import no track
+has a key until matching runs: open [Clean](clean.md) and match your library.
+The key filter understands every notation, so "Key is 8A" finds a track whose
+Beatport key is "A minor".
 
 ### Selecting tracks
 
@@ -136,14 +144,16 @@ Selecting one track fills the Inspector. From the top:
   tags, and your key, BPM, genre, label and year. See
   [Organizing your library](organization.md) and
   [Your own values](#your-own-values).
-- **Beatport** — where the track stands with its Beatport match, and for key,
-  BPM, genre, label and year: what Rekordbox sent, what Beatport has, and what
+- **Key** — the track's key in Camelot with its name ("8A · A minor"), or "No
+  Beatport key".
+- **Beatport** — where the track stands with its Beatport match, and for BPM,
+  genre, label and year: what Rekordbox sent, what Beatport has, and what
   you see now, with where that came from. See
   [The Beatport zone](#the-beatport-zone).
 - **From Rekordbox** — everything the import captured: remixer, album, label,
-  genre, key, BPM, year, length, rating, plays, color, comment, bitrate, when
-  it was added and where the file is. **This part is read-only.** It is what
-  Rekordbox sent, and a refresh replaces it.
+  genre, key (marked "not used"), BPM, year, length, rating, plays, color,
+  comment, bitrate, when it was added and where the file is. **This part is
+  read-only.** It is what Rekordbox sent, and a refresh replaces it.
 - **Cues and beat grid**, also from Rekordbox and also read-only: every hot cue,
   memory cue, loop, fade and load point, one line each in the order the track
   plays them, and the beat grid's tempo. See
@@ -416,7 +426,7 @@ Beatport's values, and they become your values — Rekordbox's stay underneath.
 ### The Beatport zone
 
 The Inspector's Beatport zone says where the track stands, who decided it, and
-which Beatport track was decided. For each of key, BPM, genre, label and year it
+which Beatport track was decided. For each of BPM, genre, label and year it
 shows three lines — **Rekordbox**, **Beatport** and **Now** — and says whether
 *Now* is Rekordbox's value, one applied from Beatport, or one you typed. An
 accepted match offers **Apply** beside each field it has a value for.
@@ -431,7 +441,8 @@ notation, a BPM between 20 and 300 with at most two decimals, a year from 1900 t
 next year, and a genre or label up to 200 characters. A value it refuses is
 explained under the field, and nothing is saved.
 
-Your values are what the Library shows, sorts and filters by, and what Smart
+A key you type is a correction: it beats Beatport's key for that track, and it
+stays when a match is rejected. Your values are what the Library shows, sorts and filters by, and what Smart
 Collections match. Rekordbox's value is still there: filter with **Rekordbox
 BPM**, for example, to ask about it alone.
 
@@ -455,7 +466,8 @@ says so. A revert is itself a change, and can be reverted too.
 Rekordbox and other software can read them. It is the one thing CuePoint does
 outside its own library, so it always goes in the same order:
 
-1. **Choose what to write**: key (in the notation you choose), BPM, year,
+1. **Choose what to write**: key (in the notation you choose; a track with no
+   key keeps the key its file already has), BPM, year,
    genre, label, a comment, and whether to add Beatport's artwork to files that
    have none. The comment is off to start with, because it replaces whatever
    comment a file has.

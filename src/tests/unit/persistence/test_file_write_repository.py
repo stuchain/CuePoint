@@ -41,6 +41,7 @@ from cuepoint.persistence.track_metadata_repository import TrackMetadataReposito
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner, discover_migrations
+from tests.unit.key_support import accept_with_key
 
 NOW = "2026-09-15T12:00:00+00:00"
 
@@ -113,6 +114,7 @@ class TestTargets:
     def test_the_effective_value_is_the_override_over_rekordbox(self, db, repo):
         track = add(db, key="C", bpm=120.0, genre="House", label="Label", year=2001)
         metadata = TrackMetadataRepository(db)
+        # The key is yours, else Beatport's, never Rekordbox's "C" (DEC-201).
         metadata.set_override(track, "key", "Am")
         metadata.set_override(track, "bpm", 124.5)
         metadata.set_override(track, "year", 2019)
@@ -120,12 +122,22 @@ class TestTargets:
         [target] = repo.targets([track])
 
         assert (target.key, target.bpm, target.genre, target.label, target.year) == (
-            "Am",
+            "8A",
             124.5,
             "House",
             "Label",
             2019,
         )
+
+    def test_rekordbox_s_key_alone_is_no_key_to_write(self, db, repo):
+        [target] = repo.targets([add(db, key="C")])
+        assert target.key is None
+
+    def test_beatport_s_key_is_the_key_to_write(self, db, repo):
+        track = add(db, key="C")
+        accept_with_key(db, track, "A Minor")
+        [target] = repo.targets([track])
+        assert target.key == "8A"
 
     def test_neither_layer_is_none(self, db, repo):
         [target] = repo.targets([add(db)])

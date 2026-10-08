@@ -40,6 +40,7 @@ from cuepoint.persistence.track_query import BrowseQuery
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
+from tests.unit.key_support import accept_with_key
 
 
 @pytest.fixture
@@ -171,6 +172,34 @@ def rule(field: str, operator: str, value=None) -> FilterRule:
     return FilterRule(field=field, operator=operator, value=value)
 
 
+class TestTheKeyIsBeatports:
+    """ "Key is 8A" means the track's key (DEC-201): the user's, else Beatport's."""
+
+    def test_key_is_8a_matches_a_beatport_a_minor_and_never_a_rekordbox_only_8a(
+        self, seeded, db
+    ):
+        # Track 1 is Rekordbox-only 8A; track 2 gets Beatport's "A Minor".
+        ids = {
+            t.rekordbox_track_id: t.id for t in seeded.browse(BrowseQuery(), limit=10)
+        }
+        accept_with_key(db, ids["2"], "A Minor")
+        assert matching(seeded, rule("key", "is", "8A")) == ["2"]
+        assert matching(seeded, rule("key", "is", "Am")) == ["2"]
+        assert matching(seeded, rule("key_rekordbox", "is", "8A")) == ["1"]
+
+    def test_a_value_that_is_not_a_key_matches_nothing(self, seeded, db):
+        ids = {
+            t.rekordbox_track_id: t.id for t in seeded.browse(BrowseQuery(), limit=10)
+        }
+        accept_with_key(db, ids["2"], "A Minor")
+        assert matching(seeded, rule("key", "is", "banana")) == []
+
+    def test_the_field_that_names_rekordbox_s_key_says_it_is_not_used(self):
+        assert rule("key_rekordbox", "is", "8A").spec.label == (
+            "Key from Rekordbox (not used)"
+        )
+
+
 class TestTextOperators:
     def test_is_is_case_insensitive(self, seeded):
         # "House" and "house" are one genre to everyone except a byte compare.
@@ -206,7 +235,11 @@ class TestTextOperators:
         assert matching(seeded, rule("genre", "ends_with", "HOUSE")) == ["1", "2", "3"]
 
     def test_any_of_is_case_insensitive(self, seeded):
-        assert matching(seeded, rule("key", "any_of", ["8a", "9A"])) == ["1", "3"]
+        # Rekordbox's own key, by its own field: the plain "key" is Beatport's.
+        assert matching(seeded, rule("key_rekordbox", "any_of", ["8a", "9A"])) == [
+            "1",
+            "3",
+        ]
 
     def test_any_of_with_one_value_behaves_like_is(self, seeded):
         assert matching(seeded, rule("label", "any_of", ["mau5trap"])) == ["1", "2"]

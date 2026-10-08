@@ -4,7 +4,7 @@
 """Applying an accepted match's values into CuePoint's layer (CLEAN-05, DEC-068).
 
 Accepting a match says "this is the right Beatport track" and writes nothing
-(DEC-004). Applying is the separate act that copies chosen fields — key, BPM,
+(DEC-004). Applying is the separate act that copies chosen fields — BPM,
 genre, label, year — from the candidate a track's state points at into the
 override layer, where a refresh cannot reach them and a revert can take them
 back (CLEAN-06).
@@ -49,21 +49,36 @@ from cuepoint.services.override_values import (
 )
 
 
+#: The one override field applying does not write (DEC-201).
+KEY_FIELD = "key"
+
+
 def chosen_fields(fields: Iterable[str]) -> List[str]:
     """Return the fields to apply, each once, in the order given.
 
+    The key is never one of them (DEC-201): an accepted match already supplies
+    it, so a key named alongside others is left out and a key named alone is
+    refused.
+
     Raises:
         ValueError: If none are named, a bare string was passed where a list
-            belongs, or a field cannot be overridden.
+            belongs, a field cannot be overridden, or only the key is named.
     """
     if isinstance(fields, str):
         raise ValueError("Name the fields to apply as a list, not as one string")
     wanted: List[str] = []
+    named_key = False
     for field in fields:
         name = require_field(field)
-        if name not in wanted:
+        if name == KEY_FIELD:
+            named_key = True
+        elif name not in wanted:
             wanted.append(name)
     if not wanted:
+        if named_key:
+            raise ValueError(
+                "The key comes from the accepted match, so there is nothing to apply"
+            )
         raise ValueError("Choose at least one field to apply")
     return wanted
 
@@ -112,9 +127,8 @@ class MatchApplyService(IMatchApplyService):
             raise ValueError(
                 f"Track {track_id} has no accepted match, so there is nothing to apply"
             )
-        notation = (
-            self._metadata.key_notation() if "key" in wanted else NOTATION_CLASSIC
-        )
+        # No key is applied (DEC-201), so no key notation is needed.
+        notation = NOTATION_CLASSIC
         values = {name: candidate_value(candidate, name, notation) for name in wanted}
         missing = [name for name, value in values.items() if value is None]
         if missing:

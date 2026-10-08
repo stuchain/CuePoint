@@ -378,8 +378,9 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         expect(written).toMatch(
           /<NODE Name="Techno" Type="1" KeyType="0" Entries="1">\s*<TRACK Key="103"\/>/,
         );
-        // Every key in Camelot, the override's included (DEC-089).
-        expect(written).toMatch(/TrackID="101"[^>]*Tonality="8A"/);
+        // The typed correction in Camelot (DEC-089); a track with no Beatport key and
+        // no correction keeps the Rekordbox value it came with (PAGES-15).
+        expect(written).toMatch(/TrackID="101"[^>]*Tonality="Am"/);
         expect(written).toMatch(/TrackID="102"[^>]*Tonality="5A"/);
         expect(written).toContain('<POSITION_MARK Name="Drop" Type="0" Start="64.500"');
       });

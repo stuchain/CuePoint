@@ -1243,7 +1243,7 @@ class TestBothLayersUnderTheirNames:
             **fields,
         )
 
-    @pytest.mark.parametrize("sort", list(OVERRIDE_FIELDS))
+    @pytest.mark.parametrize("sort", [f for f in OVERRIDE_FIELDS if f != "key"])
     def test_sorting_orders_by_the_effective_value(self, library, sort):
         # Each override reverses the imported order, so the effective order is
         # the imported one backwards.

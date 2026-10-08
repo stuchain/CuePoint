@@ -108,6 +108,10 @@ still read `Am`. If you only open the file in Rekordbox, this does not arise.
 
 The notation you use becomes the default for your next export.
 
+The key written is the track's own: yours, or else its accepted Beatport match's
+key. A track with neither keeps the key Rekordbox already has in the file; the
+export never blanks a key.
+
 ## Opening the export in Rekordbox
 
 Rekordbox does not merge an XML file into your collection. It shows it as a

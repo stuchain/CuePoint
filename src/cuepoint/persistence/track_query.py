@@ -42,6 +42,8 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from cuepoint.models.filter_rule import (
     ARTWORK_ALIAS,
+    KEY_BEATPORT_SQL,
+    KEY_WHEEL_SQL,
     FILES_ALIAS,
     MATCH_ALIAS,
     MATCH_CANDIDATE_ALIAS,
@@ -272,6 +274,10 @@ def _joins(names: Iterable[str]) -> str:
     return "".join(sql for alias, sql in JOINS.items() if alias in wanted)
 
 
+#: :func:`_joins` for a reader that writes its own statement over ``tracks``.
+joins_sql = _joins
+
+
 # The tag facet counts assignments and only then looks up names — the same
 # group-then-join ORG-03 measured for the tag list, and the same reason. Joining
 # `tags` first makes the grouping walk 200,000 rows through a table it does not
@@ -371,7 +377,9 @@ _PRIMARY: Dict[str, Tuple[SortTerm, ...]] = {
     # to, read from the registry rather than written a second time.
     "label": (_field_term("label", text=True),),
     "genre": (_field_term("genre", text=True),),
-    "key": (_field_term("key", text=True),),
+    # Round the wheel (1A, 1B, 2A ... 12B), then no key: the number first and
+    # then the letter, which no spelling of a key sorts as.
+    "key": (SortTerm(KEY_WHEEL_SQL, nullable=True, joins=field_spec("key").joins),),
     "bpm": (_field_term("bpm"),),
     "year": (_field_term("year"),),
     "duration_seconds": (SortTerm("tracks.duration_seconds", nullable=True),),
@@ -719,9 +727,12 @@ def build_select_queue(
     paging a long queue cannot repeat or skip a track where sort values tie.
     """
     valid = query.validated()
-    # Key and BPM as a DJ sees them (DEC-068): a player bar showing the key
-    # Rekordbox guessed beside the one the user corrected shows the wrong one.
-    parts = _predicate(valid, joins=(METADATA_ALIAS, *sort_joins(valid.sort)))
+    # Key and BPM as a DJ sees them (DEC-068, DEC-201): a player bar showing the
+    # key Rekordbox guessed beside the one the user corrected shows the wrong one.
+    parts = _predicate(
+        valid,
+        joins=(METADATA_ALIAS, *field_spec("key").joins, *sort_joins(valid.sort)),
+    )
     key = field_spec("key").expression
     bpm = field_spec("bpm").expression
     sql = (
@@ -865,9 +876,13 @@ def build_clean_states(count: int) -> str:
     columns = ", ".join(
         f"{field_spec(name).expression} AS {name}" for name in CLEAN_STATE_FIELDS
     )
+    # The accepted match's key, for the row's resolved key (DEC-201): the row
+    # resolves it in Python beside the override and where that came from.
+    columns += f", {KEY_BEATPORT_SQL} AS beatport_key"
+    joins = set(_field_joins(CLEAN_STATE_FIELDS)) | {MATCH_ALIAS, MATCH_CANDIDATE_ALIAS}
     return (
         f"SELECT tracks.id AS id, {columns}"
-        f" FROM tracks{_joins(_field_joins(CLEAN_STATE_FIELDS))}"
+        f" FROM tracks{_joins(joins)}"
         f" WHERE tracks.id IN ({_id_list(count)})"
     )
 
@@ -997,6 +1012,19 @@ def _facet_table(where: str) -> str:
     return "tracks NOT INDEXED" if where else "tracks"
 
 
+def _derived_value(spec: FieldSpec, parts: "Predicate") -> str:
+    """The view's tracks with ``spec``'s value computed once, as ``facet_value``.
+
+    ``LIMIT -1`` (no limit) is what keeps SQLite from flattening the subquery
+    back into its parent, which would write the expression into the select, the
+    WHERE and the GROUP BY again and evaluate it for each.
+    """
+    return (
+        f"(SELECT {spec.expression} AS facet_value "
+        f"FROM {_facet_table(parts.where)}{parts.join}{parts.where} LIMIT -1)"
+    )
+
+
 def _has_value(spec: FieldSpec) -> str:
     """ "This track has a value for this field", as SQL.
 
@@ -1022,9 +1050,10 @@ def _layers(spec: FieldSpec) -> Optional[Tuple[str, str]]:
 
     The five fields CuePoint can override (DEC-068). Their expression is
     ``COALESCE(override, imported)``, which is what makes a split grouping of
-    them exact — a test holds the registry to that shape.
+    them exact — a test holds the registry to that shape. Not the key (DEC-201):
+    it is resolved from the match as well, so it has no two layers to count.
     """
-    if spec.name not in OVERRIDE_FIELDS:
+    if spec.name not in OVERRIDE_FIELDS or spec.name == "key":
         return None
     return f"tracks.{spec.name}", f"{METADATA_ALIAS}.{spec.name}"
 
@@ -1286,6 +1315,19 @@ def build_facet_values(
             "LIMIT ?",
             (clamp_facet_limit(limit) + 1,),
         )
+    if spec.name == "key":
+        # The key is a CASE over three joins and a Python function, and the
+        # plain query writes it into the select, the WHERE and the GROUP BY.
+        # Computed once per track in a derived table and grouped over, it costs
+        # a third.
+        return (
+            f"{parts.cte}SELECT min(facet_value) AS raw_value, count(*) AS n "
+            f"FROM {_derived_value(spec, parts)} WHERE facet_value IS NOT NULL "
+            f"GROUP BY {_grouping('facet_value', spec.type)} "
+            "ORDER BY n DESC, raw_value COLLATE NOCASE ASC "
+            "LIMIT ?",
+            (*parts.params, clamp_facet_limit(limit) + 1),
+        )
     present = _has_value(spec)
     filtered = f"{parts.where} AND {present}" if parts.where else f" WHERE {present}"
     return (
@@ -1330,6 +1372,16 @@ def build_facet_value_count(
             f"(SELECT max(has_value) AS has_value, sum(n) AS n FROM ({layered}) "
             f"GROUP BY {_grouping('raw_value', spec.type)})",
             (),
+        )
+    if spec.name == "key":
+        return (
+            f"{parts.cte}SELECT "
+            "sum(CASE WHEN has_value THEN 1 ELSE 0 END) AS values_count, "
+            "sum(CASE WHEN has_value THEN 0 ELSE n END) AS missing FROM "
+            "(SELECT facet_value IS NOT NULL AS has_value, count(*) AS n "
+            f"FROM {_derived_value(spec, parts)} "
+            f"GROUP BY {_grouping('facet_value', spec.type)})",
+            parts.params,
         )
     present = _has_value(spec)
     return (

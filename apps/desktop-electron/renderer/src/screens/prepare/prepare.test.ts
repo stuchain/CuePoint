@@ -109,7 +109,7 @@ describe("the rows", () => {
     expect(entryRow(E4).transition.map((warning) => warning.kind)).toEqual(["tempo_jump", "key_clash"]);
     expect(entryRow(E3).transition).toEqual([]);
     const second = plainRows[1] as EntryRow;
-    expect(second.transition.map((warning) => warning.kind).sort()).toEqual(["key_unknown", "tempo_unknown"]);
+    expect(second.transition.map((warning) => warning.kind).sort()).toEqual(["tempo_unknown"]);
   });
 
   it("gives each repeat its notice, and each heading its chapter's warnings", () => {
@@ -232,11 +232,21 @@ describe("the words", () => {
 
   it("has a few words for every warning the engine gives", () => {
     const plain = (plainRows[1] as EntryRow).transition.map(shortWarning).sort();
-    expect(plain).toEqual(["No BPM", "No key"]);
+    // A track with no key is no warning (DEC-201).
+    expect(plain).toEqual(["No BPM"]);
     expect((rows[0].kind === "heading" ? rows[0].warnings : []).map(shortWarning)).toEqual([
       "Over target",
       "Outside BPM range",
     ]);
+  });
+
+  it("says how many entries have no key, and nothing when all do", () => {
+    const keyless = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 2 });
+    expect(keyless[keyless.length - 1]?.text).toBe("2 entries without a key");
+    const one = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 1 });
+    expect(one[one.length - 1]?.text).toBe("1 entry without a key");
+    const all = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 0 });
+    expect(all.some((fact) => /without a key/.test(fact.text))).toBe(false);
   });
 
   it("puts the header's facts on one line, each longer sentence in its title", () => {

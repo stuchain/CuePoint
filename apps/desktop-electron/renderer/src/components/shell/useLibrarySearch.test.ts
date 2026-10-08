@@ -106,19 +106,19 @@ describe("resultSummary", () => {
 describe("trackSubtitle", () => {
   it("joins the parts that are present", () => {
     expect(
-      trackSubtitle({ album: "Album", label: "Label", bpm: 128, key: "6A" }),
+      trackSubtitle({ album: "Album", label: "Label", bpm: 128, effective_key: "6A" }),
     ).toBe("Album · Label · 128 BPM · 6A");
   });
 
   it("omits missing parts without leaving separators behind", () => {
-    expect(trackSubtitle({ album: null, label: "Label", bpm: null, key: null })).toBe(
+    expect(trackSubtitle({ album: null, label: "Label", bpm: null })).toBe(
       "Label",
     );
-    expect(trackSubtitle({ album: null, label: null, bpm: null, key: null })).toBe("");
+    expect(trackSubtitle({ album: null, label: null, bpm: null })).toBe("");
   });
 
   it("does not treat a zero BPM as a value worth showing", () => {
-    expect(trackSubtitle({ album: "Album", label: null, bpm: 0, key: null })).toBe(
+    expect(trackSubtitle({ album: "Album", label: null, bpm: 0 })).toBe(
       "Album",
     );
   });

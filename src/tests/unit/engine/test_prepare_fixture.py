@@ -53,6 +53,7 @@ from tests.unit.engine.test_engine_library_browse import (
     library_db,  # noqa: F401 — a pytest fixture, used by name
 )
 from tests.unit.engine.test_engine_organization_api import ok, post
+from tests.unit.key_support import accept_with_key
 
 pytestmark = pytest.mark.unit
 
@@ -95,7 +96,7 @@ def _resolve(name: str):
 @pytest.fixture
 def track_ids(library_db):  # noqa: F811 — the fixture is used by name
     repo = _resolve("ITrackRepository")
-    return [
+    ids = [
         int(
             repo.add(
                 LibraryTrack(
@@ -111,6 +112,12 @@ def track_ids(library_db):  # noqa: F811 — the fixture is used by name
         )
         for i, (title, artist, bpm, key, seconds) in enumerate(TRACKS, start=1)
     ]
+    # The keys are Beatport's (DEC-201): each track with one has an accepted
+    # match carrying it, and "Unknown" has neither.
+    for track_id, (_title, _artist, _bpm, key, _seconds) in zip(ids, TRACKS):
+        if key is not None:
+            accept_with_key(_resolve("IDatabaseService"), track_id, key)
+    return ids
 
 
 def _sets(base: str, path: str, body: dict) -> dict:
@@ -403,7 +410,9 @@ class TestEachStateIsWhatItClaims:
     def test_plain_cannot_compare_the_unknown_track(self, got):
         (transition,) = got["plain"]["analysis"]["transitions"]
         kinds = {w["kind"] for w in transition["warnings"]}
-        assert kinds == {"tempo_unknown", "key_unknown"}
+        # A track with no key is no warning (DEC-201), only a track with no tempo.
+        assert kinds == {"tempo_unknown"}
+        assert got["plain"]["analysis"]["without_key"] == 1
 
     def test_the_edits_answer_what_they_changed(self, got):
         edits = got["edits"]

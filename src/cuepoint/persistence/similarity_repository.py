@@ -45,7 +45,11 @@ from cuepoint.persistence.track_credit_repository import (
     credited_among,
     crediting_any_sql,
 )
-from cuepoint.persistence.track_query import BrowseQuery, build_select_scoped
+from cuepoint.persistence.track_query import (
+    BrowseQuery,
+    build_select_scoped,
+    joins_sql,
+)
 from cuepoint.services.interfaces import IDatabaseService, ISimilarityRepository
 
 #: The fields a pre-selection may ask for the spellings of.
@@ -66,7 +70,7 @@ _VALUES = (
 #: nothing; a candidate's credits are read another way (see ``candidates``).
 _TRAITS = f"{_VALUES}, {credit_keys_sql('tracks.id')} AS artist_keys"
 
-_JOINS = (METADATA_ALIAS,)
+_JOINS = (METADATA_ALIAS, *field_spec("key").joins)
 
 
 def _row(row: sqlite3.Row) -> TraitRow:
@@ -217,8 +221,7 @@ class SimilarityRepository(ISimilarityRepository):
             self._db.connect()
             .execute(
                 f"SELECT DISTINCT {expression} AS value FROM tracks"
-                f" LEFT JOIN track_metadata AS {METADATA_ALIAS}"
-                f" ON {METADATA_ALIAS}.track_id = tracks.id"
+                f"{joins_sql(field_spec(field).joins)}"
                 f" WHERE {expression} IS NOT NULL"
             )
             .fetchall()

@@ -30,6 +30,8 @@ from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
 from cuepoint.services.rekordbox_export_service import RekordboxExportService
 
+from tests.unit.key_support import accept_with_key
+
 from .library import LIBRARY, SOURCE
 
 
@@ -52,6 +54,11 @@ def source(tmp_path: Path) -> Path:
 def tracks(db) -> TrackRepository:
     repo = TrackRepository(db)
     repo.add_many([LibraryTrack(**values) for values in LIBRARY])
+    # A key is Beatport's, by an accepted match (PAGES-15): each track's match
+    # carries the key its file spells, so the export has a key to write.
+    for row in db.connect().execute("SELECT id, key FROM tracks").fetchall():
+        if row["key"]:
+            accept_with_key(db, int(row["id"]), str(row["key"]))
     return repo
 
 

@@ -480,7 +480,7 @@ describe("the Set", () => {
     await opened("Plain");
     expect(rows()).toHaveLength(2);
     expect(rows().some((row) => row.classList.contains("prepare-heading"))).toBe(false);
-    expect(rowAt(1).querySelector('[data-column="transition"]')).toHaveTextContent(/No BPM · No key|No key · No BPM/);
+    expect(rowAt(1).querySelector('[data-column="transition"]')).toHaveTextContent("No BPM");
   });
 
   it("reads the Set again when the library changes anywhere", async () => {

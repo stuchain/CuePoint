@@ -111,7 +111,9 @@ def edited(db, exports) -> int:
     parts["importer"].import_rekordbox_xml(exports["base"])
     track_id = int(parts["tracks"].find_by_rekordbox_id("1").id)
     for field, value in OVERRIDES.items():
-        source = "beatport" if field in ("key", "bpm") else "cuepoint"
+        # A key applied from a match is Beatport's and follows the match (DEC-203):
+        # a typed one is the user's correction and stays.
+        source = "beatport" if field == "bpm" else "cuepoint"
         parts["metadata"].set_override(track_id, field, value, source=source)
     return track_id
 
@@ -224,7 +226,7 @@ class TestBackupAndRestore:
             )
         }
         assert sources == {
-            "cuepoint_key": "beatport",
+            "cuepoint_key": "cuepoint",
             "cuepoint_bpm": "beatport",
             "cuepoint_genre": "cuepoint",
             "cuepoint_label": "cuepoint",

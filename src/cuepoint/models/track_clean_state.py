@@ -39,6 +39,9 @@ class TrackCleanState:
         file_status: What the check found for the path the track has now, or
             ``not_checked``.
         artwork: ``embedded``, ``beatport``, ``none`` or ``unknown``.
+        beatport_key: The key of the accepted match's candidate, as Beatport
+            wrote it, or None. Not an answer the wire carries: the row's
+            ``effective_key`` is resolved from it.
     """
 
     track_id: int
@@ -48,6 +51,8 @@ class TrackCleanState:
     artwork: str = ARTWORK_UNKNOWN
     # Last, so the four CLEAN-11 answers keep their positions.
     match_score: Optional[float] = None
+    # Beatport's key from the accepted match, raw (DEC-201); the row resolves it.
+    beatport_key: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Refuse an answer the vocabulary could not have given."""
@@ -88,6 +93,7 @@ class TrackCleanState:
             match_score=data.get("match_score"),
             file_status=data["file_status"],
             artwork=data["artwork"],
+            beatport_key=data.get("beatport_key"),
         )
 
 

@@ -80,7 +80,9 @@ export const VALUE_ROWS: readonly ValueRow[] = [
   {
     id: "key",
     label: "Key",
-    track: (t) => cellText(t.key),
+    // Rekordbox's key is not the track's key (DEC-201); Beatport's is. It is
+    // shown against Beatport's so a reviewer can see they disagree, and said so.
+    track: (t) => (t.key ? `${t.key} (from Rekordbox, not used)` : cellText(t.key)),
     candidate: (c) => cellText(c.key),
     differs: "key",
   },
@@ -199,8 +201,11 @@ export function candidateBadges(
   return badges;
 }
 
-/** The five fields applying can copy (DEC-068), in the order the Library shows them. */
-export const APPLY_FIELDS: readonly OverrideField[] = ["key", "bpm", "genre", "label", "year"];
+/** A field applying can copy: every overridable one but the key, which an accepted match gives (DEC-201). */
+export type ApplyField = Exclude<OverrideField, "key">;
+
+/** The four fields applying can copy (DEC-068), in the order the Library shows them. */
+export const APPLY_FIELDS: readonly ApplyField[] = ["bpm", "genre", "label", "year"];
 
 export const APPLY_FIELD_LABELS: Record<OverrideField, string> = {
   key: "Key",
@@ -211,10 +216,8 @@ export const APPLY_FIELD_LABELS: Record<OverrideField, string> = {
 };
 
 /** What applying one field would copy from a candidate, or null when it has nothing. */
-export function applyValue(field: OverrideField, candidate: MatchCandidate): string | null {
+export function applyValue(field: ApplyField, candidate: MatchCandidate): string | null {
   switch (field) {
-    case "key":
-      return candidate.key || null;
     case "bpm":
       return candidate.bpm == null ? null : formatBpm(candidate.bpm);
     case "genre":

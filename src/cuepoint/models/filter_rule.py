@@ -35,7 +35,7 @@ tracks that looks right.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from cuepoint.models.beatport_cache import (
@@ -466,6 +466,50 @@ ARTWORK_CHOICES: Tuple[Tuple[str, str], ...] = (
 CHOICE_OPERATORS = (OP_IS, OP_IS_NOT, OP_ANY_OF)
 
 
+# The key is not DEC-068's COALESCE (DEC-201): it is the user's correction, else
+# the key of the accepted match's candidate, else none; Rekordbox's key is never
+# the fallback. A key applied from a match before that decision sits in the
+# override layer too, and History says it came from Beatport (DEC-203), so it
+# follows the match instead of counting as a correction. One definition of
+# "yours", read by every SQL reader of the key; `services/key_resolver.py` is
+# the same rule in Python.
+KEY_HISTORY_FIELD = "cuepoint_key"
+KEY_SOURCE_YOURS = "yours"
+KEY_SOURCE_BEATPORT = "beatport"
+KEY_LATEST_SOURCE_SQL = (
+    "(SELECT khist.source FROM track_history AS khist"
+    f" WHERE khist.track_id = tracks.id AND khist.field = '{KEY_HISTORY_FIELD}'"
+    " ORDER BY khist.id DESC LIMIT 1)"
+)
+_KEY_IS_CORRECTION = (
+    f"({METADATA_ALIAS}.key IS NOT NULL"
+    f" AND COALESCE({KEY_LATEST_SOURCE_SQL}, 'cuepoint') <> 'beatport')"
+)
+_KEY_IS_ACCEPTED = f"({MATCH_ALIAS}.state = 'accepted')"
+
+#: The key as text, before it is normalized: the correction, else the accepted
+#: match's Beatport key, else NULL.
+KEY_RAW_SQL = (
+    f"CASE WHEN {_KEY_IS_CORRECTION} THEN {METADATA_ALIAS}.key"
+    f" WHEN {_KEY_IS_ACCEPTED} THEN NULLIF(TRIM({MATCH_CANDIDATE_ALIAS}.key), '')"
+    " END"
+)
+#: The Beatport key of the accepted match alone, for a reader that resolves in
+#: Python (it needs the correction's source as well).
+KEY_BEATPORT_SQL = (
+    f"CASE WHEN {_KEY_IS_ACCEPTED}"
+    f" THEN NULLIF(TRIM({MATCH_CANDIDATE_ALIAS}.key), '') END"
+)
+#: The joins the key's expressions read through.
+KEY_JOINS = (METADATA_ALIAS, MATCH_ALIAS, MATCH_CANDIDATE_ALIAS)
+#: What the Key field compares: the Camelot code of the resolved key, so "8A"
+#: and "A Minor" are one key. ``cp_camelot`` is registered on every connection
+#: by ``DatabaseService``; an unreadable key is NULL, which is no key.
+KEY_SQL = f"cp_camelot({KEY_RAW_SQL})"
+#: The key's place on the wheel (1A, 1B, 2A ... 12B; NULL for none), for sorting.
+KEY_WHEEL_SQL = f"cp_wheel({KEY_RAW_SQL})"
+
+
 def _effective(name: str, type_: str, label: str, **options: Any) -> FieldSpec:
     """A field that means CuePoint's override when there is one (DEC-068).
 
@@ -517,7 +561,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
     # DEC-068: these five mean the effective value, as rating does below.
     _effective("label", TYPE_TEXT, "Label", facetable=True),
     _effective("genre", TYPE_TEXT, "Genre", facetable=True),
-    _effective("key", TYPE_TEXT, "Key", facetable=True),
+    FieldSpec("key", TYPE_TEXT, "Key", facetable=True, column=KEY_SQL, joins=KEY_JOINS),
     FieldSpec("colour", TYPE_TEXT, "Colour", facetable=True),
     FieldSpec("comment", TYPE_TEXT, "Comment"),
     FieldSpec("file_path", TYPE_TEXT, "File path"),
@@ -577,7 +621,14 @@ FIELDS: Tuple[FieldSpec, ...] = (
         joins=(METADATA_ALIAS,),
     ),
     # --- Each override layer on its own (CLEAN-05) ---------------------
-    *_layers("key", TYPE_TEXT, "key"),
+    # Rekordbox's key is no longer the key (DEC-201); the filter can still ask
+    # for it, and says so.
+    *(
+        replace(spec, label="Key from Rekordbox (not used)")
+        if spec.name == "key_rekordbox"
+        else spec
+        for spec in _layers("key", TYPE_TEXT, "key")
+    ),
     *_layers("bpm", TYPE_NUMBER, "BPM"),
     *_layers("genre", TYPE_TEXT, "genre"),
     *_layers("label", TYPE_TEXT, "label"),
@@ -1312,6 +1363,15 @@ __all__: Sequence[str] = (
     "DUPLICATE_SIGNALS_VIEW",
     "FILES_ALIAS",
     "FILE_CHECK_CURRENT",
+    "KEY_BEATPORT_SQL",
+    "KEY_HISTORY_FIELD",
+    "KEY_JOINS",
+    "KEY_LATEST_SOURCE_SQL",
+    "KEY_RAW_SQL",
+    "KEY_SOURCE_BEATPORT",
+    "KEY_SOURCE_YOURS",
+    "KEY_SQL",
+    "KEY_WHEEL_SQL",
     "MATCH_ALL",
     "MATCH_ANY",
     "MATCH_ALIAS",

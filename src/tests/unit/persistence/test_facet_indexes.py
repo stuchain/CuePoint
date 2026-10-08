@@ -219,7 +219,9 @@ class TestTheyAreActuallyUsed:
         assert "idx_tracks_rating_facet" in detail
         assert "TEMP B-TREE FOR GROUP BY" in detail.upper()
 
-    @pytest.mark.parametrize("field", ["genre", "key", "label", "year"])
+    # Not the key: it is Beatport's, joined through the match (PAGES-15), so no
+    # imported index can serve it.
+    @pytest.mark.parametrize("field", ["genre", "label", "year"])
     def test_an_effective_facet_still_reads_the_imported_index(self, seeded, db, field):
         """CLEAN-05 kept these indexes earning their place.
 
@@ -236,7 +238,7 @@ class TestTheyAreActuallyUsed:
         ):
             assert f"idx_tracks_{field}_facet" in plan(db, sql, params)
 
-    @pytest.mark.parametrize("field", ["genre", "key", "label", "year"])
+    @pytest.mark.parametrize("field", ["genre", "label", "year"])
     def test_a_narrowed_effective_facet_joins_as_its_rules_do(self, db, field):
         """With a rule in play the join is needed anyway, so the joined shape runs."""
         narrowed = BrowseQuery(

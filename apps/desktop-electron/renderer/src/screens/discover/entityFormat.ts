@@ -119,11 +119,11 @@ export function freshnessLine(half: Pick<EntityBeatportHalf, "from_cache" | "fet
 export function seedFacts(
   track: Pick<
     LibraryTrackRow,
-    "bpm" | "key" | "genre" | "effective_bpm" | "effective_key" | "effective_genre"
+    "bpm" | "genre" | "effective_bpm" | "effective_key" | "effective_genre"
   >,
 ): string {
   const bpm = track.effective_bpm ?? track.bpm;
-  const key = track.effective_key ?? track.key;
+  const key = track.effective_key;
   const genre = track.effective_genre ?? track.genre;
   return [bpm == null ? null : `${bpm.toFixed(1)} BPM`, key || null, genre || null]
     .filter((part): part is string => part !== null)

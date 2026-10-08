@@ -189,6 +189,29 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
     }
   });
 
+  test("Rekordbox keys with no matches show no key in the Library (PAGES-15)", async () => {
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await importAndCheck(window, writeExport(workspace).xml);
+      await window.getByRole("link", { name: "Library" }).click();
+      const tone = row(window, "Tone One");
+      await expect(tone).toBeVisible({ timeout: 30_000 });
+      // The file says 8A, but no Beatport match or correction gives a key.
+      await expect(tone.locator('[data-column="key"]')).toHaveText("—");
+      await tone.getByText("Tone One").click();
+      const inspector = window.locator(".cp-track-detail");
+      await expect(inspector.locator(".cp-track-detail__keyline")).toContainText("No Beatport key");
+      const resolved = await window.evaluate(async () => {
+        const rows = await window.cuepoint!.browseLibrary!({ limit: 10 });
+        return rows.tracks.map((t) => ({ key: t.key, effective: t.effective_key, source: t.key_source }));
+      });
+      expect(resolved.every((t) => t.key === "8A" && t.effective === null && t.source === null)).toBe(true);
+    } finally {
+      await app.close();
+    }
+  });
+
   test("a typed value is marked in the table and reverted from History", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
@@ -204,10 +227,10 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await key.press("Enter");
 
       // The table shows the typed value, marked, and says where it came from.
-      const mark = row(window, "Tone One").getByRole("img", { name: /^Key typed by you\. Rekordbox has 8A\./ });
+      const mark = row(window, "Tone One").getByRole("img", { name: /^Key typed by you\. Rekordbox.s key is not used\./ });
       await expect(mark).toBeVisible({ timeout: 15_000 });
       await expect(row(window, "Tone One")).toContainText("11A");
-      await expect(inspector.locator('[data-field="key"]')).toContainText("Now 11A (typed by you)");
+      await expect(inspector.locator(".cp-track-detail__keyline")).toContainText("11A");
 
       // The engine refuses a BPM it cannot hold, in its own words.
       const bpm = inspector.getByLabel("Your BPM", { exact: true });
@@ -219,7 +242,8 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       // Reverted from History, the imported value shows again, unmarked.
       await inspector.getByRole("button", { name: /^Revert: Your key/ }).click();
       await expect(row(window, "Tone One").getByRole("img")).toHaveCount(0, { timeout: 15_000 });
-      await expect(row(window, "Tone One")).toContainText("8A");
+      // Rekordbox's key is not used: with the correction gone the Key column is empty.
+      await expect(row(window, "Tone One").locator('[data-column="key"]')).toHaveText("—");
       await expect(key).toHaveValue("");
     } finally {
       await app.close();
@@ -294,6 +318,13 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await importAndCheck(window, xml);
       const before = readFileSync(files[0]!);
       await window.getByRole("link", { name: "Library" }).click();
+      // Only a resolved key is written (PAGES-15): give Tone One one of its own.
+      await window.evaluate(async () => {
+        const found = await window.cuepoint!.browseLibrary!({ q: "Tone One", limit: 1 });
+        await window.cuepoint!.setTrackOverrides!({ trackId: found.tracks[0]!.id!, key: "8A" });
+      });
+      await window.reload();
+      await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
       await row(window, "Tone One").getByText("Tone One").click({ button: "right" });
       await window.getByRole("menu").getByRole("menuitem", { name: "Write tags to files…" }).click();
 

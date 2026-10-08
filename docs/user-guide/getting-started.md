@@ -46,7 +46,7 @@ Matching runs in the background, so you can keep working. Tracks CuePoint is cer
 
 ### 5. Use Beatport's values
 
-For an accepted match, **Apply from the accepted match** copies the fields you tick (key, BPM, genre, label, year) into your own values. Rekordbox's values stay underneath, and you can revert any change from the track's History.
+For an accepted match, **Apply from the accepted match** copies the fields you tick (BPM, genre, label, year) into your own values. The key needs no apply: an accepted match gives it. Rekordbox's values stay underneath, and you can revert any change from the track's History.
 
 CuePoint never deletes or moves tracks or files, and never writes to your Rekordbox export.
 

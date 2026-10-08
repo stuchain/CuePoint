@@ -214,7 +214,12 @@ class TestFacetsAndSorting:
     def test_a_facet_count_is_the_count_of_its_rule(self, tracks, metadata, ids):
         metadata.set_override(ids["3"], "key", "Am", notation="camelot")
         for value in tracks.facet_values(BrowseQuery(), "key").values:
-            assert tracks.browse_count(rules(("key", "is", value.value))) == value.count
+            rule = (
+                ("key", "is_empty")
+                if value.value is None
+                else ("key", "is", value.value)
+            )
+            assert tracks.browse_count(rules(rule)) == value.count
 
     def test_a_range_spans_effective_values(self, tracks, metadata, ids):
         metadata.set_override(ids["2"], "bpm", 175)
@@ -258,8 +263,10 @@ class TestWhatAWindowCarries:
         queue = {
             entry.id: entry for entry in tracks.browse_queue(BrowseQuery(), limit=10)
         }
-        assert (queue[ids["1"]].key, queue[ids["1"]].bpm) == ("Fm", 126.0)
-        assert (queue[ids["2"]].key, queue[ids["2"]].bpm) == ("9A", 130.0)
+        # The key is Camelot and Beatport's or yours (DEC-201): track 2's
+        # Rekordbox key is not a key.
+        assert (queue[ids["1"]].key, queue[ids["1"]].bpm) == ("4A", 126.0)
+        assert (queue[ids["2"]].key, queue[ids["2"]].bpm) == (None, 130.0)
 
     def test_a_row_carries_both_layers_and_names_what_is_overridden(
         self, library, metadata, ids
@@ -282,7 +289,7 @@ class TestWhatAWindowCarries:
         assert one["overridden"] == ["bpm", "label"]
         two = rows["2"]
         assert two["overridden"] == []
-        assert two["effective_key"] == two["key"] == "9A"
+        assert (two["key"], two["effective_key"]) == ("9A", None)
 
 
 class TestTextSearch:
@@ -417,8 +424,10 @@ class TestAWholeLibraryFacetCountsALayerAtATime:
         from cuepoint.models.filter_rule import METADATA_ALIAS, field_spec
         from cuepoint.models.track_metadata import OVERRIDE_FIELDS
 
-        for name in OVERRIDE_FIELDS:
+        for name in [n for n in OVERRIDE_FIELDS if n != "key"]:
             assert (
                 field_spec(name).expression
                 == f"COALESCE({METADATA_ALIAS}.{name}, tracks.{name})"
             )
+        # The key is the exception (DEC-201): it has no imported layer to split.
+        assert "tracks.key" not in field_spec("key").expression

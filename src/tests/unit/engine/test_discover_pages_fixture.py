@@ -166,6 +166,12 @@ class Situation:
                 )
             )
             self.ids.append(int(added.id))
+        # Rekordbox's keys are not keys (DEC-201). A fake match per track would
+        # make the library own Beatport tracks the pages do not know, so the
+        # keys the pages show are typed corrections.
+        for track_id, row in zip(self.ids, TRACKS):
+            if row[5] is not None:
+                resolve("IMetadataService").set_override(track_id, "key", row[5])
         for position, beatport_id in MATCHES.items():
             own(self.ids[position - 1], beatport_id)
         # The tracks were written through the real paths, credits and all;

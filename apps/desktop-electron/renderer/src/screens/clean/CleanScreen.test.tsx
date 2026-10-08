@@ -704,16 +704,16 @@ describe("the review queue", () => {
 
     const apply = await screen.findByRole("group", { name: "Apply from the accepted match" });
     fireEvent.click(within(apply).getByRole("checkbox", { name: /BPM/ }));
-    fireEvent.click(within(apply).getByRole("button", { name: "Apply 4 fields" }));
+    fireEvent.click(within(apply).getByRole("button", { name: "Apply 3 fields" }));
 
     await waitFor(() =>
       expect(bridge.applyMatch).toHaveBeenCalledWith({
-        fields: ["key", "genre", "label", "year"],
+        fields: ["genre", "label", "year"],
         track_id: 1,
       }),
     );
     expect(
-      await screen.findByText("Applied Key, Genre, Label, Year to “Track 1”."),
+      await screen.findByText("Applied Genre, Label, Year to “Track 1”."),
     ).toHaveAttribute("role", "status");
     // A person's decision can be cleared; the matcher's could not.
     expect(screen.getByRole("button", { name: "Clear decision" })).toBeEnabled();

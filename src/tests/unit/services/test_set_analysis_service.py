@@ -10,7 +10,7 @@ Through the real repositories and migrations:
   there, an unreadable file, a check made before a refresh moved the file
   (which is not a check of it), and a Set never checked, which says so.
 - **A shortened track** keeps its times and makes them a warning.
-- **Keys on the wire** are in the library's notation.
+- **Keys on the wire** are in Camelot, and Rekordbox's key is never one.
 - **Acknowledgements**: made against what is there, stale after a reorder, a
   replaced neighbour or a new BPM override, holding across an unrelated edit and
   across a change of the library's notation, withdrawn, and refused for anything
@@ -98,7 +98,12 @@ class Library:
         length: Optional[int] = 300,
         artist: str = "A",
         genre: Optional[str] = None,
+        rekordbox_key: Optional[str] = None,
     ) -> int:
+        """A track whose key (PAGES-15) is ``key``, typed as a correction.
+
+        Rekordbox's own key is ``rekordbox_key``: never the track's key.
+        """
         self.count += 1
         stored = self.tracks.add(
             LibraryTrack(
@@ -107,12 +112,14 @@ class Library:
                 title=f"T{self.count}",
                 artist=artist,
                 bpm=bpm,
-                key=key,
+                key=rekordbox_key,
                 genre=genre,
                 duration_seconds=length,
             )
         )
         assert stored.id is not None
+        if key is not None:
+            self.meta.set_override(stored.id, "key", key)
         return stored.id
 
     def make_set(
@@ -178,24 +185,28 @@ class TestTheValuesRead:
         zero, bad_key = lib.add(bpm=None, key="x"), lib.add()
         set_id, _ = lib.make_set([zero, bad_key])
         [transition] = wire(lib, set_id)["transitions"]
+        # A missing key is not a warning (DEC-201); a missing tempo still is.
         assert [(w["kind"], w["detail"]) for w in transition["warnings"]] == [
             ("tempo_unknown", "from"),
-            ("key_unknown", "from"),
         ]
 
-    def test_keys_are_written_in_the_librarys_notation(self, lib):
-        camelot = [lib.add(key="8A"), lib.add(key="3B")]
-        set_id, _ = lib.make_set(camelot)
-        [clash] = wire(lib, set_id)["transitions"][0]["warnings"]
-        assert clash["compared"] == {"from": "8A", "to": "3B"}
-        for _ in range(3):
-            lib.add(key="Am")  # the library now reads classic
+    def test_a_track_with_only_rekordbox_s_key_has_none(self, lib):
+        first, second = lib.add(key=None, rekordbox_key="8A"), lib.add(key="3B")
+        set_id, _ = lib.make_set([first, second])
         report = wire(lib, set_id)
-        assert report["notation"] == "classic"
-        assert report["transitions"][0]["warnings"][0]["compared"] == {
-            "from": "Am",
-            "to": "Db",
-        }
+        assert report["transitions"] == []  # no clash: the first has no key
+        assert report["without_key"] == 1
+        assert report["counts"] == {}
+
+    def test_keys_are_written_in_camelot_whatever_the_library_imported(self, lib):
+        tracks = [lib.add(key="Am"), lib.add(key="F#")]
+        for _ in range(3):
+            lib.add(rekordbox_key="Am")  # a library that reads classic
+        set_id, _ = lib.make_set(tracks)
+        report = wire(lib, set_id)
+        assert report["notation"] == "camelot"
+        [clash] = report["transitions"][0]["warnings"]
+        assert clash["compared"] == {"from": "8A", "to": "2B"}
 
 
 # ------------------------------------------------------------------- files
@@ -360,13 +371,11 @@ class TestTheShape:
             },
         ]
 
-    def test_a_key_is_written_in_the_librarys_notation_and_placed_on_the_wheel(
-        self, lib
-    ):
+    def test_a_key_is_written_in_camelot_and_placed_on_the_wheel(self, lib):
         tracks = [lib.add(key="Am"), lib.add(key="Em"), lib.add(key="Am")]
         set_id, _ = lib.make_set(tracks)
         shape = wire(lib, set_id)["shape"]
-        assert [e["key"] for e in shape["entries"]] == ["Am", "Em", "Am"]
+        assert [e["key"] for e in shape["entries"]] == ["8A", "9A", "8A"]
         assert [e["camelot"] for e in shape["entries"]] == [
             {"number": 8, "letter": "A"},
             {"number": 9, "letter": "A"},
@@ -397,6 +406,7 @@ class TestTheWire:
             "counts",
             "acknowledged",
             "notices",
+            "without_key",
             "files",
             "transitions",
             "entries",
@@ -504,14 +514,14 @@ class TestAcknowledging:
         assert report["acknowledged"] == 1
         assert report["counts"] == {TEMPO_JUMP: 1}  # only the new one
 
-    def test_it_holds_across_a_change_of_notation(self, lib):
+    def test_it_holds_across_a_change_of_what_the_library_imported(self, lib):
         tracks = [lib.add(key="8A"), lib.add(key="3B")]
         set_id, entries = lib.make_set(tracks)
         lib.service.acknowledge(entries[0], entries[1], KEY_CLASH)
         for _ in range(3):
             lib.add(key="Am")
         report = wire(lib, set_id)
-        assert report["notation"] == "classic" and report["acknowledged"] == 1
+        assert report["notation"] == "camelot" and report["acknowledged"] == 1
 
     def test_it_is_withdrawn(self, lib, jump):
         set_id, entries, _ = jump

@@ -55,7 +55,7 @@ export const REVIEW_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "key",
     minWidthPx: 56,
     defaultWidthPx: 70,
-    render: (track) => effective(track.effective_key, track.key) ?? "",
+    render: (track) => track.effective_key ?? "—",
   },
   {
     id: "bpm",

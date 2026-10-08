@@ -84,7 +84,7 @@
         {
           "count": 3,
           "id": "missing_key",
-          "label": "No key",
+          "label": "No Beatport key",
           "rules": {
             "match": "all",
             "rules": [
@@ -297,7 +297,7 @@
         {
           "count": 3,
           "id": "missing_key",
-          "label": "No key",
+          "label": "No Beatport key",
           "rules": {
             "match": "all",
             "rules": [
@@ -535,7 +535,7 @@
         {
           "count": 3,
           "id": "missing_key",
-          "label": "No key",
+          "label": "No Beatport key",
           "rules": {
             "match": "all",
             "rules": [
@@ -714,7 +714,7 @@
         {
           "count": 3,
           "id": "missing_key",
-          "label": "No key",
+          "label": "No Beatport key",
           "rules": {
             "match": "all",
             "rules": [

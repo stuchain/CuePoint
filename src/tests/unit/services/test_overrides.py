@@ -365,13 +365,13 @@ class TestApplyingAMatch:
     ):
         matched(ids["1"], bpm="126.50", genre="Techno", label="Kompakt")
 
-        record = apply.apply_match(ids["1"], ["key", "bpm", "label"])
+        record = apply.apply_match(ids["1"], ["bpm", "label"])
 
-        assert (record.key, record.bpm, record.label) == ("4A", 126.5, "Kompakt")
+        # The key is not applied: it comes from the accepted match (DEC-201).
+        assert (record.key, record.bpm, record.label) == (None, 126.5, "Kompakt")
         assert (record.genre, record.year) == (None, None)
         rows = history(db, ids["1"])
         assert [(field, source) for field, _, _, source, _ in rows] == [
-            ("cuepoint_key", "beatport"),
             ("cuepoint_bpm", "beatport"),
             ("cuepoint_label", "beatport"),
         ]
@@ -458,8 +458,15 @@ class TestApplyingAMatch:
     def test_applying_changes_no_decision(self, apply, matched, matches, ids):
         matched(ids["1"])
         before = matches.get_match(ids["1"])
-        apply.apply_match(ids["1"], ["key"])
+        apply.apply_match(ids["1"], ["bpm"])
         assert matches.get_match(ids["1"]) == before
+
+    def test_the_key_alone_is_refused_because_it_is_not_applied(
+        self, apply, matched, ids
+    ):
+        matched(ids["1"])
+        with pytest.raises(ValueError, match="comes from the accepted match"):
+            apply.apply_match(ids["1"], ["key"])
 
     def test_a_track_that_is_not_there_is_refused(self, apply):
         with pytest.raises(ValueError, match="No such track"):
@@ -577,10 +584,10 @@ class TestBatchApply:
         matched(ids["1"])
         batch.apply_batch(
             BatchSelection.of_ids([ids["1"]]),
-            BatchOperation(OPERATION_APPLY_MATCH, ["key", "bpm"]),
+            BatchOperation(OPERATION_APPLY_MATCH, ["bpm", "year"]),
         )
         (event,) = activity.recent_events(event_type=EVENT_BATCH_APPLIED)
-        assert event.summary == "Applied the Beatport key, BPM to 1 track"
+        assert event.summary == "Applied the Beatport BPM, year to 1 track"
 
     def test_the_library_notation_is_asked_once_for_the_batch(
         self, batch, matched, db, ids
@@ -593,7 +600,7 @@ class TestBatchApply:
         try:
             batch.apply_batch(
                 BatchSelection.of_ids([ids["1"], ids["2"], ids["4"]]),
-                BatchOperation(OPERATION_APPLY_MATCH, ["key"]),
+                BatchOperation(OPERATION_APPLY_MATCH, ["bpm"]),
             )
         finally:
             connection.set_trace_callback(None)

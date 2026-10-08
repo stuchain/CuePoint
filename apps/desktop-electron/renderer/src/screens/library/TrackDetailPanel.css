@@ -55,7 +55,8 @@
   font-size: var(--font-size-xs);
 }
 
-.cp-track-detail__fields {
+.cp-track-detail__fields,
+.cp-track-detail__keyline {
   display: flex;
   flex-direction: column;
   gap: calc(2px * var(--scale));

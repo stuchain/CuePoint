@@ -34,6 +34,7 @@ from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, COMM, ID3
 from PIL import Image
 
+from tests.unit.key_support import accept_with_key
 from cuepoint.data.artwork import inspect_embedded, read_embedded
 from cuepoint.data.tag_fields import (
     TAG_FIELDS,
@@ -228,6 +229,10 @@ class World:
             )
             .fetchone()["id"]
         )
+        if fields.get("key"):
+            # The key is Beatport's, by an accepted match (PAGES-15), not the
+            # one Rekordbox read.
+            accept_with_key(self.db, track_id, fields["key"])
         if checked is not None:
             self.check(track_id, checked)
         return track_id
@@ -388,20 +393,18 @@ class TestWhatIsWritten:
         assert display_value(after.value("key")) == "Am"
         assert display_value(after.value("label")) == "Rekordbox Label"
 
-    def test_an_accepted_but_unapplied_match_changes_no_file(self, world):
-        # DEC-070: the values written are effective values, and accepting a
-        # match applies nothing.
+    def test_an_accepted_match_writes_its_key_and_nothing_else(self, world):
+        # DEC-070 still holds for every field but the key: accepting a match
+        # applies nothing. The key is the match's own (DEC-201).
         path = world.file("flac")
         track = world.add(path)
         world.accept(track, None, key="Gm", label="Beatport Label", year=2020)
 
         preview = world.preview([track], write_comment=False, **ALL_FIELDS)
 
-        assert preview.files == ()
-        assert skipped_ids(preview) == {SKIP_NOTHING_TO_WRITE: [track]}
+        assert [f.fields for f in preview.files] == [("key",)]
         assert preview.field_skipped == {
-            name: {FIELD_NO_VALUE: 1}
-            for name in ("key", "year", "label", "bpm", "genre")
+            name: {FIELD_NO_VALUE: 1} for name in ("year", "label", "bpm", "genre")
         }
 
     def test_fields_not_written_are_counted_by_reason(self, world):
@@ -413,7 +416,7 @@ class TestWhatIsWritten:
 
         assert preview.files[0].fields == ("year",)
         assert preview.field_skipped == {
-            "key": {FIELD_KEY_UNRECOGNIZED: 1},
+            "key": {FIELD_NO_VALUE: 1},
             "label": {FIELD_NO_VALUE: 1},
             "comment": {FIELD_UNCHANGED: 1},
         }
@@ -1218,8 +1221,8 @@ class TestTheSecondLines:
 
     def artworked(self, world, kind="mp3", key=None):
         path = world.file(kind)
-        track = world.add(path, key=key) if key else world.add(path)
-        world.accept(track, art("one"))
+        track = world.add(path)
+        world.accept(track, art("one"), key=key)
         world.web.images[embed_url("one")] = big_jpeg()
         return path, track
 

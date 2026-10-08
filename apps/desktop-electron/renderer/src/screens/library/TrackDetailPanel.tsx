@@ -107,6 +107,12 @@ function text(value: string | null | undefined): string {
   return value == null || value === "" ? "—" : value;
 }
 
+/** The track's key as Camelot with its name, or the plain absence (DEC-201). */
+function keyLine(track: { effective_key?: string | null; key_name?: string | null }): string {
+  if (!track.effective_key) return "No Beatport key";
+  return track.key_name ? `${track.effective_key} · ${track.key_name}` : track.effective_key;
+}
+
 function number(value: number | null | undefined, suffix = ""): string {
   return value == null ? "—" : `${value.toLocaleString()}${suffix}`;
 }
@@ -319,6 +325,10 @@ export function TrackDetailPanel({
         />
       )}
 
+      <dl className="cp-track-detail__keyline">
+        <Row label="Key" value={keyLine(track)} />
+      </dl>
+
       <h3 className="cp-track-detail__subtitle">From Rekordbox</h3>
       <dl className="cp-track-detail__fields">
         <Row
@@ -328,7 +338,7 @@ export function TrackDetailPanel({
         <Row label="Album" value={text(track.album)} />
         <Row label="Label" value={text(track.label)} />
         <Row label="Genre" value={text(track.genre)} />
-        <Row label="Key" value={text(track.key)} />
+        <Row label="Key (not used)" value={text(track.key)} />
         <Row label="BPM" value={track.bpm == null ? "—" : track.bpm.toFixed(1)} />
         <Row label="Year" value={track.year == null ? "—" : String(track.year)} />
         <Row label="Length" value={duration(track.duration_seconds)} />

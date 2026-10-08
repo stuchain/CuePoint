@@ -287,7 +287,9 @@ class TestSorting:
         expected = sorted(comparable, reverse=direction == "desc")
         assert comparable == expected
 
-    @pytest.mark.parametrize("sort", sorted(ATTRIBUTE))
+    # The key sorts by the resolved key, not the row's imported `key` (PAGES-15);
+    # test_key_resolver holds that order.
+    @pytest.mark.parametrize("sort", sorted(set(ATTRIBUTE) - {"key"}))
     @pytest.mark.parametrize("direction", ["asc", "desc"])
     def test_nulls_are_last(self, seeded, sort, direction):
         rows = seeded.browse(BrowseQuery(sort=sort, direction=direction), limit=100)

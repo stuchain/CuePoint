@@ -159,7 +159,8 @@ describe("the rows", () => {
       const row = VALUE_ROWS.find((entry) => entry.id === id)!;
       return [row.track(track), row.candidate(candidate(1, { subgenre: "Peak Time" }))];
     };
-    expect(text("key")).toEqual(["8A", "A Minor"]);
+    // Rekordbox's key is shown against Beatport's, and said not to be used (DEC-201).
+    expect(text("key")).toEqual(["8A (from Rekordbox, not used)", "A Minor"]);
     expect(text("bpm")).toEqual(["128.0", "128.0"]);
     expect(text("genre")).toEqual(["Techno", "Techno (Peak Time)"]);
     expect(text("remixers")).toEqual(["—", "—"]);
@@ -200,8 +201,9 @@ describe("the rows", () => {
 describe("what applying copies", () => {
   it("is each field's value from the candidate, or nothing", () => {
     const c = candidate(1, { label: null });
+    // The key is not applied: an accepted match gives it (DEC-201).
+    expect(APPLY_FIELDS).not.toContain("key");
     expect(APPLY_FIELDS.map((field) => applyValue(field, c))).toEqual([
-      "A Minor",
       "128.0",
       "Techno",
       null,

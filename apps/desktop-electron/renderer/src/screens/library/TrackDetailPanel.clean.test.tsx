@@ -252,10 +252,8 @@ describe("the Beatport zone", () => {
     panel();
     const zone = await screen.findByRole("region", { name: "Beatport" });
     await within(zone).findByText("Accepted by you");
-    const key = field(zone, "key");
-    expect(key).toHaveTextContent("Rekordbox 8A");
-    expect(key).toHaveTextContent("Beatport 9A");
-    expect(key).toHaveTextContent("Now 9A (applied from Beatport)");
+    // The key is not one of the rows: an accepted match gives it (DEC-201).
+    expect(field(zone, "key")).toBeNull();
     expect(field(zone, "bpm")).toHaveTextContent("Now 126.0 (typed by you)");
     expect(field(zone, "year")).toHaveTextContent("Beatport 2010");
     expect(field(zone, "year")).toHaveTextContent("Now 2009 (from Rekordbox)");
@@ -265,8 +263,8 @@ describe("the Beatport zone", () => {
     const handlers = panel();
     const zone = await screen.findByRole("region", { name: "Beatport" });
     await within(zone).findByText("Accepted by you");
-    // Key is already Beatport's, so it is not offered again.
-    expect(within(field(zone, "key")).queryByRole("button")).toBeNull();
+    // The key is never offered: an accepted match already gave it.
+    expect(within(zone).queryByRole("button", { name: /Key/ })).toBeNull();
 
     await userEvent.click(within(zone).getByRole("button", { name: "Apply Beatport's Year" }));
 
@@ -321,9 +319,25 @@ describe("the imported record", () => {
     await screen.findByRole("region", { name: "Beatport" });
     const imported = document.querySelector(".cp-track-detail__fields") as HTMLElement;
     expect(within(imported).queryByRole("textbox")).toBeNull();
-    // Rekordbox's values stay Rekordbox's, whatever CuePoint's layer says.
-    const key = within(imported).getByText("Key").closest(".cp-track-detail__row") as HTMLElement;
+    // Rekordbox's values stay Rekordbox's, whatever CuePoint's layer says,
+    // and its key is marked as not used (DEC-201).
+    const key = within(imported).getByText("Key (not used)").closest(".cp-track-detail__row") as HTMLElement;
     expect(key).toHaveTextContent("8A");
+  });
+
+  it("says the track's own key with its name, or that it has none", async () => {
+    const detail = detailOf();
+    const { rerender } = render(
+      <TrackDetailPanel
+        detail={{ ...detail, track: { ...detail.track, effective_key: "9A", key_name: "E minor", key_source: "beatport" } }}
+      />,
+    );
+    const line = document.querySelector(".cp-track-detail__keyline") as HTMLElement;
+    expect(line).toHaveTextContent("9A · E minor");
+    rerender(
+      <TrackDetailPanel detail={{ ...detail, track: { ...detail.track, effective_key: null, key_name: null } }} />,
+    );
+    expect(document.querySelector(".cp-track-detail__keyline")).toHaveTextContent("No Beatport key");
   });
 });
 

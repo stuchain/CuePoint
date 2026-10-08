@@ -58,6 +58,8 @@ EXPORT_VALUE_COLUMNS = (
     "override_label",
     "override_year",
     "cuepoint_rating",
+    "override_key_source",
+    "beatport_key",
 )
 
 
@@ -82,6 +84,9 @@ class ExportTrackValues:
         override_year: CuePoint's year, or ``None``.
         cuepoint_rating: CuePoint's rating in stars, or ``None``. Zero is a
             rating a user gave, not the absence of one (DEC-034).
+        override_key_source: Where ``override_key`` came from, as History
+            records it (``beatport`` or ``cuepoint``), or ``None``.
+        beatport_key: The key of the track's accepted match, or ``None``.
     """
 
     track_id: int
@@ -98,6 +103,8 @@ class ExportTrackValues:
     override_label: Optional[str] = None
     override_year: Optional[int] = None
     cuepoint_rating: Optional[int] = None
+    override_key_source: Optional[str] = None
+    beatport_key: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Refuse a row the export could not key on."""
@@ -107,16 +114,6 @@ class ExportTrackValues:
             "rekordbox_track_id",
             required_text(self.rekordbox_track_id, "rekordbox_track_id"),
         )
-
-    @property
-    def effective_key(self) -> Optional[str]:
-        """The key to export, in whatever notation it is stored in.
-
-        Rendering into the export's chosen notation is ``key_text``'s job a
-        layer up (DEC-089); this is which of the two keys it renders.
-        """
-        value: Optional[str] = effective_value(self.key, self.override_key)
-        return value
 
     @property
     def effective_bpm(self) -> Optional[float]:
@@ -171,6 +168,8 @@ class ExportTrackValues:
             override_label=data.get("override_label"),
             override_year=data.get("override_year"),
             cuepoint_rating=data.get("cuepoint_rating"),
+            override_key_source=data.get("override_key_source"),
+            beatport_key=data.get("beatport_key"),
         )
 
 

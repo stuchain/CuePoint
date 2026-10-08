@@ -1,6 +1,10 @@
 # Glossary
 
 - **Rekordbox XML**: An export file from Rekordbox containing tracks and playlists.
+- **Key**: A track's musical key, shown in Camelot ("8A") with its name ("A
+  minor") in Track details. It is the key you typed, or else the key of the
+  track's accepted Beatport match. Rekordbox's key is never used; a track with
+  neither has "No Beatport key".
 - **Playlist**: A named collection of tracks inside the Rekordbox XML.
 - **Preflight**: Validation checks that run before processing.
 - **Match**: A Beatport result associated with an input track.

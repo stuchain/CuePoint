@@ -42,6 +42,7 @@ from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.library_import_service import LibraryImportService
 from cuepoint.services.migration_runner import MigrationRunner
 from cuepoint.services.rekordbox_export_service import RekordboxExportService
+from tests.unit.key_support import accept_with_key
 
 pytestmark = pytest.mark.unit
 
@@ -67,6 +68,16 @@ def _export(tmp_path: Path) -> bytes:
             str(row["rekordbox_track_id"]): int(row["id"])
             for row in db.connect().execute("SELECT id, rekordbox_track_id FROM tracks")
         }
+
+        # The keys the file carries are given back as Beatport's, by an accepted
+        # match: Rekordbox's own key is no longer a key (DEC-201), and the golden
+        # file was written when it was. Same keys, so the same bytes.
+        for row in (
+            db.connect()
+            .execute("SELECT id, key FROM tracks WHERE key IS NOT NULL")
+            .fetchall()
+        ):
+            accept_with_key(db, int(row["id"]), str(row["key"]))
 
         # Values the export patches into the source, so the patch is not empty.
         metadata = TrackMetadataRepository(db)

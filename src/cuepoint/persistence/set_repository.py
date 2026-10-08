@@ -50,6 +50,8 @@ from typing import List, Optional, Sequence, Tuple
 from cuepoint.models.filter_rule import (
     FILE_CHECK_CURRENT,
     FILES_ALIAS,
+    MATCH_ALIAS,
+    MATCH_CANDIDATE_ALIAS,
     METADATA_ALIAS,
     field_spec,
 )
@@ -108,7 +110,8 @@ _SELECT_FACTS = (
     " FROM collection_tracks ct"
     " JOIN set_entries se ON se.entry_id = ct.id"
     " JOIN tracks ON tracks.id = ct.track_id"
-    f"{JOINS[METADATA_ALIAS]}{JOINS[FILES_ALIAS]}"
+    f"{JOINS[METADATA_ALIAS]}{JOINS[MATCH_ALIAS]}{JOINS[MATCH_CANDIDATE_ALIAS]}"
+    f"{JOINS[FILES_ALIAS]}"
     " WHERE ct.collection_id = ? ORDER BY ct.position, ct.id"
 )
 

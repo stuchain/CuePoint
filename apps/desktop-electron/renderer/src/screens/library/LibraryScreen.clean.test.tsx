@@ -94,9 +94,9 @@ const TRACKS = [
     override_sources: { bpm: "cuepoint" },
   }),
   track(2, {
-    effective_key: "9A",
-    overridden: ["key"],
-    override_sources: { key: "beatport" },
+    effective_genre: "House",
+    overridden: ["genre"],
+    override_sources: { genre: "beatport" },
   }),
   track(3),
 ];
@@ -346,15 +346,17 @@ describe("what the entries do", () => {
     const apply = within(dialog).getByRole("button", { name: "Apply" });
     expect(apply).toBeDisabled();
     await userEvent.click(within(dialog).getByRole("checkbox", { name: "Year" }));
-    await userEvent.click(within(dialog).getByRole("checkbox", { name: "Key" }));
+    // The key is not one of them: an accepted match gives it (DEC-201).
+    expect(within(dialog).queryByRole("checkbox", { name: "Key" })).toBeNull();
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: "Genre" }));
     await userEvent.click(apply);
     await waitFor(() =>
       expect(lastBatch()).toEqual({
         selection: { track_ids: [2] },
-        operation: { kind: "apply_match", value: ["key", "year"] },
+        operation: { kind: "apply_match", value: ["genre", "year"] },
       }),
     );
-    expect(await screen.findByText("Applied Beatport's key and year to 1 track.")).toBeInTheDocument();
+    expect(await screen.findByText("Applied Beatport's genre and year to 1 track.")).toBeInTheDocument();
   });
 
   it("edits one track through its own route", async () => {
@@ -451,7 +453,7 @@ describe("the table", () => {
     const typed = within(first).getByRole("img", { name: "BPM typed by you. Rekordbox has 128.0." });
     expect(typed.closest(".library-cell__overridden")).toHaveTextContent("126.0");
     const second = screen.getByText("Track 2").closest("[role=row]") as HTMLElement;
-    expect(within(second).getByRole("img", { name: "Key applied from Beatport. Rekordbox has 8A." })).toHaveTextContent("B");
+    expect(within(second).getByRole("img", { name: "Genre applied from Beatport. Rekordbox has Techno." })).toHaveTextContent("B");
     const third = screen.getByText("Track 3").closest("[role=row]") as HTMLElement;
     expect(third.querySelector(".library-cell__mark")).toBeNull();
   });

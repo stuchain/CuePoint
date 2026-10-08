@@ -46,6 +46,7 @@ from cuepoint.models.library_track import LibraryTrack
 from cuepoint.persistence.collection_repository import CollectionRepository
 from cuepoint.persistence.file_status_repository import FileStatusRepository
 from cuepoint.persistence.set_repository import SetRepository
+from cuepoint.persistence.track_metadata_repository import TrackMetadataRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
@@ -100,11 +101,13 @@ def produce(tmp_path: Path) -> Dict[str, Any]:
                     title=f"Track {number}",
                     artist="Someone",
                     bpm=bpm,
-                    key=key,
                     duration_seconds=length,
                 )
             )
             assert stored.id is not None
+            if key is not None:
+                # The key is yours or Beatport's (DEC-201), never Rekordbox's.
+                TrackMetadataRepository(db).set_override(stored.id, "key", key)
             if file is not None:
                 files.record(
                     [

@@ -66,7 +66,7 @@ from cuepoint.services.interfaces import (
 )
 from cuepoint.services.override_values import (
     format_key,
-    notation_from_counts,
+    NOTATION_CAMELOT,
     parse_key,
 )
 from cuepoint.utils.quoting import quoted
@@ -244,7 +244,8 @@ class SetListService(ISetListService):
             names = {
                 row.entry_id: row for row in self._set_rows.entry_tracks(int(set_id))
             }
-        notation = notation_from_counts(*self._tracks.key_notation_counts())
+        # Keys show in Camelot everywhere (DEC-201), whatever the imported file used.
+        notation = NOTATION_CAMELOT
         chapter_of = {int(c.chapter.id or 0): c.chapter.position for c in plan.chapters}
         rows = []
         for entry in plan.entries:

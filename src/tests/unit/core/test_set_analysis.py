@@ -156,9 +156,11 @@ class TestTransitions:
             (dict(k="8A"), dict(k="3B"), [(KEY_CLASH, NO_RELATION)]),
             (dict(k="8A"), dict(k="9B"), [(KEY_CLASH, NO_RELATION)]),
             (dict(k="8A"), dict(k="10A"), [(KEY_CLASH, NO_RELATION)]),
-            (dict(k=None), dict(k="8A"), [(KEY_UNKNOWN, SIDE_FROM)]),
-            (dict(k="8A"), dict(k=None), [(KEY_UNKNOWN, SIDE_TO)]),
-            (dict(k=None), dict(k=None), [(KEY_UNKNOWN, SIDE_BOTH)]),
+            # A track with no key is no warning (DEC-201): Beatport's key is the
+            # only key, so an unmatched library has none.
+            (dict(k=None), dict(k="8A"), []),
+            (dict(k="8A"), dict(k=None), []),
+            (dict(k=None), dict(k=None), []),
             # Both at once, tempo first.
             (
                 dict(bpm=120.0, k="8A"),
@@ -168,7 +170,7 @@ class TestTransitions:
             (
                 dict(bpm=None, k=None),
                 dict(bpm=124.0, k=None),
-                [(TEMPO_UNKNOWN, SIDE_FROM), (KEY_UNKNOWN, SIDE_BOTH)],
+                [(TEMPO_UNKNOWN, SIDE_FROM)],
             ),
         ],
     )
@@ -201,8 +203,7 @@ class TestTransitions:
     def test_keys_are_compared_by_their_camelot_code(self):
         [clash] = transition_warnings(entry(1, k="8A"), entry(2, k="3B"))
         assert clash.compared == {"from": "8A", "to": "3B"}
-        [unknown] = transition_warnings(entry(1, k=None), entry(2, k="8A"))
-        assert unknown.compared == {"from": None, "to": "8A"}
+        assert transition_warnings(entry(1, k=None), entry(2, k="8A")) == []
         assert camelot_code(key("12B")) == "12B"
 
     def test_an_unknown_tempo_says_what_is_known(self):
@@ -560,7 +561,6 @@ class TestAcknowledgements:
             TEMPO_JUMP,
             KEY_CLASH,
             TEMPO_UNKNOWN,
-            KEY_UNKNOWN,
         }
 
 
@@ -666,3 +666,22 @@ class TestTheShape:
             jump.compared["from"],
             jump.compared["to"],
         )
+
+
+class TestAMissingKeyIsNotAWarning:
+    """Prepare does not count a track with no key as a warning (DEC-201)."""
+
+    def test_nothing_finds_key_unknown(self):
+        entries = [entry(1, k=None), entry(2, k="8A"), entry(3, k=None)]
+        found = analyse(entries, [ChapterFacts(CHAPTER)])
+        assert KEY_UNKNOWN not in found.counts
+        assert all(not t.warnings for t in found.transitions)
+        assert (KEY_UNKNOWN, SIDE_FROM) not in WARNINGS
+
+    def test_the_report_counts_the_entries_without_one(self):
+        entries = [entry(1, k=None), entry(2, k="8A"), entry(3, k=None)]
+        assert analyse(entries, [ChapterFacts(CHAPTER)]).without_key == 2
+
+    def test_it_is_no_longer_a_kind_at_all(self):
+        assert KEY_UNKNOWN not in TRANSITION_KINDS
+        assert KEY_UNKNOWN not in KINDS

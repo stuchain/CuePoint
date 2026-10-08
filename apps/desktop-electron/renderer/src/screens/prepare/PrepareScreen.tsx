@@ -423,7 +423,7 @@ export function PrepareScreen({
       const ref = {
         from_entry_id: previousEntryId,
         to_entry_id: focused.entry.entry_id,
-        warning: warning.kind as "tempo_jump" | "key_clash" | "tempo_unknown" | "key_unknown",
+        warning: warning.kind as "tempo_jump" | "key_clash" | "tempo_unknown",
       };
       if (accept) void edit((sets) => sets.acknowledge(ref));
       else void edit((sets) => sets.unacknowledge(ref));

@@ -36,6 +36,7 @@ from typing import Iterator, Optional
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
 from cuepoint.services.interfaces import IConfigService, IDatabaseService
+from cuepoint.services.key_resolver import register_sql_functions
 from cuepoint.utils.paths import cuepoint_home
 from cuepoint.utils.quoting import quoted
 
@@ -225,6 +226,7 @@ class DatabaseService(IDatabaseService):
             )
             connection.execute("PRAGMA journal_mode=WAL")
             connection.execute("PRAGMA foreign_keys=ON")
+            register_sql_functions(connection)
             # Surfaces a corrupt or non-database file here, with context, rather
             # than at some arbitrary later query.
             connection.execute("SELECT count(*) FROM sqlite_master").fetchone()

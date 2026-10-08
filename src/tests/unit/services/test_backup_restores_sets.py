@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import pytest
 
+from tests.unit.key_support import accept_with_key
 from cuepoint.models.collection import KIND_SET
 from cuepoint.models.library_track import LibraryTrack
 from cuepoint.persistence.activity_repository import ActivityRepository
@@ -75,11 +76,19 @@ def services(database):
     }
 
 
+def _keyed(database, track_id, key):
+    """The track's id, after giving it Beatport's key by an accepted match."""
+    if key:
+        accept_with_key(database, int(track_id), key)
+    return int(track_id)
+
+
 def populate(database):
     """A folder holding a Collection with a repeat, and a Set made from it."""
     parts = services(database)
     track_ids = [
-        int(
+        _keyed(
+            database,
             parts["tracks"]
             .add(
                 LibraryTrack(
@@ -92,7 +101,8 @@ def populate(database):
                     duration_seconds=seconds,
                 )
             )
-            .id
+            .id,
+            key,
         )
         for i, (title, bpm, key, seconds) in enumerate(TRACKS, start=1)
     ]

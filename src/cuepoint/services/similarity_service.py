@@ -89,7 +89,7 @@ from cuepoint.services.interfaces import (
 from cuepoint.services.override_values import (
     BPM_DECIMALS,
     format_key,
-    notation_from_counts,
+    NOTATION_CAMELOT,
     parse_key,
 )
 
@@ -294,7 +294,8 @@ class SimilarityService(ISimilarityService):
         )
         suggestions = rank(seed, counted(rows), wanted, exclude=exclude)
 
-        notation = notation_from_counts(*self._tracks.key_notation_counts())
+        # Keys show in Camelot everywhere (DEC-201), whatever the imported file used.
+        notation = NOTATION_CAMELOT
         names: Dict[str, str] = {}
         for credit in self._credits.credits(seed_id):
             names.setdefault(credit.name_key, credit.name)

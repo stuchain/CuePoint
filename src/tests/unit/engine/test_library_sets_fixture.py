@@ -59,6 +59,7 @@ from tests.unit.engine.test_engine_library_browse import (
     library_db,  # noqa: F401 — a pytest fixture, used by name
 )
 from tests.unit.engine.test_engine_organization_api import ok, post
+from tests.unit.key_support import accept_with_key
 
 pytestmark = pytest.mark.unit
 
@@ -123,6 +124,10 @@ def track_ids(library_db):  # noqa: F811 — the fixture is used by name
         )
         for i, (title, artist, bpm, key, seconds) in enumerate(TRACKS, start=1)
     ]
+    # The keys are Beatport's (DEC-201): an accepted match carries each one.
+    for track_id, row in zip(made, TRACKS):
+        if row[3] is not None:
+            accept_with_key(_resolve("IDatabaseService"), track_id, row[3])
     _resolve("IPlaylistRepository").replace_tree(
         [
             RekordboxPlaylist(

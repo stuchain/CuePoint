@@ -123,7 +123,8 @@ describe("overridden values", () => {
       title: "BPM typed by you. Rekordbox has 128.0.",
     });
     const applied = row({ overridden: ["key"], effective_key: "9A", override_sources: { key: "beatport" } });
-    expect(overrideMark(applied, "key")?.title).toBe("Key applied from Beatport. Rekordbox has 8A.");
+    // Rekordbox's key is never quoted as what is underneath (DEC-201).
+    expect(overrideMark(applied, "key")?.title).toBe("Key applied from Beatport. Rekordbox's key is not used.");
   });
 
   it("are not marked when Rekordbox's value shows", () => {
@@ -142,10 +143,12 @@ describe("overridden values", () => {
     expect(effectiveText(row({ effective_year: 2020 }), "year")).toBe("2020");
   });
 
-  it("fall back to the imported value on a row from before CLEAN-05", () => {
+  it("fall back to the imported value on a row from before CLEAN-05, but never for the key", () => {
     const old = row();
     delete old.effective_key;
-    expect(effectiveText(old, "key")).toBe("8A");
+    delete old.effective_bpm;
+    expect(effectiveText(old, "bpm")).toBe("128.0");
+    expect(effectiveText(old, "key")).toBe("");
     expect(importedText(row({ year: null }), "year")).toBe("");
   });
 
@@ -237,14 +240,12 @@ describe("the Clean entries of the operations list", () => {
 describe("the Beatport zone's rows", () => {
   it("put three values side by side, with the source of the one shown", () => {
     const track = row({
-      overridden: ["key", "genre"],
-      effective_key: "9A",
+      overridden: ["genre"],
       effective_genre: "Techno",
-      override_sources: { key: "beatport", genre: "cuepoint" },
+      override_sources: { genre: "cuepoint" },
     });
     const rows = beatportFieldRows(track, state(), candidate());
     expect(rows.map((entry) => [entry.field, entry.imported, entry.beatport, entry.effective, entry.source])).toEqual([
-      ["key", "8A", "9A", "9A", "beatport"],
       ["bpm", "128.0", "128.0", "128.0", "rekordbox"],
       ["genre", "Progressive House", "Progressive House", "Techno", "cuepoint"],
       ["label", "mau5trap", "mau5trap", "mau5trap", "rekordbox"],
@@ -253,14 +254,13 @@ describe("the Beatport zone's rows", () => {
   });
 
   it("offer applying for an accepted match with a value, not one already applied", () => {
-    const track = row({ overridden: ["key"], effective_key: "9A", override_sources: { key: "beatport" } });
+    const track = row({ overridden: ["year"], effective_year: 2010, override_sources: { year: "beatport" } });
     const rows = beatportFieldRows(track, state(), candidate({ label: null }));
     expect(Object.fromEntries(rows.map((entry) => [entry.field, entry.canApply]))).toEqual({
-      key: false,
       bpm: true,
       genre: true,
       label: false,
-      year: true,
+      year: false,
     });
   });
 
@@ -274,8 +274,8 @@ describe("the Beatport zone's rows", () => {
   });
 
   it("name an override whose source is not known as CuePoint's", () => {
-    const [key] = beatportFieldRows(row({ overridden: ["key"] }), null, null);
-    expect(key!.source).toBe("cuepoint-unknown");
+    const [, genre] = beatportFieldRows(row({ overridden: ["genre"] }), null, null);
+    expect(genre!.source).toBe("cuepoint-unknown");
     expect(fieldSourceText("cuepoint-unknown")).toBe("set in CuePoint");
     expect(fieldSourceText("rekordbox")).toBe("from Rekordbox");
     expect(fieldSourceText("beatport")).toBe("applied from Beatport");

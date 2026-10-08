@@ -122,6 +122,7 @@ from cuepoint.services.interfaces import (
     ITrackRepository,
 )
 from cuepoint.services.tag_write_options import KEY_FORMAT_NORMAL, KEY_FORMATS
+from cuepoint.services.key_resolver import resolve_key
 from cuepoint.services.tag_write_service import key_text
 from cuepoint.utils.quoting import quoted
 
@@ -1232,7 +1233,10 @@ def _export_values(values: ExportTrackValues, key_format: str) -> TrackExportVal
     ``Tonality`` is left alone rather than replaced by a guess — writing
     ``"Open 1m"`` into a Camelot field would not be Camelot.
     """
-    rendered, _reason = key_text(values.effective_key, key_format)
+    resolved = resolve_key(
+        values.override_key, values.override_key_source, values.beatport_key
+    )
+    rendered, _reason = key_text(resolved.camelot, key_format)
     return TrackExportValues(
         key=rendered,
         bpm=values.effective_bpm,

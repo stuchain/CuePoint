@@ -227,6 +227,8 @@ class TestResponseShape:
             # CLEAN-05: the five overridable fields as a user sees them, and which
             # of them an override supplies. The plain names stay imported.
             "effective_key",
+            "key_source",
+            "key_name",
             "effective_bpm",
             "effective_genre",
             "effective_label",

@@ -59,6 +59,7 @@ from cuepoint.services.health_service import HEALTH_RULES
 from cuepoint.services.review_export_service import REVIEW_COLUMNS
 from cuepoint.utils.di_container import get_container, reset_container
 from tests.fixtures.audio_files import audio_copy
+from tests.unit.key_support import accept_with_key
 
 TOKEN = "clean-api-token"
 NOW = "2026-09-15T12:00:00+00:00"
@@ -1309,7 +1310,7 @@ class TestDuplicates:
 
         [edited] = [m for m in group["members"] if m["id"] == ids[0]]
         [other] = [m for m in group["members"] if m["id"] == ids[1]]
-        assert (edited["effective_key"], edited["overridden"]) == ("Am", ["key"])
+        assert (edited["effective_key"], edited["overridden"]) == ("8A", ["key"])
         assert (other["effective_key"], other["overridden"]) == (None, [])
 
     def test_groups_are_paged_and_counted_whole(self, engine, store):
@@ -1460,7 +1461,7 @@ KEY_ONLY = {"write_year": False, "write_label": False, "write_comment": False}
 
 @pytest.fixture
 def audio(tmp_path) -> List[int]:
-    """Three real MP3s keyed Am, each checked present at its path."""
+    """Three real MP3s keyed Am (Beatport's, by an accepted match), each checked present."""
     paths = [
         audio_copy(tmp_path / "music", "mp3", f"song{number}.mp3")
         for number in range(3)
@@ -1471,6 +1472,8 @@ def audio(tmp_path) -> List[int]:
             for number, path in enumerate(paths)
         ]
     )
+    for track_id in ids:
+        accept_with_key(resolve("IDatabaseService"), track_id, "A Minor")
     record_files(
         *[
             TrackFileStatus(track_id, FILE_PRESENT, str(path), NOW, path.stat().st_size)
@@ -1745,6 +1748,8 @@ def troubled(engine, tmp_path) -> Dict[str, int]:
         track("Disputed", key="Am", bpm=120.0, genre="House"),
         track("Accepted", key="Am", bpm=120.0, genre="House"),
         track("No art", file_path=str(present), key="Am", bpm=120.0, genre="House"),
+        # Rekordbox's key is not a key (DEC-201): this one counts as missing.
+        track("Rekordbox only", key="Am", bpm=120.0, genre="House"),
     )
     names = dict(
         zip(
@@ -1757,10 +1762,15 @@ def troubled(engine, tmp_path) -> Dict[str, int]:
                 "disputed",
                 "accepted",
                 "no_art",
+                "rekordbox_only",
             ],
             ids,
         )
     )
+    # Every other track has a key of its own, typed in; Rekordbox's is not one.
+    for name, track_id in names.items():
+        if name not in ("missing", "rekordbox_only"):
+            resolve("IMetadataService").set_override(track_id, "key", "Am")
     record_files(
         TrackFileStatus(names["missing"], FILE_MISSING, "/music/Missing.mp3", NOW),
         TrackFileStatus(
@@ -1778,6 +1788,7 @@ def troubled(engine, tmp_path) -> Dict[str, int]:
     # A user's decision no newer attempt disputes: decided by a person, and so
     # the track that tells "disputed" apart from "decided by a user".
     [rejected] = add_tracks(track("Rejected", key="Am", bpm=120.0, genre="House"))
+    resolve("IMetadataService").set_override(rejected, "key", "Am")
     attempt(rejected, candidate(40))
     resolve("IMatchStateService").reject(rejected)
     names["rejected"] = rejected
@@ -1809,7 +1820,7 @@ class TestHealth:
             "duplicates": {troubled["dup_a"], troubled["dup_b"]},
             "needs_review": {troubled["review"]},
             "disputed": {troubled["disputed"]},
-            "missing_key": {troubled["missing"]},
+            "missing_key": {troubled["missing"], troubled["rekordbox_only"]},
             "missing_bpm": {troubled["missing"]},
             "missing_genre": {troubled["missing"]},
             "no_artwork": {troubled["no_art"]},
@@ -1820,6 +1831,14 @@ class TestHealth:
             )
         assert troubled["accepted"] not in browse_ids(
             engine, counts["not_matched"]["rules"]
+        )
+
+    def test_the_key_count_is_beatports_and_says_so(self, engine, troubled):
+        counts = {c["id"]: c for c in ok(get(engine, "/api/v1/clean/health"))["counts"]}
+        assert counts["missing_key"]["label"] == "No Beatport key"
+        # Rekordbox's own key does not keep a track out of it (DEC-201).
+        assert troubled["rekordbox_only"] in browse_ids(
+            engine, counts["missing_key"]["rules"]
         )
 
     def test_a_key_edited_in_is_no_longer_missing(self, engine, troubled):

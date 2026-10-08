@@ -56,6 +56,7 @@ from cuepoint.services.beatport_api import BeatportApi
 from cuepoint.utils.di_container import get_container, reset_container
 from tests.fixtures.beatport_library import accept
 from tests.fixtures.beatport_world import BeatportWorld
+from tests.unit.key_support import accept_with_key
 from tests.fixtures.job_settling import wait_until_settled
 from tests.unit.services.test_discovery_service import LIBRARY, standard_world
 
@@ -1221,7 +1222,7 @@ def tempo_library(library_db) -> Dict[str, int]:
     tracks = resolve("ITrackRepository")
 
     def add(name: str, bpm: float, key: str, genre: str) -> int:
-        return int(
+        stored = int(
             tracks.add(
                 LibraryTrack(
                     rekordbox_track_id=name,
@@ -1234,6 +1235,9 @@ def tempo_library(library_db) -> Dict[str, int]:
                 )
             ).id
         )
+        # The key is Beatport's, by an accepted match (DEC-201), not Rekordbox's.
+        accept_with_key(resolve("IDatabaseService"), stored, key)
+        return stored
 
     return {
         "seed": add("seed", 128.0, "8A", "House"),

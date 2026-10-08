@@ -45,16 +45,15 @@ export function describeSetWarning(warning: SetWarning): string {
     }
     case "key_clash":
       return `Keys clash: ${warning.compared.from} → ${warning.compared.to}`;
-    case "tempo_unknown":
-    case "key_unknown": {
-      const what = warning.kind === "tempo_unknown" ? "BPM" : "key";
+    case "tempo_unknown": {
+      // A track with no key is no warning (DEC-201): there is no `key_unknown`.
       switch (warning.detail) {
         case "from":
-          return `The track before has no ${what} to compare`;
+          return "The track before has no BPM to compare";
         case "to":
-          return `This track has no ${what} to compare`;
+          return "This track has no BPM to compare";
         case "both":
-          return `Neither track has a ${what} to compare`;
+          return "Neither track has a BPM to compare";
       }
       break;
     }
@@ -126,7 +125,6 @@ export function isAcknowledgeable(warning: SetWarning): boolean {
   return (
     warning.kind === "tempo_jump" ||
     warning.kind === "key_clash" ||
-    warning.kind === "tempo_unknown" ||
-    warning.kind === "key_unknown"
+    warning.kind === "tempo_unknown"
   );
 }

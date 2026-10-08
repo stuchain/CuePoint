@@ -276,27 +276,26 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         expect(decided).toMatchObject({ state: "accepted", decidedBy: "user", chosen: "E Minor" });
       });
 
-      await test.step("apply the chosen candidate's key and BPM", async () => {
+      await test.step("apply the chosen candidate's BPM; the key comes from the match", async () => {
         await window.getByRole("combobox", { name: "Show" }).selectOption("accepted");
         await queueRow(window, "Tone Two").getByText("Tone Two").click();
         const comparison = window.getByRole("region", { name: "Comparison" });
         const apply = comparison.getByRole("group", { name: "Apply from the accepted match" });
-        await expect(apply).toContainText("E Minor", { timeout: 15_000 });
-        await expect(apply).toContainText("125");
+        await expect(apply).toContainText("125", { timeout: 15_000 });
+        await expect(apply.getByRole("checkbox", { name: /^Key/ })).toHaveCount(0);
         for (const field of ["Genre", "Label", "Year"]) {
           await apply.getByRole("checkbox", { name: new RegExp(`^${field}`) }).uncheck();
         }
-        await apply.getByRole("button", { name: "Apply 2 fields" }).click();
+        await apply.getByRole("button", { name: "Apply 1 field" }).click();
         await expect(comparison.getByRole("status")).toContainText(/Applied/, { timeout: 15_000 });
       });
 
-      await test.step("see the applied values in the Library, with their source", async () => {
+      await test.step("see the applied BPM and the match's key in the Library", async () => {
         await window.getByRole("link", { name: "Library", exact: true }).click();
         const row = libraryRow(window, "Tone Two");
         await expect(row).toContainText("125.0", { timeout: 30_000 });
-        await expect(
-          row.getByRole("img", { name: /^Key applied from Beatport\. Rekordbox has 8A\./ }),
-        ).toBeAttached();
+        // The accepted match's key ("E Minor") is the key: Camelot 9A, not Rekordbox's 8A.
+        await expect(row).toContainText("9A");
         await expect(
           row.getByRole("img", { name: /^BPM applied from Beatport\. Rekordbox has 124/ }),
         ).toBeAttached();
@@ -305,16 +304,13 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       await test.step("revert the apply", async () => {
         await libraryRow(window, "Tone Two").getByText("Tone Two").click();
         const inspector = window.locator(".cp-track-detail");
-        for (const field of ["key", "BPM"]) {
-          await inspector
-            .getByRole("button", { name: new RegExp(`^Revert: .*${field}`, "i") })
-            .first()
-            .click();
-        }
+        await inspector
+          .getByRole("button", { name: /^Revert: .*BPM/i })
+          .first()
+          .click();
         const row = libraryRow(window, "Tone Two");
         await expect(row.getByRole("img")).toHaveCount(0, { timeout: 15_000 });
         await expect(row).toContainText("124.0");
-        await expect(row).toContainText("8A");
       });
 
       await test.step("check files, with one missing", async () => {

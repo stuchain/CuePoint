@@ -372,7 +372,8 @@
             }
           ]
         }
-      ]
+      ],
+      "without_key": 0
     },
     "entries": {
       "entries": [
@@ -408,10 +409,12 @@
             "genre": null,
             "id": 1,
             "key": "8A",
+            "key_name": "A minor",
+            "key_source": "beatport",
             "label": null,
             "match_disputed": false,
             "match_score": null,
-            "match_state": "not_matched",
+            "match_state": "accepted",
             "overridden": [],
             "override_sources": {},
             "play_count": null,
@@ -456,10 +459,12 @@
             "genre": null,
             "id": 2,
             "key": "9A",
+            "key_name": "E minor",
+            "key_source": "beatport",
             "label": null,
             "match_disputed": false,
             "match_score": null,
-            "match_state": "not_matched",
+            "match_state": "accepted",
             "overridden": [],
             "override_sources": {},
             "play_count": null,
@@ -504,10 +509,12 @@
             "genre": null,
             "id": 3,
             "key": "8A",
+            "key_name": "A minor",
+            "key_source": "beatport",
             "label": null,
             "match_disputed": false,
             "match_score": null,
-            "match_state": "not_matched",
+            "match_state": "accepted",
             "overridden": [],
             "override_sources": {},
             "play_count": null,
@@ -552,10 +559,12 @@
             "genre": null,
             "id": 4,
             "key": "3B",
+            "key_name": "D♭ major",
+            "key_source": "beatport",
             "label": null,
             "match_disputed": false,
             "match_score": null,
-            "match_state": "not_matched",
+            "match_state": "accepted",
             "overridden": [],
             "override_sources": {},
             "play_count": null,
@@ -600,10 +609,12 @@
             "genre": null,
             "id": 1,
             "key": "8A",
+            "key_name": "A minor",
+            "key_source": "beatport",
             "label": null,
             "match_disputed": false,
             "match_score": null,
-            "match_state": "not_matched",
+            "match_state": "accepted",
             "overridden": [],
             "override_sources": {},
             "play_count": null,
@@ -648,10 +659,12 @@
             "genre": null,
             "id": 5,
             "key": "8B",
+            "key_name": "C major",
+            "key_source": "beatport",
             "label": null,
             "match_disputed": false,
             "match_score": null,
-            "match_state": "not_matched",
+            "match_state": "accepted",
             "overridden": [],
             "override_sources": {},
             "play_count": null,
@@ -850,7 +863,6 @@
         }
       ],
       "counts": {
-        "key_unknown": 1,
         "tempo_unknown": 1
       },
       "entries": [],
@@ -912,19 +924,11 @@
               },
               "detail": "to",
               "kind": "tempo_unknown"
-            },
-            {
-              "acknowledged": false,
-              "compared": {
-                "from": "8A",
-                "to": null
-              },
-              "detail": "to",
-              "kind": "key_unknown"
             }
           ]
         }
-      ]
+      ],
+      "without_key": 1
     },
     "entries": {
       "entries": [
@@ -960,10 +964,12 @@
             "genre": null,
             "id": 1,
             "key": "8A",
+            "key_name": "A minor",
+            "key_source": "beatport",
             "label": null,
             "match_disputed": false,
             "match_score": null,
-            "match_state": "not_matched",
+            "match_state": "accepted",
             "overridden": [],
             "override_sources": {},
             "play_count": null,
@@ -1008,6 +1014,8 @@
             "genre": null,
             "id": 6,
             "key": null,
+            "key_name": null,
+            "key_source": null,
             "label": null,
             "match_disputed": false,
             "match_score": null,

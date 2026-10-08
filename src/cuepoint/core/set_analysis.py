@@ -21,8 +21,10 @@ What is checked
 - ``key_clash``: DEC-096's wheel finds no relation between the two keys. Key
   only adds points in DEC-096, so a suggested track can still clash, and the
   warning then means exactly that it earned no key points.
-- ``tempo_unknown`` and ``key_unknown``: a side has no value to check, and
-  the detail says which.
+- ``tempo_unknown``: a side has no tempo to check, and the detail says which.
+  A side with no key gives no warning (DEC-201); it is counted in
+  ``without_key``. ``key_unknown`` is no longer a kind: an acknowledgement
+  stored for it is never matched, so it is inert.
 
 **Each entry**: ``file_missing`` and ``file_unreadable`` from the last file
 check (DEC-073), and ``time_outside_track`` when a planned time is past the
@@ -94,7 +96,7 @@ TEMPO_JUMP = "tempo_jump"
 KEY_CLASH = "key_clash"
 TEMPO_UNKNOWN = "tempo_unknown"
 KEY_UNKNOWN = "key_unknown"
-TRANSITION_KINDS: Tuple[str, ...] = (TEMPO_JUMP, KEY_CLASH, TEMPO_UNKNOWN, KEY_UNKNOWN)
+TRANSITION_KINDS: Tuple[str, ...] = (TEMPO_JUMP, KEY_CLASH, TEMPO_UNKNOWN)
 
 #: Entry warnings.
 FILE_MISSING_WARNING = "file_missing"
@@ -143,9 +145,6 @@ WARNINGS: Tuple[Tuple[str, str], ...] = (
     (TEMPO_UNKNOWN, SIDE_FROM),
     (TEMPO_UNKNOWN, SIDE_TO),
     (TEMPO_UNKNOWN, SIDE_BOTH),
-    (KEY_UNKNOWN, SIDE_FROM),
-    (KEY_UNKNOWN, SIDE_TO),
-    (KEY_UNKNOWN, SIDE_BOTH),
     (FILE_MISSING_WARNING, NOT_FOUND),
     (FILE_MISSING_WARNING, DRIVE_UNAVAILABLE),
     (FILE_UNREADABLE_WARNING, UNREADABLE),
@@ -404,6 +403,7 @@ class SetAnalysis:
         acknowledged: How many transition warnings an acknowledgement covers.
         notices: How many of each notice.
         shape: The values the checks read, for the lanes.
+        without_key: How many entries have no key, so no key check applies.
     """
 
     transitions: Tuple[TransitionCheck, ...]
@@ -415,6 +415,7 @@ class SetAnalysis:
     acknowledged: int = 0
     notices: Mapping[str, int] = field(default_factory=dict)
     shape: SetShape = field(default_factory=SetShape)
+    without_key: int = 0
 
     def warnings(self) -> Iterable[SetWarning]:
         """Every warning, transitions first, then entries, then chapters."""
@@ -477,18 +478,14 @@ def transition_warnings(before: EntryFacts, after: EntryFacts) -> List[SetWarnin
                 },
             )
         )
-    if before.key is None or after.key is None:
-        found.append(
-            SetWarning(
-                KEY_UNKNOWN,
-                _side(before.key is None, after.key is None),
-                {
-                    "from": None if before.key is None else camelot_code(before.key),
-                    "to": None if after.key is None else camelot_code(after.key),
-                },
-            )
-        )
-    elif key_relation(before.key, after.key) is None:
+    # A side with no key is not a warning (DEC-201): Beatport's key is the only
+    # key, so an unmatched library has none, and a warning on every transition
+    # would say nothing. The Set's report counts the entries without one.
+    if (
+        before.key is not None
+        and after.key is not None
+        and key_relation(before.key, after.key) is None
+    ):
         found.append(
             SetWarning(
                 KEY_CLASH,
@@ -706,6 +703,7 @@ def analyse(
         acknowledged=acknowledged,
         notices=dict(notices),
         shape=shape_of(entries),
+        without_key=sum(1 for entry in entries if entry.key is None),
     )
 
 

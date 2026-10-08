@@ -29,6 +29,7 @@ from typing import Any, Dict, List
 
 import pytest
 
+from tests.unit.key_support import accept_with_key
 from cuepoint.core.similarity import COMPONENTS, REASONS
 from cuepoint.models.library_track import LibraryTrack
 from cuepoint.persistence.similarity_repository import SimilarityRepository
@@ -74,6 +75,9 @@ def produce(tmp_path: Path) -> Dict[str, Any]:
                 )
             )
             assert stored.id is not None
+            if values.get("key"):
+                # The key is Beatport's, by an accepted match (PAGES-15).
+                accept_with_key(db, stored.id, values["key"])
             return stored.id
 
         seed = add(

@@ -9,12 +9,13 @@ effective BPM and key, track length and last file check; its chapters; and its
 acknowledgements. It writes nothing but acknowledgements, and records no activity:
 a Set's plan is not the library's history (PREP-03's rule).
 
-Keys are compared on the Camelot wheel and written in the library's notation
-------------------------------------------------------------------------------
+Keys are compared on the Camelot wheel and written in Camelot
+-------------------------------------------------------------
 The rule compares canonical values, keys as Camelot codes, and an
-acknowledgement stores those. The wire writes every key in the notation most of
-the library uses (``notation_from_counts``), as Similar Tracks' reasons are
-written, so a warning reads the way the user's key column does.
+acknowledgement stores those. The keys are Beatport's, or the user's own
+correction (DEC-201), and the app shows Camelot everywhere, so the wire writes
+them that way, as Similar Tracks' reasons do. A track with no key is left out of
+the key checks and counted in ``without_key``.
 
 The shape
 ---------
@@ -46,7 +47,6 @@ from cuepoint.core.set_analysis import (
     FILE_PRESENT,
     FILE_UNREADABLE,
     KEY_CLASH,
-    KEY_UNKNOWN,
     TRANSITION_KINDS,
     Acknowledged,
     ChapterFacts,
@@ -72,7 +72,7 @@ from cuepoint.services.interfaces import (
 )
 from cuepoint.services.override_values import (
     format_key,
-    notation_from_counts,
+    NOTATION_CAMELOT,
     parse_key,
 )
 
@@ -90,7 +90,7 @@ _FILE_STATES: Mapping[Optional[str], str] = {
 }
 
 #: The warnings whose compared values are keys, to be written in notation.
-_KEYED = (KEY_CLASH, KEY_UNKNOWN)
+_KEYED = (KEY_CLASH,)
 
 
 def _bpm(value: Any) -> Optional[float]:
@@ -229,6 +229,7 @@ class SetAnalysisReport:
             "counts": dict(found.counts),
             "acknowledged": found.acknowledged,
             "notices": dict(found.notices),
+            "without_key": found.without_key,
             "files": {
                 "tracks": files.tracks,
                 "checked": files.checked,
@@ -307,7 +308,8 @@ class SetAnalysisService(ISetAnalysisService):
         with self._db.transaction(join_existing=True):
             node = self._require_set(set_id)
             analysis = self._analysis(int(set_id))
-        notation = notation_from_counts(*self._tracks.key_notation_counts())
+        # Keys show in Camelot everywhere (DEC-201), whatever the imported file used.
+        notation = NOTATION_CAMELOT
         return SetAnalysisReport(set=node, notation=notation, analysis=analysis)
 
     def acknowledge(

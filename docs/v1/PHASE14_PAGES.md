@@ -1571,6 +1571,21 @@ someone who updates explain it.
 
 **Complexity**: **L**
 
+**Outcome** (2026-10-08): One resolver now decides every key: the user's correction, else the accepted
+match's Beatport key (auto accepts count), else none. `services/key_resolver.py` holds the Python side
+(`resolve_key`, `ResolvedKey`) and registers the SQLite function `cp_camelot` on every connection;
+`models/filter_rule.py` holds the SQL fragments every query reader joins (`KEY_SQL`, `KEY_JOINS`). A key
+applied from a match before this change (history source Beatport) follows the match; a typed one stays
+(DEC-203). The filter, sort, queue projection, Set repository, similarity, Set analysis and suggestions,
+Set list, Review's comparison, export, tag writing and health all read it, with a grep-based engine test
+listing the readers. Writing never blanks a key. Track rows carry `effective_key` (Camelot or null),
+`key_source` and `key_name`; the row's `key` stays Rekordbox's. Set checks and Similar tracks skip a
+keyless track and say so, and the key_unknown warning is gone (the Set report counts `without_key`; Prepare
+shows it as a header fact). Renderer: every `effective_key ?? key` fallback is removed, key leaves the
+apply UI, the Library shows "—" without a key, Track details shows "9A · E minor" or "No Beatport
+key" with Rekordbox's key marked "not used", and `keyReaders.test.ts` guards new readers. Health's
+missing-key line reads "No Beatport key". User-guide pages updated.
+
 ---
 
 ## PAGES-16 — The Keys Page

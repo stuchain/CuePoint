@@ -192,6 +192,13 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const xmlBytes = readFileSync(xml);
       const started = await win.evaluate((file) => (window as never as Bridge).cuepoint.startLibraryImport({ xml_path: file }), xml);
       await finished(win, started.job_id);
+      // Keys come from corrections or accepted matches, not Rekordbox (PAGES-15): type each one.
+      await win.evaluate(async () => {
+        const c = (window as never as Bridge).cuepoint;
+        for (const track of (await c.browseLibrary({ limit: 50 })).tracks) {
+          if (track.key) await c.setTrackOverrides({ trackId: track.id, key: track.key });
+        }
+      });
       await win.evaluate(async () => {
         const c = (window as never as Bridge).cuepoint;
         const ids: Record<string, number> = {};

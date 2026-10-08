@@ -161,7 +161,9 @@ export a Set with every warning still open.
 
 - **Into each entry**: a **tempo jump** outside the window Similar tracks uses,
   with half and double time counted as fitting; a **key clash**, two keys with
-  no relation on the Camelot wheel; and a track with no BPM or key to compare.
+  no relation on the Camelot wheel; and a track with no BPM to compare. Keys are
+  Beatport's (or yours): a track with no key is left out of the key checks
+  without a warning, and the checks say how many entries have none.
 - **On each entry**: a file that was missing or unreadable when files were last
   checked, and a planned time past the end of the track.
 - **On each chapter**: over or under its target, and tracks outside its BPM
@@ -231,7 +233,8 @@ Similar tracks and its artist's or label's page.
   that says how the two keys relate — solid for the same key or one step, dashed
   for the relative key, dotted for a clash.
 
-A track with no BPM or key is a gap in its lane, never a zero. A line across both
+A track with no BPM or key is a gap in its lane, never a zero. Keys are
+Beatport's, or your own correction; a track that has not been matched has none. A line across both
 lanes marks where a chapter starts. Clicking a column selects its entry, which
 moves the insertion point there. The lanes are a picture of what the table says
 in words; they add no fact of their own.

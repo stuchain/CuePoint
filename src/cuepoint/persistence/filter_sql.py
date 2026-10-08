@@ -378,6 +378,16 @@ def _comparison(
     )
 
 
+def _operand(spec: FieldSpec) -> str:
+    """The placeholder a text value is compared as.
+
+    The Key field holds Camelot codes (DEC-201), so what a person typed is read
+    as a key first: "8A", "Am" and "A minor" are one key, and a word that is
+    not a key matches nothing.
+    """
+    return "cp_camelot(?)" if spec.name == "key" else "?"
+
+
 def compile_rule(rule: FilterRule) -> Tuple[str, Tuple[Any, ...]]:
     """Compile one **validated** rule to ``(sql, params)``.
 
@@ -425,13 +435,13 @@ def compile_rule(rule: FilterRule) -> Tuple[str, Tuple[Any, ...]]:
             return f"{column} = ?", (value,)
         # COLLATE NOCASE, because a user typing "house" means the genre
         # "House". The same reason the default sort collates that way.
-        return f"{column} = ? COLLATE NOCASE", (value,)
+        return f"{column} = {_operand(spec)} COLLATE NOCASE", (value,)
 
     if operator == OP_IS_NOT:
         if spec.type == TYPE_NUMBER:
             return f"({column} IS NULL OR {column} <> ?)", (value,)
         return (
-            f"({column} IS NULL OR {column} <> ? COLLATE NOCASE)",
+            f"({column} IS NULL OR {column} <> {_operand(spec)} COLLATE NOCASE)",
             (value,),
         )
 
@@ -462,7 +472,9 @@ def compile_rule(rule: FilterRule) -> Tuple[str, Tuple[Any, ...]]:
             return f"{column} IN ({placeholders})", tuple(value)
         # `IN` uses the column's collation, which is BINARY here, so the
         # case-insensitive comparison is spelled out per value instead.
-        parts = " OR ".join(f"{column} = ? COLLATE NOCASE" for _ in value)
+        parts = " OR ".join(
+            f"{column} = {_operand(spec)} COLLATE NOCASE" for _ in value
+        )
         return f"({parts})", tuple(value)
 
     # Unreachable while the model and this module agree; a loud failure rather

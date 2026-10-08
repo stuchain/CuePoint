@@ -89,7 +89,7 @@ from cuepoint.services.interfaces import (
 from cuepoint.services.override_values import (
     BPM_DECIMALS,
     format_key,
-    notation_from_counts,
+    NOTATION_CAMELOT,
 )
 from cuepoint.services.similarity_service import (
     ReasonWriter,
@@ -250,7 +250,8 @@ class SetSuggestionService(ISetSuggestionService):
             raise ValueError("There is no entry after this gap to fit against")
         chapter = _chapter_of_gap(node.name, chapters, before, after, chapter_id)
 
-        notation = notation_from_counts(*self._tracks.key_notation_counts())
+        # Keys show in Camelot everywhere (DEC-201), whatever the imported file used.
+        notation = NOTATION_CAMELOT
         sides: Dict[str, _Side] = {}
         for name, entry in ((SIDE_BEFORE, before), (SIDE_AFTER, after)):
             if entry is not None and against in (None, name):

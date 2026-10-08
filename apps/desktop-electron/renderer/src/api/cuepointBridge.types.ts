@@ -415,6 +415,13 @@ export interface LibraryTrackRow {
    * describe valid rows; the engine always sends them.
    */
   effective_key?: string | null;
+  /**
+   * Whose key `effective_key` is (PAGES-15, DEC-201): `yours` for a correction,
+   * `beatport` for the accepted match's, null when the track has none. `key_name`
+   * is its name ("A minor"). `key` above stays Rekordbox's, and is not used.
+   */
+  key_source?: "yours" | "beatport" | null;
+  key_name?: string | null;
   effective_bpm?: number | null;
   effective_genre?: string | null;
   effective_label?: string | null;
@@ -2259,12 +2266,6 @@ export type SetWarning =
       acknowledged: boolean;
     }
   | {
-      kind: "key_unknown";
-      detail: "from" | "to" | "both";
-      compared: { from: string | null; to: string | null };
-      acknowledged: boolean;
-    }
-  | {
       kind: "file_missing";
       /** A drive that was not there is not the same as a file that is gone. */
       detail: "not_found" | "drive_unavailable";
@@ -2369,6 +2370,8 @@ export interface SetAnalysis {
   counts: Partial<Record<SetWarning["kind"], number>>;
   acknowledged: number;
   notices: Partial<Record<SetNotice["kind"], number>>;
+  /** Entries with no key (DEC-201): they get no key check, and no warning. */
+  without_key: number;
   files: SetFileCheck;
   transitions: { from_entry_id: number; to_entry_id: number; warnings: SetWarning[] }[];
   entries: { entry_id: number; warnings: SetWarning[]; notices: SetNotice[] }[];
@@ -2647,7 +2650,7 @@ export interface SetEntryPlanChanged {
 }
 
 /** The warnings between two entries, which are the only ones a person accepts. */
-export type SetTransitionWarningKind = "tempo_jump" | "key_clash" | "tempo_unknown" | "key_unknown";
+export type SetTransitionWarningKind = "tempo_jump" | "key_clash" | "tempo_unknown";
 
 /** One transition's warning, named by its two entries (DEC-106). */
 export interface SetTransitionWarningRef {

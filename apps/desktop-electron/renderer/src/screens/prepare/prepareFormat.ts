@@ -50,7 +50,6 @@ const KIND_WORDS: Record<SetWarning["kind"], [string, string]> = {
   tempo_jump: ["tempo jump", "tempo jumps"],
   key_clash: ["key clash", "key clashes"],
   tempo_unknown: ["tempo unknown", "tempos unknown"],
-  key_unknown: ["key unknown", "keys unknown"],
   file_missing: ["file missing", "files missing"],
   file_unreadable: ["file unreadable", "files unreadable"],
   time_outside_track: ["time past a track's end", "times past a track's end"],
@@ -89,6 +88,12 @@ export function headerFacts(
       title: files,
     });
   }
+  if (analysis.without_key > 0) {
+    facts.push({
+      text: `${counted(analysis.without_key, "entry", "entries")} without a key`,
+      title: "No Beatport key, so no key check applies. Match the library in Clean to get keys.",
+    });
+  }
   return facts;
 }
 
@@ -119,8 +124,6 @@ export function shortWarning(warning: SetWarning): string {
       return "Key clash";
     case "tempo_unknown":
       return "No BPM";
-    case "key_unknown":
-      return "No key";
     case "file_missing":
       return "File missing";
     case "file_unreadable":

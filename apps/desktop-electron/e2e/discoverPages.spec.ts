@@ -136,6 +136,13 @@ async function importLibrary(window: Page, xml: string) {
       { timeout: 90_000 },
     )
     .toBe(0);
+  // Keys come from corrections or accepted matches, not Rekordbox (PAGES-15): type each one.
+  await window.evaluate(async () => {
+    const c = window.cuepoint!;
+    for (const track of (await c.browseLibrary!({ limit: 50 })).tracks) {
+      if (track.key) await c.setTrackOverrides!({ trackId: track.id, key: track.key });
+    }
+  });
   // The Library is home (DEC-100), so it is already open, and it reads the
   // library when it loads: an import made behind its back, through the bridge,
   // is seen on the next load — as it would be after a relaunch.

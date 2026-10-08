@@ -7,11 +7,13 @@ Two halves.
 
 **What a write reads.** :meth:`FileWriteRepository.targets` answers, per track,
 the values a write would put into its file and whether the file was found there:
-the effective key, BPM, genre, label and year — ``COALESCE`` of CuePoint's
-override over Rekordbox's column, exactly as the rule vocabulary reads them
-(``models/filter_rule.py``, DEC-068) — and the file check for the track's path.
-An accepted but unapplied match is not an override, so it changes nothing here
-(DEC-070).
+the effective BPM, genre, label and year — ``COALESCE`` of CuePoint's override
+over Rekordbox's column, exactly as the rule vocabulary reads them
+(``models/filter_rule.py``, DEC-068) — the key (the user's correction, else the
+accepted match's Beatport key, else none: DEC-201, never Rekordbox's), and the
+file check for the track's path. An accepted but unapplied match is not an
+override for any of them but the key (DEC-070). A track with no key has none to
+write, and its file's key is left as it is.
 
 **The record.** ``file_writes`` is append-only in what it claims: a row is
 inserted before the file is touched, and afterwards only its ``pending`` flag,
@@ -30,7 +32,13 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from cuepoint.models.file_status import FILE_NOT_CHECKED
 from cuepoint.models.file_write import WRITE_FAILED, WRITE_WRITTEN, FileWrite
+from cuepoint.models.filter_rule import (
+    KEY_SQL,
+    MATCH_ALIAS,
+    MATCH_CANDIDATE_ALIAS,
+)
 from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
+from cuepoint.persistence.track_query import JOINS
 from cuepoint.services.interfaces import IDatabaseService, IFileWriteRepository
 
 _COLUMNS = (
@@ -70,7 +78,7 @@ _RESTORABLE = (
 
 _TARGETS = (
     "SELECT tracks.id AS track_id, tracks.file_path AS file_path,"
-    " COALESCE(meta.key, tracks.key) AS key,"
+    f" {KEY_SQL} AS key,"
     " COALESCE(meta.bpm, tracks.bpm) AS bpm,"
     " COALESCE(meta.genre, tracks.genre) AS genre,"
     " COALESCE(meta.label, tracks.label) AS label,"
@@ -78,6 +86,7 @@ _TARGETS = (
     " files.status AS file_status, files.checked_path AS checked_path"
     " FROM tracks"
     " LEFT JOIN track_metadata AS meta ON meta.track_id = tracks.id"
+    f"{JOINS[MATCH_ALIAS]}{JOINS[MATCH_CANDIDATE_ALIAS]}"
     " LEFT JOIN track_files AS files ON files.track_id = tracks.id"
     " WHERE tracks.id IN ({placeholders})"
 )

@@ -30,6 +30,7 @@ from typing import Dict, List, Optional, Tuple
 
 import pytest
 
+from tests.unit.key_support import accept_with_key
 from cuepoint.core.entity_names import name_key, split_credit
 from cuepoint.core.similarity import (
     REASONS,
@@ -126,6 +127,9 @@ class Library:
             )
         )
         assert stored.id is not None
+        if key:
+            # The key is Beatport's, by an accepted match (PAGES-15).
+            accept_with_key(self.db, stored.id, key)
         return stored.id
 
     def make_set(
