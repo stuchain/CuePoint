@@ -22,13 +22,13 @@ what a user following it is told:
 
 from __future__ import annotations
 
+import http.client
 import json
 import socket
 import sqlite3
 import threading
 import time
 import urllib.parse
-import urllib.request
 from collections import Counter
 from typing import List
 
@@ -599,16 +599,28 @@ class TestAThousandTracks:
 
             answered_while_running = 0
             slowest = 0.0
+            # The slowest request's time to connect and then to be answered,
+            # so a slow one says whether TCP or the engine was slow.
+            slowest_parts = (0.0, 0.0)
             query = urllib.parse.urlencode({"q": "Track 09", "limit": 50})
-            url = f"http://127.0.0.1:{port}/api/v1/library/search?{query}"
+            path = f"/api/v1/library/search?{query}"
             while started.job.state == JobState.RUNNING:
-                request = urllib.request.Request(
-                    url, headers={"Authorization": f"Bearer {TOKEN}"}
-                )
-                began = time.monotonic()
-                with urllib.request.urlopen(request, timeout=5) as response:
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+                try:
+                    began = time.monotonic()
+                    connection.connect()
+                    connected = time.monotonic()
+                    connection.request(
+                        "GET", path, headers={"Authorization": f"Bearer {TOKEN}"}
+                    )
+                    response = connection.getresponse()
                     payload = json.loads(response.read().decode("utf-8"))
-                slowest = max(slowest, time.monotonic() - began)
+                    answered = time.monotonic()
+                finally:
+                    connection.close()
+                if answered - began > slowest:
+                    slowest = answered - began
+                    slowest_parts = (connected - began, answered - connected)
                 assert payload["total"] == 100
                 if started.job.state == JobState.RUNNING:
                     answered_while_running += 1
@@ -620,4 +632,7 @@ class TestAThousandTracks:
 
         assert job.state == JobState.SUCCEEDED
         assert answered_while_running >= 10
-        assert slowest < 1.0, f"a browse request took {slowest:.2f} s during a match"
+        assert slowest < 1.0, (
+            f"a browse request took {slowest:.2f} s during a match "
+            f"({slowest_parts[0]:.2f} s to connect, {slowest_parts[1]:.2f} s to answer)"
+        )
