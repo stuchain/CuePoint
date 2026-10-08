@@ -2668,6 +2668,35 @@
     }
   },
   {
+    "name": "cuepoint/engine/library_api.py::parse_key_population_body::source kind {kind!r} is not one of: all, playlist, collection, set",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "ValueError",
+            "value": "source kind 'smoke & mirrors (extended mix)' is not one of: all, playlist, collection, set"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "ValueError",
+            "value": "source kind '<value>' is not one of: all, playlist, collection, set"
+          }
+        ]
+      }
+    }
+  },
+  {
     "name": "cuepoint/engine/library_api.py::parse_mode::mode must be {' or '.join(MODES)}, not {raw!r}",
     "ctx": {
       "home": "/Users/anna",

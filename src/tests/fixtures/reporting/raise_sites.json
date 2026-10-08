@@ -625,6 +625,11 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
+  "cuepoint/engine/library_api.py::_require_sources::No {kind} with id {ident}": {
+    "holds": "a source kind our code already checked and an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
   "cuepoint/engine/library_api.py::library_track_detail::No track with id {track_id}": {
     "holds": "an integer id",
     "verdict": "exempt",
@@ -651,6 +656,15 @@
     "holds": "our own field, label or code name",
     "verdict": "exempt",
     "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/library_api.py::parse_key_population_body::a {kind} source needs a positive whole-number id": {
+    "holds": "a source kind our code already checked against its four constants",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
+  "cuepoint/engine/library_api.py::parse_key_population_body::source kind {kind!r} is not one of: all, playlist, collection, set": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
   },
   "cuepoint/engine/library_api.py::parse_mode::mode must be {' or '.join(MODES)}, not {raw!r}": {
     "holds": "request or file text that failed validation: any user or library text",
