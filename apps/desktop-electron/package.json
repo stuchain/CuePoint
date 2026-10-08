@@ -46,7 +46,15 @@
       "!renderer/dist/**/*.map",
       "!**/node_modules/**/*.map",
       "electron/preload.cjs",
-      "package.json"
+      "package.json",
+      {
+        "from": "node_modules/@sentry/browser-utils",
+        "to": "node_modules/@sentry/browser-utils",
+        "filter": [
+          "**/*",
+          "!**/*.map"
+        ]
+      }
     ],
     "extraResources": [
       {
