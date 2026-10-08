@@ -1,3 +1,8 @@
 node_modules/
 dist/
 out/
+# your own music for a private cut never goes in the repository
+*.mp3
+*.wav
+*.flac
+*.m4a

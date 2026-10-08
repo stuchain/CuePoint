@@ -25,6 +25,20 @@ node scripts/render.mjs --stills=2,9.5,25          # PNGs at those seconds, both
 node scripts/render.mjs --format=tall --frames=90  # the first three seconds of one cut
 ```
 
+## A private cut with your own music
+
+After a render, put a piece of a track you own under the picture:
+
+```sh
+npm run mux -- --track=/path/to/track.mp3 --start=38.817 --bpm=130
+```
+
+`--start` is where the piece begins in the track and `--bpm` the track's tempo; the piece is stretched
+to the promo's 128 BPM, so starting it a whole number of bars before a drop puts the drop on a cut
+(three bars before lands it on the cut into Clean). The files come out as `out/*-PRIVATE.mp4`.
+They are for your own use: posting commercial music needs a license, and platforms may mute or claim
+it. Never commit the track (`.gitignore` keeps audio files out).
+
 ## How it is made
 
 - **One clock** (`src/timing.ts`): 128 BPM, 16 bars, exactly 30 s at 30 fps. Shots, captions and
@@ -32,7 +46,9 @@ node scripts/render.mjs --format=tall --frames=90  # the first three seconds of 
 - **The opening** is the website's own 3D scene, the crate becoming the Camelot wheel (DEC-189),
   imported read-only from `apps/website/src/three` and driven by time instead of scroll. Changes to the
   site's scene show up here on the next render.
-- **The app shots** (`src/shots.ts`, `src/content.ts`) are stand-ins drawn in the app's pixel style
+- **The app shots** (`src/shots.ts`, `src/content.ts`) sit centered in their own CSS 3D space: the
+  camera settles onto each at an angle and drifts round to near frontal, and shots change on a hard
+  cut on the downbeat. They are stand-ins drawn in the app's pixel style
   with a made-up library, marked "Preview" in the title bar, until the redesigned pages (Phases 14
   and 15) can be captured. Colors come from the app's theme file; key colors from the app's icon.
 - **The music** (`scripts/beat.mjs`) is synthesized from scratch, so there is nothing to license.

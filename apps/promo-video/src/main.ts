@@ -5,17 +5,7 @@ import { createOpeningShot } from "./opening3d";
 import { buildShots } from "./shots";
 import { createBackdrop } from "./backdrop";
 import { HUES } from "./content";
-import { DURATION, FPS, FRAMES, KICKS, kickLevel, shot, snareLevel } from "./timing";
-
-/** The camera shake: a few pixels on every kick, a small zoom punch on the snare. Pure in t. */
-function shake(world: HTMLElement, t: number): void {
-  const k = kickLevel(t);
-  const n = KICKS.findLastIndex((x) => x <= t + 1e-9);
-  const dx = Math.round(Math.sin(n * 12.9898) * 10 * k);
-  const dy = Math.round(Math.cos(n * 78.233) * 8 * k);
-  const z = 1 + 0.025 * k + 0.02 * snareLevel(t);
-  world.style.transform = `translate(${dx}px, ${dy}px) scale(${z.toFixed(4)})`;
-}
+import { DURATION, FPS, FRAMES, shot } from "./timing";
 
 /**
  * The promo as one paused GSAP timeline plus the website's 3D opening, both a pure function of time.
@@ -39,11 +29,25 @@ async function main(): Promise<void> {
 
   gsap.ticker.lagSmoothing(0);
   const tl = gsap.timeline({ paused: true });
-  const { sceneHost, backdropHost, world } = buildShots(stage, format, tl);
-  // the phone cut frames the 3D in a squarer box above the captions, so the crate stays in shot
-  const view = format === "tall" ? { width, height: 1380, top: 130 } : { width, height, top: 0 };
-  const scene = createOpeningShot(view.width, view.height);
-  Object.assign(scene.canvas.style, { top: `${view.top}px`, height: `${view.height}px`, bottom: "auto" });
+  const { sceneHost, backdropHost } = buildShots(stage, format, tl);
+  // the phone cut frames the opening in a squarer box above the captions, so the crate stays in shot;
+  // the end card has no caption, so there the wheel fills the whole frame
+  interface View {
+    width: number;
+    height: number;
+    top: number;
+  }
+  const full: View = { width, height, top: 0 };
+  const box: View = format === "tall" ? { width, height: 1380, top: 130 } : full;
+  const scene = createOpeningShot(box.width, box.height);
+  let current: View | undefined;
+  const useView = (view: View): void => {
+    if (view === current) return;
+    current = view;
+    scene.resize(view.width, view.height);
+    Object.assign(scene.canvas.style, { top: `${view.top}px`, height: `${view.height}px`, bottom: "auto" });
+  };
+  useView(box);
   sceneHost.append(scene.canvas);
   const backdrop = createBackdrop(width, height, HUES);
   backdropHost.append(backdrop.canvas);
@@ -55,9 +59,13 @@ async function main(): Promise<void> {
 
   const seek = (t: number): void => {
     tl.seek(t, false);
-    if (t < shot("opening").end || t >= shot("end").start) scene.draw(t);
-    else backdrop.draw(t);
-    shake(world, t);
+    if (t < shot("opening").end) {
+      useView(box);
+      scene.draw(t);
+    } else if (t >= shot("end").start) {
+      useView(full);
+      scene.draw(t);
+    } else backdrop.draw(t);
   };
   seek(0);
   window.__promo = { fps: FPS, frames: FRAMES, duration: DURATION, seek };

@@ -3,13 +3,13 @@ import { PHASES } from "../../website/src/three/phases";
 import { PIXEL_SIZE, PixelPipeline } from "../../website/src/three/pixel";
 import { createRenderer } from "../../website/src/three/renderer";
 import { cameraPose, create as createOpening } from "../../website/src/three/scenes/opening";
-import { at, BAR, BEAT, kickLevel, shot, snareLevel } from "./timing";
+import { at, BAR, BEAT, kickLevel, shot } from "./timing";
 
 /**
  * The website's own 3D scene (DEC-189: the crate becoming the Camelot wheel), drawn through the site's
- * pixel pipeline and driven by time instead of scroll. The promo flies its own camera through it: an
- * orbit, a punch on every kick, a dive into the wheel at the first cut, and a slow turn around the lit
- * wheel behind the end card.
+ * pixel pipeline and driven by time instead of scroll. The promo flies its own camera through it: a slow
+ * orbit in, a short push toward the wheel at the first cut, and a steady turn around the lit wheel
+ * behind the end card.
  */
 
 /**
@@ -62,18 +62,20 @@ const ease = (u: number): number => {
 
 /** The promo's camera on top of the site's: a pure function of time. */
 export function cameraMove(t: number): CameraMove {
-  const punch = 1 - 0.07 * kickLevel(t) - 0.03 * snareLevel(t);
+  // a breath on the kick, not a jolt
+  const punch = 1 - 0.015 * kickLevel(t);
   const end = shot("end").start;
   if (t < end) {
     const u = t / shot("opening").end;
-    // the dive: the last beat of the opening flies into the middle of the wheel
-    const dive = ease((t - at(2, 3)) / BEAT);
-    return { yaw: -0.55 + 0.75 * ease(u), distance: 1 - 0.18 * ease(u) - 0.78 * dive * dive, rise: 1.2 * (1 - u), zoom: punch };
+    // further back than the site while the records take their tags, so the tags never fill the frame,
+    // then in to the wheel, and in the last beat a short push toward it that the cut finishes
+    const back = ease((t - at(0, 2)) / (at(1) - at(0, 2))) * (1 - ease((t - at(2)) / (BEAT * 2)));
+    const push = ease((t - at(2, 3)) / BEAT);
+    return { yaw: -0.4 + 0.45 * ease(u), distance: 1.12 + 0.55 * back - 0.1 * ease(u) - 0.12 * push * push, rise: 0.8 * (1 - u), zoom: punch };
   }
+  // the end card: a slow, steady turn round the lit wheel, settling as the words land
   const v = (t - end) / (4 * BAR);
-  // the end card: pull out of the wheel, then turn slowly round it
-  const out = ease((t - end) / BEAT);
-  return { yaw: 0.7 - 1.1 * v, distance: 0.2 + 0.85 * out - 0.1 * v, rise: -1.5 + 3 * v, zoom: punch };
+  return { yaw: 0.35 - 0.5 * ease(v), distance: 1.35 - 0.05 * ease(v), rise: 0.4 * (1 - ease(v)), zoom: punch };
 }
 
 export function applyMove(pose: { position: Vec3; target: Vec3 }, m: CameraMove): Vec3 {
@@ -90,6 +92,8 @@ export interface Opening {
   readonly canvas: HTMLCanvasElement;
   /** Draws the frame at time t (seconds into the video). */
   draw(t: number): void;
+  /** Changes the drawing size (the phone cut's end card fills the frame; its opening does not). */
+  resize(width: number, height: number): void;
   compile(): Promise<void>;
 }
 
@@ -102,17 +106,21 @@ export function createOpeningShot(width: number, height: number): Opening {
   const instance = createOpening();
 
   renderer.setPixelRatio(1);
-  renderer.setSize(width, height, false);
-  pixel.resize(width, height, PIXEL_SIZE);
+  const resize = (w: number, h: number): void => {
+    renderer.setSize(w, h, false);
+    pixel.resize(w, h, PIXEL_SIZE);
+    instance.resize(w / h);
+  };
   const palette = readPalette();
   pixel.setPalette(palette);
   instance.setPalette(palette);
-  instance.resize(width / height);
+  resize(width, height);
   instance.setShadowSize?.(1024);
   const baseFov = instance.camera.fov;
 
   return {
     canvas,
+    resize,
     draw(t) {
       const p = t >= shot("end").start ? 1 : progressAt(t);
       instance.setProgress(p);

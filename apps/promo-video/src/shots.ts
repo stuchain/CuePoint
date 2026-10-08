@@ -2,27 +2,36 @@ import type { gsap } from "gsap";
 import markUrl from "../../desktop-electron/build/icon-source/mark-32.svg?url";
 import { APP_PREVIEW, CLEAN_ROWS, keyColor, mixesInKey, SET } from "./content";
 import type { FormatId } from "./formats";
-import { at, BEAT, CAPTIONS, CUTS, FINAL_HIT, shot } from "./timing";
+import { at, BEAT, CAPTIONS, shot } from "./timing";
 
 type Timeline = gsap.core.Timeline;
 
 /**
  * The app shots are stand-ins drawn in the app's own pixel style, marked "Preview", until the
  * redesigned pages (Phase 14 and 15) can be captured from the real app (SITE-04's capture script).
- * Each sits in its own CSS 3D space: the camera swoops in, drifts, and flies out past the viewer.
+ * Each sits in its own CSS 3D space, centered in the frame: the camera settles onto it at an angle and
+ * then drifts slowly round to near frontal. Shots change on a hard cut on the downbeat.
  */
 
+/** Where each cut's picture is centered (the middle of the space above the captions). */
+const CENTER = { wide: 455, tall: 820 } as const;
+
 /** A shot's 3D space: perspective on the outside, a rig the camera moves inside. */
-function space(cls: string, perspective = 1800): { el: HTMLElement; rig: HTMLElement } {
-  const el = h(`<div class="layer ${cls}"><div class="space" style="perspective:${perspective}px"><div class="rig"></div></div></div>`);
+function space(format: FormatId, cls: string, perspective = 1800): { el: HTMLElement; rig: HTMLElement } {
+  const origin = `50% ${CENTER[format]}px`;
+  const el = h(
+    `<div class="layer ${cls}"><div class="space" style="perspective:${perspective}px;perspective-origin:${origin}"><div class="rig" style="transform-origin:${origin}"></div></div></div>`,
+  );
   return { el, rig: el.querySelector(".rig")! };
 }
 
-/** Swoop the rig in from deep space, drift it across the shot, and throw it past the camera. */
-function swoop(tl: Timeline, rig: Element, start: number, end: number, from: gsap.TweenVars, rest: gsap.TweenVars, drift: gsap.TweenVars): void {
-  tl.fromTo(rig, { z: -2600, ...from }, { z: 0, ...rest, duration: BEAT * 1.25, ease: "power3.out" }, start);
-  tl.to(rig, { ...drift, duration: end - start - BEAT * 2.25, ease: "sine.inOut" }, start + BEAT * 1.25);
-  tl.to(rig, { z: 1400, rotationY: "+=25", duration: BEAT, ease: "power3.in" }, end - BEAT);
+/**
+ * The one camera move every app shot uses: arrive from a little way back at an angle, settle in the first
+ * beat and a half, then drift slowly through the rest of the shot. No exit move: the cut does that.
+ */
+function settle(tl: Timeline, rig: Element, start: number, end: number, ry: number, rx = 8): void {
+  tl.fromTo(rig, { z: -700, rotationY: ry, rotationX: rx }, { z: 0, rotationY: ry * 0.25, rotationX: rx * 0.4, duration: BEAT * 1.5, ease: "power3.out" }, start);
+  tl.to(rig, { z: 110, rotationY: -ry * 0.3, rotationX: rx * 0.2, duration: end - start - BEAT * 1.5, ease: "sine.inOut" }, start + BEAT * 1.5);
 }
 
 const h = (html: string): HTMLElement => {
@@ -33,22 +42,24 @@ const h = (html: string): HTMLElement => {
 
 const esc = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
-const POP = { scale: 0, opacity: 0 };
+const POP = { scale: 1.4, opacity: 0 };
 const IN = { scale: 1, opacity: 1, duration: BEAT / 2, ease: "steps(3)" };
 
-/** Where the window and the captions sit in each cut. */
+/** Where the window and the captions sit in each cut: centered, inside a 5% safe area. */
 const FRAME = {
-  wide: { window: { left: 120, top: 60, width: 1680, height: 820 }, caption: 920 },
-  tall: { window: { left: 40, top: 230, width: 1000, height: 1120 }, caption: 1500 },
+  wide: { window: { width: 1560, height: 770 }, caption: 905 },
+  tall: { window: { width: 960, height: 1100 }, caption: 1470 },
 } as const;
 
 function windowShell(format: FormatId, active: string, page: string): HTMLElement {
   const w = FRAME[format].window;
+  const left = (format === "wide" ? 1920 : 1080) / 2 - w.width / 2;
+  const top = CENTER[format] - w.height / 2;
   const nav = ["Library", "Clean", "Keys", "Discover", "Prepare"]
     .map((n) => `<div class="${n === active ? "is-active" : ""}">${n}</div>`)
     .join("");
   return h(`
-    <div class="window px-panel" style="left:${w.left}px;top:${w.top}px;width:${w.width}px;height:${w.height}px">
+    <div class="window px-panel" style="left:${left}px;top:${top}px;width:${w.width}px;height:${w.height}px">
       <div class="window__bar">
         <img src="${markUrl}" alt="" /><span>CuePoint</span>
         ${APP_PREVIEW ? `<span class="px-badge">Preview</span>` : ""}
@@ -118,7 +129,7 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
       <div class="row head"><span class="c-title">Title</span><span class="c-artist">Artist</span><span>Key</span><span>BPM</span><span class="c-genre">Genre</span><span>Status</span></div>
       ${rows}
     </div>`;
-  const { el, rig } = space("shot-clean");
+  const { el, rig } = space(format, "shot-clean");
   rig.append(windowShell(format, "Clean", page));
 
   const { start, end } = shot("clean");
@@ -130,7 +141,7 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
   const accepted = CLEAN_ROWS.filter((r) => r.status === "accepted").length;
   const applied = CLEAN_ROWS.filter((r) => r.bpm[1] !== undefined || r.genre[1] !== undefined).length;
 
-  swoop(tl, rig, start, end, { rotationY: -55, rotationX: 25 }, { rotationY: -16, rotationX: 9 }, { rotationY: 12, rotationX: 4 });
+  settle(tl, rig, start, end, -24);
   tl.set(match, { attr: { "data-pressed": "1" } }, at(3, 1));
   tl.set(match, { attr: { "data-pressed": "0" } }, at(3, 1.5));
   const first = at(3, 1.5);
@@ -150,7 +161,7 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
     const t = matchedAt(i);
     const keyCell = [...row.querySelectorAll(".c-key")].filter((c) => c.querySelector(".new"));
     tl.to(oldOf(keyCell), { opacity: 0, duration: BEAT / 4, ease: "steps(2)" }, t);
-    tl.fromTo(row.querySelectorAll(".c-key .new, .status .new"), { scale: 2.4, opacity: 0 }, { ...IN }, t);
+    tl.fromTo(row.querySelectorAll(".c-key .new, .status .new"), { ...POP }, { ...IN }, t);
     if (row.classList.contains("is-bad")) tl.to(row, { backgroundColor: "rgba(0,0,0,0)", duration: BEAT / 2, ease: "steps(2)" }, t);
   });
   // Apply from the accepted matches: tempo and genre, row by row
@@ -168,14 +179,14 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
   return el;
 }
 
-// ---- Keys: the wheel as a floor, the 24 keys rising around it ----
+// ---- Keys: the wheel as a floor, the 24 keys standing on it ----
 
 function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
   const wide = format === "wide";
-  const mark = wide ? 896 : 768; // whole multiples of the 32-pixel mark
+  const mark = wide ? 640 : 480; // whole multiples of the 32-pixel mark
   const rA = mark * 0.64;
-  const rB = rA + (wide ? 130 : 116);
-  const { el, rig } = space("shot-keys", 1400);
+  const rB = rA + 100;
+  const { el, rig } = space(format, "shot-keys", 1600);
   const tiles = Array.from({ length: 24 }, (_, i) => {
     const n = (i % 12) + 1;
     const ring = i < 12 ? "B" : "A";
@@ -184,29 +195,31 @@ function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
     return `<span class="tile" data-key="${n}${ring}" style="left:${Math.cos(a) * r}px;top:${Math.sin(a) * r}px;background:${keyColor(`${n}${ring}`)}">${n}${ring}</span>`;
   }).join("");
   if (APP_PREVIEW) el.append(h(`<span class="px-badge preview corner">Preview</span>`));
-  rig.innerHTML = `<div class="disc"><img src="${markUrl}" alt="" style="width:${mark}px;height:${mark}px;margin:${-mark / 2}px 0 0 ${-mark / 2}px" />${tiles}</div>`;
+  rig.innerHTML = `<div class="disc" style="top:${CENTER[format] - (wide ? 40 : 60)}px"><div class="spin"><img src="${markUrl}" alt="" style="width:${mark}px;height:${mark}px;margin:${-mark / 2}px 0 0 ${-mark / 2}px" />${tiles}</div></div>`;
+  // two transforms: the outer one tips the wheel back into a floor, the inner one turns it in its own plane
   const disc = rig.querySelector(".disc")!;
+  const spin = rig.querySelector(".spin")!;
   const { start, end } = shot("keys");
-  // the disc tilts down into a floor and turns under the camera
-  tl.fromTo(disc, { rotationX: 0, rotationZ: -90, scale: 0.2, y: wide ? 0 : 60 }, { rotationX: 58, rotationZ: -20, scale: 1, duration: BEAT * 1.25, ease: "power3.out" }, start);
-  tl.to(disc, { rotationZ: 25, duration: end - start - BEAT * 1.25, ease: "sine.inOut" }, start + BEAT * 1.25);
+  // the disc tips back into a floor and turns slowly under the camera
+  tl.fromTo(disc, { rotationX: 15, scale: 0.8 }, { rotationX: 48, scale: 1, duration: BEAT * 1.5, ease: "power3.out" }, start);
+  tl.fromTo(spin, { rotationZ: -50 }, { rotationZ: -12, duration: BEAT * 1.5, ease: "power3.out" }, start);
+  tl.to(spin, { rotationZ: 12, duration: end - start - BEAT * 1.5, ease: "sine.inOut" }, start + BEAT * 1.5);
   const tileEls = [...el.querySelectorAll<HTMLElement>(".tile")];
-  // all 24 rise in a sweep round the wheel, then the keys that mix with 8A stand tall
+  // all 24 stand up in a sweep round the wheel, then the keys that mix with 8A rise above the rest
   const order = [...tileEls].sort((a, b) => Number.parseInt(a.dataset["key"]!, 10) - Number.parseInt(b.dataset["key"]!, 10));
-  order.forEach((tile, i) => tl.fromTo(tile, { z: 0, opacity: 0.25 }, { z: 36, opacity: 1, duration: BEAT / 4, ease: "steps(2)" }, start + BEAT + (i * BEAT) / 8));
+  order.forEach((tile, i) => tl.fromTo(tile, { z: 0, opacity: 0.25 }, { z: 30, opacity: 1, duration: BEAT / 4, ease: "steps(2)" }, start + BEAT + (i * BEAT) / 8));
   const lift = at(7, 0);
   for (const tile of tileEls) {
     const key = tile.dataset["key"]!;
-    if (key === "8A") tl.to(tile, { z: 170, scale: 1.5, duration: BEAT / 2, ease: "steps(3)" }, lift);
-    else if (mixesInKey("8A", key)) tl.to(tile, { z: 120, scale: 1.25, duration: BEAT / 2, ease: "steps(3)" }, lift + BEAT / 2);
+    if (key === "8A") tl.to(tile, { z: 110, scale: 1.3, duration: BEAT / 2, ease: "power2.out" }, lift);
+    else if (mixesInKey("8A", key)) tl.to(tile, { z: 80, scale: 1.15, duration: BEAT / 2, ease: "power2.out" }, lift + BEAT / 2);
     // from an explicit start: the rise sweep's last tiles are still landing at `lift`
-    else tl.fromTo(tile, { opacity: 1 }, { opacity: 0.3, duration: BEAT / 4, ease: "steps(2)", immediateRender: false }, lift + BEAT / 4);
+    else tl.fromTo(tile, { opacity: 1 }, { opacity: 0.3, duration: BEAT / 2, ease: "power1.out", immediateRender: false }, lift + BEAT / 4);
   }
-  tl.to(rig, { z: 1600, duration: BEAT, ease: "power3.in" }, end - BEAT);
   return el;
 }
 
-// ---- Prepare: fly down the running order, every step in key ----
+// ---- Prepare: the running order, every step in key ----
 
 function waveSvg(): string {
   // a made-up track's three bands, as whole-pixel columns (deterministic, so every render matches)
@@ -231,48 +244,42 @@ function waveSvg(): string {
 }
 
 function buildPrepare(format: FormatId, tl: Timeline): HTMLElement {
-  const wide = format === "wide";
-  const GAP = 900;
-  const swing = wide ? 300 : 70;
-  const { el, rig } = space("shot-prepare", 1300);
-  const cards = SET.map((s, i) => {
-    const side = i % 2 === 0 ? -1 : 1;
-    return `<div class="card px-panel" style="--x:${side * swing}px;--z:${-i * GAP}px;--ry:${-side * 16}deg">
-        <span class="n">${i + 1}</span><span class="t">${esc(s.title)}</span><span class="bpm">${s.bpm} BPM</span>${keyBadge(s.key)}
-      </div>`;
-  }).join("");
-  const links = SET.slice(1)
-    .map((s, i) => `<div class="link3d" style="--z:${-(i + 0.5) * GAP}px"><i></i>${SET[i]!.key} to ${s.key}: mixes in key</div>`)
-    .join("");
-  rig.innerHTML = cards + links;
-  const hud = h(`
-    <div class="hud px-panel">
-      <div class="page__head"><h2>Prepare</h2><p>Plan a set</p><span class="px-badge">Friday warm-up</span>${APP_PREVIEW ? `<span class="px-badge preview">Preview</span>` : ""}</div>
-      <div class="wave">${waveSvg()}<div class="played"></div><div class="head"></div></div>
-    </div>`);
-  el.append(hud);
+  // the running order, each step checked: the slots drop onto the page one per beat
+  const slots = SET.map(
+    (s, i) => `
+      ${i > 0 ? `<div class="link"><i></i>${SET[i - 1]!.key} to ${s.key}: mixes in key</div>` : ""}
+      <div class="slot"><span class="n">${i + 1}</span><span class="t">${esc(s.title)}</span><span class="bpm">${s.bpm} BPM</span>${keyBadge(s.key)}</div>`,
+  ).join("");
+  const page = `
+    <div class="page__head"><h2>Prepare</h2><p>Plan a set</p><span class="px-badge">Friday warm-up</span></div>
+    <div class="wave">${waveSvg()}<div class="played"></div><div class="head"></div></div>
+    <div class="order">${slots}</div>`;
+  const { el, rig } = space(format, "shot-prepare");
+  rig.append(windowShell(format, "Prepare", page));
 
   const { start, end } = shot("prepare");
-  tl.from(hud, { y: -300, duration: BEAT, ease: "steps(4)" }, start);
-  // the camera arrives at each card on the beat and glides between them
-  tl.fromTo(rig, { z: -1800, rotationX: 12 }, { z: 0, rotationX: 6, duration: BEAT, ease: "power3.out" }, start);
-  for (let i = 1; i < SET.length; i++) tl.to(rig, { z: i * GAP, duration: BEAT * 0.9, ease: "power3.inOut" }, start + BEAT * (2 * i - 1) + BEAT * 0.1);
-  tl.to(rig, { z: SET.length * GAP + 600, duration: BEAT, ease: "power3.in" }, end - BEAT);
+  settle(tl, rig, start, end, 22);
+  el.querySelectorAll(".slot").forEach((slot, i) => {
+    tl.fromTo(slot, { z: 220, opacity: 0 }, { z: 0, opacity: 1, duration: BEAT * 0.75, ease: "power3.out" }, start + BEAT * (0.5 + i));
+  });
+  el.querySelectorAll(".link").forEach((link, i) => {
+    tl.fromTo(link, { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: BEAT / 2, ease: "power2.out" }, start + BEAT * (1.25 + i));
+  });
   const beats = Math.round((end - start) / BEAT);
-  tl.fromTo(hud.querySelector(".wave .head"), { left: "6%" }, { left: "70%", duration: end - start, ease: `steps(${beats * 2})` }, start);
-  tl.fromTo(hud.querySelector(".wave .played"), { width: "6%" }, { width: "70%", duration: end - start, ease: `steps(${beats * 2})` }, start);
-  el.querySelectorAll(".link3d").forEach((l, i) => tl.from(l, { scale: 0, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, start + BEAT * (2 * i + 1)));
+  tl.fromTo(el.querySelector(".wave .head"), { left: "6%" }, { left: "70%", duration: end - start, ease: `steps(${beats * 2})` }, start);
+  tl.fromTo(el.querySelector(".wave .played"), { width: "6%" }, { width: "70%", duration: end - start, ease: `steps(${beats * 2})` }, start);
   return el;
 }
 
-// ---- Export: back to Rekordbox, the file flying out at the camera ----
+// ---- Export: back to Rekordbox, the file lifting out of the dialog ----
 
 function buildExport(format: FormatId, tl: Timeline): HTMLElement {
   const wide = format === "wide";
-  const width = wide ? 1100 : 980;
-  const { el, rig } = space("shot-export", 1600);
+  const width = wide ? 1100 : 960;
+  const top = CENTER[format] - (wide ? 230 : 300);
+  const { el, rig } = space(format, "shot-export", 1600);
   rig.innerHTML = `
-      <div class="dialog px-panel" style="width:${width}px;margin-left:${-width / 2}px">
+      <div class="dialog px-panel" style="width:${width}px;margin-left:${-width / 2}px;top:${top}px">
         <h3>Export to Rekordbox ${APP_PREVIEW ? `<span class="px-badge preview">Preview</span>` : ""}</h3>
         <div class="inner">
           <div class="field">CuePoint library.xml</div>
@@ -281,17 +288,22 @@ function buildExport(format: FormatId, tl: Timeline): HTMLElement {
           <div class="actions"><span class="px-button">Export ${CLEAN_ROWS.length} tracks</span></div>
         </div>
       </div>
-      <div class="file"><b>XML</b></div>`;
-  el.append(h(`<div class="toast" style="${wide ? "right:140px;bottom:230px" : "left:60px;right:60px;bottom:520px;justify-content:center"}">Ready for Rekordbox</div>`));
+      <div class="file" style="top:${CENTER[format]}px"><b>XML</b></div>`;
+  // level and centered, between the dialog and the caption
+  el.append(h(`<div class="toast-row" style="top:${wide ? 790 : 1250}px"><div class="toast">Ready for Rekordbox</div></div>`));
   const { start, end } = shot("export");
-  swoop(tl, rig, start, end, { rotationX: -70, rotationY: 20 }, { rotationX: 10, rotationY: -8 }, { rotationX: 4, rotationY: 10 });
+  settle(tl, rig, start, end, 20);
   const button = el.querySelector(".px-button")!;
   tl.set(button, { attr: { "data-pressed": "1" } }, at(10, 1.5));
   tl.set(button, { attr: { "data-pressed": "0" } }, at(10, 2));
   tl.to(el.querySelector(".px-progress > i"), { width: "100%", duration: BEAT * 2, ease: "steps(10)" }, at(10, 2));
-  // the file leaves the dialog and flies through the camera
-  tl.fromTo(el.querySelector(".file"), { z: -200, opacity: 0, rotationY: 0 }, { z: 1500, opacity: 1, rotationY: 540, duration: BEAT * 1.5, ease: "power2.in" }, at(11, 0));
-  tl.fromTo(el.querySelector(".toast"), { scale: 3, rotation: -8, opacity: 0 }, { scale: 1, rotation: -3, opacity: 1, duration: BEAT / 2, ease: "steps(3)" }, at(11, 1));
+  // the file lifts out of the dialog to the side (above it on the phone) and floats there, turning
+  const file = el.querySelector(".file")!;
+  const to = wide ? { x: 660, y: 0 } : { x: 0, y: -420 };
+  const from = wide ? { x: 520, y: 0 } : { x: 0, y: -240 };
+  tl.fromTo(file, { ...from, z: -40, scale: 0.4, opacity: 0, rotationY: -40 }, { ...to, z: 60, scale: 1, opacity: 1, rotationY: 18, duration: BEAT * 1.5, ease: "power3.out" }, at(11, 0));
+  tl.to(file, { y: to.y - 18, rotationY: -12, duration: end - at(11, 1.5), ease: "sine.inOut" }, at(11, 1.5));
+  tl.fromTo(el.querySelector(".toast"), { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: BEAT / 2, ease: "power2.out" }, at(11, 1));
   return el;
 }
 
@@ -303,6 +315,7 @@ function buildEnd(format: FormatId, tl: Timeline): HTMLElement {
   const letters = [..."CuePoint"].map((c) => `<span>${c}</span>`).join("");
   const el = h(`
     <div class="layer end-card">
+      <div class="end-dim"></div>
       <div class="end-panel">
         <img class="end-mark" src="${markUrl}" alt="" style="width:${markPx}px;height:${markPx}px" />
         <h1>${letters}</h1>
@@ -311,34 +324,28 @@ function buildEnd(format: FormatId, tl: Timeline): HTMLElement {
       </div>
     </div>`);
   const { start } = shot("end");
-  tl.fromTo(el.querySelector(".end-mark"), { scale: 5, rotation: -30, opacity: 0 }, { scale: 1, rotation: 0, opacity: 1, duration: BEAT, ease: "steps(5)" }, start + BEAT);
+  // the wheel dims behind the words from the cut on
+  tl.fromTo(el.querySelector(".end-dim"), { opacity: 0.4 }, { opacity: 1, duration: BEAT, ease: "power1.out" }, start);
+  tl.fromTo(el.querySelector(".end-mark"), { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: BEAT, ease: "power3.out" }, start + BEAT / 2);
   el.querySelectorAll("h1 span").forEach((s, i) => {
-    tl.fromTo(s, { rotationX: -100, y: -80, opacity: 0 }, { rotationX: 0, y: 0, opacity: 1, duration: BEAT / 2, ease: "back.out(2)" }, at(12, 3) + (i * BEAT) / 4);
+    tl.fromTo(s, { rotationX: -90, opacity: 0 }, { rotationX: 0, opacity: 1, duration: BEAT * 0.75, ease: "power3.out" }, at(12, 3) + (i * BEAT) / 6);
   });
-  tl.from(el.querySelector("p"), { y: 40, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, at(14, 0));
-  tl.fromTo(el.querySelector(".url"), { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: BEAT / 2, ease: "back.out(3)" }, at(14, 2));
-  // the last hit: everything punches
-  tl.fromTo(el.querySelector(".end-panel"), { scale: 1.12 }, { scale: 1, duration: BEAT, ease: "power2.out" }, FINAL_HIT);
+  tl.fromTo(el.querySelector("p"), { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: BEAT, ease: "power2.out" }, at(14, 0));
+  tl.fromTo(el.querySelector(".url"), { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: BEAT, ease: "power2.out" }, at(14, 2));
   return el;
 }
 
-// ---- captions, flashes ----
+// ---- captions ----
 
+/** Level, in one fixed place in the lower third, fading in and out. */
 function buildCaptions(format: FormatId, tl: Timeline): HTMLElement {
   const el = h(`<div class="layer captions"></div>`);
   for (const c of CAPTIONS) {
     const cap = h(`<div class="caption" style="top:${FRAME[format].caption}px">${esc(c.text)}</div>`);
     el.append(cap);
-    tl.fromTo(cap, { opacity: 0, scale: 1.6, rotation: -4 }, { opacity: 1, scale: 1, rotation: -1.5, duration: BEAT / 2, ease: "steps(3)" }, c.from);
-    tl.to(cap, { opacity: 0, scale: 0.8, duration: BEAT / 4, ease: "steps(2)" }, c.to - BEAT / 4);
+    tl.fromTo(cap, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: BEAT / 2, ease: "power2.out" }, c.from);
+    tl.to(cap, { opacity: 0, duration: BEAT / 4, ease: "power1.in" }, c.to - BEAT / 4);
   }
-  return el;
-}
-
-/** A frame of light on every cut and on the last hit. */
-function buildFlash(tl: Timeline): HTMLElement {
-  const el = h(`<div class="layer flash"></div>`);
-  for (const t of [...CUTS, FINAL_HIT]) tl.fromTo(el, { opacity: 0.9 }, { opacity: 0, duration: BEAT / 2, ease: "steps(3)", immediateRender: false }, t);
   return el;
 }
 
@@ -358,17 +365,13 @@ export interface Hosts {
   readonly sceneHost: HTMLElement;
   /** Where the pixel backdrop canvas goes (behind the app shots). */
   readonly backdropHost: HTMLElement;
-  /** Everything that shakes with the kick (not the captions). */
-  readonly world: HTMLElement;
 }
 
 /** Builds every layer onto the stage and its tweens onto the timeline. */
 export function buildShots(stage: HTMLElement, format: FormatId, tl: Timeline): Hosts {
-  const world = h(`<div class="layer world"></div>`);
-  stage.append(world);
   const sceneHost = h(`<div class="layer scene-host"></div>`);
   const backdropHost = h(`<div class="layer backdrop-host"></div>`);
-  world.append(sceneHost, backdropHost);
+  stage.append(sceneHost, backdropHost);
   showBetween(tl, sceneHost, [
     [0, shot("opening").end],
     [shot("end").start, shot("end").end],
@@ -382,9 +385,9 @@ export function buildShots(stage: HTMLElement, format: FormatId, tl: Timeline): 
     [buildEnd(format, tl), shot("end").start, shot("end").end],
   ];
   for (const [el, from, to] of shots) {
-    world.append(el);
+    stage.append(el);
     showBetween(tl, el, [[from, to]]);
   }
-  stage.append(buildCaptions(format, tl), buildFlash(tl));
-  return { sceneHost, backdropHost, world };
+  stage.append(buildCaptions(format, tl));
+  return { sceneHost, backdropHost };
 }

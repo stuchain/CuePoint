@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "beat": "node scripts/beat.mjs",
+    "mux": "node scripts/mux.mjs",
     "render": "npm run build && npm run beat && node scripts/render.mjs",
     "check": "tsc --noEmit",
     "test": "vitest run"
