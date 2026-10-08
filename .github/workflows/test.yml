@@ -12,6 +12,13 @@ on:
   pull_request:
     branches: ['main', 'feature']
 
+# One run at a time per branch, and only the newest push waits behind it: a push
+# replaces the run still queued for an older one, so a busy branch does not queue
+# hours of runs for commits already superseded. A run in progress is not cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   test:
     strategy:
