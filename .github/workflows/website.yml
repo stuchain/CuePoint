@@ -59,8 +59,11 @@ jobs:
       - name: Test
         run: npm test
 
+      # The build reads GitHub's release list (scripts/fetch-releases.mjs); in CI a failed read fails the build.
       - name: Build
         run: npm run build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Check the built site (titles, headings, links, schema, sitemap)
         run: npm run check:site
@@ -85,6 +88,10 @@ jobs:
 
       - name: Accessibility, widths and tap targets (axe, Playwright)
         run: npm run test:e2e
+
+      # The download page as it will look once a release exists (built by test:e2e's pre-step).
+      - name: Check the built site with a release (download page fixture)
+        run: node scripts/check-site.mjs dist-fixture
 
       - name: Speed budgets (Lighthouse CI)
         run: npm run check:lighthouse

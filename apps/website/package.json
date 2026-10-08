@@ -8,7 +8,9 @@
   },
   "scripts": {
     "dev": "npm run sync-tokens && npm run sync-assets && astro dev",
+    "prebuild": "node scripts/fetch-releases.mjs",
     "build": "npm run sync-tokens && npm run sync-assets && astro build && npm run search-index",
+    "build:fixture": "node scripts/build-fixture.mjs",
     "sync-tokens": "node scripts/sync-tokens.mjs",
     "sync-assets": "node scripts/sync-assets.mjs",
     "stills": "npm run sync-tokens && node scripts/stills.mjs",
@@ -19,6 +21,7 @@
     "precheck": "npm run sync-tokens && npm run sync-assets",
     "pretest": "npm run sync-tokens && npm run sync-assets",
     "check:site": "node scripts/check-site.mjs",
+    "pretest:e2e": "node scripts/build-fixture.mjs",
     "test:e2e": "playwright test",
     "check:lighthouse": "lhci autorun --config=./lighthouserc.cjs"
   },

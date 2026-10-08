@@ -1,9 +1,11 @@
 ---
 import { NAV } from "../data/nav";
 import { PRIMARY_ACTION, SITE_NAME } from "../data/site";
+import { loadReleases } from "../lib/releases";
 import { hrefFor } from "../lib/url";
 import mark from "../assets/mark/mark-32.svg";
 import Button from "./Button.astro";
+import DownloadLabel from "./DownloadLabel.astro";
 import ThemeSwitch from "./ThemeSwitch.astro";
 
 interface Props {
@@ -18,6 +20,12 @@ function current(path: string): "page" | "true" | undefined {
   if (path === currentPath) return "page";
   return path !== "" && currentPath.startsWith(path) ? "true" : undefined;
 }
+// Before 1.0.0 the primary action is "Get notified of 1.0". Once the release data holds a normal
+// release it becomes a Download button that names the visitor's system (SITE-07).
+const releases = loadReleases();
+const hasRelease = releases.release !== null;
+// only what the script needs: the files, without the checksums
+const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, url }) => ({ system, chip, url })) }).replace(/</g, "\\u003c");
 ---
 
 <header class="header">
@@ -43,9 +51,20 @@ function current(path: string): "page" | "true" | undefined {
 
     <ThemeSwitch />
 
-    <Button href={PRIMARY_ACTION.href} external class="action">{PRIMARY_ACTION.label}</Button>
+    {
+      hasRelease ? (
+        <Button href={hrefFor("download/")} class="action js-download">
+          <DownloadLabel />
+        </Button>
+      ) : (
+        <Button href={PRIMARY_ACTION.href} external class="action">{PRIMARY_ACTION.label}</Button>
+      )
+    }
   </div>
 </header>
+
+{hasRelease && <script type="application/json" id="cp-releases" set:html={scriptData} />}
+{hasRelease && <script>import "../lib/download-client";</script>}
 
 <style>
   .header {

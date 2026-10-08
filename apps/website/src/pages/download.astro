@@ -1,0 +1,347 @@
+---
+import Button from "../components/Button.astro";
+import CodeBlock from "../components/CodeBlock.astro";
+import DownloadLabel from "../components/DownloadLabel.astro";
+import Panel from "../components/Panel.astro";
+import Section from "../components/Section.astro";
+import { GITHUB_URL, PRIMARY_ACTION, UPDATES_IN_APP } from "../data/site";
+import Page from "../layouts/Page.astro";
+import { formatDate } from "../lib/dates";
+import { loadReleases, type ReleaseFile } from "../lib/releases";
+import { canonicalFor, hrefFor } from "../lib/url";
+
+const { release, files } = loadReleases();
+const RELEASES_URL = `${GITHUB_URL}/releases`;
+
+const megabytes = (bytes: number) => `${Math.max(1, Math.round(bytes / 1048576))} MB`;
+const released = release?.publishedAt ? release.publishedAt.slice(0, 10) : null;
+
+/** What each file is, in words a DJ uses. The chip is said here, not in the button. */
+const KIND: Record<string, { title: string; detail: string }> = {
+  "windows-x64": { title: "Windows", detail: "Installer for 64-bit Windows 10 or newer" },
+  "macos-arm64": { title: "Mac, Apple silicon", detail: "Disk image for M1 and later" },
+  "macos-x64": { title: "Mac, Intel", detail: "Disk image for Macs with an Intel chip" },
+  "linux-x64": { title: "Linux", detail: "AppImage for 64-bit Intel and AMD computers" },
+};
+const kind = (f: ReleaseFile) => KIND[`${f.system}-${f.chip}`] ?? { title: f.system, detail: f.chip };
+// The guide's own sentence, while the app does not update itself (UPDATES_IN_APP, src/data/site.ts).
+const UPDATE_BY_HAND =
+  "CuePoint does not update itself yet. To get a new version, download the new installer and install it over the old one. Your library stays where it is.";
+const linuxFile = files.find((f) => f.system === "linux");
+
+const description = release
+  ? `Download CuePoint ${release.version}, free for Windows, macOS and Linux. Every file with its size and checksum, and what to expect the first time you open it.`
+  : "CuePoint 1.0 is not out yet. See what it will run on, and get notified when the free download for Windows, Mac and Linux is ready.";
+
+const schema = release
+  ? [
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "CuePoint",
+        applicationCategory: "MultimediaApplication",
+        operatingSystem: "Windows, macOS, Linux",
+        softwareVersion: release.version,
+        url: canonicalFor("download/"),
+        downloadUrl: canonicalFor("download/"),
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      },
+    ]
+  : [];
+---
+
+<Page
+  title={release ? `Download CuePoint ${release.version}` : "Download CuePoint"}
+  description={description}
+  path="download/"
+  schema={schema}
+  breadcrumbs={[{ label: "Home", path: "" }, { label: "Download", path: "download/" }]}
+>
+  {
+    release ? (
+      <>
+        <Section id="get" width="prose">
+          <h1>Download CuePoint</h1>
+          <p class="meta">
+            Version {release.version}
+            {released && (
+              <>
+                {" "}
+                · <time datetime={released}>{formatDate(released)}</time>
+              </>
+            )}{" "}
+            · <a href={release.notesUrl} rel="noopener noreferrer">Release notes<span class="sr-only"> for {release.version}</span></a>
+          </p>
+
+          <Panel class="hero" as="div">
+            <div data-hero class="hero-stack">
+              <div class="layer" data-layer="desktop">
+                <div data-hero-action>
+                  <Button href="#all-downloads" class="js-download">
+                    <DownloadLabel />
+                  </Button>
+                </div>
+                <div class="notes">
+                  <p data-note="windows">
+                    The installer for 64-bit Windows. Windows may warn you the first time: <a href="#windows">here is what to do</a>.
+                  </p>
+                  <p data-note="windows-arm">
+                    Your PC has an Arm chip. CuePoint has no Arm version, so this is the 64-bit (x64) installer, which Windows 11 on Arm runs through its built-in emulation, so it may run slower. <a href="#windows">What to expect</a>.
+                  </p>
+                  <p data-note="mac-arm">
+                    For Macs with Apple silicon (M1 and later). <a data-alt href="#all-downloads">Intel Mac?</a> <a href="#macos">What to expect</a>.
+                  </p>
+                  <p data-note="mac-arm-guess">
+                    Your browser does not say which chip your Mac has, so this is the Apple silicon version (M1 and later). <a data-alt href="#all-downloads">Intel Mac?</a> <a href="#macos">What to expect</a>.
+                  </p>
+                  <p data-note="mac-intel">
+                    For Macs with an Intel chip. <a data-alt href="#all-downloads">Apple silicon Mac?</a> <a href="#macos">What to expect</a>.
+                  </p>
+                  <p data-note="linux">
+                    The AppImage for 64-bit Linux. <a href="#linux">Make it runnable first</a>.
+                  </p>
+                  <p data-note="linux-arm">
+                    CuePoint's Linux build is for 64-bit Intel and AMD computers. There is no version for Arm.
+                  </p>
+                  <p data-note="unknown">
+                    We could not tell which system you use. Pick yours from <a href="#all-downloads">the list below</a>.
+                  </p>
+                </div>
+              </div>
+              <div class="layer" data-layer="mobile">
+                <p data-note="mobile">
+                  CuePoint runs on Windows, macOS and Linux. Open this page on your computer to download it.
+                </p>
+                <p class="share">
+                  <button class="btn" data-variant="secondary" type="button" data-share>Send me the link</button>
+                </p>
+                <p class="share-status" role="status" data-share-status />
+              </div>
+            </div>
+          </Panel>
+        </Section>
+
+        <Section id="all-downloads" heading="Every download" width="prose">
+          <ul class="files">
+            {
+              files.map((f) => (
+                <li>
+                  <Panel as="article" tone="flat">
+                    <h3>{kind(f).title}</h3>
+                    <p class="detail">{kind(f).detail}</p>
+                    <p class="file">
+                      <code>{f.name}</code> · {megabytes(f.size)}
+                    </p>
+                    <p class="sum">
+                      SHA-256 <code>{f.sha256}</code>
+                    </p>
+                    <Button href={f.url} variant="secondary" external>
+                      Download<span class="sr-only"> CuePoint for {kind(f).title}</span>
+                    </Button>
+                  </Panel>
+                </li>
+              ))
+            }
+          </ul>
+          <details class="verify">
+            <summary>How to check a download</summary>
+            <p>Run one of these on the file you downloaded and compare the result with the SHA-256 above.</p>
+            <CodeBlock label="Windows command" code={"certutil -hashfile CuePoint-" + release.version + "-win-x64-setup.exe SHA256"} />
+            <CodeBlock label="Mac command" code={"shasum -a 256 CuePoint-" + release.version + "-mac-arm64.dmg  # or -mac-x64.dmg for an Intel Mac"} />
+            <CodeBlock label="Linux command" code={"sha256sum CuePoint-" + release.version + "-linux-x86_64.AppImage"} />
+          </details>
+          <p>
+            <a href={release.notesUrl} rel="noopener noreferrer">Release notes for {release.version} on GitHub</a>, or{" "}
+            <a href={hrefFor("changelog/")}>every version in the changelog</a>.
+          </p>
+        </Section>
+
+        <Section id="next" heading="What happens next" width="prose">
+          <p>
+            CuePoint is not signed with a paid developer certificate, so Windows and macOS are careful about it the first time. Here is what you will see and what to do.
+          </p>
+
+          <h3 id="windows">Windows</h3>
+          <ol>
+            <li>Run the installer you downloaded.</li>
+            <li>
+              Your browser may ask whether to keep the file. Choose to keep it (in Edge, <strong>Keep</strong>, then <strong>Keep anyway</strong>).
+            </li>
+            <li>
+              Windows SmartScreen may say <strong>Windows protected your PC</strong>. Choose <strong>More info</strong>, then <strong>Run anyway</strong>.
+            </li>
+            {
+              UPDATES_IN_APP ? (
+                <li>CuePoint downloads new versions itself and installs them when you restart it or quit.</li>
+              ) : (
+                <li>{UPDATE_BY_HAND}</li>
+              )
+            }
+          </ol>
+
+          <h3 id="macos">Mac</h3>
+          <ol>
+            <li>Open the disk image, drag CuePoint to <strong>Applications</strong>, and open it from there.</li>
+            <li>
+              If your Mac says CuePoint is damaged, or <strong>"CuePoint" Not Opened</strong> because Apple could not verify it, that is because the app is unsigned. Run this in Terminal, then open CuePoint again:
+              <CodeBlock label="Terminal command" code="xattr -cr /Applications/CuePoint.app" />
+            </li>
+            <li>
+              Still blocked after one try? Open <strong>System Settings</strong>, then <strong>Privacy &amp; Security</strong>, scroll down, and choose <strong>Open Anyway</strong> next to CuePoint.
+            </li>
+            {
+              UPDATES_IN_APP ? (
+                <li>
+                  You only do that once. After that CuePoint updates itself: it downloads the new version, swaps it in when you quit, and opens. If it cannot replace itself where it is installed, it offers the download instead.
+                </li>
+              ) : (
+                <li>{UPDATE_BY_HAND}</li>
+              )
+            }
+          </ol>
+
+          <h3 id="linux">Linux</h3>
+          <ol>
+            <li>
+              Make the AppImage runnable, then run it:
+              <CodeBlock label="Terminal command" code={`chmod +x ${linuxFile?.name ?? "CuePoint-" + release.version + "-linux-x86_64.AppImage"}`} />
+            </li>
+            <li>The Linux build is experimental. It comes without the built-in music player.</li>
+            {
+              UPDATES_IN_APP ? (
+                <li>CuePoint does not install updates on Linux. It tells you when a new version is out, with a Download button that opens the release page.</li>
+              ) : (
+                <li>{UPDATE_BY_HAND}</li>
+              )
+            }
+          </ol>
+        </Section>
+      </>
+    ) : (
+      <Section id="coming" width="prose">
+        <h1>CuePoint 1.0 is coming</h1>
+        <p class="lede">
+          CuePoint is free, and the first full version is not out yet. When it is, the download for your computer will be right here.
+        </p>
+        <p>
+          <Button href={PRIMARY_ACTION.href} external>{PRIMARY_ACTION.label}</Button>
+        </p>
+        <p>That opens CuePoint's page on GitHub. Choose <strong>Watch</strong>, then <strong>Custom</strong>, then <strong>Releases</strong>, and GitHub tells you when 1.0 is published.</p>
+      </Section>
+    )
+  }
+
+  {/* DIST-08 must update docs/user-guide/support-policy.md and features.md (their "Intel build is planned"
+      line) together with this list: DEC-129 ships an Intel Mac build, and the guide still says it is planned. */}
+  <Section id="requirements" heading="What CuePoint runs on" width="prose">
+    <ul>
+      <li><strong>Windows:</strong> Windows 10 or newer, 64-bit (x64).</li>
+      <li><strong>Mac:</strong> macOS 12 or newer, on Apple silicon (M1 and later) or an Intel chip. There is one download for each.</li>
+      <li><strong>Linux:</strong> 64-bit Intel or AMD, as an AppImage. This build is experimental and comes without the built-in music player.</li>
+    </ul>
+    <p>CuePoint also needs your Rekordbox collection, exported from Rekordbox as an XML file.</p>
+  </Section>
+
+  {
+    !release && (
+      <Section id="test-builds" heading="Want to try a test build?" width="prose">
+        <p>
+          Test builds are early versions of 1.0, and they can be rough. They are on <a href={RELEASES_URL} rel="noopener noreferrer">GitHub Releases</a> for anyone who wants to try one.
+        </p>
+      </Section>
+    )
+  }
+</Page>
+
+<style>
+  .meta {
+    color: var(--fg-muted);
+    margin-top: 0;
+  }
+  .lede {
+    font-size: var(--font-size-lg);
+  }
+  :global(.hero) {
+    margin-top: var(--space-lg);
+  }
+  /* Every note and both layers share one cell, so the box is as tall as the tallest and detection
+     only changes what is visible, never the layout. */
+  .hero-stack {
+    display: grid;
+  }
+  .layer {
+    grid-area: 1 / 1;
+  }
+  .layer[data-off] {
+    visibility: hidden;
+  }
+  [data-layer="mobile"] {
+    visibility: hidden;
+  }
+  [data-layer="mobile"][data-on] {
+    visibility: visible;
+  }
+  .notes {
+    display: grid;
+    margin-top: var(--space-md);
+  }
+  .notes > [data-note] {
+    grid-area: 1 / 1;
+    visibility: hidden;
+    margin: 0;
+  }
+  .notes > [data-note][data-on] {
+    visibility: visible;
+  }
+  .share {
+    margin: var(--space-md) 0 0;
+  }
+  .share-status {
+    margin: var(--space-sm) 0 0;
+    min-height: 1.6em;
+  }
+  .files {
+    display: grid;
+    gap: var(--space-lg);
+    margin: 0 0 var(--space-lg);
+    padding: 0;
+    list-style: none;
+  }
+  .files h3 {
+    margin: 0 0 var(--space-xs);
+  }
+  .files p {
+    margin: 0 0 var(--space-sm);
+  }
+  .detail {
+    color: var(--fg-muted);
+  }
+  code {
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.9em;
+    overflow-wrap: anywhere;
+  }
+  .sum {
+    margin-bottom: var(--space-md);
+  }
+  .verify {
+    margin: 0 0 var(--space-lg);
+  }
+  .verify summary {
+    cursor: pointer;
+    font-family: var(--font-pixel);
+    font-weight: 600;
+  }
+  .verify :global(.code) {
+    margin-top: var(--space-sm);
+  }
+  ol :global(.code) {
+    margin-top: var(--space-sm);
+  }
+  ol li {
+    margin-bottom: var(--space-sm);
+  }
+  #next h3 {
+    margin-top: var(--space-xl);
+  }
+</style>

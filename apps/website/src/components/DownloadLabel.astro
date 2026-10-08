@@ -1,0 +1,38 @@
+---
+/**
+ * The inside of a Download button (SITE-07). Every label the button can show is in the markup,
+ * stacked in one grid cell, so the button always has room for the longest and detection never
+ * changes its width. Only the neutral "Download" is visible until the script (lib/download-client.ts)
+ * puts the detected system on the link as `data-system`; the others are `visibility: hidden`, which
+ * also keeps them out of the accessibility tree.
+ */
+---
+
+<span class="dl-labels">
+  <span data-l="neutral">Download</span>
+  <span data-l="windows">Download for Windows</span>
+  <span data-l="macos">Download for Mac</span>
+  <span data-l="linux">Download for Linux</span>
+</span>
+
+<style is:global>
+  .dl-labels {
+    display: inline-grid;
+  }
+  .dl-labels > span {
+    grid-area: 1 / 1;
+    visibility: hidden;
+    text-align: center;
+  }
+  .dl-labels > [data-l="neutral"] {
+    visibility: visible;
+  }
+  .js-download[data-system] .dl-labels > span {
+    visibility: hidden;
+  }
+  .js-download[data-system="windows"] .dl-labels > [data-l="windows"],
+  .js-download[data-system="macos"] .dl-labels > [data-l="macos"],
+  .js-download[data-system="linux"] .dl-labels > [data-l="linux"] {
+    visibility: visible;
+  }
+</style>

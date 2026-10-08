@@ -12,3 +12,12 @@ public/icon.svg
 public/icon-192.png
 public/icon-512.png
 public/apple-touch-icon.png
+
+# SITE-07: the repository root ignores *.json; these are data the site and its tests read
+!src/data/releases.json
+!scripts/fixtures/*.json
+!e2e/fixtures/*.json
+
+# built by `npm run build:fixture` for e2e/download.spec.ts
+dist-fixture/
+dist-none/

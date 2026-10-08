@@ -1,0 +1,43 @@
+{
+  "release": {
+    "version": "1.1.0",
+    "tag": "v1.1.0",
+    "publishedAt": "2026-12-15T10:00:00Z",
+    "notesUrl": "https://github.com/stuchain/CuePoint/releases/tag/v1.1.0"
+  },
+  "files": [
+    {
+      "name": "CuePoint-1.1.0-win-x64-setup.exe",
+      "system": "windows",
+      "chip": "x64",
+      "size": 91234567,
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "url": "https://github.com/stuchain/CuePoint/releases/download/v1.1.0/CuePoint-1.1.0-win-x64-setup.exe"
+    },
+    {
+      "name": "CuePoint-1.1.0-mac-arm64.dmg",
+      "system": "macos",
+      "chip": "arm64",
+      "size": 101234567,
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "url": "https://github.com/stuchain/CuePoint/releases/download/v1.1.0/CuePoint-1.1.0-mac-arm64.dmg"
+    },
+    {
+      "name": "CuePoint-1.1.0-mac-x64.dmg",
+      "system": "macos",
+      "chip": "x64",
+      "size": 104234567,
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "url": "https://github.com/stuchain/CuePoint/releases/download/v1.1.0/CuePoint-1.1.0-mac-x64.dmg"
+    },
+    {
+      "name": "CuePoint-1.1.0-linux-x86_64.AppImage",
+      "system": "linux",
+      "chip": "x64",
+      "size": 118234567,
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "url": "https://github.com/stuchain/CuePoint/releases/download/v1.1.0/CuePoint-1.1.0-linux-x86_64.AppImage"
+    }
+  ],
+  "fetchedAt": "2026-12-16T00:00:00.000Z"
+}
