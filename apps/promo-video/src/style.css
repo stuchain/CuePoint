@@ -1,0 +1,612 @@
+/*
+ * The promo wears the app's pixel design system (docs/v1/PIXEL_DESIGN_SYSTEM.md): square corners, solid
+ * black outlines, bevels, zero-blur hard shadows, Pixelify Sans for chrome. Colors come from the app's
+ * own theme file, never copied by hand.
+ */
+@import "../../desktop-electron/renderer/src/tokens/themes/neoDark.css";
+@import "@fontsource/pixelify-sans/600.css";
+@import "@fontsource/pixelify-sans/700.css";
+@import "@fontsource-variable/inter/index.css";
+
+:root {
+  --font-pixel: "Pixelify Sans", sans-serif;
+  --font-data: "Inter Variable", sans-serif;
+  --line: 4px;
+  --bevel: 4px;
+  --drop: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-app);
+  color: var(--fg-primary);
+  font-family: var(--font-data);
+  font-variant-ligatures: none;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+canvas.scene3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* ---- pixel chrome ---- */
+
+.px-panel {
+  background: var(--bg-panel);
+  border: var(--line) solid var(--border-outline);
+  box-shadow:
+    inset var(--bevel) var(--bevel) 0 var(--border-light),
+    inset calc(-1 * var(--bevel)) calc(-1 * var(--bevel)) 0 var(--bevel-shadow),
+    var(--drop) var(--drop) 0 var(--border-shadow);
+}
+
+.px-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 30px;
+  padding: 10px 26px 12px;
+  color: var(--border-outline);
+  background: var(--accent-primary);
+  border: var(--line) solid var(--border-outline);
+  box-shadow:
+    inset var(--bevel) var(--bevel) 0 var(--accent-primary-hover),
+    inset calc(-1 * var(--bevel)) calc(-1 * var(--bevel)) 0 var(--accent-primary-pressed),
+    6px 6px 0 var(--border-shadow);
+}
+
+.px-button[data-pressed="1"] {
+  transform: translate(4px, 4px);
+  box-shadow:
+    inset calc(-1 * var(--bevel)) calc(-1 * var(--bevel)) 0 var(--accent-primary-hover),
+    inset var(--bevel) var(--bevel) 0 var(--accent-primary-pressed),
+    2px 2px 0 var(--border-shadow);
+}
+
+.px-badge {
+  display: inline-block;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1;
+  padding: 6px 10px 7px;
+  color: var(--border-outline);
+  background: var(--accent-primary-hover);
+  border: 3px solid var(--border-outline);
+  box-shadow: 3px 3px 0 var(--border-shadow);
+}
+
+.px-progress {
+  position: relative;
+  height: 30px;
+  background: var(--bg-input);
+  border: var(--line) solid var(--border-outline);
+  box-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+.px-progress > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: repeating-linear-gradient(90deg, var(--accent-primary) 0 20px, var(--accent-primary-hover) 20px 24px);
+}
+
+/* ---- the app window (a stand-in until the redesigned pages can be captured) ---- */
+
+.window {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.window__bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 64px;
+  padding: 0 18px;
+  background: var(--bg-toolbar);
+  border-bottom: var(--line) solid var(--border-outline);
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 30px;
+}
+
+.window__bar img {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+}
+
+.window__bar .spacer {
+  flex: 1;
+}
+
+.window__dots {
+  display: flex;
+  gap: 10px;
+}
+
+.window__dots i {
+  width: 22px;
+  height: 22px;
+  background: var(--bg-panel-alt);
+  border: 3px solid var(--border-outline);
+}
+
+.window__body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 250px;
+  padding: 18px 0;
+  background: var(--bg-toolbar);
+  border-right: var(--line) solid var(--border-outline);
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  font-size: 28px;
+}
+
+.sidebar div {
+  padding: 12px 24px;
+  color: var(--fg-muted);
+}
+
+.sidebar div.is-active {
+  color: var(--border-outline);
+  background: var(--accent-primary);
+  box-shadow:
+    inset 0 var(--line) 0 var(--border-outline),
+    inset 0 calc(-1 * var(--line)) 0 var(--border-outline);
+}
+
+.tall .sidebar {
+  display: none;
+}
+
+/* the phone cut has a narrower window: everything inside it is drawn larger to stay readable */
+.tall .page {
+  zoom: 1.3;
+}
+
+.page {
+  flex: 1;
+  min-width: 0;
+  padding: 26px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.page__head {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.page__head h2 {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 52px;
+}
+
+.page__head p {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 26px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.toolbar .px-progress {
+  flex: 1;
+}
+
+.toolbar .count {
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  font-size: 26px;
+  color: var(--fg-muted);
+  min-width: 190px;
+  text-align: right;
+}
+
+/* ---- the track table ---- */
+
+.table {
+  border: var(--line) solid var(--border-outline);
+  background: var(--bg-panel);
+  font-size: 25px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 2.1fr 1.6fr 0.8fr 0.8fr 1.4fr 1.3fr;
+  align-items: center;
+  height: 64px;
+  padding: 0 18px;
+  gap: 14px;
+  border-top: 2px solid var(--border-muted);
+  white-space: nowrap;
+}
+
+.tall .row {
+  grid-template-columns: 2.2fr 0.9fr 0.9fr 1.5fr;
+}
+
+.tall .row .c-artist,
+.tall .row .c-genre {
+  display: none;
+}
+
+.row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row.head {
+  height: 52px;
+  border-top: 0;
+  background: var(--bg-panel-alt);
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  font-size: 24px;
+  color: var(--fg-muted);
+}
+
+.row.is-bad {
+  background: var(--row-unmatched-bg, #5c2e2e);
+}
+
+.cell {
+  position: relative;
+}
+
+.cell .old,
+.cell .new {
+  display: inline-block;
+}
+
+.cell .old {
+  color: var(--fg-muted);
+}
+
+.cell .new {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  translate: 0 -50%;
+  opacity: 0;
+}
+
+.missing {
+  color: var(--accent-danger) !important;
+}
+
+.key {
+  display: inline-block;
+  min-width: 64px;
+  text-align: center;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 24px;
+  padding: 3px 8px 4px;
+  color: var(--border-outline);
+  border: 3px solid var(--border-outline);
+}
+
+.status {
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  font-size: 24px;
+}
+
+.status .ok {
+  color: var(--accent-success);
+}
+
+.status .review {
+  color: var(--accent-warning);
+}
+
+/* ---- waveform and the running order ---- */
+
+.wave {
+  position: relative;
+  height: 150px;
+  background: var(--bg-input);
+  border: var(--line) solid var(--border-outline);
+  overflow: hidden;
+}
+
+.wave svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.wave .played {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: var(--waveform-played);
+}
+
+.wave .head {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  left: 0;
+  background: var(--fg-primary);
+  box-shadow: 0 0 0 3px var(--border-outline);
+}
+
+.order {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.slot {
+  display: grid;
+  grid-template-columns: 54px 1fr auto auto;
+  align-items: center;
+  gap: 18px;
+  height: 66px;
+  padding: 0 18px;
+  font-size: 26px;
+  background: var(--bg-panel);
+  border: var(--line) solid var(--border-outline);
+}
+
+.slot .n {
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  color: var(--fg-muted);
+}
+
+.slot .bpm {
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  color: var(--fg-muted);
+  min-width: 90px;
+  text-align: right;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 44px;
+  padding-left: 90px;
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  font-size: 24px;
+  color: var(--accent-success);
+}
+
+.link i {
+  display: inline-block;
+  width: 26px;
+  height: 26px;
+  background: var(--accent-success);
+  border: 3px solid var(--border-outline);
+  clip-path: polygon(0 55%, 18% 37%, 40% 58%, 82% 14%, 100% 32%, 40% 92%);
+}
+
+/* ---- the export dialog ---- */
+
+.dim {
+  position: absolute;
+  inset: 0;
+  background: var(--overlay-backdrop);
+  opacity: 0;
+}
+
+.dialog {
+  position: absolute;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog h3 {
+  margin: 0;
+  padding: 18px 28px;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 40px;
+  background: var(--bg-toolbar);
+  border-bottom: var(--line) solid var(--border-outline);
+}
+
+.dialog .inner {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  font-size: 28px;
+}
+
+.field {
+  padding: 14px 18px;
+  background: var(--bg-input);
+  border: var(--line) solid var(--border-outline);
+  box-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.35);
+  font-family: var(--font-data);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.check b {
+  width: 34px;
+  height: 34px;
+  background: var(--accent-primary);
+  border: var(--line) solid var(--border-outline);
+  position: relative;
+}
+
+.check b::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: var(--border-outline);
+  clip-path: polygon(0 55%, 18% 37%, 40% 58%, 82% 14%, 100% 32%, 40% 92%);
+}
+
+.dialog .actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.toast {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 28px;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 32px;
+  color: var(--border-outline);
+  background: var(--accent-success);
+  border: var(--line) solid var(--border-outline);
+  box-shadow: 8px 8px 0 var(--border-shadow);
+}
+
+/* ---- captions ---- */
+
+.caption {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  max-width: 88%;
+  padding: 14px 30px 18px;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 64px;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--fg-primary);
+  background: var(--bg-app);
+  border: var(--line) solid var(--border-outline);
+  box-shadow: 8px 8px 0 var(--accent-primary);
+  opacity: 0;
+  white-space: nowrap;
+}
+
+.tall .caption {
+  font-size: 66px;
+  white-space: normal;
+  width: 92%;
+}
+
+/* ---- the end card ---- */
+
+.end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  background: var(--bg-app);
+}
+
+.end .ring {
+  position: relative;
+}
+
+.end .ring img {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.end .ring .k {
+  position: absolute;
+  translate: -50% -50%;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 26px;
+  padding: 4px 8px 5px;
+  color: var(--border-outline);
+  border: 3px solid var(--border-outline);
+  opacity: 0.25;
+}
+
+.end h1 {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 150px;
+  line-height: 1;
+  text-shadow: 10px 10px 0 var(--accent-primary-pressed);
+}
+
+.end p {
+  margin: 0;
+  max-width: 90%;
+  text-align: center;
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  font-size: 44px;
+  color: var(--fg-primary);
+}
+
+.end .url {
+  font-size: 46px;
+  padding: 12px 30px 16px;
+}
+
+.tall .end h1 {
+  font-size: 160px;
+}
+
+/* ---- the pixel wipe between shots ---- */
+
+.wipe {
+  display: grid;
+  pointer-events: none;
+}
+
+.wipe i {
+  background: var(--accent-primary);
+  scale: 0;
+}

@@ -1,0 +1,31 @@
+{
+  "name": "cuepoint-promo-video",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "beat": "node scripts/beat.mjs",
+    "render": "npm run build && npm run beat && node scripts/render.mjs",
+    "check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "^22.20.5",
+    "@types/three": "^0.186.0",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.7",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource/pixelify-sans": "^5.3.0",
+    "gsap": "^3.15.0",
+    "three": "^0.186.1"
+  }
+}
