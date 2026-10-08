@@ -105,39 +105,29 @@ def validate_changelog(
         errors.append("Changelog has no version sections (expect ## [Version] or ## [Unreleased])")
         return False, errors
 
-    base_version = extract_base_version(current_version)
 
     if require_version_entry:
         has_unreleased = any(s[0].lower() == "unreleased" for s in sections)
         unreleased_with_content = any(
             s[0].lower() == "unreleased" and s[1] for s in sections
         )
-        # Accept: section for this version (e.g. [1.0.1] or [1.0.1-test21]), or Unreleased with content
+        # Accept a section for exactly this version, or [Unreleased] with content. A section for
+        # another version with the same X.Y.Z does not count: `[1.0.0]` is not `1.0.0-test.1`'s
+        # notes, and the release takes its notes from its own section (DEC-145, DEC-178).
         version_section_titles = [s[0] for s in sections]
-        has_this_version = any(
-            extract_base_version(s) == base_version
-            for s in version_section_titles
-            if s.lower() != "unreleased"
-        )
-        try:
-            has_this_version = has_this_version or base_version in version_section_titles
-        except Exception:
-            pass
-        # Also allow exact match including prerelease (e.g. 1.0.1-test21)
-        if not has_this_version:
-            has_this_version = current_version in version_section_titles
+        has_this_version = current_version in version_section_titles
 
         if not has_this_version and not unreleased_with_content:
             if has_unreleased:
                 errors.append(
                     "Changelog has [Unreleased] but no entries under it; "
                     "add at least one item under ### Added/Changed/Fixed etc., "
-                    f"or add a section for version {base_version}"
+                    f"or add a section for version {current_version}"
                 )
             else:
                 errors.append(
-                    f"Changelog has no section for current version {base_version} "
-                    f"(from {current_version}) and no [Unreleased] section with content"
+                    f"Changelog has no section for current version {current_version} "
+                    "and no [Unreleased] section with content"
                 )
             return False, errors
 

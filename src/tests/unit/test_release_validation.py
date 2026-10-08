@@ -96,6 +96,31 @@ class TestValidateChangelog:
         finally:
             path.unlink(missing_ok=True)
 
+    def test_a_section_for_another_version_with_the_same_base_does_not_count(
+        self, tmp_path
+    ):
+        """A ``[1.0.0]`` section is not ``1.0.0-test.1``'s (DEC-145, DEC-178)."""
+        import validate_changelog as m
+
+        path = tmp_path / "CHANGELOG.md"
+        path.write_text(
+            "# Changelog\n\n## [Unreleased]\n\n## [1.0.0] - 2024-12-14\n\n### Added\n- Old\n",
+            encoding="utf-8",
+        )
+        valid, errors = m.validate_changelog(path, "1.0.0-test.1")
+        assert not valid
+        assert errors
+
+    def test_a_section_for_exactly_this_version_counts(self, tmp_path):
+        import validate_changelog as m
+
+        path = tmp_path / "CHANGELOG.md"
+        path.write_text(
+            "# Changelog\n\n## [Unreleased]\n\n## [1.0.0-test.1] - 2026-10-08\n\n### Added\n- New\n",
+            encoding="utf-8",
+        )
+        assert m.validate_changelog(path, "1.0.0-test.1") == (True, [])
+
     def test_extract_base_version(self):
         import validate_changelog as m
 

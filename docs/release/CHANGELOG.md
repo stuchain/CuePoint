@@ -657,20 +657,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   eliminating spurious Sentry issues (PYTHON-1C, PYTHON-1D) on every user
   cancellation of a parallel (`TRACK_WORKERS > 1`) run
 
-## [0.0.3] - 2026-06-24
+## Retired desktop app (Qt)
 
-### Fixed
+The versions below were released by the Qt app that the Electron app replaced (Phase 12). Their
+numbers come before the version scheme of DEC-145, so they are not version sections: no release of
+the current app reads its notes from them (DEC-178).
+
+### 0.0.3 (2026-06-24)
+
+#### Fixed
 - Beatport search: parse current `__NEXT_DATA__` format (`tracks.data[]` with `track_id`/`track_name`) so direct search returns track URLs again
 - Prefer direct Beatport search by default; disable browser automation fallback in packaged builds
 
-### Added
+#### Added
 - Step 10 implementation: Final Configuration & Release Readiness
 - Comprehensive Step 10 validation script
 - CHANGELOG.md for tracking all changes
 
-## [1.0.0] - 2024-12-14
+### 1.0.0 (2024-12-14)
 
-### Added
+#### Added
 - Initial production release
 - Beatport metadata enrichment functionality
 - Single and batch processing modes
@@ -684,34 +690,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Accessibility features
 - Professional UI polish and enhancements
 
-### Security
+#### Security
 - Code signing for macOS (Developer ID)
 - Code signing for Windows
 - macOS notarization support
 - Security scanning in CI/CD
 - License compliance verification
 
-### Documentation
+#### Documentation
 - Comprehensive documentation in docs/
 - Build system documentation
 - Release process documentation
 - User guides and developer guides
 
-### Infrastructure
+#### Infrastructure
 - Complete CI/CD pipeline with GitHub Actions
 - Automated testing (unit, integration, UI)
 - Release gates and quality checks
 - Build system for macOS and Windows
 - Update feed generation and publishing
 
-## [0.9.0] - 2024-11-01
+### 0.9.0 (2024-11-01)
 
-### Added
+#### Added
 - Beta release features
 - Initial UI implementation
 - Core metadata processing
 
-### Changed
+#### Changed
 - Improved performance
 - Enhanced error handling
 
@@ -726,5 +732,4 @@ Each release should include:
 
 ## Version History
 
-- **1.0.0** (2024-12-14): Initial production release
-- **0.9.0** (2024-11-01): Beta release
+- The Qt app's 0.0.3, 1.0.0 and 0.9.0 are listed under "Retired desktop app (Qt)" above.
