@@ -79,13 +79,17 @@ background.
 
 ## Audio output
 
-**Settings → Audio.**
+**Settings → Playback.**
 
 **Output device.** Pick the interface you actually listen through. The list is
 read from your machine each time you open the panel, so an interface you just
 plugged in is there.
 
-**Exclusive output** (Windows and macOS) takes the device for CuePoint alone
+Under the picker, Settings says how many outputs it found, and that if the
+chosen one is unplugged CuePoint switches to System default.
+
+**Exclusive output** (Windows and macOS): leave it off unless you use an audio
+interface. It takes the device for CuePoint alone
 and plays to it directly, bypassing the system mixer: no resampling, no volume
 applied by anything else, the file's own format handed to the hardware. While
 it is on, other applications cannot use that device. Linux has no equivalent,

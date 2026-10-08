@@ -209,12 +209,12 @@ describe("the waveform analysis on the strip", () => {
 
   it("counts the library in words", () => {
     expect(jobLabel(analysis({ completed_tracks: 1234, total_tracks: 50000 }))).toBe(
-      "Analysing waveforms · 1,234 of 50,000",
+      "Analyzing waveforms · 1,234 of 50,000",
     );
   });
 
   it("is named before its first count", () => {
-    expect(jobLabel(analysis(undefined))).toBe("Analysing waveforms");
+    expect(jobLabel(analysis(undefined))).toBe("Analyzing waveforms");
   });
 
   it("leaves every other job's count as it was", () => {

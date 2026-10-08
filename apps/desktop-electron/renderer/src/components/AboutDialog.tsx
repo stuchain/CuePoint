@@ -4,6 +4,11 @@ import { hasEngineBridge, type AppBuildInfo } from "../api/cuepointBridge.types"
 
 export const DESKTOP_ENGINE_VERSION = "1.0.0-feb1";
 
+/** The version shown for this app: the build's own, else the desktop version. */
+export function appVersion(build: AppBuildInfo | null): string {
+  return build?.version ?? DESKTOP_ENGINE_VERSION;
+}
+
 interface AboutDialogProps {
   open: boolean;
   onClose: () => void;
@@ -45,7 +50,7 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
           <strong>CuePoint</strong> — Rekordbox ↔ Beatport matching and discovery.
         </p>
         <ul>
-          <li data-testid="about-version">Version: {build?.version ?? DESKTOP_ENGINE_VERSION}</li>
+          <li data-testid="about-version">Version: {appVersion(build)}</li>
           <li data-testid="about-build">
             Build: {build ? (build.dist ?? "not recorded") : "unknown"}
             {build?.environment === "development" ? " (development)" : ""}

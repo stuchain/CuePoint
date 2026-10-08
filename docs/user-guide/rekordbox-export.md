@@ -123,10 +123,11 @@ second library in the tree, called **rekordbox xml**, beside your own:
 ## Settings
 
 **Settings → Rekordbox export** shows the folder the next save dialog opens in,
-the key notation the next export starts in, and your recent exports — when each
-ran, where it went, and what it wrote. Both remembered values come from your
-last export, and change by exporting; export itself is started only from the
-Library.
+the notation the next export writes keys in (**Keys written as**), and your
+recent exports — when each ran, where it went, and what it wrote (for example
+"4 tracks · 3 with new tags · 4 playlists · Camelot (8A)"). Both remembered
+values come from your last export, and change by exporting; export itself is
+started only from the Library or a Collection's menu.
 
 ## See also
 

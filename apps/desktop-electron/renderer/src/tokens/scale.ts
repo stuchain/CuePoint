@@ -11,6 +11,24 @@ function isScaleFactor(value: number): value is ScaleFactor {
 
 export const DEFAULT_SCALE: ScaleFactor = 2;
 
+const SCALE_NAMES: Record<number, string> = {
+  1: "Small",
+  1.5: "Medium",
+  2: "Large",
+  3: "Extra large",
+};
+
+/**
+ * An option's words in Settings (SET-4): "Small (1×)", and " — default" on the
+ * one that is `DEFAULT_SCALE`. One function for every option, so the select
+ * gains a size by `SCALE_OPTIONS` gaining it.
+ */
+export function scaleOptionLabel(scale: number): string {
+  const name = SCALE_NAMES[scale] ?? `${scale}×`;
+  const base = SCALE_NAMES[scale] ? `${name} (${scale}×)` : name;
+  return scale === DEFAULT_SCALE ? `${base} — default` : base;
+}
+
 /**
  * The remembered scale. Storage that throws — disabled, or a private window —
  * reads as the default: the app must start without it.

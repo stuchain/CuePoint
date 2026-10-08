@@ -31,7 +31,7 @@ describe("the waveform colour preference", () => {
   it("is three bands until chosen otherwise", () => {
     expect(WAVEFORM_COLOUR_DEFAULT).toBe("bands");
     expect(loadWaveformColour()).toBe("bands");
-    expect(WAVEFORM_COLOUR_OPTIONS.map((o) => o.label)).toEqual(["Three bands", "One colour"]);
+    expect(WAVEFORM_COLOUR_OPTIONS.map((o) => o.label)).toEqual(["Three bands", "One color"]);
   });
 
   it("reads anything unrecognised as the default", () => {

@@ -47,12 +47,12 @@ describe("analysisWords", () => {
       analysisWords(
         status({ state: "running", analysed: 1200, failed: 34, eta_seconds: 6 * 3600 }),
       ),
-    ).toBe("Analysing · 1,234 of 50,000 · about 6 hours left");
+    ).toBe("Analyzing · 1,234 of 50,000 · about 6 hours left");
   });
 
   it("leaves the time out until there is a rate", () => {
     expect(analysisWords(status({ state: "running", analysed: 1234 }))).toBe(
-      "Analysing · 1,234 of 50,000",
+      "Analyzing · 1,234 of 50,000",
     );
   });
 
@@ -64,26 +64,26 @@ describe("analysisWords", () => {
 
   it("says a paused analysis with nothing to go is complete", () => {
     expect(analysisWords(status({ state: "paused", paused: true }))).toBe(
-      "Paused · all 50,000 analysed",
+      "Paused · all 50,000 analyzed",
     );
   });
 
   it("says a finished analysis is complete, and what could not be read", () => {
     expect(analysisWords(status({ analysed: 49997, failed: 3 }))).toBe(
-      "All 50,000 analysed · 3 could not be read",
+      "All 50,000 analyzed · 3 could not be read",
     );
-    expect(analysisWords(status())).toBe("All 50,000 analysed");
+    expect(analysisWords(status())).toBe("All 50,000 analyzed");
   });
 
   it("says what is waiting while nothing runs", () => {
     expect(analysisWords(status({ analysed: 40000, failed: 10 }))).toBe(
-      "40,010 of 50,000 analysed · 9,990 waiting",
+      "40,010 of 50,000 analyzed · 9,990 waiting",
     );
   });
 
   it("says there is nothing yet before any file is checked", () => {
     expect(analysisWords(status({ present: 0, analysed: 0 }))).toBe(
-      "No checked files to analyse yet",
+      "Nothing to analyze yet: CuePoint analyzes tracks once their files have been found.",
     );
   });
 
@@ -99,7 +99,7 @@ describe("analysisAction", () => {
   it.each([
     ["running", "pause", "Pause"],
     ["paused", "resume", "Resume"],
-    ["idle", "start", "Analyse waveforms"],
+    ["idle", "start", "Analyze waveforms"],
   ] as const)("offers %s → %s", (state, action, label) => {
     const offered = analysisAction(status({ state }));
     expect(offered).toBe(action);
@@ -146,12 +146,12 @@ describe("sizes on disk", () => {
 });
 
 describe("what Delete waveform data asks first", () => {
-  it("states the size on disk, and that the library is analysed again", () => {
+  it("states the size on disk, and that the library is analyzed again", () => {
     const lines = deleteDataWords(status({ store_bytes: 252_000_000 }));
     expect(lines[0]).toContain("240.3 MB on disk");
     expect(lines[0]).toContain("and the loudness measured with each");
     expect(lines[0]).toContain("Cue points and beat grids come from Rekordbox and are not affected");
-    expect(lines[1]).toBe("The whole library will be analysed again.");
+    expect(lines[1]).toBe("The whole library will be analyzed again.");
   });
 
   it("says how long that takes when the analysis has a rate", () => {
@@ -159,13 +159,13 @@ describe("what Delete waveform data asks first", () => {
       status({ state: "running", present: 50_000, rate_per_hour: 8_000, store_bytes: 1 }),
     );
     expect(lines[1]).toBe(
-      "The whole library will be analysed again, which takes about 6 hours at the current rate.",
+      "The whole library will be analyzed again, which takes about 6 hours at the current rate.",
     );
   });
 
   it("says it waits for Resume while paused", () => {
     expect(deleteDataWords(status({ state: "paused", paused: true }))[1]).toBe(
-      "The whole library will be analysed again when the analysis is resumed.",
+      "The whole library will be analyzed again when the analysis is resumed.",
     );
   });
 

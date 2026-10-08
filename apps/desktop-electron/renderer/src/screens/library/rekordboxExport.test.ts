@@ -550,7 +550,7 @@ describe("Settings", () => {
 
   it("describes each past export by how it ended", () => {
     const [cancelled, written] = HISTORY.exports;
-    expect(historyOutcome(written!)).toBe("4 tracks · 3 rewritten · 4 playlists · Camelot (8A)");
+    expect(historyOutcome(written!)).toBe("4 tracks · 3 with new tags · 4 playlists · Camelot (8A)");
     expect(historyOutcome(cancelled!)).toBe("Stopped — nothing was written");
     expect(historyOutcome({ ...written!, outcome: "failed", error: "Disk full" })).toBe(
       "Failed: Disk full",

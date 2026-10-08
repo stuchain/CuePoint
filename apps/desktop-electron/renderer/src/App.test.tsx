@@ -44,7 +44,7 @@ const ROUTES = [
   { link: "Clean", marker: /^Clean$/ },
   { link: "Discover", marker: /Discover needs the desktop app/i },
   { link: "Prepare", marker: /Prepare needs the desktop app/i },
-  { link: "Settings", marker: /Beatport token/i },
+  { link: "Settings", marker: /^Settings$/ },
 ];
 
 describe("App shell", () => {
@@ -104,7 +104,7 @@ describe("App shell", () => {
     const before = container.querySelector(".app-shell__inspector .cp-inspector");
 
     await user.click(navLink("Settings"));
-    await screen.findByText(/Beatport token/i);
+    await screen.findByRole("heading", { level: 1, name: "Settings" });
 
     expect(container.querySelector(".app-shell__inspector .cp-inspector")).toBe(before);
   });
@@ -171,14 +171,14 @@ describe("App shell", () => {
       const user = userEvent.setup();
       const first = render(<App />);
       await user.click(navLink("Settings"));
-      await screen.findByText(/Beatport token/i);
+      await screen.findByRole("heading", { level: 1, name: "Settings" });
       first.unmount();
 
       // A fresh mount stands in for a fresh launch: the router starts at "/"
       // either way, and only what is stored can bring it back.
       render(<App />);
 
-      expect(await screen.findByText(/Beatport token/i)).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
     });
 
     it.each([
@@ -201,7 +201,7 @@ describe("App shell", () => {
       const user = userEvent.setup();
       localStorage.setItem(LAST_DESTINATION_STORAGE_KEY, "settings");
       render(<App />);
-      await screen.findByText(/Beatport token/i);
+      await screen.findByRole("heading", { level: 1, name: "Settings" });
 
       await user.click(navLink("Discover"));
 
@@ -296,7 +296,7 @@ describe("App shell", () => {
       act(() => {
         window.location.hash = "#/settings";
       });
-      await screen.findByText(/Beatport token/i);
+      await screen.findByRole("heading", { level: 1, name: "Settings" });
 
       act(() => {
         window.location.hash = hash;

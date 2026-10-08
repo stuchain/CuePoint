@@ -518,7 +518,7 @@ export function historyOutcome(record: RekordboxExportRecord): string {
     case "written":
       return [
         pluralize(record.track_count, "track"),
-        `${record.changed_track_count.toLocaleString()} rewritten`,
+        `${record.changed_track_count.toLocaleString()} with new tags`,
         pluralize(record.playlists.length, "playlist"),
         keyFormatName(record.key_format),
       ].join(" · ");

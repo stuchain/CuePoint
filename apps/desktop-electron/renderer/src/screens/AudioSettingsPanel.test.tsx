@@ -104,6 +104,66 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("the panel's words", () => {
+  it("is titled Playback", async () => {
+    install();
+    renderPanel();
+    expect(screen.getByRole("heading", { name: "Playback" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Audio" })).toBeNull();
+  });
+
+  it("counts outputs, and says what happens when the chosen one is unplugged", async () => {
+    install();
+    renderPanel();
+    expect(
+      await screen.findByText(
+        "3 outputs found. If the chosen one is unplugged, CuePoint switches to System default.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the singular right", async () => {
+    install({ devices: [DEVICES[0]!] });
+    renderPanel();
+    expect(
+      await screen.findByText(
+        "1 output found. If the chosen one is unplugged, CuePoint switches to System default.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("tells a beginner to leave exclusive output off, with the detail under More", async () => {
+    install();
+    const { container } = renderPanel();
+    expect(
+      await screen.findByText(
+        "Leave off unless you use an audio interface. On: CuePoint plays to the device directly, at its own quality, and other apps can't use it until you turn it off.",
+      ),
+    ).toBeInTheDocument();
+    const more = container.querySelector("details")!;
+    expect(more.querySelector("summary")).toHaveTextContent("More");
+    expect(more).not.toHaveAttribute("open");
+    expect(more).toHaveTextContent("bypassing the system mixer");
+  });
+
+  it("shows Saved after a change the player accepted, and not after one it refused", async () => {
+    const harness = install();
+    renderPanel();
+    await waitFor(() => expect(harness.audioDevices).toHaveBeenCalled());
+    await userEvent.click(exclusive());
+    await waitFor(() => expect(document.body).toHaveTextContent("✓ Saved"));
+  });
+
+  it("does not say Saved for a change the player refused", async () => {
+    const harness = install({ setResult: { ok: false, error: "No." } });
+    renderPanel();
+    await waitFor(() => expect(harness.audioDevices).toHaveBeenCalled());
+    await userEvent.click(exclusive());
+    expect(await screen.findByText("No.")).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent("✓ Saved");
+  });
+});
+
 describe("the device picker", () => {
   it("lists what the machine has, by description", async () => {
     install();

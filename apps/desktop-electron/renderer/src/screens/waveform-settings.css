@@ -98,3 +98,14 @@
   color: var(--fg-primary);
   font-size: var(--font-size-xs);
 }
+
+.cp-waveform-settings__reset {
+  margin-top: var(--space-xs);
+}
+
+.cp-waveform-settings__disk summary {
+  min-height: var(--hit-min);
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}

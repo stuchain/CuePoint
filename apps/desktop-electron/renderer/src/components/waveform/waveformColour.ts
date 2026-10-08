@@ -17,7 +17,7 @@ export const WAVEFORM_COLOUR_DEFAULT: WaveformColourMode = "bands";
 /** The choice's words, in the order Settings offers them. */
 export const WAVEFORM_COLOUR_OPTIONS: readonly { mode: WaveformColourMode; label: string }[] = [
   { mode: "bands", label: "Three bands" },
-  { mode: "single", label: "One colour" },
+  { mode: "single", label: "One color" },
 ];
 
 /** What a stored value means; anything unrecognised is the default. */

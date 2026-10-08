@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { AudioDevice } from "../api/cuepointBridge.types";
 import { Panel } from "../components";
+import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { audioFellBack, selectAudio } from "../components/player/playerFormat";
 import {
   SYSTEM_DEFAULT_DEVICE,
@@ -43,6 +44,7 @@ export function AudioSettingsPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [saved, markSaved] = useSavedSignal();
 
   const bridge = window.cuepoint?.player;
   const available = Boolean(bridge?.setAudioSettings);
@@ -84,11 +86,12 @@ export function AudioSettingsPanel() {
         // not restored on the next launch.
         if (settings.device !== undefined) saveAudioDevice(settings.device);
         if (settings.exclusive !== undefined) saveAudioExclusive(settings.exclusive);
+        markSaved();
       } finally {
         setBusy(false);
       }
     },
-    [],
+    [markSaved],
   );
 
   // The chosen device may not be in the list: it was unplugged, or the settings
@@ -98,7 +101,7 @@ export function AudioSettingsPanel() {
   const fellBack = audioFellBack(audio);
 
   return (
-    <Panel title="Audio">
+    <Panel title="Playback" badge={<SavedTick signal={saved} />}>
       <div className="cp-audio-settings">
         <label className="cp-audio-settings__field">
           <span className="cp-audio-settings__label">Output device</span>
@@ -125,7 +128,7 @@ export function AudioSettingsPanel() {
           {loading
             ? "Reading the devices this machine has…"
             : available
-              ? `${devices.length} ${devices.length === 1 ? "device" : "devices"} found. Unplugging the selected one falls back to the system default.`
+              ? `${devices.length} ${devices.length === 1 ? "output" : "outputs"} found. If the chosen one is unplugged, CuePoint switches to System default.`
               : "Open CuePoint as a desktop app to choose an output device."}
         </p>
 
@@ -138,11 +141,28 @@ export function AudioSettingsPanel() {
           />
           <span>Exclusive output</span>
         </label>
-        <p className="cp-audio-settings__hint">
-          {audio.exclusiveSupported
-            ? "CuePoint takes the device for itself and plays to it directly, bypassing the system mixer — no resampling, no volume applied by anything else. While it is on, other applications cannot use that device, and CuePoint falls back to shared output if something else already has it."
-            : "Exclusive output is a Windows and macOS feature. This system has no equivalent, so CuePoint plays through the shared device."}
-        </p>
+        {audio.exclusiveSupported ? (
+          <>
+            <p className="cp-audio-settings__hint">
+              Leave off unless you use an audio interface. On: CuePoint plays to the device directly,
+              at its own quality, and other apps can&apos;t use it until you turn it off.
+            </p>
+            <details className="cp-audio-settings__more">
+              <summary>More</summary>
+              <p className="cp-audio-settings__hint">
+                CuePoint takes the device for itself and plays to it directly, bypassing the system
+                mixer — no resampling, no volume applied by anything else. While it is on, other
+                applications cannot use that device, and CuePoint falls back to shared output if
+                something else already has it.
+              </p>
+            </details>
+          </>
+        ) : (
+          <p className="cp-audio-settings__hint">
+            Exclusive output is a Windows and macOS feature. This system has no equivalent, so
+            CuePoint plays through the shared device.
+          </p>
+        )}
 
         {fellBack && (
           <p className="cp-audio-settings__fallback" role="status">

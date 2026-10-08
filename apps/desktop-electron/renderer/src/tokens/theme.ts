@@ -13,11 +13,11 @@ import {
 } from "./themeDerivation";
 
 export const BUILT_IN_THEME_OPTIONS = [
-  { id: "neoDark", label: "Neo-dark SaaS" },
+  { id: "neoDark", label: "Neo dark" },
   { id: "retro16", label: "Retro 16-bit" },
-  { id: "qtEvolved", label: "Qt evolved" },
-  { id: "clubNeon", label: "Club / DJ neon" },
-  { id: "mutedPro", label: "Muted pro" },
+  { id: "qtEvolved", label: "Classic" },
+  { id: "clubNeon", label: "Club neon" },
+  { id: "mutedPro", label: "Muted" },
 ] as const;
 
 export type BuiltInThemeId = (typeof BUILT_IN_THEME_OPTIONS)[number]["id"];

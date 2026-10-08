@@ -80,3 +80,10 @@
   background: var(--bg-panel-alt);
   color: var(--accent-danger);
 }
+
+.cp-audio-settings__more summary {
+  min-height: var(--hit-min);
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}

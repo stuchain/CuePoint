@@ -20,6 +20,13 @@ type WaveformAnalysisAction = "pause" | "resume" | "start" | null;
 /** What Settings' preview says with nothing in the player (WAVE-05). */
 export const PREVIEW_EMPTY_WORDS = "Play a track to preview its waveform here.";
 
+/**
+ * The status of an analysis with nothing to analyze (SET-6). Settings adds a
+ * link to the Clean page after it; Clean's Health view says it as it is.
+ */
+export const NOTHING_TO_ANALYZE_WORDS =
+  "Nothing to analyze yet: CuePoint analyzes tracks once their files have been found.";
+
 /** The sentence a build without a decoder shows instead of a state. */
 export const DECODER_MISSING_WORDS =
   "Waveforms need the player's decoder, which this build does not include";
@@ -38,24 +45,24 @@ export function analysisWords(status: WaveformAnalysisStatus): string {
     case "paused":
       return status.remaining > 0
         ? `Paused · ${count(status.remaining)} to go`
-        : `Paused · all ${count(status.present)} analysed${unreadable}`;
+        : `Paused · all ${count(status.present)} analyzed${unreadable}`;
     case "running": {
       const left =
         typeof status.eta_seconds === "number" && status.eta_seconds > 0
           ? ` · ${aboutDuration(status.eta_seconds)} left`
           : "";
-      return `Analysing · ${count(done)} of ${count(status.present)}${left}`;
+      return `Analyzing · ${count(done)} of ${count(status.present)}${left}`;
     }
     case "idle":
     default:
-      if (status.present === 0) return "No checked files to analyse yet";
+      if (status.present === 0) return NOTHING_TO_ANALYZE_WORDS;
       if (status.remaining > 0) {
         return (
-          `${count(done)} of ${count(status.present)} analysed` +
+          `${count(done)} of ${count(status.present)} analyzed` +
           ` · ${count(status.remaining)} waiting`
         );
       }
-      return `All ${count(status.present)} analysed${unreadable}`;
+      return `All ${count(status.present)} analyzed${unreadable}`;
   }
 }
 
@@ -77,7 +84,7 @@ export function analysisAction(status: WaveformAnalysisStatus): WaveformAnalysis
 export const ACTION_LABELS: Record<Exclude<WaveformAnalysisAction, null>, string> = {
   pause: "Pause",
   resume: "Resume",
-  start: "Analyse waveforms",
+  start: "Analyze waveforms",
 };
 
 /**
@@ -178,7 +185,7 @@ export function sizeWords(bytes: number): string {
 /**
  * What "Delete waveform data…" asks before it deletes (WAVE-05): the size on
  * disk, the loudness measured with each waveform going with it (WAVE-08), and
- * that the whole library will be analysed again, with how long that takes when
+ * that the whole library will be analyzed again, with how long that takes when
  * the analysis has a rate to say it by.
  */
 export function deleteDataWords(status: WaveformAnalysisStatus | null): string[] {
@@ -189,7 +196,7 @@ export function deleteDataWords(status: WaveformAnalysisStatus | null): string[]
   if (status?.state === "unavailable") {
     lines.push("Waveforms cannot be made again until this build has the player's decoder.");
   } else if (status?.paused) {
-    lines.push("The whole library will be analysed again when the analysis is resumed.");
+    lines.push("The whole library will be analyzed again when the analysis is resumed.");
   } else {
     const rate = status?.rate_per_hour;
     const present = status?.present ?? 0;
@@ -197,7 +204,7 @@ export function deleteDataWords(status: WaveformAnalysisStatus | null): string[]
       typeof rate === "number" && rate > 0 && present > 0
         ? `, which takes ${aboutDuration((present / rate) * 3600)} at the current rate`
         : "";
-    lines.push(`The whole library will be analysed again${time}.`);
+    lines.push(`The whole library will be analyzed again${time}.`);
   }
   return lines;
 }

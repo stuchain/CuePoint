@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Badge, Button, Modal, Panel, Select, TextField } from "../components";
+import { Button, Modal, Panel, Select, TextField } from "../components";
+import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import {
   createEmptyCustomTheme,
   NEO_DARK_EDITOR_COLORS,
@@ -7,9 +8,10 @@ import {
   type CustomThemeColors,
 } from "../tokens/customThemes";
 import { useScale } from "../tokens/ScaleContext";
-import type { ScaleFactor } from "../tokens/scale";
-import { isCustomThemeId } from "../tokens/theme";
+import { DEFAULT_SCALE, scaleOptionLabel, type ScaleFactor } from "../tokens/scale";
+import { DEFAULT_THEME, isCustomThemeId, type ThemeId } from "../tokens/theme";
 import { useTheme } from "../tokens/ThemeContext";
+import { ResetToDefaults } from "./ResetToDefaults";
 import "./theme-settings.css";
 
 const COLOR_FIELDS: { key: keyof CustomThemeColors; label: string }[] = [
@@ -58,7 +60,9 @@ export function ThemeSettingsPanel() {
     previewCustomColors,
     endPreview,
   } = useTheme();
-  const { scale, setScale } = useScale();
+  const { scale, setScale, scaleOptions } = useScale();
+  const [saved, markSaved] = useSavedSignal();
+  const [deleting, setDeleting] = useState<CustomTheme | null>(null);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -117,33 +121,66 @@ export function ThemeSettingsPanel() {
       saveCustomTheme(createEmptyCustomTheme(name, draftColors));
     }
     closeEditor();
+    markSaved();
+  };
+
+  const confirmDelete = () => {
+    if (deleting) deleteCustomTheme(deleting.id);
+    setDeleting(null);
+    markSaved();
+  };
+
+  // SET-11. A custom theme is not touched; only which theme and size are in use.
+  const resetToDefaults = () => {
+    const before = { theme: activeThemeId, scale };
+    setTheme(DEFAULT_THEME);
+    setScale(DEFAULT_SCALE);
+    markSaved();
+    return () => {
+      setTheme(before.theme);
+      setScale(before.scale);
+      markSaved();
+    };
   };
 
   return (
-    <Panel title="Appearance" badge={<Badge variant="info">Themes</Badge>}>
+    <Panel title="Appearance" badge={<SavedTick signal={saved} />}>
       <div className="theme-settings">
         <Select
           label="Active theme"
           value={activeThemeId}
-          onChange={(e) => setTheme(e.target.value as typeof activeThemeId)}
+          onChange={(e) => {
+            setTheme(e.target.value as ThemeId);
+            markSaved();
+          }}
           options={themeOptions.map((o) => ({ value: o.id, label: o.label }))}
         />
 
         <Select
-          label="UI scale"
+          label="Size of text and controls"
           value={String(scale)}
-          onChange={(e) => setScale(Number(e.target.value) as ScaleFactor)}
-          options={[
-            { value: "1", label: "1× (compact)" },
-            { value: "2", label: "2× (default)" },
-            { value: "3", label: "3× (large)" },
-          ]}
+          onChange={(e) => {
+            setScale(Number(e.target.value) as ScaleFactor);
+            markSaved();
+          }}
+          options={scaleOptions.map((option) => ({
+            value: String(option),
+            label: scaleOptionLabel(option),
+          }))}
         />
+        <p className="theme-settings__hint">
+          Edges and lines snap to whole pixels at every size, so the pixel style stays sharp.
+        </p>
 
         <div className="theme-settings__actions">
           <Button variant="primary" onClick={openCreate}>
             Create custom theme…
           </Button>
+          <ResetToDefaults
+            section="Appearance"
+            summary="This sets the theme to Neo dark and the size of text and controls to its default. Your custom themes are kept."
+            onReset={resetToDefaults}
+          />
         </div>
 
         {customThemes.length > 0 ? (
@@ -156,7 +193,7 @@ export function ThemeSettingsPanel() {
                       key={key}
                       className="theme-settings__swatch"
                       style={{ background: theme.colors[key] }}
-                      title={key}
+                      title={COLOR_FIELDS.find((field) => field.key === key)?.label ?? key}
                     />
                   ))}
                 </div>
@@ -168,7 +205,7 @@ export function ThemeSettingsPanel() {
                   <Button variant="secondary" onClick={() => openEdit(theme)}>
                     Edit
                   </Button>
-                  <Button variant="danger" onClick={() => deleteCustomTheme(theme.id)}>
+                  <Button variant="danger" onClick={() => setDeleting(theme)}>
                     Delete
                   </Button>
                 </div>
@@ -177,11 +214,20 @@ export function ThemeSettingsPanel() {
           </ul>
         ) : (
           <p className="theme-settings__hint">
-            No custom themes yet. Create one with eight colors — borders and bevels are derived
-            automatically.
+            No custom themes yet. Pick nine colors; borders and bevels are made from them.
           </p>
         )}
       </div>
+
+      <Modal
+        open={deleting !== null}
+        title="Delete theme?"
+        onClose={() => setDeleting(null)}
+        secondaryAction={{ label: "Cancel", onClick: () => setDeleting(null) }}
+        primaryAction={{ label: "Delete", onClick: confirmDelete }}
+      >
+        <p>Delete the theme “{deleting?.name}”? This can&apos;t be undone.</p>
+      </Modal>
 
       <Modal
         open={editorOpen}

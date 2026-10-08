@@ -1265,7 +1265,7 @@ export class EngineSupervisor {
 
   async testBeatportToken(body?: {
     token?: string;
-  }): Promise<{ ok: boolean; message: string }> {
+  }): Promise<{ ok: boolean; message: string; reason?: "missing" | "rejected" | "unreachable" }> {
     return (await this.readyClient()).testBeatportToken(body);
   }
 

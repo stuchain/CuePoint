@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { readExitClearing, saveExitClearing } from "../screens/exitClearing";
 import { settingsFocusState } from "../screens/settingsLink";
 import { Button, Modal, useToast } from "./index";
 import { reportUnexpected } from "../reporting/reporting";
 import "./PrivacyDialog.css";
-
-const STORAGE_CLEAR_CACHE = "cuepoint-privacy-clear-cache-on-exit";
-const STORAGE_CLEAR_LOGS = "cuepoint-privacy-clear-logs-on-exit";
 
 const PRIVACY_TEXT = `CuePoint respects your privacy.
 
@@ -60,17 +58,13 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
 
   useEffect(() => {
     if (!open) return;
-    setClearCacheOnExit(localStorage.getItem(STORAGE_CLEAR_CACHE) === "1");
-    setClearLogsOnExit(localStorage.getItem(STORAGE_CLEAR_LOGS) === "1");
+    const stored = readExitClearing();
+    setClearCacheOnExit(stored.clearCache);
+    setClearLogsOnExit(stored.clearLogs);
   }, [open]);
 
   const handleSave = () => {
-    localStorage.setItem(STORAGE_CLEAR_CACHE, clearCacheOnExit ? "1" : "0");
-    localStorage.setItem(STORAGE_CLEAR_LOGS, clearLogsOnExit ? "1" : "0");
-    void window.cuepoint?.setPrivacyExitPrefs?.({
-      clearCacheOnExit,
-      clearLogsOnExit,
-    });
+    saveExitClearing({ clearCache: clearCacheOnExit, clearLogs: clearLogsOnExit });
     onClose();
   };
 
@@ -109,6 +103,14 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
   const handleChangeInSettings = () => {
     onClose();
     navigate("/settings", { state: settingsFocusState("error-reporting") });
+  };
+
+  // The exit-clearing choices live in Settings → Privacy too (SET-7).
+  // The ticked boxes are saved first, so leaving the dialog loses nothing.
+  const handleChangeExitInSettings = () => {
+    saveExitClearing({ clearCache: clearCacheOnExit, clearLogs: clearLogsOnExit });
+    onClose();
+    navigate("/settings", { state: settingsFocusState("privacy") });
   };
 
   // The switch's state, then where to change it (the notice's "Settings → Privacy → Send error reports").
@@ -152,6 +154,9 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
             />
             Clear logs on exit
           </label>
+          <button type="button" className="privacy-dialog__link" onClick={handleChangeExitInSettings}>
+            Change these in Settings → Privacy
+          </button>
         </fieldset>
 
         <div className="privacy-dialog__actions">

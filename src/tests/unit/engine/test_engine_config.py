@@ -77,6 +77,28 @@ def test_beatport_token_get_set_and_test(tmp_path: Path):
                 ) as resp:
                     tested = json.loads(resp.read().decode("utf-8"))
             assert tested == {"ok": True, "message": "Token OK"}
+
+            def _test_answer() -> dict:
+                with _auth_request(
+                    f"{base}/api/v1/config/beatport-token/test",
+                    token,
+                    data=b"{}",
+                    method="POST",
+                ) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+
+            with patch("requests.get") as mock_get:
+                mock_get.return_value.status_code = 401
+                assert _test_answer()["reason"] == "rejected"
+                mock_get.return_value.status_code = 403
+                assert _test_answer()["reason"] == "rejected"
+                mock_get.return_value.status_code = 500
+                answer = _test_answer()
+                assert answer["ok"] is False and answer["reason"] == "unreachable"
+            with patch("requests.get", side_effect=OSError("boom")):
+                answer = _test_answer()
+                assert answer["reason"] == "unreachable"
+                assert "boom" not in answer["message"]
         finally:
             server.shutdown()
             thread.join(timeout=2)

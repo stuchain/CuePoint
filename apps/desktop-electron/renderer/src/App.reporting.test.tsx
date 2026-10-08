@@ -12,8 +12,8 @@ import { fakeFacade } from "./reporting/fakeFacade.testFixture";
 import { resetRendererReporting, setupRendererReporting } from "./reporting/reporting";
 import type { CuePointBridge } from "./api/cuepointBridge.types";
 
-vi.mock("./screens/SettingsExportScreen", () => ({
-  SettingsExportScreen: () => {
+vi.mock("./screens/SettingsScreen", () => ({
+  SettingsScreen: () => {
     throw new Error("settings page broke");
   },
 }));

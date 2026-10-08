@@ -1,0 +1,46 @@
+/* Settings → Beatport (SET-5): the lead, the test result's state, and the help disclosure. */
+
+.cp-beatport-settings__lead {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.cp-beatport-settings__result {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.cp-beatport-settings__result--accepted {
+  color: var(--accent-success);
+}
+
+.cp-beatport-settings__result--rejected {
+  color: var(--accent-danger);
+}
+
+.cp-beatport-settings__result--unreachable {
+  color: var(--accent-warning);
+}
+
+.cp-beatport-settings__help summary {
+  min-height: var(--hit-min);
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.cp-beatport-settings__help {
+  max-width: 60ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.cp-beatport-settings__help p,
+.cp-beatport-settings__help ol {
+  margin: var(--space-xs) 0;
+}

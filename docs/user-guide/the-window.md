@@ -82,7 +82,7 @@ While a job is running — matching a playlist, for example — the strip shows 
 progress from wherever you are in the app, including a job that was already
 running before the window was reloaded.
 
-The waveform analysis shows as **Analysing waveforms · 1,234 of 50,000**, counting
+The waveform analysis shows as **Analyzing waveforms · 1,234 of 50,000**, counting
 your whole library; hover over it for the rate and the time left. Its button is
 **Pause** rather than Stop, because that is what it does: the analysis stays
 paused, after a restart too, until you resume it from Clean → Health or
@@ -140,15 +140,32 @@ appears on screen: search, navigation, page, Inspector, status strip. Dialogs
 take focus when they open, keep **Tab** inside themselves, close on **Escape**,
 and hand focus back to whatever opened them.
 
-## Interface scale and theme
+## Settings
 
-CuePoint draws at 1×, 2× or 3× and ships five themes; both live in
-**Settings → Appearance**, and both are remembered. The interface is pixel art,
-so it scales in whole steps to stay sharp.
+**Settings** is one page in sections, with a list of links at the top (in a rail
+on the left when the window is wide) that scroll to each: **Appearance**,
+**Motion**, **Playback**, **Waveforms**, **Beatport**, **Rekordbox export**,
+**Privacy** and **About & updates**. A setting that applies the moment you change
+it shows a small **Saved** beside it for a couple of seconds. **About & updates**
+shows the version and has **Getting started**, which opens the first-run
+walkthrough again.
+
+## Size and theme
+
+**Settings → Appearance** has two choices, both remembered. **Active theme** is
+**Neo dark**, **Retro 16-bit**, **Classic**, **Club neon** or **Muted**, or a
+custom theme you made: **Create custom theme…** asks for nine colors, and the
+borders and bevels are made from them. **Delete** asks first. **Size of text and
+controls** is **Small (1×)**, **Large (2×)** (the default) or **Extra large
+(3×)**. The interface is pixel art, so it scales in whole steps and edges snap to
+whole pixels at every size, which keeps it sharp.
+
+**Reset to defaults** sets Neo dark at the default size after asking, and the
+message that follows has **Undo**. Your custom themes are kept.
 
 ## Privacy and error reports
 
-**Settings → Privacy** has one switch, **Send error reports**, on by default in released builds.
+**Settings → Privacy** has a switch, **Send error reports**, on by default in released builds.
 When CuePoint hits an unexpected error, it sends one report to Sentry (EU region) so the bug can be
 fixed. A report says what went wrong, where in CuePoint's code, the steps that led to it, the
 version and your operating system. It never carries your file, folder, track, artist, label or
@@ -156,3 +173,7 @@ playlist names, your notes, tags or tokens. Turn the switch off and nothing more
 with no restart. **Help → Privacy...** shows whether it is on and takes you to the switch; the full
 list, and how long Sentry keeps a report, is in the [Privacy Notice](../policy/privacy-notice.md).
 The CLI never sends error reports.
+
+Under **When CuePoint quits**, **Clear cache** and **Clear logs** clear them each
+time CuePoint closes. They are the same two choices as in **Help → Privacy...**
+(which links here), so the two always agree.

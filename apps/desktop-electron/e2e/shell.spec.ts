@@ -100,7 +100,7 @@ test.describe("Application shell navigation", () => {
         .getByRole("link", { name: "Settings" })
         .click();
 
-      await expect(window.getByText(/Beatport token/i)).toBeVisible({ timeout: 15_000 });
+      await expect(window.getByLabel("Beatport token")).toBeVisible({ timeout: 15_000 });
     } finally {
       await app.close();
     }

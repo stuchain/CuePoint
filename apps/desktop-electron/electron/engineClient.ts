@@ -3709,7 +3709,7 @@ export class EngineClient {
 
   async testBeatportToken(body?: {
     token?: string;
-  }): Promise<{ ok: boolean; message: string }> {
+  }): Promise<{ ok: boolean; message: string; reason?: "missing" | "rejected" | "unreachable" }> {
     const res = await fetch(this.url("/api/v1/config/beatport-token/test"), {
       method: "POST",
       headers: this.headers(),

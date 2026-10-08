@@ -54,3 +54,26 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+.cp-error-reporting__exit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: var(--space-sm) 0 0;
+  padding: var(--space-md) 0 0;
+  border: 0;
+  border-top: var(--border-width) solid var(--border-outline);
+  font-size: var(--font-size-sm);
+}
+
+.cp-error-reporting__exit legend {
+  padding: 0;
+  font-weight: 700;
+  color: var(--fg-primary);
+}
+
+.cp-error-reporting__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}

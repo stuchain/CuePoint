@@ -225,7 +225,7 @@ preferences, which the renderer pushes to main at launch (`privacy:setExitPrefs`
     only state the route touches.
   - **Every sender** (REPORT-03 to REPORT-06) checks the flag inside its `before_send` and
     `before_breadcrumb`, so turning it off drops anything already captured but not yet sent.
-- **The Privacy panel** sits last on the Settings page, after Rekordbox export. It holds the switch
+- **The Privacy panel** sits after Rekordbox export on the Settings page. It holds the switch
   and two sentences: what a report carries, and what it never carries (from REPORT-08's notice). It
   links to Help → Privacy, which shows the same state and links back.
 - **The six contract files** move together (fact 1).

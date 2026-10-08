@@ -9,7 +9,7 @@ import { MemoryRouter } from "react-router-dom";
 import { ToastProvider } from "../components";
 import { ScaleProvider } from "../tokens/ScaleContext";
 import { ThemeProvider } from "../tokens/ThemeContext";
-import { BEATPORT_TOKEN_FIELD_ID, SettingsExportScreen } from "./SettingsExportScreen";
+import { BEATPORT_TOKEN_FIELD_ID, SettingsScreen } from "./SettingsScreen";
 import { settingsFocus, settingsFocusState } from "./settingsLink";
 
 function renderSettings(state: unknown) {
@@ -18,7 +18,7 @@ function renderSettings(state: unknown) {
       <ScaleProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[{ pathname: "/settings", state }]}>
-            <SettingsExportScreen />
+            <SettingsScreen />
           </MemoryRouter>
         </ToastProvider>
       </ScaleProvider>
@@ -53,6 +53,11 @@ describe("settingsFocus", () => {
   it("reads the error-reporting switch as a field a link can ask for", () => {
     const state = settingsFocusState("error-reporting");
     expect(settingsFocus({ state })).toEqual({ focus: "error-reporting", token: state.token });
+  });
+
+  it("reads the Privacy section as a place a link can ask for", () => {
+    const state = settingsFocusState("privacy");
+    expect(settingsFocus({ state })).toEqual({ focus: "privacy", token: state.token });
   });
 
   it("reads nothing from an ordinary visit or a stranger's state", () => {
@@ -94,6 +99,7 @@ describe("Settings opened from Discover", () => {
     const field = document.getElementById(BEATPORT_TOKEN_FIELD_ID)!;
     expect(field).toHaveAttribute("type", "password");
     expect(screen.getByText("Beatport token")).toBeInTheDocument();
+    expect(field.closest("section[aria-label]")).toHaveAttribute("aria-label", "Beatport");
     await waitFor(() => expect(field).toHaveFocus());
     expect(focusedWhen).toEqual([{ read: true, disabled: false }]);
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();

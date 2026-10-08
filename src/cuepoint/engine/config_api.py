@@ -97,13 +97,18 @@ def _resolve_base_url() -> str:
     )
 
 
-def test_beatport_token(token: Optional[str] = None) -> Tuple[bool, str]:
-    """Verify token against Beatport catalog/genres (same as Qt Settings test)."""
+def test_beatport_token(token: Optional[str] = None) -> Tuple[bool, str, Optional[str]]:
+    """Verify token against Beatport catalog/genres (same as Qt Settings test).
+
+    Returns ``(ok, message, reason)``; ``reason`` is None when ok, else
+    ``"missing"`` (nothing to test), ``"rejected"`` (Beatport answered 401/403)
+    or ``"unreachable"`` (network error or any other answer).
+    """
     resolved = (token or "").strip()
     if not resolved:
         resolved = str(_get_config_service().get(CONFIG_KEY) or "").strip()
     if not resolved:
-        return False, "Enter a token first."
+        return False, "Enter a token first.", "missing"
 
     try:
         import requests
@@ -114,13 +119,17 @@ def test_beatport_token(token: Optional[str] = None) -> Tuple[bool, str]:
             "Content-Type": "application/json",
         }
         response = requests.get(url, headers=headers, timeout=15)
-    except Exception as exc:  # noqa: BLE001 — surface to API client
-        return False, str(exc) or "Request failed."
+    except Exception:  # noqa: BLE001 — surface to API client
+        return False, "The request did not go through.", "unreachable"
 
     if response.status_code == 200:
-        return True, "Token OK"
+        return True, "Token OK", None
     if response.status_code == 401:
-        return False, "Invalid or expired token."
+        return False, "The token is invalid or has expired.", "rejected"
     if response.status_code == 403:
-        return False, "Access forbidden (token invalid or insufficient scope)."
-    return False, f"API returned {response.status_code}."
+        return False, "The token is not allowed to use this service.", "rejected"
+    return (
+        False,
+        "Beatport had a problem answering. Try again later.",
+        "unreachable",
+    )

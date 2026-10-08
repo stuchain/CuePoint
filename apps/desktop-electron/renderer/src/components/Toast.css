@@ -16,6 +16,20 @@
   font-weight: 600;
   box-shadow: var(--shadow-panel);
   animation: cp-toast-in 180ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.cp-toast__action {
+  flex: none;
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--border-width) solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
 
 .cp-toast--info {

@@ -106,7 +106,7 @@ describe("the waveform analysis on the Health view", () => {
     const row = await waveformRow();
 
     expect(
-      await within(row).findByText("All 3 analysed · 1 could not be read"),
+      await within(row).findByText("All 3 analyzed · 1 could not be read"),
     ).toBeInTheDocument();
     expect(
       within(row).getByText("Analysed 2 waveforms; 1 file could not be read. Finished."),
@@ -117,7 +117,7 @@ describe("the waveform analysis on the Health view", () => {
     renderHealth();
     const row = await waveformRow();
 
-    fireEvent.click(await within(row).findByRole("button", { name: "Analyse waveforms" }));
+    fireEvent.click(await within(row).findByRole("button", { name: "Analyze waveforms" }));
 
     await waitFor(() => expect(waveforms.resume).toHaveBeenCalledTimes(1));
     expect(await within(row).findByRole("button", { name: "Pause" })).toBeInTheDocument();
@@ -129,7 +129,7 @@ describe("the waveform analysis on the Health view", () => {
     );
     renderHealth();
     const row = await waveformRow();
-    expect(await within(row).findByText("Analysing · 1 of 3 · about 2 minutes left")).toBeInTheDocument();
+    expect(await within(row).findByText("Analyzing · 1 of 3 · about 2 minutes left")).toBeInTheDocument();
 
     fireEvent.click(within(row).getByRole("button", { name: "Pause" }));
 

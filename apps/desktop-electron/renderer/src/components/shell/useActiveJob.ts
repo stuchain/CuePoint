@@ -105,7 +105,7 @@ const JOB_VERBS: Record<string, string> = {
   beatport_resolve: "Resolving Beatport identities",
   // WAVE-03's waveform analysis, which starts on its own after every file
   // check and can run for hours on a large library.
-  waveform_analysis: "Analysing waveforms",
+  waveform_analysis: "Analyzing waveforms",
 };
 
 /**

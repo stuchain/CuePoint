@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { BeatportTokenStatus } from "../api/cuepointBridge.types";
+import type { BeatportTokenStatus, BeatportTokenTestResult } from "../api/cuepointBridge.types";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 
 export function useBeatportToken() {
@@ -16,6 +16,10 @@ export function useBeatportToken() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
+  // Whether Beatport accepted the token the last test used; null before a test.
+  const [testOk, setTestOk] = useState<boolean | null>(null);
+  // Why the last test failed: Beatport said no, or it could not be reached.
+  const [testReason, setTestReason] = useState<BeatportTokenTestResult["reason"] | null>(null);
 
   const refresh = useCallback(async () => {
     if (!window.cuepoint?.getBeatportTokenStatus) {
@@ -40,7 +44,7 @@ export function useBeatportToken() {
 
   const save = useCallback(async () => {
     if (!window.cuepoint?.setBeatportToken) {
-      throw new Error("Beatport token storage requires the Electron app with engine connected.");
+      throw new Error("Open CuePoint as a desktop app to save a token.");
     }
     const token = draft.trim();
     if (!token) {
@@ -52,6 +56,8 @@ export function useBeatportToken() {
       setStatus(next);
       setDraft("");
       setTestMessage(null);
+      setTestOk(null);
+      setTestReason(null);
       return next;
     } finally {
       setSaving(false);
@@ -60,15 +66,19 @@ export function useBeatportToken() {
 
   const test = useCallback(async () => {
     if (!window.cuepoint?.testBeatportToken) {
-      throw new Error("Beatport token test requires the Electron app with engine connected.");
+      throw new Error("Open CuePoint as a desktop app to test a token.");
     }
     setTesting(true);
     setTestMessage(null);
+    setTestOk(null);
+    setTestReason(null);
     try {
       const result = await window.cuepoint.testBeatportToken(
         draft.trim() ? { token: draft.trim() } : undefined,
       );
       setTestMessage(result.message);
+      setTestOk(result.ok);
+      setTestReason(result.reason ?? null);
       return result;
     } finally {
       setTesting(false);
@@ -85,6 +95,8 @@ export function useBeatportToken() {
     saving,
     testing,
     testMessage,
+    testOk,
+    testReason,
     refresh,
     save,
     test,

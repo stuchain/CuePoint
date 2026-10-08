@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
@@ -8,6 +9,7 @@ import type {
   WaveformAnalysisStatus,
   WaveformTrack,
 } from "../api/cuepointBridge.types";
+import { ToastProvider } from "../components";
 import { EMPTY_AUDIO_STATE } from "../components/player/playerFormat";
 import { resetPlayerStore } from "../components/player/playerStore";
 import { DECODER_MISSING_WORDS, PREVIEW_EMPTY_WORDS } from "../components/waveform/analysisWords";
@@ -132,13 +134,22 @@ function install({
 
 function renderPanel() {
   return render(
-    <ScaleProvider>
-      <WaveformSettingsPanel />
-    </ScaleProvider>,
+    <MemoryRouter>
+      <ToastProvider>
+        <ScaleProvider>
+          <WaveformSettingsPanel />
+        </ScaleProvider>
+      </ToastProvider>
+    </MemoryRouter>,
   );
 }
 
 const state = () => screen.getByTestId("waveform-analysis-state");
+
+/** "Disk space" is a closed disclosure; Delete waveform data… is inside it. */
+async function openDiskSpace(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByText("Disk space"));
+}
 
 beforeEach(() => {
   localStorage.clear();
@@ -156,15 +167,71 @@ afterEach(() => {
   delete (window as { cuepoint?: unknown }).cuepoint;
 });
 
+describe("the page's words (SET-6)", () => {
+  it("says what the waveforms are for, before anything else", async () => {
+    install();
+    renderPanel();
+    expect(
+      screen.getByText("Waveforms are drawn from your audio files, in the background, a few at a time."),
+    ).toBeInTheDocument();
+  });
+
+  it("orders status, colors and preview, then a collapsed Disk space", async () => {
+    install();
+    const { container } = renderPanel();
+    await waitFor(() => expect(state()).toHaveTextContent("All 50,000 analyzed"));
+    const html = container.innerHTML;
+    const at = (needle: string) => html.indexOf(needle);
+    expect(at("waveform-analysis-state")).toBeLessThan(at("Colors"));
+    expect(at("Colors")).toBeLessThan(at("waveform-preview"));
+    expect(at("waveform-preview")).toBeLessThan(at("Disk space"));
+    const disk = container.querySelector("details")!;
+    expect(disk).not.toHaveAttribute("open");
+    expect(disk.querySelector("summary")).toHaveTextContent("Disk space");
+    expect(disk).toHaveTextContent("Waveforms take 240.3 MB.");
+    expect(disk).toContainElement(screen.getByRole("button", { name: "Delete waveform data…" }));
+  });
+
+  it("says there is nothing to analyze yet, and links to the Clean page", async () => {
+    install({ analysis: status({ present: 0, analysed: 0 }) });
+    renderPanel();
+    await waitFor(() =>
+      expect(state()).toHaveTextContent(
+        "Nothing to analyze yet: CuePoint analyzes tracks once their files have been found. Check files on the Clean page.",
+      ),
+    );
+    expect(within(state()).getByRole("link", { name: "Check files on the Clean page." })).toHaveAttribute(
+      "href",
+      "/clean",
+    );
+    expect(screen.queryByText(/No checked files/)).toBeNull();
+  });
+
+  it("uses American spelling for the colors", () => {
+    install();
+    renderPanel();
+    expect(screen.getByText("Colors")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "One color" })).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/[Cc]olour/);
+  });
+
+  it("shows Saved after the color is chosen", async () => {
+    install();
+    renderPanel();
+    await userEvent.click(screen.getByRole("radio", { name: "One color" }));
+    expect(document.body).toHaveTextContent("✓ Saved");
+  });
+});
+
 describe("the analysis's state", () => {
   it.each([
     [
       status({ state: "running", analysed: 1_234, eta_seconds: 6 * 3600 }),
-      "Analysing · 1,234 of 50,000 · about 6 hours left",
+      "Analyzing · 1,234 of 50,000 · about 6 hours left",
       "Pause",
     ],
     [status({ state: "paused", paused: true, analysed: 1_234 }), "Paused · 48,766 to go", "Resume"],
-    [status({ analysed: 49_997, failed: 3 }), "All 50,000 analysed · 3 could not be read", "Analyse waveforms"],
+    [status({ analysed: 49_997, failed: 3 }), "All 50,000 analyzed · 3 could not be read", "Analyze waveforms"],
   ])("says %#: %s", async (analysis, words, button) => {
     install({ analysis });
     renderPanel();
@@ -178,7 +245,7 @@ describe("the analysis's state", () => {
     renderPanel();
 
     await waitFor(() => expect(state()).toHaveTextContent(DECODER_MISSING_WORDS));
-    expect(screen.queryByRole("button", { name: /Pause|Resume|Analyse/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Pause|Resume|Analyze/ })).toBeNull();
   });
 
   it("pauses and resumes, showing the state each answers", async () => {
@@ -192,7 +259,7 @@ describe("the analysis's state", () => {
 
     await user.click(screen.getByRole("button", { name: "Resume" }));
     expect(bridge.resume).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(state()).toHaveTextContent("Analysing · 1,234 of 50,000"));
+    await waitFor(() => expect(state()).toHaveTextContent("Analyzing · 1,234 of 50,000"));
   });
 
   it("says a pause that could not be saved", async () => {
@@ -213,14 +280,14 @@ describe("the analysis's state", () => {
     window.cuepoint = {} as typeof window.cuepoint;
     renderPanel();
 
-    expect(screen.getByText("Open CuePoint as a desktop app to analyse waveforms.")).toBeInTheDocument();
+    expect(screen.getByText("Open CuePoint as a desktop app to analyze waveforms.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Delete waveform data/ })).toBeNull();
   });
 });
 
-describe("the colour choice", () => {
+describe("the color choice", () => {
   const bands = () => screen.getByRole("radio", { name: "Three bands" });
-  const single = () => screen.getByRole("radio", { name: "One colour" });
+  const single = () => screen.getByRole("radio", { name: "One color" });
 
   it("is three bands until chosen otherwise", () => {
     install();
@@ -335,18 +402,19 @@ describe("the preview", () => {
 });
 
 describe("Delete waveform data…", () => {
-  it("asks first, stating the size on disk and that the library is analysed again", async () => {
+  it("asks first, stating the size on disk and that the library is analyzed again", async () => {
     const user = userEvent.setup();
     const bridge = install({ analysis: status({ state: "running", analysed: 1_000, rate_per_hour: 8_000 }) });
     renderPanel();
-    await waitFor(() => expect(state()).toHaveTextContent("Analysing"));
+    await waitFor(() => expect(state()).toHaveTextContent("Analyzing"));
 
+    await openDiskSpace(user);
     await user.click(screen.getByRole("button", { name: "Delete waveform data…" }));
 
     const dialog = screen.getByRole("dialog", { name: "Delete waveform data?" });
     expect(dialog).toHaveTextContent("240.3 MB on disk");
     expect(dialog).toHaveTextContent(
-      "The whole library will be analysed again, which takes about 6 hours at the current rate.",
+      "The whole library will be analyzed again, which takes about 6 hours at the current rate.",
     );
     expect(bridge.deleteData).not.toHaveBeenCalled();
   });
@@ -355,8 +423,9 @@ describe("Delete waveform data…", () => {
     const user = userEvent.setup();
     const bridge = install();
     renderPanel();
-    await waitFor(() => expect(state()).toHaveTextContent("All 50,000 analysed"));
+    await waitFor(() => expect(state()).toHaveTextContent("All 50,000 analyzed"));
 
+    await openDiskSpace(user);
     await user.click(screen.getByRole("button", { name: "Delete waveform data…" }));
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -368,14 +437,15 @@ describe("Delete waveform data…", () => {
     const user = userEvent.setup();
     const bridge = install();
     renderPanel();
-    await waitFor(() => expect(state()).toHaveTextContent("All 50,000 analysed"));
+    await waitFor(() => expect(state()).toHaveTextContent("All 50,000 analyzed"));
 
+    await openDiskSpace(user);
     await user.click(screen.getByRole("button", { name: "Delete waveform data…" }));
     await user.click(screen.getByRole("button", { name: "Delete waveform data" }));
 
     expect(bridge.deleteData).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("Deleted 50,000 waveforms, freeing 239.4 MB.")).toBeInTheDocument();
-    await waitFor(() => expect(state()).toHaveTextContent("Analysing · 0 of 50,000"));
+    await waitFor(() => expect(state()).toHaveTextContent("Analyzing · 0 of 50,000"));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
@@ -387,8 +457,9 @@ describe("Delete waveform data…", () => {
       refusal: { code: "WAVEFORMS_STORE_FAILED", message: "The waveform data could not be deleted" },
     });
     renderPanel();
-    await waitFor(() => expect(state()).toHaveTextContent("All 50,000 analysed"));
+    await waitFor(() => expect(state()).toHaveTextContent("All 50,000 analyzed"));
 
+    await openDiskSpace(user);
     await user.click(screen.getByRole("button", { name: "Delete waveform data…" }));
     await act(async () => {
       await user.click(screen.getByRole("button", { name: "Delete waveform data" }));

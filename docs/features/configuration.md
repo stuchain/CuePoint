@@ -27,7 +27,7 @@ Settings cover: **performance** (max_workers, max_queries_per_track, time budget
   - After parsing args, applies presets: `--fast`, `--turbo`, `--exhaustive`, `--myargs` set multiple config keys (e.g. time budget, max results, max queries). Then `--config` is merged, then individual flags (e.g. `--max-workers`, `--no-checksums`) override.
 
 - **Desktop Settings page**
-  - **Folder:** `apps/desktop-electron/renderer/src/screens/` — the settings panels (`ThemeSettingsPanel.tsx`, `AudioSettingsPanel.tsx`, `WaveformSettingsPanel.tsx`, `RekordboxExportSettingsPanel.tsx`) and `SettingsExportScreen.tsx`.
+  - **Folder:** `apps/desktop-electron/renderer/src/screens/` — the settings panels (`ThemeSettingsPanel.tsx`, `AudioSettingsPanel.tsx`, `WaveformSettingsPanel.tsx`, `RekordboxExportSettingsPanel.tsx`) and `SettingsScreen.tsx`, the page that holds them in sections.
   - **File:** `src/cuepoint/engine/config_api.py` — the engine endpoints that read and write the Beatport token through config_service.
   - **File:** `apps/desktop-electron/electron/mainSettings.ts` — the few things the Electron main process remembers for itself, such as the folder a set list was last saved to.
 

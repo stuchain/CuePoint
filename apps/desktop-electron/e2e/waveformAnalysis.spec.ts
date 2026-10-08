@@ -146,8 +146,8 @@ test.describe("The waveform analysis (WAVE-03)", () => {
       // No click: the import, then the file check, then the analysis, which
       // the strip counts through the library.
       const strip = window.locator(".cp-status__job-label");
-      await expect(strip).toContainText(/Analysing waveforms · [\d,]+ of 301/, { timeout: 90_000 });
-      const pause = window.getByRole("button", { name: /^Pause analysing waveforms/ });
+      await expect(strip).toContainText(/Analyzing waveforms · [\d,]+ of 301/, { timeout: 90_000 });
+      const pause = window.getByRole("button", { name: /^Pause analyzing waveforms/ });
       await expect(pause).toBeVisible();
       await pause.click();
 
@@ -185,10 +185,10 @@ test.describe("The waveform analysis (WAVE-03)", () => {
           return `${now.state} ${now.analysed} ${now.failed} ${now.remaining}`;
         }, { timeout: 180_000 })
         .toBe(`idle ${COPIES} 1 0`);
-      await expect(row.getByText(`All ${PRESENT} analysed · 1 could not be read`)).toBeVisible({
+      await expect(row.getByText(`All ${PRESENT} analyzed · 1 could not be read`)).toBeVisible({
         timeout: 10_000,
       });
-      await expect(row.getByRole("button", { name: "Analyse waveforms" })).toBeVisible();
+      await expect(row.getByRole("button", { name: "Analyze waveforms" })).toBeVisible();
 
       // One event a run: the one paused from the strip said so, the resumed one
       // finished, and the broken file was reported by whichever run reached it

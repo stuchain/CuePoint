@@ -111,8 +111,8 @@ nothing for them.
 
 ## A Beatport token
 
-Discover reads Beatport with your own Beatport token, entered in **Settings**
-under **Beatport token**. Without one, or when Beatport does not accept it, the
+Discover reads Beatport with your own Beatport token, entered in **Settings →
+Beatport** in the **Beatport token** field (**Kept on this computer only**). Without one, or when Beatport does not accept it, the
 page says so at the top, with **Open Settings**, which takes you straight to the
 token field:
 
@@ -142,11 +142,15 @@ access, and then exchange what they give you for a token.
    [Beatport v4 reference](../development/beatport-v4-api.md#getting-a-token).
    Keep your client secret private. The answer is a JSON object; the token is its
    `access_token` value.
-3. In CuePoint, open **Settings**, paste the token into **Beatport token** and
-   choose **Save token**. The field hides the value and shows a masked copy once
+3. In CuePoint, open **Settings → Beatport**, paste the token into **Beatport
+   token** and choose **Save token**. The field hides the value and shows a masked copy once
    it is saved; to replace the token, enter a new one.
 4. Choose **Test connection**. CuePoint calls Beatport once and tells you whether
-   it accepted the token, so you do not have to start a run to find out.
+   it accepted the token (in green) or rejected it (in red), so you do not have to
+   start a run to find out.
+
+The same steps, shortened, are under **How do I get a token?** in Settings →
+Beatport.
 
 You can set the environment variable `BEATPORT_ACCESS_TOKEN` instead. It takes
 priority over the saved token.

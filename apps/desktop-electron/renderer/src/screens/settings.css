@@ -1,0 +1,81 @@
+/*
+ * The Settings page (SET-1): a heading, a list of links to the sections, and
+ * the sections. Where there is room the links stand in a rail on the left;
+ * where there is not they run above the sections.
+ */
+
+.settings-page__layout {
+  display: grid;
+  grid-template-columns: calc(160px * var(--scale)) minmax(0, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.settings-page__nav {
+  position: sticky;
+  top: 0;
+}
+
+.settings-page__nav ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-page__nav a {
+  display: block;
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.settings-page__nav a:hover {
+  color: var(--fg-primary);
+  text-decoration: underline;
+}
+
+.settings-page__nav a:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-info);
+}
+
+.settings-page__sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+/* A link lands on the section; focus there is a landing, not a control. */
+.settings-page__section:focus {
+  outline: none;
+}
+
+.settings-page__about {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.settings-page__about p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+@container content (max-width: 700px) {
+  .settings-page__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-page__nav {
+    position: static;
+  }
+
+  .settings-page__nav ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

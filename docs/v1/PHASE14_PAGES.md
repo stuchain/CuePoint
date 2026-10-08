@@ -327,6 +327,21 @@ words), SET-9 (export words), SET-10 (a "Saved" tick), SET-11 (reset per section
 
 **Complexity**: **M**
 
+**Outcome** (2026-10-08): `SettingsScreen.tsx` (renamed from `SettingsExportScreen.tsx`) is one page: the heading
+"Settings", a `nav` of in-page links (plain anchors that scroll and focus the section and leave the hash router's
+address alone) and eight named regions defined once in `screens/settingsSections.ts`. Every SET proposal named above
+is in, with the defaults chosen as follows. Motion is a one-line placeholder ("Motion settings will appear here.")
+for PAGES-02 to replace. The Beatport "How do I get a token?" help is an inline `<details>` disclosure with the short
+steps from the Discover guide, since the app cannot open the guide. The Privacy section is one panel: the
+error-reports switch, then "When CuePoint quits" on the keys Help → Privacy uses, now behind one module
+(`screens/exitClearing.ts`) that both read on open; Help → Privacy keeps its controls and gains a link to the
+section. About & updates holds the version, **Getting started** and an empty `data-slot="updates"` for Phase 16.
+"Saved" is a 2 s `SavedTick` in the panel header (or beside the switch); Reset to defaults exists for Appearance
+(Neo dark at `DEFAULT_SCALE`, still 2× until PAGES-14) and Waveforms colors (Three bands), each behind a confirm and
+followed by a toast with **Undo** (the toast gained an optional action button). The status strip's "Analyzing
+waveforms" was spelled the American way too, to match. Strings that come from the Python side ("Waveforms
+analysed" on Clean's Health row, the activity summaries) are left for PAGES-04.
+
 ---
 
 ## PAGES-02 — Motion's Groundwork: Tokens, Ten Switches and Reduced Motion

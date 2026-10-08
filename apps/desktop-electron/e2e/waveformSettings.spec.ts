@@ -6,7 +6,7 @@
  * one band, is imported, analysed by the bundled `mpv`, put in the player, and
  * drawn by Settings → Waveforms' preview. In each section the topmost painted
  * pixel of a column is the tallest band's, so it must be that band's colour:
- * low, then mid, then high, in two themes. With "One colour" it is the mono
+ * low, then mid, then high, in two themes. With "One color" it is the mono
  * colour everywhere, and the choice survives a relaunch.
  *
  * Skips where no `mpv` was fetched; desktop CI fetches it on Windows and macOS.
@@ -193,7 +193,7 @@ test.describe("A waveform painted (WAVE-05)", () => {
       await preview.scrollIntoViewIfNeeded();
       await expect(preview.locator("canvas")).toBeVisible({ timeout: 20_000 });
       await expect(window.getByText(/Fixture – Bands/)).toBeVisible();
-      await expect(window.getByTestId("waveform-analysis-state")).toHaveText("All 1 analysed");
+      await expect(window.getByTestId("waveform-analysis-state")).toHaveText("All 1 analyzed");
 
       for (const theme of ["neoDark", "retro16"]) {
         await window.evaluate((name) => {
@@ -211,7 +211,7 @@ test.describe("A waveform painted (WAVE-05)", () => {
         expect(new Set([s.low, s.mid, s.high]).size, theme).toBe(3);
       }
 
-      await window.getByRole("radio", { name: "One colour" }).check();
+      await window.getByRole("radio", { name: "One color" }).check();
       await expect
         .poll(async () => {
           const s = await sample(window, SECTIONS);
@@ -228,7 +228,7 @@ test.describe("A waveform painted (WAVE-05)", () => {
       const window = await ready(app);
       await load(window, file, trackId);
       await window.getByRole("link", { name: "Settings" }).click();
-      await expect(window.getByRole("radio", { name: "One colour" })).toBeChecked();
+      await expect(window.getByRole("radio", { name: "One color" })).toBeChecked();
       const preview = window.getByTestId("waveform-preview");
       await preview.scrollIntoViewIfNeeded();
       await expect(preview.locator("canvas")).toBeVisible({ timeout: 20_000 });
@@ -257,10 +257,11 @@ test.describe("A waveform painted (WAVE-05)", () => {
       await expect.poll(analysed, { timeout: 90_000 }).toBe("idle 1");
 
       await window.getByRole("link", { name: "Settings" }).click();
+      await window.getByText("Disk space").click();
       await window.getByRole("button", { name: "Delete waveform data…" }).click();
       const dialog = window.getByRole("dialog", { name: "Delete waveform data?" });
       await expect(dialog).toContainText(/ on disk\./);
-      await expect(dialog).toContainText("The whole library will be analysed again");
+      await expect(dialog).toContainText("The whole library will be analyzed again");
       await dialog.getByRole("button", { name: "Delete waveform data" }).click();
 
       await expect(window.getByText(/^Deleted 1 waveform, freeing /)).toBeVisible({ timeout: 30_000 });
@@ -291,7 +292,7 @@ test.describe("A waveform painted (WAVE-05)", () => {
       await window.evaluate((xmlPath) => window.cuepoint!.startLibraryImport!({ xml_path: xmlPath }), xml);
 
       // Settings follows the run as it goes, without being asked.
-      await expect(state(window)).toHaveText(/^Analysing · [\d,]+ of 250/, { timeout: 90_000 });
+      await expect(state(window)).toHaveText(/^Analyzing · [\d,]+ of 250/, { timeout: 90_000 });
       await window.getByRole("button", { name: "Pause", exact: true }).click();
       await expect(state(window)).toHaveText(paused, { timeout: 30_000 });
       await expect(window.getByRole("button", { name: "Resume", exact: true })).toBeVisible();
@@ -306,8 +307,8 @@ test.describe("A waveform painted (WAVE-05)", () => {
       await expect(state(window)).toHaveText(paused, { timeout: 30_000 });
 
       await window.getByRole("button", { name: "Resume", exact: true }).click();
-      await expect(state(window)).toHaveText(`All ${copies} analysed`, { timeout: 180_000 });
-      await expect(window.getByRole("button", { name: "Analyse waveforms" })).toBeVisible();
+      await expect(state(window)).toHaveText(`All ${copies} analyzed`, { timeout: 180_000 });
+      await expect(window.getByRole("button", { name: "Analyze waveforms" })).toBeVisible();
     } finally {
       await app.close();
     }

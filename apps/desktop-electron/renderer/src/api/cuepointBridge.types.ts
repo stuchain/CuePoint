@@ -356,6 +356,8 @@ export interface BeatportTokenStatus {
 export interface BeatportTokenTestResult {
   ok: boolean;
   message: string;
+  /** Why a failed test failed: Beatport said no, or it could not be asked. */
+  reason?: "missing" | "rejected" | "unreachable";
 }
 
 /**

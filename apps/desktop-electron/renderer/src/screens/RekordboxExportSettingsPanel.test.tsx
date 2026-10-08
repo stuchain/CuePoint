@@ -29,6 +29,21 @@ afterEach(() => {
 });
 
 describe("the Rekordbox export in Settings", () => {
+  it("says where to export from, and that these remember the last export", async () => {
+    render(<RekordboxExportSettingsPanel />);
+    expect(
+      await screen.findByText(
+        "To export, use “Export to Rekordbox…” in the Library or on a Collection's menu. These remember your last export.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("calls the notation Keys written as", async () => {
+    render(<RekordboxExportSettingsPanel />);
+    expect(await screen.findByText("Keys written as")).toBeInTheDocument();
+    expect(screen.queryByText("Key notation")).toBeNull();
+  });
+
   it("shows the folder and notation the last written export used", async () => {
     render(<RekordboxExportSettingsPanel />);
 
@@ -49,7 +64,7 @@ describe("the Rekordbox export in Settings", () => {
     expect(items[0]).toHaveTextContent("Stopped — nothing was written");
     expect(items[1]).toHaveAttribute("data-outcome", "written");
     expect(items[1]).toHaveTextContent("CuePoint Export 2026-09-21.xml");
-    expect(items[1]).toHaveTextContent("4 tracks · 3 rewritten · 4 playlists · Camelot (8A)");
+    expect(items[1]).toHaveTextContent("4 tracks · 3 with new tags · 4 playlists · Camelot (8A)");
   });
 
   it("says where the first export will go when there has been none", async () => {
@@ -70,7 +85,7 @@ describe("the Rekordbox export in Settings", () => {
     await screen.findByRole("list");
 
     expect(screen.queryAllByRole("button")).toHaveLength(0);
-    expect(screen.getByText(/Export from the Library/)).toBeInTheDocument();
+    expect(screen.getByText(/To export, use “Export to Rekordbox…” in the Library/)).toBeInTheDocument();
   });
 
   it("offers editing neither value: both change by exporting", async () => {
@@ -79,7 +94,7 @@ describe("the Rekordbox export in Settings", () => {
 
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();
-    expect(screen.getByText(/exporting somewhere else, or in another notation, changes them/)).toBeInTheDocument();
+    expect(screen.getByText(/These remember your last export\./)).toBeInTheDocument();
   });
 
   it("says why it cannot read the history, and reads it again when asked", async () => {

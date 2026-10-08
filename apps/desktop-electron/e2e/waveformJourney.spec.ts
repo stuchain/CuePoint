@@ -231,7 +231,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       // --- 6. ... and is paused there while it runs -------------------------
       // Once it has analysed something, so the relaunch has work kept to show.
       await expect(window.getByTestId("waveform-analysis-state")).toHaveText(
-        new RegExp(`^Analysing · [1-9][\\d,]* of ${TOTAL}`),
+        new RegExp(`^Analyzing · [1-9][\\d,]* of ${TOTAL}`),
         { timeout: 90_000 },
       );
       await window.getByRole("button", { name: "Pause", exact: true }).click();
@@ -257,7 +257,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
 
       // --- 2, continued: the strip counts it, and it runs to the end --------
       await expect(window.locator(".cp-status__job-label")).toContainText(
-        new RegExp(`Analysing waveforms · [\\d,]+ of ${TOTAL}`),
+        new RegExp(`Analyzing waveforms · [\\d,]+ of ${TOTAL}`),
         { timeout: 60_000 },
       );
       await analysedAll(window);
@@ -266,7 +266,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       const health = window.getByRole("list", { name: "Checks" }).getByRole("listitem").filter({
         hasText: "Waveforms analysed",
       });
-      await expect(health.getByText(new RegExp(`^All ${TOTAL} analysed`))).toBeVisible({ timeout: 15_000 });
+      await expect(health.getByText(new RegExp(`^All ${TOTAL} analyzed`))).toBeVisible({ timeout: 15_000 });
       const ids = await trackIds(window);
       expect(ids.size).toBe(FORMATS.length);
 
@@ -406,6 +406,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
 
       // --- 9. delete waveform data, and the library analysed again ----------
       await window.getByRole("link", { name: "Settings" }).click();
+      await window.getByText("Disk space").click();
       await window.getByRole("button", { name: "Delete waveform data…" }).click();
       const dialog = window.getByRole("dialog", { name: "Delete waveform data?" });
       await dialog.getByRole("button", { name: "Delete waveform data" }).click();

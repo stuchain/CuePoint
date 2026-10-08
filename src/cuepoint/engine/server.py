@@ -1138,11 +1138,14 @@ def make_handler(
             if path == "/api/v1/config/beatport-token/test":
                 try:
                     body = parse_beatport_token_test_body(self._read_body())
-                    ok, message = test_beatport_token(body.get("token"))
+                    ok, message, reason = test_beatport_token(body.get("token"))
                 except ValueError as exc:
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
-                self._send_json(200, {"ok": ok, "message": message})
+                answer: Dict[str, Any] = {"ok": ok, "message": message}
+                if reason:
+                    answer["reason"] = reason
+                self._send_json(200, answer)
                 return
 
             if clean_handles_post(path):

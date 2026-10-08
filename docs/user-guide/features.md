@@ -14,7 +14,7 @@ shortcuts — see [The CuePoint window](the-window.md).
 | **Clean** | Match tracks on Beatport, review the matches, find missing files and possible duplicates, and see what needs you | [Clean](clean.md) |
 | **Discover** | Find new music on Beatport from your artists and labels, keep a wantlist, push tracks to a Beatport playlist, open an artist's or label's page, and find similar tracks in your library | [Discover](discover.md) |
 | **Prepare** | Plan a set: a running order in chapters, with planned times, transition checks, suggestions for any gap, and set lists | [Prepare](prepare.md) |
-| **Settings** | Theme, audio output, where Rekordbox exports go, the Beatport token Discover uses, and the error-reports switch | [The CuePoint window](the-window.md#interface-scale-and-theme), [Privacy and error reports](the-window.md#privacy-and-error-reports) |
+| **Settings** | One page in sections: theme and size, playback output, waveforms, the Beatport token Discover uses, where Rekordbox exports go, privacy and the version | [The CuePoint window](the-window.md#settings), [Privacy and error reports](the-window.md#privacy-and-error-reports) |
 
 Music plays in the player along the bottom of the window — see
 [Playing music](player.md).
@@ -90,7 +90,7 @@ stay in CuePoint. See [Prepare](prepare.md).
 CuePoint works out a waveform for every track whose file it finds, in the
 background, and draws it in the player bar (where a click seeks), the
 Inspector, a Library column and Prepare's transition strip, in three frequency
-bands or one colour, with Rekordbox's cue points and beat grid on it. The
+bands or one color, with Rekordbox's cue points and beat grid on it. The
 analysis can be paused and carries on after a restart. See
 [Waveforms](waveforms.md).
 

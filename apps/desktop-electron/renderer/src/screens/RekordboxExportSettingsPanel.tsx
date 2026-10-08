@@ -65,9 +65,8 @@ export function RekordboxExportSettingsPanel() {
     <Panel title="Rekordbox export">
       <div className="cp-export-settings">
         <p className="cp-export-settings__hint">
-          Export from the Library: “Export to Rekordbox…” beside Import, or on a Collection’s
-          menu. These are remembered from your last export; exporting somewhere else, or in
-          another notation, changes them.
+          To export, use “Export to Rekordbox…” in the Library or on a Collection&apos;s menu. These
+          remember your last export.
         </p>
 
         {!available && (
@@ -94,7 +93,7 @@ export function RekordboxExportSettingsPanel() {
               </dd>
             </div>
             <div>
-              <dt>Key notation</dt>
+              <dt>Keys written as</dt>
               <dd data-testid="export-remembered-notation">
                 {keyFormatLabel(remembered.key_format)}
               </dd>

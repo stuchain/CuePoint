@@ -75,22 +75,23 @@ loudness, in the player or anywhere else, and never writes it to your files or
 to Rekordbox. The number is there for you to read; gain is yours and the
 mixer's. The column cannot be sorted by, for now.
 
-**A library analysed before CuePoint measured loudness** keeps every waveform.
+**A library analyzed before CuePoint measured loudness** keeps every waveform.
 Each track is measured once more, in the background, after any track that has
 no waveform yet; until then its waveform is drawn as before, and the Inspector
 says the loudness is still to come. A track you select or play while it waits
 is measured first.
 
-## What the colours mean
+## What the colors mean
 
-**Settings → Waveforms** chooses one of two looks; the choice is remembered on
-this computer.
+**Settings → Waveforms → Colors** chooses one of two looks; the choice is
+remembered on this computer. **Reset to defaults** goes back to Three bands,
+after asking, with **Undo**.
 
-- **Three bands** draws the lows, the mids and the highs in colours of their
+- **Three bands** draws the lows, the mids and the highs in colors of their
   own, layered as Rekordbox's three-band view is: the lows in blue, the mids in
   amber over them, the highs in white over those. A kick-heavy section is wide
   and blue; hats and air show as white on top.
-- **One colour** draws the whole sound in one colour.
+- **One color** draws the whole sound in one color.
 
 Each column is as tall as the loudest moment in its stretch of the track, so a
 short peak is never lost in a narrow column. On top of the waveform:
@@ -99,13 +100,13 @@ short peak is never lost in a narrow column. On top of the waveform:
 | --- | --- |
 | A dimmed part | Already played (the bar and the Inspector), or outside an entry's planned times (Prepare) |
 | A thin bright line | Where playback is |
-| A coloured line with a lettered flag | A hot cue, A–H, in the colour Rekordbox gave it |
+| A colored line with a lettered flag | A hot cue, A–H, in the color Rekordbox gave it |
 | A thin line without a flag | A memory cue |
 | A tinted stretch | A loop |
 | Faint vertical lines behind the waveform | The beat grid: a line every bar, or every 4, 8, 16 or 32 bars when bars are too close to draw |
 
-Every theme has its own version of these colours, each readable against its
-panels, and a custom theme gets them worked out from its colours. Settings shows
+Every theme has its own version of these colors, each readable against its
+panels, and a custom theme gets them worked out from its colors. Settings shows
 a preview: the track in the player, with its cues, grid and playhead, so you can
 judge the choice on music you know.
 
@@ -124,13 +125,13 @@ you play or select while it waits jumps the queue.
 loudness as it goes. On a recent desktop that is about 6,000 six-minute tracks
 an hour, so a 50,000-track library takes about eight and a half hours, and a few
 thousand tracks take minutes. The
-status strip counts it as **Analysing waveforms · 1,234 of 50,000**; hover over
+status strip counts it as **Analyzing waveforms · 1,234 of 50,000**; hover over
 it for the rate and the time left. After that, only new and changed files are
-analysed, and a library that has not changed is checked in moments.
+analyzed, and a library that has not changed is checked in moments.
 
-**A changed file is analysed again** by itself after the next file check. A file
+**A changed file is analyzed again** by itself after the next file check. A file
 that could not be read is not tried again until it changes. A file that is
-missing (an unplugged drive, say) is not counted as a failure: it is analysed
+missing (an unplugged drive, say) is not counted as a failure: it is analyzed
 when it is back.
 
 ## Pausing it
@@ -143,7 +144,7 @@ resume it:
 - from **Clean → Health**, where **Waveforms analysed** says how far it has got.
 
 A paused analysis keeps everything it did. Resuming carries on where it
-stopped, not from the start. A track you play or select is still analysed while
+stopped, not from the start. A track you play or select is still analyzed while
 the rest is paused, so the waveform you are looking at appears.
 
 It also steps aside on its own for an import, a refresh, a file check or a tag
@@ -173,9 +174,10 @@ Waveforms are kept in `waveforms.db`, beside your library in CuePoint's folder
   tracks, and less for real music, which packs tighter than the test data
   this was measured with.
 
-**Settings → Waveforms → Delete waveform data…** deletes it, the loudness
+**Settings → Waveforms → Disk space → Delete waveform data…** (under the
+**Disk space** disclosure, which says how much room waveforms take) deletes it, the loudness
 measured with each waveform too, after saying how much space it takes and that
-the whole library will be analysed again; unless
+the whole library will be analyzed again; unless
 the analysis is paused, that starts at once. Your cue points, beat grids and
 everything else in your library are untouched. You never need this to fix a
 changed file.

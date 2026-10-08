@@ -59,6 +59,25 @@ describe("the error-reporting switch", () => {
     await waitFor(() => expect(toggle).not.toBeChecked());
   });
 
+  it("shows Saved once the bridge has accepted the change", async () => {
+    render(<ErrorReportingSettingsPanel />);
+    const toggle = screen.getByRole("switch", { name: "Send error reports" });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    await userEvent.click(toggle);
+    await waitFor(() => expect(document.body).toHaveTextContent("✓ Saved"));
+  });
+
+  it("holds the rest of the Privacy section after its own controls", async () => {
+    render(
+      <ErrorReportingSettingsPanel>
+        <p>When CuePoint quits</p>
+      </ErrorReportingSettingsPanel>,
+    );
+    expect(screen.getByRole("heading", { name: "Privacy" })).toBeInTheDocument();
+    const text = document.body.textContent ?? "";
+    expect(text.indexOf("Send error reports")).toBeLessThan(text.indexOf("When CuePoint quits"));
+  });
+
   it("puts the switch back and says why when the change is refused", async () => {
     set.mockRejectedValue(new Error("The settings file could not be written."));
     render(<ErrorReportingSettingsPanel />);

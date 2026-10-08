@@ -463,9 +463,9 @@ describe("stopping a job", () => {
     bridge({ cancelJob });
     render(<StatusStrip />);
 
-    const label = await screen.findByText("Analysing waveforms · 1,234 of 50,000");
+    const label = await screen.findByText("Analyzing waveforms · 1,234 of 50,000");
     const pause = screen.getByRole("button", {
-      name: "Pause analysing waveforms · 1,234 of 50,000",
+      name: "Pause analyzing waveforms · 1,234 of 50,000",
     });
     expect(pause).toHaveTextContent("Pause");
     expect(label).toHaveAttribute("title", "About 8,128 an hour · about 6 hours left");

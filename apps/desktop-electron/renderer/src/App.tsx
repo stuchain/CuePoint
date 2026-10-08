@@ -36,8 +36,9 @@ import {
   DiscoverScreen,
   LibraryScreen,
   PrepareScreen,
-  SettingsExportScreen,
+  SettingsScreen,
 } from "./screens";
+import { sendExitClearing } from "./screens/exitClearing";
 import { libraryOpening, libraryRefreshState, refreshOpening } from "./screens/library/libraryLink";
 import { PREPARE_SET_ROUTE, preparePath } from "./screens/prepare/prepareLink";
 import { EntityScreen } from "./screens/discover/EntityScreen";
@@ -81,13 +82,7 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
-    const clearCacheOnExit = localStorage.getItem(
-      "cuepoint-privacy-clear-cache-on-exit",
-    ) === "1";
-    const clearLogsOnExit = localStorage.getItem(
-      "cuepoint-privacy-clear-logs-on-exit",
-    ) === "1";
-    void window.cuepoint?.setPrivacyExitPrefs?.({ clearCacheOnExit, clearLogsOnExit });
+    sendExitClearing();
   }, []);
 
   useEffect(() => {
@@ -221,7 +216,12 @@ function AppShell() {
       case "prepare":
         return prepareScreen;
       case "settings":
-        return <SettingsExportScreen onOpenPrivacy={() => setPrivacyOpen(true)} />;
+        return (
+          <SettingsScreen
+            onOpenPrivacy={() => setPrivacyOpen(true)}
+            onOpenOnboarding={() => setOnboardingOpen(true)}
+          />
+        );
       default:
         return null;
     }

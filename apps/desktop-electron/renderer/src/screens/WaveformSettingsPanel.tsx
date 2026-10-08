@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import { Button, Modal, Panel } from "../components";
+import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { selectCurrentItem, selectPosition } from "../components/player/playerFormat";
 import { usePlayerValue } from "../components/player/playerStore";
 import {
   ACTION_LABELS,
+  NOTHING_TO_ANALYZE_WORDS,
   PREVIEW_EMPTY_WORDS,
   WAVEFORM_LOADING_WORDS,
   analysisAction,
@@ -17,12 +20,17 @@ import {
 import { useWaveform } from "../components/waveform/useWaveforms";
 import { useWaveformAnalysis } from "../components/waveform/useWaveformAnalysis";
 import { WaveformCanvas } from "../components/waveform/WaveformCanvas";
-import { WAVEFORM_COLOUR_OPTIONS, useWaveformColour } from "../components/waveform/waveformColour";
+import {
+  WAVEFORM_COLOUR_DEFAULT,
+  WAVEFORM_COLOUR_OPTIONS,
+  useWaveformColour,
+} from "../components/waveform/waveformColour";
 import { useWaveformBox } from "../components/waveform/waveformEnvironment";
+import { ResetToDefaults } from "./ResetToDefaults";
 import "./waveform-settings.css";
 
 /**
- * The colour choice, shown on the track in the player: the waveform a person
+ * The color choice, shown on the track in the player: the waveform a person
  * knows, rather than a made-up one, with its cues, grid and playhead.
  */
 function WaveformPreview() {
@@ -70,15 +78,16 @@ function WaveformPreview() {
  * Settings → Waveforms (WAVE-05, DEC-116, DEC-117).
  *
  * The analysis's state in the words the Health view uses, its one button, the
- * colour choice with a preview, and "Delete waveform data…", which says what
- * it costs before it does it: the size on disk, and a whole library analysed
- * again.
+ * color choice with a preview, and "Delete waveform data…" under "Disk space",
+ * which says what it costs before it does it: the size on disk, and a whole
+ * library analyzed again (SET-6).
  */
 export function WaveformSettingsPanel() {
   const analysis = useWaveformAnalysis();
   const [mode, setMode] = useWaveformColour();
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [saved, markSaved] = useSavedSignal();
   const { status } = analysis;
   const action = status ? analysisAction(status) : null;
 
@@ -98,17 +107,48 @@ export function WaveformSettingsPanel() {
     else setMessage(deletedWords(answer.value.waveforms, answer.value.freed_bytes));
   };
 
+  const chooseMode = (next: typeof mode) => {
+    setMode(next);
+    markSaved();
+  };
+
+  // SET-11: the color choice is the one setting here that resets.
+  const resetColors = () => {
+    const before = mode;
+    setMode(WAVEFORM_COLOUR_DEFAULT);
+    markSaved();
+    return () => {
+      setMode(before);
+      markSaved();
+    };
+  };
+
+  const nothingToAnalyze = status?.state === "idle" && status.present === 0;
+
   return (
-    <Panel title="Waveforms">
+    <Panel title="Waveforms" badge={<SavedTick signal={saved} />}>
       <div className="cp-waveform-settings">
+        <p className="cp-waveform-settings__hint">
+          Waveforms are drawn from your audio files, in the background, a few at a time.
+        </p>
+
         {!analysis.supported ? (
           <p className="cp-waveform-settings__hint">
-            Open CuePoint as a desktop app to analyse waveforms.
+            Open CuePoint as a desktop app to analyze waveforms.
           </p>
         ) : (
           <div className="cp-waveform-settings__state">
             <p className="cp-waveform-settings__status" role="status" data-testid="waveform-analysis-state">
-              {analysis.error ?? (status ? analysisWords(status) : "Reading the analysis…")}
+              {analysis.error ??
+                (nothingToAnalyze ? (
+                  <>
+                    {NOTHING_TO_ANALYZE_WORDS} <Link to="/clean">Check files on the Clean page.</Link>
+                  </>
+                ) : status ? (
+                  analysisWords(status)
+                ) : (
+                  "Reading the analysis…"
+                ))}
             </p>
             {action ? (
               <Button variant="secondary" loading={analysis.busy} onClick={() => void runAction()}>
@@ -119,7 +159,7 @@ export function WaveformSettingsPanel() {
         )}
 
         <fieldset className="cp-waveform-settings__choice">
-          <legend className="cp-waveform-settings__label">Colours</legend>
+          <legend className="cp-waveform-settings__label">Colors</legend>
           {WAVEFORM_COLOUR_OPTIONS.map((option) => (
             <label key={option.mode} className="cp-waveform-settings__option">
               <input
@@ -127,35 +167,45 @@ export function WaveformSettingsPanel() {
                 name="waveform-colour"
                 value={option.mode}
                 checked={mode === option.mode}
-                onChange={() => setMode(option.mode)}
+                onChange={() => chooseMode(option.mode)}
               />
               <span>{option.label}</span>
             </label>
           ))}
           <p className="cp-waveform-settings__hint">
-            Three bands draws the lows, mids and highs in colours of their own, as Rekordbox does. One
-            colour draws the whole sound in one.
+            Three bands draws the lows, mids and highs in colors of their own, as Rekordbox does. One
+            color draws the whole sound in one.
           </p>
+          <div className="cp-waveform-settings__reset">
+            <ResetToDefaults
+              section="Waveforms"
+              summary="This sets the colors to Three bands."
+              onReset={resetColors}
+            />
+          </div>
         </fieldset>
 
         <WaveformPreview />
 
         {analysis.supported ? (
-          <div className="cp-waveform-settings__delete">
-            <Button
-              variant="danger"
-              disabled={analysis.busy || !status}
-              onClick={() => {
-                setMessage(null);
-                setConfirming(true);
-              }}
-            >
-              Delete waveform data…
-            </Button>
-            <p className="cp-waveform-settings__hint">
-              {status ? `Waveform data takes ${sizeWords(status.store_bytes)} on disk.` : null}
-            </p>
-          </div>
+          <details className="cp-waveform-settings__disk">
+            <summary>Disk space</summary>
+            <div className="cp-waveform-settings__delete">
+              <p className="cp-waveform-settings__hint">
+                {status ? `Waveforms take ${sizeWords(status.store_bytes)}.` : null}
+              </p>
+              <Button
+                variant="danger"
+                disabled={analysis.busy || !status}
+                onClick={() => {
+                  setMessage(null);
+                  setConfirming(true);
+                }}
+              >
+                Delete waveform data…
+              </Button>
+            </div>
+          </details>
         ) : null}
 
         {message ? (

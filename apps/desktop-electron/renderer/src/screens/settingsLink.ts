@@ -6,12 +6,13 @@
  * so a link that landed at the top would leave them to find it. The link
  * carries which field it is about in the location's state, as Clean's links
  * do, and Settings scrolls to it and focuses it. Help → Privacy links to the
- * error-reporting switch the same way (REPORT-01).
+ * error-reporting switch the same way (REPORT-01), and to the Privacy section
+ * as a whole for the exit-clearing choices (SET-7).
  */
 import type { Location } from "react-router-dom";
 
 /** The fields a link can open Settings on. */
-type SettingsFocus = "beatport-token" | "error-reporting";
+type SettingsFocus = "beatport-token" | "error-reporting" | "privacy";
 
 interface SettingsFocusState {
   settingsFocus: SettingsFocus;
@@ -29,7 +30,11 @@ export function settingsFocus(
 ): { focus: SettingsFocus; token: string } | null {
   const state = location.state as Partial<SettingsFocusState> | null | undefined;
   if (!state) return null;
-  if (state.settingsFocus !== "beatport-token" && state.settingsFocus !== "error-reporting") {
+  if (
+    state.settingsFocus !== "beatport-token" &&
+    state.settingsFocus !== "error-reporting" &&
+    state.settingsFocus !== "privacy"
+  ) {
     return null;
   }
   return { focus: state.settingsFocus, token: String(state.token ?? "") };
