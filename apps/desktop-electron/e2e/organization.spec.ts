@@ -262,7 +262,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       });
 
       await collectionsTree(window).getByText("Openers").click();
-      await expect(window.getByRole("status").first()).toContainText("3 tracks", {
+      await expect(window.locator(".cp-filter-bar__count")).toContainText("3 tracks", {
         timeout: 30_000,
       });
       // `[data-index]` excludes the header, which carries the same column id.
@@ -352,10 +352,10 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await window.getByRole("treeitem", { name: /All tracks/ }).click();
       await window.getByRole("button", { name: "Add filter" }).click();
       await window.getByLabel("Field").selectOption("genre");
-      await window.getByLabel("Condition").selectOption("is");
+      await window.locator("#rule").selectOption("is");
       await window.getByLabel("Value").fill("House");
       await window.getByRole("button", { name: "Add", exact: true }).click();
-      await expect(window.getByRole("status").first()).toContainText("6 tracks", {
+      await expect(window.locator(".cp-filter-bar__count")).toContainText("6 tracks", {
         timeout: 30_000,
       });
 
@@ -379,7 +379,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
 
       // It evaluates live rather than holding rows (DEC-061).
       await collectionsTree(window).getByText("House only").click();
-      await expect(window.getByRole("status").first()).toContainText("6 tracks", {
+      await expect(window.locator(".cp-filter-bar__count")).toContainText("6 tracks", {
         timeout: 30_000,
       });
 

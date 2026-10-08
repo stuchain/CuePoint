@@ -343,6 +343,8 @@ interface Bridge {
   addTracksToCollection: ReturnType<typeof vi.fn>;
   getLibraryFilterFields: ReturnType<typeof vi.fn>;
   getLibraryFacet: ReturnType<typeof vi.fn>;
+  /** The Key, BPM and Genre quick filters (FLW-4). */
+  getLibraryQuickFacets: ReturnType<typeof vi.fn>;
   getLibraryTrack: ReturnType<typeof vi.fn>;
   /** CuePoint's own layer, editable from the Inspector (ORG-10). */
   setTrackMetadata: ReturnType<typeof vi.fn>;
@@ -410,6 +412,17 @@ function install(overrides: Partial<Bridge> = {}) {
       truncated: false,
       total_values: 0,
       range: null,
+    }),
+    getLibraryQuickFacets: vi.fn().mockResolvedValue({
+      keys: [
+        { value: "8A", count: 2 },
+        { value: "9A", count: 1 },
+      ],
+      no_key: 1,
+      bpm: { min: 120, max: 128, missing: 0 },
+      genres: [{ value: "House", count: 3 }],
+      genres_total: 1,
+      genres_truncated: false,
     }),
     getLibraryTrack: vi.fn().mockResolvedValue(DETAIL),
     setTrackMetadata: vi.fn().mockResolvedValue({ metadata: DETAIL.metadata }),
@@ -756,6 +769,27 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     );
     expect(await screen.findByText(/No tracks have a Beatport key yet/)).toBeInTheDocument();
   }, 10000);
+
+  it("answers a Key filter that finds nothing, even after the key note was dismissed", async () => {
+    keyFacet([{ value: null, count: 3880 }]);
+    renderScreen({ onOpenMatch: vi.fn() });
+    await tableReady();
+    await importAnother();
+
+    const note = await screen.findByRole("status", { name: "No Beatport keys yet" });
+    await userEvent.click(within(note).getByRole("button", { name: "Dismiss this note" }));
+    expect(screen.queryByText(/No tracks have a Beatport key yet/)).toBeNull();
+
+    bridge.browseLibrary.mockImplementation(async (params: Record<string, unknown>) =>
+      browseAnswer(params, params.filters ? [] : TRACKS),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /^8A/ }));
+
+    const asked = await screen.findByRole("status", { name: "No Beatport keys yet" });
+    expect(within(asked).queryByRole("button", { name: "Dismiss this note" })).toBeNull();
+    expect(screen.getAllByRole("status", { name: "No Beatport keys yet" })).toHaveLength(1);
+  });
 
   it("does not offer Match tracks… where the shell cannot open it", async () => {
     keyFacet([{ value: null, count: 3880 }]);
@@ -2592,7 +2626,7 @@ describe("rearranging a Collection (ORG-11)", () => {
     renderScreen();
     await tableReady();
     await openWarmups();
-    await userEvent.click(screen.getByRole("button", { name: /^BPM/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^BPM(?! ▾)/ }));
     await waitFor(() => expect(lastBrowse()).toMatchObject({ sort: "bpm" }));
 
     const dataTransfer = transfer();
@@ -3318,5 +3352,133 @@ describe("opened on a Health count's rules (CLEAN-12)", () => {
     renderScreen({ openWith: null });
     await tableReady();
     expect(lastBrowse().filters).toBeNull();
+  });
+});
+
+describe("quick filters and saving (PAGES-05B)", () => {
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  async function openFriday() {
+    const playlists = await screen.findByRole("tree", { name: "Playlists" });
+    await userEvent.click(within(playlists).getByText("Friday"));
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ playlistId: 10 }));
+  }
+
+  it("asks for the keys of the view that is open, and filters by the one picked", async () => {
+    renderScreen();
+    await tableReady();
+    await openFriday();
+
+    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    await waitFor(() =>
+      expect(bridge.getLibraryQuickFacets).toHaveBeenCalledWith(
+        expect.objectContaining({ playlistId: 10 }),
+      ),
+    );
+    await userEvent.click(await screen.findByRole("checkbox", { name: /^8A/ }));
+
+    await waitFor(() =>
+      expect(lastBrowse().filters).toEqual({
+        match: "all",
+        rules: [{ field: "key", operator: "is", value: "8A" }],
+      }),
+    );
+    expect(lastBrowse()).toMatchObject({ playlistId: 10 });
+    expect(
+      within(screen.getByLabelText("Active filters")).getByText(/8A/),
+    ).toBeInTheDocument();
+  });
+
+  it("asks again for the view when a pick changes it", async () => {
+    renderScreen();
+    await tableReady();
+    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /^8A/ }));
+    await waitFor(() => expect(bridge.getLibraryQuickFacets.mock.calls.length).toBeGreaterThan(1));
+    const last = bridge.getLibraryQuickFacets.mock.calls.at(-1)?.[0] as {
+      filters: { rules: unknown[] };
+    };
+    expect(last.filters.rules).toHaveLength(1);
+  });
+
+  it("opens Match tracks… from a Key list with no keys in it", async () => {
+    const onOpenMatch = vi.fn();
+    install({
+      getLibrarySummary: vi.fn().mockResolvedValue(loadedSummary()),
+      getLibraryFacet: vi.fn().mockResolvedValue({
+        field: "key",
+        values: [{ value: null, count: 3 }],
+        truncated: false,
+        total_values: 1,
+        range: null,
+      }),
+      getLibraryQuickFacets: vi.fn().mockResolvedValue({
+        keys: [],
+        no_key: 3,
+        bpm: { min: 120, max: 128, missing: 0 },
+        genres: [],
+        genres_total: 0,
+        genres_truncated: false,
+      }),
+    });
+    renderScreen({ onOpenMatch });
+    await tableReady();
+    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Match tracks…" }));
+    expect(onOpenMatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the open playlist when a Smart Collection is saved (FLW-7)", async () => {
+    renderScreen();
+    await tableReady();
+    await openFriday();
+    await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+    fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save as Smart Collection…" }),
+    );
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "House at Friday" } });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(bridge.saveSmartCollection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rules: {
+            match: "all",
+            rules: [
+              { field: "genre", operator: "is", value: "House" },
+              {
+                field: "in_playlist",
+                operator: "any_of",
+                value: [{ kind: "playlist", id: 10 }],
+              },
+            ],
+          },
+        }),
+      ),
+    );
+  });
+
+  it("saves only the rules when no playlist is open", async () => {
+    renderScreen();
+    await tableReady();
+    await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+    fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save as Smart Collection…" }),
+    );
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Housey" } });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(bridge.saveSmartCollection).toHaveBeenCalled());
+    const saved = bridge.saveSmartCollection.mock.calls[0]?.[0] as {
+      rules: { rules: Array<{ field: string }> };
+    };
+    expect(saved.rules.rules.map((rule) => rule.field)).toEqual(["genre"]);
   });
 });

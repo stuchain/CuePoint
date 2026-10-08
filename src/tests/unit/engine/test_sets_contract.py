@@ -111,7 +111,8 @@ class TestReads:
         row = first(answer["entries"])
         holds("SetEntry", row)
         # The Library's own row, every field the engine sends declared.
-        assert set(row["track"]) == _fields("LibraryTrackRow")
+        # matched_on is a text-search answer only (FLW-5), never on a Set row.
+        assert set(row["track"]) == _fields("LibraryTrackRow") - {"matched_on"}
 
     def test_the_checks(self, friday):
         answer = api.analysis(query(set_id=friday["id"]))
@@ -152,7 +153,7 @@ class TestReads:
         holds("SetSuggestion", suggestion)
         holds("SetSuggestionSide", suggestion["before"])
         # The Library's own row (PREP-11), every field the engine sends declared.
-        assert set(suggestion["track"]) == _fields("LibraryTrackRow")
+        assert set(suggestion["track"]) == _fields("LibraryTrackRow") - {"matched_on"}
         assert set(answer["unused"]) <= set(SIDES)
 
     def test_a_chapters_range_and_a_gap_nothing_bridges(self, friday):

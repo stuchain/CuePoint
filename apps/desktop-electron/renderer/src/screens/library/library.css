@@ -382,3 +382,15 @@
 .library-cell__loudness--word {
   color: var(--fg-muted);
 }
+
+/* A row a search found by its key or tempo says so beside its title (FLW-5). */
+.library-matched {
+  margin-inline-start: var(--space-xs);
+  padding: 0 var(--space-xs);
+  background: var(--bg-input);
+  border: var(--hairline) solid var(--border-outline);
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}

@@ -358,6 +358,8 @@ export interface LibraryTrackRow {
   /** PAGES-15: whose key it is (`yours` or `beatport`), and its name; null when the track has none. */
   key_source?: "yours" | "beatport" | null;
   key_name?: string | null;
+  /** FLW-5: what a search matched this row on besides its words; null for its words. */
+  matched_on?: "key" | "bpm" | null;
   effective_bpm?: number | null;
   effective_genre?: string | null;
   effective_label?: string | null;
@@ -639,10 +641,24 @@ export interface LibraryFacet {
   range: LibraryFacetRange | null;
 }
 
+/** What the Key, BPM and Genre quick filters offer for one view (FLW-4). */
+export interface LibraryQuickFacets {
+  /** The view's keys in Camelot order (1A, 1B, 2A ... 12B), with counts. */
+  keys: Array<{ value: string; count: number }>;
+  /** Tracks in the view with no Beatport key. */
+  no_key: number;
+  bpm: { min: number | null; max: number | null; missing: number };
+  genres: Array<{ value: string; count: number }>;
+  genres_total: number;
+  genres_truncated: boolean;
+}
+
 export interface LibraryFilterField {
   name: string;
-  type: "text" | "number" | "date" | "bool" | "tag" | "collection" | "name" | "beatport";
+  type: "text" | "number" | "date" | "bool" | "tag" | "collection" | "name" | "beatport" | "source";
   label: string;
+  /** LIB-7: the group the Field list shows this under; the engine's, never the renderer's. */
+  group?: string;
   facetable: boolean;
   integer: boolean;
   unit: string | null;
@@ -2664,6 +2680,27 @@ export class EngineClient {
       headers: this.headers(),
     });
     return readJson(res);
+  }
+
+  /**
+   * What the Key, BPM and Genre quick filters offer for a view (FLW-4): the
+   * view's keys in Camelot order with counts, its BPM range and its genres.
+   * A POST because the view is a filter body; it changes nothing.
+   */
+  async getLibraryQuickFacets(params: {
+    q?: string;
+    playlistId?: number | null;
+    filters?: FilterRuleSet | null;
+    scope?: "collection" | "smart";
+    collectionId?: number | null;
+  }): Promise<LibraryQuickFacets> {
+    return this.postJson("/api/v1/library/facets", {
+      q: params.q ?? "",
+      playlist_id: params.playlistId ?? null,
+      filters: params.filters ?? null,
+      scope: params.scope ?? null,
+      collection_id: params.collectionId ?? null,
+    });
   }
 
   /** What can be filtered, and with which operators (DEC-043). */

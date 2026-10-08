@@ -256,7 +256,7 @@ function lastBatch(): Record<string, unknown> {
 
 const CLEAN_ENTRIES = [
   "Match on Beatport",
-  "Re-match",
+  "Search Beatport again for this track",
   "Accept match",
   "Reject match",
   "Apply Beatport values…",
@@ -320,7 +320,7 @@ describe("what the entries do", () => {
     expect(await screen.findByText("Matching 1 track on Beatport.")).toBeInTheDocument();
     expect(await screen.findByText("Matching finished.")).toBeInTheDocument();
 
-    await userEvent.click(within(await openMenuOn("Track 1")).getByRole("menuitem", { name: "Re-match" }));
+    await userEvent.click(within(await openMenuOn("Track 1")).getByRole("menuitem", { name: "Search Beatport again for this track" }));
     await waitFor(() =>
       expect(mock("startCleanMatch")).toHaveBeenLastCalledWith({ selection: { track_ids: [1] }, rematch: true }),
     );

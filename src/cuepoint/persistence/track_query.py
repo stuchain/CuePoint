@@ -36,6 +36,7 @@ them last.
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from dataclasses import dataclass, replace
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -56,6 +57,7 @@ from cuepoint.models.filter_rule import (
     field_spec,
 )
 from cuepoint.models.track_metadata import OVERRIDE_FIELDS
+from cuepoint.services.key_resolver import camelot_of
 from cuepoint.persistence.filter_sql import (
     LIKE_ESCAPE,
     compile_rule_set,
@@ -297,13 +299,48 @@ _TAG_OUTER_JOIN = " LEFT JOIN track_tags ON track_tags.track_id = tracks.id"
 _SEARCH_COLUMNS = ("title", "artist", "album", "label")
 
 #: The joins a text search reads: the columns above, as their filter fields
-#: read them. Only ``label`` is overridable today.
+#: read them (``label`` is overridable), and the key's, for a query that is one
+#: (FLW-5). Primary-key probes, so a search that is not a key pays little.
 SEARCH_JOINS: Tuple[str, ...] = tuple(
-    sorted({alias for column in _SEARCH_COLUMNS for alias in field_spec(column).joins})
+    sorted(
+        {alias for column in _SEARCH_COLUMNS for alias in field_spec(column).joins}
+        | set(field_spec("key").joins)
+    )
 )
 
+_NUMBER = re.compile(r"^\d{1,4}(?:[.,](\d{1,2}))?$")
 
-def search_clause(query: str) -> Tuple[Optional[str], str, Tuple[str, ...]]:
+
+def search_key(text: str) -> Optional[str]:
+    """The Camelot code a search text names, or None (FLW-5).
+
+    "8A", "Am" and "A minor" are one key. A lone note letter ("a", "e") is
+    not read as a key: it is far more likely the start of a word, and reading
+    it as A major would add every track in 11B to a search for a title.
+    """
+    if len(text) < 2:
+        return None
+    return camelot_of(text)
+
+
+def search_bpm(text: str) -> Optional[Tuple[float, float]]:
+    """The ``[low, high)`` BPM window a search text names, or None (FLW-5).
+
+    A whole number matches the tracks that round to it: "124" finds
+    123.5 <= bpm < 124.5. A number with decimals is read at its own precision:
+    "124.5" finds 124.45 <= bpm < 124.55, since a DJ typing a decimal means
+    that tempo and not its neighbors.
+    """
+    found = _NUMBER.match(text)
+    if found is None:
+        return None
+    number = float(text.replace(",", "."))
+    decimals = len(found.group(1) or "")
+    half = 0.5 / (10**decimals)
+    return number - half, number + half
+
+
+def search_clause(query: str) -> Tuple[Optional[str], str, Tuple[object, ...]]:
     """Build the WHERE fragment and parameters for a text query.
 
     Returns ``(None, "", ())`` for a blank query. What that means differs by
@@ -324,11 +361,24 @@ def search_clause(query: str) -> Tuple[Optional[str], str, Tuple[str, ...]]:
     if not text:
         return None, "", ()
     pattern = f"%{escape_like(text)}%"
-    sql = " OR ".join(
+    clauses = [
         f"{field_spec(column).expression} LIKE ? ESCAPE '{LIKE_ESCAPE}'"
         for column in _SEARCH_COLUMNS
-    )
-    return pattern, f"({sql})", tuple(pattern for _ in _SEARCH_COLUMNS)
+    ]
+    params: List[object] = [pattern for _ in _SEARCH_COLUMNS]
+    # FLW-5: a text that is a key also finds the tracks in that key, and a
+    # number also finds the tracks at that tempo. Each reads the field's own
+    # expression, so what is found is what the Key and BPM columns show.
+    camelot = search_key(text)
+    if camelot is not None:
+        clauses.append(f"{field_spec('key').expression} = ?")
+        params.append(camelot)
+    window = search_bpm(text)
+    if window is not None:
+        bpm = field_spec("bpm").expression
+        clauses.append(f"({bpm} >= ? AND {bpm} < ?)")
+        params.extend(window)
+    return pattern, f"({' OR '.join(clauses)})", tuple(params)
 
 
 def _field_term(name: str, text: bool = False) -> SortTerm:

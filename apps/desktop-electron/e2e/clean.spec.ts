@@ -335,7 +335,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         const table = window.getByRole("table", { name: "Library tracks" });
         await expect(table.getByText("Gone")).toBeVisible({ timeout: 15_000 });
         await expect(table.getByText("Tone One")).toHaveCount(0);
-        await window.getByRole("button", { name: "Clear all", exact: true }).click();
+        await window.getByRole("button", { name: "Clear all filters", exact: true }).first().click();
         await expect(table.getByText("Tone One")).toBeVisible({ timeout: 15_000 });
       });
 

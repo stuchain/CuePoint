@@ -210,6 +210,7 @@ describe("desktop contract", () => {
       "browseLibrary",
       "getLibraryPlaylists",
       "getLibraryFacet",
+      "getLibraryQuickFacets",
       "getLibraryFilterFields",
       "getLibraryTrack",
     ];
@@ -241,6 +242,22 @@ describe("desktop contract", () => {
       expect(engineClient).toContain("/api/v1/library/filter-fields");
       expect(engineClient).toContain("async getLibraryTrack(");
       expect(engineClient).toContain("/api/v1/library/tracks/");
+    });
+
+    it("asks for the quick filters with a POST of the view (FLW-4)", () => {
+      // The same path as the one-field GET, with a body: the view is a filter
+      // rule set, which a query string holds badly. It still changes nothing.
+      const start = engineClient.indexOf("async getLibraryQuickFacets(");
+      const method = engineClient.slice(start, engineClient.indexOf("async ", start + 10));
+      expect(method).toContain("postJson");
+      expect(method).toContain("/api/v1/library/facets");
+      for (const source of [bridgeTypes, supervisor, engineClient]) {
+        const at = source.indexOf("getLibraryQuickFacets");
+        const params = source.slice(at, source.indexOf("}", at));
+        expect(params).toContain("scope");
+        expect(params).toContain("collectionId");
+      }
+      expect(bridgeTypes).toContain("interface LibraryQuickFacets");
     });
 
     it("browses through the one search endpoint (DEC-023)", () => {
@@ -557,8 +574,19 @@ describe("desktop contract", () => {
 
       expect(kinds(bridgeTypes)).toEqual(
         // `name` is DISCOVER-03's artist or label compared by identity, and
-        // `beatport` DISCOVER-07's artist or label by Beatport id.
-        ["beatport", "bool", "collection", "date", "name", "number", "tag", "text"].sort(),
+        // `beatport` DISCOVER-07's artist or label by Beatport id, and `source`
+        // FLW-7's "In playlist" (playlists, Collections and Sets by kind and id).
+        [
+          "beatport",
+          "bool",
+          "collection",
+          "date",
+          "name",
+          "number",
+          "source",
+          "tag",
+          "text",
+        ].sort(),
       );
       expect(kinds(bridgeTypes)).toEqual(kinds(engineClient));
     });

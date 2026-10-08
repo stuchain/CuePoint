@@ -159,6 +159,11 @@
   font-size: var(--font-size-xs);
 }
 
+.cp-global-search__matched {
+  color: var(--fg-primary);
+  font-weight: 700;
+}
+
 .cp-global-search__title,
 .cp-global-search__artist,
 .cp-global-search__meta {

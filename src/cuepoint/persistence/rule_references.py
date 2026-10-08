@@ -40,6 +40,10 @@ from typing import Any, Dict, Sequence, Tuple
 from cuepoint.models.filter_rule import (
     OP_ANY_OF,
     OP_IS_EMPTY,
+    SOURCE_COLLECTION,
+    SOURCE_PLAYLIST,
+    SOURCE_SET,
+    TYPE_SOURCE,
     TYPE_TAG,
     FieldSpec,
     FilterRule,
@@ -143,6 +147,57 @@ def _check_collections(
             )
 
 
+#: What a source of each kind is stored as in ``collections.kind``.
+_SOURCE_ROW_KINDS = {SOURCE_COLLECTION: "collection", SOURCE_SET: "set"}
+
+
+def _check_sources(
+    connection: sqlite3.Connection, spec: FieldSpec, rule: FilterRule
+) -> None:
+    """Refuse an "In playlist" source that is gone, or that is not a track list.
+
+    A **Smart Collection is refused**, as a Collection rule refuses it (DEC-060):
+    it is a question rather than a set of tracks, and resolving it through its
+    own rules would need the recursion and cycle checks DEC-060 chose not to
+    build. The message says what to do instead. A folder is refused too, since
+    "in a folder of Collections" is not what a Collection folder holds.
+    """
+    clause = _clause(spec, rule)
+    for item in rule.value:
+        identifier, kind = int(item["id"]), item["kind"]
+        if kind == SOURCE_PLAYLIST:
+            found = _lookup(
+                connection,
+                "SELECT id FROM rekordbox_playlists WHERE id IN ({ids})",
+                [identifier],
+            )
+            if identifier not in found:
+                raise BrokenRuleError(
+                    f"{clause} names playlist {identifier}, which no longer exists"
+                )
+            continue
+        found = _lookup(
+            connection,
+            "SELECT id, kind, name FROM collections WHERE id IN ({ids})",
+            [identifier],
+        )
+        row = found.get(identifier)
+        if row is None:
+            raise BrokenRuleError(
+                f"{clause} names {kind} {identifier}, which no longer exists"
+            )
+        if row["kind"] == SMART:
+            raise FilterRuleError(
+                f"{clause} names {row['name']!r}, which is a Smart Collection. "
+                "A rule can filter on what a track is filed in, not on what "
+                "another rule currently answers"
+            )
+        if row["kind"] != _SOURCE_ROW_KINDS[kind]:
+            raise FilterRuleError(
+                f"{clause} names {row['name']!r} as a {kind}, but it is a {row['kind']}"
+            )
+
+
 def check_rule_references(connection: sqlite3.Connection, rules: RuleSet) -> None:
     """Refuse a rule set that names a tag or Collection it should not.
 
@@ -162,6 +217,9 @@ def check_rule_references(connection: sqlite3.Connection, rules: RuleSet) -> Non
     """
     for rule in rules.validated().rules:
         spec = field_spec(rule.field)
+        if spec.type == TYPE_SOURCE:
+            _check_sources(connection, spec, rule)
+            continue
         if not spec.is_membership:
             continue
         ids = unique_ids(rule_ids(rule))

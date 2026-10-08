@@ -4785,6 +4785,64 @@
     }
   },
   {
+    "name": "cuepoint/models/filter_rule.py::_coerce_source::{spec.label} names a {kind!r}, which is not one of: ",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "FilterRuleError",
+            "value": "In playlist names a 'Smoke & Mirrors (Extended Mix)', which is not one of: playlist, collection, set"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "FilterRuleError",
+            "value": "In playlist names a '<value>', which is not one of: playlist, collection, set"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "cuepoint/models/filter_rule.py::_coerce_source::{spec.label} needs a playlist, Collection or Set, not {value!r}",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "FilterRuleError",
+            "value": "In playlist needs a playlist, Collection or Set, not 'Smoke & Mirrors (Extended Mix)'"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "FilterRuleError",
+            "value": "In playlist needs a playlist, Collection or Set, not '<value>'"
+          }
+        ]
+      }
+    }
+  },
+  {
     "name": "cuepoint/models/filter_rule.py::_coerce_text::{spec.label} needs a value, not {value!r} ({operator})",
     "ctx": {
       "home": "/Users/anna",
@@ -6171,6 +6229,64 @@
           {
             "type": "FilterRuleError",
             "value": "Artist names '<value>', which is a Smart Collection. A rule can filter on what a track is filed in, not on what another rule currently answers"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "cuepoint/persistence/rule_references.py::_check_sources::{clause} names {row['name']!r} as a {kind}, but it is a {row['kind']}",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "FilterRuleError",
+            "value": "In playlist names 'Smoke & Mirrors (Extended Mix)' as a set, but it is a collection"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "FilterRuleError",
+            "value": "In playlist names '<value>' as a set, but it is a collection"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "cuepoint/persistence/rule_references.py::_check_sources::{clause} names {row['name']!r}, which is a Smart Collection. A rule can filter on what a track is filed in, not on what another rule currently answers",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "FilterRuleError",
+            "value": "In playlist names 'Smoke & Mirrors (Extended Mix)', which is a Smart Collection. A rule can filter on what a track is filed in, not on what another rule currently answers"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "FilterRuleError",
+            "value": "In playlist names '<value>', which is a Smart Collection. A rule can filter on what a track is filed in, not on what another rule currently answers"
           }
         ]
       }

@@ -42,6 +42,8 @@ from cuepoint.persistence.track_query import (
     COLLECTION_POSITION,
     DEFAULT_SORT,
     SORTABLE_COLUMNS,
+    search_bpm,
+    search_key,
 )
 from cuepoint.services.key_resolver import resolve_key
 from cuepoint.utils.quoting import quoted
@@ -516,6 +518,12 @@ def search_library(
         track_to_dict(t, found.get(t.id), clean.get(t.id), sources.get(t.id))
         for t in result.tracks
     ]
+    if (query or "").strip():
+        for row in tracks:
+            # FLW-5: "key", "bpm" or null, so a row found by "8A" says why.
+            # Only on an answer to a text search: a browse with no text has
+            # nothing to have matched, and its rows keep the shape they had.
+            row["matched_on"] = matched_on(query, row)
     payload: Dict[str, Any] = {
         "query": result.query,
         "total": result.total,
@@ -569,6 +577,35 @@ def search_library(
         # this projection sees exactly the response it always saw.
         payload["queue_tracks"] = [queue_track_to_dict(t) for t in queue_tracks]
     return payload
+
+
+#: What a search is read against to say whether a row matched on its words.
+_SEARCHED_TEXT = ("title", "artist", "album", "effective_label")
+
+
+def matched_on(query: str, row: Dict[str, Any]) -> Optional[str]:
+    """Say what a search row matched on, when it was not its words (FLW-5).
+
+    ``"key"`` when the text is a key the row has, ``"bpm"`` when it is a tempo
+    the row's BPM rounds to, otherwise ``None``: a row whose title, artist,
+    album or label contains the text matched on its words, whatever else it
+    also matches. The search itself is ``track_query.search_clause``; this
+    reads the same rules over the row it returned, so the two agree.
+    """
+    text = (query or "").strip()
+    if not text:
+        return None
+    wanted = text.lower()
+    if any(wanted in str(row.get(name) or "").lower() for name in _SEARCHED_TEXT):
+        return None
+    camelot = search_key(text)
+    if camelot is not None and row.get("effective_key") == camelot:
+        return "key"
+    window = search_bpm(text)
+    bpm = row.get("effective_bpm")
+    if window is not None and bpm is not None and window[0] <= bpm < window[1]:
+        return "bpm"
+    return None
 
 
 def combine_rules(saved: RuleSet, sent: Optional[RuleSet]) -> RuleSet:
@@ -686,6 +723,69 @@ def library_facet(
             collection_id=resolved.collection_id,
         )
     return facet_to_dict(facet, span)
+
+
+def parse_quick_facets_body(raw: bytes) -> Dict[str, Any]:
+    """Parse the body of ``POST /api/v1/library/facets`` (FLW-4).
+
+    The same view the browse route describes, as JSON: ``q``, ``playlist_id``,
+    ``filters`` (a rule set), ``scope`` and ``collection_id``. Every part is
+    optional, and an empty body is the whole library.
+
+    Raises:
+        ValueError: If the body is not a JSON object or a part is malformed;
+            ``FilterRuleError`` (a ``ValueError``) names a bad rule.
+    """
+    if not raw.strip():
+        return {}
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise ValueError("Invalid JSON body") from None
+    if not isinstance(data, dict):
+        raise ValueError("JSON body must be an object")
+
+    def text(name: str) -> Optional[str]:
+        value = data.get(name)
+        return None if value is None else str(value)
+
+    return {
+        "query": text("q") or "",
+        "playlist_id": parse_playlist_id(text("playlist_id")),
+        "filters": RuleSet.from_dict(data.get("filters")),
+        "scope": parse_scope(text("scope")),
+        "collection_id": parse_collection_id(text("collection_id")),
+    }
+
+
+def library_quick_facets(
+    query: str = "",
+    playlist_id: Optional[int] = None,
+    filters: Optional[RuleSet] = None,
+    scope: Optional[str] = None,
+    collection_id: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Return what the Key, BPM and Genre quick filters offer for a view (FLW-4).
+
+    Keys in Camelot order with counts and a ``no_key`` count, the BPM range,
+    and the most common genres, each computed without its own field's rules so
+    a chosen key leaves the other keys choosable. The scope is every scope the
+    table has, as :func:`library_facet` takes it.
+
+    Raises:
+        FilterRuleError: If a filter rule cannot be honoured.
+        ValueError: If the scope and the collection do not go together.
+    """
+    service = _resolve_library_service()
+    resolved = resolve_scope(scope, collection_id)
+    answer = service.quick_facets(
+        query=query,
+        playlist_id=playlist_id,
+        rules=combine_rules(resolved.rules, filters),
+        collection_id=resolved.collection_id,
+    )
+    payload: Dict[str, Any] = answer.to_dict()
+    return payload
 
 
 def library_filter_fields() -> Dict[str, Any]:

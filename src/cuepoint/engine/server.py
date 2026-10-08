@@ -51,6 +51,8 @@ from cuepoint.engine.library_api import (
     MODE_BROWSE,
     SEARCH_LIMIT_DEFAULT,
     library_facet,
+    library_quick_facets,
+    parse_quick_facets_body,
     parse_collection_id,
     parse_optional_sort,
     parse_scope,
@@ -1076,6 +1078,25 @@ def make_handler(
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 self._send_json(200, set_reporting_enabled(enabled))
+                return
+
+            if path == "/api/v1/library/facets":
+                # FLW-4: the Key, BPM and Genre quick filters for one view. A
+                # POST because the view is a filter body, which a query string
+                # holds badly; it reads and changes nothing.
+                try:
+                    view = parse_quick_facets_body(self._read_body())
+                    payload = library_quick_facets(**view)
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                except LibraryUnavailableError as exc:
+                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    return
+                except Exception as exc:  # noqa: BLE001 — surface to API client
+                    self._send_unexpected(exc, error_payload("FACET_FAILED", str(exc)))
+                    return
+                self._send_json(200, payload)
                 return
 
             if path == "/api/v1/library/import":

@@ -147,13 +147,6 @@
 
 /* What the rules belong to, and what can be done about it. */
 
-.cp-filter-bar__saved {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-}
-
 .cp-filter-bar__status {
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
@@ -184,5 +177,86 @@
   color: inherit;
   font: inherit;
   text-decoration: underline;
+  cursor: pointer;
+}
+
+/* One row (FLW-4): search, Key ▾ BPM ▾ Genre ▾, Add filter, then the chips, which
+   take whatever width is left (at least 160) and scroll sideways. A row too narrow
+   for all of it wraps its trailing controls rather than running off screen. */
+
+.cp-filter-bar__row {
+  flex-wrap: wrap;
+}
+
+.cp-filter-bar__row > * {
+  flex: 0 0 auto;
+}
+
+.cp-filter-bar__chips-wrap {
+  display: flex;
+  align-items: center;
+  /* Never squeezed to nothing: when the row is too narrow for the chips beside
+     the controls after them, the row wraps, so the rest stays on screen. */
+  flex: 1 1 calc(160px * var(--scale));
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.cp-filter-bar__chips-wrap .cp-filter-bar__chips {
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  min-width: 0;
+  padding-bottom: var(--space-xs);
+  overflow-x: auto;
+}
+
+.cp-filter-bar__chip {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.cp-filter-bar__more {
+  flex: 0 0 auto;
+  padding: 0 var(--space-xs);
+  border: none;
+  background: transparent;
+  color: var(--accent-info);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cp-filter-bar__more:hover {
+  text-decoration: underline;
+}
+
+/* "In playlist": every playlist, Collection and Set, ticked in a list. */
+
+.cp-filter-bar__sources {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  max-height: calc(220px * var(--scale));
+  min-width: calc(220px * var(--scale));
+  padding: var(--space-xs);
+  overflow-y: auto;
+  background: var(--bg-input);
+  border: var(--hairline) solid var(--border-outline);
+  font-size: var(--font-size-xs);
+}
+
+.cp-filter-bar__source-heading {
+  display: block;
+  margin-top: var(--space-xs);
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+}
+
+.cp-filter-bar__source label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding-inline-start: calc(var(--depth, 0) * var(--space-sm));
   cursor: pointer;
 }

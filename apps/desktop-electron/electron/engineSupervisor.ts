@@ -11,6 +11,7 @@ import {
   type EngineJobList,
   type LibraryBrowseParams,
   type LibraryFacet,
+  type LibraryQuickFacets,
   type LibraryFilterVocabulary,
   type LibraryImportStarted,
   type LibraryPlaylistTree,
@@ -705,6 +706,16 @@ export class EngineSupervisor {
     collectionId?: number | null;
   }): Promise<LibraryFacet> {
     return (await this.readyClient()).getLibraryFacet(params);
+  }
+
+  async getLibraryQuickFacets(params: {
+    q?: string;
+    playlistId?: number | null;
+    filters?: FilterRuleSet | null;
+    scope?: "collection" | "smart";
+    collectionId?: number | null;
+  }): Promise<LibraryQuickFacets> {
+    return (await this.readyClient()).getLibraryQuickFacets(params);
   }
 
   async getLibraryFilterFields(): Promise<LibraryFilterVocabulary> {

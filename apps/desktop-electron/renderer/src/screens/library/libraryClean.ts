@@ -162,7 +162,7 @@ export function cleanMenuItems(
       { id: "clean-match", label: "Match on Beatport", onSelect: () => match(false) },
       // Matching skips what is already matched or decided (DEC-065); this is
       // the one that asks again, and it still leaves a person's decision alone.
-      { id: "clean-rematch", label: "Re-match", onSelect: () => match(true) },
+      { id: "clean-rematch", label: "Search Beatport again for this track", onSelect: () => match(true) },
     );
   }
   if (handlers.onDecide) {

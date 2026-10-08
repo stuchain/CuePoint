@@ -162,7 +162,7 @@ function chooseField(name: string) {
 }
 
 function chooseOperator(name: string) {
-  fireEvent.change(screen.getByLabelText("Condition"), { target: { value: name } });
+  fireEvent.change(screen.getByLabelText("Rule"), { target: { value: name } });
 }
 
 describe("the search box", () => {
@@ -262,7 +262,7 @@ describe("building a clause", () => {
     openBuilder();
     chooseField("bpm");
 
-    const options = within(screen.getByLabelText("Condition")).getAllByRole("option");
+    const options = within(screen.getByLabelText("Rule")).getAllByRole("option");
     expect(options.map((option) => option.getAttribute("value"))).toEqual([
       "gte",
       "between",
@@ -354,7 +354,7 @@ describe("building a clause", () => {
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
-    expect(screen.queryByLabelText("Condition")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Rule")).not.toBeInTheDocument();
   });
 
   it("switches the operator when the new field cannot use it", () => {
@@ -364,7 +364,7 @@ describe("building a clause", () => {
 
     chooseField("bpm");
 
-    expect(screen.getByLabelText("Condition")).toHaveValue("gte");
+    expect(screen.getByLabelText("Rule")).toHaveValue("gte");
   });
 });
 
@@ -480,14 +480,14 @@ describe("active clauses", () => {
   it("clears them all at once", () => {
     const { onFiltersChange } = show({ filters });
 
-    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear all filters" }));
 
     expect(onFiltersChange).toHaveBeenCalledWith(null);
   });
 
   it("offers nothing to clear when nothing is filtered", () => {
     show();
-    expect(screen.queryByRole("button", { name: "Clear all" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear all filters" })).not.toBeInTheDocument();
   });
 
   it("shows no chips when nothing is filtered", () => {

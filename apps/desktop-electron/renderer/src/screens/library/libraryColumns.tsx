@@ -19,6 +19,7 @@ import { starsFor } from "./filterText";
 import { artworkText, effectiveText, formatScore } from "./libraryClean";
 import { OverriddenValue, RowArtwork, RowLoudness, RowWaveform } from "./libraryCells";
 import { gatherLoudnessText } from "./libraryLoudness";
+import { matchedLabel } from "./searchMatch";
 import { formatDuration } from "./trackValues";
 
 /**
@@ -39,7 +40,18 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 120,
     defaultWidthPx: 220,
     sticky: true,
-    render: (track) => track.title,
+    // A row a search found by its key or tempo says so beside its title (FLW-5).
+    render: (track) => {
+      const matched = matchedLabel(track);
+      return matched ? (
+        <>
+          {track.title} <span className="library-matched">{matched}</span>
+        </>
+      ) : (
+        track.title
+      );
+    },
+    text: (track) => track.title,
   },
   {
     id: "artist",

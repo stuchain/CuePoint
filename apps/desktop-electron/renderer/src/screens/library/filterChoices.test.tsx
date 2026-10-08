@@ -23,7 +23,7 @@ const VOCABULARY: LibraryFilterVocabulary = {
       unit: null,
       operators: ["is", "is_not", "any_of", "contains"],
       choices: [
-        { value: "needs_review", label: "Needs review" },
+        { value: "needs_review", label: "Waiting for you" },
         { value: "accepted", label: "Accepted" },
         { value: "rejected", label: "Rejected" },
       ],
@@ -79,7 +79,7 @@ describe("the choices, as data", () => {
       rule: { field: "match_state", operator: "any_of", value: ["needs_review", "accepted"] },
     });
     if (!built.ok) return;
-    expect(describeRule(VOCABULARY, built.rule)).toBe("Match state is any of Needs review, Accepted");
+    expect(describeRule(VOCABULARY, built.rule)).toBe("Match state is any of Waiting for you, Accepted");
     expect(describeRule(VOCABULARY, { field: "match_state", operator: "is", value: "rejected" })).toBe(
       "Match state is Rejected",
     );
@@ -118,7 +118,7 @@ describe("the bar", () => {
     const choice = screen.getByRole("combobox", { name: "Match state" });
     expect(within(choice).getAllByRole("option").map((option) => option.textContent)).toEqual([
       "Choose…",
-      "Needs review",
+      "Waiting for you",
       "Accepted",
       "Rejected",
     ]);
@@ -136,11 +136,11 @@ describe("the bar", () => {
   it("offers every value to pick for any of", async () => {
     const { onFiltersChange } = bar();
     await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Condition" }), "any_of");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Rule" }), "any_of");
 
     const group = screen.getByRole("group", { name: "Match state — choose any" });
     await userEvent.click(within(group).getByRole("button", { name: "Rejected" }));
-    await userEvent.click(within(group).getByRole("button", { name: "Needs review" }));
+    await userEvent.click(within(group).getByRole("button", { name: "Waiting for you" }));
     expect(within(group).getByRole("button", { name: "Rejected" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -155,7 +155,7 @@ describe("the bar", () => {
   it("keeps a text box where a part of a word is asked for", async () => {
     bar();
     await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Condition" }), "contains");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Rule" }), "contains");
     expect(screen.getByRole("textbox", { name: "Value" })).toBeInTheDocument();
   });
 

@@ -135,6 +135,21 @@ describe("GlobalSearch", () => {
     await waitFor(() => expect(searchLibrary).toHaveBeenCalledWith({ q: "strobe" }));
   });
 
+  it("says a row was found by its key or tempo (FLW-5)", async () => {
+    searchLibrary.mockResolvedValue(
+      response({
+        total: 2,
+        tracks: [
+          { ...TRACK, id: 1, effective_key: "8A", matched_on: "key" },
+          { ...TRACK, id: 2, rekordbox_track_id: "2", title: "Ghosts", effective_bpm: 124, matched_on: "bpm" },
+        ],
+      }),
+    );
+    await type("8a");
+    expect(await screen.findByText("Key 8A")).toBeInTheDocument();
+    expect(screen.getByText("124 BPM")).toBeInTheDocument();
+  });
+
   it("says the library is empty rather than reporting no matches", async () => {
     searchLibrary.mockResolvedValue(response({ library_empty: true }));
 

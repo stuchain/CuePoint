@@ -229,6 +229,9 @@ class TestResponseShape:
             "effective_key",
             "key_source",
             "key_name",
+            # FLW-5: on an answer to a text search, what the row matched on
+            # besides its words.
+            "matched_on",
             "effective_bpm",
             "effective_genre",
             "effective_label",

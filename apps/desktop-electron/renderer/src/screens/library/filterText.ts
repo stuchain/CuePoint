@@ -190,6 +190,53 @@ export interface ValueNames {
    * rule stays the id; a page that knows the name hands it over.
    */
   beatport?: ReadonlyMap<string, string>;
+  /**
+   * What a source "In playlist" names is called (FLW-7), keyed by `sourceKey`:
+   * a playlist, a Collection or a Set, by kind and id.
+   */
+  source?: ReadonlyMap<string, string>;
+}
+
+/** The kinds of place "In playlist" can name, as the engine spells them. */
+export type SourceKind = "playlist" | "collection" | "set";
+
+/** One place a track is filed: what an "In playlist" rule's value is a list of. */
+export interface RuleSource {
+  kind: SourceKind;
+  id: number;
+}
+
+const SOURCE_KINDS: readonly string[] = ["playlist", "collection", "set"];
+
+/** The key a source's name is kept under in `ValueNames.source`, and a draft's token. */
+export function sourceKey(kind: string, id: unknown): string {
+  return `${kind}:${String(id)}`;
+}
+
+/** A source read back from a draft token ("set:5"), or null when it is not one. */
+export function parseSourceToken(token: string): RuleSource | null {
+  const [kind, raw, ...rest] = token.trim().split(":");
+  const id = Number(raw);
+  if (rest.length > 0 || !kind || !SOURCE_KINDS.includes(kind)) return null;
+  if (!Number.isInteger(id) || id <= 0) return null;
+  return { kind: kind as SourceKind, id };
+}
+
+/** The sources a draft has ticked, as the tokens it holds them in. */
+export function selectedSources(draft: DraftRule): string[] {
+  return draft.value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+}
+
+/** A draft with one source ticked or unticked. */
+export function toggleSource(draft: DraftRule, token: string): DraftRule {
+  const chosen = selectedSources(draft);
+  const next = chosen.includes(token)
+    ? chosen.filter((entry) => entry !== token)
+    : [...chosen, token];
+  return { ...draft, value: next.join(",") };
 }
 
 /** The key a Beatport id rule's name is kept under in `ValueNames.beatport`. */
@@ -230,6 +277,11 @@ function valueText(
     return value.map((item) => valueText(field, item, names)).join(", ");
   }
   if (isMembership(field)) return nameFor(field, value, names);
+  if (field?.type === "source") {
+    const source = value as Partial<RuleSource> | null;
+    const key = sourceKey(String(source?.kind), source?.id);
+    return names?.source?.get(key) ?? (names?.source ? MISSING_NAME : UNKNOWN_NAME);
+  }
   if (value === null || value === undefined || value === "") return "(none)";
   if (field?.type === "beatport") {
     return names?.beatport?.get(beatportNameKey(field.name, value)) ?? String(value);
@@ -359,6 +411,14 @@ function coerceValue(field: LibraryFilterField, raw: string): ValueResult {
       return { ok: false, reason: `Choose a ${field.label.toLocaleLowerCase()}` };
     }
     return { ok: true, value };
+  }
+
+  if (field.type === "source") {
+    const source = parseSourceToken(text);
+    // Chosen from a list, never typed, so a value that is not one is a list
+    // nobody ticked.
+    if (source === null) return { ok: false, reason: "Choose a playlist, Collection or Set" };
+    return { ok: true, value: source };
   }
 
   if (text === "") return { ok: false, reason: `Give a value for ${field.label}` };

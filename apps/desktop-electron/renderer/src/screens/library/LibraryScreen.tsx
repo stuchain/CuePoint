@@ -46,7 +46,7 @@ import type {
   TagUsage,
   TrackCreditLinks,
 } from "../../api/cuepointBridge.types";
-import { FilterBar, type FilterCollectionOption } from "./FilterBar";
+import { FilterBar, type FilterCollectionOption, type FilterSourceOption } from "./FilterBar";
 import { LibraryHeader } from "./LibraryHeader";
 import { LIBRARY_COLUMNS } from "./libraryColumns";
 import { LibraryPane } from "./LibraryPane";
@@ -115,7 +115,9 @@ import { appliedLine, jobErrorMessage } from "./libraryFormat";
 import { DEFAULT_LIBRARY_QUERY, type LibraryQuery, queryKey } from "./libraryQuery";
 import { copySummary, gatherTracksAsText, writeClipboard } from "./trackClipboard";
 import { isSelected, onlySelectedId } from "./trackSelection";
-import { useFacet, useFilterVocabulary } from "./useFilterVocabulary";
+import { useFacet, useFilterVocabulary, useQuickFacets } from "./useFilterVocabulary";
+import { openSource, withSource } from "./savedScope";
+import { sourceKey } from "./filterText";
 import { usePlaylistTree } from "./usePlaylistTree";
 import { useTrackDetail } from "./useTrackDetail";
 import { COPY_LIMIT, useTrackSelection } from "./useTrackSelection";
@@ -319,6 +321,7 @@ export function LibraryScreen({
   });
   const { vocabulary } = useFilterVocabulary();
   const facet = useFacet(query);
+  const quick = useQuickFacets(query);
   const columns = useColumnLayout<LibraryTrackRow>(
     LIBRARY_TABLE_LAYOUT_KEY,
     LIBRARY_COLUMNS,
@@ -444,6 +447,12 @@ export function LibraryScreen({
   /** Where a row drag started, which is the only Collection position in hand. */
   const draggingRow = useRef<{ index: number; count: number } | null>(null);
   const detail = useTrackDetail(selection.selection.lastId);
+
+  /** True when a Key rule is on and nothing matches it (FLW-4). */
+  const keyFilterFoundNothing =
+    !window_.loading &&
+    window_.total === 0 &&
+    Boolean(barRules?.rules.some((rule) => rule.field === "key"));
 
   /** The Collection the table is showing, when it is one that holds rows. */
   const scopedCollection = useMemo(() => {
@@ -771,7 +780,11 @@ export function LibraryScreen({
       if (!barRules) return;
       setSaving(true);
       setSavingError(null);
-      const result = await collections.saveSmart(name, barRules, parentId);
+      // The playlist, Collection or Set the table is open on is a scope and not
+      // a rule, so it would be dropped; it is saved as "In playlist is any of"
+      // (FLW-7).
+      const kept = withSource(barRules, openSource(query.playlistId, scopedCollection));
+      const result = await collections.saveSmart(name, kept ?? barRules, parentId);
       setSaving(false);
       if (!result.ok || !result.node) {
         setSavingError(result.error ?? "Could not save that Smart Collection.");
@@ -801,7 +814,7 @@ export function LibraryScreen({
       }));
       push(`Saved “${node.name}”.`, "success");
     },
-    [barRules, collections, playlists, push],
+    [barRules, collections, playlists, push, query.playlistId, scopedCollection],
   );
 
   /** The library's tags, read when a picker needs them and again after a change. */
@@ -1145,6 +1158,30 @@ export function LibraryScreen({
     [collections.tree],
   );
 
+  /**
+   * Every place "In playlist" can name (FLW-7): the playlists and folders of
+   * Rekordbox's tree, then the Collections, then the Sets, each in the order
+   * its pane draws them.
+   */
+  const filterSources = useMemo((): FilterSourceOption[] => {
+    const out: FilterSourceOption[] = [];
+    const walk = (nodes: readonly PlaylistTreeNode[], depth: number) => {
+      for (const node of nodes) {
+        out.push({ kind: "playlist", id: node.id, name: node.name, depth });
+        walk(node.children, depth + 1);
+      }
+    };
+    walk(playlists.tree, 0);
+    const own = flattenCollections(collections.tree);
+    for (const node of own.filter(isCollection)) {
+      out.push({ kind: "collection", id: node.id, name: node.name, depth: 0 });
+    }
+    for (const node of own.filter(isSet)) {
+      out.push({ kind: "set", id: node.id, name: node.name, depth: 0 });
+    }
+    return out;
+  }, [collections.tree, playlists.tree]);
+
   /** The folders a new Smart Collection can go in. Only folders hold nodes. */
   const folders = useMemo(
     (): FolderOption[] =>
@@ -1173,8 +1210,14 @@ export function LibraryScreen({
         ]),
       ),
       beatport: new Map(Object.entries(openedNames)),
+      source: new Map(
+        filterSources.map((source) => [
+          sourceKey(source.kind, source.id),
+          source.kind === "set" ? `${source.name} (Set)` : source.name,
+        ]),
+      ),
     }),
-    [collections.tree, openedNames, tags],
+    [collections.tree, filterSources, openedNames, tags],
   );
 
   /** What the open picker offers: the tree, or the tag vocabulary. */
@@ -1720,11 +1763,20 @@ export function LibraryScreen({
                 DEC-201). Inside the bar's grid row, as the Set note is, so the table
                 keeps the row that grows. The ready note goes first and the key note
                 takes the line when it is done. */}
-            {isReadyNoteOpen(importedAt) && (
+            {!keyFilterFoundNothing && isReadyNoteOpen(importedAt) && (
               <LibraryReadyNote armedAt={importedAt} onShownChange={setReadyShown} />
             )}
-            {importedAt !== null && (!isReadyNoteOpen(importedAt) || readyShown === false) && (
-              <LibraryKeyNote trackCount={summary.track_count} onMatch={onOpenMatch} />
+            {/* One key note, in either of its two roles. A Key filter that finds
+                nothing in a library with no keys is the answer to a click of the
+                user's own (FLW-4): it shows even if the note was dismissed, and
+                takes the line from the ready note. */}
+            {(keyFilterFoundNothing ||
+              (importedAt !== null && (!isReadyNoteOpen(importedAt) || readyShown === false))) && (
+              <LibraryKeyNote
+                trackCount={summary.track_count}
+                onMatch={onOpenMatch}
+                asked={keyFilterFoundNothing}
+              />
             )}
             <FilterBar
               vocabulary={vocabulary}
@@ -1740,6 +1792,11 @@ export function LibraryScreen({
               onRequestFacet={facet.load}
               collections={filterCollections}
               names={ruleNames}
+              sources={filterSources}
+              quickFacets={quick.facets}
+              quickFacetsLoading={quick.loading}
+              onRequestQuickFacets={quick.load}
+              onMatchTracks={onOpenMatch}
               smart={smart}
               onSaveSmart={() => {
                 setSavingError(null);

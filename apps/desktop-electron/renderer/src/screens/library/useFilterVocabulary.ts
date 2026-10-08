@@ -18,11 +18,12 @@
  * Collection has to offer the tags that Collection's tracks carry, because one
  * from elsewhere in the library empties the table the moment it is chosen.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
   LibraryFacet,
   LibraryFilterVocabulary,
+  LibraryQuickFacets,
 } from "../../api/cuepointBridge.types";
 import type { LibraryQuery } from "./libraryQuery";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -123,4 +124,67 @@ export function useFacet(query: LibraryQuery): FacetState {
   }, []);
 
   return { facet, loading, error, load, clear };
+}
+
+interface QuickFacetsState {
+  facets: LibraryQuickFacets | null;
+  loading: boolean;
+  /** Ask for the view's lists, and keep them current while the view changes. */
+  load: () => void;
+}
+
+/**
+ * The lists the Key, BPM and Genre quick filters offer (FLW-4).
+ *
+ * Read when a dropdown opens, not when the page does: it is a pass over the
+ * view. Once asked for, it follows the view, because choosing a key changes the
+ * counts the other dropdowns show. A late answer for a view the user has left
+ * is dropped.
+ */
+export function useQuickFacets(query: LibraryQuery): QuickFacetsState {
+  const [facets, setFacets] = useState<LibraryQuickFacets | null>(null);
+  const [loading, setLoading] = useState(false);
+  const wanted = useRef(false);
+  const latest = useRef(0);
+
+  const fetchNow = useCallback(() => {
+    const bridge = window.cuepoint?.getLibraryQuickFacets;
+    if (!bridge) return;
+    const mine = ++latest.current;
+    setLoading(true);
+    void bridge({
+      q: query.q.trim() || undefined,
+      playlistId: query.playlistId,
+      filters: query.filters,
+      ...(query.scope ? { scope: query.scope } : {}),
+      collectionId: query.collectionId,
+    })
+      .then((next) => {
+        if (mine !== latest.current) return;
+        setFacets(next);
+        setLoading(false);
+      })
+      .catch((cause: unknown) => {
+        if (mine !== latest.current) return;
+        // The lists of a view that cannot be asked for are no lists at all, not
+        // the last view's. An engine refusal (a 4xx: the rules in the question
+        // were not acceptable) is an answer, not a fault, and is not reported.
+        setFacets(null);
+        setLoading(false);
+        const status = (cause as { status?: unknown } | null)?.status;
+        if (typeof status !== "number" || status >= 500) reportUnexpected(cause);
+      });
+  }, [query.q, query.playlistId, query.filters, query.scope, query.collectionId]);
+
+  const load = useCallback(() => {
+    wanted.current = true;
+    fetchNow();
+  }, [fetchNow]);
+
+  // Follow the view once the lists have been asked for.
+  useEffect(() => {
+    if (wanted.current) fetchNow();
+  }, [fetchNow]);
+
+  return { facets, loading, load };
 }

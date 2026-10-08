@@ -120,7 +120,9 @@ Two properties hold this together:
   table showing the previous sort's rows.
 
 Related surfaces on the same path: `/api/v1/library/playlists` (the tree),
-`/api/v1/library/facets` (a field's values, for filter suggestions),
+`/api/v1/library/facets` (a field's values, for filter suggestions; and, as
+`POST` with the view as its body, the Key, BPM and Genre quick filters' lists:
+keys in Camelot order, `no_key`, the BPM range and the 30 most common genres),
 `/api/v1/library/filter-fields` (the filter vocabulary the UI builds its
 controls from) and `/api/v1/library/tracks/{id}` (one track and its playlists,
 for the Inspector).

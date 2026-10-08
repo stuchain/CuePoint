@@ -26,6 +26,7 @@ from cuepoint.models.library_track import LibraryTrack, QueueTrack
 from cuepoint.models.references import ReferenceSummary
 from cuepoint.models.track_clean_state import TrackCleanState
 from cuepoint.models.track_metadata import TrackMetadata
+from cuepoint.services.key_resolver import CAMELOT_ORDER
 from cuepoint.persistence.track_query import (
     BROWSE_LIMIT_DEFAULT,
     DEFAULT_SORT,
@@ -41,6 +42,51 @@ from cuepoint.services.interfaces import (
     ITrackMetadataRepository,
     ITrackRepository,
 )
+
+
+#: How many genres the Genre quick filter lists (FLW-4): the view's most common.
+QUICK_GENRE_LIMIT = 30
+
+
+@dataclass(frozen=True)
+class QuickFacets:
+    """What the Key, BPM and Genre quick filters offer for the current view (FLW-4).
+
+    Attributes:
+        keys: ``(Camelot code, tracks)`` for the keys the view's tracks have,
+            in Camelot order (1A, 1B, 2A ... 12B).
+        no_key: Tracks in the view with no key, which Beatport's match has not
+            given one (DEC-201).
+        bpm: The view's tempo range and how many tracks have none.
+        genres: The most common genres, most common first.
+        genres_total: How many genres the view has, the "no genre" bucket
+            counted as one when it exists.
+        genres_truncated: True when ``genres`` is only the first of them.
+    """
+
+    keys: tuple = ()
+    no_key: int = 0
+    bpm: FacetRange = FacetRange(field="bpm")
+    genres: tuple = ()
+    genres_total: int = 0
+    genres_truncated: bool = False
+
+    def to_dict(self) -> Dict[str, object]:
+        """Serialize for the API."""
+        return {
+            "keys": [{"value": code, "count": count} for code, count in self.keys],
+            "no_key": self.no_key,
+            "bpm": {
+                "min": self.bpm.minimum,
+                "max": self.bpm.maximum,
+                "missing": self.bpm.missing,
+            },
+            "genres": [
+                {"value": value, "count": count} for value, count in self.genres
+            ],
+            "genres_total": self.genres_total,
+            "genres_truncated": self.genres_truncated,
+        }
 
 
 @dataclass(frozen=True)
@@ -419,6 +465,44 @@ class LibraryService(ILibraryService):
             query, playlist_id, collection_id, rules, DEFAULT_SORT, "asc"
         )
         return self._tracks.facet_range(browse, field_spec(field).name)
+
+    def quick_facets(
+        self,
+        query: str = "",
+        playlist_id: Optional[int] = None,
+        rules: Optional[RuleSet] = None,
+        collection_id: Optional[int] = None,
+        genre_limit: int = QUICK_GENRE_LIMIT,
+    ) -> QuickFacets:
+        """Return what the Key, BPM and Genre quick filters offer (FLW-4).
+
+        The three existing facets, read for one view and put in the order a
+        DJ reads them: keys round the Camelot wheel, with the tracks that have
+        none counted on their own. Each is computed without its own field's
+        rules, as every facet is, so a chosen key leaves the other keys
+        choosable.
+        """
+        browse = self._browse_query(
+            query, playlist_id, collection_id, rules, DEFAULT_SORT, "asc"
+        )
+        key = self._tracks.facet_values(browse, "key", limit=len(CAMELOT_ORDER))
+        bpm = self._tracks.facet_range(browse, "bpm")
+        genre = self._tracks.facet_values(browse, "genre", limit=genre_limit)
+        rank = {code: index for index, code in enumerate(CAMELOT_ORDER)}
+        keyed = sorted(
+            ((value.value, value.count) for value in key.values if value.value),
+            key=lambda item: rank.get(item[0], len(rank)),
+        )
+        return QuickFacets(
+            keys=tuple(keyed),
+            no_key=sum(value.count for value in key.values if value.value is None),
+            bpm=bpm,
+            genres=tuple(
+                (value.value, value.count) for value in genre.values if value.value
+            ),
+            genres_total=genre.total_values,
+            genres_truncated=genre.truncated,
+        )
 
     def browse_count(
         self,

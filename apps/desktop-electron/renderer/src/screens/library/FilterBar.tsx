@@ -16,7 +16,7 @@
  * offered *fewer* fields than the engine describes would be a feature nobody
  * can reach. Both are asserted against the vocabulary rather than reviewed.
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { Button } from "../../components/Button";
 import { Select } from "../../components/Select";
@@ -25,6 +25,7 @@ import type {
   FilterRuleSet,
   LibraryFacet,
   LibraryFilterVocabulary,
+  LibraryQuickFacets,
 } from "../../api/cuepointBridge.types";
 import {
   RATING_STARS,
@@ -43,13 +44,18 @@ import {
   removeRule,
   ruleCount,
   selectedIds,
+  selectedSources,
+  sourceKey,
   starsFor,
   toggleChoice,
   toggleId,
+  toggleSource,
   withField,
   type DraftRule,
   type ValueNames,
 } from "./filterText";
+import { QuickFilters } from "./QuickFilters";
+import { hiddenChipCount } from "./chipOverflow";
 import { isModified, smartStatus, type SmartAttachment } from "./smartFilter";
 import { pageOfRule, type PageRef } from "../discover/discoverLinks";
 import "./FilterBar.css";
@@ -65,6 +71,18 @@ export interface FilterCollectionOption {
    * Collection X" (PREP-02), and the picker says which one is being chosen.
    */
   isSet?: boolean;
+}
+
+/**
+ * One place "In playlist" can name (FLW-7): a Rekordbox playlist or folder, a
+ * Collection, or a Set. The page builds the list from its trees, since the bar
+ * holds no tree of its own.
+ */
+export interface FilterSourceOption {
+  kind: "playlist" | "collection" | "set";
+  id: number;
+  name: string;
+  depth: number;
 }
 
 interface FilterBarProps {
@@ -88,6 +106,20 @@ interface FilterBarProps {
 
   /** The names behind the ids in the chips (ORG-12). */
   names?: ValueNames;
+
+  /** The playlists, Collections and Sets "In playlist" can name (FLW-7). */
+  sources?: readonly FilterSourceOption[];
+
+  /**
+   * The Key, BPM and Genre quick filters (FLW-4): the view's lists, and a way
+   * to ask for them. Absent, the bar shows no quick filters — they belong to
+   * the Library's table and to no other.
+   */
+  quickFacets?: LibraryQuickFacets | null;
+  quickFacetsLoading?: boolean;
+  onRequestQuickFacets?: () => void;
+  /** Open matching, for the Key list of a library nobody has matched. */
+  onMatchTracks?: () => void;
 
   /** The Smart Collection these rules came from, when they came from one. */
   smart?: SmartAttachment | null;
@@ -135,6 +167,11 @@ export function FilterBar({
   onRequestFacet,
   collections = [],
   names,
+  sources = [],
+  quickFacets = null,
+  quickFacetsLoading = false,
+  onRequestQuickFacets,
+  onMatchTracks,
   smart = null,
   onSaveSmart,
   onUpdateSmart,
@@ -174,6 +211,41 @@ export function FilterBar({
       onRequestFacet?.(draft.field);
     }
   }, [adding, draft.field, vocabulary, onRequestFacet]);
+
+  // The chips that do not fit are out of sight to the right of the list: how
+  // many is measured, never guessed, so "+N more" is the number a user would
+  // count by scrolling.
+  const chipsRef = useRef<HTMLUListElement>(null);
+  const [hiddenChips, setHiddenChips] = useState(0);
+  const measureChips = useCallback(() => {
+    const list = chipsRef.current;
+    if (!list) {
+      setHiddenChips(0);
+      return;
+    }
+    const edges = Array.from(list.children).map((chip) => {
+      const box = chip as HTMLElement;
+      return box.offsetLeft + box.offsetWidth;
+    });
+    setHiddenChips(hiddenChipCount(list.scrollLeft, list.clientWidth, edges));
+  }, []);
+  useLayoutEffect(measureChips, [measureChips, filters]);
+  useEffect(() => {
+    const list = chipsRef.current;
+    if (!list) return;
+    list.addEventListener("scroll", measureChips);
+    const watcher =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measureChips);
+    watcher?.observe(list);
+    return () => {
+      list.removeEventListener("scroll", measureChips);
+      watcher?.disconnect();
+    };
+  }, [measureChips, filters]);
+  const showLastChips = () => {
+    const list = chipsRef.current;
+    if (list) list.scrollLeft = list.scrollWidth;
+  };
 
   const field = fieldOf(vocabulary, draft.field);
   const arity = arityOf(vocabulary, draft.operator);
@@ -238,6 +310,40 @@ export function FilterBar({
             setDraft((previous) => ({ ...previous, value: event.target.value }))
           }
         />
+      );
+    }
+
+    if (field.type === "source") {
+      const ticked = selectedSources(draft);
+      const headings = { playlist: "Rekordbox playlists", collection: "Collections", set: "Sets" };
+      return (
+        <div
+          className="cp-filter-bar__sources"
+          role="group"
+          aria-label={`${field.label} — choose any`}
+        >
+          {sources.length === 0 && (
+            <span className="cp-filter-bar__hint">No playlists, Collections or Sets yet.</span>
+          )}
+          {sources.map((source, index) => {
+            const token = sourceKey(source.kind, source.id);
+            return (
+              <div key={token} className="cp-filter-bar__source">
+                {sources[index - 1]?.kind !== source.kind && (
+                  <span className="cp-filter-bar__source-heading">{headings[source.kind]}</span>
+                )}
+                <label style={{ "--depth": source.depth } as React.CSSProperties}>
+                  <input
+                    type="checkbox"
+                    checked={ticked.includes(token)}
+                    onChange={() => setDraft((previous) => toggleSource(previous, token))}
+                  />
+                  {source.name}
+                </label>
+              </div>
+            );
+          })}
+        </div>
       );
     }
 
@@ -381,6 +487,17 @@ export function FilterBar({
           onChange={(event) => onQueryChange(event.target.value)}
         />
 
+        {onRequestQuickFacets && (
+          <QuickFilters
+            filters={filters}
+            onFiltersChange={onFiltersChange}
+            facets={quickFacets}
+            loading={quickFacetsLoading}
+            onOpen={onRequestQuickFacets}
+            onMatchTracks={onMatchTracks}
+          />
+        )}
+
         <Button
           variant="secondary"
           onClick={() => {
@@ -391,15 +508,95 @@ export function FilterBar({
           {adding ? "Cancel" : "Add filter"}
         </Button>
 
+        {/* The chips share the row with the controls and scroll sideways when
+            they do not fit, saying how many are out of sight. The row never
+            grows a second line for them. */}
+        {rules.length > 0 && (
+          <div className="cp-filter-bar__chips-wrap">
+            <ul className="cp-filter-bar__chips" aria-label="Active filters" ref={chipsRef}>
+              {rules.map((rule, index) => {
+                const text = describeRule(vocabulary, rule, names);
+                const page = onOpenPage ? pageOfRule(rule) : null;
+                return (
+                  <li
+                    key={`${rule.field}-${rule.operator}-${index}`}
+                    className="cp-filter-bar__chip"
+                  >
+                    <span>{text}</span>
+                    {page && onOpenPage && (
+                      <button
+                        type="button"
+                        className="cp-filter-bar__chip-open"
+                        aria-label={`Open page: ${text}`}
+                        title={page.kind === "label" ? "Open the label page" : "Open the artist page"}
+                        onClick={() => onOpenPage(page)}
+                      >
+                        Open page
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      aria-label={`Remove filter: ${text}`}
+                      onClick={() => onFiltersChange(removeRule(filters, index))}
+                    >
+                      ×
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            {hiddenChips > 0 && (
+              <button type="button" className="cp-filter-bar__more" onClick={showLastChips}>
+                +{hiddenChips} more
+              </button>
+            )}
+          </div>
+        )}
+
         {ruleCount(filters) > 0 && (
           <Button variant="secondary" onClick={() => onFiltersChange(null)}>
-            Clear all
+            Clear all filters
           </Button>
         )}
 
         {onManageTags && (
           <Button variant="secondary" onClick={onManageTags}>
             Tags…
+          </Button>
+        )}
+
+        {/* The Smart Collection these rules came from, or the way to make one,
+            at the row's end. */}
+        {status && (
+          <span
+            className={`cp-filter-bar__status${
+              modified ? " cp-filter-bar__status--modified" : ""
+            }`}
+            role="status"
+          >
+            {status}
+          </span>
+        )}
+
+        {/* Saving is offered for rules that are not already a Collection's.
+            A modified one is offered both ways instead, because "make a
+            second Collection out of this" and "change the one I opened" are
+            different intentions and neither is the obvious default. */}
+        {onSaveSmart && rules.length > 0 && (
+          <Button variant="secondary" onClick={onSaveSmart}>
+            {smart ? "Save as a new Smart Collection…" : "Save as Smart Collection…"}
+          </Button>
+        )}
+
+        {modified && onUpdateSmart && (
+          <Button variant="secondary" onClick={onUpdateSmart}>
+            Update “{modified.name}”
+          </Button>
+        )}
+
+        {modified && onDetachSmart && (
+          <Button variant="secondary" onClick={onDetachSmart}>
+            Keep as a filter
           </Button>
         )}
 
@@ -413,9 +610,11 @@ export function FilterBar({
           <Select
             label="Field"
             value={draft.field}
+            // Grouped by the engine's own groups (LIB-7): the bar keeps no copy.
             options={buildableFields(vocabulary).map((entry) => ({
               value: entry.name,
               label: entry.label,
+              group: entry.group,
             }))}
             onChange={(event) =>
               setDraft((previous) => withField(vocabulary, previous, event.target.value))
@@ -423,7 +622,7 @@ export function FilterBar({
           />
 
           <Select
-            label="Condition"
+            label="Rule"
             value={draft.operator}
             options={(field?.operators ?? []).map((operator) => ({
               value: operator,
@@ -476,75 +675,6 @@ export function FilterBar({
             <span className="cp-filter-bar__problem" role="alert">
               {problem}
             </span>
-          )}
-        </div>
-      )}
-
-      {rules.length > 0 && (
-        <ul className="cp-filter-bar__chips" aria-label="Active filters">
-          {rules.map((rule, index) => {
-            const text = describeRule(vocabulary, rule, names);
-            const page = onOpenPage ? pageOfRule(rule) : null;
-            return (
-              <li key={`${rule.field}-${rule.operator}-${index}`} className="cp-filter-bar__chip">
-                <span>{text}</span>
-                {page && onOpenPage && (
-                  <button
-                    type="button"
-                    className="cp-filter-bar__chip-open"
-                    aria-label={`Open page: ${text}`}
-                    title={page.kind === "label" ? "Open the label page" : "Open the artist page"}
-                    onClick={() => onOpenPage(page)}
-                  >
-                    Open page
-                  </button>
-                )}
-                <button
-                  type="button"
-                  aria-label={`Remove filter: ${text}`}
-                  onClick={() => onFiltersChange(removeRule(filters, index))}
-                >
-                  ×
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {(status || (rules.length > 0 && onSaveSmart)) && (
-        <div className="cp-filter-bar__saved">
-          {status && (
-            <span
-              className={`cp-filter-bar__status${
-                modified ? " cp-filter-bar__status--modified" : ""
-              }`}
-              role="status"
-            >
-              {status}
-            </span>
-          )}
-
-          {/* Saving is offered for rules that are not already a Collection's.
-              A modified one is offered both ways instead, because "make a
-              second Collection out of this" and "change the one I opened" are
-              different intentions and neither is the obvious default. */}
-          {onSaveSmart && rules.length > 0 && (
-            <Button variant="secondary" onClick={onSaveSmart}>
-              {smart ? "Save as a new Smart Collection…" : "Save as Smart Collection…"}
-            </Button>
-          )}
-
-          {modified && onUpdateSmart && (
-            <Button variant="secondary" onClick={onUpdateSmart}>
-              Update “{modified.name}”
-            </Button>
-          )}
-
-          {modified && onDetachSmart && (
-            <Button variant="secondary" onClick={onDetachSmart}>
-              Keep as a filter
-            </Button>
           )}
         </div>
       )}

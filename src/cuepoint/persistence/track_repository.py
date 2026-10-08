@@ -59,6 +59,7 @@ from cuepoint.persistence.track_query import (
     clamp_facet_limit,
     JOINS,
     SEARCH_JOINS,
+    joins_sql,
     search_clause,
 )
 from cuepoint.services.interfaces import IDatabaseService, ITrackRepository
@@ -168,8 +169,9 @@ def _credit_changed(
 
 
 def _search_joins() -> str:
-    """The joins a text search reads through (CLEAN-05): the effective label."""
-    return "".join(JOINS[alias] for alias in SEARCH_JOINS)
+    """The joins a text search reads through (CLEAN-05, FLW-5): the effective
+    label, and the key's. In dependency order, which is not the alphabet's."""
+    return joins_sql(SEARCH_JOINS)
 
 
 @dataclass(frozen=True)

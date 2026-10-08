@@ -422,6 +422,8 @@ export interface LibraryTrackRow {
    */
   key_source?: "yours" | "beatport" | null;
   key_name?: string | null;
+  /** FLW-5: what a search matched this row on besides its words; null for its words. */
+  matched_on?: "key" | "bpm" | null;
   effective_bpm?: number | null;
   effective_genre?: string | null;
   effective_label?: string | null;
@@ -576,17 +578,37 @@ export interface LibraryFacet {
   range: LibraryFacetRange | null;
 }
 
+/** What the Key, BPM and Genre quick filters offer for one view (FLW-4). */
+export interface LibraryQuickFacets {
+  /** The view's keys in Camelot order (1A, 1B, 2A ... 12B), with counts. */
+  keys: Array<{ value: string; count: number }>;
+  /** Tracks in the view with no Beatport key. */
+  no_key: number;
+  bpm: { min: number | null; max: number | null; missing: number };
+  genres: Array<{ value: string; count: number }>;
+  genres_total: number;
+  genres_truncated: boolean;
+}
+
 export interface LibraryFilterField {
   name: string;
   /**
-   * All eight kinds, each with a control in the bar since ORG-12. `name`
+   * All nine kinds, each with a control in the bar since ORG-12. `name`
    * (DISCOVER-03) is an artist or a label compared by identity: typed as text,
    * and the engine folds case, accents and punctuation before it compares.
    * `beatport` (DISCOVER-07) is an artist or a label by its Beatport id, the
    * rule an Artist or Label page hands the Library once resolution knows it.
    */
-  type: "text" | "number" | "date" | "bool" | "tag" | "collection" | "name" | "beatport";
+  type: "text" | "number" | "date" | "bool" | "tag" | "collection" | "name" | "beatport" | "source";
   label: string;
+  /**
+   * The group the Field list shows this under (LIB-7), sent by the engine so
+   * the bar keeps no copy of the grouping. Optional because vocabularies
+   * recorded before it describe valid fields; the engine always sends it.
+   * `source` (FLW-7) is "In playlist": a list of `{kind, id}` playlists,
+   * Collections and Sets.
+   */
+  group?: string;
   facetable: boolean;
   integer: boolean;
   /**
@@ -3028,6 +3050,14 @@ export interface CuePointBridge {
     scope?: "collection" | "smart";
     collectionId?: number | null;
   }) => Promise<LibraryFacet>;
+  /** The Key, BPM and Genre quick filters for a view (FLW-4). */
+  getLibraryQuickFacets?: (params: {
+    q?: string;
+    playlistId?: number | null;
+    filters?: FilterRuleSet | null;
+    scope?: "collection" | "smart";
+    collectionId?: number | null;
+  }) => Promise<LibraryQuickFacets>;
   getLibraryFilterFields?: () => Promise<LibraryFilterVocabulary>;
   getLibraryTrack?: (params: { trackId: number }) => Promise<LibraryTrackDetail>;
   /**

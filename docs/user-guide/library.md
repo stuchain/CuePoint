@@ -63,11 +63,31 @@ Nothing here changes your music. The Library page reads.
 - **Click a playlist** on the left to look at just that playlist. Folders show
   everything underneath them. **All tracks** goes back to the whole library.
 - **Type in the search box** to narrow to matching titles, artists, albums and
-  labels. It searches whatever you are looking at, so a search inside a playlist
-  stays inside that playlist.
+  labels. It also understands keys and tempos: "8A" finds the tracks in 8A (so
+  does "A minor"), and "124" finds the tracks at 124 BPM, from 123.5 up to 124.5
+  (type "124.5" to ask for exactly that). A row found that way says so under its
+  title — "Key 8A" or "124 BPM" — and the same appears in the search from
+  anywhere (Ctrl+K). It searches whatever you are looking at, so a search inside
+  a playlist stays inside that playlist.
+- **Use the quick filters** beside the search box: **Key ▾** (the keys in what
+  you are looking at, in Camelot order, with how many tracks each has, and **No
+  Beatport key**), **BPM ▾** (a From and To range) and **Genre ▾** (the most
+  common genres). Each choice becomes a chip on the same row; choosing a second
+  key makes one "any of" chip. The quick filters are on the Library table only.
+  When no track has a Beatport key yet, the Key list says *No tracks have a
+  Beatport key yet. Keys come from matching.* and offers **Match tracks…**. If
+  a Key filter finds nothing, the line above the table says the same.
 - **Add a filter** for anything more specific — BPM between 124 and 130, genre
-  is Techno, comment contains "promo". Filters stack, and the bar says how many
-  tracks are left after them.
+  is Techno, comment contains "promo". The fields are grouped (Track, Your notes
+  and ratings, Rekordbox only, Beatport match, Files, Where it is). Filters
+  stack, and the bar says how many tracks are left after them. The row scrolls
+  sideways when there are many chips and says "+N more"; **Clear all filters**
+  removes them all.
+- **In playlist** (under *Where it is*) keeps tracks that are in any of the
+  playlists, Collections or Sets you pick. A Smart Collection cannot be picked:
+  it is a rule, not a list, so CuePoint says so. Saving a Smart Collection while
+  a playlist is open adds an In playlist rule, so the saved view keeps its
+  playlist.
 - **Click a column heading** to sort by it; click again to reverse it.
 
 **Filter by one artist or one label, however it is spelled.** Two filters look
@@ -139,6 +159,11 @@ key filter, count, check and export leaves it out. After a fresh import no track
 has a key until matching runs: open [Clean](clean.md) and match your library.
 The key filter understands every notation, so "Key is 8A" finds a track whose
 Beatport key is "A minor".
+
+There is one **Key** field, and it compares keys by what they mean, so 8A,
+"A minor" and "Am" are the same. The one that used to be called "CuePoint key"
+is **Your key**, and Rekordbox's own is **Key from Rekordbox (not used)**, in
+the Rekordbox only group.
 
 ### Selecting tracks
 
@@ -446,7 +471,7 @@ fixed list offers them to pick from rather than a box to type into.
 | Action | Does |
 | --- | --- |
 | Match on Beatport | Looks the tracks up on Beatport, skipping any already matched or decided. It runs in the background |
-| Re-match | Looks them up again. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
+| Search Beatport again for this track | Looks them up again. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
 | Accept match / Reject match | Decides what the matcher proposed, for tracks nobody has decided yet |
 | Apply Beatport values… | Copies the fields you choose from each track's accepted match into your values |
 | Edit metadata… | Sets or clears your key, BPM, genre, label or year |

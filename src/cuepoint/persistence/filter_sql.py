@@ -75,6 +75,8 @@ from cuepoint.models.filter_rule import (
     TYPE_BOOL,
     TYPE_NAME,
     TYPE_NUMBER,
+    TYPE_SOURCE,
+    SOURCE_PLAYLIST,
     FieldSpec,
     LinkTable,
     FilterRule,
@@ -325,6 +327,50 @@ def _compile_beatport(
     return f"tracks.id {keyword} ({inner})", params
 
 
+def _compile_source(
+    spec: FieldSpec, operator: str, value: Any
+) -> Tuple[str, Tuple[Any, ...]]:
+    """Compile "In playlist is any of …" (FLW-7).
+
+    A track is in the rule when it is filed in at least one of the sources,
+    whatever their kinds: the tracks of the Rekordbox playlists (a folder
+    counting everything under it, as opening the folder does), united with the
+    entries of the Collections and Sets, which share ``collection_tracks``. The
+    set shape again, so a track filed in two of the sources is one row.
+
+    Only ``any_of`` exists for the field, and the model has refused anything
+    else. A Smart Collection among the sources is refused before this, where
+    the database is open (``rule_references``).
+    """
+    if operator != OP_ANY_OF:  # pragma: no cover - the model allows only any_of
+        raise FilterRuleError(f"{spec.label} cannot be filtered with {operator!r}")
+    playlists = [item["id"] for item in value if item["kind"] == SOURCE_PLAYLIST]
+    lists = [item["id"] for item in value if item["kind"] != SOURCE_PLAYLIST]
+    cte = ""
+    parts: List[str] = []
+    params: List[Any] = []
+    if playlists:
+        marks = ", ".join("?" for _ in playlists)
+        cte = (
+            "WITH RECURSIVE in_playlist_scope(id) AS ("
+            f"SELECT id FROM rekordbox_playlists WHERE id IN ({marks}) "
+            "UNION SELECT p.id FROM rekordbox_playlists p "
+            "JOIN in_playlist_scope s ON p.parent_id = s.id) "
+        )
+        params.extend(playlists)
+        parts.append(
+            "SELECT track_id FROM rekordbox_playlist_tracks "
+            "WHERE playlist_id IN (SELECT id FROM in_playlist_scope)"
+        )
+    if lists:
+        marks = ", ".join("?" for _ in lists)
+        parts.append(
+            f"SELECT track_id FROM collection_tracks WHERE collection_id IN ({marks})"
+        )
+        params.extend(lists)
+    return f"tracks.id IN ({cte}{' UNION '.join(parts)})", tuple(params)
+
+
 def _empty_test(spec: FieldSpec, *, negated: bool) -> str:
     """ "Has no value" for this field's type.
 
@@ -415,6 +461,8 @@ def compile_rule(rule: FilterRule) -> Tuple[str, Tuple[Any, ...]]:
         return _compile_name(spec, operator, value)
     if spec.type == TYPE_BEATPORT:
         return _compile_beatport(spec, operator, value)
+    if spec.type == TYPE_SOURCE:
+        return _compile_source(spec, operator, value)
     if spec.is_membership:
         return _compile_membership(spec, operator, value)
     if spec.is_multivalued:

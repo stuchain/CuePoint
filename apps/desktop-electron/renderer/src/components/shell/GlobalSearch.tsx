@@ -5,6 +5,7 @@ import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
 import { useToast } from "../Toast";
 import { libraryTrackState } from "../../screens/library/libraryLink";
+import { matchedLabel } from "../../screens/library/searchMatch";
 import { toQueueItem } from "../../screens/library/useLibraryPlayback";
 import {
   MIN_QUERY_LENGTH,
@@ -224,7 +225,16 @@ export function GlobalSearch() {
                     >
                       <span className="cp-global-search__title">{track.title}</span>
                       <span className="cp-global-search__artist">{track.artist}</span>
-                      <span className="cp-global-search__meta">{trackSubtitle(track)}</span>
+                      <span className="cp-global-search__meta">
+                        {/* Found by its key or tempo rather than its words (FLW-5). */}
+                        {matchedLabel(track) && (
+                          <>
+                            <strong className="cp-global-search__matched">{matchedLabel(track)}</strong>
+                            {" · "}
+                          </>
+                        )}
+                        {trackSubtitle(track)}
+                      </span>
                     </div>
                     <button
                       type="button"

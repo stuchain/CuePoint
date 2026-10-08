@@ -1053,6 +1053,11 @@
     "verdict": "exempt",
     "reason": "names of our own fields, parameters and code values, never a user value"
   },
+  "cuepoint/models/filter_rule.py::FieldSpec.__post_init__::{self.name}: {self.group!r} is not a field group": {
+    "holds": "exception text, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
   "cuepoint/models/filter_rule.py::FieldSpec.__post_init__::{self.name}: {self.identity!r} is not an identity kind": {
     "holds": "our own field, label or code name",
     "verdict": "exempt",
@@ -1151,6 +1156,14 @@
     "verdict": "corpus"
   },
   "cuepoint/models/filter_rule.py::_coerce_number::{spec.label} needs a real number, not {value!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_source::{spec.label} names a {kind!r}, which is not one of: ": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_source::{spec.label} needs a playlist, Collection or Set, not {value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
@@ -1583,6 +1596,11 @@
     "verdict": "exempt",
     "reason": "names of our own fields, parameters and code values, never a user value"
   },
+  "cuepoint/persistence/filter_sql.py::_compile_source::{spec.label} cannot be filtered with {operator!r}": {
+    "holds": "exception text, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
   "cuepoint/persistence/filter_sql.py::_compile_values::{spec.label} cannot be filtered with {operator!r} — the filter model allows it but the query builder does not implement it": {
     "holds": "our own field, label or code name",
     "verdict": "exempt",
@@ -1673,6 +1691,24 @@
     "reason": "names of our own fields, parameters and code values, never a user value"
   },
   "cuepoint/persistence/rule_references.py::_check_collections::{_clause(spec, rule)} names {row['name']!r}, which is a Smart Collection. A rule can filter on what a track is filed in, not on what another rule currently answers": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/rule_references.py::_check_sources::{clause} names playlist {identifier}, which no longer exists": {
+    "holds": "exception text, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/rule_references.py::_check_sources::{clause} names {kind} {identifier}, which no longer exists": {
+    "holds": "exception text, our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/rule_references.py::_check_sources::{clause} names {row['name']!r} as a {kind}, but it is a {row['kind']}": {
+    "holds": "a playlist, collection, tag, chapter or Set name",
+    "verdict": "corpus"
+  },
+  "cuepoint/persistence/rule_references.py::_check_sources::{clause} names {row['name']!r}, which is a Smart Collection. A rule can filter on what a track is filed in, not on what another rule currently answers": {
     "holds": "a playlist, collection, tag, chapter or Set name",
     "verdict": "corpus"
   },

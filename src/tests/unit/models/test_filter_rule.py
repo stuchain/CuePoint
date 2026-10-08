@@ -477,9 +477,9 @@ class TestBeatportFields:
     def test_a_registry_entry_cannot_mix_up_an_identity(self):
         from cuepoint.models.filter_rule import TYPE_BEATPORT, FieldSpec
 
-        with pytest.raises(ValueError):
-            FieldSpec("x", TYPE_BEATPORT, "X")
-        with pytest.raises(ValueError):
-            FieldSpec("x", "text", "X", identity="artist")
-        with pytest.raises(ValueError):
-            FieldSpec("x", TYPE_BEATPORT, "X", identity="genre")
+        with pytest.raises(ValueError, match="only a beatport field names an identity"):
+            FieldSpec("x", TYPE_BEATPORT, "X", group="Track")
+        with pytest.raises(ValueError, match="only a beatport field names an identity"):
+            FieldSpec("x", "text", "X", group="Track", identity="artist")
+        with pytest.raises(ValueError, match="not an identity kind"):
+            FieldSpec("x", TYPE_BEATPORT, "X", group="Track", identity="genre")

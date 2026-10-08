@@ -219,7 +219,7 @@ describe("the Clean entries of the operations list", () => {
     const items = cleanMenuItems({ count: 3 }, allHandlers());
     expect(items.map((item) => item.label)).toEqual([
       "Match on Beatport",
-      "Re-match",
+      "Search Beatport again for this track",
       "Accept match",
       "Reject match",
       "Apply Beatport values…",

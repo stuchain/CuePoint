@@ -67,6 +67,10 @@ class ResolvedKey:
 #: A track with no key.
 NO_KEY = ResolvedKey()
 
+#: The 24 Camelot codes in wheel order: 1A, 1B, 2A ... 12B (a number before its
+#: letter, so 2A comes before 10A, which the alphabet would not do).
+CAMELOT_ORDER = tuple(f"{number}{letter}" for number in range(1, 13) for letter in "AB")
+
 
 def key_name(pitch: int, minor: bool) -> str:
     """A key's name, as a person says it: ``A minor``, ``F♯ major``."""
@@ -155,6 +159,7 @@ def register_sql_functions(connection: sqlite3.Connection) -> None:
 
 
 __all__ = (
+    "CAMELOT_ORDER",
     "NO_KEY",
     "ResolvedKey",
     "camelot_of",

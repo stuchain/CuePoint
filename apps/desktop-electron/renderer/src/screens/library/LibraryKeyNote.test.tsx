@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { LibraryKeyNote } from "./LibraryKeyNote";
+import { rememberKeyNoteDismissal } from "./libraryNoticeMemory";
 
 let getLibraryFacet: ReturnType<typeof vi.fn>;
 
@@ -53,6 +54,16 @@ describe("the key note", () => {
     expect(getLibraryFacet).toHaveBeenCalledWith(
       expect.objectContaining({ field: "key", playlistId: null, collectionId: null }),
     );
+  });
+
+  it("shows when a Key filter found nothing, even after it was dismissed, with no Dismiss", async () => {
+    facet([{ value: null, count: 5 }]);
+    rememberKeyNoteDismissal();
+    render(<LibraryKeyNote trackCount={5} onMatch={vi.fn()} asked />);
+
+    const note = await screen.findByRole("status");
+    expect(note).toHaveTextContent("No tracks have a Beatport key yet. Keys come from matching.");
+    expect(screen.queryByRole("button", { name: "Dismiss this note" })).toBeNull();
   });
 
   it("is silent when any track has a key", async () => {

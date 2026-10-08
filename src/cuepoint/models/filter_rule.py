@@ -94,6 +94,19 @@ TYPE_NAME = "name"
 #: and never looked up: an id with no tracks is an answer, not a mistake.
 TYPE_BEATPORT = "beatport"
 
+#: Where a track is filed, by any mix of Rekordbox playlists, Collections and
+#: Sets (FLW-7). A value is ``{"kind": "playlist" | "collection" | "set",
+#: "id": <row id>}``: the kind is typed because the three live in two id spaces
+#: (a playlist id and a Collection id can be the same number), and an id rather
+#: than a name because all three can be renamed.
+TYPE_SOURCE = "source"
+
+#: The kinds of source a ``source`` value may name.
+SOURCE_PLAYLIST = "playlist"
+SOURCE_COLLECTION = "collection"
+SOURCE_SET = "set"
+SOURCE_KINDS = (SOURCE_PLAYLIST, SOURCE_COLLECTION, SOURCE_SET)
+
 FIELD_TYPES = (
     TYPE_TEXT,
     TYPE_NUMBER,
@@ -103,6 +116,7 @@ FIELD_TYPES = (
     TYPE_COLLECTION,
     TYPE_NAME,
     TYPE_BEATPORT,
+    TYPE_SOURCE,
 )
 
 #: The only ``match`` value v1 accepts (DEC-016).
@@ -203,6 +217,9 @@ OPERATORS_BY_TYPE: Dict[str, Tuple[str, ...]] = {
     TYPE_NAME: (OP_IS, OP_IS_NOT, OP_ANY_OF),
     # The same three, for the same reason: an id is a whole identity.
     TYPE_BEATPORT: (OP_IS, OP_IS_NOT, OP_ANY_OF),
+    # "In playlist is any of …" is the whole of FLW-7: a track filed in at
+    # least one of the sources. "Is not in" is not a filter anyone asked for.
+    TYPE_SOURCE: (OP_ANY_OF,),
 }
 
 #: A rating's unit. Declared here rather than in a renderer so the five-star
@@ -274,6 +291,23 @@ _ARTWORK_EXPRESSION = (
 #: Public because a Set's warnings read a track's current check too (PREP-05),
 #: and two spellings of "current" would be two rules.
 FILE_CHECK_CURRENT = f"{FILES_ALIAS}.checked_path = tracks.file_path"
+
+
+#: The groups the Field list shows (LIB-7), in the order it shows them.
+GROUP_TRACK = "Track"
+GROUP_YOURS = "Your notes and ratings"
+GROUP_REKORDBOX = "Rekordbox only"
+GROUP_BEATPORT = "Beatport match"
+GROUP_FILES = "Files"
+GROUP_WHERE = "Where it is"
+FIELD_GROUPS: Tuple[str, ...] = (
+    GROUP_TRACK,
+    GROUP_YOURS,
+    GROUP_REKORDBOX,
+    GROUP_BEATPORT,
+    GROUP_FILES,
+    GROUP_WHERE,
+)
 
 
 @dataclass(frozen=True)
@@ -363,11 +397,17 @@ class FieldSpec:
             and ``is``, ``is not`` and ``any of`` refuse a word outside them:
             a misspelled state would otherwise match nothing, quietly. Empty for
             a field whose values are the library's own.
+        group: The plain name of the group the filter's Field list shows this
+            field under (LIB-7), one of :data:`FIELD_GROUPS`. Sent with the
+            field so the renderer keeps no second copy of the grouping. Never
+            part of a rule: a rule names its field, so regrouping changes no
+            saved Smart Collection.
     """
 
     name: str
     type: str
     label: str
+    group: str = ""
     facetable: bool = False
     integer: bool = False
     column: Optional[str] = None
@@ -381,6 +421,8 @@ class FieldSpec:
 
     def __post_init__(self) -> None:
         """Refuse a registry entry the query builder could not answer."""
+        if self.group not in FIELD_GROUPS:
+            raise ValueError(f"{self.name}: {self.group!r} is not a field group")
         if (self.type == TYPE_BEATPORT) != (self.identity is not None):
             raise ValueError(f"{self.name}: only a beatport field names an identity")
         if self.identity is not None and self.identity not in ENTITY_KINDS:
@@ -434,7 +476,7 @@ _CREDIT_NAMES = LinkTable("track_credits", "name_key")
 #: each is called. The words are the engine's; the labels are what the filter
 #: bar shows and what a chip says.
 MATCH_STATE_CHOICES: Tuple[Tuple[str, str], ...] = (
-    (STATE_NEEDS_REVIEW, "Needs review"),
+    (STATE_NEEDS_REVIEW, "Waiting for you"),
     (STATE_ACCEPTED, "Accepted"),
     (STATE_REJECTED, "Rejected"),
     (STATE_NO_MATCH, "No match"),
@@ -521,6 +563,7 @@ def _effective(name: str, type_: str, label: str, **options: Any) -> FieldSpec:
         name,
         type_,
         label,
+        group=GROUP_TRACK,
         column=f"COALESCE({METADATA_ALIAS}.{name}, tracks.{name})",
         joins=(METADATA_ALIAS,),
         **options,
@@ -532,20 +575,24 @@ def _layers(name: str, type_: str, label: str, **options: Any) -> Tuple[FieldSpe
 
     ``<name>_rekordbox`` is the column Rekordbox wrote, and ``cuepoint_<name>``
     the override alone: the three-name shape ORG-05 gave rating, so the person
-    who wants exactly one layer can still ask for it.
+    who wants exactly one layer can still ask for it. They are labelled by whose
+    they are (LIB-7): "Genre from Rekordbox" and "Your genre", the first under
+    Rekordbox only and the second under the user's own values.
     """
     return (
         FieldSpec(
             f"{name}_rekordbox",
             type_,
-            f"Rekordbox {label}",
+            f"{label[:1].upper()}{label[1:]} from Rekordbox",
+            group=GROUP_REKORDBOX,
             column=f"tracks.{name}",
             **options,
         ),
         FieldSpec(
             f"cuepoint_{name}",
             type_,
-            f"CuePoint {label}",
+            f"Your {label}",
+            group=GROUP_YOURS,
             column=f"{METADATA_ALIAS}.{name}",
             joins=(METADATA_ALIAS,),
             **options,
@@ -554,17 +601,27 @@ def _layers(name: str, type_: str, label: str, **options: Any) -> Tuple[FieldSpe
 
 
 FIELDS: Tuple[FieldSpec, ...] = (
-    FieldSpec("title", TYPE_TEXT, "Title"),
-    FieldSpec("artist", TYPE_TEXT, "Artist", facetable=True),
-    FieldSpec("remixer", TYPE_TEXT, "Remixer", facetable=True),
-    FieldSpec("album", TYPE_TEXT, "Album", facetable=True),
+    FieldSpec("title", TYPE_TEXT, "Title", group=GROUP_TRACK),
+    FieldSpec("artist", TYPE_TEXT, "Artist", group=GROUP_TRACK, facetable=True),
+    FieldSpec("remixer", TYPE_TEXT, "Remixer", group=GROUP_TRACK, facetable=True),
+    FieldSpec("album", TYPE_TEXT, "Album", group=GROUP_TRACK, facetable=True),
     # DEC-068: these five mean the effective value, as rating does below.
     _effective("label", TYPE_TEXT, "Label", facetable=True),
     _effective("genre", TYPE_TEXT, "Genre", facetable=True),
-    FieldSpec("key", TYPE_TEXT, "Key", facetable=True, column=KEY_SQL, joins=KEY_JOINS),
-    FieldSpec("colour", TYPE_TEXT, "Colour", facetable=True),
-    FieldSpec("comment", TYPE_TEXT, "Comment"),
-    FieldSpec("file_path", TYPE_TEXT, "File path"),
+    # FLW-6: the one Key field. Its value is compared as a key, so "8A" and
+    # "Am" are the same key whatever notation the file or the rule uses.
+    FieldSpec(
+        "key",
+        TYPE_TEXT,
+        "Key",
+        group=GROUP_TRACK,
+        facetable=True,
+        column=KEY_SQL,
+        joins=KEY_JOINS,
+    ),
+    FieldSpec("colour", TYPE_TEXT, "Color", group=GROUP_REKORDBOX, facetable=True),
+    FieldSpec("comment", TYPE_TEXT, "Comment", group=GROUP_REKORDBOX),
+    FieldSpec("file_path", TYPE_TEXT, "File path", group=GROUP_FILES),
     _effective("bpm", TYPE_NUMBER, "BPM"),
     _effective("year", TYPE_NUMBER, "Year", facetable=True, integer=True),
     # DEC-057: the plain word "rating" means the value the user sees, which is
@@ -577,21 +634,34 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "rating",
         TYPE_NUMBER,
         "Rating",
+        group=GROUP_YOURS,
         facetable=True,
         integer=True,
         column=f"COALESCE({METADATA_ALIAS}.rating, tracks.rating)",
         joins=(METADATA_ALIAS,),
         unit=UNIT_STARS,
     ),
-    FieldSpec("play_count", TYPE_NUMBER, "Play count", integer=True),
-    FieldSpec("bitrate", TYPE_NUMBER, "Bitrate", facetable=True, integer=True),
-    FieldSpec("duration_seconds", TYPE_NUMBER, "Length", integer=True),
-    FieldSpec("date_added", TYPE_DATE, "Date added"),
+    FieldSpec(
+        "play_count", TYPE_NUMBER, "Play count", group=GROUP_REKORDBOX, integer=True
+    ),
+    FieldSpec(
+        "bitrate",
+        TYPE_NUMBER,
+        "Bitrate",
+        group=GROUP_TRACK,
+        facetable=True,
+        integer=True,
+    ),
+    FieldSpec(
+        "duration_seconds", TYPE_NUMBER, "Length", group=GROUP_TRACK, integer=True
+    ),
+    FieldSpec("date_added", TYPE_DATE, "Date added", group=GROUP_REKORDBOX),
     # --- CuePoint's own layer (ORG-05) ------------------------------------
     FieldSpec(
         "rating_rekordbox",
         TYPE_NUMBER,
-        "Rekordbox rating",
+        "Rating from Rekordbox",
+        group=GROUP_REKORDBOX,
         integer=True,
         column="tracks.rating",
         unit=UNIT_STARS,
@@ -599,7 +669,8 @@ FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec(
         "cuepoint_rating",
         TYPE_NUMBER,
-        "CuePoint rating",
+        "Your rating",
+        group=GROUP_YOURS,
         integer=True,
         column=f"{METADATA_ALIAS}.rating",
         joins=(METADATA_ALIAS,),
@@ -609,6 +680,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "favorite",
         TYPE_BOOL,
         "Favorite",
+        group=GROUP_YOURS,
         facetable=True,
         column=f"COALESCE({METADATA_ALIAS}.favorite, 0)",
         joins=(METADATA_ALIAS,),
@@ -617,12 +689,13 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "notes",
         TYPE_TEXT,
         "Notes",
+        group=GROUP_YOURS,
         column=f"{METADATA_ALIAS}.notes",
         joins=(METADATA_ALIAS,),
     ),
     # --- Each override layer on its own (CLEAN-05) ---------------------
     # Rekordbox's key is no longer the key (DEC-201); the filter can still ask
-    # for it, and says so.
+    # for it, and says so (FLW-6).
     *(
         replace(spec, label="Key from Rekordbox (not used)")
         if spec.name == "key_rekordbox"
@@ -633,8 +706,20 @@ FIELDS: Tuple[FieldSpec, ...] = (
     *_layers("genre", TYPE_TEXT, "genre"),
     *_layers("label", TYPE_TEXT, "label"),
     *_layers("year", TYPE_NUMBER, "year", integer=True),
-    FieldSpec("tag", TYPE_TAG, "Tag", facetable=True, link=_TAG_LINK),
-    FieldSpec("collection", TYPE_COLLECTION, "Collection", link=_COLLECTION_LINK),
+    FieldSpec(
+        "tag", TYPE_TAG, "Tag", group=GROUP_WHERE, facetable=True, link=_TAG_LINK
+    ),
+    FieldSpec(
+        "collection",
+        TYPE_COLLECTION,
+        "Collection",
+        group=GROUP_WHERE,
+        link=_COLLECTION_LINK,
+    ),
+    # FLW-7: where a track is filed, across Rekordbox playlists, Collections
+    # and Sets at once. Its value is a list of ``{kind, id}`` sources, so the
+    # Keys page's scope and a saved Smart Collection are one rule.
+    FieldSpec("in_playlist", TYPE_SOURCE, "In playlist", group=GROUP_WHERE),
     # --- Matching (CLEAN-04, DEC-067) ---------------------------------------
     # "Not matched" is a track with no state row, so it is the tracks the join
     # finds nothing for: the COALESCE is the anti-join, spelled as the value a
@@ -642,7 +727,8 @@ FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec(
         "match_state",
         TYPE_TEXT,
-        "Match state",
+        "Beatport match",
+        group=GROUP_BEATPORT,
         facetable=True,
         column=f"COALESCE({MATCH_ALIAS}.state, '{STATE_NOT_MATCHED}')",
         joins=(MATCH_ALIAS,),
@@ -651,7 +737,8 @@ FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec(
         "match_decided_by",
         TYPE_TEXT,
-        "Match decided by",
+        "Match decided by (you or CuePoint)",
+        group=GROUP_BEATPORT,
         facetable=True,
         column=f"{MATCH_ALIAS}.decided_by",
         joins=(MATCH_ALIAS,),
@@ -662,7 +749,8 @@ FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec(
         "match_disputed",
         TYPE_BOOL,
-        "Match disputed",
+        "Changed since you decided",
+        group=GROUP_BEATPORT,
         facetable=True,
         column=f"({MATCH_ALIAS}.newer_attempt_id IS NOT NULL)",
         joins=(MATCH_ALIAS,),
@@ -674,7 +762,8 @@ FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec(
         "match_score",
         TYPE_NUMBER,
-        "Match score",
+        "Beatport match score",
+        group=GROUP_BEATPORT,
         column=f"{MATCH_ALIAS}.candidate_score",
         joins=(MATCH_ALIAS,),
     ),
@@ -686,6 +775,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "file_status",
         TYPE_TEXT,
         "File status",
+        group=GROUP_FILES,
         facetable=True,
         column=(
             f"CASE WHEN {FILE_CHECK_CURRENT} THEN {FILES_ALIAS}.status"
@@ -700,7 +790,8 @@ FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec(
         "file_checked_at",
         TYPE_DATE,
-        "File checked",
+        "Last checked on disk",
+        group=GROUP_FILES,
         column=(
             f"CASE WHEN {FILE_CHECK_CURRENT}"
             f" THEN date({FILES_ALIAS}.checked_at, 'localtime') END"
@@ -713,14 +804,16 @@ FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec(
         "in_duplicate_group",
         TYPE_BOOL,
-        "In a duplicate group",
+        "Possible duplicate",
+        group=GROUP_FILES,
         facetable=True,
         column=f"(tracks.id IN (SELECT track_id FROM {DUPLICATE_SIGNALS_VIEW}))",
     ),
     FieldSpec(
         "duplicate_signal",
         TYPE_TEXT,
-        "Duplicate signal",
+        "Why it looks like a duplicate",
+        group=GROUP_FILES,
         facetable=True,
         values=LinkTable(DUPLICATE_SIGNALS_VIEW, "signal"),
         choices=DUPLICATE_SIGNAL_CHOICES,
@@ -733,6 +826,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "artwork",
         TYPE_TEXT,
         "Artwork",
+        group=GROUP_FILES,
         facetable=True,
         column=_ARTWORK_EXPRESSION,
         joins=(ARTWORK_ALIAS, MATCH_ALIAS, MATCH_CANDIDATE_ALIAS),
@@ -745,7 +839,8 @@ FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec(
         "artist_name",
         TYPE_NAME,
-        "Credited artist",
+        "Any credited artist",
+        group=GROUP_TRACK,
         facetable=True,
         values=_CREDIT_NAMES,
         display="name",
@@ -757,6 +852,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "label_name",
         TYPE_NAME,
         "Label, any spelling",
+        group=GROUP_TRACK,
         facetable=True,
         column=f"COALESCE({METADATA_ALIAS}.label_key, tracks.label_key)",
         display=f"COALESCE({METADATA_ALIAS}.label, tracks.label)",
@@ -772,12 +868,14 @@ FIELDS: Tuple[FieldSpec, ...] = (
         "beatport_artist",
         TYPE_BEATPORT,
         "Beatport artist",
+        group=GROUP_BEATPORT,
         identity=ENTITY_ARTIST,
     ),
     FieldSpec(
         "beatport_label",
         TYPE_BEATPORT,
         "Beatport label",
+        group=GROUP_BEATPORT,
         identity=ENTITY_LABEL,
     ),
 )
@@ -918,6 +1016,26 @@ def _coerce_beatport_id(value: Any, spec: FieldSpec, operator: str) -> int:
     return identifier
 
 
+def _coerce_source(value: Any, spec: FieldSpec, operator: str) -> Dict[str, Any]:
+    """Coerce one value for a ``source`` field: ``{"kind", "id"}``.
+
+    The id is read as a membership id is (a positive whole number), and the
+    kind must be one of :data:`SOURCE_KINDS`. Returned as a plain dict so it
+    serializes as the object the renderer sent.
+    """
+    if not isinstance(value, Mapping):
+        raise FilterRuleError(
+            f"{spec.label} needs a playlist, Collection or Set, not {value!r}"
+        )
+    kind = str(value.get("kind") or "").strip().lower()
+    if kind not in SOURCE_KINDS:
+        raise FilterRuleError(
+            f"{spec.label} names a {kind!r}, which is not one of: "
+            + ", ".join(SOURCE_KINDS)
+        )
+    return {"kind": kind, "id": _coerce_id(value.get("id"), spec, operator)}
+
+
 def _coerce_text(value: Any, spec: FieldSpec, operator: str) -> str:
     """Coerce one value for a text or date field."""
     if value is None or isinstance(value, (list, tuple, dict, bool)):
@@ -949,6 +1067,8 @@ def _coerce_one(value: Any, spec: FieldSpec, operator: str) -> Any:
         return _coerce_name(value, spec, operator)
     if spec.type == TYPE_BEATPORT:
         return _coerce_beatport_id(value, spec, operator)
+    if spec.type == TYPE_SOURCE:
+        return _coerce_source(value, spec, operator)
     text = _coerce_text(value, spec, operator)
     if spec.choices and operator in CHOICE_OPERATORS:
         return _coerce_choice(text, spec, operator)
@@ -1318,11 +1438,16 @@ def describe_fields() -> List[Dict[str, Any]]:
     is for the list of what is buildable to come from the same place that
     refuses.
     """
+    # Grouped in FIELD_GROUPS' order, each group in the registry's order (LIB-7):
+    # the renderer draws what it is given, so the order is decided here.
+    ordered = sorted(FIELDS, key=lambda spec: FIELD_GROUPS.index(spec.group))
     return [
         {
             "name": spec.name,
             "type": spec.type,
             "label": spec.label,
+            # LIB-7: the group the Field list shows this under.
+            "group": spec.group,
             "facetable": spec.facetable,
             "integer": spec.integer,
             # Always present, null included: a key a renderer has to test for
@@ -1337,7 +1462,7 @@ def describe_fields() -> List[Dict[str, Any]]:
                 else None
             ),
         }
-        for spec in FIELDS
+        for spec in ordered
     ]
 
 
@@ -1357,7 +1482,12 @@ __all__: Sequence[str] = (
     "RuleSet",
     "FACETABLE_FIELDS",
     "FIELDS",
+    "FIELD_GROUPS",
     "FIELD_TYPES",
+    "SOURCE_COLLECTION",
+    "SOURCE_KINDS",
+    "SOURCE_PLAYLIST",
+    "SOURCE_SET",
     "ARTWORK_ALIAS",
     "ARTWORK_VALUES",
     "DUPLICATE_SIGNALS_VIEW",
@@ -1384,6 +1514,7 @@ __all__: Sequence[str] = (
     "TYPE_DATE",
     "TYPE_NAME",
     "TYPE_NUMBER",
+    "TYPE_SOURCE",
     "TYPE_TAG",
     "TYPE_TEXT",
     "UNIT_STARS",

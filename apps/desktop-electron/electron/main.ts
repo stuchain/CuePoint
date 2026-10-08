@@ -350,6 +350,9 @@ function registerIpcHandlers(): void {
   handle("engine:getLibraryFacet", (_event, params) =>
     engine.getLibraryFacet(params),
   );
+  handle("engine:getLibraryQuickFacets", (_event, params) =>
+    engine.getLibraryQuickFacets(params),
+  );
   handle("engine:getLibraryFilterFields", () => engine.getLibraryFilterFields());
   handle("engine:getLibraryTrack", (_event, params) =>
     engine.getLibraryTrack(params),

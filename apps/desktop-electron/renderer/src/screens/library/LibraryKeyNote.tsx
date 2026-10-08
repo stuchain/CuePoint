@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "../../components";
 import { reportUnexpected } from "../../reporting/reporting";
+import { libraryHasNoKeys } from "./libraryKeys";
 import { rememberKeyNoteDismissal, wasKeyNoteDismissed } from "./libraryNoticeMemory";
 import "./LibraryNotice.css";
 
@@ -23,22 +24,24 @@ interface LibraryKeyNoteProps {
   trackCount: number;
   /** Open matching. Absent, the note says why and offers nothing it cannot do. */
   onMatch?: () => void;
+  /**
+   * True when the user asked for a key and found none (FLW-4): a Key filter that
+   * matches nothing. The note then answers that, so a dismissal made after an
+   * import does not hide it, and it has nothing to dismiss.
+   */
+  asked?: boolean;
 }
 
-export function LibraryKeyNote({ trackCount, onMatch }: LibraryKeyNoteProps) {
+export function LibraryKeyNote({ trackCount, onMatch, asked = false }: LibraryKeyNoteProps) {
   const [none, setNone] = useState(false);
   const [dismissed, setDismissed] = useState(wasKeyNoteDismissed);
 
   useEffect(() => {
-    const facet = window.cuepoint?.getLibraryFacet;
-    if (!facet || trackCount <= 0) return;
+    if (!window.cuepoint?.getLibraryFacet || trackCount <= 0) return;
     let cancelled = false;
-    void facet({ field: "key", playlistId: null, collectionId: null })
+    libraryHasNoKeys()
       .then((answer) => {
-        // The "no key" bucket is the one with a null value. An answer with no
-        // buckets at all says nothing about keys, so it says nothing.
-        const keyed = answer.values.some((entry) => entry.value !== null && entry.count > 0);
-        if (!cancelled) setNone(answer.values.length > 0 && !keyed);
+        if (!cancelled) setNone(answer === true);
       })
       .catch((error: unknown) => {
         reportUnexpected(error);
@@ -48,7 +51,7 @@ export function LibraryKeyNote({ trackCount, onMatch }: LibraryKeyNoteProps) {
     };
   }, [trackCount]);
 
-  if (!none || dismissed) return null;
+  if (!none || (dismissed && !asked)) return null;
 
   const dismiss = () => {
     rememberKeyNoteDismissal();
@@ -66,9 +69,11 @@ export function LibraryKeyNote({ trackCount, onMatch }: LibraryKeyNoteProps) {
             Match tracks…
           </Button>
         )}
-        <Button variant="secondary" onClick={dismiss} aria-label="Dismiss this note">
-          Dismiss
-        </Button>
+        {!asked && (
+          <Button variant="secondary" onClick={dismiss} aria-label="Dismiss this note">
+            Dismiss
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -162,7 +162,7 @@ class TestSortingAndFiltering:
         }
         assert fields["match_state"]["choices"][0] == {
             "value": "needs_review",
-            "label": "Needs review",
+            "label": "Waiting for you",
         }
         assert fields["genre"]["choices"] is None
 
@@ -176,7 +176,7 @@ class TestSortingAndFiltering:
             ),
             400,
             "INVALID_REQUEST",
-            "Match state",
+            "Beatport match",
             "needs_review",
         )
 
