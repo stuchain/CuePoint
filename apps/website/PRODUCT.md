@@ -66,7 +66,7 @@ Color rules that keep every theme at 4.5:1: muted text only on the page backgrou
 
 ## Constraints
 
-- Hosted on GitHub Pages under `/CuePoint/` until a domain is bought (DEC-139, DEC-196). No custom
-  headers; static output only.
+- Hosted on GitHub Pages at `usecuepoint.com` (DEC-196, DEC-213). No custom headers; static output
+  only.
 - No download is offered until 1.0.0 (DEC-194).
 - Sound only when the visitor asks for it (DEC-191).

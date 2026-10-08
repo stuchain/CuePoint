@@ -37,7 +37,7 @@ jobs:
         run: npm run build
 
       # Internal links are checked on every build by check:site, so only addresses on other hosts are
-      # checked here (--scheme): the site's own address (github.io/CuePoint) is excluded, and so are the
+      # checked here (--scheme): the site's own address (usecuepoint.com, and github.io/CuePoint) is excluded, and so are the
       # w3.org and schema.org namespace names, which are identifiers, not pages.
       - name: Check external links
         id: lychee
@@ -52,6 +52,7 @@ jobs:
             --timeout 30
             --accept '200..=299,403,429'
             --exclude '^https://stuchain\.github\.io/CuePoint'
+            --exclude '^https://usecuepoint\.com'
             --exclude '^https?://www\.w3\.org/'
             --exclude '^https://schema\.org'
             --root-dir "${{ github.workspace }}/apps/website/dist"

@@ -13,15 +13,16 @@
   --motion-step-px: var(--unit);
   --motion-fade: linear;
   --border-width: 2px;
+  --hairline: 1px;
   --border-width-heavy: 3px;
   --bevel-size: 2px;
-  --bevel-size-sm: 1px;
+  --bevel-size-sm: var(--hairline);
   --focus-ring-width: 2px;
   --radius-sm: 0;
   --shadow-bevel: inset var(--bevel-size) var(--bevel-size) 0 var(--bevel-highlight), inset -2px -2px 0 var(--bevel-shadow);
   --shadow-bevel-panel: inset var(--bevel-size) var(--bevel-size) 0 var(--border-light), inset -2px -2px 0 var(--bevel-shadow);
-  --shadow-bevel-sm: inset var(--bevel-size-sm) var(--bevel-size-sm) 0 var(--bevel-highlight), inset -1px -1px 0 var(--bevel-shadow);
-  --shadow-bevel-pressed: inset -1px -1px 0 var(--bevel-highlight), inset var(--bevel-size-sm) var(--bevel-size-sm) 0 var(--bevel-shadow);
+  --shadow-bevel-sm: inset var(--bevel-size-sm) var(--bevel-size-sm) 0 var(--bevel-highlight), inset calc(-1 * var(--bevel-size-sm)) calc(-1 * var(--bevel-size-sm)) 0 var(--bevel-shadow);
+  --shadow-bevel-pressed: inset calc(-1 * var(--bevel-size-sm)) calc(-1 * var(--bevel-size-sm)) 0 var(--bevel-highlight), inset var(--bevel-size-sm) var(--bevel-size-sm) 0 var(--bevel-shadow);
   --shadow-panel: 5px 5px 0 var(--border-shadow);
   --shadow-modal: 10px 10px 0 var(--border-shadow);
   --shadow-badge: 2px 2px 0 var(--border-shadow);
@@ -48,7 +49,7 @@
   --safe-left: var(--screen-padding);
   --screen-padding: var(--space-xl);
   --results-min-rows: 10;
-  --row-height: 2.5781rem;
+  --row-height: 2.5625rem;
   --row-unmatched-bg: #5c2e2e;
   --bp-sm: 600px;
   --bp-md: 900px;

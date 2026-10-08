@@ -33,11 +33,17 @@ describe("addressParts", () => {
 
 describe("isStyleguide", () => {
   it("matches /styleguide/ at the start of the path after the base only", () => {
-    expect(isStyleguide("/CuePoint/styleguide/")).toBe(true);
-    expect(isStyleguide("/CuePoint/styleguide/buttons/")).toBe(true);
-    expect(isStyleguide("/CuePoint/guides/styleguide/")).toBe(false);
-    expect(isStyleguide("/CuePoint/styleguides/")).toBe(false);
-    expect(isStyleguide("/CuePoint/")).toBe(false);
-    expect(isStyleguide("/styleguide/")).toBe(false);
+    const pages = "https://stuchain.github.io/CuePoint/";
+    expect(isStyleguide("/CuePoint/styleguide/", pages)).toBe(true);
+    expect(isStyleguide("/CuePoint/styleguide/buttons/", pages)).toBe(true);
+    expect(isStyleguide("/CuePoint/guides/styleguide/", pages)).toBe(false);
+    expect(isStyleguide("/CuePoint/styleguides/", pages)).toBe(false);
+    expect(isStyleguide("/CuePoint/", pages)).toBe(false);
+    expect(isStyleguide("/styleguide/", pages)).toBe(false);
+  });
+
+  it("uses the site's own address by default", () => {
+    expect(isStyleguide("/styleguide/")).toBe(true);
+    expect(isStyleguide("/guides/styleguide/")).toBe(false);
   });
 });

@@ -17,12 +17,13 @@ npm run sync-tokens  # regenerate src/styles/tokens.generated.css from the app (
 npm run og-image     # remake the placeholder social card
 ```
 
-## The address and the `/CuePoint/` base
+## The address and the base
 
-`site.config.ts` holds one address setting, `SITE_URL`. `astro.config.ts` derives Astro's `site` and
-`base` from it. On GitHub Pages the base is `/CuePoint/`, so every link and asset must be built from
-`import.meta.env.BASE_URL`; a bare `/guide/` breaks on Pages. A custom domain gives a base of `/`.
-Local dev and preview also serve under `/CuePoint/`.
+`site.config.ts` holds one address setting, `SITE_URL`, which is `https://usecuepoint.com/`
+(DEC-213). `astro.config.ts` derives Astro's `site` and `base` from it, so the base is `/`. Build
+every link and asset from `import.meta.env.BASE_URL` anyway: if the address ever moves under a path
+(GitHub Pages' own `/CuePoint/`), changing `SITE_URL` is the only edit, and the link check catches
+anything written as a bare path.
 
 ## The PUBLIC flag
 

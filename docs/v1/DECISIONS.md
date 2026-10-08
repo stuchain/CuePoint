@@ -6017,3 +6017,24 @@ config Phase 16 changes. The user chose on 2026-10-08 to start it early.
   early changes nothing it shows.
 
 **Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-213 — The Website's Address Is usecuepoint.com
+
+**Status**: Approved · **Related**: DEC-139, DEC-196, SITE-01, SITE-13
+
+**Decision**: The domain DEC-196 asks for is `usecuepoint.com`, bought by the user on 2026-10-08
+(registrar Papaki). `SITE_URL` is `https://usecuepoint.com/` from now on, so the site is built with a
+base of `/` and every canonical, the sitemap and `robots.txt` already name the final address.
+
+**Reason**: The user's choice among `cuepoint.dj`, `usecuepoint.com` and `usecuepoint.app`. Building
+for the final address now means launch changes no link.
+
+**Implications**:
+- The DNS records, Pages' custom domain and `public/CNAME` still wait for SITE-13; until then the old
+  page stays at `https://stuchain.github.io/CuePoint/` and the new site is a `noindex` preview.
+- Domain verification for the user's GitHub account (a TXT record) can be done any time, and changes
+  no site.
+
+**Decided with**: User · **Date**: 2026-10-08

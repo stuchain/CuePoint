@@ -14,13 +14,13 @@ export default defineConfig({
   retries: 0,
   reporter: process.env["CI"] ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL: "http://localhost:4321/CuePoint/",
+    baseURL: "http://localhost:4321/",
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
   webServer: {
     command: "npx astro preview --port 4321 --ignore-lock",
-    url: "http://localhost:4321/CuePoint/",
+    url: "http://localhost:4321/",
     reuseExistingServer: !process.env["CI"],
     timeout: 60_000,
   },

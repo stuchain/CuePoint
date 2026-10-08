@@ -63,7 +63,7 @@ describe("Page", () => {
     expect(meta(html, "property", "og:title")).toBe("Test page");
     expect(meta(html, "property", "og:description")).toBe("A test page.");
     expect(meta(html, "property", "og:type")).toBe("website");
-    expect(meta(html, "property", "og:image")).toMatch(/^https:\/\/stuchain\.github\.io\/.*default/);
+    expect(meta(html, "property", "og:image")).toMatch(/^https:\/\/usecuepoint\.com\/.*default/);
     expect(meta(html, "name", "twitter:card")).toBe("summary_large_image");
   });
 

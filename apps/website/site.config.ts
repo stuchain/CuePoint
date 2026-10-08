@@ -1,5 +1,5 @@
 /** The one address setting. Astro's `site` and `base` are both derived from it (DEC-139). */
-export const SITE_URL = "https://stuchain.github.io/CuePoint/";
+export const SITE_URL = "https://usecuepoint.com/"; // DEC-213
 
 /** Every page carries noindex until SITE-13 sets this to true. */
 export const PUBLIC = false;

@@ -5,7 +5,7 @@
       "startServerReadyPattern": "localhost:4321",
       "startServerReadyTimeout": 60000,
       "url": [
-        "http://localhost:4321/CuePoint/"
+        "http://localhost:4321/"
       ],
       "numberOfRuns": 3,
       "settings": {
