@@ -78,8 +78,10 @@ class TestSourceMapSteps:
         delete = _index(steps, "Delete source maps")
         package = _index(steps, "Build Electron installers + artifacts")
         assert build < upload < delete < package
-        # Straight after the build: no test step can fail first and skip it.
-        assert upload == build + 1
+        # Straight after the build: no test step can fail first and skip it. Only the release's
+        # check that the token exists (DIST-04) may come between.
+        between = [s.get("name") for s in steps[build + 1 : upload]]
+        assert between in ([], ["Require the Sentry token for a release"])
         # `npm run dist` rebuilds first, which would replace the files `inject` wrote ids into.
         assert steps[package]["run"].startswith("npm run package")
         assert "npm run build" not in steps[package]["run"]
