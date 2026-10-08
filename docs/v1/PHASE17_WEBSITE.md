@@ -640,6 +640,15 @@ download one more click away, and honest words about what happens after.
 
 **Complexity**: **M**
 
+**Outcome (2026-10-08)**: `/download/` is built from `src/data/releases.json`, which
+`scripts/fetch-releases.mjs` writes at build time from GitHub releases (only stable versions ≥1.0.0 with all
+four DIST-03 installers and their checksums). Until 1.0.0 the page says the app is coming and links to
+releases. A failed read keeps the last data on a developer machine and fails a CI or public build. The
+header names the visitor's system and links to its section; only the page's own button links to the file.
+`UPDATES_IN_APP` in `site.ts` holds the update wording to the user guide until DIST-07 flips it. A release-state
+fixture build (`dist-fixture`) is tested by e2e and check-site in CI. Owed: DIST-08 must update
+`support-policy.md` and `features.md` (Intel line) with the page's requirements.
+
 ---
 
 ## SITE-08 — Features
