@@ -66,10 +66,13 @@ const expectedPy = Object.values(engineFile)[0];
 
 describe("the expected job codes", () => {
   it.skipIf(expectedPy === undefined)("are the engine's, spelled the same", () => {
-    const py = expectedPy!;
+    // A Windows checkout has CRLF line ends; without this the first block runs on into the next.
+    const py = expectedPy!.replace(/\r\n/g, "\n");
     const block = (name: string): string[] => {
       const start = py.indexOf(`${name}: frozenset[str] = frozenset(`);
       const end = py.indexOf("\n)\n", start);
+      expect(start).toBeGreaterThanOrEqual(0);
+      expect(end).toBeGreaterThan(start);
       return [...py.slice(start, end).matchAll(/^\s+"([^"]+)",/gm)].map((m) => m[1]!);
     };
     const engine = [...block("EXPECTED_JOB_ERROR_CODES"), ...block("EXPECTED_ROUTE_ERROR_CODES")].sort();
