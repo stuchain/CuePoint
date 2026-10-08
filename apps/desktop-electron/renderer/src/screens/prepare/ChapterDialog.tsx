@@ -28,11 +28,13 @@ interface ChapterDialogProps {
   busy?: boolean;
   /** Why the engine refused the last attempt, in its words. */
   error?: string | null;
+  /** Changes with every refusal, so the same words coming back shake again. */
+  errorKey?: number;
   onSave: (update: SetChapterUpdate) => void;
   onClose: () => void;
 }
 
-export function ChapterDialog({ chapter, busy = false, error = null, onSave, onClose }: ChapterDialogProps) {
+export function ChapterDialog({ chapter, busy = false, error = null, errorKey = 0, onSave, onClose }: ChapterDialogProps) {
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
   const [bpmMin, setBpmMin] = useState("");
@@ -126,7 +128,7 @@ export function ChapterDialog({ chapter, busy = false, error = null, onSave, onC
         </label>
 
         {(problem ?? error) && (
-          <p className="prepare-dialog__problem" role="alert">
+          <p key={problem ?? errorKey} className="prepare-dialog__problem" role="alert">
             {problem ?? error}
           </p>
         )}

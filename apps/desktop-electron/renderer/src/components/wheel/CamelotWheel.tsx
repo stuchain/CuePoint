@@ -1,6 +1,7 @@
 import { Fragment, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 
 import { keyHint } from "./wheelLink";
+import { changedMark, useCountChanges } from "./useCountChanges";
 import {
   CAMELOT_CODES,
   GRID_CELLS,
@@ -68,6 +69,9 @@ function nameOf(code: string, relation: KeyRelation | undefined): string {
  * mix with it are lit. It draws what it is given and knows nothing of tracks or the
  * Library, so PAGES-16's Keys page can draw on it as well.
  */
+/** A stable empty map, for the wheel drawn without counts. */
+const NO_COUNTS: ReadonlyMap<string, number> = new Map();
+
 export function CamelotWheel({
   lit,
   focusCode,
@@ -81,6 +85,7 @@ export function CamelotWheel({
   // Which key has focus or the pointer: drawn as an outline round its wedge, never a fill.
   const [focused, setFocused] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const marks = useCountChanges(counts ?? NO_COUNTS);
   const biggest = counts ? Math.max(0, ...counts.values()) : 0;
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -108,6 +113,7 @@ export function CamelotWheel({
             data-lit={lit.get(code) ?? undefined}
             data-level={levelOf(code) || undefined}
             data-chosen={chosen?.has(code) ? "true" : undefined}
+            data-changed={counts ? changedMark(marks, code) : undefined}
           />
         ))}
         {/* The marks go last so they lie over the neighbors' fills. */}
@@ -169,7 +175,11 @@ export function CamelotWheel({
               style={{ "--wheel-x": `${shape.label.x}%`, "--wheel-y": `${shape.label.y}%` } as CSSProperties}
             >
               {code}
-              {count !== null && <span className="cp-wheel__count">{compactCount(count)}</span>}
+              {count !== null && (
+                <span className="cp-wheel__count" data-changed={changedMark(marks, code)}>
+                  {compactCount(count)}
+                </span>
+              )}
             </span>
           </Fragment>
         );

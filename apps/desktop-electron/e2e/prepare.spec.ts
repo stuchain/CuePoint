@@ -303,6 +303,13 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       const win = await app.firstWindow({ timeout: 60_000 });
       await waitForEngine(win);
       await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
+      // PAGES-12: every kind of motion is on (no stored overrides, the system not asking for less),
+      // so a double-click to play and a shift-click range are proved with the motion in place.
+      await win.emulateMedia({ reducedMotion: "no-preference" });
+      expect(
+        await win.evaluate(() => document.documentElement.getAttributeNames().filter((n) => n.startsWith("data-motion-")).length),
+        "every kind is on",
+      ).toBe(10);
 
       // --- a library and a Set with three chapters, through the bridge ------
       const started = await win.evaluate(
@@ -441,6 +448,15 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       await win.evaluate(() => {
         document.querySelector<HTMLElement>('[role="table"][aria-label="Set entries"]')!.scrollTop = 0;
       });
+
+      // --- a shift-click picks the range, with every kind of motion on ----------
+      const entryRows = win.locator('[role="table"][aria-label="Set entries"] .track-table__row:not(.prepare-heading)');
+      await entryRows.nth(0).click();
+      await entryRows.nth(3).click({ modifiers: ["Shift"] });
+      await expect(
+        win.locator('[role="table"][aria-label="Set entries"] .track-table__row[aria-selected="true"]:not(.prepare-heading)'),
+        "the range from the first entry to the fourth",
+      ).toHaveCount(4);
 
       // With the player's bar on screen too: the crowded case.
       for (const collapsed of [false, true]) {

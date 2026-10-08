@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
+import { useLeaveGhost } from "../../tokens/useLeaveGhost";
 import { Hint } from "../Hint";
+import { PixelSpinner } from "../PixelSpinner";
 import { ActivityPanel } from "./ActivityPanel";
 import { modifierName } from "./platformKeys";
 import { jobLabel, jobPercent, jobStopLabel, jobTitle, useActiveJob } from "./useActiveJob";
@@ -55,6 +57,7 @@ function RunningList({
   onClose: () => void;
 }) {
   const box = useRef<HTMLDivElement | null>(null);
+  useLeaveGhost(box);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -133,6 +136,19 @@ export function StatusStrip() {
     if (activeCount <= 1) setListOpen(false);
   }, [activeCount]);
   const moreButton = useRef<HTMLButtonElement | null>(null);
+  // A job that finishes pulses the strip once (feedback, DEC-154).
+  const [finished, setFinished] = useState(0);
+  const hadJob = useRef(false);
+  useEffect(() => {
+    const has = job !== null;
+    if (hadJob.current && !has) {
+      setFinished((n) => n + 1);
+      const timer = window.setTimeout(() => setFinished(0), 800);
+      hadJob.current = has;
+      return () => window.clearTimeout(timer);
+    }
+    hadJob.current = has;
+  }, [job]);
   const [activityOpen, setActivityOpen] = useState(false);
 
   const percent = jobPercent(job);
@@ -213,7 +229,7 @@ export function StatusStrip() {
         list open from inside the strip and would otherwise be announced as
         status updates.
       */}
-      <div className="cp-status">
+      <div className="cp-status" data-finished={finished > 0 ? finished % 2 : undefined}>
         <span className="cp-status__live" role="status" aria-live="polite">
         <span
           className={`cp-status__engine ${
@@ -265,6 +281,7 @@ export function StatusStrip() {
 
         {job ? (
           <span className="cp-status__job">
+            <PixelSpinner label={null} />
             {/* Focusable, so the reason it carries is shown to the keyboard too. */}
             <Hint text={jobTitle(job)}>
               <span className="cp-status__job-label" tabIndex={0} aria-live="polite">

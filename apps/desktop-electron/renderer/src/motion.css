@@ -1,0 +1,614 @@
+/*
+ * Motion, every kind that is not written beside its own component (PAGES-12, DEC-134, DEC-135).
+ *
+ * Each rule sits under `:root[data-motion-<kind>]`, which MotionProvider writes only while the
+ * kind's switch is on and the system is not asking for reduced motion, so a kind switched off
+ * or reduced motion shows the still state with nothing hidden. Only `transform` and `opacity`
+ * move. A move steps in whole `--motion-step-px` (a multiple of the unit, so a whole pixel at
+ * 1x, 1.5x, 2x and 3x); a fade stays smooth (`--motion-fade`, linear) and is its own animation.
+ * `motionRules.test.ts` holds all of this, and `motionKinds.test.tsx` plays each kind.
+ *
+ * Nothing here animates a track table's rows while it scrolls. The Scrolling kind is not used on
+ * the tables at all, and what the tables do on hover or loading waits while `[data-scrolling]`.
+ *
+ * Kinds built in a component's own stylesheet: Button presses (Button.css), the toast
+ * (Toast.css), the wheel popover and its lit keys (components/wheel/), the pixel spinner
+ * (PixelSpinner.css).
+ */
+
+/* ---- Button presses (micro) ------------------------------------------------------------ */
+
+:root[data-motion-micro] input[type="checkbox"],
+:root[data-motion-micro] input[type="radio"],
+:root[data-motion-micro] .cp-track-yours__star,
+:root[data-motion-micro] .cp-saved-tick__body {
+  /* Only the move is animated. */
+  transition: transform var(--motion-instant) steps(1);
+}
+
+:root[data-motion-micro] input[type="checkbox"]:active,
+:root[data-motion-micro] input[type="radio"]:active,
+:root[data-motion-micro] .cp-track-yours__star:active {
+  transform: translate(var(--hairline), var(--hairline));
+}
+
+/* "Saved" steps up into place; its tick pulses (below, under feedback). */
+:root[data-motion-micro] .cp-saved-tick__body {
+  animation:
+    cp-rise var(--motion-base) steps(var(--motion-steps-short)),
+    cp-fade-in var(--motion-base) var(--motion-fade);
+}
+
+/* ---- Things you drag and drop (interaction) --------------------------------------------- */
+
+/* A row picked up lifts: it dims and its cells step aside. Its own transform places it, so only the
+   cells and the fade move. */
+:root[data-motion-interaction] .track-table__row--lifted {
+  opacity: 0.6;
+  transition: opacity var(--motion-quick) var(--motion-fade);
+}
+
+:root[data-motion-interaction] .track-table__row--lifted .track-table__cell {
+  transform: translate(var(--motion-step-px), calc(var(--motion-step-px) * -1 / 2));
+  transition: transform var(--motion-quick) steps(var(--motion-steps-short));
+}
+
+/* A row dropped settles into its place. */
+:root[data-motion-interaction] .track-table__row--settled .track-table__cell {
+  animation: cp-settle var(--motion-base) steps(var(--motion-steps-short));
+}
+
+/* The queue's drop marker steps in from the side (BAR-8). */
+:root[data-motion-interaction] .cp-queue__drop {
+  animation:
+    cp-drop-marker var(--motion-quick) steps(var(--motion-steps-short)),
+    cp-fade-in var(--motion-quick) var(--motion-fade);
+}
+
+/* A column's resize handle shows a line that steps in while it is hovered or dragged. */
+:root[data-motion-interaction] .track-table__col-resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - var(--motion-step-px) / 2);
+  width: var(--motion-step-px);
+  background: var(--accent-info);
+  opacity: 0;
+  transform: translateY(calc(var(--motion-step-px) * -1));
+  transition:
+    transform var(--motion-quick) steps(var(--motion-steps-short)),
+    opacity var(--motion-quick) var(--motion-fade);
+}
+
+:root[data-motion-interaction] .track-table__col-resizer:hover::after,
+:root[data-motion-interaction] .track-table__col-resizer:focus-visible::after {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- Hover and keyboard focus (hover) -------------------------------------------------- */
+
+:root[data-motion-hover] .cp-btn,
+:root[data-motion-hover] .cp-sidebar__link,
+:root[data-motion-hover] .settings-page__nav a {
+  transition: transform var(--motion-instant) steps(1);
+}
+
+:root[data-motion-hover] .cp-btn:hover:not(:disabled):not(:active):not(.cp-btn--loading) {
+  transform: translate(0, calc(var(--hairline) * -1));
+}
+
+:root[data-motion-hover] .cp-sidebar__link:hover,
+:root[data-motion-hover] .settings-page__nav a:hover {
+  transform: translate(calc(var(--motion-step-px) / 2), 0);
+}
+
+/* A row shows a bar on its edge that steps in. Rows have their own transform for their place,
+   so the bar moves, not the row. It waits while the table scrolls. */
+:root[data-motion-hover] .track-table__row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--motion-step-px);
+  background: var(--accent-primary);
+  transform: translateX(-100%);
+  transition: transform var(--motion-instant) steps(1);
+  pointer-events: none;
+}
+
+:root[data-motion-hover] .track-table__row:hover::before {
+  transform: none;
+}
+
+:root[data-motion-hover] .track-table__scroll[data-scrolling] .track-table__row::before {
+  transition: none;
+}
+
+/* The focus ring is drawn at once; the control steps down into it. */
+:root[data-motion-hover] .cp-btn:focus-visible,
+:root[data-motion-hover] .cp-sidebar__link:focus-visible,
+:root[data-motion-hover] .settings-page__nav a:focus-visible,
+:root[data-motion-hover] .cp-tabs__tab:focus-visible,
+:root[data-motion-hover] .cp-track-section__toggle:focus-visible {
+  animation: cp-focus-step var(--motion-quick) steps(var(--motion-steps-short));
+}
+
+/* ---- Changing state (state) ------------------------------------------------------------ */
+
+/* A badge that changes steps once; odd and even changes name different animations. */
+:root[data-motion-state] .cp-badge[data-changed="1"] {
+  animation:
+    cp-state-step-a var(--motion-base) steps(var(--motion-steps-short)),
+    cp-state-fade-a var(--motion-base) var(--motion-fade);
+}
+
+:root[data-motion-state] .cp-badge[data-changed="0"] {
+  animation:
+    cp-state-step-b var(--motion-base) steps(var(--motion-steps-short)),
+    cp-state-fade-b var(--motion-base) var(--motion-fade);
+}
+
+/* The Keys page's per-key counts step when they change: the number steps and fades, the bar and
+   the wheel's segment fade (their size and color are set by the data; only opacity moves). */
+:root[data-motion-state] .cp-wheel__count[data-changed="1"],
+:root[data-motion-state] .keys-counts__count[data-changed="1"] {
+  animation:
+    cp-state-step-a var(--motion-base) steps(var(--motion-steps-short)),
+    cp-state-fade-a var(--motion-base) var(--motion-fade);
+}
+
+:root[data-motion-state] .cp-wheel__count[data-changed="0"],
+:root[data-motion-state] .keys-counts__count[data-changed="0"] {
+  animation:
+    cp-state-step-b var(--motion-base) steps(var(--motion-steps-short)),
+    cp-state-fade-b var(--motion-base) var(--motion-fade);
+}
+
+:root[data-motion-state] .cp-wheel__shape[data-changed="1"],
+:root[data-motion-state] .keys-counts__bar[data-changed="1"] {
+  animation: cp-state-fade-a var(--motion-base) var(--motion-fade);
+}
+
+:root[data-motion-state] .cp-wheel__shape[data-changed="0"],
+:root[data-motion-state] .keys-counts__bar[data-changed="0"] {
+  animation: cp-state-fade-b var(--motion-base) var(--motion-fade);
+}
+
+/* The selected tab steps into place. */
+:root[data-motion-state] .cp-tabs__tab--active {
+  animation:
+    cp-rise var(--motion-base) steps(var(--motion-steps-short)),
+    cp-fade-in var(--motion-base) var(--motion-fade);
+}
+
+/* A section of Track details steps open once the toggle has been used. */
+:root[data-motion-state] .cp-track-section__body--used:not([hidden]) {
+  animation:
+    cp-rise var(--motion-base) steps(var(--motion-steps-short)),
+    cp-fade-in var(--motion-base) var(--motion-fade);
+}
+
+/* ---- Changing page (page) --------------------------------------------------------------- */
+
+/* The content steps in; the shell stays still. The page is drawn at once with whatever it has
+   (it never waits for data) and the fade starts from half, so nothing on it is ever hidden. */
+:root[data-motion-page] .app-main[data-page-phase="a"] > * {
+  animation:
+    cp-page-step-a var(--motion-quick) steps(var(--motion-steps-short)),
+    cp-page-fade-a var(--motion-quick) var(--motion-fade);
+}
+
+:root[data-motion-page] .app-main[data-page-phase="b"] > * {
+  animation:
+    cp-page-step-b var(--motion-quick) steps(var(--motion-steps-short)),
+    cp-page-fade-b var(--motion-quick) var(--motion-fade);
+}
+
+/* ---- Opening and closing panels and dialogs (entrance) ---------------------------------- */
+
+/* Anything that has left takes no pointer events at all: what is behind takes the click. */
+.cp-modal__backdrop[data-leaving],
+.cp-toast[data-leaving],
+.cp-global-search__panel[data-leaving],
+.cp-wheel-pop[data-leaving],
+[data-ghost] {
+  pointer-events: none;
+}
+
+[data-ghost] {
+  z-index: 1200;
+}
+
+:root[data-motion-entrance] .cp-modal__backdrop {
+  animation: cp-fade-in var(--motion-base) var(--motion-fade);
+}
+
+:root[data-motion-entrance] .cp-modal {
+  animation: cp-rise var(--motion-base) steps(var(--motion-steps-short));
+}
+
+:root[data-motion-entrance] .cp-modal__backdrop[data-leaving] {
+  animation: cp-fade-out var(--motion-base) var(--motion-fade) forwards;
+}
+
+:root[data-motion-entrance] .cp-modal__backdrop[data-leaving] .cp-modal {
+  animation: cp-sink var(--motion-base) steps(var(--motion-steps-short)) forwards;
+}
+
+:root[data-motion-entrance] .cp-toast[data-leaving] {
+  animation:
+    cp-sink var(--motion-base) steps(var(--motion-steps-short)) forwards,
+    cp-fade-out var(--motion-base) var(--motion-fade) forwards;
+}
+
+:root[data-motion-entrance] .cp-track-menu,
+:root[data-motion-entrance] .cp-track-menu__submenu,
+:root[data-motion-entrance] .cp-global-search__panel,
+:root[data-motion-entrance] .cp-status__running {
+  animation:
+    cp-drop-in var(--motion-quick) steps(var(--motion-steps-short)),
+    cp-fade-in var(--motion-quick) var(--motion-fade);
+}
+
+:root[data-motion-entrance] .cp-global-search__panel[data-leaving] {
+  animation:
+    cp-lift-out var(--motion-quick) steps(var(--motion-steps-short)) forwards,
+    cp-fade-out var(--motion-quick) var(--motion-fade) forwards;
+}
+
+:root[data-motion-entrance] .cp-wheel-pop[data-leaving] {
+  animation:
+    cp-lift-out var(--motion-base) steps(var(--motion-steps-short)) forwards,
+    cp-fade-out var(--motion-base) var(--motion-fade) forwards;
+}
+
+/* The Inspector slides in from its edge after a toggle (never as the app opens). */
+:root[data-motion-entrance] .cp-inspector[data-entering] {
+  animation:
+    cp-from-edge var(--motion-base) steps(var(--motion-steps-short)),
+    cp-fade-in var(--motion-base) var(--motion-fade);
+}
+
+/* What leaves without being kept (a menu, the Inspector, the running list) is a still copy
+   that fades. It is inert, so it never holds a click. [data-ghost][data-ghost] outranks the
+   copy's own entrance. */
+:root[data-motion-entrance] [data-ghost][data-ghost] {
+  animation:
+    cp-lift-out var(--motion-quick) steps(var(--motion-steps-short)) forwards,
+    cp-fade-out var(--motion-quick) var(--motion-fade) forwards;
+}
+
+:root[data-motion-entrance] .cp-inspector[data-ghost][data-ghost] {
+  animation:
+    cp-to-edge var(--motion-base) steps(var(--motion-steps-short)) forwards,
+    cp-fade-out var(--motion-base) var(--motion-fade) forwards;
+}
+
+/* ---- Scrolling (scroll) ----------------------------------------------------------------- */
+
+/* The Settings section links follow the scroll: the one in view steps in. Never on the tables. */
+:root[data-motion-scroll] .settings-page__nav a {
+  transition: transform var(--motion-quick) steps(var(--motion-steps-short));
+}
+
+:root[data-motion-scroll] .settings-page__nav a[data-current] {
+  transform: translate(var(--motion-step-px), 0);
+  color: var(--fg-primary);
+}
+
+/* A section heading settles as it comes into view, driven by the scroll itself. */
+@supports (animation-timeline: view()) {
+  :root[data-motion-scroll] .settings-page__section .cp-panel__title {
+    animation:
+      cp-settle-in auto steps(var(--motion-steps-short)) both,
+      cp-fade-in auto linear both;
+    animation-timeline: view(), view();
+    animation-range: entry 0% entry 60%;
+  }
+}
+
+/* ---- Loading (loading) ------------------------------------------------------------------ */
+
+/* Placeholder rows only: rows not yet fetched. They hold still while the table scrolls. */
+:root[data-motion-loading] .track-table__skeleton {
+  animation: cp-skeleton var(--motion-slow) var(--motion-fade) infinite alternate;
+}
+
+:root[data-motion-loading] .track-table__scroll[data-scrolling] .track-table__skeleton {
+  animation: none;
+}
+
+/* ---- Moving between views (shared) ------------------------------------------------------ */
+
+/* One shared element and nothing else (a search result into its Library row). The page itself
+   does not cross-fade: the root's picture swaps at once. */
+:root[data-motion-shared]::view-transition-old(root),
+:root[data-motion-shared]::view-transition-new(root) {
+  animation: none;
+}
+
+:root[data-motion-shared]::view-transition-group(cp-shared-result) {
+  animation-duration: var(--motion-base);
+  animation-timing-function: steps(var(--motion-steps-long));
+}
+
+:root[data-motion-shared]::view-transition-old(cp-shared-result),
+:root[data-motion-shared]::view-transition-new(cp-shared-result) {
+  animation-duration: var(--motion-base);
+  animation-timing-function: linear;
+}
+
+/* ---- Alerts and confirmations (feedback) ------------------------------------------------ */
+
+/* A refused time, and a refused chapter length or tempo, shake. */
+:root[data-motion-feedback] .prepare-header__refusal,
+:root[data-motion-feedback] .prepare-dialog__problem {
+  animation: cp-shake var(--motion-slow) steps(1, end);
+}
+
+/* New search results pulse once. */
+:root[data-motion-feedback] .cp-global-search__list--fresh {
+  animation:
+    cp-rise var(--motion-base) steps(var(--motion-steps-short)),
+    cp-pulse var(--motion-slow) var(--motion-fade);
+}
+
+/* A job that finishes pulses the strip's words; odd and even finishes name different ones. */
+:root[data-motion-feedback] .cp-status[data-finished="1"] .cp-status__live {
+  animation:
+    cp-state-step-a var(--motion-slow) steps(var(--motion-steps-long)),
+    cp-pulse var(--motion-slow) var(--motion-fade);
+}
+
+:root[data-motion-feedback] .cp-status[data-finished="0"] .cp-status__live {
+  animation:
+    cp-state-step-b var(--motion-slow) steps(var(--motion-steps-long)),
+    cp-pulse-b var(--motion-slow) var(--motion-fade);
+}
+
+/* The "Saved" tick pulses. */
+:root[data-motion-feedback] .cp-saved-tick__body > [aria-hidden="true"] {
+  display: inline-block;
+  animation: cp-state-step-a var(--motion-slow) steps(var(--motion-steps-long));
+}
+
+/* ---- Keyframes -------------------------------------------------------------------------- */
+
+@keyframes cp-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cp-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Up from a step below. */
+@keyframes cp-rise {
+  from {
+    transform: translateY(var(--motion-step-px));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Down a step, on the way out. */
+@keyframes cp-sink {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(var(--motion-step-px));
+  }
+}
+
+/* Down from a step above, for what hangs from a control. */
+@keyframes cp-drop-in {
+  from {
+    transform: translateY(calc(var(--motion-step-px) * -1));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-lift-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(var(--motion-step-px) * -1));
+  }
+}
+
+@keyframes cp-from-edge {
+  from {
+    transform: translateX(calc(var(--motion-step-px) * 2));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes cp-to-edge {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(var(--motion-step-px) * 2));
+  }
+}
+
+@keyframes cp-settle {
+  from {
+    transform: translateY(calc(var(--motion-step-px) * -1));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-settle-in {
+  from {
+    transform: translateY(calc(var(--motion-step-px) * 2));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-drop-marker {
+  from {
+    transform: translateY(-50%) translateX(calc(var(--motion-step-px) * -2));
+  }
+  to {
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+@keyframes cp-focus-step {
+  from {
+    transform: translate(0, calc(var(--motion-step-px) / 2));
+  }
+  to {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes cp-skeleton {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* A fade that dips and returns. */
+@keyframes cp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes cp-pulse-b {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* The same two moves under two names, so a second change restarts the animation. */
+@keyframes cp-state-step-a {
+  from {
+    transform: translateY(calc(var(--motion-step-px) * -1));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-state-step-b {
+  from {
+    transform: translateY(calc(var(--motion-step-px) * -1));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-state-fade-a {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cp-state-fade-b {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cp-page-step-a {
+  from {
+    transform: translateY(var(--motion-step-px));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-page-step-b {
+  from {
+    transform: translateY(var(--motion-step-px));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-page-fade-a {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cp-page-fade-b {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Whole steps, each held: out, back, out the other way, back. */
+@keyframes cp-shake {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(calc(var(--motion-step-px) * -1));
+  }
+  40% {
+    transform: translateX(var(--motion-step-px));
+  }
+  60% {
+    transform: translateX(calc(var(--motion-step-px) * -1 / 2));
+  }
+  80% {
+    transform: translateX(calc(var(--motion-step-px) / 2));
+  }
+  100% {
+    transform: translateX(0);
+  }
+}

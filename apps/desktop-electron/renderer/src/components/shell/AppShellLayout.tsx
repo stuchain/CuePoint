@@ -14,6 +14,8 @@ interface AppShellLayoutProps {
   statusBar?: ReactNode;
   /** The routed page. */
   children: ReactNode;
+  /** Alternates a/b each time the page changes; CSS names a different step-in for each (PAGES-12). */
+  pagePhase?: "a" | "b";
 }
 
 /**
@@ -49,12 +51,13 @@ export function AppShellLayout({
   player,
   statusBar,
   children,
+  pagePhase,
 }: AppShellLayoutProps) {
   return (
     <div className="app-shell">
       {header ? <div className="app-shell__header">{header}</div> : null}
       {sidebar ? <div className="app-shell__sidebar">{sidebar}</div> : null}
-      <main className="app-shell__content app-main">{children}</main>
+      <main className="app-shell__content app-main" data-page-phase={pagePhase}>{children}</main>
       {inspector ? <div className="app-shell__inspector">{inspector}</div> : null}
       {player ? <div className="app-shell__player">{player}</div> : null}
       {statusBar ? (

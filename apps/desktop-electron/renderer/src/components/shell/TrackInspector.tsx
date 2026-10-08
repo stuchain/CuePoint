@@ -5,6 +5,8 @@ import {
   saveInspectorState,
   type InspectorState,
 } from "./inspectorState";
+import { useMotion } from "../../tokens/MotionContext";
+import { leaveAsGhost } from "../../tokens/useLeaveGhost";
 import { useSelectedTrack } from "./selectedTrack";
 import { useShellCommand } from "./shellCommands";
 import "./TrackInspector.css";
@@ -45,6 +47,10 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   // Only move focus when the user toggled, never on the initial render: an app
   // that steals focus on launch is worse than one that never moves it.
   const toggled = useRef(false);
+  // Showing and hiding the panel move (Opening and closing panels and dialogs): it enters on
+  // a toggle, never on launch, and leaves as a still copy that fades.
+  const moves = useMotion("entrance");
+  const [entering, setEntering] = useState(false);
 
   useEffect(() => {
     saveInspectorState(state);
@@ -66,8 +72,11 @@ export function TrackInspector({ children }: TrackInspectorProps) {
 
   const toggle = useCallback(() => {
     toggled.current = true;
+    const panel = panelRef.current;
+    if (panel && moves) leaveAsGhost(panel);
+    setEntering(!panel);
     setState((prev) => ({ ...prev, visible: !prev.visible }));
-  }, []);
+  }, [moves]);
 
   // The control the user pressed disappears when the panel toggles, and focus
   // would land on <body> — a keyboard user would be back at the top of the tab
@@ -151,6 +160,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     <aside
       ref={panelRef}
       className="cp-inspector"
+      data-entering={entering ? "" : undefined}
       style={{ width: `${width}px` }}
       aria-label="Track details"
       data-width={width}

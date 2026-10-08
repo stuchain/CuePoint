@@ -83,10 +83,20 @@ import { E2eCrashProbe, ErrorBoundary, useNavigationBreadcrumbs } from "./report
 import { Phase14Note } from "./components/Phase14Note";
 import { phase14NoteDue, shouldShowOnboarding } from "./components/firstRunMemory";
 import "./App.css";
+// After every component stylesheet, so a rule here wins a tie with one (PAGES-12).
+import "./motion.css";
 
 function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
+  // A different page steps in (Changing page, PAGES-12). The phase alternates so each change
+  // names a different animation and restarts it without remounting the page; there is none
+  // before the first change, so the app does not move as it opens. Worked out while rendering,
+  // so the new page is drawn with its animation from the first frame and never waits for data.
+  const [pageAt, setPageAt] = useState({ path: location.pathname, phase: undefined as "a" | "b" | undefined });
+  if (pageAt.path !== location.pathname) {
+    setPageAt({ path: location.pathname, phase: pageAt.phase === "a" ? "b" : "a" });
+  }
   // What the current page has put in the Inspector (LIBUI-10). The panel lives
   // here rather than in the page so it survives navigation (SHELL-05).
   const [supportOpen, setSupportOpen] = useState(false);
@@ -327,6 +337,7 @@ function AppShell() {
   return (
     <>
       <AppShellLayout
+        pagePhase={pageAt.phase}
         header={<ShellHeader />}
         sidebar={<Sidebar />}
         inspector={

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "../Button";
@@ -11,6 +11,10 @@ import "./WheelPopover.css";
 
 interface WheelPopoverProps {
   source: WheelSource;
+  /** Closed and playing its exit (PAGES-12): inert, taking no clicks. */
+  leaving?: boolean;
+  /** The presence ref, on the element that carries the exit. */
+  presenceRef?: RefObject<HTMLDivElement | null>;
 }
 
 /** Space left under the popover when it is as tall as the window allows, in CSS pixels. */
@@ -29,7 +33,7 @@ function startingCode(key: string | null): string {
  * what it is lit for, and a click on a key opens the whole Library on that key
  * (DEC-160).
  */
-export function WheelPopover({ source }: WheelPopoverProps) {
+export function WheelPopover({ source, leaving = false, presenceRef }: WheelPopoverProps) {
   const navigate = useNavigate();
   const subject = useWheelSubject(source);
   const subjectKey = subject ? subject.key : null;
@@ -95,7 +99,17 @@ export function WheelPopover({ source }: WheelPopoverProps) {
   }
 
   return (
-    <div ref={rootRef} className="cp-wheel-pop" role="dialog" aria-label="Camelot wheel">
+    <div
+      ref={(node) => {
+        rootRef.current = node;
+        if (presenceRef) presenceRef.current = node;
+      }}
+      className="cp-wheel-pop"
+      role="dialog"
+      aria-label="Camelot wheel"
+      data-leaving={leaving ? "" : undefined}
+      inert={leaving}
+    >
       <CamelotWheel
         lit={lit}
         focusCode={focusCode}

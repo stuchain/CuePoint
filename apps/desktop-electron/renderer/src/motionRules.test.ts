@@ -3,9 +3,12 @@
  * than by review: it is gated on a `[data-motion-*]` attribute, and it animates
  * only `transform` and `opacity`. The check reads the renderer's CSS as text (`import.meta.glob`)
  * and parses declarations, not words: `prepare.css` has class names containing
- * "transition". Motion written in TypeScript escapes it (PAGES-12 adds that scan).
+ * "transition". Motion written in TypeScript escapes the CSS check, so a second check reads the
+ * renderer's sources for inline `transition`/`animation` styles, `element.animate(` and
+ * `startViewTransition`, and requires each to sit behind `useMotion(kind)` (PAGES-12).
  */
 import { describe, expect, it } from "vitest";
+import { declarations, parseRules, stripComments, type Rule } from "./test/cssRules";
 
 /** Every stylesheet under `src`, as text, by path. */
 const STYLESHEETS = import.meta.glob<string>("./**/*.css", {
@@ -14,55 +17,6 @@ const STYLESHEETS = import.meta.glob<string>("./**/*.css", {
   eager: true,
 });
 const ALLOWED_PROPERTIES = new Set(["transform", "opacity"]);
-
-interface Rule {
-  selector: string;
-  body: string;
-  /** The at-rule the rule sits inside, if any: "@media (...)". */
-  context: string;
-}
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, "");
-}
-
-/** Splits CSS into rules, descending into @media/@supports; @keyframes come back whole. */
-function parseRules(css: string, context = ""): Rule[] {
-  const rules: Rule[] = [];
-  let i = 0;
-  while (i < css.length) {
-    const open = css.indexOf("{", i);
-    if (open === -1) break;
-    const prelude = css.slice(i, open).trim();
-    let depth = 1;
-    let j = open + 1;
-    while (j < css.length && depth > 0) {
-      if (css[j] === "{") depth++;
-      else if (css[j] === "}") depth--;
-      j++;
-    }
-    const body = css.slice(open + 1, j - 1);
-    if (/^@(media|supports|layer|container)/i.test(prelude)) {
-      rules.push(...parseRules(body, prelude));
-    } else {
-      rules.push({ selector: prelude, body, context });
-    }
-    i = j;
-  }
-  return rules;
-}
-
-function declarations(body: string): [string, string][] {
-  return body
-    .split(";")
-    .map((d) => d.trim())
-    .filter(Boolean)
-    .map((d) => {
-      const colon = d.indexOf(":");
-      return [d.slice(0, colon).trim().toLowerCase(), d.slice(colon + 1).trim()] as [string, string];
-    })
-    .filter(([name]) => name.length > 0);
-}
 
 const isMotionProperty = (name: string) =>
   name === "transition" || name.startsWith("transition-") || name === "animation" || name.startsWith("animation-");
@@ -215,5 +169,86 @@ describe("the checker (self-test)", () => {
 
   it("looks inside @media", () => {
     expect(checkMotionCss("@media (min-width: 1px) { .x { transition: transform 1ms; } }")).toHaveLength(1);
+  });
+});
+
+/** Every renderer source, as text, by path: tests, stories and fixtures are not the app. */
+const SOURCES = import.meta.glob<string>(["./**/*.ts", "./**/*.tsx", "!./**/*.test.ts", "!./**/*.test.tsx", "!./**/*.stories.tsx", "!./test/**"], {
+  query: "?raw",
+  import: "default",
+  eager: true,
+});
+
+/** Code only: a comment saying "no animation:" is not an animation. */
+function stripCodeComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+}
+
+/** An inline style key (`transition:`, `animationName:`) in a component; not `row.transition :`. */
+const STYLE_KEY =
+  /(?<![.\w])(?:transition|animation)(?:Property|Duration|Delay|Name|TimingFunction|IterationCount|Direction|FillMode)?\s*:/;
+/** Motion in any source: `element.animate(` and the View Transitions API. */
+const SCRIPT_CALL = /\.animate\(|\bstartViewTransition\b/;
+
+/**
+ * What a source file that moves things in script is held to: it asks `useMotion("<kind>")`, or it
+ * reads the `data-motion-<kind>` attribute the provider writes. Returns one message per file
+ * that does neither.
+ */
+export function checkScriptMotion(sources: Record<string, string>): string[] {
+  const problems: string[] = [];
+  for (const [file, raw] of Object.entries(sources)) {
+    const code = stripCodeComments(raw);
+    if (!(file.endsWith(".tsx") && STYLE_KEY.test(code)) && !SCRIPT_CALL.test(code)) continue;
+    const gated = /\buseMotion\(\s*["'`][a-z]+["'`]\s*\)/.test(code) || /data-motion-[a-z]+/.test(code);
+    if (!gated) problems.push(`${file}: moves in script without useMotion(kind)`);
+  }
+  return problems;
+}
+
+describe("motion written in script", () => {
+  it("sits behind useMotion(kind) everywhere in the renderer", () => {
+    expect(Object.keys(SOURCES).length).toBeGreaterThan(100);
+    expect(checkScriptMotion(SOURCES)).toEqual([]);
+  });
+
+  it("fails an inline transition, an animation key, element.animate( and startViewTransition", () => {
+    for (const code of [
+      "const a = <div style={{ transition: 'transform 1s' }} />;",
+      "const a = <div style={{ animationName: 'x' }} />;",
+      "node.animate([{ opacity: 0 }], 100);",
+      "document.startViewTransition(() => {});",
+    ]) {
+      expect(checkScriptMotion({ "x.tsx": code })).toHaveLength(1);
+    }
+  });
+
+  it("accepts the same code behind useMotion(kind) or the kind's attribute", () => {
+    expect(checkScriptMotion({ "x.tsx": "const on = useMotion('state'); node.animate([], 1);" })).toEqual([]);
+    expect(checkScriptMotion({ "x.ts": "if (root.hasAttribute('data-motion-shared')) document.startViewTransition(f);" })).toEqual([]);
+  });
+
+  it("does not trip on a comment that says animation", () => {
+    expect(checkScriptMotion({ "x.tsx": "// No animation: a line.\n/* transition: none */ const a = 1;" })).toEqual([]);
+  });
+
+  it("does not take a bare useMotion() as a kind", () => {
+    expect(checkScriptMotion({ "x.tsx": "const m = useMotion(); node.animate([], 1);" })).toHaveLength(1);
+  });
+});
+
+describe("the scroll kind", () => {
+  it("is never used on the track tables", () => {
+    const problems = Object.entries(STYLESHEETS).flatMap(([file, css]) =>
+      parseRules(stripComments(css))
+        .filter((rule) => rule.selector.includes("data-motion-scroll") && rule.selector.includes("track-table"))
+        .map((rule) => `${file}: ${rule.selector}`),
+    );
+    expect(problems).toEqual([]);
+  });
+
+  it("is used for the Settings links and headings", () => {
+    const all = Object.values(STYLESHEETS).join("\n");
+    expect(all).toMatch(/data-motion-scroll\][^{]*settings-page__nav/);
   });
 });

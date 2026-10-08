@@ -395,8 +395,8 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
     }
   });
 
-  test("with the Waveform column shown, scrolling 5,000 rows records no long task over 50 ms", async () => {
-    test.setTimeout(300_000);
+  test("with the Waveform column shown and every kind of motion on, scrolling 5,000 rows records no long task over 50 ms, at 1× and 1.5×", async () => {
+    test.setTimeout(600_000);
     const ROWS = 5_000;
     const { xml } = writeExport(workspace, ROWS - FORMATS.length);
     const app = await launch(userDataDir, cuepointHome);
@@ -413,64 +413,85 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
         timeout: 20_000,
       });
 
-      const report = await window.evaluate(async (rows) => {
-        const scroller = document.querySelector(".track-table__scroll") as HTMLElement;
-        const long: { start: number; duration: number }[] = [];
-        const observer = new PerformanceObserver((list) => {
-          for (const entry of list.getEntries()) long.push({ start: entry.startTime, duration: entry.duration });
+      // Every kind of motion on (PAGES-12): no stored overrides, the system not asking for less. Rows at
+      // 1× are the smallest (the most rows on screen, the heaviest case); 1.5× is the default.
+      await window.emulateMedia({ reducedMotion: "no-preference" });
+      for (const scale of [1, 1.5]) {
+        await window.evaluate((value) => {
+          localStorage.removeItem("cuepoint-motion");
+          localStorage.setItem("cuepoint-ui-lab-scale", String(value));
+        }, scale);
+        await window.reload();
+        await window.getByRole("link", { name: "Library" }).click();
+        await expect(window.locator(".track-table__cell[data-column=waveform] canvas").first()).toBeVisible({
+          timeout: 30_000,
         });
-        observer.observe({ type: "longtask", buffered: false });
-        const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-        const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-        let canvases = 0;
-        // Down the whole table a page at a time, stopping long enough on each
-        // stretch for its rows to settle and paint, then quickly through the rest.
-        const page = scroller.clientHeight;
-        let steps = 0;
-        while (scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 1) {
-          scroller.scrollTop += page;
-          steps += 1;
-          await frame();
-          if (steps % 5 === 0) {
-            await wait(250);
-            canvases = Math.max(
-              canvases,
-              document.querySelectorAll(".track-table__cell[data-column=waveform] canvas").length,
-            );
-          }
-        }
-        await wait(500);
-        // The observer's own check: a task this test makes long on purpose,
-        // after the scroll, must be seen, or an empty list proves nothing.
-        const probe = performance.now();
-        await new Promise((resolve) =>
-          setTimeout(() => {
-            const until = performance.now() + 80;
-            while (performance.now() < until) {
-              // busy
-            }
-            resolve(null);
-          }, 0),
-        );
-        await wait(500);
-        observer.disconnect();
-        const last = document.querySelector(".track-table__row:last-child")?.getAttribute("aria-rowindex");
-        return {
-          long: long.filter((entry) => entry.start < probe).map((entry) => entry.duration),
-          probeSeen: long.some((entry) => entry.start >= probe && entry.duration >= 80),
-          canvases,
-          steps,
-          last: Number(last),
-          rows,
-        };
-      }, ROWS);
+        expect(
+          await window.evaluate(() => document.documentElement.getAttributeNames().filter((n) => n.startsWith("data-motion-")).length),
+          "every kind is on",
+        ).toBe(10);
 
-      test.info().annotations.push({ type: "scroll", description: JSON.stringify(report) });
-      expect(report.probeSeen, "the long-task observer works here").toBe(true);
-      expect(report.last, "scrolled to the last row").toBe(ROWS + 1);
-      expect(report.steps).toBeGreaterThan(50);
-      expect(report.canvases).toBeGreaterThan(5);
-      expect(report.long.filter((duration) => duration > 50)).toEqual([]);
+        const report = await window.evaluate(async (rows) => {
+          const scroller = document.querySelector(".track-table__scroll") as HTMLElement;
+          const long: { start: number; duration: number }[] = [];
+          const observer = new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) long.push({ start: entry.startTime, duration: entry.duration });
+          });
+          observer.observe({ type: "longtask", buffered: false });
+          const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+          const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+          let canvases = 0;
+          // Down the whole table a page at a time, stopping long enough on each
+          // stretch for its rows to settle and paint, then quickly through the rest.
+          const page = scroller.clientHeight;
+          let steps = 0;
+          while (scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 1) {
+            scroller.scrollTop += page;
+            steps += 1;
+            await frame();
+            if (steps % 5 === 0) {
+              await wait(250);
+              canvases = Math.max(
+                canvases,
+                document.querySelectorAll(".track-table__cell[data-column=waveform] canvas").length,
+              );
+            }
+          }
+          await wait(500);
+          // The observer's own check: a task this test makes long on purpose,
+          // after the scroll, must be seen, or an empty list proves nothing.
+          const probe = performance.now();
+          await new Promise((resolve) =>
+            setTimeout(() => {
+              const until = performance.now() + 80;
+              while (performance.now() < until) {
+                // busy
+              }
+              resolve(null);
+            }, 0),
+          );
+          await wait(500);
+          observer.disconnect();
+          const last = document.querySelector(".track-table__row:last-child")?.getAttribute("aria-rowindex");
+          return {
+            long: long.filter((entry) => entry.start < probe).map((entry) => entry.duration),
+            probeSeen: long.some((entry) => entry.start >= probe && entry.duration >= 80),
+            canvases,
+            steps,
+            last: Number(last),
+            rows,
+          };
+        }, ROWS);
+
+        test.info().annotations.push({ type: `scroll at ${scale}×`, description: JSON.stringify(report) });
+        // eslint-disable-next-line no-console
+        console.log(`scroll at ${scale}x: ${JSON.stringify({ ...report, long: report.long.length === 0 ? "none" : report.long })}`);
+        expect(report.probeSeen, "the long-task observer works here").toBe(true);
+        expect(report.last, "scrolled to the last row").toBe(ROWS + 1);
+        expect(report.steps).toBeGreaterThan(50);
+        expect(report.canvases).toBeGreaterThan(5);
+        expect(report.long.filter((duration) => duration > 50)).toEqual([]);
+      }
     } finally {
       await app.close();
     }

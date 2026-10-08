@@ -72,8 +72,12 @@ export function DisclosureSection({
 }: DisclosureSectionProps) {
   const [open, setOpen] = useState(() => (remember ? (readFolds()[id] ?? defaultOpen) : defaultOpen));
   const bodyId = useId();
+  // The body steps open once the person has used the toggle, never as the panel loads
+  // (Changing state, PAGES-12).
+  const [used, setUsed] = useState(false);
 
   const toggle = useCallback(() => {
+    setUsed(true);
     setOpen(!open);
     if (remember) rememberFold(id, !open);
   }, [id, open, remember]);
@@ -99,7 +103,11 @@ export function DisclosureSection({
           <span>{summary ? `${title} · ${summary}` : title}</span>
         </button>
       </Heading>
-      <div id={bodyId} className="cp-track-section__body" hidden={!open}>
+      <div
+        id={bodyId}
+        className={`cp-track-section__body${used ? " cp-track-section__body--used" : ""}`}
+        hidden={!open}
+      >
         {children}
       </div>
     </section>

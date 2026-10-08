@@ -23,9 +23,9 @@ export function SavedTick({ signal }: { signal: number }) {
   return (
     <span className="cp-saved-tick" role="status">
       {visible ? (
-        <>
+        <span key={signal} className="cp-saved-tick__body">
           <span aria-hidden="true">✓</span> Saved
-        </>
+        </span>
       ) : null}
     </span>
   );

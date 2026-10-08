@@ -25,6 +25,7 @@ import {
   type TrackContextMenuItem,
   useToast,
 } from "../../components";
+import { PixelSpinner } from "../../components/PixelSpinner";
 import {
   ColumnPicker,
   LIBRARY_TABLE_LAYOUT_KEY,
@@ -1869,7 +1870,9 @@ export function LibraryScreen({
   if (loading) {
     return (
       <div className="screen screen--stack library-screen">
-        <p className="library-screen__loading">Reading your library…</p>
+        <p className="library-screen__loading">
+          <PixelSpinner label="Reading your library…" />
+        </p>
       </div>
     );
   }
@@ -2147,6 +2150,7 @@ export function LibraryScreen({
               activeIndex={selection.selection.anchor}
               scrollToIndex={scrollTo}
               emptyState={emptyState}
+              loading={window_.loading}
               resetKey={queryKey(query)}
               ariaLabel="Library tracks"
             />

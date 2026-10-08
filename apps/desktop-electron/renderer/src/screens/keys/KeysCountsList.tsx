@@ -6,9 +6,12 @@
  * Command adds one, Shift takes a run); the keys that mix with the one asked about say so
  * in words, so the light is never color alone.
  */
+import { useMemo } from "react";
+
 import type { KeyPopulationEntry } from "../../api/cuepointBridge.types";
 import { countedName, keyName } from "../../components/wheel/camelot";
 import type { PickModifiers } from "../../components/wheel/CamelotWheel";
+import { changedMark, useCountChanges } from "../../components/wheel/useCountChanges";
 import { barPercent } from "./keysCounts";
 
 interface KeysCountsListProps {
@@ -33,6 +36,8 @@ export function KeysCountsList({
   onPick,
   onPickNone,
 }: KeysCountsListProps) {
+  const counts = useMemo(() => new Map(keys.map((entry) => [entry.code, entry.count])), [keys]);
+  const marks = useCountChanges(counts);
   const biggest = Math.max(0, ...keys.map((entry) => entry.count));
   return (
     <div className="keys-counts" role="group" aria-label="Keys in these sources">
@@ -64,11 +69,14 @@ export function KeysCountsList({
                   className="keys-counts__bar"
                   aria-hidden="true"
                   data-bar
+                  data-changed={changedMark(marks, entry.code)}
                   data-percent={barPercent(entry.count, biggest)}
                 >
                   <span style={{ width: `${barPercent(entry.count, biggest)}%` }} />
                 </span>
-                <span className="keys-counts__count">{entry.count.toLocaleString()}</span>
+                <span className="keys-counts__count" data-changed={changedMark(marks, entry.code)}>
+                  {entry.count.toLocaleString()}
+                </span>
               </button>
             </li>
           );

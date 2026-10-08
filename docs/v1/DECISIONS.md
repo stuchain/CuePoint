@@ -4535,6 +4535,11 @@ default. The recommendation was to leave out scroll animations and shared-elemen
 The list above names nine kinds. The tenth is **feedback**: a tick on save, a shake on a refused
 value, a pulse on something new (DEC-154).
 
+### Amended (2026-10-08, DEC-219) — the Set-entry shared-element transition is not built
+
+Of the two shared-element transitions PAGES-12 named, only the search result into its Library row
+is built. A Set's entry into the Inspector is not (DEC-219).
+
 ---
 
 ## DEC-135 — Motion Moves in Pixel Steps; Fades Stay Smooth
@@ -6170,3 +6175,25 @@ app crashing and is never corrupted; a power cut can lose the last few commits.
 already made the same choice for the same reason.
 
 **Decided with**: User (chose the recommended option, 2026-10-08) · **Date**: 2026-10-08
+
+---
+
+## DEC-219 — A Set's Entry Does Not Move Into the Inspector as a Shared Element
+
+**Status**: Approved · **Related**: DEC-134, DEC-112, PREP-10, Phase 14 (PAGES-12)
+
+**Decision**: The Set-entry shared-element transition is not built. Only the search result into its
+Library row is.
+
+**Reason**: While a view transition is live, Chromium routes the pointer to the document root (the
+pseudo-element tree sits over the page). A click in that window never reaches the row, so the second
+click of a double-click to play, or a shift-click that picks a range, is lost. No transition shorter
+than the double-click interval removes the window, and delaying the pick to wait it out would delay
+input. DEC-112's and PREP's double-click-to-play on a Set's rows wins.
+
+**Implications**: Picking a Set's entry is only picking. The search-result transition stays: it
+starts from a click that navigates and re-sends nothing, looks for its landing once and never waits
+inside the update, and is not started from an inert or leaving copy. `cp-shared-entry` is gone from
+the stylesheet and the user guide.
+
+**Decided with**: Claude (a build finding on DEC-134, raised at review) · **Date**: 2026-10-08

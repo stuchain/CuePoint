@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { reportToast } from "../reporting/reporting";
+import { usePresence } from "../tokens/usePresence";
 import "./Toast.css";
 
 export type ToastVariant = "info" | "success" | "warning" | "error";
@@ -24,6 +25,8 @@ interface ToastMessage {
   message: string;
   variant: ToastVariant;
   action?: ToastAction;
+  /** Dismissed; it leaves the screen once its exit has played (or at once, with none to play). */
+  closing?: boolean;
 }
 
 interface ToastContextValue {
@@ -49,6 +52,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const dismiss = useCallback((id: string) => {
+    setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, closing: true } : t)));
+  }, []);
+  const remove = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
@@ -71,25 +77,50 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="cp-toast-stack" aria-live="polite">
         {toasts.map((toast) => (
-          <div key={toast.id} className={`cp-toast cp-toast--${toast.variant}`} role="status">
-            <span>{toast.message}</span>
-            {toast.action ? (
-              <button
-                type="button"
-                className="cp-toast__action"
-                onClick={() => {
-                  const run = toast.action?.onClick;
-                  dismiss(toast.id);
-                  run?.();
-                }}
-              >
-                {toast.action.label}
-              </button>
-            ) : null}
-          </div>
+          <ToastItem key={toast.id} toast={toast} onDismiss={dismiss} onGone={remove} />
         ))}
       </div>
     </ToastContext.Provider>
+  );
+}
+
+function ToastItem({
+  toast,
+  onDismiss,
+  onGone,
+}: {
+  toast: ToastMessage;
+  onDismiss: (id: string) => void;
+  onGone: (id: string) => void;
+}) {
+  const presence = usePresence<HTMLDivElement>(!toast.closing);
+  // Gone once it has been dismissed and has left: a leaving toast takes no clicks (inert).
+  useEffect(() => {
+    if (toast.closing && !presence.present) onGone(toast.id);
+  }, [toast.closing, toast.id, presence.present, onGone]);
+  return (
+    <div
+      ref={presence.ref}
+      className={`cp-toast cp-toast--${toast.variant}`}
+      role="status"
+      data-leaving={presence.leaving ? "" : undefined}
+      inert={presence.leaving}
+    >
+      <span>{toast.message}</span>
+      {toast.action ? (
+        <button
+          type="button"
+          className="cp-toast__action"
+          onClick={() => {
+            const run = toast.action?.onClick;
+            onDismiss(toast.id);
+            run?.();
+          }}
+        >
+          {toast.action.label}
+        </button>
+      ) : null}
+    </div>
   );
 }
 

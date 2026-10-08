@@ -34,11 +34,13 @@ interface NewSetDialogProps {
   folders: readonly FolderOption[];
   busy?: boolean;
   error?: string | null;
+  /** Changes with every refusal, so the same words coming back shake again. */
+  errorKey?: number;
   onCreate: (name: string, parentId: number | null) => void;
   onClose: () => void;
 }
 
-export function NewSetDialog({ open, folders, busy = false, error = null, onCreate, onClose }: NewSetDialogProps) {
+export function NewSetDialog({ open, folders, busy = false, error = null, errorKey = 0, onCreate, onClose }: NewSetDialogProps) {
   const [name, setName] = useState("");
   const [parent, setParent] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export function NewSetDialog({ open, folders, busy = false, error = null, onCrea
           onChange={(event) => setParent(event.target.value)}
         />
         {(problem ?? error) && (
-          <p className="prepare-dialog__problem" role="alert">
+          <p key={problem ?? errorKey} className="prepare-dialog__problem" role="alert">
             {problem ?? error}
           </p>
         )}

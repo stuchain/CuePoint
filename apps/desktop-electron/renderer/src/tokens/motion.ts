@@ -65,7 +65,7 @@ export const MOTION_KINDS: readonly MotionKind[] = [
   {
     id: "scroll",
     label: "Scrolling",
-    description: "Items ease in as a list scrolls past.",
+    description: "The Settings links follow the scroll and headings settle in. Tables never move.",
     group: "While you wait or scroll",
   },
   {
@@ -83,7 +83,7 @@ export const MOTION_KINDS: readonly MotionKind[] = [
   {
     id: "feedback",
     label: "Alerts and confirmations",
-    description: "A save that fails shakes, and new results pulse.",
+    description: "A time or length that is refused shakes, and new results and finished tasks pulse.",
     group: "When things change",
   },
 ];

@@ -1534,6 +1534,43 @@ the step builds the two above and stops.
 
 **Complexity**: **L**
 
+**Outcome** (2026-10-08): All ten kinds are built. `useMotion(kind)` (the overload on the
+existing hook) answers "may this kind move now" (false outside a provider, so a lone component
+shows its still state); every other rule is CSS in `motion.css` (loaded after every component
+stylesheet) under `:root[data-motion-<kind>]`, moves only `transform`/`opacity` in whole
+`--motion-step-px`, and keeps each fade a separate linear animation. Where each kind is: micro (button,
+checkbox/radio, star, Saved tick), interaction (a row lifts, a dropped row settles in
+`TrackTable`, the queue's drop marker, the column resizer's line), hover (buttons, sidebar and
+Settings links, a row's edge bar, the focus step), state (Badge on a change only, the selected tab, a
+Track details section once its toggle is used), page (`data-page-phase` a/b on `main`, worked out while
+rendering so a page never waits for data), entrance/exit (Modal, toasts and the search panel hold a
+leaving copy through `usePresence`; a menu, the Inspector and the running list leave as an inert
+`useLeaveGhost` copy; every leaving copy has no pointer events and is `inert`, and a copy is kept only
+while the CSS names an exit animation, so the kind off, reduced motion and jsdom remove at once), scroll
+(`useSectionInView` marks the Settings link in view; headings settle on a scroll timeline; never on a
+table, which a test holds), loading (`PixelSpinner`, `TrackTable`'s `loading`, placeholder rows pulse and
+pause while the table has `data-scrolling`), shared (`sharedTransition`: a search result into its Library
+row; looks for the landing once, right after the update, never waiting inside it, and leaves the name
+off when it is missing; it does not re-send clicks and is not started from an inert or leaving copy.
+A Set's entry into the Inspector was built and taken out (DEC-219): while a view transition is live Chromium
+sends the pointer to the page root, so the second click of a double-click-to-play and a shift-click
+on a Set's row could be lost; the spec's second shared element is therefore not built), feedback (a refused time or chapter length shakes, new search results and a finished task pulse,
+the Saved tick). `motionRules.test.ts` also scans every renderer source for inline
+`transition`/`animation` styles, `.animate(` and `startViewTransition`, each of which must sit behind
+`useMotion(kind)` or the kind's attribute; `motionKinds.test.tsx` plays every kind off, on and reduced
+against the real stylesheets (`test/motionCss.ts`). e2e/motion.spec.ts: a click on a closing dialog's
+backdrop reaches the button behind it while the exit is still held; the new heading is on screen the
+frame after it is inserted, with the page at half opacity at the least; the switch off leaves no
+animation. Scroll checks, every kind on: no long task over 50 ms at 1x and 1.5x for 5,000 rows
+(`waveformPlaces`) and for 50,000 rows (`libraryBrowse`, `CUEPOINT_E2E_MEMORY=1`); numbers in
+`docs/user-guide/performance.md`; `bench_library.py` unchanged. The Keys page's counts (the wheel's numbers and the list's numbers and bars) step when they change
+under the state kind, and the wheel popover now has its exit through `usePresence` (an inert leaving
+copy taking no clicks), both added after PAGES-16 landed. Two things to know: the page phase's
+transform briefly (~80 ms) makes the page root the containing block for `position: fixed` children,
+and a Prepare Set change counts as a page change. Left for later: the status strip's progress bar
+fills in whole percents and has no extra stepping (a `<progress>` fill cannot be animated by
+transform), so the strip shows the spinner beside the running task instead.
+
 ---
 
 ## PAGES-13 — The Defaults Picked, and the Phase Comes Together

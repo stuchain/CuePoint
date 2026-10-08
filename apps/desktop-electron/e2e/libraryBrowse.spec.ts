@@ -304,7 +304,52 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       };
 
       const scroller = window.locator(".track-table__scroll");
+
+      // PAGES-12: every kind of motion is on (no stored overrides, the system not asking for less)
+      // and a long-task observer watches the laps. `longTasks` reads what it saw; its own check is
+      // a task made long on purpose, so an empty list proves something. The probe is told apart by
+      // when it ran (the time before it), never by how long a task was.
+      await window.emulateMedia({ reducedMotion: "no-preference" });
+      const observeLongTasks = () =>
+        window.evaluate(() => {
+          const w = window as unknown as { __long: { start: number; duration: number }[]; __longObserver?: PerformanceObserver };
+          w.__long = [];
+          w.__longObserver?.disconnect();
+          w.__longObserver = new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) w.__long.push({ start: entry.startTime, duration: entry.duration });
+          });
+          w.__longObserver.observe({ type: "longtask", buffered: false });
+        });
+      const longTasks = async () => {
+        // A task long on purpose, after the laps: the observer has to see it.
+        const probe = await window.evaluate(
+          () =>
+            new Promise<number>((resolve) => {
+              const before = performance.now();
+              setTimeout(() => {
+                const until = performance.now() + 80;
+                while (performance.now() < until) {
+                  // busy
+                }
+                resolve(before);
+              }, 0);
+            }),
+        );
+        await window.waitForTimeout(300);
+        const all = await window.evaluate(
+          () => (window as unknown as { __long: { start: number; duration: number }[] }).__long,
+        );
+        return {
+          probeSeen: all.some((entry) => entry.start >= probe && entry.duration >= 80),
+          long: all.filter((entry) => entry.start < probe).map((entry) => entry.duration),
+        };
+      };
+      expect(
+        await window.evaluate(() => document.documentElement.getAttributeNames().filter((n) => n.startsWith("data-motion-")).length),
+        "every kind is on",
+      ).toBe(10);
       const before = await rendererKb();
+      await observeLongTasks();
 
       const lap = async () => {
         for (let step = 1; step <= 50; step += 1) {
@@ -325,6 +370,7 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       await lap();
       const after = await rendererKb();
       const rows = await window.locator(".track-table__row").count();
+      const defaultSize = await longTasks();
 
       // eslint-disable-next-line no-console
       console.log(
@@ -342,6 +388,27 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       // The second pass over the same 50,000 rows costs a fraction of the
       // first: the window is bounded, so browsing further does not cost more.
       expect(after - afterOne).toBeLessThan((afterOne - before) / 2 + 20_000);
+
+      // --- no long task over 50 ms, at 1.5× (the default, above) and at 1× --------
+      test.info().annotations.push({ type: "long tasks at 1.5×", description: JSON.stringify(defaultSize) });
+      // eslint-disable-next-line no-console
+      console.log(`long tasks at 1.5x: ${JSON.stringify(defaultSize)}`);
+      expect(defaultSize.probeSeen, "the long-task observer works here").toBe(true);
+      expect(defaultSize.long.filter((duration) => duration > 50)).toEqual([]);
+
+      // 1× is the heaviest case: 33px rows put the most on screen.
+      await window.evaluate(() => localStorage.setItem("cuepoint-ui-lab-scale", "1"));
+      await window.reload();
+      await openLibrary(window);
+      await expect(window.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 60_000 });
+      await observeLongTasks();
+      await lap();
+      const smallest = await longTasks();
+      test.info().annotations.push({ type: "long tasks at 1×", description: JSON.stringify(smallest) });
+      // eslint-disable-next-line no-console
+      console.log(`long tasks at 1x: ${JSON.stringify(smallest)}`);
+      expect(smallest.probeSeen, "the long-task observer works here").toBe(true);
+      expect(smallest.long.filter((duration) => duration > 50)).toEqual([]);
     } finally {
       await app.close();
     }

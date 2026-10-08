@@ -7,6 +7,8 @@ import { useToast } from "../Toast";
 import { libraryTrackState } from "../../screens/library/libraryLink";
 import { matchedLabel } from "../../screens/library/searchMatch";
 import { toQueueItem } from "../../screens/library/useLibraryPlayback";
+import { sharedTransition } from "../../tokens/sharedTransition";
+import { usePresence } from "../../tokens/usePresence";
 import {
   MIN_QUERY_LENGTH,
   resultSummary,
@@ -81,11 +83,21 @@ export function GlobalSearch() {
   }, []);
 
   // HDR-1: Enter or a click opens the Library on the track, selected.
+  // The row clicked moves into the Library's row for the track when Moving between views is on
+  // (PAGES-12); with it off, or from the keyboard, the page just changes.
   const openTrack = useCallback(
-    (track: LibraryTrackRow | undefined) => {
+    (track: LibraryTrackRow | undefined, from?: Element | null) => {
       if (!track || track.id == null) return;
-      setOpen(false);
-      navigate("/library", { state: libraryTrackState(track.id) });
+      const id = track.id;
+      sharedTransition(
+        "cp-shared-result",
+        from ?? null,
+        () => {
+          setOpen(false);
+          navigate("/library", { state: libraryTrackState(id) });
+        },
+        () => document.querySelector(".track-table__row--selected"),
+      );
     },
     [navigate],
   );
@@ -123,6 +135,17 @@ export function GlobalSearch() {
   const tooShort = trimmed.length > 0 && trimmed.length < MIN_QUERY_LENGTH;
   const showPanel = open && (status !== "idle" || tooShort);
   const showList = showPanel && tracks.length > 0;
+  const panel = usePresence<HTMLDivElement>(showPanel);
+  // Each new answer pulses once (feedback, DEC-154): the list is a new element for each.
+  const [answer, setAnswer] = useState({ response, n: 0 });
+  if (answer.response !== response) setAnswer({ response, n: answer.n + 1 });
+  // Pulsed once per answer, not again when the panel is closed and reopened on the same one.
+  const [pulsed, setPulsed] = useState(0);
+  useEffect(() => {
+    if (!showList) return;
+    const timer = window.setTimeout(() => setPulsed(answer.n), 400);
+    return () => window.clearTimeout(timer);
+  }, [showList, answer.n]);
 
   return (
     <div
@@ -161,9 +184,12 @@ export function GlobalSearch() {
         />
       </label>
 
-      {showPanel && (
+      {panel.present && (
         <div
+          ref={panel.ref}
           className="cp-global-search__panel"
+          data-leaving={panel.leaving ? "" : undefined}
+          inert={panel.leaving}
           // A press inside the panel must not take focus from the field, or the panel
           // would close under the click that was meant for a row.
           onMouseDown={(event) => event.preventDefault()}
@@ -208,7 +234,10 @@ export function GlobalSearch() {
           {status === "results" && response && (
             <>
               <p className="cp-global-search__summary">{resultSummary(response)}</p>
-              <ul className="cp-global-search__list" role="listbox" id={LISTBOX_ID} aria-label="Search results">
+              <ul
+                key={answer.n}
+                className={`cp-global-search__list${pulsed !== answer.n ? " cp-global-search__list--fresh" : ""}`}
+                role="listbox" id={LISTBOX_ID} aria-label="Search results">
                 {response.tracks.map((track, index) => (
                   <li
                     className="cp-global-search__row"
@@ -220,7 +249,7 @@ export function GlobalSearch() {
                       className={`cp-global-search__option${index === active ? " cp-global-search__option--active" : ""}`}
                       role="option"
                       aria-selected={index === active}
-                      onClick={() => openTrack(track)}
+                      onClick={(event) => openTrack(track, event.currentTarget)}
                       onMouseMove={() => index !== active && setActive(index)}
                     >
                       <span className="cp-global-search__title">{track.title}</span>

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 
+import { usePresence } from "../../tokens/usePresence";
 import { PixelIcon } from "../PixelIcon";
 import { WheelPopover } from "./WheelPopover";
 import { closeWheel, toggleWheel, useWheelState } from "./wheelStore";
@@ -15,6 +16,8 @@ import "./WheelButton.css";
 export function WheelButton() {
   const { open, source } = useWheelState();
   const rootRef = useRef<HTMLDivElement>(null);
+  // Closing plays an exit while the popover is kept as an inert copy (PAGES-12).
+  const pop = usePresence<HTMLDivElement>(open);
 
   useEffect(() => {
     if (!open) return;
@@ -48,7 +51,7 @@ export function WheelButton() {
       >
         <PixelIcon name="wheel" />
       </button>
-      {open && <WheelPopover source={source} />}
+      {pop.present && <WheelPopover source={source} leaving={pop.leaving} presenceRef={pop.ref} />}
     </div>
   );
 }

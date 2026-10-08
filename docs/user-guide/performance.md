@@ -310,6 +310,29 @@ accumulates, because nothing is kept: 29 row elements were in the page at the
 end of a 50,000-row scroll, and the rows behind them are fetched a window at a
 time and dropped when they are far enough behind.
 
+## Motion
+
+All ten kinds of motion are on in these measurements (Settings > Motion, **Turn all
+on**), and the system's Reduce motion setting is off. Motion moves only `transform`
+and `opacity`, steps in whole pixels, and never runs on a track table's rows while
+it scrolls (placeholder rows and row hovers hold still until the scroll stops), so
+it should not show in scrolling. These are the checks that say so, from
+`apps/desktop-electron/` on a Linux build under a virtual display; each watches for
+a task longer than 50 ms, with a task made long on purpose afterward to prove the
+watcher sees one.
+
+| Check | Rows | At 1x (33 px rows) | At 1.5x (the default) |
+| --- | --- | --- | --- |
+| `e2e/waveformPlaces.spec.ts`, scroll the whole table with the Waveform column shown | 5,000 | no long task (385 pages scrolled, 35 waveforms on screen at once) | no long task (1,288 pages, 25 waveforms) |
+| `CUEPOINT_E2E_MEMORY=1 e2e/libraryBrowse.spec.ts -g memory`, two laps over the library | 50,000 | no long task | no long task |
+
+Memory in that second run did what it did without motion: the renderer's working set
+grew by about 85 MB over the first lap on this machine (160 MB before, 245 MB after)
+and by nothing on the second lap, with 27 row elements in the page.
+`scripts/bench_library.py` is untouched by motion and gives the numbers above
+(50,000 tracks: import 8.8 s, re-import 11.1 s, an unchanged check under 10 ms,
+apply 10.8 s).
+
 ## Performance Budgets
 
 | Metric | Target | Notes |

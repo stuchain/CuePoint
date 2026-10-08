@@ -129,3 +129,30 @@ describe("MotionProvider", () => {
     spy.mockRestore();
   });
 });
+
+describe("useMotion(kind)", () => {
+  it("is whether the kind may move: on, off, and under reduced motion", () => {
+    const { result } = renderHook(() => ({ motion: useMotion(), micro: useMotion("micro"), hover: useMotion("hover") }), { wrapper });
+    expect(result.current.micro).toBe(true);
+    act(() => result.current.motion.setKind("hover", false));
+    expect(result.current.hover).toBe(false);
+    expect(result.current.micro).toBe(true);
+  });
+
+  it("is false while the system asks for reduced motion, whatever the switches say", () => {
+    const media = mockMatchMedia(true);
+    const { result } = renderHook(() => useMotion("state"), { wrapper });
+    expect(result.current).toBe(false);
+    media.set(false);
+    expect(result.current).toBe(true);
+  });
+
+  it("is false outside a provider, so a component alone shows its still state", () => {
+    const { result } = renderHook(() => useMotion("page"));
+    expect(result.current).toBe(false);
+  });
+
+  it("still throws for the switches outside a provider", () => {
+    expect(() => renderHook(() => useMotion())).toThrow();
+  });
+});

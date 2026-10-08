@@ -20,11 +20,13 @@ interface SetNotesDialogProps {
   set: { name: string; notes: string | null } | null;
   /** Why the engine refused the last attempt, in its words. */
   error?: string | null;
+  /** Changes with every refusal, so the same words coming back shake again. */
+  errorKey?: number;
   onSave: (notes: string | null) => void;
   onClose: () => void;
 }
 
-export function SetNotesDialog({ set, error = null, onSave, onClose }: SetNotesDialogProps) {
+export function SetNotesDialog({ set, error = null, errorKey = 0, onSave, onClose }: SetNotesDialogProps) {
   const [notes, setNotes] = useState("");
   const id = useId();
 
@@ -47,7 +49,7 @@ export function SetNotesDialog({ set, error = null, onSave, onClose }: SetNotesD
         </label>
 
         {error && (
-          <p className="prepare-dialog__problem" role="alert">
+          <p key={errorKey} className="prepare-dialog__problem" role="alert">
             {error}
           </p>
         )}

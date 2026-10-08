@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Every kind of motion is built, each behind its own switch in Settings > Motion.** Buttons,
+  checkboxes and stars press; hovered and focused things step; rows you pick up and drop lift and
+  settle; badges, tabs and Track details sections change with a short step; dialogs, menus, the
+  search results, toasts and the Track details panel step in and fade out (a closing one takes no
+  clicks, so what is behind it takes them at once); a new page steps in while the shell stays still;
+  a pixel spinner and pulsing placeholder rows show loading; a search result glides into its Library
+  row; a refused time shakes and new search results and finished
+  tasks pulse; and in Settings the link for the section you are reading follows the scroll. Moves
+  step in whole pixels at every size and fades stay smooth. Reduce motion still stops everything,
+  and a kind turned off hides nothing. Track tables never animate while they scroll; the
+  scroll checks with every kind on show no long task over 50 ms at 1x or 1.5x
+  (see [Performance](../user-guide/performance.md)).
 - **A first-run guide that gets you to a matched library.** Five screens: what
   CuePoint does, how to get your collection out of Rekordbox (**Show me how**),
   **Import your Rekordbox collection...**, **Match tracks...**, and where

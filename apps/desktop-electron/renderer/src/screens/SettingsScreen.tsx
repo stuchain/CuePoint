@@ -14,6 +14,7 @@ import { ThemeSettingsPanel } from "./ThemeSettingsPanel";
 import { WaveformSettingsPanel } from "./WaveformSettingsPanel";
 import { SETTINGS_SECTIONS, type SettingsSectionId } from "./settingsSections";
 import { settingsFocus } from "./settingsLink";
+import { useSectionInView } from "./useSectionInView";
 import "./screens.css";
 import "./settings.css";
 
@@ -24,6 +25,8 @@ export const BEATPORT_TOKEN_FIELD_ID = "settings-beatport-token";
 function titleOf(id: SettingsSectionId): string {
   return SETTINGS_SECTIONS.find((section) => section.id === id)?.title ?? id;
 }
+
+const SECTION_IDS: readonly string[] = SETTINGS_SECTIONS.map((section) => section.id);
 
 /** One section of the page: a region named by its title, with a stable id for the links. */
 function Section({ id, children }: { id: SettingsSectionId; children: ReactNode }) {
@@ -113,6 +116,8 @@ export function SettingsScreen({
     section?.focus({ preventScroll: true });
   };
 
+  const inView = useSectionInView(SECTION_IDS);
+
   return (
     <div className="screen screen--stack screen--scroll settings-page">
       <h1 className="screen__title">Settings</h1>
@@ -122,7 +127,11 @@ export function SettingsScreen({
           <ul>
             {SETTINGS_SECTIONS.map((section) => (
               <li key={section.id}>
-                <a href={`#${section.id}`} onClick={(event) => goTo(event, section.id)}>
+                <a
+                  href={`#${section.id}`}
+                  data-current={inView === section.id ? "" : undefined}
+                  onClick={(event) => goTo(event, section.id)}
+                >
                   {section.title}
                 </a>
               </li>

@@ -27,6 +27,7 @@ import type {
   SetSuggestionSideName,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { PixelSpinner } from "../../components/PixelSpinner";
 import { Tabs } from "../../components/Tabs";
 import { inMemorySource, useColumnLayout } from "../../components/table";
 import { parseScope, scopeOptions } from "../clean/cleanRules";
@@ -488,7 +489,11 @@ function LibraryTab({
       </div>
     );
   } else if (window_.loading) {
-    empty = <p className="prepare-note">Reading your library…</p>;
+    empty = (
+      <p className="prepare-note">
+        <PixelSpinner label="Reading your library…" />
+      </p>
+    );
   } else if (q) {
     empty = <p className="prepare-note">{`Nothing in ${poolWords} matches “${q}”.`}</p>;
   } else {

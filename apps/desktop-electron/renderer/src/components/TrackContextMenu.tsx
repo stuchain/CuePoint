@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLeaveGhost } from "../tokens/useLeaveGhost";
 import "./TrackContextMenu.css";
 
 /**
@@ -119,6 +120,8 @@ const hasChildren = (item: TrackContextMenuItem | undefined) =>
 
 export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  // Closing leaves a still copy that fades (Opening and closing panels and dialogs).
+  useLeaveGhost(menuRef);
   const [position, setPosition] = useState({ left: x, top: y });
   /** The parents whose children are showing, outermost first; the keys go to the last. */
   const [path, setPath] = useState<string[]>([]);

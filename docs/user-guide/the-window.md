@@ -272,9 +272,40 @@ asks first, and offers **Undo**) turns them all back on.
 The first line says whether your system's Reduce motion setting is on. While it
 is, nothing moves, whatever the switches say, and they work again as soon as you
 turn it off. Turning a kind off never hides anything: you still see the same
-words and states, just without the movement. Today a button's press and a
-message sliding in obey their switches; the other kinds will move as more of the
-app gains motion.
+words and states, just without the movement.
+
+Everything that moves does so in whole-pixel steps, and every fade is smooth.
+Here is where each kind shows:
+
+- **Button presses**: a button moves down a notch while you press it, and so do
+  checkboxes, radio buttons and the star rating. The **Saved** tick steps up into
+  place.
+- **Things you drag and drop**: a row you pick up dims and shifts aside, a row
+  you drop settles into its place, the queue's drop marker steps in, and a
+  column's resize handle shows a line while you hover or drag it.
+- **Hover and keyboard focus**: buttons lift a notch under the pointer, sidebar and
+  Settings links lean toward it, a row in a track table shows a bar on its edge,
+  and a control steps into its focus ring.
+- **Changing state**: a badge that changes kind or words steps once, the selected
+  tab steps into place, and a section of Track details steps open when you open it.
+  The Camelot wheel's lit keys step as they light, and on the Keys page a key's
+  count steps when it changes, on the wheel and in the list.
+- **Opening and closing panels and dialogs**: dialogs, menus, the search results,
+  the **+N more** list, toasts and the Track details panel step in and fade out,
+  and the Camelot wheel steps in and fades out. A closing dialog or menu takes no clicks while it
+  fades: whatever is behind it takes them at once.
+- **Changing page**: the new page steps in; the sidebar, header, player and
+  status strip stay still. It never waits for the page's data.
+- **Moving between views**: a search result glides into its row in the Library
+  when you open it. That is the only one: a table row you pick does not move, so a
+  double-click to play and a shift-click range always land.
+- **Alerts and confirmations**: a time Prepare refuses, a chapter length it
+  refuses, shakes; new search results and a finished background task pulse once.
+- **Loading**: a small pixel spinner turns while the library is being read, and
+  rows of a table that have not arrived yet pulse. Rows hold still while you scroll.
+- **Scrolling**: in Settings, the link for the section you are reading steps in, and a
+  section's heading settles as it comes into view. Track tables never animate as they
+  scroll.
 
 ## Size and theme
 

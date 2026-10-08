@@ -32,6 +32,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { Hint } from "../Hint";
+import { PixelSpinner } from "../PixelSpinner";
 import { useScale } from "../../tokens/ScaleContext";
 import {
   gridTemplate,
@@ -181,6 +182,12 @@ export interface TrackTableProps<Row> {
   /** Shown instead of rows when the query matched nothing. */
   emptyState?: ReactNode;
 
+  /**
+   * The rows are still being asked for and none has arrived: the pixel spinner stands where
+   * the empty state would, so "nothing yet" is not read as "nothing" (PAGES-12, Loading).
+   */
+  loading?: boolean;
+
   /** Rows kept rendered either side of the viewport. */
   overscan?: number;
 
@@ -225,6 +232,7 @@ export function TrackTable<Row>({
   scrollToIndex = null,
   getRowKey,
   emptyState,
+  loading = false,
   overscan = 10,
   resetKey,
   ariaLabel = "Tracks",
@@ -236,6 +244,34 @@ export function TrackTable<Row>({
   const [dragging, setDragging] = useState<string | null>(null);
   // Where an insertion line is drawn, as an index between rows (ORG-11).
   const [dropIndex, setDropIndex] = useState<number | null>(null);
+  // The row picked up (it lifts) and the place a drop landed (it settles), by index: both are
+  // Interaction motion, and both are set by a drag, never by a scroll.
+  const [liftedIndex, setLiftedIndex] = useState<number | null>(null);
+  const [settledIndex, setSettledIndex] = useState<number | null>(null);
+  useEffect(() => {
+    if (settledIndex === null) return;
+    const timer = window.setTimeout(() => setSettledIndex(null), 600);
+    return () => window.clearTimeout(timer);
+  }, [settledIndex]);
+
+  // While the rows scroll, anything that animates on them waits (Scrolling, PAGES-12): the table
+  // never animates per row under a wheel. Set on the element, not in React state, so a scroll
+  // costs no render.
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    let timer = 0;
+    const onScroll = () => {
+      if (!element.hasAttribute("data-scrolling")) element.setAttribute("data-scrolling", "");
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => element.removeAttribute("data-scrolling"), 160);
+    };
+    element.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      element.removeEventListener("scroll", onScroll);
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   const [internalWidths, setInternalWidths] = useState<ColumnWidths>(() =>
     resolveWidths(columns, widths, scale),
@@ -499,7 +535,9 @@ export function TrackTable<Row>({
         </div>
 
         {empty ? (
-          <div className="track-table__empty">{emptyState ?? "No tracks"}</div>
+          <div className="track-table__empty">
+            {loading ? <PixelSpinner label="Loading tracks" /> : (emptyState ?? "No tracks")}
+          </div>
         ) : (
           <div
             className="track-table__body"
@@ -515,7 +553,7 @@ export function TrackTable<Row>({
               return (
                 <div
                   key={key}
-                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${selected ? " track-table__row--selected" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}`}
+                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${selected ? " track-table__row--selected" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
                   style={{
                     transform: `translateY(${item.start}px)`,
                     height: `${item.size}px`,
@@ -530,6 +568,7 @@ export function TrackTable<Row>({
                   draggable={draggable}
                   onDragStart={(event) => {
                     if (!row || !draggable || !onRowDragStart || !event.dataTransfer) return;
+                    setLiftedIndex(item.index);
                     onRowDragStart(row, item.index, event.dataTransfer);
                   }}
                   onDragOver={(event) => {
@@ -558,9 +597,13 @@ export function TrackTable<Row>({
                     if (!onRowDrop || at === null || !event.dataTransfer) return;
                     if (acceptsRowDrop && !acceptsRowDrop(event.dataTransfer)) return;
                     event.preventDefault();
+                    setSettledIndex(at);
                     onRowDrop(at, event.dataTransfer, item.index);
                   }}
-                  onDragEnd={() => setDropIndex(null)}
+                  onDragEnd={() => {
+                    setDropIndex(null);
+                    setLiftedIndex(null);
+                  }}
                   data-drop={
                     dropIndex === item.index
                       ? "before"

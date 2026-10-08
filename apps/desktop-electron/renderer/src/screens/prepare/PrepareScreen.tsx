@@ -350,12 +350,19 @@ export function PrepareScreen({
   }, [fileJobs, push, reloadSet]);
   const [chapterEditing, setChapterEditing] = useState<SetChapterPlan | null>(null);
   const [chapterError, setChapterError] = useState<string | null>(null);
+  // Counts refusals, so the same words coming back shake the dialog's line again.
+  const [chapterRefusals, setChapterRefusals] = useState(0);
   const [chapterDeleting, setChapterDeleting] = useState<SetChapterPlan | null>(null);
 
   const saveChapter = useCallback(
     async (update: SetChapterUpdate) => {
       setChapterError(null);
-      const done = await edit((sets) => sets.updateChapter(update), { onRefused: setChapterError });
+      const done = await edit((sets) => sets.updateChapter(update), {
+        onRefused: (message) => {
+          setChapterError(message);
+          setChapterRefusals((n) => n + 1);
+        },
+      });
       if (done) setChapterEditing(null);
     },
     [edit],
@@ -364,13 +371,17 @@ export function PrepareScreen({
   // The Set's own notes (PREP-03's `set_notes`): one dialog, one write.
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
+  const [notesRefusals, setNotesRefusals] = useState(0);
   const shownId = shown?.setId ?? null;
   const saveNotes = useCallback(
     async (notes: string | null) => {
       if (shownId === null) return;
       setNotesError(null);
       const done = await edit((sets) => sets.setNotes({ set_id: shownId, notes }), {
-        onRefused: setNotesError,
+        onRefused: (message) => {
+          setNotesError(message);
+          setNotesRefusals((n) => n + 1);
+        },
       });
       if (done) setNotesOpen(false);
     },
@@ -459,7 +470,9 @@ export function PrepareScreen({
   // --- Mix in and Mix out typed in the table (FLW-18)
 
   const [timeEditing, setTimeEditing] = useState<TimeTarget | null>(null);
-  const [timeWords, setTimeWords] = useState<({ entryId: number } & ReturnType<typeof timeRefusalWords>) | null>(null);
+  const [timeWords, setTimeWords] = useState<({ entryId: number; n: number } & ReturnType<typeof timeRefusalWords>) | null>(null);
+  // Each refusal is its own, so the words shake again when the same one comes twice (Alerts, DEC-154).
+  const refusals = useRef(0);
   const startTimeEdit = useCallback((entryId: number, field: TimeField) => {
     setTimeWords(null);
     setTimeEditing({ entryId, field });
@@ -497,7 +510,7 @@ export function PrepareScreen({
         );
         if (done === null) {
           if (refusal.message !== null) {
-            setTimeWords({ entryId, ...timeRefusalWords(entry.track.title ?? "", refusal.message) });
+            setTimeWords({ entryId, n: (refusals.current += 1), ...timeRefusalWords(entry.track.title ?? "", refusal.message) });
           }
           return "refused";
         }
@@ -834,6 +847,7 @@ export function PrepareScreen({
   );
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [createRefusals, setCreateRefusals] = useState(0);
   const [choosingSource, setChoosingSource] = useState(false);
   const [playlists, setPlaylists] = useState<LibraryPlaylistNode[]>([]);
   const [copying, setCopying] = useState<NewSetSource | null>(null);
@@ -846,6 +860,7 @@ export function PrepareScreen({
       setBusy(false);
       if (!made.ok || !made.node) {
         setCreateError(made.error ?? "The Set could not be made.");
+        setCreateRefusals((n) => n + 1);
         return;
       }
       setCreating(false);
@@ -875,6 +890,7 @@ export function PrepareScreen({
       setBusy(false);
       if (!made.ok || !made.node) {
         setCreateError(made.error ?? "The Set could not be made.");
+        setCreateRefusals((n) => n + 1);
         return;
       }
       setCopying(null);
@@ -891,6 +907,7 @@ export function PrepareScreen({
         folders={folders}
         busy={busy}
         error={createError}
+        errorKey={createRefusals}
         onCreate={(name, parentId) => void makeSet(name, parentId)}
         onClose={() => setCreating(false)}
       />
@@ -1050,6 +1067,9 @@ export function PrepareScreen({
           getRowKey={idOfRow}
           rowClassName={(row) => (row.kind === "heading" ? "prepare-heading" : undefined)}
           onSelect={(row, index, event) => {
+            // Picking is only picking. A Set's entry does not move into the Inspector as a shared
+            // element: a view transition sends the pointer to the page root while it plays, which
+            // would swallow the second click of a double-click-to-play and a shift-click range.
             if (row.kind !== "entry") return;
             setChosenIn("set");
             selection.onRowClick(row, index, event);
@@ -1155,7 +1175,7 @@ export function PrepareScreen({
         </div>
         <p className="prepare-header__facts" role="status">
           {timeWords && (
-            <span className="prepare-header__refusal" title={timeWords.line}>
+            <span key={timeWords.n} className="prepare-header__refusal" title={timeWords.line}>
               <span className="prepare-header__refusal-reason">{timeWords.reason}</span>
               <span className="prepare-header__refusal-entry">{timeWords.entry}</span>
             </span>
@@ -1344,12 +1364,14 @@ export function PrepareScreen({
       <SetNotesDialog
         set={notesOpen ? { name: setName, notes: plan.notes } : null}
         error={notesError}
+        errorKey={notesRefusals}
         onSave={(notes) => void saveNotes(notes)}
         onClose={() => setNotesOpen(false)}
       />
       <ChapterDialog
         chapter={chapterEditing}
         error={chapterError}
+        errorKey={chapterRefusals}
         onSave={(update) => void saveChapter(update)}
         onClose={() => setChapterEditing(null)}
       />

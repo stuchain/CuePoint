@@ -1,0 +1,47 @@
+.cp-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* Three units a side: the cell's two squares of travel, with a unit of margin around them. */
+.cp-spinner__block {
+  position: relative;
+  flex: none;
+  width: calc(var(--motion-step-px) * 3);
+  height: calc(var(--motion-step-px) * 3);
+  background: color-mix(in srgb, var(--fg-muted) 25%, transparent);
+}
+
+.cp-spinner__cell {
+  position: absolute;
+  top: calc(var(--motion-step-px) / 2);
+  left: calc(var(--motion-step-px) / 2);
+  width: var(--motion-step-px);
+  height: var(--motion-step-px);
+  background: var(--accent-primary);
+}
+
+:root[data-motion-loading] .cp-spinner__cell {
+  animation: cp-spinner-hop var(--motion-slow) steps(1, end) infinite;
+}
+
+@keyframes cp-spinner-hop {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(var(--motion-step-px), 0);
+  }
+  50% {
+    transform: translate(var(--motion-step-px), var(--motion-step-px));
+  }
+  75% {
+    transform: translate(0, var(--motion-step-px));
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { usePresence } from "../tokens/usePresence";
 import { Button } from "./Button";
 import "./Modal.css";
 
@@ -111,10 +112,20 @@ export function Modal({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [open, onClose]);
 
-  if (!open) return null;
+  // A closed dialog may play its exit (PAGES-12). The leaving copy is inert and takes no
+  // pointer events at all, so a click on its backdrop lands on what is behind it.
+  const presence = usePresence<HTMLDivElement>(open);
+  if (!presence.present) return null;
 
   return (
-    <div className="cp-modal__backdrop" role="presentation" onClick={closeOnBackdrop ? onClose : undefined}>
+    <div
+      ref={presence.ref}
+      className="cp-modal__backdrop"
+      role="presentation"
+      data-leaving={presence.leaving ? "" : undefined}
+      inert={presence.leaving}
+      onClick={closeOnBackdrop && !presence.leaving ? onClose : undefined}
+    >
       <div
         ref={dialogRef}
         className={`cp-modal ${size === "wide" ? "cp-modal--wide" : ""}`.trim()}

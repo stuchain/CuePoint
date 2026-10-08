@@ -103,8 +103,20 @@ export function MotionProvider({ children }: { children: ReactNode }) {
   return <MotionContext.Provider value={value}>{children}</MotionContext.Provider>;
 }
 
-export function useMotion(): MotionContextValue {
+/**
+ * Without a kind: the switches and their setters (Settings → Motion). With one:
+ * whether that kind may move right now, which is its switch on and the system not
+ * asking for reduced motion. Outside a provider that is false, so a component
+ * rendered alone (a test, a story) shows its still state.
+ *
+ * Motion written in script asks this; motion written in CSS is gated on the
+ * attribute the provider writes. `motionRules.test.ts` holds both to it.
+ */
+export function useMotion(): MotionContextValue;
+export function useMotion(kind: MotionKindId): boolean;
+export function useMotion(kind?: MotionKindId): MotionContextValue | boolean {
   const ctx = useContext(MotionContext);
+  if (kind !== undefined) return ctx ? ctx.switches[kind] && !ctx.systemReduced : false;
   if (!ctx) throw new Error("useMotion must be used within MotionProvider");
   return ctx;
 }
