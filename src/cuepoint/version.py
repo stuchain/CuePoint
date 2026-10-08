@@ -5,7 +5,7 @@
 Version Information for CuePoint
 
 This module serves as the single source of truth for version information.
-Version follows Semantic Versioning (SemVer): MAJOR.MINOR.PATCH
+Version is ``X.Y.Z`` or ``X.Y.Z-test.N`` (DEC-145)
 
 Build identifiers (build_number, commit_sha, build_date) are ``None`` unless a
 build recorded them (REPORT-07): ``scripts/build_engine_sidecar.py`` writes the
@@ -19,14 +19,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-# Version follows Semantic Versioning (SemVer): MAJOR.MINOR.PATCH
-__version__ = "1.0.0-feb1"
-
-# When running locally (not frozen/packaged), report this version for update testing
-__version_local_dev__ = "1.0.0-test1.0"
+# One version for every build, source or packaged: ``X.Y.Z`` or ``X.Y.Z-test.N`` (DEC-145, DEC-176).
+__version__ = "1.0.0-test.1"
 
 #: The release name every process reports to Sentry (REPORT-07, DEC-126). Electron main builds the
-#: same name from ``package.json``'s ``cuepoint.engineVersion``; ``check_desktop_version_coupling.py``
+#: same name from ``package.json``'s ``version`` (``app.getVersion()``); ``check_desktop_version_coupling.py``
 #: holds the two prefixes and the versions equal.
 RELEASE_PREFIX = "cuepoint@"
 
@@ -69,19 +66,13 @@ __build_date__: Optional[str] = _text(_recorded.get("build_date"))
 def get_release() -> str:
     """The release name reported to Sentry: ``cuepoint@<__version__>``.
 
-    Built from ``__version__``, never ``get_version()``, which answers a different string from source.
+    Built from ``__version__``, the one version every build reports.
     """
     return f"{RELEASE_PREFIX}{__version__}"
 
 
 def get_version() -> str:
-    """Get version string (MAJOR.MINOR.PATCH).
-
-    When running locally (not packaged), returns __version_local_dev__ (e.g. 1.0.0-test1.0)
-    so the update checker uses the test track. Packaged builds use __version__.
-    """
-    if _is_running_locally():
-        return __version_local_dev__
+    """Get the version string: ``__version__``, from source and from a packaged build alike."""
     return __version__
 
 

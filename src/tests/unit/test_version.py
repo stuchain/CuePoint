@@ -1,5 +1,6 @@
 """Unit tests for version management system."""
 
+import re
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -8,6 +9,7 @@ from unittest.mock import patch
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+import cuepoint.version as version_module
 from cuepoint.version import (
     get_build_date,
     get_build_info,
@@ -129,3 +131,32 @@ class TestVersionModule:
 
         is_dev = version_module.is_dev_build()
         assert is_dev is True
+
+
+class TestOneVersion:
+    """The version is one string, frozen or not (DIST-01, DEC-176)."""
+
+    def test_the_version_is_in_decision_145s_scheme(self):
+        # X.Y.Z or X.Y.Z-test.N; equality with package.json is the coupling check's job.
+        assert re.fullmatch(
+            r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-test\.[1-9]\d*)?",
+            version_module.__version__,
+        )
+
+    def test_the_local_dev_version_is_gone(self):
+        assert not hasattr(version_module, "__version_local_dev__")
+
+    def test_get_version_is_the_version_from_source(self):
+        with patch("cuepoint.version._is_running_locally", return_value=True):
+            assert version_module.get_version() == version_module.__version__
+
+    def test_get_version_is_the_version_when_frozen(self):
+        with patch("cuepoint.version._is_running_locally", return_value=False):
+            assert version_module.get_version() == version_module.__version__
+
+    def test_get_version_is_the_version_when_sys_frozen_is_set(self):
+        with patch.object(sys, "frozen", True, create=True):
+            assert version_module.get_version() == version_module.__version__
+
+    def test_the_release_is_built_from_the_same_version(self):
+        assert version_module.get_release() == f"cuepoint@{version_module.__version__}"

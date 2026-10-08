@@ -5,15 +5,18 @@
 Validate Version Format and Consistency
 
 This script validates that:
-1. Version follows SemVer format (X.Y.Z)
+1. Version is in DEC-145's scheme: ``X.Y.Z`` or ``X.Y.Z-test.N`` (DIST-01)
 2. Version is consistent across files (version.py, git tags, etc.)
+3. With ``--tag``, a release tag is ``v`` plus the version in version.py
 
 Usage:
     python scripts/validate_version.py
+    python scripts/validate_version.py --tag v1.0.0-test.1
 
 This script is typically called in CI/CD to ensure version consistency.
 """
 
+import argparse
 import re
 import subprocess
 import sys
@@ -39,34 +42,46 @@ def extract_base_version(version: str) -> str:
     return version
 
 
-def validate_semver(version: str) -> Tuple[bool, Optional[str]]:
-    """Validate SemVer format (including prerelease suffixes).
+#: ``X.Y.Z`` or ``X.Y.Z-test.N``: no leading zeros (except a lone "0"), ``N`` at least 1 (DEC-145).
+_NUMBER = r"(?:0|[1-9]\d*)"
+_SCHEME_RE = re.compile(
+    rf"^{_NUMBER}\.{_NUMBER}\.{_NUMBER}(?:-test\.[1-9]\d*)?$"
+)
+
+
+def validate_scheme(version: str) -> Tuple[bool, Optional[str]]:
+    """Validate a version against DEC-145's scheme: ``X.Y.Z`` or ``X.Y.Z-test.N``.
 
     Args:
-        version: Version string to validate (may include prerelease suffix).
+        version: Version string to validate.
 
     Returns:
         Tuple of (is_valid, error_message).
     """
-    # Extract base version for validation
-    base_version = extract_base_version(version)
-    
-    pattern = r"^\d+\.\d+\.\d+$"
-    if not re.match(pattern, base_version):
-        return False, f"Version must be SemVer format (X.Y.Z), got: {version} (base: {base_version})"
-
-    # Check version components are reasonable
-    parts = base_version.split(".")
-    major, minor, patch = map(int, parts)
-
-    if major > 100:
-        return False, f"Major version seems too high: {major}"
-    if minor > 100:
-        return False, f"Minor version seems too high: {minor}"
-    if patch > 1000:
-        return False, f"Patch version seems too high: {patch}"
-
+    if not _SCHEME_RE.fullmatch(version):
+        return False, (
+            f"Version must be X.Y.Z or X.Y.Z-test.N (numbers without leading zeros, N >= 1), "
+            f"got: {version!r}"
+        )
     return True, None
+
+
+def validate_semver(version: str) -> Tuple[bool, Optional[str]]:
+    """Validate the version format; the scheme is DEC-145's (see ``validate_scheme``)."""
+    return validate_scheme(version)
+
+
+def check_tag(tag: str) -> List[str]:
+    """Every way ``tag`` is not ``v`` plus the version in version.py; empty when it is."""
+    file_version = get_version_from_file()
+    if not file_version:
+        return ["Could not read version from version.py"]
+    valid, error_msg = validate_scheme(file_version)
+    if not valid:
+        return [f"Invalid version format: {error_msg}"]
+    if tag != f"v{file_version}":
+        return [f"Tag {tag!r} does not match version.py: expected 'v{file_version}'"]
+    return []
 
 
 def get_version_from_file() -> Optional[str]:
@@ -139,7 +154,7 @@ def check_version_consistency() -> Tuple[bool, List[str]]:
     file_base_version = extract_base_version(file_version)
 
     # Validate format
-    valid, error_msg = validate_semver(file_version)
+    valid, error_msg = validate_scheme(file_version)
     if not valid:
         errors.append(f"Invalid version format: {error_msg}")
         return False, errors
@@ -173,13 +188,33 @@ def check_version_consistency() -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-if __name__ == "__main__":
+def main(argv: Optional[List[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[1])
+    parser.add_argument(
+        "--tag",
+        help="a release tag to check against version.py (skips the latest-git-tag comparison)",
+    )
+    args = parser.parse_args(argv)
+
+    if args.tag is not None:
+        errors = check_tag(args.tag)
+        if errors:
+            print("Version validation failed:")
+            for error in errors:
+                print(f"  ERROR: {error}")
+            return 1
+        print(f"[OK] Tag {args.tag} matches version.py: {get_version_from_file()}")
+        return 0
+
     valid, errors = check_version_consistency()
     if not valid:
         print("Version validation failed:")
         for error in errors:
             print(f"  ERROR: {error}")
-        sys.exit(1)
-    else:
-        version = get_version_from_file()
-        print(f"[OK] Version validation passed: {version}")
+        return 1
+    print(f"[OK] Version validation passed: {get_version_from_file()}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -65,7 +65,7 @@ function setListFolders(): SetListFolderStore {
  * Which build this is: the release, `dist` and environment every process reports (REPORT-07).
  * Handed to the SDK, to the engine's environment and, through `app:buildInfo`, to the page.
  */
-const build = currentBuildInfo(app.isPackaged);
+const build = currentBuildInfo(app.isPackaged, app.getVersion());
 
 /**
  * Whether error reports may be sent (REPORT-01, DEC-128). Written to the file
@@ -1058,7 +1058,7 @@ async function createWindow(): Promise<void> {
   if (placement) win.showInactive();
 
   if (isDev) {
-    // The `engine`/`engineVersion` query parameters this once carried were
+    // The `engine` and engine-version query parameters this once carried were
     // read by nothing — searched before removing — and carrying them was the
     // only reason the window had to wait for the engine at all. The renderer
     // asks the bridge, which is the answer that stays right afterwards.

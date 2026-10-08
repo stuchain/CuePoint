@@ -1,8 +1,9 @@
 /**
  * Which build this is, in the words every process reports it in (REPORT-07, DEC-126).
  *
- * - `release` is `cuepoint@<version>`, the version being `cuepoint.engineVersion` in `package.json`,
- *   which `scripts/check_desktop_version_coupling.py` holds equal to `version.py`'s `__version__`.
+ * - `release` is `cuepoint@<version>`, the version being the app's own (`app.getVersion()`, which is
+ *   `package.json`'s `version`), which `scripts/check_desktop_version_coupling.py` holds equal to
+ *   `version.py`'s `__version__`.
  *   The engine reports `get_release()` from `version.py` at `/health`, with the same prefix.
  * - `dist` is the short commit the build was made from. CI sets it (`CUEPOINT_BUILD_COMMIT`, read by
  *   `build/buildElectron.mjs` and baked in as `__CUEPOINT_COMMIT__`); a build made by hand has none.
@@ -11,8 +12,6 @@
  * Main passes all three to the engine in its environment, and hands them to the renderer, so one
  * build reports one release, one `dist` and one environment from every process.
  */
-import packageJson from "../package.json";
-
 /** Must equal `RELEASE_PREFIX` in `src/cuepoint/version.py`; the coupling check compares them. */
 export const RELEASE_PREFIX = "cuepoint@";
 
@@ -22,7 +21,7 @@ export const DIST_LENGTH = 7;
 declare const __CUEPOINT_COMMIT__: string | undefined;
 
 export interface BuildInfo {
-  /** `cuepoint.engineVersion`: the version of the app and the engine it carries. */
+  /** The app's version (`app.getVersion()`), which is also the engine's. */
   version: string;
   /** `cuepoint@<version>`. */
   release: string;
@@ -32,7 +31,8 @@ export interface BuildInfo {
 }
 
 export interface BuildInfoInput {
-  engineVersion: string;
+  /** The app's version: `app.getVersion()`. */
+  version: string;
   /** The commit as the build recorded it, in full or short form. */
   commit?: string | null;
   packaged: boolean;
@@ -46,8 +46,8 @@ export function shortCommit(commit: string | null | undefined): string | null {
 
 export function computeBuildInfo(input: BuildInfoInput): BuildInfo {
   return {
-    version: input.engineVersion,
-    release: `${RELEASE_PREFIX}${input.engineVersion}`,
+    version: input.version,
+    release: `${RELEASE_PREFIX}${input.version}`,
     dist: shortCommit(input.commit),
     environment: input.packaged ? "production" : "development",
   };
@@ -58,10 +58,10 @@ function builtCommit(): string | null {
   return typeof __CUEPOINT_COMMIT__ === "string" ? __CUEPOINT_COMMIT__ : null;
 }
 
-/** This build, for the app as it is running now. `packaged` is `app.isPackaged`. */
-export function currentBuildInfo(packaged: boolean): BuildInfo {
+/** This build, for the app as it is running now. `packaged` is `app.isPackaged`, `version` is `app.getVersion()`. */
+export function currentBuildInfo(packaged: boolean, version: string): BuildInfo {
   return computeBuildInfo({
-    engineVersion: (packageJson as { cuepoint: { engineVersion: string } }).cuepoint.engineVersion,
+    version,
     commit: builtCommit(),
     packaged,
   });

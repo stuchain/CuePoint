@@ -26,10 +26,10 @@ For breaking changes, see the [Breaking Change Policy](../policy/breaking-change
 
 ### Version
 
-The version lives in `src/cuepoint/version.py` (`__version__`). The desktop app does not repeat it: `apps/desktop-electron/package.json` has `"version": "0.0.0"` and carries the engine's version in `cuepoint.engineVersion`, which must equal `__version__`.
+The version lives in `src/cuepoint/version.py` (`__version__`). The desktop `apps/desktop-electron/package.json` `version` (what `app.getVersion()` answers) must equal `__version__`, in the scheme `X.Y.Z` / `X.Y.Z-test.N`.
 
 1. Set `__version__` in `src/cuepoint/version.py`.
-2. Set `cuepoint.engineVersion` in `apps/desktop-electron/package.json` to the same string.
+2. Set `version` in `apps/desktop-electron/package.json` to the same string.
 3. Run `python scripts/check_desktop_version_coupling.py`. It fails if the two differ.
 4. Run `python scripts/validate_version.py` after you tag (see [Publish](#publish)), not before. It checks that the version is SemVer and that its base (`X.Y.Z`) matches the latest `v*` git tag. Until the new tag exists, the latest tag is the previous release, so this check, and the `release-gates.yml` job that runs it (R001), is expected to fail on the version-bump commit. Do not wait for R001 to go green before you tag.
 

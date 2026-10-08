@@ -750,7 +750,7 @@
       "event_id": "0123abcd",
       "level": "error",
       "platform": "python",
-      "release": "1.0.0-feb1",
+      "release": "1.0.0-test.1",
       "environment": "production",
       "exception": {
         "values": [
@@ -803,7 +803,7 @@
       "event_id": "0123abcd",
       "level": "error",
       "platform": "python",
-      "release": "1.0.0-feb1",
+      "release": "1.0.0-test.1",
       "environment": "production",
       "exception": {
         "values": [
@@ -1333,7 +1333,7 @@
       "timestamp": "2026-10-07T10:00:00Z",
       "level": "error",
       "platform": "python",
-      "release": "1.0.0-feb1",
+      "release": "1.0.0-test.1",
       "dist": "1",
       "environment": "production",
       "server_name": "Annas-MacBook-Pro.local",
@@ -1434,7 +1434,7 @@
       "timestamp": "2026-10-07T10:00:00Z",
       "level": "error",
       "platform": "python",
-      "release": "1.0.0-feb1",
+      "release": "1.0.0-test.1",
       "dist": "1",
       "environment": "production",
       "contexts": {
@@ -1520,7 +1520,7 @@
         },
         "app": {
           "app_name": "CuePoint",
-          "app_version": "1.0.0-feb1"
+          "app_version": "1.0.0-test.1"
         },
         "culture": {
           "locale": "en-US"
@@ -1547,7 +1547,7 @@
         },
         "app": {
           "app_name": "CuePoint",
-          "app_version": "1.0.0-feb1"
+          "app_version": "1.0.0-test.1"
         },
         "culture": {
           "locale": "en-US"
@@ -1676,7 +1676,7 @@
         },
         "app": {
           "app_name": "CuePoint",
-          "app_version": "1.0.0-feb1"
+          "app_version": "1.0.0-test.1"
         },
         "runtime": {
           "name": "CPython"
@@ -1732,7 +1732,7 @@
         },
         "app": {
           "app_name": "CuePoint",
-          "app_version": "1.0.0-feb1"
+          "app_version": "1.0.0-test.1"
         },
         "runtime": {
           "name": "CPython"

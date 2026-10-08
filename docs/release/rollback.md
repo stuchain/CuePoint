@@ -46,7 +46,7 @@ A version number must go up, so do not reuse the withdrawn tag. Ship the fix as 
 
 - [ ] Create a hotfix branch from the **last good** release tag, for example `git checkout -b hotfix/1.2.4 v1.2.3`.
 - [ ] Make the minimal fix, or revert the bad change, and run the tests.
-- [ ] Bump the version in `src/cuepoint/version.py` and set the same value in `cuepoint.engineVersion` in `apps/desktop-electron/package.json`.
+- [ ] Bump the version in `src/cuepoint/version.py` and set the same value as `version` in `apps/desktop-electron/package.json`.
 - [ ] Update `docs/release/CHANGELOG.md` with the fix and the version.
 - [ ] Run `python scripts/check_desktop_version_coupling.py` and `python scripts/validate_changelog.py`. Run `python scripts/validate_version.py` after you tag; it fails until the new tag exists.
 - [ ] Push the branch, open a pull request from it into `main`, and wait for its green `desktop-electron.yml` run. A push to a `hotfix/*` branch does not start that workflow.

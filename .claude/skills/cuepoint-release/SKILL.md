@@ -81,8 +81,8 @@ the link or the reference; use `.lycheeignore` only for external URLs that are n
 
 ## Phase 5 - version and coupling
 
-The version is `__version__` in `src/cuepoint/version.py`. The desktop `package.json` carries it
-as `cuepoint.engineVersion` (its own `version` stays `0.0.0`). Set both to the same string, then:
+The version is `__version__` in `src/cuepoint/version.py`. The desktop `package.json` `version`
+must equal it (scheme `X.Y.Z` / `X.Y.Z-test.N`). Set both to the same string, then:
 
 ```bash
 python scripts/check_desktop_version_coupling.py   # fails if the two differ
@@ -186,13 +186,13 @@ After publishing, verify rather than assume:
 - Changelog: `docs/release/CHANGELOG.md` and `docs/policy/changelog-policy.md`.
 - Workflows: `desktop-electron.yml`, `release-gates.yml`, `test.yml`, `security-scan.yml`,
   `compliance-check.yml`, `license-compliance.yml`, `docs-check.yml`, `publish-gh-pages-site.yml`.
-- Versions: `src/cuepoint/version.py` and the desktop `package.json` `cuepoint.engineVersion`.
+- Versions: `src/cuepoint/version.py` and the desktop `package.json` `version`.
 - Reproducible build inputs: `requirements-build.txt`, `build/engine-sidecar.spec`,
   `scripts/player_sidecar_manifest.json`.
 
 ## Safety and release invariants
 
-- Keep the Python engine version and the desktop `cuepoint.engineVersion` coupled.
+- Keep the Python engine version and the desktop `package.json` `version` coupled.
 - Build platform artifacts on their intended OS. A local cross-platform package is not equivalent
   to CI's artifacts.
 - Never print or commit signing keys, certificates, passwords, API tokens or environment secrets.

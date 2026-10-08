@@ -212,12 +212,12 @@ describe("sendProblemReport", () => {
     const { sdk } = await started();
     const last = reportUnexpected(new Error("boom"));
     const note = "  I was dropping a track on /Users/me/Music/Secret Song.mp3  ";
-    expect(await sendProblemReport(note, "1.0.0-feb1")).not.toBeNull();
+    expect(await sendProblemReport(note, "1.0.0-test.1")).not.toBeNull();
     expect(sdk.feedback).toEqual([
       {
         message: note,
         associatedEventId: last,
-        tags: { "app.version": "1.0.0-feb1", "last.report": last },
+        tags: { "app.version": "1.0.0-test.1", "last.report": last },
       },
     ]);
   });

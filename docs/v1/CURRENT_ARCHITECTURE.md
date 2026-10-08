@@ -358,7 +358,7 @@ suite or by lint/mypy enforcement** — those live on push-to-branch workflows i
 
 `scripts/check_no_qt_in_core.py` scans only `engine/, cli/, compat/, models/` + `gui_app.py` —
 **does not scan `services/`, `update/`, or `utils/`**. `scripts/check_desktop_version_coupling.py`
-compares `package.json`'s `cuepoint.engineVersion` to `cuepoint.version.__version__`, enforced only
+compares `package.json`'s `version` to `cuepoint.version.__version__`, enforced only
 in `desktop-electron.yml`. `scripts/smoke_engine_health.py` boots the real engine and hits
 `/health`. mypy config (`mypy.ini`, not strict-mode) has broad per-module `disable_error_code`
 overrides — notably **`core.matcher` disables `no-any-return, call-overload, arg-type, assignment,
@@ -378,9 +378,8 @@ sync with actual CI matrices (doesn't mention the ubuntu leg or the release-gate
 
 ## 27. Version coupling
 
-`src/cuepoint/version.py::__version__` (currently `"1.0.0-feb1"`) vs.
-`apps/desktop-electron/package.json`'s `cuepoint.engineVersion` field (top-level npm `"version"` is
-separate/unused for this purpose). `scripts/check_desktop_version_coupling.py` enforces equality,
+`src/cuepoint/version.py::__version__` (currently `"1.0.0-test.1"`) vs.
+`apps/desktop-electron/package.json`'s `version` (what `app.getVersion()` answers). `scripts/check_desktop_version_coupling.py` enforces equality,
 but **only in `desktop-electron.yml`** — a Python-only PR path isn't caught by `test.yml` or
 `release-gates.yml`.
 

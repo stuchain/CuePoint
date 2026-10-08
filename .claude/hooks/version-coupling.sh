@@ -16,7 +16,7 @@ esac
 root="$(repo_root)"
 py="$(py_bin)" || exit 0
 out=$("$py" "$root/scripts/check_desktop_version_coupling.py" 2>&1) || {
-  emit_block "check_desktop_version_coupling.py failed after this edit. Keep src/cuepoint/version.py and the desktop package.json engine version in sync.
+  emit_block "check_desktop_version_coupling.py failed after this edit. Keep src/cuepoint/version.py and the desktop package.json version in sync.
 
 $out"
   exit 0

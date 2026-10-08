@@ -159,7 +159,7 @@ jobs:
           SENTRY_ORG: cuepoint
           SENTRY_PROJECT: electron
         run: |
-          version="$(node -p "require('./package.json').cuepoint.engineVersion")"
+          version="$(node -p "require('./package.json').version")"
           dist="${CUEPOINT_BUILD_COMMIT:0:7}"
           npx sentry-cli sourcemaps inject electron-dist renderer/dist
           npx sentry-cli sourcemaps upload --release "cuepoint@${version}" --dist "${dist}" electron-dist renderer/dist
