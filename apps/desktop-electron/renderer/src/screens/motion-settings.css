@@ -1,0 +1,115 @@
+/*
+ * Settings → Motion (SET-2). A preview moves once when its switch is turned
+ * on, and only while that kind is on and the system allows motion: each rule is
+ * gated on its kind's attribute. Transform and opacity only, in whole
+ * --motion-step-px steps (DEC-135).
+ */
+.motion-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: var(--content-narrow-width);
+  width: 100%;
+}
+
+.motion-settings__system {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+}
+
+.motion-settings__actions {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.motion-settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.motion-settings__legend {
+  padding: 0;
+  margin-bottom: var(--space-sm);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+}
+
+.motion-settings__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+.motion-settings__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.motion-settings__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.motion-settings__hint {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.motion-settings__preview {
+  flex: none;
+  width: calc(var(--unit) * 3);
+  height: calc(var(--unit) * 3);
+  margin-top: var(--space-xs);
+  background: var(--accent-primary);
+  border: var(--border-width) solid var(--border-outline);
+}
+
+:root[data-motion-micro] .motion-settings__preview[data-kind="micro"][data-play],
+:root[data-motion-interaction] .motion-settings__preview[data-kind="interaction"][data-play],
+:root[data-motion-state] .motion-settings__preview[data-kind="state"][data-play],
+:root[data-motion-page] .motion-settings__preview[data-kind="page"][data-play],
+:root[data-motion-entrance] .motion-settings__preview[data-kind="entrance"][data-play],
+:root[data-motion-hover] .motion-settings__preview[data-kind="hover"][data-play],
+:root[data-motion-scroll] .motion-settings__preview[data-kind="scroll"][data-play],
+:root[data-motion-loading] .motion-settings__preview[data-kind="loading"][data-play],
+:root[data-motion-shared] .motion-settings__preview[data-kind="shared"][data-play],
+:root[data-motion-feedback] .motion-settings__preview[data-kind="feedback"][data-play] {
+  /* The move steps and the fade does not (DEC-135). */
+  animation:
+    motion-preview-move var(--motion-slow) steps(var(--motion-steps-long)) 1,
+    motion-preview-fade var(--motion-slow) var(--motion-fade) 1;
+}
+
+@keyframes motion-preview-move {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(calc(var(--motion-step-px) * 4));
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes motion-preview-fade {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

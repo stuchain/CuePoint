@@ -15,11 +15,17 @@
   font-size: var(--font-size-sm);
   font-weight: 600;
   box-shadow: var(--shadow-panel);
-  animation: cp-toast-in 180ms ease;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
+}
+
+:root[data-motion-entrance] .cp-toast {
+  /* Two animations, so the slide steps and the fade does not (DEC-135). */
+  animation:
+    cp-toast-in var(--motion-base) steps(var(--motion-steps-short)),
+    cp-toast-fade var(--motion-base) var(--motion-fade);
 }
 
 .cp-toast__action {
@@ -52,13 +58,22 @@
   color: var(--fg-primary);
 }
 
+/* The slide steps in whole --motion-step-px (DEC-135). */
 @keyframes cp-toast-in {
   from {
+    transform: translateY(calc(var(--motion-step-px) * 2));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* The fade stays smooth. */
+@keyframes cp-toast-fade {
+  from {
     opacity: 0;
-    transform: translateY(calc(8px * var(--scale)));
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }

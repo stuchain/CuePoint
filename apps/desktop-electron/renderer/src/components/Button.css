@@ -13,7 +13,11 @@
   font-weight: 600;
   cursor: pointer;
   user-select: none;
-  transition: transform 50ms ease, box-shadow 50ms ease;
+}
+
+:root[data-motion-micro] .cp-btn {
+  /* Only the move is animated; the bevel swaps at once. */
+  transition: transform var(--motion-instant) steps(1);
 }
 
 .cp-btn--primary {

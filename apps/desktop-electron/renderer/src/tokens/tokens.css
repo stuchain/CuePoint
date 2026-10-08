@@ -6,6 +6,16 @@
   --scale: 2;
   --unit: calc(4px * var(--scale));
 
+  /* Motion (DEC-135): durations, step counts, one distance unit and the fade. */
+  --motion-instant: 16ms;
+  --motion-quick: 80ms;
+  --motion-base: 160ms;
+  --motion-slow: 320ms;
+  --motion-steps-short: 2;
+  --motion-steps-long: 4;
+  --motion-step-px: var(--unit);
+  --motion-fade: linear;
+
   /* Pixel-art chrome (structural) */
   --border-width: calc(2px * var(--scale));
   --border-width-heavy: calc(3px * var(--scale));

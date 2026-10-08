@@ -413,6 +413,25 @@ Animations API) escapes it; the step forbids both, and PAGES-12 adds a check for
 
 **Complexity**: **S**
 
+**Outcome** (2026-10-08): `tokens/motion.ts` holds the ten kinds in the order above (ids, plain labels, one-line
+descriptions, three groups; Feedback sits in "When things change"), the `cuepoint-motion` value (only changed kinds;
+missing, corrupt, non-object, unknown or non-boolean entries and throwing storage read `MOTION_DEFAULTS`, all on)
+and its read/write helpers. `tokens/MotionContext.tsx` (`MotionProvider`, `useMotion`) is mounted in `App.tsx`
+beside `ScaleProvider`; it writes `data-motion-<kind>="on"` on `<html>` for each kind that is on and none while
+`prefers-reduced-motion: reduce` matches (listening with `addEventListener`, falling back to `addListener`, and
+tolerating no `matchMedia`). `tokens.css` gains `--motion-instant/-quick/-base/-slow`, `--motion-steps-short/-long`,
+`--motion-step-px: var(--unit)` and `--motion-fade: linear`. The button press now sits under `micro` and moves
+only `transform` (the `box-shadow` transition is gone); the toast sits under `entrance` as two animations,
+`cp-toast-in` (transform, stepped) and `cp-toast-fade` (opacity, linear), so the fade is not stepped, which means
+its computed `animation-name` with the switch on is "cp-toast-in, cp-toast-fade" and the e2e checks it contains
+`cp-toast-in`. `screens/MotionSettingsPanel.tsx` replaces the placeholder: the system line, Turn all on/off, three
+fieldsets of ten labelled checkboxes with descriptions, a preview square that moves once when its switch is turned
+on (gated on that kind), `SavedTick` and Reset to defaults with confirm and Undo. `SavedTick` has no animation, so
+it is unchanged. `motionRules.test.ts` parses every `.css` under the renderer (descending into `@media`) and fails on
+a motion declaration whose selectors are not all gated by `[data-motion-`, on any transition of a property other
+than transform or opacity (`all` included), and on `@keyframes` that animate anything else; it has a self-test on
+deliberately bad CSS strings. The user guide's `the-window.md` describes Settings → Motion.
+
 ---
 
 ## PAGES-03 — The Shell: Sidebar, Header, Menu Bar, Status Strip and Activity

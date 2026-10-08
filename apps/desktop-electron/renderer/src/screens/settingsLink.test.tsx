@@ -7,6 +7,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import { ToastProvider } from "../components";
+import { MotionProvider } from "../tokens/MotionContext";
 import { ScaleProvider } from "../tokens/ScaleContext";
 import { ThemeProvider } from "../tokens/ThemeContext";
 import { BEATPORT_TOKEN_FIELD_ID, SettingsScreen } from "./SettingsScreen";
@@ -16,11 +17,13 @@ function renderSettings(state: unknown) {
   return render(
     <ThemeProvider>
       <ScaleProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[{ pathname: "/settings", state }]}>
-            <SettingsScreen />
-          </MemoryRouter>
-        </ToastProvider>
+        <MotionProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[{ pathname: "/settings", state }]}>
+              <SettingsScreen />
+            </MemoryRouter>
+          </ToastProvider>
+        </MotionProvider>
       </ScaleProvider>
     </ThemeProvider>,
   );

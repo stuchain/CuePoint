@@ -56,6 +56,7 @@ import {
   cleanSectionState,
   cleanTrackState,
 } from "./screens/clean/cleanLink";
+import { MotionProvider } from "./tokens/MotionContext";
 import { ScaleProvider } from "./tokens/ScaleContext";
 import { ThemeProvider } from "./tokens/ThemeContext";
 import { E2eCrashProbe, ErrorBoundary, useNavigationBreadcrumbs } from "./reporting";
@@ -329,11 +330,13 @@ export default function App() {
     <HashRouter>
       <ThemeProvider>
         <ScaleProvider>
-          <ToastProvider>
-            <InspectorSlotProvider>
-              <AppShell />
-            </InspectorSlotProvider>
-          </ToastProvider>
+          <MotionProvider>
+            <ToastProvider>
+              <InspectorSlotProvider>
+                <AppShell />
+              </InspectorSlotProvider>
+            </ToastProvider>
+          </MotionProvider>
         </ScaleProvider>
       </ThemeProvider>
     </HashRouter>

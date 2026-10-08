@@ -8,6 +8,7 @@ import { AudioSettingsPanel } from "./AudioSettingsPanel";
 import { BeatportSettingsPanel } from "./BeatportSettingsPanel";
 import { ErrorReportingSettingsPanel } from "./ErrorReportingSettingsPanel";
 import { ExitClearingSettings } from "./ExitClearingSettings";
+import { MotionSettingsPanel } from "./MotionSettingsPanel";
 import { RekordboxExportSettingsPanel } from "./RekordboxExportSettingsPanel";
 import { ThemeSettingsPanel } from "./ThemeSettingsPanel";
 import { WaveformSettingsPanel } from "./WaveformSettingsPanel";
@@ -30,14 +31,6 @@ function Section({ id, children }: { id: SettingsSectionId; children: ReactNode 
     <section id={id} className="settings-page__section" aria-label={titleOf(id)} tabIndex={-1}>
       {children}
     </section>
-  );
-}
-
-function MotionSection() {
-  return (
-    <Panel title={titleOf("settings-motion")}>
-      <p className="screen__muted">Motion settings will appear here.</p>
-    </Panel>
   );
 }
 
@@ -139,7 +132,7 @@ export function SettingsScreen({
           </Section>
 
           <Section id="settings-motion">
-            <MotionSection />
+            <MotionSettingsPanel />
           </Section>
 
           <Section id="settings-playback">

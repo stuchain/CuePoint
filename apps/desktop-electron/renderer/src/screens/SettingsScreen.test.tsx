@@ -13,6 +13,7 @@ import { MemoryRouter } from "react-router-dom";
 import { ToastProvider } from "../components";
 import { resetWaveformColourForTests } from "../components/waveform/waveformColour";
 import { DEFAULT_SCALE } from "../tokens/scale";
+import { MotionProvider } from "../tokens/MotionContext";
 import { ScaleProvider } from "../tokens/ScaleContext";
 import { ThemeProvider } from "../tokens/ThemeContext";
 import { BEATPORT_TOKEN_FIELD_ID, SettingsScreen } from "./SettingsScreen";
@@ -36,11 +37,13 @@ function renderSettings(
   return render(
     <ThemeProvider>
       <ScaleProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[{ pathname: "/settings", state: props.state ?? null }]}>
-            <SettingsScreen onOpenOnboarding={props.onOpenOnboarding} />
-          </MemoryRouter>
-        </ToastProvider>
+        <MotionProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[{ pathname: "/settings", state: props.state ?? null }]}>
+              <SettingsScreen onOpenOnboarding={props.onOpenOnboarding} />
+            </MemoryRouter>
+          </ToastProvider>
+        </MotionProvider>
       </ScaleProvider>
     </ThemeProvider>,
   );
@@ -186,9 +189,9 @@ describe("the Beatport test result", () => {
 });
 
 describe("Motion and About & updates", () => {
-  it("holds a placeholder for Motion", () => {
+  it("holds the ten motion switches", () => {
     renderSettings();
-    expect(within(region("Motion")).getByText("Motion settings will appear here.")).toBeInTheDocument();
+    expect(within(region("Motion")).getAllByRole("checkbox")).toHaveLength(10);
   });
 
   it("shows the version, opens Getting started, and keeps a slot for updates", async () => {
@@ -253,12 +256,12 @@ describe("Reset to defaults", () => {
     expect(within(waveforms).getByRole("radio", { name: "One color" })).toBeChecked();
   });
 
-  it("is offered by Appearance and Waveforms only", () => {
+  it("is offered by Appearance, Motion and Waveforms only", () => {
     renderSettings();
     const holders = TITLES.filter(
       (title) => within(region(title)).queryByRole("button", { name: "Reset to defaults" }) !== null,
     );
-    expect(holders).toEqual(["Appearance", "Waveforms"]);
+    expect(holders).toEqual(["Appearance", "Motion", "Waveforms"]);
   });
 });
 
