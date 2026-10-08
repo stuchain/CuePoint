@@ -28,7 +28,7 @@ json_str() {
 # Normalize a Windows or POSIX path to lowercase forward slashes for matching.
 norm_path() {
   local p=${1//\\//}
-  printf '%s' "${p,,}"
+  printf '%s' "$p" | tr '[:upper:]' '[:lower:]'
 }
 
 py_bin() {
