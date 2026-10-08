@@ -241,6 +241,18 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      # The same snapshots in the log, for readers who cannot download artifacts.
+      - name: Print Playwright failure snapshots
+        if: failure()
+        shell: bash
+        working-directory: apps/desktop-electron
+        run: |
+          find test-results -name error-context.md 2>/dev/null | sort | while read -r f; do
+            echo "::group::$f"
+            head -c 20000 "$f"
+            echo "::endgroup::"
+          done
+
       # No map ships: electron-builder's `files` excludes them too, and this keeps them off the disk
       # that is packed from, uploaded or not.
       - name: Delete source maps
