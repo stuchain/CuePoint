@@ -170,6 +170,9 @@ describeWithDecoder("the waveform decoders end with the engine (WAVE-03)", () =>
     stopProcessTree(started);
 
     await waitFor(() => started.exitCode !== null || started.signalCode !== null, "the engine");
-    await waitFor(() => !alive(pid), "the decoder to end with the engine", 10_000);
-  }, 60_000);
+    // The decoder ends at its next write into the closed pipe. Slowed, it
+    // writes seldom: seconds apart here, longer on a slow Intel Mac runner,
+    // yet far inside the minute and more it would otherwise decode for.
+    await waitFor(() => !alive(pid), "the decoder to end with the engine", 30_000);
+  }, 90_000);
 });
