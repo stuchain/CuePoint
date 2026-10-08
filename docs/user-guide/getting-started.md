@@ -97,6 +97,6 @@ If something goes wrong, see [Troubleshooting](troubleshooting.md) and the [FAQ]
 
 ## Next steps
 
-- [Your library](library.md): importing, browsing and the Inspector.
+- [Your library](library.md): importing, browsing and Track details.
 - [Clean](clean.md): matching and review in detail.
 - [The CuePoint window](the-window.md): the sidebar, the status strip and shortcuts.

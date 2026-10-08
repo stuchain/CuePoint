@@ -10,9 +10,9 @@
 import type { TrackMarksSummary } from "../../api/cuepointBridge.types";
 import {
   MARKS_NOT_READ,
+  VARIABLE_GRID_HINT,
   beatGridLine,
   cueLine,
-  cuesHeading,
   cuesInTrackOrder,
 } from "./trackMarks";
 
@@ -26,8 +26,7 @@ export function TrackMarksSection({ marks }: TrackMarksSectionProps) {
   const grid = beatGridLine(marks.beat_grid, marks.read);
   const cues = cuesInTrackOrder(marks.cues);
   return (
-    <section className="cp-track-detail__marks" aria-label="Cue points and beat grid">
-      <h3 className="cp-track-detail__subtitle">{cuesHeading(marks)}</h3>
+    <div className="cp-track-detail__marks">
       {!marks.read && marks.cues.length === 0 && (
         <p className="cp-track-detail__marks-note">{MARKS_NOT_READ}</p>
       )}
@@ -46,7 +45,14 @@ export function TrackMarksSection({ marks }: TrackMarksSectionProps) {
           ))}
         </ul>
       )}
-      {grid && <p className="cp-track-detail__grid">{grid}</p>}
-    </section>
+      {grid && (
+        <p
+          className="cp-track-detail__grid"
+          title={marks.beat_grid?.variable ? VARIABLE_GRID_HINT : undefined}
+        >
+          {grid}
+        </p>
+      )}
+    </div>
   );
 }

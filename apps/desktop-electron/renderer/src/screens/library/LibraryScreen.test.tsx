@@ -1737,13 +1737,10 @@ describe("the Inspector (LIBUI-10, DEC-024, DEC-047)", () => {
     const imported = inspector.querySelector(".cp-track-detail__fields") as HTMLElement;
     expect(within(imported).queryByRole("textbox")).toBeNull();
     expect(within(imported).queryByRole("spinbutton")).toBeNull();
-    // "Show in folder" is the one control in there, and it reads a field
-    // rather than writing one.
-    expect(
-      within(imported)
-        .getAllByRole("button")
-        .map((button) => button.textContent),
-    ).toEqual(["Show in folder"]);
+    // Nothing in the record is pressable: Show in folder moved under the
+    // title (FLW-9), where it is the one of its name.
+    expect(within(imported).queryAllByRole("button")).toHaveLength(0);
+    expect(within(inspector).getAllByRole("button", { name: "Show in folder" })).toHaveLength(1);
   });
 
   it("opens a Collection the track is in, from the Inspector (ORG-10)", async () => {

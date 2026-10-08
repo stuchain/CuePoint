@@ -16,6 +16,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { TrackMarksSection } from "./TrackMarksSection";
+import { cuesSummary } from "./trackMarks";
 
 const DROP: TrackCue = {
   kind: "cue",
@@ -50,8 +51,10 @@ const MARKS: TrackMarksSummary = {
   beat_grid: { markers: 1, bpm: 128, min_bpm: 128, max_bpm: 128, variable: false },
 };
 
+/** The standalone section is a bare list; in the panel it sits under the "Cue points" region. */
 function section(): HTMLElement {
-  return screen.getByRole("region", { name: "Cue points and beat grid" });
+  return (screen.queryByRole("region", { name: "Cue points" }) ??
+    document.querySelector(".cp-track-detail__marks")) as HTMLElement;
 }
 
 describe("the cue points", () => {
@@ -65,11 +68,6 @@ describe("the cue points", () => {
       "A · 1:04.0 · Drop",
       "C · 2:00.0–2:07.5 · Loop · Build loop",
     ]);
-  });
-
-  it("counts them by kind in the heading", () => {
-    render(<TrackMarksSection marks={MARKS} />);
-    expect(screen.getByRole("heading", { name: "Cues · 2 hot, 1 memory" })).toBeInTheDocument();
   });
 
   it("shows Rekordbox's colour beside a cue that has one, and none where it has not", () => {
@@ -88,8 +86,8 @@ describe("the cue points", () => {
 
   it("says a track has none once the library's marks have been read", () => {
     render(<TrackMarksSection marks={{ ...MARKS, hot_cues: 0, memory_cues: 0, cues: [] }} />);
-    expect(screen.getByRole("heading", { name: "No cues" })).toBeInTheDocument();
     expect(within(section()).queryByRole("list")).toBeNull();
+    expect(cuesSummary({ ...MARKS, hot_cues: 0, memory_cues: 0, cues: [] })).toBe("none");
   });
 
   it("says the cues are coming, not missing, before the marks have been read", () => {
@@ -101,7 +99,7 @@ describe("the cue points", () => {
     expect(screen.queryByText("No cues")).toBeNull();
     expect(screen.queryByText("No beat grid")).toBeNull();
     expect(
-      screen.getByText("Cues and the beat grid arrive with the next refresh."),
+      screen.getByText("Cue points and the beat grid are read from Rekordbox. They appear after you Check Rekordbox for changes."),
     ).toBeInTheDocument();
   });
 });
@@ -121,7 +119,10 @@ describe("the beat grid", () => {
         }}
       />,
     );
-    expect(screen.getByText("Beat grid · variable, 121.00–124.00 BPM")).toBeInTheDocument();
+    expect(screen.getByText("Beat grid · variable, 121.00–124.00 BPM")).toHaveAttribute(
+      "title",
+      "The tempo changes during the track",
+    );
   });
 
   it("says a track has none", () => {
@@ -176,8 +177,13 @@ describe("in the Inspector", () => {
 
   it("lists the cues in the imported record, after Rekordbox's fields", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    const fromRekordbox = screen.getByRole("heading", { name: "From Rekordbox" });
-    const cues = screen.getByRole("heading", { name: "Cues · 2 hot, 1 memory" });
+    const fromRekordbox = screen.getByRole("heading", { name: "Details from Rekordbox" });
+    const cues = screen.getByRole("heading", { name: /Cue points · 2 hot, 1 memory/ });
+    // The heading explains the two kinds on hover (INS-9).
+    expect(within(cues).getByRole("button")).toHaveAttribute(
+      "title",
+      "Hot cues (A–H) and memory cues, as set in Rekordbox. Shown here, not editable.",
+    );
     expect(
       fromRekordbox.compareDocumentPosition(cues) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
@@ -186,13 +192,15 @@ describe("in the Inspector", () => {
 
   it("offers nothing to edit or press among the marks (DEC-118)", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    expect(within(section()).queryByRole("textbox")).toBeNull();
-    expect(within(section()).queryByRole("button")).toBeNull();
+    // The heading folds the section; nothing among the marks themselves is pressable.
+    const marks = document.querySelector<HTMLElement>(".cp-track-detail__marks")!;
+    expect(within(marks).queryByRole("textbox")).toBeNull();
+    expect(within(marks).queryByRole("button")).toBeNull();
   });
 
   it("shows nothing from an engine older than the marks", () => {
     const { marks: _omitted, ...older } = DETAIL;
     render(<TrackDetailPanel detail={older} />);
-    expect(screen.queryByRole("region", { name: "Cue points and beat grid" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Cue points" })).toBeNull();
   });
 });

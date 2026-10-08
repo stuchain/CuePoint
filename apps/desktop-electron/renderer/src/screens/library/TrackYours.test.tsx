@@ -169,7 +169,7 @@ describe("the rating", () => {
 
   it("says which layer it is showing", () => {
     draw({ rekordbox_rating: 4, effective_rating: 4, rating_source: "rekordbox" });
-    expect(screen.getByText("Rekordbox's")).toBeInTheDocument();
+    expect(screen.getByText("From Rekordbox")).toBeInTheDocument();
   });
 
   it("offers no clear when there is nothing of yours to clear", () => {
@@ -185,7 +185,7 @@ describe("the rating", () => {
       rating_source: "cuepoint",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Clear override" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use Rekordbox's ★★★★" }));
 
     await waitFor(() =>
       expect(bridge.setTrackMetadata).toHaveBeenCalledWith({ trackId: 12, rating: null }),
@@ -201,9 +201,9 @@ describe("the rating", () => {
       rating_source: "cuepoint",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Clear override" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use Rekordbox's ★★★★" }));
 
-    await waitFor(() => expect(screen.getByText("Rekordbox's")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("From Rekordbox")).toBeInTheDocument());
     expect(star(4)).toHaveAttribute("aria-checked", "true");
   });
 

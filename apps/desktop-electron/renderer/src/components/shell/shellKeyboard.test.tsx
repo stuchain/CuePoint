@@ -76,20 +76,20 @@ describe("inspector focus", () => {
     const user = userEvent.setup();
     render(<TrackInspector />);
 
-    await user.click(screen.getByRole("button", { name: /hide track inspector/i }));
+    await user.click(screen.getByRole("button", { name: /hide track details/i }));
 
-    expect(screen.getByRole("button", { name: /show track inspector/i })).toHaveFocus();
+    expect(screen.getByRole("button", { name: /show track details/i })).toHaveFocus();
     expect(document.activeElement).not.toBe(document.body);
   });
 
   it("moves focus to the hide control when shown again", async () => {
     const user = userEvent.setup();
     render(<TrackInspector />);
-    await user.click(screen.getByRole("button", { name: /hide track inspector/i }));
+    await user.click(screen.getByRole("button", { name: /hide track details/i }));
 
-    await user.click(screen.getByRole("button", { name: /show track inspector/i }));
+    await user.click(screen.getByRole("button", { name: /show track details/i }));
 
-    expect(screen.getByRole("button", { name: /hide track inspector/i })).toHaveFocus();
+    expect(screen.getByRole("button", { name: /hide track details/i })).toHaveFocus();
   });
 
   it("keeps focus somewhere real when toggled by keyboard", async () => {
@@ -99,7 +99,7 @@ describe("inspector focus", () => {
     await user.keyboard("{Control>}i{/Control}");
 
     expect(document.activeElement).not.toBe(document.body);
-    expect(screen.getByRole("button", { name: /show track inspector/i })).toHaveFocus();
+    expect(screen.getByRole("button", { name: /show track details/i })).toHaveFocus();
   });
 
   it("does not steal focus on first render", () => {
@@ -111,7 +111,7 @@ describe("inspector focus", () => {
       </>,
     );
 
-    expect(screen.getByRole("button", { name: /hide track inspector/i })).not.toHaveFocus();
+    expect(screen.getByRole("button", { name: /hide track details/i })).not.toHaveFocus();
   });
 });
 

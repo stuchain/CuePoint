@@ -55,6 +55,7 @@ import { RefreshPreviewDialog } from "./RefreshPreviewDialog";
 import { RekordboxExportDialog } from "./RekordboxExportDialog";
 import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
 import { SelectionActions } from "./SelectionActions";
+import { cleanTracksOf } from "./trackDetailsActions";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { defaultSortForScope, findByPath, type PlaylistTreeNode } from "./playlistTree";
@@ -648,6 +649,8 @@ export function LibraryScreen({
       loading={detail.loading}
       error={detail.error}
       selectionCount={selection.count}
+      gatherSelectedRows={(limit) => selection.gatherRows(limit ?? QUEUE_ACTION_LIMIT)}
+      selectedTracks={cleanTracksOf(batchSelection(selection.selection, query), selection.count)}
       onSelectPlaylist={(playlist) => scopeTo(playlist)}
       // The detail read names a Collection by id, kind and name; the node with
       // its rules and its counts lives in the tree, so it is looked up rather

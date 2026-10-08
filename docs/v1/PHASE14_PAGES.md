@@ -863,6 +863,25 @@ marked "not used".
 
 **Complexity**: **M**
 
+
+**Outcome** (2026-10-08): the panel is **Track details** in its heading, labels, tooltips and empty texts (the component,
+`TrackInspector`, and the storage key keep their names); hidden, it is a full-height tab reading "Track details" and the
+selected title (`useSelectedTrack`), named "Show track details: <title>". `TrackDetailPanel` is a header (artwork, title,
+credits, FLW-9's five buttons, the key with its source) then `DisclosureSection`s — Yours, Details from Rekordbox, Cue
+points, Where it is, Beatport, History — remembered in `cuepoint-ui-track-details-sections` (open state per section id,
+try/catch; Beatport and History start folded, their headings carry "Accepted", "4 changes"). The buttons run
+`trackDetailsActions.ts` (queue messages, named so as not to collide with PAGES-05C's `trackActions.ts`); with several selected the panel takes `gatherSelectedRows` and
+`selectedTracks` from `LibraryScreen` (two props, `cleanTracksOf`), and a described selection with exceptions is not
+offered **Edit values for N tracks…** because Fix values has no spelling for it. Show in folder acts on the track shown.
+`RouteButton` navigates (Similar tracks, Match on Beatport = `cleanMatchState([id])`, `cleanFixState(selection, "edit")`)
+and is left out where there is no router. `TrackOverrides` is gone: `TrackEditedValues` lists what is edited (its
+disclosure opens itself), offers **Edit values…** (the shared `EditValuesDialog` with `current`) and **Go back** per field
+(the key's returns to Beatport's key only when the match is accepted, else to none). The five buttons sit in two rows (Play, Play next, Add to queue; Similar tracks, Show in folder), Show in folder is disabled with a hint when several are selected, and Similar tracks asks for one row only. `EditValuesDialog` is wide, and the default `Modal` now has its panel background and border. The Beatport section lost **Apply** and reads "Using", "match score" (with
+its tooltip) and "Cover art"; an unmatched track gets one sentence and **Match on Beatport**. Words: INS-6 in
+`trackEdits.ts`, INS-7 in `activityActions.ts` (`writesLine`, shared with Activity) and the History section, INS-8 in
+`trackDetailsWaveformWords` and `LOUDNESS_LINE_TITLE` (the player bar, column and Prepare keep their short words), INS-9 in
+`trackMarks.ts`, INS-10 in the Where it is section. Docs: the-window, library, glossary, features, CHANGELOG.
+
 ---
 
 ## PAGES-07 — Clean

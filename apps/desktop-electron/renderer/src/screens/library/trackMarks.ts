@@ -1,7 +1,7 @@
 /**
  * A track's cue points and beat grid, in words (WAVE-04, DEC-118).
  *
- * The Inspector's imported record lists every cue, one line each — "A · 0:32.1
+ * The Track details panel's Rekordbox record lists every cue, one line each — "A · 0:32.1
  * · Drop" — and says whether the track has a beat grid. The waveform draws
  * them from WAVE-06, and this list stays: a mark is never shown only as a
  * picture. Pure, so the wording is tested here and the component stays thin.
@@ -64,21 +64,28 @@ export function cuesInTrackOrder(cues: readonly TrackCue[]): TrackCue[] {
   );
 }
 
-/** The cues' heading: "Cues · 3 hot, 5 memory", or what there is instead. */
-export function cuesHeading(marks: TrackMarksSummary): string {
-  if (marks.cues.length === 0) return marks.read ? "No cues" : "Cues";
+/** What the Cue points heading says beside its name: "3 hot, 5 memory", or that there are none. */
+export function cuesSummary(marks: TrackMarksSummary): string | null {
+  if (marks.cues.length === 0) return marks.read ? "none" : null;
   const parts = [];
   if (marks.hot_cues) parts.push(`${marks.hot_cues} hot`);
   if (marks.memory_cues) parts.push(`${marks.memory_cues} memory`);
-  return `Cues · ${parts.join(", ")}`;
+  return parts.join(", ");
 }
+
+/** The Cue points heading's tooltip: what the two kinds are, and that they are not editable here. */
+export const CUES_HINT = "Hot cues (A–H) and memory cues, as set in Rekordbox. Shown here, not editable.";
+
+/** The tooltip of a grid whose tempo changes. */
+export const VARIABLE_GRID_HINT = "The tempo changes during the track";
 
 /**
  * Said when the library's marks have not been read yet: a library imported
  * before WAVE-04 whose collection file has changed since. Its cues are not
  * missing, they are waiting, and "No cues" would say otherwise.
  */
-export const MARKS_NOT_READ = "Cues and the beat grid arrive with the next refresh.";
+export const MARKS_NOT_READ =
+  "Cue points and the beat grid are read from Rekordbox. They appear after you Check Rekordbox for changes.";
 
 /** The grid in one line: "Beat grid · 128.00 BPM", or a variable grid's range. */
 export function beatGridLine(grid: TrackBeatGridSummary | null, read: boolean): string | null {

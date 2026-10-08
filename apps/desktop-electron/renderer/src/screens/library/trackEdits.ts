@@ -64,23 +64,25 @@ export function describeRatingSource(metadata: RatingLayers): string {
   const yours = metadata.rating;
   const theirs = metadata.rekordbox_rating;
   if (yours != null && theirs != null) {
-    return `Yours — Rekordbox's is ${ratingText(theirs)}`;
+    return `Your rating (Rekordbox has ${ratingText(theirs)})`;
   }
-  if (yours != null) return "Yours — Rekordbox never rated it";
-  if (theirs != null) return "Rekordbox's";
+  if (yours != null) return "Your rating";
+  if (theirs != null) return "From Rekordbox";
   return "Not rated";
 }
 
 /**
  * What the clear control should say, or null when there is nothing to clear.
  *
- * "Clear override" only when there is something underneath to fall back to;
- * otherwise it is simply a clear, and calling it an override would name a
- * layer that is not there.
+ * "Use Rekordbox's ★★★" when there is something underneath to fall back to,
+ * so the button says what the stars will become; otherwise it is simply a
+ * clear (INS-6).
  */
 export function clearRatingLabel(metadata: RatingLayers): string | null {
   if (metadata.rating == null) return null;
-  return metadata.rekordbox_rating == null ? "Clear rating" : "Clear override";
+  return metadata.rekordbox_rating == null
+    ? "Clear rating"
+    : `Use Rekordbox's ${ratingText(metadata.rekordbox_rating)}`;
 }
 
 /**

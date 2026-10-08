@@ -59,8 +59,7 @@ export function TrackHistorySection({
   const showWrites = writes && !writes.unavailable && writes.restorable > 0;
 
   return (
-    <section className="cp-track-history">
-      <h3 className="cp-track-detail__subtitle">History</h3>
+    <div className="cp-track-history">
       {error && <p className="cp-track-history__note">{error}</p>}
       {!error && loading && changes.length === 0 && (
         <p className="cp-track-history__note">Reading the history…</p>
@@ -113,7 +112,7 @@ export function TrackHistorySection({
           }`}
         >
           <p className="cp-track-history__note">
-            <strong>Tags written to the file.</strong> {writesLine(writes.restorable, writes.unconfirmed)}
+            <strong>Saved into the music file.</strong> {writesLine(writes.restorable, writes.unconfirmed)}
           </p>
           {onRestore && (
             <button
@@ -122,11 +121,11 @@ export function TrackHistorySection({
               disabled={restoring}
               onClick={onRestore}
             >
-              {restoring ? "Restoring…" : "Restore the file's tags"}
+              {restoring ? "Putting back…" : "Put the file back as it was"}
             </button>
           )}
         </div>
       )}
-    </section>
+    </div>
   );
 }

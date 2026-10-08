@@ -7,7 +7,9 @@ import {
   cueLine,
   cueSlot,
   cueTime,
-  cuesHeading,
+  cuesSummary,
+  CUES_HINT,
+  VARIABLE_GRID_HINT,
   cuesInTrackOrder,
 } from "./trackMarks";
 
@@ -116,19 +118,24 @@ describe("cuesInTrackOrder", () => {
   });
 });
 
-describe("cuesHeading", () => {
+describe("cuesSummary", () => {
   it("counts hot and memory cues", () => {
-    expect(cuesHeading(marks({ hot_cues: 3, memory_cues: 5, cues: [cue()] }))).toBe(
-      "Cues · 3 hot, 5 memory",
-    );
-    expect(cuesHeading(marks({ hot_cues: 2, cues: [cue()] }))).toBe("Cues · 2 hot");
-    expect(cuesHeading(marks({ memory_cues: 1, cues: [cue()] }))).toBe("Cues · 1 memory");
+    expect(cuesSummary(marks({ hot_cues: 3, memory_cues: 5, cues: [cue()] }))).toBe("3 hot, 5 memory");
+    expect(cuesSummary(marks({ hot_cues: 2, cues: [cue()] }))).toBe("2 hot");
+    expect(cuesSummary(marks({ memory_cues: 1, cues: [cue()] }))).toBe("1 memory");
   });
 
   it("says a track has none only once the library's marks have been read", () => {
-    expect(cuesHeading(marks())).toBe("No cues");
-    expect(cuesHeading(marks({ read: false }))).toBe("Cues");
-    expect(MARKS_NOT_READ).toMatch(/next refresh/);
+    expect(cuesSummary(marks())).toBe("none");
+    expect(cuesSummary(marks({ read: false }))).toBeNull();
+    expect(MARKS_NOT_READ).toBe(
+      "Cue points and the beat grid are read from Rekordbox. They appear after you Check Rekordbox for changes.",
+    );
+  });
+
+  it("glosses the terms (INS-9)", () => {
+    expect(CUES_HINT).toBe("Hot cues (A–H) and memory cues, as set in Rekordbox. Shown here, not editable.");
+    expect(VARIABLE_GRID_HINT).toBe("The tempo changes during the track");
   });
 });
 

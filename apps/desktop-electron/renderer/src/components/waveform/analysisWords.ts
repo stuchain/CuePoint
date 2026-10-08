@@ -217,6 +217,25 @@ export function waveformEntryWords(entry: WaveformEntry | null | undefined): str
   return waveformStateWords(entry.track, entry.paused) || "No waveform yet";
 }
 
+/**
+ * Why Track details draws no picture, as steps (INS-8): what the track waits
+ * for and what happens after. The player bar, the column and Prepare keep the
+ * short words; the panel has room for the sentence.
+ */
+export function trackDetailsWaveformWords(entry: WaveformEntry | null | undefined): string | null {
+  if (entry?.kind === "track" && !(entry.track.state === "ready" && entry.track.data)) {
+    if (entry.track.state === "unchecked") {
+      return "Waiting for CuePoint to find this file. The waveform is drawn after.";
+    }
+    if (entry.track.state === "waiting") {
+      return entry.paused
+        ? "Waveforms are paused. Resume them in Settings."
+        : "Waveform not drawn yet. CuePoint is working through your library (see the status strip).";
+    }
+  }
+  return waveformEntryWords(entry);
+}
+
 /** A size on disk in words: bytes, KB, MB or GB, one decimal above a kilobyte. */
 export function sizeWords(bytes: number): string {
   if (!(bytes >= 1024)) return `${Math.max(0, Math.round(bytes)).toLocaleString()} bytes`;

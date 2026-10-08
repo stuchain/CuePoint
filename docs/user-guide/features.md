@@ -2,7 +2,7 @@
 
 CuePoint keeps your Rekordbox collection in a library of its own, matches it to
 Beatport, and helps you keep it clean. For the window around everything —
-navigation, search, the Track Inspector, the status strip and the keyboard
+navigation, search, Track details, the status strip and the keyboard
 shortcuts — see [The CuePoint window](the-window.md).
 
 ## The pages
@@ -89,7 +89,7 @@ stay in CuePoint. See [Prepare](prepare.md).
 
 CuePoint works out a waveform for every track whose file it finds, in the
 background, and draws it in the player bar (where a click seeks), the
-Inspector, a Library column and Prepare's transition strip, in three frequency
+Track details, a Library column and Prepare's transition strip, in three frequency
 bands or one color, with Rekordbox's cue points and beat grid on it. The
 analysis can be paused and carries on after a restart. See
 [Waveforms](waveforms.md).

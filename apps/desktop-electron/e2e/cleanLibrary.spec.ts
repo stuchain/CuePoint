@@ -221,30 +221,39 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await row(window, "Tone One").getByText("Tone One").click();
 
       const inspector = window.locator(".cp-track-detail");
-      const key = inspector.getByLabel("Your key", { exact: true });
-      await expect(key).toHaveAttribute("placeholder", "Rekordbox: 8A");
-      await key.fill("11A");
-      await key.press("Enter");
+      await inspector.getByRole("button", { name: "Edit values…" }).click();
+      const dialog = window.getByRole("dialog", { name: "Edit values" });
+      await expect(dialog).toContainText("Now: none");
+      await dialog.getByLabel("Key value").fill("11A");
+      await dialog.getByRole("button", { name: "Apply" }).click();
+      await expect(dialog).toHaveCount(0, { timeout: 15_000 });
 
       // The table shows the typed value, marked, and says where it came from.
       const mark = row(window, "Tone One").getByRole("img", { name: /^Key typed by you\. Rekordbox.s key is not used\./ });
       await expect(mark).toBeVisible({ timeout: 15_000 });
       await expect(row(window, "Tone One")).toContainText("11A");
       await expect(inspector.locator(".cp-track-detail__keyline")).toContainText("11A");
+      // The panel lists what was edited, folded open by itself.
+      await expect(inspector.getByRole("button", { name: /^Your values · 1 edited/ })).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
 
       // The engine refuses a BPM it cannot hold, in its own words.
-      const bpm = inspector.getByLabel("Your BPM", { exact: true });
-      await bpm.fill("400");
-      await bpm.press("Enter");
+      await inspector.getByRole("button", { name: "Edit values…" }).click();
+      await dialog.getByLabel("BPM value").fill("400");
+      await dialog.getByRole("button", { name: "Apply" }).click();
       // In the engine's words, not wrapped in Electron's.
-      await expect(inspector.getByRole("alert")).toHaveText(/^bpm must be between 20 and 300/);
+      await expect(dialog.getByRole("alert")).toHaveText(/^bpm must be between 20 and 300/);
+      await dialog.getByRole("button", { name: "Cancel" }).click();
 
       // Reverted from History, the imported value shows again, unmarked.
+      await inspector.getByRole("button", { name: /^History/ }).click();
       await inspector.getByRole("button", { name: /^Revert: Your key/ }).click();
       await expect(row(window, "Tone One").getByRole("img")).toHaveCount(0, { timeout: 15_000 });
       // Rekordbox's key is not used: with the correction gone the Key column is empty.
       await expect(row(window, "Tone One").locator('[data-column="key"]')).toHaveText("—");
-      await expect(key).toHaveValue("");
+      await expect(inspector.getByRole("button", { name: /^Your values · none edited/ })).toBeVisible();
     } finally {
       await app.close();
     }
@@ -350,11 +359,11 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.keyboard.press("Control+Shift+A");
       const activity = window.getByRole("dialog", { name: "Activity" });
       const entry = activity.getByRole("listitem").filter({ hasText: "Wrote tags to 1 file" });
-      await expect(entry).toContainText("can be restored", { timeout: 15_000 });
+      await expect(entry).toContainText("can be put back", { timeout: 15_000 });
       await entry.getByRole("button", { name: "Restore" }).click();
       await entry.getByRole("button", { name: "Restore" }).click();
       await expect(entry).toContainText("Restored 1 file.", { timeout: 30_000 });
-      await expect(entry).toContainText("Everything written here has been restored.");
+      await expect(entry).toContainText("Everything saved into files has been put back.");
       expect(readFileSync(files[0]!).includes(Buffer.from("TKEY"))).toBe(false);
 
       const record = await window.evaluate(async () => {
@@ -368,7 +377,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
     }
   });
 
-  test("the Beatport zone applies a field, and opens the track on the Clean page", async () => {
+  test("the Beatport section shows the match, and opens the track on the Clean page", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
@@ -378,14 +387,30 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await row(window, "Tone One").getByText("Tone One").click();
 
       const zone = window.getByRole("region", { name: "Beatport" });
+      // Folded until asked for, with its news on the heading.
+      await expect(zone.getByRole("button", { name: /^Beatport · Accepted/ })).toHaveAttribute(
+        "aria-expanded",
+        "false",
+        { timeout: 15_000 },
+      );
+      await zone.getByRole("button", { name: /^Beatport/ }).click();
       await expect(zone).toContainText("Accepted automatically", { timeout: 15_000 });
       const genre = zone.locator('[data-field="genre"]');
       await expect(genre).toContainText("Rekordbox House");
       await expect(genre).toContainText("Beatport Melodic House & Techno");
-      await expect(genre).toContainText("Now House (from Rekordbox)");
+      await expect(genre).toContainText("Using House (from Rekordbox)");
+      // Applying Beatport's values is Review's and Fix values' job, not this panel's.
+      await expect(zone.getByRole("button", { name: /^Apply/ })).toHaveCount(0);
 
-      await zone.getByRole("button", { name: "Apply Beatport's Genre" }).click();
-      await expect(genre).toContainText("Now Melodic House & Techno (applied from Beatport)", {
+      await window.evaluate(async () => {
+        const found = await window.cuepoint!.browseLibrary!({ q: "Tone One", limit: 1 });
+        await window.cuepoint!.applyMatch!({ fields: ["genre"], track_id: found.tracks[0]!.id! });
+      });
+      // Leave and come back so the table and the panel read the track again.
+      await window.getByRole("link", { name: "Clean" }).click();
+      await window.getByRole("link", { name: "Library" }).click();
+      await row(window, "Tone One").getByText("Tone One").click();
+      await expect(genre).toContainText("Using Melodic House & Techno (applied from Beatport)", {
         timeout: 15_000,
       });
       await expect(

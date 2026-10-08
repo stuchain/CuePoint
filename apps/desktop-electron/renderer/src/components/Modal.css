@@ -11,6 +11,9 @@
 
 .cp-modal {
   width: min(520px, 100%);
+  background: var(--bg-panel);
+  border: var(--border-width-heavy) solid var(--border-outline);
+  box-shadow: var(--shadow-bevel-panel), var(--shadow-modal);
 }
 
 /* For rows rather than sentences: a log at 520px clips every line. */
@@ -20,9 +23,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg-panel);
-  border: var(--border-width-heavy) solid var(--border-outline);
-  box-shadow: var(--shadow-bevel-panel), var(--shadow-modal);
 }
 
 .cp-modal__header {

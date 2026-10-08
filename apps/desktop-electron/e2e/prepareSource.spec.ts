@@ -240,7 +240,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       const order = await runningOrder(win, setId);
       const ninth = order.find((entry) => entry.title === "Track 09")!;
       await lanes.locator(`[data-entry="${ninth.id}"]`).click();
-      const inspector = win.getByRole("complementary", { name: "Track inspector" });
+      const inspector = win.getByRole("complementary", { name: "Track details" });
       await expect(inspector.getByText(`Entry ${order.indexOf(ninth) + 1}, in Peak`)).toBeVisible({ timeout: 15_000 });
       await expect(point(win)).toHaveAccessibleName(/^Inserting: between “Track 09” and “Track 10”, in Peak$/);
 

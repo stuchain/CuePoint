@@ -54,7 +54,7 @@ CuePoint will say so — export again with **File → Export Collection**.
 
 Once something is imported, the Library page **is** your collection: the
 playlists down the left, the tracks in the middle, and everything CuePoint
-knows about whichever track you clicked in the Inspector on the right.
+knows about whichever track you clicked in Track details on the right.
 
 Nothing here changes your music. The Library page reads.
 
@@ -187,38 +187,50 @@ one track — **Similar tracks**, **Artist page** and **Label page** (see
 [Discover](discover.md#artist-and-label-pages)). A filter chip that names one
 artist or label, such as "Credited artist is Mara Veil", offers **Open page**.
 
-### The Inspector
+### Track details
 
-Selecting one track fills the Inspector. From the top:
+Selecting one track fills Track details. From the top:
 
 - **The track's artwork**, or *No artwork* when it has none, its title, and its
   artists and label. Each artist in the credit, and the label, is a link to
   their page (see [Discover](discover.md#artist-and-label-pages)).
+- **Five buttons**: **Play**, **Play next**, **Add to queue**, **Similar tracks**
+  and **Show in folder**. With several tracks selected, the first three act on
+  all of them; **Similar tracks** uses the first, and **Show in folder** the one
+  shown.
+- **Key**, with where it came from: "8A · A minor · Beatport", "8A · A minor ·
+  yours", or "No Beatport key" with **Match on Beatport**, which matches this one
+  track in Clean's match window.
 - **Its waveform**, with its cue points, loops and beat grid; when the track is
   the one playing, a click on it seeks. Under it, its loudness: "Loudness
   −8.4 LUFS · Peak −0.3 dBFS". See [Waveforms](waveforms.md).
-- **Yours** — what you have added in CuePoint: your rating, favorite, notes,
-  tags, and your key, BPM, genre, label and year. See
+
+Then the sections, each folded or opened by clicking its heading:
+
+- **Yours** — what you have added in CuePoint: your rating, favorite, notes and
+  tags, and **Edit values…** for your key, BPM, genre, label and year. See
   [Organizing your library](organization.md) and
   [Your own values](#your-own-values).
-- **Key** — the track's key in Camelot with its name ("8A · A minor"), or "No
-  Beatport key".
-- **Beatport** — where the track stands with its Beatport match, and for BPM,
-  genre, label and year: what Rekordbox sent, what Beatport has, and what
-  you see now, with where that came from. See
-  [The Beatport zone](#the-beatport-zone).
-- **From Rekordbox** — everything the import captured: remixer, album, label,
-  genre, key (marked "not used"), BPM, year, length, rating, plays, color,
+- **Details from Rekordbox** — everything the import captured: remixer, album,
+  label, genre, key (marked "not used"), BPM, year, length, rating, plays, color,
   comment, bitrate, when it was added and where the file is. **This part is
   read-only.** It is what Rekordbox sent, and a refresh replaces it.
-- **Cues and beat grid**, also from Rekordbox and also read-only: every hot cue,
-  memory cue, loop, fade and load point, one line each in the order the track
-  plays them, and the beat grid's tempo. See
+- **Cue points**, also from Rekordbox and also read-only: every hot cue, memory
+  cue, loop, fade and load point, one line each in the order the track plays
+  them, and the beat grid's tempo. See
   [Cue points and beat grids](#cue-points-and-beat-grids-come-from-rekordbox--and-stay-there).
-- The Collections and playlists the track is in. Click one to jump to it.
-- **History** — every change to the track, and who made it.
+- **Where it is** — the Collections, Sets and playlists the track is in. Click
+  one to jump to it.
+- **Beatport** — where the track stands with its Beatport match. Folded until you
+  open it; its heading says how the match stands ("Beatport · Accepted"). See
+  [The Beatport section](#the-beatport-section).
+- **History** — every change to the track, and who made it. Folded, its heading
+  counts the changes ("History · 4 changes").
 
-Ctrl+I hides the Inspector if you would rather have the width. Double-clicking a
+With several tracks selected, the panel shows the last one you clicked, and
+**Edit values for 4 tracks…** opens Clean's Fix values for all of them.
+
+Ctrl+I hides Track details if you would rather have the width. Double-clicking a
 track plays it; see [The player](player.md).
 
 ### Large collections
@@ -407,8 +419,8 @@ file already has.
 ### Cue points and beat grids come from Rekordbox — and stay there
 
 An import and a refresh read each track's cue points and beat grid from the
-export, the ones you set in Rekordbox. The Inspector lists them under **From
-Rekordbox**:
+export, the ones you set in Rekordbox. Track details lists them under **Cue
+points**:
 
 ```
 Cues · 2 hot, 3 memory
@@ -436,8 +448,8 @@ Beat grid · 128.00 BPM
 collection file it was imported from, the first time CuePoint starts, if that
 file is still exactly as it was. The status strip shows **Reading your cue points**
 while it does, and Activity records it. If the file has changed since, the
-Inspector says *Cues and the beat grid arrive with the next refresh*, and they
-do.
+Track details says *Cue points and the beat grid are read from Rekordbox. They
+appear after you Check Rekordbox for changes.* and they do.
 
 ### One import, for everything
 
@@ -481,23 +493,29 @@ fixed list offers them to pick from rather than a box to type into.
 Accepting a match changes no value on its own. **Apply** is what copies
 Beatport's values, and they become your values — Rekordbox's stay underneath.
 
-### The Beatport zone
+### The Beatport section
 
-The Inspector's Beatport zone says where the track stands, who decided it, and
-which Beatport track was decided. For each of BPM, genre, label and year it
-shows three lines — **Rekordbox**, **Beatport** and **Now** — and says whether
-*Now* is Rekordbox's value, one applied from Beatport, or one you typed. An
-accepted match offers **Apply** beside each field it has a value for.
+Track details' **Beatport** section says where the track stands, who decided it,
+and which Beatport track was decided, with its match score (how closely
+Beatport's track matches yours; higher is closer). For each of BPM, genre, label
+and year it shows three lines — **Rekordbox**, **Beatport** and **Using** — and
+says whether *Using* is Rekordbox's value, one applied from Beatport, or one you
+typed. A track not looked up yet gets one sentence and **Match on Beatport**.
+Copying Beatport's values is done in Review and in Fix values, not here.
 **Open on the Clean page** takes you to the track's review.
 
 ### Your own values
 
-Type a key, BPM, genre, label or year in the **Yours** zone and press Enter, or
-move to another field. Empty the box to clear yours and see Rekordbox's again.
+Choose **Edit values…** under **Yours** to set a key, BPM, genre, label or year
+for the track. It is the same editor Clean's Fix values uses, and shows what each
+value is now. Choose *Clear mine* for a field to go back. The **Your values**
+line under it lists what you have edited, opens by itself when there is
+something to list, and offers **Go back** for each: to Rekordbox's value, or for
+the key to Beatport's key, or to none.
 CuePoint checks every value: a key in classic (Am), Camelot (8A) or short (Amin)
 notation, a BPM between 20 and 300 with at most two decimals, a year from 1900 to
 next year, and a genre or label up to 200 characters. A value it refuses is
-explained under the field, and nothing is saved.
+explained in the editor, and nothing is saved.
 
 A key you type is a correction: it beats Beatport's key for that track, and it
 stays when a match is rejected. Your values are what the Library shows, sorts and filters by, and what Smart
@@ -506,7 +524,7 @@ BPM**, for example, to ask about it alone.
 
 ### Taking a change back
 
-The Inspector's **History** offers **Revert** beside every change you made in
+Track details' **History** offers **Revert** beside every change you made in
 CuePoint — a rating, a favorite, a note, a tag, one of your values or a match
 decision. Changes Rekordbox made are not offered: change those in Rekordbox.
 
@@ -562,8 +580,8 @@ here to match.
 ### Restoring
 
 After a write, the dialog offers **Restore these files**, and so does the
-write's entry in the **Activity** panel. The Inspector's History offers
-**Restore the file's tags** for one track. A restore puts back every tag value
+write's entry in the **Activity** panel. Track details' History offers
+**Put the file back as it was** for one track. A restore puts back every tag value
 the write replaced, and removes a picture it added.
 
 A value you or another program changed in the file since the write is left

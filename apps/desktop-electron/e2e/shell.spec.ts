@@ -149,13 +149,13 @@ test.describe("Application shell navigation", () => {
       const window = await first.firstWindow({ timeout: 60_000 });
       await dismissOnboarding(window);
 
-      const panel = window.getByRole("complementary", { name: /track inspector/i });
+      const panel = window.getByRole("complementary", { name: /track details/i });
       await expect(panel).toBeVisible({ timeout: 15_000 });
       const before = (await panel.boundingBox())!.width;
 
       // Drag the handle 120px left. Only a real pointer proves this works: the
       // component tests can exercise the keyboard path but not a drag.
-      const handle = window.getByRole("separator", { name: /resize track inspector/i });
+      const handle = window.getByRole("separator", { name: /resize track details/i });
       const box = (await handle.boundingBox())!;
       await window.mouse.move(box.x + box.width / 2, box.y + 100);
       await window.mouse.down();
@@ -173,12 +173,12 @@ test.describe("Application shell navigation", () => {
     const second = await launch(userDataDir);
     try {
       const window = await second.firstWindow({ timeout: 60_000 });
-      const panel = window.getByRole("complementary", { name: /track inspector/i });
+      const panel = window.getByRole("complementary", { name: /track details/i });
       await expect(panel).toBeVisible({ timeout: 30_000 });
       expect(Math.round((await panel.boundingBox())!.width)).toBe(440);
 
       // Hiding gives the space back, and is remembered too.
-      await window.getByRole("button", { name: /hide track inspector/i }).click();
+      await window.getByRole("button", { name: /hide track details/i }).click();
       await expect(panel).toHaveCount(0);
     } finally {
       await second.close();
@@ -188,10 +188,10 @@ test.describe("Application shell navigation", () => {
     try {
       const window = await third.firstWindow({ timeout: 60_000 });
       await expect(
-        window.getByRole("button", { name: /show track inspector/i }),
+        window.getByRole("button", { name: /show track details/i }),
       ).toBeVisible({ timeout: 30_000 });
       await expect(
-        window.getByRole("complementary", { name: /track inspector/i }),
+        window.getByRole("complementary", { name: /track details/i }),
       ).toHaveCount(0);
     } finally {
       await third.close();
@@ -254,7 +254,7 @@ test.describe("Application shell navigation", () => {
       expect(reached).not.toContain("BODY");
       expect(reached.join("|")).toMatch(/Search library/);
       expect(reached.join("|")).toMatch(/sidebar/);
-      expect(reached.join("|")).toMatch(/track inspector/i);
+      expect(reached.join("|")).toMatch(/track details/i);
       expect(reached.join("|")).toMatch(/Activity/);
 
       // The bindings the shortcuts dialog promises.
@@ -266,7 +266,7 @@ test.describe("Application shell navigation", () => {
 
       await window.keyboard.press("Control+i");
       await expect(
-        window.getByRole("button", { name: /show track inspector/i }),
+        window.getByRole("button", { name: /show track details/i }),
       ).toBeVisible();
       await window.keyboard.press("Control+i");
 
@@ -430,7 +430,7 @@ ${tracks.join("\n")}
         "Moonlight 07",
         { timeout: 30_000 },
       );
-      await expect(window.getByRole("complementary", { name: /track inspector/i })).toContainText("Moonlight 07", {
+      await expect(window.getByRole("complementary", { name: /track details/i })).toContainText("Moonlight 07", {
         timeout: 30_000,
       });
       // The panel closed on the way out.

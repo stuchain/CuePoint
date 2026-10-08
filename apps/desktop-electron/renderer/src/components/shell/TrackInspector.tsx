@@ -5,6 +5,7 @@ import {
   saveInspectorState,
   type InspectorState,
 } from "./inspectorState";
+import { useSelectedTrack } from "./selectedTrack";
 import { useShellCommand } from "./shellCommands";
 import "./TrackInspector.css";
 
@@ -21,7 +22,7 @@ interface TrackInspectorProps {
 }
 
 /**
- * The Track Inspector container (DEC-018, DEC-024).
+ * The Track details container (DEC-018, DEC-024).
  *
  * Persists across navigation — it lives in the shell, not in any screen, so
  * moving between destinations never unmounts it. Width and visibility are
@@ -35,6 +36,9 @@ interface TrackInspectorProps {
 export function TrackInspector({ children }: TrackInspectorProps) {
   const [state, setState] = useState<InspectorState>(loadInspectorState);
   const [dragging, setDragging] = useState(false);
+  // Hidden, the tab names the selected track so the panel can be found (INS-2).
+  const selected = useSelectedTrack();
+  const selectedTitle = selected?.title?.trim() || null;
   const panelRef = useRef<HTMLElement>(null);
   const hideRef = useRef<HTMLButtonElement>(null);
   const revealRef = useRef<HTMLButtonElement>(null);
@@ -132,10 +136,12 @@ export function TrackInspector({ children }: TrackInspectorProps) {
           className="cp-inspector__reveal"
           onClick={toggle}
           aria-expanded={false}
-          aria-label="Show track inspector"
-          title="Show track inspector (Ctrl+I)"
+          aria-label={selectedTitle ? `Show track details: ${selectedTitle}` : "Show track details"}
+          title="Show track details (Ctrl+I)"
         >
-          <span aria-hidden>‹</span>
+          <span className="cp-inspector__reveal-name">Track details</span>
+          {selectedTitle && <span className="cp-inspector__reveal-title">{selectedTitle}</span>}
+          <span aria-hidden className="cp-inspector__reveal-chevron">‹</span>
         </button>
       </div>
     );
@@ -146,7 +152,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
       ref={panelRef}
       className="cp-inspector"
       style={{ width: `${width}px` }}
-      aria-label="Track inspector"
+      aria-label="Track details"
       data-width={width}
     >
       {/*
@@ -158,7 +164,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
         className={`cp-inspector__handle ${dragging ? "cp-inspector__handle--active" : ""}`.trim()}
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize track inspector"
+        aria-label="Resize track details"
         aria-valuenow={width}
         tabIndex={0}
         onMouseDown={(event) => {
@@ -178,15 +184,15 @@ export function TrackInspector({ children }: TrackInspectorProps) {
       />
 
       <header className="cp-inspector__header">
-        <h2 className="cp-inspector__title">Inspector</h2>
+        <h2 className="cp-inspector__title">Track details</h2>
         <button
           ref={hideRef}
           type="button"
           className="cp-inspector__hide"
           onClick={toggle}
           aria-expanded
-          aria-label="Hide track inspector"
-          title="Hide track inspector (Ctrl+I)"
+          aria-label="Hide track details"
+          title="Hide track details (Ctrl+I)"
         >
           <span aria-hidden>›</span>
         </button>
@@ -195,7 +201,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
       <div className="cp-inspector__body">
         {children ?? (
           <p className="cp-inspector__empty">
-            Select a track to see its details here.
+            Nothing selected on this page.
           </p>
         )}
       </div>

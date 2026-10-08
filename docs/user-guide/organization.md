@@ -83,7 +83,7 @@ is shown with a warning marker rather than hidden, and it says which rule broke.
 A tag is a word you put on a track — Peak-time, Opener, Needs a trim — and then
 filter by. A track can carry as many as you like.
 
-- **Add one** from a track's right-click menu, or from the Inspector on the
+- **Add one** from a track's right-click menu, or from Track details on the
   right. Typing a name that does not exist yet offers to make it.
 - **Filter by one** in the filter bar: choose Tag, and pick from the tags your
   library actually uses, with the number of tracks beside each.
@@ -101,15 +101,15 @@ removes the one you merged away. It is the fix for noticing you have both
 ## Ratings, favorites and notes
 
 CuePoint keeps its own rating for a track, separate from the one Rekordbox
-imported. The Inspector shows both, and says which one you are looking at.
+imported. Track details shows both, and says which one you are looking at.
 
-- **Rate** from the Inspector or from a track's right-click menu.
+- **Rate** from Track details or from a track's right-click menu.
 - **Clear** a CuePoint rating and the track falls back to Rekordbox's, rather
   than becoming unrated.
 - **Favorite** is a yes-or-no of its own, and filterable.
 - **Notes** are free text, for the thing that is not a tag.
 
-Every change is recorded. The Inspector's History shows what changed, when,
+Every change is recorded. Track details' History shows what changed, when,
 and what it was before — which is how you find out what a refresh did, and what
 you did last Tuesday. A change you made in CuePoint has a **Revert** button
 there; see [Taking a change back](library.md#taking-a-change-back).
@@ -193,4 +193,4 @@ chapters, planned times, notes and accepted warnings.
   checks
 - [Performance](performance.md#your-own-collections-tags-and-ratings) — measured
   timings for Collections, tags and large changes
-- [The CuePoint window](the-window.md) — navigation, search and the Inspector
+- [The CuePoint window](the-window.md) — navigation, search and Track details

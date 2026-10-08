@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Track details, in a calmer order.** The panel beside every page is now named
+  **Track details**; hidden, it is a tab down the right edge that shows the
+  selected title, and one click brings it back. Under the title, **Play**, **Play
+  next**, **Add to queue**, **Similar tracks** and **Show in folder** act on the
+  track (on every selected track, except Similar tracks, which uses the first).
+  The key reads with where it came from ("8A · A minor · Beatport", "… · yours",
+  or "No Beatport key" with **Match on Beatport**). Sections fold and are
+  remembered: Yours, Details from Rekordbox, Cue points, Where it is, Beatport
+  and History. **Edit values…** opens the same editor Fix values uses; with
+  several tracks selected, **Edit values for 4 tracks…** opens Fix values with
+  them. The value boxes and the Beatport section's **Apply** buttons are gone,
+  and an unmatched track's Beatport section is one sentence and **Match on
+  Beatport**. Ratings, file saves, waveform states and cues are in plainer words.
 - **Clean can fix many tracks at once, and matches from one window.** A new
   **Fix values** tab has **Edit values…**, **Use Beatport's values…** and **Save
   changes into the files…** for the tracks you came with, the whole library, or

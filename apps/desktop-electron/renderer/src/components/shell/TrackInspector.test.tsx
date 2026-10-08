@@ -7,20 +7,21 @@
  * window cannot push the content area off-screen.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { TrackInspector } from "./TrackInspector";
+import { setSelectedTrack } from "./selectedTrack";
 import {
   INSPECTOR_DEFAULT_WIDTH,
   INSPECTOR_MIN_WIDTH,
   INSPECTOR_STORAGE_KEY,
 } from "./inspectorState";
 
-const panel = () => screen.getByRole("complementary", { name: /track inspector/i });
-const hide = () => screen.getByRole("button", { name: /hide track inspector/i });
-const reveal = () => screen.getByRole("button", { name: /show track inspector/i });
-const handle = () => screen.getByRole("separator", { name: /resize track inspector/i });
+const panel = () => screen.getByRole("complementary", { name: /track details/i });
+const hide = () => screen.getByRole("button", { name: /hide track details/i });
+const reveal = () => screen.getByRole("button", { name: /show track details/i });
+const handle = () => screen.getByRole("separator", { name: /resize track details/i });
 
 function stored() {
   return JSON.parse(localStorage.getItem(INSPECTOR_STORAGE_KEY) ?? "{}");
@@ -31,6 +32,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  setSelectedTrack(null);
   localStorage.clear();
 });
 
@@ -44,18 +46,63 @@ describe("TrackInspector", () => {
     // DEC-024: the container ships with no track data wired to it, so the
     // empty state is what a user actually sees for the whole of Phase 2.
     render(<TrackInspector />);
-    expect(screen.getByText(/Select a track to see its details/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing selected on this page/i)).toBeInTheDocument();
   });
 
   it("renders content a later phase provides instead of the empty state", () => {
     render(
       <TrackInspector>
-        <p>Track details</p>
+        <p>Strobe details</p>
       </TrackInspector>,
     );
 
-    expect(screen.getByText("Track details")).toBeInTheDocument();
-    expect(screen.queryByText(/Select a track/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Strobe details")).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing selected/i)).not.toBeInTheDocument();
+  });
+
+
+  describe("named Track details (INS-1)", () => {
+    it("headlines the panel Track details", () => {
+      render(<TrackInspector />);
+      expect(screen.getByRole("heading", { name: "Track details" })).toBeInTheDocument();
+      expect(hide()).toHaveAttribute("title", "Hide track details (Ctrl+I)");
+    });
+  });
+
+  describe("hidden, it is a labelled tab (INS-2)", () => {
+    const hideIt = async () => {
+      const user = userEvent.setup();
+      render(<TrackInspector />);
+      await user.click(hide());
+      return user;
+    };
+
+    it("says what it is, not just a chevron", async () => {
+      await hideIt();
+      const tab = reveal();
+      expect(tab).toHaveTextContent("Track details");
+      expect(tab).toHaveAttribute("title", "Show track details (Ctrl+I)");
+    });
+
+    it("shows the selected track's title on the tab", async () => {
+      setSelectedTrack({ id: 12, key: "8A", title: "Strobe" });
+      await hideIt();
+      expect(reveal()).toHaveTextContent("Strobe");
+      expect(reveal()).toHaveAccessibleName("Show track details: Strobe");
+    });
+
+    it("follows the selection while hidden", async () => {
+      await hideIt();
+      expect(reveal()).not.toHaveTextContent("Strobe");
+      act(() => setSelectedTrack({ id: 12, key: null, title: "Strobe" }));
+      expect(reveal()).toHaveTextContent("Strobe");
+    });
+
+    it("comes back with one click", async () => {
+      const user = await hideIt();
+      await user.click(reveal());
+      expect(panel()).toBeInTheDocument();
+    });
   });
 
   describe("hiding", () => {

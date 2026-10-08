@@ -258,11 +258,11 @@ describe("the Inspector's waveform", () => {
   });
 
   it.each<[string, WaveformTrackState, string | null, boolean, string]>([
-    ["waiting", "waiting", null, false, "Waveform not drawn yet"],
-    ["paused", "waiting", null, true, "Analysis paused"],
+    ["waiting", "waiting", null, false, "Waveform not drawn yet. CuePoint is working through your library (see the status strip)."],
+    ["paused", "waiting", null, true, "Waveforms are paused. Resume them in Settings."],
     ["undecodable", "failed", "undecodable", false, "This file's audio could not be read."],
     ["missing", "missing", "not_found", false, "File missing"],
-    ["unchecked", "unchecked", null, false, "Not checked yet"],
+    ["unchecked", "unchecked", null, false, "Waiting for CuePoint to find this file. The waveform is drawn after."],
     ["without a decoder", "unavailable", "decoder_missing", false, DECODER_MISSING_WORDS],
   ])("says, in words, a track %s", async (_name, state, reason, paused, words) => {
     install({ answer: (id) => waveform(id, state, { reason }), paused });
@@ -312,6 +312,17 @@ describe("its loudness (WAVE-08)", () => {
     expect(line()).toHaveTextContent("Loudness −8.4 LUFS · Peak −0.3 dBFS");
   });
 
+  it("explains the units on hover (INS-8)", async () => {
+    install();
+    render(<TrackWaveform trackId={7} />);
+    await drawn();
+
+    expect(line()).toHaveAttribute(
+      "title",
+      "Loudness (LUFS) is how loud the track sounds on average; Peak (dBFS) is its loudest moment. Closer to 0 is louder.",
+    );
+  });
+
   it("says a loudness still to be measured, and puts the track first while it waits", async () => {
     const { waveforms } = install({ answer: (id) => waveform(id, "ready", { loudness: null }) });
     render(<TrackWaveform trackId={7} />);
@@ -335,7 +346,7 @@ describe("its loudness (WAVE-08)", () => {
   it("has no line for a track without a waveform, whose box says why", async () => {
     install({ answer: (id) => waveform(id, "waiting") });
     render(<TrackWaveform trackId={7} />);
-    await waitFor(() => expect(box()).toHaveTextContent("Waveform not drawn yet"));
+    await waitFor(() => expect(box()).toHaveTextContent(/^Waveform not drawn yet\./));
 
     expect(line()).toBeNull();
   });
@@ -397,7 +408,7 @@ describe("in the Inspector", () => {
 
     expect(screen.getAllByTestId("inspector-waveform")).toHaveLength(1);
     expect(box().querySelector("canvas")).toBeNull();
-    expect(await within(box()).findByText("Waveform not drawn yet")).toBeInTheDocument();
+    expect(await within(box()).findByText(/^Waveform not drawn yet\./)).toBeInTheDocument();
     expect(errors.mock.calls.flat().join(" ")).not.toMatch(/same key/);
   });
 });

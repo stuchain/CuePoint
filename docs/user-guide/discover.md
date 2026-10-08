@@ -126,7 +126,7 @@ so and nothing is made.
 
 Beatport tracks are not tracks in your library: they have no file, so a
 double-click does nothing and they cannot be played. Selecting one lights its
-key on the Camelot wheel in the header, and the Inspector says there is nothing
+key on the Camelot wheel in the header, and Track details says there is nothing
 to inspect.
 
 ## A Beatport token
@@ -199,7 +199,7 @@ An artist's page shows your own tracks by that artist and, from Beatport,
 their recent releases; a label's page does the same for a label. Open one from
 anywhere you meet a track:
 
-- **The Inspector.** A track's artist credit is shown as written, with each
+- **Track details.** A track's artist credit is shown as written, with each
   artist in it a link — "Mara Veil, Kiko" is two links — and its label is a
   link just below. The remixer credit is linked the same way.
 - **The right-click menu, and Actions… in the selection bar**, with one track
@@ -237,7 +237,7 @@ The first half is the Library's own table, over exactly the tracks the header
 counts, newest first. These are your tracks, so they behave as they do in the
 Library: double-click one to play it with the rest of the table queued after
 it, and use the right-click menu for **Play next**, **Add to queue**, **Similar
-tracks** and the track's pages. Selecting a track shows it in the Inspector.
+tracks** and the track's pages. Selecting a track shows it in Track details.
 
 **Open in Library** opens the Library filtered to this page's tracks, so you
 can tag, rate or collect them there. **Save as Smart Collection…** saves the
@@ -305,7 +305,7 @@ Selecting a suggestion lights its key on the Camelot wheel in the header.
 Suggestions are your own tracks: double-click one to play the list from there,
 and use the right-click menu to **Play next** or **Add to queue**. **Similar
 tracks** on a suggestion's menu makes it the next track to compare with. The
-Inspector shows the track you are comparing with until you select a suggestion.
+Track details shows the track you are comparing with until you select a suggestion.
 
 ## Where inCrate went
 
@@ -339,7 +339,7 @@ edit the file to remove them, and still loads it with them in it.
 
 ## See also
 
-- [Your library](library.md) — importing, browsing and the Inspector
+- [Your library](library.md) — importing, browsing and Track details
 - [Clean](clean.md) — matching your tracks on Beatport, which is how Discover
   knows what you own
 - [The CuePoint window](the-window.md) — the sidebar, the status strip and

@@ -200,7 +200,7 @@ describe("a tag write's entry", () => {
     events = [event(1, "clean.tags.written", { job_id: "w-1" }, "Wrote tags to 2 files")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Wrote tags to 2 files");
-    expect(await within(entry).findByText("4 values written to files can be restored.")).toBeInTheDocument();
+    expect(await within(entry).findByText("4 values saved into files can be put back.")).toBeInTheDocument();
     expect(bridge.getTagWrites).toHaveBeenCalledWith({ jobId: "w-1", limit: 1 });
 
     await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
@@ -209,7 +209,7 @@ describe("a tag write's entry", () => {
 
     await waitFor(() => expect(bridge.startTagRestore).toHaveBeenCalledWith({ job_id: "w-1" }));
     expect(await within(entry).findByText("Restored 2 files.")).toBeInTheDocument();
-    expect(within(entry).getByText("Everything written here has been restored.")).toBeInTheDocument();
+    expect(within(entry).getByText("Everything saved into files has been put back.")).toBeInTheDocument();
   });
 
   it("shows unconfirmed writes as unfinished, never as written", async () => {
@@ -220,8 +220,8 @@ describe("a tag write's entry", () => {
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Writing tags stopped");
     const note = await within(entry).findByText(/may not have finished/);
-    expect(note).toHaveTextContent("3 writes may not have finished.");
-    expect(note.textContent).not.toMatch(/were written/);
+    expect(note).toHaveTextContent("3 saves may not have finished.");
+    expect(note.textContent).not.toMatch(/were saved/);
     expect(entry.querySelector(".cp-activity__offer--unfinished")).not.toBeNull();
     expect(within(entry).getByRole("button", { name: "Restore" })).toBeEnabled();
   });
@@ -237,7 +237,7 @@ describe("a tag write's entry", () => {
     ];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Restoring tags stopped");
-    await within(entry).findByText(/can be restored/);
+    await within(entry).findByText(/can be put back/);
     await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
     await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
     await waitFor(() => expect(bridge.startTagRestore).toHaveBeenCalledTimes(2));
@@ -253,7 +253,7 @@ describe("a tag write's entry", () => {
     events = [event(1, "clean.tags.written", { job_id: "w-1" }, "Wrote tags")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Wrote tags");
-    expect(await within(entry).findByText("Everything written here has been restored.")).toBeInTheDocument();
+    expect(await within(entry).findByText("Everything saved into files has been put back.")).toBeInTheDocument();
     expect(within(entry).queryByRole("button", { name: "Restore" })).toBeNull();
   });
 
@@ -262,7 +262,7 @@ describe("a tag write's entry", () => {
     events = [event(1, "clean.tags.written", { job_id: "w-1" }, "Wrote tags")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Wrote tags");
-    await within(entry).findByText(/can be restored/);
+    await within(entry).findByText(/can be put back/);
     await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
     await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
     expect(await within(entry).findByText(/The file is locked/)).toBeInTheDocument();

@@ -595,34 +595,6 @@
   font-weight: 400;
 }
 
-.cp-track-overrides {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.cp-track-overrides__field {
-  display: flex;
-  flex-direction: column;
-  gap: calc(2px * var(--scale));
-}
-
-.cp-track-overrides__control {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
-.cp-track-overrides__control input {
-  min-width: 0;
-}
-
-.cp-track-overrides__problem {
-  margin: 0;
-  color: var(--accent-danger);
-  font-size: var(--font-size-xs);
-}
-
 .cp-track-history__revert {
   grid-column: 2;
   justify-self: start;
@@ -660,4 +632,157 @@
 
 .cp-track-history__writes .cp-track-history__revert {
   align-self: flex-start;
+}
+
+/*
+ * PAGES-06: the buttons under the title, the folding sections, and the values
+ * disclosure. Every size is a token, so the panel scales with the app.
+ */
+
+/* Two rows at most: Play, Play next, Add to queue; then Similar tracks and
+   Show in folder. Wrapping to three pushed Yours below the fold. */
+.cp-track-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.cp-track-actions__row {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.cp-track-actions__row > * {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+}
+
+.cp-track-actions__button {
+  min-height: var(--hit-min);
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--hairline) solid var(--border-muted);
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.cp-track-actions__button:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+}
+
+.cp-track-actions__button:disabled {
+  color: var(--fg-disabled);
+  cursor: default;
+}
+
+.cp-track-actions__button:focus-visible,
+.cp-track-section__toggle:focus-visible,
+.cp-track-values__edit:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline-offset: var(--hairline);
+}
+
+.cp-track-section {
+  min-width: 0;
+}
+
+.cp-track-section__heading {
+  margin: 0 0 var(--space-xs);
+}
+
+.cp-track-section__toggle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cp-track-section__toggle:hover {
+  color: var(--fg-primary);
+}
+
+.cp-track-section__chevron {
+  flex: none;
+  width: 1ch;
+}
+
+.cp-track-section__body[hidden] {
+  display: none;
+}
+
+.cp-track-section__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.cp-track-detail__none {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.cp-track-values {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+.cp-track-values__lead {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.cp-track-values__edit {
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--hairline) solid var(--border-muted);
+  background: var(--bg-input);
+  color: var(--accent-info);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.cp-track-values .cp-track-section {
+  align-self: stretch;
+}
+
+.cp-track-values__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cp-track-values__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-xs);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-values__field {
+  color: var(--fg-muted);
+}
+
+.cp-track-values__value {
+  font-family: var(--font-data);
 }

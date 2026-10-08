@@ -271,7 +271,7 @@ time is the slowest of the common case (p95).
 | Scroll the Library with the **Waveform** column: 200 rows' pictures | 23.6 / 23.0 ms |
 | Scroll it with the **Loudness** column: 200 rows' numbers | 5.1 / 5.2 ms |
 | Play a track: its picture for the player bar | 0.18 / 0.18 ms |
-| Select a track: its picture and its cues for the Inspector | 0.27 / 0.26 ms |
+| Select a track: its picture and its cues for Track details | 0.27 / 0.26 ms |
 | The analysis picks its next 200 files | 384 / 378 ms, once every 200 files |
 | The analysis counts the library for the status strip | 371 / 363 ms, at most every 5 seconds |
 

@@ -92,7 +92,7 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
   },
   waveforms: {
     label: "Waveforms and the player",
-    alt: "The player bar with a track's waveform, and the Inspector showing its cues, beat grid and loudness.",
+    alt: "The player bar with a track's waveform, and Track details showing its cues, beat grid and loudness.",
     ...WINDOW,
   },
   export: {

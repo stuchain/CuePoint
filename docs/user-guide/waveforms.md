@@ -3,7 +3,7 @@
 A waveform shows a track's shape before you hear it: where the breakdown is, how
 long the intro runs, where the drop lands. CuePoint draws one for every track
 whose file it can find, from the audio itself, and shows it in four places: the
-player bar, the Inspector, a Library column and Prepare's transition strip.
+player bar, Track details, a Library column and Prepare's transition strip.
 
 Each is the whole track at once, with a line where playback is. There is no
 zoomed, scrolling view.
@@ -17,7 +17,7 @@ keyboard and screen readers seek exactly as they did with the slider, which is
 still there underneath. Until the waveform is ready, the bar shows the plain
 slider, and hovering it says why. See [Playing music](player.md#waveforms).
 
-**The Inspector.** The selected track's waveform sits under its title, with its
+**Track details.** The selected track's waveform sits under its title, with its
 hot cues (each with its letter), memory cues, loops and beat grid. When that
 track is the one playing, the playhead is drawn and a click seeks; otherwise
 the waveform is only a picture, and clicking it does not start playback
@@ -42,7 +42,7 @@ The pass that draws a track's waveform also measures how loud the track is, as
 a single number for the whole track, the way mastering engineers and streaming
 services measure it. CuePoint shows it in three places:
 
-- **The Inspector**, on one line under the waveform: "Loudness −8.4 LUFS ·
+- **Track details**, on one line under the waveform: "Loudness −8.4 LUFS ·
   Peak −0.3 dBFS".
 - **The Library**: **Columns…** offers a **Loudness** column, hidden until you
   choose it. It shows the number alone ("−8.4"), with the whole line on hover. A
@@ -79,7 +79,7 @@ mixer's. The column cannot be sorted by, for now.
 
 **A library analyzed before CuePoint measured loudness** keeps every waveform.
 Each track is measured once more, in the background, after any track that has
-no waveform yet; until then its waveform is drawn as before, and the Inspector
+no waveform yet; until then its waveform is drawn as before, and Track details
 says the loudness is still to come. A track you select or play while it waits
 is measured first.
 
@@ -100,7 +100,7 @@ short peak is never lost in a narrow column. On top of the waveform:
 
 | You see | It is |
 | --- | --- |
-| A dimmed part | Already played (the bar and the Inspector), or outside an entry's planned times (Prepare) |
+| A dimmed part | Already played (the bar and Track details), or outside an entry's planned times (Prepare) |
 | A thin bright line | Where playback is |
 | A colored line with a lettered flag | A hot cue, A–H, in the color Rekordbox gave it |
 | A thin line without a flag | A memory cue |
@@ -157,7 +157,7 @@ write, and carries on after them.
 The cues, loops and beat grids on a waveform are the ones in your Rekordbox
 export, read on every import and refresh. CuePoint shows them and never changes
 them: there is nowhere to edit one, and an export to Rekordbox never writes them.
-To move a cue, move it in Rekordbox and refresh. The Inspector lists them in
+To move a cue, move it in Rekordbox and refresh. Track details lists them in
 words under the waveform.
 
 ## Where the data lives
@@ -195,7 +195,7 @@ work.
 ## See also
 
 - [Playing music](player.md) — the player bar.
-- [Your library](library.md) — the Inspector and the columns.
+- [Your library](library.md) — Track details and the columns.
 - [Prepare](prepare.md) — the transition strip.
 - [Clean](clean.md) — the Health view.
 - [Performance](performance.md#waveforms) — the measurements.

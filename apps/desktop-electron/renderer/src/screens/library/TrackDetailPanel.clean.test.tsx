@@ -26,6 +26,7 @@ import type {
   TrackMatches,
 } from "../../api/cuepointBridge.types";
 import { LIBRARY_CHANGED_EVENT } from "../../api/libraryChanges";
+import { TRACK_DETAILS_SECTIONS_KEY } from "./DisclosureSection";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 
 const TRACK: LibraryTrackRow = {
@@ -218,11 +219,14 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  localStorage.clear();
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
   vi.restoreAllMocks();
 });
 
 function panel(props: Partial<Parameters<typeof TrackDetailPanel>[0]> = {}) {
+  // Beatport and History start folded (INS-3); these tests are about their contents.
+  localStorage.setItem(TRACK_DETAILS_SECTIONS_KEY, JSON.stringify({ beatport: true, history: true }));
   const handlers = {
     onError: vi.fn(),
     onTrackChanged: vi.fn(),
@@ -243,8 +247,14 @@ describe("the Beatport zone", () => {
     const zone = await screen.findByRole("region", { name: "Beatport" });
     expect(await within(zone).findByText("Accepted by you")).toBeInTheDocument();
     expect(within(zone).getByText("Strobe (Original Mix)")).toBeInTheDocument();
-    expect(within(zone).getByText(/mau5trap · For Lack of a Better Name · score 96.5/)).toBeInTheDocument();
-    expect(within(zone).getByText("Artwork: From Beatport")).toBeInTheDocument();
+    expect(zone.querySelector(".cp-track-beatport__meta")).toHaveTextContent(
+      "mau5trap · For Lack of a Better Name · match score 96.5",
+    );
+    expect(within(zone).getByText("match score 96.5")).toHaveAttribute(
+      "title",
+      "How closely Beatport's track matches yours; higher is closer",
+    );
+    expect(within(zone).getByText("Cover art: from Beatport")).toBeInTheDocument();
     expect(bridge.getTrackMatches).toHaveBeenCalledWith({ trackId: 12 });
   });
 
@@ -254,22 +264,17 @@ describe("the Beatport zone", () => {
     await within(zone).findByText("Accepted by you");
     // The key is not one of the rows: an accepted match gives it (DEC-201).
     expect(field(zone, "key")).toBeNull();
-    expect(field(zone, "bpm")).toHaveTextContent("Now 126.0 (typed by you)");
+    expect(field(zone, "bpm")).toHaveTextContent("Using 126.0 (typed by you)");
     expect(field(zone, "year")).toHaveTextContent("Beatport 2010");
-    expect(field(zone, "year")).toHaveTextContent("Now 2009 (from Rekordbox)");
+    expect(field(zone, "year")).toHaveTextContent("Using 2009 (from Rekordbox)");
   });
 
-  it("applies one field, and says the track changed", async () => {
-    const handlers = panel();
+  it("never applies a field from here: that is Review's and Fix values' job (FLW-2)", async () => {
+    panel();
     const zone = await screen.findByRole("region", { name: "Beatport" });
     await within(zone).findByText("Accepted by you");
-    // The key is never offered: an accepted match already gave it.
-    expect(within(zone).queryByRole("button", { name: /Key/ })).toBeNull();
-
-    await userEvent.click(within(zone).getByRole("button", { name: "Apply Beatport's Year" }));
-
-    await waitFor(() => expect(bridge.applyMatch).toHaveBeenCalledWith({ fields: ["year"], track_id: 12 }));
-    await waitFor(() => expect(handlers.onTrackChanged).toHaveBeenCalled());
+    expect(within(zone).queryByRole("button", { name: /^Apply/ })).toBeNull();
+    expect(bridge.applyMatch).not.toHaveBeenCalled();
   });
 
   it("offers nothing to apply before a match is accepted", async () => {
@@ -278,16 +283,6 @@ describe("the Beatport zone", () => {
     const zone = await screen.findByRole("region", { name: "Beatport" });
     await within(zone).findByText("Waiting for you");
     expect(within(zone).queryByRole("button", { name: /^Apply/ })).toBeNull();
-  });
-
-  it("shows a refused apply in the engine's words", async () => {
-    bridge.applyMatch.mockRejectedValue(new Error("Beatport has no year for this track"));
-    const handlers = panel();
-    const zone = await screen.findByRole("region", { name: "Beatport" });
-    await within(zone).findByText("Accepted by you");
-    await userEvent.click(within(zone).getByRole("button", { name: "Apply Beatport's Year" }));
-    await waitFor(() => expect(handlers.onError).toHaveBeenCalledWith("Beatport has no year for this track"));
-    expect(handlers.onTrackChanged).not.toHaveBeenCalled();
   });
 
   it("says a newer match disagrees", async () => {
@@ -333,7 +328,7 @@ describe("the imported record", () => {
       />,
     );
     const line = document.querySelector(".cp-track-detail__keyline") as HTMLElement;
-    expect(line).toHaveTextContent("9A · E minor");
+    expect(line).toHaveTextContent("9A · E minor · Beatport");
     rerender(
       <TrackDetailPanel detail={{ ...detail, track: { ...detail.track, effective_key: null, key_name: null } }} />,
     );
@@ -358,119 +353,72 @@ describe("the artwork", () => {
   });
 });
 
-describe("your five values", () => {
-  it("show yours, and Rekordbox's as the placeholder when you have none", async () => {
+describe("your five values (DEC-205)", () => {
+  async function editor() {
+    await userEvent.click(await screen.findByRole("button", { name: "Edit values…" }));
+    return screen.findByRole("dialog", { name: "Edit values" });
+  }
+
+  it("lists what you edited, with where it came from, and not a key Beatport gave", async () => {
     panel();
-    const group = await screen.findByRole("group", { name: "Your values" });
-    expect(within(group).getByLabelText("Your key")).toHaveValue("9A");
-    expect(within(group).getByLabelText("Your BPM")).toHaveValue("126.0");
-    const genre = within(group).getByLabelText("Your genre");
-    expect(genre).toHaveValue("");
-    expect(genre).toHaveAttribute("placeholder", "Rekordbox: Progressive House");
-    expect(within(group).getByText("applied from Beatport")).toBeInTheDocument();
-    expect(within(group).getByText("typed by you")).toBeInTheDocument();
+    const list = (await screen.findByRole("region", { name: "Your values" })) as HTMLElement;
+    // BPM was typed by you. The key is Beatport's own, which is the track's key, not an edit.
+    expect(within(list).getByText("typed by you")).toBeInTheDocument();
+    expect(within(list).getByText("126.0")).toBeInTheDocument();
+    expect(within(list).queryByText("applied from Beatport")).toBeNull();
   });
 
-  it("saves a typed number as a number on Enter", async () => {
+  it("saves a typed number as a number, in the shared editor", async () => {
     const handlers = panel();
-    const bpm = within(await screen.findByRole("group", { name: "Your values" })).getByLabelText("Your BPM");
-    await userEvent.clear(bpm);
-    await userEvent.type(bpm, "124.5{Enter}");
+    const dialog = await editor();
+    await userEvent.type(within(dialog).getByLabelText("BPM value"), "124.5");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
     await waitFor(() => expect(bridge.setTrackOverrides).toHaveBeenCalledWith({ trackId: 12, bpm: 124.5 }));
     expect(bridge.setTrackOverrides).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(handlers.onTrackChanged).toHaveBeenCalled());
   });
 
-  it("saves once when Enter is followed by leaving the field", async () => {
-    let answer: (value: unknown) => void = () => undefined;
-    bridge.setTrackOverrides.mockImplementation(
-      () => new Promise((resolve) => (answer = resolve)),
-    );
-    panel();
-    const genre = within(await screen.findByRole("group", { name: "Your values" })).getByLabelText("Your genre");
-    await userEvent.type(genre, "Techno{Enter}");
-    // The save is still on its way when the field loses focus.
-    genre.blur();
-    await userEvent.tab();
-    answer({ track: TRACK });
-    await waitFor(() => expect(genre).toBeEnabled());
-    expect(bridge.setTrackOverrides).toHaveBeenCalledTimes(1);
-  });
-
-  it("saves text when the field is left", async () => {
-    panel();
-    const genre = within(await screen.findByRole("group", { name: "Your values" })).getByLabelText("Your genre");
-    await userEvent.type(genre, "Techno");
-    await userEvent.tab();
-    await waitFor(() => expect(bridge.setTrackOverrides).toHaveBeenCalledWith({ trackId: 12, genre: "Techno" }));
-  });
-
-  it("shows the engine's refusal under the field, and changes nothing", async () => {
+  it("shows the engine's refusal in the editor, and changes nothing", async () => {
     bridge.setTrackOverrides.mockRejectedValue(new Error("bpm must be between 20 and 300, not 400"));
     const handlers = panel();
-    const bpm = within(await screen.findByRole("group", { name: "Your values" })).getByLabelText("Your BPM");
-    await userEvent.clear(bpm);
-    await userEvent.type(bpm, "400{Enter}");
-    const refusal = await screen.findByRole("alert");
-    expect(refusal).toHaveTextContent("bpm must be between 20 and 300, not 400");
-    expect(bpm).toHaveAttribute("aria-invalid", "true");
+    const dialog = await editor();
+    await userEvent.type(within(dialog).getByLabelText("BPM value"), "400");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("bpm must be between 20 and 300, not 400");
     expect(handlers.onTrackChanged).not.toHaveBeenCalled();
   });
 
   it("refuses letters where a number goes without asking", async () => {
     panel();
-    const year = within(await screen.findByRole("group", { name: "Your values" })).getByLabelText("Your year");
-    await userEvent.type(year, "soon{Enter}");
-    expect(await screen.findByRole("alert")).toHaveTextContent("Year is a number, not “soon”");
+    const dialog = await editor();
+    await userEvent.type(within(dialog).getByLabelText("Year value"), "soon");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Year is a number, not “soon”");
     expect(bridge.setTrackOverrides).not.toHaveBeenCalled();
   });
 
-  it("clears yours back to Rekordbox's", async () => {
-    panel();
-    const group = await screen.findByRole("group", { name: "Your values" });
-    await userEvent.click(within(group).getByRole("button", { name: "Clear your key" }));
-    await waitFor(() => expect(bridge.setTrackOverrides).toHaveBeenCalledWith({ trackId: 12, key: null }));
+  it("goes back to Rekordbox's value", async () => {
+    const handlers = panel();
+    await userEvent.click(await screen.findByRole("button", { name: "Go back to Rekordbox's BPM" }));
+    await waitFor(() => expect(bridge.setTrackOverrides).toHaveBeenCalledWith({ trackId: 12, bpm: null }));
+    await waitFor(() => expect(handlers.onTrackChanged).toHaveBeenCalled());
   });
 
-  it("sends nothing when the value did not change", async () => {
-    panel();
-    const key = within(await screen.findByRole("group", { name: "Your values" })).getByLabelText("Your key");
-    await userEvent.click(key);
-    await userEvent.keyboard("{Enter}");
-    await userEvent.tab();
-    expect(bridge.setTrackOverrides).not.toHaveBeenCalled();
-  });
-
-  it("keep what is being typed when another field is read again", async () => {
+  it("reads the track again, and keeps what is being typed in the editor", async () => {
     const { rerender } = render(<TrackDetailPanel detail={detailOf()} />);
-    const group = await screen.findByRole("group", { name: "Your values" });
-    await userEvent.type(within(group).getByLabelText("Your genre"), "Tech");
-
-    // The BPM saved a moment ago lands while the genre is being typed.
+    await userEvent.click(await screen.findByRole("button", { name: "Edit values…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit values" });
+    await userEvent.type(within(dialog).getByLabelText("Genre value"), "Tech");
     rerender(<TrackDetailPanel detail={detailOf({ ...TRACK, effective_bpm: 130 })} />);
-
-    expect(within(group).getByLabelText("Your genre")).toHaveValue("Tech");
-    expect(within(group).getByLabelText("Your BPM")).toHaveValue("130.0");
-  });
-
-  it("replace a saved value with the engine's once it is read again", async () => {
-    const { rerender } = render(<TrackDetailPanel detail={detailOf()} />);
-    const group = await screen.findByRole("group", { name: "Your values" });
-    const bpm = within(group).getByLabelText("Your BPM");
-    await userEvent.clear(bpm);
-    await userEvent.type(bpm, "124.50{Enter}");
-    await waitFor(() => expect(bridge.setTrackOverrides).toHaveBeenCalled());
-    expect(bpm).toHaveValue("124.50");
-
-    rerender(<TrackDetailPanel detail={detailOf({ ...TRACK, effective_bpm: 124.5 })} />);
-    expect(bpm).toHaveValue("124.5");
+    expect(within(dialog).getByLabelText("Genre value")).toHaveValue("Tech");
+    expect(dialog).toHaveTextContent("Now: 130.0");
   });
 
   it("are not offered by a build that cannot type them", async () => {
     delete bridge.setTrackOverrides;
     panel();
     await screen.findByRole("region", { name: "Yours" });
-    expect(screen.queryByRole("group", { name: "Your values" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit values…" })).toBeNull();
   });
 });
 
@@ -525,23 +473,23 @@ describe("History", () => {
   });
 });
 
-describe("tags written to the file", () => {
+describe("values saved into the music file", () => {
   it("are shown as unfinished when the engine never saw them finish, with Restore", async () => {
     panel();
     const note = await screen.findByText(/may not have finished/);
     expect(note).toHaveTextContent(
-      "2 writes may not have finished, and 1 value was written. Restore puts every file back.",
+      "2 saves may not have finished, and 1 value was saved. Putting the files back restores every one.",
     );
-    expect(note.textContent).not.toMatch(/3 values? (were )?written/);
-    expect(screen.getByRole("button", { name: "Restore the file's tags" })).toBeEnabled();
+    expect(note.textContent).not.toMatch(/3 values? (were )?saved/);
+    expect(screen.getByRole("button", { name: "Put the file back as it was" })).toBeEnabled();
   });
 
   it("restores this track's file and reads again", async () => {
     const handlers = panel();
-    await userEvent.click(await screen.findByRole("button", { name: "Restore the file's tags" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Put the file back as it was" }));
     await waitFor(() => expect(bridge.startTagRestore).toHaveBeenCalledWith({ track_id: 12 }));
     await waitFor(() =>
-      expect(handlers.onMessage).toHaveBeenCalledWith("Restored the tags CuePoint wrote into this file."),
+      expect(handlers.onMessage).toHaveBeenCalledWith("Put the file back as it was."),
     );
     expect(handlers.onTrackChanged).toHaveBeenCalled();
     await waitFor(() => expect(bridge.getTagWrites).toHaveBeenCalledTimes(2));
@@ -550,7 +498,7 @@ describe("tags written to the file", () => {
   it("say a failed restore in the engine's words", async () => {
     bridge.getJob.mockResolvedValue({ id: "r-1", state: "failed", error: { message: "The file is locked" } });
     const handlers = panel();
-    await userEvent.click(await screen.findByRole("button", { name: "Restore the file's tags" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Put the file back as it was" }));
     await waitFor(() => expect(handlers.onError).toHaveBeenCalledWith(expect.stringContaining("The file is locked")));
   });
 
@@ -569,6 +517,6 @@ describe("tags written to the file", () => {
     panel();
     await screen.findByText("Your BPM");
     await waitFor(() => expect(bridge.getTagWrites).toHaveBeenCalled());
-    expect(screen.queryByText(/Tags written to the file/)).toBeNull();
+    expect(screen.queryByText(/Saved into the music file/)).toBeNull();
   });
 });

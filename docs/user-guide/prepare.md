@@ -64,7 +64,7 @@ from stays exactly as it was, and nothing links the two afterwards.
 
 The sidebar's **Prepare** opens the Set you had open last. The picker at the
 top of the page opens any other, and a Set in the Library's tree has **Open in
-Prepare** on its right-click menu. The Library's Inspector lists the Sets a
+Prepare** on its right-click menu. The Library's Track details lists the Sets a
 track is in, and each opens there too.
 
 ### Adding tracks
@@ -110,7 +110,7 @@ under the same columns. Nothing sorts: the order is the Set.
 Beside the Set is the panel you add tracks from. Drag the divider between them,
 or move it with the arrow keys; the width you choose is remembered.
 
-Selecting an entry adds **In this Set** to the Inspector on the right: the
+Selecting an entry adds **In this Set** to Track details on the right: the
 entry's times, note and chapter, and what the checks found about it.
 
 ## Chapters
@@ -139,7 +139,7 @@ range.
 
 Each entry can carry a planned **mix in** time and **mix out** time: where in the
 track you plan to bring it in and take it out. Type them under **In this Set** in
-Track details (the Inspector) as `m:ss` or `h:mm:ss` — `0:30`, `4:30`, `1:02:00` — and press Enter or
+Track details as `m:ss` or `h:mm:ss` — `0:30`, `4:30`, `1:02:00` — and press Enter or
 leave the field. A blank **Mix in** means the start of the track; a blank field
 clears a time. A time that cannot be read, an out time before the in time, or an
 out time past the end of the track is refused with the reason.
@@ -155,7 +155,7 @@ out time past the end of the track is refused with the reason.
   is left blank rather than showing a time that would be wrong.
 
 Each entry can also carry a note — "loop the break", "let it run" — typed in the
-Inspector and shown in the table's **Note** column.
+Track details and shown in the table's **Note** column.
 
 ## Warnings
 

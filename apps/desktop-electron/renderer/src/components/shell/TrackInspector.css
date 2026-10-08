@@ -1,5 +1,5 @@
 /**
- * Track Inspector, docked right.
+ * Track details, docked right.
  *
  * Width comes from the component as an inline style, because it is user state
  * rather than design: the drag handle writes it and `localStorage` remembers
@@ -27,6 +27,51 @@
   border-left: none;
   padding: var(--space-xs);
   justify-content: flex-start;
+}
+
+/*
+ * Hidden, the panel is a full-height tab on the right edge: "Track details",
+ * then the selected track's title, reading downward (INS-2). A tab that said
+ * only "‹" was easy to lose; one that names the track says where it went.
+ */
+.cp-inspector--hidden {
+  align-items: stretch;
+}
+
+.cp-inspector__reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  height: 100%;
+  min-height: 0;
+  padding: var(--space-sm) var(--space-xs);
+  overflow: hidden;
+}
+
+.cp-inspector__reveal-name,
+.cp-inspector__reveal-title {
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 0;
+}
+
+.cp-inspector__reveal-name {
+  flex: none;
+  color: var(--fg-primary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cp-inspector__reveal-title {
+  flex: 0 1 auto;
+}
+
+.cp-inspector__reveal-chevron {
+  flex: none;
+  order: -1;
 }
 
 .cp-inspector__reveal,

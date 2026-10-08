@@ -106,15 +106,15 @@ function count(number: number, noun: string): string {
  * those the engine never saw finish (CLEAN-10, CLEAN-11).
  */
 export function writesLine(restorable: number, unconfirmed: number): string {
-  if (restorable <= 0) return "Everything written here has been restored.";
+  if (restorable <= 0) return "Everything saved into files has been put back.";
   const confirmed = restorable - unconfirmed;
   if (unconfirmed <= 0) {
-    return `${count(confirmed, "value")} written to files can be restored.`;
+    return `${count(confirmed, "value")} saved into files can be put back.`;
   }
-  const unfinished = `${count(unconfirmed, "write")} may not have finished`;
+  const unfinished = `${count(unconfirmed, "save")} may not have finished`;
   return confirmed > 0
-    ? `${unfinished}, and ${count(confirmed, "value")} ${confirmed === 1 ? "was" : "were"} written. Restore puts every file back.`
-    : `${unfinished}. Restore puts every file back; a file still holding its old value counts as restored.`;
+    ? `${unfinished}, and ${count(confirmed, "value")} ${confirmed === 1 ? "was" : "were"} saved. Putting the files back restores every one.`
+    : `${unfinished}. Putting the files back restores every one; a file still holding its old value counts as put back.`;
 }
 
 /** What a batch revert did, in its counts. */

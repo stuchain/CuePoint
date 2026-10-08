@@ -49,7 +49,7 @@ See [Prepare](prepare.md) for each step in full.
    chapter here**; give a chapter a target length and a BPM range from its
    heading's menu
 3. Select an entry and type its **Mix in** and **Mix out** times in the
-   Inspector; the running time and **Starts at** follow
+   Track details; the running time and **Starts at** follow
 4. Select the entry before a gap and take a track from **Suggestions**, with
    **Insert here** or a drag
 5. Read the **Transition** column; **Accept** a warning you have heard and

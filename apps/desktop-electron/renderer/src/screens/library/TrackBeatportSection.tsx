@@ -1,30 +1,26 @@
 /**
- * The Inspector's Beatport zone (CLEAN-13, DEC-047, DEC-066).
+ * What Beatport says about this track (CLEAN-13, DEC-047, DEC-066, INS-5).
  *
- * The third zone beside "Yours" and the imported record: where the track
- * stands with Beatport, the candidate that was decided, and for each of the
- * five fields CuePoint can override what Rekordbox sent, what Beatport has and
- * what a person sees now — with where that last value came from. A field is
- * applied from here one at a time. Everything else about matching is the Clean
- * page's, one link away.
+ * Where the track stands with a match, the candidate that was decided, and for
+ * each of the five fields what Rekordbox sent, what Beatport has and what is
+ * used now, with where that came from. Reading only: applying Beatport's values
+ * is Review's and Fix values' work (FLW-2), and one track's match is Clean's
+ * match window, one button away.
  *
- * The imported record below stays exactly as read-only as Phase 4 made it: the
- * imported value is repeated here for comparison, never made editable.
+ * A track not looked up yet gets one sentence and one action, not a table of
+ * blanks.
  */
-import { useState } from "react";
-
-import type { LibraryTrackRow, OverrideField } from "../../api/cuepointBridge.types";
+import { cleanMatchState } from "../clean/cleanLink";
 import { decisionLine } from "../clean/cleanFormat";
-import { useTrackMatches } from "../clean/useTrackMatches";
-import { artworkText, beatportFieldRows, fieldSourceText } from "./libraryClean";
-import { reportUnexpected } from "../../reporting/reporting";
+import type { TrackMatchesState } from "../clean/useTrackMatches";
+import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
+import { beatportFieldRows, coverArtText, fieldSourceText } from "./libraryClean";
+import { RouteButton } from "./RouteButton";
 
 interface TrackBeatportSectionProps {
   track: LibraryTrackRow & { id: number };
-  /** Bumped by the panel after any change to the track, so the zone reads again. */
-  version: number;
-  onApplied: () => void;
-  onError: (message: string) => void;
+  /** The panel's read of the track's match, shared with the key's line. */
+  matches: TrackMatchesState;
   onOpenInClean?: (trackId: number) => void;
 }
 
@@ -32,46 +28,47 @@ function dash(text: string): string {
   return text === "" ? "—" : text;
 }
 
-export function TrackBeatportSection({
-  track,
-  version,
-  onApplied,
-  onError,
-  onOpenInClean,
-}: TrackBeatportSectionProps) {
-  const matches = useTrackMatches(track.id, version);
-  const [applying, setApplying] = useState<OverrideField | null>(null);
+/** Said when the track has not been looked up on Beatport. */
+const NOT_LOOKED_UP =
+  "Not looked up on Beatport yet. Matching finds this track on Beatport so you can compare its key, BPM, genre, label and year.";
 
-  if (matches.unavailable) return null;
+const MATCH_ON_BEATPORT = "Match on Beatport";
 
+/** The button that matches this one track, in Clean's match window. */
+export function MatchOnBeatport({ trackId }: { trackId: number }) {
+  return (
+    <RouteButton
+      to="/clean"
+      state={cleanMatchState([trackId])}
+      className="cp-track-detail__reveal"
+      title="Matches this one track on Beatport"
+    >
+      {MATCH_ON_BEATPORT}
+    </RouteButton>
+  );
+}
+
+export function TrackBeatportSection({ track, matches, onOpenInClean }: TrackBeatportSectionProps) {
   const state = matches.matches?.state ?? null;
   const candidate = matches.matches?.candidate ?? null;
-  const rows = beatportFieldRows(track, state, candidate);
 
-  const apply = async (field: OverrideField) => {
-    const bridge = window.cuepoint?.applyMatch;
-    if (!bridge) return;
-    setApplying(field);
-    try {
-      await bridge({ fields: [field], track_id: track.id });
-      onApplied();
-    } catch (cause) {
-      reportUnexpected(cause);
-      onError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setApplying(null);
-    }
-  };
+  if (matches.error) return <p className="cp-track-history__note">{matches.error}</p>;
+  if (!matches.matches) return <p className="cp-track-history__note">Reading the match…</p>;
+
+  if (state?.state === "not_matched") {
+    return (
+      <div className="cp-track-beatport">
+        <p className="cp-track-beatport__state">{NOT_LOOKED_UP}</p>
+        <MatchOnBeatport trackId={track.id} />
+      </div>
+    );
+  }
+
+  const rows = beatportFieldRows(track, state, candidate);
+  const cover = coverArtText(track.artwork);
 
   return (
-    <section className="cp-track-beatport" aria-label="Beatport">
-      <h3 className="cp-track-detail__subtitle">Beatport</h3>
-
-      {matches.error && <p className="cp-track-history__note">{matches.error}</p>}
-      {!matches.error && !matches.matches && (
-        <p className="cp-track-history__note">Reading the match…</p>
-      )}
-
+    <div className="cp-track-beatport">
       {state && (
         <p
           className={`cp-track-beatport__state${
@@ -90,14 +87,20 @@ export function TrackBeatportSection({
           </span>
           <span>{candidate.artists ?? "—"}</span>
           <span className="cp-track-beatport__meta">
-            {[candidate.label, candidate.release_name, `score ${candidate.score.toFixed(1)}`]
-              .filter(Boolean)
-              .join(" · ")}
+            {[candidate.label, candidate.release_name].filter(Boolean).join(" · ")}
+            {candidate.score != null && (
+              <>
+                {candidate.label || candidate.release_name ? " · " : ""}
+                <span title="How closely Beatport's track matches yours; higher is closer">
+                  {`match score ${candidate.score.toFixed(1)}`}
+                </span>
+              </>
+            )}
           </span>
         </p>
       )}
 
-      <p className="cp-track-beatport__artwork">Artwork: {dash(artworkText(track.artwork))}</p>
+      {cover !== "" && <p className="cp-track-beatport__artwork">Cover art: {cover}</p>}
 
       <dl className="cp-track-beatport__fields">
         {rows.map((row) => (
@@ -111,20 +114,9 @@ export function TrackBeatportSection({
                 <span className="cp-track-beatport__layer">Beatport</span> {dash(row.beatport)}
               </span>
               <span className="cp-track-beatport__now">
-                <span className="cp-track-beatport__layer">Now</span> {dash(row.effective)}{" "}
+                <span className="cp-track-beatport__layer">Using</span> {dash(row.effective)}{" "}
                 <span className="cp-track-beatport__source">({fieldSourceText(row.source)})</span>
               </span>
-              {row.canApply && (
-                <button
-                  type="button"
-                  className="cp-track-detail__reveal"
-                  disabled={applying !== null}
-                  aria-label={`Apply Beatport's ${row.label}`}
-                  onClick={() => void apply(row.field)}
-                >
-                  {applying === row.field ? "Applying…" : "Apply"}
-                </button>
-              )}
             </dd>
           </div>
         ))}
@@ -139,6 +131,6 @@ export function TrackBeatportSection({
           Open on the Clean page
         </button>
       )}
-    </section>
+    </div>
   );
 }

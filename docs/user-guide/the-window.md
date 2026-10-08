@@ -12,11 +12,11 @@ page you are on changes; everything around it does not.
 | Camelot wheel | Top of the window, beside search | Shows which keys mix with a track — see [The Camelot wheel](#the-camelot-wheel) |
 | Sidebar | Left | The CuePoint logo, then the pages; collapses to an icon rail |
 | Page | Middle | Whatever you are working on |
-| Track Inspector | Right | Details for a selected track; can be resized or hidden |
+| Track details | Right | Details for a selected track; can be resized or hidden |
 | Status strip | Bottom | Whether CuePoint is ready, what is running in the background, and the Activity panel |
 
 The window remembers how you leave it. Collapse the navigation, resize or hide
-the Inspector, and it will look the same the next time you open CuePoint. It
+Track details, and it will look the same the next time you open CuePoint. It
 also reopens on the page you were last using.
 
 ## Navigating
@@ -40,7 +40,7 @@ own after the first import.
 kept tidy — see [Clean](clean.md). **Discover** finds new music on Beatport — see
 [Discover](discover.md). **Prepare** is where a set is planned as a running
 order, and it reopens on the Set you had open — see [Prepare](prepare.md). On
-Prepare, selecting an entry adds **In this Set** to the Inspector, above the
+Prepare, selecting an entry adds **In this Set** to Track details, above the
 track's own details. The older **inKey** and **Results** pages became Clean,
 and **inCrate** became Discover; a link to any of them opens the page that
 replaced it. There is no **Tools** group any more: when CuePoint has no page to
@@ -61,7 +61,7 @@ artists, albums and labels.
 
 The results are a list you can use from the keyboard: **Up** and **Down** move
 through them, **Enter** (or a click) opens the Library on that track, selected, with
-its details in the Track Inspector, and **Shift+Enter** plays it. Each row also has a
+its details in Track details, and **Shift+Enter** plays it. Each row also has a
 small play button. The results close when you click anywhere else, tab away or press
 **Esc**; clicking in the field brings them back.
 
@@ -135,19 +135,22 @@ the small Help menu CuePoint used to draw inside the window.
 A development build of CuePoint adds a **Developer** menu with reload and the
 developer tools; a released build has neither.
 
-## The Track Inspector
+## Track details
 
 The panel on the right shows details for whatever track you have selected. Drag
 its left edge to resize it, or use the arrow keys once the edge has focus. Hide
-it with the **›** button or **Ctrl+I**; a small **‹** button brings it back.
+it with the **›** button or **Ctrl+I**. Hidden, it becomes a tab down the right
+edge that reads **Track details** and the title of the selected track; one click
+brings it back.
 
 If you sized it on a large monitor and later open CuePoint on a smaller screen,
 it shrinks to fit rather than pushing the page off-screen — and returns to your
 chosen width when there is room again.
 
 On the Library and Clean pages it shows everything CuePoint knows about the
-selected track: its artwork, your own values, its Beatport match, what Rekordbox
-sent, and its history. See [The Inspector](library.md#the-inspector).
+selected track: its artwork, buttons to play it, your own values, what Rekordbox
+sent, its Beatport match, and its history. Each part folds under its heading, and
+the panel remembers which you folded. See [Track details](library.md#track-details).
 
 ## The status strip
 
@@ -217,7 +220,7 @@ To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**
 | **F2** / **Delete** | In the Collections list: rename or delete the selected Collection |
 | **Esc** | Let go of a selection, or close what is open |
 | **Ctrl+B** | Collapse or expand the sidebar |
-| **Ctrl+I** | Show or hide the Track Inspector |
+| **Ctrl+I** | Show or hide Track details |
 | **Ctrl+Shift+A** | Open Activity |
 | **F1** or **Ctrl+?** | All keyboard shortcuts |
 
@@ -239,7 +242,7 @@ These keys do nothing while you are typing in a field or have a dialog open.
 The player's keys (**Space**, **Ctrl** with the arrow keys, and the media keys) are in [Playing music](player.md#from-the-keyboard).
 
 Every part of the window can be reached with **Tab** alone, in the order it
-appears on screen: search, sidebar, page, Inspector, status strip. Dialogs
+appears on screen: search, sidebar, page, Track details, status strip. Dialogs
 take focus when they open, keep **Tab** inside themselves, close on **Escape**,
 and hand focus back to whatever opened them.
 

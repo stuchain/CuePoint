@@ -152,7 +152,7 @@ async function menu(win: Page, name: string) {
 }
 
 function inspector(win: Page) {
-  return win.getByRole("complementary", { name: "Track inspector" });
+  return win.getByRole("complementary", { name: "Track details" });
 }
 
 function facts(win: Page) {

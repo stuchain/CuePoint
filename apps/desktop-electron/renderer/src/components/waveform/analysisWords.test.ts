@@ -18,8 +18,10 @@ import {
   waitingWaveformWords,
   waveformEntryWords,
   waveformStateWord,
+  trackDetailsWaveformWords,
   waveformStateWords,
 } from "./analysisWords";
+import type { WaveformEntry } from "./waveformCache";
 
 /**
  * The waveform analysis in words (WAVE-03): one line saying what it is doing
@@ -304,5 +306,30 @@ describe("waitingWaveformWords (PRP-12)", () => {
   it("makes no claim about progress it has not read", () => {
     expect(waitingWaveformWords(null)).toBe("Waveform not made yet");
     expect(waitingWaveformWords(status({ present: 0, analysed: 0 }))).toBe("Waveform not made yet");
+  });
+});
+
+describe("Track details' waveform words, as steps (INS-8)", () => {
+  const entry = (state: "waiting" | "unchecked" | "missing", paused: boolean) =>
+    ({ kind: "track", paused, track: { state, reason: null } }) as unknown as WaveformEntry;
+
+  it("says what an unchecked track waits for and what follows", () => {
+    expect(trackDetailsWaveformWords(entry("unchecked", false))).toBe(
+      "Waiting for CuePoint to find this file. The waveform is drawn after.",
+    );
+  });
+
+  it("says where a waiting track stands, and that paused waveforms resume in Settings", () => {
+    expect(trackDetailsWaveformWords(entry("waiting", false))).toBe(
+      "Waveform not drawn yet. CuePoint is working through your library (see the status strip).",
+    );
+    expect(trackDetailsWaveformWords(entry("waiting", true))).toBe(
+      "Waveforms are paused. Resume them in Settings.",
+    );
+  });
+
+  it("leaves every other state to the shared words", () => {
+    expect(trackDetailsWaveformWords(entry("missing", false))).toBe("File missing");
+    expect(trackDetailsWaveformWords(null)).toBeNull();
   });
 });

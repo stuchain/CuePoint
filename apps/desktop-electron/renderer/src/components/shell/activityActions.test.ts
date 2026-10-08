@@ -109,16 +109,16 @@ describe("an interrupted match's entry (CLEAN-14)", () => {
 describe("what a record of writes says", () => {
   it("never calls an unconfirmed write written", () => {
     expect(writesLine(5, 2)).toBe(
-      "2 writes may not have finished, and 3 values were written. Restore puts every file back.",
+      "2 saves may not have finished, and 3 values were saved. Putting the files back restores every one.",
     );
     expect(writesLine(2, 2)).toBe(
-      "2 writes may not have finished. Restore puts every file back; a file still holding its old value counts as restored.",
+      "2 saves may not have finished. Putting the files back restores every one; a file still holding its old value counts as put back.",
     );
   });
 
-  it("counts confirmed writes, and says when all are restored", () => {
-    expect(writesLine(1, 0)).toBe("1 value written to files can be restored.");
-    expect(writesLine(0, 0)).toBe("Everything written here has been restored.");
+  it("counts confirmed writes, and says when all are put back", () => {
+    expect(writesLine(1, 0)).toBe("1 value saved into files can be put back.");
+    expect(writesLine(0, 0)).toBe("Everything saved into files has been put back.");
   });
 });
 

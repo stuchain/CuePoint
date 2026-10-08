@@ -112,6 +112,22 @@ export function artworkText(state: ArtworkState | null | undefined): string {
   }
 }
 
+/** The cover art line of Track details' Beatport section (INS-5). */
+export function coverArtText(state: ArtworkState | null | undefined): string {
+  switch (state) {
+    case "embedded":
+      return "in the file";
+    case "beatport":
+      return "from Beatport";
+    case "none":
+      return "none";
+    case "unknown":
+      return "not looked at yet";
+    default:
+      return "";
+  }
+}
+
 /** A match score as the table shows it: one decimal, blank for none. */
 export function formatScore(score: number | null | undefined): string {
   return score == null ? "" : score.toFixed(1);

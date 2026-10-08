@@ -147,7 +147,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         heading: "Search, filter and sort everything",
         paragraphs: [
           "Import the collection you exported from Rekordbox and the Library page shows it with your playlists on the left. Type to search titles, artists, albums and labels, or add filters such as BPM between 124 and 130, genre is Techno, or a comment that contains a word. Filters stack, and the bar says how many tracks are left.",
-          "Choose your columns, click a heading to sort, and click a track to see everything CuePoint knows about it in the Inspector on the right.",
+          "Choose your columns, click a heading to sort, and click a track to see everything CuePoint knows about it in Track details on the right.",
         ],
       },
       {
@@ -357,7 +357,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       {
         heading: "A waveform for every track",
         paragraphs: [
-          "CuePoint works out a waveform for every track whose file it can find, from the audio itself, in the background and at low priority. It draws it in the player bar (a click seeks), in the Inspector, as a Library column and in Prepare's transition strip. Choose three colored bands for the lows, mids and highs, or one color.",
+          "CuePoint works out a waveform for every track whose file it can find, from the audio itself, in the background and at low priority. It draws it in the player bar (a click seeks), in Track details, as a Library column and in Prepare's transition strip. Choose three colored bands for the lows, mids and highs, or one color.",
           "Your Rekordbox hot cues, memory cues, loops and beat grid are drawn on it.",
         ],
       },

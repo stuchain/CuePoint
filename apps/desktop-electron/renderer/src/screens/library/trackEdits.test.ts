@@ -70,18 +70,18 @@ describe("a rating as text", () => {
 describe("which layer the stars are showing", () => {
   it("says yours, and what is underneath it", () => {
     expect(describeRatingSource({ rating: 5, rekordbox_rating: 3 })).toBe(
-      "Yours — Rekordbox's is ★★★",
+      "Your rating (Rekordbox has ★★★)",
     );
   });
 
   it("says yours, when there is nothing underneath", () => {
     expect(describeRatingSource({ rating: 5, rekordbox_rating: null })).toBe(
-      "Yours — Rekordbox never rated it",
+      "Your rating",
     );
   });
 
   it("says Rekordbox's, when you have not overridden it", () => {
-    expect(describeRatingSource({ rating: null, rekordbox_rating: 3 })).toBe("Rekordbox's");
+    expect(describeRatingSource({ rating: null, rekordbox_rating: 3 })).toBe("From Rekordbox");
   });
 
   it("says nothing is rated when nothing is", () => {
@@ -90,7 +90,7 @@ describe("which layer the stars are showing", () => {
 
   it("does not call a zero underneath it absent", () => {
     expect(describeRatingSource({ rating: 4, rekordbox_rating: 0 })).toBe(
-      "Yours — Rekordbox's is zero stars",
+      "Your rating (Rekordbox has zero stars)",
     );
   });
 });
@@ -101,10 +101,9 @@ describe("the clear control", () => {
     expect(clearRatingLabel({ rating: null, rekordbox_rating: null })).toBeNull();
   });
 
-  it("calls itself an override only when it is covering something", () => {
-    // "Clear override" over nothing would name a layer that is not there, and
-    // the user cannot tell what clearing would leave behind.
-    expect(clearRatingLabel({ rating: 2, rekordbox_rating: 4 })).toBe("Clear override");
+  it("says what the stars become only when something is underneath (INS-6)", () => {
+    // A clear over nothing leaves nothing, so it is only a clear.
+    expect(clearRatingLabel({ rating: 2, rekordbox_rating: 4 })).toBe("Use Rekordbox's ★★★★");
     expect(clearRatingLabel({ rating: 2, rekordbox_rating: null })).toBe("Clear rating");
   });
 });

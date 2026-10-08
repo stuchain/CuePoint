@@ -67,7 +67,7 @@ background: a note on the page says how many tracks are being matched, that the
 bar at the bottom shows progress and the list updates when it finishes, and you
 can leave the page. The status strip shows **Matching on Beatport** with its
 progress and a **Stop** button. One track is matched in place with **Search
-Beatport again for this track**, in Review, and from the Inspector.
+Beatport again for this track**, in Review, and from Track details.
 
 A track already matched or decided is skipped, so matching a playlist twice does
 not look anything up twice, unless you choose to look them all up again. A
@@ -142,7 +142,7 @@ become your values: the Library shows, sorts and filters by them, marked with
 where they came from, and Rekordbox's values stay underneath. Title, artist,
 remixer and album are never changed.
 
-To take an apply back, use **Revert** in the Inspector's History, or **Revert
+To take an apply back, use **Revert** in Track details' History, or **Revert
 this batch** in the Activity panel for an apply over many tracks. See
 [Taking a change back](library.md#taking-a-change-back).
 
@@ -268,7 +268,7 @@ before.
 
 ## See also
 
-- [Your library](library.md) — importing, refreshing, the Inspector, writing
+- [Your library](library.md) — importing, refreshing, Track details, writing
   tags to files and taking changes back
 - [The CuePoint window](the-window.md) — the status strip, Activity and the
   keyboard

@@ -134,7 +134,7 @@ says why ("Waveform not drawn yet", "File missing"). The bar does not get taller
 A track you start playing that is still waiting for the analysis is analysed
 next, ahead of the rest of the library, even while the analysis is paused.
 
-Waveforms also appear in the Inspector, in a Library column and in Prepare's
+Waveforms also appear in Track details, in a Library column and in Prepare's
 transition strip. [Waveforms](waveforms.md) covers all four, what the colours
 mean, how the analysis runs and how to pause it, and **Settings → Waveforms**.
 

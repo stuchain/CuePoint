@@ -54,7 +54,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     file: "the-window.md",
     title: "The CuePoint window",
     description:
-      "Find your way around CuePoint: the sidebar, search, the Track Inspector, the status strip, keyboard shortcuts, themes and the privacy switch.",
+      "Find your way around CuePoint: the sidebar, search, Track details, the status strip, keyboard shortcuts, themes and the privacy switch.",
     order: 3,
     section: "start",
   },

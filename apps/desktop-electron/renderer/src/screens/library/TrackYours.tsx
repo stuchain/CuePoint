@@ -27,7 +27,7 @@ import {
   nextRating,
   starLabel,
 } from "./trackEdits";
-import { TrackOverrides } from "./TrackOverrides";
+import { TrackEditedValues } from "./TrackEditedValues";
 import { useTrackMetadata } from "./useTrackMetadata";
 import { useTrackTags, type TrackTag } from "./useTrackTags";
 
@@ -45,6 +45,8 @@ interface TrackYoursProps {
    * (CLEAN-13). Absent, the zone is ORG-10's: rating, favorite, notes, tags.
    */
   track?: LibraryTrackRow & { id: number };
+  /** Beatport's key for the track, when its match has one: where "go back" returns the key to. */
+  beatportKey?: string | null;
   /** Fired after a typed value is saved, which changes what the table shows. */
   onValueSaved?: () => void;
 }
@@ -58,6 +60,7 @@ export function TrackYours({
   onError,
   onSaved,
   track,
+  beatportKey,
   onValueSaved,
 }: TrackYoursProps) {
   const editor = useTrackMetadata({ trackId, metadata, onError, onSaved });
@@ -123,8 +126,7 @@ export function TrackYours({
   );
 
   return (
-    <section className="cp-track-yours" aria-label="Yours">
-      <h3 className="cp-track-detail__subtitle">Yours</h3>
+    <div className="cp-track-yours" role="group" aria-label="Your ratings, notes and values">
 
       <div className="cp-track-yours__rating">
         <span className="cp-track-yours__label" id={ratingId}>
@@ -195,7 +197,7 @@ export function TrackYours({
           rows={3}
           maxLength={NOTES_MAX_LENGTH}
           value={editor.notes}
-          placeholder="Anything Rekordbox's comment cannot hold"
+          placeholder="Anything you want to remember about this track. Kept in CuePoint."
           onChange={(event) => editor.editNotes(event.target.value)}
           onBlur={() => editor.flushNotes()}
         />
@@ -267,7 +269,14 @@ export function TrackYours({
         </div>
       </div>
 
-      {track && <TrackOverrides track={track} onSaved={onValueSaved ?? onSaved ?? (() => undefined)} />}
-    </section>
+      {track && (
+        <TrackEditedValues
+          track={track}
+          beatportKey={beatportKey}
+          onSaved={onValueSaved ?? onSaved ?? (() => undefined)}
+          onError={onError}
+        />
+      )}
+    </div>
   );
 }

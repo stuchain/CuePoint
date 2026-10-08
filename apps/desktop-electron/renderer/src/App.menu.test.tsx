@@ -142,13 +142,13 @@ describe("panels", () => {
 
   it("toggles Track details", async () => {
     render(<App />);
-    expect(screen.getByRole("complementary", { name: /track inspector/i })).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: /track details/i })).toBeInTheDocument();
     command("toggle-inspector");
     await waitFor(() =>
-      expect(screen.queryByRole("complementary", { name: /track inspector/i })).not.toBeInTheDocument(),
+      expect(screen.queryByRole("complementary", { name: /track details/i })).not.toBeInTheDocument(),
     );
     command("toggle-inspector");
-    expect(await screen.findByRole("complementary", { name: /track inspector/i })).toBeInTheDocument();
+    expect(await screen.findByRole("complementary", { name: /track details/i })).toBeInTheDocument();
   });
 });
 

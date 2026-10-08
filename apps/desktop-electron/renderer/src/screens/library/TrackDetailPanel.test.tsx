@@ -165,7 +165,7 @@ describe("what the panel shows", () => {
 
   it("says what to do before anything is selected", () => {
     render(<TrackDetailPanel detail={null} />);
-    expect(screen.getByText(/select a track/i)).toBeInTheDocument();
+    expect(screen.getByText(/click a track to see its details/i)).toBeInTheDocument();
   });
 
   it("says it is reading while it reads", () => {
@@ -199,7 +199,7 @@ describe("the imported zone is still read-only (DEC-047, ORG-10)", () => {
 
   it("says whose these fields are, so the two zones are never one", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    expect(screen.getByText("From Rekordbox")).toBeInTheDocument();
+    expect(screen.getByText("Details from Rekordbox")).toBeInTheDocument();
     expect(screen.getByText("Yours")).toBeInTheDocument();
   });
 
@@ -251,7 +251,7 @@ describe("the editable zone (ORG-10)", () => {
       "aria-checked",
       "true",
     );
-    expect(screen.getByText("Rekordbox's")).toBeInTheDocument();
+    expect(screen.getByText("From Rekordbox")).toBeInTheDocument();
   });
 
   it("shows Rekordbox's comment and your notes as two labelled things", () => {
@@ -306,7 +306,7 @@ describe("where the track sits in the collection", () => {
     render(
       <TrackDetailPanel detail={{ ...DETAIL, playlists: [], playlist_count: 0 }} />,
     );
-    expect(screen.getByText("In no playlists")).toBeInTheDocument();
+    expect(screen.getByText("Not in any Rekordbox playlist.")).toBeInTheDocument();
   });
 
   it("scopes the table to a playlist that is clicked", () => {
@@ -351,7 +351,7 @@ describe("the Collections holding it (ORG-09, ORG-10)", () => {
 
   it("says when it is in none", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    expect(screen.getByText("In no Collections")).toBeInTheDocument();
+    expect(screen.getByText(/^Not in any Collection yet\./)).toBeInTheDocument();
   });
 
   it("scopes the table to one that is clicked", () => {

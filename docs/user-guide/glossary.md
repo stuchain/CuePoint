@@ -5,6 +5,9 @@
   minor") in Track details. It is the key you typed, or else the key of the
   track's accepted Beatport match. Rekordbox's key is never used; a track with
   neither has "No Beatport key".
+- **Track details**: The panel on the right that shows the selected track: buttons to
+  play it, your own values, what Rekordbox sent, its cue points, where it is, its Beatport
+  match and its history. Hide it with Ctrl+I; it stays as a tab you can click.
 - **Camelot wheel**: The 24 keys drawn as two rings, minor (A) inside and major (B)
   outside. It lights a track's key and the keys that mix with it: the same number one
   step either way, and the relative key. Open it from the button beside search or from

@@ -79,7 +79,7 @@ async function inspect(window: Page, title: string) {
   await row.click();
   const inspector = window.locator(".cp-inspector").first();
   await expect(inspector.getByRole("heading", { name: title })).toBeVisible({ timeout: 30_000 });
-  return inspector.getByRole("region", { name: "Cue points and beat grid" });
+  return inspector.getByRole("region", { name: "Cue points" });
 }
 
 test.describe("Cue points and beat grids (WAVE-04)", () => {
@@ -116,7 +116,7 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
 
       // --- every kind of mark, in the order the track plays them ---------
       let marks = await inspect(window, "Every Mark");
-      await expect(marks.getByRole("heading")).toHaveText("Cues · 4 hot, 5 memory");
+      await expect(marks.getByRole("heading")).toHaveText(/Cue points · 4 hot, 5 memory$/);
       await expect(marks.getByRole("listitem")).toHaveText([
         "Memory · 0:00.0 · Intro",
         "Memory · 0:01.5 · Fade-in · Fade in",
@@ -134,7 +134,8 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
         marks.locator('.cp-track-detail__cue-colour[data-colour="#28e214"]'),
       ).toHaveCount(1);
       // Read-only: nothing among the marks can be typed into or pressed.
-      await expect(marks.getByRole("button")).toHaveCount(0);
+      // (The heading is a button that folds the section; the marks themselves are not.)
+      await expect(marks.locator(".cp-track-detail__marks").getByRole("button")).toHaveCount(0);
       await expect(marks.getByRole("textbox")).toHaveCount(0);
 
       marks = await inspect(window, "Variable Grid");
@@ -145,7 +146,7 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
       await expect(marks.getByRole("listitem")).toHaveText(["Memory · 0:20.0 · Kept"]);
 
       marks = await inspect(window, "No Marks");
-      await expect(marks.getByRole("heading")).toHaveText("No cues");
+      await expect(marks.getByRole("heading")).toHaveText(/Cue points · none$/);
       await expect(marks).toContainText("No beat grid");
 
       // --- a refresh that moves one cue ---------------------------------

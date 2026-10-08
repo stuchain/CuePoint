@@ -102,6 +102,10 @@ function readyLoudness(
   return track.loudness;
 }
 
+/** The tooltip of Track details' loudness line (INS-8). */
+export const LOUDNESS_LINE_TITLE =
+  "Loudness (LUFS) is how loud the track sounds on average; Peak (dBFS) is its loudest moment. Closer to 0 is louder.";
+
 /**
  * The Inspector's line under the waveform: "Loudness −8.4 LUFS · Peak −0.3
  * dBFS", or why there is no value. Null for a track with no waveform, whose

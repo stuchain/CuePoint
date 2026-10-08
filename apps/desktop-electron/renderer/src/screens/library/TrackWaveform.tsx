@@ -28,9 +28,9 @@ import {
   INSPECTOR_PICTURE_TITLE,
   INSPECTOR_SEEK_TITLE,
   WAVEFORM_LOADING_WORDS,
-  waveformEntryWords,
+  trackDetailsWaveformWords,
 } from "../../components/waveform/analysisWords";
-import { loudnessLine } from "../../components/waveform/loudnessWords";
+import { LOUDNESS_LINE_TITLE, loudnessLine } from "../../components/waveform/loudnessWords";
 import { useWaveform } from "../../components/waveform/useWaveforms";
 import { useWaveformRequest } from "../../components/waveform/useWaveformRequest";
 import { WaveformCanvas } from "../../components/waveform/WaveformCanvas";
@@ -50,7 +50,7 @@ export function TrackWaveform({ trackId }: { trackId: number }) {
 
   const track = entry?.kind === "track" ? entry.track : null;
   const picture = track?.state === "ready" ? track.data : null;
-  const words = picture ? null : (waveformEntryWords(entry) ?? WAVEFORM_LOADING_WORDS);
+  const words = picture ? null : (trackDetailsWaveformWords(entry) ?? WAVEFORM_LOADING_WORDS);
   const durationMs = playing ? playerSeconds * 1000 : (track?.duration_ms ?? 0);
   const loudness = loudnessLine(track);
 
@@ -85,7 +85,7 @@ export function TrackWaveform({ trackId }: { trackId: number }) {
         )}
       </div>
       {loudness ? (
-        <p className="cp-track-waveform__loudness" data-testid="inspector-loudness">
+        <p className="cp-track-waveform__loudness" data-testid="inspector-loudness" title={LOUDNESS_LINE_TITLE}>
           {loudness}
         </p>
       ) : null}
