@@ -30,7 +30,7 @@ When CuePoint hits an unexpected error, a released build sends one error report 
 
 **Where it goes:** to Sentry (sentry.io), in Sentry's EU region. Sentry is the only service that receives error reports.
 
-**How long it is kept:** for as long as Sentry keeps events on our Sentry plan, which is 30 days. We read reports only to fix bugs.
+**How long it is kept:** for as long as Sentry keeps error events on our plan: 30 days on the free plan, 90 days on a paid one, after which Sentry deletes them. We read reports only to fix bugs.
 
 **How to turn it off:** **Settings → Privacy → Send error reports**, or **Help → Privacy → Change in Settings**. It takes effect at once, with no restart: nothing is sent after that, and nothing is saved to send later. A report that has already reached Sentry stays there until Sentry deletes it.
 

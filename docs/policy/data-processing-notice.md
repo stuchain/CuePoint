@@ -39,7 +39,7 @@ Released builds of the desktop app send an error report when CuePoint hits an un
 | --- | --- | --- |
 | The error and its message, where in the code it happened, a short description of each of the last steps before it, CuePoint's version and build, your operating system and basic hardware details, and for an engine or player crash the scrubbed tail of its output. File, folder, track, artist, label and playlist names, the notes and tags you keep in CuePoint, tokens, and your user and computer names are removed by rules applied on your computer before sending. A note you send with Help → Report a problem is sent as you write it. | Sentry (sentry.io), EU region | Finding and fixing bugs |
 
-**Sentry is the one processor** of this data, acting for the CuePoint project. It is the only service that receives error reports. Reports are kept for as long as Sentry keeps events on our plan (30 days). The CLI never sends error reports. See the [Privacy Notice](privacy-notice.md) for the full list.
+**Sentry is the one processor** of this data, acting for the CuePoint project. It is the only service that receives error reports. Reports are kept for as long as Sentry keeps error events on our plan (30 days on the free plan, 90 days on a paid one). The CLI never sends error reports. See the [Privacy Notice](privacy-notice.md) for the full list.
 
 ## Data NOT Stored Remotely
 
