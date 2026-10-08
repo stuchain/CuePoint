@@ -8,6 +8,15 @@ on:
     branches: [main, feature, 'phase_*']
   pull_request:
     branches: [main, feature]
+  # DIST-04: `release.yml` calls this for a tag. With `release: true` the Sentry upload is
+  # required and each leg also uploads `release-<leg>`, the files the release is made of.
+  # A push or pull request does not set it, so `inputs.release` is empty there and false here.
+  workflow_call:
+    inputs:
+      release:
+        description: Build for a release (required source-map upload, release files kept)
+        type: boolean
+        default: false
 
 jobs:
   desktop-electron:
@@ -97,6 +106,15 @@ jobs:
         working-directory: apps/desktop-electron
         run: npm run build
 
+      # DIST-04. A release keeps its source-map upload (REPORT-07): without the secret the leg
+      # fails here, before the installers are built, instead of shipping unreadable stack traces.
+      - name: Require the Sentry token for a release
+        if: inputs.release && env.HAS_SENTRY_TOKEN != 'true'
+        shell: bash
+        run: |
+          echo "::error::A release build needs the SENTRY_AUTH_TOKEN secret, so its source maps are uploaded (REPORT-07). Add the repository secret and push the tag again."
+          exit 1
+
       # REPORT-07. Each OS leg builds its own bundles, so each uploads its own maps: the debug id
       # that `inject` writes into every file and its map ties a stack frame to its map whatever the
       # leg, so the same release and dist from three legs do not collide. Must run after the last
@@ -104,9 +122,10 @@ jobs:
       # runs straight after the build so a failing test or end-to-end step never holds the maps back.
       - name: Upload source maps to Sentry
         # Pushes only (a pull request builds from code nobody has merged), and only with the secret.
+        # Called from `release.yml` on a tag, `github.event_name` is the caller's: 'push'.
         if: github.event_name == 'push' && env.HAS_SENTRY_TOKEN == 'true'
-        # A Sentry outage must not stop the installers; a tag build is the release, so it must succeed.
-        continue-on-error: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        # A Sentry outage must not stop the installers; a release build is the release, so it must succeed.
+        continue-on-error: ${{ !inputs.release }}
         shell: bash
         working-directory: apps/desktop-electron
         env:
@@ -233,3 +252,20 @@ jobs:
         with:
           name: desktop-electron-${{ matrix.leg }}
           path: apps/desktop-electron/release/**
+
+      # DIST-04. Only what a release holds, at the top of `release/`: the installer, dmg, zip or
+      # AppImage (`CuePoint-*`, which also names the block maps), the update manifests and this leg's
+      # checksums. Not the unpacked app folders, `builder-debug.yml` or `builder-effective-config.yaml`.
+      # Kept briefly: the publish job takes them within the hour.
+      - name: Upload release files
+        if: inputs.release
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.leg }}
+          path: |
+            apps/desktop-electron/release/CuePoint-*
+            apps/desktop-electron/release/*.blockmap
+            apps/desktop-electron/release/latest*.yml
+            apps/desktop-electron/release/SHA256SUMS-${{ matrix.leg }}.txt
+          if-no-files-found: error
+          retention-days: 7

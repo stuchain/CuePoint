@@ -25,7 +25,7 @@ Windows builds are unsigned for now: nothing in the repository configures Window
 
 - **What it can do:** `sentry-cli sourcemaps inject` runs locally; `sourcemaps upload` sends main's and the renderer's source maps to the `electron` project of the `cuepoint` organization. Create the token as an organization or internal-integration token limited to **Project: Read & Write** and **Release: Admin** (the scopes source map upload needs), and nothing else. With it someone could upload maps for any release of that project, so treat it like a signing credential.
 - **Rotate:** create a new token in Sentry, replace the secret under **Settings > Secrets and variables > Actions**, run the workflow on a push and check that the step is green and the new release shows its files in Sentry (**Settings > Source Maps**), then revoke the old token. Rotate straight away if it may have leaked or someone with access leaves.
-- **A failed upload** does not stop the installers on a branch push (`continue-on-error`), but it fails a tag build, because a release without readable stack traces should be noticed.
+- **A failed upload** does not stop the installers on a branch push (`continue-on-error`), but it fails a release build (`release.yml` calls the build with `release: true`), because a release without readable stack traces should be noticed.
 
 ## Principles
 
@@ -44,6 +44,6 @@ Windows builds are unsigned for now: nothing in the repository configures Window
 
 ## Checksums
 
-`scripts/generate_sha256_sums.py` writes a `SHA256SUMS.txt` for every build leg (see the runbook), and each one lists every file in that leg's `release/` folder. The legs use the same file name, so rename them when you attach them to a release: `SHA256SUMS-windows.txt`, `SHA256SUMS-macos.txt` and `SHA256SUMS-linux.txt`. The files are not signed, and no workflow or script signs them. To check a download, run `sha256sum -c --ignore-missing SHA256SUMS-linux.txt` on Linux, or `shasum -a 256 -c --ignore-missing SHA256SUMS-macos.txt` on macOS, from the folder that holds the files. The `--ignore-missing` flag skips the files you did not download. On Windows, compare each line with the output of `Get-FileHash -Algorithm SHA256 <file>`.
+`scripts/generate_sha256_sums.py` writes `SHA256SUMS-<leg>.txt` for every build leg (see the runbook), and each one lists the files at the top of that leg's `release/` folder. The name carries the leg (`windows-x64`, `linux-x64`, `macos-arm64`, `macos-x64`), so the release workflow attaches them as they are. The files are not signed, and no workflow or script signs them. To check a download, run `sha256sum -c --ignore-missing SHA256SUMS-linux-x64.txt` on Linux, or `shasum -a 256 -c --ignore-missing SHA256SUMS-macos-arm64.txt` on macOS, from the folder that holds the files. The `--ignore-missing` flag skips the files you did not download. On Windows, compare each line with the output of `Get-FileHash -Algorithm SHA256 <file>`.
 
-If you decide to sign the checksum file, a detached signature made with `gpg --detach-sign --armor SHA256SUMS.txt` is enough. Publish the signature and your public key next to the release. Treat that as a manual step until a script does it.
+If you decide to sign the checksum file, a detached signature made with `gpg --detach-sign --armor SHA256SUMS-<leg>.txt` is enough. Publish the signature and your public key next to the release. Treat that as a manual step until a script does it.

@@ -11,6 +11,12 @@ an exact release asset per target with its SHA-256, and nothing is installed
 until the bytes on disk hash to the pinned value. A mismatch is a hard failure,
 never a warning — an unverified media decoder is not something to shrug at.
 
+**The mirror (DIST-04, DEC-175).** Each archive is fetched first from CuePoint's
+own release ``sidecar-mpv-<version>``, which holds the pinned archives with the
+same SHA-256, so a tag builds on any day; mpv's rolling release is the fallback.
+A missing or unreachable mirror falls back; a checksum mismatch from either
+source fails outright.
+
 **The rotation problem, and why this script has an update mode.** mpv publishes
 no binaries on its stable tags (``v0.40.0`` and friends carry zero assets); the
 only first-party builds live on the rolling ``git-release`` tag, whose assets
@@ -44,6 +50,7 @@ Usage::
     python scripts/fetch_player_sidecar.py --check-analysis # the waveform pipeline
     python scripts/fetch_player_sidecar.py --print-path    # where the binary is
     python scripts/fetch_player_sidecar.py --update-manifest
+    python scripts/fetch_player_sidecar.py --download-archives DIR  # for the mirror
 """
 
 from __future__ import annotations
@@ -108,6 +115,9 @@ ANALYSIS_OPTIONS: Tuple[str, ...] = (
 #: Written beside the installed binary so ``--verify-only`` can tell a good
 #: install from a half-finished or corrupted one without re-downloading.
 RECEIPT_NAME = "installed.json"
+
+#: The repository whose releases hold the mpv mirror (DEC-175).
+MIRROR_REPO = "stuchain/CuePoint"
 
 DOWNLOAD_TIMEOUT_SECONDS = 300
 DOWNLOAD_ATTEMPTS = 3
@@ -431,10 +441,49 @@ def download(
     raise PlayerSidecarError(f"Failed to download {url}: {last_error}")
 
 
-def cached_archive(
-    target: Target, cache_dir: Path, *, offline: bool, quiet: bool = False
+def mirror_url(version: str, asset: str) -> str:
+    """Where CuePoint's own copy of a pinned archive lives (DEC-175)."""
+    return (
+        f"https://github.com/{MIRROR_REPO}/releases/download/"
+        f"sidecar-mpv-{version}/{asset}"
+    )
+
+
+def _download_pinned(
+    target: Target, archive: Path, *, mirror_version: str, quiet: bool
 ) -> Path:
-    """Return a verified archive for ``target``, downloading only if needed."""
+    """Fetch ``target``'s archive: the mirror first, then upstream.
+
+    A mirror that is missing (404) or unreachable falls back to upstream. A
+    checksum mismatch from either source is final: bytes that do not hash to
+    the pin are never worked around by asking someone else.
+    """
+    if mirror_version:
+        url = mirror_url(mirror_version, target.asset)
+        try:
+            return download(url, archive, expected_sha256=target.sha256, quiet=quiet)
+        except ChecksumMismatchError:
+            raise
+        except PlayerSidecarError as exc:
+            if not quiet:
+                reason = "not published" if isinstance(exc, AssetRotatedError) else exc
+                print(f"  mirror unavailable ({reason}); using upstream")
+    return download(target.url, archive, expected_sha256=target.sha256, quiet=quiet)
+
+
+def cached_archive(
+    target: Target,
+    cache_dir: Path,
+    *,
+    offline: bool,
+    quiet: bool = False,
+    mirror_version: str = "",
+) -> Path:
+    """Return a verified archive for ``target``, downloading only if needed.
+
+    ``mirror_version`` is the manifest's version; with it the CuePoint mirror is
+    tried before the pinned upstream URL (DIST-04).
+    """
     archive = cache_dir / target.asset
     if archive.exists():
         try:
@@ -455,7 +504,7 @@ def cached_archive(
         )
     if not quiet:
         print(f"  downloading {target.asset} ({target.size >> 20} MiB)")
-    return download(target.url, archive, expected_sha256=target.sha256, quiet=quiet)
+    return _download_pinned(target, archive, mirror_version=mirror_version, quiet=quiet)
 
 
 # ---------------------------------------------------------------------------
@@ -1127,7 +1176,13 @@ def install_target(
                     f"  existing install rejected ({exc.__class__.__name__}); reinstalling"
                 )
 
-    archive = cached_archive(target, cache_dir, offline=offline, quiet=quiet)
+    archive = cached_archive(
+        target,
+        cache_dir,
+        offline=offline,
+        quiet=quiet,
+        mirror_version=manifest.version,
+    )
     files = extract_target(archive, target, install_dir)
     copy_license_files(manifest, install_dir, quiet=quiet)
     files = sorted(p for p in install_dir.rglob("*") if p.is_file())
@@ -1429,8 +1484,40 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--update-manifest", action="store_true", help="Re-pin the manifest"
     )
+    parser.add_argument(
+        "--download-archives",
+        type=Path,
+        metavar="DIR",
+        help="Download and verify every pinned archive from upstream into DIR (the mirror workflow, DIST-04)",
+    )
     parser.add_argument("-q", "--quiet", action="store_true")
     return parser
+
+
+def download_archives(
+    manifest: Manifest, out_dir: Path, *, quiet: bool = False
+) -> List[Path]:
+    """Download every supported target's pinned archive from upstream into ``out_dir``.
+
+    Always upstream, never the mirror: this is what fills the mirror. Each file
+    is checked against its pinned SHA-256 before it is kept.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    written: List[Path] = []
+    for target in manifest.targets.values():
+        if not target.supported:
+            continue
+        if not quiet:
+            print(f"{target.key}: {target.asset}")
+        written.append(
+            download(
+                target.url,
+                out_dir / target.asset,
+                expected_sha256=target.sha256,
+                quiet=quiet,
+            )
+        )
+    return written
 
 
 def _selected_targets(manifest: Manifest, requested: str) -> List[Target]:
@@ -1461,6 +1548,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return 0
 
         manifest = load_manifest(args.manifest)
+        if args.download_archives is not None:
+            download_archives(manifest, args.download_archives, quiet=args.quiet)
+            return 0
         requested = args.target
         if requested == "host":
             key = host_target_key()

@@ -42,7 +42,7 @@ class TestSourceMapSteps:
         assert "SENTRY_AUTH_TOKEN" not in step["run"]
         assert "secrets." not in step["run"]
 
-    def test_upload_is_for_pushes_with_the_secret_and_fails_the_build_only_on_a_tag(
+    def test_upload_is_for_pushes_with_the_secret_and_fails_the_build_only_on_a_release(
         self,
     ):
         step = _job()["steps"][_index(_job()["steps"], "Upload source maps to Sentry")]
@@ -50,9 +50,8 @@ class TestSourceMapSteps:
             step["if"]
             == "github.event_name == 'push' && env.HAS_SENTRY_TOKEN == 'true'"
         )
-        assert (
-            step["continue-on-error"] == "${{ !startsWith(github.ref, 'refs/tags/') }}"
-        )
+        # DIST-04: a release build (release.yml calls with `release: true`) must upload.
+        assert step["continue-on-error"] == "${{ !inputs.release }}"
 
     def test_the_upload_names_the_org_project_release_and_dist(self):
         step = _job()["steps"][_index(_job()["steps"], "Upload source maps to Sentry")]

@@ -1,0 +1,47 @@
+# DIST-04, DEC-175: CuePoint's own copy of the pinned mpv archives. mpv publishes binaries only on
+# a rolling release whose assets are replaced, so a tag built weeks after a pin could find it gone.
+# Run this once per mpv pin (after `fetch_player_sidecar.py --update-manifest` is merged); builds
+# then fetch from here first (`fetch_player_sidecar.py`) and from mpv second.
+name: Mirror player sidecar
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Two runs at once could both try to create the same release.
+concurrency:
+  group: mirror-player-sidecar
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Every supported target, each checked against its pinned SHA-256 before it is kept.
+      - name: Download the pinned archives from upstream
+        run: python scripts/fetch_player_sidecar.py --download-archives mpv-archives
+
+      # The tag is outside the version scheme (`sidecar-mpv-<mpv version>`), so the updater never
+      # offers it. `--clobber` makes a second run harmless.
+      - name: Create the mirror release and upload the archives
+        run: |
+          version="$(python -c "import json; print(json.load(open('scripts/player_sidecar_manifest.json'))['version'])")"
+          tag="sidecar-mpv-${version}"
+          if ! gh release view "${tag}" > /dev/null 2>&1; then
+            gh release create "${tag}" --prerelease --latest=false \
+              --title "mpv ${version} (player sidecar mirror)" \
+              --notes "The mpv archives CuePoint builds pin (DEC-175), with the SHA-256 in scripts/player_sidecar_manifest.json. Builds fetch these first and mpv's own release second. Not an app release."
+          fi
+          gh release upload "${tag}" mpv-archives/* --clobber

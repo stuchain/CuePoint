@@ -1,0 +1,192 @@
+# DIST-04: a release is a tag. Pushing `vX.Y.Z` or `vX.Y.Z-test.N` builds every download and
+# publishes one GitHub release. The order is the safety: gate, build, check the Macs, draft,
+# upload, and only then publish, so a failure at any step leaves at most a draft, which the
+# updater never reads (DEC-170: the Macs are not signed; DEC-177: a normal tag is on main;
+# DEC-178: the notes are the version's changelog section).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  # The tag is `v` plus the version, in the scheme; the changelog has that version's section; and a
+  # normal tag is on a commit `main` contains. A test tag may be on any branch.
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # The whole history, for the ancestry check below.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check the tag against the version
+        id: meta
+        run: |
+          python scripts/validate_version.py --tag "${GITHUB_REF_NAME}"
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          if [[ "${version}" == *-test.* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write the release notes
+        run: python scripts/release_notes.py "${GITHUB_REF_NAME#v}" > notes.md
+
+      - name: A normal tag must be on main
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == *-test.* ]]; then
+            echo "Test tag ${GITHUB_REF_NAME}: any branch is allowed."
+            exit 0
+          fi
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+            echo "::error::${GITHUB_REF_NAME} is not on main; a normal release is cut from a commit main contains."
+            exit 1
+          }
+
+      - name: Keep the notes for the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: notes
+          path: notes.md
+          retention-days: 7
+
+  build:
+    needs: gate
+    uses: ./.github/workflows/desktop-electron.yml
+    with:
+      release: true
+    secrets: inherit
+
+  # DEC-170: nothing is signed, so no `--expect-hardened-runtime`. The ad hoc signature
+  # electron-builder's hook writes must still verify. The zip is unpacked, not the artifact's
+  # folder: an artifact upload drops symlinks and permissions, which a signed bundle depends on.
+  check-macs:
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download the Mac release files
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-macos-*
+          path: macs
+
+      - name: Verify both Mac apps
+        run: |
+          for chip in arm64 x64; do
+            zip="$(ls macs/release-macos-${chip}/CuePoint-*-mac-${chip}.zip)"
+            mkdir -p "unpacked/${chip}"
+            ditto -x -k "${zip}" "unpacked/${chip}"
+            app="unpacked/${chip}/CuePoint.app"
+            python scripts/verify_macos_bundle.py "${app}"
+            codesign --verify --deep --strict --verbose=2 "${app}"
+          done
+
+  # Draft, upload, publish. A release is visible only after the last step, so a failed upload
+  # leaves a draft, never a release with files missing.
+  publish:
+    needs: [gate, check-macs]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: release-${{ github.ref_name }}
+      cancel-in-progress: false
+    env:
+      TAG: ${{ github.ref_name }}
+      VERSION: ${{ needs.gate.outputs.version }}
+      PRERELEASE: ${{ needs.gate.outputs.prerelease }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download the release files
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: assets
+
+      - name: Download the release notes
+        uses: actions/download-artifact@v4
+        with:
+          name: notes
+
+      # One `latest-mac.yml` that lists both chips (DIST-03); the per-leg ones are not uploaded.
+      - name: Merge the Mac update manifests
+        run: |
+          pip install pyyaml
+          mkdir upload
+          python scripts/merge_update_manifests.py \
+            assets/release-macos-arm64/latest-mac.yml \
+            assets/release-macos-x64/latest-mac.yml \
+            -o upload/latest-mac.yml
+          for dir in assets/release-*; do
+            for file in "${dir}"/*; do
+              [ "$(basename "${file}")" = "latest-mac.yml" ] && continue
+              cp "${file}" upload/
+            done
+          done
+          ls -l upload
+
+      # Each Mac leg hashed its own manifest; the merged one is what is published.
+      - name: Use the merged manifest in the Mac checksums
+        run: python scripts/prepare_release_assets.py mac-sums upload
+
+      - name: Check every release file is there
+        run: python scripts/prepare_release_assets.py check upload --version "${VERSION}"
+
+      # Safe to run again: an existing draft is reused, a published release stops the job, and a
+      # release is created only when there is none.
+      - name: Create the draft release
+        run: |
+          if state="$(gh release view "${TAG}" --json isDraft -q .isDraft 2>/dev/null)"; then
+            if [ "${state}" != "true" ]; then
+              echo "::error::${TAG} is already published; delete the release first if it must be rebuilt."
+              exit 1
+            fi
+            echo "Reusing the existing draft for ${TAG}."
+          elif [ "${PRERELEASE}" = "true" ]; then
+            gh release create "${TAG}" --draft --verify-tag --prerelease --title "CuePoint ${VERSION}" --notes-file notes.md
+          else
+            gh release create "${TAG}" --draft --verify-tag --title "CuePoint ${VERSION}" --notes-file notes.md
+          fi
+
+      - name: Upload every file to the draft
+        run: gh release upload "${TAG}" upload/* --clobber
+
+      - name: Publish the release
+        run: |
+          if [ "${PRERELEASE}" = "true" ]; then
+            gh release edit "${TAG}" --draft=false --prerelease --latest=false
+          else
+            gh release edit "${TAG}" --draft=false --latest
+          fi

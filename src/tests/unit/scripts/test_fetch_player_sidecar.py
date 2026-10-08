@@ -640,6 +640,181 @@ class TestDownload:
         assert result.read_bytes() == payload
 
 
+class TestMirror:
+    """DIST-04, DEC-175: CuePoint's own release is tried first, upstream second."""
+
+    PAYLOAD = b"the pinned archive"
+
+    def _target(self):
+        data = _manifest_dict()
+        data["targets"]["win32-x64"]["sha256"] = hashlib.sha256(
+            self.PAYLOAD
+        ).hexdigest()
+        manifest = fps.parse_manifest(data)
+        return manifest, manifest.target("win32-x64")
+
+    @staticmethod
+    def _response(payload: bytes):
+        class _Response(io.BytesIO):
+            headers = {"Content-Length": str(len(payload))}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        return _Response(payload)
+
+    def _serve(self, monkeypatch, routes: dict):
+        """Route URLs to bytes, or to an HTTP status int; record what was asked."""
+        asked = []
+
+        def fake_urlopen(url, timeout=0):
+            asked.append(url)
+            result = routes[url]
+            if isinstance(result, int):
+                raise urllib.error.HTTPError(
+                    url, result, "err", email.message.Message(), None
+                )
+            return self._response(result)
+
+        monkeypatch.setattr(fps, "_urlopen", fake_urlopen)
+        return asked
+
+    def test_mirror_url_shape(self):
+        url = fps.mirror_url("v0.41.0-dev-gabc", "mpv-win.zip")
+        assert url == (
+            "https://github.com/stuchain/CuePoint/releases/download/"
+            "sidecar-mpv-v0.41.0-dev-gabc/mpv-win.zip"
+        )
+
+    def test_the_mirror_is_tried_first(self, tmp_path, monkeypatch):
+        manifest, target = self._target()
+        mirror = fps.mirror_url(manifest.version, target.asset)
+        asked = self._serve(monkeypatch, {mirror: self.PAYLOAD})
+        result = fps.cached_archive(
+            target, tmp_path, offline=False, quiet=True, mirror_version=manifest.version
+        )
+        assert result.read_bytes() == self.PAYLOAD
+        assert asked == [mirror]
+
+    def test_a_mirror_404_falls_back_to_upstream_without_retrying(
+        self, tmp_path, monkeypatch
+    ):
+        manifest, target = self._target()
+        mirror = fps.mirror_url(manifest.version, target.asset)
+        asked = self._serve(monkeypatch, {mirror: 404, target.url: self.PAYLOAD})
+        result = fps.cached_archive(
+            target, tmp_path, offline=False, quiet=True, mirror_version=manifest.version
+        )
+        assert result.read_bytes() == self.PAYLOAD
+        assert asked == [mirror, target.url]
+
+    def test_a_mirror_network_failure_falls_back_to_upstream(
+        self, tmp_path, monkeypatch
+    ):
+        manifest, target = self._target()
+        mirror = fps.mirror_url(manifest.version, target.asset)
+        asked = []
+
+        def fake_urlopen(url, timeout=0):
+            asked.append(url)
+            if url == mirror:
+                raise urllib.error.URLError("no route")
+            return self._response(self.PAYLOAD)
+
+        monkeypatch.setattr(fps, "_urlopen", fake_urlopen)
+        result = fps.cached_archive(
+            target, tmp_path, offline=False, quiet=True, mirror_version=manifest.version
+        )
+        assert result.read_bytes() == self.PAYLOAD
+        assert asked[-1] == target.url
+
+    def test_a_hash_mismatch_from_the_mirror_fails_without_trying_upstream(
+        self, tmp_path, monkeypatch
+    ):
+        manifest, target = self._target()
+        mirror = fps.mirror_url(manifest.version, target.asset)
+        asked = self._serve(
+            monkeypatch, {mirror: b"tampered", target.url: self.PAYLOAD}
+        )
+        with pytest.raises(fps.ChecksumMismatchError):
+            fps.cached_archive(
+                target,
+                tmp_path,
+                offline=False,
+                quiet=True,
+                mirror_version=manifest.version,
+            )
+        assert asked == [mirror]
+        assert not (tmp_path / target.asset).exists()
+
+    def test_a_hash_mismatch_from_upstream_fails(self, tmp_path, monkeypatch):
+        manifest, target = self._target()
+        mirror = fps.mirror_url(manifest.version, target.asset)
+        asked = self._serve(monkeypatch, {mirror: 404, target.url: b"tampered"})
+        with pytest.raises(fps.ChecksumMismatchError):
+            fps.cached_archive(
+                target,
+                tmp_path,
+                offline=False,
+                quiet=True,
+                mirror_version=manifest.version,
+            )
+        assert asked == [mirror, target.url]
+
+    def test_both_sources_missing_reports_the_rotated_pin(self, tmp_path, monkeypatch):
+        manifest, target = self._target()
+        mirror = fps.mirror_url(manifest.version, target.asset)
+        self._serve(monkeypatch, {mirror: 404, target.url: 404})
+        with pytest.raises(fps.AssetRotatedError, match="--update-manifest"):
+            fps.cached_archive(
+                target,
+                tmp_path,
+                offline=False,
+                quiet=True,
+                mirror_version=manifest.version,
+            )
+
+    def test_install_target_passes_the_manifest_version(self, tmp_path, monkeypatch):
+        manifest, target = self._target()
+        seen = {}
+
+        def fake_cached(t, cache_dir, *, offline, quiet=False, mirror_version=""):
+            seen["version"] = mirror_version
+            raise fps.PlayerSidecarError("stop here")
+
+        monkeypatch.setattr(fps, "cached_archive", fake_cached)
+        with pytest.raises(fps.PlayerSidecarError, match="stop here"):
+            fps.install_target(
+                manifest,
+                target,
+                dest_root=tmp_path / "d",
+                cache_dir=tmp_path / "c",
+                quiet=True,
+            )
+        assert seen["version"] == manifest.version
+
+    def test_download_archives_writes_every_supported_target(
+        self, tmp_path, monkeypatch
+    ):
+        data = _manifest_dict()
+        data["targets"]["win32-x64"]["sha256"] = hashlib.sha256(
+            self.PAYLOAD
+        ).hexdigest()
+        manifest = fps.parse_manifest(data)
+        manifest_path = tmp_path / "m.json"
+        manifest_path.write_text(json.dumps(data), encoding="utf-8")
+        self._serve(monkeypatch, {manifest.target("win32-x64").url: self.PAYLOAD})
+        out = tmp_path / "out"
+        rc = fps.main(
+            ["--manifest", str(manifest_path), "--download-archives", str(out), "-q"]
+        )
+        assert rc == 0
+        assert (out / "mpv.zip").read_bytes() == self.PAYLOAD
+
+
 # ---------------------------------------------------------------------------
 # Smoke test logic
 # ---------------------------------------------------------------------------

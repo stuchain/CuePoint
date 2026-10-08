@@ -11,13 +11,17 @@ the order of work and the checks around it, not a second copy of the steps.
 
 Facts that shape every release:
 
-- **There is no release workflow and no auto-updater.** `release.yml` and the per-OS build workflows
-  are gone. `.github/workflows/desktop-electron.yml` builds the installers on each push, and you
-  publish a green commit's artifacts by hand (DEC-147). A tag starts nothing.
+- **A release is a tag (DIST-04).** Pushing `vX.Y.Z` or `vX.Y.Z-test.N` runs
+  `.github/workflows/release.yml`: gate, build (`desktop-electron.yml`, four legs), Mac checks, then a
+  draft release, upload, and publish. The changelog section `## [version]` must exist first. Hand
+  publishing is only for a release the workflow cannot build.
 - **There are no update feeds.** The app does not check for updates until Phase 16 (DEC-145). Users
   install a new version by hand from the GitHub release. Never publish an appcast or feed.
-- **Windows builds are unsigned.** The macOS build is signed and notarized only when credentials are
-  present (`apps/desktop-electron/build/signNestedBinaries.cjs`, `notarize.cjs`); CI has none today.
+- **Windows and macOS builds are unsigned (DEC-170).** The Mac app carries only an ad hoc signature
+  (`apps/desktop-electron/build/signNestedBinaries.cjs`). Developer ID signing and notarization
+  (`notarize.cjs`) run only if credentials are added later; CI has none today.
+- **The mpv archives are mirrored by the `mirror-player-sidecar.yml` workflow** (run once per mpv
+  pin, on a runner), and builds fetch from that mirror first (DEC-175).
 
 ## Phase 1 - scope and authorization
 
@@ -147,16 +151,17 @@ Verify current failures yourself; this list is a starting point, not a fixed one
 
 Follow "Publish" in the runbook:
 
-1. Tag the green commit: `git tag vX.Y.Z <commit>`, then `git push origin vX.Y.Z`. A test build is
-   `vX.Y.Z-test.N`. SemVer with a leading `v`; the `-test` suffix means pre-release. Then run
-   `python scripts/validate_version.py`; it passes once the tag matches `version.py`.
-2. Download the `desktop-electron-<os>` artifacts from that commit's run. Each leg's
-   `SHA256SUMS.txt` has the same name: rename them `SHA256SUMS-windows.txt`, `-macos.txt` and
-   `-linux.txt`, and check each with `sha256sum -c --ignore-missing SHA256SUMS-<os>.txt` (macOS:
-   `shasum -a 256 -c --ignore-missing`). For a normal release, check that the macOS build is signed
-   and notarized (`xcrun stapler validate`).
-3. Create the GitHub release from the tag: paste the release notes, attach the installers and the
-   checksum files, mark a test build as a pre-release, mark a normal release as latest.
+1. Check the changelog has a non-empty `## [X.Y.Z]` (or `-test.N`) section, then tag the green
+   commit: `git tag vX.Y.Z <commit>`, then `git push origin vX.Y.Z`. A test build is
+   `vX.Y.Z-test.N`. SemVer with a leading `v`; the `-test` suffix means pre-release. A normal tag
+   must be on a commit `main` contains.
+2. `release.yml` does the rest: it builds, checks both Mac apps (ad hoc signature, no notarization),
+   creates a draft release with the changelog section as notes, uploads every file and publishes
+   (pre-release for a test tag, latest otherwise). Watch the run; a failure leaves at most a draft.
+   Each leg's `SHA256SUMS-<leg>.txt` is attached as it is; check one with
+   `sha256sum -c --ignore-missing` (macOS: `shasum -a 256 -c --ignore-missing`).
+3. Only if the workflow cannot build the release, follow the runbook's "When the workflow cannot
+   build it".
 4. Announce it with the runbook's template.
 
 Do not hand-edit checksums, SBOMs or licence bundles; generate them (`generate_sha256_sums.py`,
@@ -169,7 +174,8 @@ After publishing, verify rather than assume:
 - The release state matches intent: a normal release is published, not a pre-release and not a
   draft; a test build is a pre-release.
 - Assets are complete: the macOS DMG, the Windows NSIS installer, the Linux AppImage if you ship
-  it, and `SHA256SUMS-<os>.txt` for each.
+  it, and `SHA256SUMS-<leg>.txt` for each of the four legs, plus `latest.yml`, `latest-mac.yml` and
+  `latest-linux.yml`.
 - The release body carries this release's changelog entries.
 - One installer downloads and installs on a clean machine, and **About CuePoint...** shows the
   right version.

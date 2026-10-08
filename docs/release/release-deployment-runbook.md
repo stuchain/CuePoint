@@ -4,9 +4,9 @@ The one runbook for releasing CuePoint's Electron desktop app: how versions are 
 
 ## Where things stand
 
-- **Releases are cut from `desktop-electron.yml`'s artifacts.** `.github/workflows/desktop-electron.yml` is the packaging workflow (DEC-147). `release.yml` and the per-OS build workflows no longer exist, so pushing a tag does not build anything. You build on a commit, then publish that commit's artifacts by hand.
+- **A release is a tag (DIST-04).** Pushing `vX.Y.Z` or `vX.Y.Z-test.N` runs `.github/workflows/release.yml`, which builds every download with `desktop-electron.yml` (DEC-147) and publishes one GitHub release (see [Publish](#publish)). Nothing is uploaded by hand.
 - **There is no auto-updater and there are no update feeds.** The app does not check for updates. The updater is chosen in Phase 16 (DEC-145), and until then users install new versions by hand from the GitHub release. Nothing in this runbook publishes an appcast or feed.
-- **Windows builds are unsigned.** The macOS build is signed and notarized only when credentials are present (see [Signing and notarizing](#signing-and-notarizing)).
+- **Windows builds are unsigned.** The macOS build is unsigned too: it carries only an ad hoc signature (DEC-170). A Developer ID signature and notarization would be added later, and the hooks do it only when credentials are present (see [Signing and notarizing](#signing-and-notarizing)).
 
 ## Release types
 
@@ -56,6 +56,7 @@ Write the release notes from the template below. Keep the highlights, fixes and 
 9. Builds the installers with `npm run package -- <chip flag>` (electron-builder alone, never publishing; `npm run dist` builds first, which would replace the files that carry the debug ids): a DMG and a zip on macOS, an NSIS installer on Windows, an AppImage on Linux. The Mac legs pass `--arm64` or `--x64`. Output goes to `apps/desktop-electron/release/`. File names carry the system and chip (`CuePoint-<version>-mac-arm64.dmg`, `-mac-x64.zip`, `-win-x64-setup.exe`, `-linux-x86_64.AppImage`). Beside them electron-builder writes the `.blockmap` files and the update manifest (`latest.yml`, `latest-mac.yml`, `latest-linux.yml`). The `publish` entry in `package.json` (the generic provider) exists only so it writes these; its URL is not used at run time, and nothing is uploaded by a build. The two Mac manifests each name one chip, and `scripts/merge_update_manifests.py arm64.yml x64.yml -o latest-mac.yml` merges them into the one the updater reads.
 10. Writes checksums with `python ../../scripts/generate_sha256_sums.py release --leg <leg>`, which hashes the files at the top of `release/` (not the unpacked app folders) and writes `SHA256SUMS-<leg>.txt` (SHA-256, one line per file) in that folder, so no file needs renaming.
 11. Uploads `apps/desktop-electron/release/**` as the artifact `desktop-electron-<leg>` (`windows-x64`, `linux-x64`, `macos-arm64`, `macos-x64`).
+12. Called by `release.yml` (`release: true`), the Sentry upload in step 8 is required rather than best-effort, and the leg also uploads `release-<leg>` for seven days: only the files at the top of `release/` that a release holds (`CuePoint-*` installers, dmg, zip, AppImage and block maps, `latest*.yml` and `SHA256SUMS-<leg>.txt`).
 
 Two other workflows gate the same commit:
 
@@ -132,7 +133,7 @@ For vulnerability reports, see the [Security Response Process](../security/secur
 
 Take the installers from the CI artifacts and test on a clean user account or machine for each platform you ship (macOS, Windows, and Linux if you publish the AppImage).
 
-- **Install.** macOS: open the DMG, drag CuePoint to Applications, and confirm Gatekeeper does not block a signed build. Windows: run the installer and confirm the shortcut. Linux: make the AppImage executable and run it.
+- **Install.** macOS: open the DMG, drag CuePoint to Applications, and confirm Gatekeeper's prompt for an unsigned build (DEC-170) and that the steps in the user guide clear it. Windows: run the installer and confirm the shortcut. Linux: make the AppImage executable and run it.
 - **Launch.** The main window appears and the engine starts (no engine error on screen).
 - **Happy path.** In **Library**, import a Rekordbox XML export, run **Match all** on a playlist of about 10 tracks in **Clean**, review a match, and use **Export review list...** to save a file. Quit and relaunch, and check the library is still there.
 - **Player.** Play a track, and check that its waveform draws (this covers the bundled mpv).
@@ -144,11 +145,32 @@ Record the commit, the platforms tested and anything odd in the release notes' k
 
 ## Publish
 
-1. Merge to `main` and wait for a green `desktop-electron.yml` run on the release commit, on all three operating systems.
-2. Tag that commit: `git tag vX.Y.Z <commit>` and `git push origin vX.Y.Z`. Use `vX.Y.Z-test.N` for a test build. Then run `python scripts/validate_version.py`; it passes once the tag matches `version.py`.
-3. Download the `desktop-electron-<os>` artifacts from the run. Each leg's `SHA256SUMS.txt` has the same name, so rename them when you upload them to the release: `SHA256SUMS-windows.txt`, `SHA256SUMS-macos.txt` and `SHA256SUMS-linux.txt`. Check each one against its files (see [Checksums](key-management.md#checksums)). For a normal release, check that the macOS build is signed and notarized and says so (see [Checking a macOS build](#checking-a-macos-build)).
-4. Create the GitHub release from the tag. Paste the release notes, attach the installers and the checksum files, and mark a test build as a pre-release. Mark a normal release as latest.
+**Push the tag.** Everything below happens in `.github/workflows/release.yml`.
+
+1. For a normal release, merge to `main` first (the gate refuses a normal tag on a commit `main` does not contain, DEC-177); a test tag may be on any branch. Set the version (see [Version](#version)), and add a changelog section headed `## [X.Y.Z]` or `## [X.Y.Z-test.N]` for it. The section must exist and have text before the tag is pushed: it becomes the release notes (DEC-178), and `scripts/release_notes.py <version>` fails without it. `[Unreleased]` is never used for a tag, so rename it to the version in the same commit.
+2. Tag the commit and push the tag: `git tag vX.Y.Z <commit>` and `git push origin vX.Y.Z`. Use `vX.Y.Z-test.N` for a test build.
+3. The workflow runs, in this order:
+   - **Gate.** `validate_version.py --tag` (the tag is `v` plus `version.py`'s version, in the scheme), the changelog section, and, for a normal tag, that the commit is on `main` (`git merge-base --is-ancestor`; DEC-177). A test tag may be on any branch.
+   - **Build.** `desktop-electron.yml` on all four legs, with the Sentry source-map upload required.
+   - **Check the Macs.** Both Mac apps, unpacked from the zip, pass `verify_macos_bundle.py` (without `--expect-hardened-runtime`) and `codesign --verify --deep --strict`. Nothing is signed with a certificate (DEC-170); the ad hoc signature is what is verified.
+   - **Publish.** Merges the two Mac manifests into one `latest-mac.yml`, creates the release as a **draft** with the notes, uploads every file, and only then publishes it: a pre-release (not latest) for a test tag, the latest release for a normal tag. A failure at any step leaves at most a draft, which the updater never reads.
+4. Check the release (see [After release](#after-release)): the four installers, their block maps, `latest.yml`, `latest-mac.yml`, `latest-linux.yml` and the four `SHA256SUMS-<leg>.txt` files are attached, and a checksum matches (see [Checksums](key-management.md#checksums)).
 5. Announce it (below).
+
+If the workflow fails, fix the cause and delete the draft release and the tag (`git push --delete origin vX.Y.Z`) before pushing it again on the fixed commit. A published release is not re-published by the workflow.
+
+### The mpv archives
+
+Builds fetch the pinned mpv archives from CuePoint's own release `sidecar-mpv-<mpv version>` first and from mpv's rolling release second (DEC-175), so a tag builds on any day. Run the **Mirror player sidecar** workflow (Actions, run manually) once for every mpv pin, after `python scripts/fetch_player_sidecar.py --update-manifest` is merged. It downloads each pinned archive, checks its SHA-256 and attaches it to a pre-release of that name. The tag is outside the version scheme, so the updater never offers it. It runs on a GitHub runner, so nobody uploads the archives by hand. A hash mismatch from either source fails the build.
+
+### When the workflow cannot build it
+
+Only for a release the workflow cannot build. Publish a green commit's artifacts by hand:
+
+1. For a normal release, merge to `main` (a test build may use any branch) and wait for a green `desktop-electron.yml` run on the release commit, on all four legs.
+2. Tag that commit and push the tag as above (the tag starts the workflow; if it cannot run, push it only once the release is ready). Run `python scripts/validate_version.py`; it passes once the tag matches `version.py`.
+3. Download the `desktop-electron-<leg>` artifacts from the run. Each leg's `SHA256SUMS-<leg>.txt` already has its own name. Merge the two Mac manifests with `scripts/merge_update_manifests.py arm64.yml x64.yml -o latest-mac.yml`. Check each checksum file against its files (see [Checksums](key-management.md#checksums)). For a normal release, check that the macOS build says what it is (see [Checking a macOS build](#checking-a-macos-build)).
+4. Create the GitHub release from the tag. Paste the release notes, attach the installers, block maps, manifests and the checksum files, and mark a test build as a pre-release. Mark a normal release as latest.
 
 ## Release notes and announcement templates
 
@@ -190,7 +212,7 @@ Release notes:
 - **Windows**: [installer link]
 - **Linux**: [AppImage link]
 
-Checksums are in `SHA256SUMS-windows.txt`, `SHA256SUMS-macos.txt` and `SHA256SUMS-linux.txt` on the release.
+Checksums are in `SHA256SUMS-windows-x64.txt`, `SHA256SUMS-macos-arm64.txt`, `SHA256SUMS-macos-x64.txt` and `SHA256SUMS-linux-x64.txt` on the release.
 
 ### Full changelog
 https://github.com/stuchain/CuePoint/blob/main/docs/release/CHANGELOG.md
