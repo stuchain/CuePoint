@@ -19,6 +19,7 @@
 }
 
 .cp-waveform-settings__status {
+  overflow-wrap: anywhere;
   margin: 0;
   color: var(--fg-primary);
   font-size: var(--font-size-sm);
@@ -74,6 +75,7 @@
 
 .cp-waveform-settings__hint,
 .cp-waveform-settings__confirm {
+  overflow-wrap: anywhere;
   margin: 0;
   max-width: 60ch;
   color: var(--fg-muted);

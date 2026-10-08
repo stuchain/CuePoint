@@ -10,6 +10,7 @@
 }
 
 .cp-export-settings__hint {
+  overflow-wrap: anywhere;
   margin: 0;
   max-width: 60ch;
   color: var(--fg-muted);

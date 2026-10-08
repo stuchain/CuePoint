@@ -53,6 +53,7 @@
 }
 
 .cp-audio-settings__hint {
+  overflow-wrap: anywhere;
   margin: 0;
   max-width: 60ch;
   color: var(--fg-muted);
@@ -64,6 +65,7 @@
    playing is not what was asked for, and something went wrong. */
 .cp-audio-settings__fallback,
 .cp-audio-settings__error {
+  overflow-wrap: anywhere;
   margin: 0;
   padding: var(--space-sm);
   border: var(--border-width) solid var(--border-outline);

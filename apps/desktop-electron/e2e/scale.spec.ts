@@ -71,8 +71,15 @@ ${tracks.join("\n")}
   return xml;
 }
 
-function launch(userDataDir: string, cuepointHome: string): Promise<ElectronApplication> {
-  const env = { ...process.env, NODE_ENV: "production", CUEPOINT_HOME: cuepointHome } as Record<string, string>;
+function launch(
+  userDataDir: string,
+  cuepointHome: string,
+  extraEnv: Record<string, string> = {},
+): Promise<ElectronApplication> {
+  const env = { ...process.env, NODE_ENV: "production", CUEPOINT_HOME: cuepointHome, ...extraEnv } as Record<
+    string,
+    string
+  >;
   delete env.ELECTRON_RUN_AS_NODE;
   const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
   return packaged
@@ -209,6 +216,34 @@ test.describe("the sizes (PAGES-14)", () => {
         expect(new Set(rows.rows), `every body row is ${row}px at ${scale}×`).toEqual(new Set([row]));
         expect(rows.clipped, `cells with text cut at ${scale}×`).toBe(0);
       }
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("Settings does not scroll sideways at 3× when no audio player is found", async () => {
+    // A blank override is ignored, and a development tree has no fetched player.
+    const app = await launch(userDataDir, cuepointHome, { CUEPOINT_MPV_PATH: "" });
+    try {
+      const win = await app.firstWindow({ timeout: 60_000 });
+      await waitForEngine(win);
+      await win.waitForSelector(".app-shell", { timeout: 30_000 });
+      await win.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
+      await openAt(win, 3);
+      await win.getByRole("link", { name: "Settings", exact: true }).click();
+      await expect(win.getByLabel("Size of text and controls")).toBeVisible({ timeout: 30_000 });
+      const error = win.locator(".cp-audio-settings__error");
+      await error.scrollIntoViewIfNeeded();
+      await expect(error).toBeVisible({ timeout: 30_000 });
+      await expect(error).toContainText("No audio player found");
+      const spill = await win.evaluate(() => {
+        const screen = document.querySelector<HTMLElement>("main.app-main .screen")!;
+        return Math.max(
+          document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          screen.scrollWidth - screen.clientWidth,
+        );
+      });
+      expect(spill, "Settings with the player error does not scroll sideways at 3×").toBeLessThanOrEqual(0);
     } finally {
       await app.close();
     }

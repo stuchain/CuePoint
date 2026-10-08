@@ -25,6 +25,7 @@
 }
 
 .cp-error-reporting__text {
+  overflow-wrap: anywhere;
   margin: 0;
   max-width: 60ch;
   color: var(--fg-muted);
@@ -33,6 +34,7 @@
 }
 
 .cp-error-reporting__error {
+  overflow-wrap: anywhere;
   margin: 0;
   padding: var(--space-sm);
   border: var(--border-width) solid var(--border-outline);

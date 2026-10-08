@@ -1,6 +1,7 @@
 /* Settings → Beatport (SET-5): the lead, the test result's state, and the help disclosure. */
 
 .cp-beatport-settings__lead {
+  overflow-wrap: anywhere;
   margin: 0;
   max-width: 60ch;
   color: var(--fg-muted);
@@ -9,6 +10,7 @@
 }
 
 .cp-beatport-settings__result {
+  overflow-wrap: anywhere;
   margin: 0;
   font-size: var(--font-size-sm);
   font-weight: 600;
