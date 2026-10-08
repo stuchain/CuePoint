@@ -250,7 +250,8 @@ run by the release workflow from DIST-04 on, and not on pushes. The manual check
 backups and restores are whole-or-nothing and work on a library too damaged to open; and a copy taken
 just before each upgrade is kept apart from the five launch copies.
 
-**User-visible result**: Settings has a **Backups** section (DEC-179): "Your library is backed up
+**User-visible result**: Settings has a **Backups** section (DEC-179), after Privacy and before About &
+updates in PAGES-01's order: "Your library is backed up
 each time you open CuePoint after a change. 5 are kept." A list of backups with their date, size and
 why ("When you opened CuePoint", "Before updating to 1.0.0", "Before restoring", "You made this"),
 **Back Up Now**, **Restore** on each row, and **Show in folder**. Restore asks first ("Restore your
@@ -745,8 +746,10 @@ focus handling; `themeDerivation.ts`'s contrast math; the live regions.
 
 **Design**:
 - **axe in the renderer's tests.** `vitest-axe` (pinned) runs on each page's test render: Library,
-  Collections, Clean, Prepare, Discover, Statistics, Settings, the Inspector, the player bar, the status
-  strip, the sidebar, the first-run guide, every dialog. Each test asserts no violations at
+  Collections, Keys, Clean, Prepare, Discover, Statistics, Settings, Track details, the player bar, the
+  status strip, the sidebar, the first-run guide, every dialog, and Phase 14's action bars (the
+  selection bar, the tree's bar, Prepare's entry buttons) as toolbars. The app's menu bar (DEC-204)
+  is checked by hand in the screen-reader pass. Each test asserts no violations at
   WCAG 2.2 A and AA.
 - **axe in the end-to-end suite.** `@axe-core/playwright` (pinned) scans each destination with a
   library loaded, in each theme, at 1× and 1.5×, with motion on and reduced; `e2e/a11y.spec.ts`.

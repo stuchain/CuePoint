@@ -3897,15 +3897,16 @@ are kept.
 
 ---
 
-## DECISION ROUND 22 — PHASE 14'S FULL REVIEW (Phase 14) ⏳ Asked 2026-10-08
+## DECISION ROUND 22 — PHASE 14'S FULL REVIEW (Phase 14) ✅ Resolved 2026-10-08
 
 Asked after a full review of Phase 14 (`PHASE14_PAGES.md`, `PHASE14_FLOWS.md`) against DEC-001…DEC-201
 and Phases 15–18. The review's other findings were fixes to the documents; these eight change what
-the user sees. `PHASE14_PAGES.md` is written to each recommendation until the user answers.
+the user sees. The user chose the recommendation for all eight on 2026-10-08 ("Use recommended").
+Outcomes are in DEC-202…DEC-209.
 
 ### Q-200 — Do automatic accepts give the key?
 
-**Status**: Open
+**Status**: Resolved → DEC-202 (Option A)
 
 **Question**: DEC-201 makes an accepted match's key the track's key. DEC-067 accepts a candidate
 scoring 95 or more on its own, and a re-match may replace it. Does an automatic accept give the key?
@@ -3920,7 +3921,7 @@ of a freshly matched library keyless until it is reviewed by hand.
 
 ### Q-201 — Keys applied from Beatport before Phase 14
 
-**Status**: Open
+**Status**: Resolved → DEC-203 (Option A)
 
 **Question**: Under DEC-068 a user could apply Beatport's key, which stored it as their own value.
 After DEC-201, is such a key Beatport's or the user's?
@@ -3934,7 +3935,7 @@ a correction would make "· yours" mean two things.
 
 ### Q-202 — One menu bar
 
-**Status**: Open
+**Status**: Resolved → DEC-204 (Option A)
 
 **Question**: HDR-5 splits the in-window menu bar into View and Help; FLW-20 gives CuePoint its own
 system menu in place of Electron's. Built as written, the window has two menu bars. Which stays?
@@ -3948,7 +3949,7 @@ in the system menu anyway.
 
 ### Q-203 — Where values are edited
 
-**Status**: Open
+**Status**: Resolved → DEC-205 (Option A)
 
 **Question**: INS-4 and INS-11 edit values in Track details; FLW-12 adds Clean's Fix values for the
 same job; Track details also applies Beatport's values field by field. Where does editing live?
@@ -3962,7 +3963,7 @@ rules and words in one place.
 
 ### Q-204 — Statistics' key spread and the Keys page
 
-**Status**: Open
+**Status**: Resolved → DEC-206 (Option A)
 
 **Question**: Phase 15's STATS-06 shows the key spread of a scope on a shaded wheel; PAGES-16's Keys
 page does the same for any mix of playlists. Which is the home?
@@ -3976,7 +3977,7 @@ asked for.
 
 ### Q-205 — Telling someone who updates
 
-**Status**: Open
+**Status**: Resolved → DEC-207 (Option A)
 
 **Question**: Phase 14 moves everyone who never picked a size to 1.5× and takes Rekordbox's keys
 away. Phase 16's "What's new" does not exist yet. Is the user told?
@@ -3989,7 +3990,7 @@ away. Phase 16's "What's new" does not exist yet. Is the user told?
 
 ### Q-206 — The Rekordbox refresh button's name
 
-**Status**: Open
+**Status**: Resolved → DEC-208 (Option A)
 
 **Question**: LIB-3 says "Refresh from Rekordbox…", FLW-11 and FLW-20 "Check Rekordbox for changes",
 CLN-8 "Refresh the Library". Which name, everywhere?
@@ -4001,7 +4002,7 @@ CLN-8 "Refresh the Library". Which name, everywhere?
 
 ### Q-207 — Action bars with nothing selected
 
-**Status**: Open
+**Status**: Resolved → DEC-209 (Option A)
 
 **Question**: The Library's selection bar, the tree's bar and Prepare's entry buttons act on a
 selection. With nothing selected, are they shown?

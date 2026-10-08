@@ -7,6 +7,12 @@ the decision that settles it. Per the process, no implementation happens
 from this document. Each step needs an explicit "Implement SITE-NN" instruction, scoped to exactly
 that step, and its outcome is recorded under the step afterwards.
 
+**Amended 2026-10-08 for Phase 14's later decisions** (DEC-199…DEC-209, `PHASE14_PAGES.md` "What the
+later phases pick up"): matching is Clean's, not Discover's; the app gains a **Keys** page and takes
+keys only from Beatport (DEC-200, DEC-201); the size has a 1.5× step, made with `round()`, `max()`
+and `@property` (DEC-161); and reduced motion stops fades too. The text below is changed where these
+apply.
+
 Depends on Phases 1–16. Phase 16 must be complete first (DEC-140): the download page offers what
 DIST-03 and DIST-04 publish, under DIST-03's file names. The site's pictures are taken of the app as
 Phases 14 and 15 leave it. Decision Rounds 1–20 apply (`DECISIONS.md`, DEC-001…DEC-198). This phase's own decisions
@@ -265,7 +271,8 @@ theme).
 - **Tokens generated, not copied.** `apps/website/scripts/sync-tokens.mjs` reads
   `apps/desktop-electron/renderer/src/tokens/tokens.css` and `themes/*.css` and writes
   `apps/website/src/styles/tokens.generated.css`, with `--scale` fixed for the web (sizes in `rem`,
-  so the visitor's text size is honored). `npm run build` runs it first. A test fails if the
+  so the visitor's text size is honored). It resolves the app's `round()`, `max()` and `@property`
+  values (PAGES-14's hairline and row height) for the fixed scale, rather than copying them. `npm run build` runs it first. A test fails if the
   generated file differs from what the app's tokens give, so the site cannot drift from the app.
 - **Themes (DEC-190):** all five themes, Neo Dark by default, chosen from a pixel switch in
   the header, kept in `localStorage` (wrapped, so a blocked store just means Neo Dark), applied
@@ -287,7 +294,7 @@ theme).
   description, the canonical from the address setting, Open Graph and X card tags, the JSON-LD,
   `lang="en"`, the skip link, the header and footer, and the CSP `<meta>` (fact 2).
 - **Focus and motion:** a visible focus ring in the theme's accent on every interactive element;
-  `prefers-reduced-motion` turns off every transition but opacity.
+  `prefers-reduced-motion` turns off every transition, fades included, as the app does (PAGES-02).
 - **`/styleguide/`** in preview builds only (excluded from the production build and the sitemap):
   every component in every theme, for review.
 
@@ -305,7 +312,7 @@ theme).
 - `/styleguide/` reviewed with `impeccable`'s critique, and its findings fixed or recorded.
 - Every component's text and focus ring has at least 4.5:1 contrast in every theme (axe, SITE-03).
 
-**Risks**: Medium. The app's tokens are written for a fixed integer scale; the web needs fluid type.
+**Risks**: Medium. The app's tokens are written for the app's size steps; the web needs fluid type.
 The generator converts sizes, and the test pins it.
 
 **Complexity**: **M**
@@ -389,11 +396,12 @@ Statistics.
   tracks with invented artists, titles and labels (no real name), plausible keys, tempos, genres,
   years, ratings, play counts and cue points, with Collections and Sets, and short generated audio
   files so the waveforms draw. Beatport is stubbed with invented matches, as the Phase 14 reviews were
-  taken. A test holds that no name in it matches a list of real artists and labels the script ships.
+  taken, and the matches carry the keys: since DEC-201 a track's key is its accepted match's, so a
+  fixture with keys only in its XML would show "No Beatport key" everywhere and light no wheel. A test holds that no name in it matches a list of real artists and labels the script ships.
 - **`apps/desktop-electron/e2e/capture/showcase.spec.ts`,** run only by `npm run capture:showcase`
   (excluded from the normal suite): opens the app on that library and takes a fixed list of shots,
-  each named in `apps/website/src/assets/app/shots.json` (Library with the Inspector, Discover
-  mid-match, Clean's comparison, Prepare's Set, Statistics, the Camelot wheel open, the player with a
+  each named in `apps/website/src/assets/app/shots.json` (Library with Track details, Clean
+  mid-match, Clean's comparison, the Keys page, Prepare's Set, Statistics, the Camelot wheel open, the player with a
   waveform, the Rekordbox export), at the app's default size (DEC-161), in each theme.
 - **Output:** PNG into `apps/website/src/assets/app/<shot>-<theme>.png`, committed. Astro makes
   AVIF and WebP at the sizes each page asks for. The capture also writes each shot's `alt` text
@@ -509,9 +517,9 @@ does for them, then shows it, then offers the download.
   colors; the wheel then turns flat and becomes the real app's window (SITE-04's shot). It tells the
   product's story in one movement: a messy library, matched, organized, ready for the booth.
 - **Then one section per thing the app does,** each a short heading, two or three sentences, the
-  app's picture and, where it earns it, a small scene: Discover (match tracks to Beatport), the
-  Library (filters, the wheel), Clean (fix tags, find duplicates), Prepare (Sets), Statistics, and
-  the export back to Rekordbox. Each links to its feature page (SITE-08).
+  app's picture and, where it earns it, a small scene: Clean (match tracks to Beatport, fix values,
+  find duplicates), the Library (filters, the wheel), Keys (the keys of your playlists), Discover
+  (new music from Beatport), Prepare (Sets), Statistics, and the export back to Rekordbox. Each links to its feature page (SITE-08).
 - **Trust:** free, runs on your computer, your library stays yours, open source on GitHub, works with
   Rekordbox's XML. Each claim checked against the app and the privacy notice.
 - **Sound (DEC-191):** a pixel speaker button, off by default, plays a short loop and the
@@ -612,9 +620,11 @@ features overview linking them.
 **Design**:
 - **Pages** (each a heading, the problem in the DJ's words, how CuePoint solves it, the app's
   pictures, what it does not do, and links to its guide page and the download):
-  - **Discover:** match Rekordbox tracks to Beatport for key, tempo, label, genre and release date;
+  - **Clean:** match Rekordbox tracks to Beatport for key, tempo, label, genre and release date; fix
+    values in bulk, find duplicates, check files;
   - **The Library:** filters, columns, the Camelot wheel and compatible keys;
-  - **Clean:** fix tags in bulk, find duplicates, check files;
+  - **Keys:** the keys of one or several playlists on the Camelot wheel;
+  - **Discover:** new music from artists, labels and charts on Beatport;
   - **Prepare:** build Sets for a gig;
   - **Statistics:** most played, never played, how the library spreads;
   - **Waveforms and the player;**

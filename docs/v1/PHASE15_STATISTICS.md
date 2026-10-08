@@ -8,6 +8,13 @@ built. Per the process, no implementation happens from this document. Each step 
 "Implement STATS-NN" instruction, scoped to exactly that step, and its outcome is recorded under the
 step afterwards.
 
+**Amended 2026-10-08 for Phase 14's later decisions** (DEC-199…DEC-209, `PHASE14_PAGES.md` "What the
+later phases pick up"). A track's key is DEC-201's: the user's correction, else the accepted
+Beatport match's, else none, shown as "No Beatport key". The key spread's home is Phase 14's Keys
+page (DEC-206): this phase shows a key summary that opens it, and adds no wheel mode of its own. The
+playlist scope uses Phase 14's "In playlist" field (DEC-162 as amended). There are four sizes, 1×,
+1.5×, 2× and 3× (DEC-161). The text below is changed where these apply.
+
 Depends on Phases 1–14. Phase 14 must be complete first (DEC-140): the page is built in the
 revisited style, and it reuses what Phase 14 adds (the shell header, the Camelot wheel, the selected
 track, the empty-state shape, Settings' sections and the ten motion switches). Decision Rounds 1–18
@@ -30,7 +37,7 @@ This phase adds **Statistics**, a sidebar destination after Prepare (DEC-138), s
 - **Most played,** as a top 10, 25, 50, 100 or 200, all time or since a date.
 - **Top artists and labels,** by the plays of their tracks.
 - **Never played.**
-- **How the library spreads** by genre, key (on the Camelot wheel), tempo, year, date added, rating
+- **How the library spreads** by genre, key (a summary that opens the Keys page, DEC-206), tempo, year, date added, rating
   and loudness.
 - **Library health:** missing files, matched to Beatport, analysed.
 
@@ -73,7 +80,7 @@ wherever a Library filter can say it, and a top list can be kept as a Collection
 | The destination registry | `renderer/src/components/shell/navRegistry.ts:88-101` (DEC-020) |
 | Pixel icons, 12×12 | `renderer/src/components/pixelIcons.ts` |
 | Whole-pixel SVG drawing from pure geometry | `screens/prepare/SetLanes.tsx`, `prepareLanes.ts` |
-| The Camelot wheel, drawn with theme tokens | `CamelotWheel.tsx` (PAGES-10) |
+| The keys of a scope, counted | PAGES-16's Keys page and `POST /api/v1/library/keys/population` |
 | The empty-state shape `{ title, hint, action? }` | `emptyStateFor` (`libraryEmpty.ts`, PAGES-05) |
 | Ten motion kinds, each behind a switch | `tokens/motion.ts`, `MotionContext.tsx` (PAGES-02, PAGES-12) |
 | Creating a Collection and adding tracks to it (two calls) | `POST /api/v1/collections/create`, `/collections/tracks/add` (`engine/organization_api.py:512`, `:569`) |
@@ -88,7 +95,7 @@ wherever a Library filter can say it, and a top list can be kept as a Collection
 | DEC-137 | Every import and refresh stores each changed `PlayCount` with the date it was read. Only changes stored. A count that goes down is kept as read, and "played since" never goes below zero. It is user data: in the backup, and a track's history goes with the track. |
 | DEC-138 | A sidebar destination after Prepare, added through DEC-020's registry. |
 | DEC-020 | The destination is one registry entry; no other destination moves. |
-| DEC-096 | The key spread is drawn on the wheel PAGES-10 built, with the engine's rule. |
+| DEC-096 | Not drawn here: the key spread lives on the Keys page (DEC-206), which lights compatible keys by this rule. |
 | DEC-132 | Plain words; an empty state that says what to do next (import a library; refresh to start history). |
 | DEC-155, DEC-158 | No "engine" or "jobs" in the page's words; American spelling. |
 | DEC-134, DEC-135 | The page's motion uses the existing kinds and switches, in pixel steps. No new kind. |
@@ -136,7 +143,8 @@ activity events are written after the commit, best-effort (`library_import_servi
 ### 3. What the user sees is the override, if there is one
 
 Key, tempo, genre, label, year and rating each have a CuePoint override in `track_metadata`, and the
-value shown is `COALESCE(meta.x, tracks.x)` (`_effective`, `filter_rule.py:469`). Every statistic reads the
+value shown is `COALESCE(meta.x, tracks.x)` (`_effective`, `filter_rule.py:469`), except the key,
+which after PAGES-15 is the correction, else the accepted Beatport match's key (DEC-201). Every statistic reads the
 effective value, the same expression the filter uses, so a bar and the Library it opens agree.
 **One trap:** the `rating` sort reads `tracks.rating` only (`track_query.py:378`), while the filter and
 facet read the override. Statistics follows the filter.
@@ -159,8 +167,8 @@ a filter field, so a loudness bar does not open the Library (STATS-06).
   (`filter_rule.py:591`).
 - **Analyzed** is known only from `waveforms.db`, through `WaveformAnalysisService.plan()`.
 - `HealthService.report()` already counts missing files, duplicates, not matched and more, each with
-  its `RuleSet` (`health_service.py:88-161`). Clean's Health tab shows it (`HealthView.tsx`), and
-  Phase 14 kept the tab, leaving this phase to decide whether it stays (PHASE14 "Deferred").
+  its `RuleSet` (`health_service.py:88-161`). Clean's Health tab shows it (`HealthView.tsx`), and it
+  stays (DEC-163).
 
 ### 6. Artists and labels mean the credit index
 
@@ -182,7 +190,7 @@ A rule set is AND-only (`libraryLink.ts:57-67`; `filter_rule.py:107-114`). The f
 | Never played | `play_count` = 0 |
 | Unknown plays | `play_count` is empty |
 | A genre | `genre` is *value* |
-| A key | `key` any_of *spellings* (as PAGES-10) |
+| A key | `key` any_of *codes*, on PAGES-05's normalized Key field |
 | A tempo bucket | `bpm` gte *n − 0.5* and `bpm` lt *n + 0.5* |
 | A year | `year` is *value* |
 | A month added | `date_added` between *YYYY-MM-01*, *YYYY-MM-31* (text, inclusive) |
@@ -191,7 +199,7 @@ A rule set is AND-only (`libraryLink.ts:57-67`; `filter_rule.py:107-114`). The f
 | Missing files, not matched | Health's own rules |
 | A Collection, as a scope | `collection` in_collection *id* (static Collections; `collection_tracks`) |
 | A Smart Collection, as a scope | its own rules, added to the bucket's (both are AND-only) |
-| A Rekordbox playlist, as a scope | **nothing today**: no filter field names a playlist, and opening the Library on rules clears the playlist (`LibraryScreen.tsx:360-370`) |
+| A Rekordbox playlist, as a scope | Phase 14's "In playlist" field (FLW-7, PAGES-05B); before Phase 14 no field named a playlist |
 
 **What cannot be said as a rule:** a top N, plays since a date, a loudness range, and "analyzed".
 Top lists open one track at a time (`libraryTrackState`) and can be kept as a Collection (DEC-167);
@@ -361,10 +369,9 @@ expressions (fact 3); `RuleSet` as Health returns it; the module shape of `engin
 - **Scope** (DEC-162): `scope=library` (the default), `collection:<id>` or `playlist:<id>`. Every query takes the scope as a track-id subquery. A Smart
   Collection's scope is its rules, compiled as the Library compiles them. Each returned rule set
   gains the scope's own rule (fact 7), so the Library opens the same tracks.
-  - **Playlists need a filter field first.** This step adds `playlist`
-    (`TYPE_PLAYLIST`, operator `in_playlist`, over `rekordbox_playlist_tracks`, m0006)
-    to `FIELDS`, compiled like `collection`'s membership. The Library's filter gains "Rekordbox
-    playlist" as a field with it, and PAGES-05's field groups place it beside Collection.
+  - **Playlists use Phase 14's field.** PAGES-05B adds "In playlist" (FLW-7), over
+    `rekordbox_playlist_tracks` (m0006), with any mix of playlists, Collections and Sets as its
+    value; this step uses that field and its label and adds none (DEC-162 as amended 2026-10-08).
 - **Refusals** (`status_for`): a bad `limit`, `since`, `tz`, `since_read` or `scope`, or `since` with
   `since_read`, is 400 `INVALID_REQUEST`; an unknown
   Collection or playlist is 404; no library is 503 `LIBRARY_UNAVAILABLE`. None is reported to Sentry
@@ -405,7 +412,7 @@ quietly mis-rank. The fixture's three refreshes and the clamp cases hold it.
 
 ## STATS-03 — The Spreads and Health, Answered
 
-**Objective**: One route for how the library spreads by seven fields, and one for the health
+**Objective**: One route for how the library spreads by six fields, and one for the health
 numbers, each bucket with the rule that opens it where a rule can say it.
 
 **User-visible result**: None yet.
@@ -416,18 +423,14 @@ numbers, each bucket with the rule that opens it where a rule can say it.
 and `current_files`; `HealthService.report()`; `WaveformAnalysisService.plan()`.
 
 **Design**:
-- **`GET /api/v1/statistics/spreads?scope=<scope>`** answers all seven at once (one request, one
+- **`GET /api/v1/statistics/spreads?scope=<scope>`** answers all six at once (one request, one
   read transaction), each a list of `{ label, count, rules | null }` plus `unknown` and
   `total`:
   - **Genre:** the effective genre, exact text, case-blind grouped as the filter's `is` matches. The
     top 20 by count, then one **Other** bucket (no rule) and **No genre** (`genre` is empty).
-  - **Key:** each track's effective key parsed by `parse_key` into its Camelot code, so "Am" and
-    "8A" count together. Each code carries its spellings in this library (as PAGES-10's route does)
-    and the rule `key any_of <spellings>`. `any_of` compares case-blind (`filter_sql.py`), so a
-    spelling that `parse_key` refuses but that equals another bucket's spelling ignoring case ("EB"
-    beside "Eb") would be opened by that bucket: the bucket's count is taken with the same `any_of`
-    rule, so it includes it, and the test below holds the two equal. Empty keys are **No key**
-    (`key is_empty`); keys that parse to nothing and match no spelling are **Unknown key**, count only.
+  - **Key:** not counted here (DEC-206). The key summary reads PAGES-16's
+    `POST /api/v1/library/keys/population` with the scope as its sources: tracks with a key, the
+    three commonest codes, and `no_key` ("No Beatport key"). The spreads are six.
   - **Tempo:** the effective BPM's bucket is `n = floor(bpm + 0.5)` (not Python's `round`, which
     sends 124.5 to 124), one bucket per BPM present, each opening
     `bpm gte n-0.5` and `bpm lt n+0.5`, so every BPM lands in exactly one bucket. DJs read 124 and 125 as different tempos, so no wider bins.
@@ -600,19 +603,20 @@ else this step creates `components/charts/PixelBars.tsx` and STATS-06 extends it
 
 ## STATS-06 — How the Library Spreads
 
-**Objective**: The seven spreads drawn in the pixel style, the key on the Camelot wheel, each bar
-opening its tracks.
+**Objective**: The six spreads drawn in the pixel style, each bar opening its tracks, and a key
+summary that opens the Keys page.
 
-**User-visible result**: The **Your library** section shows seven panels: Genre, Key, Tempo, Year,
-Date added, Rating and Loudness. Each is a pixel bar chart with its counts, and a line for the
-tracks it cannot place ("41 tracks have no tempo"). Key is drawn on the Camelot wheel, each segment
-shaded by its share of the library, with the count on hover and focus. Clicking a bar or a segment
-opens the Library on those tracks. Loudness bars show their counts and do not open.
+**User-visible result**: The **Your library** section shows six panels: Genre, Tempo, Year, Date
+added, Rating and Loudness. Each is a pixel bar chart with its counts written on it, and a line for
+the tracks it cannot place ("41 tracks have no tempo"). Clicking a bar opens the Library on those
+tracks. Loudness bars show their counts and do not open. A seventh panel, **Keys**, is a summary:
+"1,840 of 2,212 tracks have a Beatport key · most common 8A (142), 9A (131), 7A (118) · No Beatport
+key: 372", with **Open in Keys**, which opens the Keys page with the same scope ticked (DEC-206).
 
-**Dependencies**: STATS-04; PAGES-10 (`CamelotWheel`).
+**Dependencies**: STATS-04; PAGES-16 (the Keys page and its population route).
 
 **Existing code reused**: `SetLanes.tsx` and `prepareLanes.ts` as the drawing pattern;
-`CamelotWheel.tsx`; theme tokens.
+PAGES-16's population route and its sources; theme tokens.
 
 **Design**:
 - **`components/charts/PixelBars.tsx`** with its geometry in `pixelBarsGeometry.ts` (pure, tested
@@ -622,10 +626,9 @@ opens the Library on those tracks. Loudness bars show their counts and do not op
   (genre, rating), vertical for ordered ones (tempo, year, date added, loudness). Long ordered runs
   (tempo across 60 to 180 BPM, ten years of months) scroll sideways inside the panel; the page does
   not.
-- **The wheel:** `CamelotWheel` gains a `shading` mode, `{ code: share }`, drawing each segment in
-  one of five steps of `--accent-primary` mixed with `--bg-*` by stepped opacity (no gradients), and a
-  click handler that the page sets to open the Library with the bucket's rules. Its own header use
-  (lit and compatible) does not change.
+- **The key summary** (DEC-206) draws no wheel: the Keys page's counts mode (PAGES-16) is the one
+  place a key spread is drawn. **Open in Keys** navigates to `/keys` with the scope as its ticked
+  sources (a Collection, a Smart Collection's own sources, or a playlist).
 - **Each bar is a button** named "124 BPM, 312 tracks", reachable by Tab, with arrow keys moving
   within a chart. Charts have a text table fallback for screen readers (`<table>` visually hidden).
 - **Motion:** bars grow in pixel steps under `entrance` when first shown, and change under `state`
@@ -636,18 +639,19 @@ opens the Library on those tracks. Loudness bars show their counts and do not op
   tallest bar fills the height.
 - `PixelBars.test.tsx`: names, keyboard movement, the click's navigation, no click on a bar
   without rules.
-- `CamelotWheel.test.tsx` extended: shading steps and the click handler; the header wheel unchanged.
+- `KeySummary.test.tsx`: the counts from the population route, "No Beatport key", and Open in Keys
+  carrying the scope.
 - `SpreadsSection.test.tsx`: each panel, the unknown lines, the loudness panel without clicks.
 - `motionRules.test.ts` passes (bars animate transform and opacity only).
-- `e2e/statistics.spec.ts`: click the 8A segment and the Library shows the 8A tracks in both
-  spellings; click a tempo bar and the counts match.
+- `e2e/statistics.spec.ts`: Open in Keys shows the same counts on the Keys page; click a tempo bar
+  and the counts match.
 
 **Acceptance criteria / DoD**:
 - Every bar's count equals the tracks the Library shows on its click.
 - The charts are readable in every theme and at every scale, and by keyboard and screen reader.
 - All suites pass, with the scroll checks of PAGES-12 unchanged.
 
-**Risks**: Low to medium. **Drawing at three scales in five themes** is where it can look wrong;
+**Risks**: Low to medium. **Drawing at four sizes in five themes** is where it can look wrong;
 Storybook stories for each chart at each scale and theme are the check.
 
 **Complexity**: **M**
@@ -702,7 +706,8 @@ Phase 15 is complete when, in a **packaged build** on Windows and macOS:
    *STATS-02.*
 4. Every count that opens the Library opens exactly the tracks it counted, in every scope the page
    offers; the since-a-date artist and label rows say they open more. *STATS-02, STATS-03, STATS-05, STATS-06, STATS-07.*
-5. The key spread is on the Camelot wheel, counting every notation of a key together. *STATS-06.*
+5. The key summary counts Beatport's keys in every notation together, matches the Keys page, and
+   opens it with the same scope. *STATS-06.*
 6. A top list kept as a Collection holds those tracks in rank order. *STATS-05.*
 7. Play history is in a backup and restored with it, and a deleted track's history goes with it.
    *STATS-01.*

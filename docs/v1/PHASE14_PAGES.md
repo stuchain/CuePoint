@@ -9,8 +9,9 @@ HDR-4 by DEC-133). Writing the reviews raised six questions that Decision Round 
 asked as Decision Round 17 (Q-157…Q-162). All six are settled (DEC-154…DEC-158, DEC-160). DEC-161 later added a 1.5× size as the default. The task walkthrough (`PHASE14_FLOWS.md`) then added FLW-1…FLW-22,
 all accepted (DEC-199…DEC-201), and with them PAGES-15 and PAGES-16. A full review on 2026-10-08
 checked every step against DEC-001…DEC-201, the walkthrough and Phases 15–18. Its fixes are in the
-text below, each decision it touched carries a dated note, and what only the user could settle is
-Decision Round 22 (Q-200…Q-207, at the end). The steps carry only accepted proposals. Per the process, no implementation happens from this document. Each
+text below, each decision it touched carries a dated note, and what only the user could settle was
+Decision Round 22 (Q-200…Q-207), answered the same day with every recommendation (DEC-202…DEC-209).
+The steps carry only accepted proposals. Per the process, no implementation happens from this document. Each
 step needs an explicit "Implement PAGES-NN" instruction, scoped to exactly that step, and its outcome
 is recorded under the step afterwards.
 
@@ -416,7 +417,7 @@ HDR-6, HDR-7, STR-1 (DEC-155), STR-2, STR-3, STR-5…STR-9.
 
 **From the walkthrough** (`PHASE14_FLOWS.md`, accepted by DEC-199): FLW-20, with HDR-5. CuePoint
 gets one menu bar, its own, in place of both Electron's default and the in-window `AppMenuBar` whose
-Help HDR-5 split into View and Help (Q-202, recommended). The in-window bar goes and its items move
+Help HDR-5 split into View and Help (DEC-204). The in-window bar goes and its items move
 here:
 - **CuePoint** (macOS only): About CuePoint, Settings…, Quit.
 - **File**: Import another file… (Ctrl+O, LIB-12), Check Rekordbox for changes. Export stays where
@@ -567,7 +568,7 @@ below.
 
 **From the walkthrough** (`PHASE14_FLOWS.md`, accepted by DEC-199): FLW-4 to FLW-8, FLW-10 and FLW-11.
 - **The header** (FLW-11, amending LIB-3, LIB-4 and DEC-087's 2026-09-21 precision): **Check
-  Rekordbox for changes** (Q-206, recommended; LIB-3's "Refresh from Rekordbox…" and CLN-8's "Refresh
+  Rekordbox for changes** (DEC-208; LIB-3's "Refresh from Rekordbox…" and CLN-8's "Refresh
   the Library" take this name too), **Import another file…** and **Export to Rekordbox…** as three
   buttons; "Collection file ▾" goes, and with it LIB-4's "Rekordbox file ▾". Before the first import
   the one button is **Import your Rekordbox collection…**, the words NAV-5, PAGES-11 and PAGES-16 use.
@@ -607,8 +608,7 @@ below.
   Collection while a playlist is open adds it, so the playlist is no longer dropped
   (`LibraryScreen.tsx` `saveSmart`). Phase 15's scope picker uses this same field and label (DEC-162,
   as amended 2026-10-08).
-- **The selection bar** (FLW-8, amending LIB-6). The bar is always on the toolbar row (Q-207,
-  recommended): with nothing selected its buttons are disabled and say "Select tracks first", so it
+- **The selection bar** (FLW-8, amending LIB-6). The bar is always on the toolbar row (DEC-209): with nothing selected its buttons are disabled and say "Select tracks first", so it
   never appears or vanishes and the table never moves. The bar and the right-click menu are built
   from one list:
 
@@ -711,7 +711,7 @@ same work as Clean's match window). Rekordbox's key shows in "Details from Rekor
 marked "not used".
 
 **From the review** (2026-10-08):
-- **One editor** (Q-203, recommended). INS-4's "Correct a value…" becomes **Edit values…** and opens
+- **One editor** (DEC-205). INS-4's "Correct a value…" becomes **Edit values…** and opens
   the editor Clean's Fix values uses (PAGES-07), for this track. INS-11's "Change all 4…" becomes
   **Edit values for 4 tracks…**, which opens Clean's Fix values with the selection
   (`cleanFixState(selection, "edit")`, PAGES-07); it pointed at "Actions…", which FLW-8 removes. The Beatport section's per-field **Apply** goes: applying Beatport's values is
@@ -772,7 +772,7 @@ choices).
   nothing chosen it says "Choose tracks: pick playlists here, or select tracks in the Library and use
   Fix ▸." An opener, `cleanFixState(trackIds, action?)` beside `libraryLink.ts`'s, lets the Library's
   Beatport ▸ and Fix ▸ (PAGES-05) and Track details (PAGES-06) open it with tracks chosen. Its editor
-  is the one Track details uses for one track (Q-203). Writing keeps WriteTagsDialog's preview,
+  is the one Track details uses for one track (DEC-205). Writing keeps WriteTagsDialog's preview,
   LIB-11's confirm above 1,000 tracks and History's revert. Key is not among "Use Beatport's
   values…" choices: an accepted match already gives the key (PAGES-15).
 - **Matching from the header** (FLW-13, FLW-3): **Match tracks…** opens a small window: which tracks
@@ -924,7 +924,7 @@ PAGES-11.
 **From the walkthrough** (`PHASE14_FLOWS.md`, accepted by DEC-199): FLW-17 to FLW-19.
 - **The entry buttons** (FLW-17): Move up, Move down (also Alt+↑ and Alt+↓, as in the queue), Start
   a chapter here, Repeat after and Remove (also Delete, as in the queue). They are always shown and
-  disabled with "Select an entry" until one is (Q-207). With several entries selected they move and
+  disabled with "Select an entry" until one is (DEC-209). With several entries selected they move and
   remove them together; Start a chapter here uses the first. A chapter heading gets Edit, Move up,
   Move down and Delete, so no chapter action is right-click only. The buttons sit on the Set's
   existing second header line (PREP-10: the counts and View ▾), not on a new row. Drag, double-click
@@ -1077,7 +1077,7 @@ user guide's onboarding facts).
 - **Built on `OnboardingDialog`,** its storage key (`cuepoint-onboarding-complete`) and its Help
   entry, so a user who finished the old tour does not see the new one.
 - **The defects** (fact 9) are fixed (RUN-2).
-- **For someone who updates** (Q-205, recommended): a person who finished the old tour sees, once, a
+- **For someone who updates** (DEC-207): a person who finished the old tour sees, once, a
   one-screen note on the first start of this version: "CuePoint is now Medium size (1.5×)", with
   **Change size**, shown only to someone who never chose a size (PAGES-14); and "Keys now come only
   from Beatport. N of your tracks have one.", with **Match tracks…**. Its own key,
@@ -1325,7 +1325,7 @@ own storage key and a reload, on a local build that accepted 1.5. That build was
   re-measured at 1.5× and the 2× numbers recorded in the step's outcome.
 - **Who moves to 1.5×.** The size is stored only when someone picks one (`tokens/scale.ts:30-38`), so
   everyone who never picked opens at 1.5× after the update, and someone who picked 2× keeps it, as
-  DEC-161 says. PAGES-11's note for someone who updates tells them (Q-205).
+  DEC-161 says. PAGES-11's note for someone who updates tells them (DEC-207).
 - **The row-height defect first.** Its fix lands in its own commit with a regression test that fails
   on today's code (`trackTableLayout.test.ts` reading a registered length), before the size
   changes, so each change's effect on the measured rows is known apart.
@@ -1430,10 +1430,10 @@ this step's resolver.
   is none.
 - **Applying is no longer needed for the key.** Key leaves "Use Beatport's values" and Review's
   apply, in the engine (`match_apply.py`) as well as on screen, since accepting already gives it.
-- **Which accepts count** (Q-200, recommended): every accepted match, the automatic ones (DEC-067's
+- **Which accepts count** (DEC-202): every accepted match, the automatic ones (DEC-067's
   score of 95 or more) included. An automatic accept is not sticky, so a re-match can change a key;
   the change is recorded in History like any other value's.
-- **A key applied from a match before this change** (Q-201, recommended) follows its match like any
+- **A key applied from a match before this change** (DEC-203) follows its match like any
   Beatport key. History already records whether a value was applied from a match or typed, so an
   applied-from-match key is read as Beatport's and a later reject takes it away; a typed one stays a
   correction. Nothing stored is deleted, and History keeps both.
@@ -1509,7 +1509,7 @@ route), PAGES-15 (the key).
   selected-track store, so the header's wheel lights it.
 - **The Library's Key ▾ links here**: this step adds "See these on the Keys page" to PAGES-05's Key
   list, opening Keys with the Library's open playlist or Collection ticked.
-- **Phase 15's key spread** uses this page (Q-204, recommended): its Statistics summary opens Keys
+- **Phase 15's key spread** uses this page (DEC-206): its Statistics summary opens Keys
   with the same sources, and STATS-06 reuses this counts mode rather than adding a second.
 - **Remembered**: the ticked sources, in `localStorage` under `cuepoint-keys-sources`, guarded like
   `scale.ts`.
@@ -1568,7 +1568,7 @@ Phase 14 is complete when, in a **packaged build** on Windows and macOS:
     function FLW-2 names has one home; action bars never appear or vanish under the user. *PAGES-13.*
 12. Every suite passes, with the engine smoke check, the desktop contract test, the coupling check, the
     end-to-end suite and `npm run dist`.
-13. No decision in DEC-001…DEC-201, or answered in Decision Round 22, is contradicted, except where
+13. No decision in DEC-001…DEC-209 is contradicted, except where
     this document says so and the decision carries a dated note: DEC-201's change to DEC-004,
     DEC-067, DEC-068, DEC-070, DEC-079 and DEC-106 for the key; FLW-8's to LIB-6; FLW-11's to DEC-087's
     2026-09-21 precision; the Keys page's addition to DEC-020's registry; DEC-161's to DEC-135, DS-2
@@ -1590,35 +1590,35 @@ Asked in `OPEN_QUESTIONS.md` as Q-157…Q-162 and answered 2026-10-07.
 
 ## Decision Round 22 — what the full review raised
 
-Asked in `OPEN_QUESTIONS.md` as Q-200…Q-207 on 2026-10-08. The text above is written to each
-recommendation, marked "recommended", until the user answers.
+Asked in `OPEN_QUESTIONS.md` as Q-200…Q-207 and answered 2026-10-08: the user took every
+recommendation.
 
-| Question | Recommended | Needed by |
+| Question | Outcome | Needed by |
 | --- | --- | --- |
-| Q-200 — Do automatic accepts give the key? | Yes, every accepted match | PAGES-15 |
-| Q-201 — Keys applied from Beatport before this phase | They follow the match | PAGES-15 |
-| Q-202 — Two menu bars | One, the system's: File, Edit, View, Help | PAGES-03 |
-| Q-203 — Where values are edited | One editor: Track details for one track, Clean's Fix values for many | PAGES-06, PAGES-07 |
-| Q-204 — Statistics' key spread and the Keys page | The Keys page is the one home | PAGES-16, Phase 15 |
-| Q-205 — Telling someone who updates | A one-time note | PAGES-11 |
-| Q-206 — The Rekordbox refresh button's name | "Check Rekordbox for changes" | PAGES-05 |
-| Q-207 — Action bars with nothing selected | Always shown, disabled with a reason | PAGES-05, PAGES-08, PAGES-09 |
+| Q-200 — Do automatic accepts give the key? | DEC-202: every accepted match does | PAGES-15 |
+| Q-201 — Keys applied from Beatport before this phase | DEC-203: they follow the match | PAGES-15 |
+| Q-202 — Two menu bars | DEC-204: one, the system's (File, Edit, View, Help) | PAGES-03 |
+| Q-203 — Where values are edited | DEC-205: one editor; Track details for one track, Fix values for many | PAGES-06, PAGES-07 |
+| Q-204 — Statistics' key spread and the Keys page | DEC-206: the Keys page is the one home | PAGES-16, Phase 15 |
+| Q-205 — Telling someone who updates | DEC-207: a one-time note | PAGES-11 |
+| Q-206 — The Rekordbox refresh button's name | DEC-208: "Check Rekordbox for changes" | PAGES-05 |
+| Q-207 — Action bars with nothing selected | DEC-209: always shown, disabled with a reason | PAGES-05, PAGES-08, PAGES-09 |
 
 ## What the later phases pick up from this one
 
-Their documents were written before DEC-199…DEC-201. Each change below is made in that phase's own
-document when its answer is recorded:
+Their documents were written before DEC-199…DEC-209. Each change below is now made in that phase's
+own document (2026-10-08), under a dated note at its top or in the step concerned:
 - **Phase 15** (`PHASE15_STATISTICS.md`): fact 3's key is PAGES-15's, and "No key" reads "No
   Beatport key"; STATS-02's playlist field is FLW-7's "In playlist", one field with one label
   (DEC-162 as amended); STATS-06 reuses PAGES-16's counts mode, with counts written on the page, not
-  on hover only, and its key spread opens the Keys page (Q-204); there are four sizes, not three;
+  on hover only, and its key spread opens the Keys page (DEC-206); there are four sizes, not three;
   the Health tab is settled (DEC-163).
-- **Phase 17** (`PHASE17_WEBSITE.md`): the token generator reads `round()`, `max()` and `@property`
-  (PAGES-14); matching is Clean's, not Discover's; the page list gains Keys; the showcase fixture's
-  keys come from stubbed accepted matches, or its wheel lights nothing; the site's reduced motion
-  matches the app's (PAGES-02).
-- **Phase 18** (`PHASE18_HARDENING.md`): Backups joins PAGES-01's sections (DEC-179); HARDEN-08's
-  accessibility pass covers the new toolbars, the menu and the Keys page.
+- **Phase 17** (`PHASE17_WEBSITE.md`): the token generator resolves `round()`, `max()` and
+  `@property` (PAGES-14); matching is Clean's, not Discover's; the page list and the shots gain Keys;
+  the showcase fixture's keys come from stubbed accepted matches, or its wheel lights nothing; the
+  site's reduced motion stops fades too, as the app's does (PAGES-02).
+- **Phase 18** (`PHASE18_HARDENING.md`): Backups joins PAGES-01's sections, before About & updates
+  (DEC-179); HARDEN-08's accessibility pass covers the new toolbars, the menu bar and the Keys page.
 
 ## Deferred, with reasons
 

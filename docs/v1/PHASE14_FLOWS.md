@@ -626,7 +626,7 @@ not ALL, like some will be too much, only the most important ones we need to be 
 
 **Mark**: **Yes** (2026-10-08)
 
-**What**: The Electron default menu (Reload, Developer Tools, Zoom) is replaced by CuePoint's: File (Import, Check Rekordbox for changes, Export to Rekordbox), View (Size, Track details, sidebar), Help. *(2026-10-08 review: Export stays out of the menu, as DEC-087 has it; Edit is added; the in-window bar goes, Q-202.)* The Shortcuts list shows only shortcuts that work, with Prepare's added. This extends LIB-12 to the whole app.
+**What**: The Electron default menu (Reload, Developer Tools, Zoom) is replaced by CuePoint's: File (Import, Check Rekordbox for changes, Export to Rekordbox), View (Size, Track details, sidebar), Help. *(2026-10-08 review: Export stays out of the menu, as DEC-087 has it; Edit is added; the in-window bar goes, DEC-204.)* The Shortcuts list shows only shortcuts that work, with Prepare's added. This extends LIB-12 to the whole app.
 
 **Why**: Ctrl+R reloads the window though the list calls it something else; eight listed shortcuts do nothing; Zoom fights the Size setting.
 
@@ -698,18 +698,18 @@ will be from beatport".
 
 A review of Phase 14 against every decision settled the details the proposals above left open. The
 step text in `PHASE14_PAGES.md` is the authority; in short:
-- **Labels, one each**: "Check Rekordbox for changes" (Q-206), "Import another file…" (before the
+- **Labels, one each**: "Check Rekordbox for changes" (DEC-208), "Import another file…" (before the
   first import, "Import your Rekordbox collection…"), "Export to Rekordbox…", "Match tracks…" for the
   match window (any number of tracks) and "Match on Beatport" for one track matched in place, "Edit values…", "Save changes into the files…", "Save review
   list as a file…", "Clear queue", "Clear selection", "Clear all filters".
 - **One home each** (FLW-2): matching many tracks is Clean's window, editing is one editor (Track
-  details for one track, Fix values for many, Q-203), export is the Library's and the tree's, never
-  the app menu (DEC-087), and the keys of playlists are the Keys page's (Q-204).
-- **Bars never jump** (Q-207): the selection bar, the tree's bar and Prepare's entry buttons are
+  details for one track, Fix values for many, DEC-205), export is the Library's and the tree's, never
+  the app menu (DEC-087), and the keys of playlists are the Keys page's (DEC-206).
+- **Bars never jump** (DEC-209): the selection bar, the tree's bar and Prepare's entry buttons are
   always shown, disabled with a reason until something is selected.
 - **Nothing hover-only**: reasons shown in a title are also shown on keyboard focus, and the queue's
   failure reason is text on the row.
 - **Discover's tabs** (FLW-15) replace DSC-2's names; the Wantlist keeps its three-way "In your
   library" filter, set to Any.
 - **Keys** (FLW-22): Camelot everywhere; a track with no Beatport key is a notice in Prepare, not a
-  warning; the first-run guide has a matching screen; someone who updates is told once (Q-205).
+  warning; the first-run guide has a matching screen; someone who updates is told once (DEC-207).

@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0–11 implemented (see below). Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 resolved (DEC-189…DEC-198); Round 21 resolved (DEC-179…DEC-188); DEC-199…DEC-201 add Phase 14's task walkthrough; Round 22 asked (Q-200…Q-207, Phase 14's full review).**
+Status: **Phases 0–11 implemented (see below). Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 resolved (DEC-189…DEC-198); Round 21 resolved (DEC-179…DEC-188); DEC-199…DEC-201 add Phase 14's task walkthrough; Round 22 resolved (DEC-202…DEC-209, Phase 14's full review).**
 
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
@@ -907,7 +907,8 @@ accepted (DEC-199), a Keys page in the sidebar (DEC-200, PAGES-16) and Beatport'
 key the app trusts (DEC-201, PAGES-15). A full review on 2026-10-08 checked the phase against every
 decision and Phases 15–18: it fixed the steps' order (PAGES-01, 02, 14, 03, 15, 04, 05A, 05B, 07,
 05C, 06, 08, 09, 10, 16, 11, 12, 13), split PAGES-03, 05, 07 and 09 into parts, added dated notes to the
-decisions the phase changes, and asked Decision Round 22 (Q-200…Q-207).
+decisions the phase changes, and asked Decision Round 22 (Q-200…Q-207), which the user answered
+with every recommendation (DEC-202…DEC-209).
 
 - **Every page reviewed in writing, proposal by proposal** (DEC-130, DEC-131). Each review covers:
   - what the page does;

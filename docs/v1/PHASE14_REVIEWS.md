@@ -1443,7 +1443,7 @@ Keep **How do I export one?**.
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: the button reads "Check Rekordbox for changes" (FLW-11, Q-206)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: the button reads "Check Rekordbox for changes" (FLW-11, DEC-208)
 
 **What**: "Check for changes" becomes **Refresh from Rekordbox…**, with the busy labels "Comparing with Rekordbox…" and "Refreshing…". The badges "Up to date", "Out of date" and "Unverified" become "In sync", "Changed in Rekordbox" and "Not checked yet". "imported {date}" becomes "last read {date}". `libraryFormat.ts:74` becomes "CuePoint could not tell whether this export has changed. Refresh from Rekordbox to compare."
 
@@ -1826,7 +1826,7 @@ The engine adds a `group` to each field spec, so the renderer keeps no second co
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: "Correct a value…" becomes "Edit values…", the editor Fix values uses (Q-203); for the key, going back returns to Beatport's key (DEC-201)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: "Correct a value…" becomes "Edit values…", the editor Fix values uses (DEC-205); for the key, going back returns to Beatport's key (DEC-201)
 
 **What**:
 
@@ -1995,7 +1995,7 @@ When not matched, show only:
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: "Change all 4…" becomes "Edit values for 4 tracks…", since FLW-8 removes Actions… (Q-203)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: "Change all 4…" becomes "Edit values for 4 tracks…", since FLW-8 removes Actions… (DEC-205)
 
 **What**: Under "4 tracks selected — edits here change this one", add **Change all 4…**, which opens the same menu as **Actions…** (`LibraryScreen.tsx:1777-1801`).
 
@@ -2269,7 +2269,7 @@ Rename **Clear decision** → **Undo my decision**, and **Re-match** → **Searc
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: its link reads "Check Rekordbox for changes" (Q-206)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: its link reads "Check Rekordbox for changes" (DEC-208)
 
 **What**:
 

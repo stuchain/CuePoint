@@ -1857,9 +1857,9 @@ changes a user's accept or reject, and one click cannot erase an afternoon of re
 
 ### Amended (2026-10-08, DEC-201) — an accept gives the key
 
-Under DEC-201 an accepted match supplies the track's key. Which accepts count, the automatic ones
-included or not, is Q-200 (Decision Round 22). An automatic accept stays not sticky, so a re-match can
-change a key; History records the change.
+Under DEC-201 an accepted match supplies the track's key, and every accept counts, the automatic ones
+included (DEC-202). An automatic accept stays not sticky, so a re-match can change a key; History
+records the change.
 
 ---
 
@@ -5802,7 +5802,152 @@ Beatport's key as a correction on accept".
   notation is unchanged: detecting it from Rekordbox's file reads the file's format, not its keys.
 - (2026-10-08 review) Rekordbox's key stays readable in one filter field, "Key from Rekordbox (not
   used)", and in Review's comparison, labelled; it never feeds a count, a check or the wheel. The app
-  shows keys in Camelot. Whether automatic accepts give the key, and what happens to keys applied
-  before, are Q-200 and Q-201.
+  shows keys in Camelot. Automatic accepts give the key (DEC-202), and keys applied from a match
+  before this decision follow the match (DEC-203).
+
+**Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-202 — Every Accepted Match Gives the Key, Automatic Ones Included
+
+**Status**: Approved · **Related**: DEC-201, DEC-067, PAGES-15
+
+**Decision**: Under DEC-201 a track's key comes from its accepted Beatport match. Every accepted match counts,
+including those DEC-067 accepts on its own at a score of 95 or more.
+
+**Reason**: A score of 95 is the matcher's near-certain tier; counting only hand-accepted matches would leave
+most of a freshly matched library without keys until it is reviewed track by track. Asked as Q-200; the user chose the recommendation ("Use recommended", 2026-10-08).
+
+**Implications**:
+- An automatic accept stays not sticky (DEC-067): a re-match can replace it and change the key. The
+  change is recorded in History like any other value's.
+
+**Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-203 — A Key Applied From a Match Before DEC-201 Follows the Match
+
+**Status**: Approved · **Related**: DEC-068, DEC-201, PAGES-15
+
+**Decision**: A key the user applied from Beatport under DEC-068, before DEC-201, is read as Beatport's key, not
+as the user's correction: a later reject or a cleared match takes it away. A key the user typed stays
+their correction.
+
+**Reason**: The user applied Beatport's value, not a key of their own. Reading it as a correction would make
+"· yours" mean two things. Asked as Q-201; the user chose the recommendation ("Use recommended", 2026-10-08).
+
+**Implications**:
+- History already records whether a value was applied from a match or typed (`match_apply.py`), so
+  nothing stored is migrated or deleted; the resolver reads the record.
+
+**Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-204 — CuePoint Has One Menu Bar, the System's
+
+**Status**: Approved · **Related**: HDR-5, FLW-20, DEC-087, PAGES-03
+
+**Decision**: CuePoint's own system menu bar replaces both Electron's default and the in-window menu bar: CuePoint
+(macOS), File, Edit, View and Help. HDR-5's View and Help move into it, and the in-window
+`AppMenuBar` goes.
+
+**Reason**: One bar, where each system puts it. macOS needs Edit's cut, copy and paste in the system menu for
+text fields to work at all. Asked as Q-202; the user chose the recommendation ("Use recommended", 2026-10-08).
+
+**Implications**:
+- Export stays out of the menu (DEC-087). Ctrl+=, Ctrl+− and Ctrl+0 step the Size setting instead
+  of zooming. Reload and Developer Tools leave packaged builds.
+
+**Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-205 — One Editor for Values: Track Details for One Track, Fix Values for Many
+
+**Status**: Approved · **Related**: INS-4, INS-11, FLW-12, FLW-2, PAGES-06, PAGES-07
+
+**Decision**: Values are edited in one editor. Track details opens it for the track shown (**Edit values…**); Clean's
+Fix values opens it for many tracks, and Track details' **Edit values for 4 tracks…** opens Fix values
+with the selection. Track details' per-field Apply from Beatport goes: applying Beatport's values is
+Review's and Fix values' job.
+
+**Reason**: Fixing one track should not need a page change, and one editor keeps the rules and words in one
+place (FLW-2). Asked as Q-203; the user chose the recommendation ("Use recommended", 2026-10-08).
+
+**Implications**:
+- INS-4's "Correct a value…" and INS-11's "Change all 4…" are renamed, as `PHASE14_REVIEWS.md` notes.
+
+**Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-206 — The Keys Page Is the One Home of a Key Spread
+
+**Status**: Approved · **Related**: DEC-200, DEC-136, DEC-162, STATS-06, PAGES-16
+
+**Decision**: The Keys page (DEC-200) is where the keys of a library, playlists, Collections or Sets are counted.
+Statistics shows a small key summary that opens the Keys page with the same sources, and Phase 15's
+STATS-06 reuses the Keys page's wheel counts mode rather than adding a second shading mode.
+
+**Reason**: One home per function (FLW-2), and the Keys page is the one the user asked for. Asked as Q-204; the user chose the recommendation ("Use recommended", 2026-10-08).
+
+**Implications**:
+- Phase 15's document is amended to match (2026-10-08). Counts are written on the page, never shown
+  on hover alone.
+
+**Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-207 — Someone Who Updates Is Told Once What Phase 14 Changed
+
+**Status**: Approved · **Related**: DEC-161, DEC-201, DEC-172, PAGES-11
+
+**Decision**: On the first start of the version that ships Phase 14, someone who finished the old tour sees one
+note: the app is now Medium size (1.5×), with **Change size**, shown only to someone who never chose
+a size; and keys now come only from Beatport, with how many tracks have one and **Match tracks…**.
+
+**Reason**: Losing every Rekordbox key at once reads as a bug unless it is explained, and Phase 16's "What's new"
+does not exist yet. Asked as Q-205; the user chose the recommendation ("Use recommended", 2026-10-08).
+
+**Implications**:
+- Stored under its own key, `cuepoint-phase14-note-seen`. Phase 16's "What's new" (DEC-172) takes
+  over from the next update.
+
+**Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-208 — The Refresh Is "Check Rekordbox for Changes"
+
+**Status**: Approved · **Related**: LIB-3, CLN-8, FLW-11, FLW-20, PAGES-05
+
+**Decision**: The action that re-reads the Rekordbox export is named **Check Rekordbox for changes** everywhere:
+the Library header, the File menu, Clean's Missing files and every link to it.
+
+**Reason**: It says what happens, and nothing in the library changes until the user has seen the changes. Asked as Q-206; the user chose the recommendation ("Use recommended", 2026-10-08).
+
+**Implications**:
+- LIB-3's "Refresh from Rekordbox…" and CLN-8's "Refresh the Library" are not used.
+
+**Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-209 — Action Bars Are Always Shown, Disabled With a Reason
+
+**Status**: Approved · **Related**: FLW-8, FLW-10, FLW-15, FLW-17, PAGES-05, PAGES-08, PAGES-09
+
+**Decision**: Bars that act on a selection (the Library's selection bar, the bar under the Collections tree,
+Prepare's entry buttons and Discover's result actions) are always shown. With nothing selected their
+buttons are disabled and say what to select.
+
+**Reason**: A bar that appears on selection pushes down the rows the user is about to click. Asked as Q-207; the user chose the recommendation ("Use recommended", 2026-10-08).
+
+**Implications**:
+- Prepare's buttons sit on a line it already has, so DEC-112's floor is not spent on them.
 
 **Decided with**: User · **Date**: 2026-10-08
