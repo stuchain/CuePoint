@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 14: The Page Reviews (DEC-131)
 
-Written 2026-10-07. This document holds 107 proposals across eleven surfaces. Each has a recommendation. The user marks each one yes or no, and the marks are recorded here beside each proposal. **Marked 2026-10-07** (DEC-159): the user took the recommendation on every proposal, so 100 are accepted and 4 declined (NAV-4, STR-4, BAR-6, BAR-10). NAV-3 and STR-1 were settled by Q-159 and Q-158, and HDR-4 is DEC-133's placement. Only the accepted proposals are built (DEC-131).
+Written 2026-10-07. This document holds 107 proposals across eleven surfaces. Each has a recommendation. The user marks each one yes or no, and the marks are recorded here beside each proposal. **Marked 2026-10-07** (DEC-159): the user took the recommendation on every proposal, so 100 are accepted and 4 declined (NAV-4, STR-4, BAR-6, BAR-10). NAV-3 and STR-1 were settled by Q-159 and Q-158, and HDR-4 is DEC-133's placement. Only the accepted proposals are built (DEC-131). The walkthrough (`PHASE14_FLOWS.md`, DEC-199) and the full review of 2026-10-08 amended some of the accepted ones; each says so beside its mark, and `PHASE14_PAGES.md` is the text that is built.
 
 The screenshots show the app as it is today, at half size, in `phase14/`. The app was driven by Playwright against the real engine with Beatport stubbed. Native hover tooltips do not appear in screenshots, so a tooltip proposal shows the unhovered control. Line numbers are as of 2026-10-07.
 
@@ -116,7 +116,7 @@ Give the page an `h1` "Settings" and a left (or top, at narrow width) list of se
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: Feedback, the tenth kind (DEC-154), sits in "When things change" (PAGES-02)
 
 **What**:
 
@@ -312,7 +312,7 @@ Each switch previews itself (a tiny sprite next to it moves once when toggled on
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: Appearance resets to 1.5×, not 2× (DEC-161), and each reset asks first
 
 **What**: Appearance (Neo dark, 2×), Motion (the defaults DEC-134's amendment records), Waveforms colours (Three bands). Not for Beatport, export or Privacy.
 
@@ -362,7 +362,7 @@ Each switch previews itself (a tiny sprite next to it moves once when toggled on
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: descriptions say "values", not "tags", as INS-7 and LIB-6 do
 
 **What**:
 
@@ -471,7 +471,7 @@ The data comes from a small shell hook polling at most once a minute.
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: the hint reads "Import your Rekordbox collection first"
 
 **What**: While `library/summary` reports `library_empty`, show Clean, Discover and Prepare muted, with the title "Import a collection first". They stay clickable, because their empty states explain.
 
@@ -1139,7 +1139,7 @@ Make the title (`PlayerBar.tsx:163-165`) a button:
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: the wheel opened here lights the playing track (DEC-157's precision)
 
 **What**: Render the key part of `formatTrackMeta` as a button that opens DEC-133's wheel, lit for the playing track.
 
@@ -1443,7 +1443,7 @@ Keep **How do I export one?**.
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: the button reads "Check Rekordbox for changes" (FLW-11, Q-206)
 
 **What**: "Check for changes" becomes **Refresh from Rekordbox…**, with the busy labels "Comparing with Rekordbox…" and "Refreshing…". The badges "Up to date", "Out of date" and "Unverified" become "In sync", "Changed in Rekordbox" and "Not checked yet". "imported {date}" becomes "last read {date}". `libraryFormat.ts:74` becomes "CuePoint could not tell whether this export has changed. Refresh from Rekordbox to compare."
 
@@ -1513,7 +1513,7 @@ Keep **How do I export one?**.
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: FLW-8 makes the groups a visible bar too, and adds Play ▸ and More ▸ (PAGES-05)
 
 **What**:
 
@@ -1826,7 +1826,7 @@ The engine adds a `group` to each field spec, so the renderer keeps no second co
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: "Correct a value…" becomes "Edit values…", the editor Fix values uses (Q-203); for the key, going back returns to Beatport's key (DEC-201)
 
 **What**:
 
@@ -1975,7 +1975,7 @@ When not matched, show only:
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: the hint points at the selection bar's Organize ▸, not a right-click
 
 **What**: "In no Collections" becomes "Not in any Collection yet. Right-click the track and choose **Add to Collection…**, or drag it onto one." "In no playlists" becomes "Not in any Rekordbox playlist."
 
@@ -1995,7 +1995,7 @@ When not matched, show only:
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: "Change all 4…" becomes "Edit values for 4 tracks…", since FLW-8 removes Actions… (Q-203)
 
 **What**: Under "4 tracks selected — edits here change this one", add **Change all 4…**, which opens the same menu as **Actions…** (`LibraryScreen.tsx:1777-1801`).
 
@@ -2269,7 +2269,7 @@ Rename **Clear decision** → **Undo my decision**, and **Re-match** → **Searc
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: its link reads "Check Rekordbox for changes" (Q-206)
 
 **What**:
 
@@ -2343,7 +2343,7 @@ Add a one-line purpose under each (e.g. "Looks for tracks whose file has moved o
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: named "Save review list as a file…" in Clean's header (FLW-13)
 
 **What**: Rename the button **Export review list…** → **Save list as a file…**. The dialog text (`ReviewView.tsx:684-688`) becomes "Saves the N tracks shown — with their match state and Beatport link — as a spreadsheet you can share or check by hand."
 
@@ -2547,7 +2547,7 @@ No part is recommended for full removal. The chart date fields leave the default
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: FLW-15's tabs, New search, Results and Wantlist, replace the tab names (PAGES-08)
 
 **What**:
 
@@ -2798,7 +2798,7 @@ Add a header line "Tracks from your library that would mix well after this one."
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: the card points at the artist and label links and at Track details' Similar tracks, not a right-click
 
 **What**:
 
@@ -2959,7 +2959,7 @@ Covered by `e2e/prepare.spec.ts:275-292`, `e2e/prepareJourney.spec.ts:166-392`, 
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: the hint says to type In and Out in the table (FLW-18)
 
 **What**: When `running.seconds === 0 && untimed === entries`: header fact "No times planned yet" with title "Select an entry and type its In and Out in the Inspector to plan the Set's length. Times are optional." Otherwise "1:34:20 planned · 3 without times". Inspector line `SetEntryZone.tsx:127`: "No out time yet: type one to count this track in the Set's length."
 
@@ -3063,7 +3063,7 @@ Covered by `e2e/prepare.spec.ts:275-292`, `e2e/prepareJourney.spec.ts:166-392`, 
 
 **Recommendation**: Yes
 
-**Mark**: **Yes** (2026-10-07, the recommendation)
+**Mark**: **Yes** (2026-10-07, the recommendation); amended 2026-10-08: "Next key", in fact 2's words, not "Neighbouring key" (DEC-158)
 
 **What**: Key lane gutter "Key (Camelot)" with title "Keys on the Camelot wheel: neighbours mix well"; "One step on the wheel" → "Neighbouring key"; strip loudness gets a title "Loudness (LUFS). +2.1 LU means the next track is 2.1 dB louder."
 

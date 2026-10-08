@@ -450,7 +450,7 @@ not ALL, like some will be too much, only the most important ones we need to be 
 
 **Why**: “Check every file” is in four places, matching in three, Export to Rekordbox in three, and editing values in two, each slightly different.
 
-**Size**: M. **Built in**: PAGES-05, PAGES-07, PAGES-09. **Tasks**: F10.
+**Size**: M. **Built in**: PAGES-13 checks it; each page step builds its own homes. **Tasks**: F10.
 
 #### FLW-3 — One job per tab or panel (a rule for the whole app)
 
@@ -506,7 +506,7 @@ not ALL, like some will be too much, only the most important ones we need to be 
 
 **Mark**: **Yes** (2026-10-08)
 
-**What**: Selecting tracks shows a bar of grouped buttons above the table, the same groups LIB-6 gives the menu: Play ▸ (Play, Play next, Add to queue), Organize ▸, Explore ▸, Fix ▸ (which opens Clean, FLW-12). Right-click shows exactly the same groups. “Actions…” goes. This amends LIB-6, which only regrouped the menu.
+**What**: Selecting tracks shows a bar of grouped buttons above the table, the same groups LIB-6 gives the menu: Play ▸ (Play, Play next, Add to queue), Organize ▸, Explore ▸, Fix ▸ (which opens Clean, FLW-12). Right-click shows exactly the same groups. “Actions…” goes. This amends LIB-6, which only regrouped the menu. *(Settled by the 2026-10-08 review: the groups are Play, Organize, Explore, Beatport, Fix and More, listed in PAGES-05.)*
 
 **Why**: Every multi-track action is in a menu today, and the two menus differ.
 
@@ -566,7 +566,7 @@ not ALL, like some will be too much, only the most important ones we need to be 
 
 **Mark**: **Yes** (2026-10-08)
 
-**What**: “Missing or unreadable files” opens Missing files, “In a duplicate group” opens Duplicates, “Needs review” opens Review. Counts with no tab of their own (no key, no genre) still open the Library filtered.
+**What**: “Missing or unreadable files” opens Missing files, “In a duplicate group” opens Duplicates, “Needs review” opens Review. Counts with no tab of their own (no key, no genre) still open the Library filtered. *(2026-10-08 review: “No Beatport key” opens the Library on the same rule as its count, with Match tracks….)*
 
 **Why**: Health sends you to the Library even when Clean has the tab for it.
 
@@ -626,7 +626,7 @@ not ALL, like some will be too much, only the most important ones we need to be 
 
 **Mark**: **Yes** (2026-10-08)
 
-**What**: The Electron default menu (Reload, Developer Tools, Zoom) is replaced by CuePoint's: File (Import, Check Rekordbox for changes, Export to Rekordbox), View (Size, Track details, sidebar), Help. The Shortcuts list shows only shortcuts that work, with Prepare's added. This extends LIB-12 to the whole app.
+**What**: The Electron default menu (Reload, Developer Tools, Zoom) is replaced by CuePoint's: File (Import, Check Rekordbox for changes, Export to Rekordbox), View (Size, Track details, sidebar), Help. *(2026-10-08 review: Export stays out of the menu, as DEC-087 has it; Edit is added; the in-window bar goes, Q-202.)* The Shortcuts list shows only shortcuts that work, with Prepare's added. This extends LIB-12 to the whole app.
 
 **Why**: Ctrl+R reloads the window though the list calls it something else; eight listed shortcuts do nothing; Zoom fights the Size setting.
 
@@ -640,23 +640,25 @@ the right-click menu and on keys, and say so in the Shortcuts list.
 | Gets a visible place | Where | Proposal |
 | --- | --- | --- |
 | Play, Play next, Add to queue | The selection bar; Track details | FLW-8, FLW-9 |
+| Copy, Show in folder | The selection bar's More ▸ (visible today, kept so); Show in folder also in Track details | FLW-8, FLW-9 |
 | Similar tracks | Track details; the selection bar's Explore | FLW-8, FLW-9 |
 | Add to Collection, Add to Set, New Set from these | The selection bar's Organize | FLW-8 |
 | New Collection, New Set, New folder | Labelled buttons over the tree | FLW-10 |
-| Open in Prepare, Save set list, Export to Rekordbox (a Set or Collection) | The bar under the tree | FLW-10 |
+| Open in Prepare, Save set list (a Set); Rename, Duplicate, Delete, Export to Rekordbox (any node) | The bar under the tree | FLW-10 |
 | Import, Check Rekordbox for changes, Export to Rekordbox | The Library header | FLW-11 |
 | Edit values, Use Beatport's values, Save changes into the files | Clean → Fix values | FLW-12 |
 | Start matching | Clean's header | FLW-13 |
-| Move up, Move down, Start a chapter here, Repeat after, Remove; edit a chapter | Prepare's entry toolbar; the heading's Edit | FLW-17 |
+| Move up, Move down, Start a chapter here, Repeat after, Remove; edit, move or delete a chapter | Prepare's entry buttons; the chapter heading's buttons | FLW-17 |
 | In and Out times | The Set table | FLW-18 |
 | The keys of one or several playlists | The Keys page in the sidebar | FLW-21 |
 
 | Stays right-click or keys only | Why |
 | --- | --- |
-| Copy, Show in folder from a row | Show in folder is in Track details; Copy is a power-user shortcut |
 | Rate ▸ and Favorite from a row | The stars and the heart are in Track details |
 | Add tag… and Remove tag… from a row | Tags are in Track details and Organize ▸ for a selection |
 | Freeze a Smart Collection into a Collection | Rare; the hover icon and the menu are enough |
+| Copy set list, New Set from… on a tree node | Save set list… and Organize ▸'s New Set from these are visible |
+| Reorder a Collection's tracks or the queue by drag | Alt+↑ and Alt+↓ do it from the keyboard: the queue's today, a Collection's added in PAGES-05 |
 | Column resize and reorder by drag | "Columns…" does both |
 | Insert here from a source row's menu | The "Insert here" button is beside the table |
 | Bare A, R, N and arrows in Review | The buttons are beside them |
@@ -691,3 +693,23 @@ visible in Track details, marked as Rekordbox's and not used.
 will be from beatport".
 
 **Size**: M–L (engine-wide). **Built in**: PAGES-15.
+
+## After the full review (2026-10-08)
+
+A review of Phase 14 against every decision settled the details the proposals above left open. The
+step text in `PHASE14_PAGES.md` is the authority; in short:
+- **Labels, one each**: "Check Rekordbox for changes" (Q-206), "Import another file…" (before the
+  first import, "Import your Rekordbox collection…"), "Export to Rekordbox…", "Match tracks…" for the
+  match window (any number of tracks) and "Match on Beatport" for one track matched in place, "Edit values…", "Save changes into the files…", "Save review
+  list as a file…", "Clear queue", "Clear selection", "Clear all filters".
+- **One home each** (FLW-2): matching many tracks is Clean's window, editing is one editor (Track
+  details for one track, Fix values for many, Q-203), export is the Library's and the tree's, never
+  the app menu (DEC-087), and the keys of playlists are the Keys page's (Q-204).
+- **Bars never jump** (Q-207): the selection bar, the tree's bar and Prepare's entry buttons are
+  always shown, disabled with a reason until something is selected.
+- **Nothing hover-only**: reasons shown in a title are also shown on keyboard focus, and the queue's
+  failure reason is text on the row.
+- **Discover's tabs** (FLW-15) replace DSC-2's names; the Wantlist keeps its three-way "In your
+  library" filter, set to Any.
+- **Keys** (FLW-22): Camelot everywhere; a track with no Beatport key is a notice in Prepare, not a
+  warning; the first-run guide has a matching screen; someone who updates is told once (Q-205).

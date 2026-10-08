@@ -1,6 +1,6 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0, 1, 2, 3, 4 and 6 complete. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 resolved (DEC-189…DEC-198); Round 21 resolved (DEC-179…DEC-188); DEC-199…DEC-201 add Phase 14's task walkthrough.**
+Status: **Phases 0–11 implemented (see below). Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 resolved (DEC-189…DEC-198); Round 21 resolved (DEC-179…DEC-188); DEC-199…DEC-201 add Phase 14's task walkthrough; Round 22 asked (Q-200…Q-207, Phase 14's full review).**
 
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
@@ -11,7 +11,8 @@ Phase numbers follow the order of implementation (DEC-146):
 - **Phases 19 and 20** are future releases (DEC-125).
 
 Phase 12 is specified (`PHASE12_CLEANUP.md`), and so are Phase 13 (`PHASE13_REPORTING.md`), Phase 14
-(`PHASE14_PAGES.md`, with its page reviews in `PHASE14_REVIEWS.md`) and Phase 15
+(`PHASE14_PAGES.md`, with its page reviews in `PHASE14_REVIEWS.md` and its task walkthrough in
+`PHASE14_FLOWS.md`) and Phase 15
 (`PHASE15_STATISTICS.md`), Phase 16 (`PHASE16_DISTRIBUTION.md`), Phase 17 (`PHASE17_WEBSITE.md`) and Phase 18 (`PHASE18_HARDENING.md`). PRUNE-01 is implemented
 (2026-10-06): the audit is `PHASE12_AUDIT.md`, and the user approved every group of it the same day.
 PRUNE-02 is implemented (2026-10-06): Qt is removed, and `scripts/check_no_qt.py` keeps it out.
@@ -903,7 +904,10 @@ kind of motion, the app never says "engine", Collections nests under Library, th
 selected track, American English) and DEC-160 (a wheel click replaces the Library's filter). DEC-161 adds a 1.5× size as the
 default, built in PAGES-14. The task walkthrough (`PHASE14_FLOWS.md`) added twenty proposals, all
 accepted (DEC-199), a Keys page in the sidebar (DEC-200, PAGES-16) and Beatport's key as the only
-key the app trusts (DEC-201, PAGES-15).
+key the app trusts (DEC-201, PAGES-15). A full review on 2026-10-08 checked the phase against every
+decision and Phases 15–18: it fixed the steps' order (PAGES-01, 02, 14, 03, 15, 04, 05A, 05B, 07,
+05C, 06, 08, 09, 10, 16, 11, 12, 13), split PAGES-03, 05, 07 and 09 into parts, added dated notes to the
+decisions the phase changes, and asked Decision Round 22 (Q-200…Q-207).
 
 - **Every page reviewed in writing, proposal by proposal** (DEC-130, DEC-131). Each review covers:
   - what the page does;
@@ -920,7 +924,9 @@ key the app trusts (DEC-201, PAGES-15).
   - a short first-run guide.
 - **A pixel-art Camelot wheel** behind a button in the header, beside search (DEC-133). It lights
   the selected or playing track's key and its compatible keys by DEC-096's rule, and a key,
-  clicked, filters the Library.
+  clicked, filters the Library. A track with no Beatport key lights nothing and says why.
+- **Visible actions and one home each** (DEC-199): buttons for the actions that matter, one menu bar,
+  a **Keys** page (DEC-200), and Beatport's key as the only key (DEC-201).
 - **Motion, all ten kinds, each behind its own Settings switch,** so the user can test them and
   pick the defaults (DEC-134).
   - It moves in pixel steps, and fades are smooth (DEC-135).

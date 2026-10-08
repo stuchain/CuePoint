@@ -88,6 +88,12 @@ where confidence is already just a label with no auto-apply behavior today.
 
 **Decided with**: User · **Date**: 2026-09-01
 
+### Amended (2026-10-08, DEC-201) — the key
+
+For the key only, accepting a match is what sets the value the app shows, exports and writes:
+Beatport's key, unless the user has corrected it (DEC-201). Every other field keeps this decision:
+applying stays a separate, explicit act.
+
 ---
 
 ## DEC-005 — Player Backend
@@ -477,6 +483,11 @@ the repeated IA reshuffling that a grow-as-you-go nav would cause.
   its own scope.
 
 **Decided with**: User · **Date**: 2026-09-02
+
+### Amended (2026-10-08, DEC-200) — Keys
+
+The registry gains one destination, **Keys** (`/keys`), after Library and its nested Collections,
+built in PAGES-16.
 
 ---
 
@@ -1844,6 +1855,12 @@ erases review work.
 **Why the decision stands**: Each answer applies the decision's own reasons — a re-match never
 changes a user's accept or reject, and one click cannot erase an afternoon of review.
 
+### Amended (2026-10-08, DEC-201) — an accept gives the key
+
+Under DEC-201 an accepted match supplies the track's key. Which accepts count, the automatic ones
+included or not, is Q-200 (Decision Round 22). An automatic accept stays not sticky, so a re-match can
+change a key; History records the change.
+
 ---
 
 ## DEC-068 — Applied Values Are a CuePoint Layer, and Revertable
@@ -1927,6 +1944,12 @@ that had nothing to write.
 **Why the decision stands**: "Revertable" was the decision's promise, and each answer keeps a revert
 from becoming a second way to lose work: nothing later is overwritten, nothing re-derivable is
 frozen, and nothing is right only sometimes.
+
+### Amended (2026-10-08, DEC-201) — the key
+
+For the key, the effective value is the user's correction, else the accepted Beatport match's key,
+else none. Rekordbox's key is never the fallback. BPM, genre, label and year keep this decision as it
+stands, and the key's history and revert work as here.
 
 ---
 
@@ -2032,6 +2055,12 @@ Nothing here changes the decision. What building it settled, recorded in full in
   beyond the CLI's existing paths, Sync Tags (until CLEAN-14) and the tag write service.
 - **Found and fixed**: the existing writer never replaced a year a file already had — nearly every
   purchased track — while reporting success, in Sync Tags and the CLI alike.
+
+### Amended (2026-10-08, DEC-201) — the key
+
+Writing file tags stays an explicit job. What it writes for the key is DEC-201's key: an accepted
+match's key reaches a file when the user saves changes into it, without a separate apply, and a
+track with no key leaves the file's key untouched.
 
 ---
 
@@ -2521,6 +2550,11 @@ for anything corrected by DEC-069's hand edit rather than by an override.
 
 **Decided with**: User · **Date**: 2026-09-20
 
+### Amended (2026-10-08, DEC-201) — the key
+
+For the key, the effective value is DEC-201's. A track with no key keeps the key Rekordbox already
+has: the export never blanks it.
+
 ---
 
 ## DEC-080 — Tags, Notes and Favorites Stay in CuePoint
@@ -2869,6 +2903,15 @@ to describe two.
   already reads a chosen folder as everything filed under it (EXPORT-04), and the dialog lets a
   folder be ticked; a DJ exporting a "Gigs" folder right-clicks the folder, and offering the entry on
   every row but that one would be a gap with no reason behind it.
+
+### Amended (2026-10-08, DEC-199) — three buttons in the Library header
+
+The walkthrough's FLW-11, accepted, puts **Check Rekordbox for changes**, **Import another file…** and
+**Export to Rekordbox…** in the header as three buttons, and "Collection file ▾" goes. The 2026-09-21
+precision found three did not fit at 2×; the default size is now 1.5× (DEC-161), and where the three
+do not fit on one line their labels shorten rather than fold into a menu (PAGES-05). Export stays out
+of the application menu (PAGES-03), and the tree's bar under a selected node offers it on every node,
+folders included.
 
 ---
 
@@ -3548,6 +3591,12 @@ then means exactly that it earned no key points.
 **Why the decision stands**: these keep "Suggestions and warnings judge a transition by one rule" true
 in the direction the decision cares about, and say more exactly what was found.
 
+### Amended (2026-10-08, DEC-201) — a missing key is a notice
+
+A track with no Beatport key is not "a key it cannot check" warning: it is not counted among the
+Set's warnings and is not acknowledged. Prepare says once how many entries have no Beatport key,
+with **Match tracks…** (PAGES-09). A BPM it cannot check stays a warning.
+
 ---
 
 ## DEC-107 — Running Time Comes From Typed Times, and Counts Only What Is Timed
@@ -3803,6 +3852,13 @@ compact density app-wide would reach back into Phases 4 and 6 for a problem that
   bar; PREP-10's Windows run measured 7 and 4). With the lanes open the Set shows 5, and the panel shows
   4 whole Suggestions. `prepare.spec.ts` holds each at one less, the offset PREP-10's two platforms
   showed, until the Windows run records its own numbers (PREP-12).
+
+### Precision (2026-10-08, DEC-161) — the default size is now 1.5×
+
+The floor of five whole Set rows applies, as this decision says, "at the default window size and
+scale", now 1.5×. At 2× with the row-height fix (PAGES-14) the Set shows four, recorded with no floor:
+someone who picks 2× chooses bigger rows over more of them. Phase 14's additions to Prepare sit on
+lines it already has (PAGES-09).
 
 ---
 
@@ -4489,6 +4545,10 @@ animation steps in the same pixels at 1×, 2× and 3×.
 
 **Decided with**: User · **Date**: 2026-10-06
 
+### Amended (2026-10-08, DEC-161) — four sizes
+
+The steps hold at 1×, 1.5×, 2× and 3×: `--unit` is 6px at 1.5×, a whole pixel.
+
 ---
 
 ## DEC-136 — Statistics Shows Plays, Artists and Labels, the Never Played, Spreads and Health
@@ -4997,6 +5057,11 @@ key (BAR-5) opens the wheel for the playing track.
 
 **Decided with**: User · **Date**: 2026-10-07
 
+### Precision (2026-10-08) — the player bar's key
+
+This rule is the header's wheel. The wheel opened from the player bar's key (BAR-5) lights the playing
+track, and its caption says "Playing: …", since that is the key the user clicked.
+
 ---
 
 ## DEC-158 — The App Is Written in American English
@@ -5060,6 +5125,12 @@ filter.
 
 **Decided with**: User · **Date**: 2026-10-07
 
+### Precision (2026-10-08) — what "the filter" covers
+
+The click replaces the Library's whole view: its search, its rules, the quick-filter chips (FLW-4)
+and the open playlist or Collection, so the result is every track in that key. Each key on the wheel
+says so in its name ("9A: show every 9A track in the Library").
+
 ---
 
 ## DEC-161 — A 1.5× Size, and It Is the Default
@@ -5100,6 +5171,11 @@ Library on its own.
 - **Every route takes `scope`,** and every rule set it returns carries the scope's own rule.
 
 **Decided with**: User · **Date**: 2026-10-07
+
+### Amended (2026-10-08, DEC-199) — one playlist field
+
+The playlist field is Phase 14's "In playlist" (FLW-7), built in PAGES-05 with any mix of playlists,
+Collections and Sets as its value. Statistics uses that field and label rather than adding its own.
 
 ---
 
@@ -5673,7 +5749,8 @@ a menu.
 **Reason**: The user's marks, 2026-10-08.
 
 **Implications**: Each proposal rides its page's step (PAGES-03, 05, 06, 07, 08, 09), and PAGES-13
-checks the FLW-1 and FLW-2 rules across the app.
+checks the FLW-1 and FLW-2 rules across the app. (2026-10-08: FLW-21 is PAGES-16 and FLW-22 is
+PAGES-15; FLW-11 amends DEC-087's 2026-09-21 precision, and FLW-7's field is the one DEC-162 uses.)
 
 **Decided with**: User · **Date**: 2026-10-08
 
@@ -5699,7 +5776,8 @@ route. The Library's Key quick filter (FLW-4) stays as an in-place filter and li
 
 ## DEC-201 — Beatport's Key Is the Only Key CuePoint Trusts
 
-**Status**: Approved · **Amends**: DEC-068 for the key · **Related**: DEC-096, DEC-089, PAGES-15
+**Status**: Approved · **Amends**: DEC-068, and for the key DEC-004, DEC-067, DEC-070, DEC-079 and
+DEC-106 (notes added 2026-10-08) · **Related**: DEC-075, DEC-089, DEC-096, DEC-106, DEC-111, PAGES-15
 
 **Decision**: A track's key is the user's own correction if there is one, else the key of its
 accepted Beatport match. Rekordbox's key is never used: a track with neither has no key, shows "No
@@ -5720,5 +5798,11 @@ Beatport's key as a correction on accept".
 - A library that has not been matched shows no keys; the first-run guide and the Library say that
   keys come from matching.
 - BPM, genre, label and year keep DEC-068's rule.
+- Where DEC-075, DEC-096 and DEC-111 say "effective key", it is this key. DEC-089's export
+  notation is unchanged: detecting it from Rekordbox's file reads the file's format, not its keys.
+- (2026-10-08 review) Rekordbox's key stays readable in one filter field, "Key from Rekordbox (not
+  used)", and in Review's comparison, labelled; it never feeds a count, a check or the wheel. The app
+  shows keys in Camelot. Whether automatic accepts give the key, and what happens to keys applied
+  before, are Q-200 and Q-201.
 
 **Decided with**: User · **Date**: 2026-10-08

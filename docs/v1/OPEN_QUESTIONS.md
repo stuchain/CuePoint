@@ -3894,3 +3894,119 @@ for Linux support.
 
 **Recommendation**: **A**. The owed checks were each accepted as part of a phase; 1.0 is where they
 are kept.
+
+---
+
+## DECISION ROUND 22 — PHASE 14'S FULL REVIEW (Phase 14) ⏳ Asked 2026-10-08
+
+Asked after a full review of Phase 14 (`PHASE14_PAGES.md`, `PHASE14_FLOWS.md`) against DEC-001…DEC-201
+and Phases 15–18. The review's other findings were fixes to the documents; these eight change what
+the user sees. `PHASE14_PAGES.md` is written to each recommendation until the user answers.
+
+### Q-200 — Do automatic accepts give the key?
+
+**Status**: Open
+
+**Question**: DEC-201 makes an accepted match's key the track's key. DEC-067 accepts a candidate
+scoring 95 or more on its own, and a re-match may replace it. Does an automatic accept give the key?
+
+- **Option A — Yes, every accepted match,** automatic ones included; a re-match that changes a key is
+  recorded in History.
+- **Option B — Only a match the user accepted;** an automatic one shows "No Beatport key" until the
+  user confirms it.
+
+**Recommendation**: **A**. A score of 95 is the matcher's near-certain tier, and B would leave most
+of a freshly matched library keyless until it is reviewed by hand.
+
+### Q-201 — Keys applied from Beatport before Phase 14
+
+**Status**: Open
+
+**Question**: Under DEC-068 a user could apply Beatport's key, which stored it as their own value.
+After DEC-201, is such a key Beatport's or the user's?
+
+- **Option A — It follows the match:** read as Beatport's, so a reject takes it away. History records
+  which values were applied from a match, so typed keys stay corrections.
+- **Option B — It stays the user's correction** and survives a reject.
+
+**Recommendation**: **A**. The user applied Beatport's value, not a key of their own; treating it as
+a correction would make "· yours" mean two things.
+
+### Q-202 — One menu bar
+
+**Status**: Open
+
+**Question**: HDR-5 splits the in-window menu bar into View and Help; FLW-20 gives CuePoint its own
+system menu in place of Electron's. Built as written, the window has two menu bars. Which stays?
+
+- **Option A — The system menu bar** holds CuePoint, File, Edit, View and Help; the in-window bar goes.
+- **Option B — The in-window bar** holds everything, and the system menu is hidden on Windows and
+  Linux (macOS keeps its own).
+
+**Recommendation**: **A**. One bar, where each system puts it, and macOS needs Edit's copy and paste
+in the system menu anyway.
+
+### Q-203 — Where values are edited
+
+**Status**: Open
+
+**Question**: INS-4 and INS-11 edit values in Track details; FLW-12 adds Clean's Fix values for the
+same job; Track details also applies Beatport's values field by field. Where does editing live?
+
+- **Option A — One editor, two doors:** Track details opens it for one track, Fix values for many;
+  Track details' per-field Apply goes.
+- **Option B — Only Clean edits;** Track details links there.
+
+**Recommendation**: **A**. Fixing one track should not need a page change, and one editor keeps the
+rules and words in one place.
+
+### Q-204 — Statistics' key spread and the Keys page
+
+**Status**: Open
+
+**Question**: Phase 15's STATS-06 shows the key spread of a scope on a shaded wheel; PAGES-16's Keys
+page does the same for any mix of playlists. Which is the home?
+
+- **Option A — The Keys page;** Statistics shows a small summary that opens Keys with the same
+  sources, and STATS-06 reuses its counts mode.
+- **Option B — Both keep their own key view.**
+
+**Recommendation**: **A**. One home per function (FLW-2), and the Keys page is the one the user
+asked for.
+
+### Q-205 — Telling someone who updates
+
+**Status**: Open
+
+**Question**: Phase 14 moves everyone who never picked a size to 1.5× and takes Rekordbox's keys
+away. Phase 16's "What's new" does not exist yet. Is the user told?
+
+- **Option A — A one-time note** on the first start after the update, with **Change size** and
+  **Match tracks…**.
+- **Option B — Nothing;** the guide and Settings cover it.
+
+**Recommendation**: **A**. Losing every key at once reads as a bug unless it is explained.
+
+### Q-206 — The Rekordbox refresh button's name
+
+**Status**: Open
+
+**Question**: LIB-3 says "Refresh from Rekordbox…", FLW-11 and FLW-20 "Check Rekordbox for changes",
+CLN-8 "Refresh the Library". Which name, everywhere?
+
+- **Option A — "Check Rekordbox for changes"**
+- **Option B — "Refresh from Rekordbox…"**
+
+**Recommendation**: **A**. It says what happens, and nothing changes until the user sees the changes.
+
+### Q-207 — Action bars with nothing selected
+
+**Status**: Open
+
+**Question**: The Library's selection bar, the tree's bar and Prepare's entry buttons act on a
+selection. With nothing selected, are they shown?
+
+- **Option A — Always shown,** disabled with a reason, so the table never moves; as Discover's are.
+- **Option B — Shown only once something is selected.**
+
+**Recommendation**: **A**. A bar that appears pushes the rows the user is about to click.
