@@ -104,11 +104,27 @@ test("playing a view queues exactly what the table shows, in its order", async (
 
     const result = await win.evaluate(async () => {
       const w = window as never as Record<string, any>;
+      // Every track the player starts, in order. The fixtures are a quarter of
+      // a second long, so on a busy machine the one it started on can be over
+      // before a single read sees it: a new track is pushed the moment it
+      // starts, so the pushes are watched instead.
+      const started: string[] = [];
+      const unsubscribe = w.cuepoint.player.subscribeState(
+        (snapshot: { queue?: { currentItem?: { title: string } | null } }) => {
+          const title = snapshot.queue?.currentItem?.title;
+          if (title && started[started.length - 1] !== title) started.push(title);
+        },
+      );
+      // A round trip on the same channel: the subscription is in place after it.
+      await w.cuepoint.player.getState();
       // Play the view sorted by artist descending, starting at its second row.
       const res = await w.cuepoint.player.playView({ sort: "artist", dir: "desc" }, 1);
-      // Read immediately: the fixtures are a quarter of a second long, so a
-      // wait here would see a queue that has already finished.
       const state = await w.cuepoint.player.getState();
+      const deadline = Date.now() + 10_000;
+      while (started.length === 0 && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      unsubscribe();
       // The queue's contents are no longer pushed with the snapshot (PLAYER-08),
       // so they are read a window at a time — the same way the panel reads them.
       const page = await w.cuepoint.player.queueWindow(0, 100);
@@ -118,7 +134,7 @@ test("playing a view queues exactly what the table shows, in its order", async (
         res,
         queueTitles: page.items.map((item: { title: string }) => item.title),
         tableTitles: browse.tracks.map((track: { title: string }) => track.title),
-        current: state.queue.currentItem?.title ?? null,
+        first: started[0] ?? null,
         running: state.status.running,
       };
     });
@@ -129,7 +145,7 @@ test("playing a view queues exactly what the table shows, in its order", async (
     // The queue is the view, in the view's order.
     expect(result.queueTitles).toEqual(result.tableTitles);
     // startIndex picked the second row of that order.
-    expect(result.current).toBe(result.tableTitles[1]);
+    expect(result.first).toBe(result.tableTitles[1]);
     expect(result.running).toBe(true);
   } finally {
     await app.close();
