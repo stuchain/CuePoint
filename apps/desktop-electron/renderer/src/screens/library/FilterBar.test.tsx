@@ -378,9 +378,37 @@ describe("the values a field takes", () => {
     show({ facet: GENRE_FACET });
     openBuilder();
 
-    const options = document.querySelectorAll("#cp-filter-values option");
-    expect(options).toHaveLength(3);
-    expect(options[0]!.getAttribute("label")).toBe("Deep House — 1,204");
+    fireEvent.keyDown(screen.getByLabelText("Value"), { key: "ArrowDown" });
+
+    // The empty bucket is not a value to type; it has its own operator.
+    const options = within(screen.getByRole("listbox")).getAllByRole("option");
+    expect(options).toHaveLength(2);
+    expect(options[0]).toHaveTextContent("Deep House1,204");
+  });
+
+  it("puts a chosen suggestion in the field, by keyboard or by click", () => {
+    show({ facet: GENRE_FACET });
+    openBuilder();
+    const value = screen.getByLabelText("Value");
+
+    fireEvent.change(value, { target: { value: "tech" } });
+    expect(within(screen.getByRole("listbox")).getAllByRole("option")).toHaveLength(1);
+    fireEvent.keyDown(value, { key: "ArrowDown" });
+    fireEvent.keyDown(value, { key: "Enter" });
+    expect(value).toHaveValue("Techno");
+    expect(screen.queryByRole("listbox")).toBeNull();
+
+    fireEvent.change(value, { target: { value: "deep" } });
+    fireEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: /Deep House/ }));
+    expect(value).toHaveValue("Deep House");
+  });
+
+  it("never uses a native datalist (it crashed the app on macOS)", () => {
+    show({ facet: GENRE_FACET });
+    openBuilder();
+    expect(document.querySelector("datalist")).toBeNull();
+    expect(screen.getByLabelText("Value")).not.toHaveAttribute("list");
+    expect(screen.getByLabelText("Value")).toHaveAttribute("spellcheck", "false");
   });
 
   it("shows the range of a number field", () => {
@@ -404,7 +432,9 @@ describe("the values a field takes", () => {
     openBuilder();
     chooseField("bpm");
 
-    expect(document.querySelector("#cp-filter-values")).toBeNull();
+    expect(screen.getByLabelText("Value")).not.toHaveAttribute("aria-controls");
+    fireEvent.keyDown(screen.getByLabelText("Value"), { key: "ArrowDown" });
+    expect(screen.queryByRole("listbox")).toBeNull();
   });
 
   it("shows a rating as stars rather than as a number to type (ORG-12)", () => {
@@ -750,9 +780,10 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
     });
 
     it("does not put tag ids in the text suggestions", () => {
-      // A datalist of "7" and "9" attached to nothing at all.
+      // A list of "7" and "9" attached to nothing at all.
       openOn("tag", { facet: TAG_FACET });
-      expect(document.querySelector("#cp-filter-values")).toBeNull();
+      expect(screen.queryByRole("combobox", { name: /Value/ })).toBeNull();
+      expect(screen.queryByRole("listbox")).toBeNull();
     });
 
     it("does not buy a pass over the library for a yes-or-no control", () => {
@@ -1076,10 +1107,9 @@ describe("an artist or a label by identity (DISCOVER-03)", () => {
     show({ vocabulary: NAMES, facet: ARTIST_FACET });
     openBuilder();
 
-    const options = document.querySelectorAll("#cp-filter-values option");
-    expect(options[0]!.getAttribute("value")).toBe("Âme");
-    expect(options[0]!.getAttribute("label")).toBe("Âme — 14");
-    expect(screen.getByLabelText("Value")).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByLabelText("Value"), { key: "ArrowDown" });
+    const options = within(screen.getByRole("listbox")).getAllByRole("option");
+    expect(options[0]).toHaveTextContent("Âme14");
   });
 
   it("sends the name as it was typed, which the engine folds to its key", () => {

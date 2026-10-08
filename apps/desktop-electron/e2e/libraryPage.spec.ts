@@ -30,6 +30,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -133,12 +134,17 @@ async function importCollection(window: Page, xmlPath: string) {
  * header, four 50px rows and 18px over). The toolbar's buttons stay 30px: a taller button
  * costs the 4th row's margin (DEC-217). Windows and macOS are owed a measure and hold one
  * row lower until then.
+ *
+ * The 1,264 × 735 page a Windows window leaves (1,280 × 800 outside, less the frame and the
+ * menu bar) is 38px shorter than the Linux one: three whole rows there, with the toolbar
+ * on two lines (70px). A third line (103px) leaves two.
  */
 const ON_LINUX = process.platform === "linux";
 const WHOLE_ROWS_LIBRARY_MEASURED = 4;
 const WHOLE_ROWS_LIBRARY = ON_LINUX
   ? WHOLE_ROWS_LIBRARY_MEASURED
   : WHOLE_ROWS_LIBRARY_MEASURED - 1;
+const WHOLE_ROWS_LIBRARY_WINDOWS_INNER = 3;
 
 test.describe("The Library page (LIBRARY-11)", () => {
   let userDataDir: string;
@@ -233,7 +239,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
       // The notice line is not on the page while someone works in the table.
       await expect(window.getByRole("status", { name: "Getting your library ready" })).toHaveCount(0);
 
-      const m = await window.evaluate(() => {
+      const measure = () => window.evaluate(() => {
         const box = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
         const header = box.querySelector<HTMLElement>(".track-table__header")!;
         const rect = box.getBoundingClientRect();
@@ -258,6 +264,12 @@ test.describe("The Library page (LIBRARY-11)", () => {
           scale: getComputedStyle(document.documentElement).getPropertyValue("--scale").trim(),
           window: { width: window.innerWidth, height: window.innerHeight },
           headerHeight: document.querySelector(".library-header")!.getBoundingClientRect().height,
+          toolbarCount: Math.round(document.querySelector(".library-toolbar__count")!.getBoundingClientRect().width),
+          toolbarLines: new Set(
+            [...document.querySelectorAll(".library-toolbar button")].map((el) =>
+              Math.round(el.getBoundingClientRect().top),
+            ),
+          ).size,
           parts: Object.fromEntries(
             [
               ".library-header",
@@ -276,14 +288,24 @@ test.describe("The Library page (LIBRARY-11)", () => {
           ),
         };
       });
-      console.log("PAGES-05C Library whole rows:", m.whole, JSON.stringify(m));
-      // The default window, whose inner height is what the screen leaves it.
-      // 1,280 wide outside: a Windows frame takes 16 px of the page's width.
       expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.getSize()[0])).toBe(1280);
-      expect(m.window.width).toBeGreaterThanOrEqual(1264);
-      expect(m.window.height).toBeGreaterThan(700);
-      expect(m.scale).toBe("1.5");
-      expect(m.whole, "whole rows the Library shows").toBeGreaterThanOrEqual(WHOLE_ROWS_LIBRARY);
+      // As it opens, then at the page a Windows window leaves (frame and menu bar): 1,264 × 735.
+      for (const inner of [null, WINDOWS_INNER]) {
+        if (inner) await setInnerSize(app, window, inner);
+        const m = await measure();
+        console.log(`PAGES-05C Library whole rows at ${m.window.width}x${m.window.height}:`, m.whole, JSON.stringify(m));
+        // The default window, whose inner height is what the screen leaves it.
+        // 1,280 wide outside: a Windows frame takes 16 px of the page's width.
+        expect(m.window.width).toBeGreaterThanOrEqual(1264);
+        if (inner) expect([m.window.width, m.window.height]).toEqual([inner.width, inner.height]);
+        else expect(m.window.height).toBeGreaterThan(700);
+        expect(m.scale).toBe("1.5");
+        expect(m.whole, `whole rows the Library shows at ${m.window.width}x${m.window.height}`).toBeGreaterThanOrEqual(
+          inner ? WHOLE_ROWS_LIBRARY_WINDOWS_INNER : WHOLE_ROWS_LIBRARY,
+        );
+        // The toolbar holds two lines at both: a third costs the table a row.
+        expect(m.toolbarLines, `toolbar lines at ${m.window.width}x${m.window.height}`).toBeLessThanOrEqual(2);
+      }
     } finally {
       await app.close();
     }

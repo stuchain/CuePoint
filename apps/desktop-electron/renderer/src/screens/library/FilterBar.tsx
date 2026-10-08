@@ -266,6 +266,11 @@ export function FilterBar({
   };
 
   const suggestions = facet && facet.field === draft.field ? facet.values : [];
+  // The count is what makes a facet worth showing: it is the difference between
+  // guessing a genre and knowing there are 1,204 tracks in it.
+  const valueSuggestions = suggestions.flatMap((item) =>
+    item.value ? [{ value: item.value, detail: item.count.toLocaleString() }] : [],
+  );
   const chosen = selectedIds(draft);
 
   /** The value control this field's kind needs, or nothing when it needs none. */
@@ -464,9 +469,12 @@ export function FilterBar({
       <TextField
         label={arity === "pair" ? "From" : arity === "list" ? "Values" : "Value"}
         value={draft.value}
-        list={suggestions.length > 0 ? "cp-filter-values" : undefined}
-        // macOS's spell checker and a suggestion list on the same field took
-        // the whole app down as a value was typed (organization e2e, SIGSEGV).
+        // An in-app list, not a native <datalist>: that popup took the whole app down on
+        // macOS as a value was typed (organization e2e, SIGSEGV). Spell checking stays off.
+        suggestions={textSuggestions ? valueSuggestions : []}
+        // Given whenever this kind of field takes a typed name, loaded or not: the field
+        // keeps one shape as the facet arrives, so typing is not interrupted.
+        onPick={offersText ? (value) => setDraft((previous) => ({ ...previous, value })) : undefined}
         spellCheck={false}
         placeholder={arity === "list" ? "One, another, a third" : field.label}
         onChange={(event) =>
@@ -476,8 +484,8 @@ export function FilterBar({
     );
   };
 
-  const textSuggestions =
-    field && !isMembership(field) && !offersChoices(field, draft.operator) && suggestions.length > 0;
+  const offersText = !!field && !isMembership(field) && !offersChoices(field, draft.operator);
+  const textSuggestions = offersText && suggestions.length > 0;
 
   return (
     <div className="cp-filter-bar">
@@ -645,21 +653,6 @@ export function FilterBar({
                 }))
               }
             />
-          )}
-
-          {textSuggestions && (
-            <datalist id="cp-filter-values">
-              {suggestions.map((value) => (
-                <option
-                  key={String(value.value)}
-                  value={value.value ?? ""}
-                  // The count is what makes a facet worth showing: it is the
-                  // difference between guessing a genre and knowing there are
-                  // 1,204 tracks in it.
-                  label={`${value.value ?? "(none)"} — ${value.count.toLocaleString()}`}
-                />
-              ))}
-            </datalist>
           )}
 
           {facet?.range && facet.field === draft.field && facet.range.min !== null && (

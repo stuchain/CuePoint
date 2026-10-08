@@ -49,6 +49,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -364,7 +365,12 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await window.getByRole("button", { name: "Add filter" }).click();
       await window.getByLabel("Field").selectOption("genre");
       await window.locator("#rule").selectOption("is");
-      await window.getByLabel("Value").fill("House");
+      // The suggestions are CuePoint's own list (a native one crashed macOS here): type a
+      // part of the name, choose the genre from the list.
+      const value = window.getByLabel("Value");
+      await value.pressSequentially("Hou");
+      await window.getByRole("listbox", { name: "Suggestions" }).getByRole("option", { name: /^House/ }).click();
+      await expect(value).toHaveValue("House");
       await window.getByRole("button", { name: "Add", exact: true }).click();
       await expect(window.locator(".library-toolbar__count")).toContainText("Showing 6 of 12 tracks", {
         timeout: 30_000,
@@ -607,7 +613,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await expect(collectionsTree(window).getByRole("treeitem")).toHaveCount(6, { timeout: 30_000 });
       await collectionsTree(window).getByText("Openers").click();
 
-      const m = await window.evaluate(() => {
+      const measure = () => window.evaluate(() => {
         const pane = document.querySelector<HTMLElement>(".cp-library-pane")!;
         const box = pane.getBoundingClientRect();
         const tree = document.querySelector<HTMLElement>('[role="tree"][aria-label="Collections"]')!;
@@ -633,16 +639,21 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
           barHeight: height(".cp-collections__bar"),
         };
       });
-      console.log("PAGES-05C Collections pane:", JSON.stringify(m));
-      expect(m.scale).toBe("1.5");
-      // The default 1,280-wide window, less a Windows frame's 16 px.
       expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.getSize()[0])).toBe(1280);
-      expect(m.window.width).toBeGreaterThanOrEqual(1264);
-      expect(m.sideways, `the pane scrolls sideways by ${m.sideways}px`).toBeLessThanOrEqual(0);
-      // Two lines at most, for the buttons over the tree and the bar under it.
-      expect(m.createLines).toBeLessThanOrEqual(2);
-      expect(m.barLines).toBeLessThanOrEqual(2);
-      expect(m.visibleNodes, JSON.stringify(m)).toBeGreaterThanOrEqual(WHOLE_COLLECTION_NODES);
+      // As it opens, then in the page a Windows window leaves (frame and menu bar): 1,264 × 735.
+      for (const inner of [null, WINDOWS_INNER]) {
+        if (inner) await setInnerSize(app, window, inner);
+        const m = await measure();
+        console.log("PAGES-05C Collections pane:", JSON.stringify(m));
+        expect(m.scale).toBe("1.5");
+        // The default 1,280-wide window, less a Windows frame's 16 px.
+        expect(m.window.width).toBeGreaterThanOrEqual(1264);
+        expect(m.sideways, `the pane scrolls sideways by ${m.sideways}px`).toBeLessThanOrEqual(0);
+        // Two lines at most, for the buttons over the tree and the bar under it.
+        expect(m.createLines).toBeLessThanOrEqual(2);
+        expect(m.barLines).toBeLessThanOrEqual(2);
+        expect(m.visibleNodes, JSON.stringify(m)).toBeGreaterThanOrEqual(WHOLE_COLLECTION_NODES);
+      }
     } finally {
       await app.close();
     }

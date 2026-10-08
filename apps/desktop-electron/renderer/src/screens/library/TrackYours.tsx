@@ -17,6 +17,7 @@
 import { useCallback, useId, useMemo, useState } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
+import { SuggestInput } from "../../components/SuggestInput";
 import type { LibraryTrackRow, TrackMetadata } from "../../api/cuepointBridge.types";
 import {
   NOTES_MAX_LENGTH,
@@ -67,7 +68,6 @@ export function TrackYours({
   const tagging = useTrackTags({ trackId, tags, onError, onSaved });
   const [draftTag, setDraftTag] = useState("");
   const [focusStar, setFocusStar] = useState<number | null>(null);
-  const listId = useId();
   const ratingId = useId();
   const notesId = useId();
   const tagId = useId();
@@ -123,6 +123,11 @@ export function TrackYours({
   const suggestions = useMemo(
     () => tagging.vocabulary.filter((tag) => !tagging.tags.some((own) => own.id === tag.id)),
     [tagging.tags, tagging.vocabulary],
+  );
+
+  const suggestionItems = useMemo(
+    () => suggestions.map((tag) => ({ value: tag.name })),
+    [suggestions],
   );
 
   return (
@@ -235,12 +240,16 @@ export function TrackYours({
           <label className="cp-track-yours__label" htmlFor={tagId}>
             Add a tag
           </label>
-          <input
+          {/* Suggestions only, in an in-app list rather than a native <datalist> (macOS
+              crashed on that popup). Whether a typed name is a new tag or one that
+              already exists in another capitalization is the engine's answer,
+              not this list's. */}
+          <SuggestInput
             id={tagId}
+            wrapperClassName="cp-track-yours__tag-field"
             className="cp-track-yours__tag-input"
-            list={listId}
-            // As the Library's filter value: no spell checker beside a suggestion list.
-            spellCheck={false}
+            suggestions={suggestionItems}
+            onPick={setDraftTag}
             value={draftTag}
             maxLength={TAG_NAME_MAX_LENGTH}
             placeholder="Type a name"
@@ -252,14 +261,6 @@ export function TrackYours({
               }
             }}
           />
-          {/* Suggestions only. Whether a typed name is a new tag or one that
-              already exists in another capitalization is the engine's answer,
-              not this list's. */}
-          <datalist id={listId}>
-            {suggestions.map((tag) => (
-              <option key={tag.id} value={tag.name} />
-            ))}
-          </datalist>
           <button
             type="button"
             className="cp-track-yours__tag-add"

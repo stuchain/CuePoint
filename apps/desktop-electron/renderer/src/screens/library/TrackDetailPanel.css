@@ -406,9 +406,13 @@
   margin-top: var(--space-xs);
 }
 
-.cp-track-yours__tag-input {
+.cp-track-yours__tag-field {
   flex: 1 1 auto;
   min-width: calc(80px * var(--scale));
+}
+
+.cp-track-yours__tag-input {
+  width: 100%;
   padding: var(--space-xs);
   border: var(--hairline) solid var(--border-muted);
   background: var(--bg-input);

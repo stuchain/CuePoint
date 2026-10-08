@@ -16,6 +16,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
 import { hasFetchedPlayer } from "./playerAvailable";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -176,46 +177,52 @@ test.describe("the sizes (PAGES-14)", () => {
       expect(await fractionalEdges(win), "Settings: borders and shadows at 1.5×").toEqual([]);
 
       // --- every size: nothing sideways, rows as tall as the size says --------
-      for (const { scale, row } of SIZES) {
-        await openAt(win, scale);
-        for (const page of ["Settings", "Library"]) {
-          await win.getByRole("link", { name: page, exact: true }).click();
-          if (page === "Library") {
-            await expect(win.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
-            await expect(win.locator(".library-screen .track-table__row").first()).toBeVisible({ timeout: 30_000 });
-          } else {
-            await expect(win.getByLabel("Size of text and controls")).toBeVisible({ timeout: 30_000 });
+      // In the window as it opens, then in the page a Windows window leaves (1,264 × 735).
+      for (const inner of [null, WINDOWS_INNER]) {
+        if (inner) await setInnerSize(app, win, inner);
+        const box = await win.evaluate(() => `${window.innerWidth}x${window.innerHeight}`);
+        for (const { scale, row } of SIZES) {
+          await openAt(win, scale);
+          for (const page of ["Settings", "Library"]) {
+            await win.getByRole("link", { name: page, exact: true }).click();
+            if (page === "Library") {
+              await expect(win.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
+              await expect(win.locator(".library-screen .track-table__row").first()).toBeVisible({ timeout: 30_000 });
+            } else {
+              await expect(win.getByLabel("Size of text and controls")).toBeVisible({ timeout: 30_000 });
+            }
+            const spill = await win.evaluate(() => {
+              const screen = document.querySelector<HTMLElement>("main.app-main .screen")!;
+              return Math.max(
+                document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                screen.scrollWidth - screen.clientWidth,
+              );
+            });
+            console.log(`Settings/Library sideways ${page} ${scale}× ${box}:`, spill);
+            expect(spill, `${page} does not scroll sideways at ${scale}× in ${box}`).toBeLessThanOrEqual(0);
           }
-          const spill = await win.evaluate(() => {
-            const screen = document.querySelector<HTMLElement>("main.app-main .screen")!;
-            return Math.max(
-              document.documentElement.scrollWidth - document.documentElement.clientWidth,
-              screen.scrollWidth - screen.clientWidth,
-            );
-          });
-          expect(spill, `${page} does not scroll sideways at ${scale}×`).toBeLessThanOrEqual(0);
-        }
 
-        const rows = await win.evaluate(() => {
-          const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
-          // The header row's cells; its own box adds the border under it.
-          const header = table.querySelector<HTMLElement>(".track-table__header-cell")!;
-          const bodyRows = [...table.querySelectorAll<HTMLElement>(".track-table__row")];
-          const cells = [...table.querySelectorAll<HTMLElement>(".track-table__cell")];
-          return {
-            token: getComputedStyle(document.documentElement).getPropertyValue("--row-height").trim(),
-            header: header.getBoundingClientRect().height,
-            rows: bodyRows.map((r) => r.getBoundingClientRect().height),
-            clipped: cells.filter((c) => c.scrollHeight > c.clientHeight).length,
-            cells: cells.length,
-          };
-        });
-        expect(rows.rows.length, `rows drawn at ${scale}×`).toBeGreaterThan(0);
-        expect(rows.cells, `cells drawn at ${scale}×`).toBeGreaterThan(0);
-        expect(rows.token, `--row-height at ${scale}×`).toBe(`${row}px`);
-        expect(rows.header, `header height at ${scale}×`).toBe(row);
-        expect(new Set(rows.rows), `every body row is ${row}px at ${scale}×`).toEqual(new Set([row]));
-        expect(rows.clipped, `cells with text cut at ${scale}×`).toBe(0);
+          const rows = await win.evaluate(() => {
+            const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
+            // The header row's cells; its own box adds the border under it.
+            const header = table.querySelector<HTMLElement>(".track-table__header-cell")!;
+            const bodyRows = [...table.querySelectorAll<HTMLElement>(".track-table__row")];
+            const cells = [...table.querySelectorAll<HTMLElement>(".track-table__cell")];
+            return {
+              token: getComputedStyle(document.documentElement).getPropertyValue("--row-height").trim(),
+              header: header.getBoundingClientRect().height,
+              rows: bodyRows.map((r) => r.getBoundingClientRect().height),
+              clipped: cells.filter((c) => c.scrollHeight > c.clientHeight).length,
+              cells: cells.length,
+            };
+          });
+          expect(rows.rows.length, `rows drawn at ${scale}× in ${box}`).toBeGreaterThan(0);
+          expect(rows.cells, `cells drawn at ${scale}× in ${box}`).toBeGreaterThan(0);
+          expect(rows.token, `--row-height at ${scale}× in ${box}`).toBe(`${row}px`);
+          expect(rows.header, `header height at ${scale}× in ${box}`).toBe(row);
+          expect(new Set(rows.rows), `every body row is ${row}px at ${scale}× in ${box}`).toEqual(new Set([row]));
+          expect(rows.clipped, `cells with text cut at ${scale}× in ${box}`).toBe(0);
+        }
       }
     } finally {
       await app.close();
@@ -239,14 +246,24 @@ test.describe("the sizes (PAGES-14)", () => {
       await error.scrollIntoViewIfNeeded();
       await expect(error).toBeVisible({ timeout: 30_000 });
       await expect(error).toContainText("No audio player found");
-      const spill = await win.evaluate(() => {
-        const screen = document.querySelector<HTMLElement>("main.app-main .screen")!;
-        return Math.max(
-          document.documentElement.scrollWidth - document.documentElement.clientWidth,
-          screen.scrollWidth - screen.clientWidth,
-        );
-      });
-      expect(spill, "Settings with the player error does not scroll sideways at 3×").toBeLessThanOrEqual(0);
+      for (const inner of [null, WINDOWS_INNER]) {
+        if (inner) await setInnerSize(app, win, inner);
+        const spill = await win.evaluate(() => {
+          const screen = document.querySelector<HTMLElement>("main.app-main .screen")!;
+          return {
+            box: `${window.innerWidth}x${window.innerHeight}`,
+            sideways: Math.max(
+              document.documentElement.scrollWidth - document.documentElement.clientWidth,
+              screen.scrollWidth - screen.clientWidth,
+            ),
+          };
+        });
+        console.log("Settings with the player error at 3×:", JSON.stringify(spill));
+        expect(
+          spill.sideways,
+          `Settings with the player error does not scroll sideways at 3× in ${spill.box}`,
+        ).toBeLessThanOrEqual(0);
+      }
     } finally {
       await app.close();
     }

@@ -30,6 +30,84 @@ function findFractionalSizes(css: string): number[] {
   return lines;
 }
 
+const SIZES = [1, 1.5, 2, 3];
+
+/** Evaluate a `calc()` body built from `--unit`, the spacing tokens and `--scale`; null when it holds anything else (vw, %, em). */
+function valueAt(body: string, scale: number): number | null {
+  const unit = 4 * scale;
+  const steps: Record<string, number> = { xs: 1, sm: 1.5, md: 2, lg: 3, xl: 4 };
+  const text = body
+    .replace(/var\(--unit\)/g, `(${unit})`)
+    .replace(/var\(--space-(xs|sm|md|lg|xl)\)/g, (_, step: string) => `(${unit * steps[step]!})`)
+    .replace(/var\(--scale\)/g, `(${scale})`)
+    .replace(/(\d)px/g, "$1");
+  if (!/^[\d\s.+\-*/()]+$/.test(text)) return null;
+  try {
+    return Function(`"use strict"; return (${text});`)() as number;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Lines holding a `calc()` over --unit or a --space-* token, scaled or divided by a number,
+ * that is not whole at one of the four sizes and which no `round(` encloses (DEC-161).
+ */
+function findFractionalSpacing(css: string): number[] {
+  const lines: number[] = [];
+  const text = css;
+  const seen = new Set<number>();
+  for (let at = text.indexOf("calc("); at !== -1; at = text.indexOf("calc(", at + 1)) {
+    // The matching close, and whether a round( encloses this calc.
+    const stack: boolean[] = [];
+    for (let i = 0; i < at; i += 1) {
+      if (text[i] === "(") stack.push(text.slice(Math.max(0, i - 5), i) === "round");
+      else if (text[i] === ")") stack.pop();
+    }
+    if (stack.some(Boolean)) continue;
+    let depth = 0;
+    let end = at + 4;
+    for (; end < text.length; end += 1) {
+      if (text[end] === "(") depth += 1;
+      else if (text[end] === ")" && --depth === 0) break;
+    }
+    const body = text.slice(at + 5, end);
+    if (!/var\(--(unit|space-[a-z]+)\)/.test(body) || !/[*/]/.test(body)) continue;
+    const fractional = SIZES.some((scale) => {
+      const value = valueAt(body, scale);
+      return value !== null && Math.abs(value - Math.round(value)) > 1e-9;
+    });
+    const line = text.slice(0, at).split("\n").length;
+    if (fractional && !seen.has(line)) {
+      seen.add(line);
+      lines.push(line);
+    }
+  }
+  return lines;
+}
+
+describe("spacing tokens times or over a number", () => {
+  it("fails on a fraction of a token outside round()", () => {
+    const fixture = [
+      ".a { padding: calc(var(--space-xs) / 4); }",
+      ".b { padding: round(down, calc(var(--space-xs) / 4), 1px); }",
+      ".c { gap: calc(var(--space-xs) * 2 / 3); }",
+      ".d { gap: calc(var(--unit) * 1.5); }",
+      ".e { gap: calc(var(--space-xs) / 2); }",
+      ".f { width: calc(var(--unit) * 70); }",
+      ".g { width: min(calc(var(--unit) * 120), calc(100vw - var(--space-lg))); }",
+    ].join("\n");
+    expect(findFractionalSpacing(fixture)).toEqual([1, 3]);
+  });
+
+  it("is whole in every stylesheet at 1×, 1.5×, 2× and 3×", () => {
+    const found = Object.entries(sheets).flatMap(([file, css]) =>
+      findFractionalSpacing(css).map((line) => `${file}:${line}`),
+    );
+    expect(found).toEqual([]);
+  });
+});
+
 describe("sizes at 1.5×", () => {
   it("fails on a bare calc(1px * var(--scale))", () => {
     const fixture = [

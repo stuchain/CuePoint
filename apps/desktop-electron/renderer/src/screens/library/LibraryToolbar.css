@@ -5,8 +5,12 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: calc(var(--space-xs) / 2) var(--space-xs);
-  padding: calc(var(--space-xs) / 2) var(--space-sm);
+  /* Tight across the line, on purpose: at 1.5× in a 1,264 × 735 window (a Windows
+     frame and menu bar inside 1,280 × 800) with Track details open the row has
+     ~520px, and the seven selection buttons need 524 at the old gap, so More ▸
+     wrapped and the row became three lines (103px, a table row lost). */
+  gap: calc(var(--space-xs) / 2) round(down, calc(var(--space-xs) * 2 / 3), 1px);
+  padding: calc(var(--space-xs) / 2) var(--space-xs);
   background: var(--bg-toolbar);
   border-top: var(--hairline) solid var(--border-muted);
 }

@@ -556,10 +556,55 @@ describe("the tags", () => {
     ]);
 
     await waitFor(() => expect(bridge.getTags).toHaveBeenCalled());
-    const options = [...container.querySelectorAll("datalist option")].map(
-      (option) => (option as HTMLOptionElement).value,
-    );
-    expect(options).toEqual(["Warm-up"]);
+    expect(container.querySelector("datalist")).toBeNull();
+    const field = screen.getByLabelText("Add a tag");
+    await waitFor(() => {
+      fireEvent.keyDown(field, { key: "ArrowDown" });
+      expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Warm-up"]);
+    });
+  });
+
+  it("chooses a suggested tag by keyboard, then adds it on the next Enter", async () => {
+    draw({}, []);
+    await waitFor(() => expect(bridge.getTags).toHaveBeenCalled());
+    const field = screen.getByLabelText("Add a tag");
+
+    fireEvent.change(field, { target: { value: "war" } });
+    expect(field).toHaveAttribute("aria-expanded", "true");
+    fireEvent.keyDown(field, { key: "ArrowDown" });
+    expect(field).toHaveAttribute("aria-activedescendant", screen.getByRole("option").id);
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(field).toHaveValue("Warm-up");
+    expect(bridge.assignTag).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(field, { key: "Enter" });
+    await waitFor(() => expect(bridge.assignTag).toHaveBeenCalled());
+  });
+
+  it("does not pop the whole vocabulary open after Enter adds a tag", async () => {
+    draw({}, []);
+    await waitFor(() => expect(bridge.getTags).toHaveBeenCalled());
+    const field = screen.getByLabelText("Add a tag");
+
+    fireEvent.change(field, { target: { value: "up" } });
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    await waitFor(() => expect(bridge.assignTag).toHaveBeenCalled());
+    expect(field).toHaveValue("");
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(field).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("chooses a suggested tag by click", async () => {
+    draw({}, []);
+    await waitFor(() => expect(bridge.getTags).toHaveBeenCalled());
+    const field = screen.getByLabelText("Add a tag");
+
+    fireEvent.change(field, { target: { value: "w" } });
+    fireEvent.click(screen.getByRole("option", { name: "Warm-up" }));
+    expect(field).toHaveValue("Warm-up");
+    expect(screen.queryByRole("listbox")).toBeNull();
   });
 
   it("still lets a name be typed when the vocabulary cannot be read", async () => {

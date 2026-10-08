@@ -14,6 +14,8 @@
 
 .theme-settings__actions {
   display: flex;
+  /* Wraps: at 3× in a 1,264-wide window the two buttons are wider than the page. */
+  flex-wrap: wrap;
   gap: var(--space-md);
 }
 

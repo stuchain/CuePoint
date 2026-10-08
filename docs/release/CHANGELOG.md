@@ -485,6 +485,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Moving a Set's entry twice in a row puts it where you meant.** A second Move up or Move down (or Alt+Up and Alt+Down) pressed right after the first used to be worked out from the order before the first one, and could move the wrong way. It now waits for the first and uses the order you see.
+- **Typing a value into the Library filter no longer closes the app on a Mac.** The suggestion list under
+  the filter's Value field and under Track details' tag field was the browser's own pop-up, which crashed
+  the app on macOS. It is now a list inside CuePoint's window, with the same suggestions: Up and Down
+  move through it, Enter or a click chooses, Escape closes it, and it opens over the page without moving
+  anything.
+- **The page fits a Windows window's real size (1,264 × 735 inside 1,280 × 800).** The Library's toolbar
+  keeps two lines with Track details open, the Collections pane no longer scrolls sideways or loses its
+  sixth row, and Settings' Reset to defaults and Turn all off buttons wrap instead of running past the
+  page at the largest text size.
 - **Table rows are as tall as the size says.** Rows in the Library, Collections,
   Clean, Discover and Prepare tables were 36 pixels at every size, so at Extra
   large the text in them had no room. They are now 33, 50, 66 and 99 pixels at

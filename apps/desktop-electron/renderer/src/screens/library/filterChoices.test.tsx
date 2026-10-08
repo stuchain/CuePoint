@@ -155,7 +155,7 @@ describe("the bar", () => {
     bar();
     await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Rule" }), "contains");
-    expect(screen.getByRole("textbox", { name: "Value" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Value" })).toBeInTheDocument();
   });
 
   it("still asks for the values of a field without choices", async () => {

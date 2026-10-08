@@ -73,8 +73,16 @@
 .cp-collections__create {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-xs);
-  padding: var(--space-xs);
+  gap: calc(var(--space-xs) / 2) var(--space-xs);
+  padding: calc(var(--space-xs) / 2) var(--space-xs);
+}
+
+/* The section's heading is a line, not a band, unlike the Playlists heading's
+   var(--space-sm) (PlaylistPane.css): in a 1,264 × 735 window (a Windows frame and
+   menu bar inside 1,280 × 800) the sixth node needs the height back, and matching
+   it gives up 2 × (var(--space-sm) - var(--space-xs) / 2) = 12px at 1.5×. */
+.cp-collections .cp-playlist-pane__head {
+  padding-block: calc(var(--space-xs) / 2);
 }
 
 .cp-collections__create {
@@ -91,7 +99,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
-  padding: calc(var(--space-xs) / 2) calc(var(--space-xs) * 0.75);
+  padding: calc(var(--space-xs) / 2) round(down, calc(var(--space-xs) * 0.75), 1px);
   border: var(--border-width) solid var(--border-muted);
   background: var(--bg-toolbar);
   color: var(--fg-primary);
@@ -107,7 +115,7 @@
 /* The bar's buttons carry whole words ("Duplicate"), so they spend the least
    on padding: Rename and Duplicate share a line in a pane about 170px wide. */
 .cp-collections__bar-button {
-  padding: calc(var(--space-xs) / 2);
+  padding: calc(var(--space-xs) / 2) round(down, calc(var(--space-xs) / 3), 1px);
 }
 
 .cp-collections__make:hover,
@@ -127,7 +135,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: calc(var(--space-xs) / 2);
-  padding: calc(var(--space-xs) / 2);
+  /* Side padding is a quarter step, in whole pixels (1px at 1.5×, where 1.5px
+     would blur): Rename and Duplicate share a line in the ~156px a 1,264-wide
+     Windows window leaves the pane, with a few px over (the bar gains 1px). */
+  padding: calc(var(--space-xs) / 2) round(down, calc(var(--space-xs) / 4), 1px);
   border-top: var(--hairline) solid var(--border-muted);
 }
 
@@ -197,7 +208,12 @@
   margin-left: 0;
 }
 
+/* The tighter gap is room, not looks: the hovered row's pieces (twisty, icon, a
+   3-character name, two buttons) need about 153px, the pane at 1,264 wide is only
+   ~156px inside its scrollbar, and a font a little wider than the one measured
+   here (Windows, macOS) pushed the pane 1px sideways (organization e2e). */
 .cp-collections .cp-playlist-pane__row {
+  gap: calc(var(--space-xs) / 2);
   padding: 0 var(--space-xs);
 }
 
