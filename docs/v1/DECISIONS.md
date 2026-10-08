@@ -5657,3 +5657,68 @@ should not be the case". Every packaged build so far shows Electron's default ic
 - **SITE-11 reuses the mark** for the favicon set and the OG images, and draws nothing new.
 
 **Decided with**: User · **Date**: 2026-10-07
+
+---
+
+## DEC-199 — Phase 14's Walkthrough: All Twenty Proposals, FLW-1 Narrowed
+
+**Status**: Approved · **Related**: DEC-131, DEC-159, Phase 14 (`PHASE14_FLOWS.md`)
+
+**Decision**: The user accepted all twenty proposals of the task walkthrough (FLW-1…FLW-20). FLW-1,
+"every action has a visible place", is narrowed by the user's note: "only the most important ones
+we need to be distinct". `PHASE14_FLOWS.md` lists which actions get a visible place and which stay
+right-click or keys only. FLW-8 amends LIB-6: the grouped actions are also a visible bar, not only
+a menu.
+
+**Reason**: The user's marks, 2026-10-08.
+
+**Implications**: Each proposal rides its page's step (PAGES-03, 05, 06, 07, 08, 09), and PAGES-13
+checks the FLW-1 and FLW-2 rules across the app.
+
+**Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-200 — The Keys of Playlists Get Their Own Page
+
+**Status**: Approved · **Related**: DEC-133, DEC-096, DEC-201, PAGES-16
+
+**Decision**: Seeing which keys one or several playlists, Collections or Sets hold is a distinct
+function with its own sidebar entry, **Keys**, not only a filter in the Library (FLW-21). It counts
+each key over the chosen sources, shows the counts on the Camelot wheel and as a list, and lists the
+tracks in the keys picked.
+
+**Reason**: The user's request, 2026-10-08.
+
+**Implications**: A new route and page (PAGES-16) reusing PAGES-10's wheel, and one new engine read
+route. The Library's Key quick filter (FLW-4) stays as an in-place filter and links to the page.
+
+**Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-201 — Beatport's Key Is the Only Key CuePoint Trusts
+
+**Status**: Approved · **Amends**: DEC-068 for the key · **Related**: DEC-096, DEC-089, PAGES-15
+
+**Decision**: A track's key is the user's own correction if there is one, else the key of its
+accepted Beatport match. Rekordbox's key is never used: a track with neither has no key, shows "No
+Beatport key", and is left out of key filters, the wheel, the Keys page's counts, Prepare's key
+checks and Similar tracks' key reason. Rekordbox's key stays visible in Track details, marked "not
+used".
+
+**Reason**: The user: Rekordbox's keys "might be wrong, the only right keys will be from beatport".
+Chosen on a decision card over "Beatport first, Rekordbox's flagged" (recommended) and "write
+Beatport's key as a correction on accept".
+
+**Implications**:
+- The user's own correction still wins: it is a deliberate act, and DEC-068's history and revert
+  keep working for it.
+- Exports and saved file tags write the key where there is one and never blank an existing key in
+  Rekordbox or a file.
+- Key leaves the "apply Beatport's values" choices, since accepting a match already gives it.
+- A library that has not been matched shows no keys; the first-run guide and the Library say that
+  keys come from matching.
+- BPM, genre, label and year keep DEC-068's rule.
+
+**Decided with**: User · **Date**: 2026-10-08

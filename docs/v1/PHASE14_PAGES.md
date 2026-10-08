@@ -1,11 +1,12 @@
 # CuePoint v1.0.0 — Phase 14: The Pages Revisited, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. No step is implemented yet.** Fourteen steps, PAGES-01…PAGES-14.
+Status: **Specified 2026-10-07. No step is implemented yet.** Sixteen steps, PAGES-01…PAGES-16.
 The page reviews DEC-131 asks for are written in `PHASE14_REVIEWS.md`, 107 proposals across eleven
 surfaces, each with a screenshot of the app as it is today (`phase14/`). The user marked them on
 2026-10-07, taking the recommendation on every one (DEC-159): 100 accepted, and NAV-4, STR-4, BAR-6
 and BAR-10 declined. Writing the reviews raised six questions that Decision Round 14 did not answer,
-asked as Decision Round 17 (Q-157…Q-162). All six are settled (DEC-154…DEC-158, DEC-160). DEC-161 later added a 1.5× size as the default. The steps below name every
+asked as Decision Round 17 (Q-157…Q-162). All six are settled (DEC-154…DEC-158, DEC-160). DEC-161 later added a 1.5× size as the default. The task walkthrough (`PHASE14_FLOWS.md`) then added FLW-1…FLW-22,
+all accepted (DEC-199…DEC-201), and with them PAGES-15 and PAGES-16. The steps below name every
 proposal they could carry, and each carries only the accepted ones. Per the process, no implementation happens from this document. Each
 step needs an explicit "Implement PAGES-NN" instruction, scoped to exactly that step, and its outcome
 is recorded under the step afterwards.
@@ -68,6 +69,7 @@ size, the files it touches, a recommendation and a screenshot.
 | Discover (with DEC-130's keep, change or remove for each of its 21 parts) | DSC-1…DSC-12 | PAGES-08 |
 | Prepare | PRP-1…PRP-13 (PRP-13 joins RUN-1) | PAGES-09 |
 | The first run | RUN-1…RUN-4 | PAGES-11 |
+| The task walkthrough (`PHASE14_FLOWS.md`) | FLW-1…FLW-22 | PAGES-03, 05–09, 13, 15, 16 |
 
 **The marks.** Recorded beside each proposal in the review, and as DEC-159: every proposal took its
 recommendation. Declined: NAV-4 (sidebar count badges), STR-4 (a toast per first job), BAR-6 (the
@@ -87,6 +89,9 @@ no accepted proposal shrinks to what DEC-132 to DEC-135 require of it, or disapp
 | DEC-135 | Movement and scaling in whole pixels and stepped frames; fades smooth. Duration and step tokens in `tokens.css`, stepping the same at 1×, 1.5×, 2× and 3× (DEC-161). |
 | DEC-096 | The wheel lights the same key, one step either way, and the relative key. |
 | DEC-140 | This phase runs alone, after Phase 13. |
+| DEC-199 | The walkthrough's twenty proposals built on their pages; FLW-1 only for the actions listed in `PHASE14_FLOWS.md`. |
+| DEC-200 | A Keys page in the sidebar for the keys of one or several playlists, Collections or Sets. |
+| DEC-201 | The key is the user's correction, else the accepted Beatport match's; never Rekordbox's. |
 
 ## Sequencing
 
@@ -110,6 +115,14 @@ selected track, which PAGES-05 to PAGES-09 each feed from their pages.
 **Motion last.** PAGES-12 builds the ten kinds across the finished pages, then re-runs the scroll
 checks with every kind on. PAGES-13 is the user's test: they try each kind, pick the defaults, and
 the phase comes together.
+
+**Beatport's key early, the Keys page after the wheel.** PAGES-15 changes the key every page reads,
+so it runs before PAGES-05, PAGES-09 and PAGES-10. PAGES-16 needs the wheel's drawing (PAGES-10) and
+the Library's playlist rule and selection bar (PAGES-05).
+
+**The walkthrough's proposals ride their page's step** (`PHASE14_FLOWS.md`, DEC-199): FLW-20 in
+PAGES-03, FLW-4…8, 10, 11 in PAGES-05, FLW-9 in PAGES-06, FLW-12…14 in PAGES-07, FLW-15 and 16 in
+PAGES-08, FLW-17…19 in PAGES-09, and the FLW-1 and FLW-2 checks in PAGES-13.
 
 **The 1.5× size any time after PAGES-01.** PAGES-14 (DEC-161) needs only PAGES-01's Size control.
 It touches every stylesheet's hairlines, so it runs alone, not beside a page step; running it before
@@ -356,6 +369,12 @@ Activity shows events in words, grouped by day.
 **Proposals carried, if accepted**: NAV-1…NAV-6, HDR-1, HDR-2, HDR-3, HDR-5, HDR-6, HDR-7,
 STR-1…STR-9.
 
+**From the walkthrough** (`PHASE14_FLOWS.md`, accepted by DEC-199): FLW-20. CuePoint gets its own app menu in place of
+Electron's default: File (Import another file…, Check Rekordbox for changes, Export to Rekordbox…),
+View (Size, Track details, the sidebar) and Help. Reload, Developer Tools and Zoom leave packaged
+builds (Zoom fought the Size setting). The Shortcuts list shows only shortcuts that work, and gains
+Prepare's. The sidebar gains **Keys** in PAGES-16.
+
 **Design**:
 - **Search results open the track** (HDR-1). The list becomes a `listbox`; ↑ and ↓ move, Enter or a
   click opens the Library on that track, selected, and Shift+Enter plays it. The Library gains a
@@ -453,6 +472,29 @@ sits beside the filter.
 
 **Proposals carried, if accepted**: LIB-1…LIB-12.
 
+**From the walkthrough** (`PHASE14_FLOWS.md`, accepted by DEC-199): FLW-4 to FLW-8, FLW-10 and FLW-11.
+- **Quick filters** (FLW-4): Key, BPM and Genre buttons above every track table. Key lists the
+  view's keys in Camelot order with counts (PAGES-15's key, so "No Beatport key: N" is its own
+  line), BPM offers the view's range, Genre its genres with counts. Each choice becomes an ordinary
+  chip. The engine answers the facets for the current view; the key facet normalizes notation. The
+  Key list ends with "See these on the Keys page" (PAGES-16 owns key analysis, FLW-2).
+- **Search matches key and BPM** (FLW-5): "8A", "Am" or "124" also match the key or BPM, and a row
+  says what it matched on. Engine search, `track_query.py`'s `_SEARCH_COLUMNS` plus a key and BPM
+  clause.
+- **One Key field** (FLW-6): `filter_rule.py` keeps one "Key" field, compared on the normalized key
+  (`override_values.parse_key`), so 8A and Am are one key. "Rekordbox key" moves into the
+  Rekordbox-only group; "CuePoint key" becomes "Your key".
+- **"In playlist"** (FLW-7): a new rule field, and saving a Smart Collection while a playlist is
+  open adds it, so the playlist is no longer dropped (`LibraryScreen.tsx` `saveSmart`).
+- **The selection bar** (FLW-8, amending LIB-6): Play ▸, Organize ▸, Explore ▸ and Fix ▸ as visible
+  buttons when tracks are selected; Fix ▸ opens Clean's Fix values with the selection (FLW-12). The
+  right-click menu shows the same groups; "Actions…" goes.
+- **The tree** (FLW-10): "New Collection", "New Set" and "New folder" as labelled buttons, and a bar
+  under the tree for the selected node: Rename, Duplicate, Delete, and for a Set, Open in Prepare,
+  Save set list… and Export to Rekordbox…. Hover icons and right-click keep working.
+- **The header** (FLW-11): "Check Rekordbox for changes", "Import another file…" and "Export to
+  Rekordbox…" as three buttons; "Collection file ▾" goes.
+
 **Design**:
 - **The selected-track store** (fact 4) is added here, `components/shell/selectedTrack.ts`, and the
   Library sets it whenever its Inspector shows a track. It holds `{ id, key } | null`, where `key` is
@@ -503,6 +545,11 @@ multi-selection offers **Change all 4…**.
 
 **Proposals carried, if accepted**: INS-1…INS-11.
 
+**From the walkthrough** (`PHASE14_FLOWS.md`, accepted by DEC-199): FLW-9: Play, Play next, Similar tracks and Show
+in folder as buttons under the track's title. The key reads with its source (PAGES-15): "8A ·
+Beatport", "8A · yours", or "No Beatport key" with a link to match it in Clean; Rekordbox's key
+shows in the Rekordbox section, marked "not used".
+
 **Design**:
 - **The panel's name** (INS-1) changes in its heading, its show and hide labels, the shortcuts list
   and the specs that find it by "Track inspector" (fact 1). The component and storage key keep their
@@ -541,6 +588,19 @@ a running match is explained on the page; Missing files gives the fix in steps.
 **Dependencies**: PAGES-03.
 
 **Proposals carried, if accepted**: CLN-1…CLN-12.
+
+**From the walkthrough** (`PHASE14_FLOWS.md`, accepted by DEC-199): FLW-3, FLW-12, FLW-13 and FLW-14.
+- **Fix values** (FLW-12): a new tab holding Edit values, Use Beatport's values and Save changes
+  into the files, for a selection or a scope (the library, a playlist, a Collection). The Library's
+  Fix ▸ and Beatport ▸ open it with the selected tracks. The tabs read: Review matches, Fix values,
+  Missing files, Duplicates, Health. Key leaves Edit values' Beatport choices, since an accepted
+  match already gives the key (PAGES-15).
+- **Matching from the header** (FLW-13): "Match tracks…" opens a small window (what to match,
+  whether to match again), and "Export review list…" moves beside it. Review keeps the queue, the
+  comparison and the decision buttons only.
+- **Health opens Clean's own tabs** (FLW-14): missing files, duplicates and needs-review counts open
+  their tab; the rest still open the Library filtered. "No key" reads "No Beatport key" and opens
+  Review on the unmatched tracks, since matching is how a track gets its key.
 
 **Design**:
 - **The match-state words** (CLN-4) change in `cleanRules.ts`, `cleanFormat.ts` and
@@ -588,6 +648,12 @@ is explained on the page.
 **Proposals carried, if accepted**: DSC-1…DSC-12, and the inventory's keep, change or remove for each
 part (`PHASE14_REVIEWS.md`, Discover).
 
+**From the walkthrough** (`PHASE14_FLOWS.md`, accepted by DEC-199): FLW-15 and FLW-16. The tabs become "New search",
+"Results" (past searches on the left, the chosen one's tracks on the right) and "Wantlist". Owned
+tracks are hidden by default everywhere, behind one switch with one label. Result actions are
+always visible, disabled with their reason until rows are selected. Artist and label names in the
+result and wantlist tables link to their pages.
+
 **Design**:
 - **"Run" stays the engine's word.** Only what the user reads changes; routes, job types and stored
   rows keep "run" (fact 3).
@@ -634,6 +700,17 @@ explained in place.
 **Proposals carried, if accepted**: PRP-1…PRP-12. PRP-13 (Prepare in Getting started) is built in
 PAGES-11.
 
+**From the walkthrough** (`PHASE14_FLOWS.md`, accepted by DEC-199): FLW-17 to FLW-19.
+- **The entry toolbar** (FLW-17): with an entry selected, Move up, Move down (also Alt+↑ and Alt+↓,
+  as in the queue), Start a chapter here, Repeat after and Remove. A chapter heading has an Edit
+  button. Drag, double-click and right-click keep working.
+- **In and Out in the table** (FLW-18): two columns typed into in place, saved on Enter or blur with
+  the same rules and messages as the Inspector's "In this Set", which keeps its fields.
+- **The strip's caption** (FLW-19): "8A → 9A · one step up · 124 → 126 BPM (+1.6%) · Out 5:30 → In
+  0:45", and a warning as a sentence under it with Accept beside it.
+- **Keys** come from PAGES-15. An entry with no Beatport key gets "No Beatport key: key check
+  skipped", never a clash.
+
 **Design**:
 - **New Set from the header** (PRP-1) opens the dialogs already mounted at
   `PrepareScreen.tsx:1037`.
@@ -673,6 +750,9 @@ its key."
 each page).
 
 **Proposals carried, if accepted**: BAR-5 (the player bar's key opens the wheel).
+
+The wheel reads PAGES-15's key. A selected track with no Beatport key lights nothing and says "This
+track has no Beatport key yet", with a link to match it in Clean. PAGES-16 reuses the drawing.
 
 **Design**:
 - **The engine answers what mixes,** so the renderer keeps no copy of the rule (DEC-133). A new
@@ -842,7 +922,7 @@ matches the app; the phase is accepted.
 **User-visible result**: A new install starts with the motion the user chose. The user guide describes
 the pages as they now are.
 
-**Dependencies**: PAGES-12.
+**Dependencies**: PAGES-12, PAGES-14 to PAGES-16.
 
 **Design**:
 - **The user's test.** A build with every kind on, and a one-page checklist of where each kind shows
@@ -852,6 +932,10 @@ the pages as they now are.
 - **The user guide** is read against the app, page by page, and every quoted string checked
   (fact 10). `glossary.md` gains the Camelot wheel and compatible keys, and loses any word this
   phase retired.
+- **The walkthrough's rules** (DEC-199). Every action in `PHASE14_FLOWS.md`'s "gets a visible
+  place" table is checked on its page (FLW-1 as narrowed), and every function listed in more than
+  one place has one home with links to it (FLW-2). An e2e check per row clicks the visible control,
+  not the menu.
 
 **Tests**:
 - `motion.test.ts`: the recorded defaults; a stored choice survives them.
@@ -1014,6 +1098,118 @@ thinner than a strict 1.5× would make it; that is DEC-161's accepted cost.
 
 ---
 
+## PAGES-15 — Beatport's Key Is the Key
+
+**Objective**: A track's key is your own correction, else its accepted Beatport match's key, else
+none (DEC-201). Rekordbox's key no longer counts anywhere a key is used.
+
+**User-visible result**: Keys in the Library, the filters, search, the wheel, the Keys page,
+Prepare's checks, Similar tracks and Health are Beatport's (or yours). A track with no accepted
+match shows "No Beatport key" and is left out of every key filter, count and check. Track details
+still shows Rekordbox's key in its Rekordbox section, marked "not used". After a fresh import no
+track has a key until matching runs; the Library and the first-run guide say so, with a button to
+match in Clean.
+
+**Dependencies**: none in this phase. It runs before PAGES-05, PAGES-09, PAGES-10 and PAGES-16, which
+all read the key it defines.
+
+**Proposals carried**: FLW-22 (the user's, DEC-201), and FLW-6's notation rule.
+
+**Design**:
+- **One rule, in the engine.** Today the key is `effective_value(tracks.key, meta.key)` and the SQL
+  `COALESCE(meta.key, tracks.key)` (`models/track_metadata.py:293`, `models/filter_rule.py:480`,
+  DEC-068). Key gets its own resolver: `COALESCE(meta.key, accepted.key)`, where `accepted` is the
+  `match_candidates.key` of the track's accepted match (`migrations/m0012_match_similarity.py`).
+  BPM, genre, label and year keep DEC-068's rule.
+- **Every reader moves together**: the filter field and its facet, `track_repository.py`'s row
+  read, search (FLW-5), `set_analysis_service.py`, `set_suggestion_service.py`,
+  `similarity_service.py`, `set_list_service.py`, `metadata_service.py`, `health_service.py`'s
+  `missing_key` ("No Beatport key"), the export's `rekordbox_export_values.effective_key` and
+  `file_write_repository.py`. A test lists every place that reads a key, so a new one cannot read
+  `tracks.key` by mistake.
+- **Writing never blanks a key.** Export to Rekordbox and Save changes into the files write the key
+  where there is one, and leave the existing key in Rekordbox or in the file untouched where there
+  is none.
+- **Applying is no longer needed for the key.** Key leaves "Use Beatport's values" and Review's
+  "Apply from the accepted match", since accepting already gives it. A key someone applied before
+  stays as their correction, with its history; nothing stored is migrated.
+- **A rejected or cleared match** takes its key away with it, on the next read.
+- **Matching itself is unchanged.** The matcher still reads Rekordbox's key only as the scoring
+  hint it uses today; that is evidence for finding the match, not the key the app shows.
+- **The API** adds `key_source` ("yours", "beatport" or null) and `rekordbox_key` to track rows; the
+  contract files move together.
+
+**Tests**:
+- Resolver unit tests: yours beats Beatport; Beatport with no correction; neither gives none; a
+  rejected match gives none.
+- `filter_sql` tests: "Key is 8A" matches a Beatport "Am" and never a Rekordbox-only 8A.
+- Export and tag-writing tests: no key leaves the target's key as it was.
+- Set checks and Similar tracks skip a track with no key and say so.
+- Health counts "No Beatport key".
+- An e2e run: import a fixture whose tracks have Rekordbox keys and no matches, and see "No Beatport
+  key"; accept a fixture match and see its key in the table, the wheel and Prepare.
+
+**Acceptance criteria / DoD**: no screen, filter, count, check or export uses Rekordbox's key; the
+guard test lists every key reader.
+
+**Risks**: Medium. A library that has not been matched shows no keys at all. That is DEC-201's
+choice, and LIB-1, RUN-3 and the first-run guide explain it.
+
+**Complexity**: **L**
+
+---
+
+## PAGES-16 — The Keys Page
+
+**Objective**: A sidebar page that shows the keys of one or several playlists, Collections or Sets
+together, and the tracks in any of them (FLW-21, DEC-200).
+
+**User-visible result**: **Keys** in the sidebar. On the left, the whole library or a ticked set of
+playlists, Collections and Sets. In the middle, the Camelot wheel with each key's count on its
+segment, darker where there are more, and the same counts as a list in Camelot order with a bar
+each; "No Beatport key: N" on its own line. Clicking one or more keys lists those tracks below,
+with the selection bar's actions. "Show keys that mix with 8A" lights the compatible keys.
+"Open in Library" and "Save as Smart Collection…" carry the choice on, playlists included.
+
+**Dependencies**: PAGES-10 (the wheel's drawing and the compatible-keys route), PAGES-15 (the key),
+PAGES-05 (the "In playlist" rule, FLW-7, and the selection bar, FLW-8).
+
+**Proposals carried**: FLW-21 (the user's, DEC-200).
+
+**Design**:
+- **The route** `/keys`, its own sidebar entry after Library and Collections, with the description
+  line NAV-1 gives every entry: "Which keys your playlists hold".
+- **The engine counts.** A read route, `POST /api/v1/library/keys/population`, takes the sources
+  (`{kind: "all" | "playlist" | "collection" | "set", id}`) and answers `{total, keys: [{code:
+  "8A", count}], no_key}`. A track in several sources counts once. Codes are Camelot, from PAGES-15's
+  key. The six contract files move together.
+- **The wheel is PAGES-10's,** drawn in a counts mode; one component, two uses. The list beside it
+  is the accessible reading of the same numbers.
+- **The tracks** are an ordinary track table whose rules are "Key is any of …" and "In playlist …",
+  so "Open in Library" and "Save as Smart Collection…" are the Library's own (FLW-7).
+- **Remembered**: the ticked sources, in `localStorage` under `cuepoint-keys-sources`, guarded like
+  `scale.ts`.
+- **Empty states**: no library ("Import your collection first"); no Beatport keys yet ("Keys come
+  from Beatport. Match your tracks in Clean", with the button).
+- **One home** (FLW-2): the Library's Key quick filter stays as an in-place filter and links here.
+
+**Tests**:
+- Engine: counts for one and several sources, a track in two sources counted once, `no_key`, and an
+  unknown source refused with the envelope.
+- Renderer: the source picker, the counts list in Camelot order, multi-key selection, the
+  compatible-keys light, and the Smart Collection it saves.
+- `e2e/keys.spec.ts`: tick two playlists, read the counts, click a key, play a track from the list.
+
+**Acceptance criteria / DoD**: the keys of any mix of playlists, Collections and Sets are one click
+away from the sidebar, and every count matches the Library filtered the same way.
+
+**Risks**: Low. The counting is a grouped read over indexed columns; it is measured on the 50k
+fixture with `bench_library.py`.
+
+**Complexity**: **L**
+
+---
+
 ## Phase-level acceptance
 
 Phase 14 is complete when, in a **packaged build** on Windows and macOS:
@@ -1030,13 +1226,16 @@ Phase 14 is complete when, in a **packaged build** on Windows and macOS:
    reduced motion stops them all; no motion delays input. *PAGES-02, PAGES-12.*
 7. The scroll checks pass with every kind on. *PAGES-12.*
 8. The defaults are the user's, recorded as an amendment to DEC-134. *PAGES-13.*
-9. A fresh install opens at 1.5×, no hairline lands on half a pixel at any size, and table rows are
-   as tall as the size says. *PAGES-14.*
-10. Every suite passes, with the engine smoke check, the desktop contract test, the coupling check, the
+9. Every key the app shows, filters, counts or checks is the user's or Beatport's, never
+   Rekordbox's, and the Keys page counts any mix of playlists, Collections and Sets. *PAGES-15,
+   PAGES-16.*
+10. A fresh install opens at 1.5×, no hairline lands on half a pixel at any size, and table rows are
+    as tall as the size says. *PAGES-14.*
+11. Every suite passes, with the engine smoke check, the desktop contract test, the coupling check, the
     end-to-end suite and `npm run dist`.
-11. No decision in DEC-001…DEC-161 is contradicted, except where an accepted proposal says so and the
-    user accepted it knowing (BAR-6 and WAVE-06). A contradiction stops the work and is raised rather
-    than worked around.
+12. No decision in DEC-001…DEC-201 is contradicted, except where an accepted proposal says so and the
+    user accepted it knowing (BAR-6 and WAVE-06), and DEC-201's change to DEC-068 for the key. A
+    contradiction stops the work and is raised rather than worked around.
 
 ## Decision Round 17 — what the reviews raised
 
