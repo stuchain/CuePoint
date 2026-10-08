@@ -1,6 +1,7 @@
-/* The library's counts, its source and its two actions (LIBUI-10, DEC-039). */
+/* The library's counts, its source and its three actions (LIBUI-10, DEC-039, FLW-11). */
 
 .library-header {
+  position: relative;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -55,11 +56,40 @@
   font-size: var(--font-size-xs);
 }
 
+/* Three buttons stay on one line while they can; it is the labels that give way
+   (FLW-11). Only when even the short labels do not fit do the buttons wrap. */
 .library-header__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-sm);
   margin-left: auto;
+}
+
+.library-header__subtitle {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* The full labels, laid out and never seen: what the header measures to decide
+   whether the visible ones must shorten. */
+.library-header__measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-sm);
+  width: max-content;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.library-header__measure-label::after {
+  content: attr(data-text);
+  white-space: nowrap;
 }
 
 .library-header__title {

@@ -8,20 +8,37 @@ filters, sorting and a track's full detail.
 
 Open **Library** in the sidebar.
 
-## Importing a collection
+## Importing your Rekordbox collection
+
+Until something is imported, the Library says **Nothing imported yet** and shows
+the three steps below, with **Import your Rekordbox collection…** at the top and
+**How do I export one?** for the Rekordbox side.
 
 1. In Rekordbox, use **File → Export Collection in xml format** and save the
    file somewhere you will find it again. Downloads is fine.
-2. In CuePoint, open **Library** and choose **Import a collection…**.
+2. In CuePoint, open **Library** and click **Import your Rekordbox collection…**.
 3. Pick the file. CuePoint reads it in the background — you can keep using the
    rest of the app, and the strip along the bottom shows how far it has got.
+   Nothing in Rekordbox is changed.
 
 When it finishes, the page shows what CuePoint now holds and which file it came
-from. **It remembers that file**, so refreshing later takes one click.
+from. **It remembers that file**, so checking for changes later takes one click.
 
-To switch to a different export later, open **Collection file ▾** at the top of
-the Library and choose **Import a different collection…**. The same menu has
-**Export to Rekordbox…** — see [Exporting to Rekordbox](rekordbox-export.md).
+The header then has three buttons, side by side: **Check Rekordbox for changes**,
+**Import another file…** (to switch to a different export) and **Export to
+Rekordbox…** — see [Exporting to Rekordbox](rekordbox-export.md). In a narrow
+window or at a large size they read **Check Rekordbox**, **Import…** and
+**Export…**; their full names are what a screen reader hears. The badge beside
+the file's path says **In sync**, **Changed in Rekordbox**, **File not found** or **Not checked yet**,
+and **last read** says when CuePoint last read the file.
+
+**After an import**, a note under the header says CuePoint is checking that your
+music files are where Rekordbox says, reading their cover art and drawing each
+track's waveform, and that you can browse and play while it works. A "Now:" line
+shows the step and how far it is, for example *Now: drawing waveforms, 1,204 of
+12,000*. Close it with **Dismiss**; it goes by itself when the work ends. When
+that work is done and no track has a Beatport key yet, the same line says so and
+offers **Match tracks…**, which opens [Clean](clean.md).
 
 A 50,000-track collection takes about eleven seconds to import. See
 [Performance](performance.md#the-library) for the measured numbers.
@@ -84,6 +101,18 @@ A playlist opens in the order you arranged it in Rekordbox, which is what a set
 list is for. The whole library opens by artist. Sorting a playlist by anything
 else and then going back to **All tracks** does not carry that sort over.
 
+### When a table is empty
+
+An empty table says why and offers the next step as a button:
+
+| What you see | Button |
+| --- | --- |
+| **No tracks match this search.** | **Clear the search** (or **Clear all filters**, or **Clear search and filters**, whichever is narrowing the view) |
+| **Nothing matches these rules right now.** (a Smart Collection) | **Edit the rules**, which opens **Add filter** |
+| **This playlist is empty.** Playlists come from Rekordbox, so add tracks there | **Check Rekordbox for changes** |
+| **This Collection is empty.** (or Set) Drop tracks onto it, or use **Add to Collection** | **Browse the whole library** |
+| **This Rekordbox export has no tracks in it.** | **Import another file…** |
+
 ### Choosing columns
 
 **Columns…** opens the list. Nine are shown to start with — the ones a DJ reads —
@@ -97,12 +126,15 @@ a column, drag its edge to resize it. CuePoint remembers all of it.
 
 BPM, genre, label and year show **your** value when you have set one. A
 small mark beside the value says so — **B** when it was applied from Beatport,
-a dot when you typed it — and pointing at the mark says where it came from and
-what Rekordbox has underneath.
+a dot when you typed it — and pointing at the mark, or tabbing to it, says in
+words where the value came from and what Rekordbox has underneath. The Columns
+list repeats what the marks mean. A key is marked only when you typed it: a key
+from Beatport is the track's key, not an edit.
 
 **Key is Beatport's key.** A track's key is the one you typed, or else the key
 of its accepted Beatport match, shown in Camelot (8A). Rekordbox's key is never
-used, so a track with no accepted match shows "—" in the Key column, and every
+used, so a track with no accepted match shows "—" in the Key column (point at
+the heading: *Keys come from Beatport matches*), and every
 key filter, count, check and export leaves it out. After a fresh import no track
 has a key until matching runs: open [Clean](clean.md) and match your library.
 The key filter understands every notation, so "Key is 8A" finds a track whose
@@ -177,7 +209,7 @@ than moving everything around it. See
 Your collection moves on: you buy tracks, you rate them, you delete things.
 CuePoint does not watch the file, so you decide when to catch up.
 
-Open **Library** and press **Check for changes**.
+Open **Library** and press **Check Rekordbox for changes**.
 
 - If nothing has changed, CuePoint says so immediately. It does not re-read a
   50,000-track file to tell you nothing happened — it compares the file's
@@ -186,7 +218,8 @@ Open **Library** and press **Check for changes**.
   what a refresh would do** before doing any of it.
 
 The page also tells you, without being asked, when the export has changed since
-your last import — that is what **Out of date** means next to the file name.
+your last import — that is what **Changed in Rekordbox** means next to the file
+name. **Not checked yet** means CuePoint could not tell, so check to be sure.
 
 ### What the preview shows
 

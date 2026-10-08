@@ -689,7 +689,7 @@ describe("refusals (DEC-082, DEC-083)", () => {
     expect(within(dialog()).getByTestId("export-blocker")).toHaveTextContent("problem above");
     expect(within(dialog()).queryByRole("region", { name: "Tracks" })).toBeNull();
 
-    await user.click(within(refused).getByRole("button", { name: "Import a different collection…" }));
+    await user.click(within(refused).getByRole("button", { name: "Import another file…" }));
     expect(handlers.onImport).toHaveBeenCalledTimes(1);
     expect(bridge.startRekordboxExport).not.toHaveBeenCalled();
   });

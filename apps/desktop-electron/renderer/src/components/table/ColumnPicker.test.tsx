@@ -162,3 +162,28 @@ describe("reset", () => {
     expect(handlers.onReset).toHaveBeenCalled();
   });
 });
+
+describe("the note under the list (LIB-9)", () => {
+  const note = "A dot marks a value you changed in CuePoint; a B marks one taken from Beatport.";
+
+  it("says what the marks mean when the table has some", () => {
+    render(
+      <ColumnPicker
+        open
+        columns={COLUMNS}
+        layout={defaultLayout(COLUMNS, 1)}
+        onToggle={vi.fn()}
+        onNudge={vi.fn()}
+        onReset={vi.fn()}
+        onClose={vi.fn()}
+        note={note}
+      />,
+    );
+    expect(screen.getByText(note)).toBeInTheDocument();
+  });
+
+  it("is absent for a table without any", () => {
+    show();
+    expect(screen.queryByText(/marks a value/)).toBeNull();
+  });
+});

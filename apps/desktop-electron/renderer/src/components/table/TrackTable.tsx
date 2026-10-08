@@ -32,6 +32,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { useScale } from "../../tokens/ScaleContext";
+import { Hint } from "../Hint";
 import {
   gridTemplate,
   orderedWidths,
@@ -445,20 +446,22 @@ export function TrackTable<Row>({
                   onColumnMove?.(moved, index);
                 }}
               >
-                <button
-                  type="button"
-                  className="track-table__header-cell"
-                  disabled={!column.sortKey}
-                  title={column.header}
-                  onClick={() => handleSort(column)}
-                >
-                  {column.header}
-                  {active && (
-                    <span className="track-table__sort" aria-hidden>
-                      {sort?.direction === "asc" ? " ▲" : " ▼"}
-                    </span>
-                  )}
-                </button>
+                <Hint text={column.hint}>
+                  <button
+                    type="button"
+                    className="track-table__header-cell"
+                    disabled={!column.sortKey}
+                    title={column.header}
+                    onClick={() => handleSort(column)}
+                  >
+                    {column.header}
+                    {active && (
+                      <span className="track-table__sort" aria-hidden>
+                        {sort?.direction === "asc" ? " ▲" : " ▼"}
+                      </span>
+                    )}
+                  </button>
+                </Hint>
                 <button
                   type="button"
                   className="track-table__col-resizer"

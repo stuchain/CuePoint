@@ -1,0 +1,36 @@
+/* The notice line above the Library's filter row (LIB-1, DEC-201): one notice at a time,
+   a sentence and the buttons that go with it. It takes its own row only while it is
+   shown, which is only after an import. */
+.library-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-panel);
+  border-bottom: var(--border-width) solid var(--border-outline);
+  font-size: var(--font-size-xs);
+}
+
+.library-notice__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.library-notice__line,
+.library-notice__now {
+  margin: 0;
+}
+
+.library-notice__now {
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+}
+
+.library-notice__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-sm);
+}

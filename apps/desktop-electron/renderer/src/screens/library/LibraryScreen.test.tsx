@@ -332,6 +332,8 @@ interface Bridge {
   startLibraryRefreshPreview: ReturnType<typeof vi.fn>;
   startLibraryRefreshApply: ReturnType<typeof vi.fn>;
   getJob: ReturnType<typeof vi.fn>;
+  /** The jobs the status strip lists; the ready note reads the same ones (LIB-1). */
+  listJobs: ReturnType<typeof vi.fn>;
   getJobResults: ReturnType<typeof vi.fn>;
   openXmlFileDialog: ReturnType<typeof vi.fn>;
   browseLibrary: ReturnType<typeof vi.fn>;
@@ -379,6 +381,7 @@ function install(overrides: Partial<Bridge> = {}) {
     // fallback too, and polling is the path a browser-lab render takes.
     getJob: vi.fn().mockResolvedValue({ id: "job", state: "succeeded" }),
     getJobResults: vi.fn().mockResolvedValue({ id: "job", state: "succeeded" }),
+    listJobs: vi.fn().mockResolvedValue({ jobs: [], active_count: 0 }),
     openXmlFileDialog: vi
       .fn()
       .mockResolvedValue({ canceled: false, filePath: "C:\\new\\collection.xml" }),
@@ -487,6 +490,7 @@ function install(overrides: Partial<Bridge> = {}) {
 function renderScreen(
   props: {
     onOpenRekordboxInstructions?: () => void;
+    onOpenMatch?: () => void;
     focus?: "collections";
     openWith?: { rules: FilterRuleSet; token: string } | null;
     refreshWith?: string | null;
@@ -541,6 +545,7 @@ afterAll(() => {
 });
 
 beforeEach(() => {
+  sessionStorage.clear();
   install();
   // The column layout is persisted (DEC-042), so a test that reordered or
   // hid a column would otherwise decide what the next one opens on.
@@ -556,8 +561,8 @@ describe("the empty state", () => {
   it("says what to do rather than showing zeroes", async () => {
     renderScreen();
 
-    expect(await screen.findByText(/No collection imported yet/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Import a collection/i })).toBeInTheDocument();
+    expect(await screen.findByText(/Nothing imported yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Import your Rekordbox collection/i })).toBeInTheDocument();
     // Zeroes would read as "your library is empty", which is a different
     // problem from "you have not imported anything".
     expect(screen.queryByTestId("library-track-count")).not.toBeInTheDocument();
@@ -572,9 +577,26 @@ describe("the empty state", () => {
     expect(onOpen).toHaveBeenCalled();
   });
 
+  it("is a three-step guide, in words about Rekordbox (LIB-2)", async () => {
+    renderScreen();
+
+    const steps = await screen.findByRole("list", { name: "Getting started" });
+    const items = within(steps).getAllByRole("listitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "In Rekordbox, choose File → Export Collection in xml format.",
+      "Click Import your Rekordbox collection… and pick that file.",
+      "CuePoint reads it; nothing in Rekordbox is changed. Later, Check Rekordbox for changes picks up what you changed there.",
+    ]);
+    expect(
+      screen.getByText("Your Rekordbox library, as CuePoint sees it."),
+    ).toBeInTheDocument();
+    // One import button on the page, and it is the header's.
+    expect(screen.getAllByRole("button", { name: /Import your Rekordbox collection/ })).toHaveLength(1);
+  });
+
   it("omits the instructions button when the shell has none to offer", async () => {
     renderScreen();
-    await screen.findByText(/No collection imported yet/i);
+    await screen.findByText(/Nothing imported yet/i);
 
     expect(screen.queryByRole("button", { name: /How do I export/i })).not.toBeInTheDocument();
   });
@@ -587,7 +609,7 @@ describe("importing", () => {
       .mockResolvedValue(loadedSummary());
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Import a collection/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Import your Rekordbox collection/i }));
 
     await waitFor(() => expect(bridge.startLibraryImport).toHaveBeenCalled());
     expect(bridge.startLibraryImport).toHaveBeenCalledWith({
@@ -604,7 +626,7 @@ describe("importing", () => {
     bridge.openXmlFileDialog.mockResolvedValue({ canceled: true });
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Import a collection/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Import your Rekordbox collection/i }));
 
     expect(bridge.startLibraryImport).not.toHaveBeenCalled();
   });
@@ -617,18 +639,147 @@ describe("importing", () => {
     });
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Import a collection/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Import your Rekordbox collection/i }));
 
-    expect(await screen.findByText(/Export Collection/i)).toBeInTheDocument();
+    expect(await screen.findByText(/That file has no collection in it/i)).toBeInTheDocument();
   });
 
   it("reports a refusal that happens before a job exists", async () => {
     bridge.startLibraryImport.mockRejectedValue(new Error("No such file: /gone.xml"));
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Import a collection/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Import your Rekordbox collection/i }));
 
     expect(await screen.findByText(/No such file/i)).toBeInTheDocument();
+  });
+});
+
+describe("the notice line (LIB-1, DEC-201)", () => {
+  const WAVEFORMS = {
+    id: "job-wave",
+    type: "waveform_analysis",
+    state: "running",
+    created_at: "2026-10-08T10:00:00Z",
+    updated_at: "2026-10-08T10:00:00Z",
+    progress: { completed_tracks: 1204, total_tracks: 12000 },
+  };
+
+  /** The Key facet: every track without a Beatport key, or some with one. */
+  function keyFacet(values: Array<{ value: string | null; count: number }>) {
+    bridge.getLibraryFacet.mockImplementation(async (params: { field: string }) => ({
+      field: params.field,
+      values: params.field === "key" ? values : [],
+      truncated: false,
+      total_values: values.length,
+      range: null,
+    }));
+  }
+
+  beforeEach(() => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+  });
+
+  async function importAnother() {
+    await userEvent.click(await screen.findByRole("button", { name: "Import another file…" }));
+    await waitFor(() => expect(bridge.startLibraryImport).toHaveBeenCalled());
+  }
+
+  it("is empty while the user works in the table: no import, no notice", async () => {
+    bridge.listJobs.mockResolvedValue({ jobs: [WAVEFORMS], active_count: 1 });
+    keyFacet([{ value: null, count: 3880 }]);
+    renderScreen();
+    await tableReady();
+
+    // Not even a poll: the note is not mounted until an import arms it.
+    expect(bridge.listJobs).not.toHaveBeenCalled();
+    expect(screen.queryByText("Getting your library ready.")).toBeNull();
+    expect(screen.queryByText(/No tracks have a Beatport key yet/)).toBeNull();
+  });
+
+  it("explains the work that follows an import, with what is happening now", async () => {
+    bridge.listJobs.mockResolvedValue({ jobs: [WAVEFORMS], active_count: 1 });
+    renderScreen();
+    await tableReady();
+
+    await importAnother();
+
+    expect(await screen.findByText("Getting your library ready.")).toBeInTheDocument();
+    expect(screen.getByText("Now: drawing waveforms, 1,204 of 12,000")).toBeInTheDocument();
+  });
+
+  it("sits above the filter row, and dismissing it takes it away", async () => {
+    bridge.listJobs.mockResolvedValue({ jobs: [WAVEFORMS], active_count: 1 });
+    renderScreen();
+    await tableReady();
+    await importAnother();
+
+    const note = await screen.findByRole("status", { name: "Getting your library ready" });
+    const filterRow = screen.getByLabelText("Search");
+    expect(
+      note.compareDocumentPosition(filterRow) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await userEvent.click(within(note).getByRole("button", { name: "Dismiss this note" }));
+
+    expect(screen.queryByText("Getting your library ready.")).toBeNull();
+  });
+
+  it("says keys come from matching, once the import's work is done and no track has one", async () => {
+    keyFacet([{ value: null, count: 3880 }]);
+    const onOpenMatch = vi.fn();
+    renderScreen({ onOpenMatch });
+    await tableReady();
+
+    await importAnother();
+
+    expect(
+      await screen.findByText("No tracks have a Beatport key yet. Keys come from matching."),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
+    expect(onOpenMatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows one notice at a time: the ready note first, the key note after", async () => {
+    keyFacet([{ value: null, count: 3880 }]);
+    bridge.listJobs.mockResolvedValue({ jobs: [WAVEFORMS], active_count: 1 });
+    renderScreen({ onOpenMatch: vi.fn() });
+    await tableReady();
+    await importAnother();
+
+    await screen.findByText("Getting your library ready.");
+    expect(screen.queryByText(/No tracks have a Beatport key yet/)).toBeNull();
+
+    bridge.listJobs.mockResolvedValue({ jobs: [], active_count: 0 });
+    await waitFor(
+      () => expect(screen.queryByText("Getting your library ready.")).toBeNull(),
+      { timeout: 4000 },
+    );
+    expect(await screen.findByText(/No tracks have a Beatport key yet/)).toBeInTheDocument();
+  }, 10000);
+
+  it("does not offer Match tracks… where the shell cannot open it", async () => {
+    keyFacet([{ value: null, count: 3880 }]);
+    renderScreen();
+    await tableReady();
+    await importAnother();
+
+    await screen.findByText(/No tracks have a Beatport key yet/);
+    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
+  });
+
+  it("is silent about keys when some track has one", async () => {
+    keyFacet([
+      { value: "8A", count: 12 },
+      { value: null, count: 3868 },
+    ]);
+    renderScreen({ onOpenMatch: vi.fn() });
+    await tableReady();
+    await importAnother();
+
+    await waitFor(() =>
+      expect(bridge.getLibraryFacet).toHaveBeenCalledWith(expect.objectContaining({ field: "key" })),
+    );
+    expect(screen.queryByText(/No tracks have a Beatport key yet/)).toBeNull();
   });
 });
 
@@ -642,15 +793,18 @@ describe("an imported library", () => {
 
     expect(await screen.findByTestId("library-track-count")).toHaveTextContent("3,880");
     expect(screen.getByText(/234 playlists/)).toBeInTheDocument();
-    expect(screen.getByText(/13,870 entries/)).toBeInTheDocument();
+    expect(screen.getByText("234 playlists")).toHaveAttribute(
+      "title",
+      "13,870 tracks across your playlists",
+    );
     expect(screen.getByText("C:\\Users\\dj\\Downloads\\collection.xml")).toBeInTheDocument();
   });
 
   it("says the export is unchanged when it is", async () => {
     renderScreen();
 
-    expect(await screen.findByText(/Unchanged since your last import/i)).toBeInTheDocument();
-    expect(screen.getByText("Up to date")).toBeInTheDocument();
+    expect(await screen.findByText("In sync")).toBeInTheDocument();
+    expect(screen.queryByText(/Unchanged since your last import/i)).toBeNull();
   });
 
   it("flags an export that has moved on", async () => {
@@ -660,7 +814,7 @@ describe("an imported library", () => {
     renderScreen();
 
     expect(await screen.findByText(/has changed since your last import/i)).toBeInTheDocument();
-    expect(screen.getByText("Out of date")).toBeInTheDocument();
+    expect(screen.getByText("Changed in Rekordbox")).toBeInTheDocument();
   });
 
   it("flags an export that is no longer there", async () => {
@@ -724,7 +878,7 @@ describe("the refresh preview (DEC-032)", () => {
 
   async function openPreview() {
     renderScreen();
-    await userEvent.click(await screen.findByRole("button", { name: /Check for changes/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Check Rekordbox for changes/i }));
     return screen.findByRole("dialog");
   }
 
@@ -843,7 +997,7 @@ describe("the refresh preview (DEC-032)", () => {
     });
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Check for changes/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Check Rekordbox for changes/i }));
 
     expect(await screen.findByText(/Import a Rekordbox collection first/i)).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -897,7 +1051,7 @@ describe("the reference warning (DEC-011)", () => {
 
   async function openPreview() {
     renderScreen();
-    await userEvent.click(await screen.findByRole("button", { name: /Check for changes/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Check Rekordbox for changes/i }));
     return screen.findByRole("dialog");
   }
 
@@ -942,9 +1096,9 @@ describe("without an engine", () => {
 
     // No summary to show, and no crash: the browser-lab render is a supported
     // way to work on this page.
-    expect(await screen.findByText(/No collection imported yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Nothing imported yet/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /Import a collection/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Import your Rekordbox collection/i }));
     expect(await screen.findByText(/needs the desktop app/i)).toBeInTheDocument();
   });
 });
@@ -1038,12 +1192,12 @@ describe("nothing to show (LIBUI-10)", () => {
   it("says the library is empty when nothing is asked of it", async () => {
     renderScreen();
 
-    expect(await screen.findByText("No tracks yet.")).toBeInTheDocument();
+    expect(await screen.findByText("This Rekordbox export has no tracks in it.")).toBeInTheDocument();
   });
 
   it("says the playlist is empty when one is in scope", async () => {
     renderScreen();
-    await screen.findByText("No tracks yet.");
+    await screen.findByText("This Rekordbox export has no tracks in it.");
 
     const tree = await screen.findByRole("tree", { name: "Playlists" });
     await userEvent.click(within(tree).getByText("Friday"));
@@ -1057,7 +1211,7 @@ describe("nothing to show (LIBUI-10)", () => {
     // and "this playlist is empty" would send a user to look at the wrong
     // thing. Without this the two branches could be in either order.
     renderScreen();
-    await screen.findByText("No tracks yet.");
+    await screen.findByText("This Rekordbox export has no tracks in it.");
 
     const tree = await screen.findByRole("tree", { name: "Playlists" });
     await userEvent.click(within(tree).getByText("Friday"));
@@ -1071,11 +1225,109 @@ describe("nothing to show (LIBUI-10)", () => {
 
   it("says nothing matched when there is a search to blame", async () => {
     renderScreen();
-    await screen.findByText("No tracks yet.");
+    await screen.findByText("This Rekordbox export has no tracks in it.");
 
     await userEvent.type(await screen.findByLabelText("Search"), "zz");
 
     expect(await screen.findByText("No tracks match this search.")).toBeInTheDocument();
+  });
+
+  /*
+   * LIB-5: every empty table offers the next step, as a button that does it.
+   */
+
+  it("offers to import another file when the export itself is empty", async () => {
+    renderScreen();
+    await screen.findByText("This Rekordbox export has no tracks in it.");
+    expect(
+      screen.getByText("Export again from Rekordbox and import that file."),
+    ).toBeInTheDocument();
+
+    const table = screen.getByRole("table", { name: "Library tracks" });
+    await userEvent.click(within(table).getByRole("button", { name: "Import another file…" }));
+
+    await waitFor(() => expect(bridge.openXmlFileDialog).toHaveBeenCalledTimes(1));
+  });
+
+  it("offers to check Rekordbox from an empty playlist", async () => {
+    renderScreen();
+    await screen.findByText("This Rekordbox export has no tracks in it.");
+    const tree = await screen.findByRole("tree", { name: "Playlists" });
+    await userEvent.click(within(tree).getByText("Friday"));
+    await screen.findByText("This playlist is empty.");
+    expect(
+      screen.getByText(
+        "Playlists come from Rekordbox. Add tracks to it there, then Check Rekordbox for changes.",
+      ),
+    ).toBeInTheDocument();
+
+    const table = screen.getByRole("table", { name: "Library tracks" });
+    await userEvent.click(
+      within(table).getByRole("button", { name: "Check Rekordbox for changes" }),
+    );
+
+    await waitFor(() => expect(bridge.startLibraryRefreshPreview).toHaveBeenCalledTimes(1));
+  });
+
+  it("clears the search from the empty table that the search emptied", async () => {
+    renderScreen();
+    await screen.findByText("This Rekordbox export has no tracks in it.");
+    const search = await screen.findByLabelText("Search");
+    await userEvent.type(search, "zz");
+    await screen.findByText("No tracks match this search.");
+    expect(screen.getByText("Try fewer words, or clear the search.")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear the search" }));
+
+    expect(search).toHaveValue("");
+    expect(
+      await screen.findByText("This Rekordbox export has no tracks in it."),
+    ).toBeInTheDocument();
+  });
+
+  it("clears every filter from the empty table the filters emptied", async () => {
+    renderScreen();
+    await screen.findByText("This Rekordbox export has no tracks in it.");
+    await userEvent.click(await screen.findByRole("button", { name: "Add filter" }));
+    fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await screen.findByText("No tracks match these filters.");
+
+    const table = screen.getByRole("table", { name: "Library tracks" });
+    await userEvent.click(within(table).getByRole("button", { name: "Clear all filters" }));
+
+    expect(
+      await screen.findByText("This Rekordbox export has no tracks in it."),
+    ).toBeInTheDocument();
+    expect(lastBrowse().filters ?? null).toBeNull();
+  });
+
+  it("opens Add filter from an empty Smart Collection's Edit the rules", async () => {
+    renderScreen();
+    await screen.findByText("This Rekordbox export has no tracks in it.");
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByText("Recent techno"));
+    await screen.findByText("Nothing matches these rules right now.");
+
+    await userEvent.click(screen.getByRole("button", { name: "Edit the rules" }));
+
+    expect(await screen.findByLabelText("Field")).toBeInTheDocument();
+  });
+
+  it("sends an empty Collection back to the whole library to pick tracks", async () => {
+    renderScreen();
+    await screen.findByText("This Rekordbox export has no tracks in it.");
+    const tree = await screen.findByRole("tree", { name: "Collections" });
+    await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
+    await userEvent.click(within(tree).getByText("Warmups"));
+    await screen.findByText("This Collection is empty.");
+
+    await userEvent.click(screen.getByRole("button", { name: "Browse the whole library" }));
+
+    await waitFor(() => expect(lastBrowse().collectionId ?? null).toBeNull());
+    expect(
+      await screen.findByText("This Rekordbox export has no tracks in it."),
+    ).toBeInTheDocument();
   });
 });
 
@@ -1141,7 +1393,7 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
     await userEvent.click(screen.getByText("Track 2"));
     await screen.findByText("1 track selected");
 
-    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Check Rekordbox for changes/i }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.type(dialog, "{Escape}");
 
@@ -1538,7 +1790,7 @@ describe("after a refresh (LIBUI-10)", () => {
     const browsesBefore = bridge.browseLibrary.mock.calls.length;
     const treesBefore = bridge.getLibraryPlaylists.mock.calls.length;
 
-    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Check Rekordbox for changes/i }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(within(dialog).getByRole("button", { name: /Remove 2 tracks and refresh/i }));
 
@@ -2951,7 +3203,7 @@ describe("the table's empty state (ORG-13)", () => {
     renderScreen();
     await tableReady();
 
-    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Check Rekordbox for changes/i }));
     const dialog = await screen.findByRole("dialog");
     // The warning is real now, with real numbers.
     expect(dialog).toHaveTextContent(
@@ -2999,7 +3251,7 @@ describe("the table's empty state (ORG-13)", () => {
 
     renderScreen();
     await tableReady();
-    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Check Rekordbox for changes/i }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(within(dialog).getByLabelText(/I understand/i));
     await userEvent.click(within(dialog).getByRole("button", { name: /Remove 2 tracks/i }));

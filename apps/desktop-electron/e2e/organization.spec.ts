@@ -481,9 +481,9 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await window.reload();
       await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
       await window.getByRole("link", { name: "Library" }).click();
-      await expect(window.getByText("Out of date")).toBeVisible({ timeout: 30_000 });
+      await expect(window.getByText("Changed in Rekordbox")).toBeVisible({ timeout: 30_000 });
 
-      await window.getByRole("button", { name: /Check for changes/i }).click();
+      await window.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
       const preview = window.getByRole("dialog");
       await expect(preview).toBeVisible({ timeout: 60_000 });
       // Real numbers, not a shape: three tracks are filed, and the warning

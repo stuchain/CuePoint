@@ -58,7 +58,7 @@ re-reads the files. See [Writing tags to files](library.md#writing-tags-to-files
 
 ### Export to Rekordbox
 
-**Export to Rekordbox…** in the Library's **Collection file** menu, or on a
+**Export to Rekordbox…** in the Library's header, or on a
 Collection's right-click menu, writes a new Rekordbox XML file carrying your key, BPM, genre, label, year
 and rating, and the Collections you choose as playlists. It is made by patching
 a copy of the file you imported, so **cue points and beat grids are kept**

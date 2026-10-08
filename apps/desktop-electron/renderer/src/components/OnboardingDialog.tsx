@@ -11,7 +11,7 @@ const SCREENS = [
   },
   {
     title: "Import your collection",
-    body: "Export your Rekordbox collection as XML, then import it in the Library. A refresh picks up later changes.",
+    body: "Export your Rekordbox collection as XML, then import it in the Library. Check Rekordbox for changes picks up later ones.",
   },
   {
     title: "Clean",

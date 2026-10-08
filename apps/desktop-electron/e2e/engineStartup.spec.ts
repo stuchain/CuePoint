@@ -3,7 +3,7 @@
  *
  * The window stopped waiting for the engine (Phase 8 macOS pass), and the first
  * screen asked for its data while the engine was still starting. Refused, the
- * Library read its summary as absent and said "No collection imported yet" to
+ * Library read its summary as absent and said "Nothing imported yet" to
  * a library that was there — and went on saying it after the engine was up,
  * because it only asks once. Every other spec here starts from an empty library
  * and waits for the engine before doing anything, so none of them could
@@ -111,7 +111,7 @@ test.describe("Engine startup", () => {
       await window.getByRole("link", { name: "Library" }).click();
 
       await expect(window.locator(".track-table__row").first()).toBeVisible({ timeout: 90_000 });
-      await expect(window.getByText("No collection imported yet")).toHaveCount(0);
+      await expect(window.getByText("Nothing imported yet")).toHaveCount(0);
     } finally {
       await app.close();
     }

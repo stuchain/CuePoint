@@ -386,7 +386,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const later = statSync(xml).mtime.getTime() / 1000 + 5;
       utimesSync(xml, later, later);
       await win.getByRole("link", { name: "Library", exact: true }).click();
-      await win.getByRole("button", { name: /Check for changes/i }).click();
+      await win.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
       const preview = win.getByRole("dialog");
       await expect(preview.getByTestId("count-removed")).toHaveText("1", { timeout: 60_000 });
       await expect(preview).toContainText("1 in 1 Set");

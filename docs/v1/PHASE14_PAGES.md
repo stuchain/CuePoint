@@ -658,7 +658,7 @@ below.
   buttons; "Collection file ▾" goes, and with it LIB-4's "Rekordbox file ▾". Before the first import
   the one button is **Import your Rekordbox collection…**, the words NAV-5, PAGES-11 and PAGES-16 use.
   DEC-087's precision found three buttons did not fit at 2×. The step measures them at 1.5×; where
-  they do not fit on one line (2×, 3× or a narrow window) the labels shorten to "Check for changes",
+  they do not fit on one line (2×, 3× or a narrow window) the labels shorten to "Check Rekordbox",
   "Import…" and "Export…", keeping the full names as their accessible names, and never fold back into
   a menu. DEC-087's test keeps holding the table's height.
 - **Two fixed rows above the table, and one notice line.** The filter row: search, **Key ▾**,
@@ -766,6 +766,38 @@ below.
 (LIB-1…5, LIB-9, LIB-12, FLW-11). **PAGES-05B**: the engine's filter and search (LIB-7, FLW-4…7).
 **PAGES-05C**: the toolbar row, the selection bar, the tree and the right-click menu (LIB-6, LIB-8,
 LIB-10, LIB-11, FLW-8, FLW-10).
+
+**Outcome** (2026-10-08), part A: The header is three buttons, **Check Rekordbox for changes**, **Import another file…** and
+**Export to Rekordbox…**, with "Collection file ▾" and its menu gone; before the first import `LibraryHeader` is also the first-run
+page's header, with the one button **Import your Rekordbox collection…**. Fit is measured, not guessed: a hidden copy of the three full
+labels (a pseudo-element's text, so it is on the page once) is compared by a `ResizeObserver` with the header's inner width, and where
+they do not fit on one line the visible labels shorten to "Check Rekordbox", "Import…", "Export…" (each short label is part of its full accessible name, WCAG 2.5.3; the actions wrap as a last resort and the busy label's width is in the measure) while `aria-label` keeps the full
+names (the busy label replaces both while a button works); a header that cannot be measured keeps the full names. At 1.5× in the e2e
+window the header is 720px wide and the full labels do not fit, so the short ones show. Likewise at 1.5× with the sidebar and Track details open the short labels show; the spec allows shortening where the full ones do not fit, so this is accepted. The badge reads "In sync", "Changed in
+Rekordbox", "File not found" or "Not checked yet" (`sourceBadge`; the "Unchanged since your last import." sentence is not drawn beside "In sync"), "imported {date}" is "last read {date}", the "· N entries" count is the playlists
+count's tooltip ("N tracks across your playlists"), the busy label is "Comparing with Rekordbox…", the unknown-state sentence ends
+"Check Rekordbox for changes to compare.", and the toast is "Rekordbox export imported.". LIB-2's three steps are an ordered list at the
+empty Library (its panel is "Nothing imported yet", with **How do I export one?**; PAGES-11 makes them tick); Clean's own "No collection
+imported yet" panel is left for PAGES-07. The notice line sits inside the filter bar's grid row, as the Set note does, so the table
+keeps its row: `LibraryReadyNote` (LIB-1) shows the note and a live "Now: drawing waveforms, 1,204 of 12,000" line while any of the five
+jobs runs after an import this session (the import's moment is kept in session storage, dismissal is per import, and the note is done for an import once its chain ends: later file checks or waveform runs do not bring it back; the note and its poll are mounted only while an import is armed and neither done nor dismissed; the key note's dismissal is kept for the session too), then
+`LibraryKeyNote` (DEC-201) takes the line when none of the library's tracks has a key (read from the engine's Key facet over the whole
+library, silent when it cannot say) with **Match tracks…**, which App wires to Clean's Review part until PAGES-07's match window.
+`useActiveJob` gained `loaded`, so "no jobs" can be told from "not asked yet". `emptyStateFor` returns `{ title, rules, hint, action? }`
+(`headline` is now `title`) and `LibraryEmptyState` draws the action as a button: **Clear the search** / **Clear all filters** / **Clear
+search and filters** (whichever narrows the view), **Edit the rules** (opens Add filter through `FilterBar`'s `openAddToken`), **Check
+Rekordbox for changes** for an empty playlist, **Browse the whole library** for an empty Collection or Set, **Import another file…** for
+an empty export, and for a refusal **Clear search and filters** or **Ask again** (not "Try again", which the bar above already has).
+The edited-value marker says its meaning on hover through `Hint` and in the cell's own text (its aria-label); it is not a Tab stop in the virtualised table (`tabIndex={-1}`, Enter/F10 not propagated); a key from Beatport carries no
+marker (only the user's own key does, even if a row lists it), the Columns list says what the marks mean (`ColumnPicker`'s new `note`),
+and the Key column's heading has the hint "Keys come from Beatport matches" (`TrackColumnDef.hint`, drawn by `TrackTable` through
+`Hint`); an empty Key cell was already "—" (PAGES-15). The Shortcuts list gained the Library's real keys, Esc (clear the selection),
+Shift+F10 (open the track menu), F2 and Delete (rename or delete the selected Collection), each read against its handler; Esc and
+Delete now appear in two contexts, so the two registry tests exempt them by name (they act on what has focus). The held row count:
+at 1.5× in the 1,280 × 800 window (xvfb, inner height 773) the Library shows **2** whole rows with a 155px header (179px before the redundant "Unchanged" sentence went), and measured the same
+2 before this step's header, so `libraryPage.spec.ts` holds 2 on Linux (1 elsewhere, until measured). It is under Prepare's floor of five;
+the four header lines and the filter row take the height, which 05C's restructuring must lift. Every spec and renderer test that quoted
+the old words is updated; the user guide's Library, Getting started, Export and Window pages say the new ones.
 
 ---
 

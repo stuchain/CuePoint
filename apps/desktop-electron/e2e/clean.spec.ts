@@ -363,7 +363,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
 
       await test.step("a refresh that removes the reviewed track names it first", async () => {
         exportXml(library.xml, library.files, TRACKS.filter((track) => track.name !== "Tone Two"));
-        await window.getByRole("button", { name: /Check for changes/ }).click();
+        await window.getByRole("button", { name: /Check Rekordbox for changes/ }).click();
         const dialog = window.getByRole("dialog", { name: "Review this refresh" });
         await expect(dialog).toBeVisible({ timeout: 60_000 });
         await expect(dialog.getByRole("alert").filter({ hasText: "your own work" })).toContainText(

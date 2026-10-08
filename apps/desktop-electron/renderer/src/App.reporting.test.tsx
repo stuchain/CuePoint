@@ -54,7 +54,7 @@ describe("a page that throws", () => {
     const nav = screen.getByRole("navigation", { name: /main navigation/i });
     await userEvent.click(within(nav).getByRole("link", { name: "Library" }));
     expect(screen.queryByTestId("error-screen")).toBeNull();
-    expect(screen.getByText(/No collection imported yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing imported yet/i)).toBeInTheDocument();
     expect(screen.getByTestId("player-bar-probe")).toBeInTheDocument();
   });
 });

@@ -234,6 +234,8 @@ describe("the shortcuts dialog lists what the player takes", () => {
     const others = KEYBOARD_SHORTCUTS.filter((row) => row.context !== "Player").map(
       (row) => row.shortcut,
     );
-    expect(keys.filter((key) => others.includes(key))).toEqual([]);
+    // Delete is also the Library's for a Collection (LIB-12): it removes what has the
+    // focus, the queued track here and the tree's row there.
+    expect(keys.filter((key) => key !== "Delete" && others.includes(key))).toEqual([]);
   });
 });

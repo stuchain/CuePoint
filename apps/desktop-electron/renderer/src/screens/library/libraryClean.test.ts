@@ -122,9 +122,37 @@ describe("overridden values", () => {
       source: "cuepoint",
       title: "BPM typed by you. Rekordbox has 128.0.",
     });
-    const applied = row({ overridden: ["key"], effective_key: "9A", override_sources: { key: "beatport" } });
+    const yours = row({
+      overridden: ["key"],
+      effective_key: "9A",
+      key_source: "yours",
+      override_sources: { key: "cuepoint" },
+    });
     // Rekordbox's key is never quoted as what is underneath (DEC-201).
-    expect(overrideMark(applied, "key")?.title).toBe("Key applied from Beatport. Rekordbox's key is not used.");
+    expect(overrideMark(yours, "key")).toEqual({
+      source: "cuepoint",
+      title: "Key typed by you. Rekordbox's key is not used.",
+    });
+  });
+
+  it("do not mark a key that came from Beatport: that is not an edit (DEC-201, LIB-9)", () => {
+    // PAGES-15: the engine leaves the key out of `overridden` unless it is the user's own,
+    // and the marker holds even for a row that lists it by mistake.
+    const fromBeatport = row({
+      overridden: ["key"],
+      effective_key: "9A",
+      key_source: "beatport",
+      override_sources: { key: "beatport" },
+    });
+    expect(overrideMark(fromBeatport, "key")).toBeNull();
+    expect(overrideMark(row({ effective_key: "9A", key_source: "beatport" }), "key")).toBeNull();
+    // Beatport's other values stay marked: BPM applied from a match is an override (DEC-068).
+    expect(
+      overrideMark(
+        row({ overridden: ["bpm"], effective_bpm: 126, override_sources: { bpm: "beatport" } }),
+        "bpm",
+      )?.source,
+    ).toBe("beatport");
   });
 
   it("are not marked when Rekordbox's value shows", () => {

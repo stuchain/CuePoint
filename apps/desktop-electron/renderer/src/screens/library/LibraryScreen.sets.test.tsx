@@ -612,7 +612,7 @@ describe("a Set a refresh emptied (DEC-011, PREP-02)", () => {
     renderScreen();
     await ready();
 
-    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Check Rekordbox for changes/i }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent(/1 in 1 Collection, 1 in 1 Set/);
     await userEvent.click(within(dialog).getByLabelText(/I understand/i));

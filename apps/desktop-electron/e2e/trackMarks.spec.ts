@@ -158,7 +158,7 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
       utimesSync(source, stat.atime.getTime() / 1000 + 5, stat.mtime.getTime() / 1000 + 5);
 
       await window.locator(".cp-filter-bar").getByRole("textbox", { name: "Search" }).fill("");
-      await window.getByRole("button", { name: /Check for changes/i }).click();
+      await window.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
       const dialog = window.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 60_000 });
       await expect(dialog).toContainText("Tracks whose cues or beat grid changed");

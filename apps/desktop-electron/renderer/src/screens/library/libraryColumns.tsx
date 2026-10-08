@@ -86,6 +86,8 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
   {
     id: "key",
     header: "Key",
+    // An empty cell is a dash; this is why (DEC-201).
+    hint: "Keys come from Beatport matches",
     sortKey: "key",
     minWidthPx: 56,
     defaultWidthPx: 70,

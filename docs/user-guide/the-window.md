@@ -177,6 +177,8 @@ To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**
 | **Ctrl+F** | Search within the table on screen |
 | **Ctrl+A** | Select every track matching what you are looking at |
 | **Enter** | On the Library table: play the selected track |
+| **Shift+F10** | On the Library table: open the track menu |
+| **F2** / **Delete** | In the Collections list: rename or delete the selected Collection |
 | **Esc** | Let go of a selection, or close what is open |
 | **Ctrl+B** | Collapse or expand the sidebar |
 | **Ctrl+I** | Show or hide the Track Inspector |

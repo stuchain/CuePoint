@@ -173,6 +173,12 @@ function AppShell() {
     () => navigate("/clean", { state: cleanSectionState("missing") }),
     [navigate],
   );
+  // "No tracks have a Beatport key yet" sends the user to matching, which Clean's
+  // Review part starts (PAGES-07 puts the match window there).
+  const openMatching = useCallback(
+    () => navigate("/clean", { state: cleanSectionState("review") }),
+    [navigate],
+  );
   const prepareScreen = (
     <PrepareScreen
       onOpenInClean={openInClean}
@@ -210,6 +216,7 @@ function AppShell() {
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
             onOpenInClean={openInClean}
             onOpenMissingFiles={openMissingFiles}
+            onOpenMatch={openMatching}
             onOpenEntity={openEntity}
             onOpenSimilar={openSimilar}
             onOpenInPrepare={openInPrepare}
@@ -235,6 +242,7 @@ function AppShell() {
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
             onOpenInClean={openInClean}
             onOpenMissingFiles={openMissingFiles}
+            onOpenMatch={openMatching}
             onOpenEntity={openEntity}
             onOpenSimilar={openSimilar}
             onOpenInPrepare={openInPrepare}

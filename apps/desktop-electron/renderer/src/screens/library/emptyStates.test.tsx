@@ -24,7 +24,8 @@ import type {
 import { CollectionsPane } from "./CollectionsPane";
 import { FilterBar } from "./FilterBar";
 import fixture from "./emptyLibrary.fixture.json";
-import { emptyStateFor } from "./libraryEmpty";
+import { emptyStateFor, type EmptyStateInput } from "./libraryEmpty";
+import { LibraryEmptyState } from "./LibraryEmptyState";
 import { buildCollectionTree, collectionRows } from "./collectionTree";
 
 /**
@@ -149,9 +150,10 @@ describe("a Smart Collection that matches nothing", () => {
       emptiedByRefresh: false,
     });
 
-    expect(view.headline).toBe("Nothing matches these rules right now.");
+    expect(view.title).toBe("Nothing matches these rules right now.");
     expect(view.rules).toEqual(["Genre is Gabber"]);
     expect(view.hint).toContain(SMART.name);
+    expect(view.action).toEqual({ id: "edit-rules", label: "Edit the rules" });
   });
 });
 
@@ -170,8 +172,9 @@ describe("a Collection holding nothing", () => {
       emptiedByRefresh: false,
     });
 
-    expect(view.headline).toBe("This Collection is empty.");
+    expect(view.title).toBe("This Collection is empty.");
     expect(view.hint).toMatch(/Drop tracks onto it/);
+    expect(view.action?.label).toBe("Browse the whole library");
   });
 
   it("says what happened when a refresh took its tracks", () => {
@@ -210,8 +213,57 @@ describe("a rule the engine refused", () => {
       emptiedByRefresh: true,
     });
 
-    expect(view.headline).toBe(REFUSAL);
+    expect(view.title).toBe(REFUSAL);
     expect(view.rules).toEqual([]);
     expect(view.hint).toBeNull();
+  });
+});
+
+describe("the empty table, drawn (LIB-5)", () => {
+  const NARROWED: EmptyStateInput = {
+    error: null,
+    filtered: true,
+    scope: null,
+    playlistId: null,
+    smartName: null,
+    rules: [],
+    emptiedByRefresh: false,
+  };
+
+  it("shows the words and a button for the next step, and the button does it", () => {
+    const onAction = vi.fn();
+    render(<LibraryEmptyState view={emptyStateFor(NARROWED)} onAction={onAction} />);
+
+    expect(screen.getByText("No tracks match this search.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Try fewer words, or clear the search and filters."),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear search and filters" }));
+    expect(onAction).toHaveBeenCalledWith("clear-all");
+  });
+
+  it("draws the rules a Smart Collection asks, with the way to edit them", () => {
+    const onAction = vi.fn();
+    const view = emptyStateFor({
+      ...NARROWED,
+      filtered: false,
+      scope: "smart",
+      smartName: "Closers",
+      rules: ["Genre is Techno"],
+    });
+    render(<LibraryEmptyState view={view} onAction={onAction} />);
+
+    expect(screen.getByRole("list", { name: "The rules being asked" })).toHaveTextContent(
+      "Genre is Techno",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Edit the rules" }));
+    expect(onAction).toHaveBeenCalledWith("edit-rules");
+  });
+
+  it("draws no button where a state has no action", () => {
+    render(
+      <LibraryEmptyState view={{ title: "Nothing here", rules: [], hint: null }} onAction={vi.fn()} />,
+    );
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });

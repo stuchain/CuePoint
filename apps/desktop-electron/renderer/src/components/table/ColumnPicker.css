@@ -48,3 +48,10 @@
   flex-shrink: 0;
   gap: var(--space-xs);
 }
+
+/* What the marks in the cells mean (LIB-9): small, and under the list it is about. */
+.cp-column-picker__note {
+  margin: var(--space-sm) 0 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}

@@ -28,9 +28,11 @@ interface ActiveJobState {
   activeCount: number;
   /** The active jobs the poll listed (at most five), the first being `job` (STR-5). */
   jobs: EngineJobSummary[];
+  /** True once the first poll has answered, so "no jobs" can be told from "not asked yet". */
+  loaded: boolean;
 }
 
-const EMPTY: ActiveJobState = { job: null, activeCount: 0, jobs: [] };
+const EMPTY: ActiveJobState = { job: null, activeCount: 0, jobs: [], loaded: false };
 
 /** Percent complete for a job, or null when it cannot be known yet. */
 export function jobPercent(job: EngineJobSummary | null): number | null {
@@ -258,12 +260,12 @@ export function useActiveJob(pollMs: number = JOB_POLL_MS): ActiveJobState {
         .then((result) => {
           if (cancelled) return;
           const job = result.jobs[0] ?? null;
-          setState({ job, activeCount: result.active_count, jobs: result.jobs });
+          setState({ job, activeCount: result.active_count, jobs: result.jobs, loaded: true });
         })
         .catch(() => {
           // The engine being unreachable is reported by the engine-status half
           // of the strip; there is nothing useful to say about jobs meanwhile.
-          if (!cancelled) setState(EMPTY);
+          if (!cancelled) setState({ ...EMPTY, loaded: true });
         });
     };
 

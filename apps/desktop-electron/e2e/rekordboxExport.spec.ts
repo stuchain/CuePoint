@@ -144,11 +144,7 @@ async function openLibrary(window: Page) {
 }
 
 async function exportFromHeader(window: Page) {
-  await window.getByRole("button", { name: "Collection file ▾" }).click();
-  await window
-    .getByRole("menu", { name: "Collection file" })
-    .getByRole("menuitem", { name: "Export to Rekordbox…" })
-    .click();
+  await window.getByRole("button", { name: "Export to Rekordbox…" }).click();
 }
 
 function exportDialog(window: Page) {
@@ -238,13 +234,13 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
 
       await test.step("open the export from the Library header, with nothing ticked", async () => {
         await openLibrary(window);
-        // The header's actions fit it, and leave the tracks room, at the
-        // default window size. Three buttons once left the table 20px tall.
+        // The header's three buttons fit it, and leave the tracks room, at the
+        // default window size (FLW-11); their labels shorten before they would
+        // take a line each, which once left the table 20px tall.
         const body = await window.locator(".library-screen__body").boundingBox();
         expect(body!.height).toBeGreaterThan(150);
         const header = window.locator(".library-header");
-        await header.getByRole("button", { name: "Collection file ▾" }).click();
-        await window.getByRole("menu", { name: "Collection file" }).getByRole("menuitem", { name: "Export to Rekordbox…" }).click();
+        await header.getByRole("button", { name: "Export to Rekordbox…" }).click();
         const dialog = exportDialog(window);
         await previewed(dialog);
 
@@ -413,7 +409,7 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
           const refused = dialog.getByRole("region", { name: "Refused" });
           await expect(refused).toContainText("not there any more", { timeout: 30_000 });
           await expect(refused).toContainText(library.xml);
-          await expect(dialog.getByRole("button", { name: "Import a different collection…" })).toBeVisible();
+          await expect(dialog.getByRole("button", { name: "Import another file…" })).toBeVisible();
           await expect(dialog.getByRole("button", { name: /^Export/ })).toBeDisabled();
           await dialog.getByRole("button", { name: "Cancel" }).click();
         } finally {

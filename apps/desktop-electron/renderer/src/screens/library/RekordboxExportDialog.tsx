@@ -76,7 +76,7 @@ export interface RekordboxExportDialogProps {
    * change what the user meant to export.
    */
   onRefreshFirst: () => void;
-  /** "Import a different collection…", for a source that is gone. */
+  /** "Import another file…", for a source that is gone. */
   onImport?: () => void;
   /** Clean's missing-file view, which DEC-088 links the count to. */
   onOpenMissingFiles?: () => void;
@@ -438,7 +438,7 @@ export function RekordboxExportDialog({
                 <div className="clean-dialog__actions">
                   {step === "import" && onImport && (
                     <Button variant="secondary" onClick={onImport}>
-                      Import a different collection…
+                      Import another file…
                     </Button>
                   )}
                   {step === "retry" && (

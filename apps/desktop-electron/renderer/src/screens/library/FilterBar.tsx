@@ -115,6 +115,13 @@ interface FilterBarProps {
    * nowhere when absent.
    */
   onOpenPage?: (page: PageRef) => void;
+
+  /**
+   * Open the Add filter form when this changes to a number above zero: what an
+   * empty Smart Collection's "Edit the rules" asks for (LIB-5). A count rather
+   * than a flag, so asking twice opens it twice.
+   */
+  openAddToken?: number;
 }
 
 export function FilterBar({
@@ -136,8 +143,13 @@ export function FilterBar({
   problem: refusal = null,
   onRetry,
   onOpenPage,
+  openAddToken = 0,
 }: FilterBarProps) {
   const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    if (openAddToken > 0) setAdding(true);
+  }, [openAddToken]);
   const [draft, setDraft] = useState<DraftRule>(() => emptyDraft(vocabulary));
   const [problem, setProblem] = useState<string | null>(null);
 

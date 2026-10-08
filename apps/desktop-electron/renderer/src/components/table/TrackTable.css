@@ -71,6 +71,12 @@
   background: var(--bg-toolbar);
 }
 
+/* A header with a hint is wrapped by `Hint`; the button still fills its cell. */
+.track-table__header-cell-wrap > .cp-hint {
+  display: flex;
+  width: 100%;
+}
+
 .track-table__header-cell {
   display: flex;
   align-items: center;

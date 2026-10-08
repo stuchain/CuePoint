@@ -17,6 +17,15 @@
   max-width: 60ch;
 }
 
+/* The three-step guide at the empty Library (LIB-2). */
+.library-screen__steps {
+  margin: 0 0 var(--space-md);
+  padding-left: calc(var(--space-lg) * 1.5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
 .library-screen__actions {
   display: flex;
   flex-wrap: wrap;

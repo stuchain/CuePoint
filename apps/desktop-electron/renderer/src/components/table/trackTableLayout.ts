@@ -45,6 +45,11 @@ export interface TrackColumnDef<Row> {
   /** What the header shows. */
   header: string;
   /**
+   * What the column means, when its header alone does not say: shown on hover
+   * and on keyboard focus (DEC-201's "Keys come from Beatport matches").
+   */
+  hint?: string;
+  /**
    * The engine's sort name for this column. Absent means the column cannot be
    * sorted by — which is how "playlist position, outside a playlist" is
    * expressed, rather than by a rule the table has to know.

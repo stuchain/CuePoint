@@ -22,7 +22,7 @@ import { LAST_DESTINATION_STORAGE_KEY } from "./components/shell";
  * What home shows without an engine: the Library's import prompt. Home is the
  * Library since Tools retired (DEC-100).
  */
-const HOME = /No collection imported yet/i;
+const HOME = /Nothing imported yet/i;
 
 /** Several screens also link to Settings, so navigation is driven from the nav. */
 function navLink(name: string): HTMLElement {
@@ -39,8 +39,8 @@ const ROUTES = [
   // Both of the workspace entries. Without `window.cuepoint` the Library page
   // is its import prompt, which is the same prompt either way in — and that
   // sameness is the point of DEC-062 (ORG-13).
-  { link: "Library", marker: /No collection imported yet/i },
-  { link: "Collections", marker: /No collection imported yet/i },
+  { link: "Library", marker: /Nothing imported yet/i },
+  { link: "Collections", marker: /Nothing imported yet/i },
   { link: "Clean", marker: /^Clean$/ },
   { link: "Discover", marker: /Discover needs the desktop app/i },
   { link: "Prepare", marker: /Prepare needs the desktop app/i },
@@ -506,7 +506,7 @@ describe("App shell", () => {
 
       await user.click(navLink("Collections"));
 
-      expect(await screen.findByText(/No collection imported yet/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Nothing imported yet/i)).toBeInTheDocument();
       expect(container.querySelectorAll("main.app-main .screen")).toHaveLength(1);
       expect(consoleError).not.toHaveBeenCalled();
     });
@@ -516,7 +516,7 @@ describe("App shell", () => {
       render(<App />);
 
       await user.click(navLink("Collections"));
-      await screen.findByText(/No collection imported yet/i);
+      await screen.findByText(/Nothing imported yet/i);
 
       expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("library");
     });
@@ -527,7 +527,7 @@ describe("App shell", () => {
       const user = userEvent.setup();
       const first = render(<App />);
       await user.click(navLink("Collections"));
-      await screen.findByText(/No collection imported yet/i);
+      await screen.findByText(/Nothing imported yet/i);
       first.unmount();
       window.location.hash = "";
 

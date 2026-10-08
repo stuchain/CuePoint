@@ -247,7 +247,7 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       await pageSearch(window).fill("");
       // The refreshed export is missing five tracks, which a refresh deletes.
       writeExport(workspace, tracks.slice(0, 35));
-      await window.getByRole("button", { name: /Check for changes/i }).click();
+      await window.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
       const dialog = window.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 60_000 });
       await dialog.getByRole("button", { name: /Remove 5 tracks and refresh/i }).click();

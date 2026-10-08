@@ -94,7 +94,11 @@ import { TagManagerDialog } from "./TagManagerDialog";
 import { smartQuery, type SmartAttachment } from "./smartFilter";
 import { deletedLine, mergedLine, type TagPatch } from "./tagManager";
 import { describeRule, type ValueNames } from "./filterText";
-import { emptyStateFor } from "./libraryEmpty";
+import { emptyStateFor, type EmptyActionId } from "./libraryEmpty";
+import { LibraryEmptyState } from "./LibraryEmptyState";
+import { LibraryKeyNote } from "./LibraryKeyNote";
+import { LibraryReadyNote } from "./LibraryReadyNote";
+import { isReadyNoteOpen, readImportedAt, rememberImport } from "./libraryNoticeMemory";
 import type { LibraryOpening, TrackOpening } from "./libraryLink";
 import { batchConsequence, batchSelection, type BatchAction } from "./libraryBatch";
 import { cleanMenuItems } from "./libraryClean";
@@ -146,7 +150,7 @@ const NOTHING_TICKED: readonly number[] = [];
 
 const BUSY_LABEL: Record<Exclude<Busy, null>, string> = {
   importing: "Importing…",
-  checking: "Checking…",
+  checking: "Comparing with Rekordbox…",
   applying: "Refreshing…",
 };
 
@@ -201,6 +205,12 @@ export interface LibraryScreenProps {
    */
   onOpenMissingFiles?: () => void;
   /**
+   * Clean's matching, where "No tracks have a Beatport key yet" sends the user
+   * (DEC-201, PAGES-05). A prop for `focus`'s reason; absent, the note offers no
+   * button. PAGES-07 swaps what this opens for the match window.
+   */
+  onOpenMatch?: () => void;
+  /**
    * Open an artist's or a label's page (DISCOVER-11): from the Inspector's
    * credits, a filter chip and the operations list. A prop for `focus`'s
    * reason. Absent, none of them is offered.
@@ -226,6 +236,7 @@ export function LibraryScreen({
   onOpeningApplied,
   onOpenInClean,
   onOpenMissingFiles,
+  onOpenMatch,
   onOpenEntity,
   onOpenSimilar,
   onOpenInPrepare,
@@ -245,6 +256,16 @@ export function LibraryScreen({
    * there is one preview and one confirm path (DEC-087).
    */
   const [exporting, setExporting] = useState<{ ids: readonly number[] } | null>(null);
+  /**
+   * When this session's last import finished, which is what lets the notice line
+   * speak (LIB-1): it shows after an import and never while someone works in the
+   * table. Kept for the session, so leaving the page and coming back keeps it.
+   */
+  const [importedAt, setImportedAt] = useState<number | null>(readImportedAt);
+  /** Whether the ready note holds the notice line; null until it has been asked. */
+  const [readyShown, setReadyShown] = useState<boolean | null>(null);
+  /** Bumped by an empty Smart Collection's "Edit the rules" to open Add filter. */
+  const [openAdd, setOpenAdd] = useState(0);
 
   const watching = useRef<{ stop: () => void }[]>([]);
   const mounted = useRef(true);
@@ -1332,7 +1353,8 @@ export function LibraryScreen({
     playlists.reload();
     setQuery({ ...DEFAULT_LIBRARY_QUERY });
     window_.reload();
-    push("Collection imported.", "success");
+    setImportedAt(rememberImport());
+    push("Rekordbox export imported.", "success");
   }, [loadSummary, pickFile, playlists, push, run, window_]);
 
   const handleCheck = useCallback(async () => {
@@ -1510,12 +1532,16 @@ export function LibraryScreen({
 
   // ------------------------------------------------------------------ render
 
-  const filtered = query.q.trim() !== "" || (query.filters?.rules.length ?? 0) > 0;
+  const searching = query.q.trim() !== "";
+  const filtering = (query.filters?.rules.length ?? 0) > 0;
+  const filtered = searching || filtering;
   const empty = useMemo(
     () =>
       emptyStateFor({
         error: window_.error,
         filtered,
+        searching,
+        filtering,
         scope: query.scope,
         playlistId: query.playlistId,
         smartName: smart?.name ?? null,
@@ -1530,30 +1556,51 @@ export function LibraryScreen({
       barRules,
       emptiedByRefresh,
       filtered,
+      filtering,
       query.collectionId,
       query.playlistId,
       query.scope,
       ruleNames,
       scopedSet,
+      searching,
       smart,
       vocabulary,
       window_.error,
     ],
   );
 
-  const emptyState = (
-    <div className="library-screen__empty-state">
-      <p className="library-screen__empty-headline">{empty.headline}</p>
-      {empty.rules.length > 0 && (
-        <ul className="library-screen__empty-rules" aria-label="The rules being asked">
-          {empty.rules.map((rule, index) => (
-            <li key={`${rule}-${index}`}>{rule}</li>
-          ))}
-        </ul>
-      )}
-      {empty.hint && <p className="library-screen__empty-hint">{empty.hint}</p>}
-    </div>
-  );
+  /** The button an empty table offers (LIB-5): each next step is something the page already does. */
+  const doEmptyAction = (id: EmptyActionId) => {
+    switch (id) {
+      case "clear-search":
+        setQuery((previous) => ({ ...previous, q: "" }));
+        break;
+      case "clear-filters":
+        changeFilters(null);
+        break;
+      case "clear-all":
+        changeFilters(null);
+        setQuery((previous) => ({ ...previous, q: "" }));
+        break;
+      case "edit-rules":
+        setOpenAdd((token) => token + 1);
+        break;
+      case "check-rekordbox":
+        void handleCheck();
+        break;
+      case "show-library":
+        scopeTo(null);
+        break;
+      case "import":
+        void handleImport();
+        break;
+      case "retry":
+        window_.retry();
+        break;
+    }
+  };
+
+  const emptyState = <LibraryEmptyState view={empty} onAction={doEmptyAction} />;
 
   const revealPath = useMemo(() => {
     const id = onlySelectedId(selection.selection, window_.total);
@@ -1587,33 +1634,43 @@ export function LibraryScreen({
     );
   }
 
-  // Nothing imported: the page is the import prompt LIBRARY-11 wrote, unchanged.
+  // Nothing imported: the header's one button, and the guide for what it does (LIB-2).
+  // PAGES-11 makes the three steps tick; this writes the words.
   if (!summary || summary.library_empty || summary.source === null) {
     return (
       <div className="screen screen--stack screen--scroll library-screen">
-        <header className="library-screen__header">
-          <h1 className="screen__title">Library</h1>
-          <p className="screen__subtitle">Your Rekordbox collection, as CuePoint sees it.</p>
-        </header>
-        <Panel title="No collection imported yet">
+        <LibraryHeader
+          summary={summary}
+          busy={busy}
+          busyLabel={busy ? BUSY_LABEL[busy] : null}
+          onCheck={() => void handleCheck()}
+          onImport={() => void handleImport()}
+          onExport={() => openExport(NOTHING_TICKED)}
+        />
+        <Panel title="Nothing imported yet">
           <p className="library-screen__empty">
             CuePoint works from a Rekordbox XML export. Import one and it will
-            remember where it came from, so refreshing later takes one click.
+            remember where it came from, so checking for changes later takes one click.
           </p>
-          <div className="library-screen__actions">
-            <Button
-              variant="primary"
-              onClick={() => void handleImport()}
-              disabled={busy !== null}
-            >
-              {busy === "importing" ? BUSY_LABEL.importing : "Import a collection…"}
-            </Button>
-            {onOpenRekordboxInstructions && (
+          <ol className="library-screen__steps" aria-label="Getting started">
+            <li>
+              In Rekordbox, choose <strong>File → Export Collection in xml format</strong>.
+            </li>
+            <li>
+              Click <strong>Import your Rekordbox collection…</strong> and pick that file.
+            </li>
+            <li>
+              CuePoint reads it; nothing in Rekordbox is changed. Later,{" "}
+              <strong>Check Rekordbox for changes</strong> picks up what you changed there.
+            </li>
+          </ol>
+          {onOpenRekordboxInstructions && (
+            <div className="library-screen__actions">
               <Button variant="secondary" onClick={onOpenRekordboxInstructions}>
                 How do I export one?
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </Panel>
         <RefreshPreviewDialog
           open={diff !== null}
@@ -1659,6 +1716,16 @@ export function LibraryScreen({
 
         <div className="library-screen__main">
           <div ref={searchRef}>
+            {/* The notice line: one notice at a time, only after an import (LIB-1,
+                DEC-201). Inside the bar's grid row, as the Set note is, so the table
+                keeps the row that grows. The ready note goes first and the key note
+                takes the line when it is done. */}
+            {isReadyNoteOpen(importedAt) && (
+              <LibraryReadyNote armedAt={importedAt} onShownChange={setReadyShown} />
+            )}
+            {importedAt !== null && (!isReadyNoteOpen(importedAt) || readyShown === false) && (
+              <LibraryKeyNote trackCount={summary.track_count} onMatch={onOpenMatch} />
+            )}
             <FilterBar
               vocabulary={vocabulary}
               // The bar's rules, not the query's: a Smart Collection that is
@@ -1690,6 +1757,7 @@ export function LibraryScreen({
               onOpenPage={
                 onOpenEntity ? (page) => onOpenEntity(page.kind, page.ref) : undefined
               }
+              openAddToken={openAdd}
             />
             {/* Inside the bar's grid row rather than a row of its own: the
                 page's rows are positional, and the table must keep the one
@@ -1885,6 +1953,7 @@ export function LibraryScreen({
         onToggle={columns.toggle}
         onNudge={columns.nudge}
         onReset={columns.reset}
+        note="A dot marks a value you changed in CuePoint; a B marks one taken from Beatport. Rekordbox's own value is kept underneath."
       />
 
       <RefreshPreviewDialog

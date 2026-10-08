@@ -192,6 +192,44 @@ describe("the count", () => {
   });
 });
 
+describe("being asked to open the form (LIB-5)", () => {
+  it("stays closed until asked", () => {
+    show({ openAddToken: 0 });
+    expect(screen.queryByLabelText("Field")).toBeNull();
+  });
+
+  it("opens Add filter when the token goes up, each time it does", () => {
+    const { rerender } = render(
+      <FilterBar
+        vocabulary={VOCABULARY}
+        filters={null}
+        onFiltersChange={vi.fn()}
+        query=""
+        onQueryChange={vi.fn()}
+        total={0}
+        openAddToken={0}
+      />,
+    );
+    const props = {
+      vocabulary: VOCABULARY,
+      filters: null,
+      onFiltersChange: vi.fn(),
+      query: "",
+      onQueryChange: vi.fn(),
+      total: 0,
+    };
+
+    rerender(<FilterBar {...props} openAddToken={1} />);
+    expect(screen.getByLabelText("Field")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByLabelText("Field")).toBeNull();
+
+    rerender(<FilterBar {...props} openAddToken={2} />);
+    expect(screen.getByLabelText("Field")).toBeInTheDocument();
+  });
+});
+
 describe("building a clause", () => {
   it("offers only the fields the engine described", () => {
     show();

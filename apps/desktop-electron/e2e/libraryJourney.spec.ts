@@ -172,8 +172,11 @@ test.describe("Phase 3 end to end (LIBRARY-12)", () => {
       await expect(window.getByTestId("library-track-count")).toHaveText("6 tracks");
       // Two playlists plus the ROOT folder they hang from.
       await expect(window.getByText("3 playlists")).toBeVisible();
-      await expect(window.getByText("4 entries")).toBeVisible();
-      await expect(window.getByText("Up to date")).toBeVisible();
+      await expect(window.getByText("3 playlists")).toHaveAttribute(
+        "title",
+        "4 tracks across your playlists",
+      );
+      await expect(window.getByText("In sync")).toBeVisible();
 
       // ---------------------------------------------------------------- 2
       await importCollection(window, original);
@@ -210,9 +213,9 @@ test.describe("Phase 3 end to end (LIBRARY-12)", () => {
       await window.reload();
       await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
       await window.getByRole("link", { name: "Library" }).click();
-      await expect(window.getByText("Out of date")).toBeVisible({ timeout: 30_000 });
+      await expect(window.getByText("Changed in Rekordbox")).toBeVisible({ timeout: 30_000 });
 
-      await window.getByRole("button", { name: /Check for changes/i }).click();
+      await window.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
       const dialog = window.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 30_000 });
 

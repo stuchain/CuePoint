@@ -25,6 +25,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { TrackTable } from "./TrackTable";
@@ -867,5 +868,47 @@ describe("dragging rows (ORG-11)", () => {
     renderTable();
     drag("dragover", renderedRows()[0]!, transfer(), 0);
     expect(renderedRows()[0]).not.toHaveAttribute("data-drop");
+  });
+});
+
+describe("a column's hint (DEC-201)", () => {
+  const WITH_HINT: TrackColumnDef<Track>[] = [
+    ...COLUMNS.slice(0, 2),
+    {
+      id: "key",
+      header: "Key",
+      sortKey: "key",
+      hint: "Keys come from Beatport matches",
+      render: () => "—",
+    },
+  ];
+
+  it("shows the hint on hover and keeps the header as the button's name", () => {
+    renderTable({ columns: WITH_HINT });
+
+    const key = screen.getByRole("button", { name: "Key" });
+    expect(key).toHaveAttribute("title", "Keys come from Beatport matches");
+    // A column without a hint still names itself.
+    expect(screen.getByRole("button", { name: "Title" })).toHaveAttribute("title", "Title");
+  });
+
+  it("shows it on keyboard focus too", async () => {
+    const user = userEvent.setup();
+    renderTable({ columns: WITH_HINT });
+
+    const key = screen.getByRole("button", { name: "Key" });
+    for (let step = 0; step < 10 && document.activeElement !== key; step += 1) await user.tab();
+
+    expect(key).toHaveFocus();
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Keys come from Beatport matches");
+  });
+
+  it("still sorts", () => {
+    const onSortChange = vi.fn();
+    renderTable({ columns: WITH_HINT, onSortChange });
+
+    fireEvent.click(screen.getByRole("button", { name: "Key" }));
+
+    expect(onSortChange).toHaveBeenCalledWith({ key: "key", direction: "asc" });
   });
 });

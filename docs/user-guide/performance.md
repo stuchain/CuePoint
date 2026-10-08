@@ -19,8 +19,8 @@ your machine — these are from a Windows 11 desktop, Python 3.12, on an SSD.
 | --- | --- | --- |
 | Import | 10.9 s | 52 MB |
 | Re-import the same file | 13.9 s | 112 MB |
-| **Check for changes, nothing changed** | **under 10 ms** | negligible |
-| Check for changes, something changed | 12.1 s | 69 MB |
+| **Check Rekordbox for changes, nothing changed** | **under 10 ms** | negligible |
+| Check Rekordbox for changes, something changed | 12.1 s | 69 MB |
 | Apply a refresh | 14.0 s | 112 MB |
 
 The resulting library file is about 20 MB.
@@ -250,7 +250,7 @@ each pair from the second run.
 | Read a typical collection, with its cues and grids | 2.38 / 2.39 s (1.97 s without them) |
 | Read a collection where every track is prepared | 3.37 / 3.39 s (2.64 s without them) |
 | Import it: 350,000 cues and 50,000 grid markers | 9.6 / 9.5 s (6.4 s without them) |
-| Check for changes after one cue moved in Rekordbox | 7.6 / 7.5 s |
+| Check Rekordbox for changes after one cue moved in Rekordbox | 7.6 / 7.5 s |
 | Read the cues of a library imported before this release | 6.7 / 6.6 s, once, in the background |
 
 **Reading cues adds about a fifth to reading a typical collection**, and a little

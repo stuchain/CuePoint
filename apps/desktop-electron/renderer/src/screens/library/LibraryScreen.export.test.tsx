@@ -3,7 +3,7 @@
  *
  * Over a faked bridge with the export's routes:
  *
- * - **Two ways in, one dialog.** The header's "Collection file" menu opens it
+ * - **Two ways in, one dialog.** The header's "Export to Rekordbox…" button opens it
  *   with nothing ticked; a Collection's context menu opens it with that node
  *   ticked. Both previews are asked for exactly that.
  * - **Nowhere else.** Export is in neither the selection Actions menu nor the
@@ -203,11 +203,9 @@ async function ready() {
   await screen.findByRole("treeitem", { name: /Loose/ });
 }
 
-/** The header's "Collection file" menu, then its export entry. */
+/** The header's own export button (FLW-11). */
 async function exportFromHeader(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "Collection file ▾" }));
-  const menu = await screen.findByRole("menu", { name: "Collection file" });
-  await user.click(within(menu).getByRole("menuitem", { name: "Export to Rekordbox…" }));
+  await user.click(screen.getByRole("button", { name: "Export to Rekordbox…" }));
 }
 
 const exportDialog = () => screen.findByRole("dialog", { name: "Export to Rekordbox" });
@@ -220,14 +218,12 @@ function collectionRow(name: string): HTMLElement {
 }
 
 describe("the Library header's entry (DEC-087)", () => {
-  it("imports from the same menu, as the page always has", async () => {
+  it("imports from its own button, as the page always has", async () => {
     const user = userEvent.setup();
     renderScreen();
     await ready();
 
-    await user.click(screen.getByRole("button", { name: "Collection file ▾" }));
-    const menu = await screen.findByRole("menu", { name: "Collection file" });
-    await user.click(within(menu).getByRole("menuitem", { name: "Import a different collection…" }));
+    await user.click(screen.getByRole("button", { name: "Import another file…" }));
     await waitFor(() => expect(mock("openXmlFileDialog")).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("dialog", { name: "Export to Rekordbox" })).toBeNull();
   });
@@ -239,21 +235,15 @@ describe("the Library header's entry (DEC-087)", () => {
 
     const header = screen.getByRole("banner");
     const actions = within(header).getAllByRole("button").map((button) => button.textContent);
-    // Two, not three: three did not fit the header at the default window size
-    // and scale, and each took a line of its own (see LibraryHeader.tsx).
-    expect(actions).toEqual(["Check for changes", "Collection file ▾"]);
-
-    // Import and export share one menu: the two ends of the source file.
-    const file = within(header).getByRole("button", { name: "Collection file ▾" });
-    expect(file).toHaveAttribute("aria-haspopup", "menu");
-    await user.click(file);
-    const menu = await screen.findByRole("menu", { name: "Collection file" });
-    expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
-      "Import a different collection…",
+    // Three buttons, never a menu (FLW-11): where they do not fit, the visible labels
+    // shorten and the full names stay (see LibraryHeader.tsx).
+    expect(actions).toEqual([
+      "Check Rekordbox for changes",
+      "Import another file…",
       "Export to Rekordbox…",
     ]);
 
-    await user.click(within(menu).getByRole("menuitem", { name: "Export to Rekordbox…" }));
+    await user.click(within(header).getByRole("button", { name: "Export to Rekordbox…" }));
     const dialog = await exportDialog();
     await within(dialog).findByText(/in the exported file/);
 
@@ -391,7 +381,7 @@ describe("what the dialog hands back to the page", () => {
 
     await exportFromHeader(user);
     const dialog = await exportDialog();
-    await user.click(await within(dialog).findByRole("button", { name: "Import a different collection…" }));
+    await user.click(await within(dialog).findByRole("button", { name: "Import another file…" }));
 
     await waitFor(() => expect(mock("openXmlFileDialog")).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("dialog", { name: "Export to Rekordbox" })).toBeNull();

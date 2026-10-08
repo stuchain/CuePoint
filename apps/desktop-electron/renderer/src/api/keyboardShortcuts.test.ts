@@ -10,6 +10,7 @@ import playerShortcutsSource from "../components/player/usePlayerShortcuts.ts?ra
 import queuePanelSource from "../components/player/QueuePanel.tsx?raw";
 import libraryScreenSource from "../screens/library/LibraryScreen.tsx?raw";
 import trackTableSource from "../components/table/TrackTable.tsx?raw";
+import collectionsPaneSource from "../screens/library/CollectionsPane.tsx?raw";
 import prepareLayoutSource from "../screens/prepare/PrepareLayout.tsx?raw";
 import entryZoneSource from "../screens/prepare/SetEntryZone.tsx?raw";
 import appMenuSource from "../../../electron/appMenu.ts?raw";
@@ -30,7 +31,21 @@ describe("the Library's shortcuts (LIBUI-10)", () => {
   it("documents the keys the page binds", () => {
     const library = KEYBOARD_SHORTCUTS.filter((row) => row.context === "Library");
 
-    expect(library.map((row) => row.shortcut).sort()).toEqual(["Ctrl+A", "Ctrl+F", "Enter"]);
+    expect(library.map((row) => row.shortcut).sort()).toEqual(
+      ["Ctrl+A", "Ctrl+F", "Delete", "Enter", "Esc", "F2", "Shift+F10"].sort(),
+    );
+  });
+
+  it("says what each one does, in the words LIB-12 chose", () => {
+    const action = (shortcut: string) =>
+      KEYBOARD_SHORTCUTS.find((row) => row.context === "Library" && row.shortcut === shortcut)
+        ?.action;
+
+    expect(action("Enter")).toBe("Play the selected track");
+    expect(action("Esc")).toBe("Clear the selection");
+    expect(action("Shift+F10")).toBe("Open the track menu");
+    expect(action("F2")).toBe("Rename the selected Collection");
+    expect(action("Delete")).toBe("Delete the selected Collection");
   });
 
   it("lists Ctrl+F once: the Results screen it was shared with is gone", () => {
@@ -116,6 +131,10 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     ["Ctrl+F", "Library", libraryScreenSource, /key\.toLowerCase\(\) === "f"/],
     ["Ctrl+A", "Library", libraryScreenSource, /key\.toLowerCase\(\) === "a"/],
     ["Enter", "Library", trackTableSource, /key === "Enter" && onRowActivate/],
+    ["Esc", "Library", libraryScreenSource, /key === "Escape" && !typing\) selection\.clear/],
+    ["Shift+F10", "Library", trackTableSource, /shiftKey && event\.key === "F10"/],
+    ["F2", "Library", collectionsPaneSource, /key === "F2"/],
+    ["Delete", "Library", collectionsPaneSource, /key === "Delete"/],
     ["Space", "Player", playerShortcutsSource, /event\.key === " "/],
     ["Ctrl+Right", "Player", playerShortcutsSource, /case "ArrowRight"/],
     ["Ctrl+Left", "Player", playerShortcutsSource, /case "ArrowLeft"/],

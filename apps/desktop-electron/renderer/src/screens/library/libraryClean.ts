@@ -80,6 +80,9 @@ export function overrideMark(
 ): { source: OverrideSource | null; title: string } | null {
   if (!row.overridden?.includes(field)) return null;
   const source = row.override_sources?.[field] ?? null;
+  // A key from Beatport is the track's key, not an edit of Rekordbox's: only the user's
+  // own correction is marked (DEC-201). The engine already leaves the other out.
+  if (field === "key" && (row.key_source === "beatport" || source === "beatport")) return null;
   const underneath = importedText(row, field);
   const label = APPLY_FIELD_LABELS[field];
   const said = overrideSourceText(source);

@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 
 import type { LibraryTrackRow, OverrideField } from "../../api/cuepointBridge.types";
+import { Hint } from "../../components/Hint";
 import { waveformEntryWords, waveformStateWord } from "../../components/waveform/analysisWords";
 import { loudnessCell } from "../../components/waveform/loudnessWords";
 import { useWaveform } from "../../components/waveform/useWaveforms";
@@ -25,16 +26,28 @@ export function OverriddenValue({ row, field }: { row: LibraryTrackRow; field: O
   const value = effectiveText(row, field) || (field === "key" ? "—" : "");
   const mark = overrideMark(row, field);
   if (!mark) return <>{value}</>;
+  // The marker is a letter or a dot, which means nothing until someone says so: its
+  // meaning is a tooltip on hover, in words (LIB-9). It is not a Tab stop: the table
+  // is virtualised and holds a stop per edited cell, so keyboard and screen-reader
+  // users get the words from the cell's own text (the aria-label), and the Columns
+  // list says what the marks mean. If it is focused (a click), Enter and F10 stay
+  // its own and do not open the row or its menu.
   return (
-    <span className="library-cell__overridden" title={mark.title}>
+    <span className="library-cell__overridden">
       {value}
-      <span
-        className={`library-cell__mark library-cell__mark--${mark.source ?? "cuepoint"}`}
-        aria-label={mark.title}
-        role="img"
-      >
-        {mark.source === "beatport" ? "B" : "•"}
-      </span>
+      <Hint text={mark.title}>
+        <span
+          className={`library-cell__mark library-cell__mark--${mark.source ?? "cuepoint"}`}
+          aria-label={mark.title}
+          role="img"
+          tabIndex={-1}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === "F10") event.stopPropagation();
+          }}
+        >
+          {mark.source === "beatport" ? "B" : "•"}
+        </span>
+      </Hint>
     </span>
   );
 }

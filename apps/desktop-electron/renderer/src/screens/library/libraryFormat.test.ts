@@ -25,6 +25,7 @@ import {
   referenceWarning,
   removalWarning,
   sourceState,
+  sourceBadge,
   sourceStateMessage,
 } from "./libraryFormat";
 
@@ -143,7 +144,16 @@ describe("sourceState", () => {
     // "unchanged" would tell a user their library is current when nobody
     // checked.
     expect(sourceState(source({ changed: null }))).toBe("unknown");
-    expect(sourceStateMessage("unknown")).toMatch(/could not tell/i);
+    expect(sourceStateMessage("unknown")).toBe(
+      "CuePoint could not tell whether this export has changed. Check Rekordbox for changes to compare.",
+    );
+  });
+
+  it("badges each state in words about Rekordbox (LIB-3)", () => {
+    expect(sourceBadge("unchanged")).toBe("In sync");
+    expect(sourceBadge("changed")).toBe("Changed in Rekordbox");
+    expect(sourceBadge("missing")).toBe("File not found");
+    expect(sourceBadge("unknown")).toBe("Not checked yet");
   });
 
   it("says unchanged only when it really is", () => {

@@ -25,7 +25,7 @@ In Rekordbox, choose **File > Export Collection in xml format** and save the fil
 ### 2. Import it
 
 1. Open CuePoint and go to **Library**.
-2. Choose **Import a collection...** and pick the XML file.
+2. Choose **Import your Rekordbox collection...** and pick the XML file.
 3. Your tracks and playlists appear when the import finishes. The status strip at the bottom shows its progress.
 
 CuePoint then checks, in the background, that your files are where Rekordbox says they are.

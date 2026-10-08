@@ -114,6 +114,26 @@ async function importCollection(window: Page, xmlPath: string) {
   await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
 }
 
+/**
+ * The whole rows the Library table shows at the default window and scale (PAGES-05A).
+ *
+ * As DEC-112 holds Prepare's: the number is measured, held, and a change that loses a
+ * row fails here and has to say why. The window is as the app opens it (1,280 × 800 at
+ * 1.5×), the header is the three-button one (FLW-11), and the notice line and the table
+ * toolbar row are absent: the notice shows only after an import, and 05C adds the row.
+ * Whoever adds either re-measures and moves this number on purpose.
+ *
+ * Linux measured 2 with a 155px header (179px before the "In sync" sentence was dropped), and the same 2 before this step's header (the
+ * three buttons changed no height): 05A holds that number rather than raising it. It is
+ * under Prepare's floor of five, which 05C's restructuring of the rows above the table
+ * must lift. Windows and macOS are owed a measure and hold one row lower until then.
+ */
+const ON_LINUX = process.platform === "linux";
+const WHOLE_ROWS_LIBRARY_MEASURED = 2;
+const WHOLE_ROWS_LIBRARY = ON_LINUX
+  ? WHOLE_ROWS_LIBRARY_MEASURED
+  : WHOLE_ROWS_LIBRARY_MEASURED - 1;
+
 test.describe("The Library page (LIBRARY-11)", () => {
   let userDataDir: string;
   let cuepointHome: string;
@@ -139,9 +159,9 @@ test.describe("The Library page (LIBRARY-11)", () => {
       // DEC-020's registry: enabling one flag is what put this here.
       await openLibrary(window);
 
-      await expect(window.getByText(/No collection imported yet/i)).toBeVisible();
+      await expect(window.getByText(/Nothing imported yet/i)).toBeVisible();
       await expect(
-        window.getByRole("button", { name: /Import a collection/i }),
+        window.getByRole("button", { name: /Import your Rekordbox collection/i }),
       ).toBeVisible();
     } finally {
       await app.close();
@@ -159,7 +179,75 @@ test.describe("The Library page (LIBRARY-11)", () => {
 
       await expect(window.getByTestId("library-track-count")).toHaveText("6 tracks");
       await expect(window.getByText(xmlPath)).toBeVisible();
-      await expect(window.getByText("Up to date")).toBeVisible();
+      await expect(window.getByText("In sync")).toBeVisible();
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("shows its whole rows with the three header buttons on one line", async () => {
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await importCollection(
+        window,
+        writeExport(
+          workspace,
+          Array.from({ length: 40 }, (_unused, i) => i),
+        ),
+      );
+      await openLibrary(window);
+      const table = window.getByRole("table", { name: "Library tracks" });
+      await expect(table.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
+
+      // Three buttons, never a menu, and on one line whatever their labels say.
+      const names = ["Check Rekordbox for changes", "Import another file…", "Export to Rekordbox…"];
+      const tops: number[] = [];
+      const shown: string[] = [];
+      for (const name of names) {
+        const button = window.locator(".library-header").getByRole("button", { name });
+        await expect(button).toBeVisible();
+        tops.push((await button.boundingBox())!.y);
+        shown.push((await button.innerText()).trim());
+      }
+      expect(new Set(tops.map(Math.round)).size, `button tops ${tops} (${shown})`).toBe(1);
+      console.log("PAGES-05A header labels:", shown);
+      // The notice line is not on the page while someone works in the table.
+      await expect(window.getByRole("status", { name: "Getting your library ready" })).toHaveCount(0);
+
+      const m = await window.evaluate(() => {
+        const box = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
+        const header = box.querySelector<HTMLElement>(".track-table__header")!;
+        const rect = box.getBoundingClientRect();
+        const top = Math.max(rect.top + box.clientTop + header.getBoundingClientRect().height, 0);
+        const bottom = Math.min(rect.top + box.clientTop + box.clientHeight, window.innerHeight);
+        let visibleTop = top;
+        let visibleBottom = bottom;
+        // What is on screen is what every clipping ancestor lets through.
+        for (let el = box.parentElement; el; el = el.parentElement) {
+          if (!/(auto|scroll|hidden)/.test(getComputedStyle(el).overflowY)) continue;
+          const r = el.getBoundingClientRect();
+          visibleTop = Math.max(visibleTop, r.top + el.clientTop);
+          visibleBottom = Math.min(visibleBottom, r.top + el.clientTop + el.clientHeight);
+        }
+        let whole = 0;
+        for (const row of box.querySelectorAll<HTMLElement>(".track-table__row")) {
+          const r = row.getBoundingClientRect();
+          if (r.top >= visibleTop - 0.5 && r.bottom <= visibleBottom + 0.5) whole += 1;
+        }
+        return {
+          whole,
+          scale: getComputedStyle(document.documentElement).getPropertyValue("--scale").trim(),
+          window: { width: window.innerWidth, height: window.innerHeight },
+          headerHeight: document.querySelector(".library-header")!.getBoundingClientRect().height,
+        };
+      });
+      console.log("PAGES-05A Library whole rows:", m.whole, JSON.stringify(m));
+      // The default window, whose inner height is what the screen leaves it.
+      expect(m.window.width).toBe(1280);
+      expect(m.window.height).toBeGreaterThan(700);
+      expect(m.scale).toBe("1.5");
+      expect(m.whole, "whole rows the Library shows").toBeGreaterThanOrEqual(WHOLE_ROWS_LIBRARY);
     } finally {
       await app.close();
     }
@@ -181,7 +269,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
       await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
       await openLibrary(window);
 
-      await expect(window.getByText("Out of date")).toBeVisible();
+      await expect(window.getByText("Changed in Rekordbox")).toBeVisible();
       await expect(window.getByText(/has changed since your last import/i)).toBeVisible();
     } finally {
       await app.close();
@@ -198,7 +286,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
       writeExport(workspace, [0, 1, 2, 3]);
       await openLibrary(window);
 
-      await window.getByRole("button", { name: /Check for changes/i }).click();
+      await window.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
       const dialog = window.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 30_000 });
       await expect(dialog.getByTestId("count-removed")).toHaveText("2");
@@ -224,7 +312,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
       writeExport(workspace, [0, 1, 2, 3, 9]);
       await openLibrary(window);
 
-      await window.getByRole("button", { name: /Check for changes/i }).click();
+      await window.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
       const dialog = window.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 30_000 });
       await expect(dialog.getByTestId("count-added")).toHaveText("1");
@@ -238,7 +326,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
         timeout: 30_000,
       });
       await expect(window.getByText(/2 removed/)).toBeVisible();
-      await expect(window.getByText("Up to date")).toBeVisible();
+      await expect(window.getByText("In sync")).toBeVisible();
     } finally {
       await app.close();
     }
@@ -296,7 +384,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
       await importCollection(window, writeExport(workspace, [0, 1, 2]));
       await openLibrary(window);
 
-      await window.getByRole("button", { name: /Check for changes/i }).click();
+      await window.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
       const dialog = window.getByRole("dialog");
 
       await expect(dialog).toBeVisible({ timeout: 30_000 });

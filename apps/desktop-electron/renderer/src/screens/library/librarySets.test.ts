@@ -189,20 +189,21 @@ describe("the table's empty state", () => {
 
   it("names an empty Set and how to fill it", () => {
     expect(emptyStateFor({ ...base, isSet: true })).toEqual({
-      headline: "This Set is empty.",
+      title: "This Set is empty.",
       rules: [],
       hint: "Drop tracks onto it, or use Add to Set from the track menu.",
+      action: { id: "show-library", label: "Browse the whole library" },
     });
   });
 
   it("says a refresh emptied it, not that nobody filled it", () => {
     const view = emptyStateFor({ ...base, isSet: true, emptiedByRefresh: true });
-    expect(view.headline).toBe("This Set is empty.");
+    expect(view.title).toBe("This Set is empty.");
     expect(view.hint).toMatch(/last refresh removed them/);
   });
 
   it("still says Collection for a Collection", () => {
-    expect(emptyStateFor(base).headline).toBe("This Collection is empty.");
+    expect(emptyStateFor(base).title).toBe("This Collection is empty.");
   });
 });
 

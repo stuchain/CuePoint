@@ -64,6 +64,23 @@ export function sourceState(source: LibrarySourceInfo): SourceState {
   return "unchanged";
 }
 
+/**
+ * The badge beside the export's path (LIB-3): said about Rekordbox, because
+ * "out of date" did not say what it was out of date with.
+ */
+export function sourceBadge(state: SourceState): string {
+  switch (state) {
+    case "unchanged":
+      return "In sync";
+    case "changed":
+      return "Changed in Rekordbox";
+    case "missing":
+      return "File not found";
+    case "unknown":
+      return "Not checked yet";
+  }
+}
+
 export function sourceStateMessage(state: SourceState): string {
   switch (state) {
     case "missing":
@@ -71,7 +88,7 @@ export function sourceStateMessage(state: SourceState): string {
     case "changed":
       return "This export has changed since your last import. Check what a refresh would do.";
     case "unknown":
-      return "CuePoint could not tell whether this export has changed. Check to be sure.";
+      return "CuePoint could not tell whether this export has changed. Check Rekordbox for changes to compare.";
     case "unchanged":
       return "Unchanged since your last import.";
   }

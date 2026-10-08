@@ -23,6 +23,8 @@ interface ColumnPickerProps<Row> {
   onToggle: (id: string) => void;
   onNudge: (id: string, delta: -1 | 1) => void;
   onReset: () => void;
+  /** A line under the list: what a mark in this table's cells means (LIB-9). */
+  note?: string;
 }
 
 export function ColumnPicker<Row>({
@@ -33,6 +35,7 @@ export function ColumnPicker<Row>({
   onToggle,
   onNudge,
   onReset,
+  note,
 }: ColumnPickerProps<Row>) {
   if (!open) return null;
 
@@ -91,6 +94,7 @@ export function ColumnPicker<Row>({
           );
         })}
       </ul>
+      {note && <p className="cp-column-picker__note">{note}</p>}
     </Modal>
   );
 }
