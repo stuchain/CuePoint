@@ -105,6 +105,16 @@ class TestMacGuards:
 
 
 @pytest.mark.unit
+class TestTheSmokeHasAScreen:
+    def test_linux_runs_the_e2e_under_xvfb(self):
+        # Regression: with no display each test waited out Playwright's launch timeout.
+        step = _step("Playwright Electron smoke")
+        assert step["shell"] == "bash"
+        assert 'if [ "$RUNNER_OS" = "Linux" ]' in step["run"]
+        assert "xvfb-run -a npm run test:e2e" in step["run"]
+
+
+@pytest.mark.unit
 class TestKeepsFilesOnFailure:
     def test_checksums_and_upload_run_after_a_failed_check_once_packaged(self):
         steps = _job()["steps"]

@@ -199,9 +199,17 @@ jobs:
         working-directory: apps/desktop-electron
         run: npx playwright install chromium
 
+      # The Linux runner has no display. Without one Electron exits at once, but Playwright waits out
+      # its whole launch timeout for each test, so the step ran for hours; Xvfb gives it a screen.
       - name: Playwright Electron smoke
         working-directory: apps/desktop-electron
-        run: npm run test:e2e
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a npm run test:e2e
+          else
+            npm run test:e2e
+          fi
 
       # No map ships: electron-builder's `files` excludes them too, and this keeps them off the disk
       # that is packed from, uploaded or not.
