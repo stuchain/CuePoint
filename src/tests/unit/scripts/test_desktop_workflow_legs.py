@@ -94,17 +94,14 @@ class TestMacGuards:
         )
         assert step["run"].startswith("npm run test:e2e -- ")
 
-    def test_packaged_e2e_runs_exactly_the_specs_that_launch_the_packaged_app(self):
-        e2e = _REPO_ROOT / "apps" / "desktop-electron" / "e2e"
-        honouring = {
-            f"e2e/{p.name}"
-            for p in e2e.glob("*.spec.ts")
-            if "CUEPOINT_E2E_EXECUTABLE" in p.read_text(encoding="utf-8")
-        }
-        run = _step("Packaged app end-to-end (Intel Mac)")["run"]
-        named = set(run.split(" -- ", 1)[1].split())
-        assert named == honouring
-        assert "e2e/smoke.spec.ts" in named
+    def test_packaged_e2e_runs_every_spec_that_launches_the_packaged_app(self):
+        step = _step("Packaged app end-to-end (Intel Mac)")
+        assert step["shell"] == "bash"
+        assert step["run"] == (
+            "npm run test:e2e -- $(grep -l CUEPOINT_E2E_EXECUTABLE e2e/*.spec.ts)"
+        )
+        smoke = _REPO_ROOT / "apps" / "desktop-electron" / "e2e" / "smoke.spec.ts"
+        assert "CUEPOINT_E2E_EXECUTABLE" in smoke.read_text(encoding="utf-8")
 
 
 @pytest.mark.unit

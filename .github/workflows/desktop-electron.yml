@@ -216,7 +216,9 @@ jobs:
         working-directory: apps/desktop-electron
         env:
           CUEPOINT_E2E_EXECUTABLE: ${{ github.workspace }}/apps/desktop-electron/release/mac/CuePoint.app/Contents/MacOS/CuePoint
-        run: npm run test:e2e -- e2e/smoke.spec.ts e2e/clean.spec.ts e2e/prepare.spec.ts e2e/prepareJourney.spec.ts e2e/prepareSource.spec.ts e2e/rekordboxExport.spec.ts e2e/discover.spec.ts e2e/discoverPages.spec.ts e2e/incrateLeftovers.spec.ts e2e/waveformPlaces.spec.ts e2e/waveformLoudness.spec.ts e2e/waveformJourney.spec.ts e2e/engineLifetime.spec.ts
+        # Every spec that can launch a packaged app, found when the step runs, so a new one is included.
+        shell: bash
+        run: npm run test:e2e -- $(grep -l CUEPOINT_E2E_EXECUTABLE e2e/*.spec.ts)
 
       # A failed Mac check keeps the leg's files, so the app that failed it can be downloaded.
       - name: Generate SHA256SUMS
