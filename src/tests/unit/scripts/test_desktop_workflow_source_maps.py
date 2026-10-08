@@ -80,7 +80,7 @@ class TestSourceMapSteps:
         package = _index(steps, "Build Electron installers + artifacts")
         assert build < upload < delete < package
         # `npm run dist` rebuilds first, which would replace the files `inject` wrote ids into.
-        assert steps[package]["run"] == "npm run package"
+        assert steps[package]["run"].startswith("npm run package")
         assert "npm run build" not in steps[package]["run"]
         # Portable (the Windows leg has no GNU find), and run even when the upload failed.
         assert "find " not in steps[delete]["run"]

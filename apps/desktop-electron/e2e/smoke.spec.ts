@@ -23,11 +23,14 @@ test.describe("Electron desktop smoke (TC-UI-001)", () => {
     // and the app never starts. `shell.spec.ts` drops it for the same reason.
     delete env.ELECTRON_RUN_AS_NODE;
 
-    const app = await electron.launch({
-      cwd: DESKTOP_ROOT,
-      args: [".", `--user-data-dir=${userDataDir}`],
-      env,
-    });
+    // `CUEPOINT_E2E_EXECUTABLE` runs the same check against a packaged build, as the other specs
+    // do (DIST-02: "the Intel app starts" on the Intel runner).
+    const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
+    const app = await electron.launch(
+      packaged
+        ? { executablePath: packaged, args: [`--user-data-dir=${userDataDir}`], env }
+        : { cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env },
+    );
 
     try {
       const window = await app.firstWindow({ timeout: 60_000 });

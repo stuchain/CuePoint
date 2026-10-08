@@ -16,7 +16,7 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
 - `check_desktop_version_coupling.py`: Checks `src/cuepoint/version.py` and the desktop `package.json`
   agree. `desktop-electron.yml`; also the `version-coupling.sh` Claude hook.
 - `smoke_engine_health.py`: Starts the engine module and checks `/health` responds. `desktop-electron.yml`.
-- `generate_sha256_sums.py`: Writes `SHA256SUMS.txt` for the release artifacts. `desktop-electron.yml`.
+- `generate_sha256_sums.py`: Writes the checksums for a build leg's release artifacts. `--leg <leg>` names the file `SHA256SUMS-<leg>.txt` (without it, `SHA256SUMS.txt`). Hashes only the top-level files (installers, zips, block maps, manifests), not the unpacked app folders, other `SHA256SUMS*.txt` files or electron-builder's debug files. `desktop-electron.yml`.
 - `check_no_qt.py`: Fails on any Qt import, requirement or CI install. `desktop-electron.yml`, `test.yml`;
   also the `qt-guard.sh` Claude hook.
 - `audit_dead_code.py`: Reports what nothing shipped or run reaches (Python modules, scripts, workflows,
@@ -60,6 +60,8 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
 - `setup/install_requirements.sh`: Installs Python requirements on Linux/macOS.
 - `analyze_licenses.py`: Best-effort licence analysis of the installed Python dependencies.
 - `verify_macos_bundle.py`: Checks a packaged macOS app is in a state Apple would notarize.
+- `check_bundle_arch.py`: Checks every Mach-O file in a packaged macOS app has the leg's chip (`--arch arm64|x64`). `desktop-electron.yml`.
+- `merge_update_manifests.py`: Merges the arm64 and x64 `latest-mac.yml` into one (DIST-03; run by the release workflow).
 - `generate_test_xml.py`: Generates synthetic Rekordbox XML fixtures (`--benchmark` for `bench.py`).
 - `make_audio_fixtures.py`: Regenerates the tiny committed audio fixtures in `src/tests/fixtures/audio/`.
 

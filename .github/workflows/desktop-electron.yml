@@ -13,9 +13,28 @@ jobs:
   desktop-electron:
     strategy:
       fail-fast: false
+      # Legs are named by system and chip (DIST-02, DEC-129). `builder_arch` is what electron-builder
+      # is told on a Mac so a runner's default never decides the chip; `chip` and `mac_dir` feed the
+      # Mac bundle checks (electron-builder writes `mac-arm64/` for arm64 and `mac/` for x64).
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+        include:
+          - leg: windows-x64
+            runner: windows-latest
+            builder_arch: ""
+          - leg: linux-x64
+            runner: ubuntu-latest
+            builder_arch: ""
+          - leg: macos-arm64
+            runner: macos-latest
+            builder_arch: "--arm64"
+            chip: arm64
+            mac_dir: mac-arm64
+          - leg: macos-x64
+            runner: macos-15-intel
+            builder_arch: "--x64"
+            chip: x64
+            mac_dir: mac
+    runs-on: ${{ matrix.runner }}
 
     env:
       # The commit this build is made from: main and the engine sidecar record it, and it is
@@ -176,15 +195,38 @@ jobs:
       # `package`, not `dist`: `dist` builds again first, which would replace the files that
       # carry the debug ids.
       - name: Build Electron installers + artifacts
+        id: package
         working-directory: apps/desktop-electron
-        run: npm run package
+        run: npm run package -- ${{ matrix.builder_arch }}
 
-      - name: Generate SHA256SUMS
+      # DIST-02. Unsigned, so no `--expect-hardened-runtime`: the structural checks only.
+      - name: Check bundle architecture
+        if: startsWith(matrix.leg, 'macos')
+        run: python scripts/check_bundle_arch.py apps/desktop-electron/release/${{ matrix.mac_dir }}/CuePoint.app --arch ${{ matrix.chip }}
+
+      - name: Verify macOS bundle
+        if: startsWith(matrix.leg, 'macos')
+        run: python scripts/verify_macos_bundle.py apps/desktop-electron/release/${{ matrix.mac_dir }}/CuePoint.app
+
+      # DIST-02: the Intel app starts and runs the journeys on the Intel runner. Only the specs that
+      # launch `CUEPOINT_E2E_EXECUTABLE` (smoke.spec.ts is the "it starts" check); the rest drive the
+      # source tree.
+      - name: Packaged app end-to-end (Intel Mac)
+        if: matrix.leg == 'macos-x64'
         working-directory: apps/desktop-electron
-        run: python ../../scripts/generate_sha256_sums.py release
+        env:
+          CUEPOINT_E2E_EXECUTABLE: ${{ github.workspace }}/apps/desktop-electron/release/mac/CuePoint.app/Contents/MacOS/CuePoint
+        run: npm run test:e2e -- e2e/smoke.spec.ts e2e/clean.spec.ts e2e/prepare.spec.ts e2e/prepareJourney.spec.ts e2e/prepareSource.spec.ts e2e/rekordboxExport.spec.ts e2e/discover.spec.ts e2e/discoverPages.spec.ts e2e/incrateLeftovers.spec.ts e2e/waveformPlaces.spec.ts e2e/waveformLoudness.spec.ts e2e/waveformJourney.spec.ts e2e/engineLifetime.spec.ts
+
+      # A failed Mac check keeps the leg's files, so the app that failed it can be downloaded.
+      - name: Generate SHA256SUMS
+        if: always() && steps.package.outcome == 'success'
+        working-directory: apps/desktop-electron
+        run: python ../../scripts/generate_sha256_sums.py release --leg ${{ matrix.leg }}
 
       - name: Upload Electron artifacts
+        if: always() && steps.package.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-electron-${{ matrix.os }}
+          name: desktop-electron-${{ matrix.leg }}
           path: apps/desktop-electron/release/**

@@ -53,9 +53,9 @@ Write the release notes from the template below. Keep the highlights, fixes and 
 6. Runs the Electron main-process tests (`npm test`), the player sidecar tests, the engine unit tests, the engine health smoke (`scripts/smoke_engine_health.py`) and `check_desktop_version_coupling.py`.
 7. Installs Playwright Chromium and runs the Electron smoke tests (`npm run test:e2e`).
 8. When the `SENTRY_AUTH_TOKEN` repository secret is set, writes debug ids into main's and the renderer's JavaScript (`sentry-cli sourcemaps inject`) and uploads their source maps to the `electron` project of the `cuepoint` Sentry organization under release `cuepoint@<version>` and `dist` the first seven characters of the commit. Each OS leg uploads its own. Without the secret (a fork, a run that cannot read it) the step is skipped. Then deletes every `.map` under `electron-dist` and `renderer/dist`; electron-builder also excludes them, and `npm run pack` followed by `npx asar list release/linux-unpacked/resources/app.asar | grep '\.map$'` should print nothing.
-9. Builds the installers with `npm run package` (electron-builder alone; `npm run dist` builds first, which would replace the files that carry the debug ids): a DMG on macOS, an NSIS installer on Windows, an AppImage on Linux. Output goes to `apps/desktop-electron/release/`.
-10. Writes checksums with `python ../../scripts/generate_sha256_sums.py release`, which hashes every file under `release/` and writes `SHA256SUMS.txt` (SHA-256, one line per file, paths relative to `release/`) in that folder. Each leg writes a file with the same name.
-11. Uploads `apps/desktop-electron/release/**` as the artifact `desktop-electron-<os>`.
+9. Builds the installers with `npm run package -- <chip flag>` (electron-builder alone, never publishing; `npm run dist` builds first, which would replace the files that carry the debug ids): a DMG and a zip on macOS, an NSIS installer on Windows, an AppImage on Linux. The Mac legs pass `--arm64` or `--x64`. Output goes to `apps/desktop-electron/release/`. File names carry the system and chip (`CuePoint-<version>-mac-arm64.dmg`, `-mac-x64.zip`, `-win-x64-setup.exe`, `-linux-x86_64.AppImage`). Beside them electron-builder writes the `.blockmap` files and the update manifest (`latest.yml`, `latest-mac.yml`, `latest-linux.yml`). The `publish` entry in `package.json` (the generic provider) exists only so it writes these; its URL is not used at run time, and nothing is uploaded by a build. The two Mac manifests each name one chip, and `scripts/merge_update_manifests.py arm64.yml x64.yml -o latest-mac.yml` merges them into the one the updater reads.
+10. Writes checksums with `python ../../scripts/generate_sha256_sums.py release --leg <leg>`, which hashes the files at the top of `release/` (not the unpacked app folders) and writes `SHA256SUMS-<leg>.txt` (SHA-256, one line per file) in that folder, so no file needs renaming.
+11. Uploads `apps/desktop-electron/release/**` as the artifact `desktop-electron-<leg>` (`windows-x64`, `linux-x64`, `macos-arm64`, `macos-x64`).
 
 Two other workflows gate the same commit:
 
@@ -75,13 +75,30 @@ With no credentials, both print a note and skip, and the build is unsigned. That
 
 ### Checking a macOS build
 
-Notarization fails late, so check the bundle first:
+Notarization fails late, so check the bundle first. CI builds the app for both chips (DIST-02), and electron-builder writes each to its own folder: `release/mac-arm64/` for Apple Silicon and `release/mac/` for Intel.
+
+```bash
+python scripts/verify_macos_bundle.py apps/desktop-electron/release/mac-arm64/CuePoint.app
+python scripts/verify_macos_bundle.py apps/desktop-electron/release/mac/CuePoint.app
+```
+
+With a Developer ID, add `--expect-hardened-runtime` to each:
 
 ```bash
 python scripts/verify_macos_bundle.py apps/desktop-electron/release/mac-arm64/CuePoint.app --expect-hardened-runtime
+python scripts/verify_macos_bundle.py apps/desktop-electron/release/mac/CuePoint.app --expect-hardened-runtime
 ```
 
-The script checks for stray files that make a bundle unsignable, signatures on every Mach-O binary, the hardened runtime on the app and both sidecars, the entitlements Electron needs, and `codesign --verify --deep --strict`. It does not say the app is notarized. After notarization, `xcrun stapler validate <app>` confirms the ticket is stapled.
+Then check that every Mach-O file in the app is for the folder's chip. A universal file passes if it contains the chip:
+
+```bash
+python scripts/check_bundle_arch.py apps/desktop-electron/release/mac-arm64/CuePoint.app --arch arm64
+python scripts/check_bundle_arch.py apps/desktop-electron/release/mac/CuePoint.app --arch x64
+```
+
+With no Developer ID, electron-builder signs nothing, so the `afterPack` hook (`build/signNestedBinaries.cjs`) signs the whole bundle ad hoc, inside out, with the hardened runtime and the entitlements; that is what makes `codesign --verify --deep --strict` pass (DEC-170). The `macos-arm64` and `macos-x64` legs of `desktop-electron.yml` run both checks that way (without `--expect-hardened-runtime`), and the `macos-x64` leg also runs the end-to-end specs that launch the packaged app (`CUEPOINT_E2E_EXECUTABLE`), smoke test included.
+
+`verify_macos_bundle.py` checks for stray files that make a bundle unsignable, signatures on every Mach-O binary, the hardened runtime on the app and both sidecars, the entitlements Electron needs, and `codesign --verify --deep --strict`. It does not say the app is notarized. After notarization, `xcrun stapler validate <app>` confirms the ticket is stapled.
 
 ## Test before you publish
 

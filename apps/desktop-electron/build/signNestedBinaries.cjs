@@ -15,9 +15,16 @@
  * afterSign the outer signature already exists, and re-signing anything inside
  * it would invalidate it.
  *
- * With no signing identity configured this is a no-op that says so. Local
- * `npm run pack` and the credential-less macOS CI leg must keep working; an
- * unsigned build is a legitimate build, it just cannot be distributed.
+ * With no signing identity configured the whole bundle is signed ad hoc (DIST-02,
+ * DEC-170). electron-builder 25 signs nothing without an identity, and it has
+ * already edited the app's Info.plist by now, so the seal Electron shipped with
+ * is broken and `codesign --verify --deep --strict` would fail. Ad hoc signing
+ * is not a distributable signature - no certificate, so Gatekeeper still blocks
+ * the app on other Macs - but it makes the bundle verify, and it keeps the
+ * hardened runtime and entitlements the build is configured with. The order is
+ * the same inside out: sidecars, then Electron's frameworks and helpers, then
+ * the app. With an identity, only the sidecars are signed here (below) and
+ * electron-builder signs the rest.
  */
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
@@ -45,33 +52,70 @@ function machOTargets(root) {
   return found;
 }
 
-exports.default = async function signNestedBinaries(context) {
+/** The arguments for one `codesign` call. `timestamp` is `--timestamp` for a real identity. */
+function codesignArgs(identity, entitlements, target, timestamp) {
+  return [
+    "--force",
+    "--sign", identity,
+    "--options", "runtime",
+    timestamp,
+    "--entitlements", entitlements,
+    target,
+  ];
+}
+
+/**
+ * Everything an ad hoc signature covers, in signing order: the sidecars with the
+ * entitlements the identity path gives them, Electron's frameworks and helpers
+ * with the inherit entitlements, then the outer app.
+ */
+function adHocPlan(appPath, sidecarRoots) {
+  const entitlements = path.join(__dirname, "entitlements.mac.plist");
+  const inherit = path.join(__dirname, "entitlements.mac.inherit.plist");
+  const frameworks = path.join(appPath, "Contents", "Frameworks");
+  const plan = sidecarRoots
+    .flatMap(machOTargets)
+    .map((target) => ({ target, entitlements }));
+  if (fs.existsSync(frameworks)) {
+    for (const target of machOTargets(frameworks)) {
+      plan.push({ target, entitlements: inherit });
+    }
+  }
+  plan.push({ target: appPath, entitlements });
+  return plan;
+}
+
+/** `deps.exec` is for tests; electron-builder calls this with the context only. */
+exports.default = async function signNestedBinaries(context, deps = {}) {
   if (context.electronPlatformName !== "darwin") return;
+  const exec = deps.exec || execFileSync;
 
   const identity =
     process.env.CSC_NAME || process.env.CUEPOINT_SIGN_IDENTITY || "";
   const appName = `${context.packager.appInfo.productFilename}.app`;
-  const resources = path.join(
-    context.appOutDir,
-    appName,
-    "Contents",
-    "Resources",
-  );
+  const appPath = path.join(context.appOutDir, appName);
+  const resources = path.join(appPath, "Contents", "Resources");
 
   const roots = ["player", "engine"]
     .map((name) => path.join(resources, name))
     .filter((dir) => fs.existsSync(dir));
 
-  if (roots.length === 0) {
-    console.log("  • nested sidecar signing: nothing bundled, skipped");
+  if (!identity) {
+    const plan = adHocPlan(appPath, roots);
+    for (const { target, entitlements } of plan) {
+      exec("codesign", codesignArgs("-", entitlements, target, "--timestamp=none"), {
+        stdio: "inherit",
+      });
+    }
+    console.log(
+      `  • signed ${plan.length} items ad hoc (no CSC_NAME/CUEPOINT_SIGN_IDENTITY). ` +
+        "The build verifies but cannot be notarized or distributed.",
+    );
     return;
   }
 
-  if (!identity) {
-    console.log(
-      "  • nested sidecar signing skipped: no CSC_NAME/CUEPOINT_SIGN_IDENTITY. " +
-        "The build is unsigned and cannot be notarized or distributed.",
-    );
+  if (roots.length === 0) {
+    console.log("  • nested sidecar signing: nothing bundled, skipped");
     return;
   }
 
@@ -79,18 +123,11 @@ exports.default = async function signNestedBinaries(context) {
   const targets = roots.flatMap(machOTargets);
 
   for (const target of targets) {
-    execFileSync(
-      "codesign",
-      [
-        "--force",
-        "--sign", identity,
-        "--options", "runtime",
-        "--timestamp",
-        "--entitlements", entitlements,
-        target,
-      ],
-      { stdio: "inherit" },
-    );
+    exec("codesign", codesignArgs(identity, entitlements, target, "--timestamp"), {
+      stdio: "inherit",
+    });
   }
   console.log(`  • signed ${targets.length} nested sidecar binaries`);
 };
+
+exports.adHocPlan = adHocPlan;
