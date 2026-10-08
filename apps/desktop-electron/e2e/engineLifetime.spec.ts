@@ -19,6 +19,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { waitForEngine } from "./engineReady";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -92,7 +93,7 @@ function launch(userDataDir: string, cuepointHome: string): Promise<ElectronAppl
  */
 async function runningEngines(app: ElectronApplication): Promise<{ main: number; engines: number[] }> {
   const window = await app.firstWindow({ timeout: 60_000 });
-  await expect(window.locator(".cp-status")).toContainText(/Engine connected/i, { timeout: 60_000 });
+  await waitForEngine(window);
   const main = await app.evaluate(() => process.pid);
   const engines = enginesUnder(main);
   expect(engines.length).toBeGreaterThan(0);

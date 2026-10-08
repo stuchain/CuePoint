@@ -22,6 +22,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { waitForEngine } from "./engineReady";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -113,7 +114,7 @@ test.describe("Application shell navigation", () => {
       await dismissOnboarding(window);
       // The engine sidecar starts asynchronously; searching before it is up
       // would test the wrong thing.
-      await expect(window.locator(".cp-status__engine--ok")).toBeVisible({ timeout: 60_000 });
+      await waitForEngine(window);
 
       await window.getByRole("combobox", { name: /search library/i }).fill("deadmau5");
 

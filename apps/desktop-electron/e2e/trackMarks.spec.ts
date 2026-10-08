@@ -23,6 +23,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync 
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { waitForEngine } from "./engineReady";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -50,9 +51,7 @@ async function ready(app: ElectronApplication): Promise<Page> {
   await window.evaluate(() => localStorage.setItem("cuepoint-onboarding-complete", "1"));
   await window.reload();
   await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
-  await expect(window.locator(".cp-status")).toContainText(/Engine connected/i, {
-    timeout: 60_000,
-  });
+  await waitForEngine(window);
   return window;
 }
 

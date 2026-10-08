@@ -27,6 +27,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { waitForEngine } from "./engineReady";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -84,9 +85,7 @@ async function ready(app: ElectronApplication): Promise<Page> {
   await window.reload();
   await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
   // The engine is a spawned sidecar; nothing below works until it answers.
-  await expect(window.locator(".cp-status")).toContainText(/Engine connected/i, {
-    timeout: 60_000,
-  });
+  await waitForEngine(window);
   return window;
 }
 

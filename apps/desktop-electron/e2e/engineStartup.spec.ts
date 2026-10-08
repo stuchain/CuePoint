@@ -6,7 +6,7 @@
  * Library read its summary as absent and said "No collection imported yet" to
  * a library that was there — and went on saying it after the engine was up,
  * because it only asks once. Every other spec here starts from an empty library
- * and waits for "Engine connected" before doing anything, so none of them could
+ * and waits for the engine before doing anything, so none of them could
  * see it.
  *
  * This one does neither: it imports, quits, relaunches over the same library,
