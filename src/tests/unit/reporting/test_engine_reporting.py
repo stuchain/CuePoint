@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import json
 import logging
+import re
 import socket
 import threading
 import time
@@ -872,16 +873,28 @@ def test_the_engine_server_does_not_print_a_traceback(reporting, monkeypatch, ca
 
 
 def _raw_status(port: int, payload: bytes) -> int:
+    """The status the server answered a hand-written request with.
+
+    Before Python 3.13, ``http.server`` answers a request line it could not
+    parse (``GET`` alone, an unsupported version) HTTP/0.9-style: no status
+    line, just the HTML error page, whose body carries ``Error code: NNN``.
+    From 3.13 on the same request gets a real ``HTTP/1.0 NNN`` status line.
+    Either way the client got its answer, so read the whole reply and take
+    the code from whichever form it came in.
+    """
     with socket.create_connection(("127.0.0.1", port), timeout=10) as sock:
         sock.sendall(payload)
         data = b""
-        while b"\r\n" not in data:
+        while True:
             chunk = sock.recv(4096)
             if not chunk:
                 break
             data += chunk
-    assert data.startswith(b"HTTP/"), data
-    return int(data.split(b" ", 2)[1])
+    if data.startswith(b"HTTP/"):
+        return int(data.split(b" ", 2)[1])
+    match = re.search(rb"Error code: (\d{3})", data)
+    assert match, data
+    return int(match.group(1))
 
 
 @pytest.mark.parametrize("with_reporting", [False, True])
