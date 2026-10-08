@@ -28,6 +28,7 @@ import { ScaleProvider } from "../../tokens/ScaleContext";
 import { TRACK_DETAIL } from "../library/librarySets.testFixture";
 import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
 import { toQueueItem } from "../library/useLibraryPlayback";
+import { cleanMatchState } from "../clean/cleanLink";
 import { PrepareScreen, SET_ENTRY_MIME, SET_GONE_LINE } from "./PrepareScreen";
 import { EDITS, FRIDAY, IDS, PLAIN, REFUSALS, TREE, answered, refused } from "./prepare.testFixture";
 import { NO_SETS, WHAT_A_SET_IS } from "./prepareFormat";
@@ -130,6 +131,11 @@ function Where() {
   return <p data-testid="where">{useLocation().pathname}</p>;
 }
 
+/** Where "Match tracks…" lands: it shows the location state it was handed. */
+function CleanProbe() {
+  return <p data-testid="clean-state">{JSON.stringify(useLocation().state)}</p>;
+}
+
 function renderAt(path: string) {
   return render(
     <ScaleProvider>
@@ -139,6 +145,7 @@ function renderAt(path: string) {
             <Routes>
               <Route path={PREPARE_PATH} element={<PrepareScreen />} />
               <Route path={PREPARE_SET_ROUTE} element={<PrepareScreen />} />
+              <Route path="/clean" element={<CleanProbe />} />
               <Route path="*" element={<p>elsewhere</p>} />
             </Routes>
             <Where />
@@ -350,7 +357,7 @@ describe("the header's facts and buttons (PRP-3, PRP-6, PRP-10)", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     const reads = sets.analysis.mock.calls.length;
-    fireEvent.click(screen.getByRole("button", { name: "Files not checked — check now" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check now" }));
     await waitFor(() => expect(bridge.startFileCheck).toHaveBeenCalledWith({ selection: { query: {} } }));
     expect(await screen.findByText("Checking 5 tracks.", {}, LOADED)).toBeInTheDocument();
     await waitFor(() => expect(sets.analysis.mock.calls.length).toBeGreaterThan(reads), LOADED);
@@ -362,7 +369,7 @@ describe("the header's facts and buttons (PRP-3, PRP-6, PRP-10)", () => {
     const facts = screen.getByRole("status", { name: "" });
     expect(within(facts).getByText("No times planned yet")).toHaveAttribute(
       "title",
-      expect.stringMatching(/In this Set/),
+      expect.stringMatching(/Mix in and Mix out in the table/),
     );
   });
 
@@ -471,14 +478,16 @@ describe("the Set", () => {
     await opened();
     const facts = screen.getByRole("status", { name: "" });
     expect(facts).toHaveTextContent(
-      "6 entries · 9:00 planned · 4 without times · 5 warnings · 1 accepted · Files not checked — check now",
+      "6 entries · 9:00 planned · 4 without times · 5 warnings · 1 accepted",
     );
+    // What asks something of the person sits beside the facts, never inside them (they give way).
+    expect(facts).toHaveTextContent("Files not checked · Check now");
     // Each short fact carries its sentence.
     expect(within(facts).getByText(/5 warnings/)).toHaveAttribute(
       "title",
       "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range",
     );
-    expect(within(facts).getByRole("button", { name: "Files not checked — check now" })).toHaveAttribute(
+    expect(within(facts).getByRole("button", { name: "Check now" })).toHaveAttribute(
       "title",
       expect.stringMatching(/^Files in this Set have never been checked/),
     );
@@ -542,7 +551,7 @@ describe("the Set", () => {
     await opened();
     expect(rows()).toHaveLength(9);
     const headings = rows().filter((row) => row.classList.contains("prepare-heading"));
-    expect(headings.map((row) => row.querySelector('[data-column="title"]')?.textContent)).toEqual([
+    expect(headings.map((row) => row.querySelector(".prepare-heading__name")?.textContent)).toEqual([
       "Warm-up",
       "Peak",
       "Close",
@@ -975,5 +984,410 @@ describe("set lists and the export", () => {
     const dialog = await screen.findByRole("dialog", { name: "Export to Rekordbox" });
     expect(within(dialog).getByRole("checkbox", { name: /Friday/ })).toBeChecked();
     expect(within(dialog).getByRole("checkbox", { name: /Plain/ })).not.toBeChecked();
+  });
+});
+
+// ------------------------------------------------------------------ FLW-17
+
+/** The facts line, which is also the entry buttons' line (PREP-10, DEC-112). */
+const factsLine = () => document.querySelector(".prepare-header__facts") as HTMLElement;
+const button = (name: string) => within(factsLine()).getByRole("button", { name });
+const tableKey = (init: KeyboardEventInit) => fireEvent.keyDown(table(), init);
+
+describe("the entry buttons (FLW-17)", () => {
+  it("are on the facts line, always, disabled with 'Select an entry' until one is selected (DEC-209)", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    const names = ["Move up", "Move down", "Start a chapter here", "Repeat after", "Remove"];
+    for (const name of names) {
+      expect(button(name)).toBeDisabled();
+      expect(button(name)).toHaveAttribute("title", "Select an entry");
+      expect(button(name).closest("header")).toBe(factsLine().closest("header"));
+    }
+    // Notes and View stay on the facts; the entry buttons are their own group, the third line.
+    const group = within(factsLine()).getByRole("group", { name: "Selected entries" });
+    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual(names);
+    expect(group).not.toHaveClass("prepare-header__entries--glyphs");
+    expect(within(group).queryByRole("button", { name: "Notes (1)" })).toBeNull();
+
+    fireEvent.click(rowAt(2));
+    for (const name of names) expect(button(name)).toBeEnabled();
+  });
+
+  it("move an entry up and down by one, and across a chapter's heading as a step", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    fireEvent.click(button("Move up"));
+    await waitFor(() => expect(sets.moveEntry).toHaveBeenLastCalledWith({ entry_id: E2, position: 0, chapter_id: 1 }));
+    fireEvent.click(button("Move down"));
+    // E2 is its chapter's last entry: down is across the heading, position unchanged.
+    await waitFor(() => expect(sets.moveEntry).toHaveBeenLastCalledWith({ entry_id: E2, position: 1, chapter_id: 2 }));
+  });
+
+  it("move several selected entries together", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    fireEvent.click(rowAt(4), { ctrlKey: true });
+    fireEvent.click(button("Move up"));
+    await waitFor(() => expect(sets.moveEntry).toHaveBeenCalledTimes(2));
+    expect(sets.moveEntry.mock.calls.map(([call]) => call)).toEqual([
+      { entry_id: E2, position: 0, chapter_id: 1 },
+      { entry_id: E3, position: 2, chapter_id: 1 },
+    ]);
+  });
+
+  it("say why an entry cannot move", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(1));
+    expect(button("Move up")).toBeDisabled();
+    expect(button("Move up")).toHaveAttribute("title", "Already first in the Set");
+    expect(button("Start a chapter here")).toBeDisabled();
+    fireEvent.click(rowAt(8));
+    expect(button("Move down")).toHaveAttribute("title", "Already last in the Set");
+  });
+
+  it("start a chapter at the first selected entry, repeat one entry and remove all selected", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    fireEvent.click(rowAt(5), { ctrlKey: true });
+    expect(button("Repeat after")).toBeDisabled();
+    expect(button("Repeat after")).toHaveAttribute("title", "Select one entry");
+    fireEvent.click(button("Start a chapter here"));
+    await waitFor(() => expect(sets.splitChapter).toHaveBeenCalledWith({ entry_id: E2 }));
+    fireEvent.click(button("Remove"));
+    await waitFor(() => expect(bridge.removeCollectionEntries).toHaveBeenCalledWith({ entry_ids: [E2, E4] }));
+
+    fireEvent.click(rowAt(2));
+    fireEvent.click(button("Repeat after"));
+    await waitFor(() =>
+      expect(bridge.insertTrackInCollection).toHaveBeenCalledWith({
+        collection_id: IDS.friday,
+        track_id: FRIDAY.entries.entries[1].track_id,
+        position: 2,
+        chapter_id: 1,
+      }),
+    );
+  });
+
+  it("answer Alt+Up, Alt+Down and Delete on the table, as the queue does", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    tableKey({ key: "ArrowUp", altKey: true });
+    await waitFor(() => expect(sets.moveEntry).toHaveBeenLastCalledWith({ entry_id: E2, position: 0, chapter_id: 1 }));
+    tableKey({ key: "ArrowDown", altKey: true });
+    await waitFor(() => expect(sets.moveEntry).toHaveBeenCalledTimes(2));
+    tableKey({ key: "Delete" });
+    await waitFor(() => expect(bridge.removeCollectionEntries).toHaveBeenCalledWith({ entry_ids: [E2] }));
+  });
+
+  it("leave Delete to a field being typed in", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(1));
+    fireEvent.click(within(rowAt(1)).getByRole("button", { name: /Mix in/ }));
+    fireEvent.keyDown(await within(rowAt(1)).findByRole("textbox"), { key: "Delete" });
+    expect(bridge.removeCollectionEntries).not.toHaveBeenCalled();
+  });
+
+  it("show Edit, Move up, Move down and Delete on a chapter's heading", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    const heading = within(rowAt(3));
+    expect(heading.getByRole("button", { name: "Move chapter up" })).toBeEnabled();
+    expect(within(rowAt(0)).getByRole("button", { name: "Move chapter up" })).toBeDisabled();
+    fireEvent.click(heading.getByRole("button", { name: "Move chapter down" }));
+    await waitFor(() => expect(sets.moveChapter).toHaveBeenCalledWith({ chapter_id: 2, position: 2 }));
+
+    fireEvent.click(heading.getByRole("button", { name: "Edit chapter" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(player.playQueue).not.toHaveBeenCalled();
+  });
+
+  it("delete a chapter after saying where its entries go", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(within(rowAt(3)).getByRole("button", { name: "Delete chapter" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent(/join/);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete chapter" }));
+    await waitFor(() => expect(sets.deleteChapter).toHaveBeenCalledWith({ chapter_id: 2 }));
+  });
+});
+
+// ------------------------------------------------------------------ FLW-18
+
+describe("In and Out in the table (FLW-18)", () => {
+  const cell = (index: number, name: RegExp) => within(rowAt(index)).getByRole("button", { name });
+  const editor = () => within(table()).getByRole("textbox");
+
+  it("starts typing on a click of the cell, and saves both times on Enter", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(cell(1, /Mix in/));
+    expect(editor()).toHaveValue("0:30");
+    fireEvent.change(editor(), { target: { value: "1:00" } });
+    fireEvent.keyDown(editor(), { key: "Enter" });
+    await waitFor(() =>
+      expect(sets.setEntryTimes).toHaveBeenCalledWith({ entry_id: E1, in_time: "1:00", out_time: "4:30" }),
+    );
+    // Saves and moves on: the same entry's Mix out is next.
+    await waitFor(() => expect(editor()).toHaveValue("4:30"));
+    expect(within(rowAt(1)).getByRole("textbox")).toBe(editor());
+  });
+
+  it("moves from Mix out to the next entry's Mix in on Tab, and selects that entry", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(cell(1, /Mix out/));
+    fireEvent.change(editor(), { target: { value: "4:00" } });
+    fireEvent.keyDown(editor(), { key: "Tab" });
+    await waitFor(() =>
+      expect(sets.setEntryTimes).toHaveBeenCalledWith({ entry_id: E1, in_time: "0:30", out_time: "4:00" }),
+    );
+    await waitFor(() => expect(within(rowAt(2)).getByRole("textbox")).toHaveValue(""));
+    expect(rowAt(2)).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("goes back on Shift+Tab", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(cell(2, /Mix in/));
+    fireEvent.keyDown(editor(), { key: "Tab", shiftKey: true });
+    await waitFor(() => expect(within(rowAt(1)).getByRole("textbox")).toHaveValue("4:30"));
+    // Nothing was typed, so nothing was written.
+    expect(sets.setEntryTimes).not.toHaveBeenCalled();
+  });
+
+  it("starts on Enter or F2 for the selected row, and Enter no longer plays", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(1));
+    tableKey({ key: "Enter" });
+    expect(within(rowAt(1)).getByRole("textbox")).toHaveValue("0:30");
+    expect(player.playQueue).not.toHaveBeenCalled();
+    fireEvent.keyDown(editor(), { key: "Escape" });
+    expect(within(table()).queryByRole("textbox")).toBeNull();
+    tableKey({ key: "F2" });
+    expect(within(rowAt(1)).getByRole("textbox")).toBeInTheDocument();
+  });
+
+  it("cancels on Escape without writing", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(cell(1, /Mix in/));
+    fireEvent.change(editor(), { target: { value: "2:00" } });
+    fireEvent.keyDown(editor(), { key: "Escape" });
+    expect(within(table()).queryByRole("textbox")).toBeNull();
+    expect(sets.setEntryTimes).not.toHaveBeenCalled();
+    expect(within(rowAt(1)).getByText("0:30")).toBeInTheDocument();
+  });
+
+  it("writes nothing for a cell left as it was", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(cell(1, /Mix in/));
+    fireEvent.keyDown(editor(), { key: "Enter" });
+    expect(sets.setEntryTimes).not.toHaveBeenCalled();
+    await waitFor(() => expect(editor()).toHaveValue("4:30"));
+  });
+
+  it("saves when the cell is left", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(cell(1, /Mix out/));
+    fireEvent.change(editor(), { target: { value: "4:10" } });
+    fireEvent.blur(editor());
+    await waitFor(() =>
+      expect(sets.setEntryTimes).toHaveBeenCalledWith({ entry_id: E1, in_time: "0:30", out_time: "4:10" }),
+    );
+  });
+
+  it("says a refused time on the facts line, naming the entry, and keeps the cell open", async () => {
+    sets.setEntryTimes.mockResolvedValue(refused(REFUSALS.badTime));
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(cell(1, /Mix in/));
+    fireEvent.change(editor(), { target: { value: "4:40" } });
+    fireEvent.keyDown(editor(), { key: "Enter" });
+    // The reason first, the entry's name last (it is the first to give way).
+    const reason = await within(factsLine()).findByText(`Not saved: ${REFUSALS.badTime.message}`);
+    expect(reason).toBeInTheDocument();
+    expect(within(factsLine()).getByText("(Warm One)")).toBeInTheDocument();
+    expect(reason.parentElement).toHaveAttribute("title", `Not saved: ${REFUSALS.badTime.message} (Warm One)`);
+    expect(reason.nextElementSibling).toHaveTextContent("(Warm One)");
+    expect(editor()).toHaveValue("4:40");
+    expect(editor()).toHaveAttribute("aria-invalid", "true");
+    // The facts line, not a toast: no row changes height.
+    expect(screen.queryByRole("alert")).toBeNull();
+    // Escape drops the typing and the words.
+    fireEvent.keyDown(editor(), { key: "Escape" });
+    expect(within(factsLine()).queryByText(/Not saved/)).toBeNull();
+  });
+
+  it("saves one entry's times one after another, so a later save never sends back the Mix in before the first", async () => {
+    let finishFirst: (answer: ReturnType<typeof answered>) => void = () => undefined;
+    sets.setEntryTimes.mockImplementationOnce(
+      () => new Promise((resolve) => (finishFirst = resolve as typeof finishFirst)),
+    );
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    // Mix in is left by a click (a blur's save, slow to answer) ...
+    fireEvent.click(cell(1, /Mix in/));
+    fireEvent.change(editor(), { target: { value: "0:40" } });
+    fireEvent.blur(editor());
+    await waitFor(() => expect(sets.setEntryTimes).toHaveBeenCalledTimes(1));
+    // ... and Mix out is typed and saved with Enter before it has answered.
+    fireEvent.click(cell(1, /Mix out/));
+    fireEvent.change(editor(), { target: { value: "4:10" } });
+    fireEvent.keyDown(editor(), { key: "Enter" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sets.setEntryTimes).toHaveBeenCalledTimes(1);
+    finishFirst(answered(EDITS.times));
+    await waitFor(() => expect(sets.setEntryTimes).toHaveBeenCalledTimes(2));
+    expect(sets.setEntryTimes).toHaveBeenLastCalledWith({ entry_id: E1, in_time: "0:40", out_time: "4:10" });
+  });
+
+  it("does not close the cell typed in now when a refusal for another one comes late", async () => {
+    let refuse: (answer: ReturnType<typeof refused>) => void = () => undefined;
+    sets.setEntryTimes.mockImplementationOnce(() => new Promise((resolve) => (refuse = resolve as typeof refuse)));
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(cell(1, /Mix in/));
+    fireEvent.change(editor(), { target: { value: "4:40" } });
+    fireEvent.keyDown(editor(), { key: "Enter" });
+    await waitFor(() => expect(sets.setEntryTimes).toHaveBeenCalledTimes(1));
+    // Typing has moved on to another entry's Mix in when the refusal arrives.
+    fireEvent.click(cell(2, /Mix in/));
+    expect(within(rowAt(2)).getByRole("textbox")).toBeInTheDocument();
+    refuse(refused(REFUSALS.badTime));
+    await within(factsLine()).findByText(`Not saved: ${REFUSALS.badTime.message}`);
+    expect(within(rowAt(2)).getByRole("textbox")).toBeInTheDocument();
+  });
+
+  it("still plays on a double-click of the cell", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(cell(2, /Mix in/));
+    fireEvent.doubleClick(within(rowAt(2)).getByRole("textbox"));
+    await waitFor(() => expect(player.playQueue).toHaveBeenCalledTimes(1));
+    expect(player.playQueue.mock.calls[0][1]).toBe(1);
+    expect(within(table()).queryByRole("textbox")).toBeNull();
+  });
+
+  it("keeps the Inspector's fields", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(1));
+    const zone = await within(inspector()).findByRole("region", { name: "In this Set" }, LOADED);
+    expect(within(zone).getByLabelText("Mix in")).toHaveValue("0:30");
+    expect(within(zone).getByLabelText("Mix out")).toHaveValue("4:30");
+  });
+
+  it("offers no cell on a chapter's heading", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    expect(within(rowAt(0)).queryByRole("button", { name: /Mix in/ })).toBeNull();
+  });
+});
+
+// ------------------------------------------------------------------ FLW-19
+
+describe("the key notice (FLW-19)", () => {
+  const [, , id3, id4] = FRIDAY.entries.entries.map((entry) => entry.track_id);
+
+  function withoutKeys() {
+    const keyless = {
+      ...FRIDAY,
+      analysis: {
+        ...FRIDAY.analysis,
+        without_key: 2,
+        shape: {
+          ...FRIDAY.analysis.shape,
+          entries: FRIDAY.analysis.shape.entries.map((e) =>
+            e.entry_id === E3 || e.entry_id === E4 ? { ...e, key: null, camelot: null } : e,
+          ),
+        },
+      },
+    };
+    WHOLE[IDS.friday] = keyless;
+  }
+  afterEach(() => {
+    WHOLE[IDS.friday] = FRIDAY;
+  });
+
+  it("says once how many entries have no Beatport key, and is not a warning", async () => {
+    withoutKeys();
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    const notice = within(factsLine()).getByText(/^2 without key/);
+    expect(notice).toHaveAttribute("title", expect.stringMatching(/^2 entries have no Beatport key/));
+    expect(factsLine()).toHaveTextContent("5 warnings · 1 accepted");
+  });
+
+  it("opens Clean's match window on those entries' tracks", async () => {
+    withoutKeys();
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(within(factsLine()).getByRole("button", { name: "Match tracks…" }));
+    await waitFor(() => expect(where()).toBe("/clean"));
+    expect(JSON.parse(screen.getByTestId("clean-state").textContent ?? "null")).toEqual(
+      JSON.parse(JSON.stringify(cleanMatchState([id3, id4]))),
+    );
+  });
+
+  it("is absent when every entry has a key", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    expect(within(factsLine()).queryByRole("button", { name: "Match tracks…" })).toBeNull();
+    expect(factsLine()).not.toHaveTextContent("no Beatport key");
+  });
+});
+
+describe("the transition strip's caption and Accept (FLW-19)", () => {
+  function openStrip() {
+    localStorage.setItem("cuepoint-prepare-transition", "1");
+    (bridge as { waveforms?: unknown }).waveforms = {
+      get: vi.fn(async () => ({
+        value: { width: null, paused: false, waveforms: [], unknown: [] },
+        refusal: null,
+      })),
+      request: vi.fn().mockResolvedValue({ value: { requested: [], job_id: "job" }, refusal: null }),
+      analysis: vi.fn().mockResolvedValue({ value: null, refusal: { code: "x", message: "x" } }),
+    };
+  }
+
+  it("reads the keys, tempos and times of the selected entry into the next", async () => {
+    openStrip();
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(1));
+    expect(await screen.findByTestId("transition-words")).toHaveTextContent(
+      "8A → 9A · next key up · 122 → 124 BPM (+1.6%) · Out 4:30 → In 0:00",
+    );
+  });
+
+  it("ends the line with the transition's warning, and Accept writes the acceptance", async () => {
+    openStrip();
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(4));
+    const warnings = await screen.findAllByTestId("transition-warning");
+    expect(warnings.map((warning) => warning.textContent)).toEqual([
+      expect.stringMatching(/^Tempo jumpAccept$/),
+      expect.stringMatching(/^Keys clash \(accepted\)Undo accept$/),
+    ]);
+    fireEvent.click(within(warnings[0]).getByRole("button", { name: "Accept" }));
+    await waitFor(() =>
+      expect(sets.acknowledge).toHaveBeenCalledWith({ from_entry_id: E3, to_entry_id: E4, warning: "tempo_jump" }),
+    );
+    fireEvent.click(within(warnings[1]).getByRole("button", { name: "Undo accept" }));
+    await waitFor(() =>
+      expect(sets.unacknowledge).toHaveBeenCalledWith({ from_entry_id: E3, to_entry_id: E4, warning: "key_clash" }),
+    );
   });
 });

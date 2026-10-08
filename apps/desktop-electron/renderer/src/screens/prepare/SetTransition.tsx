@@ -15,6 +15,12 @@
  * strip walks the Set one transition at a time. Both tracks shown are put
  * first in the analysis while they wait for it, as the Inspector's is.
  *
+ * **The caption** (FLW-19) sits between the halves over the strip's whole
+ * height: the keys and how they relate, the tempos, the planned times and the
+ * loudness difference, with a warning on the transition as a sentence at its
+ * end and Accept beside it. It takes the strip's own height, so a warning grows
+ * the strip by nothing.
+ *
  * Loudness (WAVE-08, DEC-124): each title ends with its track's, and the words
  * between the halves gain the difference, "+2.1 LU", when both are measured.
  * Read without pictures for the two tracks, so a title and the words agree
@@ -22,7 +28,14 @@
  */
 import { useMemo } from "react";
 
-import type { SetEntry, WaveformAnalysisStatus, WaveformLoudness } from "../../api/cuepointBridge.types";
+import type {
+  SetEntry,
+  SetShape,
+  SetWarning,
+  WaveformAnalysisStatus,
+  WaveformLoudness,
+} from "../../api/cuepointBridge.types";
+import { Button } from "../../components/Button";
 import { readRowHeight } from "../../components/table/trackTableLayout";
 import {
   WAVEFORM_LOADING_WORDS,
@@ -38,13 +51,15 @@ import { WaveformCanvas } from "../../components/waveform/WaveformCanvas";
 import type { WaveformEntry } from "../../components/waveform/waveformCache";
 import { useWaveformBox } from "../../components/waveform/waveformEnvironment";
 import { useScaleFactor } from "../../tokens/ScaleContext";
+import { describeSetWarning, isAcknowledgeable } from "./setWarnings";
 import {
   END_OF_SET,
   NO_SELECTION_WORDS,
+  captionSegments,
+  stripWarningWords,
   halfTimesWords,
   shadedTimes,
   transitionOf,
-  transitionWords,
   type TransitionHalf,
 } from "./transitionStrip";
 
@@ -55,6 +70,12 @@ interface SetTransitionProps {
   onSelect: (entryId: number) => void;
   /** Opens where the analysis can be followed: a waiting waveform links there (PRP-12). */
   onSeeProgress?: () => void;
+  /** The Set's tempo and key, entry by entry: the caption's keys and tempos (FLW-19). */
+  shape?: SetShape | null;
+  /** The warnings on the transition shown: the selected entry into the next. */
+  warnings?: readonly SetWarning[];
+  /** Accept a warning, or take the acceptance back. */
+  onAccept?: (warning: SetWarning, accept: boolean) => void;
 }
 
 interface HalfProps {
@@ -148,7 +169,15 @@ function Title({ half, entry }: { half: TransitionHalf; entry: WaveformEntry | u
   );
 }
 
-export function SetTransition({ entries, selectedEntryId, onSelect, onSeeProgress }: SetTransitionProps) {
+export function SetTransition({
+  entries,
+  selectedEntryId,
+  onSelect,
+  onSeeProgress,
+  shape = null,
+  warnings = [],
+  onAccept,
+}: SetTransitionProps) {
   const { status: analysis } = useWaveformAnalysis();
   const transition = transitionOf(entries, selectedEntryId);
   const scale = useScaleFactor();
@@ -174,7 +203,6 @@ export function SetTransition({ entries, selectedEntryId, onSelect, onSeeProgres
       {transition ? (
         <>
           <Title half={transition.from} entry={fromEntry} />
-          <span aria-hidden="true" />
           {transition.to ? <Title half={transition.to} entry={toEntry} /> : <span aria-hidden="true" />}
           <Half
             key={transition.from.entryId}
@@ -184,18 +212,45 @@ export function SetTransition({ entries, selectedEntryId, onSelect, onSeeProgres
             analysis={analysis}
             onSeeProgress={onSeeProgress}
           />
-          <p
-            className="prepare-transition__words"
-            data-testid="transition-words"
-            title={loudnessUnitsTitle(difference)}
-          >
-            {transitionWords(transition, difference).map((part, index) => (
-              <span key={part + index}>
-                {index > 0 && " "}
-                {part}
-              </span>
-            ))}
-          </p>
+          <div className="prepare-transition__caption" data-testid="transition-caption">
+            <p
+              className="prepare-transition__words"
+              data-testid="transition-words"
+              title={loudnessUnitsTitle(difference)}
+            >
+              {captionSegments(transition, shape, difference, warnings).map((segment, index) => (
+                <span key={segment + index} className="prepare-transition__piece">
+                  {index > 0 && <span aria-hidden="true">{" · "}</span>}
+                  <span className="prepare-transition__segment" title={segment}>
+                    {segment}
+                  </span>
+                </span>
+              ))}
+            </p>
+            {warnings.filter(isAcknowledgeable).map((warning) => {
+              const sentence = `${describeSetWarning(warning)}${warning.acknowledged ? " (accepted)" : ""}`;
+              return (
+                <p
+                  key={`${warning.kind}-${warning.detail}`}
+                  className={`prepare-transition__warning${warning.acknowledged ? " prepare-transition__warning--accepted" : ""}`}
+                  data-testid="transition-warning"
+                >
+                  <span className="prepare-transition__sentence" title={sentence}>
+                    {`${stripWarningWords(warning)}${warning.acknowledged ? " (accepted)" : ""}`}
+                  </span>
+                  {onAccept && (
+                    <Button
+                      variant="secondary"
+                      className="prepare-transition__accept"
+                      onClick={() => onAccept(warning, !warning.acknowledged)}
+                    >
+                      {warning.acknowledged ? "Undo accept" : "Accept"}
+                    </Button>
+                  )}
+                </p>
+              );
+            })}
+          </div>
           {transition.to ? (
             <Half
               key={transition.to.entryId}

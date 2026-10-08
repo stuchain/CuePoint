@@ -137,7 +137,8 @@ function setTable(win: Page) {
 function row(win: Page, title: string, nth = 0) {
   return setTable(win)
     .locator(".track-table__row")
-    .filter({ has: win.locator('[data-column="title"]', { hasText: new RegExp(`^(⚠ )?${title}$`) }) })
+    // A chapter's heading carries its buttons (FLW-17), which are part of its title cell's text.
+    .filter({ has: win.locator('[data-column="title"]', { hasText: new RegExp(`^(⚠ )?${title}(Edit↑↓×)?$`) }) })
     .nth(nth);
 }
 
@@ -271,7 +272,29 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
         await out.fill(outTime);
         await out.press("Enter");
       }
-      await time("Warm One", "0:30", "4:30");
+      // FLW-18: Warm One's times are typed in the table: click Mix in, Tab to Mix out, Enter.
+      await row(win, "Warm One").getByRole("button", { name: /^Mix in for/ }).first().click();
+      await win.getByRole("textbox", { name: /^Mix in for/ }).fill("0:30");
+      await win.keyboard.press("Tab");
+      await win.getByRole("textbox", { name: /^Mix out for/ }).fill("4:30");
+      await win.keyboard.press("Enter");
+      await expect(facts(win)).toContainText("4:00 planned · 5 without times", { timeout: 15_000 });
+      expect(
+        (await readSet(win, setId)).entries.entries.find((entry: { position: number }) => entry.position === 0),
+      ).toMatchObject({ in_seconds: 30, out_seconds: 270 });
+      // A time the engine refuses is said on the facts line, by name, and the cell stays open.
+      await row(win, "Warm One").getByRole("button", { name: /^Mix out for/ }).first().click();
+      await win.getByRole("textbox", { name: /^Mix out for/ }).fill("0:10");
+      await win.keyboard.press("Enter");
+      await expect(facts(win)).toContainText("Not saved: An entry must come in before it goes out", {
+        timeout: 15_000,
+      });
+      await win.keyboard.press("Escape");
+      await expect(facts(win)).not.toContainText("Not saved");
+      // Typing in a cell scrolled the table to it; the clicks below are at the row's left edge.
+      await setTable(win).evaluate((element) => {
+        element.scrollLeft = 0;
+      });
       await expect(facts(win)).toContainText("4:00 planned · 5 without times", { timeout: 15_000 });
       await time("Warm Two", "", "5:00");
       await expect(facts(win)).toContainText("9:00 planned · 4 without times", { timeout: 15_000 });
@@ -286,6 +309,14 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(startsOf(win, "Warm Two")).toHaveText("0:00");
       await expect(startsOf(win, "Build")).toHaveText("9:00");
       expect((await order(win, setId)).slice(0, 2)).toEqual(["Warm Two", "Warm One"]);
+      // FLW-17: the entry buttons order the Set too. Disabled until an entry is selected, then
+      // Move down and Move up put Warm Two back where it was.
+      await expect(win.getByRole("button", { name: "Move up", exact: true })).toBeVisible();
+      await at(win, row(win, "Warm Two"));
+      await win.getByRole("button", { name: "Move down", exact: true }).click();
+      await expect.poll(async () => (await order(win, setId)).slice(0, 2)).toEqual(["Warm One", "Warm Two"]);
+      await win.getByRole("button", { name: "Move up", exact: true }).click();
+      await expect.poll(async () => (await order(win, setId)).slice(0, 2)).toEqual(["Warm Two", "Warm One"]);
 
       // --- 4. a gap from Suggestions, and a key warning accepted -------------------
       await at(win, row(win, "Warm Two"));
@@ -306,6 +337,19 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(facts(win)).toContainText("1 accepted", { timeout: 15_000 });
       await expect(clash.getByRole("button", { name: "Undo accept" })).toBeVisible();
       expect((await readSet(win, setId)).analysis.acknowledged).toBe(1);
+      // FLW-19: the strip's caption reads the keys and tempos of the selected entry into the next,
+      // and the warning on that transition ends it, accepted, with Undo accept beside it.
+      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("menuitem", { name: "Show transition strip" }).click();
+      await at(win, row(win, "Build"));
+      const caption = win.getByTestId("transition-caption");
+      await expect(caption.getByTestId("transition-words")).toContainText(/BPM \([+−]?[\d.]+%\)/, { timeout: 15_000 });
+      await expect(caption.getByTestId("transition-words")).toContainText(/→/);
+      const clashLine = caption.getByTestId("transition-warning").filter({ hasText: "Keys clash" });
+      await expect(clashLine).toContainText("(accepted)");
+      await expect(caption.getByRole("button", { name: "Undo accept" })).toBeVisible();
+      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("menuitem", { name: "Hide transition strip" }).click();
 
       // --- 5. played from the third entry, the repeat in the queue ------------------
       const running = await order(win, setId);

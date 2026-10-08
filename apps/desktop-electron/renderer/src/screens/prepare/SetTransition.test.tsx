@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   SetEntry,
+  SetShape,
+  SetWarning,
   TrackCue,
   WaveformLoudness,
   WaveformTrack,
@@ -392,6 +394,113 @@ describe("the strip's loudness (WAVE-08)", () => {
 
     await waitFor(() => expect(waveforms.request).toHaveBeenCalledWith({ track_ids: [20] }));
     expect(waveforms.request).toHaveBeenCalledTimes(1);
+    await drawn("from", "to");
+  });
+});
+
+describe("the caption and its warning (FLW-19)", () => {
+  const SHAPE: SetShape = {
+    entries: [
+      { entry_id: 1, chapter_id: 1, bpm: 124, key: "8A", camelot: { number: 8, letter: "A" } },
+      { entry_id: 2, chapter_id: 1, bpm: 126, key: "3B", camelot: { number: 3, letter: "B" } },
+      { entry_id: 3, chapter_id: 1, bpm: 126, key: null, camelot: null },
+      { entry_id: 4, chapter_id: 1, bpm: null, key: null, camelot: null },
+    ],
+    transitions: [
+      { from_entry_id: 1, to_entry_id: 2, key_relation: null },
+      { from_entry_id: 2, to_entry_id: 3, key_relation: null },
+      { from_entry_id: 3, to_entry_id: 4, key_relation: null },
+    ],
+  };
+  const CLASH: SetWarning = {
+    kind: "key_clash",
+    detail: "no_relation",
+    compared: { from: "8A", to: "3B" },
+    acknowledged: false,
+  };
+
+  it("reads the keys and tempos before the times, on the one caption", async () => {
+    install();
+    render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} shape={SHAPE} />);
+    expect(screen.getByTestId("transition-words")).toHaveTextContent(
+      /^8A → 3B · keys clash · 124 → 126 BPM \(\+1\.6%\) · Out 0:04 → In 0:01$/,
+    );
+    await drawn("from", "to");
+  });
+
+  it("says once that a key is missing, in place of the keys", async () => {
+    install();
+    render(<SetTransition entries={ENTRIES} selectedEntryId={2} onSelect={vi.fn()} shape={SHAPE} />);
+    expect(screen.getByTestId("transition-words")).toHaveTextContent(
+      /^No Beatport key: key not checked · 126 → 126 BPM \(0%\) · Out 0:05 → no times$/,
+    );
+    await drawn("from", "to");
+  });
+
+  it("ends the caption line with a warning as a sentence, and Accept beside it", async () => {
+    install();
+    const onAccept = vi.fn();
+    render(
+      <SetTransition
+        entries={ENTRIES}
+        selectedEntryId={1}
+        onSelect={vi.fn()}
+        shape={SHAPE}
+        warnings={[CLASH]}
+        onAccept={onAccept}
+      />,
+    );
+    const caption = screen.getByTestId("transition-caption");
+    // One element holds the caption and the warning, the warning last.
+    expect(within(caption).getByTestId("transition-words")).toBeInTheDocument();
+    const warning = within(caption).getByTestId("transition-warning");
+    // A few words on the line, the whole sentence in the title (the strip has no room for it).
+    expect(warning).toHaveTextContent(/^Keys clashAccept$/);
+    expect(within(warning).getByTitle("Keys clash: 8A → 3B")).toBeInTheDocument();
+    // The caption does not say "keys clash" a second time.
+    expect(within(caption).getByTestId("transition-words")).toHaveTextContent(
+      /^8A → 3B · 124 → 126 BPM \(\+1\.6%\) · Out 0:04 → In 0:01$/,
+    );
+    expect(
+      screen.getByTestId("transition-words").compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.click(within(warning).getByRole("button", { name: "Accept" }));
+    expect(onAccept).toHaveBeenCalledWith(CLASH, true);
+    await drawn("from", "to");
+  });
+
+  it("shows an accepted warning with Undo accept, and no warning when there is none", async () => {
+    install();
+    const onAccept = vi.fn();
+    const { rerender } = render(
+      <SetTransition
+        entries={ENTRIES}
+        selectedEntryId={1}
+        onSelect={vi.fn()}
+        shape={SHAPE}
+        warnings={[{ ...CLASH, acknowledged: true }]}
+        onAccept={onAccept}
+      />,
+    );
+    const warning = screen.getByTestId("transition-warning");
+    expect(warning).toHaveTextContent(/^Keys clash \(accepted\)Undo accept$/);
+    expect(within(warning).getByTitle("Keys clash: 8A → 3B (accepted)")).toBeInTheDocument();
+    fireEvent.click(within(warning).getByRole("button", { name: "Undo accept" }));
+    expect(onAccept).toHaveBeenCalledWith({ ...CLASH, acknowledged: true }, false);
+    await drawn("from", "to");
+
+    rerender(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} shape={SHAPE} warnings={[]} />);
+    expect(screen.queryByTestId("transition-warning")).toBeNull();
+  });
+
+  it("does not grow: the strip keeps its three rows", async () => {
+    install();
+    render(
+      <SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} shape={SHAPE} warnings={[CLASH]} onAccept={vi.fn()} />,
+    );
+    expect(screen.getByRole("region", { name: "Transition" }).style.gridTemplateRows).toBe(
+      `${ROW_HEIGHT_FALLBACK}px ${ROW_HEIGHT_FALLBACK * 2}px`,
+    );
     await drawn("from", "to");
   });
 });

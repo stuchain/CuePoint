@@ -423,11 +423,24 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
 
       // --- the row double-clicked is the row that plays -----------------------
       await setSidebar(win, false);
-      const before = await measure(win, "Set entries");
+      let before = await measure(win, "Set entries");
+      if (!before.partial) {
+        // The rows fit the pane exactly (the layout can): scroll half a row so one is cut.
+        await win.evaluate(() => {
+          const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Set entries"]')!;
+          const row = table.querySelector<HTMLElement>(".track-table__row")!;
+          table.scrollTop += row.getBoundingClientRect().height / 2;
+        });
+        before = await measure(win, "Set entries");
+      }
       expect(before.partial, "a row is cut by the table's edge").not.toBeNull();
       await win.mouse.dblclick(before.partial!.x, before.partial!.y);
       await expect.poll(() => currentTitle(win), { timeout: 30_000 }).toBe(before.partial!.title);
       await expect(win.locator(".cp-player-bar")).toBeVisible({ timeout: 15_000 });
+      // Back to the top, where the rows below are counted from.
+      await win.evaluate(() => {
+        document.querySelector<HTMLElement>('[role="table"][aria-label="Set entries"]')!.scrollTop = 0;
+      });
 
       // With the player's bar on screen too: the crowded case.
       for (const collapsed of [false, true]) {

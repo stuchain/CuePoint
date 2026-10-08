@@ -32,10 +32,16 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Library", action: "Open the track menu", shortcut: "Shift+F10" },
   { context: "Library", action: "Rename the selected Collection", shortcut: "F2" },
   { context: "Library", action: "Delete the selected Collection", shortcut: "Delete" },
-  // Prepare's: the Set's source panel has a divider to drag, and the In and Out times
-  // save on Enter. Plain Enter and the arrows are the field's and the divider's own.
+  // Prepare's: the Set's source panel has a divider to drag; Mix in and Mix out are typed in
+  // the table (FLW-18) and the entry keys are the queue's (FLW-17), answered while the Set
+  // table has focus. Plain Enter and the arrows are the field's and the divider's own.
   { context: "Prepare", action: "Resize the source panel (focus its divider first)", shortcut: "Left / Right" },
-  { context: "Prepare", action: "Save an entry's In or Out time", shortcut: "Enter" },
+  { context: "Prepare", action: "In Track details: save Mix in or Mix out", shortcut: "Enter" },
+  { context: "Prepare", action: "Type the selected entry's Mix in", shortcut: "Enter or F2" },
+  { context: "Prepare", action: "Save a typed time and go to the next", shortcut: "Enter or Tab" },
+  { context: "Prepare", action: "Drop a typed time", shortcut: "Esc" },
+  { context: "Prepare", action: "Move the selected entries", shortcut: "Alt+Up / Alt+Down" },
+  { context: "Prepare", action: "Remove the selected entries", shortcut: "Delete" },
   // Clean's review queue (CLEAN-12). Bare keys, because reviewing thousands of
   // tracks is a keyboard job; they are not taken while typing in a field or
   // inside a dialog, and none of them is modified, so none collides with a

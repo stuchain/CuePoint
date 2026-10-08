@@ -13,6 +13,8 @@ import trackTableSource from "../components/table/TrackTable.tsx?raw";
 import collectionsPaneSource from "../screens/library/CollectionsPane.tsx?raw";
 import prepareLayoutSource from "../screens/prepare/PrepareLayout.tsx?raw";
 import entryZoneSource from "../screens/prepare/SetEntryZone.tsx?raw";
+import prepareScreenSource from "../screens/prepare/PrepareScreen.tsx?raw";
+import timeCellSource from "../screens/prepare/prepareEditing.tsx?raw";
 import appMenuSource from "../../../electron/appMenu.ts?raw";
 
 describe("keyboardShortcuts", () => {
@@ -152,6 +154,22 @@ describe("only shortcuts that work (PAGES-03B)", () => {
   it("answers Prepare's keys in Prepare's code", () => {
     expect(prepareLayoutSource).toMatch(/key !== "ArrowLeft" && event\.key !== "ArrowRight"/);
     expect(entryZoneSource).toMatch(/key === "Enter"/);
+    // FLW-17, FLW-18: the table's own keys, and the cell's.
+    expect(prepareScreenSource).toMatch(/event\.altKey[\s\S]*"ArrowUp"[\s\S]*"ArrowDown"/);
+    expect(prepareScreenSource).toMatch(/"Delete"/);
+    expect(prepareScreenSource).toMatch(/"Enter" \|\| event\.key === "F2"/);
+    expect(timeCellSource).toMatch(/event\.key === "Tab"/);
+    expect(timeCellSource).toMatch(/event\.key === "Escape"/);
+  });
+
+  it("lists Prepare's entry keys and the cell's (FLW-17, FLW-18)", () => {
+    const prepare = rows("Prepare");
+    const keyOf = (action: RegExp) => prepare.find((row) => action.test(row.action))?.shortcut;
+    expect(keyOf(/Move the selected entries/)).toBe("Alt+Up / Alt+Down");
+    expect(keyOf(/Remove the selected entries/)).toBe("Delete");
+    expect(keyOf(/Type the selected entry's Mix in/)).toBe("Enter or F2");
+    expect(keyOf(/Save a typed time and go to the next/)).toBe("Enter or Tab");
+    expect(keyOf(/Drop a typed time/)).toBe("Esc");
   });
 
   it("gets the menu's keys from the menu, each with the accelerator it lists", () => {

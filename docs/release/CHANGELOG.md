@@ -55,6 +55,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   button reads **Pick tracks** until you pick; **Notes** and **View ▾** are
   buttons; a chapter is explained where you make one; and a waveform that is not
   made yet says how far the analysis is, with **See progress**
+- **Prepare can order, chapter and time a Set with buttons and typing.** The line
+  under the header has **Move up**, **Move down**, **Start a chapter here**,
+  **Repeat after** and **Remove** for the selected entries (Alt+↑, Alt+↓ and
+  Delete do the first, second and last), disabled with "Select an entry" until
+  one is selected; a chapter's heading has **Edit**, **↑**, **↓** and **×**.
+  **Mix in** and **Mix out** are typed in the table (click the cell, or Enter or
+  F2), Enter or Tab saving and moving on, and a time CuePoint refuses is said on
+  the header's line by name. The transition strip's caption reads the keys and
+  tempos ("8A → 9A · next key up · 124 → 126 BPM (+1.6%) · Out 5:30 → In 0:45"),
+  with a warning and **Accept** at its end. A track with no Beatport key is not a
+  warning: the header says "3 entries have no Beatport key" with **Match
+  tracks…**
 - **Help → Report a problem.** Send a note, as you wrote it, with the app's
   version and the last error report's id. It is off when error reports are off
 - **Waveform analysis.** After every file check, CuePoint works out a waveform

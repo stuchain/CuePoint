@@ -1269,6 +1269,36 @@ bar, 5 under the lanes and 4 under the strip; the panel's Suggestions show 7 (as
 shows the ranking note). Notes and View keep to the facts line (`line-height: 1`, hairline border), so the header does not
 grow. Windows is not re-measured here.
 
+**Outcome** (2026-10-08), part B: FLW-17…19 built. **The entry buttons** (`entryActions.ts`, drawn on the facts line in
+`PrepareScreen`): Move up, Move down, Start a chapter here, Repeat after, Remove, always shown, disabled with "Select an
+entry" or the reason ("Already first in the Set", "Select one entry"); Alt+↑/↓, Delete and Backspace on the focused table
+do the first, second and last (a field being typed in keeps its keys), Enter or F2 types the selected entry's Mix in (Enter
+no longer plays; double-click still does). A move is a step: past the neighbor, or across a chapter's heading as a step of
+its own (position unchanged, chapter changed); several selected move together, a blocked block leaving those behind it
+(`stepMoves`, one `moveEntry` each, in order). A chapter's heading carries Edit, ↑, ↓ and × in its title cell (names "Edit
+chapter", "Move chapter up", …). **Mix in and Mix out** are typed in place (`prepareEditing.tsx`, a context the page
+provides around the table; `timeEditing.ts` decides what is sent): click the cell or Enter/F2; Enter/Tab save and move on
+(Out of the last entry ends), Shift+Tab goes back, Escape drops, leaving saves; a save is built on what the last one wrote
+until the Set is read again, so a quick Tab then Enter never sends an old time back. A refusal keeps the cell open, marked,
+and is said first on the facts line, the reason first and the entry's name last ("Not saved: …  (Warm One)"; the name gives way first), so the reason always shows. Saves of one entry are chained, so a blur's save and the Enter after it cannot send a stale Mix in; a late refusal closes the cell only if it is still the one typed in. The Inspector's "In this Set" keeps its fields and the
+engine's rules. **The caption** (`captionSegments`): "8A → 9A · next key up · 122 → 124 BPM (+1.6%) · Out 4:30 → In 0:00",
+the key words lower-cased from `KEY_WORDS` with up/down for a next key, "keys clash", "No Beatport key: key not checked"
+in place of the keys (and no "keys clash" in the caption when a clash is listed); it spans the strip's three rows between
+the halves in a middle column twice the halves' width, left-aligned with an ellipsis per segment, so a warning (a
+short phrase, "Tempo jump", "Keys clash", its sentence in the title) with Accept adds no line. **Keys:** the engine already counted a missing key apart (PAGES-15); `without_key` now reads "N without key" (the sentence in its title) with **Match tracks…**, a fact
+beside the ones that give way, so it always shows; "Files not checked" has **Check now** the same way, (`cleanMatchState` with those entries' tracks). `test_set_analysis` holds DEC-106's
+re-ask: a clash accepted for 8A → 3B is asked again for 8A → 5B. **DEC-112 did not hold on one line, so the buttons have a line of their own** (the user may still pick symbols, so
+`ENTRY_BUTTONS_AS` in `PrepareScreen.tsx` switches the third line to **↑ ↓ ¶ ↻ ×**, a CSS class, unused by default). At
+1280 × 800 and 1.5× the header is 720 CSS pixels wide (888 as a rail); the counts alone are about 700, so five labelled
+buttons with Notes and View on the same line squeezed the counts to nothing or wrapped (Set rows 8/9/6/6). The header is
+now: the picker and its buttons; the facts line (counts that give way with an ellipsis, the whole in their title; then
+**Match tracks…** and **Check now** as items that do not give way; then Notes and View); and a third line of the five
+buttons in words, with no gap between the lines. **Measured on Linux at 1.5×**, `e2e/prepare.spec.ts`, all passing,
+floor 5: Set rows 9/9/7/7, lanes 6, strip 5, crowded 5 and 4, Suggestions 6 on the one visit that shows the ranking note
+(7 otherwise): the Set rows are as before, lanes and strip are one row lower (the held 5 and 4 stand). The pinned Title is
+140 and Mix in and Mix out follow it, so Mix in shows at scroll 0 and a chapter heading's buttons are not clipped. Windows is not
+re-measured here.
+
 ---
 
 ## PAGES-10 — The Camelot Wheel

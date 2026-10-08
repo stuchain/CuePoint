@@ -18,6 +18,11 @@
  * - **Playing is the queue** (DEC-108): "Play Set" and a double-click hand
  *   the entries, in order and with their repeats, to `playQueue`. The player
  *   is not told it is playing a Set.
+ * - **Order, chapter and time without a menu** (FLW-17, FLW-18): the facts line
+ *   carries Move up, Move down, Start a chapter here, Repeat after and Remove
+ *   for the entries selected (and Alt+Up, Alt+Down and Delete on the table); a
+ *   chapter's heading carries its own buttons; Mix in and Mix out are typed in
+ *   the table, and a refused time is said on the facts line.
  * - **Nothing blocks** (DEC-017, DEC-106): a warning is drawn, never a reason
  *   a button is greyed.
  * - **One place to insert** (PREP-11): the gap after the selected entry, or the
@@ -42,6 +47,7 @@ import type {
   TrackCreditLinks,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Hint } from "../../components/Hint";
 import { Modal } from "../../components/Modal";
 import { Panel } from "../../components/Panel";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
@@ -52,6 +58,7 @@ import { ColumnPicker, TrackTable, inMemorySource, useColumnLayout } from "../..
 import { readRowHeight } from "../../components/table/trackTableLayout";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { trackCount } from "../clean/cleanFormat";
+import { cleanMatchState } from "../clean/cleanLink";
 import { useCleanJob } from "../clean/useCleanJob";
 import { entityPath, similarPath } from "../discover/discoverLinks";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
@@ -70,12 +77,15 @@ import { useTrackDetail } from "../library/useTrackDetail";
 import { ChapterDialog } from "./ChapterDialog";
 import { NewSetDialog, SetSourceDialog } from "./NewSetDialogs";
 import { PrepareLayout } from "./PrepareLayout";
+import { PrepareEditingContext, type PrepareEditing, type TimeSaveResult } from "./prepareEditingContext";
 import { SetEntryZone } from "./SetEntryZone";
 import { SetLanes } from "./SetLanes";
 import { SetNotesDialog } from "./SetNotesDialog";
 import { SetTransition } from "./SetTransition";
 import { useSetAreaFloor } from "./setAreaFloor";
 import { SourcePanel } from "./SourcePanel";
+import { entryButtons, stepMoves, type EntryButton } from "./entryActions";
+import { nextTimeTarget, timeRefusalWords, timeTexts, timesToSave, type TimeField, type TimeTarget, type TimeTexts } from "./timeEditing";
 import { newSetSources } from "./newSetSources";
 import { PREPARE_COLUMNS, PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
 import {
@@ -125,6 +135,12 @@ import "../screens.css";
 import "./prepare.css";
 
 /** The page's own memory of the tree's folders, apart from the Library pane's. */
+/**
+ * How the buttons for the selected entries read on the third header line:
+ * "words" (the default), or "glyphs" for a line that has no room (DEC-112).
+ */
+const ENTRY_BUTTONS_AS: "words" | "glyphs" = "words";
+
 const PREPARE_TREE_STORAGE_KEY = "cuepoint-prepare-tree";
 
 /** What an entry drag carries: the entry, which is not the track (DEC-107). */
@@ -405,6 +421,140 @@ export function PrepareScreen({
     [push, selection, shown, tree, write],
   );
 
+  // --- the entry buttons and the table's keys (FLW-17)
+
+  const selectedIds = useMemo(() => new Set(selected.map((row) => row.entry.entry_id)), [selected]);
+  const buttons = useMemo(() => entryButtons(rows, selectedIds), [rows, selectedIds]);
+
+  // One step for every selected entry, a move at a time: each is the engine's
+  // answer to the one before, so a refusal stops the rest.
+  const moving = useRef(false);
+  const moveSelected = useCallback(
+    async (direction: -1 | 1) => {
+      if (moving.current) return;
+      moving.current = true;
+      try {
+        for (const move of stepMoves(rows, selectedIds, direction)) {
+          if ((await edit((sets) => sets.moveEntry(move))) === null) break;
+        }
+      } finally {
+        moving.current = false;
+      }
+    },
+    [edit, rows, selectedIds],
+  );
+
+  const pressEntryButton = useCallback(
+    (id: EntryButton["id"]) => {
+      const first = selected[0];
+      if (id === "up") void moveSelected(-1);
+      else if (id === "down") void moveSelected(1);
+      else if (id === "remove") void removeEntries(selected);
+      else if (id === "split" && first) splitAt(first);
+      else if (id === "repeat" && first) insertRepeat(first);
+    },
+    [insertRepeat, moveSelected, removeEntries, selected, splitAt],
+  );
+
+  // --- Mix in and Mix out typed in the table (FLW-18)
+
+  const [timeEditing, setTimeEditing] = useState<TimeTarget | null>(null);
+  const [timeWords, setTimeWords] = useState<({ entryId: number } & ReturnType<typeof timeRefusalWords>) | null>(null);
+  const startTimeEdit = useCallback((entryId: number, field: TimeField) => {
+    setTimeWords(null);
+    setTimeEditing({ entryId, field });
+  }, []);
+  // What each save wrote until the Set is read again: the next cell's save is
+  // built on it, so a quick Tab and Enter never send an old time back.
+  const written = useRef(new Map<number, TimeTexts>());
+  useEffect(() => {
+    for (const id of [...written.current.keys()]) {
+      if (timeEditing === null || timeEditing.entryId !== id) written.current.delete(id);
+    }
+  }, [timeEditing]);
+  const stopTimeEdit = useCallback((keepWords: boolean, only?: TimeTarget) => {
+    // A late answer for a cell the typing has left must not close the one it is in now.
+    setTimeEditing((current) =>
+      only && current && (current.entryId !== only.entryId || current.field !== only.field) ? current : null,
+    );
+    if (!keepWords) setTimeWords(null);
+  }, []);
+  // Saves of one entry go one after another: a blur's save and the Enter after
+  // it must not both read the times as they stood before either.
+  const pendingSaves = useRef(new Map<number, Promise<TimeSaveResult>>());
+  const saveTime = useCallback(
+    async (entryId: number, field: TimeField, text: string, move: 1 | -1 | 0): Promise<TimeSaveResult> => {
+      const entry = entries.find((candidate) => candidate.entry_id === entryId);
+      if (!entry) return "refused";
+      const current = written.current.get(entryId) ?? timeTexts(entry);
+      const save = timesToSave(current, field, text);
+      let result: TimeSaveResult = "unchanged";
+      if (save.changed) {
+        const refusal: { message: string | null } = { message: null };
+        const done = await edit(
+          (sets) => sets.setEntryTimes({ entry_id: entryId, in_time: save.in_time, out_time: save.out_time }),
+          { onRefused: (message) => (refusal.message = message) },
+        );
+        if (done === null) {
+          if (refusal.message !== null) {
+            setTimeWords({ entryId, ...timeRefusalWords(entry.track.title ?? "", refusal.message) });
+          }
+          return "refused";
+        }
+        written.current.set(entryId, {
+          in: save.in_time ?? "",
+          out: save.out_time ?? "",
+        });
+        result = "saved";
+      }
+      setTimeWords(null);
+      const next = move === 0 ? null : nextTimeTarget(entries, entryId, field, move);
+      // Only if this cell is still the one being typed in: a click on another
+      // cell has already moved on.
+      setTimeEditing((current) =>
+        current && current.entryId === entryId && current.field === field ? next : current,
+      );
+      if (next && next.entryId !== entryId) setToSelect(next.entryId);
+      return result;
+    },
+    [edit, entries],
+  );
+  const commitTime = useCallback(
+    (entryId: number, field: TimeField, text: string, move: 1 | -1 | 0): Promise<TimeSaveResult> => {
+      const run = () => saveTime(entryId, field, text, move);
+      const queued = (pendingSaves.current.get(entryId) ?? Promise.resolve("unchanged" as TimeSaveResult)).then(run, run);
+      pendingSaves.current.set(entryId, queued);
+      const clear = () => {
+        if (pendingSaves.current.get(entryId) === queued) pendingSaves.current.delete(entryId);
+      };
+      queued.then(clear, clear);
+      return queued;
+    },
+    [saveTime],
+  );
+
+  // Alt+Up, Alt+Down, Delete and Enter or F2 act on the entries selected while
+  // the table itself has focus; a field being typed in keeps its keys.
+  const onSetKeys = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if ((event.target as HTMLElement).getAttribute("role") !== "table") return;
+      const plain = !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+      const act = (run: () => void) => {
+        event.preventDefault();
+        event.stopPropagation();
+        run();
+      };
+      if (event.altKey && !event.ctrlKey && !event.metaKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+        if (selected.length > 0) act(() => void moveSelected(event.key === "ArrowUp" ? -1 : 1));
+      } else if (plain && (event.key === "Delete" || event.key === "Backspace")) {
+        if (selected.length > 0) act(() => void removeEntries(selected));
+      } else if (plain && (event.key === "Enter" || event.key === "F2")) {
+        if (focused) act(() => startTimeEdit(focused.entry.entry_id, "in"));
+      }
+    },
+    [focused, moveSelected, removeEntries, selected, startTimeEdit],
+  );
+
   /**
    * Put tracks into the Set at a place, in order, one insert each: the one
    * path that writes an entry, which plans each into its chapter (PREP-02).
@@ -478,18 +628,25 @@ export function PrepareScreen({
 
   const detail = useTrackDetail(focused ? focused.entry.track_id : null);
   const previousEntryId = focused ? (entries[indexOfEntry(focused.entry.entry_id) - 1]?.entry_id ?? null) : null;
-  const acknowledge = useCallback(
-    (warning: SetWarning, accept: boolean) => {
-      if (!focused || previousEntryId === null) return;
+  /** Accept a transition warning between two entries, or withdraw the acceptance. */
+  const acknowledgeBetween = useCallback(
+    (fromEntryId: number, toEntryId: number, warning: SetWarning, accept: boolean) => {
       const ref = {
-        from_entry_id: previousEntryId,
-        to_entry_id: focused.entry.entry_id,
+        from_entry_id: fromEntryId,
+        to_entry_id: toEntryId,
         warning: warning.kind as "tempo_jump" | "key_clash" | "tempo_unknown",
       };
       if (accept) void edit((sets) => sets.acknowledge(ref));
       else void edit((sets) => sets.unacknowledge(ref));
     },
-    [edit, focused, previousEntryId],
+    [edit],
+  );
+  const acknowledge = useCallback(
+    (warning: SetWarning, accept: boolean) => {
+      if (!focused || previousEntryId === null) return;
+      acknowledgeBetween(previousEntryId, focused.entry.entry_id, warning, accept);
+    },
+    [acknowledgeBetween, focused, previousEntryId],
   );
 
   const openEntity = useCallback(
@@ -608,6 +765,32 @@ export function PrepareScreen({
     shown,
     splitAt,
   ]);
+
+  const editing = useMemo(
+    (): PrepareEditing => ({
+      editing: timeEditing,
+      invalid: timeWords !== null && timeEditing !== null && timeWords.entryId === timeEditing.entryId,
+      startTimeEdit,
+      commitTime,
+      stopTimeEdit,
+      chapters: {
+        count: shown?.plan.chapters.length ?? 0,
+        edit: (chapter) => {
+          setChapterError(null);
+          setChapterEditing(chapter);
+        },
+        move: moveChapter,
+        remove: setChapterDeleting,
+      },
+    }),
+    [commitTime, moveChapter, shown, startTimeEdit, stopTimeEdit, timeEditing, timeWords],
+  );
+
+  // A different Set starts with nothing being typed.
+  useEffect(() => {
+    setTimeEditing(null);
+    setTimeWords(null);
+  }, [shownId]);
 
   // --- set lists, the export, new Sets
 
@@ -819,6 +1002,17 @@ export function PrepareScreen({
     return types.includes(SET_ENTRY_MIME) || types.includes(TRACK_IDS_MIME);
   };
   const firstChapter = [...plan.chapters].sort((a, b) => a.position - b.position)[0];
+  // The transition the strip draws: the selected entry into the next one.
+  const nextEntry = focused ? (entries[indexOfEntry(focused.entry.entry_id) + 1] ?? null) : null;
+  const nextRow = nextEntry ? rows.find((row) => isEntryRow(row) && row.entry.entry_id === nextEntry.entry_id) : undefined;
+  const stripWarnings = nextRow && isEntryRow(nextRow) ? nextRow.transition : [];
+  // The entries with no key, for "Match tracks…" (FLW-19): Clean's window opens on their tracks.
+  const keylessEntries = new Set(analysis.shape.entries.filter((point) => point.key === null).map((point) => point.entry_id));
+  const keylessTrackIds = [
+    ...new Set(entries.filter((entry) => keylessEntries.has(entry.entry_id)).map((entry) => entry.track_id)),
+  ];
+  const matchKeyless = () => navigate("/clean", { state: cleanMatchState(keylessTrackIds) });
+  const facts = headerFacts(entries.length, plan.running_time, analysis);
 
   const table = (
     <div className="prepare-set" ref={setBox}>
@@ -837,9 +1031,15 @@ export function PrepareScreen({
           selectedEntryId={focused ? focused.entry.entry_id : null}
           onSelect={setToSelect}
           onSeeProgress={() => navigate("/settings", { state: settingsFocusState("waveforms") })}
+          shape={analysis.shape}
+          warnings={stripWarnings}
+          onAccept={(warning, accept) => {
+            if (focused && nextEntry) acknowledgeBetween(focused.entry.entry_id, nextEntry.entry_id, warning, accept);
+          }}
         />
       )}
-      <div className="prepare-set__rows">
+      <div className="prepare-set__rows" onKeyDownCapture={onSetKeys}>
+        <PrepareEditingContext.Provider value={editing}>
         <TrackTable<PrepareRow>
           columns={columns.visible}
           source={source}
@@ -898,6 +1098,7 @@ export function PrepareScreen({
           resetKey={String(shown.setId)}
           ariaLabel="Set entries"
         />
+        </PrepareEditingContext.Provider>
       </div>
     </div>
   );
@@ -953,24 +1154,39 @@ export function PrepareScreen({
           </Button>
         </div>
         <p className="prepare-header__facts" role="status">
-          {headerFacts(entries.length, plan.running_time, analysis).map((fact, index) => (
-            <span key={fact.text} className={fact.strong ? "prepare-header__warnings" : undefined}>
-              {index > 0 && <span aria-hidden="true"> · </span>}
-              {fact.action === "check_files" ? (
+          {timeWords && (
+            <span className="prepare-header__refusal" title={timeWords.line}>
+              <span className="prepare-header__refusal-reason">{timeWords.reason}</span>
+              <span className="prepare-header__refusal-entry">{timeWords.entry}</span>
+            </span>
+          )}
+          <span className="prepare-header__summary">
+            {facts
+              .filter((fact) => !fact.action)
+              .map((fact, index) => (
+                <span key={fact.text} className={fact.strong ? "prepare-header__warnings" : undefined}>
+                  {index > 0 && <span aria-hidden="true"> · </span>}
+                  <span title={fact.title}>{fact.text}</span>
+                </span>
+              ))}
+          </span>
+          {facts
+            .filter((fact) => fact.action)
+            .map((fact) => (
+              <span key={fact.action} className="prepare-header__action" title={fact.title}>
+                {fact.text}
+                <span aria-hidden="true"> · </span>
                 <button
                   type="button"
                   className="prepare-link prepare-link--inline"
                   title={fact.title}
-                  disabled={fileJobs.running !== null}
-                  onClick={checkFiles}
+                  disabled={fact.action === "check_files" && fileJobs.running !== null}
+                  onClick={fact.action === "check_files" ? checkFiles : matchKeyless}
                 >
-                  {fact.text}
+                  {fact.actionText}
                 </button>
-              ) : (
-                <span title={fact.title}>{fact.text}</span>
-              )}
-            </span>
-          ))}
+              </span>
+            ))}
           <Button
             variant="secondary"
             className="prepare-header__button"
@@ -995,6 +1211,32 @@ export function PrepareScreen({
           >
             View ▾
           </Button>
+          <span
+            className={`prepare-header__entries${ENTRY_BUTTONS_AS === "glyphs" ? " prepare-header__entries--glyphs" : ""}`}
+            role="group"
+            aria-label="Selected entries"
+          >
+            {buttons.map((entryButton) => (
+              <Hint
+                key={entryButton.id}
+                text={
+                  entryButton.reason ??
+                  (entryButton.shortcut ? `${entryButton.label} (${entryButton.shortcut})` : entryButton.label)
+                }
+              >
+                <Button
+                  variant="secondary"
+                  className="prepare-header__button prepare-header__entry"
+                  aria-label={entryButton.label}
+                  data-glyph={entryButton.glyph}
+                  disabled={entryButton.disabled}
+                  onClick={() => pressEntryButton(entryButton.id)}
+                >
+                  {entryButton.label}
+                </Button>
+              </Hint>
+            ))}
+          </span>
         </p>
       </header>
 

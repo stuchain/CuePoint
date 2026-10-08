@@ -159,7 +159,7 @@ export function dropPlace(
 }
 
 /** What `sets.moveEntry` is asked: the entry's final place, and its chapter. */
-interface EntryMove {
+export interface EntryMove {
   entry_id: number;
   position: number;
   chapter_id: number;

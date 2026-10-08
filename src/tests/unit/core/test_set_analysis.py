@@ -540,6 +540,24 @@ class TestAcknowledgements:
         )
         assert found.acknowledged == 1
 
+    def test_a_key_clash_accepted_under_one_pair_of_keys_is_asked_again(self):
+        """DEC-106: what was accepted was a pair of keys. When Beatport's key
+        replaces Rekordbox's and still clashes, the pair differs, so the
+        clash is a new one and is not covered."""
+        accepted = {"from": "8A", "to": "3B"}
+        entries = [entry(1, k="8A"), entry(2, k="3B")]
+        covered = analyse(
+            entries, [ChapterFacts(CHAPTER)], [ack(1, 2, KEY_CLASH, accepted)]
+        )
+        assert covered.acknowledged == 1 and covered.counts == {}
+        beatport = [entry(1, k="8A"), entry(2, k="5B")]
+        again = analyse(
+            beatport, [ChapterFacts(CHAPTER)], [ack(1, 2, KEY_CLASH, accepted)]
+        )
+        [warning] = again.transitions[0].warnings
+        assert warning.kind == KEY_CLASH and not warning.acknowledged
+        assert again.counts == {KEY_CLASH: 1} and again.acknowledged == 0
+
     def test_only_the_transitions_it_names(self):
         entries = [entry(1, bpm=120.0), entry(2, bpm=140.0), entry(3, bpm=120.0)]
         analysis = self.jumps(ack(1, 2, TEMPO_JUMP, self.JUMP), entries=entries)

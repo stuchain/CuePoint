@@ -243,13 +243,23 @@ describe("the words", () => {
     ]);
   });
 
-  it("says how many entries have no key, and nothing when all do", () => {
+  it("says once how many entries have no Beatport key, with Match tracks… beside it, and nothing when all do", () => {
     const keyless = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 2 });
-    expect(keyless[keyless.length - 1]?.text).toBe("2 entries without a key");
+    const notice = keyless[keyless.length - 1]!;
+    expect(notice.text).toBe("2 without key");
+    expect(notice.action).toBe("match_keyless");
+    expect(notice.actionText).toBe("Match tracks…");
+    expect(notice.title).toMatch(/2 entries have no Beatport key, so no key check applies/);
     const one = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 1 });
-    expect(one[one.length - 1]?.text).toBe("1 entry without a key");
+    expect(one[one.length - 1]?.text).toBe("1 without key");
+    expect(one[one.length - 1]?.title).toMatch(/^1 entry has no Beatport key/);
     const all = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 0 });
-    expect(all.some((fact) => /without a key/.test(fact.text))).toBe(false);
+    expect(all.some((fact) => fact.action === "match_keyless")).toBe(false);
+  });
+
+  it("does not count a missing key among the warnings (DEC-201)", () => {
+    const keyless = { ...FRIDAY.analysis, without_key: 3 };
+    expect(warningCountLine(keyless)).toBe(warningCountLine(FRIDAY.analysis));
   });
 
   it("puts the header's facts on one line, each longer sentence in its title", () => {
@@ -258,10 +268,10 @@ describe("the words", () => {
       "6 entries",
       "9:00 planned · 4 without times",
       "5 warnings · 1 accepted",
-      "Files not checked — check now",
+      "Files not checked",
     ]);
     // The files fact is the one that acts: it starts Clean's file check (PRP-6).
-    expect(facts[3]).toMatchObject({ action: "check_files" });
+    expect(facts[3]).toMatchObject({ action: "check_files", actionText: "Check now" });
     expect(facts[3].title).toContain("never been checked");
     // Transitions, then entries, then chapters, in words that count.
     expect(facts[2]).toEqual({
@@ -271,7 +281,7 @@ describe("the words", () => {
     });
     const partly = { ...FRIDAY.analysis.files, never_checked: false, checked: 3, unchecked: 2 };
     expect(headerFacts(1, FRIDAY.plan.running_time, { ...FRIDAY.analysis, files: partly })[3].text).toBe(
-      "2 files not checked — check now",
+      "2 files not checked",
     );
     const checked = { ...FRIDAY.analysis.files, never_checked: false, checked: 5, unchecked: 0 };
     const quiet = headerFacts(1, FRIDAY.plan.running_time, { ...FRIDAY.analysis, counts: {}, files: checked });
@@ -285,7 +295,7 @@ describe("the words", () => {
     expect(facts[1].text).toBe("No times planned yet");
     // True now that Track details holds the fields; the table's own cells come with FLW-18.
     expect(facts[1].title).toBe(
-      "Select an entry and type its Mix in and Mix out under “In this Set” in Track details to plan the Set's length. Times are optional.",
+      "Select an entry and type its Mix in and Mix out in the table to plan the Set's length. Times are optional.",
     );
     expect(runningTimeLine(none)).toBe("No times planned yet");
     // One timed entry is a plan; an empty Set has no entries to be untimed.

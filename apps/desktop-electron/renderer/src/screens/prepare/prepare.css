@@ -80,13 +80,92 @@
   font-weight: 700;
 }
 
+/* Two lines, whatever the width (DEC-112): the facts, with Notes and View, then
+   the buttons for the selected entries on a line of their own. The facts give way
+   (ellipsis, the whole in their titles); what asks something of the person (a
+   refused time, Match tracks…, Check now) never does. */
 .prepare-header__facts {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   column-gap: var(--space-xs);
+  row-gap: 0;
   margin: 0;
+  container-type: inline-size;
   color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.prepare-header__summary {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prepare-header__facts > .cp-btn,
+.prepare-header__action {
+  flex: none;
+}
+
+.prepare-header__action {
+  white-space: nowrap;
+  color: var(--fg-primary);
+}
+
+/* A refused time, first and plain, until it is typed again or dropped (FLW-18):
+   the reason first, the entry's name last and the first to give way. */
+.prepare-header__refusal {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: var(--space-xs);
+  color: var(--fg-primary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.prepare-header__refusal-reason,
+.prepare-header__refusal-entry {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prepare-header__refusal-reason {
+  flex: 0 1 auto;
+}
+
+.prepare-header__refusal-entry {
+  flex: 0 100 auto;
+}
+
+/* The entry buttons, their words, alone on the third line. */
+.prepare-header__entries {
+  display: flex;
+  flex: 0 0 100%;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.prepare-header__entries > .cp-hint {
+  flex: none;
+  display: inline-flex;
+}
+
+/* The other way to draw them, for a line with no room: a glyph for each, the
+   words kept as the name (aria-label). Not used while the words fit. */
+.prepare-header__entries--glyphs .prepare-header__entry .cp-btn__label {
+  font-size: 0;
+}
+
+.prepare-header__entries--glyphs .prepare-header__button.prepare-header__entry.cp-btn {
+  padding: 0 var(--space-xs);
+}
+
+.prepare-header__entries--glyphs .prepare-header__entry::before {
+  content: attr(data-glyph);
   font-size: var(--font-size-xs);
 }
 
@@ -125,10 +204,6 @@
   font-size: var(--font-size-xs);
   /* Inside the facts line's own height: the button grows the header by nothing. */
   line-height: 1;
-}
-
-.prepare-header__facts > .prepare-header__button:first-of-type {
-  margin-left: auto;
 }
 
 .prepare-visually-hidden {
@@ -307,7 +382,7 @@ body.prepare-resizing {
    it starts hidden. The rows' heights are the Set table's, set inline. */
 .prepare-transition {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
   column-gap: var(--space-sm);
   min-width: 0;
   padding: 0 var(--space-sm) calc(2px * var(--scale));
@@ -412,16 +487,80 @@ body.prepare-resizing {
   display: block;
 }
 
-/* The words stack between the halves, so they take a narrow column. */
-.prepare-transition__words {
+/* FLW-19: the caption sits between the halves over the strip's whole height, so
+   a warning at its end grows the strip by nothing. */
+.prepare-transition__caption {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  margin: 0;
+  gap: var(--space-xs);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   font-size: var(--font-size-xs);
+  line-height: 1.15;
+  text-align: start;
+}
+
+/* The segments wrap between themselves; one too long for the column gives way
+   with an ellipsis (its whole in its title), and none is clipped from its middle. */
+.prepare-transition__words {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-xs);
+  margin: 0;
   font-weight: 700;
+}
+
+.prepare-transition__piece {
+  display: flex;
+  flex: 0 1 auto;
+  gap: var(--space-xs);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.prepare-transition__segment {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.prepare-transition__warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  color: var(--fg-primary);
+  font-weight: 700;
+}
+
+.prepare-transition__warning--accepted {
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+.prepare-transition__sentence {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prepare-transition__accept.cp-btn {
+  flex: none;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 var(--space-sm);
+  border-width: var(--hairline);
+  font-size: var(--font-size-xs);
+  line-height: 1.15;
 }
 
 .prepare-transition__none {
@@ -440,8 +579,87 @@ body.prepare-resizing {
   cursor: default;
 }
 
+.prepare-heading__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  width: 100%;
+  min-width: 0;
+}
+
 .prepare-heading__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-transform: none;
+}
+
+/* A chapter's Edit, Up, Down and Delete, inside the heading's own height. */
+.prepare-heading__buttons {
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-xs);
+}
+
+.prepare-heading__button {
+  padding: 0 var(--space-xs);
+  border: var(--hairline) solid var(--border-muted);
+  background: var(--bg-panel);
+  color: var(--fg-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.prepare-heading__button:hover:not(:disabled) {
+  border-color: var(--fg-muted);
+}
+
+.prepare-heading__button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Mix in and Mix out: the cell is its time, and a field once it is clicked
+   (FLW-18). Neither changes the row's height. */
+.prepare-time,
+.prepare-time__input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: right;
+}
+
+.prepare-time {
+  border: var(--hairline) solid transparent;
+  background: transparent;
+  cursor: text;
+}
+
+.prepare-time:hover {
+  border-color: var(--border-muted);
+}
+
+.prepare-time__input {
+  border: var(--hairline) solid var(--accent-info);
+  background: var(--bg-input);
+  font-variant-numeric: tabular-nums;
+}
+
+.prepare-time__input:focus {
+  outline: none;
+}
+
+.prepare-time__input[aria-invalid="true"] {
+  border-color: var(--accent-danger);
 }
 
 .prepare-warning--open {

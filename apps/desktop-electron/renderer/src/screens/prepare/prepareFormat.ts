@@ -50,8 +50,12 @@ interface HeaderFact {
   text: string;
   title?: string;
   strong?: boolean;
-  /** Set when the fact is a button: what it starts. */
-  action?: "check_files";
+  /**
+   * Set when the fact has a button beside it: what it starts, and its words.
+   * These sit outside the facts that give way, so they always show (DEC-112).
+   */
+  action?: "check_files" | "match_keyless";
+  actionText?: string;
 }
 
 /**
@@ -86,7 +90,7 @@ export function headerFacts(
       text: runningTimeLine(running),
       title:
         runningTimeLine(running) === NO_TIMES_YET
-          ? "Select an entry and type its Mix in and Mix out under “In this Set” in Track details to plan the Set's length. Times are optional."
+          ? "Select an entry and type its Mix in and Mix out in the table to plan the Set's length. Times are optional."
           : undefined,
     },
   ];
@@ -102,17 +106,20 @@ export function headerFacts(
   if (files) {
     const { unchecked, never_checked: never } = analysis.files;
     facts.push({
-      text: never
-        ? "Files not checked — check now"
-        : `${counted(unchecked, "file", "files")} not checked — check now`,
+      text: never ? "Files not checked" : `${counted(unchecked, "file", "files")} not checked`,
       title: files,
       action: "check_files",
+      actionText: "Check now",
     });
   }
   if (analysis.without_key > 0) {
+    // Not a warning (DEC-201): said once, with the way to get the keys.
+    const count = analysis.without_key;
     facts.push({
-      text: `${counted(analysis.without_key, "entry", "entries")} without a key`,
-      title: "No Beatport key, so no key check applies. Match the library in Clean to get keys.",
+      text: `${count.toLocaleString()} without key`,
+      title: `${counted(count, "entry", "entries")} ${count === 1 ? "has" : "have"} no Beatport key, so no key check applies. Match the tracks to get theirs.`,
+      action: "match_keyless",
+      actionText: "Match tracks…",
     });
   }
   return facts;

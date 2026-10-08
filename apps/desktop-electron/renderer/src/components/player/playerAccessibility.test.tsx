@@ -235,7 +235,9 @@ describe("the shortcuts dialog lists what the player takes", () => {
       (row) => row.shortcut,
     );
     // Delete is also the Library's for a Collection (LIB-12): it removes what has the
-    // focus, the queued track here and the tree's row there.
-    expect(keys.filter((key) => key !== "Delete" && others.includes(key))).toEqual([]);
+    // focus, the queued track here and the tree's row there. Alt+Up / Alt+Down is the Set
+    // table's too (FLW-17), "as in the queue": it moves what has the focus.
+    const shared = ["Delete", "Alt+Up / Alt+Down"];
+    expect(keys.filter((key) => !shared.includes(key) && others.includes(key))).toEqual([]);
   });
 });

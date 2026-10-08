@@ -10,12 +10,16 @@
  * its name under Title, its start under Starts at, its time against its target
  * under Plays for, its BPM range under BPM, its own warnings under Transition and
  * its notes under Note. Nothing sorts: the order is the Set.
+ *
+ * Mix in and Mix out are typed in place and a heading carries its chapter's
+ * buttons (FLW-17, FLW-18): both through `prepareEditing`'s context.
  */
 import type { TrackColumnDef } from "../../components/table";
 import { OverriddenValue } from "../library/libraryCells";
 import { effectiveText } from "../library/libraryClean";
 import { describeSetNotice, describeSetWarning } from "./setWarnings";
 import { bpmRangeText, chapterTimeText, summarizeWarnings, timeCell } from "./prepareFormat";
+import { ChapterButtons, TimeCell } from "./prepareEditing";
 import { WarningCell } from "./WarningCell";
 import { chapterName, type PrepareRow } from "./prepareRows";
 
@@ -48,23 +52,14 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     text: (row) => (row.kind === "entry" ? String(row.entry.position + 1) : ""),
   },
   {
-    id: "starts_at",
-    header: "Starts at",
-    hint: "When this track starts if every planned time holds, counted from the start of the Set",
-    minWidthPx: 56,
-    defaultWidthPx: 72,
-    align: "right",
-    render: (row) =>
-      timeCell(row.kind === "heading" ? row.chapter.starts_at : row.entry.starts_at),
-  },
-  {
     id: "in",
     header: "Mix in",
     hint: "When you plan to bring this track in, as m:ss into the track",
     minWidthPx: 48,
     defaultWidthPx: 60,
     align: "right",
-    render: (row) => (row.kind === "entry" ? timeCell(row.entry.in_seconds) : ""),
+    render: (row) => <TimeCell row={row} field="in" />,
+    text: (row) => (row.kind === "entry" ? timeCell(row.entry.in_seconds) : ""),
   },
   {
     id: "out",
@@ -73,7 +68,18 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     minWidthPx: 48,
     defaultWidthPx: 60,
     align: "right",
-    render: (row) => (row.kind === "entry" ? timeCell(row.entry.out_seconds) : ""),
+    render: (row) => <TimeCell row={row} field="out" />,
+    text: (row) => (row.kind === "entry" ? timeCell(row.entry.out_seconds) : ""),
+  },
+  {
+    id: "starts_at",
+    header: "Starts at",
+    hint: "When this track starts if every planned time holds, counted from the start of the Set",
+    minWidthPx: 56,
+    defaultWidthPx: 72,
+    align: "right",
+    render: (row) =>
+      timeCell(row.kind === "heading" ? row.chapter.starts_at : row.entry.starts_at),
   },
   {
     id: "planned",
@@ -95,11 +101,18 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     id: "title",
     header: "Title",
     minWidthPx: 120,
-    defaultWidthPx: 220,
+    // Pinned and narrow by default: Mix in and Mix out, right after it, show at
+    // scroll 0 in the Set pane and a chapter heading's buttons keep their room.
+    defaultWidthPx: 140,
     sticky: true,
     render: (row) => {
       if (row.kind === "heading") {
-        return <span className="prepare-heading__name">{chapterName(row.chapter)}</span>;
+        return (
+          <span className="prepare-heading__title">
+            <span className="prepare-heading__name">{chapterName(row.chapter)}</span>
+            <ChapterButtons row={row} />
+          </span>
+        );
       }
       const own = row.warnings;
       return (
