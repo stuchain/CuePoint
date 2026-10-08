@@ -716,8 +716,8 @@ where the system shows one.
     fails when they are older than the sources or differ from what the sources give.
 - **`package.json`'s `build`:** `icon` for each of `win`, `mac` and `linux` (and NSIS's
   `installerIcon` and `uninstallerIcon`), so the installer and the DMG carry it too.
-- **The window:** `BrowserWindow`'s `icon` is set on Linux and Windows from `build/icon.png`, so a
-  development run shows it as well (macOS takes the bundle's).
+- **The window:** `BrowserWindow`'s `icon` is set on Windows from `build/icon.ico` and on Linux from
+  `build/icon.png`, so a development run shows it as well (macOS takes the bundle's).
 - **The renderer's About section** (Settings › About & updates, PAGES-01) shows the mark at 64 px.
 - **The website (Phase 17)** reuses the same sources for its favicon and OG images (SITE-11).
 
@@ -745,8 +745,18 @@ the Camelot wheel from three candidates (DEC-210): twelve key colours around a d
 white cue pip, on Neo Dark's violet tile. Grids are drawn for 16, 24, 32 and 48 as well as 64
 (`build/icon-source/mark-*.svg`), so every small `.ico` size is its own drawing.
 `scripts/build_app_icons.py` is standard-library only; its tests check every pixel of every entry.
-The window icon ships as an extra resource (`resources/icon.png`) and is read from there when
-packaged. Still owed: the Windows check through Remote Control, the macOS DMG/Dock/Finder check
+The window icon ships as an extra resource (`resources/icon.ico` on Windows, `resources/icon.png`
+on Linux) and is read from there when packaged.
+
+**Checked on Windows (2026-10-08), in a packaged build.** The installer and `CuePoint.exe` (which
+the Start menu shortcut points at) each hold all seven sizes, read back from the files and each a
+crisp drawing on a dark and a light background. The check found the window passing the 512 px PNG,
+so the title bar and the taskbar shrank it and the wheel blurred at 16 to 32 px. The window now takes
+`icon.ico`, and reading the running window's icons back gives the hand-drawn 16 and 32 px images.
+The tile is opaque with a dark outline, so it reads on both taskbar themes. The installer was not
+run, so the Start menu and taskbar were judged from the files and the window's icons, not by eye.
+
+Still owed: the macOS DMG/Dock/Finder check
 (including whether Finder uses the hand-drawn 16 and 32 grids from the PNG `icp4`/`icp5` entries)
 and the Linux AppImage check. The 64 px mark in Settings › About & updates rides PAGES-01.
 

@@ -24,10 +24,13 @@ describe("electron-builder icons", () => {
     expect(fs.existsSync(path.join(DESKTOP_ROOT, value as string))).toBe(true);
   });
 
-  it("copies build/icon.png to the resources folder for the window icon", () => {
-    const extra: { from: string; to: string }[] = pkg.build.extraResources;
-    const entry = extra.find((e) => e.to === "icon.png");
-    expect(entry).toEqual({ from: "build/icon.png", to: "icon.png" });
-    expect(fs.existsSync(path.join(DESKTOP_ROOT, entry!.from))).toBe(true);
-  });
+  it.each(["icon.png", "icon.ico"])(
+    "copies build/%s to the resources folder for the window icon",
+    (file) => {
+      const extra: { from: string; to: string }[] = pkg.build.extraResources;
+      const entry = extra.find((e) => e.to === file);
+      expect(entry).toEqual({ from: `build/${file}`, to: file });
+      expect(fs.existsSync(path.join(DESKTOP_ROOT, entry!.from))).toBe(true);
+    },
+  );
 });
