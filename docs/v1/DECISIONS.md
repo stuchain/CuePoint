@@ -5970,3 +5970,24 @@ crate-becomes-wheel opening scene (DEC-189).
 favicon set and OG images.
 
 **Decided with**: User · **Date**: 2026-10-08
+
+---
+
+## DEC-211 — STATS-01 Is Built Ahead of Phase 14
+
+**Status**: Approved · **Related**: DEC-137, DEC-140, DEC-168, STATS-01
+
+**Decision**: STATS-01 (play history) is built while Phase 14 is still being built, rather than
+after it as DEC-140 orders the phases. The rest of Phase 15 still waits for Phase 14.
+
+**Reason**: Every refresh before STATS-01 ships is play history that can never be recovered, and the
+step touches only the engine's import path, a new migration and its tests, none of the renderer
+pages or Settings that Phase 14 changes. The user asked on 2026-10-08 to run in parallel whatever
+could be.
+
+**Implications**:
+- m0027 is the next migration; Phase 14 adds none.
+- A read row's `tracks` is the library's track count after the read, and `changed` the
+  `play_counts` rows that read stored.
+
+**Decided with**: User · **Date**: 2026-10-08

@@ -943,6 +943,9 @@ playlist, Clean's Health tab, tracks with no play count, remixer credits, what "
 keeping a top list, and where history starts. The user took the recommendation on all seven
 (DEC-162…DEC-168), so nothing is open.
 
+STATS-01 (play history) was built on 2026-10-08, ahead of Phase 14, so history starts before
+the page ships (DEC-211). It has no UI. STATS-02…STATS-07 still wait for Phase 14.
+
 - **Its own destination** in the sidebar, after Prepare (DEC-138).
 - **The page shows** (DEC-136):
   - most played, as a top 10, 25, 50, 100 or 200;

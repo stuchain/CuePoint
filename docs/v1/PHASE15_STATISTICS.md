@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 15: Statistics, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. No step is implemented yet.** Seven steps, STATS-01…STATS-07.
+Status: **Specified 2026-10-07. STATS-01 is implemented (2026-10-08), ahead of Phase 14 (DEC-211); STATS-02…STATS-07 wait for Phase 14.** Seven steps, STATS-01…STATS-07.
 Writing the steps raised seven questions that Decision Round 14 did not answer. They were asked as
 Decision Round 18 (Q-163…Q-169) and settled the same day as DEC-162…DEC-168, each as recommended, so
 there are no open points. Where a step below says "if Q-NNN …", the recommended branch is the one
@@ -314,6 +314,42 @@ read, inside the same transaction, so later steps can answer "most played since 
 cannot be recovered. It has no UI so it can ship as soon as Phase 14 is done.
 
 **Complexity**: **S**
+
+**Outcome**: Implemented (2026-10-08), ahead of Phase 14 (DEC-211). `migrations/m0027_play_history.py`
+adds `library_reads` and `play_counts` and seeds from the last import as designed; with no
+`library_source` row it writes nothing. `persistence/play_history_repository.py`
+(`IPlayHistoryRepository`) owns the read rows. `upsert_many_from_rekordbox` takes `read_id` and
+`baseline` and reports `play_counts_stored`; a new track's id comes from the read-back its credits
+already needed, so history adds no query per track. `_write_export` starts the read first in its
+transaction and finishes it after the deletes. Without a `read_id` the upsert keeps no history,
+exactly as before.
+
+Decided while building:
+- **`tracks` and `changed` on a read** are the library's track count after the read and the
+  `play_counts` rows that read stored (the baseline's rows included).
+- **A library with tracks but no read and no seed** (its `library_source` row cleared) is on its
+  baseline: its next import stores every known count.
+
+Checked in the cloud container: the new tests (`test_play_history_migration.py`,
+`test_play_history.py`, `test_backup_restores_play_history.py`, two cases in
+`test_references_carry_user_work.py`) and the persistence and services suites pass, with pinned
+ruff 0.14.0, both mypy gates and `scripts/smoke_engine_health.py`. The services suite has one
+failure, `test_step56_error_handling.py::test_beatport_service_logs_errors`, which fails the same
+without this step; three files there need `hypothesis` or `mutagen`, not installed in the container.
+`test_track_marks_schema.py` now stops its "only m0026" tests at version 26.
+
+Scale. `test_library_scale.py`'s new test (20,000 tracks, 500 counts moved, best of 5) stays within
+10% of the same refresh without history. `scripts/bench_library.py` at 50,000 tracks, before and after:
+
+| Phase | Before | After |
+| --- | --- | --- |
+| Import (the baseline read) | 13.41 s, 54.4 MB peak | 13.89 s, 54.5 MB peak |
+| Re-import | 16.98 s | 16.59 s |
+| Diff, edited | 12.50 s | 11.91 s |
+| Apply refresh (edited diff) | 19.25 s, 113.9 MB peak | 16.37 s, 113.9 MB peak |
+
+The benchmark's edited export moves no counts, so its apply measures the history's bookkeeping
+only; the scale test covers moved counts. Not checked: a refresh on the owner's real library.
 
 ---
 
