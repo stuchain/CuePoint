@@ -218,8 +218,8 @@ class TestErrorLogging:
                 service.search_tracks("test")
 
             # Verify error was logged
-            mock_logging.error.assert_called_once()
-            call_args = mock_logging.error.call_args
+            mock_logging.warning.assert_called_once()
+            call_args = mock_logging.warning.call_args
             assert "Failed to search Beatport" in call_args[0][0]
             assert call_args[1]["exc_info"] is not None
             assert "query" in call_args[1]["extra"]
