@@ -229,3 +229,115 @@ class TestRefreshingAtScale:
         # the group under it — are in the total alongside the playlists.
         assert service._playlists.count() == PLAYLISTS + 2
         assert service._playlists.count_entries() > 0
+
+
+#: How much slower a refresh may be for keeping play history (STATS-01).
+#: The history adds one comparison per updated track and one ``executemany``
+#: of the counts that moved, so a refresh that moves 500 of 20,000 counts must
+#: stay within 10% of the same refresh with the history switched off.
+HISTORY_OVERHEAD = 1.10
+
+#: Counts moved per refresh, and refreshes timed per side. Best-of keeps one
+#: noisy pass on a shared machine from deciding the relationship.
+PLAYS_MOVED = 500
+HISTORY_ROUNDS = 5
+
+
+def _with_plays_moved(source: Path, target: Path, round_number: int) -> Path:
+    """Copy ``source`` with the first ``PLAYS_MOVED`` tracks' counts changed.
+
+    A different amount each round, so every round moves all of them again
+    rather than the second finding nothing changed.
+    """
+    import re
+
+    pattern = re.compile(r'(TrackID="(\d+)".*? PlayCount=")(\d+)"')
+
+    def moved(match: "re.Match[str]") -> str:
+        if int(match.group(2)) > PLAYS_MOVED:
+            return match.group(0)
+        return f'{match.group(1)}{int(match.group(3)) + 100 * round_number}"'
+
+    with (
+        source.open(encoding="utf-8") as read,
+        target.open("w", encoding="utf-8", newline="\n") as write,
+    ):
+        for line in read:
+            write.write(pattern.sub(moved, line, count=1))
+    return target
+
+
+@pytest.mark.performance
+@pytest.mark.slow
+class TestPlayHistoryAtScale:
+    def test_keeping_it_costs_a_refresh_less_than_ten_percent(self, tmp_path):
+        """DEC-137's price, measured as a relationship, not as seconds.
+
+        Two libraries of the same 20,000 tracks, one with history and one with
+        it switched off (the upsert given no read, exactly as before STATS-01),
+        refreshed in turn with 500 counts moved. Only the apply is timed: the
+        diff is the same work either way.
+        """
+        export = write_export(
+            tmp_path / "collection.xml", list(range(1, TRACKS + 1)), PLAYLISTS
+        )
+        kept, _, _ = build_service(tmp_path / "kept.db")
+        plain, plain_tracks, _ = build_service(tmp_path / "plain.db")
+
+        original = plain_tracks.upsert_many_from_rekordbox
+
+        def without_history(tracks, *args, **kwargs):
+            kwargs.pop("read_id", None)
+            kwargs.pop("baseline", None)
+            return original(tracks, *args, **kwargs)
+
+        plain_tracks.upsert_many_from_rekordbox = without_history  # type: ignore[method-assign]
+
+        try:
+            kept.import_rekordbox_xml(str(export))
+            plain.import_rekordbox_xml(str(export))
+
+            best = {"kept": float("inf"), "plain": float("inf")}
+            for round_number in range(1, HISTORY_ROUNDS + 1):
+                edited = _with_plays_moved(
+                    export, tmp_path / f"moved-{round_number}.xml", round_number
+                )
+                # Alternate who goes first, so neither side always gets the
+                # warm cache (or the cold one).
+                order = (("kept", kept), ("plain", plain))
+                if round_number % 2 == 0:
+                    order = order[::-1]
+                for label, service in order:
+                    diff = service.compute_refresh_diff(str(edited), force=True)
+                    # Plain wall time: tracemalloc would tax the side that
+                    # allocates more and skew the relationship being measured.
+                    started = time.perf_counter()
+                    service.apply_refresh(diff)
+                    best[label] = min(best[label], time.perf_counter() - started)
+
+            stored = (
+                kept._db.connect()
+                .execute(
+                    "SELECT count(*) FROM play_counts p JOIN library_reads r"
+                    " ON r.id = p.read_id WHERE r.kind = 'refresh'"
+                )
+                .fetchone()[0]
+            )
+            none = (
+                plain._db.connect()
+                .execute("SELECT count(*) FROM play_counts")
+                .fetchone()[0]
+            )
+            # Every round moved every one of the 500, and the side with history
+            # switched off kept nothing at all, import included.
+            assert stored == PLAYS_MOVED * HISTORY_ROUNDS
+            assert none == 0
+        finally:
+            kept._db.close_all()
+            plain._db.close_all()
+
+        print(f"\nplay history: kept {best['kept']:.2f}s, plain {best['plain']:.2f}s")
+        assert best["kept"] <= best["plain"] * HISTORY_OVERHEAD, (
+            f"a refresh keeping history took {best['kept']:.2f}s against "
+            f"{best['plain']:.2f}s without it"
+        )

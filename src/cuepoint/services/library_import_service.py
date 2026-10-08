@@ -16,7 +16,8 @@ What writing an export does, in order:
 
 1. Refuse a file that has no ``COLLECTION`` element. It would otherwise import
    as a successful import of nothing, which is worse than an error.
-2. Upsert every track, applying DEC-002 identity and reporting re-links.
+2. Upsert every track, applying DEC-002 identity and reporting re-links, and
+   keep the play counts that moved with the read that saw them (STATS-01).
 3. Delete the library rows the export no longer claimed — **refresh only**
    (DEC-003), and only once DEC-011's reference check has been consulted.
 4. Replace each track's cue points and beat grid, and record that the
@@ -76,6 +77,7 @@ from cuepoint.services.interfaces import (
     ILibraryService,
     ILibrarySourceRepository,
     IPlaylistRepository,
+    IPlayHistoryRepository,
     ITrackMarksRepository,
     ITrackRepository,
 )
@@ -316,6 +318,7 @@ class LibraryImportService(ILibraryImportService):
         activity_service: Optional[IActivityService] = None,
         library_service: Optional[ILibraryService] = None,
         marks_repository: Optional[ITrackMarksRepository] = None,
+        play_history_repository: Optional[IPlayHistoryRepository] = None,
     ) -> None:
         """Initialize the service.
 
@@ -342,6 +345,10 @@ class LibraryImportService(ILibraryImportService):
                 (WAVE-04). Defaults to one over ``database_service``: the marks
                 live in the same database and are written in the same
                 transaction, so there is no import that may leave them out.
+            play_history_repository: Owns the ``library_reads`` row each read
+                leaves (STATS-01, DEC-137). Defaults to one over
+                ``database_service`` for the same reason as the marks: no import
+                or refresh may be built that forgets to keep the history.
         """
         self._tracks = track_repository
         self._playlists = playlist_repository
@@ -356,6 +363,13 @@ class LibraryImportService(ILibraryImportService):
 
             marks_repository = TrackMarksRepository(database_service)
         self._marks = marks_repository
+        if play_history_repository is None:
+            from cuepoint.persistence.play_history_repository import (
+                PlayHistoryRepository,
+            )
+
+            play_history_repository = PlayHistoryRepository(database_service)
+        self._history = play_history_repository
 
     # ----------------------------------------------------------------- import
 
@@ -625,8 +639,18 @@ class LibraryImportService(ILibraryImportService):
         observed: Dict[str, Any] = {"total": declared, "marks": {}}
 
         with self._db.transaction():
+            # The read is recorded first so the counts it stores have a row to
+            # point at, and in this transaction so a failure removes it (STATS-01).
+            # A library with no read yet is on its baseline (DEC-168): the one
+            # read that stores counts that did not change.
+            baseline = not self._history.has_reads()
+            read_id = self._history.start_read(
+                "refresh" if delete_unclaimed else "import", utc_now_iso()
+            )
             tracks = self._tracks.upsert_many_from_rekordbox(
-                self._observed_tracks(xml_path, observed, on_progress, should_cancel)
+                self._observed_tracks(xml_path, observed, on_progress, should_cancel),
+                read_id=read_id,
+                baseline=baseline,
             )
 
             deleted = 0
@@ -636,6 +660,13 @@ class LibraryImportService(ILibraryImportService):
                     tracks.unclaimed_track_ids, confirm_references
                 )
                 deleted = self._tracks.delete_many(tracks.unclaimed_track_ids)
+
+            # After the deletes, so `tracks` is the library the read left.
+            self._history.finish_read(
+                read_id,
+                tracks=self._tracks.count(),
+                changed=tracks.play_counts_stored,
+            )
 
             marks = self._write_marks(observed["marks"])
 

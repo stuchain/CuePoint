@@ -138,14 +138,14 @@ class TestTheMigration:
 
     def test_it_adds_exactly_two_tables(self, v25):
         before = set(user_tables(v25))
-        runner(v25).migrate()
+        runner(v25, 26).migrate()
         assert set(user_tables(v25)) - before == set(NEW_TABLES)
         assert before <= set(user_tables(v25))
 
     def test_every_row_and_every_table_it_had_is_unchanged(self, v25):
         tables_before = schema(v25)
         rows_before = everything(v25)
-        runner(v25).migrate()
+        runner(v25, 26).migrate()
         rows_after = everything(v25)
         for table in NEW_TABLES:
             assert rows_after.pop(table) == []

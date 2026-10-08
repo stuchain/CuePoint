@@ -96,6 +96,10 @@ _INSERT_SQL = (
     f"VALUES ({', '.join('?' for _ in _COLUMNS)})"
 )
 
+_PLAY_COUNT_SQL = (
+    "INSERT INTO play_counts (track_id, read_id, play_count) VALUES (?, ?, ?)"
+)
+
 _UPDATE_SQL = (
     "UPDATE tracks SET "
     + ", ".join(f"{column} = ?" for column in _COLUMNS)
@@ -203,12 +207,15 @@ class BulkUpsertResult:
             import only ever adds and updates. A refresh deletes them (DEC-003),
             and taking them from the same pass that did the matching is what
             keeps the two from ever disagreeing about which rows those are.
+        play_counts_stored: ``play_counts`` rows written for the read this
+            upsert was given (STATS-01); zero when it was given none.
     """
 
     inserted: int = 0
     updated: int = 0
     relinked: Tuple[RelinkedTrack, ...] = ()
     unclaimed_track_ids: Tuple[int, ...] = ()
+    play_counts_stored: int = 0
 
     @property
     def total(self) -> int:
@@ -241,17 +248,19 @@ class TrackRepository(ITrackRepository):
         return tuple(data[column] for column in _COLUMNS)
 
     @staticmethod
-    def _credits_of_inserted(
+    def _read_back_inserted(
         conn: Any, tracks: List[LibraryTrack]
-    ) -> List[CreditSource]:
-        """The credit sources of tracks just inserted, with their new ids.
+    ) -> List[Tuple[int, LibraryTrack]]:
+        """Each track just inserted, with its new id.
 
         ``executemany`` reports no id per row, so the ids are read back by
-        ``rekordbox_track_id``, which is unique (migration 0002).
+        ``rekordbox_track_id``, which is unique (migration 0002). The one
+        read-back both the credits and the play history (STATS-01) are written
+        from, so a track costs no query of its own.
         """
         by_rekordbox_id = {track.rekordbox_track_id: track for track in tracks}
         wanted = list(by_rekordbox_id)
-        sources: List[CreditSource] = []
+        found: List[Tuple[int, LibraryTrack]] = []
         for start in range(0, len(wanted), CHUNK_SIZE):
             chunk = wanted[start : start + CHUNK_SIZE]
             placeholders = ", ".join("?" for _ in chunk)
@@ -260,9 +269,20 @@ class TrackRepository(ITrackRepository):
                 f" WHERE rekordbox_track_id IN ({placeholders})",
                 tuple(chunk),
             ):
-                track = by_rekordbox_id[row["rekordbox_track_id"]]
-                sources.append((int(row["id"]), track.artist, track.remixer))
-        return sources
+                found.append(
+                    (int(row["id"]), by_rekordbox_id[row["rekordbox_track_id"]])
+                )
+        return found
+
+    @staticmethod
+    def _credits_of_inserted(
+        conn: Any, tracks: List[LibraryTrack]
+    ) -> List[CreditSource]:
+        """The credit sources of tracks just inserted, with their new ids."""
+        return [
+            (track_id, track.artist, track.remixer)
+            for track_id, track in TrackRepository._read_back_inserted(conn, tracks)
+        ]
 
     # ------------------------------------------------------------------ write
 
@@ -818,7 +838,12 @@ class TrackRepository(ITrackRepository):
     # ----------------------------------------------------------- bulk upsert
 
     def upsert_many_from_rekordbox(
-        self, tracks: Iterable[LibraryTrack], batch_size: int = _UPSERT_BATCH_SIZE
+        self,
+        tracks: Iterable[LibraryTrack],
+        batch_size: int = _UPSERT_BATCH_SIZE,
+        *,
+        read_id: Optional[int] = None,
+        baseline: bool = False,
     ) -> BulkUpsertResult:
         """Insert or update a whole collection, applying DEC-002 identity.
 
@@ -852,9 +877,20 @@ class TrackRepository(ITrackRepository):
             tracks: Incoming tracks, in any order.
             batch_size: Rows per ``executemany``. Everything is still one
                 transaction; this only bounds the size of a single statement.
+            read_id: The ``library_reads`` row this upsert belongs to
+                (STATS-01). ``None`` keeps no play history, exactly as before.
+            baseline: Whether this is the library's first read, the only one
+                that stores a count that did not change (DEC-168).
 
         Returns:
             A :class:`BulkUpsertResult` with the counts and every re-link.
+
+        **Play history (DEC-137).** Given a ``read_id`` it also stores, in the
+        same transaction, the counts that moved: an update stores the incoming
+        count when it is known and differs from the stored one (or always on the
+        baseline), so unknown to known stores, known to unknown stores nothing,
+        and up and down both store; a new track stores its first known count.
+        A re-link updates the row, so the history stays on the same ``id``.
 
         Note:
             Inserted tracks are **not** stamped with their new ``id`` —
@@ -885,16 +921,40 @@ class TrackRepository(ITrackRepository):
         # inserted track's, and an updated track's only when a credit changed.
         inserted_tracks: List[LibraryTrack] = []
         recredited: List[CreditSource] = []
+        # The play history to write beside them (STATS-01): updated tracks
+        # already have their ids; inserted ones get theirs from the read-back
+        # the credits need anyway.
+        stored_counts = 0
+        played_updates: List[tuple] = []
 
         def flush_inserts(conn: Any) -> None:
+            nonlocal stored_counts
             conn.executemany(_INSERT_SQL, insert_rows)
-            write_credits(conn, self._credits_of_inserted(conn, inserted_tracks))
+            stored = self._read_back_inserted(conn, inserted_tracks)
+            write_credits(
+                conn, [(track_id, t.artist, t.remixer) for track_id, t in stored]
+            )
+            if read_id is not None:
+                # A new track's first known count is its own baseline.
+                rows = [
+                    (track_id, read_id, t.play_count)
+                    for track_id, t in stored
+                    if t.play_count is not None
+                ]
+                if rows:
+                    conn.executemany(_PLAY_COUNT_SQL, rows)
+                    stored_counts += len(rows)
             insert_rows.clear()
             inserted_tracks.clear()
 
         def flush_updates(conn: Any) -> None:
+            nonlocal stored_counts
             conn.executemany(_UPDATE_SQL, update_rows)
             write_credits(conn, recredited)
+            if played_updates:
+                conn.executemany(_PLAY_COUNT_SQL, played_updates)
+                stored_counts += len(played_updates)
+                played_updates.clear()
             update_rows.clear()
             recredited.clear()
 
@@ -919,6 +979,12 @@ class TrackRepository(ITrackRepository):
                     track.created_at = existing.created_at
                     track.updated_at = utc_now_iso()
                     update_rows.append((*self._values(track), existing.id))
+                    if (
+                        read_id is not None
+                        and track.play_count is not None
+                        and (baseline or existing.play_count != track.play_count)
+                    ):
+                        played_updates.append((existing.id, read_id, track.play_count))
                     if existing.id is not None and _credit_changed(
                         (existing.artist, existing.remixer),
                         (track.artist, track.remixer),
@@ -951,6 +1017,7 @@ class TrackRepository(ITrackRepository):
             updated=updated,
             relinked=tuple(relinked),
             unclaimed_track_ids=tuple(sorted(unclaimed)),
+            play_counts_stored=stored_counts,
         )
 
     def ids_by_rekordbox_id(self, rekordbox_track_ids: Iterable[str]) -> Dict[str, int]:

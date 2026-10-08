@@ -299,6 +299,20 @@ class TestWhatIsNotCounted:
         metadata.set_override(doomed[1], "genre", None)
         assert library.references_for(doomed).has_references is False
 
+    def test_a_track_with_play_history(self, db, library, doomed):
+        """STATS-01, DEC-137: plays are Rekordbox's, so they are not CuePoint's work."""
+        rows = (
+            db.connect()
+            .execute(
+                "SELECT count(*) FROM play_counts WHERE track_id IN (?, ?)",
+                tuple(doomed),
+            )
+            .fetchone()[0]
+        )
+        assert rows == 2
+
+        assert library.references_for(doomed).has_references is False
+
     def test_a_tag_a_track_no_longer_carries(self, library, work, doomed):
         tag(work, doomed[0])
         peak = work["tags"].create_or_get("Peak time")
@@ -448,6 +462,28 @@ class TestTheRefresh:
         importer.apply_refresh(diff)
 
         assert tracks.get(doomed[0]) is None
+
+
+class TestPlayHistoryIsNotWorkToProtect:
+    def test_refreshing_a_played_track_away_does_not_ask_and_takes_its_history(
+        self, importer, tracks, doomed, exports, db
+    ):
+        diff = importer.compute_refresh_diff(exports["shrunk"])
+        assert diff.references.has_references is False
+
+        importer.apply_refresh(diff)
+
+        assert tracks.get(doomed[0]) is None
+        left = (
+            db.connect()
+            .execute(
+                "SELECT t.rekordbox_track_id FROM play_counts p"
+                " JOIN tracks t ON t.id = p.track_id"
+            )
+            .fetchall()
+        )
+        assert [row[0] for row in left] == ["1"]
+        assert db.connect().execute("PRAGMA foreign_key_check").fetchall() == []
 
 
 class TestTheQuestions:

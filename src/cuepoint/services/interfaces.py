@@ -1201,9 +1201,20 @@ class ITrackRepository(ABC):
 
     @abstractmethod
     def upsert_many_from_rekordbox(
-        self, tracks: Iterable["LibraryTrack"], batch_size: int = 1000
+        self,
+        tracks: Iterable["LibraryTrack"],
+        batch_size: int = 1000,
+        *,
+        read_id: Optional[int] = None,
+        baseline: bool = False,
     ) -> "BulkUpsertResult":
-        """Insert or update a whole collection in one transaction (DEC-002)."""
+        """Insert or update a whole collection in one transaction (DEC-002).
+
+        ``read_id`` names the ``library_reads`` row this read belongs to: given,
+        the play counts that moved are stored under it (STATS-01, DEC-137); left
+        out, no history is kept. ``baseline`` marks the first read of a library
+        (DEC-168), which stores every known count, moved or not.
+        """
         ...
 
     @abstractmethod
@@ -3843,6 +3854,28 @@ class ITrackMarksRepository(ABC):
     @abstractmethod
     def is_read(self) -> bool:
         """True when this version of the reader has read the library's marks."""
+        ...
+
+
+class IPlayHistoryRepository(ABC):
+    """Interface for the record of each read and the play counts it stored (STATS-01).
+
+    Written by an import and a refresh inside their transaction, never edited.
+    """
+
+    @abstractmethod
+    def has_reads(self) -> bool:
+        """True when any import, refresh or seed has been recorded."""
+        ...
+
+    @abstractmethod
+    def start_read(self, kind: str, read_at: str) -> int:
+        """Insert a read with nothing counted yet, joining a transaction."""
+        ...
+
+    @abstractmethod
+    def finish_read(self, read_id: int, *, tracks: int, changed: int) -> None:
+        """Record the library's size and the counts stored, joining a transaction."""
         ...
 
 
