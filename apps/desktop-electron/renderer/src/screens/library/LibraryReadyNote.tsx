@@ -15,7 +15,7 @@
  * run started later never brings it back. The page mounts it only while an
  * import is armed and neither done nor dismissed (`isReadyNoteOpen`, in `libraryNoticeMemory`).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
 import { Button } from "../../components";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
@@ -75,8 +75,10 @@ export function LibraryReadyNote({
 
   // The first answer with no chain job left ends it for this import: either
   // the work finished while the note showed, or there was none to wait for.
+  // Recorded before paint, in the same commit that hides the note, so nothing
+  // reading the notice line's memory sees the import as still open.
   const chainEnded = loaded && job === null;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!chainEnded) return;
     rememberChainDone(armedAt);
     setDoneFor(armedAt);

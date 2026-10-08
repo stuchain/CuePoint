@@ -107,7 +107,7 @@ describe("the ready note", () => {
 
     running();
     await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
-    expect(isReadyNoteOpen(AFTER_IMPORT)).toBe(false);
+    await waitFor(() => expect(isReadyNoteOpen(AFTER_IMPORT)).toBe(false));
 
     // A file check (or waveform run) starting again later is not the import's work.
     running(job({ type: "file_check", progress: {} }));
