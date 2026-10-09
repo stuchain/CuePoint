@@ -33,6 +33,14 @@
   scrollbar-color: var(--border-muted) var(--bg-toolbar);
   scrollbar-width: thin;
   scrollbar-gutter: stable;
+  /*
+   * Scrolled by the compositor. On a 1x display Chromium otherwise keeps this box on the main
+   * thread (to keep subpixel text), and with the sticky header composited inside it, every row
+   * on screen became a layer of its own, two per row, made and dropped as each page of rows came
+   * in. Scrolling 5,000 rows at 1.5x, sorting out those layers was the largest part of every
+   * frame: 8.6 s of the main thread over the scroll, and 2.2 s with this.
+   */
+  will-change: scroll-position;
 }
 
 .track-table__scroll::-webkit-scrollbar {

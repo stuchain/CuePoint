@@ -9,7 +9,8 @@
  * `motionRules.test.ts` holds all of this, and `motionKinds.test.tsx` plays each kind.
  *
  * Nothing here animates a track table's rows while it scrolls. The Scrolling kind is not used on
- * the tables at all, and what the tables do on hover or loading waits while `[data-scrolling]`.
+ * the tables at all, and what the tables do on hover or loading waits while `[data-scrolling]`:
+ * a row's hover bar is not even drawn then, so the rows a scroll mounts carry nothing extra.
  *
  * Kinds built in a component's own stylesheet: Button presses (Button.css), the toast
  * (Toast.css), the wheel popover and its lit keys (components/wheel/), the pixel spinner
@@ -105,8 +106,10 @@
 }
 
 /* A row shows a bar on its edge that steps in. Rows have their own transform for their place,
-   so the bar moves, not the row. It waits while the table scrolls. */
-:root[data-motion-hover] .track-table__row::before {
+   so the bar moves, not the row. Only the row under the pointer has the bar at all, and only while
+   the table holds still: a bar on every row made each row a scroll mounts cost a box of its own
+   to style, lay out and paint, and on a slower machine a page of new rows ran past 50 ms. */
+:root[data-motion-hover] .track-table__scroll:not([data-scrolling]) .track-table__row:hover::before {
   content: "";
   position: absolute;
   top: 0;
@@ -114,17 +117,8 @@
   left: 0;
   width: var(--motion-step-px);
   background: var(--accent-primary);
-  transform: translateX(-100%);
-  transition: transform var(--motion-instant) steps(1);
   pointer-events: none;
-}
-
-:root[data-motion-hover] .track-table__row:hover::before {
-  transform: none;
-}
-
-:root[data-motion-hover] .track-table__scroll[data-scrolling] .track-table__row::before {
-  transition: none;
+  animation: cp-edge-in var(--motion-instant) steps(1);
 }
 
 /* The focus ring is drawn at once; the control steps down into it. */
@@ -437,6 +431,16 @@
 @keyframes cp-from-edge {
   from {
     transform: translateX(calc(var(--motion-step-px) * 2));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* In from the left edge, for a bar that hangs on it. */
+@keyframes cp-edge-in {
+  from {
+    transform: translateX(-100%);
   }
   to {
     transform: translateX(0);

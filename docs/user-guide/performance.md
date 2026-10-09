@@ -315,7 +315,8 @@ time and dropped when they are far enough behind.
 All ten kinds of motion are on in these measurements (Settings > Motion, **Turn all
 on**), and the system's Reduce motion setting is off. Motion moves only `transform`
 and `opacity`, steps in whole pixels, and never runs on a track table's rows while
-it scrolls (placeholder rows and row hovers hold still until the scroll stops), so
+it scrolls (placeholder rows hold still until the scroll stops, and a row's hover bar
+is drawn only on the row under the pointer and not while the table scrolls), so
 it should not show in scrolling. These are the checks that say so, from
 `apps/desktop-electron/` on a Linux build under a virtual display; each watches for
 a task longer than 50 ms, with a task made long on purpose afterward to prove the
@@ -325,6 +326,17 @@ watcher sees one.
 | --- | --- | --- | --- |
 | `e2e/waveformPlaces.spec.ts`, scroll the whole table with the Waveform column shown | 5,000 | no long task (385 pages scrolled, 35 waveforms on screen at once) | no long task (1,288 pages, 25 waveforms) |
 | `CUEPOINT_E2E_MEMORY=1 e2e/libraryBrowse.spec.ts -g memory`, two laps over the library | 50,000 | no long task | no long task |
+
+These pass on a Linux runner with time to spare, and the Mac runners are slower, so
+the same scroll was also measured on Linux with the processor slowed three times
+(Chrome's CPU throttling), three runs before and three after three changes: the table now
+scrolls on the compositor (on a display that is not high-resolution it had scrolled on
+the main thread, with every row on screen a layer of its own), the hover bar is drawn
+only on the row under the pointer, and waveform canvases are painted a few
+milliseconds at a time instead of a page of them at once. At 1.5x, frames that ran past
+50 ms went from 14 to 23 a scroll to 2 to 8 and the middle frame from 33 ms to 27 ms;
+scrolling on the compositor alone took the main thread's work over an unthrottled
+scroll from 31 s to 24 s.
 
 Memory in that second run did what it did without motion: the renderer's working set
 grew by about 85 MB over the first lap on this machine (160 MB before, 245 MB after)

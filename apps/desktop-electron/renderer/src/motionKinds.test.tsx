@@ -225,8 +225,27 @@ perKind(
   "hover",
   "a row in the table",
   () => ({ ui: table(), target: first(".track-table__row"), pseudo: "::before" }),
-  (m) => expect(m.transition).toMatch(/transform [^,]*steps\(1\)/),
+  (m) => expect(m.animation).toMatch(/cp-edge-in [^,]*steps\(1\)/),
 );
+
+describe("hover: the table holds still while it scrolls", () => {
+  it("draws no row's bar during a scroll, and draws it again after", () => {
+    vi.useFakeTimers();
+    configure("hover", "on");
+    const { container } = mount(table());
+    const scroller = container.querySelector(".track-table__scroll")!;
+    const row = container.querySelector(".track-table__row")!;
+    expect(motionOf(row, "::before", "hover").animation).not.toBeNull();
+    fireEvent.scroll(scroller);
+    expect(scroller).toHaveAttribute("data-scrolling");
+    expect(motionOf(row, "::before", "hover")).toEqual({ animation: null, transition: null });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(scroller).not.toHaveAttribute("data-scrolling");
+    expect(motionOf(row, "::before", "hover").animation).not.toBeNull();
+  });
+});
 
 perKind(
   "hover",

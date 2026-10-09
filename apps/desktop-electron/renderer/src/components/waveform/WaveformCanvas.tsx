@@ -14,7 +14,9 @@
  * `aria-hidden`: whatever holds it carries the meaning in words.
  *
  * Its box, the pixel ratio and the theme are watched once for every canvas on
- * screen (`waveformEnvironment.ts`), since the Library's column may show forty.
+ * screen (`waveformEnvironment.ts`), since the Library's column may show forty,
+ * and the paints share one queue (`waveformPaintQueue.ts`), so forty canvases
+ * getting their pictures at once are painted over a few tasks, not in one.
  */
 import { useLayoutEffect, useMemo } from "react";
 
@@ -24,6 +26,7 @@ import { useWaveformColour } from "./waveformColour";
 import { themeTokens, useBoxSize, useDevicePixelRatio, useThemeRevision } from "./waveformEnvironment";
 import { layoutWaveform, type WaveformColourMode } from "./waveformLayout";
 import { paintLayout } from "./waveformPaint";
+import { waveformPaints } from "./waveformPaintQueue";
 import "./WaveformCanvas.css";
 
 interface WaveformCanvasProps {
@@ -82,14 +85,17 @@ export function WaveformCanvas({
 
   useLayoutEffect(() => {
     const element = canvas.current;
-    if (!element) return;
-    if (element.width !== layout.width) element.width = layout.width;
-    if (element.height !== layout.height) element.height = layout.height;
-    // Not measured yet: nothing to paint.
-    if (layout.width === 0 || layout.height === 0) return;
-    const context = element.getContext("2d");
-    if (!context) return;
-    paintLayout(context, layout, themeTokens);
+    if (!element) return undefined;
+    // Sized and painted together: a canvas resized is cleared, so it waits with its paint.
+    return waveformPaints.paint(element, () => {
+      if (element.width !== layout.width) element.width = layout.width;
+      if (element.height !== layout.height) element.height = layout.height;
+      // Not measured yet: nothing to paint.
+      if (layout.width === 0 || layout.height === 0) return;
+      const context = element.getContext("2d");
+      if (!context) return;
+      paintLayout(context, layout, themeTokens);
+    });
   }, [canvas, layout, theme]);
 
   return (
