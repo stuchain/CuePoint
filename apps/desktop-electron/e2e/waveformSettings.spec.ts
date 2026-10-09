@@ -19,6 +19,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { resolvePlayerBinary } from "../electron/playerLaunch";
+import { untilAnalysed } from "./analysisProgress";
 import { waitForEngine } from "./engineReady";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -278,7 +279,9 @@ test.describe("A waveform painted (WAVE-05)", () => {
   });
 
   test("Pause and Resume in Settings hold across a relaunch", async () => {
-    test.setTimeout(240_000);
+    // The run is limited on a stall (analysisProgress.ts), not on a deadline: an
+    // arm64 Mac moved steadily to 248 of 250 in the three minutes this once had.
+    test.setTimeout(600_000);
     const copies = 250;
     const { xml } = writeExport(workspace, copies);
     const state = (window: Page) => window.getByTestId("waveform-analysis-state");
@@ -306,7 +309,11 @@ test.describe("A waveform painted (WAVE-05)", () => {
       await expect(state(window)).toHaveText(paused, { timeout: 30_000 });
 
       await window.getByRole("button", { name: "Resume", exact: true }).click();
-      await expect(state(window)).toHaveText(`All ${copies} analyzed`, { timeout: 180_000 });
+      await untilAnalysed(
+        () => window.evaluate(async () => (await window.cuepoint!.waveforms!.analysis()).value!),
+        (now) => now.state === "idle" && now.remaining === 0,
+      );
+      await expect(state(window)).toHaveText(`All ${copies} analyzed`, { timeout: 15_000 });
       await expect(window.getByRole("button", { name: "Analyze waveforms" })).toBeVisible();
     } finally {
       await app.close();
