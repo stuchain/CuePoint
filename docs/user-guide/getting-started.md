@@ -6,13 +6,13 @@ This guide takes you from installing CuePoint to a first set of matched, reviewe
 
 Download the installer for your system from [GitHub Releases](https://github.com/stuchain/CuePoint/releases). The [Support Policy](support-policy.md) lists the supported systems.
 
-- **macOS**: open the DMG, drag CuePoint to Applications, and open it from there.
+- **macOS**: open the DMG, drag CuePoint to Applications, and open it from there. Use the Apple Silicon download on a Mac with an M-series chip and the Intel download on an Intel Mac. Apple menu > About This Mac shows which you have.
 - **Windows**: run the installer and follow the steps. Start CuePoint from the Start menu.
 - **Linux**: make the AppImage executable with `chmod +x <file>.AppImage`, then run it. The Linux build is experimental and has no bundled player.
 
-If macOS says the app is damaged or cannot be opened, the build is unsigned. Run `xattr -cr /Applications/CuePoint.app` in Terminal and open it again. Windows builds are unsigned too, so SmartScreen may warn you: choose **More info**, then **Run anyway**.
+If macOS says the app is damaged or cannot be opened, the build is unsigned. Run `xattr -cr /Applications/CuePoint.app` in Terminal and open it again. You do this for the first download only. Windows builds are unsigned too, so SmartScreen may warn you: choose **More info**, then **Run anyway**.
 
-CuePoint does not update itself yet. To get a new version, download the new installer and install it over the old one. Your library stays where it is.
+This is the only time you need to do that. After the first install, CuePoint finds and installs new versions itself on Windows and Mac, and your library stays where it is. See [Updates](updates.md). On Linux, you download new versions yourself.
 
 ## First run
 

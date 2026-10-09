@@ -112,7 +112,7 @@ playlist from an XML export and writes CSV files, as it always has. See
 
 ## Supported environments and limits
 
-- **Supported OS**: Windows 10+ (x64), macOS 12+ (Apple Silicon; an Intel build is planned)
+- **Supported OS**: Windows 10+ (x64), macOS 12+ (Apple Silicon and Intel)
 - **Rekordbox export**: XML export format from recent Rekordbox versions
 - **Library size**: measured at 50,000 tracks — see [Performance](performance.md)
 - **Support policy**: see [Support policy](support-policy.md) for update cadence and EOL policy

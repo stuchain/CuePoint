@@ -17,7 +17,25 @@ The Electron build signs and notarizes the macOS app only when the environment h
 
 No workflow in `.github/workflows/` sets any of these today. The secrets the workflows use are the automatic `GITHUB_TOKEN`, which `publish-gh-pages-site.yml` and `docs-check.yml` read, and `SENTRY_AUTH_TOKEN` (below). A signed and notarized macOS build therefore comes from a machine where you set the variables above before running `npm run dist`. If you move signing into a workflow, add the secrets under **Settings > Secrets and variables > Actions** and pass them as environment variables to the `npm run dist` step.
 
-Windows builds are unsigned for now: nothing in the repository configures Windows code signing (DEC-145).
+## No build is signed (DEC-170)
+
+No build is signed with a certificate. Windows builds are unsigned: nothing in the repository configures Windows code signing, so SmartScreen may warn on a first download. The Macs carry only the ad hoc signature that the `afterPack` hook gives the bundle, so Gatekeeper blocks a first download until the user clears the quarantine flag (see the [user guide](../user-guide/getting-started.md#install)). The release workflow reads no signing secret.
+
+The unsigned state shapes the updater (see `docs/features/update-system.md`):
+
+- Windows updates through `electron-updater`, which accepts an unsigned installer when no publisher is configured. Each download is checked against the SHA-512 in the release's manifest.
+- The Macs do not use `electron-updater`, because its Squirrel.Mac installer refuses an unsigned app. CuePoint downloads the chip's zip itself, checks its SHA-512, size, version and chip, and swaps the app after quit. A file the app downloads itself carries no quarantine flag, so Gatekeeper does not stop the new copy.
+
+### If an Apple Developer account is added later
+
+An account would change four things:
+
+1. **Sign** the app with a Developer ID Application certificate: set `CSC_LINK` and `CSC_KEY_PASSWORD` (or `CSC_NAME`) as repository secrets and pass them to the build, so the hooks above sign the outer app and the sidecars with a real identity.
+2. **Notarize** it: set the Apple ID or App Store Connect API key variables so `notarize.cjs` submits and staples the app.
+3. **Check the result** with `verify_macos_bundle.py --expect-hardened-runtime` (see [Checking a macOS build](release-deployment-runbook.md#checking-a-macos-build)), and revisit the release workflow's Mac check, which runs without it today.
+4. **Move the Macs to `electron-updater`**, which works for a signed app, and retire CuePoint's own Mac installer.
+
+Windows signing is a separate certificate and is not covered here.
 
 ## The Sentry auth token
 

@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 16: Distribution, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. DIST-09 built 2026-10-08 (packaged checks owed). DIST-01…DIST-05 built 2026-10-08, ahead of Phases 14 and 15 (DEC-214); their CI and first-tag checks are owed. DIST-06…DIST-08 wait for Phase 14.** Nine steps, DIST-01…DIST-09 (DIST-09, the app's icon, added by DEC-198 on 2026-10-07).
+Status: **Specified 2026-10-07. DIST-09 built 2026-10-08 (packaged checks owed). DIST-01…DIST-05 built 2026-10-08, ahead of Phases 14 and 15 (DEC-214); their CI and first-tag checks are owed. DIST-06 and DIST-07 built 2026-10-09 and DIST-08's docs written the same day (the real update on three systems is owed: it needs two test tags). Nothing is tagged.** Nine steps, DIST-01…DIST-09 (DIST-09, the app's icon, added by DEC-198 on 2026-10-07).
 Writing the steps raised ten questions that Decision Round 14 did not answer. They were asked as
 Decision Round 19 (Q-170…Q-179) and settled the same day as DEC-169…DEC-178: nine as recommended,
 and Q-171 otherwise. There is no Apple Developer account, so the Macs ship unsigned and update
@@ -610,6 +610,18 @@ installs.
 
 **Complexity**: **M**
 
+**Outcome (2026-10-09, commit a0d9499)**: `electron/updater.ts`, `macInstaller.ts`,
+`singleInstance.ts` and `updateNotes.ts`, with the `updates:*` channels in `main.ts`, `preload.cjs`
+and the bridge types. Four things differ from the design. The Windows install does not use
+`autoDownload` or `autoInstallOnAppQuit`; it starts only from the finished quit cleanup, so a quit
+that hits the 5 s limit installs nothing and the update installs at the next one (DEC-224). The Mac
+chip and version are read in Node, not with `lipo` and `plutil` (DEC-225), and a download that stalls
+for 30 s is a network failure. A failed install is noticed at the next launch through `pendingInstall`
+(DEC-226), and the Mac script reopens the old app on every failure path when a relaunch was asked. A
+Mac under Rosetta is offered the arm64 build. A second launch calls `app.exit` and focuses the first.
+Network calls happen only in a packaged app outside end-to-end runs. The real install on each system
+is DIST-08's, and has not been run.
+
 ---
 
 ## DIST-07 — Update Ready, in the App
@@ -666,6 +678,13 @@ the motion kinds and switches.
 
 **Complexity**: **M**
 
+**Outcome (2026-10-09, commit 4a2e480)**: The status strip's update item and panel, the restart flow
+(one store for the strip and Settings), What's new, and Settings' **About & updates** section. Beyond
+the design: the main window refuses new windows and navigation away from the app's own page, and links
+in release notes open only through an allow-list (DEC-227); **Restart when done** waits only for the
+work running when it was chosen (DEC-228); What's new is not offered after a downgrade; Settings says
+"Not checked yet" in an installed app before the first check, and **Check for updates** works then.
+
 ---
 
 ## DIST-08 — The Docs, and a Real Update on Every System
@@ -721,6 +740,17 @@ privacy notice.
 **Risks**: Low in the docs. The real update is where anything earlier steps missed is found.
 
 **Complexity**: **S**
+
+**Outcome (2026-10-09, docs only)**: The docs are done and were checked against the code of DIST-06
+and DIST-07: the runbook, `rollback.md`, `key-management.md`, the user guide (getting started, the new
+Updates page, features, support policy), `docs/features/update-system.md`, the privacy notice, the
+changelog and the doc indexes. One thing differs from the design: the privacy notice does not say
+"the app's version in the user agent" for every request. The release list is asked for as `CuePoint/<version>`, the Mac
+downloads use Electron's default user agent, and `electron-updater` sends `electron-builder` on Windows. The notice
+says so. **Still owed:** the real update on Windows, an Apple Silicon Mac and an Intel Mac, from
+`v1.0.0-test.1` to `v1.0.0-test.2`. It needs two test tags, and tagging is Stelios's call. Nothing has
+been tagged, so no update has run on a real install, and the claims that fact 5 and fact 6 call inferred (no
+Gatekeeper prompt on a replaced app, no Windows prompt) are still unconfirmed.
 
 ---
 

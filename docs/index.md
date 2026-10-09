@@ -16,6 +16,7 @@ Quick links:
 - [Waveforms](user-guide/waveforms.md) (in the player bar, the Inspector, a Library column and Prepare's transition strip; the analysis, pausing it, and where the data lives)
 - [Architecture decision records](ui-overhaul/README.md) (the ADRs and the pixel-art assets)
 - [Playing music](user-guide/player.md) (the player bar, queue and audio output)
+- [Updates](user-guide/updates.md) (how CuePoint updates itself, and test versions)
 - [Developer docs](development/architecture.md) (architecture, setup, testing)
 - [Contributing](https://github.com/stuchain/CuePoint/blob/main/.github/CONTRIBUTING.md)
 - [Support](https://github.com/stuchain/CuePoint/issues)

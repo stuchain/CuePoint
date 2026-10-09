@@ -1,6 +1,6 @@
 # Release Rollback Plan
 
-When a release is broken (a critical bug, a security issue, or installers that fail), withdraw it and, if needed, ship a fixed one. The app has no auto-updater yet (DEC-145), so a bad release spreads only through the download page. Withdrawing the GitHub release stops new installs; people who already installed it have to install the fix by hand.
+When a release is broken (a critical bug, a security issue, or installers that fail), withdraw it and, if needed, ship a fixed one. Windows and macOS builds update themselves, so a bad release reaches installed copies too. Turning the release back into a draft stops that at once. Copies that already installed it keep it until a fixed, higher version is out.
 
 ## When to roll back
 
@@ -23,9 +23,17 @@ For a live incident, start with the [Incident Response Runbook](incident-respons
 ### 2. Withdraw the GitHub release
 
 - Open the release for the broken tag.
-- Either **unpublish** it (convert it to a draft) so it is no longer shown as a normal release, or mark it as a pre-release so it is not the latest.
+- **Turn it back into a draft** (edit the release and choose **Save draft**). The updater reads only published releases, so it stops offering the build at once, on the next check of every installed copy. Marking it as a pre-release is not enough: a test build is still offered pre-releases.
 - Add a line at the top of the description: "WITHDRAWN: [brief reason]. Do not use this build."
 - Check that the previous good release is marked as the latest.
+
+An update never goes to a lower version (DEC-145), so there is no way to send installed copies back to the previous release. The only way forward is a higher version.
+
+### What an installed copy keeps
+
+- A copy that already installed the bad release keeps running it until the fix is published. The fix reaches it as an ordinary update.
+- A copy that has already downloaded the update installs it at the next quit of that run; withdrawing the release does not undo a download that was made. A copy restarted since then has to download it again, and the withdrawn release is no longer offered.
+- If the bad release migrated the library database, an older build refuses to open it and says so by name (`DB_SCHEMA_TOO_NEW`). Do not tell people to install the older build. Tell them to wait for the fix, or, to go back, restore the backup CuePoint takes at launch before it migrates (DEC-009) (kept beside the library), and then install the older build by hand.
 
 ### 3. Notify users
 
@@ -34,7 +42,7 @@ For a live incident, start with the [Incident Response Runbook](incident-respons
 
 ### 4. Ship a fix
 
-A version number must go up, so do not reuse the withdrawn tag. Ship the fix as a new patch release (for example `1.2.4`), made either from a minimal fix or from a revert of the bad change, on top of the last good code. Follow the checklist below.
+A version number must go up, so do not reuse the withdrawn tag; the updater would not offer a fix that is not higher. Ship the fix as a new patch release (for example `1.2.4`), made either from a minimal fix or from a revert of the bad change, on top of the last good code. Follow the checklist below.
 
 ### 5. After the rollback
 
@@ -58,8 +66,8 @@ A version number must go up, so do not reuse the withdrawn tag. Ship the fix as 
 Run this now and then to check the steps still work.
 
 1. Publish a test build (`X.Y.Z-test.N`) as a GitHub pre-release.
-2. Withdraw it as in step 2 and check the release page no longer presents it as current.
-3. Publish a "fix" test build and check the release page lists it.
+2. Withdraw it as in step 2 and check the release page no longer presents it as current, and that an installed older test build no longer offers it.
+3. Publish a "fix" test build and check the release page lists it and that the installed build offers it.
 4. Remove both test releases when you are done.
 
 ## Prevention

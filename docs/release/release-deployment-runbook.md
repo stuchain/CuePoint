@@ -5,7 +5,7 @@ The one runbook for releasing CuePoint's Electron desktop app: how versions are 
 ## Where things stand
 
 - **A release is a tag (DIST-04).** Pushing `vX.Y.Z` or `vX.Y.Z-test.N` runs `.github/workflows/release.yml`, which builds every download with `desktop-electron.yml` (DEC-147) and publishes one GitHub release (see [Publish](#publish)). Nothing is uploaded by hand.
-- **There is no auto-updater and there are no update feeds.** The app does not check for updates. The updater is chosen in Phase 16 (DEC-145), and until then users install new versions by hand from the GitHub release. Nothing in this runbook publishes an appcast or feed.
+- **The app updates itself (DIST-06, DIST-07).** Windows and macOS builds check GitHub's release list at launch and every 4 hours, choose a release by DEC-145's rule, and install it on **Restart now** or at quit. Linux shows a download link. The release you publish is the update: there is no appcast, no feed to upload and no step beyond [pushing the tag](#publish). See [Updates](#updates) and `docs/features/update-system.md`.
 - **Windows builds are unsigned.** The macOS build is unsigned too: it carries only an ad hoc signature (DEC-170). A Developer ID signature and notarization would be added later, and the hooks do it only when credentials are present (see [Signing and notarizing](#signing-and-notarizing)).
 
 ## Release types
@@ -21,6 +21,24 @@ CuePoint follows [Semantic Versioning](https://semver.org). The cadence below is
 | Test build | `X.Y.Z-test.N` | A GitHub pre-release for testers. The website offers only normal releases. | As needed (DEC-145) |
 
 For breaking changes, see the [Breaking Change Policy](../policy/breaking-change-policy.md) and the [Deprecation Policy](../policy/deprecation-policy.md).
+
+## Updates
+
+An installed build reads GitHub's list of published releases and chooses one by the rule in DEC-145. The rule compares versions by SemVer precedence:
+
+- A test build (`X.Y.Z-test.N`) is offered the highest version above its own, test or normal.
+- A normal build is offered the highest normal version above its own, never a test version.
+- No build is ever offered a lower version.
+
+What that means when you release:
+
+- **Pushing the tag is the whole release.** `release.yml` builds, uploads the files and manifests (`latest.yml`, `latest-mac.yml`, `latest-linux.yml`) and publishes. The updater reads the published release; a draft is invisible to it.
+- **Installing a test build by hand.** A test version is never offered to a normal build, and no setting turns tests on. A tester downloads the installer from the pre-release's page and installs it as in the [user guide](../user-guide/getting-started.md#install) (on a Mac, clear the quarantine flag as that page says). From then on the build updates itself to newer test or normal releases. A tester who takes a normal release becomes a normal user and must install a test build by hand again.
+- **The first build with the updater is installed by hand by everyone.** Nothing released before it can update itself, so every existing user, tester included, downloads it and installs it over the old copy once.
+- **Windows and Mac install the same way.** The install starts only at the end of the quit cleanup, through `quitAndInstall` on Windows and a detached script on a Mac (DEC-224). A quit that hits the 5 second limit installs nothing; the update installs at the next quit.
+- **Linux is told, not updated.** The AppImage is replaced by hand (DEC-174).
+- **Test versions without a release.** For a packaged test version only, `CUEPOINT_UPDATE_FEED` points the updater at a folder served over HTTPS (or HTTP on localhost) that holds `releases.json` and the files, for example from `python -m http.server`. A normal version ignores it.
+- **Withdrawing a release.** Turn it back into a draft; see the [Rollback Runbook](rollback.md).
 
 ## Prepare the release
 
@@ -140,6 +158,7 @@ Take the installers from the CI artifacts and test on a clean user account or ma
 - **Errors.** Cancel a run partway and check nothing is corrupted. Try an invalid XML file and check that an error message appears. Try matching with the network off and check that the error is clear.
 - **Help menu.** **About CuePoint...** shows the right version. **Export support bundle...** writes a bundle.
 - **Uninstall and reinstall** on Windows, and check behaviour is the same.
+- **Update from the previous release.** Install the previous release by hand (clear the quarantine flag on a Mac), publish the new one, and launch the old copy. Within about a minute (the first check runs 10 seconds after the window shows) the status strip says the new version is ready. **Restart now** installs it and CuePoint opens as the new version, with the library and settings unchanged and no old CuePoint, engine or mpv process left. Then repeat with **Later** and quit: the update installs at quit, once the player and engine have stopped (if that takes over 5 seconds, it installs at the next quit instead). Do this on Windows, an Apple Silicon Mac and an Intel Mac. On a Mac, check that no Gatekeeper prompt appears, and that an app in a folder you cannot write shows **Download** instead. On Windows, note whether SmartScreen asks. If an install does not take, the next launch says so (and on a Mac the log is `install.log` in the updates folder under the user data folder). This run is made for each release and recorded with it; it is not part of the automated checks.
 
 Record the commit, the platforms tested and anything odd in the release notes' known issues.
 
@@ -237,7 +256,7 @@ We have released CuePoint [version].
 - [Fix 1]
 
 ## Download
-Get it from the GitHub release: [release URL]. Install it over your current version; the app does not update itself yet.
+Get it from the GitHub release: [release URL]. Windows and macOS builds offer it inside the app; on Linux, or on an earlier version, install it over your current version.
 
 ## Breaking changes
 [Only if applicable, with the migration steps.]
@@ -251,6 +270,7 @@ Tips: use plain language, do not oversell, say how to install, and thank people.
 ## After release
 
 - Check that each installer downloads, and install one on a clean machine.
+- Check that an installed copy of the previous version offers the new one (see the update run under [Manual, on the built installers](#manual-on-the-built-installers)).
 - Watch new issues and Discussions for 24-48 hours. Triage by the [Support SLA](../policy/support-sla.md).
 - If the release is broken, follow the [Rollback Runbook](rollback.md). For a live incident, see the [Incident Response Runbook](incident-response-runbook.md).
 - Write down what went wrong or slowly, and plan the next release.

@@ -30,4 +30,5 @@ architecture in [Architecture](../development/architecture.md).
 | UI | [The CuePoint window](../user-guide/the-window.md#keyboard-shortcuts) | Keyboard shortcuts, themes, focus (user guide) |
 | CLI | [cli-and-arguments.md](cli-and-arguments.md) | CLI processor, all arguments, migrate |
 | Reliability | [reliability-and-performance.md](reliability-and-performance.md) | Retry, circuit breaker, guardrails |
+| Updates | [update-system.md](update-system.md) | How the desktop app finds, downloads and installs a new version |
 | Support | [Diagnostics and support](../user-guide/troubleshooting.md#diagnostics-and-support) | Support bundle, Log Viewer, Diagnostics (user guide) |

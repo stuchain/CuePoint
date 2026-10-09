@@ -1,6 +1,6 @@
 # Privacy Notice — CuePoint v1.0
 
-**Last updated**: 2026-10-07
+**Last updated**: 2026-10-09
 
 **Applies to**: CuePoint v1.0
 
@@ -8,7 +8,7 @@
 - CuePoint v1.0 has **no analytics and no usage tracking**.
 - Released builds **send an error report** to Sentry (EU region) when CuePoint hits an unexpected error, **unless you turn it off** in **Settings → Privacy → Send error reports**. It takes effect at once. Reports are cleaned on your computer before they are sent, so that they do not include your file, folder, track, artist, label or playlist names, the notes and tags you keep in CuePoint, or tokens.
 - CuePoint processes your Rekordbox collection **locally on your device**.
-- CuePoint makes network requests **only when you initiate actions** that require it (e.g., Beatport lookups).
+- CuePoint makes network requests **when you initiate actions** that require it (e.g., Beatport lookups), and it also **checks GitHub for updates** at launch and every 4 hours. That check sends nothing but what any download sends.
 - CuePoint stores some data **locally** (settings, cache, logs). You can clear it from **Help → Privacy**.
 
 ## Who we are
@@ -39,7 +39,7 @@ CuePoint's CLI has its own usage telemetry, which is separate, opt-in and off un
 ### User-initiated network requests
 CuePoint may make network requests when you use features that require them:
 - **Beatport and DuckDuckGo**: when you run a match, CuePoint searches Beatport, directly and through DuckDuckGo, with text built from the tracks' title and artist. Features that use your Beatport account send your Beatport token to api.beatport.com.
-- **Updates**: CuePoint does not check for updates. You download new versions by hand from GitHub releases, and GitHub sees that request like any download. When automatic updates arrive, this notice will describe them first.
+- **Updates**: the Windows and Mac apps ask GitHub whether a newer version exists, about 10 seconds after they start and then every 4 hours while they are open. If there is one, they download it from GitHub. Linux builds check too, and show a link. This happens only in the installed app, not when it is run from source. A check sends only what any request to GitHub sends: your network address and a user agent, the line that names the software asking. The list of versions is asked for with the user agent `CuePoint/` and the version you have. On Mac the downloads use the app's built-in browser engine, whose user agent also names CuePoint's version, the engine's versions and your operating system. On Windows the downloads use the update library, whose user agent is `electron-builder`. It sends no id, no account and nothing from your library. If you are offline or GitHub cannot be reached, the check fails quietly and is not sent as an error report. You can also check by hand in **Settings → About & updates**. See the [Updates](docs/user-guide/updates.md) page.
 
 These requests go directly from your device to the third-party service.
 
@@ -82,7 +82,7 @@ titles, artists, file paths, tags, ratings or notes.
 - Turn error reports off in **Settings → Privacy → Send error reports**.
 
 ## Third-party services
-CuePoint may interact with third-party services you choose to use (e.g., Beatport, DuckDuckGo, and GitHub when you download a new version), and sends error reports to Sentry unless you turn them off. Their privacy practices are governed by their own policies.
+CuePoint may interact with third-party services you choose to use (e.g., Beatport, DuckDuckGo, and GitHub when CuePoint checks for or downloads a new version), and sends error reports to Sentry unless you turn them off. Their privacy practices are governed by their own policies.
 
 ## Changes to this notice
 If data practices change in a future version, this notice will be updated and the “Last updated” date will change.

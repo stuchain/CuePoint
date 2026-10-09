@@ -6331,3 +6331,90 @@ open transaction) and `test_engine_client_closes_first.py`.
 
 **Decided with**: Claude (CI fix thread, under the rule not to loosen the 1.0 s bound or skip the
 test) · **Date**: 2026-10-09
+
+---
+
+## DEC-224 — The Windows Install Runs Only From the Finished Quit Cleanup
+
+**Status**: Approved · **Related**: DEC-169, Phase 16 fact 8, DIST-06
+
+**Decision**: `electron-updater` runs with `autoDownload` and `autoInstallOnAppQuit` both off. The
+install starts only as the last step of `quitAfter`'s cleanup, once the player and the engine have
+stopped, through `quitAndInstall(true, relaunch)` on Windows and the detached script on a Mac. If the
+5 s limit lets the quit through first, nothing installs on that quit and the ready update installs at
+the next one.
+
+**Reason**: The phase text set `autoDownload` and `autoInstallOnAppQuit` true. But
+`electron-updater`'s own quit handler, and `quitAndInstall` itself, start the installer before the
+app has finished quitting, while the engine and mpv still hold their files (fact 8). And a version
+must be refused before anything downloads: with `autoDownload` on, `electron-updater` would fetch
+whatever its manifest names. With it off, CuePoint checks that the manifest and the "update
+available" event both name the version its rule chose, and only then calls `downloadUpdate()`.
+
+**Implications**: The Mac and Windows installs share one path. An update is installed at a quit that
+takes under 5 s, and not at a slower one.
+
+**Decided with**: Claude (DIST-06) · **Date**: 2026-10-09
+
+---
+
+## DEC-225 — The Mac Update's Chip and Version Are Read in Node
+
+**Status**: Approved · **Related**: DEC-170, DIST-06
+
+**Decision**: After `ditto` unpacks the Mac zip, CuePoint reads the app's chip from the executable's
+Mach-O header and its version from the XML `Info.plist`, both in Node. `ditto` is the only external
+program the Mac installer runs.
+
+**Reason**: On most Macs `lipo` is a stub that asks to install Xcode's tools, and may show that
+dialog. `plutil -extract ... raw` needs macOS 12, and the app supports older ones. A header and a
+plist are small and easy to read and test without a Mac. A binary plist is refused: the build writes
+XML.
+
+**Decided with**: Claude (DIST-06) · **Date**: 2026-10-09
+
+---
+
+## DEC-226 — A Failed Install Is Reported at the Next Launch
+
+**Status**: Approved · **Related**: DEC-153, DIST-06
+
+**Decision**: Before the install is handed off, main saves `pendingInstall` (the version) in its
+settings. At the next launch it clears the note, and if the running version is still lower, the
+updater reports `install-failed` once, with the last lines of the Mac script's `install.log`, scrubbed
+of the user name and home folder.
+
+**Reason**: The installer runs after the app has exited, so nothing in the app can see it fail. A
+version that is still old at the next launch is the one sign that is the same on both systems.
+
+**Decided with**: Claude (DIST-06) · **Date**: 2026-10-09
+
+---
+
+## DEC-227 — The Main Window Stays on the App's Own Page, and Release-Note Links Use an Allow-List
+
+**Status**: Approved · **Related**: DIST-07
+
+**Decision**: The main window denies new windows and cancels any navigation or redirect away from the
+app's own page. A link in a release's notes opens in the browser only if it is `https`, has no port or
+credentials, and is on `github.com`, a subdomain of it, `usecuepoint.com` or `www.usecuepoint.com`.
+
+**Reason**: The window carries the preload bridge, and a release's notes are untrusted text from the
+network. A link, a drop or a script must not be able to put another page in that window.
+
+**Decided with**: Claude (DIST-07 review) · **Date**: 2026-10-09
+
+---
+
+## DEC-228 — Restart When Done Waits Only for the Work Running When It Was Chosen
+
+**Status**: Approved · **Related**: DEC-173, DIST-07
+
+**Decision**: **Restart when done** remembers the jobs that were running when it was chosen and
+restarts when those have ended. Work that starts later is not waited for. If the page cannot tell what
+is running, it offers only **Restart now** and **Cancel**.
+
+**Reason**: Some work starts the work that follows it (an import starts a file check). Waiting for
+all of it could mean never restarting. The person chose about what they could see.
+
+**Decided with**: Claude (DIST-07) · **Date**: 2026-10-09

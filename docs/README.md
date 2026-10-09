@@ -39,6 +39,7 @@ For end users: installation, usage, troubleshooting.
 | [Playing music](user-guide/player.md) | The player bar, queue and audio output |
 | [Prepare](user-guide/prepare.md) | Sets: running orders in chapters, planned times, transition checks, suggestions, playing, set lists |
 | [Waveforms](user-guide/waveforms.md) | Waveforms in the player bar, the Inspector, a Library column and Prepare's transition strip; the analysis and where its data lives |
+| [Updates](user-guide/updates.md) | How CuePoint finds and installs new versions, Check for updates, What's new, test versions |
 | [Exporting to Rekordbox](user-guide/rekordbox-export.md) | Carrying your values and Collections back to Rekordbox, with cue points and beat grids kept |
 | [Workflows](user-guide/workflows.md) | Common workflows |
 | [Troubleshooting](user-guide/troubleshooting.md) | Common errors and fixes |

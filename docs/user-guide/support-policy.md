@@ -15,7 +15,7 @@ For detailed triage and escalation procedures, see [Support SLA](../policy/suppo
 ## Supported Platforms
 
 - **Windows**: Windows 10+ (x64)
-- **macOS**: macOS 12+ (Apple Silicon; an Intel build is planned)
+- **macOS**: macOS 12+ (Apple Silicon and Intel)
 - **Linux**: Experimental. CI builds an AppImage and the community tests it. It ships without the bundled player (no mpv binary is pinned for Linux). Report issues, but they are not guaranteed a fix.
 
 A platform is **supported** when CI tests it and it is recommended for everyday use. It is **experimental** when it may work but is not guaranteed. Anything else is unsupported: not tested, use at your own risk.
