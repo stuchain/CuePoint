@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { usePresence } from "../tokens/usePresence";
 import { Button } from "./Button";
 import "./Modal.css";
@@ -68,7 +68,10 @@ export function Modal({
   // Where focus was before the dialog opened, so it can be put back.
   const restoreTo = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
+  // Layout effects, not passive ones: the dialog is on screen from this commit, and
+  // a passive effect runs after the paint, so an Escape pressed as it appeared (or
+  // focus asked for at once) found nothing listening and was lost.
+  useLayoutEffect(() => {
     if (!open) return;
     restoreTo.current = document.activeElement as HTMLElement | null;
 
@@ -85,7 +88,7 @@ export function Modal({
     };
   }, [open]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
