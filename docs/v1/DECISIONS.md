@@ -6277,6 +6277,28 @@ test_regression_engine_beside_busy_thread.py` fails on the old interval.
 
 ---
 
+## DEC-222 — The Site Ships One Theme, and the Home Page Stays Calm (amends DEC-190, SITE-06)
+
+**Status**: Approved · **Related**: DEC-190, DEC-189, SITE-02, SITE-06
+
+**Decision**: The website ships Neo Dark only; the header's theme switch, the pre-paint script and the
+theme-change event are removed. The home page keeps one palette, a full-bleed 3D hero that starts on its
+own, a pinned scroll story, and five one-line teasers in place of the detailed sections; the detail lives
+on the feature pages. The crate's records look like vinyl in sleeves. The token generator and the
+per-theme stills stay, so a theme can return later without rework.
+
+**Reason**: The user's choice after seeing the site on his PC (2026-10-09). The first full-3D home was
+"too much, not cohesive, many colors overlapping"; he asked for a cleaner, cohesive page that is still
+3D, readable, and shows "only the stuff that will draw them to use it", and to "keep the default color
+preset and remove the options to pick the other presets".
+
+**Implications**: DEC-190's five switchable themes no longer apply to the site. The a11y and e2e matrices
+run in one theme. The promo video imports the scene and must adapt to the new phases and the discs mesh.
+
+**Decided with**: User · **Date**: 2026-10-09
+
+---
+
 ## DEC-223 — A Request Checks the Schema Once, Takes Over a Connection, and Lets the Client Close First
 
 **Status**: Approved · **Related**: DEC-221, CLEAN-03, CLEAN-14, CI fix

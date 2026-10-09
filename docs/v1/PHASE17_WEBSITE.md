@@ -334,6 +334,11 @@ tested pixel-identical. `Page.astro` types `noindex` as `"404" | "thank-you"`; `
 Contrast: black text on accent fills (the app's inverse text fails in Neo Dark), and the focus ring
 has a text-colored halo. `@playwright/test` is pinned at 1.56.1 to match the container's Chromium.
 
+**Outcome (2026-10-09, one theme)**: The theme switch is gone (DEC-222). The site ships Neo Dark only;
+the token generator, the per-theme stills and the test matrices stay for a later choice, but the header,
+the pre-paint script, the storage key and the theme-change event were removed, and the a11y and e2e
+matrices run in the one theme.
+
 ---
 
 ## SITE-03 — DEC-141's Checks, Failing the Build
@@ -403,6 +408,16 @@ targets. Lighthouse CI asserts the budgets with `is-crawlable` skipped while pre
 `noindex`; a test fails if the skip outlives `PUBLIC = false`. The 50 KB script budget is a total
 cap; SITE-05 adds the before-the-3D measure. `website-links.yml` checks external links weekly and
 keeps one issue open. Favicons reuse DIST-09's `icon.ico` and 512 px PNG.
+
+**Outcome (2026-10-09, readability pass)**: Every inner page opens with one `PageHead` (h1, lead, meta,
+actions, aside); prose is held to a 40rem measure; sections are stack or split layouts on seams
+(`Section.astro`); guide pages get a page list, an "On this page" rail that tracks the current section,
+previous/next and `TechArticle` JSON-LD; the FAQ lists its questions first; download folds checksums per
+file; the footer is grouped (Product, Help, Legal). The header aligns to the content column with a pixel
+block under the current page. Motion: pixel-bar link hover, button lift and press, cross-document view
+transitions (`@view-transition`, no client router) and a one-time scroll reveal, all off under reduced
+motion. `/llms.txt` lists every indexable page and a `llms-txt` rule checks it. `e2e/inner-pages.spec.ts`
+covers it (17 tests); Lighthouse stays 100 across every URL.
 
 ---
 
@@ -588,6 +603,15 @@ swaps it in. The primary action follows the header ("Get notified of 1.0" until 
 40rem the header folds into a Menu. The sound button appears only once a loop file is added (DEC-191).
 Skipped on purpose: small scenes in the feature sections and an animated headline, to keep the budgets.
 Owed: the user's approval of the page, the real-device frame-rate check, and counting the sound button.
+
+**Outcome (2026-10-09, redesign)**: After the user saw the first build on his PC the home page was redone
+twice: first as a full-3D page (too busy, "many colors overlapping"), then as the calm page that he approved:
+a full-bleed autostart hero on one palette, a pinned camera-driven story with step plates over the scene,
+a pixel build-in headline, a cross-fade handoff to the window placeholder, and the home's five sections cut
+to one-line teasers that link to the feature pages (DEC-222). The crate's records read as vinyl: square
+sleeves on edge plus an instanced "discs" mesh that slides in during the first 30% of the lift; the scene's
+exports, `PHASES`, `recordPose` and `cameraPose` were kept for the promo video. Owed: the real-device
+frame-rate check and counting the sound button.
 
 ---
 
