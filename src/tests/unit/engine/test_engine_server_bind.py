@@ -55,6 +55,12 @@ def test_a_server_bound_that_way_still_serves(monkeypatch):
         server.server_close()
 
 
+def test_the_engine_server_queues_a_page_worth_of_connections():
+    # Windows refuses a connection past the backlog instead of letting the
+    # client retry; the stdlib default of 5 left Library pages with "fetch failed".
+    assert server_module.ThreadingHTTPServer.request_queue_size >= 128
+
+
 def _free_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))

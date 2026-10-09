@@ -273,7 +273,15 @@ class ThreadingHTTPServer(_StdlibThreadingHTTPServer):
     ``server_name``, which on some macOS machines blocks for tens of seconds
     before the engine listens at all. Nothing here reads ``server_name``, so it
     is set to the address itself.
+
+    The listen backlog is raised from the stdlib's 5. A page opening asks the
+    engine several things at once, and while the engine is busy (a 5,000-track
+    import, waveform analysis) it accepts slowly. Past the backlog, Windows
+    refuses the connection outright, where macOS and Linux let the client try
+    again, so the Library answered "fetch failed" and drew no rows on Windows.
     """
+
+    request_queue_size = 128
 
     def server_bind(self) -> None:
         socketserver.TCPServer.server_bind(self)
