@@ -90,6 +90,24 @@ describe("ad hoc signing without an identity", () => {
     expect(targets.some((t) => t.endsWith("data.txt"))).toBe(false);
   });
 
+  it("signs a framework's helpers before the framework's own binary", async () => {
+    // codesign refuses "Versions/A/Electron Framework" while Helpers/chrome_crashpad_handler beside
+    // it is unsigned ("code object is not signed at all, In subcomponent"); the Intel Mac build
+    // read the binary before the folder and failed.
+    touch(
+      "CuePoint.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Helpers/chrome_crashpad_handler",
+      true,
+    );
+    const calls: string[][] = [];
+    await hook.default(context(), { exec: (_c: string, args: string[]) => calls.push(args) });
+    const targets = calls.map((a) => slashed(a[a.length - 1]));
+    const at = (suffix: string) => targets.findIndex((t) => t.endsWith(suffix));
+    expect(at("Versions/A/Helpers/chrome_crashpad_handler")).toBeGreaterThanOrEqual(0);
+    expect(at("Versions/A/Helpers/chrome_crashpad_handler")).toBeLessThan(
+      at("Versions/A/Electron Framework"),
+    );
+  });
+
   it("uses '-', the hardened runtime, no timestamp and the entitlements", async () => {
     const calls: string[][] = [];
     await hook.default(context(), { exec: (_c: string, args: string[]) => calls.push(args) });

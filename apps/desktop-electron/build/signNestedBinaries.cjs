@@ -34,7 +34,12 @@ const path = require("node:path");
 function machOTargets(root) {
   const found = [];
   const walk = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    // Folders before files: a framework's Helpers/ is signed before the binary
+    // beside it, which codesign refuses while anything under it is unsigned.
+    const entries = fs
+      .readdirSync(dir, { withFileTypes: true })
+      .sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()));
+    for (const entry of entries) {
       const full = path.join(dir, entry.name);
       if (entry.isSymbolicLink()) continue;
       if (entry.isDirectory()) {
