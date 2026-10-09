@@ -3,12 +3,13 @@
  * left; the count and Columns… on the right. One row, always present, so the
  * table never moves when a selection is made or let go.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ACTION_GROUPS, type TrackActionGroup } from "./trackActions";
 import { LibraryToolbar } from "./LibraryToolbar";
+import { needsTwoLines } from "./toolbarLines";
 
 function groups(reason: string | null = null): TrackActionGroup[] {
   return ACTION_GROUPS.map(({ id, label }) => ({
@@ -229,5 +230,83 @@ describe("the count (LIB-8)", () => {
   it("goes back to the plain count when nothing is narrowed", () => {
     renderBar({ total: 12000, scopeTotal: 12000, selected: 0 });
     expect(screen.getByRole("status")).toHaveTextContent(/^12,000 tracks$/);
+  });
+});
+
+describe("the two lines (DEC-217, 2026-10-09)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("are needed only when the controls and their gaps pass the room", () => {
+    expect(needsTwoLines([100, 100, 100], 10, 320)).toBe(false);
+    expect(needsTwoLines([100, 100, 100], 10, 319)).toBe(true);
+    expect(needsTwoLines([], 10, 0)).toBe(false);
+  });
+
+  /** Every measured control `width` pixels wide, in a row `room` pixels wide. */
+  function measured(width: number, room: number) {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width,
+    } as DOMRect);
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(room);
+  }
+
+  it("take the six groups first, then Clear selection, the count, Select all and Columns…", () => {
+    // Ten controls (seven bar buttons, Select all, Columns…, the count's reserve).
+    measured(50, 400);
+    renderBar();
+    const row = document.querySelector(".library-toolbar")!;
+    expect(row).toHaveClass("library-toolbar--two-lines");
+    // The second line's controls are ordered after the break, and only they are.
+    expect(screen.getByRole("button", { name: "Clear selection" })).toHaveClass("library-toolbar__clear");
+    expect(row.querySelector(".library-toolbar__end")).not.toBeNull();
+  });
+
+  it("are one line when everything fits", () => {
+    measured(50, 2000);
+    renderBar();
+    expect(document.querySelector(".library-toolbar")).not.toHaveClass("library-toolbar--two-lines");
+  });
+
+  it("never apply to the one-line bars of Discover and Similar", () => {
+    measured(50, 400);
+    renderBar({ oneLine: true });
+    const row = document.querySelector(".library-toolbar")!;
+    expect(row).toHaveClass("library-toolbar--one-line");
+    expect(row).not.toHaveClass("library-toolbar--two-lines");
+  });
+
+  it("do not change on a first selection: the count's reserve already holds its longest form", () => {
+    // What the row measures for the count is its reserve, and a selection leaves it as it was.
+    const { rerender } = render(
+      <LibraryToolbar
+        groups={groups("Select tracks first")}
+        total={1204}
+        selected={0}
+        describedByQuery={false}
+        openGroup={null}
+        onOpenGroup={vi.fn()}
+        onClear={vi.fn()}
+        onSelectAll={vi.fn()}
+        onColumns={vi.fn()}
+      />,
+    );
+    const before = document.querySelector<HTMLElement>(".library-toolbar__count-reserve")!.dataset.reserve;
+    rerender(
+      <LibraryToolbar
+        groups={groups()}
+        total={1204}
+        selected={1}
+        describedByQuery={false}
+        openGroup={null}
+        onOpenGroup={vi.fn()}
+        onClear={vi.fn()}
+        onSelectAll={vi.fn()}
+        onColumns={vi.fn()}
+      />,
+    );
+    expect(document.querySelector<HTMLElement>(".library-toolbar__count-reserve")!.dataset.reserve).toBe(before);
+    expect(before).toBe("1,204 tracks · 1,204 selected");
   });
 });

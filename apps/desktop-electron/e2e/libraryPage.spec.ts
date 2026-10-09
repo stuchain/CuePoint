@@ -270,6 +270,44 @@ test.describe("The Library page (LIBRARY-11)", () => {
               Math.round(el.getBoundingClientRect().top),
             ),
           ).size,
+          // Each line of the toolbar: what its buttons and the gaps between them take, the
+          // count's reserved width (its longest form), and what the row has left over. The
+          // count gives way before a button wraps, so a line's buttons alone must fit too.
+          toolbarRows: (() => {
+            const row = document.querySelector<HTMLElement>(".library-toolbar")!;
+            const style = getComputedStyle(row);
+            const room = row.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+            const gap = parseFloat(style.columnGap);
+            const lines = new Map<number, { labels: string[]; buttons: number; count: number; items: number }>();
+            for (const el of row.querySelectorAll<HTMLElement>(".library-toolbar__button, .library-toolbar__count-box")) {
+              const r = el.getBoundingClientRect();
+              const middle = Math.round(r.top + r.height / 2);
+              const line = lines.get(middle) ?? { labels: [], buttons: 0, count: 0, items: 0 };
+              line.items += 1;
+              if (el.classList.contains("library-toolbar__count-box")) {
+                line.labels.push("(count)");
+                line.count = el.querySelector(".library-toolbar__count-reserve")!.getBoundingClientRect().width;
+              } else {
+                line.labels.push(el.textContent!.trim().replace(/\s*▸$/, ""));
+                line.buttons += r.width;
+              }
+              lines.set(middle, line);
+            }
+            const count = row.querySelector<HTMLElement>(".library-toolbar__count")!;
+            return {
+              room: Math.round(room * 10) / 10,
+              countCut: count.scrollWidth > count.clientWidth,
+              lines: [...lines.values()].map((line) => {
+                const used = line.buttons + gap * (line.items - 1) + line.count;
+                return {
+                  labels: line.labels.join(" | "),
+                  used: Math.round(used * 10) / 10,
+                  spare: Math.round((room - used) * 10) / 10,
+                  spareButtons: Math.round((room - used + line.count) * 10) / 10,
+                };
+              }),
+            };
+          })(),
           parts: Object.fromEntries(
             [
               ".library-header",
@@ -289,22 +327,56 @@ test.describe("The Library page (LIBRARY-11)", () => {
         };
       });
       expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.getSize()[0])).toBe(1280);
-      // As it opens, then at the page a Windows window leaves (frame and menu bar): 1,264 × 735.
-      for (const inner of [null, WINDOWS_INNER]) {
+      // Track details is open, as it opens: it is what leaves the row its width.
+      await expect(window.getByRole("complementary", { name: "Track details" })).toBeVisible();
+      // As it opens, then at the page a Windows window leaves (frame and menu bar): 1,264 × 735,
+      // then there again with Windows' scrollbars, and wider ones (20px, against Windows' 17
+      // and Linux's 15) on every pane that scrolls: CI on Linux catches a row that fits only
+      // by Linux's scrollbars.
+      const runs = [
+        { inner: null, wideScrollbars: false },
+        { inner: WINDOWS_INNER, wideScrollbars: false },
+        { inner: WINDOWS_INNER, wideScrollbars: true },
+      ];
+      for (const { inner, wideScrollbars } of runs) {
         if (inner) await setInnerSize(app, window, inner);
+        if (wideScrollbars) {
+          await window.evaluate(() => {
+            const style = document.createElement("style");
+            style.textContent =
+              "::-webkit-scrollbar { width: 20px !important; height: 20px !important }" +
+              // The page's own scroller shows its bar, as it does on Windows once the
+              // rows do not fit: the one bar that takes the toolbar's width.
+              " .library-screen__main { overflow-y: scroll !important }";
+            document.head.append(style);
+          });
+          await window.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
+        }
         const m = await measure();
-        console.log(`PAGES-05C Library whole rows at ${m.window.width}x${m.window.height}:`, m.whole, JSON.stringify(m));
+        const label = `${m.window.width}x${m.window.height}${wideScrollbars ? " with 20px scrollbars" : ""}`;
+        console.log(`PAGES-05C Library whole rows at ${label}:`, m.whole, JSON.stringify(m));
+        console.log(`PAGES-05C Library toolbar at ${label}:`, JSON.stringify(m.toolbarRows));
         // The default window, whose inner height is what the screen leaves it.
         // 1,280 wide outside: a Windows frame takes 16 px of the page's width.
         expect(m.window.width).toBeGreaterThanOrEqual(1264);
         if (inner) expect([m.window.width, m.window.height]).toEqual([inner.width, inner.height]);
         else expect(m.window.height).toBeGreaterThan(700);
         expect(m.scale).toBe("1.5");
-        expect(m.whole, `whole rows the Library shows at ${m.window.width}x${m.window.height}`).toBeGreaterThanOrEqual(
+        expect(m.whole, `whole rows the Library shows at ${label}`).toBeGreaterThanOrEqual(
           inner ? WHOLE_ROWS_LIBRARY_WINDOWS_INNER : WHOLE_ROWS_LIBRARY,
         );
-        // The toolbar holds two lines at both: a third costs the table a row.
-        expect(m.toolbarLines, `toolbar lines at ${m.window.width}x${m.window.height}`).toBeLessThanOrEqual(2);
+        // The toolbar holds two lines at each: a third costs the table a row. The six groups
+        // take the first with 40px to spare even beside a 20px scrollbar, so a few pixels of
+        // a system's fonts or scrollbars cannot wrap it (DEC-217); the second line's buttons
+        // keep as much, and its count, at its longest form here, is not cut.
+        expect(m.toolbarLines, `toolbar lines at ${label}`).toBeLessThanOrEqual(2);
+        const [first, second] = m.toolbarRows.lines;
+        expect(first!.labels, `the first toolbar line at ${label}`).toBe("Play | Organize | Explore | Beatport | Fix | More");
+        expect(first!.spare, `the first toolbar line's spare at ${label}`).toBeGreaterThanOrEqual(40);
+        expect(second!.labels, `the second toolbar line at ${label}`).toBe("Clear selection | (count) | Select all | Columns…");
+        expect(second!.spareButtons, `the second toolbar line's spare at ${label}`).toBeGreaterThanOrEqual(40);
+        expect(second!.spare, `the second toolbar line holds the count's longest form at ${label}`).toBeGreaterThanOrEqual(0);
+        expect(m.toolbarRows.countCut, `the count is cut at ${label}`).toBe(false);
       }
     } finally {
       await app.close();

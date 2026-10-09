@@ -1,18 +1,43 @@
 /* The row above the table: the selection bar, then the count and Columns…
-   (FLW-8, LIB-8). One row at the widths the Library is used at; it wraps,
-   rather than running past its column, in a narrower one (DEC-112). */
+   (FLW-8, LIB-8). One line where everything fits; otherwise two, laid out on
+   purpose (`--two-lines`, measured by the component): the six groups, then
+   Clear selection, the count, Select all and Columns… (DEC-112, DEC-217). */
 .library-toolbar {
+  --library-toolbar-row-gap: calc(var(--space-xs) / 2);
+
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   /* Tight across the line, on purpose: at 1.5× in a 1,264 × 735 window (a Windows
      frame and menu bar inside 1,280 × 800) with Track details open the row has
-     ~520px, and the seven selection buttons need 524 at the old gap, so More ▸
-     wrapped and the row became three lines (103px, a table row lost). */
-  gap: calc(var(--space-xs) / 2) round(down, calc(var(--space-xs) * 2 / 3), 1px);
-  padding: calc(var(--space-xs) / 2) var(--space-xs);
+     535px, less the page's scrollbar when it shows one (17px on Windows). The six
+     groups take 470 of it with these 2px gaps and no side padding (the buttons
+     line up with the table's edges instead), 40px or more to spare with a 20px
+     scrollbar; at the old 4px gaps, 6px sides and a word space before each ▸
+     they took 513 and the row went to three lines on Windows (a table row lost). */
+  gap: var(--library-toolbar-row-gap) round(down, calc(var(--space-xs) / 3), 1px);
+  padding: calc(var(--space-xs) / 2) 0;
   background: var(--bg-toolbar);
   border-top: var(--hairline) solid var(--border-muted);
+}
+
+/* The break between the two lines: a full-width item, ordered after the groups
+   and before the rest (DOM and tab order are untouched, and read the same: the
+   first line, then the second). Being a line of its own, it is the row gap. */
+.library-toolbar--two-lines {
+  row-gap: 0;
+}
+
+.library-toolbar--two-lines::before {
+  content: "";
+  order: 1;
+  flex-basis: 100%;
+  height: var(--library-toolbar-row-gap);
+}
+
+.library-toolbar--two-lines .library-toolbar__clear,
+.library-toolbar--two-lines .library-toolbar__end > * {
+  order: 2;
 }
 
 /* The bar and the end cluster add no boxes of their own: their controls wrap in
@@ -24,9 +49,17 @@
   display: contents;
 }
 
+/* The count takes what its line leaves, up to its reserved width, so it never
+   starts a line of its own: past the reserve the auto margin takes the rest and
+   keeps Select all and Columns… at the right; short of it, the count is cut
+   with an ellipsis rather than a button wrapping. */
 .library-toolbar__count-box {
   display: inline-grid;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: max-content;
   margin-left: auto;
+  overflow: hidden;
 }
 
 .library-toolbar__count,
@@ -36,6 +69,8 @@
 }
 
 .library-toolbar__count-reserve {
+  /* Its whole width even when the box is cut, as the component measures it. */
+  width: max-content;
   visibility: hidden;
 }
 
@@ -43,28 +78,22 @@
   content: attr(data-reserve);
 }
 
-/* One line: the buttons keep their width and the count, which is the only thing
-   here that can be shortened without losing a control, shrinks to an ellipsis. */
-.library-toolbar--one-line {
-  flex-wrap: nowrap;
-}
-
-.library-toolbar--one-line .library-toolbar__button {
-  flex: none;
-  white-space: nowrap;
-}
-
-.library-toolbar--one-line .library-toolbar__count-box {
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
-.library-toolbar--one-line .library-toolbar__count,
-.library-toolbar--one-line .library-toolbar__count-reserve {
+.library-toolbar__count {
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.library-toolbar__button {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* One line: the buttons keep their width and the count, which is the only thing
+   here that can be shortened without losing a control, shrinks to an ellipsis. */
+.library-toolbar--one-line {
+  flex-wrap: nowrap;
 }
 
 /* Compact: ten controls share the row, and every line of it is a line the table
@@ -77,6 +106,23 @@
   padding: calc(var(--space-xs) / 2) var(--space-sm);
   font-size: var(--font-size-xs);
   line-height: 1.2;
+}
+
+/* The ▸ is drawn, not set: the pixel font has no such glyph, so each system took
+   it from a fallback font of its own, at its own width (Windows' wider than
+   Linux's), and the row measured differently on each. A 3 × 6 triangle at 1.5×,
+   2px from the name, is the same everywhere. The text stays for the tests and
+   is drawn at no size; the span is hidden from assistive technology. */
+.library-toolbar__arrow {
+  display: inline-block;
+  vertical-align: middle;
+  width: round(nearest, calc(var(--unit) / 2), 1px);
+  height: var(--unit);
+  margin-left: round(down, calc(var(--unit) / 3), 1px);
+  overflow: hidden;
+  font-size: 0;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
 }
 
 /* aria-disabled rather than disabled, so the bar's keys still land on it and

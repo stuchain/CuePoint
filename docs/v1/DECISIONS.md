@@ -6148,6 +6148,17 @@ build are settled, as precisions of FLW-8 and FLW-10 and not as new behavior:
    default window (1,280 × 800 at 1.5×) the Library shows 4 whole rows; a taller button would
    leave the fourth with 18px of margin or less.
 
+**Precision (2026-10-09)**: Where the toolbar row does not fit on one line it takes two, laid out
+on purpose: the six groups on the first; **Clear selection**, the count, **Select all** and
+**Columns…** on the second. `LibraryToolbar` measures whether one line fits (its buttons plus the
+count's reserve, its longest form), so a first selection never changes the lines. On the second
+line the count takes what is left, up to its reserve, and is cut with an ellipsis before a button
+would wrap. The groups' ▸ is drawn (a 3 × 6 triangle at 1.5×), because the pixel font has no such
+glyph and each system's fallback drew it at a different width; the row has no side padding and
+2px gaps. At 1.5× in the 1,264 × 735 page with Track details open, the first line keeps 40px
+or more to spare beside a 20px scrollbar, which `libraryPage.spec.ts` measures; before, it kept
+about 10px on Linux and wrapped to a third line on Windows.
+
 **Reason**: Each was a gap the walkthrough's wording left open, found while building PAGES-05C and
 settled the way the engine and DEC-112's row budget allow.
 

@@ -195,6 +195,32 @@ function queueRow(window: Page, title: string) {
   return window.getByRole("table", { name: "Review queue" }).getByRole("row").filter({ hasText: title });
 }
 
+/**
+ * The selection bar of a Discover page holds one line (its `oneLine` mode): its buttons share a
+ * top, none runs past the row, and the count is the part that gives way.
+ */
+async function expectOneLineBar(window: Page, page: string) {
+  const m = await window.evaluate(() => {
+    const bar = [...document.querySelectorAll<HTMLElement>(".library-toolbar")].find((el) => el.offsetParent)!;
+    const box = bar.getBoundingClientRect();
+    const buttons = [...bar.querySelectorAll<HTMLElement>(".library-toolbar__button")].map((el) =>
+      el.getBoundingClientRect(),
+    );
+    const count = bar.querySelector<HTMLElement>(".library-toolbar__count")!;
+    return {
+      oneLine: bar.classList.contains("library-toolbar--one-line"),
+      tops: new Set(buttons.map((r) => Math.round(r.top))).size,
+      past: Math.round(Math.max(...buttons.map((r) => r.right)) - box.right),
+      room: Math.round(bar.clientWidth),
+      countCut: count.scrollWidth > count.clientWidth,
+    };
+  });
+  console.log(`Discover's selection bar on the ${page}:`, JSON.stringify(m));
+  expect(m.oneLine, `the ${page}'s bar is the one-line kind`).toBe(true);
+  expect(m.tops, `the ${page}'s bar buttons on one line`).toBe(1);
+  expect(m.past, `the ${page}'s bar runs past its row`).toBeLessThanOrEqual(0);
+}
+
 function row(window: Page, table: string, title: string) {
   return window
     .getByRole("table", { name: table })
@@ -256,6 +282,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
       await expect.poll(() => titlesIn(window, "Your tracks")).toEqual(["Harbour Lights", "Low Tide"]);
       // Not linked to Beatport yet, and never looked up on Beatport by name.
       await expect(window.getByText("Not linked to Beatport yet")).toBeVisible();
+      await expectOneLineBar(window, "artist page");
 
       // --- play a track from the page (DEC-012) ----------------------------
       await row(window, "Your tracks", "Low Tide").dblclick();
@@ -279,6 +306,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         "Mixes well (next key): 8A → 9A",
       );
       await expect(row(window, "Similar tracks", "Night Bus")).toContainText("Half the tempo: 124 → 62");
+      await expectOneLineBar(window, "Similar page");
 
       // --- queue a suggestion without interrupting (DEC-013) ---------------
       await row(window, "Similar tracks", "Night Bus").click({ button: "right" });

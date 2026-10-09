@@ -176,7 +176,10 @@ That means *everything*, not just the rows on screen: select-all over a filtered
 cursor in the search box.
 
 A toolbar sits directly above the table: one line when there is room, two at
-the default window size. On its left is the **selection bar**; on its right are
+the default window size, with the six groups on the first and **Clear
+selection**, the count, **Select all** and **Columns…** on the second. If the
+count does not fit beside them it is cut short (ending in "…") rather than
+pushing a button onto a third line. On its left is the **selection bar**; on its right are
 the track count ("1,204 tracks · 3 selected", or "Showing 240 of 12,000 tracks"
 while a search or filter narrows the view), **Select all** and **Columns…**. The bar is always there, so the table never moves when you select
 something: with nothing selected its buttons are dimmed and say "Select tracks

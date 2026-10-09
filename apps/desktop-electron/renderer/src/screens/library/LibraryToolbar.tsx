@@ -8,15 +8,24 @@
  * count ("1,204 tracks · 3 selected", or "Showing 240 of 12,000 tracks" while a search or filter narrows the view), **Select all** and **Columns…**. They replace the
  * selection strip and the Columns row this page used to stack under the table.
  *
+ * Where the row does not fit on one line it takes two, laid out on purpose: the
+ * six groups on the first, Clear selection, the count, Select all and Columns…
+ * on the second, the count giving way (cut short with an ellipsis) before a
+ * button would start a third line (DEC-217, 2026-10-09). Whether one line
+ * fits is measured, not guessed, so it holds in any font and at any scale.
+ *
  * The bar is a `role="toolbar"`: Tab reaches it once and the arrow keys move
  * between its buttons, disabled ones included (so a keyboard user can land on
  * a button and read why it is off; they are `aria-disabled`, not `disabled`).
  * What each group opens is `trackActions.ts`'s, the list the right-click menu
  * is built from.
  */
+import { useLayoutEffect, useRef, useState } from "react";
+
 import { Button } from "../../components/Button";
 import type { TrackActionGroup, TrackActionGroupId } from "./trackActions";
 import { SELECT_TRACKS_FIRST } from "./trackActions";
+import { needsTwoLines } from "./toolbarLines";
 import { useToolbarKeys } from "./useToolbarKeys";
 import "./LibraryToolbar.css";
 
@@ -48,6 +57,43 @@ interface LibraryToolbarProps {
 /** Why Select all is disabled once every track is. */
 export const EVERYTHING_SELECTED = "Every track is selected";
 
+/** The widths the row lays out on one line: every button, and the count's reserve. */
+const MEASURED = ".library-toolbar__button, .library-toolbar__count-reserve";
+
+/**
+ * Whether the row takes its two deliberate lines, measured whenever the row or
+ * any of its controls changes size (a resize, a scale change, a longer count).
+ */
+function useTwoLines(enabled: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [twoLines, setTwoLines] = useState(false);
+
+  useLayoutEffect(() => {
+    const row = ref.current;
+    if (!enabled || !row) {
+      setTwoLines(false);
+      return;
+    }
+    const check = () => {
+      const style = getComputedStyle(row);
+      const room =
+        row.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+      const widths = [...row.querySelectorAll<HTMLElement>(MEASURED)].map(
+        (el) => el.getBoundingClientRect().width,
+      );
+      setTwoLines(needsTwoLines(widths, parseFloat(style.columnGap) || 0, room));
+    };
+    check();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(check);
+    observer.observe(row);
+    for (const el of row.querySelectorAll<HTMLElement>(MEASURED)) observer.observe(el);
+    return () => observer.disconnect();
+  }, [enabled]);
+
+  return { ref, twoLines };
+}
+
 export function LibraryToolbar({
   groups,
   total,
@@ -62,6 +108,7 @@ export function LibraryToolbar({
   oneLine = false,
 }: LibraryToolbarProps) {
   const keys = useToolbarKeys(groups.length + 1);
+  const lines = useTwoLines(!oneLine);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (keys.onKeyDown(event)) return;
@@ -77,7 +124,16 @@ export function LibraryToolbar({
   const none = selected === 0;
 
   return (
-    <div className={oneLine ? "library-toolbar library-toolbar--one-line" : "library-toolbar"}>
+    <div
+      ref={lines.ref}
+      className={
+        oneLine
+          ? "library-toolbar library-toolbar--one-line"
+          : lines.twoLines
+            ? "library-toolbar library-toolbar--two-lines"
+            : "library-toolbar"
+      }
+    >
       <div
         ref={keys.ref}
         className="library-toolbar__bar"
@@ -102,12 +158,12 @@ export function LibraryToolbar({
             }}
           >
             {group.label}
-            <span aria-hidden> ▸</span>
+            <span className="library-toolbar__arrow" aria-hidden> ▸</span>
           </Button>
         ))}
         <Button
           variant="secondary"
-          className="library-toolbar__button"
+          className="library-toolbar__button library-toolbar__clear"
           aria-disabled={none ? true : undefined}
           title={none ? SELECT_TRACKS_FIRST : undefined}
           {...keys.buttonProps(groups.length)}
@@ -122,9 +178,10 @@ export function LibraryToolbar({
       <div className="library-toolbar__end">
         {/* The count keeps the width of its longest form ("1,204 tracks · 1,204
             selected"), held by an invisible copy in the same grid cell (drawn from an attribute, so
-            it is no text a reader or a query finds), so a first
-            selection never lengthens the line, wraps it, and moves the rows under
-            the pointer before a double-click's second click lands (DEC-112). */}
+            it is no text a reader or a query finds). Whether the row takes one line or two is
+            measured with that reserve, so a first selection never lengthens the line, wraps it,
+            and moves the rows under the pointer before a double-click's second click lands
+            (DEC-112); where its line is shorter, the count is cut, never a button wrapped. */}
         <span className="library-toolbar__count-box">
           <span
             className="library-toolbar__count-reserve"
