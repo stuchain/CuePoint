@@ -1530,11 +1530,24 @@ def start_engine_thread(
     """Start engine in a background thread (tests)."""
     cfg = config or EngineConfig.from_env()
     # As run_engine does, so a test's engine answers beside busy threads as the
-    # app's does (DEC-221).
+    # app's does (DEC-221). Only while it runs: the interval is the process's,
+    # and a test process is not the engine. Left at 0.5 ms for a whole Windows
+    # suite, joins in tests that never start an engine hit CPython's own race
+    # in Thread._stop ("assert not lock.locked()") twice in one run.
+    before = sys.getswitchinterval()
     favour_waiting_threads()
     server = with_error_reporting(
         ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg, store=store))
     )
+    stop = server.shutdown
+
+    def shutdown_and_restore() -> None:
+        try:
+            stop()
+        finally:
+            sys.setswitchinterval(before)
+
+    server.shutdown = shutdown_and_restore  # type: ignore[method-assign]
     # shutdown() waits out one poll of serve_forever, 0.5s by default: a test
     # that starts and stops an engine would otherwise spend that on every stop.
     thread = threading.Thread(

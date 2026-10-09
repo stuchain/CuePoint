@@ -123,6 +123,20 @@ def test_the_engine_runs_with_the_short_switch_interval(switch_interval):
         thread.join(timeout=5)
 
 
+def test_a_test_engine_gives_the_interval_back_when_it_stops(switch_interval):
+    """The interval is the process's; a test process is not the engine."""
+    sys.setswitchinterval(0.005)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = int(sock.getsockname()[1])
+    server, thread = start_engine_thread(
+        EngineConfig(host="127.0.0.1", port=port, token=TOKEN)
+    )
+    server.shutdown()
+    thread.join(timeout=5)
+    assert sys.getswitchinterval() == pytest.approx(0.005)
+
+
 def test_a_search_is_answered_while_another_thread_computes(
     switch_interval, library, busy_thread
 ):
