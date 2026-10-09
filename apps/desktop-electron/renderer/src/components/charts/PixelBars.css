@@ -1,0 +1,134 @@
+/*
+ * PixelBars (STATS-06): theme tokens only. The bars are whole-pixel rects, so nothing here sizes
+ * them; `pixelBarsGeometry.ts` does.
+ */
+
+.cp-pixel-bars {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* A long ordered run (tempo across 60 to 180 BPM) scrolls here, never the page. */
+.cp-pixel-bars__scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.cp-pixel-bars__svg {
+  display: block;
+  font-family: var(--font-data);
+  user-select: none;
+}
+
+.cp-pixel-bars__axis {
+  fill: var(--fg-muted);
+}
+
+.cp-pixel-bars__outline {
+  fill: var(--border-outline);
+}
+
+.cp-pixel-bars__fill {
+  fill: var(--accent-primary);
+}
+
+.cp-pixel-bars__hit {
+  fill: transparent;
+}
+
+.cp-pixel-bars__count,
+.cp-pixel-bars__label {
+  fill: var(--fg-muted);
+  font-family: var(--font-data);
+}
+
+.cp-pixel-bars__bar {
+  outline: none;
+}
+
+.cp-pixel-bars__bar--open {
+  cursor: pointer;
+}
+
+.cp-pixel-bars__bar--open:hover .cp-pixel-bars__fill,
+.cp-pixel-bars__bar--open:focus-visible .cp-pixel-bars__fill {
+  fill: var(--accent-primary-hover);
+}
+
+.cp-pixel-bars__bar--open:focus-visible {
+  outline: var(--focus-ring-width) solid var(--fg-primary);
+  outline-offset: calc(var(--focus-ring-width) * -1);
+}
+
+/* The text table for screen readers: in the page, not on it. */
+.cp-pixel-bars__table {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * Motion (DEC-134, DEC-135). Only transform and opacity move, each behind its kind's switch, so
+ * a kind that is off or reduced motion shows the bars at once. A bar grows from its baseline in
+ * whole steps when it is first drawn (entrance), and steps once when its count changes (state,
+ * the Keys counts' own keyframes). Steps and fades are separate animations: a fade stays smooth.
+ */
+:root[data-motion-entrance] .cp-pixel-bars[data-orientation="vertical"] .cp-pixel-bars__shape {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation:
+    cp-pixel-bars-grow-up var(--motion-base) steps(var(--motion-steps-long)),
+    cp-fade-in var(--motion-base) var(--motion-fade);
+}
+
+:root[data-motion-entrance] .cp-pixel-bars[data-orientation="horizontal"] .cp-pixel-bars__shape {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+  animation:
+    cp-pixel-bars-grow-right var(--motion-base) steps(var(--motion-steps-long)),
+    cp-fade-in var(--motion-base) var(--motion-fade);
+}
+
+:root[data-motion-state] .cp-pixel-bars[data-orientation] .cp-pixel-bars__shape[data-changed="1"],
+:root[data-motion-state] .cp-pixel-bars[data-orientation] .cp-pixel-bars__count[data-changed="1"] {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation:
+    cp-state-step-a var(--motion-base) steps(var(--motion-steps-short)),
+    cp-state-fade-a var(--motion-base) var(--motion-fade);
+}
+
+:root[data-motion-state] .cp-pixel-bars[data-orientation] .cp-pixel-bars__shape[data-changed="0"],
+:root[data-motion-state] .cp-pixel-bars[data-orientation] .cp-pixel-bars__count[data-changed="0"] {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation:
+    cp-state-step-b var(--motion-base) steps(var(--motion-steps-short)),
+    cp-state-fade-b var(--motion-base) var(--motion-fade);
+}
+
+@keyframes cp-pixel-bars-grow-up {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes cp-pixel-bars-grow-right {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

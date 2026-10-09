@@ -75,6 +75,9 @@ ROOT = Path(__file__).resolve().parent.parent
 ALLOWLIST: dict[str, str] = {
     "apps/desktop-electron/electron/releaseList.ts": "DIST-05; main's updater wires it in at DIST-06",
     "apps/desktop-electron/electron/updateRule.ts": "DIST-05; main's updater wires it in at DIST-06",
+    "apps/desktop-electron/renderer/src/components/charts/PixelBars.css": "STATS-06: wired into the Statistics page in STATS-06",
+    "apps/desktop-electron/renderer/src/components/charts/PixelBars.tsx": "STATS-06: wired into the Statistics page in STATS-06",
+    "apps/desktop-electron/renderer/src/components/charts/pixelBarsGeometry.ts": "STATS-06: wired into the Statistics page in STATS-06",
 }
 
 SECTIONS = (

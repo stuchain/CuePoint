@@ -707,7 +707,7 @@ PAGES-16's population route and its sources; theme tokens.
 **Design**:
 - **`components/charts/PixelBars.tsx`** with its geometry in `pixelBarsGeometry.ts` (pure, tested
   without a DOM): bars are whole-pixel `<rect>`s at every size, rounded at 1.5× (DEC-161), filled with
-  `--accent-primary` (the hovered or focused bar `--accent-secondary`), axes and labels in
+  `--accent-primary` (the hovered or focused bar `--accent-primary-hover`), axes and labels in
   `--fg-muted` and `--font-data`, outlined in `--border-outline`. Horizontal bars for named buckets
   (genre, rating), vertical for ordered ones (tempo, year, date added, loudness). Long ordered runs
   (tempo across 60 to 180 BPM, ten years of months) scroll sideways inside the panel; the page does
