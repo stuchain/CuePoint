@@ -2,19 +2,23 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { THEMES } from "../../lib/themes";
 import { paletteUniforms } from "../palette";
-import { STEP_SPANS, frameAt, stepMid } from "../phases";
+import { HANDOFF_FROM, READING_LINE, STEP_SPANS, beatAt, frameAt, stepMid } from "../phases";
 import {
   CELL_TAG,
   CRATE,
+  FOG,
   KEYS,
   LABEL_HOLD,
+  PALETTE_SLOT,
   PHASES,
   RECORD_COUNT,
   REST_PROGRESS,
+  SLEEVE_SLOTS,
   STILL_FRAMES,
   TAG,
   TALL_STILLS,
   WHEEL,
+  WHEEL_SLOTS,
   arrivalOrder,
   cameraPose,
   chaseAmount,
@@ -24,6 +28,10 @@ import {
   heroAmount,
   heroLean,
   labelAmount,
+  leanAt,
+  pointerAmount,
+  storyAmount,
+  storyLean,
   litAmount,
   recordPose,
   tagTexels,
@@ -237,6 +245,32 @@ describe("the camera", () => {
     expect(heroLean(390 / 844).y).toBeLessThan(0); // and on top of an upright phone
   });
 
+  it("leans the picture away from the step being read, then squares it for the handoff", () => {
+    // the steps are on the left of a wide screen, and low on an upright phone
+    expect(storyLean(16 / 9).x).toBeGreaterThan(0.2);
+    expect(storyLean(390 / 844).y).toBeGreaterThan(0.2);
+    for (const id of ["messy", "matched", "ready"] as const) expect(storyAmount(stepMid(id)), id).toBeGreaterThan(0.95);
+    expect(storyAmount(0)).toBe(0);
+    expect(storyAmount(0.95)).toBe(0);
+    expect(leanAt(1, 16 / 9)).toEqual({ x: 0, y: 0 });
+    expect(leanAt(0, 16 / 9)).toEqual(heroLean(16 / 9));
+    // the hand-over from the hero's lean to the story's never jumps
+    for (const aspect of [16 / 9, 1, 390 / 844]) {
+      let last = leanAt(0, aspect);
+      for (const p of steps.slice(1)) {
+        const now = leanAt(p, aspect);
+        expect(Math.hypot(now.x - last.x, now.y - last.y), `at ${p}`).toBeLessThan(0.08);
+        last = now;
+      }
+    }
+  });
+
+  it("follows the mouse in the hero and at the end, never through the story where the tags hold", () => {
+    expect(pointerAmount(0)).toBe(1);
+    for (const p of [LABEL_HOLD[0], 0.45, LABEL_HOLD[1], stepMid("ready")]) expect(pointerAmount(p), `at ${p}`).toBe(0);
+    expect(pointerAmount(1)).toBeGreaterThan(0);
+  });
+
   it("widens the view for an upright phone, so the grid and the wheel fit across", () => {
     expect(fovFor(16 / 9)).toBe(32);
     expect(fovFor(390 / 844)).toBeGreaterThan(55);
@@ -302,6 +336,21 @@ describe("the steps of the text and the frames", () => {
     expect(STEP_SPANS.ready[1]).toBe(1);
   });
 
+  it("marks the step being told, none in the hero or once the window has risen", () => {
+    expect(beatAt(0)).toBeNull();
+    for (const id of ["messy", "matched", "ready"] as const) expect(beatAt(stepMid(id))).toBe(id);
+    expect(beatAt(HANDOFF_FROM)).toBeNull();
+    expect(beatAt(1)).toBeNull();
+  });
+
+  it("reads the steps in the middle of a wide screen and low on an upright one, where the picture leans away", () => {
+    expect(READING_LINE.wide).toBe(0.5);
+    expect(READING_LINE.upright).toBeGreaterThan(0.6);
+    // the picture leans up on an upright screen exactly where the steps sit low
+    expect(storyLean(0.79).y).toBeGreaterThan(0.2);
+    expect(storyLean(0.81).y).toBeLessThan(0.2);
+  });
+
   it("draws a still of each step's frame, wide and tall, and shows the one being read", () => {
     expect(TALL_STILLS).toBe(true);
     expect(STILL_FRAMES["matched"]).toBeGreaterThanOrEqual(LABEL_HOLD[0]);
@@ -347,13 +396,65 @@ describe("the opening scene as a Three.js scene", () => {
     instance.dispose();
   });
 
-  it("leans the hero with a lens shift, and squares it again once the story starts", () => {
+  it("leans the hero and the story with a lens shift, and squares it again for the handoff", () => {
     const instance = create();
     instance.resize(16 / 9);
     instance.setProgress(0);
     expect(instance.camera.projectionMatrix.elements[8]).toBeCloseTo(-heroLean(16 / 9).x, 6);
     instance.setProgress(0.5);
+    expect(instance.camera.projectionMatrix.elements[8]).toBeCloseTo(-storyLean(16 / 9).x, 6);
+    instance.setProgress(1);
     expect(instance.camera.projectionMatrix.elements[8]).toBeCloseTo(0, 6);
+    expect(instance.camera.projectionMatrix.elements[9]).toBeCloseTo(0, 6);
+    instance.dispose();
+  });
+
+  it("leans the camera toward the mouse in the hero, keeps the tags still, and a still has no mouse", () => {
+    const instance = create();
+    instance.resize(16 / 9);
+    instance.setProgress(0);
+    const rest = instance.camera.position.toArray();
+    instance.setPointer?.(1, 0.5);
+    expect(instance.camera.position.x).toBeGreaterThan(rest[0]! + 1);
+    expect(instance.camera.position.y).toBeGreaterThan(rest[1]!);
+    instance.setPointer?.(0, 0);
+    expect(instance.camera.position.toArray()).toEqual(rest);
+    instance.setProgress(0.45);
+    const hold = instance.camera.position.toArray();
+    instance.setPointer?.(-1, -1);
+    expect(instance.camera.position.toArray()).toEqual(hold);
+    instance.dispose();
+  });
+
+  it("fades the floor into the page's background far off, never the story", () => {
+    const instance = create();
+    const palette = paletteUniforms(themeTokens("neoDark"));
+    instance.setPalette(palette);
+    const fog = instance.scene.fog as { near: number; far: number; color: { r: number; g: number; b: number } };
+    expect(fog.color.r).toBeCloseTo(palette.background[0], 5);
+    expect(fog.color.b).toBeCloseTo(palette.background[2], 5);
+    // the farthest the camera ever is from the wheel's far edge is nearer than the fog begins
+    const farthest = Math.max(...steps.map((p) => dist(cameraPose(p).position, [CX, CY + WHEEL.outerRadius, CZ])));
+    expect(farthest + 2).toBeLessThan(FOG.near);
+    instance.dispose();
+  });
+
+  it("keeps to grays and one accent: unsorted sleeves are gray, only a key on the wheel lights, in the accent's shades", () => {
+    const accent = new Set<number>([PALETTE_SLOT.primary, PALETTE_SLOT.primaryHover, PALETTE_SLOT.pressed]);
+    const grays = new Set<number>([PALETTE_SLOT.muted, PALETTE_SLOT.highlight, PALETTE_SLOT.borderMuted, PALETTE_SLOT.panelAlt, PALETTE_SLOT.light]);
+    for (const slot of SLEEVE_SLOTS) expect(grays.has(slot)).toBe(true);
+    for (const slot of WHEEL_SLOTS) expect(accent.has(slot)).toBe(true);
+  });
+
+  it("has no drifting particles: nothing in the scene but the crate, the records, their tags and the wheel", () => {
+    const instance = create();
+    // every instanced mesh is a part of the story, none is a cloud of loose bits
+    const instanced: number[] = [];
+    instance.scene.traverse((o) => {
+      if ((o as { isInstancedMesh?: boolean }).isInstancedMesh) instanced.push((o as unknown as { count: number }).count);
+    });
+    expect(instanced.length).toBe(4); // the crate's planks, the sockets, the hub's studs, the records
+    expect(instance.scene.getObjectByName("crate")).toBeDefined();
     instance.dispose();
   });
 

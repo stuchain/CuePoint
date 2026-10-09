@@ -135,10 +135,10 @@ describe("Page", () => {
     expect(CSP).not.toContain("frame-ancestors");
   });
 
-  it("sets the stored theme before first paint, with Neo Dark as the default", async () => {
+  it("wears Neo Dark, the one theme, and never applies a theme remembered from before", async () => {
     const html = await render({});
     expect(html).toContain('data-theme="neoDark"');
-    expect(html).toContain("cuepoint-site-theme");
+    expect(html).not.toContain("cuepoint-site-theme");
   });
 
   it("never asks Google for fonts", async () => {

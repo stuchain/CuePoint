@@ -1,10 +1,11 @@
 import AxeBuilder from "@axe-core/playwright";
+import sharp from "sharp";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { extname, join, normalize } from "node:path";
 import type { AddressInfo } from "node:net";
-import { HANDOFF_FROM, STEP_SPANS, stepMid, type StepId } from "../src/three/phases";
+import { HANDOFF_FROM, READING_LINE, STEP_SPANS, stepMid, type StepId } from "../src/three/phases";
 
 /**
  * SITE-06: the home page. The default build is "before 1.0.0" (no release); dist-fixture/ (built by
@@ -121,29 +122,27 @@ test.describe("the phone's first screen", () => {
     expect((await header.boundingBox())!.height).toBeLessThan(80);
     await expect(header.getByRole("link", { name: "Get notified of 1.0" })).toBeHidden();
     await expect(header.getByRole("link", { name: "Guide" })).toBeHidden();
-    await expect(header.locator("[data-theme-switch]")).toBeHidden();
   });
 
-  test("the menu opens and closes, with JavaScript off too, and holds the nav and the theme switch", async ({ browser }) => {
+  test("the menu opens and closes, with JavaScript off too, and holds the nav", async ({ browser }) => {
     const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 375, height: 667 } });
     const page = await context.newPage();
     await page.goto("");
     const header = page.locator("header");
     await header.getByText("Menu", { exact: true }).click();
     await expect(header.getByRole("link", { name: "Guide" })).toBeVisible();
-    await expect(header.locator("[data-theme-switch]")).toBeVisible();
     await header.getByText("Menu", { exact: true }).click();
     await expect(header.getByRole("link", { name: "Guide" })).toBeHidden();
     await context.close();
   });
 
-  test("on a wide screen the nav and the theme switch are in the bar, with no Menu button", async ({ page }) => {
+  test("on a wide screen the nav is in the bar, with no Menu button and no theme switch", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("");
     const header = page.locator("header");
     await expect(header.getByRole("link", { name: "Guide" })).toBeVisible();
-    await expect(header.locator("[data-theme-switch]")).toBeVisible();
     await expect(header.getByText("Menu", { exact: true })).toBeHidden();
+    await expect(page.locator("[data-theme-switch], [data-theme-choice]")).toHaveCount(0);
   });
 
   test("'See how it works' scrolls to the first step and leaves it whole on the screen, over the stuck scene", async ({ page }) => {
@@ -174,7 +173,7 @@ test.describe("the steps and the scene", () => {
     [375, 667],
     [1440, 900],
   ] as const) {
-    test(`each step is centered on the screen at the middle of its span, at ${width}px`, async ({ page }) => {
+    test(`each step is on its reading line at the middle of its span, at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height });
       await page.goto("");
       const trackTop = await page.locator("#story-track").evaluate((el) => el.getBoundingClientRect().top + scrollY);
@@ -184,7 +183,12 @@ test.describe("the steps and the scene", () => {
         await page.evaluate((y) => window.scrollTo(0, y), trackTop - height / 2 + stepMid(id) * trackHeight);
         await page.waitForTimeout(150);
         const box = (await page.locator(`[data-step="${id}"]`).boundingBox())!;
-        expect(Math.abs(box.y + box.height / 2 - height / 2), `${id} at ${width}px`).toBeLessThan(40);
+        // the middle of a wide screen; low on an upright phone, under the picture, which leans up
+        const line = (width / height <= 0.8 ? READING_LINE.upright : READING_LINE.wide) * height;
+        expect(Math.abs(box.y + box.height / 2 - line), `${id} at ${width}px`).toBeLessThan(40);
+        // and whole on the screen
+        expect(box.y, `${id} at ${width}px`).toBeGreaterThanOrEqual(0);
+        expect(box.y + box.height, `${id} at ${width}px`).toBeLessThanOrEqual(height);
       }
     });
   }
@@ -203,6 +207,39 @@ test.describe("the steps and the scene", () => {
         expect(b.y, `a step starts above the end of the hero at ${width}px`).toBeGreaterThanOrEqual(hero.y + hero.height - 2);
       }
     }
+  });
+
+  test("the marks at the foot of the screen say which step is being told, and are not there in the hero", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("");
+    const marks = page.locator(".beats");
+    await expect(marks).toHaveAttribute("aria-hidden", "true");
+    expect(Number(await marks.evaluate((el) => getComputedStyle(el).opacity))).toBe(0);
+    const trackTop = await page.locator("#story-track").evaluate((el) => el.getBoundingClientRect().top + scrollY);
+    const trackHeight = await page.locator("#story-track").evaluate((el) => el.getBoundingClientRect().height);
+    for (const id of Object.keys(STEP_SPANS) as StepId[]) {
+      await page.evaluate((y) => window.scrollTo(0, y), trackTop - 450 + stepMid(id) * trackHeight);
+      await expect(page.locator("[data-stage]")).toHaveAttribute("data-beat", id);
+      const lit = page.locator(`[data-beat-mark="${id}"]`);
+      await expect.poll(() => lit.evaluate((el) => el.getBoundingClientRect().width)).toBeGreaterThan(40);
+    }
+    expect(Number(await marks.evaluate((el) => getComputedStyle(el).opacity))).toBeGreaterThan(0.9);
+  });
+
+  test("with the live scene, a step's plate prints in as it reaches its line, and is whole once there", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await capableDevice(page);
+    await page.goto("");
+    await expect(page.locator(CANVAS)).toBeVisible({ timeout: 20_000 });
+    await page.mouse.wheel(0, 200); // the motion is loaded once the scene runs, on the next frame of scroll
+    const plate = page.locator('[data-step="matched"] [data-plate]');
+    // still below the screen: not printed yet
+    await expect.poll(() => plate.evaluate((el) => getComputedStyle(el).clipPath)).toContain("100%");
+    const trackTop = await page.locator("#story-track").evaluate((el) => el.getBoundingClientRect().top + scrollY);
+    const trackHeight = await page.locator("#story-track").evaluate((el) => el.getBoundingClientRect().height);
+    await page.evaluate((y) => window.scrollTo(0, y), trackTop - 450 + stepMid("matched") * trackHeight);
+    await expect.poll(() => plate.evaluate((el) => getComputedStyle(el).clipPath)).not.toContain("100%");
+    await expect(plate.getByRole("heading", { level: 3 })).toBeVisible();
   });
 
   test("the stuck scene cross-fades into the app window's slot in the last phase, and only then", async ({ page }) => {
@@ -233,6 +270,80 @@ test.describe("the steps and the scene", () => {
     expect(Number(await page.locator("[data-handoff]").evaluate((el) => getComputedStyle(el).opacity))).toBe(0);
     await expect(page.locator("#window [data-app-shot]").first()).toBeVisible();
   });
+});
+
+/**
+ * The text is always readable (the owner's direction, 2026-10-09): nothing of the 3D is under or across the
+ * headline, the lead, the button or the link, however the scene leans or the screen is shaped, and the
+ * steps are solid plates on top of it. With the copy's own ink made transparent, every pixel of its box is
+ * the page's background, so the backing alone is what the letters sit on.
+ */
+test.describe("the text over the live scene", () => {
+  const BG = [0x18, 0x18, 0x1b] as const; // Neo Dark's --bg-app
+  for (const [width, height] of [
+    [1440, 900],
+    [1024, 768],
+    [768, 1024],
+    [390, 844],
+  ] as const) {
+    test(`at ${width} x ${height} nothing of the scene shows under the hero's copy`, async ({ page }) => {
+      await capableDevice(page);
+      await page.setViewportSize({ width, height });
+      await page.goto("");
+      await expect(page.locator(SCENE)).toHaveAttribute("data-scene-state", "running", { timeout: 30_000 });
+      await expect(page.locator(CANVAS)).toBeVisible();
+      await page.waitForTimeout(1200); // the canvas's fade-in
+      // and with the camera leaning toward a mouse at the copy (it leans the picture, never into the text)
+      await page.mouse.move(width * 0.1, height * 0.5);
+      await page.waitForTimeout(1300);
+      await page.addStyleTag({
+        content:
+          "[data-hero-copy] * { color: transparent !important; text-shadow: none !important; text-decoration-color: transparent !important; caret-color: transparent !important; } [data-hero-copy] svg, [data-hero-copy] [data-primary-action] { visibility: hidden !important; }",
+      });
+      const box = (await page.locator("[data-hero-copy]").boundingBox())!;
+      expect(box.width).toBeGreaterThan(200);
+      const png = await page.screenshot({ clip: box, animations: "disabled" });
+      const { data, info } = await sharp(png).raw().toBuffer({ resolveWithObject: true });
+      let off = 0;
+      for (let i = 0; i < data.length; i += info.channels) {
+        if (Math.abs(data[i]! - BG[0]) > 2 || Math.abs(data[i + 1]! - BG[1]) > 2 || Math.abs(data[i + 2]! - BG[2]) > 2) off++;
+      }
+      expect(off, `${off} of ${info.width * info.height} pixels under the copy are not the background`).toBe(0);
+    });
+  }
+
+  for (const [width, height] of [
+    [1440, 900],
+    [390, 844],
+  ] as const) {
+    test(`at ${width} x ${height} each step is a solid plate on top of the scene while it is read`, async ({ page }) => {
+      await capableDevice(page);
+      await page.setViewportSize({ width, height });
+      await page.goto("");
+      await expect(page.locator(SCENE)).toHaveAttribute("data-scene-state", "running", { timeout: 30_000 });
+      const track = await page.evaluate(() => {
+        const r = document.getElementById("story-track")!.getBoundingClientRect();
+        return { top: r.top + scrollY, height: r.height };
+      });
+      for (const id of ["messy", "matched", "ready"] as const) {
+        await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), track.top - height / 2 + stepMid(id) * track.height);
+        const plate = page.locator(`[data-step="${id}"] [data-plate]`);
+        await expect(plate).toBeInViewport();
+        const covered = await plate.evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          const alpha = getComputedStyle(el).backgroundColor.match(/rgba?\(([^)]+)\)/)![1]!.split(",")[3];
+          const points: [number, number][] = [];
+          for (const fx of [0.05, 0.5, 0.95]) for (const fy of [0.05, 0.5, 0.95]) points.push([r.left + r.width * fx, r.top + r.height * fy]);
+          const onTop = points.every(([x, y]) => {
+            const hit = document.elementFromPoint(x, y);
+            return hit !== null && el.contains(hit);
+          });
+          return { opaque: alpha === undefined || Number(alpha) === 1, onTop };
+        });
+        expect(covered, id).toEqual({ opaque: true, onTop: true });
+      }
+    });
+  }
 });
 
 test.describe("once a release exists", () => {
@@ -291,7 +402,7 @@ test.describe("the scenes and their pictures", () => {
     for (const scene of await page.locator("[data-scene]").all()) {
       const img = scene.locator(".still img:visible");
       await expect(img).toHaveCount(1);
-      await img.scrollIntoViewIfNeeded(); // the props' stills are lazy
+      await img.scrollIntoViewIfNeeded();
       await expect(img).toHaveJSProperty("complete", true);
       expect(await img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     }
@@ -392,7 +503,9 @@ test.describe("the scenes and their pictures", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("");
     const slots = page.locator("[data-app-shot]");
-    expect(await slots.count()).toBeGreaterThanOrEqual(8); // the window at the end of the scene + eight sections
+    // the home page keeps one picture, the app's window (at the end of the scene, and the slot under it): the rest are on the feature pages
+    expect(await slots.count()).toBeGreaterThanOrEqual(1);
+    expect(await slots.count()).toBeLessThanOrEqual(2);
     for (const slot of await slots.all()) {
       await expect(slot).toHaveAttribute("data-placeholder", "true");
       await expect(slot).toContainText(/screenshot/i);
@@ -442,12 +555,13 @@ test.describe("the page as a document", () => {
     expect(by("WebSite")?.url).toMatch(/^https:\/\//);
   });
 
-  test("has one h1, headings in order, and every section links to its feature page", async ({ page }) => {
+  test("has one h1, headings in order, and five teasers, each linking its feature page", async ({ page }) => {
     await page.goto("");
     await expect(page.locator("h1")).toHaveCount(1);
     const levels = await page.locator("main h1, main h2, main h3").evaluateAll((els) => els.map((e) => Number(e.tagName[1])));
     for (let i = 1; i < levels.length; i++) expect(levels[i]! - levels[i - 1]!).toBeLessThanOrEqual(1);
-    for (const id of ["clean", "library", "keys", "waveforms", "discover", "prepare", "statistics", "export"]) {
+    await expect(page.locator("[id^='feature-']:not([id$='-heading'])")).toHaveCount(5);
+    for (const id of ["clean", "library", "discover", "prepare", "export"]) {
       const section = page.locator(`#feature-${id}`);
       await expect(section.getByRole("heading")).toHaveCount(1);
       // every section links its feature page (SITE-08), which links the guide

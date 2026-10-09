@@ -100,11 +100,14 @@ const placeholder = found.length === 0;
     height: 100%;
     object-fit: cover;
   }
-  /* hard diagonal stripes in the theme's own panel colors: a slot, plainly not a screenshot */
+  /* an empty screen: a grid of single pixels in the theme's own colors, plainly a slot and not a screenshot,
+     quiet enough that eight of them on a page do not shout over the words beside them */
   .slot {
     display: grid;
     place-items: center;
-    background: repeating-linear-gradient(135deg, var(--bg-panel) 0 12px, var(--bg-panel-alt) 12px 24px);
+    background:
+      conic-gradient(at 2px 2px, transparent 75%, var(--border-muted) 0) 0 0 / 16px 16px,
+      var(--bg-panel);
   }
   .plate {
     max-width: min(90%, 22rem);

@@ -30,7 +30,7 @@ describe("trackEvent", () => {
 
 describe("EVENTS", () => {
   it("names the events the privacy policy lists, and no others", () => {
-    expect(Object.values(EVENTS).sort()).toEqual(["download", "form-sent", "theme-change"]);
+    expect(Object.values(EVENTS).sort()).toEqual(["download", "form-sent"]);
   });
 });
 

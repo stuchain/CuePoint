@@ -17,6 +17,12 @@ export interface SceneInstance {
   /** The sound the visitor switched on, 0 to 1 (home page, DEC-191). A scene that ignores sound leaves it out. */
   setLevel?(level: number): void;
   /**
+   * Where the mouse is, -1 to 1 across the screen and from bottom to top, already past the dead zone round
+   * the middle and eased (src/three/pointer.ts). Only with a mouse: never on touch, never for a still.
+   * A scene that does not follow the mouse leaves it out.
+   */
+  setPointer?(x: number, y: number): void;
+  /**
    * A scene that moves on its own (the home page's scenes drift, spin and bob while the page is still):
    * called once a frame with the seconds since the scene started. Returns true when the picture changed,
    * so the stage draws it. Never called for a still, which is always the scene at time 0, and never

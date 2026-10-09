@@ -1,4 +1,4 @@
-import { featureHref, type Unshipped } from "./features";
+import { featureHref } from "./features";
 
 /**
  * What the home page says (SITE-06). Plain American English for a DJ (DEC-132, DEC-158); never "engine"
@@ -102,91 +102,54 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
   },
 };
 
-// ---- one section per thing the app does ----
+// ---- what the app does: a few teasers, each one line; the details are on its feature page ----
 
 export interface Feature {
   readonly id: string;
-  /** The page's name for it, as the app names it. */
+  /** The page's name for it, as the app names it: the teaser's heading. */
   readonly name: string;
-  readonly heading: string;
-  /** Two or three sentences. */
+  /** One sentence. Everything else is on the feature page. */
   readonly text: string;
-  readonly shot: AppShotId;
-  /**
-   * Where "Learn more" goes: the section's feature page (SITE-08), which links the guide page for the details.
-   */
-  readonly learnMore?: { readonly label: string; readonly path: string };
-  /** Set while the app does not ship this page yet (SITE-08): the section carries a marker a public build refuses. */
-  readonly unshipped?: Unshipped;
+  /** Where "Learn more" goes: the feature page (SITE-08), which links the guide page for the details. */
+  readonly learnMore: { readonly label: string; readonly path: string };
 }
 
 const more = (slug: string) => ({ label: "Learn more", path: featureHref(slug) });
 
+/**
+ * Five teasers, the things that bring a DJ to the app (the owner's direction, 2026-10-09: the home page
+ * draws people in, the feature pages hold the details). Keys, Waveforms and Statistics have their own
+ * feature pages and are linked from /features/.
+ */
 export const FEATURES: readonly Feature[] = [
   {
     id: "clean",
     name: "Clean",
-    heading: "Match your tracks to Beatport and fix what is wrong",
-    text: "Match a playlist, a Collection or your whole library to Beatport. CuePoint keeps every candidate it found and accepts a match by itself only when it is certain, so you review the rest with the keyboard. It also finds missing files and possible duplicates, and it deletes nothing.",
-    shot: "clean",
+    text: "Match a playlist or your whole library to Beatport, and review only the matches CuePoint is not sure of.",
     learnMore: more("clean"),
   },
   {
     id: "library",
     name: "The Library",
-    heading: "Browse, filter and see your keys",
-    text: "Search and filter the whole collection, choose your columns, and click a key on the Camelot wheel to see only the tracks in it. A matched track gets Beatport's key, and you can apply its tempo, genre, label and year too. Your own values stay on top of Rekordbox's.",
-    shot: "library",
+    text: "Search your whole collection and filter it by key, tempo or genre, with Beatport's key on every matched track.",
     learnMore: more("library"),
-  },
-  {
-    id: "keys",
-    name: "Keys",
-    heading: "See the keys of any playlist",
-    text: "Pick one or several playlists, Collections or Sets and see how many tracks you have in each key, on the Camelot wheel and as a list. Click a key to list its tracks.",
-    shot: "keys",
-    learnMore: more("keys"),
-    unshipped: { shipped: false, step: "PAGES-16" },
-  },
-  {
-    id: "waveforms",
-    name: "Waveforms",
-    heading: "See each track's shape before you play it",
-    text: "CuePoint works out a waveform for every track whose file it can find, and draws your Rekordbox cues, loops and beat grid on it. The same pass measures how loud each track is, and Prepare tells you how much louder or quieter the next one will be.",
-    shot: "waveforms",
-    learnMore: more("waveforms"),
   },
   {
     id: "discover",
     name: "Discover",
-    heading: "Find new music from artists and labels you play",
-    text: "Discover looks on Beatport for new music from the artists and labels already in your library. Keep a wantlist, send tracks to a Beatport playlist, and find tracks in your own library that are similar to one you like.",
-    shot: "discover",
+    text: "Find new music on Beatport from the artists and labels already in your library.",
     learnMore: more("discover"),
   },
   {
     id: "prepare",
     name: "Prepare",
-    heading: "Plan a set before the gig",
-    text: "Lay out a set as a running order in chapters, with planned times. CuePoint checks each transition, points out a key clash or a tempo that does not fit, and suggests tracks for a gap. When it is ready, make a set list.",
-    shot: "prepare",
+    text: "Plan a set as a running order, and CuePoint points out a key clash or a tempo that does not fit.",
     learnMore: more("prepare"),
-  },
-  {
-    id: "statistics",
-    name: "Statistics",
-    heading: "See what your library holds",
-    text: "Statistics shows your most played tracks, your top artists and labels, and the tracks you have never played. It also shows how your library spreads by genre, tempo, year and rating, with a key summary that opens Keys.",
-    shot: "statistics",
-    learnMore: more("statistics"),
-    unshipped: { shipped: false, step: "STATS-02..07" },
   },
   {
     id: "export",
     name: "Export to Rekordbox",
-    heading: "Send it back to Rekordbox",
-    text: "Export writes a new Rekordbox XML file with your key, tempo, genre, label, year and rating, and the Collections you choose as playlists. Cue points and beat grids are kept exactly as Rekordbox wrote them. A preview shows what will be written first, and the file you imported is never changed.",
-    shot: "export",
+    text: "Write your keys, tempos and genres into a new Rekordbox XML file, and the file you imported is never changed.",
     learnMore: more("export"),
   },
 ];
@@ -209,13 +172,13 @@ export const TRUST: readonly TrustClaim[] = [
   {
     id: "free",
     title: "Free",
-    text: "CuePoint is free to download and to use.",
+    text: "Free to download and to use.",
     evidence: [{ file: "apps/website/PRODUCT.md", phrase: "CuePoint is a free desktop app for DJs" }],
   },
   {
     id: "local",
     title: "Runs on your computer",
-    text: "Your library is read and kept on your computer. It goes online to look tracks up on Beatport when you ask it to. When it hits a bug it sends an error report, with your names removed; you can turn that off in Settings \u2192 Privacy.",
+    text: "Your library is kept on your computer; CuePoint goes online when you ask it to look tracks up on Beatport, and sends error reports with your names removed, which you can turn off.",
     evidence: [
       { file: "PRIVACY_NOTICE.md", phrase: "processes your Rekordbox collection locally on your device" },
       { file: "PRIVACY_NOTICE.md", phrase: "only when you initiate actions" },
@@ -226,7 +189,7 @@ export const TRUST: readonly TrustClaim[] = [
   {
     id: "yours",
     title: "Your library stays yours",
-    text: "CuePoint never deletes or moves your music files, and never changes the file you imported from Rekordbox. It writes tags into your music files only when you ask it to. Before it writes tags, exports, or removes tracks that left your Rekordbox export, it shows a preview, and nothing happens until you confirm.",
+    text: "CuePoint never deletes or moves your music files, and before it writes tags or exports it shows a preview: nothing happens until you confirm.",
     evidence: [
       { file: "docs/user-guide/clean.md", phrase: "No track, file or playlist is removed, moved or renamed" },
       { file: "docs/user-guide/library.md", phrase: "never moves them" },
@@ -247,7 +210,7 @@ export const TRUST: readonly TrustClaim[] = [
   {
     id: "rekordbox",
     title: "Made for Rekordbox",
-    text: "CuePoint reads the collection you export from Rekordbox as XML, and writes a new XML file back for Rekordbox to import.",
+    text: "It reads the collection you export from Rekordbox as XML, and writes a new XML file back for Rekordbox to import.",
     evidence: [
       { file: "docs/user-guide/getting-started.md", phrase: "Export Collection in xml format" },
       { file: "docs/user-guide/rekordbox-export.md", phrase: "writes it into a new Rekordbox XML file" },

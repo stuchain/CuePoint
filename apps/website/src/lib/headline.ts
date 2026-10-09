@@ -1,7 +1,7 @@
 /**
  * The home page's headline build (SITE-06). A light runs through the headline letter by letter: each one
- * is pressed flat (its extruded shadow goes) and lit in a Camelot key's color, then springs back to full
- * depth, the way the wheel lights key by key in the scene below it.
+ * is pressed flat (its extruded shadow goes) and lit in a shade of the site's one accent, then springs back
+ * to full depth, the way the wheel lights key by key in the scene below it.
  *
  * Built for the page's budgets:
  *   - the headline is on screen, whole, from the first paint (it is the page's largest paint): nothing
@@ -16,8 +16,8 @@
  */
 
 const REDUCED = "(prefers-reduced-motion: reduce)";
-/** The accent tokens the light cycles through, as the wheel's cells are colored. */
-const KEY_TOKENS = ["--accent-primary", "--accent-success", "--accent-warning", "--accent-danger", "--accent-info"] as const;
+/** The accent's shades the light cycles through, as the wheel's cells are colored (one accent: no rainbow). */
+export const KEY_TOKENS = ["--accent-primary", "--accent-primary-hover", "--accent-primary-pressed"] as const;
 export const LETTER_STAGGER_MS = 26;
 export const LETTER_MS = 560;
 /** Where the scene will not run, how long after the page is idle the headline builds anyway. */

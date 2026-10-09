@@ -6,13 +6,19 @@
  *
  * A page or a section for something the app does not ship yet shows a preview note and carries
  * `data-unshipped` (components/Unshipped.astro); a public build fails while any remains.
+ *
+ * Three pages open on a live pixel prop beside their intro, where a moving object says something (these
+ * were on the home page until the owner moved the details here, 2026-10-09). The prop is decoration: the
+ * text says it all, and where 3D does not run the prop is its still.
  */
 import AppShot from "../../components/AppShot.astro";
 import HomeAction from "../../components/HomeAction.astro";
 import Section from "../../components/Section.astro";
 import Unshipped from "../../components/Unshipped.astro";
 import { FEATURE_PAGES, featureBySlug, featureHref, type FeaturePage } from "../../data/features";
+import Scene from "../../components/Scene.astro";
 import Page from "../../layouts/Page.astro";
+import type { SceneName } from "../../three/scenes";
 import { guidePath } from "../../content/guide";
 import { hrefFor } from "../../lib/url";
 
@@ -25,6 +31,14 @@ interface Props {
 }
 const { page } = Astro.props;
 const related = page.related.map((slug) => featureBySlug(slug)!);
+
+/** The pages with a live prop, and what the prop shows. */
+const PROPS: Partial<Record<string, { scene: SceneName; alt: string }>> = {
+  clean: { scene: "record", alt: "A pixel turntable with a record on it." },
+  keys: { scene: "wheel", alt: "A pixel Camelot wheel with a column on each key, taller where there are more tracks." },
+  waveforms: { scene: "terrain", alt: "A track's waveform drawn as a landscape of pixel columns, with a playhead across it." },
+};
+const prop = PROPS[page.slug];
 ---
 
 <Page
@@ -38,10 +52,19 @@ const related = page.related.map((slug) => featureBySlug(slug)!);
   ]}
 >
   <Section id="intro">
-    <div class="prose">
-      <h1>{page.heading}</h1>
-      {page.unshipped && <Unshipped step={page.unshipped.step} />}
-      {page.problem.map((p) => <p>{p}</p>)}
+    <div class:list={["intro", { "has-prop": prop }]}>
+      <div class="prose">
+        <h1>{page.heading}</h1>
+        {page.unshipped && <Unshipped step={page.unshipped.step} />}
+        {page.problem.map((p) => <p>{p}</p>)}
+      </div>
+      {
+        prop && (
+          <div class="prop">
+            <Scene name={prop.scene} bare autostart priority alt={prop.alt} />
+          </div>
+        )
+      }
     </div>
   </Section>
 
@@ -89,6 +112,16 @@ const related = page.related.map((slug) => featureBySlug(slug)!);
 <style>
   .prose {
     max-width: 42rem;
+  }
+  .intro {
+    display: grid;
+    gap: var(--space-xl);
+    align-items: center;
+  }
+  @media (min-width: 60rem) {
+    .intro.has-prop {
+      grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+    }
   }
   .how {
     display: grid;

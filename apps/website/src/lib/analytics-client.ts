@@ -1,13 +1,12 @@
 import { EVENTS, shouldLoadAnalytics, trackEvent } from "./analytics";
 import { CONSENT_STORAGE_KEY, unlistedCookies, type ConsentChoice } from "./consent";
-import { THEME_EVENT, type ThemeEventDetail } from "./themes";
 
 /**
  * The browser side of the analytics and the consent component (SITE-12; DEC-142, DEC-192), one small
  * script for every page, started by components/Analytics.astro.
  *
  * - It forwards the site's own events to Umami: `cuepoint:download` (SITE-07's download-client),
- *   `cuepoint:form-sent` (form-client) and the theme switch. The data is only what analytics.ts allows.
+ *   `cuepoint:form-sent` (form-client). The data is only what analytics.ts allows.
  * - It adds Umami's script (`defer`) only in a public build (data-public), so a preview build never sends
  *   an event to the real account.
  * - It lists the page's cookies. The site sets none; if one outside the allow list (consent.ts) is there,
@@ -59,9 +58,6 @@ export function startAnalytics(root: HTMLElement): void {
   });
   document.addEventListener(FORM_SENT_EVENT_NAME, (event) => {
     trackEvent(EVENTS.formSent, { form: (event as CustomEvent<{ form: string }>).detail.form });
-  });
-  document.addEventListener(THEME_EVENT, (event) => {
-    trackEvent(EVENTS.themeChange, { theme: (event as CustomEvent<ThemeEventDetail>).detail.theme });
   });
 
   const unlisted = unlistedCookies(document.cookie);

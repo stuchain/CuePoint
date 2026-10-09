@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_THEME, THEMES, isThemeId, themeInitScript } from "./themes";
+import { DEFAULT_THEME, THEMES, isThemeId } from "./themes";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const generatedCss = readFileSync(join(here, "..", "styles", "tokens.generated.css"), "utf8");
@@ -27,21 +27,11 @@ describe("theme ids stay in step", () => {
 });
 
 describe("themes", () => {
-  it("offers the app's five themes with Neo Dark first and default", () => {
+  it("knows the app's five themes, with Neo Dark first and the site's one theme", () => {
     expect(THEMES.map((t) => t.id)).toEqual(["neoDark", "retro16", "qtEvolved", "clubNeon", "mutedPro"]);
     expect(DEFAULT_THEME).toBe("neoDark");
     expect(isThemeId("retro16")).toBe(true);
     expect(isThemeId("custom:x")).toBe(false);
   });
 
-  it("the init script applies a stored theme and survives blocked storage", () => {
-    const run = (get: () => string | null) => {
-      const el = { attrs: {} as Record<string, string>, setAttribute(k: string, v: string) { this.attrs[k] = v; } };
-      new Function("localStorage", "document", themeInitScript())({ getItem: get }, { documentElement: el });
-      return el.attrs["data-theme"];
-    };
-    expect(run(() => "clubNeon")).toBe("clubNeon");
-    expect(run(() => "nonsense")).toBeUndefined();
-    expect(run(() => { throw new Error("blocked"); })).toBeUndefined();
-  });
 });

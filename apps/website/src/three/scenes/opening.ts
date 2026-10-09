@@ -6,6 +6,7 @@ import {
   DataTexture,
   DirectionalLight,
   Euler,
+  Fog,
   Group,
   InstancedMesh,
   Mesh,
@@ -29,9 +30,12 @@ import type { SceneInstance } from "./types";
  * The home page's opening scene (SITE-06, DEC-189): the crate becomes the wheel, as one full-screen,
  * pinned story.
  *
- * The first screen is the hero: a voxel crate of 24 records in blank sleeves, and behind it, standing
- * tall, an empty Camelot wheel of 24 dark sockets. With nothing scrolled it moves on its own: the wheel
- * turns slowly, the records breathe in the crate, dust drifts through the light and the camera sways.
+ * The first screen is the hero: a voxel crate of 24 records in blank gray sleeves, and behind it,
+ * standing tall, an empty Camelot wheel of 24 dark sockets, all of it right of the headline. With nothing
+ * scrolled it moves on its own: the wheel turns slowly, the records breathe in the crate and the camera
+ * sways (and, with a mouse, leans a little toward it: `setPointer`). The one color is the accent, and it
+ * comes only with meaning: a key lights when its record lands on the wheel. The floor fades into the dark far
+ * off (fog in the page's own background), so there is no horizon line through the picture.
  * As the visitor scrolls, the camera dives into the crate and the records lift out past it, hang in a
  * grid and take their key as a pixel tag, then fly back into the wheel, each to its own key, and the
  * wheel lights up key by key as they land (the tags come back on the lit cells). Last, the camera squares
@@ -263,7 +267,7 @@ interface Key {
  * the ends and through the label hold, where the two keys are the same and their tangents zero.
  */
 const KEYS_CAMERA: readonly Key[] = [
-  { p: 0, position: [12, 7.6, 25], target: [0, 6, -3.5] }, // the hero: the crate in front, the empty wheel looming behind
+  { p: 0, position: [13.8, 7.8, 29.3], target: [0, 6, -3.5] }, // the hero: the crate in front, the empty wheel looming behind, far enough off to sit beside the headline
   { p: PHASES.hero[1], position: [8, 4.6, 12], target: [0, 3.6, -1] }, // pushing in
   { p: 0.24, position: [3.4, 4.8, 6.4], target: [-0.6, 4, -3] }, // the dive: over the rim, the records rising past the lens
   { p: 0.31, position: [0.6, 6.4, 10.5], target: [0, 6.8, -1] }, // pulling back under the rising records
@@ -331,20 +335,66 @@ export function fovFor(aspect: number): number {
  * top). In normalized screen units (2 is the whole width or height).
  */
 export function heroLean(aspect: number): { x: number; y: number } {
-  if (aspect >= 1.3) return { x: 0.36, y: 0.02 };
-  if (aspect >= 0.9) return { x: 0.22, y: -0.18 };
+  // a 4:3 screen has less room right of the headline: the picture goes further over, and may run off the edge
+  if (aspect >= 1.5) return { x: 0.5, y: 0.02 };
+  if (aspect >= 1.3) return { x: 0.62, y: 0.02 };
+  if (aspect >= 0.9) return { x: 0.34, y: -0.18 };
   return { x: -0.1, y: -0.4 };
 }
+
+/**
+ * Where the story leans the picture so the step being read has its own part of the screen: on a wide
+ * screen the steps are on the left and the picture sits right of the middle; on an upright phone the
+ * steps are low on the screen and the picture sits high. Same units as heroLean.
+ */
+export function storyLean(aspect: number): { x: number; y: number } {
+  if (aspect >= 1.3) return { x: 0.3, y: 0 };
+  // an upright screen is narrower than 4:5 (phases.ts, UPRIGHT_QUERY), where the page puts the steps low
+  if (aspect > 0.8) return { x: 0.16, y: 0.08 };
+  return { x: 0, y: 0.34 };
+}
+
+/** 1 while the steps are read, 0 in the hero and from the finale on, where the lit wheel squares up for the handoff. */
+export function storyAmount(progress: number): number {
+  const p = clamp01(progress);
+  return (1 - heroAmount(p)) * (1 - smooth(span(p, [0.84, 0.94])));
+}
+
+/** The lens shift at a progress: the hero's lean, handed over to the story's, then none for the finale. */
+export function leanAt(progress: number, aspect: number): { x: number; y: number } {
+  const hero = heroAmount(progress);
+  const story = storyAmount(progress);
+  const a = heroLean(aspect);
+  const b = storyLean(aspect);
+  return { x: a.x * hero + b.x * story, y: a.y * hero + b.y * story };
+}
+
+/**
+ * How much the mouse moves the camera, 0 to 1: in the hero, and a little at the end; never through the
+ * story, where the tags must hold still on whole pixels.
+ */
+export function pointerAmount(progress: number): number {
+  return heroAmount(progress) + smooth(span(clamp01(progress), [PHASES.finale[0], 1])) * 0.5;
+}
+
+/** How far the mouse at the screen's edge moves the camera, in world units (it keeps looking at the same point). */
+export const POINTER_REACH = { x: 2.2, y: 1.1 } as const;
+
+/** The fog: none near the story, the floor fading into the page's background far behind the wheel. */
+export const FOG = { near: 46, far: 78 } as const;
 
 // ---- the Three.js side ----
 
 // palette slots (see PALETTE_TOKENS in ../palette)
 const SLOT = { app: 0, panel: 1, panelAlt: 2, borderMuted: 3, highlight: 4, light: 5, muted: 6, text: 7, primary: 8, primaryHover: 9, pressed: 10, secondary: 11, success: 12, warning: 13, danger: 14, info: 15 } as const;
-const SLEEVE_SLOTS = [SLOT.danger, SLOT.warning, SLOT.info, SLOT.success, SLOT.secondary, SLOT.muted] as const;
-const WHEEL_SLOTS = [SLOT.primary, SLOT.success, SLOT.warning, SLOT.danger, SLOT.primaryHover, SLOT.info] as const;
-const DUST_SLOTS = [SLOT.highlight, SLOT.light, SLOT.primary, SLOT.muted] as const;
-const DUST_COUNT = 90;
-const DUST_BOX = { x: 15, y: 17, zMin: -16, zMax: 9 } as const;
+/**
+ * One accent, and color only where it means something: the unsorted sleeves are grays (they do not say
+ * what they are yet), and only a record that has found its key on the wheel lights, in the accent's own
+ * three shades. Exported so opening.test.ts can hold the scene to that.
+ */
+export const SLEEVE_SLOTS = [SLOT.muted, SLOT.highlight, SLOT.borderMuted] as const;
+export const WHEEL_SLOTS = [SLOT.primary, SLOT.primaryHover, SLOT.pressed] as const;
+export { SLOT as PALETTE_SLOT };
 
 /**
  * One tag texel, in world units. A tag shows the key only ("8A"); tempo and genre are in the step's text.
@@ -407,6 +457,8 @@ function paintTag(tag: Tag, ink: [number, number, number], plate: [number, numbe
 export function create(): SceneInstance {
   const scene = new Scene();
   const camera = new PerspectiveCamera(32, 16 / 9, 0.5, 140);
+  const fog = new Fog(0x000000, FOG.near, FOG.far);
+  scene.fog = fog;
 
   scene.add(new AmbientLight(0xffffff, 0.58 * Math.PI));
   const sun = new DirectionalLight(0xffffff, 0.66 * Math.PI);
@@ -491,13 +543,6 @@ export function create(): SceneInstance {
   for (let i = 0; i < RECORD_COUNT; i++) records.setColorAt(i, new Color(0xffffff)); // allocate instanceColor up front
   scene.add(records);
 
-  // dust in the light: tiny voxels drifting up through the whole scene
-  const dustMaterial = new MeshBasicMaterial();
-  const dust = new InstancedMesh(box, dustMaterial, DUST_COUNT);
-  dust.frustumCulled = false;
-  for (let i = 0; i < DUST_COUNT; i++) dust.setColorAt(i, new Color(0xffffff));
-  scene.add(dust);
-
   const tagGeometry = new PlaneGeometry(1, 1);
   const tags = Array.from({ length: RECORD_COUNT }, (_, i) => makeTag(i, tagGeometry, TAG.texel, false));
   const cellTags = Array.from({ length: RECORD_COUNT }, (_, i) => makeTag(i, tagGeometry, CELL_TAG.texel, true));
@@ -508,6 +553,7 @@ export function create(): SceneInstance {
   let level = 0;
   let time = 0;
   let aspect = 16 / 9;
+  const pointer = { x: 0, y: 0 };
   const dummy = new Object3D();
   const euler = new Euler(0, 0, 0, "ZYX");
   const tint = new Color();
@@ -522,6 +568,7 @@ export function create(): SceneInstance {
   function applyPalette(): void {
     if (!palette) return;
     scene.background = toColor(palette.background);
+    fog.color.copy(toColor(palette.background));
     floorMaterial.color.copy(toColor(palette.colors[SLOT.panel]!));
     plankA.copy(toColor(palette.colors[SLOT.panelAlt]!));
     plankB.copy(toColor(palette.colors[SLOT.highlight]!));
@@ -541,12 +588,10 @@ export function create(): SceneInstance {
     planks.instanceMatrix.needsUpdate = true;
     if (planks.instanceColor) planks.instanceColor.needsUpdate = true;
     for (let i = 0; i < RECORD_COUNT; i++) {
-      // blank sleeves in colors that do not go together; the wheel's colors go by the key's number
+      // blank sleeves in mixed grays; a key on the wheel lights in a shade of the one accent, by its number
       sleeveColors[i]!.copy(toColor(palette.colors[SLEEVE_SLOTS[Math.floor(rand(i, 8) * SLEEVE_SLOTS.length)]!]!));
-      keyColors[i]!.copy(toColor(palette.colors[WHEEL_SLOTS[(Math.floor(i / 2) + (i % 2) * 3) % WHEEL_SLOTS.length]!]!));
+      keyColors[i]!.copy(toColor(palette.colors[WHEEL_SLOTS[(Math.floor(i / 2) + (i % 2)) % WHEEL_SLOTS.length]!]!));
     }
-    for (let i = 0; i < DUST_COUNT; i++) dust.setColorAt(i, toColor(palette.colors[DUST_SLOTS[i % DUST_SLOTS.length]!]!));
-    if (dust.instanceColor) dust.instanceColor.needsUpdate = true;
     const plate = rgb255(palette.colors[SLOT.panel]!);
     const ink = rgb255(palette.colors[SLOT.text]!);
     for (const tag of tags) paintTag(tag, ink, plate);
@@ -623,33 +668,25 @@ export function create(): SceneInstance {
     studs.instanceMatrix.needsUpdate = true;
     glow.intensity = (litSum / RECORD_COUNT) * 22;
 
-    for (let i = 0; i < DUST_COUNT; i++) {
-      const rise = (rand(i, 21) * DUST_BOX.y + time * (0.25 + rand(i, 22) * 0.35)) % DUST_BOX.y;
-      dummy.position.set(
-        (rand(i, 23) * 2 - 1) * DUST_BOX.x + Math.sin(time * 0.3 + i) * 0.4,
-        rise,
-        lerp(DUST_BOX.zMin, DUST_BOX.zMax, rand(i, 24)),
-      );
-      const s = 0.08 + rand(i, 25) * 0.1;
-      dummy.scale.set(s, s, s);
-      dummy.rotation.set(0, 0, 0);
-      dummy.updateMatrix();
-      dust.setMatrixAt(i, dummy.matrix);
-    }
-    dust.instanceMatrix.needsUpdate = true;
 
     crate.position.y = -crateDrop(progress);
 
     const cam = cameraPose(progress);
     // a slow handheld drift: in the hero, and a little at the end; never while the tags hold
     const drift = hero + smooth(span(progress, [PHASES.finale[0], 1])) * 0.4;
-    camera.position.set(cam.position[0] + Math.sin(time * 0.21) * 1.4 * drift, cam.position[1] + Math.sin(time * 0.33) * 0.35 * drift, cam.position[2] + Math.cos(time * 0.17) * 0.8 * drift);
+    // the mouse leans the camera round the same point, so the crate and the wheel part a little (parallax)
+    const reach = pointerAmount(progress);
+    camera.position.set(
+      cam.position[0] + Math.sin(time * 0.21) * 1.4 * drift + pointer.x * POINTER_REACH.x * reach,
+      cam.position[1] + Math.sin(time * 0.33) * 0.35 * drift + pointer.y * POINTER_REACH.y * reach,
+      cam.position[2] + Math.cos(time * 0.17) * 0.8 * drift,
+    );
     camera.lookAt(...cam.target);
     camera.updateProjectionMatrix();
-    // the hero leans the picture aside for the headline (a lens shift: the perspective stays true)
-    const lean = heroLean(aspect);
-    camera.projectionMatrix.elements[8] = -lean.x * hero;
-    camera.projectionMatrix.elements[9] = -lean.y * hero;
+    // the picture leans aside for the headline, then for the step being read (a lens shift: the perspective stays true)
+    const lean = leanAt(progress, aspect);
+    camera.projectionMatrix.elements[8] = -lean.x;
+    camera.projectionMatrix.elements[9] = -lean.y;
     camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
   }
 
@@ -667,6 +704,11 @@ export function create(): SceneInstance {
     },
     setLevel(l) {
       level = clamp01(l);
+      layout();
+    },
+    setPointer(x, y) {
+      pointer.x = Math.max(-1, Math.min(1, x));
+      pointer.y = Math.max(-1, Math.min(1, y));
       layout();
     },
     tick(seconds) {
@@ -691,8 +733,8 @@ export function create(): SceneInstance {
       floorGeometry.dispose();
       tagGeometry.dispose();
       hubGeometry.dispose();
-      for (const m of [floorMaterial, crateMaterial, recordMaterial, socketMaterial, hubMaterial, studMaterial, dustMaterial]) m.dispose();
-      for (const mesh of [planks, records, sockets, studs, dust]) mesh.dispose();
+      for (const m of [floorMaterial, crateMaterial, recordMaterial, socketMaterial, hubMaterial, studMaterial]) m.dispose();
+      for (const mesh of [planks, records, sockets, studs]) mesh.dispose();
       for (const tag of [...tags, ...cellTags]) {
         tag.texture.dispose();
         tag.material.dispose();

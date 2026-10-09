@@ -47,7 +47,7 @@ The site wears the app's own pixel design system. The source of truth is
 copied by hand.
 
 In short: square corners, solid black outlines, bevels, zero-blur hard shadows, Pixelify Sans for
-chrome. There are five themes, and Neo Dark (violet on zinc) is the default (DEC-190).
+chrome. The app has five themes; the site wears one, its default Neo Dark (violet on zinc), with no theme switch: the owner's choice on 2026-10-09, so a visitor sees one coherent palette.
 
 The 3D extends the app's look and never replaces it. The opening scene is the crate becoming the
 Camelot wheel (DEC-189): a voxel crate of unlabeled records, which take their key, tempo and genre and

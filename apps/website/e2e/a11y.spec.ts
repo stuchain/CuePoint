@@ -6,8 +6,6 @@ import { distPages } from "./pages";
 /** The viewports DEC-141 names: phone, tablet, desktop. */
 const WIDTHS = [375, 768, 1440] as const;
 const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
-const THEMES = ["neoDark", "retro16", "qtEvolved", "clubNeon", "mutedPro"] as const;
-const THEME_KEY = "cuepoint-site-theme";
 const pages = distPages();
 
 async function expectAccessible(page: Page) {
@@ -99,19 +97,14 @@ for (const width of WIDTHS) {
   });
 }
 
-// Every page in each of the five themes, at the desktop width.
-test.describe("every theme at 1440px", () => {
-  test.use({ viewport: { width: 1440, height: 900 } });
-
-  for (const theme of THEMES) {
-    for (const path of pages) {
-      test(`/${path} in the ${theme} theme`, async ({ page }) => {
-        await page.addInitScript(([key, value]) => localStorage.setItem(key!, value!), [THEME_KEY, theme]);
-        expect((await page.goto(path))?.ok(), `${path} did not load`).toBe(true);
-        await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
-        await expectPageOk(page);
-      });
-    }
+// The site wears one theme, Neo Dark (the owner's choice, 2026-10-09): there is no switch, and a theme
+// remembered from before it was removed is not applied.
+test("every page is in Neo Dark, with no theme switch, whatever was remembered before", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("cuepoint-site-theme", "clubNeon"));
+  for (const path of ["", "features/", "guide/getting-started/"]) {
+    await page.goto(path);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "neoDark");
+    await expect(page.locator("[data-theme-switch], [data-theme-choice]")).toHaveCount(0);
   }
 });
 

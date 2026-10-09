@@ -161,16 +161,6 @@ test.describe("the 3D test scene", () => {
     expect(await frames(page)).toBe(asleep);
   });
 
-  test("a theme change recolors the scene", async ({ page }) => {
-    await capableDevice(page);
-    await openScenePage(page);
-    await expect(page.locator(CANVAS)).toBeVisible({ timeout: 20_000 });
-    await page.waitForTimeout(2500);
-    const before = await frames(page);
-    await page.locator('[data-theme-switch] [data-theme-choice="clubNeon"]').click();
-    await expect.poll(() => frames(page)).toBeGreaterThan(before);
-  });
-
   test("slow frames step the quality down: shadows off, then bigger pixels", async ({ page }) => {
     await capableDevice(page);
     // about 12 frames a second, and the page keeps scrolling so every frame renders
@@ -351,7 +341,7 @@ test.describe("the 3D test scene", () => {
     await openScenePage(page);
     await expect(page.locator(CANVAS)).toBeVisible({ timeout: 20_000 });
     expect(await page.evaluate((k) => sessionStorage.getItem(k), RELEASED_KEY)).toBeNull();
-    await expectOk(page, ""); // the home page has no scene
+    await expectOk(page, "privacy/"); // a page with no scene (the home page has one since SITE-06, which would start a stage of its own)
     await expect(page.locator(CANVAS)).toHaveCount(0);
     expect(await page.evaluate((k) => sessionStorage.getItem(k), RELEASED_KEY)).toBe("1");
   });

@@ -3,11 +3,11 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { WebGLRenderer } from "three";
 import { PUBLIC } from "../../site.config";
 import { AUDIO_LEVEL_EVENT } from "../lib/loop";
-import { THEME_EVENT } from "../lib/themes";
 import { FrameBudget } from "./budget";
 import { FpsProbe } from "./gate";
 import { PixelPipeline } from "./pixel";
 import { readPalette, type PaletteUniforms } from "./palette";
+import { FINE_POINTER, pointerFrom } from "./pointer";
 import { createRenderer, releaseContext } from "./renderer";
 import type { SceneInstance } from "./scenes/types";
 import { yieldToMain } from "./yield";
@@ -29,6 +29,9 @@ import { yieldToMain } from "./yield";
  * - `pagehide` that is not entering the back/forward cache disposes everything and releases the WebGL
  *   context with WEBGL_lose_context; one that is entering it only sleeps, and `pageshow` wakes it.
  * - prefers-reduced-motion turning on stops the stage.
+ * - With a mouse (never on touch), a scene that follows it (SceneInstance.setPointer) gets the mouse's
+ *   place, past a dead zone round the middle (pointer.ts) and eased by gsap.quickTo, so it glides after
+ *   the hand instead of jittering with it; leaving the window eases it back to the middle.
  */
 
 gsap.registerPlugin(ScrollTrigger);
@@ -160,6 +163,13 @@ export class Stage {
   private readonly holdQuality = !PUBLIC && window.__cuepointStageConfig?.holdQuality === true;
   private readonly entries = new Map<HTMLElement, Entry>();
   private readonly motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  private readonly finePointer = window.matchMedia(FINE_POINTER);
+  /** The eased mouse, -1..1, that the active scene follows. */
+  private readonly pointer = { x: 0, y: 0 };
+  private readonly pointerTo = {
+    x: gsap.quickTo(this.pointer, "x", { duration: 1.1, ease: "power3.out", onUpdate: () => this.pushPointer() }),
+    y: gsap.quickTo(this.pointer, "y", { duration: 1.1, ease: "power3.out", onUpdate: () => this.pushPointer() }),
+  };
   private palette: PaletteUniforms;
   private active: Entry | undefined;
   private resizeObserver: ResizeObserver;
@@ -185,12 +195,14 @@ export class Stage {
     this.pixel.setPalette(this.palette);
     this.appliedShadow = this.budget.shadowSize;
     this.resizeObserver = new ResizeObserver(() => this.resize());
-    document.addEventListener(THEME_EVENT, this.onTheme);
     document.addEventListener(AUDIO_LEVEL_EVENT, this.onAudioLevel);
     document.addEventListener("visibilitychange", this.onVisibility);
     window.addEventListener("pagehide", this.onPageHide);
     window.addEventListener("pageshow", this.onPageShow);
     this.motion.addEventListener("change", this.onMotion);
+    window.addEventListener("pointermove", this.onPointerMove, { passive: true });
+    document.documentElement.addEventListener("pointerleave", this.onPointerLeave);
+    window.addEventListener("blur", this.onPointerLeave);
     this.syncDebug();
     this.publish();
   }
@@ -379,15 +391,6 @@ export class Stage {
 
   // ---- events ----
 
-  private readonly onTheme = (): void => {
-    if (this.disposed) return;
-    this.palette = readPalette();
-    this.pixel.setPalette(this.palette);
-    for (const e of this.entries.values()) e.instance.setPalette(this.palette);
-    this.dirty = true;
-    this.draw();
-  };
-
   private readonly onAudioLevel = (event: Event): void => {
     const level = Number((event as CustomEvent<number>).detail);
     if (this.disposed || !this.active || !Number.isFinite(level)) return;
@@ -402,6 +405,26 @@ export class Stage {
       this.wake();
     }
   };
+
+  private readonly onPointerMove = (e: PointerEvent): void => {
+    // a finger on the page is scrolling, not pointing; and only a mouse on a device that hovers leans the camera
+    if (this.disposed || e.pointerType !== "mouse" || !this.finePointer.matches) return;
+    const to = pointerFrom(e.clientX, e.clientY, window.innerWidth, window.innerHeight);
+    this.pointerTo.x(to.x);
+    this.pointerTo.y(to.y);
+  };
+
+  private readonly onPointerLeave = (): void => {
+    if (this.disposed) return;
+    this.pointerTo.x(0);
+    this.pointerTo.y(0);
+  };
+
+  private pushPointer(): void {
+    if (this.disposed || !this.active?.instance.setPointer) return;
+    this.active.instance.setPointer(this.pointer.x, this.pointer.y);
+    this.dirty = true;
+  }
 
   private readonly onMotion = (): void => {
     if (this.motion.matches) this.stop("reduced-motion");
@@ -447,12 +470,15 @@ export class Stage {
     if (this.disposed) return;
     this.disposed = true;
     this.sleep();
-    document.removeEventListener(THEME_EVENT, this.onTheme);
     document.removeEventListener(AUDIO_LEVEL_EVENT, this.onAudioLevel);
     document.removeEventListener("visibilitychange", this.onVisibility);
     window.removeEventListener("pagehide", this.onPageHide);
     window.removeEventListener("pageshow", this.onPageShow);
     this.motion.removeEventListener("change", this.onMotion);
+    window.removeEventListener("pointermove", this.onPointerMove);
+    document.documentElement.removeEventListener("pointerleave", this.onPointerLeave);
+    window.removeEventListener("blur", this.onPointerLeave);
+    gsap.killTweensOf(this.pointer);
     this.resizeObserver.disconnect();
     for (const e of this.entries.values()) {
       e.observer.disconnect();

@@ -5,13 +5,17 @@
  * trust it, and the download.
  *
  * The opening is one full-screen scene, pinned (CSS sticky) for the whole of a tall section. Its first
- * screen is the hero: the headline over the scene, which moves on its own as soon as the page is idle
- * (Scene's `autostart`), fading in over its still. Scrolling drives the camera through the story, and a
- * track of three steps scrolls over it in big type. The scene's scroll range is that track (`trigger`,
- * from its top at the middle of the screen to its bottom at the middle), so each step, placed at the
- * middle of its span of src/three/phases.ts, is centered on the screen exactly while the scene shows what
- * it says. The steps say the whole story in words, so nothing is only in the 3D. In the last phase the
- * pinned scene hands over to the app window's slot, which rises flat out of the wheel (DEC-189).
+ * screen is the hero: the headline, one primary action and a quiet "See how it works" over the scene,
+ * which moves on its own as soon as the page is idle (Scene's `autostart`), fading in over its still.
+ * Scrolling drives the camera through the story, and a track of three steps scrolls over it, each a
+ * solid plate (the app's own panel) with a big title, so the type never sits on the records. The scene's
+ * scroll range is that track (`trigger`, from its top at the middle of the screen to its bottom at the
+ * middle), so each step, placed at the middle of its span of src/three/phases.ts, is on its reading line
+ * (READING_LINE: the middle of a wide screen, low on an upright one) exactly while the scene shows what it
+ * says, and the scene leans away from it (opening.ts, storyLean). Three marks at the foot of the screen
+ * say which step is being told. The steps say the whole story in words, so nothing is only in the 3D. In
+ * the last phase the pinned scene hands over to the app window's slot, which rises flat out of the wheel
+ * (DEC-189), filling an upright phone's screen.
  *
  * Where the 3D does not run:
  *   - with reduced motion, saveData, a small device or no WebGL 2 (known before first paint: the inline
@@ -19,20 +23,24 @@
  *     still, then each step beside its own frame of the scene (StoryFrame);
  *   - where the 3D is refused later (software GL, a slow device) the layout stays and the pinned still
  *     turns into the frame of the step being read (the flipbook in the script below).
- * The app's pictures are labelled placeholders until SITE-04 (components/AppShot.astro), shown as tilted
- * panels; three sections carry a small live prop beside their text.
+ * The app's pictures are labelled placeholders until SITE-04 (components/AppShot.astro); the home page has
+ * one, the app's window.
+ *
+ * Below the story the page is one system (the owner's direction, 2026-10-09: draw people in, keep the
+ * details on the feature pages): every section is the same grid, its heading in the left column and its
+ * content in the right, with a seam (the app's groove: an outline over a highlight) between them.
+ *   - what CuePoint does: the window, then five teasers of one line each, each linking its feature page;
+ *   - what you can count on: five one-line claims, in one of the app's panels;
+ *   - the closing band, the one block in the accent.
  */
 import { SITE_URL } from "../../site.config";
 import { plainStoryScript } from "../three/gate";
 import { STEP_FRAME, STILL_FRAMES, stepMid, type StepId } from "../three/phases";
-import type { SceneName } from "../three/scenes";
 import { shotImages } from "../lib/app-shots";
 import AppShot from "../components/AppShot.astro";
-import Button from "../components/Button.astro";
 import HomeAction from "../components/HomeAction.astro";
 import Scene from "../components/Scene.astro";
 import StoryFrame from "../components/StoryFrame.astro";
-import Unshipped from "../components/Unshipped.astro";
 import SoundButton from "../components/SoundButton.astro";
 import { FEATURES, HERO, OPENING_STEPS, TRUST } from "../data/home";
 import { GITHUB_URL, SITE_NAME } from "../data/site";
@@ -82,16 +90,9 @@ const PLAIN_SCRIPT = plainStoryScript();
 
 /** What each step's picture shows, where the opening is a static story. */
 const FRAME_ALT: Record<StepId, string> = {
-  messy: "A crate of records in blank sleeves of mismatched colors, and behind it an empty Camelot wheel.",
+  messy: "A crate of records in blank gray sleeves, and behind it an empty Camelot wheel.",
   matched: "The records hanging in a grid, each tagged with its key, like 8A or 11B.",
   ready: "The Camelot wheel lit up, every record in its key's place, each cell showing its key.",
-};
-
-/** The sections with a small live scene beside their text: the ones where a moving object says something. */
-const PROPS: Partial<Record<string, { scene: SceneName; alt: string }>> = {
-  clean: { scene: "record", alt: "A pixel turntable with a record on it." },
-  keys: { scene: "wheel", alt: "A pixel Camelot wheel with a column on each key, taller where there are more tracks." },
-  waveforms: { scene: "terrain", alt: "A track's waveform drawn as a landscape of pixel columns, with a playhead across it." },
 };
 
 /** The closing's turntable: the 24 cells of a Camelot wheel as a pixel picture, drawn here once. */
@@ -104,6 +105,7 @@ const cellPath = (ring: 0 | 1, n: number): string => {
 };
 const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) as 0 | 1, Math.floor(i / 2)), tone: (Math.floor(i / 2) + (i % 2) * 3) % 3 }));
 ---
+
 
 <Page title={HERO.title} description={HERO.description} path="" schema={schema}>
   <script is:inline set:html={PLAIN_SCRIPT} />
@@ -121,20 +123,29 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
         range="top 50%,bottom 50%"
         alt={FRAME_ALT.messy}
       />
-      <div class="scrim" aria-hidden="true"></div>
       <div class="handoff" data-handoff aria-hidden="true">
         <div class="handoff-window"><AppShot id="window" bare /></div>
       </div>
+      <ol class="beats" aria-hidden="true">
+        {OPENING_STEPS.map((step) => <li data-beat-mark={step.id} />)}
+      </ol>
       <div class="sound"><SoundButton /></div>
     </div>
 
     <div class="hero">
       <div class="hero-inner">
+        <div class="hero-copy" data-hero-copy>
         <h1 id="home-heading" data-headline>{HERO.heading}</h1>
         <p class="lead">{HERO.lead}</p>
         <div class="actions">
           <HomeAction />
-          <Button href="#story" variant="secondary">See how it works</Button>
+          <a class="how" href="#story">
+            See how it works
+            <svg viewBox="0 0 7 7" width="14" height="14" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+              <rect x="3" y="0" width="1" height="7" /><rect x="1" y="3" width="1" height="1" /><rect x="5" y="3" width="1" height="1" /><rect x="2" y="4" width="1" height="2" /><rect x="4" y="4" width="1" height="2" />
+            </svg>
+          </a>
+        </div>
         </div>
       </div>
     </div>
@@ -146,7 +157,7 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
           OPENING_STEPS.map((step, i) => (
             <li class="step" id={i === 0 ? "story" : undefined} data-step={step.id} style={`--mid: ${stepMid(step.id as StepId)}`}>
               <StoryFrame class="step-frame" scene="opening" frame={STEP_FRAME[step.id as StepId]} alt={FRAME_ALT[step.id as StepId]} />
-              <div class="step-copy">
+              <div class="plate" data-plate>
                 <span class="num" aria-hidden="true">{i + 1}</span>
                 <h3>{step.title}</h3>
                 <p>{step.text}</p>
@@ -158,52 +169,32 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
     </div>
   </section>
 
-  <section class="window" id="window" aria-labelledby="window-heading">
-    <div class="inner">
-      <h2 id="window-heading">And then it is your library, in CuePoint</h2>
-      <p class="window-text" data-unshipped="PAGES-10">
-        The Camelot wheel is part of the app too. Open it from the header on any page, and click a key to
-        see only the tracks in it.
-      </p>
-      <div class="slab" data-slab="rise"><AppShot id="window" /></div>
+  <section class="band what" id="window" aria-labelledby="what-heading">
+    <div class="inner grid">
+      <h2 id="what-heading">What CuePoint does</h2>
+      <div class="content">
+        <div class="slab"><AppShot id="window" /></div>
+        <ul class="teasers">
+          {
+            FEATURES.map((f) => (
+              <li class="teaser" id={`feature-${f.id}`}>
+                <h3 id={`feature-${f.id}-heading`}>{f.name}</h3>
+                <p>{f.text}</p>
+                <a class="more" href={hrefFor(f.learnMore.path)}>
+                  {f.learnMore.label}
+                  <span class="sr-only"> about {f.name}</span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+        <p class="all"><a class="more" href={hrefFor("features/")}>All of CuePoint's features</a></p>
+      </div>
     </div>
   </section>
 
-  {
-    FEATURES.map((f, i) => {
-      const prop = PROPS[f.id];
-      return (
-        <section class="feature" id={`feature-${f.id}`} aria-labelledby={`feature-${f.id}-heading`} data-side={i % 2 === 0 ? "left" : "right"}>
-          <div class="inner">
-            <div class="copy">
-              <h2 id={`feature-${f.id}-heading`}>{f.heading}</h2>
-              <p>{f.text}</p>
-              {f.unshipped && <Unshipped step={f.unshipped.step} compact />}
-              <p class="more">
-                {f.learnMore && (
-                  <a href={hrefFor(f.learnMore.path)}>
-                    {f.learnMore.label}
-                    <span class="sr-only"> about {f.name}</span>
-                  </a>
-                )}
-              </p>
-              {prop && (
-                <div class="prop">
-                  <Scene name={prop.scene} bare autostart alt={prop.alt} />
-                </div>
-              )}
-            </div>
-            <div class="slab" data-slab={i % 2 === 0 ? "left" : "right"}>
-              <AppShot id={f.shot} />
-            </div>
-          </div>
-        </section>
-      );
-    })
-  }
-
-  <section class="trust" id="trust" aria-labelledby="trust-heading">
-    <div class="inner">
+  <section class="band trust" id="trust" aria-labelledby="trust-heading">
+    <div class="inner grid">
       <h2 id="trust-heading">What you can count on</h2>
       <dl class="sheet">
         {
@@ -211,13 +202,14 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
             <div class="row">
               <dt>{t.title}</dt>
               <dd>
-                <p>{t.text}</p>
+                {t.text}
                 {t.id === "open" && (
-                  <p>
-                    <a href={GITHUB_URL} rel="noopener noreferrer">
+                  <>
+                    {" "}
+                    <a class="more" href={GITHUB_URL} rel="noopener noreferrer">
                       See the code on GitHub
                     </a>
-                  </p>
+                  </>
                 )}
               </dd>
             </div>
@@ -249,12 +241,15 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
 </Page>
 
 <script>
-  // The opening, as the visitor scrolls (only reads layout once a frame, and writes three custom properties):
-  //  - the hero's scrim fades as the story begins;
+  // The opening, as the visitor scrolls (only reads layout once a frame, and writes a few custom properties):
+  //  - --hero goes from 1 to 0 as the hero scrolls away (the marks wait for it);
+  //  - the marks at the foot of the screen say which step is being told;
   //  - from the last phase the pinned scene hands over to the app window (only while the 3D runs: otherwise
   //    the slot below the scene is the window, and nothing here changes);
   //  - where the 3D does not run, the pinned still shows the frame of the step being read.
-  import { HANDOFF_FROM, frameAt } from "../three/phases";
+  // Once the live scene runs, the story's plates print in as they reach their line (lib/story-motion.ts,
+  // loaded then and only then, with the 3D's own GSAP).
+  import { HANDOFF_FROM, beatAt, frameAt } from "../three/phases";
 
   const root = document.documentElement;
   const stage = document.querySelector<HTMLElement>("[data-stage]");
@@ -262,6 +257,7 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
   const scene = stage?.querySelector<HTMLElement>("[data-scene]");
   if (stage && track && scene) {
     let queued = false;
+    let motion = false;
     const update = () => {
       queued = false;
       const r = track.getBoundingClientRect();
@@ -270,7 +266,13 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
       const handoff = running ? Math.min(1, Math.max(0, (p - HANDOFF_FROM) / (1 - HANDOFF_FROM))) : 0;
       stage.style.setProperty("--handoff", String(handoff));
       stage.style.setProperty("--hero", String(Math.min(1, Math.max(0, 1 - scrollY / (innerHeight * 0.9)))));
+      stage.dataset["beat"] = beatAt(p) ?? "none";
       if (root.dataset["story"] !== "plain") scene.dataset["frame"] = frameAt(p);
+      if (running && !motion && root.dataset["story"] !== "plain") {
+        motion = true;
+        const plates = Array.from(document.querySelectorAll<HTMLElement>("[data-plate]"));
+        void import("../lib/story-motion").then((m) => m.startStoryMotion(plates)).catch(() => undefined);
+      }
     };
     const schedule = () => {
       if (!queued) {
@@ -298,8 +300,8 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
 
 <script>
   // The headline's build (SITE-06): when the live scene fades in (or, where it never will, once the page
-  // is idle), a light runs through the headline letter by letter, each pressed flat and lit in a key's
-  // color, then back to its full depth: the wheel lighting key by key, in type. The text is on screen from
+  // is idle), a light runs through the headline letter by letter, each pressed flat and lit in a shade
+  // of the accent, then back to its full depth: the wheel lighting key by key, in type. The text is on screen from
   // the first paint (it is the page's largest paint) and never moves: only color and the shadow change,
   // which lay nothing out. Nothing runs with reduced motion.
   import { buildHeadline, startWhenAlive } from "../lib/headline";
@@ -310,19 +312,41 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
 </script>
 
 <style>
-  /* the hero letters' extruded depth: a hard outline and two steps of the theme's pressed accent */
+  /*
+   * One system for the whole page.
+   *   Rhythm: --r1 (a gap inside a group) < --r2 (between groups) < --r3 (a block's breathing room) <
+   *           --r4 (between sections); more room above a heading than below it.
+   *   Type:   --t-display (the h1 and the closing), --t-title (every section's and step's title),
+   *           --t-lead (the hero's lead and the section texts' first size), the body size for the rest.
+   *   Edges:  everything hangs from the content column's left edge; the app's outline (2px black), its
+   *           bevel and its hard shadows are the only depth; a seam (outline over highlight) between sections.
+   */
   :global(html) {
+    /* the hero letters' extruded depth: a hard outline and two steps of the theme's pressed accent */
     --headline-depth: 2px 2px 0 var(--accent-primary-pressed), 4px 4px 0 var(--accent-primary-pressed), 6px 6px 0 var(--border-outline);
   }
+  .opening,
+  .band,
+  .get {
+    --r1: var(--space-xl);
+    --r2: calc(var(--space-xl) * 2);
+    --r3: calc(var(--space-xl) * 3.2);
+    --r4: clamp(4.5rem, 2.5rem + 6vw, 8.5rem);
+    --t-display: clamp(2.5rem, 1.2rem + 3.8vw, 4.25rem);
+    --t-title: clamp(1.9rem, 1.1rem + 2.4vw, 3.25rem);
+    --t-lead: clamp(1.1rem, 1rem + 0.45vw, var(--font-size-lg));
+    --column: min(100% - 2 * var(--gutter), var(--content-max));
+    --column-left: max(var(--gutter), (100% - var(--content-max)) / 2);
+  }
   .inner {
-    width: min(100% - 2 * var(--gutter), var(--content-max));
+    width: var(--column);
     margin-inline: auto;
   }
 
   /* ---- the opening: a tall section, a full-screen pinned stage, the hero and the steps over it ---- */
   .opening {
     position: relative;
-    height: 560svh;
+    height: 520svh;
   }
   .stage {
     position: sticky;
@@ -331,25 +355,10 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
     overflow: hidden;
     background: var(--bg-app);
   }
-  /* the hero's scrim: hard steps of the page's own color, so the headline reads over any frame */
-  .scrim {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: var(--hero, 1);
-    background: linear-gradient(
-      180deg,
-      var(--bg-app) 0 34%,
-      color-mix(in srgb, var(--bg-app) 72%, transparent) 34% 42%,
-      color-mix(in srgb, var(--bg-app) 44%, transparent) 42% 49%,
-      color-mix(in srgb, var(--bg-app) 18%, transparent) 49% 55%,
-      transparent 55%
-    );
-  }
   .sound {
     position: absolute;
     right: var(--gutter);
-    bottom: var(--space-xl);
+    bottom: var(--r1);
     z-index: 3;
   }
 
@@ -361,34 +370,98 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
     display: flex;
     align-items: flex-start;
     pointer-events: none;
+    /* the copy's backing below reaches to the screen's edges, never past the first screen */
+    overflow: hidden;
   }
   .hero-inner {
-    width: min(100% - 2 * var(--gutter), var(--content-max));
+    width: var(--column);
     margin-inline: auto;
-    padding-top: var(--space-xl);
+    padding-top: var(--r1);
     pointer-events: auto;
   }
+  /*
+   * The copy's backing: the page's own color, solid under every letter, the button and the link, with a
+   * short fade in hard steps on the side that faces the scene. It is part of the copy, so it scrolls away
+   * with it, and the scene never sits under the text however it leans or however wide the screen is
+   * (e2e/home.spec.ts reads the pixels under the copy). Upright and narrow: solid from the top, the fade below.
+   */
+  .hero-copy {
+    --fade: 3rem;
+    position: relative;
+    isolation: isolate;
+  }
+  .hero-copy::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -100svh -100vw calc(-1 * (var(--r1) + var(--fade))) -100vw;
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--bg-app) 25%, transparent) 0 1rem,
+      color-mix(in srgb, var(--bg-app) 55%, transparent) 1rem 2rem,
+      color-mix(in srgb, var(--bg-app) 82%, transparent) 2rem 3rem,
+      var(--bg-app) 3rem
+    );
+    pointer-events: none;
+  }
   .hero h1 {
-    max-width: 15ch;
-    margin: 0 0 var(--space-lg);
-    font-size: clamp(2.25rem, 0.9rem + 4.4vw, 4.75rem);
-    line-height: 1.04;
+    max-width: 14ch;
+    margin: 0 0 var(--r1);
+    font-size: var(--t-display);
+    line-height: 1.02;
     letter-spacing: 0.01em;
     text-shadow: var(--headline-depth);
   }
   .lead {
-    max-width: 34rem;
-    margin: 0 0 var(--space-xl);
-    font-size: var(--font-size-md);
+    max-width: 29rem;
+    margin: 0 0 var(--r2);
+    font-size: var(--t-lead);
+    line-height: 1.5;
   }
   .actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-md);
+    align-items: center;
+    gap: var(--r1) calc(var(--r1) * 1.6);
+  }
+  .actions :global([data-primary-action]) {
+    font-size: var(--font-size-lg);
+    padding: var(--space-md) calc(var(--space-xl) * 1.2);
+  }
+  /* the secondary: a quiet link with a pixel arrow down, not a second button competing with the first */
+  .how {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    min-height: 44px;
+    font-family: var(--font-pixel);
+    font-weight: 600;
+    color: var(--fg-primary);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.3em;
+  }
+  .how svg {
+    fill: currentColor;
+  }
+  .how:hover {
+    color: var(--accent-primary-hover);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .how svg {
+      /* a few nudges once the page has settled, then it rests: a cue, not a loop */
+      animation: nudge 0.9s steps(2, jump-none) 2.4s 4;
+    }
+  }
+  @keyframes nudge {
+    50% {
+      translate: 0 3px;
+    }
   }
 
-  /* the steps: a track as long as the story's scroll; each step sits at the middle of its span */
+  /* the steps: a track as long as the story's scroll; each step sits on its reading line at the middle of its span */
   .steps {
+    --reading-offset: 0svh;
     position: absolute;
     top: 50svh;
     bottom: 50svh;
@@ -400,7 +473,7 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
   .steps ol {
     position: relative;
     height: 100%;
-    width: min(100% - 2 * var(--gutter), var(--content-max));
+    width: var(--column);
     margin: 0 auto;
     padding: 0;
     list-style: none;
@@ -408,52 +481,84 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
   .step {
     position: absolute;
     left: 0;
-    top: calc(var(--mid) * 100%);
+    top: calc(var(--mid) * 100% + var(--reading-offset));
     transform: translateY(-50%);
-    width: min(100%, 34rem);
+    width: min(100%, 31rem);
     pointer-events: auto;
-    /* "See how it works" lands with the first step in the middle of the screen */
+    /* "See how it works" lands with the first step whole on the screen */
     scroll-margin-top: 28svh;
   }
   .step :global(.step-frame) {
     display: none;
   }
-  .step h3 {
-    margin: var(--space-md) 0 var(--space-lg);
-    font-size: clamp(2rem, 1rem + 3.4vw, 3.75rem);
-    line-height: 1.02;
-    /* a hard pixel outline, so the big type reads over any frame of the scene */
-    text-shadow:
-      -3px 0 0 var(--border-outline),
-      3px 0 0 var(--border-outline),
-      0 -3px 0 var(--border-outline),
-      0 3px 0 var(--border-outline),
-      3px 3px 0 var(--border-outline),
-      -3px -3px 0 var(--border-outline),
-      3px -3px 0 var(--border-outline),
-      -3px 3px 0 var(--border-outline),
-      6px 6px 0 var(--accent-primary-pressed);
-  }
-  .step p {
-    margin: 0;
-    padding: var(--space-lg) var(--space-xl);
+  /* a step is one of the app's panels: an outline, a bevel and a hard shadow, so the big title never sits on the records */
+  .plate {
+    position: relative;
+    padding: calc(var(--r1) * 1.6) var(--r2) var(--r2);
     background: var(--bg-panel);
-    border: var(--border-width) solid var(--border-outline);
-    box-shadow: var(--shadow-bevel-panel), var(--shadow-panel);
-    font-size: var(--font-size-md);
+    border: var(--border-width-heavy) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel), var(--shadow-modal);
   }
+  .plate h3 {
+    margin: 0 0 var(--r1);
+    font-size: var(--t-title);
+    line-height: 1.02;
+  }
+  .plate p {
+    max-width: 30rem;
+    margin: 0;
+    font-size: var(--t-lead);
+    line-height: 1.5;
+  }
+  /* the number hangs off the plate's corner: a key of the wheel, in the accent */
   .num {
+    position: absolute;
+    top: calc(-1 * var(--r1) * 1.3);
+    left: calc(-1 * var(--r1));
     display: grid;
     place-items: center;
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 3.25rem;
+    height: 3.25rem;
     background: var(--accent-primary);
     color: var(--border-outline);
-    border: var(--border-width) solid var(--border-outline);
+    border: var(--border-width-heavy) solid var(--border-outline);
     box-shadow: var(--shadow-bevel), var(--shadow-badge);
     font-family: var(--font-pixel);
     font-weight: 700;
-    font-size: var(--font-size-lg);
+    /* Pixelify's figures stand at its x-height: a size up keeps the number the tile's one thing */
+    font-size: 2.5rem;
+    line-height: 1;
+  }
+
+  /* which step is being told: three marks on the content column's edge, at the foot of the screen */
+  .beats {
+    position: absolute;
+    left: var(--column-left);
+    bottom: var(--r1);
+    z-index: 3;
+    display: flex;
+    gap: var(--space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    opacity: calc((1 - var(--hero, 1)) * (1 - min(1, var(--handoff, 0) * 4)));
+    pointer-events: none;
+  }
+  .beats li {
+    width: 1.5rem;
+    height: 0.625rem;
+    background: var(--bg-panel);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-badge);
+    transition:
+      width var(--motion-base) steps(2),
+      background-color var(--motion-base) steps(2);
+  }
+  .stage[data-beat="messy"] [data-beat-mark="messy"],
+  .stage[data-beat="matched"] [data-beat-mark="matched"],
+  .stage[data-beat="ready"] [data-beat-mark="ready"] {
+    width: 3rem;
+    background: var(--accent-primary);
   }
 
   /* the handoff: the app window's slot rises flat out of the wheel (DEC-189) */
@@ -476,10 +581,23 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
     box-shadow: var(--shadow-modal);
   }
 
+  /* an upright screen: the steps read low, under the picture (which leans up, scenes/opening.ts), and the
+     window that rises at the end fills the screen's height instead of floating small in it */
+  @media (max-aspect-ratio: 4/5) {
+    .steps {
+      --reading-offset: 24svh;
+    }
+    .handoff-window {
+      --window-width: min(150vw, (100svh - 8rem) * 1.6);
+      width: var(--window-width);
+      /* wider than the screen: centered on it, both sides cut alike */
+      justify-self: start;
+      margin-left: calc((100vw - var(--window-width)) / 2);
+    }
+  }
   @media (min-width: 40rem) {
-    .lead {
-      font-size: var(--font-size-lg);
-      line-height: 1.5;
+    .plate {
+      padding: calc(var(--r1) * 1.8) calc(var(--r2) * 1.1) calc(var(--r2) * 1.1);
     }
   }
   @media (min-width: 60rem) {
@@ -487,16 +605,19 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
       align-items: center;
     }
     .hero-inner {
-      padding: 0 0 6svh;
+      padding: 0 0 4svh;
     }
-    .scrim {
+    .hero-copy {
+      width: fit-content;
+    }
+    .hero-copy::before {
+      inset: -100svh calc(-1 * (var(--r2) + var(--fade))) -100svh -100vw;
       background: linear-gradient(
-        90deg,
-        var(--bg-app) 0 26%,
-        color-mix(in srgb, var(--bg-app) 72%, transparent) 26% 33%,
-        color-mix(in srgb, var(--bg-app) 44%, transparent) 33% 39%,
-        color-mix(in srgb, var(--bg-app) 18%, transparent) 39% 44%,
-        transparent 44%
+        to left,
+        color-mix(in srgb, var(--bg-app) 25%, transparent) 0 1rem,
+        color-mix(in srgb, var(--bg-app) 55%, transparent) 1rem 2rem,
+        color-mix(in srgb, var(--bg-app) 82%, transparent) 2rem 3rem,
+        var(--bg-app) 3rem
       );
     }
   }
@@ -518,21 +639,22 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
   }
   :global(:root[data-story="plain"]) .steps ol {
     display: grid;
-    gap: var(--space-xl);
-    padding-block: var(--space-xl);
+    gap: var(--r4);
+    padding-block: var(--r3) var(--r4);
   }
   :global(:root[data-story="plain"]) .step {
     position: static;
     transform: none;
     width: auto;
     display: grid;
-    gap: var(--space-lg);
+    gap: var(--r3);
     align-items: center;
   }
   :global(:root[data-story="plain"]) .step :global(.step-frame) {
     display: block;
   }
-  :global(:root[data-story="plain"]) .handoff {
+  :global(:root[data-story="plain"]) .handoff,
+  :global(:root[data-story="plain"]) .beats {
     display: none;
   }
   @media (prefers-reduced-motion: reduce) {
@@ -552,208 +674,175 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
     }
     .steps ol {
       display: grid;
-      gap: var(--space-xl);
-      padding-block: var(--space-xl);
+      gap: var(--r4);
+      padding-block: var(--r3) var(--r4);
     }
     .step {
       position: static;
       transform: none;
       width: auto;
       display: grid;
-      gap: var(--space-lg);
+      gap: var(--r3);
       align-items: center;
     }
     .step :global(.step-frame) {
       display: block;
     }
-    .handoff {
+    .handoff,
+    .beats {
       display: none;
     }
   }
   @media (min-width: 60rem) {
     :global(:root[data-story="plain"]) .step {
       grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-      gap: var(--space-xl) calc(var(--space-xl) * 2);
     }
   }
   @media (min-width: 60rem) and (prefers-reduced-motion: reduce) {
     .step {
       grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-      gap: var(--space-xl) calc(var(--space-xl) * 2);
     }
   }
 
-  /* ---- the app's pictures as panels with depth: tilted slabs, extruded in hard pixel steps ---- */
-  .slab {
-    --ry: -10deg;
-    --rx: 5deg;
-    perspective: 1600px;
+  /* ---- below the story: one grid, the heading on the left and the content on the right ---- */
+  h2 {
+    margin: 0 0 var(--r2);
+    font-size: var(--t-title);
+    line-height: 1.04;
   }
-  .slab[data-slab="right"] {
-    --ry: 10deg;
+  .band {
+    padding-block: var(--r4);
+    border-top: var(--border-width-heavy) solid var(--border-outline);
+    box-shadow: inset 0 var(--border-width) 0 var(--border-highlight);
   }
-  .slab[data-slab="rise"] {
-    --ry: 0deg;
-    --rx: 8deg;
-  }
-  .slab :global(.frame) {
-    transform: rotateY(var(--ry)) rotateX(var(--rx));
-    transform-origin: 50% 50%;
-    box-shadow:
-      1px 1px 0 var(--bg-panel-alt),
-      2px 2px 0 var(--bg-panel-alt),
-      3px 3px 0 var(--bg-panel-alt),
-      4px 4px 0 var(--bg-panel-alt),
-      5px 5px 0 var(--border-highlight),
-      6px 6px 0 var(--border-highlight),
-      7px 7px 0 var(--border-highlight),
-      8px 8px 0 var(--border-highlight),
-      10px 10px 0 var(--border-outline),
-      22px 26px 0 color-mix(in srgb, var(--border-shadow) 70%, transparent);
-  }
-  .slab[data-slab="right"] :global(.frame) {
-    box-shadow:
-      -1px 1px 0 var(--bg-panel-alt),
-      -2px 2px 0 var(--bg-panel-alt),
-      -3px 3px 0 var(--bg-panel-alt),
-      -4px 4px 0 var(--bg-panel-alt),
-      -5px 5px 0 var(--border-highlight),
-      -6px 6px 0 var(--border-highlight),
-      -7px 7px 0 var(--border-highlight),
-      -8px 8px 0 var(--border-highlight),
-      -10px 10px 0 var(--border-outline),
-      -22px 26px 0 color-mix(in srgb, var(--border-shadow) 70%, transparent);
-  }
-  .slab :global(figcaption) {
-    margin-top: var(--space-xl);
-  }
-  /* as a panel comes into view it swings round to face the visitor: its own scroll, CSS only, no script */
-  @media (prefers-reduced-motion: no-preference) {
-    @supports (animation-timeline: view()) {
-      .slab :global(.frame) {
-        animation: slab-swing linear both;
-        animation-timeline: view();
-        animation-range: entry 0% cover 50%;
-      }
-      .slab[data-slab="rise"] :global(.frame) {
-        animation-name: slab-rise;
-      }
-      .prop {
-        animation: prop-drift linear both;
-        animation-timeline: view();
-      }
-    }
-  }
-  @keyframes slab-swing {
-    from {
-      transform: translateY(16%) rotateY(calc(var(--ry) * 3.4)) rotateX(26deg) scale(0.84);
-    }
-    to {
-      transform: rotateY(var(--ry)) rotateX(var(--rx));
-    }
-  }
-  @keyframes slab-rise {
-    from {
-      transform: translateY(10%) rotateX(58deg) scale(0.8);
-    }
-    to {
-      transform: rotateY(var(--ry)) rotateX(var(--rx));
-    }
-  }
-  @keyframes prop-drift {
-    from {
-      transform: translateY(14%);
-    }
-    to {
-      transform: translateY(-14%);
-    }
-  }
-
-  /* ---- the window, the sections ---- */
-  .window {
-    padding-block: calc(var(--space-xl) * 4) calc(var(--space-xl) * 3);
-  }
-  .window h2,
-  .feature h2,
-  .trust h2 {
-    margin: 0 0 var(--space-lg);
-    font-size: clamp(1.75rem, 0.9rem + 2.6vw, 3rem);
-    line-height: 1.08;
-  }
-  .window-text {
-    max-width: 40rem;
-    margin: 0 0 calc(var(--space-xl) * 2);
-    font-size: var(--font-size-lg);
-    line-height: 1.5;
-  }
-
-  .feature {
-    padding-block: calc(var(--space-xl) * 3);
-    overflow-x: clip;
-  }
-  .feature .inner {
+  .grid {
     display: grid;
-    gap: calc(var(--space-xl) * 2);
-    align-items: center;
-  }
-  .copy p {
-    max-width: 34rem;
-    margin: 0 0 var(--space-md);
+    gap: 0 var(--r3);
+    align-items: start;
   }
   .more {
     font-family: var(--font-pixel);
     font-weight: 600;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.3em;
   }
-  .prop {
-    max-width: 38rem;
-    margin-top: var(--space-xl);
+
+  /* the app's window: a panel with depth, extruded in hard pixel steps, rising flat as it comes in */
+  .slab {
+    perspective: 1600px;
+    margin-bottom: var(--r3);
   }
-  @media (min-width: 60rem) {
-    .feature .inner {
-      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-      gap: calc(var(--space-xl) * 3);
+  .slab :global(.frame) {
+    --ext: var(--bg-panel-alt);
+    --ext-2: var(--border-highlight);
+    transform: rotateX(6deg);
+    box-shadow:
+      2px 2px 0 var(--ext),
+      4px 4px 0 var(--ext),
+      6px 6px 0 var(--ext-2),
+      8px 8px 0 var(--ext-2),
+      10px 10px 0 var(--border-outline),
+      22px 26px 0 color-mix(in srgb, var(--border-shadow) 70%, transparent);
+  }
+  .slab :global(figcaption) {
+    max-width: 40rem;
+    margin-top: var(--r1);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .slab :global(.frame) {
+        animation: slab-rise linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 40%;
+      }
     }
-    .feature[data-side="right"] .inner {
-      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+  @keyframes slab-rise {
+    from {
+      transform: translateY(10%) rotateX(52deg) scale(0.84);
     }
-    .feature[data-side="right"] .copy {
-      order: 2;
+    to {
+      transform: rotateX(6deg);
     }
   }
 
-  /* ---- trust: a spec sheet, not a grid of cards ---- */
-  .trust {
-    padding-block: calc(var(--space-xl) * 4);
+  /* the teasers: one line each, on the app's seams */
+  .teasers {
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
+  .teaser {
+    display: grid;
+    gap: var(--space-sm) var(--r2);
+    padding-block: var(--r1);
+    border-top: var(--border-width) solid var(--border-outline);
+    box-shadow: inset 0 var(--border-width) 0 var(--border-muted);
+  }
+  .teaser:first-child {
+    border-top: 0;
+    box-shadow: none;
+    padding-top: 0;
+  }
+  .teaser h3,
+  .row dt {
+    margin: 0;
+    font-family: var(--font-pixel);
+    font-weight: 700;
+    font-size: var(--t-lead);
+    line-height: 1.25;
+  }
+  .teaser p {
+    margin: 0;
+    max-width: 34rem;
+  }
+  .all {
+    margin: var(--r2) 0 0;
+  }
+
+  /* trust: the same claims, one line each, in one of the app's panels */
   .sheet {
-    margin: calc(var(--space-xl) * 1.5) 0 0;
-    border-top: var(--border-width) solid var(--border-muted);
+    margin: 0;
+    background: var(--bg-panel);
+    border: var(--border-width-heavy) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel), var(--shadow-modal);
   }
   .row {
     display: grid;
-    gap: var(--space-sm) calc(var(--space-xl) * 2);
-    padding-block: var(--space-xl);
-    border-bottom: var(--border-width) solid var(--border-muted);
+    gap: var(--space-sm) var(--r2);
+    padding: var(--r1);
+    border-top: var(--border-width) solid var(--border-outline);
+    box-shadow: inset 0 var(--border-width) 0 var(--border-muted);
   }
-  .row dt {
-    font-family: var(--font-pixel);
-    font-weight: 700;
-    font-size: var(--font-size-lg);
-    line-height: 1.2;
+  .row:first-child {
+    border-top: 0;
+    box-shadow: none;
   }
   .row dd {
     margin: 0;
+    max-width: 34rem;
   }
-  .row dd p {
-    max-width: 44rem;
-    margin: 0 0 var(--space-sm);
-  }
-  .row dd p:last-child {
-    margin-bottom: 0;
-  }
+
   @media (min-width: 48rem) {
+    .teaser {
+      grid-template-columns: minmax(0, 13rem) minmax(0, 1fr) auto;
+      align-items: baseline;
+    }
     .row {
+      grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
+      align-items: baseline;
+      padding-inline: var(--r2);
+    }
+  }
+  @media (min-width: 60rem) {
+    .grid {
       grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    }
+    .grid h2 {
+      position: sticky;
+      top: var(--r3);
+      max-width: 9ch;
+      margin: 0;
     }
   }
 
@@ -761,7 +850,7 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
   .get {
     position: relative;
     overflow: hidden;
-    padding-block: calc(var(--space-xl) * 6);
+    padding-block: calc(var(--r4) * 1.3);
     background: var(--accent-primary);
     color: var(--border-outline);
     border-block: var(--border-width-heavy) solid var(--border-outline);
@@ -771,16 +860,16 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
     z-index: 1;
   }
   .get h2 {
-    margin: 0 0 var(--space-lg);
-    font-size: clamp(2.75rem, 1rem + 7vw, 7rem);
+    margin: 0 0 var(--r1);
+    font-size: clamp(2.75rem, 1rem + 7vw, 6rem);
     line-height: 0.95;
     color: var(--border-outline);
     text-shadow: 4px 4px 0 var(--accent-primary-pressed);
   }
   .get-text {
     max-width: 30rem;
-    margin: 0 0 var(--space-xl);
-    font-size: var(--font-size-lg);
+    margin: 0 0 var(--r2);
+    font-size: var(--t-lead);
     line-height: 1.45;
     color: var(--border-outline);
   }

@@ -6,7 +6,6 @@ import { hrefFor } from "../lib/url";
 import mark from "../assets/mark/mark-32.svg";
 import Button from "./Button.astro";
 import DownloadLabel from "./DownloadLabel.astro";
-import ThemeSwitch from "./ThemeSwitch.astro";
 
 interface Props {
   /** The current page's path, relative to the base, to mark its link. */
@@ -35,7 +34,7 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
       <span class="name">{SITE_NAME}</span>
     </a>
 
-    <!-- On a phone the nav and the theme switch sit in a menu (a <details>: it works without JavaScript). From 62.5rem up they are in the bar as before. -->
+    <!-- The site wears one theme, the app's default Neo Dark (the owner's choice, 2026-10-09): there is no theme switch. On a phone the nav sits in a menu (a <details>: it works without JavaScript). From 62.5rem up they are in the bar as before. -->
     <details class="menu">
       <summary class="menu-toggle">Menu</summary>
       <div class="menu-body">
@@ -52,8 +51,6 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
             }
           </ul>
         </nav>
-
-        <ThemeSwitch />
       </div>
     </details>
 

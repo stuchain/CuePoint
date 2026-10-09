@@ -105,13 +105,6 @@ test.describe("events", () => {
     }
   });
 
-  test("the theme switch sends the theme chosen, and nothing else", async ({ page }) => {
-    await withUmami(page);
-    await page.goto("");
-    await page.locator("[data-theme-choice='clubNeon']").first().click();
-    expect(await events(page)).toEqual([["theme-change", { theme: "clubNeon" }]]);
-  });
-
   test("a form sent sends the form's name and none of what was typed", async ({ page }) => {
     await withUmami(page);
     await page.route(`${WEB3FORMS_ENDPOINT}**`, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ success: true }) }));
@@ -162,7 +155,8 @@ test.describe("events", () => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto("");
-    await page.locator("[data-theme-choice='retro16']").first().click();
+    await page.getByRole("link", { name: "See how it works" }).click();
+    await page.waitForTimeout(500);
     expect(errors).toEqual([]);
   });
 });

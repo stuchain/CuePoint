@@ -9,7 +9,6 @@ import type { ConsentChoice } from "./consent";
 export const EVENTS = {
   download: "download",
   formSent: "form-sent",
-  themeChange: "theme-change",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -18,7 +17,6 @@ export type EventName = (typeof EVENTS)[keyof typeof EVENTS];
 const ALLOWED_KEYS: Readonly<Record<EventName, readonly string[]>> = {
   download: ["system", "chip"],
   "form-sent": ["form"],
-  "theme-change": ["theme"],
 };
 
 export interface UmamiLike {

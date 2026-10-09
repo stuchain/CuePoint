@@ -10,7 +10,6 @@ import Kbd from "./Kbd.astro";
 import Panel from "./Panel.astro";
 import Section from "./Section.astro";
 import { PRIMARY_ACTION, PUBLISHER } from "../data/site";
-import { THEMES } from "../lib/themes";
 
 async function render(component: Parameters<AstroContainer["renderToString"]>[0], props: Record<string, unknown> = {}, slot = "x") {
   const container = await AstroContainer.create();
@@ -18,11 +17,12 @@ async function render(component: Parameters<AstroContainer["renderToString"]>[0]
 }
 
 describe("components", () => {
-  it("Header: the primary action, the five themes, the nav", async () => {
+  it("Header: the primary action and the nav, and no theme switch (the site wears one theme)", async () => {
     const html = await render(Header, { currentPath: "" });
     expect(html).toContain(PRIMARY_ACTION.label);
     expect(html).toContain(`href="${PRIMARY_ACTION.href}"`);
-    for (const t of THEMES) expect(html).toContain(`data-theme-choice="${t.id}"`);
+    expect(html).not.toContain("data-theme-choice");
+    expect(html).not.toContain("data-theme-switch");
     expect(html).toContain('aria-current="page"');
   });
 

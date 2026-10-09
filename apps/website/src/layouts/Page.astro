@@ -9,7 +9,7 @@ import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import { SITE_NAME } from "../data/site";
 import { CSP } from "../lib/csp";
-import { DEFAULT_THEME, themeInitScript } from "../lib/themes";
+import { DEFAULT_THEME } from "../lib/themes";
 import { canonicalFor, hrefFor } from "../lib/url";
 import type { PageProps } from "./Page.types";
 import "../styles/tokens.generated.css";
@@ -53,7 +53,6 @@ const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c"
     <meta charset="utf-8" />
     <meta http-equiv="Content-Security-Policy" content={CSP} />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script is:inline set:html={themeInitScript()} />
     <title>{title}</title>
     <meta name="description" content={description} />
     {!has404 && <link rel="canonical" href={canonical} />}

@@ -139,7 +139,7 @@ npm run check:lighthouse  # Lighthouse CI: LCP, TBT, CLS, four category scores, 
 - **Spam:** a hidden `botcheck` field, a 3 second minimum fill time and Web3Forms' own filter. A send that trips either of
   the first two shows the thank-you page and sends nothing. The key is on the free plan: public and not restricted to a domain.
 - **Analytics:** Umami Cloud (DEC-192). `src/lib/analytics-client.ts` forwards `cuepoint:download` (SITE-07),
-  `cuepoint:form-sent` and the theme switch to `window.umami.track`; `src/lib/analytics.ts` lets each event carry only its
+  `cuepoint:form-sent` to `window.umami.track`; `src/lib/analytics.ts` lets each event carry only its
   fixed keys. The Umami script is added (deferred, with `data-domains`) only when the build is public (`PUBLIC`), and the
   CSP names Umami's hosts only then too, so preview builds and tests never reach the real account.
 - **Consent component:** built and off. If `document.cookie` holds a name outside the allow list in `src/lib/consent.ts`
