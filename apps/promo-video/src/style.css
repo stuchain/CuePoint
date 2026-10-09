@@ -419,6 +419,16 @@ canvas.scene3d {
   background: var(--waveform-played);
 }
 
+.wave .ring {
+  position: absolute;
+  top: 50%;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  border: 6px solid var(--fg-primary);
+  opacity: 0;
+}
+
 .wave .head {
   position: absolute;
   top: 0;

@@ -7,7 +7,7 @@
  * True while the app shots are stand-ins drawn in the app's style: the window says "Preview". Set it
  * false only when the shots are real captures of the redesigned pages (Phase 14 and 15).
  */
-export const APP_PREVIEW = true;
+export const APP_PREVIEW = false;
 
 export interface CleanRow {
   readonly title: string;

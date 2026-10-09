@@ -370,18 +370,32 @@ function buildPrepare(format: FormatId, tl: Timeline): HTMLElement {
 // ---- Discover: new releases from the artists you play ----
 
 /** A release's cover: an 8 x 8 pixel pattern in two of the icon's hues, the same every render. */
+/** Six pixel-art covers, one motif each, drawn on a 16 by 16 grid in two or three of the key hues. */
+const COVERS: ReadonlyArray<{ bg: string; px: (x: number, y: number) => string | undefined }> = [
+  // Tidal Lines: rolling wave bands
+  { bg: "#10243a", px: (x, y) => (Math.round(Math.sin(x * 0.8) * 1.5 + y) % 4 === 0 ? HUES[9] : Math.round(Math.sin(x * 0.8) * 1.5 + y) % 4 === 1 ? HUES[10] : undefined) },
+  // Night Swim: a moon over ripples
+  { bg: "#141432", px: (x, y) => ((x - 11) ** 2 + (y - 4) ** 2 <= 6 ? HUES[2] : y >= 10 && (x + y) % 5 < 2 ? HUES[8] : undefined) },
+  // Parallax: diagonal stripes and a square in front
+  { bg: "#2a1a3a", px: (x, y) => (x >= 5 && x <= 10 && y >= 5 && y <= 10 ? HUES[2] : (x + y) % 6 < 2 ? HUES[7] : (x + y) % 6 === 3 ? HUES[6] : undefined) },
+  // Soft Focus: concentric squares
+  { bg: "#3a1a2a", px: (x, y) => { const d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5)); return d > 6.5 ? undefined : d > 4.5 ? HUES[5] : d > 2.5 ? HUES[4] : HUES[3]; } },
+  // Lanterns: small lights in the dark
+  { bg: "#101828", px: (x, y) => ((x * 7 + y * 13) % 23 < 2 ? HUES[3] : (x * 5 + y * 11) % 29 === 0 ? HUES[2] : undefined) },
+  // Coastline: sky bands, a sun, and the sea
+  { bg: "#1a2a3a", px: (x, y) => (y < 7 ? ((x - 4) ** 2 + (y - 3) ** 2 <= 4 ? HUES[3] : y % 3 === 0 ? HUES[4] : undefined) : y === 7 ? HUES[11] : (x + y * 2) % 5 < 2 ? HUES[9] : undefined) },
+];
+
 function coverSvg(i: number): string {
-  const a = HUES[(i * 5) % 12]!;
-  const b = HUES[(i * 5 + 4) % 12]!;
+  const cover = COVERS[i % COVERS.length]!;
   let px = "";
-  for (let y = 0; y < 8; y++) {
-    for (let x = 0; x < 8; x++) {
-      const v = Math.sin((x + 1) * (i + 2) * 1.7 + y * 2.3) + Math.cos((y + 1) * (i + 3) * 0.9 - x);
-      if (v > 0.4) px += `<rect x="${x}" y="${y}" width="1" height="1" fill="${a}"/>`;
-      else if (v > -0.3) px += `<rect x="${x}" y="${y}" width="1" height="1" fill="${b}"/>`;
+  for (let y = 0; y < 16; y++) {
+    for (let x = 0; x < 16; x++) {
+      const fill = cover.px(x, y);
+      if (fill) px += `<rect x="${x}" y="${y}" width="1" height="1" fill="${fill}"/>`;
     }
   }
-  return `<svg viewBox="0 0 8 8" shape-rendering="crispEdges"><rect width="8" height="8" fill="var(--bg-input)"/>${px}</svg>`;
+  return `<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect width="16" height="16" fill="${cover.bg}"/>${px}</svg>`;
 }
 
 function buildDiscover(format: FormatId, tl: Timeline): HTMLElement {
@@ -421,7 +435,7 @@ function buildDiscover(format: FormatId, tl: Timeline): HTMLElement {
 /** Where the track's cues sit, as a share of its length, and their colors (the icon's hues). */
 const CUES = [
   { at: 0.06, color: HUES[0]! },
-  { at: 0.25, color: HUES[9]! },
+  { at: 0.28, color: HUES[9]! },
   { at: 0.5, color: HUES[4]! },
   { at: 0.62, color: HUES[2]! },
   { at: 0.86, color: HUES[6]! },
@@ -434,7 +448,7 @@ function buildWaveforms(format: FormatId, tl: Timeline): HTMLElement {
     <div class="page__head"><h2>Night Drive</h2><p>Lumen Coast</p>${keyBadge("8A")}<span class="px-badge">122 BPM</span></div>
     <div class="player">
       <div class="cues">${cues}</div>
-      <div class="wave big">${waveSvg()}<div class="grid">${ticks}</div><div class="played"></div><div class="head"></div></div>
+      <div class="wave big">${waveSvg()}<div class="grid">${ticks}</div><div class="played"></div><div class="head"></div><i class="ring" style="left:${CUES[1]!.at * 100}%"></i></div>
     </div>`;
   const el = panel(format, "waveforms");
   el.append(windowShell(format, "Library", page));
@@ -442,11 +456,20 @@ function buildWaveforms(format: FormatId, tl: Timeline): HTMLElement {
   // the waveform draws on from left to right, then the cues drop onto it
   tl.fromTo(el.querySelector(".wave svg"), { clipPath: "inset(0 60% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: BEAT, ease: "steps(12)" }, start);
   tl.fromTo(el.querySelector(".wave .grid"), { opacity: 0 }, { opacity: 1, duration: BEAT / 2, ease: "power1.out" }, start + BEAT / 2);
-  el.querySelectorAll(".cue").forEach((cue, i) => {
-    tl.fromTo(cue, { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: BEAT / 2, ease: "power3.out" }, start + BEAT * (1 + i / 4));
+  const cueEls = [...el.querySelectorAll<HTMLElement>(".cue")];
+  cueEls.forEach((cue, i) => {
+    tl.fromTo(cue, { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: BEAT / 2, ease: "power3.out" }, start + BEAT * (0.25 + i / 4));
   });
-  tl.fromTo(el.querySelector(".wave .head"), { left: "4%" }, { left: "40%", duration: end - start, ease: "steps(16)" }, start);
-  tl.fromTo(el.querySelector(".wave .played"), { width: "4%" }, { width: "40%", duration: end - start, ease: "steps(16)" }, start);
+  // the playhead runs from beat 1 to the end of the bar; it reaches cue B exactly on beat 3, and the cue flashes
+  const run = { from: 4, to: 40 };
+  const beats = Math.round((end - start) / BEAT);
+  tl.fromTo(el.querySelector(".wave .head"), { left: `${run.from}%` }, { left: `${run.to}%`, duration: end - start - BEAT, ease: "none" }, start + BEAT);
+  tl.fromTo(el.querySelector(".wave .played"), { width: `${run.from}%` }, { width: `${run.to}%`, duration: end - start - BEAT, ease: "none" }, start + BEAT);
+  const hit = start + BEAT * (1 + ((beats - 1) * (CUES[1]!.at * 100 - run.from)) / (run.to - run.from));
+  const cueB = cueEls[1]!;
+  tl.to(cueB, { scale: 1.6, duration: BEAT / 4, ease: "power2.out" }, hit);
+  tl.to(cueB, { scale: 1, duration: BEAT / 2, ease: "power2.inOut" }, hit + BEAT / 4);
+  tl.fromTo(el.querySelector(".wave .ring"), { scale: 0.3, opacity: 1 }, { scale: 3, opacity: 0, duration: BEAT * 0.75, ease: "power2.out" }, hit);
   return el;
 }
 
