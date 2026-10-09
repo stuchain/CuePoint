@@ -97,7 +97,13 @@ ${rows.join("\n")}
 function python(): string {
   if (process.env.CUEPOINT_PYTHON) return process.env.CUEPOINT_PYTHON;
   const root = path.resolve(DESKTOP_ROOT, "../..");
-  return process.platform === "win32" ? path.join(root, ".venv", "Scripts", "python.exe") : path.join(root, ".venv", "bin", "python");
+  const local =
+    process.platform === "win32"
+      ? path.join(root, ".venv", "Scripts", "python.exe")
+      : path.join(root, ".venv", "bin", "python");
+  // CI installs the engine's packages into the runner's own Python, with no .venv.
+  if (existsSync(local)) return local;
+  return process.platform === "win32" ? "python" : "python3";
 }
 
 /** The rows the matcher writes when it accepts a candidate, for one track, as a test needs them. */
