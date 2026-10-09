@@ -306,10 +306,14 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       // PAGES-12: every kind of motion is on (no stored overrides, the system not asking for less),
       // so a double-click to play and a shift-click range are proved with the motion in place.
       await win.emulateMedia({ reducedMotion: "no-preference" });
-      expect(
-        await win.evaluate(() => document.documentElement.getAttributeNames().filter((n) => n.startsWith("data-motion-")).length),
-        "every kind is on",
-      ).toBe(10);
+      // Polled: the page writes the attributes once it has mounted and read the system's answer,
+      // which on the first launch of a run can come after the engine is up.
+      await expect
+        .poll(() => win.evaluate(() => document.documentElement.getAttributeNames().filter((n) => n.startsWith("data-motion-")).length), {
+          message: "every kind is on",
+          timeout: 15_000,
+        })
+        .toBe(10);
 
       // --- a library and a Set with three chapters, through the bridge ------
       const started = await win.evaluate(
