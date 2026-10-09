@@ -22,6 +22,7 @@ The tests that need a real decoder are in
 from __future__ import annotations
 
 import json
+import logging
 import math
 import random
 import os
@@ -790,6 +791,9 @@ def output(frames):
 
 if mode == "sleep":
     time.sleep(60)
+elif mode == "stuck":
+    log("[i][cplayer]  (+) Audio --aid=1 (flac 2ch 44100Hz)", "[v][ao] stuck here")
+    time.sleep(60)
 elif mode == "nice":
     time.sleep(0.5)
     with open(os.environ["STUB_NICE_FILE"], "w") as handle:
@@ -970,6 +974,25 @@ class TestStubDecoder:
         assert not _is_running(int(pid_file.read_text()))
         assert list(workdirs.iterdir()) == []
         assert ad.live_children() == 0
+
+    def test_a_timeout_says_where_the_decoder_stopped(
+        self, stub, song, monkeypatch, workdirs, caplog
+    ):
+        """A hung decoder is diagnosed from its last log lines, not guessed at.
+
+        The lines go to the engine's log; the file's own words stay short.
+        """
+        monkeypatch.setenv("STUB_MODE", "stuck")
+        with caplog.at_level(logging.WARNING, logger=ad._logger.name):
+            with pytest.raises(ad.DecodeFailed) as caught:
+                ad.decode_envelope(
+                    song, stub, timeout_seconds=1.0, workdir_root=workdirs
+                )
+        assert caught.value.reason == "timeout"
+        assert caught.value.detail == "took longer than 1 seconds"
+        assert "song.flac" in caplog.text
+        assert "[v][ao] stuck here" in caplog.text
+        assert list(workdirs.iterdir()) == []
 
     @pytest.mark.parametrize("transport", ad.TRANSPORTS)
     def test_a_cancel_mid_decode_kills_the_child_and_leaves_nothing(

@@ -192,6 +192,9 @@ DECODER_PATH_ENV = "CUEPOINT_DECODER_PATH"
 #: How long one file may take before its child is killed.
 FILE_TIMEOUT_SECONDS = 300.0
 
+#: How much of a stopped decoder's log goes to the engine's log.
+TIMEOUT_LOG_LINES = 20
+
 #: How much the child's priority is lowered on macOS and Linux.
 NICE_INCREMENT = 10
 
@@ -1065,6 +1068,19 @@ def _decode_in(
         raise DecodeCancelled(str(source))
     if stopped:
         if stopped[0] == REASON_TIMEOUT:
+            # A decoder that hangs does so rarely and on someone else's machine:
+            # where its log stopped is what tells a hang at start-up from a slow
+            # read, and the folder holding it is removed once this returns.
+            said = (
+                (_read_text(log_path) or "").strip().splitlines()[-TIMEOUT_LOG_LINES:]
+            )
+            _logger.warning(
+                "[waveforms] the decoder was stopped after %g seconds on %s; "
+                "its log ended with:\n%s",
+                timeout_seconds,
+                source.name,
+                "\n".join(said) or "(nothing)",
+            )
             raise DecodeFailed(
                 REASON_TIMEOUT, f"took longer than {timeout_seconds:g} seconds"
             )
