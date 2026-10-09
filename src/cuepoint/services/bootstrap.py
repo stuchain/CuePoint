@@ -85,6 +85,7 @@ from cuepoint.services.interfaces import (
     ITrackMarksRepository,
     IMarksBackfillService,
     IPlaylistRepository,
+    IStatisticsService,
     ITrackMetadataRepository,
     ITrackCreditRepository,
     ITrackRepository,
@@ -94,10 +95,12 @@ from cuepoint.services.matcher_service import MatcherService
 from cuepoint.services.migration_runner import MigrationRunner
 from cuepoint.services.onboarding_service import OnboardingService
 from cuepoint.services.privacy_service import PrivacyService
+from cuepoint.services.statistics_service import StatisticsService
 from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.authored_data_repository import AuthoredDataRepository
 from cuepoint.persistence.artwork_repository import ArtworkRepository
 from cuepoint.persistence.file_write_repository import FileWriteRepository
+from cuepoint.persistence.statistics_repository import StatisticsRepository
 from cuepoint.persistence.rekordbox_export_repository import (
     RekordboxExportRepository,
 )
@@ -579,6 +582,18 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IHealthService, create_health_service)
+
+    # Statistics (STATS-02): the plays the Statistics page answers, over the
+    # library, its play history, and the Collections and playlists that scope it.
+    def create_statistics_service() -> IStatisticsService:
+        container.resolve(IMigrationRunner).migrate()
+        return StatisticsService(
+            repository=StatisticsRepository(container.resolve(IDatabaseService)),
+            collection_service=container.resolve(ICollectionService),
+            playlist_repository=container.resolve(IPlaylistRepository),
+        )
+
+    container.register_factory(IStatisticsService, create_statistics_service)
 
     # "Export review list" (CLEAN-11): a selection resolved through the batch
     # path, read through the rule vocabulary, written by the export service.

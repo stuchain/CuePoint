@@ -905,6 +905,20 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
+  "cuepoint/engine/statistics_api.py::_params::Unknown parameter: {', '.join(unknown)!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/engine/statistics_api.py::_params::{name} must be given once": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/engine/statistics_api.py::_since::since must be a date as YYYY-MM-DD, from {MIN_YEAR} to {MAX_YEAR}": {
+    "holds": "our own constant",
+    "verdict": "exempt",
+    "reason": "our own constants"
+  },
   "cuepoint/engine/waveforms_api.py::_flag::{name} must be 0 or 1, not {raw!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
     "verdict": "corpus"
@@ -2785,6 +2799,21 @@
   "cuepoint/services/similarity_service.py::_seed_id::A track id is a positive whole number, got {track_id!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
+  },
+  "cuepoint/services/statistics_service.py::StatisticsService.plays::No read with id {since_read}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/statistics_service.py::StatisticsService.scope_rules::No Collection with id {scope.id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/statistics_service.py::StatisticsService.scope_rules::No playlist with id {scope.id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
   },
   "cuepoint/services/tag_service.py::TagService._require_tag::No such tag: {tag_id}": {
     "holds": "an integer id",

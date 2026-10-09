@@ -2083,6 +2083,9 @@ class TestOneModuleRunsEachTablesSQL:
     #: Modules that read a table another module owns, and why. Only its owner
     #: writes it: ``test_only_its_owner_writes_it`` holds that.
     READERS = {
+        # STATS-02: plays per artist sum over the credits in one grouped query,
+        # so they are read in place rather than fetched name by name.
+        "track_credits": {"persistence/statistics_repository.py"},
         # DISCOVER-05 and DISCOVER-06: a run's window and the wantlist show the
         # catalog tracks they hold. Their credits and sort key come from the
         # catalog module's own helpers, so only the catalog table is joined.

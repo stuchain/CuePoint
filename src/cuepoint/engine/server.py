@@ -120,6 +120,11 @@ from cuepoint.engine.sets_api import (
     handles_post as sets_handles_post,
     status_for as sets_status,
 )
+from cuepoint.engine.statistics_api import (
+    handle_get as statistics_get,
+    handles_get as statistics_handles_get,
+    status_for as statistics_status,
+)
 from cuepoint.engine.waveforms_api import (
     handle_get as waveforms_get,
     handle_post as waveforms_post,
@@ -969,6 +974,12 @@ def make_handler(
             if sets_handles_get(path):
                 self._handle_routed(
                     lambda: sets_get(path, parse_qs(parsed.query)), sets_status
+                )
+                return
+            if statistics_handles_get(path):
+                self._handle_routed(
+                    lambda: statistics_get(path, parse_qs(parsed.query)),
+                    statistics_status,
                 )
                 return
             if waveforms_handles_get(path):

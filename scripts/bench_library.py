@@ -21,6 +21,9 @@ What it measures, in order, against a generated export:
    removed.
 5. **Apply** — the refresh, including the deletions.
 
+With ``--statistics`` it then gives the library a year of weekly play history and
+times the Statistics page's plays route, all time and since 90 days (STATS-02).
+
 Memory is reported as `tracemalloc`'s peak, which is the number the streaming
 design exists to hold down: it says how much Python allocated at once, so a
 parser that quietly built the whole collection in memory would show up here even
@@ -35,6 +38,7 @@ Usage::
     python scripts/bench_library.py                     # 50,000 tracks
     python scripts/bench_library.py --tracks 5000        # a quicker pass
     python scripts/bench_library.py --json report.json   # machine-readable
+    python scripts/bench_library.py --statistics         # and the plays route
 """
 
 from __future__ import annotations
@@ -48,6 +52,7 @@ import statistics
 import time
 import tracemalloc
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -65,6 +70,9 @@ from cuepoint.persistence.library_source_repository import (  # noqa: E402
 )
 from cuepoint.persistence.match_repository import MatchRepository  # noqa: E402
 from cuepoint.persistence.playlist_repository import PlaylistRepository  # noqa: E402
+from cuepoint.persistence.statistics_repository import (  # noqa: E402
+    StatisticsRepository,
+)
 from cuepoint.persistence.tag_repository import TagRepository  # noqa: E402
 from cuepoint.persistence.track_metadata_repository import (  # noqa: E402
     TrackMetadataRepository,
@@ -88,6 +96,7 @@ from cuepoint.services.match_apply import MatchApplyService  # noqa: E402
 from cuepoint.services.match_state import MatchStateService  # noqa: E402
 from cuepoint.services.metadata_service import MetadataService  # noqa: E402
 from cuepoint.services.migration_runner import MigrationRunner  # noqa: E402
+from cuepoint.services.statistics_service import StatisticsService  # noqa: E402
 from cuepoint.services.tag_service import TagService  # noqa: E402
 
 #: Default size. The number Phase 3 was designed against, so the default is the
@@ -719,7 +728,121 @@ def measure_batch(batch_service, phases, total: int):
     return result
 
 
-def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
+#: What the Statistics page is measured against (STATS-02): a DJ who refreshes
+#: weekly for a year, with 500 play counts moving each week (Phase 15, fact 11).
+HISTORY_WEEKS = 52
+HISTORY_MOVED_PER_WEEK = 500
+
+#: What the plays route has to answer within on the development machine.
+PLAYS_BUDGET_MS = 500
+
+
+def build_play_history(
+    database: DatabaseService,
+    weeks: int = HISTORY_WEEKS,
+    moved: int = HISTORY_MOVED_PER_WEEK,
+) -> int:
+    """Give the imported library ``weeks`` of weekly reads, ``moved`` counts each.
+
+    The import and the phases before it left a few reads. They are dated back
+    to before the year starts and a read is added for each week since, each storing ``moved`` tracks'
+    counts a few plays higher than before: what ``weeks`` real refreshes would
+    leave, written directly because a refresh of 50,000 tracks takes seconds and
+    this is about reading the history back. ``tracks.play_count`` is brought up to
+    the last count, as a real refresh would have left it.
+
+    Returns:
+        The ``play_counts`` rows written.
+    """
+    connection = database.connect()
+    counts = {
+        int(row[0]): int(row[1])
+        for row in connection.execute(
+            "SELECT id, play_count FROM tracks WHERE play_count IS NOT NULL ORDER BY id"
+        )
+    }
+    ids = list(counts)
+    moved = min(moved, len(ids))
+    end = datetime.now(timezone.utc).replace(microsecond=0)
+    written = 0
+    with database.transaction() as conn:
+        # Every read the import and the phases before it left (the import, the
+        # re-import, a refresh) is dated a year back, a day apart: they were
+        # stamped now, which would put them inside every "since" window.
+        earlier = [
+            r[0] for r in conn.execute("SELECT id FROM library_reads ORDER BY id")
+        ]
+        for index, read_id in enumerate(earlier):
+            when = end - timedelta(weeks=weeks, days=len(earlier) - index)
+            conn.execute(
+                "UPDATE library_reads SET read_at = ? WHERE id = ?",
+                (when.isoformat(), read_id),
+            )
+        for week in range(1, weeks + 1):
+            when = end - timedelta(weeks=weeks - week)
+            read_id = conn.execute(
+                "INSERT INTO library_reads (read_at, kind, tracks, changed)"
+                " VALUES (?, 'refresh', ?, ?)",
+                (when.isoformat(), len(ids), moved),
+            ).lastrowid
+            rows = []
+            for step in range(moved):
+                track_id = ids[(week * moved + step) % len(ids)]
+                counts[track_id] += 1 + step % 5
+                rows.append((track_id, read_id, counts[track_id]))
+            conn.executemany(
+                "INSERT INTO play_counts (track_id, read_id, play_count)"
+                " VALUES (?, ?, ?)",
+                rows,
+            )
+            written += len(rows)
+        conn.executemany(
+            "UPDATE tracks SET play_count = ? WHERE id = ?",
+            [(count, track_id) for track_id, count in counts.items()],
+        )
+    return written
+
+
+def measure_statistics(
+    database: DatabaseService,
+    track_repo: TrackRepository,
+    playlist_repo: PlaylistRepository,
+    collections_service: CollectionService,
+) -> List[Dict[str, Any]]:
+    """Time the plays route over a year of weekly history (STATS-02).
+
+    Beside the count of the whole library, the cheapest question the Library
+    asks, so the plays are read as a multiple of something already imperceptible.
+    """
+    service = StatisticsService(
+        StatisticsRepository(database), collections_service, playlist_repo
+    )
+    reads = StatisticsRepository(database).reads()
+    ninety_days = (datetime.now(timezone.utc) - timedelta(days=90)).date()
+    cases: List[tuple] = [
+        ("count, whole library", lambda: track_repo.browse_count(BrowseQuery())),
+        ("plays, all time", lambda: service.plays(limit=10).tracks),
+        ("plays, all time, 200 rows", lambda: service.plays(limit=200).tracks),
+        (
+            "plays, since 90 days",
+            lambda: service.plays(limit=10, since=ninety_days).tracks,
+        ),
+        (
+            "plays, since the last read",
+            lambda: service.plays(limit=10, since_read=reads[-1][0]).tracks,
+        ),
+    ]
+    measured: List[Dict[str, Any]] = []
+    for name, call in cases:
+        outcome = call()
+        rows = outcome if isinstance(outcome, int) else len(outcome)
+        measured.append({"name": name, "ms": _median_ms(call), "rows": rows})
+    return measured
+
+
+def run(
+    tracks: int, playlists: int, workspace: Path, with_statistics: bool = False
+) -> Dict[str, Any]:
     """Run every phase and return the report."""
     phases: List[Phase] = []
     ids = list(range(1, tracks + 1))
@@ -821,6 +944,17 @@ def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
             "deleted": applied.tracks_deleted,
         }
 
+    # Last, so the history it adds cannot change what the refresh phases above
+    # measure: they are the numbers STATS-01 recorded.
+    statistics_cases: List[Dict[str, Any]] = []
+    if with_statistics:
+        with Measured("build a year of play history", phases) as m:
+            stored = build_play_history(service._db)
+            m.detail = {"weeks": HISTORY_WEEKS, "play_counts": stored}
+        statistics_cases = measure_statistics(
+            service._db, track_repo, playlist_repo, collections_service
+        )
+
     problems = []
     by_name = {p.name: p for p in phases}
     reimport = by_name["re-import (idempotent)"]
@@ -871,6 +1005,13 @@ def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
         problems.append("the tag facet did not offer every tag")
     if by_org["the tag vocabulary"]["rows"] != DEFAULT_TAGS:
         problems.append("the tag vocabulary lost a tag")
+    for case in statistics_cases:
+        if case["name"].startswith("plays") and case["ms"] > PLAYS_BUDGET_MS:
+            problems.append(
+                f"{case['name']} took {case['ms']} ms; the budget is {PLAYS_BUDGET_MS}"
+            )
+    if statistics_cases and statistics_cases[1]["rows"] <= 0:
+        problems.append("the plays route found no played track")
     by_case = {case["name"]: case for case in browse}
     if by_case["count, whole library"]["rows"] != tracks:
         problems.append("browse counted a different library than was imported")
@@ -906,6 +1047,7 @@ def run(tracks: int, playlists: int, workspace: Path) -> Dict[str, Any]:
         "phases": [asdict(p) for p in phases],
         "browse": browse,
         "organization": organization,
+        "statistics": statistics_cases,
         "batch": {
             "total": batch_result.total,
             "changed": batch_result.changed,
@@ -949,6 +1091,12 @@ def report(result: Dict[str, Any]) -> None:
         print("-" * 54)
         for case in result["organization"]:
             print(f"{case['name']:<34}{case['ms']:>11.2f}{case['rows']:>9,}")
+    if result.get("statistics"):
+        print()
+        print(f"{'statistics (STATS-02)':<34}{'median ms':>11}{'rows':>9}")
+        print("-" * 54)
+        for case in result["statistics"]:
+            print(f"{case['name']:<34}{case['ms']:>11.2f}{case['rows']:>9,}")
     if result["problems"]:
         print("\nPROBLEMS:")
         for problem in result["problems"]:
@@ -963,6 +1111,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--playlists", type=int, default=DEFAULT_PLAYLISTS)
     parser.add_argument("--json", type=Path, default=None, help="write the report")
     parser.add_argument(
+        "--statistics",
+        action="store_true",
+        help="add a year of weekly play history and time the plays route (STATS-02)",
+    )
+    parser.add_argument(
         "--keep", action="store_true", help="leave the generated files in place"
     )
     args = parser.parse_args(argv)
@@ -972,7 +1125,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     workspace = Path(tempfile.mkdtemp(prefix="cuepoint-bench-"))
     print(f"workspace: {workspace}")
     try:
-        result = run(args.tracks, args.playlists, workspace)
+        result = run(args.tracks, args.playlists, workspace, args.statistics)
         report(result)
         if args.json:
             args.json.write_text(json.dumps(result, indent=2), encoding="utf-8")

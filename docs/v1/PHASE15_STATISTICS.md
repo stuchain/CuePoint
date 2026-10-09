@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 15: Statistics, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. STATS-01 is implemented (2026-10-08), ahead of Phase 14 (DEC-211); STATS-02…STATS-07 wait for Phase 14.** Seven steps, STATS-01…STATS-07.
+Status: **Specified 2026-10-07. STATS-01 is implemented (2026-10-08), ahead of Phase 14 (DEC-211); STATS-02 is implemented too (2026-10-09); STATS-03…STATS-07 wait for Phase 14.** Seven steps, STATS-01…STATS-07.
 Writing the steps raised seven questions that Decision Round 14 did not answer. They were asked as
 Decision Round 18 (Q-163…Q-169) and settled the same day as DEC-162…DEC-168, each as recommended, so
 there are no open points. Where a step below says "if Q-NNN …", the recommended branch is the one
@@ -390,8 +390,11 @@ expressions (fact 3); `RuleSet` as Health returns it; the module shape of `engin
     with the track's last read on or before it, or with its own baseline if it has none. A fall adds
     nothing, so "since" never goes below zero (DEC-137). A date before `history_from` is clamped to
     it, and `since_clamped` says so. A date after `last_read` answers zero plays.
-  - **The date is the user's local day:** the renderer sends `since` with the local UTC offset
+  - **The date is the user's local day:** the renderer sends `since` with the UTC offset in effect
+    at local midnight of `since` itself, not today's (`-new Date(y, m-1, d).getTimezoneOffset()`),
+    so a date on the other side of a daylight-saving change is still its own midnight
     (`since=2026-09-01&tz=+03:00`); the service compares `read_at` against that local midnight.
+    A read stamped exactly at that midnight counts for the day.
   - **Since a read** (`since_read=<id>`, DEC-166's "since your last refresh"): the plays are the rises
     recorded **at** that read and after it, compared with each track's read before. A date cannot
     say this when two refreshes fall on one day.
@@ -443,6 +446,53 @@ expressions (fact 3); `RuleSet` as Health returns it; the module shape of `engin
 quietly mis-rank. The fixture's three refreshes and the clamp cases hold it.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented (2026-10-09), ahead of Phase 14, so the playlist scope uses the "In playlist"
+field that already exists (FLW-7). `persistence/statistics_repository.py` (`IStatisticsRepository`)
+holds the SQL, `services/statistics_service.py` (`IStatisticsService`) decides the scope, the window
+and the rule sets, and `engine/statistics_api.py` is the route, registered in `server.py` before the
+waveforms routes and in `bootstrap.py`. The scope is compiled by `build_select_scoped`, the
+projection the Library's own browse and count come from, so a Smart Collection, a Collection, a Set
+and a playlist narrow the numbers exactly as they narrow the table. Plays since a read are the
+rises at that read and after it, each row compared with the track's previous stored row by its
+primary key, so the cost follows the window and not the history behind it.
+
+Decided while building:
+- **Dates and reads.** "Since" counts the reads at or after the local midnight, from the lowest read id among them, whatever order the clock and the ids fell in; the first row a
+  track ever has (its baseline, or a new track's first count) adds nothing. A date before the first
+  read is clamped to it, which is the same numbers, with `since_clamped` true. `since` in the
+  answer is the date as asked, not the clamped one; it is `null` for `since_read`. `history_from`
+  and `last_read` are the stored UTC timestamps as written.
+- **Refusals.** An id that is no read is 404 `NOT_FOUND`, as an unknown Collection or playlist is;
+  so is a Collection folder, which holds no tracks. A Smart Collection whose saved rules no longer run is 400
+  `INVALID_REQUEST`. `since` and `tz` must come together, and a `since` year outside 1900 to 9998 is
+  400 (local midnight there overflows UTC). A `+` in `tz` that the query string decoded to a space is read as a plus. A
+  blank parameter (`limit=`) is treated as absent, as the server reads query strings everywhere.
+  Messages for a bad value do not echo it.
+- **`opens_more`** is on every artist and label row, `false` all time and `true` since a date or
+  a read.
+- **Artists and labels tie** by key, which is the name folded to one case, not by display name, so
+  the cut at the limit is stable and the display name is only looked up for the rows kept.
+- **Scale reference.** The spec compares `plays` with `browse_count` of the whole library; that is a
+  count the table keeps (0.03 ms) and says nothing about scanning rows, so the scale test compares
+  with the count of the played tracks (`play_count gt 0`), with a 50 times ceiling.
+- **No history at all** (no reads) answers all time as usual and zero plays for any "since".
+- **TypeScript.** None declares the answer until STATS-04 (it owns the six contract files), so
+  `test_statistics_contract.py` pins the Python payload, the rule sets' vocabulary and the refusal
+  codes, and holds the client's types to the answer as soon as `StatisticsPlays` is declared.
+
+Checked in the cloud container: `test_statistics_plays.py` (every all-time rule set run through
+`browse_count`, in the library, a Collection, a Set, a Smart Collection and a playlist),
+`test_statistics_api.py`, `test_statistics_contract.py`, `test_statistics_scale.py`, the engine,
+services, persistence and reporting suites, the rest of the non-slow suites, ruff 0.14.0, the mypy
+gate and `smoke_engine_health.py`. The raise-site fixtures and `test_discover_schema.py`'s reader
+list name the new module. Scale: at 20,000 tracks with 52 weeks of history `plays` costs 20 to 30
+times a `browse_count` of the played tracks (ceiling 50), and 200 rows cost under 3 times 10.
+`scripts/bench_library.py --statistics` at 50,000 tracks with a year of weekly history (500
+counts moved a week, 26,000 rows; the import and earlier reads dated a year back, so "90 days" is
+a quarter of it), medians in this container: whole-library count 0.03 ms, `plays` all time 140 ms
+(181 ms for 200 rows), since 90 days 73 ms, since the last read 55 ms, all under the 500 ms budget.
+Not checked: a library of the owner's own.
 
 ---
 

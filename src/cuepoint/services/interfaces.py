@@ -11,7 +11,7 @@ These interfaces enable dependency injection and testability.
 import sqlite3
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -73,6 +73,8 @@ if TYPE_CHECKING:
         TagWriteResult,
     )
     from cuepoint.models.library_source import LibrarySource
+    from cuepoint.persistence.statistics_repository import PlayedName, PlayedTrack
+    from cuepoint.services.statistics_service import PlaysReport, PlaysScope
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
     from cuepoint.models.track_credit import DerivedIndex, TrackCredit
@@ -3889,6 +3891,71 @@ class IPlayHistoryRepository(ABC):
     @abstractmethod
     def finish_read(self, read_id: int, *, tracks: int, changed: int) -> None:
         """Record the library's size and the counts stored, joining a transaction."""
+        ...
+
+
+class IStatisticsRepository(ABC):
+    """Interface for the grouped reads the Statistics page is answered from (STATS-02).
+
+    Every read takes a scope as a rule set (empty for the whole library) and,
+    for plays since a point, the first read to count from. ``None`` is all time.
+    """
+
+    @abstractmethod
+    def reads(self) -> List[Tuple[int, str]]:
+        """Every read as ``(id, read_at)``, oldest first."""
+        ...
+
+    @abstractmethod
+    def top_tracks(
+        self, scope: "RuleSet", limit: int, from_read: Optional[int]
+    ) -> List["PlayedTrack"]:
+        """The most played tracks, ties by title and then id."""
+        ...
+
+    @abstractmethod
+    def top_artists(
+        self, scope: "RuleSet", limit: int, from_read: Optional[int]
+    ) -> List["PlayedName"]:
+        """The artists with the most plays, over artist and remixer credits."""
+        ...
+
+    @abstractmethod
+    def top_labels(
+        self, scope: "RuleSet", limit: int, from_read: Optional[int]
+    ) -> List["PlayedName"]:
+        """The labels with the most plays, by effective label."""
+        ...
+
+    @abstractmethod
+    def unplayed(self, scope: "RuleSet") -> Tuple[int, int]:
+        """``(never played, unknown)`` among the scope's tracks."""
+        ...
+
+
+class IStatisticsService(ABC):
+    """Interface for the numbers behind the Statistics page (STATS-02).
+
+    Each answer carries the rule sets that open what it counted, so a number
+    and the Library it opens are one statement.
+    """
+
+    @abstractmethod
+    def scope_rules(self, scope: "PlaysScope") -> "RuleSet":
+        """The rules a scope stands for, or raise if it names nothing."""
+        ...
+
+    @abstractmethod
+    def plays(
+        self,
+        *,
+        limit: int = 10,
+        since: Optional[date] = None,
+        utc_offset: Optional[timedelta] = None,
+        since_read: Optional[int] = None,
+        scope: Optional["PlaysScope"] = None,
+    ) -> "PlaysReport":
+        """The top tracks, artists and labels, with never played and unknown."""
         ...
 
 

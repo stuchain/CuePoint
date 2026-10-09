@@ -3741,6 +3741,35 @@
     }
   },
   {
+    "name": "cuepoint/engine/statistics_api.py::_params::Unknown parameter: {', '.join(unknown)!r}",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "bad_request",
+            "value": "Unknown parameter: 'track_title, playlistName'"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "bad_request",
+            "value": "Unknown parameter: '<value>'"
+          }
+        ]
+      }
+    }
+  },
+  {
     "name": "cuepoint/engine/waveforms_api.py::_flag::{name} must be 0 or 1, not {raw!r}",
     "ctx": {
       "home": "/Users/anna",
