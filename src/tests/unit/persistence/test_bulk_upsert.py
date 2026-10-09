@@ -246,6 +246,42 @@ class TestIdentityIsResolvedAgainstThePreImportState:
                 service.close_all()
         assert outcomes[0] == outcomes[1]
 
+    def test_a_track_id_a_relink_gives_up_can_be_taken_by_a_new_track(self, repo):
+        """Track 100 moves to 1 by its path, and a new track takes 100.
+
+        The relink is an update and the new track an insert, and inserts were
+        written first: the insert met the row still holding 100 and the whole
+        import failed on the unique TrackID. Rekordbox hands a freed TrackID to
+        the next track it adds, so a renumbered collection can do exactly this.
+        """
+        repo.upsert_many_from_rekordbox([track("100", "/m/1.mp3", title="One")])
+        original_id = repo.find_by_rekordbox_id("100").id
+
+        result = repo.upsert_many_from_rekordbox(
+            [
+                track("1", "/m/1.mp3", title="One"),
+                track("100", "/m/100.mp3", title="Hundred"),
+            ]
+        )
+
+        assert (result.inserted, result.updated, result.relinked_count) == (1, 1, 1)
+        assert repo.find_by_rekordbox_id("1").id == original_id
+        assert repo.find_by_rekordbox_id("100").title == "Hundred"
+        assert repo.count() == 2
+
+    def test_a_freed_track_id_is_free_across_batches(self, repo):
+        """The same, with the new track's insert flushed by a full batch."""
+        repo.upsert_many_from_rekordbox([track("100", "/m/1.mp3")])
+
+        result = repo.upsert_many_from_rekordbox(
+            [track("1", "/m/1.mp3")]
+            + [track(str(i), f"/m/{i}.mp3") for i in range(100, 103)],
+            batch_size=2,
+        )
+
+        assert (result.inserted, result.updated) == (3, 1)
+        assert repo.count() == 4
+
     def test_order_within_the_import_does_not_change_the_counts(self, repo):
         repo.upsert_many_from_rekordbox([track("1", "/m/1.mp3")])
         forwards = repo.upsert_many_from_rekordbox(

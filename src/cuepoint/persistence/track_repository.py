@@ -942,6 +942,13 @@ class TrackRepository(ITrackRepository):
 
         def flush_inserts(conn: Any) -> None:
             nonlocal stored_counts
+            # Updates first. A relink gives up its row's old TrackID, and a new
+            # track in this export may take it: inserted before the relink is
+            # written, it meets the row still holding that id and the unique
+            # TrackID fails the whole import. An update never collides with a
+            # row this way — a relink's new id is one no row held at the start.
+            if update_rows:
+                flush_updates(conn)
             conn.executemany(_INSERT_SQL, insert_rows)
             stored = self._read_back_inserted(conn, inserted_tracks)
             write_credits(
@@ -1020,10 +1027,10 @@ class TrackRepository(ITrackRepository):
                 if len(update_rows) >= batch_size:
                     flush_updates(conn)
 
-            if insert_rows:
-                flush_inserts(conn)
             if update_rows:
                 flush_updates(conn)
+            if insert_rows:
+                flush_inserts(conn)
 
         return BulkUpsertResult(
             inserted=inserted,
