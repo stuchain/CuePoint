@@ -6135,7 +6135,8 @@ mid-bar. v7 shows the crate's records as vinyl (grooved discs with a label, one 
 caption's box and letters in rather than popping them, lights the Camelot wheel's cells beat by beat
 behind the end card, lifts the compatible keys and counts them ("4 mix in key with 8A"), ticks each
 accepted row in Clean, vignettes the room, and shows the exported file as a card (XML, 6 tracks).
-`npm run mux` puts the user's own copy of a track under
+The opening scene is a frozen copy of the website's (apps/promo-video/src/scene, from feature 537bbf3), so the
+approved video does not change when the site's home page is reworked. `npm run mux` puts the user's own copy of a track under
 the picture for a private cut; licensed music is never committed or posted.
 
 **Decided with**: User · **Date**: 2026-10-08

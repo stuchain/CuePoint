@@ -43,9 +43,9 @@ it. Never commit the track (`.gitignore` keeps audio files out).
 
 - **One clock** (`src/timing.ts`): 132 BPM, 11 bars, exactly 20 s at 30 fps. Shots, captions and
   the music all sit on the same beat grid.
-- **The opening** is the website's own 3D scene, the crate becoming the Camelot wheel (DEC-189),
-  imported read-only from `apps/website/src/three` and driven by time instead of scroll. Changes to the
-  site's scene show up here on the next render.
+- **The opening** is the website's 3D scene, the crate becoming the Camelot wheel (DEC-189), driven by
+  time instead of scroll. The video keeps its own frozen copy in `src/scene/` (see its README), so the
+  site's home page can change without touching the approved video.
 - **The app shots** (`src/shots.ts`, `src/content.ts`) sit centered in their own CSS 3D space: the
   camera settles onto each at an angle and drifts round to near frontal, and shots change on a hard
   cut on the downbeat. They are stand-ins drawn in the app's pixel style

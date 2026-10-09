@@ -1,8 +1,8 @@
-import { readPalette } from "../../website/src/three/palette";
-import { PHASES } from "../../website/src/three/phases";
-import { PIXEL_SIZE, PixelPipeline } from "../../website/src/three/pixel";
-import { createRenderer } from "../../website/src/three/renderer";
-import { cameraPose, create as createOpening, LABEL_HOLD } from "../../website/src/three/scenes/opening";
+import { readPalette } from "./scene/palette";
+import { PHASES } from "./scene/phases";
+import { PIXEL_SIZE, PixelPipeline } from "./scene/pixel";
+import { createRenderer } from "./scene/renderer";
+import { cameraPose, create as createOpening, LABEL_HOLD } from "./scene/opening";
 import { at, BEAT, kickLevel, shot } from "./timing";
 import { addVinyl } from "./vinyl";
 import { addWheelLights } from "./wheelLights";

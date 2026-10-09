@@ -1,6 +1,6 @@
 import { Color, CylinderGeometry, Euler, InstancedMesh, MeshLambertMaterial, Object3D, type Scene } from "three";
-import { PALETTE_TOKENS, type PaletteUniforms } from "../../website/src/three/palette";
-import { RECORD_COUNT, recordPose } from "../../website/src/three/scenes/opening";
+import { PALETTE_TOKENS, type PaletteUniforms } from "./scene/palette";
+import { RECORD_COUNT, recordPose } from "./scene/opening";
 
 /**
  * The records in the site's crate are blank sleeves. The promo adds the vinyl: a black disc with a coloured

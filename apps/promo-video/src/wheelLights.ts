@@ -1,5 +1,5 @@
 import { BoxGeometry, Color, Group, InstancedMesh, MeshBasicMaterial, Object3D, type Scene } from "three";
-import { KEYS, RECORD_COUNT, WHEEL, wheelLift, wheelSlot, wheelTilt } from "../../website/src/three/scenes/opening";
+import { KEYS, RECORD_COUNT, WHEEL, wheelLift, wheelSlot, wheelTilt } from "./scene/opening";
 import { keyColor } from "./content";
 import { BEAT, kickLevel, shot } from "./timing";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PHASES } from "../../website/src/three/phases";
+import { PHASES } from "./scene/phases";
 import { KEYS, progressAt } from "./opening3d";
 import { BEAT, CAPTIONS, shot } from "./timing";
 
