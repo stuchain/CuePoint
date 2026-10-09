@@ -35,7 +35,7 @@ describe("the guide's table", () => {
   const files = guideFiles(GUIDE);
 
   it("has a row for every file in docs/user-guide and a file for every row", () => {
-    expect(files.length).toBe(16);
+    expect(files.length).toBe(17);
     expect(checkGuideTable(files)).toEqual({ missingRows: [], missingFiles: [], invalid: [] });
     expect(() => assertGuideTable(files)).not.toThrow();
   });
@@ -101,8 +101,8 @@ describe("the real guide's links", () => {
 
   it("builds the guide's addresses with the base", async () => {
     const from = join(GUIDE, "getting-started.md");
-    expect(await rewriteLink("library.md#importing-a-collection", from, { ...REAL, base: "/CuePoint/" })).toBe(
-      "/CuePoint/guide/library/#importing-a-collection",
+    expect(await rewriteLink("library.md#importing-your-rekordbox-collection", from, { ...REAL, base: "/CuePoint/" })).toBe(
+      "/CuePoint/guide/library/#importing-your-rekordbox-collection",
     );
   });
 

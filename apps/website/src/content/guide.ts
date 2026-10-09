@@ -67,11 +67,19 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     section: "use",
   },
   {
+    file: "keys.md",
+    title: "Keys",
+    description:
+      "See how many tracks you have in each key across your playlists, Collections and Sets, then open the tracks in any key or the keys that mix with it.",
+    order: 5,
+    section: "use",
+  },
+  {
     file: "organization.md",
     title: "Organizing your library",
     description:
       "Make your own Collections, Smart Collections, tags, ratings and notes beside your Rekordbox playlists, and see what Rekordbox will and will not see.",
-    order: 5,
+    order: 6,
     section: "use",
   },
   {
@@ -79,7 +87,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Clean",
     description:
       "Match your tracks to Beatport, review each match with the keyboard, and find missing files and possible duplicates. Nothing is deleted or moved.",
-    order: 6,
+    order: 7,
     section: "use",
   },
   {
@@ -87,7 +95,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Discover",
     description:
       "Find new music on Beatport from the artists and labels in your library, keep a wantlist and send tracks you want to a Beatport playlist.",
-    order: 7,
+    order: 8,
     section: "use",
   },
   {
@@ -95,7 +103,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Prepare",
     description:
       "Plan a set: put tracks in running order, split it into chapters, time each one, check every transition and take the set out as a list or a playlist.",
-    order: 8,
+    order: 9,
     section: "use",
   },
   {
@@ -103,7 +111,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Playing music",
     description:
       "Play any track in your library gaplessly, queue the view you are looking at, pick the audio output and find out why a file will not play.",
-    order: 9,
+    order: 10,
     section: "use",
   },
   {
@@ -111,7 +119,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Waveforms",
     description:
       "See every track as a waveform with its loudness, your Rekordbox cue points and beat grid, and learn how CuePoint makes them in the background.",
-    order: 10,
+    order: 11,
     section: "use",
   },
   {
@@ -119,7 +127,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Exporting to Rekordbox",
     description:
       "Send your Collections, ratings and changed values back to Rekordbox as a new XML file, and see what the export carries before you open it.",
-    order: 11,
+    order: 12,
     section: "use",
   },
   {
@@ -127,7 +135,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Workflows",
     description:
       "Step-by-step routines for the tasks DJs do most: a first clean-up, a big batch, a quality check, an export and preparing a set.",
-    order: 12,
+    order: 13,
     section: "use",
   },
   {
@@ -135,7 +143,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Troubleshooting",
     description:
       "Fixes for import errors, slow runs, matches that will not appear and failed exports, plus how to send a support bundle or report a problem.",
-    order: 13,
+    order: 14,
     section: "help",
   },
   {
@@ -143,7 +151,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Performance",
     description:
       "Measured import and browse times for a 50,000-track library, what slows CuePoint down, and the settings that tune it for a big collection.",
-    order: 14,
+    order: 15,
     section: "help",
   },
   {
@@ -151,7 +159,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Glossary",
     description:
       "Plain definitions of the words CuePoint uses: Set, chapter, entry, planned time, waveform, hot cue, beat grid, LUFS, LU and more.",
-    order: 15,
+    order: 16,
     section: "help",
   },
   {
@@ -159,7 +167,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Support policy",
     description:
       "Which systems CuePoint supports, how fast problems are answered, what to send with a report and where the logs are kept.",
-    order: 16,
+    order: 17,
     section: "policy",
   },
 ];
