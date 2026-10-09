@@ -1,6 +1,8 @@
 import {
   AmbientLight,
   BoxGeometry,
+  BufferAttribute,
+  BufferGeometry,
   Color,
   CylinderGeometry,
   DataTexture,
@@ -9,6 +11,7 @@ import {
   Fog,
   Group,
   InstancedMesh,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshLambertMaterial,
@@ -30,7 +33,8 @@ import type { SceneInstance } from "./types";
  * The home page's opening scene (SITE-06, DEC-189): the crate becomes the wheel, as one full-screen,
  * pinned story.
  *
- * The first screen is the hero: a voxel crate of 24 records in blank gray sleeves, and behind it,
+ * The first screen is the hero: a voxel crate of 24 records in blank gray sleeves, some with the black disc
+ * pulled up out of the top (a look only: the disc goes back in as the record lifts out), and behind it,
  * standing tall, an empty Camelot wheel of 24 dark sockets, all of it right of the headline. With nothing
  * scrolled it moves on its own: the wheel turns slowly, the records breathe in the crate and the camera
  * sways (and, with a mouse, leans a little toward it: `setPointer`). The one color is the accent, and it
@@ -67,9 +71,60 @@ export const CRATE = { halfWidth: 4.2, halfDepth: 1.9, height: 2.2, floor: 0.3, 
 export const WHEEL = { innerRadius: 3.2, outerRadius: 5, depth: 0.7, radial: 1.5, center: [0, 7.6, -10] } as const;
 
 const SLEEVE = { thick: 0.28, size: 3 } as const;
+/**
+ * How a record looks while it stands in the crate: a 12-inch sleeve is thin for its size, so the box is drawn
+ * thinner there than its pose says (it fills out again as it lifts, to carry its tag); and in some sleeves the
+ * black disc is pulled up out of the top, with its lighter label at its middle. A look only: the poses stay.
+ */
+const VINYL = { sleeve: 0.2, radius: 1.4, thick: 0.05 } as const;
+/**
+ * The disc, from the rim in: black vinyl, a band of the grooves catching the light, black again, the label and
+ * the spindle hole. Each ring stands a hair proud of the one before, so it shows on both faces.
+ */
+const DISC_RINGS = [
+  { radius: VINYL.radius, slot: "vinyl" },
+  { radius: 1.08, slot: "sheen" },
+  { radius: 0.9, slot: "vinyl" },
+  { radius: 0.47, slot: "label" },
+  { radius: 0.08, slot: "vinyl" },
+] as const;
+/** How far record i's disc is pulled up out of its sleeve's top (0: all the way in), as a crate somebody is digging through. */
+function discPeek(i: number): number {
+  // a few pulled up past their middle, as when a DJ lifts one out to read its label
+  if (i === 4) return 1.6;
+  if (i === 12) return 2.2;
+  if (i === 19) return 1.85;
+  const r = rand(i, 11);
+  return r < 0.55 ? 0 : 0.3 + rand(i, 12) * 0.3;
+}
+
+/** The disc's rings as one geometry, its axis across the sleeve (x), with a color per ring that applyPalette fills. */
+function discGeometry(): { geometry: BufferGeometry; rings: { slot: (typeof DISC_RINGS)[number]["slot"]; from: number; to: number }[] } {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const index: number[] = [];
+  const rings: { slot: (typeof DISC_RINGS)[number]["slot"]; from: number; to: number }[] = [];
+  DISC_RINGS.forEach((ring, k) => {
+    const part = new CylinderGeometry(ring.radius, ring.radius, VINYL.thick + k * 0.008, ring.radius > 0.5 ? 28 : 12).rotateZ(Math.PI / 2);
+    const base = positions.length / 3;
+    positions.push(...(part.getAttribute("position").array as Float32Array));
+    normals.push(...(part.getAttribute("normal").array as Float32Array));
+    for (const v of part.getIndex()!.array) index.push(base + v);
+    rings.push({ slot: ring.slot, from: base, to: positions.length / 3 });
+    part.dispose();
+  });
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new BufferAttribute(new Float32Array(positions), 3));
+  geometry.setAttribute("normal", new BufferAttribute(new Float32Array(normals), 3));
+  geometry.setAttribute("color", new BufferAttribute(new Float32Array(positions.length), 3));
+  geometry.setIndex(index);
+  return { geometry, rings };
+}
 /** While the tags show, the sleeves hang smaller, in a grid, so no tag is hidden. */
 const HUNG = { width: 3.2, height: 2.2, cols: 6, pitchX: 3.5, pitchY: 2.6, bottom: 3.4 } as const;
 const PITCH = 0.3; // between records in the crate
+/** The width of the hand hole in each end of the crate. */
+const HAND_HOLE = 1.3;
 /** A dark socket sits this far behind the face of a lit cell. */
 const SOCKET_BACK = 0.55;
 
@@ -498,7 +553,15 @@ export function create(): SceneInstance {
     const y = CRATE.floor + plankH * (k + 0.5);
     for (const side of [-1, 1]) {
       plankDefs.push({ x: 0, y, z: side * (CRATE.halfDepth - CRATE.wall / 2), sx: CRATE.halfWidth * 2, sy: plankH - 0.04, sz: CRATE.wall, alt: k % 2 === 0 });
-      plankDefs.push({ x: side * (CRATE.halfWidth - CRATE.wall / 2), y, z: 0, sx: CRATE.wall, sy: plankH - 0.04, sz: CRATE.halfDepth * 2 - CRATE.wall * 2, alt: k % 2 === 1 });
+      const endX = side * (CRATE.halfWidth - CRATE.wall / 2);
+      const endZ = CRATE.halfDepth * 2 - CRATE.wall * 2;
+      if (k < 2) {
+        plankDefs.push({ x: endX, y, z: 0, sx: CRATE.wall, sy: plankH - 0.04, sz: endZ, alt: k % 2 === 1 });
+      } else {
+        // a hand hole through the top plank of each end, as a record crate has
+        const piece = (endZ - HAND_HOLE) / 2;
+        for (const half of [-1, 1]) plankDefs.push({ x: endX, y, z: half * (HAND_HOLE + piece) / 2, sx: CRATE.wall, sy: plankH - 0.04, sz: piece, alt: false });
+      }
     }
   }
   const crateMaterial = new MeshLambertMaterial();
@@ -533,7 +596,7 @@ export function create(): SceneInstance {
   studs.frustumCulled = false;
   scene.add(studs);
 
-  // the records
+  // the records: a sleeve each, and the black disc and its label inside (shown only where it is pulled up)
   const recordMaterial = new MeshLambertMaterial();
   const records = new InstancedMesh(box, recordMaterial, RECORD_COUNT);
   records.name = "records";
@@ -542,6 +605,17 @@ export function create(): SceneInstance {
   records.frustumCulled = false;
   for (let i = 0; i < RECORD_COUNT; i++) records.setColorAt(i, new Color(0xffffff)); // allocate instanceColor up front
   scene.add(records);
+  // a disc's face and its label stand in the sleeve's plane, across the sleeve's thickness (x)
+  const disc = discGeometry();
+  const discMaterial = new MeshLambertMaterial({ vertexColors: true });
+  const discs = new InstancedMesh(disc.geometry, discMaterial, RECORD_COUNT);
+  discs.name = "discs";
+  discs.castShadow = true;
+  discs.frustumCulled = false;
+  scene.add(discs);
+  const peeks = Array.from({ length: RECORD_COUNT }, (_, i) => discPeek(i));
+  const hidden = new Matrix4().makeScale(0, 0, 0);
+  const inSleeve = new Matrix4();
 
   const tagGeometry = new PlaneGeometry(1, 1);
   const tags = Array.from({ length: RECORD_COUNT }, (_, i) => makeTag(i, tagGeometry, TAG.texel, false));
@@ -575,6 +649,14 @@ export function create(): SceneInstance {
     socketColor.copy(toColor(palette.colors[SLOT.panelAlt]!));
     socketLit.copy(toColor(palette.colors[SLOT.pressed]!));
     hubMaterial.color.copy(toColor(palette.colors[SLOT.panel]!));
+    // the disc is the page's own black; its label a light gray, so the one accent stays the wheel's
+    const ringColors = { vinyl: palette.background, sheen: palette.colors[SLOT.panelAlt]!, label: palette.colors[SLOT.muted]! };
+    const discColor = disc.geometry.getAttribute("color") as BufferAttribute;
+    for (const ring of disc.rings) {
+      const c = ringColors[ring.slot];
+      for (let v = ring.from; v < ring.to; v++) discColor.setXYZ(v, c[0], c[1], c[2]);
+    }
+    discColor.needsUpdate = true;
     studMaterial.color.copy(toColor(palette.colors[SLOT.borderMuted]!));
     glow.color.copy(toColor(palette.colors[SLOT.primary]!));
     plankDefs.forEach((d, k) => {
@@ -587,9 +669,11 @@ export function create(): SceneInstance {
     });
     planks.instanceMatrix.needsUpdate = true;
     if (planks.instanceColor) planks.instanceColor.needsUpdate = true;
-    for (let i = 0; i < RECORD_COUNT; i++) {
-      // blank sleeves in mixed grays; a key on the wheel lights in a shade of the one accent, by its number
-      sleeveColors[i]!.copy(toColor(palette.colors[SLEEVE_SLOTS[Math.floor(rand(i, 8) * SLEEVE_SLOTS.length)]!]!));
+    for (let i = 0, shade = 0; i < RECORD_COUNT; i++) {
+      // blank sleeves in mixed grays, never two alike side by side, so each sleeve's edge shows in the crate;
+      // a key on the wheel lights in a shade of the one accent, by its number
+      shade = (shade + 1 + Math.floor(rand(i, 8) * (SLEEVE_SLOTS.length - 1))) % SLEEVE_SLOTS.length;
+      sleeveColors[i]!.copy(toColor(palette.colors[SLEEVE_SLOTS[shade]!]!));
       keyColors[i]!.copy(toColor(palette.colors[WHEEL_SLOTS[(Math.floor(i / 2) + (i % 2)) % WHEEL_SLOTS.length]!]!));
     }
     const plate = rgb255(palette.colors[SLOT.panel]!);
@@ -621,10 +705,24 @@ export function create(): SceneInstance {
       const breathe = hero * 0.08 * Math.sin(time * 1.4 + i * 0.9);
       // the music moves the wheel: each box swells a little, each at its own time
       const swell = 1 + level * 0.28 * (0.5 + 0.5 * Math.sin(i * 2.3));
+      // how far it has lifted out of the crate: a sleeve is drawn thin while it stands there, and fills out as it lifts
+      const lift = smooth(staggered(progress, PHASES.lift, liftOrder(i)));
+      const thin = lerp(VINYL.sleeve / SLEEVE.thick, 1, lift);
       dummy.position.set(r.x, r.y + breathe, r.z + pop * 0.7);
-      dummy.scale.set(r.sx * (1 + pop * 0.6), r.sy * (lit > 0.5 ? swell : 1) * (1 + pop * 0.15), r.sz * (1 + pop * 0.15));
       euler.set(0, r.yaw, r.roll + hero * 0.04 * Math.sin(time * 1.1 + i * 1.7), "ZYX");
       dummy.rotation.copy(euler);
+      // the disc pulled up out of the sleeve's top slides back in as the record lifts, and is gone before it hangs
+      const peek = peeks[i]! * (1 - smooth(clamp01(lift / 0.3)));
+      if (peek > 0.01) {
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        inSleeve.makeTranslation(0, r.sy / 2 - VINYL.radius + peek, 0);
+        dummy.matrix.multiply(inSleeve);
+        discs.setMatrixAt(i, dummy.matrix);
+      } else {
+        discs.setMatrixAt(i, hidden);
+      }
+      dummy.scale.set(r.sx * thin * (1 + pop * 0.6), r.sy * (lit > 0.5 ? swell : 1) * (1 + pop * 0.15), r.sz * (1 + pop * 0.15));
       dummy.updateMatrix();
       records.setMatrixAt(i, dummy.matrix);
       records.setColorAt(i, tint.copy(sleeveColors[i]!).lerp(keyColors[i]!, lit).lerp(white, pop * 0.35));
@@ -652,6 +750,7 @@ export function create(): SceneInstance {
       if (cell.mesh.visible) cell.mesh.position.set(slot.x, slot.y, slot.z + (WHEEL.depth * (1 + pop * 0.6)) / 2 + pop * 0.7 + 0.03);
     }
     records.instanceMatrix.needsUpdate = true;
+    discs.instanceMatrix.needsUpdate = true;
     if (records.instanceColor) records.instanceColor.needsUpdate = true;
     sockets.instanceMatrix.needsUpdate = true;
     if (sockets.instanceColor) sockets.instanceColor.needsUpdate = true;
@@ -733,8 +832,9 @@ export function create(): SceneInstance {
       floorGeometry.dispose();
       tagGeometry.dispose();
       hubGeometry.dispose();
-      for (const m of [floorMaterial, crateMaterial, recordMaterial, socketMaterial, hubMaterial, studMaterial]) m.dispose();
-      for (const mesh of [planks, records, sockets, studs]) mesh.dispose();
+      disc.geometry.dispose();
+      for (const m of [floorMaterial, crateMaterial, recordMaterial, socketMaterial, hubMaterial, studMaterial, discMaterial]) m.dispose();
+      for (const mesh of [planks, records, sockets, studs, discs]) mesh.dispose();
       for (const tag of [...tags, ...cellTags]) {
         tag.texture.dispose();
         tag.material.dispose();

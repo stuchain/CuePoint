@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { Matrix4, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { THEMES } from "../../lib/themes";
 import { paletteUniforms } from "../palette";
@@ -453,8 +454,50 @@ describe("the opening scene as a Three.js scene", () => {
     instance.scene.traverse((o) => {
       if ((o as { isInstancedMesh?: boolean }).isInstancedMesh) instanced.push((o as unknown as { count: number }).count);
     });
-    expect(instanced.length).toBe(4); // the crate's planks, the sockets, the hub's studs, the records
+    expect(instanced.length).toBe(5); // the crate's planks, the sockets, the hub's studs, the records' sleeves and their discs
     expect(instance.scene.getObjectByName("crate")).toBeDefined();
+    instance.dispose();
+  });
+
+  it("shows the records as vinyl in the crate: a black disc peeks out of some sleeves, and goes back in before the records leave", () => {
+    const instance = create();
+    instance.setPalette(paletteUniforms(themeTokens("neoDark")));
+    instance.resize(16 / 9);
+    type Instanced = { count: number; getMatrixAt(i: number, m: Matrix4): void };
+    const discs = instance.scene.getObjectByName("discs") as unknown as Instanced;
+    expect(discs.count).toBe(RECORD_COUNT);
+    const m = new Matrix4();
+    const pos = new Vector3();
+    const showing = (mesh: Instanced): number[] =>
+      records.filter((i) => {
+        mesh.getMatrixAt(i, m);
+        return Math.abs(m.determinant()) > 1e-9;
+      });
+    const center = (mesh: Instanced, i: number): Vector3 => {
+      mesh.getMatrixAt(i, m);
+      return pos.setFromMatrixPosition(m).clone();
+    };
+    for (const t of [0, 7.3]) {
+      instance.setProgress(0);
+      instance.tick?.(t);
+      const out = showing(discs);
+      // some, not all: a crate somebody has been digging through
+      expect(out.length).toBeGreaterThanOrEqual(RECORD_COUNT / 4);
+      expect(out.length).toBeLessThan(RECORD_COUNT);
+      for (const i of out) {
+        const r = recordPose(i, 0);
+        const c = center(discs, i);
+        // the disc sits in its own sleeve: pulled up, its middle at most a little over the sleeve's top, so it is still held
+        expect(Math.abs(c.x - r.x), `record ${i}`).toBeLessThan(0.6);
+        expect(c.y, `record ${i}`).toBeLessThan(r.y + r.sy / 2 + 1);
+        expect(c.y, `record ${i}`).toBeGreaterThan(r.y - r.sy / 2);
+      }
+    }
+    // in the hang, the flight and the wheel, every disc is back in its sleeve: only the sleeve carries the tag
+    for (const p of [LABEL_HOLD[0], 0.45, 0.7, 1]) {
+      instance.setProgress(p);
+      expect(showing(discs), `at ${p}`).toEqual([]);
+    }
     instance.dispose();
   });
 
