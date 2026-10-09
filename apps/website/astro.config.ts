@@ -2,10 +2,12 @@ import { defineConfig, fontProviders } from "astro/config";
 import sitemap from "@astrojs/sitemap";
 import type { Plugin } from "vite";
 import { satteri } from "@astrojs/markdown-satteri";
+import llmsTxt from "./scripts/llms.mjs";
 import ogCards from "./scripts/og-integration.mjs";
 import { SITE_URL, addressParts, isStyleguide } from "./site.config";
 import { guideLinkConfig } from "./src/lib/guide-config";
 import { guideLinksPlugin } from "./src/lib/guide-links";
+import { kbdKeys } from "./src/lib/kbd-keys";
 import { scrollWrap } from "./src/lib/scroll-wrap";
 
 const { site, base } = addressParts(SITE_URL);
@@ -54,7 +56,7 @@ export default defineConfig({
     syntaxHighlight: false,
     processor: satteri({
       mdastPlugins: [guideLinksPlugin(guideLinkConfig())],
-      hastPlugins: [scrollWrap],
+      hastPlugins: [scrollWrap, kbdKeys],
     }),
   },
   integrations: [
@@ -65,6 +67,8 @@ export default defineConfig({
     }),
     // draws every page's sharing picture into dist/ once the pages are built (SITE-11)
     ogCards(),
+    // the plain-text index of the pages for AI search (llms.txt), from the built pages
+    llmsTxt({ siteName: "CuePoint" }),
   ],
   fonts: [
     {

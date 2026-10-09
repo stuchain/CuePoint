@@ -1,21 +1,5 @@
 ---
+/** A key, drawn as the app's key cap. The look is global.css's `kbd` rule, so a key in the guide's Markdown matches. */
 ---
 
 <kbd class="kbd"><slot /></kbd>
-
-<style>
-  .kbd {
-    display: inline-block;
-    min-width: 1.5em;
-    padding: 0 var(--space-xs);
-    border: var(--border-width-heavy) solid var(--border-outline);
-    border-radius: 0;
-    background: var(--bg-panel-alt);
-    color: var(--fg-primary);
-    font-family: var(--font-pixel);
-    font-size: 0.9em;
-    line-height: 1.3;
-    text-align: center;
-    box-shadow: var(--shadow-bevel-sm), 0 var(--bevel-size) 0 var(--border-shadow);
-  }
-</style>

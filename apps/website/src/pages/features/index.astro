@@ -6,7 +6,7 @@
  */
 import { SITE_URL } from "../../../site.config";
 import HomeAction from "../../components/HomeAction.astro";
-import Panel from "../../components/Panel.astro";
+import PageHead from "../../components/PageHead.astro";
 import Section from "../../components/Section.astro";
 import Unshipped from "../../components/Unshipped.astro";
 import { COMPARE_TOOLS, compareHref } from "../../data/compare";
@@ -42,76 +42,63 @@ const schema = [
     { label: "Features", path: "features/" },
   ]}
 >
-  <Section id="features">
-    <div class="prose">
-      <h1>What CuePoint does for your library</h1>
-      <p>
-        CuePoint is a free desktop app that takes the collection you export from Rekordbox, matches it to Beatport and
-        helps you keep it clean. Each part has its own page.
-      </p>
-    </div>
-  </Section>
+  <PageHead title="What CuePoint does for your library">
+    <p>
+      CuePoint is a free desktop app that takes the collection you export from Rekordbox, matches it to Beatport and
+      helps you keep it clean. Each part has its own page.
+    </p>
+  </PageHead>
 
-  <Section id="list" heading="The features">
-    <ul class="cards">
+  <Section id="list" heading="The features" layout="split">
+    <ul class="rows">
       {
         FEATURE_PAGES.map((p) => (
-          <li>
-            <Panel tone="flat">
-              <h3>
-                <a href={hrefFor(featureHref(p.slug))}>{p.name}</a>
-              </h3>
+          <li data-reveal>
+            <h3 class="row-name">
+              <a href={hrefFor(featureHref(p.slug))}>{p.name}</a>
+            </h3>
+            <div>
               <p>{p.summary}</p>
               {p.unshipped && <Unshipped step={p.unshipped.step} compact />}
-            </Panel>
+            </div>
           </li>
         ))
       }
     </ul>
   </Section>
 
-  <Section id="compare" heading="Compared with other tools">
-    <div class="prose">
-      <p>
-        Not sure CuePoint is the right tool? These pages set it beside others, with every fact about the other tool
-        linked to its own page and dated.
-      </p>
-      <ul>
-        {
-          COMPARE_TOOLS.map((t) => (
-            <li>
-              <a href={hrefFor(compareHref(t.slug))}>CuePoint and {t.name}</a>
-            </li>
-          ))
-        }
-      </ul>
-    </div>
+  <Section id="compare" heading="Compared with other tools" layout="split">
+    <p class="intro">
+      Not sure CuePoint is the right tool? These pages set it beside others, with every fact about the other tool
+      linked to its own page and dated.
+    </p>
+    <ul class="rows">
+      {
+        COMPARE_TOOLS.map((t) => (
+          <li data-reveal>
+            <a class="row-name" href={hrefFor(compareHref(t.slug))}>CuePoint and {t.name}</a>
+            <p>{t.summary}</p>
+          </li>
+        ))
+      }
+    </ul>
   </Section>
 
-  <Section id="get" heading="Get CuePoint">
-    <p><HomeAction /></p>
+  <Section id="get" heading="Get CuePoint" layout="split">
+    <p class="get"><HomeAction /></p>
   </Section>
 </Page>
 
 <style>
-  .prose {
-    max-width: 42rem;
+  .intro {
+    max-width: 34rem;
+    margin: 0 0 var(--r2);
   }
-  .cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-    gap: var(--space-lg);
-    margin: 0;
-    padding: 0;
-    list-style: none;
+  .rows :global([data-unshipped]) {
+    margin-top: var(--space-xs);
   }
-  .cards h3 {
-    margin-top: 0;
-  }
-  .cards p {
-    margin-bottom: 0;
-  }
-  .cards p + p {
-    margin-top: var(--space-sm);
+  .get :global([data-primary-action]) {
+    font-size: var(--font-size-lg);
+    padding: var(--space-md) calc(var(--space-xl) * 1.2);
   }
 </style>

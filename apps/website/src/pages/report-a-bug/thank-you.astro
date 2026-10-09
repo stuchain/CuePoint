@@ -1,5 +1,6 @@
 ---
 import Button from "../../components/Button.astro";
+import PageHead from "../../components/PageHead.astro";
 import Section from "../../components/Section.astro";
 import Page from "../../layouts/Page.astro";
 import { hrefFor } from "../../lib/url";
@@ -12,10 +13,12 @@ import { hrefFor } from "../../lib/url";
   description="Your bug report for CuePoint was sent. Thank you; if more detail is needed, the reply will come by email to the address you gave."
   path="report-a-bug/thank-you/"
   noindex="thank-you"
+  breadcrumbs={[{ label: "Home", path: "" }, { label: "Report a bug", path: "report-a-bug/" }, { label: "Report sent", path: "report-a-bug/thank-you/" }]}
 >
+  <PageHead title="Report sent">
+    <p>Thank you. Your report was sent. If more detail is needed, the reply will come by email to the address you gave.</p>
+  </PageHead>
   <Section id="thank-you" width="prose">
-    <h1>Report sent</h1>
-    <p class="lede">Thank you. Your report was sent. If more detail is needed, the reply will come by email to the address you gave.</p>
     <p><Button href={hrefFor("")}>Back to the home page</Button></p>
   </Section>
 </Page>

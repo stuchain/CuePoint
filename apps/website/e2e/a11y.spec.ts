@@ -77,7 +77,26 @@ async function undersizedTargets(page: Page): Promise<string[]> {
   });
 }
 
+/**
+ * Blocks marked [data-reveal] below the first screen wait, invisible, until they scroll into view
+ * (src/lib/reveal.ts). Scroll them all in first, so axe and the target check see the whole page.
+ */
+async function revealAll(page: Page) {
+  const waiting = await page.locator('[data-reveal="pending"]').count();
+  if (waiting === 0) return;
+  await page.evaluate(async () => {
+    for (const el of document.querySelectorAll('[data-reveal="pending"]')) {
+      el.scrollIntoView({ block: "center" });
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    }
+    window.scrollTo(0, 0);
+  });
+  await expect(page.locator('[data-reveal="pending"]')).toHaveCount(0);
+  await page.waitForTimeout(400); // the fade's 320 ms
+}
+
 async function expectPageOk(page: Page) {
+  await revealAll(page);
   await expectAccessible(page);
   await expectNoHorizontalScroll(page);
   expect(await undersizedTargets(page), "targets under 24x24 px without spacing").toEqual([]);

@@ -1,0 +1,75 @@
+---
+/**
+ * The top of an inner page: its one h1, which says what the page is for, and a short lead under it
+ * (the default slot). `meta` is a quiet line under the lead (a version, a date). The `aside` slot sits
+ * beside the text on a wide screen (a picture, a prop). Same type and rhythm as the home page's hero:
+ * --t-title for the h1, --t-lead for the lead. A <div>, not a <header>: the page has one header, the site's.
+ */
+interface Props {
+  title: string;
+  /** The h1's id. */
+  id?: string;
+}
+const { title, id = "page-title" } = Astro.props;
+const hasMeta = Astro.slots.has("meta");
+const hasAside = Astro.slots.has("aside");
+const hasActions = Astro.slots.has("actions");
+---
+
+<div class="page-head" data-has-aside={hasAside ? "true" : undefined}>
+  <div class="text">
+    <h1 id={id}>{title}</h1>
+    <div class="lead"><slot /></div>
+    {hasMeta && <p class="meta"><slot name="meta" /></p>}
+    {hasActions && <div class="actions"><slot name="actions" /></div>}
+  </div>
+  {hasAside && <div class="aside"><slot name="aside" /></div>}
+</div>
+
+<style>
+  .page-head {
+    display: grid;
+    gap: var(--r2);
+    align-items: center;
+    width: min(100% - 2 * var(--gutter), var(--content-max));
+    margin: 0 auto;
+    padding-block: var(--r2) var(--r1);
+  }
+  h1 {
+    max-width: 22ch;
+    margin: 0 0 var(--r1);
+  }
+  .lead {
+    max-width: 36rem;
+    font-size: var(--t-lead);
+    line-height: 1.5;
+  }
+  .lead > :global(*) {
+    margin: 0 0 var(--space-md);
+  }
+  .lead > :global(:last-child) {
+    margin-bottom: 0;
+  }
+  .meta {
+    margin: var(--r1) 0 0;
+    color: var(--fg-muted);
+    font-size: var(--font-size-sm);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--r1);
+    margin-top: var(--r2);
+  }
+  .actions :global([data-primary-action]),
+  .actions :global(.btn[data-variant="primary"]) {
+    font-size: var(--font-size-lg);
+    padding: var(--space-md) calc(var(--space-xl) * 1.2);
+  }
+  @media (min-width: 60rem) {
+    .page-head[data-has-aside] {
+      grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+    }
+  }
+</style>

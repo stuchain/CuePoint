@@ -58,15 +58,43 @@ const className = props.class;
     background: var(--accent-secondary);
     color: var(--fg-primary);
   }
+  /*
+   * Like a key of the app: on hover it lifts 2px and its hard shadow grows by as much, so the corner stays
+   * put; pressed, it goes down onto the page and the shadow is gone. Two steps, 80 ms: answered, not animated.
+   */
+  .btn {
+    transition:
+      translate var(--motion-quick) steps(2, end),
+      box-shadow var(--motion-quick) steps(2, end),
+      background-color var(--motion-quick) steps(1, end);
+  }
+  .btn:hover {
+    translate: -2px -2px;
+    box-shadow: var(--focus-halo), var(--shadow-bevel), 4px 4px 0 var(--border-shadow);
+  }
   .btn[data-variant="primary"]:hover {
-    filter: brightness(1.12);
+    background: var(--accent-primary-hover);
   }
   .btn[data-variant="secondary"]:hover {
     background: var(--accent-secondary-hover);
   }
   .btn:active {
-    transform: translate(1px, 1px);
+    translate: 2px 2px;
     box-shadow: var(--focus-halo), var(--shadow-bevel-pressed);
+  }
+  .btn:disabled,
+  .btn:disabled:hover,
+  .btn:disabled:active {
+    translate: none;
+    box-shadow: var(--focus-halo), var(--shadow-bevel);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .btn:hover {
+      translate: none;
+    }
+    .btn:active {
+      translate: none;
+    }
   }
   .btn:disabled {
     background: var(--bg-panel-alt);

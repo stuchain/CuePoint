@@ -1,6 +1,7 @@
 ---
 import Field from "../components/Field.astro";
 import Form from "../components/Form.astro";
+import PageHead from "../components/PageHead.astro";
 import Section from "../components/Section.astro";
 import { CONTACT_EMAIL, SITE_NAME } from "../data/site";
 import Page from "../layouts/Page.astro";
@@ -17,18 +18,21 @@ const subjects = SUBJECTS.map((s) => ({ value: s, label: s }));
   path="contact/"
   breadcrumbs={[{ label: "Home", path: "" }, { label: "Contact", path: "contact/" }]}
 >
-  <Section id="contact" width="prose">
-    <h1>Contact</h1>
-    <p class="lede" data-form-intro>
+  <PageHead title="Contact">
+    <p data-form-intro>
       Feedback, a question, or something else about {SITE_NAME}: write here and the message goes to one inbox. Found a bug? The{" "}
       <a href={hrefFor("report-a-bug/")}>bug report form</a> asks for the details that help.
     </p>
-    <p>
-      The form is sent through a service called Web3Forms. The{" "}
-      <a href={hrefFor("privacy/#forms")}>privacy policy</a> says what it receives and keeps. You can also write to{" "}
-      <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
-    </p>
+  </PageHead>
 
+  <Section id="contact" layout="split">
+    <div slot="aside" class="form-aside">
+      <p>
+        The form is sent through a service called Web3Forms. The{" "}
+        <a href={hrefFor("privacy/#forms")}>privacy policy</a> says what it receives and keeps. You can also write to{" "}
+        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+      </p>
+    </div>
     <Form kind="contact" thanks="contact/thank-you/" send="Send message" noun="message">
       <Field id="name" label="Name (optional)" control="input" autocomplete="name" />
       <Field id="email" label="Email" control="input" type="email" required autocomplete="email" hint="Where the reply goes." />

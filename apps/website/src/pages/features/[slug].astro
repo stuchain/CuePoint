@@ -13,6 +13,7 @@
  */
 import AppShot from "../../components/AppShot.astro";
 import HomeAction from "../../components/HomeAction.astro";
+import PageHead from "../../components/PageHead.astro";
 import Section from "../../components/Section.astro";
 import Unshipped from "../../components/Unshipped.astro";
 import { FEATURE_PAGES, featureBySlug, featureHref, type FeaturePage } from "../../data/features";
@@ -51,24 +52,19 @@ const prop = PROPS[page.slug];
     { label: page.name, path: featureHref(page.slug) },
   ]}
 >
-  <Section id="intro">
-    <div class:list={["intro", { "has-prop": prop }]}>
-      <div class="prose">
-        <h1>{page.heading}</h1>
-        {page.unshipped && <Unshipped step={page.unshipped.step} />}
-        {page.problem.map((p) => <p>{p}</p>)}
-      </div>
-      {
-        prop && (
-          <div class="prop">
-            <Scene name={prop.scene} bare autostart priority alt={prop.alt} />
-          </div>
-        )
-      }
-    </div>
-  </Section>
+  <PageHead title={page.heading}>
+    {page.unshipped && <Unshipped step={page.unshipped.step} />}
+    {page.problem.map((p) => <p>{p}</p>)}
+    {
+      prop && (
+        <div slot="aside" class="prop">
+          <Scene name={prop.scene} bare autostart priority alt={prop.alt} />
+        </div>
+      )
+    }
+  </PageHead>
 
-  <Section id="how" heading={`How CuePoint helps: ${page.name}`}>
+  <Section id="how" heading={`How CuePoint helps: ${page.name}`} layout="split">
     <div class="how">
       <div class="copy">
         {
@@ -85,71 +81,66 @@ const prop = PROPS[page.slug];
     </div>
   </Section>
 
-  <Section id="not" heading="What it does not do">
-    <ul class="prose not">
+  <!-- secondary on purpose: smaller, quieter, after what it does -->
+  <Section id="not" heading="What it does not do" layout="split">
+    <ul class="not">
       {page.doesNot.map((line) => <li>{line}</li>)}
     </ul>
   </Section>
 
-  <Section id="next" heading="Keep going">
-    <ul class="prose links">
-      {page.guide && <li><a href={hrefFor(guidePath(page.guide.page))}>{page.guide.label}</a></li>}
+  <Section id="next" heading="Keep going" layout="split">
+    <ul class="rows">
+      {page.guide && <li><a class="row-name" href={hrefFor(guidePath(page.guide.page))}>{page.guide.label}</a><p>The full steps, in the user guide.</p></li>}
       {
         related.map((r) => (
           <li>
-            <a href={hrefFor(featureHref(r.slug))}>
-              {r.name}: {r.summary}
-            </a>
+            <a class="row-name" href={hrefFor(featureHref(r.slug))}>{r.name}</a>
+            <p>{r.summary}</p>
           </li>
         ))
       }
-      <li><a href={hrefFor("features/")}>All of CuePoint's features</a></li>
+      <li><a class="row-name" href={hrefFor("features/")}>All of CuePoint's features</a><p>Every part, one line each.</p></li>
     </ul>
     <p class="action"><HomeAction /></p>
   </Section>
 </Page>
 
 <style>
-  .prose {
-    max-width: 42rem;
+  .prop {
+    min-width: 0;
   }
-  .intro {
-    display: grid;
-    gap: var(--space-xl);
-    align-items: center;
+  .step + .step {
+    margin-top: var(--r2);
   }
-  @media (min-width: 60rem) {
-    .intro.has-prop {
-      grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
-    }
+  .step h3 {
+    margin: 0 0 var(--space-md);
+  }
+  .step p {
+    max-width: 34rem;
   }
   .how {
     display: grid;
-    gap: var(--space-xl);
+    gap: var(--r2);
   }
-  .step h3 {
-    margin-top: var(--space-lg);
-  }
-  .step:first-child h3 {
-    margin-top: 0;
-  }
+  /* what it does not do: the page's quiet part, in a smaller size and the muted color */
   .not {
-    padding-left: var(--space-lg);
+    max-width: 34rem;
+    margin: 0;
+    padding-left: var(--space-xl);
+    color: var(--fg-muted);
+    font-size: var(--font-size-sm);
   }
-  .links {
-    list-style: none;
-    padding: 0;
+  .not li {
+    margin-bottom: var(--space-sm);
   }
-  .links li {
-    margin-block: var(--space-sm);
+  .not li::marker {
+    color: var(--border-highlight);
+  }
+  #not :global(h2) {
+    font-size: var(--t-lead);
+    color: var(--fg-muted);
   }
   .action {
-    margin-top: var(--space-xl);
-  }
-  @media (min-width: 60rem) {
-    .how {
-      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-      align-items: start;
-    }
+    margin-top: var(--r2);
   }
 </style>

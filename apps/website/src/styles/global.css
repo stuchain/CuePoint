@@ -6,9 +6,29 @@
 :root {
   --font-pixel: var(--font-pixelify), "Pixelify Sans", "Segoe UI", sans-serif;
   --font-body: var(--font-prose), system-ui, sans-serif;
+  /* one face for code, commands, file names and checksums, wherever they are */
+  --font-code: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --gutter: 1rem;
   --content-max: 72rem;
+  /* the reading measure: about 70 characters of body text */
+  --measure: 40rem;
   --focus-halo: 0 0 #0000;
+  /*
+   * The home page's one system (SITE-06), shared by every page:
+   *   rhythm --r1 (inside a group) < --r2 (between groups) < --r3 (a block's room) < --r4 (between bands);
+   *   type   --t-display (the home page's h1), --t-title (an inner page's h1, the home's section titles),
+   *          --t-lead (the lead under a title, small titles), the body size for the rest.
+   * The values are the home page's own; index.astro still names them inside its sections, with the same values.
+   */
+  --r1: var(--space-xl);
+  --r2: calc(var(--space-xl) * 2);
+  --r3: calc(var(--space-xl) * 3.2);
+  --r4: clamp(4.5rem, 2.5rem + 6vw, 8.5rem);
+  --t-display: clamp(2.5rem, 1.2rem + 3.8vw, 4.25rem);
+  --t-title: clamp(1.9rem, 1.1rem + 2.4vw, 3.25rem);
+  --t-lead: clamp(1.1rem, 1rem + 0.45vw, var(--font-size-lg));
+  /* the sticky header's height, so anchors and sticky rails land below it */
+  --header-h: 3.75rem;
   color-scheme: dark;
 }
 
@@ -20,7 +40,13 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  scroll-padding-top: 1rem;
+  /* an anchor lands below the sticky header, with room to breathe */
+  scroll-padding-top: calc(var(--header-h) + var(--space-lg));
+}
+
+::selection {
+  background: var(--accent-primary);
+  color: var(--border-outline);
 }
 
 /* Pixelify's fi and fl ligatures read as other letters at small sizes */
@@ -59,13 +85,15 @@ h4 {
   margin: var(--space-xl) 0 var(--space-md);
 }
 h1 {
-  font-size: clamp(var(--font-size-xl), 1rem + 4vw, 3.25rem);
+  font-size: var(--t-title);
+  line-height: 1.04;
 }
 h2 {
   font-size: clamp(var(--font-size-lg), 0.9rem + 2vw, var(--font-size-xl));
 }
 h3 {
-  font-size: var(--font-size-lg);
+  font-size: var(--t-lead);
+  line-height: 1.25;
 }
 h4 {
   font-size: var(--font-size-md);
@@ -83,8 +111,61 @@ a {
   text-decoration-thickness: var(--bevel-size-sm);
   text-underline-offset: 0.2em;
 }
-a:hover {
-  text-decoration-thickness: var(--border-width);
+/*
+ * A link answers the pointer: its thin underline gives way to a pixel bar in the accent that steps in from
+ * the left (three steps, 120 ms), and the text takes the lighter accent (6:1 on the page). Only a link
+ * with no class of its own is a text link: buttons, cards, the pager and the header's links style
+ * themselves. :where() keeps it weak, so a component's own rule always wins.
+ */
+:where(a:not([class])) {
+  background-image: linear-gradient(var(--accent-primary-hover), var(--accent-primary-hover));
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0 var(--border-width);
+  transition:
+    background-size 120ms steps(3, end),
+    color 120ms steps(1, end);
+}
+:where(a:not([class])):hover {
+  color: var(--accent-primary-hover);
+  text-decoration-color: transparent;
+  background-size: 100% var(--border-width);
+}
+:where(a:not([class])):active {
+  color: var(--fg-primary);
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-code);
+}
+/* inline code: a small chip of the app's input color, the same everywhere */
+:where(p, li, td, th, dd, figcaption, summary) > code {
+  padding: 0.1em 0.35em;
+  background: var(--bg-panel-alt);
+  border: var(--hairline) solid var(--border-muted);
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+/* a key, or a key with its modifiers: the app's key cap (components/Kbd.astro uses the same rule) */
+kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 var(--space-xs);
+  border: var(--border-width) solid var(--border-outline);
+  border-radius: 0;
+  background: var(--bg-panel-alt);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: 0.875em;
+  font-weight: 600;
+  font-variant-ligatures: none;
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: var(--shadow-bevel-sm), 0 var(--bevel-size) 0 var(--border-shadow);
 }
 
 img,
@@ -104,6 +185,58 @@ hr {
   border: 0;
   border-top: var(--border-width) solid var(--border-outline);
   margin: var(--space-xl) 0;
+}
+
+/*
+ * A list of one line per item on the app's seams (the home page's feature list): the item's name on the
+ * left from 48rem, what it is on the right. Used by the guide's index, the features and the comparisons.
+ */
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rows > li {
+  display: grid;
+  gap: var(--space-xs) var(--r2);
+  padding-block: var(--r1);
+  border-top: var(--border-width) solid var(--border-outline);
+  box-shadow: inset 0 var(--border-width) 0 var(--border-muted);
+}
+.rows > li:first-child {
+  padding-top: 0;
+  border-top: 0;
+  box-shadow: none;
+}
+.rows > li > p,
+.rows > li > div > p {
+  max-width: 34rem;
+  margin: 0;
+}
+.row-name {
+  justify-self: start;
+  min-height: 1.5rem;
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: var(--t-lead);
+  font-weight: 700;
+  font-variant-ligatures: none;
+  line-height: 1.25;
+}
+a.row-name,
+.row-name a {
+  text-decoration-thickness: var(--border-width);
+  text-underline-offset: 0.25em;
+}
+a.row-name:hover,
+.row-name a:hover {
+  color: var(--accent-primary-hover);
+}
+@media (min-width: 48rem) {
+  .rows > li {
+    grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+    align-items: baseline;
+  }
 }
 
 /* Text for screen readers only */
@@ -152,6 +285,48 @@ hr {
   box-shadow: var(--focus-halo);
 }
 
+/*
+ * Page to page: the browser's own cross-document view transition, no script (the site has no client
+ * router: the 3D stage, the forms and the analytics each start with their page). The page cross-fades in
+ * 200 ms; the header is its own layer with the same name on both pages, so it stays still.
+ */
+@view-transition {
+  navigation: auto;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+  animation-timing-function: steps(4, end);
+}
+::view-transition-group(site-header),
+::view-transition-old(site-header),
+::view-transition-new(site-header) {
+  animation: none;
+}
+
+/*
+ * The first time a block scrolls into view it rises 8 px and fades in, once (lib/reveal.ts marks only
+ * what starts below the first screen, so nothing on the first screen ever waits). Opt-in: [data-reveal].
+ */
+[data-reveal="pending"] {
+  opacity: 0;
+  translate: 0 8px;
+}
+[data-reveal="shown"] {
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    opacity 320ms steps(4, end),
+    translate 320ms steps(4, end);
+}
+
+@media print {
+  [data-reveal] {
+    opacity: 1 !important;
+    translate: none !important;
+  }
+}
+
 /* Reduced motion: no transitions, no animations, fades included (as in the app, PAGES-02). */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -160,5 +335,13 @@ hr {
     transition: none !important;
     animation: none !important;
     scroll-behavior: auto !important;
+  }
+  /* no page transition at all, and nothing waits to be revealed */
+  @view-transition {
+    navigation: none;
+  }
+  [data-reveal] {
+    opacity: 1 !important;
+    translate: none !important;
   }
 }

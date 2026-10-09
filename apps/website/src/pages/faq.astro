@@ -5,7 +5,7 @@
  * renamed heading fails the build instead of leaving a dead link.
  */
 import { getCollection } from "astro:content";
-import Section from "../components/Section.astro";
+import PageHead from "../components/PageHead.astro";
 import { faqSchema, paragraphs } from "../lib/faq";
 import { guideLinkConfig } from "../lib/guide-config";
 import { rewriteLink } from "../lib/guide-links";
@@ -41,45 +41,104 @@ const faqs = await Promise.all(
     { label: "FAQ", path: "faq/" },
   ]}
 >
-  <Section id="faq" width="prose">
-    <h1>Frequently asked questions</h1>
-    <p class="lede">
-      Short answers first, with a link to the part of the <a href={hrefFor("guide/")}>user guide</a> that goes further.
-    </p>
+  <PageHead title="Frequently asked questions">
+    <p>Short answers first, with a link to the part of the <a href={hrefFor("guide/")}>user guide</a> that goes further.</p>
+  </PageHead>
 
+  <!-- every question at a glance; each one jumps to its answer (the ids are the FAQ's own, q-<id>) -->
+  <nav class="jump" aria-labelledby="jump-heading">
+    <h2 id="jump-heading" class="jump-heading">The questions</h2>
+    <ol>
+      {
+        faqs.map((f) => (
+          <li>
+            <a href={`#q-${f.id}`}>{f.question}</a>
+          </li>
+        ))
+      }
+    </ol>
+  </nav>
+
+  <div class="answers">
     {
       faqs.map((f) => (
-        <section class="qa">
+        <section class="qa" aria-labelledby={`q-${f.id}`} data-reveal>
           <h2 id={`q-${f.id}`}>{f.question}</h2>
-          {paragraphs(f.answer).map((p) => (
-            <p>{p}</p>
-          ))}
-          <ul class="more" aria-label={`More about: ${f.question}`}>
-            {f.links.map((l) => (
-              <li>
-                <a href={l.href}>{l.label}</a>
-              </li>
+          <div class="answer">
+            {paragraphs(f.answer).map((p) => (
+              <p>{p}</p>
             ))}
-          </ul>
+            <ul class="more" aria-label={`More about: ${f.question}`}>
+              {f.links.map((l) => (
+                <li>
+                  <a href={l.href}>{l.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
       ))
     }
-  </Section>
+  </div>
 </Page>
 
 <style>
+  .jump,
+  .answers {
+    width: min(100% - 2 * var(--gutter), var(--content-max));
+    margin-inline: auto;
+  }
+  /* the questions, in one of the app's panels */
+  .jump {
+    margin-block: var(--r1) var(--r3);
+    padding: var(--r1) var(--r2) var(--r2);
+    background: var(--bg-panel);
+    border: var(--border-width-heavy) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel), var(--shadow-panel);
+  }
+  .jump-heading {
+    margin: 0 0 var(--space-md);
+    font-size: var(--t-lead);
+  }
+  .jump ol {
+    margin: 0;
+    padding-left: var(--space-xl);
+    columns: 22rem 2;
+    column-gap: var(--r2);
+  }
+  .jump li {
+    break-inside: avoid;
+    padding-block: var(--space-xs);
+  }
+  .jump a {
+    display: inline-block;
+    vertical-align: top;
+    min-height: 1.5rem;
+  }
+  /* each question and its answer: a row on the app's seams, the question on the left on a wide screen */
   .qa {
-    margin-top: var(--space-xl);
+    display: grid;
+    gap: var(--space-md) var(--r3);
+    padding-block: var(--r2);
+    border-top: var(--border-width) solid var(--border-outline);
+    box-shadow: inset 0 var(--border-width) 0 var(--border-muted);
   }
   .qa h2 {
-    margin-top: 0;
-    font-size: var(--font-size-lg);
+    margin: 0;
+    font-size: var(--t-lead);
+    line-height: 1.25;
+  }
+  .answer {
+    max-width: 36rem;
+  }
+  .answer p {
+    margin: 0 0 var(--space-md);
   }
   .more {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-xs) var(--space-lg);
-    margin: 0;
+    margin: var(--space-md) 0 0;
     padding: 0;
     list-style: none;
     font-size: var(--font-size-sm);
@@ -87,5 +146,11 @@ const faqs = await Promise.all(
   .more a {
     display: inline-block;
     min-height: 1.5rem;
+  }
+  @media (min-width: 60rem) {
+    .qa {
+      grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+      align-items: baseline;
+    }
   }
 </style>

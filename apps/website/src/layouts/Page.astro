@@ -96,12 +96,17 @@ const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c"
     </main>
     <Footer />
     <Analytics />
+    <script>
+      // blocks marked [data-reveal] fade up once as they come into view (lib/reveal.ts)
+      import { startReveal } from "../lib/reveal";
+      startReveal();
+    </script>
   </body>
 </html>
 
 <style>
   .crumbs-wrap {
     width: min(100% - 2 * var(--gutter), var(--content-max));
-    margin: var(--space-lg) auto 0;
+    margin: var(--r1) auto 0;
   }
 </style>

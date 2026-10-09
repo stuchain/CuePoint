@@ -1,6 +1,7 @@
 ---
 import Badge from "../../components/Badge.astro";
 import Panel from "../../components/Panel.astro";
+import PageHead from "../../components/PageHead.astro";
 import Section from "../../components/Section.astro";
 import Page from "../../layouts/Page.astro";
 import { readingMinutes } from "../../lib/blog";
@@ -17,12 +18,11 @@ const posts = await getPosts();
   path="blog/"
   breadcrumbs={[{ label: "Home", path: "" }, { label: "Blog", path: "blog/" }]}
 >
-  <Section id="blog" width="prose">
-    <h1>Blog</h1>
-    <p class="lede">
-      News and notes about CuePoint. <a href={hrefFor("blog/rss.xml")}>Follow by RSS</a>.
-    </p>
+  <PageHead title="Blog">
+    <p>News and notes about CuePoint. <a href={hrefFor("blog/rss.xml")}>Follow by RSS</a>.</p>
+  </PageHead>
 
+  <Section id="blog" width="prose">
     {
       posts.length === 0 ? (
         <p>There are no posts yet. Check back soon.</p>
@@ -30,7 +30,7 @@ const posts = await getPosts();
         <ul class="posts">
           {posts.map((post) => (
             <li>
-              <Panel as="article">
+              <Panel as="article" class="post-card">
                 <h2><a href={hrefFor(`blog/${post.id}/`)}>{post.data.title}</a></h2>
                 <p class="meta">
                   <time datetime={isoDay(post.data.date)}>{formatDate(post.data.date)}</time>
@@ -48,13 +48,10 @@ const posts = await getPosts();
 </Page>
 
 <style>
-  .lede {
-    color: var(--fg-muted);
-  }
   .posts {
     list-style: none;
     padding: 0;
-    margin: var(--space-xl) 0 0;
+    margin: 0;
     display: grid;
     gap: var(--space-lg);
   }

@@ -6,6 +6,7 @@
  * it was read (`data-compare-source`); scripts/check-site.mjs fails the build otherwise.
  * The user reviews each page before launch.
  */
+import PageHead from "../../components/PageHead.astro";
 import Section from "../../components/Section.astro";
 import HomeAction from "../../components/HomeAction.astro";
 import { COMPARE_TOOLS, compareHref, type CompareTool } from "../../data/compare";
@@ -33,16 +34,18 @@ const { tool } = Astro.props;
     { label: tool.name, path: compareHref(tool.slug) },
   ]}
 >
-  <Section id="intro">
-    <div class="prose">
-      <h1>{tool.heading}</h1>
-      <p>{tool.intro}</p>
-    </div>
-  </Section>
+  <PageHead title={tool.heading}>
+    <p>{tool.intro}</p>
+  </PageHead>
 
   <Section id="side" heading="Side by side">
     <table class="compare">
       <caption class="sr-only">CuePoint and {tool.name}, topic by topic</caption>
+      <colgroup>
+        <col class="col-topic" />
+        <col />
+        <col />
+      </colgroup>
       <thead>
         <tr>
           <th scope="col">Topic</th>
@@ -72,53 +75,63 @@ const { tool } = Astro.props;
     </table>
   </Section>
 
-  <Section id="not" heading="What CuePoint does not do">
-    <ul class="prose not">
-      {tool.cuepointDoesNot.map((line) => <li>{line}</li>)}
-    </ul>
+  <Section id="choose" heading="Which one fits" layout="split">
+    <div class="choose">
+      <div class="pick" data-reveal>
+        <h3>Choose {tool.name} if</h3>
+        <p>{tool.chooseOther}</p>
+      </div>
+      <div class="pick" data-reveal>
+        <h3>Choose CuePoint if</h3>
+        <p>{tool.chooseCuePoint}</p>
+      </div>
+    </div>
+    <p class="action"><HomeAction /></p>
   </Section>
 
-  <Section id="choose" heading="Which one fits">
-    <div class="prose">
-      <h3>Choose {tool.name} if</h3>
-      <p>{tool.chooseOther}</p>
-      <h3>Choose CuePoint if</h3>
-      <p>{tool.chooseCuePoint}</p>
-      <p class="note">
-        What we say about {tool.name} comes from {tool.name}'s own public pages on the dates shown, and tools change.
-        See <a href={hrefFor(featureHref("clean"))}>what CuePoint's Clean page does</a>{" or "}
-        <a href={hrefFor("compare/")}>the other comparisons</a>.
-      </p>
-      <p class="action"><HomeAction /></p>
-    </div>
+  <!-- secondary on purpose: smaller, quieter, after the comparison -->
+  <Section id="not" heading="What CuePoint does not do" layout="split">
+    <ul class="not">
+      {tool.cuepointDoesNot.map((line) => <li>{line}</li>)}
+    </ul>
+    <p class="note">
+      What we say about {tool.name} comes from {tool.name}'s own public pages on the dates shown, and tools change.
+      See <a href={hrefFor(featureHref("clean"))}>what CuePoint's Clean page does</a>{" or "}
+      <a href={hrefFor("compare/")}>the other comparisons</a>.
+    </p>
   </Section>
 </Page>
 
 <style>
-  .prose {
-    max-width: 42rem;
-  }
-  .not {
-    padding-left: var(--space-lg);
-  }
   .compare {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
+    background: var(--bg-panel);
+    border: var(--border-width-heavy) solid var(--border-outline);
+    box-shadow: var(--shadow-panel);
+  }
+  .col-topic {
+    width: 18%;
   }
   .compare th,
   .compare td {
-    padding: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
     border: var(--border-width) solid var(--border-outline);
     text-align: left;
     vertical-align: top;
+    line-height: 1.5;
   }
   .compare thead th {
     background: var(--bg-toolbar);
+    font-family: var(--font-pixel);
+    font-variant-ligatures: none;
   }
   .compare tbody th {
-    background: var(--bg-panel);
-    width: 14%;
+    background: var(--bg-panel-alt);
+    font-family: var(--font-pixel);
+    font-weight: 600;
+    font-variant-ligatures: none;
   }
   .compare td p {
     margin: 0;
@@ -126,14 +139,58 @@ const { tool } = Astro.props;
   .compare td p + p {
     margin-top: var(--space-sm);
   }
+  /* the source line: small, in the primary color (muted text is for the page's own ground, not a panel) */
   .src {
     font-size: var(--font-size-sm);
-    color: var(--fg-muted);
+  }
+  .src time {
+    white-space: nowrap;
+  }
+  .choose {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--r1);
+  }
+  .pick {
+    padding: var(--r1);
+    background: var(--bg-panel);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel), var(--shadow-badge);
+  }
+  .pick h3 {
+    margin: 0 0 var(--space-sm);
+  }
+  .pick p {
+    margin: 0;
   }
   .action {
-    margin-top: var(--space-xl);
+    margin-top: var(--r2);
   }
-  /* on a phone each row stacks: the topic, then the two answers, each labelled */
+  /* what CuePoint does not do: the page's quiet part, in a smaller size and the muted color */
+  .not {
+    max-width: 34rem;
+    margin: 0 0 var(--r1);
+    padding-left: var(--space-xl);
+    color: var(--fg-muted);
+    font-size: var(--font-size-sm);
+  }
+  .not li {
+    margin-bottom: var(--space-sm);
+  }
+  .not li::marker {
+    color: var(--border-highlight);
+  }
+  #not :global(h2) {
+    font-size: var(--t-lead);
+    color: var(--fg-muted);
+  }
+  .note {
+    max-width: 34rem;
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: var(--font-size-sm);
+  }
+  /* on a phone each row is a card: the topic as its title, then the two answers, each labelled */
   @media (max-width: 47.99rem) {
     .compare,
     .compare tbody,
@@ -143,6 +200,11 @@ const { tool } = Astro.props;
       display: block;
       width: auto;
     }
+    .compare {
+      background: none;
+      border: 0;
+      box-shadow: none;
+    }
     .compare thead {
       position: absolute;
       width: 1px;
@@ -151,10 +213,21 @@ const { tool } = Astro.props;
       clip-path: inset(50%);
     }
     .compare tr {
-      margin-bottom: var(--space-lg);
+      margin-bottom: var(--r1);
+      background: var(--bg-panel);
+      border: var(--border-width) solid var(--border-outline);
+      box-shadow: var(--shadow-bevel-panel), var(--shadow-badge);
+    }
+    .compare th,
+    .compare td {
+      border: 0;
     }
     .compare tbody th {
-      width: auto;
+      font-size: var(--t-lead);
+      border-bottom: var(--border-width) solid var(--border-outline);
+    }
+    .compare td + td {
+      border-top: var(--hairline) solid var(--border-muted);
     }
     .compare td::before {
       content: attr(data-label);

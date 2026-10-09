@@ -1,4 +1,12 @@
 ---
+/**
+ * A block of an inner page. Everything hangs from the content column's left edge, as on the home page.
+ *
+ * - `width="prose"` caps the text at the reading measure (--measure), still from the left edge.
+ * - `layout="split"` is the home page's grid: on a wide screen the heading (and the `aside` slot under it)
+ *   stands in the left third and the content in the right two; a seam above separates it from the block
+ *   before. On a phone they stack.
+ */
 interface Props {
   id: string;
   /** The section's heading; leave out for a section that labels itself some other way. */
@@ -6,30 +14,81 @@ interface Props {
   level?: 2 | 3;
   /** `prose` caps the line length for reading. */
   width?: "wide" | "prose";
+  layout?: "stack" | "split";
 }
-const { id, heading, level = 2, width = "wide" } = Astro.props;
+const { id, heading, level = 2, width = "wide", layout = "stack" } = Astro.props;
 const Heading = `h${level}` as "h2" | "h3";
+const hasAside = Astro.slots.has("aside");
 ---
 
-<section class="section" id={id} aria-labelledby={heading ? `${id}-heading` : undefined} data-width={width}>
+<section class="section" id={id} aria-labelledby={heading ? `${id}-heading` : undefined} data-width={width} data-layout={layout}>
   <div class="inner">
-    {heading && <Heading id={`${id}-heading`}>{heading}</Heading>}
-    <slot />
+    {
+      (heading || hasAside) && (
+        <div class="head">
+          {heading && <Heading id={`${id}-heading`}>{heading}</Heading>}
+          {hasAside && (
+            <div class="aside">
+              <slot name="aside" />
+            </div>
+          )}
+        </div>
+      )
+    }
+    <div class="body"><slot /></div>
   </div>
 </section>
 
 <style>
   .section {
-    padding-block: var(--space-xl);
+    padding-block: var(--r2);
   }
   .inner {
     width: min(100% - 2 * var(--gutter), var(--content-max));
     margin-inline: auto;
   }
-  .section[data-width="prose"] .inner {
-    max-width: 42rem;
+  .section[data-width="prose"] .head,
+  .section[data-width="prose"] .body {
+    max-width: var(--measure);
   }
-  .inner > :global(:first-child) {
+  .head > :global(:first-child),
+  .body > :global(:first-child) {
     margin-top: 0;
+  }
+  .body > :global(:last-child) {
+    margin-bottom: 0;
+  }
+  .head :global(h2) {
+    margin-bottom: var(--r1);
+  }
+  .aside {
+    max-width: 24rem;
+    margin-bottom: var(--r1);
+  }
+  .aside > :global(:last-child) {
+    margin-bottom: 0;
+  }
+
+  /* the home page's band: a seam, then the heading on the left and the content on the right */
+  .section[data-layout="split"] {
+    padding-block: var(--r3);
+    border-top: var(--border-width) solid var(--border-outline);
+    box-shadow: inset 0 var(--border-width) 0 var(--border-muted);
+  }
+  @media (min-width: 60rem) {
+    .section[data-layout="split"] .inner {
+      display: grid;
+      grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+      gap: 0 var(--r3);
+      align-items: start;
+    }
+    .section[data-layout="split"] .head {
+      position: sticky;
+      top: calc(var(--header-h) + var(--r2));
+      max-width: none;
+    }
+    .section[data-layout="split"] .body {
+      grid-column: 2;
+    }
   }
 </style>

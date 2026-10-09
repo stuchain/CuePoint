@@ -11,7 +11,8 @@
  *   title-length (<= 60), description-length (70-160), h1-count (exactly one), heading-skip,
  *   img-alt, noindex-unexpected, sitemap-noindex, sitemap-missing, link-broken, http-url,
  *   jsonld-parse, jsonld-properties, og-image (exists, a 1200x630 PNG), placeholder (public builds only), favicon, manifest, robots-sitemap, orphan-js (warning),
- *   canonical-invalid, sitemap-excluded, noindex-missing, feed-invalid, feed-link-missing, compare-source, unshipped
+ *   canonical-invalid, sitemap-excluded, noindex-missing, feed-invalid, feed-link-missing, compare-source, unshipped,
+ *   llms-txt (llms.txt lists every indexable page, and only those)
  *
  * Every result has a `severity`: "error" (the CLI exits 1) or "warning" (printed, never fails).
  *
@@ -58,6 +59,9 @@ export const DESCRIPTION_MAX = 160;
  *     Google lists no required property for Article types (all recommended). This table requires
  *     headline, datePublished, author and image, the recommended ones a post cannot do without; a site
  *     policy, not a Google requirement.
+ *   TechArticle          (an Article type, the same guide; a page of the user guide)
+ *     headline, description and image: what names the page; a site policy. The guide's files carry no
+ *     dates, so datePublished is not required of a guide page.
  *
  * Entry fields: required (dotted paths that must hold a value; arrays match if any element does),
  * oneOf (groups of which at least one path must hold a value), each (a list property whose every
@@ -92,6 +96,7 @@ export const SCHEMA_REQUIREMENTS = {
     },
   },
   BlogPosting: { required: ["headline", "datePublished", "author", "image"] },
+  TechArticle: { required: ["headline", "description", "image"] },
 };
 
 const asArray = (v) => (v === undefined || v === null ? [] : Array.isArray(v) ? v : [v]);
@@ -459,8 +464,27 @@ export function checkSite(distDir, { base, siteUrl, preview, today = new Date().
   checkCompare();
   checkUnshipped();
   checkOrphanScripts();
+  checkLlms();
 
   return results;
+
+  /**
+   * llms.txt (https://llmstxt.org/, scripts/llms.mjs): it must be in the build, list every indexable page
+   * (the same pages the sitemap must hold) by its address, and list no address that is not one of them.
+   */
+  function checkLlms() {
+    const file = "llms.txt";
+    if (!isFile(join(dist, file))) {
+      report("llms-txt", file, "llms.txt is missing from the build");
+      return;
+    }
+    const text = readFileSync(join(dist, file), "utf8");
+    if (!/^# \S/.test(text)) report("llms-txt", file, "llms.txt does not start with a # title line");
+    const listed = new Set([...text.matchAll(/^- \[[^\]]+\]\(([^)\s]+)\)/gm)].map((m) => m[1]));
+    const wanted = new Set([...pages.keys()].filter(isIndexableRole).map(pageAddress));
+    for (const url of wanted) if (!listed.has(url)) report("llms-txt", file, `llms.txt does not list the page ${url}`);
+    for (const url of listed) if (!wanted.has(url)) report("llms-txt", file, `llms.txt lists ${url}, which is not an indexable page of the build`);
+  }
 
   // -------------------------------------------------------------------------------------------
 

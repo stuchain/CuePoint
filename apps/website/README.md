@@ -47,6 +47,9 @@ npm run check:lighthouse  # Lighthouse CI: LCP, TBT, CLS, four category scores, 
   `scripts/check-site.mjs`; its JSON-LD requirements table cites Google's structured data docs.
   In a preview build (`PUBLIC` false) every page carries `noindex` on purpose, so the noindex-versus-sitemap
   rules are skipped, every page must carry `noindex`, and every indexable page must still be in the sitemap.
+  The build also writes `/llms.txt` (`scripts/llms.mjs`: every indexable page, grouped, as plain text for
+  language models; it is not in the sitemap), and the `llms-txt` rule fails when it misses a page or lists one
+  that is not indexable.
 - `test:e2e` serves `dist/` with `astro preview` and opens every built page. Locally, point it at a
   Chromium: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e`. In CI,
   `npx playwright install --with-deps chromium` provides the browser.

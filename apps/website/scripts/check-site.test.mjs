@@ -156,6 +156,7 @@ function cleanFiles() {
       ],
     }),
     "robots.txt": `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}sitemap-index.xml\n`,
+    "llms.txt": `# Thing\n\n> A thing.\n\n## Pages\n\n${["", "about/", "faq/", "blog/post/"].map((p) => `- [Page](${SITE_URL}${p}): what it is.`).join("\n")}\n`,
     "sitemap-index.xml": `<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><sitemap><loc>${SITE_URL}sitemap-0.xml</loc></sitemap></sitemapindex>`,
     "sitemap-0.xml": `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${["", "about/", "faq/", "blog/post/"]
       .map((p) => `<url><loc>${SITE_URL}${p}</loc></url>`)
@@ -312,6 +313,22 @@ const FAULTS = [
   ["BreadcrumbList with one item", "jsonld-properties", replaceIn("about/index.html", ',{"@type":"ListItem","position":2,"name":"About"}', ""), "about/index.html"],
   ["BreadcrumbList item with no name", "jsonld-properties", replaceIn("about/index.html", '"position":1,"name":"Home",', '"position":1,'), "about/index.html"],
   ["BlogPosting with no datePublished", "jsonld-properties", replaceIn("blog/post/index.html", '"datePublished":"2026-10-01",', ""), "blog/post/index.html"],
+  ["TechArticle with no headline", "jsonld-properties", replaceIn("about/index.html", "</head>", `${jsonLd({ "@context": "https://schema.org", "@type": "TechArticle", description: "A guide page.", image: `${SITE_URL}og.png` })}</head>`), "about/index.html"],
+  ["no llms.txt", "llms-txt", (f) => {
+    f["llms.txt"] = null;
+  }, "llms.txt"],
+  ["llms.txt leaves out an indexable page", "llms-txt", (f) => {
+    f["llms.txt"] = f["llms.txt"].replace(`- [Page](${SITE_URL}faq/): what it is.\n`, "");
+  }, "llms.txt"],
+  ["llms.txt lists a page that is not in the build", "llms-txt", (f) => {
+    f["llms.txt"] += `- [Ghost](${SITE_URL}ghost/): gone.\n`;
+  }, "llms.txt"],
+  ["llms.txt lists the 404 page", "llms-txt", (f) => {
+    f["llms.txt"] += `- [Lost](${SITE_URL}404.html): not found.\n`;
+  }, "llms.txt"],
+  ["llms.txt with no title line", "llms-txt", (f) => {
+    f["llms.txt"] = f["llms.txt"].replace("# Thing\n", "");
+  }, "llms.txt"],
   ["JSON-LD without a context", "jsonld-properties", replaceIn("faq/index.html", '"@context":"https://schema.org",', ""), "faq/index.html"],
   ["no og:image", "og-image", replaceIn("about/index.html", `<meta property="og:image" content="${SITE_URL}og.png">`, ""), "about/index.html"],
   ["og:image is the wrong size", "og-image", (f) => { f["og.png"] = png(1200, 600); }, "about/index.html"],
@@ -669,7 +686,7 @@ describe("comparison pages (SITE-08, DEC-197)", () => {
     `<p data-compare-source>Source: <a href="${href}" rel="noopener noreferrer">Their page</a>, read on <time datetime="${date}">${date}</time>.</p>`;
   const fact = (inner) => `<div data-compare-fact>A fact. ${inner}</div>`;
   const withCompare = (body) => (f) => {
-    f["sitemap-0.xml"] = f["sitemap-0.xml"].replace("</urlset>", `<url><loc>${SITE_URL}compare/tool/</loc></url></urlset>`);
+    f["sitemap-0.xml"] = f["sitemap-0.xml"].replace("</urlset>", `<url><loc>${SITE_URL}compare/tool/</loc></url></urlset>`); f["llms.txt"] += `- [Compare](${SITE_URL}compare/tool/): compared.\n`;
     f["compare/tool/index.html"] = page({
       title: "CuePoint and a tool",
       description: `Compare. ${LONG_DESC}`,
@@ -708,7 +725,7 @@ describe("comparison pages (SITE-08, DEC-197)", () => {
 
   it("leaves the index of comparisons alone", () => {
     const edit = (f) => {
-      f["sitemap-0.xml"] = f["sitemap-0.xml"].replace("</urlset>", `<url><loc>${SITE_URL}compare/</loc></url></urlset>`);
+      f["sitemap-0.xml"] = f["sitemap-0.xml"].replace("</urlset>", `<url><loc>${SITE_URL}compare/</loc></url></urlset>`); f["llms.txt"] += `- [Compare](${SITE_URL}compare/): compared.\n`;
       f["compare/index.html"] = page({ title: "Compare tools", description: `Index. ${LONG_DESC}`, canonicalPath: "compare/", body: "<h1>Compare</h1>" });
     };
     expect(run(edit)).toEqual([]);

@@ -27,7 +27,10 @@ const hasRelease = releases.release !== null;
 const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, url }) => ({ system, chip, url })) }).replace(/</g, "\\u003c");
 ---
 
-<header class="header">
+<!-- Sticky on every page but the home page, whose story holds the whole screen. It is its own layer in the
+     page-to-page transition (view-transition-name in the styles), so it stays still while the page fades. -->
+<header class="header" data-sticky={currentPath === "" ? undefined : "true"}>
+  <div class="chrome">
   <div class="bar" data-home={currentPath === "" ? "true" : undefined}>
     <a class="brand" href={hrefFor("")}>
       <img class="mark" src={mark.src} width="32" height="32" alt="" />
@@ -54,6 +57,8 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
       </div>
     </details>
 
+    <span class="seam" aria-hidden="true"></span>
+
     {
       hasRelease ? (
         <Button href={hrefFor("download/")} class="action js-download">
@@ -64,44 +69,88 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
       )
     }
   </div>
+  </div>
 </header>
 
 {hasRelease && <script type="application/json" id="cp-releases" set:html={scriptData} />}
 {hasRelease && <script>import "../lib/download-client";</script>}
 
 <style>
+  /*
+   * One row: the lockup (the mark and the name, one unit), the links, a seam, the action. Slim (the bar is
+   * --header-h tall), aligned with the content column below. The current page is marked by a pixel block
+   * on the bar's bottom edge, like the app's selected tab; hovering a link steps a quieter block in.
+   * Once the page has scrolled under it, the header draws its outline and a hard shadow (scroll-state).
+   */
   .header {
+    view-transition-name: site-header;
+  }
+  .header[data-sticky] {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    container-type: scroll-state;
+  }
+  .chrome {
     background: var(--bg-toolbar);
     color: var(--fg-primary);
-    border-bottom: var(--border-width) solid var(--border-outline);
+    border-bottom: var(--border-width) solid transparent;
     box-shadow: inset 0 calc(-1 * var(--bevel-size-sm)) 0 var(--bevel-shadow);
+    transition:
+      border-color var(--motion-quick) steps(1, end),
+      box-shadow var(--motion-quick) steps(1, end);
+  }
+  /* the home page's header never sticks: it keeps its outline */
+  .header:not([data-sticky]) .chrome {
+    border-bottom-color: var(--border-outline);
+  }
+  @container scroll-state(stuck: top) {
+    .chrome {
+      border-bottom-color: var(--border-outline);
+      box-shadow:
+        inset 0 calc(-1 * var(--bevel-size-sm)) 0 var(--bevel-shadow),
+        0 4px 0 color-mix(in srgb, var(--border-shadow) 70%, transparent);
+    }
+  }
+  /* a browser that cannot tell when it is stuck draws the outline all the time */
+  @supports not (container-type: scroll-state) {
+    .chrome {
+      border-bottom-color: var(--border-outline);
+    }
   }
   .bar {
+    position: relative;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-md) var(--space-lg);
+    gap: var(--space-md) var(--r1);
     width: min(100% - 2 * var(--gutter), var(--content-max));
+    min-height: calc(var(--header-h) - var(--border-width));
     margin-inline: auto;
-    padding-block: var(--space-md);
   }
   .brand {
     display: inline-flex;
     align-items: center;
     gap: var(--space-sm);
+    min-height: 2.75rem;
     margin-right: auto;
     font-family: var(--font-pixel);
     font-size: var(--font-size-lg);
     font-weight: 700;
+    line-height: 1;
     text-decoration: none;
+    letter-spacing: 0.01em;
   }
   .mark {
     display: block;
     image-rendering: pixelated;
+    /* the mark sits in the name's own outline, so the two read as one */
+    box-shadow: 2px 2px 0 var(--border-outline);
+  }
+  .brand:hover .name {
+    color: var(--accent-primary-hover);
   }
   .nav ul {
     display: flex;
-    gap: var(--space-lg);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -109,24 +158,51 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
     font-weight: 600;
   }
   .nav a {
-    display: inline-block;
-    padding-block: var(--space-xs);
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline: var(--space-sm);
     text-decoration: none;
+    background: none;
+    transition: color var(--motion-quick) steps(1, end);
   }
   .nav a:hover {
-    text-decoration: underline;
-    text-decoration-thickness: var(--border-width);
-    text-underline-offset: 0.25em;
+    color: var(--accent-primary-hover);
   }
   .nav a[aria-current] {
-    text-decoration: underline;
-    text-decoration-thickness: var(--border-width-heavy);
-    text-underline-offset: 0.25em;
+    color: var(--fg-primary);
+  }
+  /* the block under a link: hidden, stepped in on hover (quiet), solid accent for the current page */
+  .nav a::after {
+    content: "";
+    position: absolute;
+    left: var(--space-sm);
+    right: var(--space-sm);
+    bottom: 0;
+    height: 4px;
+    background: var(--border-highlight);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 120ms steps(3, end);
+  }
+  .nav a:hover::after {
+    transform: scaleX(1);
+  }
+  .nav a[aria-current]::after {
+    background: var(--accent-primary);
+    box-shadow: 0 0 0 var(--hairline) var(--border-outline);
+    transform: none;
+  }
+  .seam {
+    display: none;
+  }
+  /* the action sits in the row: the links' height, after a seam */
+  .bar > :global(.action) {
+    min-height: 2.5rem;
+    padding-block: var(--space-xs);
   }
   /* the menu: a disclosure on a phone, the bar's own items from 62.5rem up */
-  .bar {
-    position: relative;
-  }
   .menu-toggle {
     display: inline-flex;
     align-items: center;
@@ -139,6 +215,9 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
     font-weight: 600;
     cursor: pointer;
     list-style: none;
+  }
+  .menu-toggle:active {
+    box-shadow: var(--focus-halo), var(--shadow-bevel-pressed);
   }
   .menu-toggle::-webkit-details-marker {
     display: none;
@@ -153,9 +232,9 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
   .menu-body {
     position: absolute;
     z-index: 50;
-    left: 0;
-    right: 0;
-    top: 100%;
+    left: calc(-1 * var(--gutter));
+    right: calc(-1 * var(--gutter));
+    top: calc(100% + var(--border-width));
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -170,7 +249,37 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
     gap: var(--space-xs);
   }
   .menu-body .nav a {
-    padding-block: var(--space-sm);
+    padding-inline: 0;
+  }
+  .menu-body .nav a::after {
+    left: 0;
+    right: auto;
+    width: 2rem;
+    bottom: var(--space-xs);
+  }
+  /* a phone: the lockup, the Menu and the action still fit one row; on the narrowest screens the action wraps */
+  @media (max-width: 39.99rem) {
+    .bar {
+      flex-wrap: wrap;
+      gap: var(--space-xs);
+      padding-block: var(--space-xs);
+    }
+    .brand {
+      gap: var(--space-xs);
+      font-size: 1rem;
+    }
+    .menu-toggle {
+      padding-inline: var(--space-sm);
+    }
+    .menu-toggle::after {
+      margin-left: var(--space-xs);
+    }
+    .bar > :global(.action) {
+      min-height: 2.75rem;
+      padding-inline: 0.4rem;
+      font-size: var(--font-size-sm);
+      white-space: nowrap;
+    }
   }
   /* the home page has its own call to action: on a phone the bar is the mark and the menu */
   @media (max-width: 62.49rem) {
@@ -193,10 +302,26 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
     }
     .menu-body .nav ul {
       flex-direction: row;
-      gap: var(--space-lg);
+      gap: calc(var(--space-md) * 1.2);
     }
     .menu-body .nav a {
-      padding-block: var(--space-xs);
+      min-height: calc(var(--header-h) - var(--border-width));
+      padding-inline: var(--space-sm);
+      font-size: 1.15rem;
+    }
+    .menu-body .nav a::after {
+      left: var(--space-sm);
+      right: var(--space-sm);
+      width: auto;
+      bottom: calc(-1 * var(--border-width));
+    }
+    .seam {
+      display: block;
+      align-self: center;
+      width: var(--border-width);
+      height: 1.75rem;
+      background: var(--border-outline);
+      box-shadow: var(--hairline) 0 0 var(--border-muted);
     }
   }
 </style>
