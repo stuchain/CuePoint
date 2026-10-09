@@ -149,6 +149,14 @@ export const FEATURES: readonly Feature[] = [
     unshipped: { shipped: false, step: "PAGES-16" },
   },
   {
+    id: "waveforms",
+    name: "Waveforms",
+    heading: "See each track's shape before you play it",
+    text: "CuePoint works out a waveform for every track whose file it can find, and draws your Rekordbox cues, loops and beat grid on it. The same pass measures how loud each track is, and Prepare tells you how much louder or quieter the next one will be.",
+    shot: "waveforms",
+    learnMore: more("waveforms"),
+  },
+  {
     id: "discover",
     name: "Discover",
     heading: "Find new music from artists and labels you play",

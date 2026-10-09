@@ -1,6 +1,6 @@
 {
   "cubes": {
-    "sourceHash": "88041ed002fd658e57b7aada89bc9088c9a70f4491b08eb5d40f08c5a5527122",
+    "sourceHash": "fa9545df7919968bdf1f520676f7f4eb85fd0d5230decb65886d9f15378cb8e7",
     "themes": [
       "neoDark",
       "retro16",
@@ -10,7 +10,37 @@
     ]
   },
   "opening": {
-    "sourceHash": "d178f53e278d0c6f70cdbf88dbac966bb58952a529b43edc6a627c6e904908c9",
+    "sourceHash": "9ba8983182235fa767f2e9427cc245bd8e27d0e8e3d2cc55d0a13d982797de90",
+    "themes": [
+      "neoDark",
+      "retro16",
+      "qtEvolved",
+      "clubNeon",
+      "mutedPro"
+    ]
+  },
+  "record": {
+    "sourceHash": "3be1c283dde51b0dd6c160543fbbec77eed8cb5fb1f56a5cc8ba0c6b04e6a81a",
+    "themes": [
+      "neoDark",
+      "retro16",
+      "qtEvolved",
+      "clubNeon",
+      "mutedPro"
+    ]
+  },
+  "terrain": {
+    "sourceHash": "b3b3fdc69632adfccb4628a167a31d08f3f64363577ca0947409aa77bdb94aa5",
+    "themes": [
+      "neoDark",
+      "retro16",
+      "qtEvolved",
+      "clubNeon",
+      "mutedPro"
+    ]
+  },
+  "wheel": {
+    "sourceHash": "a5f605015b890ba251047cc391bc041a307f042fbc921f4b3301ede7a656d2b2",
     "themes": [
       "neoDark",
       "retro16",

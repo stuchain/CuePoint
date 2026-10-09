@@ -1,0 +1,59 @@
+---
+/**
+ * One frame of a scene's story as a picture (SITE-06): the still `npm run stills` drew of the scene at
+ * that frame, in each theme (only the page's theme shows; the others are lazy and never fetched). The
+ * home page puts one beside each step where the opening does not play (reduced motion, saveData, a
+ * small device, no WebGL 2), so those visitors read the story in pictures too, not one picture for all.
+ * The frame is "rest" for the scene's resting still, or one of its STILL_FRAMES.
+ */
+import { THEMES } from "../lib/themes";
+import type { SceneName } from "../three/scenes";
+import { STILL_HEIGHT, STILL_WIDTH } from "../three/still-size";
+
+interface Props {
+  scene: SceneName;
+  frame: string;
+  alt: string;
+  class?: string;
+}
+const { scene, frame, alt, class: className } = Astro.props;
+const files = import.meta.glob<string>("../assets/stills/*.png", { eager: true, query: "?url&no-inline", import: "default" });
+const stem = frame === "rest" ? scene : `${scene}-${frame}`;
+const pictures = THEMES.map((theme) => {
+  const src = files[`../assets/stills/${stem}-${theme.id}.png`];
+  if (!src) throw new Error(`Scene "${scene}" has no "${frame}" still for ${theme.id}: run \`npm run stills\``);
+  return { theme: theme.id, src };
+});
+---
+
+<div class:list={["story-frame", className]} data-story-frame={frame}>
+  {
+    pictures.map(({ theme, src }) => (
+      <img data-still-theme={theme} src={src} alt={alt} width={STILL_WIDTH} height={STILL_HEIGHT} loading="lazy" decoding="async" />
+    ))
+  }
+</div>
+
+<style>
+  .story-frame {
+    position: relative;
+    aspect-ratio: 320 / 180;
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-panel);
+    background: var(--bg-app);
+    overflow: hidden;
+  }
+  img {
+    display: none;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+  :global(:root[data-theme="neoDark"]) img[data-still-theme="neoDark"],
+  :global(:root[data-theme="retro16"]) img[data-still-theme="retro16"],
+  :global(:root[data-theme="qtEvolved"]) img[data-still-theme="qtEvolved"],
+  :global(:root[data-theme="clubNeon"]) img[data-still-theme="clubNeon"],
+  :global(:root[data-theme="mutedPro"]) img[data-still-theme="mutedPro"] {
+    display: block;
+  }
+</style>

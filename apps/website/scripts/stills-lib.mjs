@@ -76,8 +76,29 @@ export function sourceHash(scene) {
   return hash.digest("hex");
 }
 
-export function stillPath(scene, theme) {
-  return join(STILLS_DIR, `${scene}-${theme}.png`);
+/**
+ * The stills each scene has beyond its resting frame in the wide shape: named frames (the scene's
+ * STILL_FRAMES) and tall 9:16 stills (TALL_STILLS). src/three/scenes/props.test.ts checks this table
+ * against the scenes themselves.
+ */
+export const STILL_VARIANTS = {
+  opening: { frames: ["matched", "ready"], tall: true },
+};
+
+/** Every still a scene has: the resting frame (no `frame`) and each named one, wide and, where it has them, tall. */
+export function variantsOf(scene) {
+  const v = STILL_VARIANTS[scene] ?? { frames: [], tall: false };
+  const frames = [undefined, ...v.frames];
+  return frames.flatMap((frame) => [{ frame, tall: false }, ...(v.tall ? [{ frame, tall: true }] : [])]);
+}
+
+/** The file name's stem: `opening`, `opening-matched`, `opening-tall`, `opening-matched-tall`. */
+export function stillStem(scene, { frame, tall } = {}) {
+  return `${scene}${frame ? `-${frame}` : ""}${tall ? "-tall" : ""}`;
+}
+
+export function stillPath(scene, theme, variant = {}) {
+  return join(STILLS_DIR, `${stillStem(scene, variant)}-${theme}.png`);
 }
 
 export function readManifest() {
@@ -90,7 +111,9 @@ export function stillProblems() {
   const manifest = readManifest();
   for (const scene of sceneNames()) {
     for (const theme of themeIds()) {
-      if (!existsSync(stillPath(scene, theme))) problems.push(`${scene}-${theme}.png is missing`);
+      for (const variant of variantsOf(scene)) {
+        if (!existsSync(stillPath(scene, theme, variant))) problems.push(`${stillStem(scene, variant)}-${theme}.png is missing`);
+      }
     }
     const recorded = manifest[scene]?.sourceHash;
     if (!recorded) problems.push(`${scene} has no recorded source hash in manifest.json`);

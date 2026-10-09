@@ -22,6 +22,8 @@ import { yieldToMain } from "./yield";
  *   resting frame to the scrub value, so there is no pop.
  * - The renderer draws to a small nearest-neighbor target; PixelPipeline snaps colors to the theme. The
  *   canvas backbuffer is a whole number of device pixels per scene pixel.
+ * - A scene that moves on its own (SceneInstance.tick) is drawn every frame while it is on screen; the
+ *   others only when something changed.
  * - The frame budget steps the quality down while frames run long (budget.ts).
  * - Setup is done in small steps with a yield between them (yield.ts).
  * - `pagehide` that is not entering the back/forward cache disposes everything and releases the WebGL
@@ -42,9 +44,13 @@ function scrollRange(host: HTMLElement): ScrollTrigger.Vars {
   const section = selector ? document.querySelector(selector) : null;
   // `data-scene-range="top 50%,bottom 50%"` says where on the screen the section's top and bottom count
   const [start = "top top", end = "bottom bottom"] = (host.dataset["sceneRange"] ?? "").split(",").map((v) => v.trim());
+  // `data-scene-scrub="0.6"`: the scene catches up with the scroll over that many seconds (a camera that
+  // flies far on a little scroll glides instead of jerking); left out, it follows the scroll exactly
+  const lag = Number(host.dataset["sceneScrub"]);
+  const scrub = Number.isFinite(lag) && lag > 0 ? lag : true;
   return section
-    ? { trigger: section, start, end, scrub: true }
-    : { trigger: host, start: "top bottom", end: "bottom top", scrub: true };
+    ? { trigger: section, start, end, scrub }
+    : { trigger: host, start: "top bottom", end: "bottom top", scrub };
 }
 
 export type StageStatus = "running" | "sleeping" | "stopped" | "disposed";
@@ -61,12 +67,16 @@ export interface StageDebug {
   pixelSize: number;
   shadowSize: number;
   scenes: string[];
+  /** The progress the active scene shows, 0 to 1 (its scroll, eased in from the still when it mounts). */
+  progress: number;
 }
 
 /** Preview builds only: what the e2e checks may change. Read when the Stage or the gate needs it. */
 export interface StageConfig {
   /** A lower frame-rate floor, so a busy test machine does not stop the scene. */
   minFps?: number;
+  /** Keep the first quality (no stepping down): screenshots on a software renderer show the scene as a GPU draws it. */
+  holdQuality?: boolean;
   /** Let software WebGL (SwiftShader) start the 3D. */
   allowSoftwareGL?: boolean;
 }
@@ -140,12 +150,14 @@ export class Stage {
     pixelSize: 4,
     shadowSize: 1024,
     scenes: [],
+    progress: 0,
   };
 
   private readonly pixel = new PixelPipeline();
   private readonly budget = new FrameBudget(window.devicePixelRatio || 1);
   // preview builds let the e2e checks lower the floor, so a busy test machine does not stop the scene
   private readonly probe = new FpsProbe(PUBLIC ? undefined : window.__cuepointStageConfig?.minFps);
+  private readonly holdQuality = !PUBLIC && window.__cuepointStageConfig?.holdQuality === true;
   private readonly entries = new Map<HTMLElement, Entry>();
   private readonly motion = window.matchMedia("(prefers-reduced-motion: reduce)");
   private palette: PaletteUniforms;
@@ -155,6 +167,8 @@ export class Stage {
   private dirty = true;
   private lastTick = 0;
   private lastRender = 0;
+  /** When the stage was made: a scene's own motion runs on the seconds since. */
+  private readonly born = performance.now();
   private appliedShadow: number;
   private disposed = false;
   private released = false;
@@ -196,7 +210,9 @@ export class Stage {
     const progress = { p: 0 };
     const intro = { mix: 0 };
     const show = () => {
-      instance.setProgress(rest + (progress.p - rest) * intro.mix);
+      const shown = rest + (progress.p - rest) * intro.mix;
+      instance.setProgress(shown);
+      if (this.active?.host === host) this.debug.progress = shown;
       this.dirty = true;
     };
     const tween = gsap.to(progress, {
@@ -342,9 +358,11 @@ export class Stage {
     const since = now - this.lastTick; // the interval between animation frames, see FrameBudget.frame
     this.lastTick = now;
     const probing = this.probe.verdict() === "pending";
+    // a scene that moves on its own says whether this frame changed it
+    if (this.active.instance.tick?.((now - this.born) / 1000)) this.dirty = true;
     if (!this.dirty && !probing) return;
     // frame times mean something only when frames follow each other
-    if (now - this.lastRender < 250 && this.budget.frame(since)) this.applyBudget();
+    if (now - this.lastRender < 250 && !this.holdQuality && this.budget.frame(since)) this.applyBudget();
     this.lastRender = now;
     this.draw();
     if (probing && this.probe.frame(now) === "fail") this.stop("slow");

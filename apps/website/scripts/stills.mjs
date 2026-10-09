@@ -12,7 +12,7 @@
  *
  * It starts `astro dev` (the stills must exist before a build can, so it cannot use dist/), opens
  * /styleguide/stills/ in headless Chromium with software WebGL (SwiftShader through ANGLE), switches
- * the page's theme, and calls window.__renderStill(scene).
+ * the page's theme, and calls window.__renderStill(scene, variant) for each of the scene's variants.
  *
  * Locally: PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run stills
  *   --scene=cubes   render one scene only (the manifest keeps the others)
@@ -23,9 +23,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "@playwright/test";
 import sharp from "sharp";
-import { MANIFEST, ROOT, STILLS_DIR, readManifest, sceneNames, sourceHash, stillPath, themeIds } from "./stills-lib.mjs";
+import { MANIFEST, ROOT, STILLS_DIR, readManifest, sceneNames, sourceHash, stillPath, stillStem, themeIds, variantsOf } from "./stills-lib.mjs";
 
-const PORT = 4322;
+// STILLS_PORT moves the dev server off 4322 for a checkout whose neighbor already holds it
+const PORT = Number(process.env["STILLS_PORT"] || 4322);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const only = process.argv.find((a) => a.startsWith("--scene="))?.slice("--scene=".length);
 const onlyTheme = process.argv.find((a) => a.startsWith("--theme="))?.slice("--theme=".length);
@@ -84,12 +85,15 @@ async function main() {
           await page.waitForFunction(() => document.documentElement.hasAttribute("data-stills-ready"), null, { timeout: 60_000 });
           await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
           for (const scene of scenes) {
-            const url = await page.evaluate((n) => window.__renderStill(n), scene);
-            const png = Buffer.from(url.slice(url.indexOf(",") + 1), "base64");
-            // a still has a handful of exact colors: an indexed PNG is lossless and small
-            const out = await sharp(png).png({ palette: true, colors: 64, quality: 100, compressionLevel: 9, dither: 0 }).toBuffer();
-            writeFileSync(stillPath(scene, theme), out);
-            console.log(`${scene}-${theme}.png  ${out.length} bytes`);
+            // the resting frame, each named frame, and the tall shape where the scene has one
+            for (const variant of variantsOf(scene)) {
+              const url = await page.evaluate(([n, v]) => window.__renderStill(n, v), [scene, variant]);
+              const png = Buffer.from(url.slice(url.indexOf(",") + 1), "base64");
+              // a still has a handful of exact colors: an indexed PNG is lossless and small
+              const out = await sharp(png).png({ palette: true, colors: 64, quality: 100, compressionLevel: 9, dither: 0 }).toBuffer();
+              writeFileSync(stillPath(scene, theme, variant), out);
+              console.log(`${stillStem(scene, variant)}-${theme}.png  ${out.length} bytes`);
+            }
           }
           break;
         } catch (error) {

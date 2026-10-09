@@ -1,28 +1,37 @@
 ---
 /*
- * The home page (SITE-06): what CuePoint does for a DJ, in one screen; then the opening scene that shows
- * it (DEC-189: the crate becomes the wheel); then one section for each thing the app does, the reasons
- * to trust it, and the download.
+ * The home page (SITE-06): what CuePoint does for a DJ, in one screen; then the opening that shows it
+ * (DEC-189: the crate becomes the wheel); then one section for each thing the app does, the reasons to
+ * trust it, and the download.
  *
- * The opening is a tall section. Its scene sticks while a track of three steps scrolls past, and the
- * scene's scroll range is that track (`trigger`, from its top at the middle of the screen to its bottom
- * at the middle), so each step, placed at the middle of its span of src/three/phases.ts, is centered on
- * the screen exactly while the scene shows what it says. The steps say the whole story in words, so
- * nothing is only in the 3D. In the last phase the stuck scene cross-fades into the app window's slot
- * (DEC-189: the wheel becomes the window). Where 3D does not run the scene is its still; with reduced
- * motion, saveData, a small device or no WebGL 2 the section is compact (the inline script).
- * The app's pictures are labelled placeholders until SITE-04 (components/AppShot.astro).
+ * The opening is one full-screen scene, pinned (CSS sticky) for the whole of a tall section. Its first
+ * screen is the hero: the headline over the scene, which moves on its own as soon as the page is idle
+ * (Scene's `autostart`), fading in over its still. Scrolling drives the camera through the story, and a
+ * track of three steps scrolls over it in big type. The scene's scroll range is that track (`trigger`,
+ * from its top at the middle of the screen to its bottom at the middle), so each step, placed at the
+ * middle of its span of src/three/phases.ts, is centered on the screen exactly while the scene shows what
+ * it says. The steps say the whole story in words, so nothing is only in the 3D. In the last phase the
+ * pinned scene hands over to the app window's slot, which rises flat out of the wheel (DEC-189).
+ *
+ * Where the 3D does not run:
+ *   - with reduced motion, saveData, a small device or no WebGL 2 (known before first paint: the inline
+ *     script marks <html data-story="plain">) the opening is a designed static story: the hero over its
+ *     still, then each step beside its own frame of the scene (StoryFrame);
+ *   - where the 3D is refused later (software GL, a slow device) the layout stays and the pinned still
+ *     turns into the frame of the step being read (the flipbook in the script below).
+ * The app's pictures are labelled placeholders until SITE-04 (components/AppShot.astro), shown as tilted
+ * panels; three sections carry a small live prop beside their text.
  */
 import { SITE_URL } from "../../site.config";
 import { plainStoryScript } from "../three/gate";
-import { stepMid, type StepId } from "../three/phases";
+import { STEP_FRAME, STILL_FRAMES, stepMid, type StepId } from "../three/phases";
+import type { SceneName } from "../three/scenes";
 import { shotImages } from "../lib/app-shots";
 import AppShot from "../components/AppShot.astro";
 import Button from "../components/Button.astro";
 import HomeAction from "../components/HomeAction.astro";
-import Panel from "../components/Panel.astro";
 import Scene from "../components/Scene.astro";
-import Section from "../components/Section.astro";
+import StoryFrame from "../components/StoryFrame.astro";
 import Unshipped from "../components/Unshipped.astro";
 import SoundButton from "../components/SoundButton.astro";
 import { FEATURES, HERO, OPENING_STEPS, TRUST } from "../data/home";
@@ -65,126 +74,189 @@ const schema = [
 ];
 
 /**
- * Where 3D is not going to run for a reason known at once, the opening is compact: a still beside plain
- * steps. The script is built from src/three/gate.ts's own constants (and tested against its blockers), and
- * runs before first paint so nothing moves when the page loads.
+ * Where 3D is not going to run for a reason known at once, the opening is the static story. The script is
+ * built from src/three/gate.ts's own constants (and tested against its blockers), and runs before first
+ * paint so nothing moves when the page loads.
  */
 const PLAIN_SCRIPT = plainStoryScript();
+
+/** What each step's picture shows, where the opening is a static story. */
+const FRAME_ALT: Record<StepId, string> = {
+  messy: "A crate of records in blank sleeves of mismatched colors, and behind it an empty Camelot wheel.",
+  matched: "The records hanging in a grid, each tagged with its key, like 8A or 11B.",
+  ready: "The Camelot wheel lit up, every record in its key's place, each cell showing its key.",
+};
+
+/** The sections with a small live scene beside their text: the ones where a moving object says something. */
+const PROPS: Partial<Record<string, { scene: SceneName; alt: string }>> = {
+  clean: { scene: "record", alt: "A pixel turntable with a record on it." },
+  keys: { scene: "wheel", alt: "A pixel Camelot wheel with a column on each key, taller where there are more tracks." },
+  waveforms: { scene: "terrain", alt: "A track's waveform drawn as a landscape of pixel columns, with a playhead across it." },
+};
+
+/** The closing's turntable: the 24 cells of a Camelot wheel as a pixel picture, drawn here once. */
+const cellPath = (ring: 0 | 1, n: number): string => {
+  const [r0, r1] = ring === 1 ? [22, 31] : [12, 20.5];
+  const a0 = ((n * 30 - 15 + 2) * Math.PI) / 180;
+  const a1 = ((n * 30 + 15 - 2) * Math.PI) / 180;
+  const pt = (r: number, a: number) => `${(32 + r * Math.sin(a)).toFixed(1)},${(32 - r * Math.cos(a)).toFixed(1)}`;
+  return `M${pt(r0, a0)}L${pt(r1, a0)}L${pt(r1, (a0 + a1) / 2)}L${pt(r1, a1)}L${pt(r0, a1)}L${pt(r0, (a0 + a1) / 2)}Z`;
+};
+const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) as 0 | 1, Math.floor(i / 2)), tone: (Math.floor(i / 2) + (i % 2) * 3) % 3 }));
 ---
 
 <Page title={HERO.title} description={HERO.description} path="" schema={schema}>
   <script is:inline set:html={PLAIN_SCRIPT} />
 
   <section class="opening" id="opening" aria-labelledby="home-heading">
-    <div class="grid">
-      <div class="hero">
-        <h1 id="home-heading">{HERO.heading}</h1>
+    <div class="stage" data-stage>
+      <Scene
+        name="opening"
+        fill
+        priority
+        autostart
+        frames={Object.keys(STILL_FRAMES)}
+        scrub={0.6}
+        trigger="#story-track"
+        range="top 50%,bottom 50%"
+        alt={FRAME_ALT.messy}
+      />
+      <div class="scrim" aria-hidden="true"></div>
+      <div class="handoff" data-handoff aria-hidden="true">
+        <div class="handoff-window"><AppShot id="window" bare /></div>
+      </div>
+      <div class="sound"><SoundButton /></div>
+    </div>
+
+    <div class="hero">
+      <div class="hero-inner">
+        <h1 id="home-heading" data-headline>{HERO.heading}</h1>
         <p class="lead">{HERO.lead}</p>
         <div class="actions">
           <HomeAction />
           <Button href="#story" variant="secondary">See how it works</Button>
         </div>
       </div>
+    </div>
 
-      <div class="stage" data-stage>
-        <div class="scene-wrap">
-          <Scene
-            name="opening"
-            priority
-            trigger="#story-track"
-            range="top 50%,bottom 50%"
-            alt="A crate of records in blank sleeves of mismatched colors."
-          />
-          <div class="handoff" data-handoff aria-hidden="true"><AppShot id="window" bare /></div>
-        </div>
-        <SoundButton />
-      </div>
-
-      <div class="steps" id="story-track">
-        <h2 class="sr-only">How it works</h2>
-        <ol>
-          {
-            OPENING_STEPS.map((step, i) => (
-              <li class="step" id={i === 0 ? "story" : undefined} data-step={step.id} style={`--mid: ${stepMid(step.id as StepId)}`}>
+    <div class="steps" id="story-track">
+      <h2 class="sr-only">How it works</h2>
+      <ol>
+        {
+          OPENING_STEPS.map((step, i) => (
+            <li class="step" id={i === 0 ? "story" : undefined} data-step={step.id} style={`--mid: ${stepMid(step.id as StepId)}`}>
+              <StoryFrame class="step-frame" scene="opening" frame={STEP_FRAME[step.id as StepId]} alt={FRAME_ALT[step.id as StepId]} />
+              <div class="step-copy">
                 <span class="num" aria-hidden="true">{i + 1}</span>
                 <h3>{step.title}</h3>
                 <p>{step.text}</p>
-              </li>
-            ))
-          }
-        </ol>
-      </div>
+              </div>
+            </li>
+          ))
+        }
+      </ol>
     </div>
   </section>
 
-  <Section id="window" heading="And then it is your library, in CuePoint">
-    <div class="window">
+  <section class="window" id="window" aria-labelledby="window-heading">
+    <div class="inner">
+      <h2 id="window-heading">And then it is your library, in CuePoint</h2>
       <p class="window-text" data-unshipped="PAGES-10">
         The Camelot wheel is part of the app too. Open it from the header on any page, and click a key to
         see only the tracks in it.
       </p>
-      <AppShot id="window" />
+      <div class="slab" data-slab="rise"><AppShot id="window" /></div>
     </div>
-  </Section>
+  </section>
 
   {
-    FEATURES.map((f, i) => (
-      <Section id={`feature-${f.id}`} heading={f.heading}>
-        <div class="feature" data-flip={i % 2 === 1 ? "true" : undefined}>
-          <div class="copy">
-            <p>{f.text}</p>
-            {f.unshipped && <Unshipped step={f.unshipped.step} compact />}
-            <p class="more">
-              {f.learnMore && (
-                <a href={hrefFor(f.learnMore.path)}>
-                  {f.learnMore.label}<span class="sr-only"> about {f.name}</span>
-                </a>
+    FEATURES.map((f, i) => {
+      const prop = PROPS[f.id];
+      return (
+        <section class="feature" id={`feature-${f.id}`} aria-labelledby={`feature-${f.id}-heading`} data-side={i % 2 === 0 ? "left" : "right"}>
+          <div class="inner">
+            <div class="copy">
+              <h2 id={`feature-${f.id}-heading`}>{f.heading}</h2>
+              <p>{f.text}</p>
+              {f.unshipped && <Unshipped step={f.unshipped.step} compact />}
+              <p class="more">
+                {f.learnMore && (
+                  <a href={hrefFor(f.learnMore.path)}>
+                    {f.learnMore.label}
+                    <span class="sr-only"> about {f.name}</span>
+                  </a>
+                )}
+              </p>
+              {prop && (
+                <div class="prop">
+                  <Scene name={prop.scene} bare autostart alt={prop.alt} />
+                </div>
               )}
-            </p>
+            </div>
+            <div class="slab" data-slab={i % 2 === 0 ? "left" : "right"}>
+              <AppShot id={f.shot} />
+            </div>
           </div>
-          <AppShot id={f.shot} />
-        </div>
-      </Section>
-    ))
+        </section>
+      );
+    })
   }
 
-  <Section id="trust" heading="What you can count on">
-    <ul class="trust">
-      {
-        TRUST.map((t) => (
-          <li>
-            <Panel tone="flat">
-              <h3>{t.title}</h3>
-              <p>{t.text}</p>
-              {t.id === "open" && (
-                <p>
-                  <a href={GITHUB_URL} rel="noopener noreferrer">See the code on GitHub</a>
-                </p>
-              )}
-            </Panel>
-          </li>
-        ))
-      }
-    </ul>
-  </Section>
+  <section class="trust" id="trust" aria-labelledby="trust-heading">
+    <div class="inner">
+      <h2 id="trust-heading">What you can count on</h2>
+      <dl class="sheet">
+        {
+          TRUST.map((t) => (
+            <div class="row">
+              <dt>{t.title}</dt>
+              <dd>
+                <p>{t.text}</p>
+                {t.id === "open" && (
+                  <p>
+                    <a href={GITHUB_URL} rel="noopener noreferrer">
+                      See the code on GitHub
+                    </a>
+                  </p>
+                )}
+              </dd>
+            </div>
+          ))
+        }
+      </dl>
+    </div>
+  </section>
 
-  <Section id="get" heading="Get CuePoint" width="prose">
-    <p>
-      {
-        hasRelease
-          ? "CuePoint is free for Windows, Mac and Linux."
-          : "CuePoint 1.0 is not out yet. Get notified on GitHub when it is, and it will be free for Windows, Mac and Linux."
-      }
-    </p>
-    <p class="closing"><HomeAction repeat /></p>
-  </Section>
+  <section class="get" id="get" aria-labelledby="get-heading">
+    <div class="platter" aria-hidden="true">
+      <svg class="disc" viewBox="0 0 64 64" width="64" height="64" shape-rendering="crispEdges" focusable="false">
+        <rect x="27" y="27" width="10" height="10" class="hub" />
+        {WHEEL_CELLS.map((c) => <path d={c.d} class={`cell tone-${c.tone}`} />)}
+      </svg>
+    </div>
+    <div class="inner">
+      <h2 id="get-heading">Get CuePoint</h2>
+      <p class="get-text">
+        {
+          hasRelease
+            ? "CuePoint is free for Windows, Mac and Linux."
+            : "CuePoint 1.0 is not out yet. Get notified on GitHub when it is, and it will be free for Windows, Mac and Linux."
+        }
+      </p>
+      <p class="closing"><HomeAction repeat /></p>
+    </div>
+  </section>
 </Page>
 
 <script>
-  // From the last phase the stuck scene cross-fades into the app window's slot. Only while the 3D runs:
-  // otherwise the slot below the scene is the window, and nothing here changes.
-  import { HANDOFF_FROM } from "../three/phases";
+  // The opening, as the visitor scrolls (only reads layout once a frame, and writes three custom properties):
+  //  - the hero's scrim fades as the story begins;
+  //  - from the last phase the pinned scene hands over to the app window (only while the 3D runs: otherwise
+  //    the slot below the scene is the window, and nothing here changes);
+  //  - where the 3D does not run, the pinned still shows the frame of the step being read.
+  import { HANDOFF_FROM, frameAt } from "../three/phases";
 
+  const root = document.documentElement;
   const stage = document.querySelector<HTMLElement>("[data-stage]");
   const track = document.getElementById("story-track");
   const scene = stage?.querySelector<HTMLElement>("[data-scene]");
@@ -192,13 +264,13 @@ const PLAIN_SCRIPT = plainStoryScript();
     let queued = false;
     const update = () => {
       queued = false;
-      let level = 0;
-      if (scene.dataset["sceneState"] === "running") {
-        const r = track.getBoundingClientRect();
-        const p = (innerHeight / 2 - r.top) / r.height; // the scene's own progress: the track's top to its bottom at the screen's middle
-        level = Math.min(1, Math.max(0, (p - HANDOFF_FROM) / (1 - HANDOFF_FROM)));
-      }
-      stage.style.setProperty("--handoff", String(level));
+      const r = track.getBoundingClientRect();
+      const p = (innerHeight / 2 - r.top) / r.height; // the scene's own progress: the track's top to its bottom at the screen's middle
+      const running = scene.dataset["sceneState"] === "running";
+      const handoff = running ? Math.min(1, Math.max(0, (p - HANDOFF_FROM) / (1 - HANDOFF_FROM))) : 0;
+      stage.style.setProperty("--handoff", String(handoff));
+      stage.style.setProperty("--hero", String(Math.min(1, Math.max(0, 1 - scrollY / (innerHeight * 0.9)))));
+      if (root.dataset["story"] !== "plain") scene.dataset["frame"] = frameAt(p);
     };
     const schedule = () => {
       if (!queued) {
@@ -211,29 +283,102 @@ const PLAIN_SCRIPT = plainStoryScript();
     new MutationObserver(schedule).observe(scene, { attributes: true, attributeFilter: ["data-scene-state"] });
     schedule();
   }
+
+  // "See how it works" glides down to the first step, so the camera's dive plays on the way; with reduced
+  // motion (or no script) the link jumps there as any link does
+  const how = document.querySelector<HTMLAnchorElement>('main a[href="#story"]');
+  const first = document.getElementById("story");
+  how?.addEventListener("click", (event) => {
+    if (!first || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    event.preventDefault();
+    first.scrollIntoView({ behavior: "smooth", block: "center" });
+    history.pushState(null, "", "#story");
+  });
+</script>
+
+<script>
+  // The headline's build (SITE-06): when the live scene fades in (or, where it never will, once the page
+  // is idle), a light runs through the headline letter by letter, each pressed flat and lit in a key's
+  // color, then back to its full depth: the wheel lighting key by key, in type. The text is on screen from
+  // the first paint (it is the page's largest paint) and never moves: only color and the shadow change,
+  // which lay nothing out. Nothing runs with reduced motion.
+  import { buildHeadline, startWhenAlive } from "../lib/headline";
+
+  const h1 = document.querySelector<HTMLElement>("[data-headline]");
+  const scene = document.querySelector<HTMLElement>("[data-scene='opening']");
+  if (h1 && scene) startWhenAlive(scene, () => buildHeadline(h1));
 </script>
 
 <style>
-  .opening {
+  /* the hero letters' extruded depth: a hard outline and two steps of the theme's pressed accent */
+  :global(html) {
+    --headline-depth: 2px 2px 0 var(--accent-primary-pressed), 4px 4px 0 var(--accent-primary-pressed), 6px 6px 0 var(--border-outline);
+  }
+  .inner {
     width: min(100% - 2 * var(--gutter), var(--content-max));
     margin-inline: auto;
   }
-  .grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "hero" "stage" "steps";
+
+  /* ---- the opening: a tall section, a full-screen pinned stage, the hero and the steps over it ---- */
+  .opening {
+    position: relative;
+    height: 560svh;
   }
+  .stage {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    overflow: hidden;
+    background: var(--bg-app);
+  }
+  /* the hero's scrim: hard steps of the page's own color, so the headline reads over any frame */
+  .scrim {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: var(--hero, 1);
+    background: linear-gradient(
+      180deg,
+      var(--bg-app) 0 34%,
+      color-mix(in srgb, var(--bg-app) 72%, transparent) 34% 42%,
+      color-mix(in srgb, var(--bg-app) 44%, transparent) 42% 49%,
+      color-mix(in srgb, var(--bg-app) 18%, transparent) 49% 55%,
+      transparent 55%
+    );
+  }
+  .sound {
+    position: absolute;
+    right: var(--gutter);
+    bottom: var(--space-xl);
+    z-index: 3;
+  }
+
   .hero {
-    grid-area: hero;
-    padding-block: var(--space-lg) var(--space-md);
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 100svh;
+    z-index: 2;
+    display: flex;
+    align-items: flex-start;
+    pointer-events: none;
+  }
+  .hero-inner {
+    width: min(100% - 2 * var(--gutter), var(--content-max));
+    margin-inline: auto;
+    padding-top: var(--space-xl);
+    pointer-events: auto;
   }
   .hero h1 {
-    margin: 0 0 var(--space-md);
-    font-size: clamp(var(--font-size-xl), 0.8rem + 3vw, 2.75rem);
+    max-width: 15ch;
+    margin: 0 0 var(--space-lg);
+    font-size: clamp(2.25rem, 0.9rem + 4.4vw, 4.75rem);
+    line-height: 1.04;
+    letter-spacing: 0.01em;
+    text-shadow: var(--headline-depth);
   }
   .lead {
-    max-width: 36rem;
-    margin: 0 0 var(--space-lg);
+    max-width: 34rem;
+    margin: 0 0 var(--space-xl);
     font-size: var(--font-size-md);
   }
   .actions {
@@ -242,46 +387,21 @@ const PLAIN_SCRIPT = plainStoryScript();
     gap: var(--space-md);
   }
 
-  /* the scene sticks while the steps pass; on a phone it stays at the top, over a solid band */
-  .stage {
-    grid-area: stage;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    padding-block: var(--space-sm);
-    background: var(--bg-app);
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-md);
-  }
-  .stage :global(.scene) {
-    align-self: stretch;
-  }
-
-  .scene-wrap {
-    position: relative;
-    align-self: stretch;
-  }
-  /* the window's slot, over the scene, faded in by the script above while the 3D runs */
-  .handoff {
+  /* the steps: a track as long as the story's scroll; each step sits at the middle of its span */
+  .steps {
     position: absolute;
-    inset: 0 0 auto 0;
-    opacity: var(--handoff, 0);
+    top: 50svh;
+    bottom: 50svh;
+    left: 0;
+    right: 0;
+    z-index: 2;
     pointer-events: none;
   }
-  .handoff :global(.shot) {
-    margin: 0;
-  }
-
-  /* the track of steps: as tall as the story is long; each step sits at the middle of its span */
-  .steps {
-    grid-area: steps;
-    position: relative;
-    height: 230svh;
-  }
   .steps ol {
-    margin: 0;
+    position: relative;
+    height: 100%;
+    width: min(100% - 2 * var(--gutter), var(--content-max));
+    margin: 0 auto;
     padding: 0;
     list-style: none;
   }
@@ -290,107 +410,290 @@ const PLAIN_SCRIPT = plainStoryScript();
     left: 0;
     top: calc(var(--mid) * 100%);
     transform: translateY(-50%);
-    width: min(100%, 28rem);
-    display: flex;
-    flex-direction: column;
-    /* "See how it works" lands on the first step: below the stuck scene on a phone, a little above the middle on a wide screen */
-    scroll-margin-top: calc((100vw - 2 * var(--gutter)) * 9 / 16 + 2 * var(--space-sm) + var(--space-md));
+    width: min(100%, 34rem);
+    pointer-events: auto;
+    /* "See how it works" lands with the first step in the middle of the screen */
+    scroll-margin-top: 28svh;
+  }
+  .step :global(.step-frame) {
+    display: none;
   }
   .step h3 {
-    margin: var(--space-sm) 0;
+    margin: var(--space-md) 0 var(--space-lg);
+    font-size: clamp(2rem, 1rem + 3.4vw, 3.75rem);
+    line-height: 1.02;
+    /* a hard pixel outline, so the big type reads over any frame of the scene */
+    text-shadow:
+      -3px 0 0 var(--border-outline),
+      3px 0 0 var(--border-outline),
+      0 -3px 0 var(--border-outline),
+      0 3px 0 var(--border-outline),
+      3px 3px 0 var(--border-outline),
+      -3px -3px 0 var(--border-outline),
+      3px -3px 0 var(--border-outline),
+      -3px 3px 0 var(--border-outline),
+      6px 6px 0 var(--accent-primary-pressed);
   }
   .step p {
     margin: 0;
+    padding: var(--space-lg) var(--space-xl);
+    background: var(--bg-panel);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel), var(--shadow-panel);
+    font-size: var(--font-size-md);
   }
   .num {
     display: grid;
     place-items: center;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.75rem;
+    height: 2.75rem;
     background: var(--accent-primary);
     color: var(--border-outline);
     border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel), var(--shadow-badge);
     font-family: var(--font-pixel);
     font-weight: 700;
+    font-size: var(--font-size-lg);
+  }
+
+  /* the handoff: the app window's slot rises flat out of the wheel (DEC-189) */
+  .handoff {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    opacity: min(1, calc(var(--handoff, 0) * 2.5));
+    perspective: 1400px;
+    pointer-events: none;
+  }
+  .handoff-window {
+    width: min(92vw, 62rem, (100svh - 6rem) * 1.6);
+    transform: translateY(calc((1 - var(--handoff, 0)) * 22svh)) rotateX(calc((1 - var(--handoff, 0)) * 64deg)) scale(calc(0.82 + 0.18 * var(--handoff, 0)));
+    transform-origin: 50% 100%;
+  }
+  .handoff :global(.frame) {
+    box-shadow: var(--shadow-modal);
   }
 
   @media (min-width: 40rem) {
     .lead {
       font-size: var(--font-size-lg);
+      line-height: 1.5;
     }
   }
   @media (min-width: 60rem) {
-    .grid {
-      grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
-      grid-template-areas: "hero stage" "steps stage";
-      column-gap: var(--space-xl);
-    }
     .hero {
-      padding-block: var(--space-xl) var(--space-lg);
+      align-items: center;
     }
-    .stage {
-      align-self: start;
-      top: var(--space-lg);
-      padding-block: var(--space-xl) 0;
-      background: none;
+    .hero-inner {
+      padding: 0 0 6svh;
     }
-    .step {
-      width: 100%;
-      max-width: 26rem;
-      scroll-margin-top: 30svh;
-    }
-    /* A shorter track on a wide screen: the first step sits at 13% of it, so a 230svh track left about
-       250px of empty column under the hero's buttons. The steps keep their places as fractions of the
-       track, so the scene and the text stay in step. */
-    .steps {
-      height: 160svh;
+    .scrim {
+      background: linear-gradient(
+        90deg,
+        var(--bg-app) 0 26%,
+        color-mix(in srgb, var(--bg-app) 72%, transparent) 26% 33%,
+        color-mix(in srgb, var(--bg-app) 44%, transparent) 33% 39%,
+        color-mix(in srgb, var(--bg-app) 18%, transparent) 39% 44%,
+        transparent 44%
+      );
     }
   }
 
-  /* where no 3D will run for a reason known at once, the opening is compact: a still beside the steps */
+  /* ---- the static story: where no 3D will run for a reason known at once, or with reduced motion ---- */
+  :global(:root[data-story="plain"]) .opening {
+    height: auto;
+  }
   :global(:root[data-story="plain"]) .stage {
-    position: static;
+    position: absolute;
+    inset: 0 0 auto 0;
+  }
+  :global(:root[data-story="plain"]) .hero {
+    position: relative;
+    min-height: 100svh;
   }
   :global(:root[data-story="plain"]) .steps {
-    height: auto;
+    position: static;
+  }
+  :global(:root[data-story="plain"]) .steps ol {
+    display: grid;
+    gap: var(--space-xl);
+    padding-block: var(--space-xl);
   }
   :global(:root[data-story="plain"]) .step {
     position: static;
     transform: none;
-    padding-block: var(--space-md);
+    width: auto;
+    display: grid;
+    gap: var(--space-lg);
+    align-items: center;
+  }
+  :global(:root[data-story="plain"]) .step :global(.step-frame) {
+    display: block;
   }
   :global(:root[data-story="plain"]) .handoff {
     display: none;
   }
   @media (prefers-reduced-motion: reduce) {
+    .opening {
+      height: auto;
+    }
     .stage {
-      position: static;
+      position: absolute;
+      inset: 0 0 auto 0;
+    }
+    .hero {
+      position: relative;
+      min-height: 100svh;
     }
     .steps {
-      height: auto;
+      position: static;
+    }
+    .steps ol {
+      display: grid;
+      gap: var(--space-xl);
+      padding-block: var(--space-xl);
     }
     .step {
       position: static;
       transform: none;
-      padding-block: var(--space-md);
+      width: auto;
+      display: grid;
+      gap: var(--space-lg);
+      align-items: center;
+    }
+    .step :global(.step-frame) {
+      display: block;
     }
     .handoff {
       display: none;
     }
   }
+  @media (min-width: 60rem) {
+    :global(:root[data-story="plain"]) .step {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      gap: var(--space-xl) calc(var(--space-xl) * 2);
+    }
+  }
+  @media (min-width: 60rem) and (prefers-reduced-motion: reduce) {
+    .step {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      gap: var(--space-xl) calc(var(--space-xl) * 2);
+    }
+  }
 
+  /* ---- the app's pictures as panels with depth: tilted slabs, extruded in hard pixel steps ---- */
+  .slab {
+    --ry: -10deg;
+    --rx: 5deg;
+    perspective: 1600px;
+  }
+  .slab[data-slab="right"] {
+    --ry: 10deg;
+  }
+  .slab[data-slab="rise"] {
+    --ry: 0deg;
+    --rx: 8deg;
+  }
+  .slab :global(.frame) {
+    transform: rotateY(var(--ry)) rotateX(var(--rx));
+    transform-origin: 50% 50%;
+    box-shadow:
+      1px 1px 0 var(--bg-panel-alt),
+      2px 2px 0 var(--bg-panel-alt),
+      3px 3px 0 var(--bg-panel-alt),
+      4px 4px 0 var(--bg-panel-alt),
+      5px 5px 0 var(--border-highlight),
+      6px 6px 0 var(--border-highlight),
+      7px 7px 0 var(--border-highlight),
+      8px 8px 0 var(--border-highlight),
+      10px 10px 0 var(--border-outline),
+      22px 26px 0 color-mix(in srgb, var(--border-shadow) 70%, transparent);
+  }
+  .slab[data-slab="right"] :global(.frame) {
+    box-shadow:
+      -1px 1px 0 var(--bg-panel-alt),
+      -2px 2px 0 var(--bg-panel-alt),
+      -3px 3px 0 var(--bg-panel-alt),
+      -4px 4px 0 var(--bg-panel-alt),
+      -5px 5px 0 var(--border-highlight),
+      -6px 6px 0 var(--border-highlight),
+      -7px 7px 0 var(--border-highlight),
+      -8px 8px 0 var(--border-highlight),
+      -10px 10px 0 var(--border-outline),
+      -22px 26px 0 color-mix(in srgb, var(--border-shadow) 70%, transparent);
+  }
+  .slab :global(figcaption) {
+    margin-top: var(--space-xl);
+  }
+  /* as a panel comes into view it swings round to face the visitor: its own scroll, CSS only, no script */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .slab :global(.frame) {
+        animation: slab-swing linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 50%;
+      }
+      .slab[data-slab="rise"] :global(.frame) {
+        animation-name: slab-rise;
+      }
+      .prop {
+        animation: prop-drift linear both;
+        animation-timeline: view();
+      }
+    }
+  }
+  @keyframes slab-swing {
+    from {
+      transform: translateY(16%) rotateY(calc(var(--ry) * 3.4)) rotateX(26deg) scale(0.84);
+    }
+    to {
+      transform: rotateY(var(--ry)) rotateX(var(--rx));
+    }
+  }
+  @keyframes slab-rise {
+    from {
+      transform: translateY(10%) rotateX(58deg) scale(0.8);
+    }
+    to {
+      transform: rotateY(var(--ry)) rotateX(var(--rx));
+    }
+  }
+  @keyframes prop-drift {
+    from {
+      transform: translateY(14%);
+    }
+    to {
+      transform: translateY(-14%);
+    }
+  }
+
+  /* ---- the window, the sections ---- */
   .window {
-    display: grid;
-    gap: var(--space-lg);
+    padding-block: calc(var(--space-xl) * 4) calc(var(--space-xl) * 3);
+  }
+  .window h2,
+  .feature h2,
+  .trust h2 {
+    margin: 0 0 var(--space-lg);
+    font-size: clamp(1.75rem, 0.9rem + 2.6vw, 3rem);
+    line-height: 1.08;
   }
   .window-text {
     max-width: 40rem;
-    margin: 0;
+    margin: 0 0 calc(var(--space-xl) * 2);
+    font-size: var(--font-size-lg);
+    line-height: 1.5;
   }
 
   .feature {
+    padding-block: calc(var(--space-xl) * 3);
+    overflow-x: clip;
+  }
+  .feature .inner {
     display: grid;
-    gap: var(--space-lg);
+    gap: calc(var(--space-xl) * 2);
     align-items: center;
   }
   .copy p {
@@ -401,34 +704,147 @@ const PLAIN_SCRIPT = plainStoryScript();
     font-family: var(--font-pixel);
     font-weight: 600;
   }
+  .prop {
+    max-width: 38rem;
+    margin-top: var(--space-xl);
+  }
   @media (min-width: 60rem) {
-    .feature {
-      grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
-      gap: var(--space-xl);
+    .feature .inner {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: calc(var(--space-xl) * 3);
     }
-    .feature[data-flip="true"] {
-      grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+    .feature[data-side="right"] .inner {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
     }
-    .feature[data-flip="true"] .copy {
+    .feature[data-side="right"] .copy {
       order: 2;
     }
   }
 
+  /* ---- trust: a spec sheet, not a grid of cards ---- */
   .trust {
+    padding-block: calc(var(--space-xl) * 4);
+  }
+  .sheet {
+    margin: calc(var(--space-xl) * 1.5) 0 0;
+    border-top: var(--border-width) solid var(--border-muted);
+  }
+  .row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-    gap: var(--space-lg);
+    gap: var(--space-sm) calc(var(--space-xl) * 2);
+    padding-block: var(--space-xl);
+    border-bottom: var(--border-width) solid var(--border-muted);
+  }
+  .row dt {
+    font-family: var(--font-pixel);
+    font-weight: 700;
+    font-size: var(--font-size-lg);
+    line-height: 1.2;
+  }
+  .row dd {
     margin: 0;
-    padding: 0;
-    list-style: none;
   }
-  .trust h3 {
+  .row dd p {
+    max-width: 44rem;
     margin: 0 0 var(--space-sm);
   }
-  .trust p {
-    margin: 0 0 var(--space-sm);
+  .row dd p:last-child {
+    margin-bottom: 0;
+  }
+  @media (min-width: 48rem) {
+    .row {
+      grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    }
+  }
+
+  /* ---- the closing: a full-width band in the theme's accent, a pixel wheel turning under it ---- */
+  .get {
+    position: relative;
+    overflow: hidden;
+    padding-block: calc(var(--space-xl) * 6);
+    background: var(--accent-primary);
+    color: var(--border-outline);
+    border-block: var(--border-width-heavy) solid var(--border-outline);
+  }
+  .get .inner {
+    position: relative;
+    z-index: 1;
+  }
+  .get h2 {
+    margin: 0 0 var(--space-lg);
+    font-size: clamp(2.75rem, 1rem + 7vw, 7rem);
+    line-height: 0.95;
+    color: var(--border-outline);
+    text-shadow: 4px 4px 0 var(--accent-primary-pressed);
+  }
+  .get-text {
+    max-width: 30rem;
+    margin: 0 0 var(--space-xl);
+    font-size: var(--font-size-lg);
+    line-height: 1.45;
+    color: var(--border-outline);
   }
   .closing {
-    margin-top: var(--space-lg);
+    margin: 0;
+  }
+  /* the button on the accent: the page's own dark, so it stays the strongest thing in the band */
+  .get :global(.btn) {
+    background: var(--bg-app);
+    color: var(--fg-primary);
+    font-size: var(--font-size-lg);
+    padding: var(--space-md) calc(var(--space-xl) * 1.4);
+  }
+  .platter {
+    position: absolute;
+    right: -12rem;
+    top: 50%;
+    width: 44rem;
+    aspect-ratio: 1;
+    translate: 0 -50%;
+    perspective: 1200px;
+    pointer-events: none;
+  }
+  .disc {
+    display: block;
+    width: 100%;
+    height: 100%;
+    transform: rotateX(56deg) rotateZ(-18deg);
+    image-rendering: pixelated;
+  }
+  .disc .hub {
+    fill: var(--accent-primary-pressed);
+  }
+  .disc .cell {
+    stroke: var(--border-outline);
+    stroke-width: 0.6;
+  }
+  .disc .tone-0 {
+    fill: var(--accent-primary-pressed);
+  }
+  .disc .tone-1 {
+    fill: var(--accent-primary-hover);
+  }
+  .disc .tone-2 {
+    fill: color-mix(in srgb, var(--accent-primary-pressed) 55%, var(--border-outline));
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .disc {
+      animation: platter 48s linear infinite;
+    }
+  }
+  @keyframes platter {
+    to {
+      transform: rotateX(56deg) rotateZ(342deg);
+    }
+  }
+  @media (max-width: 47.99rem) {
+    .platter {
+      right: -16rem;
+      top: auto;
+      bottom: -18rem;
+      translate: none;
+      width: 34rem;
+      opacity: 0.6;
+    }
   }
 </style>

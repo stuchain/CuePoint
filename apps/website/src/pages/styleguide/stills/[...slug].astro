@@ -1,7 +1,8 @@
 ---
 /*
  * /styleguide/stills/: the page `npm run stills` opens in headless Chromium (SITE-05, fact 8).
- * It exposes window.__renderStill(sceneName) -> PNG data URL, drawn in the page's current theme.
+ * It exposes window.__renderStill(sceneName, { frame?, tall? }) -> PNG data URL, drawn in the page's current theme
+ * (a named frame of the scene, and 180 x 320 instead of 320 x 180 when tall; SITE-06).
  * Preview builds only. It imports no stills, so it works before any still exists.
  */
 import { PUBLIC } from "../../../../site.config";

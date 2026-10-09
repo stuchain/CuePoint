@@ -146,14 +146,25 @@ test.describe("the phone's first screen", () => {
     await expect(header.getByText("Menu", { exact: true })).toBeHidden();
   });
 
-  test("'See how it works' lands on the first step, clear of the stuck scene", async ({ page }) => {
+  test("'See how it works' scrolls to the first step and leaves it whole on the screen, over the stuck scene", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("");
     await page.getByRole("link", { name: "See how it works" }).click();
-    await page.waitForTimeout(400);
+    // a smooth scroll: wait for it to settle
+    let last = -1;
+    await expect
+      .poll(
+        async () => {
+          const y = await page.evaluate(() => scrollY);
+          const settled = y === last && y > 0;
+          last = y;
+          return settled;
+        },
+        { intervals: [250] },
+      )
+      .toBe(true);
     const step = (await page.locator("#story").boundingBox())!;
-    const stage = (await page.locator("[data-stage]").boundingBox())!;
-    expect(step.y).toBeGreaterThanOrEqual(stage.y + stage.height - 2);
+    expect(step.y).toBeGreaterThanOrEqual(0);
     expect(step.y + step.height).toBeLessThanOrEqual(667);
   });
 });
@@ -178,19 +189,17 @@ test.describe("the steps and the scene", () => {
     });
   }
 
-  test("no step overlaps the stuck scene or the hero at the top of the page", async ({ page }) => {
+  // the steps play over the full-screen scene by design (SITE-06), but never over the hero's text
+  test("no step overlaps the hero at the top of the page", async ({ page }) => {
     for (const [width, height] of [
       [375, 667],
       [1440, 900],
     ] as const) {
       await page.setViewportSize({ width, height });
       await page.goto("");
-      const stage = (await page.locator("[data-stage]").boundingBox())!;
       const hero = (await page.locator(".hero").boundingBox())!;
       for (const step of await page.locator("[data-step]").all()) {
         const b = (await step.boundingBox())!;
-        const overlapsStage = b.x < stage.x + stage.width && b.x + b.width > stage.x && b.y < stage.y + stage.height && b.y + b.height > stage.y;
-        expect(overlapsStage, `a step overlaps the scene at ${width}px`).toBe(false);
         expect(b.y, `a step starts above the end of the hero at ${width}px`).toBeGreaterThanOrEqual(hero.y + hero.height - 2);
       }
     }
@@ -282,12 +291,49 @@ test.describe("the scenes and their pictures", () => {
     for (const scene of await page.locator("[data-scene]").all()) {
       const img = scene.locator(".still img:visible");
       await expect(img).toHaveCount(1);
+      await img.scrollIntoViewIfNeeded(); // the props' stills are lazy
       await expect(img).toHaveJSProperty("complete", true);
       expect(await img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     }
-    // nothing is only in the 3D: the story is in the text
+    // nothing is only in the 3D: the story is in the text, each step beside its own still frame
     await expect(page.getByText("A messy library")).toBeVisible();
+    await expect(page.locator(".step-frame img:visible")).toHaveCount(3);
+    // and nothing moves: the headline is not built letter by letter
+    await page.waitForTimeout(3000);
+    await expect(page.locator("[data-headline]")).not.toHaveAttribute("data-built", "true");
+    expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
     await context.close();
+  });
+
+  test("the headline builds in after load, keeping its words for screen readers and its layout", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("");
+    const h1 = page.locator("[data-headline]");
+    const text = (await h1.textContent())!.trim();
+    const before = (await h1.boundingBox())!;
+    // no 3D here (the software-GL gate), so the build falls back to a timer once the page is idle
+    await expect(h1).toHaveAttribute("data-built", "true", { timeout: 10_000 });
+    await expect(h1).toHaveAttribute("aria-label", text);
+    await expect(page.getByRole("heading", { level: 1, name: text })).toHaveCount(1);
+    const after = (await h1.boundingBox())!;
+    expect(Math.abs(after.height - before.height)).toBeLessThan(1);
+    expect(Math.abs(after.width - before.width)).toBeLessThan(1);
+  });
+
+  test("without 3D the scene's still turns into the frame of the step being read", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("");
+    const trackTop = await page.locator("#story-track").evaluate((el) => el.getBoundingClientRect().top + scrollY);
+    const trackHeight = await page.locator("#story-track").evaluate((el) => el.getBoundingClientRect().height);
+    const frames: Record<StepId, string> = { messy: "rest", matched: "matched", ready: "ready" };
+    for (const id of Object.keys(STEP_SPANS) as StepId[]) {
+      await page.evaluate((y) => window.scrollTo(0, y), trackTop - 450 + stepMid(id) * trackHeight);
+      await expect(page.locator(SCENE)).toHaveAttribute("data-frame", frames[id]);
+    }
+    await expect(page.locator(CANVAS)).toHaveCount(0);
+    const shown = page.locator(`${SCENE} [data-frame-still="ready"] img:visible`);
+    await expect(shown).toHaveCount(1);
+    await expect.poll(() => shown.evaluate((i) => Number(getComputedStyle(i).opacity))).toBeGreaterThan(0.9);
   });
 
   test("with saveData, or without WebGL, no canvas is made and the still stays", async ({ browser }) => {
@@ -313,15 +359,14 @@ test.describe("the scenes and their pictures", () => {
     }
   });
 
-  test("starts only on the first gesture, then draws over the still and follows the scroll", async ({ page }) => {
+  test("starts by itself once the page is idle, with no gesture, then draws over the still and follows the scroll", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await capableDevice(page);
     await page.goto("");
-    await page.waitForTimeout(1500);
-    await expect(page.locator(CANVAS)).toHaveCount(0);
-    await expect(page.locator(SCENE)).toHaveAttribute("data-scene-state", "waiting");
-    await page.keyboard.press("Shift");
+    await expect(page.locator(SCENE)).toHaveAttribute("data-scene-autostart", "");
+    // no key, click or scroll: the home page's scene does not wait for one (other pages' scenes do, e2e/three.spec.ts)
     await expect(page.locator(CANVAS)).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator(SCENE)).toHaveAttribute("data-scene-state", "running");
     await expect(page.locator(`${SCENE} .still img:visible`)).toHaveCount(1);
     await expect(page.locator(CANVAS)).toHaveAttribute("aria-hidden", "true");
     await page.waitForTimeout(2500);
@@ -347,11 +392,12 @@ test.describe("the scenes and their pictures", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("");
     const slots = page.locator("[data-app-shot]");
-    expect(await slots.count()).toBeGreaterThanOrEqual(8); // the window at the end of the scene + seven sections
+    expect(await slots.count()).toBeGreaterThanOrEqual(8); // the window at the end of the scene + eight sections
     for (const slot of await slots.all()) {
       await expect(slot).toHaveAttribute("data-placeholder", "true");
       await expect(slot).toContainText(/screenshot/i);
-      const box = (await slot.locator("[data-slot-frame]").boundingBox())!;
+      // the layout size: the slabs tilt in 3D as they scroll (SITE-06), which skews the on-screen box
+      const box = await slot.locator("[data-slot-frame]").evaluate((el) => ({ width: (el as HTMLElement).offsetWidth, height: (el as HTMLElement).offsetHeight }));
       expect(box.width / box.height).toBeCloseTo(1280 / 800, 1);
     }
     await expect(page.locator("main img[src*='/app/']")).toHaveCount(0);
@@ -401,7 +447,7 @@ test.describe("the page as a document", () => {
     await expect(page.locator("h1")).toHaveCount(1);
     const levels = await page.locator("main h1, main h2, main h3").evaluateAll((els) => els.map((e) => Number(e.tagName[1])));
     for (let i = 1; i < levels.length; i++) expect(levels[i]! - levels[i - 1]!).toBeLessThanOrEqual(1);
-    for (const id of ["clean", "library", "keys", "discover", "prepare", "statistics", "export"]) {
+    for (const id of ["clean", "library", "keys", "waveforms", "discover", "prepare", "statistics", "export"]) {
       const section = page.locator(`#feature-${id}`);
       await expect(section.getByRole("heading")).toHaveCount(1);
       // every section links its feature page (SITE-08), which links the guide

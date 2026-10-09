@@ -14,7 +14,8 @@ const allCopy = () => [
 
 describe("the home page's content", () => {
   it("has one section for each thing the app does, in the spec's order", () => {
-    expect(FEATURES.map((f) => f.id)).toEqual(["clean", "library", "keys", "discover", "prepare", "statistics", "export"]);
+    // the spec's seven, and Waveforms (it has its own feature page, SITE-08) beside Keys
+    expect(FEATURES.map((f) => f.id)).toEqual(["clean", "library", "keys", "waveforms", "discover", "prepare", "statistics", "export"]);
     expect(new Set(FEATURES.map((f) => f.id)).size).toBe(FEATURES.length);
   });
 

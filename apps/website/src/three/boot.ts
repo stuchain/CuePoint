@@ -8,8 +8,10 @@
  *     like block, because there is no GPU to draw with), then the 3D chunk is fetched with
  *     <link rel=modulepreload> (fetched and parsed, not run) and `cuepoint:3d-start` is marked;
  *  3. a scene starts (the import runs, the renderer is made) only when its section is within one
- *     viewport of the screen AND the visitor has done something (wheel, touch, scroll, click, key):
- *     an idle page, or a lab run that only loads it, never pays for the 3D.
+ *     viewport of the screen AND the visitor has done something (wheel, touch, scroll, click, key), so
+ *     an idle page never pays for the 3D; except a scene marked `data-scene-autostart` (the home page's,
+ *     SITE-06), which starts as soon as it is near the screen once the page is idle: the home page's
+ *     first screen is a scene that moves on its own, and fades in over its still.
  *
  * The mark is the prefetch, not the start: the scripts requested before it are the page's own, which
  * is what e2e/js-budget.spec.ts holds to 50 KB.
@@ -98,9 +100,12 @@ function start(hosts: HTMLElement[]): void {
     .catch(() => setState(hosts, "still")); // the chunk did not load: the stills stay
 }
 
+/** A scene that may start before the visitor has done anything: the page asked for it (Scene's `autostart`). */
+const autostarts = (host: HTMLElement): boolean => host.hasAttribute("data-scene-autostart");
+
 function startQueued(): void {
-  if (!gestured || queued.size === 0) return;
-  start([...queued]);
+  const ready = [...queued].filter((host) => gestured || autostarts(host));
+  if (ready.length > 0) start(ready);
 }
 
 function stopListening(): void {
