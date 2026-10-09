@@ -158,9 +158,12 @@ describeWithMpv("a queue playing through real mpv", () => {
   });
 
   it("skips to the next track on demand", async () => {
+    // Six-second tracks, not the tones: a tone can end before `next()` is
+    // called, mpv then walks into "two" by itself, and Next at the end of the
+    // queue rightly stops it, so "two" read as pending on a slow runner.
     const { controller } = makeController();
     await controller.playQueue(
-      [{ filePath: fixture("tone.flac"), title: "one" }, { filePath: fixture("tone.wav"), title: "two" }],
+      [{ filePath: fixture("bands.flac"), title: "one" }, { filePath: fixture("bands.flac"), title: "two" }],
       0,
     );
 
