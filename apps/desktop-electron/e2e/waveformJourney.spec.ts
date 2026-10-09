@@ -33,6 +33,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { resolvePlayerBinary } from "../electron/playerLaunch";
+import { untilAnalysed } from "./analysisProgress";
 import { waitForEngine } from "./engineReady";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -125,31 +126,12 @@ function analysis(window: Page) {
   return window.evaluate(async () => (await window.cuepoint!.waveforms!.analysis()).value!);
 }
 
-/**
- * Waits for the analysis to finish every track, failing when it stops moving.
- *
- * The run's length is the runner's speed times 306 tracks: a packaged Intel Mac
- * analysed about 1.6 a second, so a fixed deadline sized for the fastest runner
- * failed there while the analysis was still going. What the journey checks is
- * that it reaches the end, so the limit is on a stall: no new track for
- * `stalled` ms fails, however long the whole run takes.
- */
-async function analysedAll(window: Page, stalled = 60_000) {
-  let last = -1;
-  let movedAt = Date.now();
-  for (;;) {
-    const now = await analysis(window);
-    if (now.state === "idle" && now.analysed === TOTAL && now.remaining === 0) return;
-    if (now.analysed !== last) {
-      last = now.analysed;
-      movedAt = Date.now();
-    }
-    expect(
-      Date.now() - movedAt,
-      `the analysis stopped at ${now.analysed} of ${TOTAL} (${now.state}, ${now.remaining} left)`,
-    ).toBeLessThan(stalled);
-    await window.waitForTimeout(500);
-  }
+async function analysedAll(window: Page) {
+  const end = await untilAnalysed(
+    () => analysis(window),
+    (now) => now.state === "idle" && now.remaining === 0,
+  );
+  expect(`${end.state} ${end.analysed} ${end.remaining}`).toBe(`idle ${TOTAL} 0`);
 }
 
 async function trackIds(window: Page): Promise<Map<string, number>> {

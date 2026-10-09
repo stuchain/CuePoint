@@ -22,6 +22,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { resolvePlayerBinary } from "../electron/playerLaunch";
+import { untilAnalysed } from "./analysisProgress";
 import { waitForEngine } from "./engineReady";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -131,7 +132,8 @@ test.describe("The waveform analysis (WAVE-03)", () => {
   });
 
   test("follows an import, pauses from the strip, stays paused, and resumes to the end", async () => {
-    test.setTimeout(240_000);
+    // The analysis is bounded by its stall check (analysisProgress.ts), not by this.
+    test.setTimeout(600_000);
     const xml = writeExport(workspace);
 
     let app = await launch(userDataDir, cuepointHome);
@@ -178,12 +180,11 @@ test.describe("The waveform analysis (WAVE-03)", () => {
       const row = await healthRow(window);
       await row.getByRole("button", { name: "Resume" }).click();
 
-      await expect
-        .poll(async () => {
-          const now = await analysis(window);
-          return `${now.state} ${now.analysed} ${now.failed} ${now.remaining}`;
-        }, { timeout: 180_000 })
-        .toBe(`idle ${COPIES} 1 0`);
+      const end = await untilAnalysed(
+        () => analysis(window),
+        (now) => now.state === "idle" && now.remaining === 0,
+      );
+      expect(`${end.state} ${end.analysed} ${end.failed} ${end.remaining}`).toBe(`idle ${COPIES} 1 0`);
       await expect(row.getByText(`All ${PRESENT} analyzed · 1 could not be read`)).toBeVisible({
         timeout: 10_000,
       });
