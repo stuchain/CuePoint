@@ -484,6 +484,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **The engine answers while a background job computes.** A search, a browse or a Set edit could
+  take seconds, and more than 5 s on Windows, while a waveform analysis or a match ran: each
+  request waited hundreds of times for the busy thread to hand back Python's interpreter lock. The
+  lock is now handed over within 0.5 ms (DEC-221).
 - **Scrolling a long track table is smooth on slower Macs again.** Three things made one frame of
   a fast scroll run past 50 ms on the Mac runners, most often at the default 1.5× size. On a
   display that is not high-resolution, a track table scrolled on the main thread, and every row on

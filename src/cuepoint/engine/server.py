@@ -1372,6 +1372,30 @@ def fine_timer_resolution(platform: str = sys.platform) -> bool:
         return False
 
 
+#: How long a thread waiting for the interpreter's lock waits before the thread
+#: holding it is asked to let go (DEC-221). Python's default is 5 ms.
+ENGINE_SWITCH_INTERVAL_SECONDS = 0.0005
+
+
+def favour_waiting_threads() -> None:
+    """Hand the interpreter's lock to a waiting thread within 0.5 ms, not 5 ms.
+
+    An engine request gives the lock up hundreds of times: SQLite releases it
+    for every statement it prepares and every row it steps, and the socket for
+    every read and write. While another thread is computing in Python (a
+    waveform being reduced, a match being scored), each of those returns waits
+    for the computing thread to be asked to stop, which Python does after the
+    switch interval. A 50-row search then took 2 s on Linux beside one busy
+    thread, and on Windows, whose timed waits round up to 15.6 ms, more than the
+    5 s a caller waits. At 0.5 ms the same search takes about 0.1 s. On Windows a
+    wait under 1 ms is not timed at all: the waiting thread asks at once.
+
+    Costs a computing thread about 5% when it shares the lock, and nothing when
+    it does not: the interval only matters while a thread is waiting.
+    """
+    sys.setswitchinterval(ENGINE_SWITCH_INTERVAL_SECONDS)
+
+
 def run_engine(config: Optional[EngineConfig] = None) -> None:
     # First, so "may I send?" has its answer before any work starts (REPORT-01, DEC-128).
     set_reporting_enabled(initial_reporting_enabled(os.environ))
@@ -1386,6 +1410,7 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     if cfg.host not in ALLOWED_HOSTS:
         raise ValueError(f"Refusing to bind engine to non-loopback host: {cfg.host!r}")
     fine_timer_resolution()
+    favour_waiting_threads()
     # Synchronous and before the server exists: a backup running concurrently
     # with the first migration would lose the ordering guarantee above. It is
     # skipped entirely when nothing changed since the last one, so the usual
@@ -1504,6 +1529,9 @@ def start_engine_thread(
 ) -> Tuple[ThreadingHTTPServer, threading.Thread]:
     """Start engine in a background thread (tests)."""
     cfg = config or EngineConfig.from_env()
+    # As run_engine does, so a test's engine answers beside busy threads as the
+    # app's does (DEC-221).
+    favour_waiting_threads()
     server = with_error_reporting(
         ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg, store=store))
     )

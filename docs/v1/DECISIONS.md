@@ -6234,3 +6234,32 @@ the same code twice per system adds nothing the 3.12 leg does not already show.
 fails only on 3.11 still fails its leg. `--durations=30` lists the slowest tests on every leg.
 
 **Decided with**: Claude (CI fix thread, under the rule not to raise timeouts to hide slowness) · **Date**: 2026-10-08
+
+---
+
+## DEC-221 — The Engine Hands the Interpreter's Lock Over Within 0.5 ms
+
+**Status**: Approved · **Related**: WAVE-03 (`fine_timer_resolution`), CLEAN-03, CI fix
+
+**Decision**: The engine sets Python's switch interval to 0.5 ms (`favour_waiting_threads()` in
+`engine/server.py`), in `run_engine` and in `start_engine_thread`, so the tests' engine behaves like
+the app's.
+
+**Reason**: An engine request gives up the interpreter's lock hundreds of times: SQLite releases it
+for every statement and every row, the socket for every read and write. While another thread
+computes in Python (a waveform reduced, a match scored), each return waits until that thread is
+asked to stop, which Python does after the switch interval: 5 ms by default, 15.6 ms on Windows,
+whose timed waits round up to its timer. On Linux a 50-row search beside one busy thread took 1.5 to
+2.1 s instead of 10 ms. On Windows runners searches, browses and Set reads got no answer in 5 s.
+On an Intel Mac a Set insert took 8 to 14 s beside a starting match. Measured with the switch interval
+at 0.5 ms: 0.1 s, and the 1,000-track match test's slowest search beside a busy thread went from 4.5 s
+to 0.46 s. No database or Python lock was involved: a match job holds its write transaction only
+around each result's insert (`match_service._store`), never across the Beatport lookup, which runs
+on the pool threads.
+
+**Implications**: A thread computing while another waits gives the lock up more often, about 5% of
+its speed when two compute together; nothing when no one waits. On Windows a wait under 1 ms is not
+timed, so the waiting thread asks for the lock at once. `src/tests/regression/
+test_regression_engine_beside_busy_thread.py` fails on the old interval.
+
+**Decided with**: Claude (CI fix thread, under the rule not to raise timeouts to hide slowness) · **Date**: 2026-10-09
