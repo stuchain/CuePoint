@@ -1,10 +1,14 @@
 # DIST-04, DEC-175: CuePoint's own copy of the pinned mpv archives. mpv publishes binaries only on
 # a rolling release whose assets are replaced, so a tag built weeks after a pin could find it gone.
-# Run this once per mpv pin (after `fetch_player_sidecar.py --update-manifest` is merged); builds
-# then fetch from here first (`fetch_player_sidecar.py`) and from mpv second.
+# It runs by itself when a re-pin (`fetch_player_sidecar.py --update-manifest`) lands on main or
+# feature: mpv replaces those assets daily, so a mirror made by hand later can find them gone, as
+# on 2026-10-09. Builds then fetch from here first (`fetch_player_sidecar.py`) and from mpv second.
 name: Mirror player sidecar
 
 on:
+  push:
+    branches: [main, feature]
+    paths: [scripts/player_sidecar_manifest.json]
   workflow_dispatch:
 
 permissions:

@@ -50,9 +50,15 @@ def _index(text: str, needle: str) -> int:
 
 
 class TestMirrorWorkflow:
-    def test_is_dispatch_only_and_serialised(self):
+    def test_runs_on_each_re_pin_and_by_hand_and_is_serialised(self):
         wf = _load("mirror-player-sidecar.yml")
-        assert wf["on"] == {"workflow_dispatch": None}
+        assert wf["on"] == {
+            "push": {
+                "branches": ["main", "feature"],
+                "paths": ["scripts/player_sidecar_manifest.json"],
+            },
+            "workflow_dispatch": None,
+        }
         assert wf["concurrency"]["group"]
         assert wf["permissions"] == {"contents": "write"}
 
