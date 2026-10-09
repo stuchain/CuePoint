@@ -227,6 +227,10 @@ jobs:
             pactl load-module module-null-sink sink_name=ci_null
             pactl set-default-sink ci_null
             CUEPOINT_MPV_PATH=/usr/bin/mpv xvfb-run -a npm run test:e2e
+          elif [ "${{ matrix.leg }}" = "macos-x64" ]; then
+            # The Intel leg runs the specs that can launch a packaged app against that app below,
+            # so here it runs only the rest rather than running those twice.
+            npm run test:e2e -- $(grep -L CUEPOINT_E2E_EXECUTABLE e2e/*.spec.ts)
           else
             npm run test:e2e
           fi
