@@ -184,6 +184,20 @@ describe("size", () => {
     expect(lastReported().current).toBe(1);
   });
 
+  it("steps from the size the last command set, though nothing has rendered since", async () => {
+    render(<App />);
+    command("size:2");
+    await waitFor(() => expect(scale()).toBe("2"));
+    // Two presses of Smaller delivered before React renders the first, as two IPC
+    // messages can be: the second must step from 1.5, not from 2 again.
+    act(() => {
+      send("size-smaller");
+      send("size-smaller");
+    });
+    await waitFor(() => expect(scale()).toBe("1"));
+    expect(lastReported().current).toBe(1);
+  });
+
   it("sets a size by value and returns to the default", async () => {
     render(<App />);
     command("size:3");

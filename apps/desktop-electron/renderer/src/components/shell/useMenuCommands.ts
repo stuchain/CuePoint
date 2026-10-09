@@ -30,7 +30,12 @@ export function useMenuCommands(actions: Record<ActionCommandId, () => void>): v
         return;
       }
       const size = sizeAfterCommand(id, current);
-      if (size !== null) set(size);
+      if (size === null) return;
+      set(size);
+      // The next command steps from this size, not from the last render's. Two presses
+      // of Smaller can arrive before React renders the first (each IPC message is its own
+      // task, the render another), and both would otherwise step from the same size.
+      latest.current.scale = size;
     });
   }, []);
 }

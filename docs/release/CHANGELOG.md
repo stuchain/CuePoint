@@ -486,6 +486,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **The Library's toolbar keeps to two lines on Windows.** In a 1,280 × 800 window at 1.5× with Track details open, the row above the table took a third line on Windows (and the table lost a row), because it fit on Linux by about 10 pixels. Its two lines are now laid out on purpose, the six groups on the first and Clear selection, the count, Select all and Columns… on the second, with room to spare on every system; if the count does not fit it is cut short rather than pushing a button onto another line.
 - **A dialog opened while another is closing is read out by its own title.** Every dialog shared one title id, so while one played its exit the next one took the closing one's name for screen readers.
+- **Checking Rekordbox for changes, and refreshing, always come back.** Now and then the check or
+  the refresh finished but the Library never heard it: the review never opened, or its button kept
+  spinning. The last update about a task could be lost when the task ended at the moment the one
+  before it was being sent.
+- **Importing an export where Rekordbox gave a renumbered track's old ID to a new track works.** The
+  import used to stop with "UNIQUE constraint failed" and change nothing.
+- **View > Size > Smaller (Ctrl+-) or Bigger (Ctrl+=) pressed twice quickly steps twice.** The second
+  press used to step from the size before the first and land on the same size.
 - **Moving a Set's entry twice in a row puts it where you meant.** A second Move up or Move down (or Alt+Up and Alt+Down) pressed right after the first used to be worked out from the order before the first one, and could move the wrong way. It now waits for the first and uses the order you see.
 - **Typing a value into the Library filter no longer closes the app on a Mac.** The suggestion list under
   the filter's Value field and under Track details' tag field was the browser's own pop-up, which crashed
