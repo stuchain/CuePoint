@@ -20,6 +20,7 @@ import { Button } from "../../components/Button";
 import { PixelSpinner } from "../../components/PixelSpinner";
 import { Select } from "../../components/Select";
 import { libraryImportState } from "../library/libraryLink";
+import { HealthSection } from "./HealthSection";
 import { KeySummary } from "./KeySummary";
 import { SpreadsSection } from "./SpreadsSection";
 import { PlaysSection } from "./PlaysSection";
@@ -43,10 +44,6 @@ import "../screens.css";
 import "./statistics.css";
 
 const NOT_HERE = "Statistics can be read in the desktop app, once CuePoint has started.";
-
-function plural(n: number, one: string, many: string = `${one}s`): string {
-  return `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
-}
 
 interface SectionProps {
   id: string;
@@ -230,13 +227,7 @@ export function StatisticsScreen() {
         failed="Health could not be read."
         onRetry={health.retry}
       >
-        {health.data && (
-          <p className="statistics-note">
-            {plural(health.data.files.present.count, "file")} present
-            {" · "}
-            {plural(health.data.files.missing.count, "file")} missing
-          </p>
-        )}
+        {health.data && <HealthSection health={health.data} />}
       </Section>
     </div>
   );

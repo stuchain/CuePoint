@@ -141,7 +141,7 @@ test.describe("The Statistics page (STATS-04)", () => {
       await expect(window.getByRole("region", { name: "Your library" })).toContainText("3 tracks", {
         timeout: 30_000,
       });
-      await expect(window.getByRole("region", { name: "Health" })).toContainText("files present");
+      await expect(window.getByRole("region", { name: "Health" })).toContainText("Present, 2 tracks");
       await expect(window.getByRole("region", { name: "Plays" })).toContainText(
         "Plays unknown: 3",
       );
@@ -392,6 +392,113 @@ test.describe("The Plays section (STATS-05)", () => {
           { timeout: 30_000 },
         )
         .toEqual(["Track 2", "Track 4", "Track 1"]);
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+test.describe("The Health section and the whole page (STATS-07)", () => {
+  let userDataDir: string;
+  let cuepointHome: string;
+  let workspace: string;
+
+  test.beforeEach(() => {
+    userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-e2e-"));
+    cuepointHome = mkdtempSync(path.join(tmpdir(), "cuepoint-home-"));
+    workspace = mkdtempSync(path.join(tmpdir(), "cuepoint-xml-"));
+  });
+
+  test.afterEach(() => {
+    for (const dir of [userDataDir, cuepointHome, workspace]) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("import, refresh with changed plays, every section, and one click from each into the Library", async () => {
+    test.setTimeout(300_000);
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await importLibrary(window, writePlayExport(workspace, [5, 3, 1, 0], "first.xml"));
+      await refreshLibrary(window, writePlayExport(workspace, [6, 9, 1, 4], "second.xml"));
+
+      await window.getByRole("link", { name: "Statistics" }).click();
+      for (const name of ["Plays", "Your library", "Health"]) {
+        await expect(window.getByRole("heading", { name, level: 2 })).toBeVisible({
+          timeout: 30_000,
+        });
+      }
+      const plays = window.getByRole("region", { name: "Plays" });
+      const library = window.getByRole("region", { name: "Your library" });
+      const health = window.getByRole("region", { name: "Health" });
+      await expect(plays.getByRole("list", { name: "Most played" })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(library.locator('[data-panel="genre"]')).toBeVisible({ timeout: 30_000 });
+      for (const group of ["Files", "Beatport", "Waveforms"]) {
+        await expect(health.getByRole("heading", { name: group, level: 3 })).toBeVisible({
+          timeout: 30_000,
+        });
+      }
+      for (const name of ["Check files", "Match", "Analyze", "All health checks"]) {
+        await expect(health.getByRole("button", { name, exact: true })).toBeVisible();
+      }
+
+      const rows = window.locator(".track-table__row");
+      const libraryHeading = window.getByRole("heading", { name: "Library", level: 1 });
+
+      // Plays: the top artist opens that artist's one track.
+      await plays.getByRole("button", { name: /^1\. Artist 2, 9 plays, 1 track$/ }).click();
+      await expect(libraryHeading).toBeVisible();
+      await expect(rows).toHaveCount(1, { timeout: 30_000 });
+      await expect(rows).toContainText("Track 2");
+
+      // Your library: the House bar opens all four tracks.
+      await window.getByRole("link", { name: "Statistics" }).click();
+      await library
+        .locator('[data-panel="genre"]')
+        .getByRole("button", { name: "House, 4 tracks" })
+        .click({ timeout: 30_000 });
+      await expect(libraryHeading).toBeVisible();
+      await expect(rows).toHaveCount(4, { timeout: 30_000 });
+
+      // Health: a files bar opens the tracks the engine counted for it.
+      await window.getByRole("link", { name: "Statistics" }).click();
+      const counted = await window.evaluate(async () => {
+        const answer = await window.cuepoint!.getStatisticsHealth!({ scope: "library" });
+        return { missing: answer.files.missing.count, notChecked: answer.files.not_checked.count };
+      });
+      const [label, expected] =
+        counted.missing > 0
+          ? (["Missing", counted.missing] as const)
+          : (["Not checked", counted.notChecked] as const);
+      expect(expected).toBeGreaterThan(0);
+      await health
+        .locator('[data-panel="files"]')
+        .getByRole("button", { name: `${label}, ${expected} ${expected === 1 ? "track" : "tracks"}` })
+        .click({ timeout: 30_000 });
+      await expect(libraryHeading).toBeVisible();
+      await expect(rows).toHaveCount(expected, { timeout: 30_000 });
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("opens Clean's Health tab from All health checks", async () => {
+    test.setTimeout(240_000);
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await importLibrary(window, writeExport(workspace));
+      await window.getByRole("link", { name: "Statistics" }).click();
+      const health = window.getByRole("region", { name: "Health" });
+      await health.getByRole("button", { name: "All health checks" }).click({ timeout: 30_000 });
+      await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
+      await expect(window.getByRole("tab", { name: /Health/ })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
     } finally {
       await app.close();
     }

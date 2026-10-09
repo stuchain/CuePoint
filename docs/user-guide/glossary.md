@@ -10,6 +10,15 @@
   match and its history. Hide it with Ctrl+I; it stays as a tab you can click.
 - **Keys page**: Shows the keys in the playlists, Collections and Sets you tick, with a
   count for each, and the tracks in the keys you click. See [Keys](keys.md).
+- **Play history**: What CuePoint notes each time you import or refresh: how far
+  each track's play count (Rekordbox's own) has moved since the last time. It is
+  what the Statistics page's **Since** choices add up. It starts at the last
+  import you made before updating (or your first import, for a new library), and
+  is only as fine as your refreshes. See
+  [Statistics](statistics.md).
+- **Never played**: A track whose play count in Rekordbox is zero. A track
+  Rekordbox gave no play count is counted apart, as "no play count". See
+  [Statistics](statistics.md).
 - **Camelot wheel**: The 24 keys drawn as two rings, minor (A) inside and major (B)
   outside. It lights a track's key and the keys that mix with it: the same number one
   step either way, and the relative key. Open it from the button beside search or from

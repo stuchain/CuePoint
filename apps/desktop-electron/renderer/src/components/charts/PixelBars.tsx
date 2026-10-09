@@ -44,6 +44,7 @@ export interface PixelBarsProps<T extends PixelBucket = PixelBucket> {
 
 const DEFAULT_HEIGHT = 120;
 const CAPTION_IDLE = "Point at or tab to a bar to read it";
+const CAPTION_IDLE_STATIC = "Point at a bar to read it";
 const NEXT_KEYS = new Set(["ArrowRight", "ArrowDown"]);
 const PREVIOUS_KEYS = new Set(["ArrowLeft", "ArrowUp"]);
 
@@ -253,7 +254,7 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
           })}
         </svg>
       </div>
-      <p className="cp-pixel-bars__caption">{shown ? barName(shown) : CAPTION_IDLE}</p>
+      <p className="cp-pixel-bars__caption">{shown ? barName(shown) : openable.length > 0 ? CAPTION_IDLE : CAPTION_IDLE_STATIC}</p>
       <table className="cp-pixel-bars__table">
         <caption>{title}</caption>
         <thead>

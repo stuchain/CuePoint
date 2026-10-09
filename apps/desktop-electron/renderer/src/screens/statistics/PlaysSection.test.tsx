@@ -114,7 +114,21 @@ function install(overrides: Record<string, unknown> = {}) {
     getStatisticsHealth: vi.fn().mockResolvedValue({
       scope: "library",
       total: 0,
-      files: { present: count(0), missing: count(0) },
+      files: {
+        present: count(0),
+        missing: count(0),
+        unreadable: count(0),
+        not_checked: count(0),
+      },
+      beatport: {
+        accepted: count(0),
+        needs_review: count(0),
+        rejected: count(0),
+        no_match: count(0),
+        not_matched: count(0),
+      },
+      analyzed: { analyzed: 0, failed: 0, waiting: 0, no_file: 0 },
+      checked_at: null,
     }),
     ...overrides,
   };

@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 15: Statistics, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. STATS-01 is implemented (2026-10-08), ahead of Phase 14 (DEC-211); Phase 14 is complete, and STATS-02, STATS-03 and STATS-04 are implemented (2026-10-09).** Seven steps, STATS-01…STATS-07.
+Status: **Specified 2026-10-07. STATS-01 is implemented (2026-10-08), ahead of Phase 14 (DEC-211); Phase 14 is complete, and STATS-02 to STATS-07 are implemented (2026-10-09).** Seven steps, STATS-01…STATS-07.
 Writing the steps raised seven questions that Decision Round 14 did not answer. They were asked as
 Decision Round 18 (Q-163…Q-169) and settled the same day as DEC-162…DEC-168, each as recommended, so
 there are no open points. Where a step below says "if Q-NNN …", the recommended branch is the one
@@ -984,6 +984,42 @@ in Settings → Waveforms. **All health checks** opens Clean's Health tab, which
 
 **Complexity**: **S**
 
+**Outcome (implemented 2026-10-09)**:
+- **`HealthSection.tsx`** replaces the Health section's one-line placeholder; it is the only part of
+  `StatisticsScreen.tsx` that changed. Three `.statistics-panel`s, each a horizontal `PixelBars`:
+  **Files** (Present, Missing, Unreadable, Not checked, then "Last checked October 9, 2026" from
+  `checked_at` in American date words, or "Files have not been checked yet"), **Beatport** and
+  **Waveforms** (Analyzed, Failed, Waiting, No file; counted only, so no bar is a button).
+- **Beatport uses the app's own words** (`matchStateLabel`, as Clean's Review and the Library's Match
+  column do): Accepted, Waiting for you, Rejected (no match), Not found on Beatport, Not looked up
+  yet. **The Library's filter chip names some of these states differently** (MATCH_STATE_CHOICES:
+  "Rejected", "No match", "Not matched"), as it already does against Clean; the engine is not
+  changed, and unifying the words is raised with Stelios. The spec's "needs review", "rejected", "no match" and "not matched" are the stored states;
+  the page does not invent a second name for them.
+- **Every count with rules opens the Library on the route's own rules** (`libraryRulesState`); an
+  empty bar is drawn and is not a button. One visible button per action, nothing hover-only:
+  **Check files** opens Clean on its Health tab (where "Check every file" is), **Match** opens Clean
+  on Review matches, **Analyze** opens Settings on Waveforms (`settingsFocusState("waveforms")`),
+  and **All health checks** opens Clean's Health tab. Nothing in Clean changed (DEC-163).
+- **`docs/user-guide/statistics.md`** is written in full (scope, each section, each number's
+  meaning, plays being Rekordbox's own count, history starting at the first refresh or import after
+  updating and seeded from the last import, "since" being only as fine as the refreshes, the clamp,
+  Keep as Collection); `glossary.md` has Play history and Never played; `the-window.md` already
+  said what Statistics is and needed no change. The Plays text was checked against the built `PlaysSection` (its choices, the clamp, "no
+  refresh" and read-failed messages, Keep as Collection's name and place, and the footer).
+- **A finding for the e2e:** an import already runs a file check, so a fresh library shows
+  Present and Missing, not "Not checked"; the STATS-04 assertion was updated to "Present, 2 tracks"
+  and the STATS-07 journey reads the engine's count rather than assuming.
+
+Checked in the cloud container: `HealthSection.test.tsx` (each group, the links, the not-checked
+line, bar navigation, no click on the count-only bars) and `StatisticsScreen.test.tsx`; the
+renderer's full suite (5,836 tests), lint and typecheck; the main process's tests, typecheck and
+build; the dead-code guard; and `e2e/statistics.spec.ts` (the full journey: an import, a refresh with
+changed play counts, every section, and one click each from Plays, Your library and Health into the
+Library with the counted tracks; All health checks into Clean's Health tab) with `e2e/shell.spec.ts` under
+`xvfb-run` against the built app. Not checked: the section on a library of the owner's own, in
+every theme and scale.
+
 ---
 
 ## Phase-level acceptance
@@ -1011,6 +1047,18 @@ Phase 15 is complete when, in a **packaged build** on Windows and macOS:
     the end-to-end suite and `npm run dist`.
 11. No decision in DEC-001…DEC-168 is contradicted. A contradiction stops the work and is raised
     rather than worked around.
+
+**Status (2026-10-09, STATS-07).** Verified in the cloud container (unit, contract and e2e
+suites against the built app, not a packaged one): 1 (STATS-04's sidebar tests and `shell.spec.ts`),
+2 (an import, then a refresh with changed play counts: the most-played list all time and since the refresh is right in the e2e; a count that fell adding nothing, and the clamp note, are engine and component tests) and 6 (the kept list holds the same tracks in the same order in the Library, e2e), 3, 4 for Health, spreads and the key summary (every count run through `browse_count` in every scope,
+and a top artist, a genre bar and a Health bar each opened in the e2e with the counted tracks), 5, 7, 11 (no
+decision contradicted; DEC-163 kept), and 8 at **route level only**: `bench_library.py --statistics`
+at 50,000 tracks gives whole-library `spreads` 462 ms and `health` 436 ms. Criterion 10 is verified
+for every suite named here except `npm run dist`, which needs a packaged build.
+**Needs the owner:** the packaged Windows and macOS builds (criteria 1 to 7, 10's `npm run dist`);
+page-open time on the development machine, with a year of weekly history, and a library of the
+owner's own with real loudness (8, 4); and every theme and scale, the keyboard and screen reader,
+and every motion switch and reduced motion, by eye (9).
 
 ## Decision Round 18 — what writing the steps raised
 

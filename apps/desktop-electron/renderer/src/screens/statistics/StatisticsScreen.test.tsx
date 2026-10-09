@@ -40,8 +40,8 @@ function plays(overrides: Partial<StatisticsPlays> = {}): StatisticsPlays {
   return {
     since: null,
     since_clamped: false,
-    history_from: "2026-10-08T09:12:00Z",
-    last_read: "2026-10-08T09:12:00Z",
+    history_from: "2026-10-08T12:00:00Z",
+    last_read: "2026-10-08T12:00:00Z",
     last_read_id: 1,
     tracks: [],
     artists: [],
@@ -89,7 +89,7 @@ function health(total = 4000): StatisticsHealth {
       not_matched: count(900),
     },
     analyzed: { analyzed: 10, failed: 0, waiting: 5, no_file: 12 },
-    checked_at: "2026-10-08T09:12:00Z",
+    checked_at: "2026-10-08T12:00:00Z",
   };
 }
 
@@ -220,7 +220,7 @@ describe("the Statistics page (STATS-04)", () => {
       within(screen.getByRole("region", { name: "Your library" })).getByRole("heading", { level: 3, name: "Genre" }),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("region", { name: "Health" })).getByText(/12 files missing/),
+      within(screen.getByRole("region", { name: "Health" })).getByText(`Last checked ${new Date("2026-10-08T12:00:00Z").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`),
     ).toBeInTheDocument();
     // The whole library is the scope until the picker says otherwise.
     expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "library" });
@@ -275,7 +275,7 @@ describe("the Statistics page (STATS-04)", () => {
     expect(section).not.toHaveTextContent(/engine said no/);
     expect(reportUnexpected).toHaveBeenCalled();
     // The other sections are not taken down with it.
-    await within(screen.getByRole("region", { name: "Health" })).findByText(/files missing/);
+    await within(screen.getByRole("region", { name: "Health" })).findByText(`Last checked ${new Date("2026-10-08T12:00:00Z").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`);
 
     await userEvent.click(within(section).getByRole("button", { name: "Try again" }));
 

@@ -34,6 +34,16 @@ function chart(props: Partial<React.ComponentProps<typeof PixelBars>> = {}) {
 }
 
 describe("PixelBars", () => {
+  it("does not tell a person to tab to a chart that has nothing to tab to", () => {
+    const { container, rerender } = chart({ onSelect: undefined });
+    const caption = () => container.querySelector(".cp-pixel-bars__caption")!.textContent;
+    expect(caption()).toBe("Point at a bar to read it");
+    rerender(
+      <PixelBars title="Tempo" buckets={TEMPO} orientation="vertical" barName={name} onSelect={() => undefined} />,
+    );
+    expect(caption()).toBe("Point at or tab to a bar to read it");
+  });
+
   it("makes each bar with tracks a button named by the formatter", () => {
     chart();
     const buttons = screen.getAllByRole("button");
