@@ -498,7 +498,7 @@ function buildExport(format: FormatId, tl: Timeline): HTMLElement {
         <h3>Export to Rekordbox ${APP_PREVIEW ? `<span class="px-badge preview">Preview</span>` : ""}</h3>
         <div class="inner">
           <div class="field">CuePoint library.xml</div>
-          <div class="preview"><b>Preview</b><span>Your own key, BPM and genre go with every track.</span></div>
+          <div class="preview"><b>Includes</b><span>Your own key, BPM and genre go with every track.</span></div>
           <div class="px-progress"><i></i></div>
           <div class="actions"><span class="toast">Ready for Rekordbox</span><span class="px-button">Export ${CLEAN_ROWS.length} tracks</span></div>
         </div>
