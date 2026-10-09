@@ -25,8 +25,9 @@ migrates exported CSV files between output-schema versions and is unrelated.
 from __future__ import annotations
 
 import logging
+import threading
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
 from cuepoint.migrations import Migration, discover_migrations, split_sql_statements
@@ -45,6 +46,25 @@ CREATE TABLE IF NOT EXISTS {SCHEMA_VERSION_TABLE} (
 """
 
 
+_DISCOVERED: Optional[Tuple[Migration, ...]] = None
+_DISCOVER_LOCK = threading.Lock()
+
+
+def _discovered() -> List[Migration]:
+    """The package's migrations, found once a process.
+
+    A runner is made for every repository the engine resolves, so once a
+    request. Finding them lists the package and imports every module, which
+    alone took a quarter of a second of a search beside a busy thread; the
+    modules are part of the build and cannot change while it runs.
+    """
+    global _DISCOVERED
+    with _DISCOVER_LOCK:
+        if _DISCOVERED is None:
+            _DISCOVERED = tuple(discover_migrations())
+        return list(_DISCOVERED)
+
+
 class MigrationRunner(IMigrationRunner):
     """Applies schema migrations to the library database."""
 
@@ -61,9 +81,7 @@ class MigrationRunner(IMigrationRunner):
                 :mod:`cuepoint.migrations`; injectable for tests.
         """
         self._db = database_service
-        self._migrations = (
-            list(migrations) if migrations is not None else discover_migrations()
-        )
+        self._migrations = list(migrations) if migrations is not None else _discovered()
 
     @property
     def available_migrations(self) -> List[Migration]:
