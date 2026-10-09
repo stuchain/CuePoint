@@ -192,6 +192,7 @@ class PlaysReport:
         since_clamped: True when that date was before the history began.
         history_from: When the first read happened; ``None`` with no history.
         last_read: When the last read happened; ``None`` with no history.
+        last_read_id: That read's id, which ``since_read`` takes; ``None`` with no history.
         tracks: The most played tracks.
         artists: The artists with the most plays.
         labels: The labels with the most plays.
@@ -203,6 +204,7 @@ class PlaysReport:
     since_clamped: bool
     history_from: Optional[str]
     last_read: Optional[str]
+    last_read_id: Optional[int]
     tracks: List[PlayedTrack]
     artists: List[PlaysRow]
     labels: List[PlaysRow]
@@ -216,6 +218,7 @@ class PlaysReport:
             "since_clamped": self.since_clamped,
             "history_from": self.history_from,
             "last_read": self.last_read,
+            "last_read_id": self.last_read_id,
             "tracks": [
                 {"id": t.id, "title": t.title, "artist": t.artist, "plays": t.plays}
                 for t in self.tracks
@@ -490,6 +493,7 @@ class StatisticsService(IStatisticsService):
             since_clamped=clamped,
             history_from=history_from,
             last_read=last_read,
+            last_read_id=reads[-1][0] if reads else None,
             tracks=tracks,
             artists=artists,
             labels=labels,

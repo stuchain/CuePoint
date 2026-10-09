@@ -806,6 +806,57 @@ else this step creates `components/charts/PixelBars.tsx` and STATS-06 extends it
 
 **Complexity**: **M**
 
+**Outcome**: Implemented (2026-10-09). `screens/statistics/PlaysSection.tsx` (with its css and
+`playsChoice.ts`, the pure part: the remembered choice, the dates, the offset, the Collection's name)
+fills the body of the page's Plays section; `StatisticsScreen.tsx` changed only to hold the choice and
+mount it. `useStatisticsPlays` now takes the choice and keeps the last answer on screen (`stale`) while
+the next is read, so the controls are never torn down by the read they started.
+
+Decided while building:
+- **`last_read_id` added to the plays answer** (Python, both TypeScript declarations, the two payload
+  tests). "Since your last refresh" is `since_read=<id>`, and no route said which id was the last
+  read. The hook asks without it first and again with the id the answer names, and again if a refresh
+  has happened since.
+- **The bar is a whole-block bar, not `PixelBars`.** `PixelBars` draws a sized chart in an SVG;
+  a list row wants a bar that is part of the row. It is blocks of `--unit` (at most 24), so it scales
+  and themes with everything else.
+- **Since** offers Your last refresh, The last 7, 30 and 90 days, The last year, All time and A date.
+  A relative choice is today's local date minus that span, sent as a date with the offset at that
+  date's own local midnight. The choice is remembered in `cuepoint-statistics-plays` as `{ limit,
+  since }` (`since` is `refresh`, `7d`, `30d`, `90d`, `year`, `all` or `date:YYYY-MM-DD`), default
+  top 10 and all time.
+- **Names of kept lists:** "Most played, all time (top 50)", and for every other choice "Most played
+  since Sep 1, 2026 (top 50)", with the day the counts really begin: the typed or computed date, the
+  day of the last refresh for Your last refresh, and the day history starts when a date was clamped. The
+  name is shown before the button is pressed. The Collection is made at the top of Collections;
+  the message says so and offers **Open it in the Library**, which opens the Library on
+  `collection in_collection <id>` (its table order is the Library's, the Collection's own order is
+  shown by opening it in the Collections tree).
+- **Artists and labels:** the first ten of the route's rows. Every row says its plays and tracks; a
+  since-a-date row says "Shows all of B's played tracks" in its visible text.
+- **Never played** and **Plays unknown** are buttons with their counts, disabled at zero.
+- **The preview button** reads the track (`getLibraryTrack`) and plays it with the player's
+  `playQueue` through `runQueueAction`, as the Library's Track details does; it is not drawn where
+  there is no player.
+- **Motion:** a row whose rank moved when the list was read again steps once (`state`, through
+  `useCountChanges`); nothing else moves.
+- **A typed date** is held in the field and becomes the choice only when it is a complete, real day
+  from 1900 to the current year; `isPlaysSince` and `sinceDay` refuse any other, so a bad saved value
+  falls back to all time. A date after today is accepted and says it has nothing to count.
+- **A failed read with an answer on screen** leaves the section mounted with an inline error and
+  **Try again**; a refusal is not reported. While a new choice is read the list is dimmed and says
+  "Reading…". "Your last refresh" with no read in the history shows no all-time numbers. A read id the
+  route answers 404 for is forgotten and learned again. "Today" is read each time the page is read.
+- **Keep as Collection** is not drawn without the bridge call, and a refused list says a track has
+  gone and offers to read the list again.
+
+Checked in the cloud container: `PlaysSection.test.tsx`; the renderer's full suite, lint and typecheck;
+the main process's tests and typecheck; `test_statistics_plays.py`, `test_statistics_api.py` and
+`test_statistics_contract.py`; the dead-code guard; and `e2e/statistics.spec.ts` under `xvfb-run`
+against the built app (an import, a refresh that moves play counts, the top list since the refresh,
+kept as a Collection and opened in the Library in the same order). Not checked: the page on a library of
+the owner's own, in every theme and scale.
+
 ---
 
 ## STATS-06 — How the Library Spreads

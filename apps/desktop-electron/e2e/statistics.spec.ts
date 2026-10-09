@@ -10,7 +10,7 @@
  * Each launch gets its own `--user-data-dir` and `CUEPOINT_HOME`.
  */
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -143,7 +143,7 @@ test.describe("The Statistics page (STATS-04)", () => {
       });
       await expect(window.getByRole("region", { name: "Health" })).toContainText("files present");
       await expect(window.getByRole("region", { name: "Plays" })).toContainText(
-        "with no play count",
+        "Plays unknown: 3",
       );
       // An import seeds the baseline read (DEC-168), so a library imported by this build has
       // history from the start. The note is for a library imported before it, and the
@@ -259,6 +259,139 @@ test.describe("The Your library section (STATS-06)", () => {
       );
       await expect(window.getByText("No Beatport key: 1")).toBeVisible();
       await expect(window.locator(".keys-page__wheel strong")).toHaveText("1");
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+/** An export of four tracks whose files do not exist, each with the given play count. */
+function writePlayExport(dir: string, counts: number[], name: string): string {
+  const tracks = counts.map(
+    (plays, i) =>
+      `<TRACK TrackID="${i + 1}" Name="Track ${i + 1}" Artist="Artist ${i + 1}" Genre="House" ` +
+      `Tonality="8A" AverageBpm="124.00" TotalTime="300" PlayCount="${plays}" ` +
+      `Location="file://localhost/m/${i + 1}.mp3"/>`,
+  );
+  const file = path.join(dir, name);
+  writeFileSync(
+    file,
+    `<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS Version="1.0.0">
+  <COLLECTION Entries="${counts.length}">
+${tracks.join("\n")}
+  </COLLECTION>
+  <PLAYLISTS><NODE Name="ROOT" Type="0"/></PLAYLISTS>
+</DJ_PLAYLISTS>
+`,
+    "utf-8",
+  );
+  // A rewrite inside the filesystem's timestamp granularity can keep the same mtime.
+  const stat = statSync(file);
+  utimesSync(file, stat.atime.getTime() / 1000 + 5, stat.mtime.getTime() / 1000 + 5);
+  return file;
+}
+
+/** Preview a refresh from an export and apply it, as the Library's own flow does. */
+async function refreshLibrary(window: Page, xmlPath: string) {
+  const settle = async (jobId: string) => {
+    await expect
+      .poll(
+        async () => (await window.evaluate((id) => window.cuepoint!.getJob!(id), jobId))!.state,
+        { timeout: 90_000 },
+      )
+      .toMatch(/succeeded|failed|cancelled/);
+    return (await window.evaluate((id) => window.cuepoint!.getJob!(id), jobId))!.state;
+  };
+  const preview = await window.evaluate(
+    (file) => window.cuepoint!.startLibraryRefreshPreview!({ xml_path: file }),
+    xmlPath,
+  );
+  expect(await settle(preview.job_id)).toBe("succeeded");
+  const previewed = await window.evaluate(
+    (id) => window.cuepoint!.getJobResults!(id),
+    preview.job_id,
+  );
+  const applied = await window.evaluate(
+    (id) => window.cuepoint!.startLibraryRefreshApply!({ diff_id: id }),
+    (previewed.result as { diff_id: string }).diff_id,
+  );
+  expect(await settle(applied.job_id)).toBe("succeeded");
+}
+
+test.describe("The Plays section (STATS-05)", () => {
+  let userDataDir: string;
+  let cuepointHome: string;
+  let workspace: string;
+
+  test.beforeEach(() => {
+    userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-e2e-"));
+    cuepointHome = mkdtempSync(path.join(tmpdir(), "cuepoint-home-"));
+    workspace = mkdtempSync(path.join(tmpdir(), "cuepoint-xml-"));
+  });
+
+  test.afterEach(() => {
+    for (const dir of [userDataDir, cuepointHome, workspace]) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("ranks what was played since the import and keeps the list as a Collection", async () => {
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await importLibrary(window, writePlayExport(workspace, [5, 3, 1, 0], "first.xml"));
+      // Track 2 gained 6 plays, track 4 gained 4, track 1 gained 1, track 3 none.
+      await refreshLibrary(window, writePlayExport(workspace, [6, 9, 1, 4], "second.xml"));
+
+      await window.getByRole("link", { name: "Statistics" }).click();
+      const plays = window.getByRole("region", { name: "Plays" });
+      const list = plays.getByRole("list", { name: "Most played" });
+      await expect(list).toBeVisible({ timeout: 30_000 });
+
+      // All time: the counts Rekordbox holds now.
+      await expect(
+        list.getByRole("button", { name: "1. Track 2 by Artist 2, 9 plays" }),
+      ).toBeVisible();
+      await expect(plays.getByText(/^Counts from your refresh on /)).toBeVisible();
+
+      // Since the first import (the refresh's own rises), in their own order.
+      await plays.getByLabel("Since").selectOption({ label: "Your last refresh" });
+      await expect(list.getByRole("listitem")).toHaveCount(3, { timeout: 30_000 });
+      await expect(
+        list.getByRole("button", { name: "1. Track 2 by Artist 2, 6 plays" }),
+      ).toBeVisible();
+      await expect(
+        list.getByRole("button", { name: "2. Track 4 by Artist 4, 4 plays" }),
+      ).toBeVisible();
+      await expect(
+        list.getByRole("button", { name: "3. Track 1 by Artist 1, 1 play" }),
+      ).toBeVisible();
+
+      // Keep it as a Collection, and it says where it went.
+      await plays.getByRole("button", { name: "Keep as Collection" }).click();
+      await expect(plays.getByText(/Kept 3 tracks in rank order as/)).toBeVisible({
+        timeout: 30_000,
+      });
+
+      // Open it in the Library: the same tracks, in the same order.
+      await window.getByRole("link", { name: "Library" }).click();
+      const tree = window.getByRole("tree", { name: "Collections" });
+      await tree.getByText(/^Most played since /).click();
+      await expect(window.locator(".library-toolbar__count")).toContainText("3 tracks", {
+        timeout: 30_000,
+      });
+      await expect
+        .poll(
+          async () =>
+            window.evaluate(() =>
+              [
+                ...document.querySelectorAll('[role="row"][data-index] [data-column="title"]'),
+              ].map((cell) => cell.textContent?.trim() ?? ""),
+            ),
+          { timeout: 30_000 },
+        )
+        .toEqual(["Track 2", "Track 4", "Track 1"]);
     } finally {
       await app.close();
     }

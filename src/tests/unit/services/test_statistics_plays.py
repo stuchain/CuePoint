@@ -530,6 +530,14 @@ class TestSinceARead:
     def test_since_the_first_read_is_everything_after_the_baseline(self, world):
         assert shown(world.plays(since_read=world.reads[0])) == SINCE_FEB
 
+    def test_the_answer_names_the_newest_read_and_it_can_be_asked_about(self, world):
+        answer = world.plays()
+
+        assert answer["last_read_id"] == world.reads[-1] == max(world.reads)
+        again = world.plays(since_read=answer["last_read_id"])
+        assert shown(again) == SINCE_LAST
+        assert again["last_read_id"] == answer["last_read_id"]
+
     def test_a_read_that_does_not_exist_is_not_found(self, world):
         with pytest.raises(ReadNotFoundError):
             world.plays(since_read=world.reads[-1] + 100)
@@ -545,6 +553,7 @@ class TestWithoutHistory:
 
         assert answer["history_from"] is None
         assert answer["last_read"] is None
+        assert answer["last_read_id"] is None
         assert rows(answer["tracks"], "title") == ALL_TIME_TRACKS
 
     def test_since_a_date_answers_zero_plays(self, tmp_path):
@@ -579,6 +588,7 @@ class TestWithoutHistory:
         assert answer["tracks"] == answer["artists"] == answer["labels"] == []
         assert answer["never_played"]["count"] == answer["unknown"]["count"] == 0
         assert answer["history_from"] is answer["last_read"] is None
+        assert answer["last_read_id"] is None
 
 
 # ------------------------------------------------------------------ scope

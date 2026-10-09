@@ -1295,6 +1295,8 @@ export interface StatisticsPlays {
   since_clamped: boolean;
   history_from: string | null;
   last_read: string | null;
+  /** That read's id: what `sinceRead` takes for "since your last refresh". */
+  last_read_id: number | null;
   tracks: StatisticsTrack[];
   artists: StatisticsArtist[];
   labels: StatisticsLabel[];

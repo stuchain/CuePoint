@@ -17,7 +17,9 @@ import type {
   StatisticsSpreads,
 } from "../../api/cuepointBridge.types";
 import { useActiveJob } from "../../components/shell/useActiveJob";
+import { bridgeErrorFields, isEngineRefusal } from "../../api/bridgeError";
 import { reportUnexpected } from "../../reporting/reporting";
+import { playsParams, type PlaysChoice } from "./playsChoice";
 
 type ReadStatus = "loading" | "ready" | "error" | "unavailable";
 
@@ -78,9 +80,93 @@ function useStatisticsRead<T>(
   return { status, data, retry };
 }
 
-/** Plays: the most played tracks, artists and labels, and the never-played counts. */
-export function useStatisticsPlays(scope: string | null, refresh: number) {
-  return useStatisticsRead<StatisticsPlays>("getStatisticsPlays", scope, refresh);
+interface PlaysRead extends StatisticsRead<StatisticsPlays> {
+  /** True while an answer is shown and a newer one is being read. */
+  stale: boolean;
+  /** True when the last read failed; the earlier answer, if any, is still in `data`. */
+  failed: boolean;
+}
+
+/**
+ * Plays: the most played tracks, artists and labels, and the never-played counts, for a
+ * choice of length and "since" (STATS-05).
+ *
+ * A new choice keeps the last answer on screen (marked `stale`) until the next one arrives, so
+ * the controls that made it are not torn down under the person's hands; a read that fails
+ * with an answer on screen sets `failed` and leaves the answer, and the page says so beside
+ * it. "Your last refresh" is asked of the route by the id of the last read, which only a read
+ * can report: the first ask is without it, and the answer is asked for again with the id it
+ * named. An id the route no longer knows (404) is forgotten, so the next ask learns it again.
+ */
+export function useStatisticsPlays(
+  scope: string | null,
+  refresh: number,
+  choice: PlaysChoice,
+): PlaysRead {
+  const [result, setResult] = useState<{ scope: string; data: StatisticsPlays } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+  const [retries, setRetries] = useState(0);
+  const [readId, setReadId] = useState<number | null>(null);
+
+  const { limit, since } = choice;
+  const asking = since === "refresh" ? readId : null;
+
+  useEffect(() => {
+    if (scope === null) return;
+    const read = window.cuepoint?.getStatisticsPlays;
+    if (!read) {
+      setUnavailable(true);
+      return;
+    }
+    setUnavailable(false);
+    setFailed(false);
+    setPending(true);
+    let cancelled = false;
+    // "Today" is read each time the page is read, so a page left open past midnight counts
+    // "the last 7 days" from the new day.
+    const params = playsParams({ limit, since }, asking, new Date());
+    read({ ...params, scope }).then(
+      (data) => {
+        if (cancelled) return;
+        // The route says which read is the last. If the one asked about was not it (or none was
+        // asked about), ask again with that one rather than show the wrong window.
+        if (since === "refresh" && data.last_read_id !== asking) {
+          setReadId(data.last_read_id);
+          return;
+        }
+        setResult({ scope, data });
+        setPending(false);
+      },
+      (cause: unknown) => {
+        if (cancelled) return;
+        if (since === "refresh" && asking !== null && bridgeErrorFields(cause).status === 404) {
+          // That read is gone (the history was cleared): learn the last one again.
+          setReadId(null);
+          return;
+        }
+        if (!isEngineRefusal(cause)) reportUnexpected(cause);
+        setFailed(true);
+        setPending(false);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [scope, refresh, retries, limit, since, asking]);
+
+  const retry = useCallback(() => setRetries((value) => value + 1), []);
+  const data = result && result.scope === scope ? result.data : null;
+  // Without an answer a failed read is the section's; with one it is the page's, inline.
+  const status: ReadStatus = unavailable
+    ? "unavailable"
+    : data
+      ? "ready"
+      : failed
+        ? "error"
+        : "loading";
+  return { status, data, retry, stale: data !== null && pending && !failed, failed };
 }
 
 /** Your library: how the scope spreads by genre, tempo, year, date added, rating and loudness. */

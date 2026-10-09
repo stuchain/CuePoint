@@ -42,6 +42,7 @@ function plays(overrides: Partial<StatisticsPlays> = {}): StatisticsPlays {
     since_clamped: false,
     history_from: "2026-10-08T09:12:00Z",
     last_read: "2026-10-08T09:12:00Z",
+    last_read_id: 1,
     tracks: [],
     artists: [],
     labels: [],
@@ -213,8 +214,8 @@ describe("the Statistics page (STATS-04)", () => {
     renderPage();
 
     const plays = await screen.findByRole("region", { name: "Plays" });
-    await waitFor(() => expect(within(plays).getByText(/3,120 tracks never played/)).toBeInTheDocument());
-    expect(within(plays).getByText(/41 with no play count/)).toBeInTheDocument();
+    await waitFor(() => expect(within(plays).getByText(/Never played: 3,120/)).toBeInTheDocument());
+    expect(within(plays).getByText(/Plays unknown: 41/)).toBeInTheDocument();
     expect(
       within(screen.getByRole("region", { name: "Your library" })).getByRole("heading", { level: 3, name: "Genre" }),
     ).toBeInTheDocument();
@@ -222,7 +223,7 @@ describe("the Statistics page (STATS-04)", () => {
       within(screen.getByRole("region", { name: "Health" })).getByText(/12 files missing/),
     ).toBeInTheDocument();
     // The whole library is the scope until the picker says otherwise.
-    expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ scope: "library" });
+    expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "library" });
     expect(mock("getStatisticsSpreads")).toHaveBeenCalledWith({ scope: "library" });
     expect(mock("getStatisticsHealth")).toHaveBeenCalledWith({ scope: "library" });
   });
@@ -244,20 +245,20 @@ describe("the Statistics page (STATS-04)", () => {
 
   it("says play history starts at the next refresh when there is none yet", async () => {
     install({
-      getStatisticsPlays: vi.fn().mockResolvedValue(plays({ history_from: null, last_read: null })),
+      getStatisticsPlays: vi.fn().mockResolvedValue(plays({ history_from: null, last_read: null, last_read_id: null })),
     });
     renderPage();
 
     const section = await screen.findByRole("region", { name: "Plays" });
     expect(await within(section).findByText("Play history starts at your next refresh")).toBeInTheDocument();
     // All-time counts are still the section's content.
-    expect(within(section).getByText(/3,120 tracks never played/)).toBeInTheDocument();
+    expect(within(section).getByText(/Never played: 3,120/)).toBeInTheDocument();
   });
 
   it("leaves the note out once there is history", async () => {
     renderPage();
     const section = await screen.findByRole("region", { name: "Plays" });
-    await within(section).findByText(/never played/);
+    await within(section).findByText(/Never played/);
     expect(screen.queryByText("Play history starts at your next refresh")).not.toBeInTheDocument();
   });
 
@@ -278,14 +279,14 @@ describe("the Statistics page (STATS-04)", () => {
 
     await userEvent.click(within(section).getByRole("button", { name: "Try again" }));
 
-    expect(await within(section).findByText(/never played/)).toBeInTheDocument();
+    expect(await within(section).findByText(/Never played/)).toBeInTheDocument();
     expect(read).toHaveBeenCalledTimes(2);
   });
 
   it("uses none of the words the app keeps out of its text", async () => {
     renderPage();
     const section = await screen.findByRole("region", { name: "Plays" });
-    await within(section).findByText(/never played/);
+    await within(section).findByText(/Never played/);
 
     expect(document.body.textContent).not.toMatch(/\b(engine|jobs?|quer(y|ies))\b/i);
   });
@@ -316,7 +317,7 @@ describe("the Statistics page (STATS-04)", () => {
       await userEvent.selectOptions(picker, "playlist:2");
 
       await waitFor(() =>
-        expect(mock("getStatisticsPlays")).toHaveBeenLastCalledWith({ scope: "playlist:2" }),
+        expect(mock("getStatisticsPlays")).toHaveBeenLastCalledWith({ limit: 10, scope: "playlist:2" }),
       );
       expect(mock("getStatisticsSpreads")).toHaveBeenLastCalledWith({ scope: "playlist:2" });
       expect(mock("getStatisticsHealth")).toHaveBeenLastCalledWith({ scope: "playlist:2" });
@@ -329,7 +330,7 @@ describe("the Statistics page (STATS-04)", () => {
       renderPage();
 
       await waitFor(() =>
-        expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ scope: "collection:10" }),
+        expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "collection:10" }),
       );
       expect(screen.getByRole("combobox", { name: "Scope" })).toHaveValue("collection:10");
     });
@@ -339,7 +340,7 @@ describe("the Statistics page (STATS-04)", () => {
       renderPage();
 
       await waitFor(() =>
-        expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ scope: "library" }),
+        expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "library" }),
       );
       expect(mock("getStatisticsPlays")).toHaveBeenCalledTimes(1);
       expect(screen.getByRole("combobox", { name: "Scope" })).toHaveValue("library");
@@ -366,7 +367,7 @@ describe("the Statistics page (STATS-04)", () => {
       renderPage();
 
       await waitFor(() =>
-        expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ scope: "playlist:41" }),
+        expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "playlist:41" }),
       );
       expect(screen.getByRole("combobox", { name: "Scope" })).toHaveValue("playlist:41");
     });
@@ -404,7 +405,7 @@ describe("the Statistics page (STATS-04)", () => {
       renderPage();
 
       await waitFor(() =>
-        expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ scope: "library" }),
+        expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "library" }),
       );
       expect(mock("getStatisticsPlays")).toHaveBeenCalledTimes(1);
     });
@@ -453,11 +454,11 @@ describe("the Statistics page (STATS-04)", () => {
       await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
       await userEvent.selectOptions(picker, "playlist:2");
       const section = screen.getByRole("region", { name: "Plays" });
-      await within(section).findByText(/222 tracks never played/);
+      await within(section).findByText(/Never played: 222/);
 
       await act(async () => late(plays({ never_played: count(111) })));
 
-      expect(within(section).getByText(/222 tracks never played/)).toBeInTheDocument();
+      expect(within(section).getByText(/Never played: 222/)).toBeInTheDocument();
       expect(section).not.toHaveTextContent("111");
     });
 
@@ -474,7 +475,7 @@ describe("the Statistics page (STATS-04)", () => {
         await waitFor(() => expect(within(picker).getAllByRole("option").length).toBeGreaterThan(1));
         await userEvent.selectOptions(picker, "playlist:2");
         await waitFor(() =>
-          expect(mock("getStatisticsPlays")).toHaveBeenLastCalledWith({ scope: "playlist:2" }),
+          expect(mock("getStatisticsPlays")).toHaveBeenLastCalledWith({ limit: 10, scope: "playlist:2" }),
         );
       } finally {
         get.mockRestore();
@@ -504,17 +505,17 @@ describe("the Statistics page (STATS-04)", () => {
       install({ getCollections: collections });
       renderPage();
       await waitFor(() =>
-        expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ scope: "collection:10" }),
+        expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "collection:10" }),
       );
       const before = mock("getStatisticsPlays").mock.calls.length;
 
       act(() => announceLibraryChange());
 
       await waitFor(() =>
-        expect(mock("getStatisticsPlays")).toHaveBeenLastCalledWith({ scope: "library" }),
+        expect(mock("getStatisticsPlays")).toHaveBeenLastCalledWith({ limit: 10, scope: "library" }),
       );
       const after = mock("getStatisticsPlays").mock.calls.slice(before);
-      expect(after).toEqual([[{ scope: "library" }]]);
+      expect(after).toEqual([[{ limit: 10, scope: "library" }]]);
     });
 
     const running = (id: string, type = "library_import") => ({

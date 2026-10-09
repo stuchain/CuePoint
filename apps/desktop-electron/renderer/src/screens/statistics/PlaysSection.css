@@ -1,0 +1,196 @@
+/*
+ * The Plays section (STATS-05): theme tokens only. Rows are buttons in real lists; the bar is
+ * whole blocks of the interface unit. The one motion is the `state` kind, behind its switch.
+ */
+.plays {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-sm);
+  width: 100%;
+  min-width: 0;
+}
+
+.plays__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-sm) var(--space-md);
+}
+
+.plays__title {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--font-size-md);
+}
+
+.plays__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plays__item {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.plays__row {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: 3ch minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  min-height: var(--hit-min);
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--border-width) solid var(--border-muted);
+  background: var(--bg-panel);
+  color: var(--fg-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.plays__item--stack .plays__row {
+  grid-template-columns: 3ch minmax(0, 1fr) auto;
+}
+
+.plays__row:hover {
+  background: var(--bg-panel-alt);
+}
+
+.plays__rank,
+.plays__count {
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-sm);
+  text-align: right;
+}
+
+.plays__count {
+  color: var(--fg-primary);
+  min-width: 4ch;
+}
+
+.plays__what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.plays__name,
+.plays__artist {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plays__artist {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.plays__bar {
+  display: block;
+  width: calc(var(--unit) * 24);
+  max-width: 30vw;
+  overflow: hidden;
+}
+
+.plays__fill {
+  display: block;
+  width: calc(var(--unit) * var(--blocks, 1));
+  height: var(--unit);
+  background: var(--accent-primary);
+}
+
+.plays__preview {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--hit-min);
+  border: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel);
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.plays__preview:hover {
+  background: var(--bg-panel-alt);
+}
+
+.plays__preview .cp-pixel-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.plays__keep,
+.plays__unplayed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+}
+
+.plays__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-info);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.plays__pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--unit) * 70), 1fr));
+  gap: var(--space-md);
+}
+
+.plays__ranking {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.plays__row:focus-visible,
+.plays__preview:focus-visible,
+.plays__link:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline-offset: var(--focus-ring-width);
+}
+
+/* A row whose rank moved steps once; the bar fades. Odd and even changes name different
+   animations, so a second change restarts it. */
+:root[data-motion-state] .plays__item[data-changed="1"] .plays__row {
+  animation:
+    cp-state-step-a var(--motion-base) steps(var(--motion-steps-short)),
+    cp-state-fade-a var(--motion-base) var(--motion-fade);
+}
+
+:root[data-motion-state] .plays__item[data-changed="0"] .plays__row {
+  animation:
+    cp-state-step-b var(--motion-base) steps(var(--motion-steps-short)),
+    cp-state-fade-b var(--motion-base) var(--motion-fade);
+}
+
+.plays--stale .plays__list,
+.plays--stale .plays__pair {
+  opacity: 0.5;
+}
+
+.plays__failed,
+.plays__date {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}

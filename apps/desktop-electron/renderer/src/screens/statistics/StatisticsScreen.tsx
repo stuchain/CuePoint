@@ -22,6 +22,8 @@ import { Select } from "../../components/Select";
 import { libraryImportState } from "../library/libraryLink";
 import { KeySummary } from "./KeySummary";
 import { SpreadsSection } from "./SpreadsSection";
+import { PlaysSection } from "./PlaysSection";
+import { loadPlaysChoice } from "./playsChoice";
 import { noHistoryState, noLibraryState } from "./statisticsEmpty";
 import {
   effectiveScope,
@@ -125,7 +127,8 @@ export function StatisticsScreen() {
   // Nothing is asked until this refresh's summary and trees are in: there is a library, and the
   // remembered scope has been judged against the trees as they are now.
   const reading = settled && !libraryEmpty ? scope : null;
-  const plays = useStatisticsPlays(reading, refresh);
+  const [playsChoice, setPlaysChoice] = useState(loadPlaysChoice);
+  const plays = useStatisticsPlays(reading, refresh, playsChoice);
   const spreads = useStatisticsSpreads(reading, refresh);
   const health = useStatisticsHealth(reading, refresh);
 
@@ -191,11 +194,14 @@ export function StatisticsScreen() {
                 {noHistory.hint && <p className="statistics-note">{noHistory.hint}</p>}
               </div>
             )}
-            <p className="statistics-note">
-              {plural(plays.data.never_played.count, "track")} never played
-              {" · "}
-              {plays.data.unknown.count.toLocaleString("en-US")} with no play count
-            </p>
+            <PlaysSection
+              data={plays.data}
+              choice={playsChoice}
+              onChoice={setPlaysChoice}
+              stale={plays.stale}
+              failed={plays.failed}
+              onRetry={plays.retry}
+            />
           </>
         )}
       </Section>

@@ -46,6 +46,7 @@ ANSWER_KEYS = {
     "since_clamped",
     "history_from",
     "last_read",
+    "last_read_id",
     "tracks",
     "artists",
     "labels",
