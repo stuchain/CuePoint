@@ -11,6 +11,8 @@ written by a newer CuePoint is refused rather than damaged.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
@@ -277,6 +279,89 @@ class TestDowngradeProtection:
         with pytest.raises(DatabaseError) as exc:
             MigrationRunner(db, migrations=[_migration(1)]).migrate()
         assert "newer version of CuePoint" in exc.value.message
+
+
+def _statements(db: DatabaseService) -> list[str]:
+    """Record every statement this thread's connection runs from now on."""
+    ran: list[str] = []
+    db.connect().set_trace_callback(ran.append)
+    return ran
+
+
+@pytest.mark.unit
+class TestACurrentSchemaIsCheckedOnce:
+    """A runner is made, and migrate() called, for every repository the engine
+    resolves: several per request. Once the schema is known current it is not
+    asked again until the file may have been replaced (DEC-223)."""
+
+    def test_a_second_migrate_on_a_current_schema_runs_no_statement(self, db):
+        migrations = [_migration(1, "CREATE TABLE a (id INTEGER);"), _migration(2)]
+        MigrationRunner(db, migrations=migrations).migrate()
+        ran = _statements(db)
+
+        assert MigrationRunner(db, migrations=migrations).migrate() == []
+        assert ran == []
+
+    def test_a_schema_found_current_without_migrating_is_remembered_too(self, db):
+        migrations = [_migration(1), _migration(2)]
+        MigrationRunner(db, migrations=migrations).migrate()
+        fresh = DatabaseService(db_path=db.db_path)
+        try:
+            assert MigrationRunner(fresh, migrations=migrations).migrate() == []
+            ran = _statements(fresh)
+            assert MigrationRunner(fresh, migrations=migrations).migrate() == []
+            assert ran == []
+        finally:
+            fresh.close_all()
+
+    def test_a_runner_with_other_migrations_still_asks(self, db):
+        MigrationRunner(db, migrations=[_migration(1)]).migrate()
+
+        applied = MigrationRunner(
+            db, migrations=[_migration(1), _migration(2)]
+        ).migrate()
+
+        assert [m.version for m in applied] == [2]
+        with pytest.raises(DatabaseError) as exc:
+            MigrationRunner(db, migrations=[_migration(1)]).migrate()
+        assert exc.value.error_code == "DB_SCHEMA_TOO_NEW"
+
+    def test_a_failed_migration_is_not_taken_for_a_current_schema(self, db):
+        broken = [_migration(1), _migration(2, "INSERT INTO nope VALUES (1);")]
+        with pytest.raises(DatabaseError):
+            MigrationRunner(db, migrations=broken).migrate()
+        with pytest.raises(DatabaseError):
+            MigrationRunner(db, migrations=broken).migrate()
+
+    def test_a_restore_makes_the_next_runner_check_the_file_again(self, db):
+        """A restore replaces the file, perhaps with a backup from before the
+        last migration: that migration has to run again on the restored one."""
+        from cuepoint.services.backup_service import BackupService
+
+        first = _migration(1, "CREATE TABLE a (id INTEGER);")
+        second = _migration(2, "CREATE TABLE b (id INTEGER);")
+        MigrationRunner(db, migrations=[first]).migrate()
+        backups = BackupService(db)
+        older = backups.create_backup()
+        MigrationRunner(db, migrations=[first, second]).migrate()
+        assert "b" in _tables(db)
+
+        backups.restore(Path(older.path))
+
+        assert "b" not in _tables(db)
+        applied = MigrationRunner(db, migrations=[first, second]).migrate()
+        assert [m.version for m in applied] == [2]
+        assert "b" in _tables(db)
+
+    def test_close_all_alone_makes_the_next_runner_check_again(self, db):
+        migrations = [_migration(1)]
+        MigrationRunner(db, migrations=migrations).migrate()
+        db.close_all()
+        ran = _statements(db)
+
+        MigrationRunner(db, migrations=migrations).migrate()
+
+        assert any(SCHEMA_VERSION_TABLE in statement for statement in ran)
 
 
 @pytest.mark.unit

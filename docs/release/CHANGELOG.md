@@ -493,6 +493,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   take seconds, and more than 5 s on Windows, while a waveform analysis or a match ran: each
   request waited hundreds of times for the busy thread to hand back Python's interpreter lock. The
   lock is now handed over within 0.5 ms (DEC-221).
+- **A search during a match answers sooner still.** Each request checked that the library's
+  schema was current, four times, and opened its own database connection: 16 of a search's 22
+  statements, each a wait for a busy job thread. The schema is now checked once (again after a
+  restore), and a request takes over a connection an earlier one finished with. The engine also
+  lets the app close each connection first, so its port no longer collects closed connections
+  that on macOS could make a new one take a second to connect (DEC-223).
 - **Scrolling a long track table is smooth on slower Macs again.** Three things made one frame of
   a fast scroll run past 50 ms on the Mac runners, most often at the default 1.5× size. On a
   display that is not high-resolution, a track table scrolled on the main thread, and every row on

@@ -6263,3 +6263,60 @@ timed, so the waiting thread asks for the lock at once. `src/tests/regression/
 test_regression_engine_beside_busy_thread.py` fails on the old interval.
 
 **Decided with**: Claude (CI fix thread, under the rule not to raise timeouts to hide slowness) · **Date**: 2026-10-09
+
+---
+
+## DEC-223 — A Request Checks the Schema Once, Takes Over a Connection, and Lets the Client Close First
+
+**Status**: Approved · **Related**: DEC-221, CLEAN-03, CLEAN-14, CI fix
+
+**Decision**: Three things an engine request no longer does.
+
+1. **Ask whether the schema is current.** `MigrationRunner.migrate()` returns at once when the
+   database service already found exactly its migrations applied (`schema_known_current`). The
+   service forgets that in `close_all()`, which a restore calls before it replaces the file, and
+   a finding made on a connection of an earlier generation is never recorded.
+2. **Open its own SQLite connection.** `DatabaseService.connect()` gives a thread with none the
+   connection of a thread that has ended, when it is of the current generation and holds no open
+   transaction. Up to `IDLE_CONNECTIONS_KEPT` (8) more stay for the threads after it; the rest,
+   and any from before a `close_all()`, are closed as before.
+3. **Close the connection before the client does.** Once an answer that said its length is sent,
+   the engine waits up to `CLIENT_CLOSES_FIRST_SECONDS` (0.5 s) for the client to close first.
+   An event stream, whose end is the close, is closed at once as before.
+
+**Reason**: The 1,000-track match test still failed on GitHub's macOS runners after DEC-221: a
+search took 1.06 s (arm64, 3.12) and 1.13 s (3.11) to answer, and 1.02 s on Intel, 1.00 s of it to
+connect. Traced on Linux, one search ran 22 statements: 16 were four repositories' `migrate()`
+checks (two `CREATE TABLE IF NOT EXISTS` and two reads of `schema_version` each), and every request
+thread first opened a connection (a file open, four pragmas, a read of `sqlite_master`, two SQL
+functions). Beside a busy thread each statement, and each row, is a wait for the interpreter's lock.
+Now the search runs 6 statements on a connection it did not open. The match test with two busy
+threads started before the engine, measured A/B on the same machine (Python 3.12, two runs each):
+median 0.46 s → 0.32 s, slowest 0.67–0.70 s → 0.47–0.52 s. With no busy thread: median 10 ms →
+7 ms. What remains is the two reads of 50 rows each: SQLite gives the lock up for every row.
+
+The 1.00 s connect is not the engine accepting slowly. The test has one connection open at a time,
+so the listen queue (128, `ThreadingHTTPServer.request_queue_size`, used by `run_engine` and
+`start_engine_thread` alike) holds at most one; and the kernel completes a handshake without
+`accept()`, so a starved accept thread cannot delay `connect()` (on Linux, 50 connects to a listener
+that never accepts take 0.1 ms at most). A connect of exactly 1.00 s is a SYN sent again after
+macOS's 1 s timeout. The engine closed every connection first (HTTP/1.0), so each request left a
+TIME_WAIT on the engine's own port: on Linux, 18 of 20 requests' TIME_WAITs were the engine's.
+macOS picks a client's next port without regard to those, and its sequence numbers are random, so
+a SYN from such a port is answered as the old connection about half the time; the client resets and
+retries a second later. With the client closing first, all 20 TIME_WAITs are the client's, on ports
+its own connects avoid. This reading is the likeliest one but could not be reproduced on Linux, whose
+connects skip ports held in TIME_WAIT.
+
+**Implications**: Migrations added while the engine runs are never applied by it; they never were,
+being part of the build. A second process migrating the same file while the engine runs is no longer
+noticed until the engine restarts or restores. A connection lives as long as the engine, not one
+request. A client that reads an answer until the connection closes, rather than by its length, waits
+up to 0.5 s longer for the close; the app's client and the Python clients close at once. The
+mechanism is pinned by `test_migration_runner.py::TestACurrentSchemaIsCheckedOnce` (no statement
+on a second `migrate()`, checked again after a restore), `test_database_service.py`
+(`TestConcurrency`: handed on, never shared by live threads, never across `close_all()` or an
+open transaction) and `test_engine_client_closes_first.py`.
+
+**Decided with**: Claude (CI fix thread, under the rule not to loosen the 1.0 s bound or skip the
+test) · **Date**: 2026-10-09

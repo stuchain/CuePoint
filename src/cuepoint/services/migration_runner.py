@@ -120,6 +120,15 @@ class MigrationRunner(IMigrationRunner):
                 or a migration fails. On failure the failing migration is rolled
                 back; migrations applied before it remain applied.
         """
+        # Once this runner's migrations are known applied, asking again is four
+        # statements for every repository resolved, which is several for every
+        # engine request, each a wait for the interpreter's lock beside a busy
+        # thread (DEC-223). The database service forgets it when a restore
+        # replaces the file.
+        versions = tuple(m.version for m in self._migrations)
+        if self._db.schema_known_current(versions):
+            return []
+
         current = self.current_version()
         target = self.target_version
 
@@ -141,6 +150,7 @@ class MigrationRunner(IMigrationRunner):
 
         pending = self.pending_migrations()
         if not pending:
+            self._db.note_schema_current(versions)
             return []
 
         applied: List[Migration] = []
@@ -153,6 +163,7 @@ class MigrationRunner(IMigrationRunner):
                 migration.version,
                 migration.description,
             )
+        self._db.note_schema_current(versions)
         return applied
 
     def _apply(self, migration: Migration) -> bool:

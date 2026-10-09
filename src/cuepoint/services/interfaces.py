@@ -705,6 +705,18 @@ class IDatabaseService(ABC):
         """Close every connection opened by this service, across all threads."""
         ...
 
+    def schema_known_current(self, versions: Tuple[int, ...]) -> bool:
+        """Whether these migrations were found all applied since the file was last replaced.
+
+        Lets a migration runner skip asking the database again (DEC-223). A
+        service that does not remember says no, and every runner asks.
+        """
+        return False
+
+    def note_schema_current(self, versions: Tuple[int, ...]) -> None:
+        """Remember that these migrations are all applied (DEC-223)."""
+        return None
+
 
 class IBackupService(ABC):
     """Interface for library database backup and restore (DEC-009)."""

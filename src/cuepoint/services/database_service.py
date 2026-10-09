@@ -14,7 +14,9 @@ Design notes:
 - **One connection per thread.** CuePoint is thread-based throughout
   (``ThreadPoolExecutor`` in the processing pipeline, a thread per engine job,
   and ``ThreadingHTTPServer`` for the engine API). SQLite connections are not
-  safe to share across threads, so each thread lazily gets its own.
+  safe to share across threads, so each thread lazily gets its own. A thread
+  that has ended hands its connection on to the next thread that asks
+  (DEC-223): never one two live threads hold.
 - **WAL journal mode**, so readers do not block the writer. This matters
   because engine job threads and API request threads read and write
   concurrently.
@@ -32,7 +34,7 @@ import sqlite3
 import threading
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator, List, Optional, Tuple
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
 from cuepoint.services.interfaces import IConfigService, IDatabaseService
@@ -60,6 +62,12 @@ def live_threads() -> set[threading.Thread]:
 
 
 DATABASE_FILENAME = "cuepoint.db"
+
+#: How many connections of ended threads are kept open for the next threads to
+#: take over (DEC-223). The engine answers each request on a thread of its own;
+#: a page opening sends a handful at once, and each one that finds a connection
+#: here skips opening one. Any more than this are closed.
+IDLE_CONNECTIONS_KEPT = 8
 
 
 def default_database_path() -> Path:
@@ -109,13 +117,19 @@ class DatabaseService(IDatabaseService):
         self._resolved_timeout: Optional[float] = None
 
         # Connections are per-thread; the registry lets close_all() reach them,
-        # and records which thread each belongs to (see close_all()).
+        # and records which thread each belongs to (see close_all()) and the
+        # generation it was opened in.
         self._local = threading.local()
-        self._connections: list[tuple[sqlite3.Connection, threading.Thread]] = []
+        self._connections: List[Tuple[sqlite3.Connection, threading.Thread, int]] = []
         self._lock = threading.Lock()
         # Bumped by close_all(), so a thread whose connection it had to leave
         # open closes that one itself and opens a new one on its next use.
         self._generation = 0
+        # The migrations a runner found already applied, and the generation of
+        # the connection that found them (DEC-223). close_all() is what a
+        # restore calls before it replaces the file, and the new generation it
+        # starts makes this stale.
+        self._schema_current: Optional[Tuple[Tuple[int, ...], int]] = None
 
     def _resolve_path(self) -> Path:
         if self._explicit_path is not None:
@@ -177,15 +191,20 @@ class DatabaseService(IDatabaseService):
             # connection to it: close it here, on its own thread, and reopen.
             self.close()
 
-        # Every connection whose thread has ended is closed here, on the way to
-        # opening a new one. The engine serves each HTTP request on a thread of
-        # its own, so without this the registry — and the process's open file
-        # handles — grew by one connection per request for as long as the
-        # engine ran, and nothing but a restore or a shutdown ever gave one
-        # back. Reaping on open rather than on a timer keeps it to the moment a
-        # connection is already being paid for, and an ended thread's
-        # connection is safe to close for the reason close_all() states.
-        self._close_ended_threads()
+        # A thread that has ended hands its connection to this one (DEC-223).
+        # The engine serves each HTTP request on a thread of its own, and
+        # opening a connection is a file open, four pragmas and a read of the
+        # schema: a request that opened its own paid for that every time, and
+        # beside a busy thread each statement is a wait for the interpreter's
+        # lock. An ended thread cannot be in the middle of a statement and can
+        # never ask for its connection again, for the reason close_all() gives.
+        # Connections of ended threads beyond the few kept are closed here, so
+        # the registry and the process's file handles do not grow with every
+        # request.
+        adopted = self._take_ended_threads_connection()
+        if adopted is not None:
+            self._local.connection, self._local.generation = adopted
+            return adopted[0]
 
         # Opening is serialized across threads. Switching a database to WAL
         # needs a brief exclusive lock, and SQLite reports SQLITE_BUSY for a
@@ -198,8 +217,10 @@ class DatabaseService(IDatabaseService):
         # no-op.
         with self._lock:
             connection = self._open_connection()
-            self._connections.append((connection, threading.current_thread()))
             generation = self._generation
+            self._connections.append(
+                (connection, threading.current_thread(), generation)
+            )
         self._local.connection = connection
         self._local.generation = generation
         return connection
@@ -382,30 +403,74 @@ class DatabaseService(IDatabaseService):
         except sqlite3.Error:
             pass
 
-    def _close_ended_threads(self) -> None:
-        """Close the connections of threads that have ended.
+    def _take_ended_threads_connection(
+        self,
+    ) -> Optional[Tuple[sqlite3.Connection, int]]:
+        """Give the calling thread a connection a thread that has ended left.
 
-        The registry's own housekeeping: a thread that has ended cannot be in
-        the middle of a statement and can never ask for its connection again,
-        so its connection is closeable from anywhere and useful to no one.
+        The registry's own housekeeping too: a thread that has ended cannot be
+        in the middle of a statement and can never ask for its connection
+        again, so its connection is anyone's. One of the current generation
+        with no transaction open goes to the caller; up to
+        :data:`IDLE_CONNECTIONS_KEPT` more stay for the threads after it; the
+        rest, and any of an earlier generation, are closed.
+
+        Returns:
+            The connection and its generation, or None when there is none to take.
         """
+        current = threading.current_thread()
+        taken: Optional[Tuple[sqlite3.Connection, int]] = None
+        closing: List[sqlite3.Connection] = []
         with self._lock:
             live = live_threads()
-            ended = [
-                connection
-                for connection, owner in self._connections
-                if owner not in live
-            ]
-            if not ended:
-                return
-            self._connections = [
-                entry for entry in self._connections if entry[0] not in ended
-            ]
-        for connection in ended:
+            kept = 0
+            entries: List[Tuple[sqlite3.Connection, threading.Thread, int]] = []
+            for connection, owner, generation in self._connections:
+                if owner in live:
+                    entries.append((connection, owner, generation))
+                    continue
+                reusable = (
+                    generation == self._generation and not connection.in_transaction
+                )
+                if reusable and taken is None:
+                    taken = (connection, generation)
+                    entries.append((connection, current, generation))
+                elif reusable and kept < IDLE_CONNECTIONS_KEPT:
+                    kept += 1
+                    entries.append((connection, owner, generation))
+                else:
+                    closing.append(connection)
+            self._connections = entries
+        for connection in closing:
             try:
                 connection.close()
             except sqlite3.Error:
                 pass
+        return taken
+
+    def schema_known_current(self, versions: Tuple[int, ...]) -> bool:
+        """Whether a runner with exactly these migrations found them all applied.
+
+        True only for the generation the finding was made in: a restore (or
+        anything else that calls :meth:`close_all`) starts a new one, and the
+        next runner checks the file again (DEC-223).
+        """
+        mark = self._schema_current
+        return mark is not None and mark == (tuple(versions), self._generation)
+
+    def note_schema_current(self, versions: Tuple[int, ...]) -> None:
+        """Record that these migrations are all applied, as this thread's connection saw.
+
+        Ignored when that connection is of an earlier generation than the
+        service's, so a check that raced a restore is not taken for the
+        restored file.
+        """
+        generation = getattr(self._local, "generation", None)
+        if getattr(self._local, "connection", None) is None or generation is None:
+            return
+        with self._lock:
+            if generation == self._generation:
+                self._schema_current = (tuple(versions), generation)
 
     def close_all(self) -> None:
         """Close every connection no thread can still be using.
@@ -423,10 +488,11 @@ class DatabaseService(IDatabaseService):
         current = threading.current_thread()
         with self._lock:
             self._generation += 1
+            self._schema_current = None
             live = live_threads()
             closable = [
                 connection
-                for connection, owner in self._connections
+                for connection, owner, _ in self._connections
                 if owner is current or owner not in live
             ]
             self._connections = [

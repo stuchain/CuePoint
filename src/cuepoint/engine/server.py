@@ -6,6 +6,8 @@ import json
 import logging
 import os
 import re
+import select
+import socket
 import socketserver
 import sys
 import threading
@@ -247,6 +249,45 @@ def get_job_store() -> JobStore:
 #: engine's bodies are small JSON; past this the connection is let reset.
 _MAX_DISCARDED_BODY = 16 * 1024 * 1024
 
+#: How long the engine waits, once an answer that said its length is sent, for
+#: the client to close the connection first (DEC-223). The client has the whole
+#: answer by then; the wait only decides which side keeps the closed
+#: connection's TIME_WAIT. Past it the engine closes first, as it always did.
+#: The app's client closes as soon as it has the body; one that reads until the
+#: connection closes waits this long for its end.
+CLIENT_CLOSES_FIRST_SECONDS = 0.5
+
+
+def wait_for_client_to_close(
+    connection: socket.socket, timeout: Optional[float] = None
+) -> bool:
+    """Wait for the client to close its end of ``connection`` before the engine does.
+
+    The side that closes a TCP connection first keeps it in TIME_WAIT, 30 s on
+    macOS. The engine answers HTTP/1.0 and used to close first, so every request
+    left a TIME_WAIT on the engine's own port. A client's next connect from a
+    port one of those still holds meets the old connection, not the listener:
+    on macOS, whose sequence numbers are random, that is answered with the old
+    connection's ACK, the client resets it and sends its SYN again a second
+    later. That is the likeliest reading of a CI request that took exactly
+    1.00 s to connect from a client with one connection open (DEC-223). A client that closes
+    first keeps the TIME_WAIT on its own port, which its own connects avoid.
+
+    Args:
+        connection: The request's socket, its answer already sent.
+        timeout: Seconds to wait; :data:`CLIENT_CLOSES_FIRST_SECONDS` when None.
+
+    Returns:
+        True when the client closed (or sent something nothing will read)
+        before ``timeout``; False when it did not, or the socket is unusable.
+    """
+    wait = CLIENT_CLOSES_FIRST_SECONDS if timeout is None else timeout
+    try:
+        readable, _, _ = select.select([connection], [], [], wait)
+    except (OSError, ValueError):
+        return False
+    return bool(readable)
+
 
 def report_connection_error(request: Any, client_address: Any) -> None:
     """What the engine's server does with an exception that escaped a request thread.
@@ -440,10 +481,29 @@ def make_handler(
         #: The request's body once read; ``None`` until then. Reset per request.
         _body: Optional[bytes] = None
 
+        #: Whether the answer said how long it is, so the client knows where it
+        #: ends without the connection closing. Reset per request.
+        _length_declared: bool = False
+
         def handle_one_request(self) -> None:
             self._body = None
             self._response_started = False
+            self._length_declared = False
             super().handle_one_request()
+
+        def send_header(self, keyword: str, value: str) -> None:
+            if keyword.lower() == "content-length":
+                self._length_declared = True
+            super().send_header(keyword, value)
+
+        def finish(self) -> None:
+            super().finish()
+            # The client closes first, so the TIME_WAIT is on its port and not
+            # the engine's (DEC-223). Only for an answer that said its length:
+            # one that did not, a job's event stream, ends when the engine
+            # closes, and a client reading it would wait for that.
+            if self._length_declared and self.close_connection:
+                wait_for_client_to_close(self.connection)
 
         def _content_length(self) -> int:
             try:

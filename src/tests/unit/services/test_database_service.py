@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+import time
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -23,6 +24,7 @@ import pytest
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
 from cuepoint.services.database_service import (
     DATABASE_FILENAME,
+    IDLE_CONNECTIONS_KEPT,
     DatabaseService,
     default_database_path,
 )
@@ -369,6 +371,10 @@ class TestConcurrency:
         connections = []
         errors: list[BaseException] = []
         lock = threading.Lock()
+        # Every worker stays alive until all four have connected: a thread that
+        # has ended hands its connection on (DEC-223), and what must never
+        # happen is two live threads sharing one.
+        all_connected = threading.Barrier(4, timeout=30)
 
         def worker():
             try:
@@ -376,9 +382,11 @@ class TestConcurrency:
             except BaseException as exc:  # noqa: BLE001 - surfaced via assert
                 with lock:
                     errors.append(exc)
+                all_connected.abort()
                 return
             with lock:
                 connections.append(conn)
+            all_connected.wait()
 
         threads = [threading.Thread(target=worker) for _ in range(4)]
         for t in threads:
@@ -403,7 +411,9 @@ class TestConcurrency:
         when those threads ended, so a session's open connections — and the
         process's file handles — only ever grew: a few thousand after an hour
         of the desktop app polling for job status. Each open is also a file
-        open and three pragmas, so the growth was not free either.
+        open and three pragmas, so the growth was not free either. Now the next
+        thread takes the ended one's connection over (DEC-223): eight threads
+        one after another use one connection, and the thread after them too.
         """
         opened: list[sqlite3.Connection] = []
 
@@ -416,15 +426,89 @@ class TestConcurrency:
             thread.join(timeout=30)
             assert not thread.is_alive(), "a worker thread hung"
 
-        # This thread's own connection is opened last, so the reaping it does
-        # cannot be mistaken for the threads having tidied up after themselves.
         mine = service.connect()
 
         assert len(opened) == 8
-        for connection in opened:
-            with pytest.raises(sqlite3.ProgrammingError):
-                connection.execute("SELECT 1")
+        assert all(connection is mine for connection in opened)
         assert mine.execute("SELECT 1").fetchone()[0] == 1
+
+    def test_only_a_few_ended_threads_connections_are_kept(self, service):
+        """Past the few kept for the next threads, an ended thread's connection
+        is closed, so a burst of requests leaves no more open than that."""
+        count = IDLE_CONNECTIONS_KEPT + 5
+        opened: list[sqlite3.Connection] = []
+        lock = threading.Lock()
+        all_connected = threading.Barrier(count, timeout=30)
+
+        def worker() -> None:
+            connection = service.connect()
+            with lock:
+                opened.append(connection)
+            all_connected.wait()
+
+        threads = [threading.Thread(target=worker) for _ in range(count)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=30)
+        assert len({id(c) for c in opened}) == count
+
+        mine = service.connect()
+
+        assert mine in opened
+        closed = 0
+        for connection in opened:
+            try:
+                connection.execute("SELECT 1")
+            except sqlite3.ProgrammingError:
+                closed += 1
+        assert closed == count - 1 - IDLE_CONNECTIONS_KEPT
+
+    def test_an_ended_threads_open_transaction_is_never_handed_on(self, service):
+        """A thread that ended inside a transaction it never finished leaves a
+        connection whose next statement would join it: closed, not reused."""
+        left: list[sqlite3.Connection] = []
+
+        def abandons_a_transaction() -> None:
+            connection = service.connect()
+            connection.execute("BEGIN")
+            left.append(connection)
+
+        thread = threading.Thread(target=abandons_a_transaction)
+        thread.start()
+        thread.join(timeout=30)
+
+        mine = service.connect()
+
+        assert mine is not left[0]
+        assert not mine.in_transaction
+        with pytest.raises(sqlite3.ProgrammingError):
+            left[0].execute("SELECT 1")
+
+    def test_a_connection_from_before_close_all_is_never_handed_on(self, service):
+        """A restore calls close_all() before it replaces the file: no thread
+        afterwards is given a connection opened to the file it replaced."""
+        release = threading.Event()
+        left: list[sqlite3.Connection] = []
+
+        def holds_on() -> None:
+            left.append(service.connect())
+            release.wait(30)
+
+        thread = threading.Thread(target=holds_on)
+        thread.start()
+        while not left:
+            time.sleep(0.001)
+        # Still alive, so close_all() has to leave its connection to it.
+        service.close_all()
+        release.set()
+        thread.join(timeout=30)
+
+        mine = service.connect()
+
+        assert mine is not left[0]
+        with pytest.raises(sqlite3.ProgrammingError):
+            left[0].execute("SELECT 1")
 
     def test_many_threads_open_a_fresh_database_simultaneously(self, tmp_path):
         """First launch: several threads reach for a brand-new database at once.
