@@ -15,7 +15,7 @@ type Timeline = gsap.core.Timeline;
  */
 
 /** Where the picture is centered: the camera's eye, in the space above the captions. */
-const CENTER = { wide: 455, tall: 800 } as const;
+const CENTER = { wide: 455, tall: 770 } as const;
 
 /** A place in the world: where a panel sits and which way it faces (degrees). */
 interface Place {
@@ -69,7 +69,7 @@ type View = Partial<Place>;
 /** The tween values that put the camera at `place`, seen with `view`. */
 function camera(format: FormatId, place: Place, view: View = {}): { turn: gsap.TweenVars; tilt: gsap.TweenVars; move: gsap.TweenVars } {
   // on the phone the whole picture sits a little left, clear of the buttons down the right edge
-  const shift = format === "tall" ? -40 : 0;
+  const shift = format === "tall" ? -20 : 0;
   return {
     turn: { rotationY: -place.ry + (view.ry ?? 0) },
     tilt: { rotationX: -place.rx + (view.rx ?? 0) },
@@ -122,7 +122,7 @@ const IN = { scale: 1, opacity: 1, duration: BEAT / 2, ease: "steps(3)" };
 const FRAME = {
   wide: { window: { width: 1560, height: 770 }, caption: 905 },
   // inside Reels' and TikTok's safe zone (y 220 to 1500, clear of the buttons on the right)
-  tall: { window: { width: 920, height: 1000 }, caption: 1260 },
+  tall: { window: { width: 920, height: 1000 }, caption: 1310 },
 } as const;
 
 function windowShell(format: FormatId, active: string, page: string): HTMLElement {
@@ -489,7 +489,8 @@ function buildEnd(format: FormatId, tl: Timeline): HTMLElement {
         <img class="end-mark" src="${markUrl}" alt="" style="width:${markPx}px;height:${markPx}px" />
         <h1>${letters}</h1>
         <p>Your Rekordbox library, cleaned up and ready for the booth.</p>
-        <span class="px-button url">Free. usecuepoint.com</span>
+        <p class="free">Free and open source.</p>
+        <span class="px-button url">usecuepoint.com</span>
       </div>
     </div>`);
   const { start } = shot("end");
@@ -502,7 +503,8 @@ function buildEnd(format: FormatId, tl: Timeline): HTMLElement {
   // a slow push for the whole hold, so the last frames still move
   tl.fromTo(el.querySelector(".end-panel"), { scale: 0.97 }, { scale: 1.03, duration: shot("end").end - start, ease: "none" }, start);
   tl.fromTo(el.querySelector("p"), { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: BEAT, ease: "power2.out" }, start + BEAT * 2);
-  tl.fromTo(el.querySelector(".url"), { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: BEAT, ease: "power2.out" }, start + BEAT * 3);
+  tl.fromTo(el.querySelector(".free"), { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: BEAT, ease: "power2.out" }, start + BEAT * 2.75);
+  tl.fromTo(el.querySelector(".url"), { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: BEAT, ease: "power2.out" }, start + BEAT * 3.5);
   return el;
 }
 
@@ -556,27 +558,30 @@ function tour(tl: Timeline, cam: Camera, format: FormatId): void {
   const clean = shot("clean");
   const p = (id: PanelId): Place => placeOf(format, id);
   // the arrival on the drop: from back and to the left, settling in three quarters of a beat
+  // on the phone the panels settle dead frontal: a narrow frame shows any lean as a slant
+  const wide = format === "wide";
+  const k = wide ? 1 : 0;
   const c0 = camera(format, p("clean"), { z: -1800, x: -700, y: 200, ry: -30, rx: 8 });
   tl.set(cam.turn, c0.turn, clean.start);
   tl.set(cam.tilt, c0.tilt, clean.start);
   tl.set(cam.move, c0.move, clean.start);
-  flyTo(tl, cam, format, p("clean"), { z: -130, ry: -4, rx: 2 }, clean.start, BEAT * 0.75, "power3.out");
+  flyTo(tl, cam, format, p("clean"), { z: -130, ry: -4 * k, rx: 2 * k }, clean.start, BEAT * 0.75, "power3.out");
   flyTo(tl, cam, format, p("clean"), { z: -100 }, clean.start + BEAT * 0.75, BEAT * 2, "sine.inOut");
   // the push in on the table as Apply fills it
-  const wide = format === "wide";
   const pushed: View = { z: wide ? 120 : 60, x: wide ? -60 : 0, y: wide ? -10 : -20 };
-  flyTo(tl, cam, format, p("clean"), { ...pushed, ry: 3, rx: 2 }, clean.start + BEAT * 2.75, BEAT * 1.25, "power3.inOut");
-  flyTo(tl, cam, format, p("clean"), { ...pushed, z: pushed.z! + 30, ry: -2 }, clean.start + BEAT * 4, clean.end - LEAD - (clean.start + BEAT * 4), "sine.inOut");
+  flyTo(tl, cam, format, p("clean"), { ...pushed, ry: 3 * k, rx: 2 * k }, clean.start + BEAT * 2.75, BEAT * 1.25, "power3.inOut");
+  flyTo(tl, cam, format, p("clean"), { ...pushed, z: pushed.z! + 30, ry: -2 * k }, clean.start + BEAT * 4, clean.end - LEAD - (clean.start + BEAT * 4), "sine.inOut");
   // then one panel a bar: a fast flight, arriving a little off-axis, and a drift to frontal
   const sides = [1, -1, 1, -1, 1];
   TOUR.slice(1).forEach((id, i) => {
     const { start, end } = shot(id);
     const side = sides[i]!;
-    const near = SETTLE[id];
-    flyTo(tl, cam, format, p(id), { z: near - 120, ry: 8 * side, rx: -3 * side }, start - LEAD, FLY, "power3.inOut");
+    // the phone frame is narrow: every panel settles a step further back there
+    const near = wide ? SETTLE[id] : id === "keys" ? 200 : SETTLE[id] - 50;
+    flyTo(tl, cam, format, p(id), { z: near - 120, ry: 8 * side * k, rx: -3 * side * k }, start - LEAD, FLY, "power3.inOut");
     const last = id === "export";
     const driftEnd = last ? end - BEAT : end - LEAD;
-    flyTo(tl, cam, format, p(id), { z: near, ry: -2 * side }, start + LEAD, driftEnd - start - LEAD, "sine.inOut");
+    flyTo(tl, cam, format, p(id), { z: near, ry: -2 * side * k }, start + LEAD, driftEnd - start - LEAD, "sine.inOut");
     // the way out: straight on through the last panel, into the end card
     if (last) flyTo(tl, cam, format, p(id), { z: near + 2800, y: -160 }, driftEnd, BEAT, "power3.in");
   });

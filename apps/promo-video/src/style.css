@@ -882,6 +882,12 @@ canvas.scene3d {
   font-size: 42px;
 }
 
+.end-card .free {
+  font-size: 54px;
+  color: var(--bg-app);
+  background: var(--accent-success);
+}
+
 .end-card .url {
   font-size: 48px;
   padding: 12px 34px 16px;
