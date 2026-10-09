@@ -379,9 +379,11 @@ class TestTheClientAnswersFromTheFile:
             },
         )
         monkeypatch.setenv(ENV_VAR, str(path))
-        began = time.monotonic()
+        # perf_counter, not monotonic: on Windows monotonic ticks every 15.6 ms,
+        # so a 150 ms wait could read as 0.1399 s.
+        began = time.perf_counter()
         assert client().get("catalog/genres/") == {"results": []}
-        assert time.monotonic() - began >= 0.14
+        assert time.perf_counter() - began >= 0.14
 
     def test_no_token_is_still_refused_before_the_file_is_asked(self, api):
         with pytest.raises(BeatportAPIError) as refused:
