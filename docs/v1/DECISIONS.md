@@ -4540,6 +4540,12 @@ value, a pulse on something new (DEC-154).
 Of the two shared-element transitions PAGES-12 named, only the search result into its Library row
 is built. A Set's entry into the Inspector is not (DEC-219).
 
+### Amended (2026-10-09, PAGES-13) — the defaults: every kind on
+
+The user chose all ten kinds on by default, to judge each one in daily use and switch
+off any that do not earn their place in Settings. The recommendation to leave scroll animations and
+shared-element transitions off was not taken. Kinds a user already switched stay as they set them.
+
 ---
 
 ## DEC-135 — Motion Moves in Pixel Steps; Fades Stay Smooth

@@ -121,7 +121,7 @@ export type MotionOverrides = Partial<MotionSwitches>;
 
 export const MOTION_STORAGE_KEY = "cuepoint-motion";
 
-/** Every kind on, until PAGES-13 settles the defaults after testing. */
+/** Every kind on: the user's pick after testing them all (PAGES-13, DEC-134 amended 2026-10-09). */
 export const MOTION_DEFAULTS: MotionSwitches = {
   micro: true,
   interaction: true,

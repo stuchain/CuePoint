@@ -51,7 +51,7 @@ describe("the ten kinds", () => {
     }
   });
 
-  it("all default to on", () => {
+  it("all default to on, the user's pick (DEC-134, 2026-10-09)", () => {
     expect(Object.keys(MOTION_DEFAULTS)).toHaveLength(10);
     expect(Object.values(MOTION_DEFAULTS).every((v) => v === true)).toBe(true);
   });
