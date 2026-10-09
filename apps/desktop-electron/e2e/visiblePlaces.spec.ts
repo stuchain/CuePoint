@@ -705,11 +705,18 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await use(win, matching.getByRole("button", { name: "Start matching" }), "Start matching");
     await expect(matching).toBeHidden({ timeout: 30_000 });
     await expect.poll(() => jobsOf(win, "clean_match"), { timeout: 30_000 }).toBeGreaterThan(before);
-    // Nothing here reaches Beatport for real: stop what started.
+    // Nothing here reaches Beatport for real: stop what started, and wait until it has stopped,
+    // so the next test does not share the engine with a match still winding down.
     await win.evaluate(async () => {
       const c = (window as never as Bridge).cuepoint;
       for (const job of (await c.listJobs({ state: "active" })).jobs) await c.cancelJob(job.id);
     });
+    await expect
+      .poll(() => win.evaluate(async () => (await (window as never as Bridge).cuepoint.listJobs({ state: "active" })).jobs.length), {
+        message: "the match stops once cancelled",
+        timeout: 60_000,
+      })
+      .toBe(0);
   });
 
   test("Move up, Move down, Start a chapter here, Repeat after and Remove: Prepare's entry buttons", async () => {
