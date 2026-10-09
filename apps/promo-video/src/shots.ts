@@ -40,7 +40,7 @@ const LAYOUT: Readonly<Record<PanelId, Place>> = {
   keys: { x: 3600, y: 200, z: -2200, rx: 0, ry: -30 },
   discover: { x: -3400, y: -300, z: -4200, rx: 0, ry: 30 },
   prepare: { x: 700, y: 1500, z: -6200, rx: -16, ry: -6 },
-  waveforms: { x: -2000, y: -1600, z: -8200, rx: 16, ry: 18 },
+  waveforms: { x: -1600, y: -200, z: -8200, rx: 16, ry: 18 },
   export: { x: 3300, y: 100, z: -10200, rx: 0, ry: -22 },
 };
 
