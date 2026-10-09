@@ -49,6 +49,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/mpv-player/mpv/releases/tags/git-release | python -c "import json,sys; r=json.load(sys.stdin); print(r.get('published_at'), r.get('name')); [print(a['name'], a['size'], a['updated_at']) for a in r.get('assets',[])]"
           python scripts/fetch_player_sidecar.py --update-manifest
           echo "::group::manifest"
           cat scripts/player_sidecar_manifest.json
