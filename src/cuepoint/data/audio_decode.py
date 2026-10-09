@@ -557,6 +557,19 @@ _SECTIONS = {
 _UNREAD_LOGGED = threading.Event()
 
 
+def _has_summary(text: str) -> bool:
+    """Whether the log holds a loudness summary at all, readable or not."""
+    for line in text.splitlines():
+        match = _LOG_LINE.match(line)
+        if (
+            match is not None
+            and match.group("module") == "ffmpeg"
+            and _SUMMARY.match(match.group("text").strip())
+        ):
+            return True
+    return False
+
+
 def read_loudness(text: str) -> Loudness:
     """The loudness a decode's log reports, read strictly (WAVE-08).
 
@@ -671,6 +684,9 @@ _SWEPT = threading.Event()
 # Set once this decoder has written a whole log: only then is a log without its
 # last line known to be cut short, rather than a build that never writes one.
 _COMPLETE_SEEN = threading.Event()
+#: Set once a decode's log has held the loudness meter's summary: this build
+#: measures, so a whole log without one lost it and the file is decoded again.
+_LOUDNESS_SEEN = threading.Event()
 
 
 def live_children() -> int:
@@ -999,6 +1015,19 @@ def decode_envelope(
             shutil.rmtree(workdir, ignore_errors=True)
         if log_text is not None and read_decoder_log(log_text).complete:
             _COMPLETE_SEEN.set()
+            if _has_summary(log_text):
+                _LOUDNESS_SEEN.set()
+            elif returncode == 0 and _LOUDNESS_SEEN.is_set() and attempt < LOG_ATTEMPTS:
+                # Whole to its exit line but without the meter's summary, which
+                # this build writes: the log lost lines on a busy machine (once
+                # in a release check on an Intel Mac), not a file with no level.
+                _logger.info(
+                    "[waveforms] the decoder's log for %s lost its loudness "
+                    "summary; decoding again",
+                    source_path.name,
+                )
+                attempt += 1
+                continue
         elif (
             log_text is not None and _COMPLETE_SEEN.is_set() and attempt < LOG_ATTEMPTS
         ):

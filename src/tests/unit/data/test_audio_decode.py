@@ -815,6 +815,24 @@ elif mode == "cut-short":
     else:
         log("[i][cplayer] " + os.environ["STUB_EXPECTED"], "[i][cplayer] Exiting... (End of file)")
     output(30)
+elif mode == "summary-lost":
+    # A whole log, exit line included, but without the meter's summary, which
+    # a build that measures always writes: STUB_CUT_TIMES runs lose it.
+    count_file = os.environ["STUB_COUNT_FILE"]
+    runs = int(open(count_file).read()) if os.path.exists(count_file) else 0
+    with open(count_file, "w") as handle:
+        handle.write(str(runs + 1))
+    summary = [
+        "[v][ffmpeg] Parsed_ebur128_0: Summary:",
+        "[v][ffmpeg]   Integrated loudness:",
+        "[v][ffmpeg]     I:         -23.0 LUFS",
+        "[v][ffmpeg]   Sample peak:",
+        "[v][ffmpeg]     Peak:       -23.0 dBFS",
+    ]
+    if runs < int(os.environ["STUB_CUT_TIMES"]):
+        summary = []
+    log("[i][cplayer] " + os.environ["STUB_EXPECTED"], *summary, "[i][cplayer] Exiting... (End of file)")
+    output(30)
 elif mode == "wrong-format":
     log("[i][cplayer] AO: [pcm] 44100Hz 4.0 4ch float")
     output(30)
@@ -834,6 +852,7 @@ def stub(tmp_path, monkeypatch) -> Path:
     path.chmod(0o755)
     monkeypatch.setenv("STUB_EXPECTED", ad.EXPECTED_OUTPUT)
     monkeypatch.setattr(ad, "_COMPLETE_SEEN", threading.Event())
+    monkeypatch.setattr(ad, "_LOUDNESS_SEEN", threading.Event())
     return path
 
 
@@ -920,6 +939,48 @@ class TestStubDecoder:
         assert envelope.frames == 30
         assert count.read_text() == "2"
         assert list(workdirs.iterdir()) == []
+
+    def test_a_log_that_lost_its_loudness_summary_is_decoded_again(
+        self, stub, song, monkeypatch, workdirs, tmp_path
+    ):
+        """Regression: the Intel Mac's release check read no loudness once.
+
+        The log was whole to its exit line, but the meter's summary, which the
+        same build had written for every file before, was not in it.
+        """
+        count = tmp_path / "count"
+        ad._LOUDNESS_SEEN.set()
+        monkeypatch.setenv("STUB_MODE", "summary-lost")
+        monkeypatch.setenv("STUB_COUNT_FILE", str(count))
+        monkeypatch.setenv("STUB_CUT_TIMES", "1")
+        envelope = ad.decode_envelope(song, stub, workdir_root=workdirs)
+        assert envelope.loudness.integrated_lufs == -23.0
+        assert count.read_text() == "2"
+
+    def test_a_build_that_never_wrote_a_summary_decodes_each_file_once(
+        self, stub, song, monkeypatch, workdirs, tmp_path
+    ):
+        """A build without the meter would otherwise decode every file thrice."""
+        count = tmp_path / "count"
+        monkeypatch.setenv("STUB_MODE", "summary-lost")
+        monkeypatch.setenv("STUB_COUNT_FILE", str(count))
+        monkeypatch.setenv("STUB_CUT_TIMES", "99")
+        envelope = ad.decode_envelope(song, stub, workdir_root=workdirs)
+        assert envelope.loudness.integrated_lufs is None
+        assert count.read_text() == "1"
+
+    def test_a_summary_lost_every_time_keeps_the_waveform(
+        self, stub, song, monkeypatch, workdirs, tmp_path
+    ):
+        count = tmp_path / "count"
+        ad._LOUDNESS_SEEN.set()
+        monkeypatch.setenv("STUB_MODE", "summary-lost")
+        monkeypatch.setenv("STUB_COUNT_FILE", str(count))
+        monkeypatch.setenv("STUB_CUT_TIMES", "99")
+        envelope = ad.decode_envelope(song, stub, workdir_root=workdirs)
+        assert envelope.frames == 30
+        assert envelope.loudness.integrated_lufs is None
+        assert count.read_text() == str(ad.LOG_ATTEMPTS)
 
     def test_a_log_cut_short_every_time_is_judged_on_the_last_attempt(
         self, stub, song, monkeypatch, workdirs, tmp_path
