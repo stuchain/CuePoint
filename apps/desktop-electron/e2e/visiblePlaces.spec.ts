@@ -731,8 +731,37 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await use(win, entries.getByRole("button", { name: "Move up", exact: true }), "Move up");
     await expect.poll(order, { timeout: 15_000 }).toEqual(first);
 
+    // DIAGNOSTIC (ci-focus only): record toasts and the button's state around the press.
+    await win.evaluate(() => {
+      const w = window as never as { __diag: string[] };
+      w.__diag = [];
+      const t0 = performance.now();
+      const log = (m: string) => w.__diag.push(`${Math.round(performance.now() - t0)}ms ${m}`);
+      new MutationObserver(() => {
+        for (const el of document.querySelectorAll(".cp-toast")) {
+          const text = el.textContent ?? "";
+          if (!(el as HTMLElement).dataset.seen) {
+            (el as HTMLElement).dataset.seen = "1";
+            log(`toast ${el.className}: ${text}`);
+          }
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+      const btn = () => document.querySelector('[aria-label="Repeat after"]') as HTMLButtonElement | null;
+      new MutationObserver(() => log(`repeat disabled=${btn()?.disabled} title=${btn()?.title}`)).observe(document.querySelector('[aria-label="Selected entries"]')!, { attributes: true, subtree: true, attributeFilter: ["disabled"] });
+      document.addEventListener("keydown", (e) => log(`keydown ${e.key} on ${(e.target as HTMLElement).getAttribute("aria-label") ?? (e.target as HTMLElement).tagName} prevented=${e.defaultPrevented}`), true);
+      document.addEventListener("click", (e) => log(`click on ${(e.target as HTMLElement).getAttribute("aria-label") ?? (e.target as HTMLElement).tagName}`), true);
+      const rows = () => [...document.querySelectorAll('[aria-label="Set entries"] [role="row"]')].map((r) => (r.getAttribute("aria-selected") === "true" ? "*" : "") + (r.textContent ?? "").slice(0, 12)).join(" | ");
+      log(`rows ${rows()}`);
+      new MutationObserver(() => log(`rows ${rows()}`)).observe(document.querySelector('[aria-label="Set entries"]')!, { childList: true, subtree: true });
+    });
+    console.log(`DIAG server before press: ${JSON.stringify(await order())}`);
     await use(win, entries.getByRole("button", { name: "Repeat after", exact: true }), "Repeat after");
-    await expect.poll(async () => (await order()).length, { timeout: 15_000 }).toBe(5);
+    try {
+      await expect.poll(async () => (await order()).length, { timeout: 15_000 }).toBe(5);
+    } finally {
+      console.log(`DIAG server after: ${JSON.stringify(await order())}`);
+      console.log((await win.evaluate(() => (window as never as { __diag: string[] }).__diag)).join("\n"));
+    }
     expect((await order()).filter((title) => title === first[1])).toHaveLength(2);
 
     await pickEntry(win, first[3]);
