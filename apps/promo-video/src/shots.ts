@@ -523,18 +523,19 @@ function buildEnd(format: FormatId, tl: Timeline): HTMLElement {
 function buildCaptions(format: FormatId, tl: Timeline): HTMLElement {
   const el = h(`<div class="layer captions"></div>`);
   for (const c of CAPTIONS) {
-    const cap = h(`<div class="caption" style="top:${FRAME[format].caption}px">${esc(c.text)}</div>`);
+    const cap = h(`<div class="caption" style="top:${FRAME[format].caption}px"><span>${esc(c.text)}</span></div>`);
     el.append(cap);
-    // rises and wipes on in pixel steps, left to right; leaves rising and fading, before the cut
+    const text = cap.firstElementChild!;
+    // the box rises and settles softly while the words wipe on left to right; it leaves gliding up
     if (c.from === 0) {
       // the hook: on screen from the first frame
       cap.style.opacity = "1";
-      tl.to(cap, { opacity: 0, y: -12, duration: BEAT / 4, ease: "power1.in" }, c.to - BEAT / 4);
+      tl.to(cap, { opacity: 0, y: -22, duration: BEAT * 0.35, ease: "power2.in" }, c.to - BEAT * 0.35);
       continue;
     }
-    tl.fromTo(cap, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: BEAT / 2, ease: "power2.out" }, c.from);
-    tl.fromTo(cap, { clipPath: "inset(-24px 100% -24px -24px)" }, { clipPath: "inset(-24px -24px -24px -24px)", duration: BEAT / 2, ease: "steps(8)" }, c.from);
-    tl.to(cap, { opacity: 0, y: -12, duration: BEAT / 4, ease: "power1.in" }, c.to - BEAT / 4);
+    tl.fromTo(cap, { opacity: 0, y: 30, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: BEAT * 0.65, ease: "power3.out" }, c.from);
+    tl.fromTo(text, { clipPath: "inset(-10px 100% -10px -10px)" }, { clipPath: "inset(-10px -10px -10px -10px)", duration: BEAT * 0.6, ease: "power2.inOut" }, c.from + BEAT * 0.1);
+    tl.to(cap, { opacity: 0, y: -22, duration: BEAT * 0.35, ease: "power2.in" }, c.to - BEAT * 0.35);
   }
   return el;
 }

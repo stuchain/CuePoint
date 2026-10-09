@@ -4,6 +4,7 @@ import { PIXEL_SIZE, PixelPipeline } from "../../website/src/three/pixel";
 import { createRenderer } from "../../website/src/three/renderer";
 import { cameraPose, create as createOpening, LABEL_HOLD } from "../../website/src/three/scenes/opening";
 import { at, BEAT, kickLevel, shot } from "./timing";
+import { addVinyl } from "./vinyl";
 
 /**
  * The website's own 3D scene (DEC-189: the crate becoming the Camelot wheel), drawn through the site's
@@ -117,6 +118,8 @@ export function createOpeningShot(width: number, height: number): Opening {
   const palette = readPalette();
   pixel.setPalette(palette);
   instance.setPalette(palette);
+  const vinyl = addVinyl(instance.scene);
+  vinyl.setPalette(palette);
   resize(width, height);
   instance.setShadowSize?.(1024);
   const baseFov = instance.camera.fov;
@@ -127,6 +130,7 @@ export function createOpeningShot(width: number, height: number): Opening {
     draw(t) {
       const p = t >= shot("end").start ? 1 : progressAt(t);
       instance.setProgress(p);
+      vinyl.update(p);
       instance.setLevel?.(p >= PULSE_FROM ? kickLevel(t) * 0.9 : 0);
       const pose = cameraPose(p);
       const m = cameraMove(t);

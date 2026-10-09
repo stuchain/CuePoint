@@ -620,6 +620,10 @@ canvas.scene3d {
   white-space: nowrap;
 }
 
+.caption span {
+  display: inline-block;
+}
+
 .tall .caption {
   font-size: 66px;
   white-space: normal;
