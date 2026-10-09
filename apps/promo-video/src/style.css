@@ -701,6 +701,15 @@ canvas.scene3d {
 
 /* ---- the world: one 3D space, the camera flying through it ---- */
 
+.scene-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 1180px;
+  height: 340px;
+  background: linear-gradient(to bottom, transparent, var(--bg-app) 80%);
+}
+
 .world {
   perspective: 1800px;
   /* a clean, deep room: the app's background with a soft glow where the camera looks */
@@ -720,6 +729,11 @@ canvas.scene3d {
   width: 0;
   height: 0;
   transform-style: preserve-3d;
+}
+
+/* the wide cut sits too close to the disc for a title above it; the caption names the shot */
+.wide .panel-keys .panel-title {
+  display: none;
 }
 
 .panel-title {

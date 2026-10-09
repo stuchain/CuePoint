@@ -44,9 +44,13 @@ async function main(): Promise<void> {
     current = view;
     scene.resize(view.width, view.height);
     Object.assign(scene.canvas.style, { top: `${view.top}px`, height: `${view.height}px`, bottom: "auto" });
+    fade.style.display = view === full ? "none" : "block";
   };
+  // on the phone the scene's floor ends above the bottom of the frame: a fade hides that edge
+  const fade = document.createElement("div");
+  fade.className = "scene-fade";
   useView(box);
-  sceneHost.append(scene.canvas);
+  sceneHost.append(scene.canvas, fade);
   tl.set({}, {}, DURATION); // the timeline is exactly as long as the video
 
   await document.fonts.ready;

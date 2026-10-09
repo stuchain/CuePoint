@@ -45,7 +45,7 @@ const LAYOUT: Readonly<Record<PanelId, Place>> = {
 };
 
 /** How close the camera settles on each panel, so each fills about the same share of the frame. */
-const SETTLE: Readonly<Record<PanelId, number>> = { clean: 0, keys: 330, discover: 90, prepare: 90, waveforms: 90, export: 300 };
+const SETTLE: Readonly<Record<PanelId, number>> = { clean: 0, keys: 240, discover: 90, prepare: 90, waveforms: 90, export: 300 };
 
 /** The phone cut's world is smaller, like its panels. */
 const WORLD_SCALE = { wide: 1, tall: 0.6 } as const;
@@ -336,10 +336,10 @@ function buildPrepare(format: FormatId, tl: Timeline): HTMLElement {
 
   const { start, end } = shot("prepare");
   el.querySelectorAll(".slot").forEach((slot, i) => {
-    tl.fromTo(slot, { z: 220, opacity: 0 }, { z: 0, opacity: 1, duration: BEAT * 0.5, ease: "power3.out" }, start + BEAT * (0.25 + i / 2));
+    tl.fromTo(slot, { z: 220, opacity: 0 }, { z: 0, opacity: 1, duration: BEAT * 0.5, ease: "power3.out" }, start + BEAT * (0.1 + i / 3));
   });
   el.querySelectorAll(".link").forEach((link, i) => {
-    tl.fromTo(link, { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: BEAT / 2, ease: "power2.out" }, start + BEAT * (0.75 + i / 2));
+    tl.fromTo(link, { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: BEAT / 2, ease: "power2.out" }, start + BEAT * (0.5 + i / 3));
   });
   // then the set plays through: each track in turn steps forward and lights up, half a beat apiece
   const slotEls = [...el.querySelectorAll<HTMLElement>(".slot")];
@@ -392,7 +392,7 @@ function buildDiscover(format: FormatId, tl: Timeline): HTMLElement {
   el.append(windowShell(format, "Discover", page));
   const { start } = shot("discover");
   el.querySelectorAll(".release").forEach((card, i) => {
-    tl.fromTo(card, { z: 260, opacity: 0 }, { z: 0, opacity: 1, duration: BEAT / 3, ease: "power3.out" }, start + BEAT * 0.4 + (BEAT * i) / 4);
+    tl.fromTo(card, { z: 260, opacity: 0 }, { z: 0, opacity: 1, duration: BEAT / 3, ease: "power3.out" }, start + BEAT * 0.1 + (BEAT * i) / 6);
   });
   // two of them go on the wantlist, a beat apart
   const wants = [...el.querySelectorAll<HTMLElement>(".want")];
@@ -551,10 +551,11 @@ export interface Hosts {
  * then on every downbeat flies fast to the next panel and drifts in on it, and at the end flies on
  * through Export into the end card.
  */
+const FLY = BEAT;
+const LEAD = BEAT / 2;
+
 function tour(tl: Timeline, cam: Camera, format: FormatId): void {
   // a flight takes a beat, and lands half a beat after the downbeat: the kick is the landing
-  const FLY = BEAT;
-  const LEAD = BEAT / 2;
   const clean = shot("clean");
   const p = (id: PanelId): Place => placeOf(format, id);
   // the arrival on the drop: from back and to the left, settling in three quarters of a beat
@@ -581,7 +582,7 @@ function tour(tl: Timeline, cam: Camera, format: FormatId): void {
     flyTo(tl, cam, format, p(id), { z: near - 120, ry: 8 * side * k, rx: -3 * side * k }, start - LEAD, FLY, "power3.inOut");
     const last = id === "export";
     const driftEnd = last ? end - BEAT : end - LEAD;
-    flyTo(tl, cam, format, p(id), { z: near, ry: -2 * side * k }, start + LEAD, driftEnd - start - LEAD, "sine.inOut");
+    flyTo(tl, cam, format, p(id), { z: near, ry: last ? 0 : -2 * side * k }, start + LEAD, driftEnd - start - LEAD, "sine.inOut");
     // the way out: straight on through the last panel, into the end card
     if (last) flyTo(tl, cam, format, p(id), { z: near + 2800, y: -160 }, driftEnd, BEAT, "power3.in");
   });
@@ -605,7 +606,13 @@ export function buildShots(stage: HTMLElement, format: FormatId, tl: Timeline): 
     waveforms: buildWaveforms(format, tl),
     export: buildExport(format, tl),
   };
-  for (const id of TOUR) world.body.append(panels[id]);
+  for (const id of TOUR) {
+    world.body.append(panels[id]);
+    const { start, end } = shot(id);
+    const from = id === "clean" ? start : start - LEAD - FLY;
+    const to = id === "export" ? end : end + LEAD + BEAT / 4;
+    showBetween(tl, panels[id], [[from, to]]);
+  }
   tour(tl, world.cam, format);
   const end = buildEnd(format, tl);
   stage.append(end);
