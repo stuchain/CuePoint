@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterator, Optional
 from cuepoint.engine.jobs import JobState, JobStore, progress_to_dict
 
 TERMINAL_STATES = frozenset({JobState.SUCCEEDED, JobState.FAILED, JobState.CANCELLED})
+_TERMINAL_VALUES = frozenset(state.value for state in TERMINAL_STATES)
 
 
 def job_event_payload(job) -> Dict[str, Any]:
@@ -39,7 +40,16 @@ def iter_job_events(
     heartbeat_interval_s: float = 15.0,
     max_wait_s: float = 300.0,
 ) -> Iterator[bytes]:
-    """Yield SSE frames until the job reaches a terminal state."""
+    """Yield SSE frames until the job reaches a terminal state.
+
+    The last frame is always the terminal one. The job is read once per pass and
+    the decision to stop is made from the frame that was sent, not from a second
+    look at the job: the job's thread runs while this one is suspended at a
+    ``yield`` (the caller is writing the frame to the socket), so a job that
+    finished in that window used to be seen as terminal on resuming and ended
+    the stream without its terminal frame. A client that stops at the terminal
+    frame then waited forever, and the Library's refresh never came back.
+    """
     started = time.monotonic()
     last_updated: Optional[str] = None
     last_heartbeat = started
@@ -58,11 +68,13 @@ def iter_job_events(
             return
 
         now = time.monotonic()
-        if job.updated_at != last_updated:
-            last_updated = job.updated_at
-            yield format_sse_event(job_event_payload(job))
+        payload = job_event_payload(job)
+        terminal = payload["state"] in _TERMINAL_VALUES
+        if terminal or payload["updated_at"] != last_updated:
+            last_updated = payload["updated_at"]
+            yield format_sse_event(payload)
 
-        if job.state in TERMINAL_STATES:
+        if terminal:
             return
 
         if now - last_heartbeat >= heartbeat_interval_s:

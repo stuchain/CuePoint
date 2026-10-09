@@ -513,6 +513,12 @@ def make_handler(
                     self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 return
+            finally:
+                # The body has no length, so its end is the connection's end.
+                # "Connection: keep-alive" above told the server to keep the
+                # socket for another request, and a stream that ended was then
+                # never seen to end by a client still reading it.
+                self.close_connection = True
 
         def _handle_job_get(self, path: str) -> None:
             if not self._authorized():
