@@ -58,6 +58,19 @@ function makeController(
   return { player, controller, notices };
 }
 
+/**
+ * How many files mpv has started, counted as each one starts. The tones last a
+ * third of a second, so on a loaded runner the last one can start and end
+ * between two looks at the queue, and "it is playing" is never seen.
+ */
+function countStarts(player: { onStartFile: (listener: () => void) => unknown }): () => number {
+  let starts = 0;
+  player.onStartFile(() => {
+    starts += 1;
+  });
+  return () => starts;
+}
+
 async function waitFor(
   predicate: () => boolean,
   { timeoutMs = 12_000, intervalMs = 25 } = {},
@@ -91,7 +104,8 @@ describeWithMpv("a queue playing through real mpv", () => {
   });
 
   it("plays a three-track queue end to end unattended", async () => {
-    const { controller } = makeController();
+    const { player, controller } = makeController();
+    const started = countStarts(player);
     await controller.playQueue(
       [
         { filePath: fixture("tone.flac"), title: "one" },
@@ -101,7 +115,7 @@ describeWithMpv("a queue playing through real mpv", () => {
       0,
     );
 
-    await waitFor(() => controller.queueWindow(0, 1_000).items[2].status === "playing");
+    await waitFor(() => started() === 3);
 
     expect(controller.queueWindow(0, 1_000).items.map((i) => i.title)).toEqual([
       "one",
@@ -231,6 +245,7 @@ describeWithMpv("a queue playing through real mpv", () => {
       loaded.push(file);
       return originalPlay(file);
     };
+    const started = countStarts(player);
 
     await controller.playQueue(
       [
@@ -241,7 +256,7 @@ describeWithMpv("a queue playing through real mpv", () => {
       0,
     );
 
-    await waitFor(() => controller.queueWindow(0, 1_000).items[2].status === "playing");
+    await waitFor(() => started() === 3);
 
     expect(loaded).toEqual([fixture("tone.flac")]);
   });
