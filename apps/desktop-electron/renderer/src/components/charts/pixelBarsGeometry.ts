@@ -11,6 +11,8 @@
  * 1.5x, 2x and 3x (DEC-161). The tallest bar fills the plot; a bucket with no
  * tracks draws no rectangle at all; any other bar is at least one pixel.
  */
+import { formatCount } from "./formatCount";
+
 
 export interface PixelBucket {
   label: string;
@@ -87,7 +89,7 @@ function sizer(scale: number): (base: number) => number {
 }
 
 function countText(count: number): string {
-  return count.toLocaleString();
+  return formatCount(count);
 }
 
 function shorten(label: string): string {

@@ -20,6 +20,8 @@ import { Button } from "../../components/Button";
 import { PixelSpinner } from "../../components/PixelSpinner";
 import { Select } from "../../components/Select";
 import { libraryImportState } from "../library/libraryLink";
+import { KeySummary } from "./KeySummary";
+import { SpreadsSection } from "./SpreadsSection";
 import { noHistoryState, noLibraryState } from "./statisticsEmpty";
 import {
   effectiveScope,
@@ -206,7 +208,12 @@ export function StatisticsScreen() {
         failed="Your library could not be read."
         onRetry={spreads.retry}
       >
-        {spreads.data && <p className="statistics-note">{plural(spreads.data.total, "track")}</p>}
+        {spreads.data && (
+          <div className="statistics-panels">
+            <SpreadsSection spreads={spreads.data} />
+            <KeySummary scope={spreads.data.scope} collections={trees.collections} refresh={refresh} />
+          </div>
+        )}
       </Section>
 
       <Section

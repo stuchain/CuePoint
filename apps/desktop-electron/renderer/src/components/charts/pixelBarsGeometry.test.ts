@@ -135,7 +135,7 @@ describe("barsLayout: size and text", () => {
 
   it("writes every count and thins the labels of a crowded axis", () => {
     const layout = barsLayout({ buckets: ORDERED, orientation: "vertical", width: 200, height: 200, scale: 1 });
-    expect(layout.bars.map((b) => b.count.text)).toEqual(ORDERED.map((b) => b.count.toLocaleString()));
+    expect(layout.bars.map((b) => b.count.text)).toEqual(ORDERED.map((b) => b.count.toLocaleString("en-US")));
     const shown = layout.bars.filter((b) => b.label).length;
     expect(shown).toBeGreaterThan(0);
     expect(shown).toBeLessThan(ORDERED.length);

@@ -62,6 +62,14 @@
   outline-offset: calc(var(--focus-ring-width) * -1);
 }
 
+/* The full name of the bar pointed at or focused; nothing is only on hover. */
+.cp-pixel-bars__caption {
+  margin: 0;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+}
+
 /* The text table for screen readers: in the page, not on it. */
 .cp-pixel-bars__table {
   position: absolute;

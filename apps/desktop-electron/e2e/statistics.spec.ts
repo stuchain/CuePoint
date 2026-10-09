@@ -154,3 +154,113 @@ test.describe("The Statistics page (STATS-04)", () => {
     }
   });
 });
+
+/**
+ * Four tracks: three at 124 BPM and one at 128. Warmup holds tracks 2 and 3. The user's own
+ * keys (the Keys page counts these, never the export's tonality): 8A on tracks 1 and 2.
+ */
+function writeSpreadExport(dir: string): string {
+  const music = path.join(dir, "music");
+  mkdirSync(music, { recursive: true });
+  const tempos = ["124.00", "124.00", "124.00", "128.00"];
+  const tracks = tempos.map((bpm, i) => {
+    const file = path.join(music, `${i}.mp3`);
+    writeFileSync(file, "not really audio");
+    const location = "file://localhost/" + file.replace(/\\/g, "/").replace(/^\/+/, "");
+    return (
+      `<TRACK TrackID="${i + 1}" Name="Spread ${i + 1}" Artist="Artist ${i + 1}" ` +
+      `Genre="House" AverageBpm="${bpm}" TotalTime="300" Location="${location}"/>`
+    );
+  });
+  const xml = path.join(dir, "spread.xml");
+  writeFileSync(
+    xml,
+    `<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS Version="1.0.0">
+  <COLLECTION Entries="4">
+${tracks.join("\n")}
+  </COLLECTION>
+  <PLAYLISTS><NODE Name="ROOT" Type="0">
+    <NODE Name="Warmup" Type="1" Entries="2"><TRACK Key="2"/><TRACK Key="3"/></NODE>
+  </NODE></PLAYLISTS>
+</DJ_PLAYLISTS>
+`,
+    "utf-8",
+  );
+  return xml;
+}
+
+test.describe("The Your library section (STATS-06)", () => {
+  let userDataDir: string;
+  let cuepointHome: string;
+  let workspace: string;
+
+  test.beforeEach(() => {
+    userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-e2e-"));
+    cuepointHome = mkdtempSync(path.join(tmpdir(), "cuepoint-home-"));
+    workspace = mkdtempSync(path.join(tmpdir(), "cuepoint-xml-"));
+  });
+
+  test.afterEach(() => {
+    for (const dir of [userDataDir, cuepointHome, workspace]) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("opens the Library on a tempo bar and Keys on the scope, with the same counts", async () => {
+    test.setTimeout(240_000);
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await importLibrary(window, writeSpreadExport(workspace));
+      await window.evaluate(async () => {
+        const c = window.cuepoint!;
+        const found = await c.browseLibrary!({ limit: 50 });
+        for (const track of found.tracks) {
+          if (track.title === "Spread 1" || track.title === "Spread 2") {
+            await c.setTrackOverrides!({ trackId: track.id, key: "8A" });
+          }
+        }
+      });
+
+      await window.getByRole("link", { name: "Statistics" }).click();
+      const library = window.getByRole("region", { name: "Your library" });
+      const tempo = library.locator('[data-panel="tempo"]');
+
+      // The whole library: 2 of 4 tracks have a key.
+      await expect(library).toContainText(
+        "2 of 4 tracks have a Beatport key · most common 8A (2) · No Beatport key: 2",
+        { timeout: 30_000 },
+      );
+
+      // A tempo bar opens the Library with the count the bar carries.
+      await tempo.getByRole("button", { name: "124 BPM, 3 tracks" }).click();
+      await expect(window.getByRole("heading", { name: "Library", level: 1 })).toBeVisible();
+      // The header counts the whole library; the table is the filtered tracks.
+      await expect(window.locator(".track-table__row")).toHaveCount(3, { timeout: 30_000 });
+      await expect(window.getByText("BPM is at least 123.5")).toBeVisible();
+
+      // Narrow to the Warmup playlist and open Keys: the same counts, the playlist ticked.
+      await window.getByRole("link", { name: "Statistics" }).click();
+      await window.getByRole("combobox", { name: "Scope" }).selectOption({ label: "Warmup" });
+      const section = window.getByRole("region", { name: "Your library" });
+      await expect(section).toContainText(
+        "1 of 2 tracks have a Beatport key · most common 8A (1) · No Beatport key: 1",
+        { timeout: 30_000 },
+      );
+      await section.getByRole("button", { name: "Open in Keys" }).click();
+      await expect(window.getByRole("heading", { name: "Keys", level: 1 })).toBeVisible();
+      await expect(
+        window.getByRole("group", { name: "Sources" }).getByRole("checkbox", { name: "Warmup" }),
+      ).toBeChecked({ timeout: 30_000 });
+      await expect(window.getByRole("status").filter({ hasText: "in 1 playlist" })).toHaveText(
+        "2 tracks in 1 playlist",
+        { timeout: 30_000 },
+      );
+      await expect(window.getByText("No Beatport key: 1")).toBeVisible();
+      await expect(window.locator(".keys-page__wheel strong")).toHaveText("1");
+    } finally {
+      await app.close();
+    }
+  });
+});

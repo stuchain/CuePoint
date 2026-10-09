@@ -78,3 +78,46 @@
 .statistics-empty__title {
   margin: 0;
 }
+
+/*
+ * Your library (STATS-06). The `.statistics-panel*` classes are shared: STATS-05 and STATS-07 draw
+ * their panels with them too. The six spreads and the key summary sit in a wrapping grid.
+ * A chart longer than its panel scrolls inside the panel, never the page.
+ */
+.statistics-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(320px * var(--scale))), 1fr));
+  gap: var(--space-md);
+  width: 100%;
+}
+
+.statistics-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  min-width: 0;
+  padding: var(--space-sm);
+  border: var(--border-width) solid var(--border-muted);
+}
+
+.statistics-panel > .cp-pixel-bars {
+  width: 100%;
+}
+
+.statistics-panel__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+
+.statistics-panel__unit {
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+}
+
+.statistics-panel__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+}

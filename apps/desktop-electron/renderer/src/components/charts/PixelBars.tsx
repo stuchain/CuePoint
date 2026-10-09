@@ -17,6 +17,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 
 
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { changedMark, useCountChanges } from "../wheel/useCountChanges";
+import { formatCount } from "./formatCount";
 import { barsLayout, type BarsOrientation, type PixelBucket } from "./pixelBarsGeometry";
 import "./PixelBars.css";
 
@@ -42,6 +43,7 @@ export interface PixelBarsProps<T extends PixelBucket = PixelBucket> {
 }
 
 const DEFAULT_HEIGHT = 120;
+const CAPTION_IDLE = "Point at or tab to a bar to read it";
 const NEXT_KEYS = new Set(["ArrowRight", "ArrowDown"]);
 const PREVIOUS_KEYS = new Set(["ArrowLeft", "ArrowUp"]);
 
@@ -93,6 +95,11 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
   const activeAt = active === null ? -1 : buckets.findIndex((b) => b.label === active);
   const tabStop = openable.includes(activeAt) ? activeAt : (openable[0] ?? -1);
   const slots = useRef(new Map<number, SVGGElement>());
+  // The bar being pointed at or focused, so its full name is written under the chart (nothing is
+  // only on hover). Pointing wins over focus until the pointer leaves.
+  const [pointed, setPointed] = useState<string | null>(null);
+  const [focused, setFocused] = useState<string | null>(null);
+  const shown = buckets.find((b) => b.label === (pointed ?? focused));
 
   function moveTo(at: number | undefined) {
     if (at === undefined) return;
@@ -172,10 +179,16 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
                   onFocus: () => {
                     lastAt.current = bar.index;
                     setActive(bucket.label);
+                    setFocused(bucket.label);
                   },
+                  onBlur: () => setFocused(null),
                   onKeyDown: (event: KeyboardEvent<SVGGElement>) => onKeyDown(event, bucket, bar.index),
                 }
               : { "aria-hidden": true as const };
+            const hover = {
+              onPointerEnter: () => setPointed(bucket.label),
+              onPointerLeave: () => setPointed(null),
+            };
             return (
               <g
                 key={bar.index}
@@ -186,6 +199,7 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
                   else slots.current.delete(bar.index);
                 }}
                 {...interactive}
+                {...hover}
               >
                 <title>{name}</title>
                 <rect
@@ -239,6 +253,7 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
           })}
         </svg>
       </div>
+      <p className="cp-pixel-bars__caption">{shown ? barName(shown) : CAPTION_IDLE}</p>
       <table className="cp-pixel-bars__table">
         <caption>{title}</caption>
         <thead>
@@ -251,7 +266,7 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
           {buckets.map((bucket, at) => (
             <tr key={at}>
               <th scope="row">{bucket.label}</th>
-              <td>{bucket.count}</td>
+              <td>{formatCount(bucket.count)}</td>
             </tr>
           ))}
         </tbody>

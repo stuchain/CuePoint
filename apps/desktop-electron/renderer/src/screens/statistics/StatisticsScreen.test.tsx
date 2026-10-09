@@ -216,7 +216,7 @@ describe("the Statistics page (STATS-04)", () => {
     await waitFor(() => expect(within(plays).getByText(/3,120 tracks never played/)).toBeInTheDocument());
     expect(within(plays).getByText(/41 with no play count/)).toBeInTheDocument();
     expect(
-      within(screen.getByRole("region", { name: "Your library" })).getByText(/4,000 tracks/),
+      within(screen.getByRole("region", { name: "Your library" })).getByRole("heading", { level: 3, name: "Genre" }),
     ).toBeInTheDocument();
     expect(
       within(screen.getByRole("region", { name: "Health" })).getByText(/12 files missing/),

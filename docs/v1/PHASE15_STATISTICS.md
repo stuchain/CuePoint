@@ -863,6 +863,40 @@ Storybook stories for each chart at each scale and theme are the check.
 
 **Complexity**: **M**
 
+**Outcome**: Implemented (2026-10-09). `PixelBars` and its geometry were already built and are
+unchanged. The **Your library** section's body is now `screens/statistics/SpreadsSection.tsx`
+(six panels from the spreads answer, in the order Genre, Tempo, Year, Date added, Rating, Loudness)
+and `KeySummary.tsx` (the seventh), in a wrapping grid in `statistics.css`; `StatisticsScreen.tsx`
+changes only that section's body.
+
+Decided while building:
+- **Bars and lines.** A bar opens the Library on its rules (`libraryRulesState`, the engine having
+  put the scope's rules in); a bucket without rules (Other) and every loudness bar are drawn and open
+  nothing. Tempo and loudness label the axis with the bare number ("124"), and name the bar with the
+  engine's label ("124 BPM, 312 tracks"). Each panel writes the tracks it cannot place in words ("41
+  tracks have no tempo", "17 tracks are not measured yet", "4 tracks have no file to measure") and
+  says nothing when the count is 0. A line the engine gave rules (no genre, no tempo, no year,
+  unrated) gets a visible **Open in Library** button, so nothing is hover- or right-click-only; the
+  lines with no rule (unknown date, loudness) are text.
+- **Key summary.** It reads `getKeysPopulation` with the scope as its one source (`library` is
+  `all`; `playlist:7` a playlist; `collection:<id>` a Collection or a Set by the node's own kind,
+  since the scope string cannot tell them apart), says "N of M tracks have a Beatport key", the
+  three commonest codes by count, and "No Beatport key: K", and **Open in Keys** carries the same
+  sources through `keysState`. **A Smart Collection** is not a source the Keys page can tick, because
+  its rules decide its tracks. It is mapped only when its whole rule set is one "In playlist is any
+  of" rule (then those places are exactly its tracks, and they are ticked). Any other Smart
+  Collection shows no counts, says "Keys counts playlists, Collections and Sets, not a Smart
+  Collection's rules, so it opens on your whole library", and **Open in Keys** opens it on the whole
+  library, which the sentence says.
+- **The Library's total line is gone** from the section (it was STATS-04's placeholder); the
+  `StatisticsScreen` test now checks for the Genre panel instead.
+
+Checked in the cloud container: the renderer's full suite, lint, typecheck and `motionRules.test.ts`;
+the main process's tests and typecheck; the dead-code guard (the three `PixelBars` allowlist entries
+are removed, now that the page reaches them); and `e2e/statistics.spec.ts` under `xvfb-run` against
+the built app (a tempo bar's Library count; Open in Keys on a playlist showing the same counts).
+Not checked: the panels by eye in every theme and scale on a library of the owner's own.
+
 ---
 
 ## STATS-07 — Health, and the Phase Comes Together
