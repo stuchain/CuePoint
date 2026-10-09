@@ -441,7 +441,31 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         before = await measure(win, "Set entries");
       }
       expect(before.partial, "a row is cut by the table's edge").not.toBeNull();
+      const probe = () => win.evaluate(([x, y]) => {
+        const t = document.querySelector<HTMLElement>('[role="table"][aria-label="Set entries"]')!;
+        const b = t.getBoundingClientRect();
+        const el = document.elementFromPoint(x, y) as HTMLElement | null;
+        const row = el?.closest<HTMLElement>(".track-table__row");
+        return { tableTop: b.top, tableH: t.clientHeight, scroll: t.scrollTop, under: row?.querySelector('[data-column="title"]')?.textContent ?? el?.className };
+      }, [before.partial!.x, before.partial!.y] as const);
+      console.log("PROBE before", JSON.stringify(before.partial), JSON.stringify(await probe()));
+      await win.evaluate(() => {
+        const w = window as never as { __ev: string[] };
+        w.__ev = [];
+        const t0 = performance.now();
+        for (const type of ["mousedown", "click", "dblclick"]) {
+          document.addEventListener(type, (e) => {
+            const el = e.target as HTMLElement;
+            const row = el.closest<HTMLElement>(".track-table__row");
+            const t = document.querySelector<HTMLElement>('[role="table"][aria-label="Set entries"]')!;
+            w.__ev.push(`${Math.round(performance.now() - t0)}ms ${type} y=${(e as MouseEvent).clientY} on ${row?.querySelector('[data-column="title"]')?.textContent ?? el.className} scroll=${t.scrollTop} top=${t.getBoundingClientRect().top}`);
+          }, true);
+        }
+      });
       await win.mouse.dblclick(before.partial!.x, before.partial!.y);
+      await win.waitForTimeout(300);
+      console.log("PROBE events\n" + (await win.evaluate(() => (window as never as { __ev: string[] }).__ev)).join("\n"));
+      console.log("PROBE after", JSON.stringify(await probe()));
       await expect.poll(() => currentTitle(win), { timeout: 30_000 }).toBe(before.partial!.title);
       await expect(win.locator(".cp-player-bar")).toBeVisible({ timeout: 15_000 });
       // Back to the top, where the rows below are counted from.
