@@ -216,16 +216,16 @@ canvas.scene3d {
 }
 
 /* the wide cut's table: larger, so it reads on a phone (the artist column makes room) */
-.wide .shot-clean .page {
+.wide .panel-clean .page {
   zoom: 1.08;
 }
 
-.wide .shot-clean .row {
+.wide .panel-clean .row {
   grid-template-columns: 2fr 0.7fr 0.7fr 1.9fr 1.2fr;
   height: 64px;
 }
 
-.wide .shot-clean .row .c-artist {
+.wide .panel-clean .row .c-artist {
   display: none;
 }
 
@@ -285,6 +285,7 @@ canvas.scene3d {
 .tall .toolbar .count {
   min-width: 0;
   flex: 1;
+  white-space: nowrap;
 }
 
 /* the phone cut: the progress bar gets its own row, so the buttons never jump as the words change */
@@ -577,7 +578,8 @@ canvas.scene3d {
 
 .dialog .actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .toast {
@@ -697,33 +699,49 @@ canvas.scene3d {
   scale: 0;
 }
 
-/* ---- v2: the 3D spaces ---- */
+/* ---- the world: one 3D space, the camera flying through it ---- */
 
-canvas.backdrop {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  image-rendering: pixelated;
+.world {
+  perspective: 1800px;
+  /* a clean, deep room: the app's background with a soft glow where the camera looks */
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 42%, color-mix(in srgb, var(--accent-primary) 14%, var(--bg-app)) 0%, var(--bg-app) 60%, color-mix(in srgb, #000 35%, var(--bg-app)) 100%);
 }
 
-.space {
-  position: absolute;
-  inset: 0;
-  perspective-origin: 50% 45%;
-}
-
-.rig {
+.cam {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
 }
 
+.panel {
+  position: absolute;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+
+.panel-title {
+  position: absolute;
+  left: -200px;
+  width: 400px;
+  margin-top: -92px;
+  padding: 12px 24px 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  font-size: 40px;
+}
+
 /* Keys: the icon as a floor, the keys standing on it */
 .disc {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  left: 0;
+  top: 0;
   width: 0;
   height: 0;
   transform-style: preserve-3d;
@@ -758,26 +776,15 @@ canvas.backdrop {
   background: var(--accent-warning);
 }
 
-.px-badge.corner {
-  position: absolute;
-  left: 5%;
-  top: 5%;
-  font-size: 28px;
-}
-
-.tall .px-badge.corner {
-  top: 240px;
-}
-
 /* Export: the dialog in space, the file flying out */
-.shot-export .dialog {
-  left: 50%;
+.panel-export .dialog {
+  left: 0;
 }
 
 .file {
   position: absolute;
-  left: 50%;
-  top: 46%;
+  left: 0;
+  top: 0;
   width: 150px;
   height: 190px;
   margin: -95px 0 0 -75px;
@@ -799,18 +806,11 @@ canvas.backdrop {
   background: var(--accent-primary);
 }
 
-.toast-row {
-  position: absolute;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-}
-
 .toast {
   position: static;
-  font-size: 48px;
-  padding: 20px 40px 24px;
+  font-size: 30px;
+  padding: 10px 22px 12px;
+  opacity: 0;
 }
 
 /* the end card: the wheel dims so the words read */

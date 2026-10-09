@@ -45,12 +45,13 @@ export const CUTS: readonly number[] = SHOTS.slice(1).map((s) => at(s.from));
 export const CAPTIONS = [
   { text: "A messy library?", from: 0, to: at(1) },
   { text: "Matched on Beatport.", from: at(1), to: at(2) },
-  { text: "Keys and tempos, fixed.", from: at(2, 0.25), to: at(4) },
-  { text: "Filter by key.", from: at(4), to: at(5) },
-  { text: "Find new music.", from: at(5), to: at(6) },
-  { text: "Plan sets in key.", from: at(6), to: at(7) },
-  { text: "Every track\u2019s waveform.", from: at(7), to: at(8) },
-  { text: "Back to Rekordbox.", from: at(8), to: at(9) },
+  // the app shots: each caption lands with the camera, half a beat after the downbeat
+  { text: "Keys and tempos, fixed.", from: at(2, 0.75), to: at(4, 0.5) },
+  { text: "Filter by key.", from: at(4, 0.5), to: at(5, 0.5) },
+  { text: "Find new music.", from: at(5, 0.5), to: at(6, 0.5) },
+  { text: "Plan sets in key.", from: at(6, 0.5), to: at(7, 0.5) },
+  { text: "See the drop coming.", from: at(7, 0.5), to: at(8, 0.5) },
+  { text: "Back to Rekordbox.", from: at(8, 0.5), to: at(9, 0.25) },
 ] as const;
 
 /** Which bars the drums play. The intro bar is pads and arps; the riser clears bar 1's second half. */

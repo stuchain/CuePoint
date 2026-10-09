@@ -3,8 +3,6 @@ import "./style.css";
 import { formatFrom, FORMATS } from "./formats";
 import { createOpeningShot } from "./opening3d";
 import { buildShots } from "./shots";
-import { createBackdrop } from "./backdrop";
-import { HUES } from "./content";
 import { DURATION, FPS, FRAMES, shot } from "./timing";
 
 /**
@@ -29,7 +27,7 @@ async function main(): Promise<void> {
 
   gsap.ticker.lagSmoothing(0);
   const tl = gsap.timeline({ paused: true });
-  const { sceneHost, backdropHost } = buildShots(stage, format, tl);
+  const { sceneHost } = buildShots(stage, format, tl);
   // the phone cut frames the opening in a squarer box above the captions, so the crate stays in shot;
   // the end card has no caption, so there the wheel fills the whole frame
   interface View {
@@ -49,8 +47,6 @@ async function main(): Promise<void> {
   };
   useView(box);
   sceneHost.append(scene.canvas);
-  const backdrop = createBackdrop(width, height, HUES);
-  backdropHost.append(backdrop.canvas);
   tl.set({}, {}, DURATION); // the timeline is exactly as long as the video
 
   await document.fonts.ready;
@@ -65,7 +61,7 @@ async function main(): Promise<void> {
     } else if (t >= shot("end").start) {
       useView(full);
       scene.draw(t);
-    } else backdrop.draw(t);
+    }
   };
   seek(0);
   window.__promo = { fps: FPS, frames: FRAMES, duration: DURATION, seek };
