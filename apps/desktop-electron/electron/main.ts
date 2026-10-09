@@ -376,6 +376,9 @@ function registerIpcHandlers(): void {
   handle("engine:createCollection", (_event, params) =>
     engine.createCollection(params),
   );
+  handle("engine:createCollectionFrom", (_event, params) =>
+    engine.createCollectionFrom(params),
+  );
   handle("engine:renameCollection", (_event, params) =>
     engine.renameCollection(params),
   );

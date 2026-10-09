@@ -2081,6 +2081,11 @@
     "holds": "a playlist, collection, tag, chapter or Set name",
     "verdict": "corpus"
   },
+  "cuepoint/services/collection_service.py::CollectionService.create_collection_from::No such track: {shown}{more}": {
+    "holds": "a length, a number or count",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
   "cuepoint/services/collection_service.py::CollectionService.insert_track::A position cannot be negative: {position}": {
     "holds": "a number or count",
     "verdict": "exempt",

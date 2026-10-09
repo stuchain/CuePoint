@@ -297,6 +297,20 @@ class NewSetResult:
     track_count: int
 
 
+@dataclass(frozen=True)
+class NewCollectionResult:
+    """What "Keep as Collection" made.
+
+    Attributes:
+        collection: The new, plain Collection.
+        track_count: How many tracks it holds (repeats in the request counted
+            once, as :meth:`CollectionService.add_tracks` counts them).
+    """
+
+    collection: Collection
+    track_count: int
+
+
 class CollectionService(ICollectionService):
     """Owns what a legal collection tree is, and keeps it that way."""
 
@@ -362,6 +376,38 @@ class CollectionService(ICollectionService):
             ValueError: As :meth:`create_folder`.
         """
         return self._create(KIND_COLLECTION, name, parent_id)
+
+    def create_collection_from(
+        self, name: str, parent_id: Optional[int], track_ids: Iterable[int]
+    ) -> NewCollectionResult:
+        """Make a plain Collection and fill it, in the order given, atomically.
+
+        What keeping a list as a Collection needs (STATS-05): the Collection
+        and its tracks are all of it or none of it, so a failure between the
+        two cannot leave an empty Collection behind. A track given twice is
+        added once, at its first place, as :meth:`add_tracks` does. It records
+        no activity event, as :meth:`create_collection` and :meth:`add_tracks`
+        record none.
+
+        Raises:
+            ValueError: If the name is unusable, the parent is not a folder,
+                the list is empty, or it names a track the library does not
+                hold. Nothing is written in any of those cases.
+        """
+        ordered = list(dict.fromkeys(int(track_id) for track_id in track_ids))
+        if not ordered:
+            raise ValueError("A Collection made from tracks needs at least one track")
+        wanted = normalize_collection_name(name)
+        with self._db.transaction():
+            known = {int(t.id or 0) for t in self._tracks.get_many(ordered)}
+            missing = [track_id for track_id in ordered if track_id not in known]
+            if missing:
+                shown = ", ".join(str(track_id) for track_id in missing[:5])
+                more = f" and {len(missing) - 5} more" if len(missing) > 5 else ""
+                raise ValueError(f"No such track: {shown}{more}")
+            made = self._create(KIND_COLLECTION, wanted, parent_id)
+            stored = self._collections.add(int(made.id or 0), ordered)
+        return NewCollectionResult(made, stored.added)
 
     def rename(self, node_id: int, name: str) -> Collection:
         """Rename a node.

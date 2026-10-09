@@ -481,6 +481,96 @@ class TestMembership:
 
 
 @pytest.mark.unit
+class TestCreateFrom:
+    """``collections/create-from``: a Collection and its tracks in one step."""
+
+    PATH = "/api/v1/collections/create-from"
+
+    def test_it_answers_the_new_collection_as_create_does(
+        self,
+        engine,  # noqa: F811
+        tracks,
+        ids,
+    ):
+        picked = [ids[3], ids[0], ids[2]]
+        payload = ok(
+            engine,
+            self.PATH,
+            {"name": "Most played", "parent_id": None, "track_ids": picked},
+        )
+        made = payload["collection"]
+        plain = ok(
+            engine, "/api/v1/collections/create", {"kind": "collection", "name": "x"}
+        )["collection"]
+        assert set(made) == set(plain)
+        assert made["kind"] == "collection"
+        assert made["name"] == "Most played"
+        assert made["rules"] is None
+        assert made["entry_count"] == made["track_count"] == 3
+
+    def test_the_tracks_are_in_the_order_given(self, engine, tracks, ids):  # noqa: F811
+        picked = [ids[5], ids[1], ids[4]]
+        made = ok(engine, self.PATH, {"name": "Top", "track_ids": picked})["collection"]
+        status, payload = get_status(
+            engine, "/api/v1/collections/entries", collection_id=made["id"]
+        )
+        assert status == 200
+        assert [e["track_id"] for e in payload["entries"]] == picked
+
+    def test_a_repeat_is_added_once(self, engine, tracks, ids):  # noqa: F811
+        made = ok(
+            engine,
+            self.PATH,
+            {"name": "Top", "track_ids": [ids[1], ids[0], ids[1]]},
+        )["collection"]
+        assert made["track_count"] == 2
+
+    def test_it_files_under_a_folder(self, engine, tracks, ids):  # noqa: F811
+        folder = ok(
+            engine, "/api/v1/collections/create", {"kind": "folder", "name": "Stats"}
+        )["collection"]
+        made = ok(
+            engine,
+            self.PATH,
+            {"name": "Top", "parent_id": folder["id"], "track_ids": [ids[0]]},
+        )["collection"]
+        assert made["parent_id"] == folder["id"]
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {"name": "Top", "track_ids": []},
+            {"name": "Top"},
+            {"name": "Top", "track_ids": ["a"]},
+            {"name": "Top", "track_ids": [999999]},
+            {"name": "  ", "track_ids": [1]},
+            {"track_ids": [1]},
+            {"name": "Top", "parent_id": 999999, "track_ids": [1]},
+        ],
+    )
+    def test_a_refusal_is_a_400_and_nothing_is_made(
+        self,
+        engine,  # noqa: F811
+        tracks,
+        ids,
+        body,
+    ):
+        if body.get("track_ids") == [1]:
+            body = {**body, "track_ids": [ids[0]]}
+        status, payload = post(engine, self.PATH, body)
+        assert status == 400, payload
+        assert payload["error"]["code"] == "INVALID_REQUEST"
+        tree = get_json(engine, "/api/v1/collections")
+        assert tree["collections"] == []
+
+    def test_a_body_that_is_not_an_object_is_refused(self, engine, tracks):  # noqa: F811
+        status, payload = post(engine, self.PATH, [1, 2, 3])
+        assert status == 400
+        assert payload["error"]["code"] == "INVALID_REQUEST"
+        assert get_json(engine, "/api/v1/collections")["collections"] == []
+
+
+@pytest.mark.unit
 class TestSmartCollections:
     def test_saving_rules_makes_a_smart_collection(self, engine, tracks):  # noqa: F811
         node = ok(

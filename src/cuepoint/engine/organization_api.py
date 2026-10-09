@@ -529,6 +529,26 @@ def create_collection(data: Dict[str, Any]) -> Dict[str, Any]:
     return {"collection": collection_to_dict(create(name, parent_id))}
 
 
+def create_collection_from(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Make a plain Collection holding these tracks in order, in one step.
+
+    The atomic route STATS-05's "Keep as Collection" calls: the Collection and
+    its tracks are made together or not at all. It answers the new Collection
+    as ``create`` does.
+    """
+    service = resolve_collection_service()
+    made = service.create_collection_from(
+        _require_str(data, "name"),
+        _optional_int(data, "parent_id"),
+        _require_ids(data, "track_ids"),
+    )
+    return {
+        "collection": collection_to_dict(
+            made.collection, (made.track_count, made.track_count)
+        )
+    }
+
+
 def rename_collection(data: Dict[str, Any]) -> Dict[str, Any]:
     """Rename a node."""
     service = resolve_collection_service()
@@ -929,6 +949,7 @@ _GET_ROUTES: Dict[str, Callable[[Dict[str, List[str]]], Dict[str, Any]]] = {
 #: handlers that do not want it would be worse than one branch.
 _POST_ROUTES: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     "/api/v1/collections/create": create_collection,
+    "/api/v1/collections/create-from": create_collection_from,
     "/api/v1/collections/rename": rename_collection,
     "/api/v1/collections/move": move_collection,
     "/api/v1/collections/delete": delete_collection,

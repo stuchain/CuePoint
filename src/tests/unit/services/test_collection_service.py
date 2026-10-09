@@ -371,3 +371,67 @@ class TestFilingIsNotAChangeToTheTrack:
         service.add_tracks(warmups, ids[:2])
         service.delete(warmups)
         assert activity.track_history(ids[0]) == []
+
+
+class TestCreatingFromTracks:
+    """STATS-05's "Keep as Collection": the Collection and its tracks, or neither."""
+
+    @staticmethod
+    def _names(service):
+        return [node.name for node in service.tree()]
+
+    def test_one_collection_holds_the_tracks_in_the_order_given(
+        self, service, repo, ids
+    ):
+        wanted = [ids[4], ids[1], ids[3]]
+        made = service.create_collection_from("Most played", None, wanted)
+        assert made.collection.kind == "collection"
+        assert made.track_count == 3
+        assert repo.track_ids(made.collection.id) == wanted
+        assert self._names(service) == ["Most played"]
+
+    def test_it_is_filed_under_a_folder(self, service, ids):
+        folder = service.create_folder("Stats")
+        made = service.create_collection_from("Top", folder.id, [ids[0]])
+        assert made.collection.parent_id == folder.id
+
+    def test_a_repeat_is_added_once_at_its_first_place(self, service, repo, ids):
+        made = service.create_collection_from(
+            "Top", None, [ids[2], ids[0], ids[2], ids[1], ids[0]]
+        )
+        assert made.track_count == 3
+        assert repo.track_ids(made.collection.id) == [ids[2], ids[0], ids[1]]
+
+    def test_an_empty_list_makes_nothing(self, service):
+        with pytest.raises(ValueError, match="at least one track"):
+            service.create_collection_from("Top", None, [])
+        assert self._names(service) == []
+
+    def test_an_unknown_track_makes_nothing(self, service, ids):
+        with pytest.raises(ValueError, match="No such track: 999999"):
+            service.create_collection_from("Top", None, [ids[0], 999999])
+        assert self._names(service) == []
+
+    @pytest.mark.parametrize("name", ["", "   "])
+    def test_a_bad_name_makes_nothing(self, service, ids, name):
+        with pytest.raises(ValueError):
+            service.create_collection_from(name, None, [ids[0]])
+        assert self._names(service) == []
+
+    def test_a_missing_or_wrong_parent_makes_nothing(self, service, warmups, ids):
+        with pytest.raises(ValueError):
+            service.create_collection_from("Top", 999999, [ids[0]])
+        with pytest.raises(ValueError):
+            service.create_collection_from("Top", warmups, [ids[0]])
+        assert self._names(service) == ["Warmups"]
+
+    def test_a_failure_between_the_create_and_the_add_rolls_back(
+        self, service, repo, ids, monkeypatch
+    ):
+        def explode(collection_id, track_ids):
+            raise RuntimeError("the disk went away")
+
+        monkeypatch.setattr(repo, "add", explode)
+        with pytest.raises(RuntimeError):
+            service.create_collection_from("Top", None, [ids[0], ids[1]])
+        assert self._names(service) == []

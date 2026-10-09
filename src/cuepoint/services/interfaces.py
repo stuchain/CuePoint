@@ -182,6 +182,7 @@ if TYPE_CHECKING:
     )
     from cuepoint.services.collection_service import (
         FreezeResult,
+        NewCollectionResult,
         NewSetResult,
         SetSource,
         SmartResolution,
@@ -3061,6 +3062,13 @@ class ICollectionService(ABC):
         self, name: str, parent_id: Optional[int] = None
     ) -> "Collection":
         """Create a Collection."""
+        ...
+
+    @abstractmethod
+    def create_collection_from(
+        self, name: str, parent_id: Optional[int], track_ids: Iterable[int]
+    ) -> "NewCollectionResult":
+        """Make a plain Collection holding these tracks in order, atomically."""
         ...
 
     @abstractmethod

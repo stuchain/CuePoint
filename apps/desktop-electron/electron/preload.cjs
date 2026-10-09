@@ -219,6 +219,8 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
     ipcRenderer.invoke("engine:getCollectionEntries", params),
   createCollection: (params) =>
     ipcRenderer.invoke("engine:createCollection", params),
+  createCollectionFrom: (params) =>
+    ipcRenderer.invoke("engine:createCollectionFrom", params),
   renameCollection: (params) =>
     ipcRenderer.invoke("engine:renameCollection", params),
   moveCollection: (params) =>

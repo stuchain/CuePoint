@@ -3122,6 +3122,12 @@ export interface CuePointBridge {
     name: string;
     parent_id?: number | null;
   }) => Promise<{ collection: CollectionNode }>;
+  /** A plain Collection holding these tracks in order, made atomically (STATS-05). */
+  createCollectionFrom?: (params: {
+    name: string;
+    parent_id?: number | null;
+    track_ids: number[];
+  }) => Promise<{ collection: CollectionNode }>;
   renameCollection?: (params: {
     id: number;
     name: string;

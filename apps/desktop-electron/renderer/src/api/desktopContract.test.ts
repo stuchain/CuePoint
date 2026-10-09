@@ -409,12 +409,13 @@ describe("desktop contract", () => {
   describe("CuePoint's own organization (ORG-08)", () => {
     // The generic checks above compare the files against each other, so a
     // method missing from *all* of them passes every one. This says what has
-    // to exist — twenty-five methods across six files, which is exactly the
+    // to exist — twenty-six methods across six files, which is exactly the
     // surface where "forgot one" is silent until the packaged app runs.
     const methods = [
       "getCollections",
       "getCollectionEntries",
       "createCollection",
+      "createCollectionFrom",
       "renameCollection",
       "moveCollection",
       "deleteCollection",
@@ -467,6 +468,7 @@ describe("desktop contract", () => {
         "/api/v1/collections",
         "/api/v1/collections/entries?",
         "/api/v1/collections/create",
+        "/api/v1/collections/create-from",
         "/api/v1/collections/rename",
         "/api/v1/collections/move",
         "/api/v1/collections/delete",

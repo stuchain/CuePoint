@@ -3287,6 +3287,18 @@ export class EngineClient {
     return this.postJson("/api/v1/collections/create", params);
   }
 
+  /**
+   * A plain Collection holding these tracks in the order given, made in one
+   * step (STATS-05): the Collection and its tracks, or neither.
+   */
+  async createCollectionFrom(params: {
+    name: string;
+    parent_id?: number | null;
+    track_ids: number[];
+  }): Promise<{ collection: CollectionNode }> {
+    return this.postJson("/api/v1/collections/create-from", params);
+  }
+
   async renameCollection(params: {
     id: number;
     name: string;

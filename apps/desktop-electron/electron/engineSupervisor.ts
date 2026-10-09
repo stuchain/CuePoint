@@ -761,6 +761,10 @@ export class EngineSupervisor {
     return (await this.readyClient()).createCollection(params);
   }
 
+  async createCollectionFrom(params: { name: string; parent_id?: number | null; track_ids: number[] }): Promise<{ collection: CollectionNode }> {
+    return (await this.readyClient()).createCollectionFrom(params);
+  }
+
   async renameCollection(params: { id: number; name: string }): Promise<{ collection: CollectionNode }> {
     return (await this.readyClient()).renameCollection(params);
   }
