@@ -176,3 +176,24 @@ describe("the footer", () => {
     expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
   });
 });
+
+describe("the title", () => {
+  it("names each dialog by its own title when two are on the page at once", () => {
+    // One dialog playing its exit while the next opens (PAGES-12) puts two on the page. A
+    // shared title id named both after the first, so the new one read as the old one.
+    render(
+      <>
+        <Modal open title="Notes for “Friday”" onClose={() => {}}>
+          <textarea aria-label="Set notes" />
+        </Modal>
+        <Modal open title="Chapter “Warm-up”" onClose={() => {}}>
+          <textarea aria-label="Chapter notes" />
+        </Modal>
+      </>,
+    );
+    const notes = screen.getByRole("dialog", { name: "Notes for “Friday”" });
+    const chapter = screen.getByRole("dialog", { name: "Chapter “Warm-up”" });
+    expect(notes).toContainElement(screen.getByLabelText("Set notes"));
+    expect(chapter).toContainElement(screen.getByLabelText("Chapter notes"));
+  });
+});

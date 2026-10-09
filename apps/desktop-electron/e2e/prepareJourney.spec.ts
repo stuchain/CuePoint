@@ -38,6 +38,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { clickRowAt } from "./rowClick";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -142,10 +143,9 @@ function row(win: Page, title: string, nth = 0) {
     .nth(nth);
 }
 
-/** Where a person clicks: the visible left part of the row, nothing scrolled first. */
+/** Where a person clicks: the left part of the row, brought into the table's view first. */
 async function at(win: Page, target: ReturnType<typeof row>, button: "left" | "right" = "left", clicks = 1) {
-  const box = (await target.boundingBox())!;
-  await win.mouse.click(box.x + 60, box.y + box.height / 2, { button, clickCount: clicks });
+  await clickRowAt(win, target, { button, clickCount: clicks });
 }
 
 async function menu(win: Page, name: string) {

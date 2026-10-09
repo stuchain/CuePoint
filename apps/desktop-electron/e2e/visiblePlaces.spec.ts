@@ -40,6 +40,7 @@ import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
+import { clickRowAt } from "./rowClick";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -331,8 +332,7 @@ function setRow(win: Page, title: string, nth = 0) {
  * no key that moves the selection (see the note at the top), so this is the one mouse step.
  */
 async function pickEntry(win: Page, title: string, nth = 0) {
-  const box = (await setRow(win, title, nth).boundingBox())!;
-  await win.mouse.click(box.x + 60, box.y + box.height / 2);
+  await clickRowAt(win, setRow(win, title, nth));
 }
 
 const toolbar = (win: Page) => win.getByRole("toolbar", { name: "Selected tracks" });

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { usePresence } from "../tokens/usePresence";
 import { Button } from "./Button";
 import "./Modal.css";
@@ -61,6 +61,10 @@ export function Modal({
   closeOnBackdrop = true,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  // Each dialog's own title id. A shared one named every dialog on the page after the
+  // first title in it: while one dialog plays its exit and the next opens, both read as
+  // whichever of them comes first in the page.
+  const titleId = useId();
   // Where focus was before the dialog opened, so it can be put back.
   const restoreTo = useRef<HTMLElement | null>(null);
 
@@ -131,14 +135,14 @@ export function Modal({
         className={`cp-modal ${size === "wide" ? "cp-modal--wide" : ""}`.trim()}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="cp-modal-title"
+        aria-labelledby={titleId}
         // Focusable so a dialog with no controls of its own can still receive
         // focus rather than leaving it behind the backdrop.
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="cp-modal__header">
-          <h2 id="cp-modal-title" className="cp-modal__title">
+          <h2 id={titleId} className="cp-modal__title">
             {title}
           </h2>
           <button type="button" className="cp-modal__close" onClick={onClose} aria-label="Close">

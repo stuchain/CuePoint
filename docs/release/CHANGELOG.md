@@ -484,6 +484,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **A dialog opened while another is closing is read out by its own title.** Every dialog shared one title id, so while one played its exit the next one took the closing one's name for screen readers.
 - **Moving a Set's entry twice in a row puts it where you meant.** A second Move up or Move down (or Alt+Up and Alt+Down) pressed right after the first used to be worked out from the order before the first one, and could move the wrong way. It now waits for the first and uses the order you see.
 - **Typing a value into the Library filter no longer closes the app on a Mac.** The suggestion list under
   the filter's Value field and under Track details' tag field was the browser's own pop-up, which crashed
