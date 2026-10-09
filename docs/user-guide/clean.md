@@ -41,8 +41,7 @@ opens on it.
 The review queue is a table of tracks, chosen by two menus:
 
 - **Show** — which tracks: **Waiting for you**, **Changed since you decided**,
-  **Accepted**, **Rejected (no match)**, **Not found on Beatport** or **Not
-  looked up yet**.
+  **Accepted**, **Rejected**, **No match** or **Not matched**.
 - **In** — where: the whole library, a Rekordbox playlist, one of your
   Collections or a Smart Collection.
 
@@ -87,9 +86,9 @@ tracks it had not reached; nothing is matched twice.
 | --- | --- |
 | **Accepted** | The best candidate scored 95 or more and passed every check. CuePoint accepted it for you, and says so |
 | **Waiting for you** | Beatport found candidates, but none was certain enough |
-| **Not found on Beatport** | Beatport was asked and nothing fit |
-| **Not looked up yet** | The track has not been looked up yet, or every search came back empty |
-| **Rejected (no match)** | You (or a later check) said none of the candidates is the track |
+| **No match** | Beatport was asked and nothing fit |
+| **Not matched** | The track has not been looked up yet, or every search came back empty |
+| **Rejected** | You (or a later check) said none of the candidates is the track |
 
 Every candidate a match found is kept, with its score and the reason it was
 turned down, so you can pick another one later.
@@ -219,8 +218,8 @@ Library on exactly the tracks they count, as an ordinary filter you can change o
 save as a Smart Collection.
 
 **No Beatport key** opens the Library on **Key is empty**, and its notice line
-offers **Match tracks…** with those tracks. It is not the same as **Not looked up
-yet**: a track that was matched can still have no key when Beatport's record has
+offers **Match tracks…** with those tracks. It is not the same as **Not
+matched**: a track that was matched can still have no key when Beatport's record has
 none.
 
 **Checks** has a line for what each is for and when it last ran, or **Not done

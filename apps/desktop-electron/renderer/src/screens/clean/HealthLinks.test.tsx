@@ -99,10 +99,10 @@ describe("counts without a tab", () => {
 });
 
 describe("the hint on No Beatport key", () => {
-  it("says a matched track can still have no key, and how that differs from Not looked up yet", () => {
+  it("says a matched track can still have no key, and how that differs from Not matched", () => {
     renderHealth();
     const hint = screen.getByText(/Beatport's record has none/);
-    expect(hint).toHaveTextContent(/not the same as Not looked up yet/i);
+    expect(hint).toHaveTextContent(/not the same as Not matched/i);
     expect(hint).toHaveTextContent(/matched track can still have no key/i);
   });
 });

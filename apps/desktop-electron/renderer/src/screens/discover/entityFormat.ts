@@ -104,7 +104,7 @@ export function redirectedLine(kind: EntityKind): string {
 export function beatportHeadline(half: Pick<EntityBeatportHalf, "state" | "reason" | "kind">): string {
   if (half.state === "name_only") {
     if (half.reason === "shared") return `Several Beatport ${nounOf(half.kind)}s share this name`;
-    if (half.reason === "not_on_beatport") return `Not found on Beatport`;
+    if (half.reason === "not_on_beatport") return "No match";
     return "Not linked to Beatport yet";
   }
   if (half.state === "ok") return "On Beatport";

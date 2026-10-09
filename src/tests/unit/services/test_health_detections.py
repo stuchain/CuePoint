@@ -111,7 +111,7 @@ class TestLastRuns:
     def test_the_match_counts_use_the_match_state_words(self):
         # CLN-4: the stored states and count ids stay; the words change.
         labels = {rule.id: rule.label for rule in HEALTH_RULES}
-        assert labels["not_matched"] == "Not looked up yet"
+        assert labels["not_matched"] == "Not matched"
         assert labels["needs_review"] == "Waiting for you"
         assert labels["disputed"] == "Changed since you decided"
         assert labels["missing_key"] == "No Beatport key"

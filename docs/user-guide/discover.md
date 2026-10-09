@@ -270,7 +270,7 @@ When there is nothing to list, the half says why:
 | --- | --- | --- |
 | **Not linked to Beatport yet** | CuePoint does not know which Beatport artist this is. It never searches Beatport for an artist by name, because the wrong artist of the same name is worse than none | **Look them up now**, when some of the artist's tracks are matched on Beatport |
 | **Several Beatport artists share this name** | Your tracks by this name are matched to different Beatport artists | Choose the one you mean |
-| **Not found on Beatport** | Beatport has no label by this name | None |
+| **No match** | Beatport has no label by this name | None |
 | **Connect your Beatport account**, and the other token states | As at the top of Discover (see [A Beatport token](#a-beatport-token)) | **Open Settings**, or **Try again** |
 
 A label known only by name is looked up on Beatport by its name, and the page

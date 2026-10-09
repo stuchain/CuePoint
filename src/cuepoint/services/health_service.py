@@ -100,7 +100,7 @@ HEALTH_RULES: Tuple[HealthRule, ...] = (
     ),
     HealthRule(
         "not_matched",
-        "Not looked up yet",
+        "Not matched",
         _rules(FilterRule("match_state", OP_IS, STATE_NOT_MATCHED)),
     ),
     HealthRule(

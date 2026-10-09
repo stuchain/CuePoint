@@ -42,9 +42,9 @@ describe("the review scopes", () => {
       ["needs_review", "Waiting for you"],
       ["disputed", "Changed since you decided"],
       ["accepted", "Accepted"],
-      ["rejected", "Rejected (no match)"],
-      ["no_match", "Not found on Beatport"],
-      ["not_matched", "Not looked up yet"],
+      ["rejected", "Rejected"],
+      ["no_match", "No match"],
+      ["not_matched", "Not matched"],
     ]);
     expect(REVIEW_SCOPES.find((scope) => scope.id === "disputed")!.hint).toBe(
       "A newer search found a different best match than the one you chose.",

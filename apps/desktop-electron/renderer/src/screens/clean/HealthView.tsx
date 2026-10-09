@@ -60,12 +60,12 @@ const COUNT_TABS: Readonly<Record<string, CleanSection>> = {
 
 /**
  * What a count means when its name alone invites a wrong guess. "No Beatport
- * key" is not "Not looked up yet": a matched track whose Beatport record has no
+ * key" is not "Not matched": a matched track whose Beatport record has no
  * key is in the first and not the second.
  */
 const COUNT_HINTS: Readonly<Record<string, string>> = {
   missing_key:
-    "A matched track can still have no key, when Beatport's record has none, so this is not the same as Not looked up yet.",
+    "A matched track can still have no key, when Beatport's record has none, so this is not the same as Not matched.",
 };
 
 const FINISHED_LINES: Record<string, string> = {

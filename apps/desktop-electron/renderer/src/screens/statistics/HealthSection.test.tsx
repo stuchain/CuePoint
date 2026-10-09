@@ -107,9 +107,9 @@ describe("the Health section (STATS-07)", () => {
     expect(bars("beatport")).toEqual([
       "Accepted, 50 tracks",
       "Waiting for you, 10 tracks",
-      "Rejected (no match), 2 tracks",
-      "Not found on Beatport, 3 tracks",
-      "Not looked up yet, 35 tracks",
+      "Rejected, 2 tracks",
+      "No match, 3 tracks",
+      "Not matched, 35 tracks",
     ]);
   });
 

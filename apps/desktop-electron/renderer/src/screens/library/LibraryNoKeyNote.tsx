@@ -3,7 +3,7 @@
  *
  * Health's "No Beatport key" opens the Library on Key is empty, the same rule
  * as its count. The note says what the list is and offers **Match tracks…** with
- * those tracks. It also says how this differs from "Not looked up yet": a track
+ * those tracks. It also says how this differs from "Not matched": a track
  * can be matched and still have no key, when Beatport's record has none.
  */
 import { Button } from "../../components";
@@ -22,7 +22,7 @@ export function LibraryNoKeyNote({ count, onMatch }: LibraryNoKeyNoteProps) {
       <p className="library-notice__line">
         {`${count.toLocaleString()} ${count === 1 ? "track has" : "tracks have"} no Beatport key.`}{" "}
         A key comes from a track&apos;s accepted match. A track that was matched can still have
-        none when Beatport&apos;s record has none, so this is not the same as Not looked up yet.
+        none when Beatport&apos;s record has none, so this is not the same as Not matched.
       </p>
       {onMatch && (
         <div className="library-notice__actions">

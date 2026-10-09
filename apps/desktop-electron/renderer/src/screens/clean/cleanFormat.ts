@@ -33,11 +33,11 @@ export function matchStateLabel(state: MatchState | null | undefined): string {
     case "accepted":
       return "Accepted";
     case "rejected":
-      return "Rejected (no match)";
+      return "Rejected";
     case "no_match":
-      return "Not found on Beatport";
+      return "No match";
     case "not_matched":
-      return "Not looked up yet";
+      return "Not matched";
     default:
       return "";
   }
@@ -61,10 +61,10 @@ export function decisionLine(state: TrackMatchState): string {
       line = "Waiting for you";
       break;
     case "no_match":
-      line = "Not found on Beatport";
+      line = "No match";
       break;
     default:
-      line = "Not looked up yet";
+      line = "Not matched";
   }
   return state.disputed ? `${line} — changed since you decided` : line;
 }

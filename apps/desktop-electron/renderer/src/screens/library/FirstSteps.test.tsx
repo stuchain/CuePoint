@@ -19,7 +19,7 @@ function health(trackCount: number, notMatched: number): LibraryHealth {
   return {
     track_count: trackCount,
     counts: [
-      { id: "not_matched", label: "Not looked up yet", count: notMatched, rules: { match: "all", rules: [] } },
+      { id: "not_matched", label: "Not matched", count: notMatched, rules: { match: "all", rules: [] } },
     ],
     detections: [],
     unavailable_roots: [],

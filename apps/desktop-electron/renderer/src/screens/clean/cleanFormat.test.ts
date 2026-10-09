@@ -38,8 +38,8 @@ describe("where a track stands", () => {
     expect(decisionLine(state({ decided_by: "user" }))).toBe("Accepted by you");
     expect(decisionLine(state({ state: "rejected", decided_by: "user" }))).toBe("Rejected by you");
     expect(decisionLine(state({ state: "needs_review", decided_by: null }))).toBe("Waiting for you");
-    expect(decisionLine(state({ state: "no_match" }))).toBe("Not found on Beatport");
-    expect(decisionLine(state({ state: "not_matched" }))).toBe("Not looked up yet");
+    expect(decisionLine(state({ state: "no_match" }))).toBe("No match");
+    expect(decisionLine(state({ state: "not_matched" }))).toBe("Not matched");
   });
 
   it("says when a newer match disagrees", () => {
@@ -52,9 +52,9 @@ describe("where a track stands", () => {
     // CLN-4: one set of words for the Review queue, the Library and the Inspector.
     expect(matchStateLabel("needs_review")).toBe("Waiting for you");
     expect(matchStateLabel("accepted")).toBe("Accepted");
-    expect(matchStateLabel("rejected")).toBe("Rejected (no match)");
-    expect(matchStateLabel("no_match")).toBe("Not found on Beatport");
-    expect(matchStateLabel("not_matched")).toBe("Not looked up yet");
+    expect(matchStateLabel("rejected")).toBe("Rejected");
+    expect(matchStateLabel("no_match")).toBe("No match");
+    expect(matchStateLabel("not_matched")).toBe("Not matched");
     expect(matchStateLabel(null)).toBe("");
     expect(fileStatusLabel("unreadable")).toBe("Unreadable");
     expect(fileStatusLabel(undefined)).toBe("");

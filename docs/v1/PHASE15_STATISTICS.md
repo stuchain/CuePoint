@@ -991,10 +991,9 @@ in Settings → Waveforms. **All health checks** opens Clean's Health tab, which
   `checked_at` in American date words, or "Files have not been checked yet"), **Beatport** and
   **Waveforms** (Analyzed, Failed, Waiting, No file; counted only, so no bar is a button).
 - **Beatport uses the app's own words** (`matchStateLabel`, as Clean's Review and the Library's Match
-  column do): Accepted, Waiting for you, Rejected (no match), Not found on Beatport, Not looked up
-  yet. **The Library's filter chip names some of these states differently** (MATCH_STATE_CHOICES:
-  "Rejected", "No match", "Not matched"), as it already does against Clean; the engine is not
-  changed, and unifying the words is raised with Stelios. The spec's "needs review", "rejected", "no match" and "not matched" are the stored states;
+  column do): Accepted, Waiting for you, Rejected, No match, Not matched. **Clean, Statistics and the
+  Library's chips now share the filter's words** (MATCH_STATE_CHOICES; decided by Stelios
+  2026-10-09); the engine is not changed. The spec's "needs review", "rejected", "no match" and "not matched" are the stored states;
   the page does not invent a second name for them.
 - **Every count with rules opens the Library on the route's own rules** (`libraryRulesState`); an
   empty bar is drawn and is not a button. One visible button per action, nothing hover-only:

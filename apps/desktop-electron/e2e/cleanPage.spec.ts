@@ -163,7 +163,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       // ...and one without a tab opens the Library on the same rule as its count.
       await window.getByRole("tab", { name: "Health" }).click();
       await window
-        .getByRole("button", { name: /Not looked up yet: open in the Library$/ })
+        .getByRole("button", { name: /Not matched: open in the Library$/ })
         .click();
       const library = window.getByRole("table", { name: "Library tracks" });
       await expect(library.getByText("Present One")).toBeVisible();

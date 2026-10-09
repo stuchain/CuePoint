@@ -468,7 +468,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         });
         await expect(window.getByText("Your tracks by this name")).toBeVisible();
         await expect.poll(() => titlesIn(window, "Your tracks")).toEqual(["Night Bus", "Signal"]);
-        await expect(window.getByText("Not found on Beatport")).toBeVisible({ timeout: 30_000 });
+        await expect(window.getByText("No match")).toBeVisible({ timeout: 30_000 });
         await row(window, "Your tracks", "Signal").dblclick();
         await expect.poll(() => currentTitle(window), { timeout: 30_000 }).toBe("Signal");
         expect(await queueTitles(window)).toEqual(["Night Bus", "Signal"]);

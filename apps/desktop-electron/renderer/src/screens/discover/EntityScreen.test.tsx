@@ -378,7 +378,7 @@ describe("the Beatport half, in every state", () => {
     ["half_unavailable", "Beatport cannot be reached", "Try again"],
     ["half_not_resolved_resolvable", "Not linked to Beatport yet", "Look them up now"],
     ["half_not_resolved", "Not linked to Beatport yet", null],
-    ["half_not_on_beatport", "Not found on Beatport", null],
+    ["half_not_on_beatport", "No match", null],
   ];
 
   it.each(STANDING_IN)("draws %s with its reason and its action", async (name, headline, action) => {

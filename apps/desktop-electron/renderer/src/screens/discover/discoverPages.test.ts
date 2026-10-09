@@ -205,7 +205,7 @@ describe("what a page says (DEC-095: it says which identity it is)", () => {
       half_not_resolved_resolvable: "Not linked to Beatport yet",
       half_not_resolved: "Not linked to Beatport yet",
       half_shared: "Several Beatport artists share this name",
-      half_not_on_beatport: "Not found on Beatport",
+      half_not_on_beatport: "No match",
     });
   });
 

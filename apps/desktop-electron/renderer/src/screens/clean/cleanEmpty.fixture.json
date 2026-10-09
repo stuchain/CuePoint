@@ -39,7 +39,7 @@
         {
           "count": 3,
           "id": "not_matched",
-          "label": "Not looked up yet",
+          "label": "Not matched",
           "rules": {
             "match": "all",
             "rules": [
@@ -252,7 +252,7 @@
         {
           "count": 0,
           "id": "not_matched",
-          "label": "Not looked up yet",
+          "label": "Not matched",
           "rules": {
             "match": "all",
             "rules": [
@@ -490,7 +490,7 @@
         {
           "count": 3,
           "id": "not_matched",
-          "label": "Not looked up yet",
+          "label": "Not matched",
           "rules": {
             "match": "all",
             "rules": [
@@ -669,7 +669,7 @@
         {
           "count": 3,
           "id": "not_matched",
-          "label": "Not looked up yet",
+          "label": "Not matched",
           "rules": {
             "match": "all",
             "rules": [

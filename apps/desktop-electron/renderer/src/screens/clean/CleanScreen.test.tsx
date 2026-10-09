@@ -1373,7 +1373,7 @@ describe("Health", () => {
     renderClean("health");
     const count = UNTOUCHED.counts.find((entry) => entry.id === "not_matched")!;
     fireEvent.click(
-      await screen.findByRole("button", { name: "3 Not looked up yet: open in the Library" }),
+      await screen.findByRole("button", { name: "3 Not matched: open in the Library" }),
     );
     const location = JSON.parse((await screen.findByTestId("location")).textContent ?? "{}");
     expect(location).toEqual({

@@ -22,7 +22,7 @@ function health(trackCount: number, noKey: number): LibraryHealth {
   return {
     track_count: trackCount,
     counts: [
-      { id: "not_matched", label: "Not looked up yet", count: 3, rules: { match: "all", rules: [] } },
+      { id: "not_matched", label: "Not matched", count: 3, rules: { match: "all", rules: [] } },
       { id: "missing_key", label: "No Beatport key", count: noKey, rules: { match: "all", rules: [] } },
     ],
     detections: [],

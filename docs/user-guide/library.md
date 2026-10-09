@@ -490,7 +490,7 @@ selected; deciding a match (accept or reject) is done there, in Review.
 
 | Column | Shows |
 | --- | --- |
-| Match | Where the track stands with Beatport: Waiting for you, Accepted, Rejected (no match), Not found on Beatport or Not looked up yet — and *changed since you decided* when a newer search found a different best match than the one you chose |
+| Match | Where the track stands with Beatport: Waiting for you, Accepted, Rejected, No match or Not matched — and *changed since you decided* when a newer search found a different best match than the one you chose |
 | Score | The score of the Beatport match the track points at |
 | File status | What the last file check found |
 | Artwork | The track's picture, or where it would come from |

@@ -3,12 +3,13 @@
  * where it is fixed.
  *
  * Files (present, missing, unreadable, not checked) and Beatport (accepted, waiting for you,
- * rejected, not found, not looked up yet) carry the engine's own rules, so a bar opens the
+ * rejected, no match, not matched) carry the engine's own rules, so a bar opens the
  * Library on exactly those tracks. Waveforms (analyzed, failed, waiting, no file) cannot be said
  * as a rule, so they are counted and open nothing. A visible button takes each group to where it
  * is fixed, and **All health checks** opens Clean's Health tab, which stays (DEC-163). Every
- * number is the engine's; the words are the ones Clean uses (`fileStatusLabel`, `matchStateLabel`); the Library's filter
- * chip names some Beatport states differently (Rejected, No match, Not matched).
+ * number is the engine's; the words are the ones Clean uses (`fileStatusLabel`, `matchStateLabel`), and the Beatport
+ * states are named with the Library filter's words (Waiting for you, Accepted, Rejected, No match,
+ * Not matched), so Clean, Statistics and the Library chips share one set (Stelios, 2026-10-09).
  */
 import { useNavigate } from "react-router-dom";
 

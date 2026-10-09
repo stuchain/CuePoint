@@ -134,10 +134,9 @@ exactly those tracks, except in Waveforms, which is counted only.
   **Check files** opens [Clean](clean.md) where the check is run.
 - **Beatport** is where each track stands in matching, in the words Clean
   uses: **Accepted**, **Waiting for you** (a match is waiting for your
-  decision), **Rejected (no match)**, **Not found on Beatport** and **Not
-  looked up yet**. **Match** opens Clean to review and match. The Library's own filter chip
-  names some of these states differently (**Rejected**, **No match** and **Not
-  matched**); they are the same states.
+  decision), **Rejected**, **No match** and **Not matched**. **Match** opens
+  Clean to review and match. Clean, Statistics and the Library's filter use
+  the same words for these states.
 - **Waveforms** is how far the waveform analysis has got: **Analyzed**,
   **Failed**, **Waiting** and **No file** (a track with no file to analyze).
   **Analyze** opens Settings on Waveforms, where the analysis is started,

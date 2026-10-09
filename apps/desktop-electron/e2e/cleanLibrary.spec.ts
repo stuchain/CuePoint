@@ -315,7 +315,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.keyboard.press("Escape");
       await expect(row(window, "Gone")).toContainText("Missing");
       await expect(row(window, "Tone One")).toContainText("Present");
-      await expect(row(window, "Tone One")).toContainText("Not looked up yet");
+      await expect(row(window, "Tone One")).toContainText("Not matched");
 
       // A fixed-value field is a choice, and its chip reads the name.
       await window.getByRole("button", { name: "Add filter" }).click();
