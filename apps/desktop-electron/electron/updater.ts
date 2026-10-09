@@ -345,6 +345,8 @@ export class Updater {
    */
   restart(): boolean {
     if (this.state.status !== "ready" || this.ready === null) return false;
+    // Already quitting for this: a second ask (two screens, a double click) does not quit twice.
+    if (this.relaunch) return false;
     try {
       this.relaunch = true;
       this.deps.quit();

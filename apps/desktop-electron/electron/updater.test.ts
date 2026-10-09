@@ -650,6 +650,14 @@ describe("macOS (DEC-170)", () => {
     expect(s.report).not.toHaveBeenCalled();
   });
 
+  it("a second restart while the first is quitting does nothing", async () => {
+    const s = setup();
+    await settle(s.updater);
+    expect(s.updater.restart()).toBe(true);
+    expect(s.updater.restart()).toBe(false);
+    expect(s.quit).toHaveBeenCalledTimes(1);
+  });
+
   it("restart marks the relaunch and quits", async () => {
     const s = setup({ target: "mac-arm64" });
     await settle(s.updater);

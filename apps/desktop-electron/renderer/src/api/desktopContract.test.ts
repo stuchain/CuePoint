@@ -2249,6 +2249,7 @@ describe("desktop contract", () => {
       "updates:dismissWhatsNew",
       "updates:getNotes",
       "updates:openReleasePage",
+      "updates:openLink",
       "updates:subscribe",
       "updates:unsubscribe",
     ];
@@ -2284,6 +2285,23 @@ describe("desktop contract", () => {
       const block = preload.slice(preload.indexOf("updates: {"), preload.indexOf("updates: {") + 1800);
       expect(block).toMatch(/updates:openReleasePage",\s*which === "current" \? "current" : "update"/);
       expect(block).not.toMatch(/openExternal|shell\./);
+    });
+
+    it("opens a link from the notes only after the rule has passed it", () => {
+      expect(main).toMatch(/handle\("updates:openLink", \(_event, url: unknown\) => openNoteLink\(url, shell\)\);/);
+      expect(main).toMatch(/import \{[^}]*\bopenNoteLink\b[^}]*\} from "\.\/updateNotes";/);
+      expect(bridgeTypes).toContain("openLink: (url: string) => Promise<boolean>;");
+      const block = preload.slice(preload.indexOf("updates: {"), preload.indexOf("updates: {") + 2200);
+      expect(block).toMatch(/openLink: \(url\) => ipcRenderer\.invoke\("updates:openLink", url\)/);
+      expect(block).not.toMatch(/openExternal|shell\./);
+    });
+
+    it("keeps the window on the app's own page: no new windows, no navigation away", () => {
+      expect(main).toContain('import { isOwnPage } from "./navigationGuard";');
+      expect(main).toContain('setWindowOpenHandler(() => ({ action: "deny" }))');
+      expect(main).toMatch(/on\("will-navigate", keepToOwnPages\)/);
+      expect(main).toMatch(/on\("will-redirect", keepToOwnPages\)/);
+      expect(main).toContain("if (!isOwnPage(url, ownPages)) event.preventDefault();");
     });
 
     it("takes the lock first, and installs last in the quit cleanup", () => {

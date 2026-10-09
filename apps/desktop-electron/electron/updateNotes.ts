@@ -19,6 +19,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { releaseNoteLinkUrl } from "./externalLinks";
 import { RELEASES_REPOSITORY } from "./releaseList";
 import { compareVersions, parseVersion, tagVersion, type Release } from "./updateRule";
 
@@ -62,6 +63,20 @@ export async function openReleasePage(
   opener: { openExternal: (url: string) => Promise<void> },
 ): Promise<boolean> {
   const page = releasePageUrl(address);
+  if (page === null) return false;
+  await opener.openExternal(page);
+  return true;
+}
+
+/**
+ * Opens a link from a release's notes (DIST-07), only when `releaseNoteLinkUrl` allows it.
+ * Answers whether it opened; a refused link is refused quietly.
+ */
+export async function openNoteLink(
+  address: unknown,
+  opener: { openExternal: (url: string) => Promise<void> },
+): Promise<boolean> {
+  const page = releaseNoteLinkUrl(address);
   if (page === null) return false;
   await opener.openExternal(page);
   return true;

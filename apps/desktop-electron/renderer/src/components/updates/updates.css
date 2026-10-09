@@ -1,0 +1,52 @@
+/* Release notes and the update panels (DIST-07). Only tokens, so every theme and size reads right. */
+.cp-release-notes {
+  max-height: calc(320px * var(--scale));
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.cp-release-notes h3,
+.cp-release-notes h4,
+.cp-release-notes h5 {
+  margin: var(--space-md) 0 var(--space-xs);
+  font-size: var(--font-size-md);
+}
+
+.cp-release-notes > :first-child {
+  margin-top: 0;
+}
+
+.cp-release-notes p,
+.cp-release-notes ul,
+.cp-release-notes ol {
+  margin: 0 0 var(--space-sm);
+}
+
+.cp-release-notes ul,
+.cp-release-notes ol {
+  padding-left: calc(var(--space-lg) + var(--space-xs));
+}
+
+.cp-release-notes code {
+  padding: 0 var(--space-xs);
+  background: var(--bg-app);
+  border: var(--border-width) solid var(--border-outline);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.9em;
+}
+
+.cp-release-notes a {
+  color: var(--accent-info);
+}
+
+.cp-release-notes__none,
+.cp-update-panel__note {
+  margin: 0 0 var(--space-sm);
+  color: var(--fg-muted);
+}
+
+.cp-update-panel__ask {
+  margin: 0 0 var(--space-sm);
+  font-weight: 700;
+}

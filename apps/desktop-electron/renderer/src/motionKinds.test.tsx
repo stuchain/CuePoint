@@ -684,6 +684,20 @@ perKind(
   (m) => expect(m.animation).toMatch(/cp-pulse/),
 );
 
+perKind(
+  "feedback",
+  "the update item arriving in the status strip",
+  () => ({
+    ui: (
+      <div className="cp-status">
+        <span className="cp-update-item">CuePoint 1.0.0-test.2 is ready</span>
+      </div>
+    ),
+    target: first(".cp-update-item"),
+  }),
+  (m) => expect(m.animation).toMatch(/cp-state-step-a [^,]*steps\(/),
+);
+
 // ---- shared ---------------------------------------------------------------------------------
 
 describe("shared: the two shared-element transitions", () => {

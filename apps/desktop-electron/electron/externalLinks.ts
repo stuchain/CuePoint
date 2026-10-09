@@ -39,3 +39,30 @@ export function beatportPageUrl(value: unknown): string | null {
   if (url.port !== "" || url.username !== "" || url.password !== "") return null;
   return url.toString();
 }
+
+/**
+ * The links a release's notes may open (DIST-07). The notes are untrusted text from the network,
+ * so a link in them opens only over https, with no credentials or port, on GitHub or CuePoint's
+ * own site.
+ */
+const NOTE_LINK_HOSTS: readonly string[] = ["usecuepoint.com", "www.usecuepoint.com"];
+
+/** The URL to open, normalized, or null when a release's notes may not link there. */
+export function releaseNoteLinkUrl(value: unknown): string | null {
+  if (typeof value !== "string" || value.length === 0 || value.length > MAX_URL_LENGTH) {
+    return null;
+  }
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  if (url.port !== "" || url.username !== "" || url.password !== "") return null;
+  const host = url.hostname;
+  if (host !== "github.com" && !host.endsWith(".github.com") && !NOTE_LINK_HOSTS.includes(host)) {
+    return null;
+  }
+  return url.toString();
+}

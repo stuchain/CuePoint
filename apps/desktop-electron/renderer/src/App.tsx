@@ -82,6 +82,7 @@ import { ScaleProvider } from "./tokens/ScaleContext";
 import { ThemeProvider } from "./tokens/ThemeContext";
 import { E2eCrashProbe, ErrorBoundary, useNavigationBreadcrumbs } from "./reporting";
 import { Phase14Note } from "./components/Phase14Note";
+import { WhatsNew } from "./components/updates/WhatsNew";
 import { phase14NoteDue, shouldShowOnboarding } from "./components/firstRunMemory";
 import "./App.css";
 // After every component stylesheet, so a rule here wins a tie with one (PAGES-12).
@@ -426,6 +427,8 @@ function AppShell() {
         onChangeSize={() => navigate("/settings", { state: settingsFocusState("size") })}
         onMatch={() => openMatching()}
       />
+      {/* After the guide and the Phase 14 note: one dialog at a time (DIST-07). */}
+      <WhatsNew hold={onboardingOpen || noteOpen} />
       <RekordboxInstructionsDialog open={rekordboxOpen} onClose={() => setRekordboxOpen(false)} />
       <LogViewerDialog open={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
     </>

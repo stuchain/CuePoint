@@ -8,7 +8,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
 import { resolveAppIconPath } from "./appIcon";
 import { installAppMenu, type MenuPlatform } from "./appMenu";
@@ -19,6 +19,7 @@ import { PlaybackController } from "./playbackController";
 import { queueTruncationMessage, resolveQueueFromView } from "./queueResolver";
 import { chooseRekordboxExportDestination } from "./rekordboxExportDialog";
 import { currentBuildInfo } from "./buildInfo";
+import { isOwnPage } from "./navigationGuard";
 import { ErrorReportingChoice } from "./errorReporting";
 import {
   breadcrumb,
@@ -51,7 +52,7 @@ import { locateBundle, prepareMacUpdate, startInstall } from "./macInstaller";
 import { fetchReleases } from "./releaseList";
 import { scrubText } from "./reportScrub";
 import { enforceSingleInstance, onlyIfFirst } from "./singleInstance";
-import { UpdateNotes, openReleasePage, pruneInstalledUpdates } from "./updateNotes";
+import { UpdateNotes, openNoteLink, openReleasePage, pruneInstalledUpdates } from "./updateNotes";
 import { compareVersions, isTestVersion } from "./updateRule";
 import { Updater, type UpdateState, type WindowsUpdater } from "./updater";
 import {
@@ -892,6 +893,8 @@ function registerIpcHandlers(): void {
       which === "current" ? (await updateNotes.getNotes()).releaseUrl : updater.getState().releaseUrl;
     return openReleasePage(address, shell);
   });
+  // A link in a release's notes, which are untrusted text: only GitHub and CuePoint's own site.
+  handle("updates:openLink", (_event, url: unknown) => openNoteLink(url, shell));
   handle("updates:subscribe", (event) => {
     const id = event.sender.id;
     const existing = updateWatchers.get(id);
@@ -1265,6 +1268,20 @@ async function createWindow(): Promise<void> {
       backgroundThrottling: false,
     },
   });
+
+  // The window shows the app's own page and nothing else (DIST-07 review): no new windows, and
+  // no navigation away, whatever a link, a drop or a script asks. Pages open in the browser only
+  // through the narrow helpers above.
+  const ownPages = {
+    devUrl: isDev ? DEV_URL : null,
+    indexUrl: pathToFileURL(path.join(__dirname, "../renderer/dist/index.html")).href,
+  };
+  win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  const keepToOwnPages = (event: { preventDefault: () => void }, url: string) => {
+    if (!isOwnPage(url, ownPages)) event.preventDefault();
+  };
+  win.webContents.on("will-navigate", keepToOwnPages);
+  win.webContents.on("will-redirect", keepToOwnPages);
 
   // Held on focus and given back on blur, so the keys belong to whatever the
   // user is looking at (PLAYER-12).

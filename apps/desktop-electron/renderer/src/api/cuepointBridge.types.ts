@@ -3211,6 +3211,11 @@ export interface UpdatesBridge {
    * version's (`current`). The address is main's own and is never one the page sends. Answers whether it opened.
    */
   openReleasePage: (which?: "update" | "current") => Promise<boolean>;
+  /**
+   * Open a link from a release's notes in the browser. Main opens it only over https, on GitHub or
+   * CuePoint's own site, and refuses anything else quietly. Answers whether it opened.
+   */
+  openLink: (url: string) => Promise<boolean>;
 }
 
 export interface CuePointBridge {

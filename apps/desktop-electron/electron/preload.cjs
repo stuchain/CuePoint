@@ -395,6 +395,8 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
     getNotes: () => ipcRenderer.invoke("updates:getNotes"),
     openReleasePage: (which) =>
       ipcRenderer.invoke("updates:openReleasePage", which === "current" ? "current" : "update"),
+    // A link in the release notes; main opens it only when it is on GitHub or CuePoint's site.
+    openLink: (url) => ipcRenderer.invoke("updates:openLink", url),
     subscribe: (listener) => {
       const handler = (_event, state) => listener(state);
       ipcRenderer.on("updates:state", handler);

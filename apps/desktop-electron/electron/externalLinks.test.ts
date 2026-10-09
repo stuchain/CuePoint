@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { MAX_URL_LENGTH, beatportPageUrl } from "./externalLinks";
+import { MAX_URL_LENGTH, beatportPageUrl, releaseNoteLinkUrl } from "./externalLinks";
 
 describe("beatportPageUrl", () => {
   it.each([
@@ -45,4 +45,43 @@ describe("beatportPageUrl", () => {
       expect(beatportPageUrl(value)).toBeNull();
     },
   );
+});
+
+describe("releaseNoteLinkUrl", () => {
+  it.each([
+    "https://github.com/stevas/CuePoint/releases/tag/v1.0.1",
+    "https://github.com/stevas/CuePoint/issues/12",
+    "https://docs.github.com/en/pages",
+    "https://usecuepoint.com/downloads",
+    "https://www.usecuepoint.com/",
+  ])("opens a link on GitHub or CuePoint's site: %s", (url) => {
+    expect(releaseNoteLinkUrl(url)).toBe(url);
+  });
+
+  it("normalizes the host", () => {
+    expect(releaseNoteLinkUrl("https://GitHub.com/a/b")).toBe("https://github.com/a/b");
+  });
+
+  it.each([
+    ["plain http", "http://github.com/a/b"],
+    ["a file", "file:///etc/passwd"],
+    ["javascript", "javascript:alert(1)"],
+    ["a custom protocol", "ms-settings:privacy"],
+    ["another site", "https://example.com/a"],
+    ["a look-alike suffix", "https://evilgithub.com/a"],
+    ["a look-alike host", "https://github.com.example.com/a"],
+    ["another site's subdomain of the name", "https://github.com.evil.io/a"],
+    ["an unknown CuePoint host", "https://evil.usecuepoint.com/a"],
+    ["credentials", "https://user:pass@github.com/a"],
+    ["a port", "https://github.com:8443/a"],
+    ["not a URL", "github.com/a"],
+    ["empty", ""],
+    ["too long", `https://github.com/${"a".repeat(MAX_URL_LENGTH)}`],
+  ])("refuses %s", (_what, url) => {
+    expect(releaseNoteLinkUrl(url)).toBeNull();
+  });
+
+  it.each([null, undefined, 7, {}])("refuses what is not text: %j", (value) => {
+    expect(releaseNoteLinkUrl(value)).toBeNull();
+  });
 });

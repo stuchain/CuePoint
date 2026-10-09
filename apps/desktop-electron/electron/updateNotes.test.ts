@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   UpdateNotes,
   notesPath,
+  openNoteLink,
   openReleasePage,
   pruneInstalledUpdates,
   readNotes,
@@ -81,6 +82,22 @@ describe("opening a release page", () => {
     const openExternal = vi.fn(async () => undefined);
     await expect(openReleasePage("https://evil.test/", { openExternal })).resolves.toBe(false);
     await expect(openReleasePage(null, { openExternal })).resolves.toBe(false);
+    expect(openExternal).not.toHaveBeenCalled();
+  });
+});
+
+describe("opening a link from the notes", () => {
+  it("opens an allowed link and says so", async () => {
+    const openExternal = vi.fn(async () => undefined);
+    await expect(openNoteLink("https://github.com/stuchain/CuePoint/pull/3", { openExternal })).resolves.toBe(true);
+    expect(openExternal).toHaveBeenCalledWith("https://github.com/stuchain/CuePoint/pull/3");
+  });
+
+  it("opens nothing else, quietly", async () => {
+    const openExternal = vi.fn(async () => undefined);
+    await expect(openNoteLink("https://evil.test/", { openExternal })).resolves.toBe(false);
+    await expect(openNoteLink("javascript:alert(1)", { openExternal })).resolves.toBe(false);
+    await expect(openNoteLink(undefined, { openExternal })).resolves.toBe(false);
     expect(openExternal).not.toHaveBeenCalled();
   });
 });

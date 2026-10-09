@@ -1,0 +1,33 @@
+/* Settings › About & updates (DIST-07). Tokens only. */
+.about-updates {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.about-updates p {
+  margin: 0;
+}
+
+.about-updates__words {
+  font-weight: 700;
+}
+
+.about-updates__more,
+.about-updates__percent,
+.about-updates__checked {
+  color: var(--fg-muted);
+}
+
+.about-updates__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.about-updates__ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}

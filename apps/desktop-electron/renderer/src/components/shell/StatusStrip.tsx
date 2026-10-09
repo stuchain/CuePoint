@@ -3,6 +3,7 @@ import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 import { useLeaveGhost } from "../../tokens/useLeaveGhost";
 import { Hint } from "../Hint";
 import { PixelSpinner } from "../PixelSpinner";
+import { UpdateStatusItem } from "../updates/UpdateStatusItem";
 import { ActivityPanel } from "./ActivityPanel";
 import { modifierName } from "./platformKeys";
 import { jobLabel, jobPercent, jobStopLabel, jobTitle, useActiveJob } from "./useActiveJob";
@@ -350,6 +351,8 @@ export function StatusStrip() {
             )}
           </span>
         ) : null}
+
+        <UpdateStatusItem />
 
         <Hint text={activityHint()}>
           <button

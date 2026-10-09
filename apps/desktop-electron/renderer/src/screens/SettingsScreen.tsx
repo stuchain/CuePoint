@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { appVersion } from "../components/AboutDialog";
 import { Button, Panel } from "../components";
 import type { AppBuildInfo } from "../api/cuepointBridge.types";
+import { AboutUpdatesSection } from "./AboutUpdatesSection";
 import { AudioSettingsPanel } from "./AudioSettingsPanel";
 import { BeatportSettingsPanel } from "./BeatportSettingsPanel";
 import { ErrorReportingSettingsPanel } from "./ErrorReportingSettingsPanel";
@@ -65,8 +66,9 @@ function AboutSection({ onOpenOnboarding }: { onOpenOnboarding?: () => void }) {
             Getting started
           </Button>
         </div>
-        {/* Phase 16's "Check for updates" takes this place. */}
-        <div data-slot="updates" />
+        <div data-slot="updates">
+          <AboutUpdatesSection />
+        </div>
       </div>
     </Panel>
   );

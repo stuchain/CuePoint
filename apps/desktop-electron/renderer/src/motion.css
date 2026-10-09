@@ -363,6 +363,13 @@
     cp-pulse-b var(--motion-slow) var(--motion-fade);
 }
 
+/* The update item in the strip steps in when it appears or changes state (DIST-07); it is keyed by state. */
+:root[data-motion-feedback] .cp-update-item {
+  animation:
+    cp-state-step-a var(--motion-slow) steps(var(--motion-steps-long)),
+    cp-pulse var(--motion-slow) var(--motion-fade);
+}
+
 /* The "Saved" tick pulses. */
 :root[data-motion-feedback] .cp-saved-tick__body > [aria-hidden="true"] {
   display: inline-block;

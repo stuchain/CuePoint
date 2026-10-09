@@ -1,0 +1,40 @@
+/* The update item in the status strip (DIST-07). Its own file: the strip's CSS belongs to the shell. */
+.cp-update-live {
+  display: inline;
+}
+
+.cp-update-item {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: var(--space-sm);
+}
+
+.cp-update-item__text {
+  color: var(--fg-muted);
+}
+
+.cp-update-item__button {
+  flex: none;
+  min-height: var(--icon-size);
+  padding: 0 var(--space-xs);
+  background: transparent;
+  border: var(--border-width) solid var(--border-outline);
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.cp-update-item__button:hover {
+  background: var(--bg-app);
+}
+
+.cp-update-item__button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.cp-update-item__percent {
+  flex: none;
+  color: var(--fg-muted);
+}
