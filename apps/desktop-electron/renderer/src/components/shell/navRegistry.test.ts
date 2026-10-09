@@ -110,6 +110,17 @@ describe("navRegistry", () => {
     expect(pageDestination(prepare).id).toBe("prepare");
   });
 
+  it("has Statistics enabled after Prepare, in the workspace, as its own page (STATS-04)", () => {
+    const statistics = findDestinationById("statistics")!;
+    expect(statistics.enabled).toBe(true);
+    expect(statistics.group).toBe("workspace");
+    expect(statistics.path).toBe("/statistics");
+    expect(statistics.icon).toBe("statistics");
+    expect(pageDestination(statistics).id).toBe("statistics");
+    const ids = NAV_DESTINATIONS.map((d) => d.id);
+    expect(ids.indexOf("statistics")).toBe(ids.indexOf("prepare") + 1);
+  });
+
   it("has Discover enabled, in the workspace, as its own page (DISCOVER-10)", () => {
     const discover = findDestinationById("discover")!;
     expect(discover.enabled).toBe(true);
@@ -122,7 +133,7 @@ describe("navRegistry", () => {
   it("renders exactly what has been built", () => {
     // Tools and inCrate retired in DISCOVER-12 (DEC-100).
     const enabled = enabledDestinations().map((d) => d.id);
-    expect(enabled).toEqual(["library", "collections", "keys", "clean", "discover", "prepare", "settings"]);
+    expect(enabled).toEqual(["library", "collections", "keys", "clean", "discover", "prepare", "statistics", "settings"]);
   });
 
   describe("a destination that renders another's page (DEC-062)", () => {
@@ -335,6 +346,7 @@ describe("groupedDestinations", () => {
         clean: "Fix values with Beatport",
         discover: "Find new music",
         prepare: "Plan a set",
+        statistics: "See what you play most and how your library is made up",
         settings: "Look, sound, accounts",
       });
     });
@@ -357,7 +369,7 @@ describe("groupedDestinations", () => {
 
     it("names the pages that need a library before the first import (NAV-5)", () => {
       const needing = NAV_DESTINATIONS.filter((d) => d.needsLibrary).map((d) => d.id);
-      expect(needing).toEqual(["collections", "keys", "clean", "discover", "prepare"]);
+      expect(needing).toEqual(["collections", "keys", "clean", "discover", "prepare", "statistics"]);
       expect(EMPTY_LIBRARY_HINT).toBe("Import your Rekordbox collection first");
     });
 

@@ -1,0 +1,80 @@
+/*
+ * The Statistics page (STATS-04): a header with the title and the scope picker, then three
+ * sections stacked. Theme tokens only, so every theme and scale draws it; the header wraps
+ * rather than scrolling sideways.
+ */
+.statistics-page {
+  flex: none;
+  gap: 0;
+  width: 100%;
+  min-height: auto;
+  padding: 0;
+}
+
+.app-main .screen.statistics-page {
+  max-width: none;
+}
+
+.statistics-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--border-width) solid var(--border-muted);
+}
+
+.statistics-page__scope {
+  min-width: calc(220px * var(--scale));
+  max-width: 100%;
+}
+
+.statistics-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-bottom: var(--border-width) solid var(--border-muted);
+}
+
+.statistics-section__title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+
+.statistics-section__failed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.statistics-note {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+}
+
+.statistics-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  max-width: 56ch;
+  margin: 0 auto;
+  padding: var(--space-md);
+  text-align: center;
+}
+
+.statistics-empty--section {
+  align-items: flex-start;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.statistics-empty__title {
+  margin: 0;
+}

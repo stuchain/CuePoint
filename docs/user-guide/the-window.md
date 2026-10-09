@@ -26,12 +26,12 @@ its top (click them to go home, to the Library). Each page has a one-line hint
 under its name, and the same line is its tooltip when the sidebar is collapsed:
 **Library** "Your Rekordbox tracks", **Collections** "Your own groups and smart
 lists", **Keys** "The keys in your playlists, Collections and Sets", **Clean** "Fix values with Beatport", **Discover** "Find new music",
-**Prepare** "Plan a set" and **Settings** "Look, sound, accounts". **Collections**
+**Prepare** "Plan a set", **Statistics** "See what you play most and how your library is made up" and **Settings** "Look, sound, accounts". **Collections**
 sits indented under **Library**, because it is a way into the Library page's own
 tree; **Keys** follows it (see [Keys](keys.md)). **Settings** is pinned to the bottom, under a thin line.
 
-Until you import a Rekordbox collection, **Collections**, **Keys**, **Clean**, **Discover**
-and **Prepare** are dimmed and their hint reads "Import your Rekordbox collection
+Until you import a Rekordbox collection, **Collections**, **Keys**, **Clean**, **Discover**,
+**Prepare** and **Statistics** are dimmed and their hint reads "Import your Rekordbox collection
 first". They still open: they just have nothing to show yet. They light up on their
 own after the first import.
 
@@ -41,7 +41,7 @@ kept tidy — see [Clean](clean.md). **Discover** finds new music on Beatport �
 [Discover](discover.md). **Prepare** is where a set is planned as a running
 order, and it reopens on the Set you had open — see [Prepare](prepare.md). On
 Prepare, selecting an entry adds **In this Set** to Track details, above the
-track's own details. The older **inKey** and **Results** pages became Clean,
+track's own details. **Statistics** follows Prepare and shows what you play most and how your library is made up — see [Statistics](statistics.md). The older **inKey** and **Results** pages became Clean,
 and **inCrate** became Discover; a link to any of them opens the page that
 replaced it. There is no **Tools** group any more: when CuePoint has no page to
 reopen, it opens on the Library. Double-clicking a track there plays it; the bar

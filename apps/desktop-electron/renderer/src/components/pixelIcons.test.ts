@@ -58,7 +58,7 @@ describe("pixel icon artwork", () => {
     // FOUNDATION-14 left the concept icons as Unicode glyphs "until there is a
     // screen to draw them against". There is one now.
     expect(PIXEL_ICON_NAMES).toEqual(
-      expect.arrayContaining(["collections", "clean", "discover", "prepare"]),
+      expect.arrayContaining(["collections", "clean", "discover", "prepare", "statistics"]),
     );
     for (const destination of NAV_DESTINATIONS) {
       if (destination.icon) expect(PIXEL_ICON_NAMES).toContain(destination.icon);

@@ -2,15 +2,16 @@
 
 The engine serializes one answer; STATS-04 declares it in ``engineClient.ts`` and
 the renderer's bridge types copy it (``desktopContract.test.ts`` holds the two
-TypeScript copies together). No TypeScript declares it yet, so this holds what is
-checkable now, from Python, against real answers: the fields every part of the
-answer carries, that every rule set is the filter vocabulary's own, and that
-every refusal arrives under a declared code. The last test compares the
-TypeScript with the answer, the way ``test_waveforms_contract`` does, and runs
-as soon as STATS-04 adds the types.
+TypeScript copies together). This holds, from Python, against real answers: the
+fields every part of the answer carries, that every rule set is the filter
+vocabulary's own, and that every refusal arrives under a declared code. The two
+last tests compare the TypeScript with the answers, the way
+``test_waveforms_contract`` does.
 """
 
 from __future__ import annotations
+
+import re
 
 import pytest
 
@@ -129,10 +130,48 @@ def test_a_scope_is_named_as_the_page_will_send_it():
     assert api.parse_scope("playlist:7") == PlaysScope("playlist", 7)
 
 
-@pytest.mark.skipif(
-    "StatisticsPlays" not in _client(),
-    reason="STATS-04 declares the plays types in engineClient.ts",
-)
+def _members(interface: str) -> dict:
+    """Each member of an exported client interface and its declared type text."""
+    text = _client()
+    start = text.index(f"export interface {interface} ")
+    body = text[start : text.index("\n}", start)]
+    return dict(re.findall(r"^ {2}([a-z_]+)\??: (.*);$", body, re.M))
+
+
+def _admits(declared: str, value) -> bool:
+    """Whether a TypeScript type text can hold this JSON value (nullability included)."""
+    for alias in re.findall(r"[A-Z][A-Za-z]+", declared):
+        found = re.search(rf"^export type {alias} =\s*([^;]*);", _client(), re.M)
+        if found:
+            declared = declared.replace(alias, found.group(1))
+    if value is None:
+        return "null" in declared.split(" | ")
+    if isinstance(value, bool):
+        return "boolean" in declared
+    if isinstance(value, (int, float)):
+        return "number" in declared or re.search(r"\d", declared) is not None
+    if isinstance(value, str):
+        return "string" in declared or '"' in declared
+    if isinstance(value, list):
+        return declared.endswith("[]")
+    return True
+
+
+def _check_members(interface: str, sample: dict) -> None:
+    """Every member's declared type admits the payload's value, and null only where declared."""
+    declared = _members(interface)
+    for name, value in sample.items():
+        assert _admits(declared[name], value), (interface, name, declared[name], value)
+    optional = set(re.findall(r"^ {2}([a-z_]+)\?:", _interface_body(interface), re.M))
+    assert optional <= set(sample) | {"no_file"}, (interface, optional)
+
+
+def _interface_body(interface: str) -> str:
+    text = _client()
+    start = text.index(f"export interface {interface} ")
+    return text[start : text.index("\n}", start)]
+
+
 def test_the_client_declares_every_field_of_the_answer(world):
     answer = world.plays(limit=200)
 
@@ -143,6 +182,16 @@ def test_the_client_declares_every_field_of_the_answer(world):
     assert _fields("StatisticsCount") == set(answer["never_played"])
     text = _client()
     assert f'"{api.PLAYS_PATH}' in text or f"`{api.PLAYS_PATH}" in text
+    _check_members("StatisticsPlays", answer)
+    _check_members("StatisticsTrack", answer["tracks"][0])
+    _check_members("StatisticsArtist", answer["artists"][0])
+    _check_members("StatisticsLabel", answer["labels"][0])
+    _check_members("StatisticsCount", answer["never_played"])
+    # A window with no history answers null where an all-time one answers text.
+    empty = world.plays(limit=10, **midnight("2026-03-11"))
+    assert _admits(_members("StatisticsPlays")["since"], empty["since"])
+    assert _admits(_members("StatisticsPlays")["history_from"], None)
+    assert _admits(_members("StatisticsPlays")["last_read"], None)
 
 
 # ---------------------------------------------------------------- STATS-03
@@ -240,10 +289,6 @@ def test_the_two_routes_are_declared_beside_the_plays_route():
     assert api.GET_PATHS == (api.PLAYS_PATH, api.SPREADS_PATH, api.HEALTH_PATH)
 
 
-@pytest.mark.skipif(
-    "StatisticsSpreads" not in _client(),
-    reason="STATS-04 declares the spreads and health types in engineClient.ts",
-)
 def test_the_client_declares_every_field_of_the_spreads_and_health(spread_world):
     spreads = spread_world.spreads()
     health = spread_world.statistics.health().to_dict()
@@ -256,3 +301,15 @@ def test_the_client_declares_every_field_of_the_spreads_and_health(spread_world)
     text = _client()
     for path in (api.SPREADS_PATH, api.HEALTH_PATH):
         assert f'"{path}' in text or f"`{path}" in text
+    _check_members("StatisticsSpreads", spreads)
+    for name in FIELDS:
+        _check_members("StatisticsSpread", spreads[name])
+    _check_members("StatisticsBucket", spreads["genre"]["buckets"][0])
+    _check_members("StatisticsLine", spreads["genre"]["unknown"])
+    _check_members("StatisticsHealth", health)
+    _check_members("StatisticsAnalyzed", health["analyzed"])
+    # A bucket with no rule (Other), a line with no rule and a health never checked are null.
+    assert _admits(_members("StatisticsBucket")["rules"], None)
+    assert _admits(_members("StatisticsLine")["rules"], None)
+    assert _admits(_members("StatisticsBucket")["value"], None)
+    assert _admits(_members("StatisticsHealth")["checked_at"], None)

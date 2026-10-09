@@ -291,6 +291,9 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   startTagRestore: (params) => ipcRenderer.invoke("engine:startTagRestore", params),
   getTagWrites: (params) => ipcRenderer.invoke("engine:getTagWrites", params),
   getLibraryHealth: () => ipcRenderer.invoke("engine:getLibraryHealth"),
+  getStatisticsPlays: (params) => ipcRenderer.invoke("engine:getStatisticsPlays", params),
+  getStatisticsSpreads: (params) => ipcRenderer.invoke("engine:getStatisticsSpreads", params),
+  getStatisticsHealth: (params) => ipcRenderer.invoke("engine:getStatisticsHealth", params),
   exportReviewList: (params) => ipcRenderer.invoke("engine:exportReviewList", params),
   // The Rekordbox export (EXPORT-06): not the review list above.
   previewRekordboxExport: (params) =>

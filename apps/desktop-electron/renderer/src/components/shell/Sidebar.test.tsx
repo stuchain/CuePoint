@@ -91,7 +91,7 @@ describe("Sidebar", () => {
     expect(within(nav()).queryByText("Tools")).not.toBeInTheDocument();
     expect(within(nav()).queryByRole("link", { name: "inCrate" })).not.toBeInTheDocument();
     const links = destinationNames();
-    expect(links).toEqual(["Library", "Collections", "Keys", "Clean", "Discover", "Prepare", "Settings"]);
+    expect(links).toEqual(["Library", "Collections", "Keys", "Clean", "Discover", "Prepare", "Statistics", "Settings"]);
   });
 
   it("marks the active destination with aria-current", () => {
@@ -304,9 +304,9 @@ describe("Sidebar", () => {
   });
 
   describe("before the first import (NAV-5)", () => {
-    const dimmed = ["Collections", "Keys", "Clean", "Discover", "Prepare"];
+    const dimmed = ["Collections", "Keys", "Clean", "Discover", "Prepare", "Statistics"];
 
-    it("dims Collections, Keys, Clean, Discover and Prepare, still clickable, with the reason", async () => {
+    it("dims Collections, Keys, Clean, Discover, Prepare and Statistics, still clickable, with the reason", async () => {
       libraryIs(true);
       renderSidebar();
 

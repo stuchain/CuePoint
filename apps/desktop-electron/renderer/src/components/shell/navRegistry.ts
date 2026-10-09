@@ -117,6 +117,8 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
   { id: "clean", label: "Clean", hint: "Fix values with Beatport", path: "/clean", group: "workspace", icon: "clean", needsLibrary: true, enabled: true },
   { id: "discover", label: "Discover", hint: "Find new music", path: "/discover", group: "workspace", icon: "discover", needsLibrary: true, enabled: true, nested: true },
   { id: "prepare", label: "Prepare", hint: "Plan a set", path: "/prepare", group: "workspace", icon: "prepare", needsLibrary: true, enabled: true, nested: true },
+  // Statistics follows Prepare (DEC-138, STATS-04): its own page, no nested routes.
+  { id: "statistics", label: "Statistics", hint: "See what you play most and how your library is made up", path: "/statistics", group: "workspace", icon: "statistics", needsLibrary: true, enabled: true },
 
   { id: "settings", label: "Settings", hint: "Look, sound, accounts", path: "/settings", group: "system", icon: "settings", enabled: true },
 ];

@@ -37,6 +37,7 @@ import {
   LibraryScreen,
   PrepareScreen,
   SettingsScreen,
+  StatisticsScreen,
 } from "./screens";
 import { sendExitClearing } from "./screens/exitClearing";
 import {
@@ -301,6 +302,9 @@ function AppShell() {
       // of the destination, as Discover's Artist pages are (DEC-094).
       case "prepare":
         return prepareScreen;
+      // STATS-04 (DEC-138): what is played most and how the library is made up.
+      case "statistics":
+        return <StatisticsScreen />;
       case "settings":
         return (
           <SettingsScreen

@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 15: Statistics, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. STATS-01 is implemented (2026-10-08), ahead of Phase 14 (DEC-211); Phase 14 is complete, and STATS-02 and STATS-03 are implemented (2026-10-09).** Seven steps, STATS-01…STATS-07.
+Status: **Specified 2026-10-07. STATS-01 is implemented (2026-10-08), ahead of Phase 14 (DEC-211); Phase 14 is complete, and STATS-02, STATS-03 and STATS-04 are implemented (2026-10-09).** Seven steps, STATS-01…STATS-07.
 Writing the steps raised seven questions that Decision Round 14 did not answer. They were asked as
 Decision Round 18 (Q-163…Q-169) and settled the same day as DEC-162…DEC-168, each as recommended, so
 there are no open points. Where a step below says "if Q-NNN …", the recommended branch is the one
@@ -654,7 +654,7 @@ and the page's frame: its sections, scope picker, loading and empty states.
 **User-visible result**: A **Statistics** entry after Prepare opens a page with three sections,
 Plays, Your library and Health, each showing a loading state, then its content once STATS-05 to
 STATS-07 fill it. With no library imported, the page says so and offers **Import a library**. With a
-library but no history yet (no library was imported before updating, so nothing was seeded), the Plays section
+library but no history yet (a library imported before updating whose import record was cleared, so nothing was seeded), the Plays section
 says "Play history starts at your next refresh" and still shows all-time plays.
 
 **Dependencies**: STATS-02, STATS-03; Phase 14 (PAGES-03's sidebar, PAGES-05's empty-state shape).
@@ -702,6 +702,52 @@ says "Play history starts at your next refresh" and still shows all-time plays.
 **Risks**: Low.
 
 **Complexity**: **S**
+
+**Outcome**: Implemented (2026-10-09). Statistics is the sidebar entry after Prepare (`navRegistry.ts`,
+a three-bar `statistics` pixel icon, `screenFor("statistics")`), and the three routes cross the
+bridge as flat methods named `getStatisticsPlays`, `getStatisticsSpreads` and `getStatisticsHealth`
+through `engineClient.ts`, `engineSupervisor.ts`, `main.ts`, `preload.cjs` and
+`cuepointBridge.types.ts`, with `StatisticsPlays`, `StatisticsSpreads` and `StatisticsHealth` (and
+their parts) declared to match the Python payloads. `test_statistics_contract.py`'s two TypeScript
+comparisons are no longer skipped and pass. `screens/statistics/` holds the page (`StatisticsScreen`,
+`useStatistics.ts` with one hook per route, `statisticsScope.ts`, `statisticsEmpty.ts`).
+
+Decided while building:
+- **Flat bridge names, not `statistics.{plays,spreads,health}`,** as the sibling methods are named;
+  `main.ts` checks that a call carries nothing but text and numbers under the five known keys
+  (`statisticsParams`) and leaves the values to the engine.
+- **The hint has no final period** ("See what you play most and how your library is made up"):
+  `navRegistry.test.ts` holds every hint to that, and the other hints follow it.
+- **The scope picker is a select over the Clean page's scope list** (`scopeOptions`), indented
+  as the Library's trees are, with the whole library first and then a "Rekordbox playlists" header
+  over the playlists. Playlists come before the Collections deliberately, as in the Library. A Smart Collection is offered as
+  `collection:<id>`, which is how the route reads it; a Collection folder is drawn and cannot be
+  chosen. A Smart Collection that cannot run (`broken`) is drawn disabled as "(rules need fixing)" and a
+  remembered one falls back to the whole library. What is remembered under
+  `cuepoint-statistics-scope` is the route's own word for the whole library and for Collections
+  (`collection:<id>`), and a playlist's **path** (`path:<path>`, as the Library's pane remembers
+  it), because every import and refresh gives the playlists new ids; the path is resolved to the
+  current id each time the tree loads. The picker is not drawn until the summary says there is a
+  library, and is disabled until the summary and the trees have answered.
+- **A scope that is gone falls back in memory and is not forgotten.** Nothing is written back, so a
+  Collection whose list failed to read for a moment is still remembered. No route is read until this
+  refresh's summary, playlists and Collections have answered (a refresh unsettles them again), so a gone scope is never sent to the
+  route and shown as a failed read.
+- **Reading again.** The three hooks read again on the scope, on `announceLibraryChange`, on the end
+  of a `library_import` or `library_refresh_apply` job (found by the status strip's poll through a second `useActiveJob`, with `subscribe: false` so it
+  opens no progress stream; it ignores a failed poll and does not take a job the capped list left
+  out, while more are active, for finished; nothing announces a job's end) and on **Try again**, which each section has for itself.
+- **The section bodies are one line of counts each** (never played and no play count; the scope's
+  tracks; files present and missing), from numbers the routes sent. STATS-05 to STATS-07 replace them.
+- **The "starts at your next refresh" note cannot be seen after a real import.** An import seeds the
+  baseline read (DEC-168), so a library imported by this build has `history_from`; the note is for a
+  library imported before STATS-01. `e2e/statistics.spec.ts` asserts it is absent after an import,
+  and `StatisticsScreen.test.tsx` shows it against an answer with `history_from` null.
+
+Checked in the cloud container: the renderer's full suite, lint and typecheck; the main process's
+tests and typecheck; `test_statistics_contract.py`; the dead-code guard and the version coupling
+check; and `e2e/shell.spec.ts` and `e2e/statistics.spec.ts` under `xvfb-run` against the built app.
+Not checked: the page on a library of the owner's own, in every theme and scale.
 
 ---
 

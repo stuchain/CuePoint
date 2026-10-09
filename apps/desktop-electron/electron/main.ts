@@ -36,7 +36,11 @@ import {
   type SetListFolderStore,
 } from "./setListDialog";
 import type { QueueItemInput, RepeatMode } from "./playbackQueue";
-import type { LibraryBrowseParams, SetListDialogRequest } from "./engineClient";
+import type {
+  LibraryBrowseParams,
+  SetListDialogRequest,
+  StatisticsPlaysParams,
+} from "./engineClient";
 import { resolvePlayerBinary } from "./playerLaunch";
 import { PlayerSupervisor } from "./playerSupervisor";
 import { quitAfter } from "./quitAfter";
@@ -334,6 +338,34 @@ function handle(
   ipcMain.handle(channel, wrapIpcHandler(channel, handler));
 }
 
+/**
+ * What a Statistics call may carry (STATS-04): nothing, or an object whose `limit` is a finite
+ * whole number and whose `since`, `tz`, `sinceRead` and `scope` are text. Only those five keys go
+ * on; anything else the renderer sent is dropped, and the engine judges the values.
+ */
+function statisticsParams(raw: unknown): StatisticsPlaysParams | undefined {
+  if (raw == null) return undefined;
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("Statistics needs an object of options");
+  }
+  const given = raw as Record<string, unknown>;
+  const out: StatisticsPlaysParams = {};
+  if (given.limit != null) {
+    if (typeof given.limit !== "number" || !Number.isInteger(given.limit)) {
+      throw new Error("Statistics option limit must be a whole number");
+    }
+    // The engine accepts only the five lengths; it refuses any other.
+    out.limit = given.limit as StatisticsPlaysParams["limit"];
+  }
+  for (const key of ["since", "tz", "sinceRead", "scope"] as const) {
+    const value = given[key];
+    if (value == null) continue;
+    if (typeof value !== "string") throw new Error(`Statistics option ${key} must be text`);
+    out[key] = value;
+  }
+  return out;
+}
+
 /** CuePoint's one menu bar (FLW-20); set up when the app is ready, rebuilt when the size changes. */
 let appMenu: ReturnType<typeof installAppMenu> | null = null;
 
@@ -509,6 +541,16 @@ function registerIpcHandlers(): void {
     engine.getTagWrites(params),
   );
   handle("engine:getLibraryHealth", () => engine.getLibraryHealth());
+  // Statistics (STATS-04): the engine validates every value; main checks only the shape.
+  handle("engine:getStatisticsPlays", (_event, params) =>
+    engine.getStatisticsPlays(statisticsParams(params)),
+  );
+  handle("engine:getStatisticsSpreads", (_event, params) =>
+    engine.getStatisticsSpreads(statisticsParams(params)),
+  );
+  handle("engine:getStatisticsHealth", (_event, params) =>
+    engine.getStatisticsHealth(statisticsParams(params)),
+  );
   handle("engine:exportReviewList", (_event, params) =>
     engine.exportReviewList(params),
   );

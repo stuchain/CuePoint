@@ -387,6 +387,24 @@ const prepare = [
 ];
 
 /**
+ * Statistics: three bars of rising height on a baseline (STATS-04).
+ */
+const statistics = [
+  "............",
+  "............",
+  "........##..",
+  "........##..",
+  "....##..##..",
+  "....##..##..",
+  "....##..##..",
+  "##..##..##..",
+  "##..##..##..",
+  "##..##..##..",
+  "############",
+  "............",
+];
+
+/**
  * Matching: a quarter note. An eighth note's flag turned into a blob at 1x, and
  * a note is recognizable without one. Drawn for inKey's sidebar entry, which
  * retired into Clean (DEC-071); kept in the set as the matching glyph.
@@ -614,6 +632,7 @@ export const PIXEL_ICONS = {
   clean,
   discover,
   prepare,
+  statistics,
   match,
   // LIBUI-07: the playlist pane tells a folder from a set list at a glance.
   folder,

@@ -77,6 +77,9 @@ import {
   type FieldRevert,
   type FileCheckStarted,
   type LibraryHealth,
+  type StatisticsHealth,
+  type StatisticsPlays,
+  type StatisticsSpreads,
   type LibraryTrackRow,
   type MatchStarted,
   type ResumableMatches,
@@ -956,6 +959,24 @@ export class EngineSupervisor {
 
   async getLibraryHealth(): Promise<LibraryHealth> {
     return (await this.readyClient()).getLibraryHealth();
+  }
+
+  async getStatisticsPlays(
+    params?: Parameters<EngineClient["getStatisticsPlays"]>[0],
+  ): Promise<StatisticsPlays> {
+    return (await this.readyClient()).getStatisticsPlays(params);
+  }
+
+  async getStatisticsSpreads(
+    params?: Parameters<EngineClient["getStatisticsSpreads"]>[0],
+  ): Promise<StatisticsSpreads> {
+    return (await this.readyClient()).getStatisticsSpreads(params);
+  }
+
+  async getStatisticsHealth(
+    params?: Parameters<EngineClient["getStatisticsHealth"]>[0],
+  ): Promise<StatisticsHealth> {
+    return (await this.readyClient()).getStatisticsHealth(params);
   }
 
   async exportReviewList(

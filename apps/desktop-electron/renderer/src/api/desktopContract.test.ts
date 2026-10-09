@@ -1919,6 +1919,79 @@ describe("desktop contract", () => {
     });
   });
 
+  describe("Statistics (STATS-04)", () => {
+    // Three reads, one scope each. The Python contract test holds the client's types to the
+    // engine's answers; this holds the renderer's copy to the client's.
+    const methods = ["getStatisticsPlays", "getStatisticsSpreads", "getStatisticsHealth"];
+
+    const clientMethod = (name: string) => {
+      const start = engineClient.indexOf(`async ${name}(`);
+      const next = engineClient.indexOf("\n  async ", start + 1);
+      return engineClient.slice(start, next === -1 ? undefined : next);
+    };
+
+    it.each(methods)("carries %s through every file", (method) => {
+      expect(invokedChannels(preload)).toContain(`engine:${method}`);
+      expect(handledChannels(main)).toContain(`engine:${method}`);
+      expect(supervisorMethodsDeclared(supervisor)).toContain(method);
+      expect(engineClient).toContain(`async ${method}(`);
+      expect(bridgeTypes).toContain(`${method}?:`);
+    });
+
+    it.each([
+      ["getStatisticsPlays", "/api/v1/statistics/plays"],
+      ["getStatisticsSpreads", "/api/v1/statistics/spreads"],
+      ["getStatisticsHealth", "/api/v1/statistics/health"],
+    ])("reads %s with a GET from %s", (method, path) => {
+      const body = clientMethod(method);
+      expect(body).toContain(path);
+      expect(body).toContain("getJson");
+      expect(body).not.toContain("postJson");
+    });
+
+    it("sends the scope, and for plays the window, as the route's own parameters", () => {
+      const plays = clientMethod("getStatisticsPlays");
+      for (const name of ["limit", "since", "tz", "since_read", "scope"]) {
+        expect(plays).toContain(`"${name}"`);
+      }
+      expect(clientMethod("getStatisticsSpreads")).toContain('"scope"');
+      expect(clientMethod("getStatisticsHealth")).toContain('"scope"');
+    });
+
+    it("checks the shape of what the renderer sends before it reaches the supervisor", () => {
+      for (const method of methods) {
+        expect(main).toContain(`engine.${method}(statisticsParams(params))`);
+      }
+      expect(main).toContain("function statisticsParams(");
+      expect(main).toContain("Number.isInteger(given.limit)");
+    });
+
+    it.each([
+      "StatisticsCount",
+      "StatisticsTrack",
+      "StatisticsArtist",
+      "StatisticsLabel",
+      "StatisticsPlays",
+      "StatisticsBucket",
+      "StatisticsLine",
+      "StatisticsSpread",
+      "StatisticsSpreads",
+      "StatisticsAnalyzed",
+      "StatisticsHealth",
+    ])("keeps the engine and the renderer agreeing about %s", (shape) => {
+      // Whole member lines, optional mark and type included: a field one side makes nullable
+      // or optional and the other does not is a crash the names alone would not show.
+      const fields = (source: string) => {
+        const start = source.indexOf(`export interface ${shape} `);
+        const body = source.slice(start, source.indexOf("\n}", start));
+        return [...body.matchAll(/^ {2}([a-z_]+\??: .*);$/gm)].map((match) => match[1]!).sort();
+      };
+
+      expect(fields(bridgeTypes).length).toBeGreaterThan(0);
+      expect(fields(bridgeTypes)).toEqual(fields(engineClient));
+    });
+  });
+
   describe("the renderer's error reporter (REPORT-06)", () => {
     it("asks main whether reporting is set up, through the same get", () => {
       expect(main).toContain('handle("errorReporting:get", () => ({ enabled: errorReporting.enabled(), configured: reportingOn }))');

@@ -30,9 +30,14 @@ interface ActiveJobState {
   jobs: EngineJobSummary[];
   /** True once the first poll has answered, so "no jobs" can be told from "not asked yet". */
   loaded: boolean;
+  /**
+   * True when the last poll failed. The list is then empty only because nothing could be
+   * read, so a reader that cares about a job ending must not take it as "none running".
+   */
+  failed: boolean;
 }
 
-const EMPTY: ActiveJobState = { job: null, activeCount: 0, jobs: [], loaded: false };
+const EMPTY: ActiveJobState = { job: null, activeCount: 0, jobs: [], loaded: false, failed: false };
 
 /** Percent complete for a job, or null when it cannot be known yet. */
 export function jobPercent(job: EngineJobSummary | null): number | null {
@@ -242,7 +247,11 @@ export function jobTitle(job: EngineJobSummary | null): string | undefined {
  * existing SSE stream carries its ticks, which is both cheaper and smoother
  * than asking repeatedly.
  */
-export function useActiveJob(pollMs: number = JOB_POLL_MS): ActiveJobState {
+export function useActiveJob(
+  pollMs: number = JOB_POLL_MS,
+  options: { subscribe?: boolean } = {},
+): ActiveJobState {
+  const subscribeToProgress = options.subscribe !== false;
   const [state, setState] = useState<ActiveJobState>(EMPTY);
   // The job we are subscribed to, so a re-poll finding the same job does not
   // tear down and rebuild the stream.
@@ -262,12 +271,12 @@ export function useActiveJob(pollMs: number = JOB_POLL_MS): ActiveJobState {
           // The newest running job, else the newest: background work queued
           // behind an import (waveforms wait for it) must not hide the import.
           const job = result.jobs.find((candidate) => candidate.state === "running") ?? result.jobs[0] ?? null;
-          setState({ job, activeCount: result.active_count, jobs: result.jobs, loaded: true });
+          setState({ job, activeCount: result.active_count, jobs: result.jobs, loaded: true, failed: false });
         })
         .catch(() => {
           // The engine being unreachable is reported by the engine-status half
           // of the strip; there is nothing useful to say about jobs meanwhile.
-          if (!cancelled) setState({ ...EMPTY, loaded: true });
+          if (!cancelled) setState({ ...EMPTY, loaded: true, failed: true });
         });
     };
 
@@ -281,7 +290,7 @@ export function useActiveJob(pollMs: number = JOB_POLL_MS): ActiveJobState {
 
   // Follow the current job's progress over SSE.
   useEffect(() => {
-    const subscribe = window.cuepoint?.subscribeJobEvents;
+    const subscribe = subscribeToProgress ? window.cuepoint?.subscribeJobEvents : undefined;
     const id = state.job?.id ?? null;
 
     if (!subscribe || !id) {
@@ -305,7 +314,7 @@ export function useActiveJob(pollMs: number = JOB_POLL_MS): ActiveJobState {
         return { ...prev, job, jobs: [job, ...prev.jobs.slice(1)] };
       });
     });
-  }, [state.job?.id]);
+  }, [state.job?.id, subscribeToProgress]);
 
   // Tear the stream down when the strip goes away, not only when the job does.
   useEffect(

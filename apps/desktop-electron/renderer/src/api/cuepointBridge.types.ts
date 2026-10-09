@@ -1605,6 +1605,129 @@ export interface LibraryHealth {
   unavailable_roots: UnavailableRoot[];
 }
 
+// ---------------------------------------------------------------------------
+// Statistics over the wire (STATS-02, STATS-03, STATS-04)
+//
+// Mirrors `statistics_api.py` and the service's `to_dict` answers. The Python
+// contract test holds these interfaces to the real payloads.
+// ---------------------------------------------------------------------------
+
+/** A tracks count and the rules that open exactly those tracks in the Library. */
+export interface StatisticsCount {
+  count: number;
+  rules: FilterRuleSet;
+}
+
+export interface StatisticsTrack {
+  id: number;
+  title: string;
+  artist: string;
+  plays: number;
+}
+
+export interface StatisticsArtist {
+  name: string;
+  name_key: string;
+  plays: number;
+  tracks: number;
+  rules: FilterRuleSet;
+  /** True when `rules` open more tracks than were counted (since a date or a read). */
+  opens_more: boolean;
+}
+
+export interface StatisticsLabel {
+  name: string;
+  label_key: string;
+  plays: number;
+  tracks: number;
+  rules: FilterRuleSet;
+  opens_more: boolean;
+}
+
+export interface StatisticsPlays {
+  since: string | null;
+  since_clamped: boolean;
+  history_from: string | null;
+  last_read: string | null;
+  tracks: StatisticsTrack[];
+  artists: StatisticsArtist[];
+  labels: StatisticsLabel[];
+  never_played: StatisticsCount;
+  unknown: StatisticsCount;
+}
+
+/** `library`, `collection:<id>` or `playlist:<id>`. */
+export type StatisticsScope = string;
+
+export interface StatisticsPlaysParams {
+  limit?: 10 | 25 | 50 | 100 | 200;
+  /** A local day, YYYY-MM-DD; sent with `tz`. */
+  since?: string;
+  /** The UTC offset at local midnight of `since`, as +HH:MM or -HH:MM. */
+  tz?: string;
+  /** A history read's id: counts the rises at it and after it. */
+  sinceRead?: string;
+  scope?: StatisticsScope;
+}
+
+/** One bar of a spread; `rules` is null where no rule can open it. */
+export interface StatisticsBucket {
+  label: string;
+  value: string | number | null;
+  count: number;
+  rules: FilterRuleSet | null;
+}
+
+/** A line beside the bars: tracks with no value, or no file. */
+export interface StatisticsLine {
+  label: string;
+  count: number;
+  rules: FilterRuleSet | null;
+}
+
+export interface StatisticsSpread {
+  buckets: StatisticsBucket[];
+  unknown: StatisticsLine;
+  /** Loudness only: tracks with no present file. */
+  no_file?: StatisticsLine;
+  total: number;
+}
+
+export interface StatisticsSpreads {
+  scope: StatisticsScope;
+  total: number;
+  genre: StatisticsSpread;
+  tempo: StatisticsSpread;
+  year: StatisticsSpread;
+  date_added: StatisticsSpread;
+  rating: StatisticsSpread;
+  loudness: StatisticsSpread;
+}
+
+export type StatisticsFileState = "present" | "missing" | "unreadable" | "not_checked";
+export type StatisticsMatchState =
+  | "accepted"
+  | "needs_review"
+  | "rejected"
+  | "no_match"
+  | "not_matched";
+
+export interface StatisticsAnalyzed {
+  analyzed: number;
+  failed: number;
+  waiting: number;
+  no_file: number;
+}
+
+export interface StatisticsHealth {
+  scope: StatisticsScope;
+  total: number;
+  files: Record<StatisticsFileState, StatisticsCount>;
+  beatport: Record<StatisticsMatchState, StatisticsCount>;
+  analyzed: StatisticsAnalyzed;
+  checked_at: string | null;
+}
+
 export type ReviewExportFormat = "csv" | "json" | "excel";
 
 export interface ReviewExportResult {
@@ -3283,6 +3406,10 @@ export interface CuePointBridge {
     offset?: number;
   }) => Promise<TagWriteRecord>;
   getLibraryHealth?: () => Promise<LibraryHealth>;
+  /** The Statistics page's plays, spreads and health over a scope (STATS-04). */
+  getStatisticsPlays?: (params?: StatisticsPlaysParams) => Promise<StatisticsPlays>;
+  getStatisticsSpreads?: (params?: { scope?: StatisticsScope }) => Promise<StatisticsSpreads>;
+  getStatisticsHealth?: (params?: { scope?: StatisticsScope }) => Promise<StatisticsHealth>;
   exportReviewList?: (params: {
     selection: BatchSelection;
     format: ReviewExportFormat;

@@ -220,7 +220,7 @@ test.describe("Application shell navigation", () => {
 
       // Every destination is still reachable with labels hidden — the state
       // DEC-022 chose, where an icon is all there is to go on.
-      for (const label of ["Library", "Collections", "Clean", "Discover", "Settings"]) {
+      for (const label of ["Library", "Collections", "Clean", "Discover", "Statistics", "Settings"]) {
         await expect(nav.getByRole("link", { name: label, exact: true })).toBeVisible();
       }
     } finally {
