@@ -38,132 +38,19 @@ concurrency:
   group: ci-focus-${{ github.run_id }}
 
 jobs:
-  plan:
+  repin:
     runs-on: ubuntu-latest
-    outputs:
-      runner: ${{ steps.read.outputs.runner }}
-      pytest: ${{ steps.read.outputs.pytest }}
-      e2e: ${{ steps.read.outputs.e2e }}
-      repeat: ${{ steps.read.outputs.repeat }}
     steps:
       - uses: actions/checkout@v4
-      - id: read
-        shell: bash
-        env:
-          EVENT: ${{ github.event_name }}
-          IN_RUNNER: ${{ inputs.runner }}
-          IN_PYTEST: ${{ inputs.pytest }}
-          IN_E2E: ${{ inputs.e2e }}
-          IN_REPEAT: ${{ inputs.repeat }}
-        run: |
-          if [ "$EVENT" = "workflow_dispatch" ]; then
-            printf 'runner=%s\npytest=%s\ne2e=%s\nrepeat=%s\n' "$IN_RUNNER" "$IN_PYTEST" "$IN_E2E" "$IN_REPEAT" >> "$GITHUB_OUTPUT"
-          else
-            python3 - >> "$GITHUB_OUTPUT" <<'PY'
-          import json
-          plan = json.load(open(".github/ci-focus.json", encoding="utf-8"))
-          allowed = {"windows-latest", "ubuntu-latest", "macos-latest", "macos-15-intel"}
-          runner = plan.get("runner", "windows-latest")
-          if runner not in allowed:
-              raise SystemExit(f"runner must be one of {sorted(allowed)}")
-          print(f"runner={runner}")
-          print(f"pytest={plan.get('pytest', '')}")
-          print(f"e2e={plan.get('e2e', '')}")
-          print(f"repeat={int(plan.get('repeat', 1))}")
-          PY
-          fi
-
-  focus:
-    needs: plan
-    runs-on: ${{ needs.plan.outputs.runner }}
-    env:
-      CUEPOINT_BUILD_COMMIT: ${{ github.sha }}
-    steps:
-      - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-
-      - name: Run pytest
-        if: needs.plan.outputs.pytest != ''
-        shell: bash
+      - name: Re-pin mpv to the current git-release
         env:
-          PYTHONPATH: src
-          PYTEST_PATHS: ${{ needs.plan.outputs.pytest }}
-          REPEAT: ${{ needs.plan.outputs.repeat }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for i in $(seq 1 "$REPEAT"); do
-            echo "::group::pytest pass $i of $REPEAT"
-            # shellcheck disable=SC2086
-            python -m pytest $PYTEST_PATHS -q --tb=short
-            echo "::endgroup::"
-          done
-
-      - uses: actions/setup-node@v4
-        if: needs.plan.outputs.e2e != ''
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: |
-            apps/desktop-electron/package-lock.json
-            apps/desktop-electron/renderer/package-lock.json
-
-      - name: Build the desktop app
-        if: needs.plan.outputs.e2e != ''
-        working-directory: apps/desktop-electron
-        run: |
-          npm ci
-          npm ci --prefix renderer
-          npm run build
-
-      - name: Fetch player sidecar (mpv)
-        if: needs.plan.outputs.e2e != ''
-        run: python scripts/fetch_player_sidecar.py
-
-      - name: Give the Windows runner a sound device
-        if: needs.plan.outputs.e2e != '' && runner.os == 'Windows'
-        uses: LABSN/sound-ci-helpers@v1
-
-      - name: Install Playwright Chromium
-        if: needs.plan.outputs.e2e != ''
-        working-directory: apps/desktop-electron
-        run: npx playwright install chromium
-
-      - name: Run Playwright specs
-        if: needs.plan.outputs.e2e != ''
-        working-directory: apps/desktop-electron
-        shell: bash
-        env:
-          SPECS: ${{ needs.plan.outputs.e2e }}
-          REPEAT: ${{ needs.plan.outputs.repeat }}
-        run: |
-          # shellcheck disable=SC2086
-          if [ "$RUNNER_OS" = "Linux" ]; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends mpv pulseaudio
-            pulseaudio --start --exit-idle-time=-1
-            pactl load-module module-null-sink sink_name=ci_null
-            pactl set-default-sink ci_null
-            CUEPOINT_MPV_PATH=/usr/bin/mpv xvfb-run -a npx playwright test $SPECS --retries=0 --repeat-each="$REPEAT"
-          else
-            npx playwright test $SPECS --retries=0 --repeat-each="$REPEAT"
-          fi
-
-      - name: Print Playwright failure snapshots
-        if: failure() && needs.plan.outputs.e2e != ''
-        shell: bash
-        working-directory: apps/desktop-electron
-        run: |
-          find test-results -name error-context.md 2>/dev/null | sort | while read -r f; do
-            echo "::group::$f"
-            head -c 20000 "$f"
-            echo "::endgroup::"
-          done
+          python scripts/fetch_player_sidecar.py --update-manifest
+          echo "::group::manifest"
+          cat scripts/player_sidecar_manifest.json
+          echo "::endgroup::"
+          git diff --stat
