@@ -484,6 +484,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **Opening a database connection no longer breaks another thread's `join()`.** Each connect to the
+  library database or the waveform store closed ended threads' connections by asking every owner
+  `is_alive()`. Before Python 3.13 that briefly takes the thread's own lock, so a join of that same
+  thread on another thread could fail with `AssertionError` and then `release unlocked lock`. This
+  happened intermittently on the Windows CI runners. The check now reads `threading.enumerate()`.
 - **The engine answers while a background job computes.** A search, a browse or a Set edit could
   take seconds, and more than 5 s on Windows, while a waveform analysis or a match ran: each
   request waited hundreds of times for the busy thread to hand back Python's interpreter lock. The

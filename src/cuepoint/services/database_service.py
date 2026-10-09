@@ -40,6 +40,25 @@ from cuepoint.services.key_resolver import register_sql_functions
 from cuepoint.utils.paths import cuepoint_home
 from cuepoint.utils.quoting import quoted
 
+
+def live_threads() -> set[threading.Thread]:
+    """The threads that have not yet ended, read without touching any of them.
+
+    ``Thread.is_alive()`` is not safe to call on someone else's thread before
+    Python 3.13. It briefly takes the thread's ``_tstate_lock``, and so does
+    ``join()``. If a join on another thread finds that lock released while this
+    call is holding it, CPython's ``Thread._stop`` fails
+    ``assert not lock.locked()`` and the join raises ``AssertionError`` and then
+    ``RuntimeError: release unlocked lock``. Every ``connect()`` reaps ended
+    threads' connections, so worker threads were checking each other while
+    their starter joined them. That failed intermittently on Windows CI.
+    ``threading.enumerate()`` reads only the registry of running threads. A
+    thread leaves that registry after its ``run()`` returns, so it can no longer
+    be using its connection, and before its join returns.
+    """
+    return set(threading.enumerate())
+
+
 DATABASE_FILENAME = "cuepoint.db"
 
 
@@ -371,10 +390,11 @@ class DatabaseService(IDatabaseService):
         so its connection is closeable from anywhere and useful to no one.
         """
         with self._lock:
+            live = live_threads()
             ended = [
                 connection
                 for connection, owner in self._connections
-                if not owner.is_alive()
+                if owner not in live
             ]
             if not ended:
                 return
@@ -403,10 +423,11 @@ class DatabaseService(IDatabaseService):
         current = threading.current_thread()
         with self._lock:
             self._generation += 1
+            live = live_threads()
             closable = [
                 connection
                 for connection, owner in self._connections
-                if owner is current or not owner.is_alive()
+                if owner is current or owner not in live
             ]
             self._connections = [
                 entry for entry in self._connections if entry[0] not in closable

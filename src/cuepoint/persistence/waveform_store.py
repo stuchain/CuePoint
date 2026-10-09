@@ -105,6 +105,7 @@ from cuepoint.models.waveform import (
     StoredWaveform,
     WaveformSummary,
 )
+from cuepoint.services.database_service import live_threads
 
 _logger = logging.getLogger(__name__)
 
@@ -554,7 +555,8 @@ class WaveformStore:
 
     def _close_ended_threads(self) -> None:
         with self._lock:
-            ended = [c for c, owner in self._connections if not owner.is_alive()]
+            live = live_threads()
+            ended = [c for c, owner in self._connections if owner not in live]
             if not ended:
                 return
             self._connections = [e for e in self._connections if e[0] not in ended]
@@ -574,10 +576,11 @@ class WaveformStore:
         current = threading.current_thread()
         with self._lock:
             self._generation += 1
+            live = live_threads()
             closable = [
                 c
                 for c, owner in self._connections
-                if owner is current or not owner.is_alive()
+                if owner is current or owner not in live
             ]
             self._connections = [e for e in self._connections if e[0] not in closable]
         for connection in closable:
