@@ -11,6 +11,7 @@ place in the status strip and its exclusivity with the import and the refresh.
 
 from __future__ import annotations
 
+import threading
 import time
 from typing import Dict, List
 
@@ -173,6 +174,16 @@ class TestAFiveThousandChangeBatch:
         from cuepoint.engine.jobs import JobTypeBusyError
 
         monkeypatch.setattr(batch_jobs, "BATCH_JOB_THRESHOLD", 10)
+        # The revert is held until the second job has been asked for: on a slow
+        # runner it could otherwise finish first, and nothing would be refused.
+        release = threading.Event()
+        revert = batch_jobs.run_revert_job
+
+        def held_revert(job: Job, store: JobStore, batch_id: str) -> None:
+            release.wait(timeout=60)
+            revert(job, store, batch_id)
+
+        monkeypatch.setattr(batch_jobs, "run_revert_job", held_revert)
         _, first = revert_or_start(store, rated)
         try:
             with pytest.raises(JobTypeBusyError):
@@ -182,7 +193,8 @@ class TestAFiveThousandChangeBatch:
                     BatchOperation(OPERATION_SET_RATING, 1),
                 )
         finally:
-            finished(first)
+            release.set()
+            assert finished(first).state == JobState.SUCCEEDED
 
 
 class TestWhatIsRefusedBeforeAJob:
