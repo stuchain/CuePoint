@@ -1,8 +1,11 @@
 /**
  * Electron main process — Spike S1: spawn engine and expose status to renderer.
  */
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, screen, session, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, net, screen, session, shell, systemPreferences } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
+import { execFile, spawn } from "node:child_process";
+import fs from "node:fs";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,6 +47,13 @@ import type {
 import { resolvePlayerBinary } from "./playerLaunch";
 import { PlayerSupervisor } from "./playerSupervisor";
 import { quitAfter } from "./quitAfter";
+import { locateBundle, prepareMacUpdate, startInstall } from "./macInstaller";
+import { fetchReleases } from "./releaseList";
+import { scrubText } from "./reportScrub";
+import { enforceSingleInstance, onlyIfFirst } from "./singleInstance";
+import { UpdateNotes, openReleasePage, pruneInstalledUpdates } from "./updateNotes";
+import { compareVersions, isTestVersion } from "./updateRule";
+import { Updater, type UpdateState, type WindowsUpdater } from "./updater";
 import {
   E2E_DISPLAY_ENV,
   displayChoice,
@@ -54,6 +64,13 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === "development";
 const DEV_URL = process.env.CUEPOINT_RENDERER_URL ?? "http://localhost:5173";
+
+/**
+ * One copy of CuePoint at a time (DIST-06, fact 8), asked for before anything else here
+ * can start an engine or a reporter. A second copy quits at once; the first comes forward.
+ * The lock is per user-data folder, and every end-to-end run has its own.
+ */
+const firstInstance = enforceSingleInstance(app, () => BrowserWindow.getAllWindows()[0] ?? null);
 
 /**
  * Main's own settings, read when first needed: the user-data folder is the
@@ -293,6 +310,109 @@ function pushPlayerNotice(notice: unknown): void {
     noticeUnsubscribe = null;
   }
 }
+
+/**
+ * The updater (DIST-06) and the notes of the running version (DEC-172). Everything outside
+ * the state machine is handed in here: Electron's own network stack, `ditto` and friends,
+ * main's settings file and the reporter. Nothing runs until the first window has loaded,
+ * and never from source or in an end-to-end run.
+ */
+const requireFromHere = createRequire(import.meta.url);
+
+/** Runs a program and answers its output; the Mac installer's `ditto`, `plutil` and `lipo`. */
+function runProgram(file: string, args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(file, args, { timeout: 5 * 60_000, maxBuffer: 16 * 1024 * 1024 }, (error, stdout) => {
+      if (error) reject(error);
+      else resolve(stdout);
+    });
+  });
+}
+
+/** Main's own `fetch`, which follows the system's proxy settings and GitHub's redirect to its file host. */
+const netFetch = ((input: string | URL | Request, init?: RequestInit) =>
+  net.fetch(typeof input === "string" || input instanceof URL ? input.toString() : input.url, init)) as typeof fetch;
+
+const updatesDir = (): string => path.join(app.getPath("userData"), "updates");
+
+const updater = new Updater({
+  packaged: app.isPackaged,
+  e2e: displayChoice(process.env[E2E_DISPLAY_ENV]) !== null,
+  platform: process.platform,
+  arch: process.arch,
+  translated: process.platform === "darwin" && app.runningUnderARM64Translation,
+  appVersion: app.getVersion(),
+  env: process.env,
+  updatesDir: updatesDir(),
+  fetchReleases: (options) => fetchReleases({ ...options, fetchImpl: netFetch }),
+  fetchImpl: netFetch,
+  // Loaded when first needed, so a Mac or a Linux never loads it; the bundle leaves it external.
+  windowsUpdater: () => (requireFromHere("electron-updater") as { autoUpdater: WindowsUpdater }).autoUpdater,
+  locateMacBundle: () => locateBundle(app.getPath("exe")),
+  pathExists: (target) => fs.existsSync(target),
+  readInstallLog: () => {
+    // The Mac script's last lines, with the user's name and home folder taken out.
+    const text = fs.readFileSync(path.join(updatesDir(), "install.log"), "utf8").trimEnd().split("\n").slice(-20).join("\n");
+    return scrubText(text, {
+      home: safely(() => app.getPath("home")),
+      userName: safely(() => os.userInfo().username),
+      appRoots: [],
+      tokens: [],
+    });
+  },
+  prepareMac: (options) =>
+    prepareMacUpdate({
+      ...options,
+      updatesDir: updatesDir(),
+      fetchImpl: netFetch,
+      parseYaml: (text) => (requireFromHere("js-yaml") as { load: (text: string) => unknown }).load(text),
+      run: runProgram,
+    }),
+  installMac: (options) =>
+    startInstall({
+      ...options,
+      updatesDir: updatesDir(),
+      spawn,
+      // The script's `open` can be replaced only by a test version (DIST-08's staged runs).
+      allowOpenOverride: isTestVersion(app.getVersion()),
+    }),
+  settings: {
+    read: () => mainSettingsStore().read(),
+    update: (patch) => mainSettingsStore().update(patch),
+  },
+  report: (key, error, tags) => {
+    reportOnce(key, error, { tags });
+  },
+  quit: () => app.quit(),
+});
+
+const updateNotes = new UpdateNotes({
+  updatesDir: updatesDir(),
+  currentVersion: app.getVersion(),
+  settings: {
+    read: () => mainSettingsStore().read(),
+    update: (patch) => mainSettingsStore().update(patch),
+  },
+  releases: async () => {
+    // Nothing from source or in an end-to-end run goes to the network.
+    if (!updater.enabled) return null;
+    const result = await fetchReleases({ appVersion: app.getVersion(), fetchImpl: netFetch });
+    return result.ok ? result.releases : null;
+  },
+});
+
+/** The windows listening for the updater's state, counted so each can stop (like the player's). */
+const updateWatchers = new Map<number, { sender: Electron.WebContents; refs: number }>();
+
+updater.subscribe((state: UpdateState) => {
+  for (const [id, watcher] of updateWatchers) {
+    if (watcher.sender.isDestroyed()) {
+      updateWatchers.delete(id);
+      continue;
+    }
+    watcher.sender.send("updates:state", state);
+  }
+});
 
 let privacyExitPrefs = {
   clearCacheOnExit: false,
@@ -754,6 +874,46 @@ function registerIpcHandlers(): void {
     return true;
   });
 
+  // --- The updater (DIST-06) ------------------------------------------------
+  // The page reads the state, asks for a check or a restart and hears the changes. It never
+  // names an address: the release pages opened here are main's own, from the state or the
+  // running version's notes, and only GitHub's CuePoint releases (`openReleasePage`).
+  handle("updates:getState", () => updater.getState());
+  handle("updates:check", () => updater.check());
+  handle("updates:restart", () => updater.restart());
+  handle("updates:getWhatsNew", () => updateNotes.getWhatsNew());
+  handle("updates:dismissWhatsNew", () => {
+    updateNotes.dismissWhatsNew();
+  });
+  handle("updates:getNotes", () => updateNotes.getNotes());
+  handle("updates:openReleasePage", async (_event, which: unknown) => {
+    if (which === "current" && !updater.enabled) return false;
+    const address =
+      which === "current" ? (await updateNotes.getNotes()).releaseUrl : updater.getState().releaseUrl;
+    return openReleasePage(address, shell);
+  });
+  handle("updates:subscribe", (event) => {
+    const id = event.sender.id;
+    const existing = updateWatchers.get(id);
+    if (existing) {
+      existing.refs += 1;
+    } else {
+      updateWatchers.set(id, { sender: event.sender, refs: 1 });
+      event.sender.once("destroyed", () => updateWatchers.delete(id));
+    }
+    // Answer at once, so a subscriber is not blind until the next change.
+    event.sender.send("updates:state", updater.getState());
+    return { ok: true };
+  });
+  handle("updates:unsubscribe", (event) => {
+    const id = event.sender.id;
+    const existing = updateWatchers.get(id);
+    if (!existing) return { ok: true };
+    existing.refs -= 1;
+    if (existing.refs <= 0) updateWatchers.delete(id);
+    return { ok: true };
+  });
+
   // --- Player (PLAYER-03) ---------------------------------------------------
   // Transport only. There is no queue here: what plays next is PLAYER-04's,
   // which is why there is no `player:next` yet — an endpoint that cannot do
@@ -1125,6 +1285,9 @@ async function createWindow(): Promise<void> {
     win.showInactive();
   }
 
+  // The first load starts the updater's clock: 10 s from now, then every 4 hours (DIST-06).
+  win.webContents.once("did-finish-load", () => updater.start());
+
   // Ctrl+=, Ctrl+- and Ctrl+0 step the Size setting (FLW-20). The page is never zoomed, by
   // a pinch or by Ctrl and the wheel either, or the two would fight over how big it is.
   void win.webContents.setVisualZoomLevelLimits(1, 1);
@@ -1149,8 +1312,17 @@ if (displayChoice(process.env[E2E_DISPLAY_ENV]) !== null) {
   app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(onlyIfFirst(firstInstance, () => {
+  // A second copy has already exited (`enforceSingleInstance`) and starts nothing.
   breadcrumb("app", "ready");
+  // What an installed update left behind goes, and a first launch of an updating build marks
+  // its own version as seen so "What's new" offers nothing for it (DEC-172).
+  if (app.isPackaged) {
+    pruneInstalledUpdates(updatesDir(), app.getVersion(), (version, current) => compareVersions(version, current) <= 0);
+  }
+  updateNotes.noteLaunch();
+  // An install handed off last time that did not take is reported now, once.
+  updater.reportPendingInstall();
   appMenu = installAppMenu({
     Menu,
     getWindow: () => BrowserWindow.getAllWindows()[0] ?? null,
@@ -1160,7 +1332,11 @@ app.whenReady().then(() => {
   });
   registerIpcHandlers();
   void createWindow();
-});
+}));
+
+// The quit is going ahead, cleanup finished or not (`quitAfter` lets it through after 5 s).
+// An install not started by now waits for the next quit rather than starting in a dying process.
+app.on("will-quit", () => updater.closeInstalls());
 
 app.on("window-all-closed", () => {
   breadcrumb("app", "window-all-closed");
@@ -1217,11 +1393,18 @@ quitAfter(app, async () => {
   // CuePoint exits is the worst failure this phase can ship.
   playback.dispose();
   await player.dispose();
-  await engine.stop();
+  updater.stop();
+  try {
+    await engine.stop();
+  } finally {
+    // The very last step, after the player and the engine are gone: an update that is ready
+    // starts its install, with a relaunch only if Restart now asked (DIST-06, fact 8).
+    updater.installAtQuit(process.pid);
+  }
 });
 
-app.on("activate", () => {
+app.on("activate", onlyIfFirst(firstInstance, () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     void createWindow();
   }
-});
+}));

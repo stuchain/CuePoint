@@ -3152,6 +3152,67 @@ export interface BridgeErrorFields {
  */
 export interface BridgeError extends Error, BridgeErrorFields {}
 
+/**
+ * The updater (DIST-06). Mirrors `UpdateState` in `electron/updater.ts`.
+ *
+ * The phase text's `available` is folded into the states that show it:
+ * `downloading` where an update downloads by itself (Windows, Mac) and `manual`
+ * where the person has to fetch it (Linux, DEC-174; a Mac whose app cannot be
+ * replaced, DEC-170).
+ */
+export type UpdateStatus = "idle" | "checking" | "up-to-date" | "downloading" | "ready" | "manual" | "failed";
+
+export interface UpdateState {
+  status: UpdateStatus;
+  /** The running version. */
+  currentVersion: string;
+  /** The version found, once there is one. */
+  version: string | null;
+  /** The release's notes, as Markdown. */
+  notes: string | null;
+  /** 0 to 100 while downloading (100 once ready); null otherwise. */
+  progress: number | null;
+  /** The release's page on GitHub; open it with `openReleasePage`. */
+  releaseUrl: string | null;
+  /** Why the person must fetch the update themselves; set with `manual`. */
+  manualReason: "linux" | "cannot-replace" | null;
+  /** Set with `failed`. `could-not-check` is offline, rate limited or timed out and is not an error report. */
+  error: "could-not-check" | "download-failed" | "install-failed" | null;
+  /** When a check last finished, as an ISO date; null before the first. */
+  lastCheckedAt: string | null;
+}
+
+/** The running version's release notes (DEC-172). */
+export interface WhatsNew {
+  version: string;
+  /** Markdown, or null when none could be found. */
+  notes: string | null;
+  releaseUrl: string | null;
+}
+
+export interface UpdatesBridge {
+  getState: () => Promise<UpdateState>;
+  /** Check now; a check that is running is joined. Answers the state it ends in. */
+  check: () => Promise<UpdateState>;
+  /**
+   * Restart now: quit, install and reopen. Only when `status` is `ready`; answers whether it started.
+   * Asking first while work runs (DEC-173) is the page's job.
+   */
+  restart: () => Promise<boolean>;
+  /** Every change of state, and the current one at once; returns the function that stops listening. */
+  subscribe: (listener: (state: UpdateState) => void) => () => void;
+  /** After an update, the new version's notes, once; null on a first install or when already seen. */
+  getWhatsNew: () => Promise<WhatsNew | null>;
+  dismissWhatsNew: () => Promise<void>;
+  /** The running version's notes, for Settings' "What's new" link. */
+  getNotes: () => Promise<WhatsNew>;
+  /**
+   * Open a release page in the browser: the found update's (`update`, the default) or the running
+   * version's (`current`). The address is main's own and is never one the page sends. Answers whether it opened.
+   */
+  openReleasePage: (which?: "update" | "current") => Promise<boolean>;
+}
+
 export interface CuePointBridge {
   /**
    * The fields of an engine error the page caught, found by its message (REPORT-04).
@@ -3542,6 +3603,8 @@ export interface CuePointBridge {
   setPrivacyExitPrefs?: (prefs: PrivacyExitPrefs) => Promise<{ ok: boolean }>;
   /** Which build this is (REPORT-07): shown in About. Absent from an older main. */
   buildInfo?: () => Promise<AppBuildInfo>;
+  /** The updater (DIST-06). Absent in a browser tab, or in an older shell. */
+  updates?: UpdatesBridge;
   errorReporting?: {
     get: () => Promise<ErrorReportingState>;
     set: (enabled: boolean) => Promise<ErrorReportingState>;

@@ -136,6 +136,8 @@
     "vitest": "^4.1.11"
   },
   "dependencies": {
-    "@sentry/electron": "7.20.1"
+    "@sentry/electron": "7.20.1",
+    "electron-updater": "6.3.9",
+    "js-yaml": "4.3.0"
   }
 }

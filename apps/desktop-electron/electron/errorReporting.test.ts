@@ -29,12 +29,12 @@ function settingsFile(): string {
 function recordingStore(calls: string[], stored = true, failWrites = false) {
   let errorReporting = stored;
   return {
-    read: () => ({ setListFolder: null, errorReporting }),
+    read: () => ({ setListFolder: null, errorReporting, lastCheckedAt: null, lastSeenVersion: null, pendingInstall: null }),
     update: (patch: { errorReporting?: boolean }) => {
       calls.push(`write ${String(patch.errorReporting)}`);
       if (failWrites) throw new Error("disk full");
       errorReporting = patch.errorReporting ?? errorReporting;
-      return { setListFolder: null, errorReporting };
+      return { setListFolder: null, errorReporting, lastCheckedAt: null, lastSeenVersion: null, pendingInstall: null };
     },
   };
 }

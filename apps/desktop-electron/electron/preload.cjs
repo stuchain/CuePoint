@@ -382,6 +382,29 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   setPrivacyExitPrefs: (prefs) => ipcRenderer.invoke("privacy:setExitPrefs", prefs),
   // This build's version, release, commit and environment (REPORT-07), for the About dialog.
   buildInfo: () => ipcRenderer.invoke("app:buildInfo"),
+  /**
+   * The updater (DIST-06). The page can read the state, ask for a check or a restart and
+   * hear the changes; it names no address, and main opens only its own release pages.
+   */
+  updates: {
+    getState: () => ipcRenderer.invoke("updates:getState"),
+    check: () => ipcRenderer.invoke("updates:check"),
+    restart: () => ipcRenderer.invoke("updates:restart"),
+    getWhatsNew: () => ipcRenderer.invoke("updates:getWhatsNew"),
+    dismissWhatsNew: () => ipcRenderer.invoke("updates:dismissWhatsNew"),
+    getNotes: () => ipcRenderer.invoke("updates:getNotes"),
+    openReleasePage: (which) =>
+      ipcRenderer.invoke("updates:openReleasePage", which === "current" ? "current" : "update"),
+    subscribe: (listener) => {
+      const handler = (_event, state) => listener(state);
+      ipcRenderer.on("updates:state", handler);
+      void ipcRenderer.invoke("updates:subscribe");
+      return () => {
+        ipcRenderer.removeListener("updates:state", handler);
+        void ipcRenderer.invoke("updates:unsubscribe");
+      };
+    },
+  },
   errorReporting: {
     get: () => ipcRenderer.invoke("errorReporting:get"),
     set: (enabled) => ipcRenderer.invoke("errorReporting:set", enabled),

@@ -2240,4 +2240,60 @@ describe("desktop contract", () => {
       expect(main).toContain("setVisualZoomLevelLimits(1, 1)");
     });
   });
+  describe("the updater (DIST-06)", () => {
+    const channels = [
+      "updates:getState",
+      "updates:check",
+      "updates:restart",
+      "updates:getWhatsNew",
+      "updates:dismissWhatsNew",
+      "updates:getNotes",
+      "updates:openReleasePage",
+      "updates:subscribe",
+      "updates:unsubscribe",
+    ];
+
+    it("handles every updates channel in main and invokes it from the preload", () => {
+      for (const channel of channels) {
+        expect(handledChannels(main), channel).toContain(channel);
+        expect(invokedChannels(preload), channel).toContain(channel);
+      }
+    });
+
+    it("has no updates channel that is handled and not exposed, or the other way round", () => {
+      const handled = handledChannels(main).filter((channel) => channel.startsWith("updates:")).sort();
+      const invoked = invokedChannels(preload).filter((channel) => channel.startsWith("updates:")).sort();
+      expect(handled).toEqual([...channels].sort());
+      expect(invoked).toEqual([...channels].sort());
+    });
+
+    it("pushes the state on updates:state, listened for and sent on the same channel", () => {
+      expect(preload).toMatch(/ipcRenderer\.on\(\s*"updates:state"/);
+      expect(preload).toMatch(/ipcRenderer\.removeListener\(\s*"updates:state"/);
+      expect(main).toMatch(/\.send\(\s*"updates:state"/);
+    });
+
+    it("types the bridge", () => {
+      expect(bridgeTypes).toContain("updates?: UpdatesBridge");
+      expect(bridgeTypes).toContain("export interface UpdatesBridge");
+      expect(bridgeTypes).toContain("export interface UpdateState");
+      expect(bridgeTypes).toContain("export interface WhatsNew");
+    });
+
+    it("never lets the page choose an address to open", () => {
+      const block = preload.slice(preload.indexOf("updates: {"), preload.indexOf("updates: {") + 1800);
+      expect(block).toMatch(/updates:openReleasePage",\s*which === "current" \? "current" : "update"/);
+      expect(block).not.toMatch(/openExternal|shell\./);
+    });
+
+    it("takes the lock first, and installs last in the quit cleanup", () => {
+      expect(main.indexOf("enforceSingleInstance(")).toBeGreaterThan(-1);
+      expect(main.indexOf("enforceSingleInstance(")).toBeLessThan(main.indexOf("setupMainReporting({"));
+      expect(main.indexOf("enforceSingleInstance(")).toBeLessThan(main.indexOf("new EngineSupervisor("));
+      expect(main.indexOf("enforceSingleInstance(")).toBeLessThan(main.indexOf("app.whenReady()"));
+      const cleanup = main.slice(main.indexOf("quitAfter(app, async"));
+      expect(cleanup.indexOf("await engine.stop()")).toBeGreaterThan(-1);
+      expect(cleanup.indexOf("updater.installAtQuit(")).toBeGreaterThan(cleanup.indexOf("await engine.stop()"));
+    });
+  });
 });
