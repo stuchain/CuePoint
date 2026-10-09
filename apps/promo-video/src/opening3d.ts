@@ -5,6 +5,7 @@ import { createRenderer } from "../../website/src/three/renderer";
 import { cameraPose, create as createOpening, LABEL_HOLD } from "../../website/src/three/scenes/opening";
 import { at, BEAT, kickLevel, shot } from "./timing";
 import { addVinyl } from "./vinyl";
+import { addWheelLights } from "./wheelLights";
 
 /**
  * The website's own 3D scene (DEC-189: the crate becoming the Camelot wheel), drawn through the site's
@@ -120,6 +121,7 @@ export function createOpeningShot(width: number, height: number): Opening {
   instance.setPalette(palette);
   const vinyl = addVinyl(instance.scene);
   vinyl.setPalette(palette);
+  const lights = addWheelLights(instance.scene);
   resize(width, height);
   instance.setShadowSize?.(1024);
   const baseFov = instance.camera.fov;
@@ -131,7 +133,9 @@ export function createOpeningShot(width: number, height: number): Opening {
       const p = t >= shot("end").start ? 1 : progressAt(t);
       instance.setProgress(p);
       vinyl.update(p);
-      instance.setLevel?.(p >= PULSE_FROM ? kickLevel(t) * 0.9 : 0);
+      lights.update(t);
+      // the kick pumps the wheel as it fills; behind the end card the promo's own lights do the pumping
+      instance.setLevel?.(p >= PULSE_FROM && t < shot("end").start ? kickLevel(t) * 0.9 : 0);
       const pose = cameraPose(p);
       const m = cameraMove(t);
       const cam = instance.camera;

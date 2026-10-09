@@ -197,7 +197,7 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
       ${cellHtml("c-bpm apply", r.bpm[0], r.bpm[1])}
       ${cellHtml("c-genre apply", r.genre[0], r.genre[1])}
       <span class="status cell"><span class="new ${r.status === "accepted" ? "ok" : "review"}">${
-        r.status === "accepted" ? "Accepted" : "Needs review"
+        r.status === "accepted" ? '<i class="tick">✓</i>Accepted' : "Needs review"
       }</span></span>
     </div>`,
   ).join("");
@@ -247,6 +247,8 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
     const keyCell = [...row.querySelectorAll(".c-key")].filter((c) => c.querySelector(".new"));
     tl.to(oldOf(keyCell), { opacity: 0, duration: BEAT / 4, ease: "steps(2)" }, t);
     tl.fromTo(row.querySelectorAll(".c-key .new, .status .new"), { ...POP }, { ...IN }, t);
+    const tick = row.querySelector(".tick");
+    if (tick) tl.fromTo(tick, { scale: 2.2, rotation: -20 }, { scale: 1, rotation: 0, duration: BEAT * 0.4, ease: "back.out(2.5)" }, t + BEAT / 8);
     if (row.classList.contains("is-bad")) tl.to(row, { backgroundColor: "rgba(0,0,0,0)", duration: BEAT / 2, ease: "steps(2)" }, t);
   });
   // Apply from the accepted matches: tempo and genre, row by row
@@ -265,6 +267,9 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
 }
 
 // ---- Keys: the wheel as a floor, the 24 keys standing on it ----
+
+/** The Keys shot's count line, flat on the stage like a caption (set by buildKeys). */
+let keysHud: HTMLElement | undefined;
 
 function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
   const wide = format === "wide";
@@ -294,14 +299,21 @@ function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
   // all 24 stand up in a sweep round the wheel, then one key is picked (the Library's key filter):
   // 8A rises and the rest dim
   const order = [...tileEls].sort((a, b) => Number.parseInt(a.dataset["key"]!, 10) - Number.parseInt(b.dataset["key"]!, 10));
-  order.forEach((tile, i) => tl.fromTo(tile, { z: 0, opacity: 0.25 }, { z: 30, opacity: 1, duration: BEAT / 4, ease: "steps(2)" }, start + BEAT / 2 + (i * BEAT) / 16));
-  const lift = start + BEAT * 2.25;
+  order.forEach((tile, i) => tl.fromTo(tile, { z: 0, opacity: 0.25 }, { z: 30, opacity: 1, duration: BEAT / 4, ease: "steps(2)" }, start + BEAT / 4 + (i * BEAT) / 24));
+  const lift = start + BEAT * 1.5;
+  // 8A is picked; the keys that mix with it (same number, or one step on the same letter) come up with it
+  const mixes = new Set(["8A", "8B", "7A", "9A"]);
   for (const tile of tileEls) {
     const key = tile.dataset["key"]!;
     if (key === "8A") tl.to(tile, { z: 120, scale: 1.4, duration: BEAT / 2, ease: "power2.out" }, lift);
+    else if (mixes.has(key)) tl.to(tile, { z: 70, scale: 1.15, duration: BEAT / 2, ease: "power2.out" }, lift + BEAT / 8);
     // from an explicit start: the rise sweep's last tiles are still landing at `lift`
-    else tl.fromTo(tile, { opacity: 1 }, { opacity: 0.4, duration: BEAT / 2, ease: "power1.out", immediateRender: false }, lift + BEAT / 4);
+    else tl.fromTo(tile, { opacity: 1, z: 30 }, { opacity: 0.4, z: 0, duration: BEAT / 2, ease: "power1.out", immediateRender: false }, lift + BEAT / 4);
   }
+  const count = h(`<div class="keys-count px-panel"><b>${mixes.size}</b> mix in key with <span class="key" style="background:${keyColor("8A")}">8A</span></div>`);
+  keysHud = count;
+  tl.fromTo(count, { opacity: 0, y: 20, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: BEAT / 2, ease: "power3.out" }, lift + BEAT / 2);
+  tl.to(count, { opacity: 0, y: -16, duration: BEAT / 4, ease: "power2.in" }, end - LEAD - BEAT / 4);
   return el;
 }
 
@@ -491,7 +503,7 @@ function buildExport(format: FormatId, tl: Timeline): HTMLElement {
           <div class="actions"><span class="toast">Ready for Rekordbox</span><span class="px-button">Export ${CLEAN_ROWS.length} tracks</span></div>
         </div>
       </div>
-      <div class="file"><b>XML</b></div>`;
+      <div class="file"><b>XML</b><small>${CLEAN_ROWS.length} tracks<br>keys, BPM, genre</small></div>`;
   const { start, end } = shot("export");
   const button = el.querySelector(".px-button")!;
   const beat = (b: number): number => start + b * BEAT;
@@ -501,7 +513,7 @@ function buildExport(format: FormatId, tl: Timeline): HTMLElement {
   // the file rises out of the Export button and floats beside the dialog (above it on the phone)
   const file = el.querySelector(".file")!;
   const from = wide ? { x: width / 2 - 160, y: 150 } : { x: width / 2 - 140, y: 190 };
-  const to = wide ? { x: width / 2 - 40, y: -235 } : { x: 0, y: -400 };
+  const to = wide ? { x: width / 2 - 110, y: -215 } : { x: 0, y: -430 };
   tl.fromTo(file, { ...from, z: 40, scale: 0.3, opacity: 0, rotationY: -30 }, { ...to, z: 60, scale: 0.85, opacity: 1, rotationY: 14, duration: BEAT * 1.25, ease: "power3.out" }, beat(2));
   tl.to(file, { y: to.y - 14, rotationY: -8, duration: end - beat(3.25), ease: "sine.inOut" }, beat(3.25));
   tl.fromTo(el.querySelector(".toast"), { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: BEAT / 2, ease: "power2.out" }, beat(2.25));
@@ -527,7 +539,7 @@ function buildEnd(format: FormatId, tl: Timeline): HTMLElement {
     </div>`);
   const { start } = shot("end");
   // the wheel dims behind the words from the cut on
-  tl.fromTo(el.querySelector(".end-dim"), { opacity: 0.85 }, { opacity: 1, duration: BEAT, ease: "power1.out" }, start);
+  tl.fromTo(el.querySelector(".end-dim"), { opacity: 0.85 }, { opacity: 0.93, duration: BEAT, ease: "power1.out" }, start);
   tl.fromTo(el.querySelector(".end-mark"), { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: BEAT, ease: "power3.out" }, start);
   el.querySelectorAll("h1 span").forEach((s, i) => {
     tl.fromTo(s, { rotationX: -90, opacity: 0 }, { rotationX: 0, opacity: 1, duration: BEAT * 0.75, ease: "power3.out" }, start + BEAT * 0.5 + (i * BEAT) / 6);
@@ -657,5 +669,6 @@ export function buildShots(stage: HTMLElement, format: FormatId, tl: Timeline): 
   stage.append(end);
   showBetween(tl, end, [[shot("end").start, shot("end").end]]);
   stage.append(buildCaptions(format, tl));
+  if (keysHud) stage.append(keysHud);
   return { sceneHost };
 }

@@ -724,6 +724,56 @@ canvas.scene3d {
   background: linear-gradient(to bottom, transparent, var(--bg-app) 80%);
 }
 
+/* a soft vignette on every app shot: the eye stays on the window */
+.world::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgb(0 0 0 / 0.32) 100%);
+  pointer-events: none;
+}
+
+.keys-count {
+  position: absolute;
+  left: 96px;
+  top: 60px;
+  padding: 12px 24px 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  font-size: 34px;
+  opacity: 0;
+}
+
+.keys-count b {
+  font-size: 44px;
+  color: var(--accent-success);
+}
+
+.keys-count .key {
+  padding: 4px 12px 6px;
+  color: var(--border-outline);
+}
+
+.tall .keys-count {
+  left: 54px;
+  top: 250px;
+  font-size: 36px;
+}
+
+.status .tick {
+  display: inline-block;
+  margin-left: 10px;
+  font-family: var(--font-data);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 30px;
+  color: var(--accent-success);
+}
+
 .world {
   perspective: 1800px;
   /* a clean, deep room: the app's background with a soft glow where the camera looks */
@@ -839,12 +889,15 @@ canvas.scene3d {
   position: absolute;
   left: 0;
   top: 0;
-  width: 150px;
-  height: 190px;
-  margin: -95px 0 0 -75px;
-  display: grid;
-  place-items: end center;
-  padding-bottom: 26px;
+  width: 260px;
+  height: 230px;
+  margin: -115px 0 0 -130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: end;
+  gap: 14px;
+  padding-bottom: 22px;
   background: var(--fg-primary);
   border: 6px solid var(--border-outline);
   clip-path: polygon(0 0, 70% 0, 100% 22%, 100% 100%, 0 100%);
@@ -858,6 +911,15 @@ canvas.scene3d {
   padding: 2px 10px 4px;
   color: var(--fg-primary);
   background: var(--accent-primary);
+}
+
+.file small {
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--border-outline);
 }
 
 .toast {
