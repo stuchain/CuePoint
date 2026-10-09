@@ -22,7 +22,9 @@ What it measures, in order, against a generated export:
 5. **Apply** — the refresh, including the deletions.
 
 With ``--statistics`` it then gives the library a year of weekly play history and
-times the Statistics page's plays route, all time and since 90 days (STATS-02).
+times the Statistics page's plays route, all time and since 90 days (STATS-02),
+then gives the tracks varied years, tempos and dates, file checks and a waveform
+store with loudness, and times its spreads and health routes (STATS-03).
 
 Memory is reported as `tracemalloc`'s peak, which is the number the streaming
 design exists to hold down: it says how much Python allocated at once, so a
@@ -38,7 +40,7 @@ Usage::
     python scripts/bench_library.py                     # 50,000 tracks
     python scripts/bench_library.py --tracks 5000        # a quicker pass
     python scripts/bench_library.py --json report.json   # machine-readable
-    python scripts/bench_library.py --statistics         # and the plays route
+    python scripts/bench_library.py --statistics         # and the Statistics routes
 """
 
 from __future__ import annotations
@@ -73,10 +75,18 @@ from cuepoint.persistence.playlist_repository import PlaylistRepository  # noqa:
 from cuepoint.persistence.statistics_repository import (  # noqa: E402
     StatisticsRepository,
 )
+from cuepoint.persistence.waveform_store import (  # noqa: E402
+    WaveformStore,
+    default_waveform_store_path,
+)
+from cuepoint.persistence.waveform_work_repository import (  # noqa: E402
+    WaveformWorkRepository,
+)
 from cuepoint.persistence.tag_repository import TagRepository  # noqa: E402
 from cuepoint.persistence.track_metadata_repository import (  # noqa: E402
     TrackMetadataRepository,
 )
+from cuepoint.data.audio_decode import ANALYSIS_VERSION, LOUDNESS_VERSION  # noqa: E402
 from cuepoint.models.filter_rule import FilterRule, RuleSet  # noqa: E402
 from cuepoint.persistence.track_query import BrowseQuery  # noqa: E402
 from cuepoint.persistence.track_repository import TrackRepository  # noqa: E402
@@ -96,7 +106,13 @@ from cuepoint.services.match_apply import MatchApplyService  # noqa: E402
 from cuepoint.services.match_state import MatchStateService  # noqa: E402
 from cuepoint.services.metadata_service import MetadataService  # noqa: E402
 from cuepoint.services.migration_runner import MigrationRunner  # noqa: E402
-from cuepoint.services.statistics_service import StatisticsService  # noqa: E402
+from cuepoint.services.statistics_service import (  # noqa: E402
+    PlaysScope,
+    StatisticsService,
+)
+from cuepoint.services.waveform_analysis_service import (  # noqa: E402
+    WaveformAnalysisService,
+)
 from cuepoint.services.tag_service import TagService  # noqa: E402
 
 #: Default size. The number Phase 3 was designed against, so the default is the
@@ -736,6 +752,10 @@ HISTORY_MOVED_PER_WEEK = 500
 #: What the plays route has to answer within on the development machine.
 PLAYS_BUDGET_MS = 500
 
+#: And the spreads and the health routes (STATS-03).
+SPREADS_BUDGET_MS = 1000
+HEALTH_BUDGET_MS = 500
+
 
 def build_play_history(
     database: DatabaseService,
@@ -803,19 +823,114 @@ def build_play_history(
     return written
 
 
+def seed_spread_inputs(database: DatabaseService, store: WaveformStore) -> int:
+    """Vary what the spreads read, check every file, and measure most of them.
+
+    The generated export gives every track one year and one date, so the spreads
+    would have one bar each. This gives them what a library has: thirty years,
+    120 months, tempos from 80 to 170, and ratings 0 to 5 (STATS-03); a present
+    file check for every track; and a waveform store with a row for four tracks
+    in five and a loudness for seven in ten, written directly because analysing
+    50,000 files is a different benchmark.
+
+    Returns:
+        The loudness readings written.
+    """
+    with database.transaction() as conn:
+        conn.execute(
+            "UPDATE tracks SET year = 1995 + id % 30,"
+            " bpm = 80 + id % 90 + (id % 10) / 10.0,"
+            " date_added = printf('%04d-%02d-%02d', 2016 + id % 10,"
+            " 1 + (id / 10) % 12, 1 + id % 28),"
+            " rating = id % 6"
+        )
+        conn.execute(
+            "INSERT OR REPLACE INTO track_files"
+            " (track_id, status, checked_path, size_bytes, checked_at, reason)"
+            " SELECT id, 'present', file_path, 1000 + id % 1000,"
+            " '2026-10-01T10:00:00+00:00', NULL FROM tracks"
+            " WHERE file_path IS NOT NULL AND file_path <> ''"
+        )
+        paths = [
+            (str(row[0]), 1000 + int(row[1]) % 1000, int(row[1]))
+            for row in conn.execute("SELECT file_path, id FROM tracks ORDER BY id")
+        ]
+    waveforms = [
+        (
+            path,
+            size,
+            1,
+            ANALYSIS_VERSION,
+            "ready",
+            None,
+            1000,
+            "2026-10-01T10:00:00+00:00",
+            b"CPWF",
+        )
+        for path, size, ident in paths
+        if ident % 5
+    ]
+    loudness = [
+        (path, size, 1, LOUDNESS_VERSION, -14.0 + (ident % 90) / 10.0, -1.0, None)
+        for path, size, ident in paths
+        if ident % 10 < 7 and ident % 5
+    ]
+    connection = store.connect()
+    with connection:
+        connection.executemany(
+            "INSERT OR REPLACE INTO waveforms (path, size_bytes, mtime_ns,"
+            " analysis_version, state, reason, duration_ms, analysed_at, data)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            waveforms,
+        )
+        connection.executemany(
+            "INSERT OR REPLACE INTO loudness (path, size_bytes, mtime_ns,"
+            " loudness_version, integrated_lufs, peak_dbfs, reason)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            loudness,
+        )
+    return len(loudness)
+
+
 def measure_statistics(
     database: DatabaseService,
     track_repo: TrackRepository,
     playlist_repo: PlaylistRepository,
     collections_service: CollectionService,
 ) -> List[Dict[str, Any]]:
-    """Time the plays route over a year of weekly history (STATS-02).
+    """Time the plays, spreads and health routes (STATS-02, STATS-03).
 
     Beside the count of the whole library, the cheapest question the Library
     asks, so the plays are read as a multiple of something already imperceptible.
     """
+    store = WaveformStore(default_waveform_store_path(database.db_path))
+    seed_spread_inputs(database, store)
+    # `plan()` reads the library and the store only; the service that analyses a
+    # file is for a run, which this does not make.
+    analysis = WaveformAnalysisService(
+        WaveformWorkRepository(database),
+        store,
+        None,  # type: ignore[arg-type]
+    )
     service = StatisticsService(
-        StatisticsRepository(database), collections_service, playlist_repo
+        StatisticsRepository(database),
+        collections_service,
+        playlist_repo,
+        waveform_store=store,
+        analysis_service=analysis,
+    )
+    # The largest playlist; a folder holding all 250 is a scope the Library itself
+    # takes 175,000 entries to read, which says nothing about the spreads.
+    playlist = PlaysScope(
+        "playlist",
+        int(
+            database.connect()
+            .execute(
+                "SELECT playlist_id FROM rekordbox_playlist_tracks"
+                " GROUP BY playlist_id ORDER BY COUNT(*) DESC, playlist_id LIMIT 1"
+            )
+            .fetchone()[0]
+        ),
     )
     reads = StatisticsRepository(database).reads()
     ninety_days = (datetime.now(timezone.utc) - timedelta(days=90)).date()
@@ -831,12 +946,17 @@ def measure_statistics(
             "plays, since the last read",
             lambda: service.plays(limit=10, since_read=reads[-1][0]).tracks,
         ),
+        ("spreads", lambda: service.spreads().total),
+        ("spreads, playlist scope", lambda: service.spreads(playlist).total),
+        ("health", lambda: service.health().total),
+        ("health, playlist scope", lambda: service.health(playlist).total),
     ]
     measured: List[Dict[str, Any]] = []
     for name, call in cases:
         outcome = call()
         rows = outcome if isinstance(outcome, int) else len(outcome)
         measured.append({"name": name, "ms": _median_ms(call), "rows": rows})
+    store.close_all()
     return measured
 
 
@@ -1006,10 +1126,20 @@ def run(
     if by_org["the tag vocabulary"]["rows"] != DEFAULT_TAGS:
         problems.append("the tag vocabulary lost a tag")
     for case in statistics_cases:
-        if case["name"].startswith("plays") and case["ms"] > PLAYS_BUDGET_MS:
+        budget = {
+            "plays": PLAYS_BUDGET_MS,
+            "spreads": SPREADS_BUDGET_MS,
+            "health": HEALTH_BUDGET_MS,
+        }.get(case["name"].split(",")[0])
+        if budget is not None and case["ms"] > budget:
             problems.append(
-                f"{case['name']} took {case['ms']} ms; the budget is {PLAYS_BUDGET_MS}"
+                f"{case['name']} took {case['ms']} ms; the budget is {budget}"
             )
+    by_stat = {case["name"]: case for case in statistics_cases}
+    if statistics_cases and by_stat["spreads"]["rows"] != tracks - removed + added:
+        problems.append("the spreads did not count the library they were asked of")
+    if statistics_cases and by_stat["health"]["rows"] != by_stat["spreads"]["rows"]:
+        problems.append("health and the spreads counted different libraries")
     if statistics_cases and statistics_cases[1]["rows"] <= 0:
         problems.append("the plays route found no played track")
     by_case = {case["name"]: case for case in browse}
@@ -1093,7 +1223,7 @@ def report(result: Dict[str, Any]) -> None:
             print(f"{case['name']:<34}{case['ms']:>11.2f}{case['rows']:>9,}")
     if result.get("statistics"):
         print()
-        print(f"{'statistics (STATS-02)':<34}{'median ms':>11}{'rows':>9}")
+        print(f"{'statistics (STATS-02, STATS-03)':<34}{'median ms':>11}{'rows':>9}")
         print("-" * 54)
         for case in result["statistics"]:
             print(f"{case['name']:<34}{case['ms']:>11.2f}{case['rows']:>9,}")
@@ -1113,7 +1243,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument(
         "--statistics",
         action="store_true",
-        help="add a year of weekly play history and time the plays route (STATS-02)",
+        help="add a year of play history and time the Statistics routes (STATS-02/03)",
     )
     parser.add_argument(
         "--keep", action="store_true", help="leave the generated files in place"

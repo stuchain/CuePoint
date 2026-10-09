@@ -16,6 +16,14 @@
   - ``scope``: ``library`` (the default), ``collection:<id>`` (a Collection, a Set
     or a Smart Collection) or ``playlist:<id>``.
 
+- ``GET /api/v1/statistics/spreads?scope=`` (STATS-03): how the scope's tracks
+  spread by genre, tempo, year, date added, rating and loudness, each as buckets
+  (with the rules that open them where a rule can say it), an unknown line and a
+  total. Loudness adds a ``no_file`` line and has no rules.
+- ``GET /api/v1/statistics/health?scope=`` (STATS-03): the scope's tracks by file
+  state and Beatport match (each with its rules), by analysis (counts only), and
+  when the files were last checked. It takes the same ``scope``.
+
 Every handler validates and delegates: what is counted, and what each number opens,
 is ``services/statistics_service.py``'s. A query parameter the route does not take
 is refused, naming it.
@@ -55,6 +63,8 @@ _logger = logging.getLogger(__name__)
 
 PREFIX = "/api/v1/statistics/"
 PLAYS_PATH = PREFIX + "plays"
+SPREADS_PATH = PREFIX + "spreads"
+HEALTH_PATH = PREFIX + "health"
 
 INVALID_REQUEST = "INVALID_REQUEST"
 NOT_FOUND = "NOT_FOUND"
@@ -64,7 +74,7 @@ FAILED = "STATISTICS_FAILED"
 #: The refusal codes a caller can branch on.
 REFUSAL_CODES: Tuple[str, ...] = (INVALID_REQUEST, NOT_FOUND, UNAVAILABLE)
 
-GET_PATHS: Tuple[str, ...] = (PLAYS_PATH,)
+GET_PATHS: Tuple[str, ...] = (PLAYS_PATH, SPREADS_PATH, HEALTH_PATH)
 
 #: The list lengths the page offers.
 LIMITS: Tuple[int, ...] = (10, 25, 50, 100, 200)
@@ -76,6 +86,7 @@ MIN_YEAR = 1900
 MAX_YEAR = 9998
 
 _PARAMS = ("limit", "since", "tz", "since_read", "scope")
+_SCOPE_ONLY = ("scope",)
 _DATE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 _OFFSET = re.compile(r"^([+-])([0-9]{2}):([0-9]{2})$")
 _WHOLE = re.compile(r"^[0-9]+$")
@@ -101,9 +112,11 @@ def _resolve(interface_name: str) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def _params(params: Dict[str, List[str]]) -> Dict[str, str]:
+def _params(
+    params: Dict[str, List[str]], taken: Tuple[str, ...] = _PARAMS
+) -> Dict[str, str]:
     """One value per name, refusing names this route does not take."""
-    unknown = sorted(set(params) - set(_PARAMS))
+    unknown = sorted(set(params) - set(taken))
     if unknown:
         raise bad_request(f"Unknown parameter: {', '.join(unknown)!r}")
     single: Dict[str, str] = {}
@@ -197,6 +210,22 @@ def plays(params: Dict[str, List[str]]) -> Dict[str, Any]:
     return report.to_dict()
 
 
+def spreads(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """How the scope's tracks spread by six fields."""
+    query = _params(params, _SCOPE_ONLY)
+    scope = parse_scope(query["scope"]) if "scope" in query else PlaysScope()
+    service: IStatisticsService = _resolve("IStatisticsService")
+    return service.spreads(scope).to_dict()
+
+
+def health(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """The scope's tracks by file state, Beatport match and analysis."""
+    query = _params(params, _SCOPE_ONLY)
+    scope = parse_scope(query["scope"]) if "scope" in query else PlaysScope()
+    service: IStatisticsService = _resolve("IStatisticsService")
+    return service.health(scope).to_dict()
+
+
 def handles_get(path: str) -> bool:
     """True when this module answers a GET for ``path``."""
     return path in GET_PATHS
@@ -206,6 +235,10 @@ def handle_get(path: str, params: Dict[str, List[str]]) -> Tuple[int, Dict[str, 
     """Answer a GET, or raise."""
     if path == PLAYS_PATH:
         return 200, plays(params)
+    if path == SPREADS_PATH:
+        return 200, spreads(params)
+    if path == HEALTH_PATH:
+        return 200, health(params)
     raise not_found("NOT_FOUND", "Unknown path")
 
 
@@ -229,12 +262,14 @@ __all__: Sequence[str] = (
     "DEFAULT_LIMIT",
     "FAILED",
     "GET_PATHS",
+    "HEALTH_PATH",
     "INVALID_REQUEST",
     "LIMITS",
     "NOT_FOUND",
     "PLAYS_PATH",
     "PREFIX",
     "REFUSAL_CODES",
+    "SPREADS_PATH",
     "StatisticsUnavailableError",
     "UNAVAILABLE",
     "handle_get",

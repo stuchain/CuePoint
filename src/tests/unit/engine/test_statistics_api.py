@@ -1,4 +1,4 @@
-"""The plays route over the wire (STATS-02).
+"""The plays, spreads and health routes over the wire (STATS-02, STATS-03).
 
 A real engine on a loopback port over the library ``test_statistics_plays`` builds
 (four reads, three refreshes among them): the route's shape, its defaults, the
@@ -21,17 +21,20 @@ from cuepoint.engine import server as server_module
 from cuepoint.engine.server import EngineConfig, start_engine_thread
 from cuepoint.engine.statistics_api import (
     GET_PATHS,
+    HEALTH_PATH,
     INVALID_REQUEST,
     NOT_FOUND,
     PLAYS_PATH,
     PREFIX,
     REFUSAL_CODES,
+    SPREADS_PATH,
     UNAVAILABLE,
     handles_get,
 )
 from cuepoint.services.interfaces import IStatisticsService
 from cuepoint.utils.di_container import get_container, reset_container
 from tests.unit.services.test_statistics_plays import World, build_world, scope_of
+from tests.unit.services.test_statistics_spreads import build_spread_world
 
 pytestmark = pytest.mark.unit
 
@@ -62,11 +65,11 @@ class Engine:
         self.base = base
         self.world = world
 
-    def get(self, query: str = "", *, token: str | None = TOKEN) -> tuple[int, Any]:
+    def get(
+        self, query: str = "", *, token: str | None = TOKEN, path: str = PLAYS_PATH
+    ) -> tuple[int, Any]:
         headers = {"Authorization": f"Bearer {token}"} if token else {}
-        request = urllib.request.Request(
-            f"{self.base}{PLAYS_PATH}{query}", headers=headers
-        )
+        request = urllib.request.Request(f"{self.base}{path}{query}", headers=headers)
         try:
             with urllib.request.urlopen(request, timeout=10) as response:
                 return response.status, json.loads(response.read().decode("utf-8"))
@@ -105,14 +108,17 @@ def engine(tmp_path, reports):
         world.db.close_all()
 
 
-def test_the_module_answers_exactly_its_one_route():
+def test_the_module_answers_exactly_its_three_routes():
     assert PLAYS_PATH == "/api/v1/statistics/plays"
+    assert SPREADS_PATH == "/api/v1/statistics/spreads"
+    assert HEALTH_PATH == "/api/v1/statistics/health"
     assert PREFIX == "/api/v1/statistics/"
-    assert GET_PATHS == (PLAYS_PATH,)
-    assert handles_get(PLAYS_PATH)
-    assert not handles_get(PLAYS_PATH + "/")
+    assert GET_PATHS == (PLAYS_PATH, SPREADS_PATH, HEALTH_PATH)
+    for path in GET_PATHS:
+        assert handles_get(path)
+        assert not handles_get(path + "/")
     assert not handles_get(PREFIX.rstrip("/"))
-    assert not handles_get("/api/v1/statistics/spreads")
+    assert not handles_get("/api/v1/statistics/keys")
 
 
 def test_the_route_needs_the_token(engine):
@@ -340,3 +346,193 @@ class TestRefusals:
 def test_every_refusal_code_is_declared():
     assert set(REFUSAL_CODES) == {INVALID_REQUEST, NOT_FOUND, UNAVAILABLE}
     assert UNAVAILABLE == "LIBRARY_UNAVAILABLE"
+
+
+# ---------------------------------------------------------------- STATS-03
+
+
+@pytest.fixture
+def spread_engine(tmp_path, reports):
+    """An engine over the nine-track library the spreads and health tests use."""
+    world = build_spread_world(tmp_path)
+    reset_container()
+    get_container().register_singleton(IStatisticsService, world.statistics)
+    port = _free_port()
+    server, thread = start_engine_thread(
+        EngineConfig(host="127.0.0.1", port=port, token=TOKEN)
+    )
+    try:
+        yield Engine(f"http://127.0.0.1:{port}", world)
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+        reset_container()
+        world.store.close_all()
+        world.db.close_all()
+
+
+ROUTES = pytest.mark.parametrize("path", [SPREADS_PATH, HEALTH_PATH])
+
+
+class TestSpreadsAndHealth:
+    @ROUTES
+    def test_the_route_needs_the_token(self, spread_engine, path):
+        assert spread_engine.get(token=None, path=path)[0] == 401
+
+    def test_spreads_answers_the_six_fields(self, spread_engine):
+        status, payload = spread_engine.get(path=SPREADS_PATH)
+
+        assert status == 200
+        assert set(payload) == {
+            "scope",
+            "total",
+            "genre",
+            "tempo",
+            "year",
+            "date_added",
+            "rating",
+            "loudness",
+        }
+        assert payload["scope"] == "library"
+        assert payload["total"] == 9
+        assert payload["genre"]["buckets"][0] == {
+            "label": "HOUSE",
+            "value": "HOUSE",
+            "count": 3,
+            "rules": {
+                "match": "all",
+                "rules": [{"field": "genre", "operator": "is", "value": "HOUSE"}],
+            },
+        }
+
+    def test_health_answers_files_beatport_and_analysis(self, spread_engine):
+        status, payload = spread_engine.get(path=HEALTH_PATH)
+
+        assert status == 200
+        assert set(payload) == {
+            "scope",
+            "total",
+            "files",
+            "beatport",
+            "analyzed",
+            "checked_at",
+        }
+        assert payload["files"]["present"]["count"] == 5
+        assert payload["analyzed"]["analyzed"] == 2
+        assert payload["checked_at"] == "2026-10-02T08:00:00+00:00"
+
+    @ROUTES
+    def test_a_scope_is_taken_and_echoed(self, spread_engine, path):
+        scope = spread_engine.world.scope("collection")
+
+        status, payload = spread_engine.get(f"?scope=collection:{scope.id}", path=path)
+
+        assert status == 200
+        assert payload["scope"] == f"collection:{scope.id}"
+        assert payload["total"] == 4
+
+    @ROUTES
+    def test_a_playlist_scope(self, spread_engine, path):
+        scope = f"playlist:{spread_engine.world.playlist_id}"
+
+        status, payload = spread_engine.get(f"?scope={scope}", path=path)
+
+        assert status == 200
+        assert payload["scope"] == scope
+        assert payload["total"] == 4
+
+    @ROUTES
+    def test_the_library_scope_by_name(self, spread_engine, path):
+        assert (
+            spread_engine.get("?scope=library", path=path)[1]
+            == spread_engine.get(path=path)[1]
+        )
+
+    @ROUTES
+    @pytest.mark.parametrize(
+        "query, word",
+        [
+            ("?limit=10", "limit"),
+            ("?since=2026-03-10", "since"),
+            ("?colour=blue", "colour"),
+            ("?scope=everything", "scope"),
+            ("?scope=collection:0", "scope"),
+            ("?scope=library&scope=library", "scope"),
+        ],
+    )
+    def test_a_bad_parameter_is_invalid_and_named(
+        self, spread_engine, reports, path, query, word
+    ):
+        status, payload = spread_engine.get(query, path=path)
+
+        assert status == 400, payload
+        assert payload["error"]["code"] == INVALID_REQUEST
+        assert word in payload["error"]["message"]
+        assert reports == []
+
+    @ROUTES
+    @pytest.mark.parametrize(
+        "query", ["?scope=collection:99999", "?scope=playlist:99999"]
+    )
+    def test_a_scope_that_is_not_there_is_not_found(
+        self, spread_engine, reports, path, query
+    ):
+        status, payload = spread_engine.get(query, path=path)
+
+        assert status == 404
+        assert payload["error"]["code"] == NOT_FOUND
+        assert reports == []
+
+    @ROUTES
+    def test_a_smart_collection_that_cannot_run_is_invalid(
+        self, spread_engine, reports, path
+    ):
+        scope = spread_engine.world.scope("smart")
+        with spread_engine.world.db.transaction() as conn:
+            conn.execute(
+                "UPDATE collections SET rules_json = ? WHERE id = ?",
+                (
+                    '{"match":"all","rules":[{"field":"gone","operator":"is"}]}',
+                    scope.id,
+                ),
+            )
+
+        status, payload = spread_engine.get(f"?scope=collection:{scope.id}", path=path)
+
+        assert status == 400
+        assert payload["error"]["code"] == INVALID_REQUEST
+        assert reports == []
+
+    @ROUTES
+    def test_a_library_that_cannot_be_reached_is_unavailable(
+        self, spread_engine, reports, path
+    ):
+        reset_container()
+
+        def unreachable():
+            raise RuntimeError("database locked")
+
+        get_container().register_factory(IStatisticsService, unreachable)
+
+        status, payload = spread_engine.get(path=path)
+
+        assert status == 503
+        assert payload["error"]["code"] == UNAVAILABLE
+        assert reports == []
+
+    @pytest.mark.parametrize(
+        "path, method", [(SPREADS_PATH, "spreads"), (HEALTH_PATH, "health")]
+    )
+    def test_anything_else_is_a_500_and_is_reported(
+        self, spread_engine, reports, monkeypatch, path, method
+    ):
+        def broken(*_args, **_kwargs):
+            raise RuntimeError("the query failed")
+
+        monkeypatch.setattr(spread_engine.world.statistics, method, broken)
+
+        status, payload = spread_engine.get(path=path)
+
+        assert status == 500
+        assert payload["error"]["code"] == "STATISTICS_FAILED"
+        assert len(reports) == 1

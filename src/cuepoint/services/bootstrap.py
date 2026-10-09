@@ -591,6 +591,9 @@ def bootstrap_services() -> None:
             repository=StatisticsRepository(container.resolve(IDatabaseService)),
             collection_service=container.resolve(ICollectionService),
             playlist_repository=container.resolve(IPlaylistRepository),
+            # STATS-03: loudness and what is analysed live in waveforms.db.
+            waveform_store=container.resolve(WaveformStore),
+            analysis_service=container.resolve(IWaveformAnalysisService),
         )
 
     container.register_factory(IStatisticsService, create_statistics_service)

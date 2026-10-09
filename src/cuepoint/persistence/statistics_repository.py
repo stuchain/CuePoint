@@ -26,6 +26,16 @@ Where the plays come from
   track ever has is its baseline and rises from nothing, and a fall adds nothing,
   so "since" never goes below zero (DEC-137).
 
+The spreads and health (STATS-03)
+---------------------------------
+A spread is one grouped scan: the scope's tracks projected through
+:func:`~cuepoint.persistence.track_query.build_select_scoped` with the filter
+vocabulary's own expression for the field (``field_spec(name).expression``), so
+the value grouped is the value the Library's rule compares. The bucket a track
+falls in is decided in the SQL, and a track that falls in none is the ``NULL``
+group, which the caller names. Each method returns every group of a field, in a
+fixed order, and the service cuts and labels them.
+
 Artists and labels
 ------------------
 An artist is a ``track_credits.name_key``, over artist and remixer credits, counted
@@ -39,10 +49,12 @@ their name folded to one case, so the order is stable and reads alphabetically.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
-from cuepoint.models.filter_rule import RuleSet
+from cuepoint.models.file_status import FILE_PRESENT
+from cuepoint.models.filter_rule import FILES_ALIAS, RuleSet, field_spec
 from cuepoint.persistence.track_query import BrowseQuery, build_select_scoped
 from cuepoint.services.interfaces import IDatabaseService, IStatisticsRepository
 
@@ -91,6 +103,38 @@ _SINCE = (
     " FROM play_counts p WHERE p.read_id >= ?{scoped}),"
     " plays AS (SELECT track_id, SUM(rise) AS plays FROM rises"
     " WHERE rise > 0 GROUP BY track_id)"
+)
+
+#: The fields the spreads group, through the expression the filter compares.
+_GENRE = field_spec("genre").expression
+_BPM = field_spec("bpm").expression
+_YEAR = field_spec("year").expression
+_RATING = field_spec("rating").expression
+_DATE_ADDED = field_spec("date_added").expression
+_FILE_STATUS = field_spec("file_status")
+_MATCH_STATE = field_spec("match_state")
+
+#: A BPM's tempo bucket, ``floor(bpm + 0.5)``, without the addition: ``bpm + 0.5``
+#: can round up to the next whole number in floating point while the rule
+#: ``bpm < n + 0.5`` still says no, so the bucket is decided by the comparison the
+#: rule makes. ``CAST`` truncates, which is the floor of a positive number.
+_TEMPO = (
+    f"CASE WHEN {_BPM} IS NULL OR {_BPM} < 0.5 THEN NULL"
+    f" WHEN {_BPM} >= CAST({_BPM} AS INTEGER) + 0.5 THEN CAST({_BPM} AS INTEGER) + 1"
+    f" ELSE CAST({_BPM} AS INTEGER) END"
+)
+
+#: A date's month, when the text lies in that month's range ``YYYY-MM-01`` to
+#: ``YYYY-MM-31``, compared as text exactly as ``between`` compares it (fact 7).
+#: The range's two ends share an eight-character prefix, so a value in it begins
+#: with its month and the month can be read from the value. A month is 01 to 12;
+#: anything else is no month and so is unknown.
+_MONTH = (
+    f"CASE WHEN {_DATE_ADDED} GLOB '[0-9][0-9][0-9][0-9]-[01][0-9]-*'"
+    f" AND substr({_DATE_ADDED}, 6, 2) BETWEEN '01' AND '12'"
+    f" AND {_DATE_ADDED} >= substr({_DATE_ADDED}, 1, 7) || '-01'"
+    f" AND {_DATE_ADDED} <= substr({_DATE_ADDED}, 1, 7) || '-31'"
+    f" THEN substr({_DATE_ADDED}, 1, 7) END"
 )
 
 _SCOPED = " AND tracks.id IN (SELECT id FROM scoped)"
@@ -193,7 +237,206 @@ class StatisticsRepository(IStatisticsRepository):
         )
         return int(row[0]), int(row[1])
 
+    # ---------------------------------------------------------- spreads
+
+    def total(self, scope: RuleSet) -> int:
+        """How many tracks the scope holds."""
+        sql, params = build_select_scoped(BrowseQuery(rules=scope), "1")
+        row = (
+            self._db.connect()
+            .execute(f"SELECT COUNT(*) FROM ({sql})", params)
+            .fetchone()
+        )
+        return int(row[0])
+
+    def genre_spread(self, scope: RuleSet) -> Tuple[List[Tuple[str, int]], int]:
+        """``(genres, none)``: each effective genre and its tracks, and the tracks with none.
+
+        Genres are grouped without case, the way the filter's ``is`` matches
+        them, and named by their smallest spelling. Commonest first, ties by name.
+        """
+        rows = self._grouped(
+            scope,
+            f"CASE WHEN {_GENRE} IS NULL OR {_GENRE} = '' THEN NULL"
+            f" ELSE {_GENRE} END AS bucket",
+            ("meta",),
+            "MIN(bucket), COUNT(*)",
+            "bucket COLLATE NOCASE",
+            "COUNT(*) DESC, bucket COLLATE NOCASE ASC",
+        )
+        return (
+            [(str(r[0]), int(r[1])) for r in rows if r[0] is not None],
+            sum(int(r[1]) for r in rows if r[0] is None),
+        )
+
+    def tempo_spread(self, scope: RuleSet) -> Tuple[List[Tuple[int, int]], int, int]:
+        """``(buckets, none, not_positive)``: each tempo ``n`` and its tracks.
+
+        ``none`` is the tracks with no BPM, the ones ``bpm`` *is empty* finds;
+        ``not_positive`` those with a BPM under 0.5 (zero or less, or too small to
+        round to a tempo): the bucket ``0`` would open ``bpm < 0.5``, which also
+        finds a BPM of zero or less, so they are counted apart. Ascending.
+        """
+        return self._numbers(scope, _TEMPO, _BPM)
+
+    def year_spread(self, scope: RuleSet) -> Tuple[List[Tuple[int, int]], int, int]:
+        """``(buckets, none, not_positive)``: each effective year and its tracks.
+
+        As :meth:`tempo_spread`: ``none`` has no year, ``not_positive`` a year of
+        zero or less. Ascending.
+        """
+        return self._numbers(
+            scope,
+            f"CASE WHEN {_YEAR} IS NULL OR {_YEAR} <= 0 THEN NULL"
+            f" ELSE CAST({_YEAR} AS INTEGER) END",
+            _YEAR,
+        )
+
+    def rating_spread(self, scope: RuleSet) -> Tuple[List[Tuple[int, int]], int]:
+        """``(stars, unrated)``: each effective rating present and its tracks."""
+        rows = self._grouped(
+            scope,
+            f"CAST({_RATING} AS INTEGER) AS bucket",
+            ("meta",),
+            "bucket, COUNT(*)",
+            "bucket",
+            "bucket ASC",
+        )
+        return (
+            [(int(r[0]), int(r[1])) for r in rows if r[0] is not None],
+            sum(int(r[1]) for r in rows if r[0] is None),
+        )
+
+    def month_spread(self, scope: RuleSet) -> Tuple[List[Tuple[str, int]], int]:
+        """``(months, unknown)``: each ``YYYY-MM`` and the tracks in its text range."""
+        rows = self._grouped(
+            scope,
+            f"{_MONTH} AS bucket",
+            (),
+            "bucket, COUNT(*)",
+            "bucket",
+            "bucket ASC",
+        )
+        return (
+            [(str(r[0]), int(r[1])) for r in rows if r[0] is not None],
+            sum(int(r[1]) for r in rows if r[0] is None),
+        )
+
+    # ------------------------------------------------------------ health
+
+    @contextmanager
+    def snapshot(self) -> Iterator[None]:
+        """Run the reads inside it against one snapshot of the library.
+
+        One read transaction (a WAL snapshot), so the totals of a route's several
+        statements agree whatever a refresh commits meanwhile. Joins a transaction
+        already open on the connection, which then owns the boundary.
+        """
+        connection = self._db.connect()
+        if connection.in_transaction:
+            yield
+            return
+        connection.execute("BEGIN")
+        try:
+            yield
+        finally:
+            connection.execute("ROLLBACK")
+
+    def present_files(self, scope: RuleSet) -> List[Tuple[int, str, Optional[int]]]:
+        """``(track id, path, size)`` of each scope track the last check found present.
+
+        One row per track, so tracks that share a path are counted each. The size
+        is the one that check recorded, or ``None``. A check of another path than
+        the track's present one is no check of it (CLEAN-07).
+        """
+        sql, params = build_select_scoped(
+            BrowseQuery(rules=scope),
+            f"tracks.id AS id, tracks.file_path AS path,"
+            f" {FILES_ALIAS}.size_bytes AS size",
+            condition=(
+                f"{FILES_ALIAS}.status = ? AND {FILES_ALIAS}.checked_path ="
+                " tracks.file_path AND tracks.file_path IS NOT NULL"
+                " AND tracks.file_path <> ''"
+            ),
+            params=(FILE_PRESENT,),
+            joins=(FILES_ALIAS,),
+        )
+        rows = self._db.connect().execute(sql, params)
+        return [
+            (int(r[0]), str(r[1]), None if r[2] is None else int(r[2])) for r in rows
+        ]
+
+    def file_states(self, scope: RuleSet) -> Dict[str, int]:
+        """Each file state the scope's tracks are in and how many, as the filter reads it."""
+        return self._counts(scope, _FILE_STATUS.expression, _FILE_STATUS.joins)
+
+    def match_states(self, scope: RuleSet) -> Dict[str, int]:
+        """Each Beatport match state the scope's tracks are in and how many."""
+        return self._counts(scope, _MATCH_STATE.expression, _MATCH_STATE.joins)
+
+    def last_checked(self, scope: RuleSet) -> Optional[str]:
+        """When the most recent file check of a scope track's present path was made."""
+        sql, params = build_select_scoped(
+            BrowseQuery(rules=scope),
+            f"{FILES_ALIAS}.checked_at AS at",
+            condition=f"{FILES_ALIAS}.checked_path = tracks.file_path",
+            joins=(FILES_ALIAS,),
+        )
+        row = (
+            self._db.connect()
+            .execute(f"SELECT MAX(at) FROM ({sql})", params)
+            .fetchone()
+        )
+        return None if row is None or row[0] is None else str(row[0])
+
     # --------------------------------------------------------------- helpers
+
+    def _grouped(
+        self,
+        scope: RuleSet,
+        columns: str,
+        joins: Tuple[str, ...],
+        select: str,
+        group: str,
+        order: str,
+    ) -> List[Tuple[Any, ...]]:
+        """One grouped scan of the scope's tracks: ``columns`` projected, then grouped."""
+        sql, params = build_select_scoped(
+            BrowseQuery(rules=scope), columns, joins=joins
+        )
+        rows = self._db.connect().execute(
+            f"SELECT {select} FROM ({sql}) GROUP BY {group} ORDER BY {order}", params
+        )
+        return [tuple(row) for row in rows]
+
+    def _numbers(
+        self, scope: RuleSet, bucket: str, value: str
+    ) -> Tuple[List[Tuple[int, int]], int, int]:
+        """A whole-number spread: buckets ascending, then no value, then not positive."""
+        rows = self._grouped(
+            scope,
+            f"{bucket} AS bucket, ({value} IS NULL) AS none",
+            ("meta",),
+            "bucket, none, COUNT(*)",
+            "bucket, none",
+            "bucket ASC",
+        )
+        return (
+            [(int(r[0]), int(r[2])) for r in rows if r[0] is not None],
+            sum(int(r[2]) for r in rows if r[0] is None and r[1]),
+            sum(int(r[2]) for r in rows if r[0] is None and not r[1]),
+        )
+
+    def _counts(
+        self, scope: RuleSet, expression: str, joins: Tuple[str, ...]
+    ) -> Dict[str, int]:
+        sql, params = build_select_scoped(
+            BrowseQuery(rules=scope), f"{expression} AS state", joins=joins
+        )
+        rows = self._db.connect().execute(
+            f"SELECT state, COUNT(*) FROM ({sql}) GROUP BY state", params
+        )
+        return {str(row[0]): int(row[1]) for row in rows}
 
     @staticmethod
     def _scope(scope: RuleSet) -> Tuple[str, Tuple[object, ...]]:

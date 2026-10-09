@@ -224,7 +224,12 @@ class WaveformAnalysisService(IWaveformAnalysisService):
     # --------------------------------------------------------------- plan
 
     def plan(
-        self, exclude: Iterable[str] = (), limit: int = REFILL, *, ordered: bool = True
+        self,
+        exclude: Iterable[str] = (),
+        limit: int = REFILL,
+        *,
+        ordered: bool = True,
+        track_ids: Optional[Iterable[int]] = None,
     ) -> WorkPlan:
         """The library's present files against the store, and what to analyse next.
 
@@ -246,8 +251,17 @@ class WaveformAnalysisService(IWaveformAnalysisService):
                 only.
             ordered: Answer the items in the analysis's order. Counting needs no
                 order, and is a query cheaper without it.
+            track_ids: Count only these tracks' present files (the Statistics
+                page's scope, STATS-03), so a track outside the scope that shares
+                a path with one inside is not counted. ``None`` is the whole
+                library.
         """
         present = self._work.present_files(ordered=ordered)
+        if track_ids is not None:
+            wanted = (
+                track_ids if isinstance(track_ids, (set, frozenset)) else set(track_ids)
+            )
+            present = [found for found in present if found.track_id in wanted]
         stored = self._store.current_files(self._version)
         skip: Set[str] = exclude if isinstance(exclude, set) else set(exclude)
         analysed = failed = pending_total = 0

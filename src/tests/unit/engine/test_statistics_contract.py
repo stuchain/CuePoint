@@ -1,4 +1,4 @@
-"""The plays answer's shape is the one the Statistics page will be written against (STATS-02).
+"""The answers' shapes are the ones the Statistics page will be written against (STATS-02, STATS-03).
 
 The engine serializes one answer; STATS-04 declares it in ``engineClient.ts`` and
 the renderer's bridge types copy it (``desktopContract.test.ts`` holds the two
@@ -24,6 +24,11 @@ from cuepoint.services.statistics_service import (
 )
 from tests.unit.engine.test_discover_contract import _client, _fields
 from tests.unit.services.test_statistics_plays import build_world, midnight, scope_of
+from tests.unit.services.test_statistics_spreads import (
+    FIELDS,
+    SCOPES,
+    build_spread_world,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -138,3 +143,116 @@ def test_the_client_declares_every_field_of_the_answer(world):
     assert _fields("StatisticsCount") == set(answer["never_played"])
     text = _client()
     assert f'"{api.PLAYS_PATH}' in text or f"`{api.PLAYS_PATH}" in text
+
+
+# ---------------------------------------------------------------- STATS-03
+
+SPREADS = {"scope", "total", *FIELDS}
+SPREAD = {"buckets", "unknown", "total"}
+BUCKET = {"label", "value", "count", "rules"}
+LINE = {"label", "count", "rules"}
+HEALTH = {"scope", "total", "files", "beatport", "analyzed", "checked_at"}
+FILE_STATES = {"present", "missing", "unreadable", "not_checked"}
+MATCH_STATES = {"accepted", "needs_review", "rejected", "no_match", "not_matched"}
+ANALYZED = {"analyzed", "failed", "waiting", "no_file"}
+
+
+@pytest.fixture
+def spread_world(tmp_path):
+    built = build_spread_world(tmp_path)
+    yield built
+    built.store.close_all()
+    built.db.close_all()
+
+
+def rule_sets(spreads, health):
+    """Every rule set in the two answers."""
+    for name in FIELDS:
+        spread = spreads[name]
+        for part in [*spread["buckets"], spread["unknown"]]:
+            if part["rules"] is not None:
+                yield part["rules"]
+        if "no_file" in spread:
+            assert spread["no_file"]["rules"] is None
+    for group in ("files", "beatport"):
+        for entry in health[group].values():
+            yield entry["rules"]
+
+
+def test_the_spreads_carry_exactly_the_documented_fields(spread_world):
+    for kind in SCOPES:
+        report = spread_world.spreads(kind)
+
+        assert set(report) == SPREADS
+        for name in FIELDS:
+            spread = report[name]
+            assert set(spread) == SPREAD | (
+                {"no_file"} if name == "loudness" else set()
+            )
+            for bucket in spread["buckets"]:
+                assert set(bucket) == BUCKET
+            assert set(spread["unknown"]) == LINE
+            if name == "loudness":
+                assert set(spread["no_file"]) == LINE
+
+
+def test_loudness_has_no_rules_and_the_other_five_have_them_where_a_rule_can_say_it(
+    spread_world,
+):
+    report = spread_world.spreads()
+
+    assert all(b["rules"] is None for b in report["loudness"]["buckets"])
+    for name in FIELDS[:-1]:
+        assert report[name]["buckets"][0]["rules"] is not None, name
+    # A malformed date has no rule, and neither has what is left after the cut.
+    assert report["date_added"]["unknown"]["rules"] is None
+
+
+def test_health_carries_exactly_the_documented_fields(spread_world):
+    for kind in SCOPES:
+        answer = spread_world.statistics.health(spread_world.scope(kind)).to_dict()
+
+        assert set(answer) == HEALTH
+        assert set(answer["files"]) == FILE_STATES
+        assert set(answer["beatport"]) == MATCH_STATES
+        assert set(answer["analyzed"]) == ANALYZED
+        for entry in [*answer["files"].values(), *answer["beatport"].values()]:
+            assert set(entry) == COUNT
+
+
+def test_every_spreads_and_health_rule_set_is_the_filters_own_vocabulary(
+    spread_world,
+):
+    vocabulary = {field["name"]: field["operators"] for field in describe_fields()}
+    for kind in SCOPES:
+        scope = spread_world.scope(kind)
+        spreads = spread_world.statistics.spreads(scope).to_dict()
+        health = spread_world.statistics.health(scope).to_dict()
+        for rules in rule_sets(spreads, health):
+            assert RuleSet.from_dict(rules).validated().to_dict() == rules
+            for rule in rules["rules"]:
+                assert rule["operator"] in vocabulary[rule["field"]], rule
+
+
+def test_the_two_routes_are_declared_beside_the_plays_route():
+    assert api.SPREADS_PATH == "/api/v1/statistics/spreads"
+    assert api.HEALTH_PATH == "/api/v1/statistics/health"
+    assert api.GET_PATHS == (api.PLAYS_PATH, api.SPREADS_PATH, api.HEALTH_PATH)
+
+
+@pytest.mark.skipif(
+    "StatisticsSpreads" not in _client(),
+    reason="STATS-04 declares the spreads and health types in engineClient.ts",
+)
+def test_the_client_declares_every_field_of_the_spreads_and_health(spread_world):
+    spreads = spread_world.spreads()
+    health = spread_world.statistics.health().to_dict()
+
+    assert _fields("StatisticsSpreads") == set(spreads)
+    assert _fields("StatisticsSpread") >= SPREAD
+    assert _fields("StatisticsBucket") == set(spreads["genre"]["buckets"][0])
+    assert _fields("StatisticsLine") == set(spreads["genre"]["unknown"])
+    assert _fields("StatisticsHealth") == set(health)
+    text = _client()
+    for path in (api.SPREADS_PATH, api.HEALTH_PATH):
+        assert f'"{path}' in text or f"`{path}" in text

@@ -1,4 +1,4 @@
-"""The Statistics page's plays at scale (STATS-02).
+"""The Statistics page's plays, spreads and health at scale (STATS-02, STATS-03).
 
 Phase 15 designed the page against 50,000 tracks and a year of weekly refreshes:
 each route is a few grouped scans, not a count per bucket (fact 11).
@@ -36,6 +36,7 @@ from bench_library import (  # noqa: E402
     HISTORY_WEEKS,
     build_play_history,
     build_service,
+    seed_spread_inputs,
     write_export,
 )
 
@@ -48,9 +49,19 @@ from cuepoint.persistence.statistics_repository import (  # noqa: E402
     StatisticsRepository,
 )
 from cuepoint.persistence.track_query import BrowseQuery  # noqa: E402
+from cuepoint.persistence.waveform_store import (  # noqa: E402
+    WaveformStore,
+    default_waveform_store_path,
+)
+from cuepoint.persistence.waveform_work_repository import (  # noqa: E402
+    WaveformWorkRepository,
+)
 from cuepoint.services.activity_service import ActivityService  # noqa: E402
 from cuepoint.services.collection_service import CollectionService  # noqa: E402
 from cuepoint.services.statistics_service import StatisticsService  # noqa: E402
+from cuepoint.services.waveform_analysis_service import (  # noqa: E402
+    WaveformAnalysisService,
+)
 
 #: Big enough for the relationships to be real, small enough to run often.
 TRACKS = 20_000
@@ -64,6 +75,15 @@ PLAYS_VS_COUNT = 50
 #: How much slower 200 rows may be than 10. The lists are cut after the grouping,
 #: so asking for more costs the sort of what is already grouped and nothing else.
 LIMIT_GROWTH = 3
+
+#: How many times the cost of one filtered count over the whole library (a scan
+#: of the table, as each spread is) the spreads and the health may cost. The
+#: spreads are seven scans and the store's loudness; health is four scans and
+#: `plan()`, which builds an object for every present file (measured at 75x and
+#: 75x with 20,000 tracks). A scan per
+#: bucket would be thousands.
+SPREADS_VS_SCAN = 200
+HEALTH_VS_SCAN = 150
 
 #: Timed samples per case. A median keeps one noisy pass from deciding it.
 SAMPLES = 7
@@ -98,8 +118,22 @@ def library(tmp_path_factory):
         ActivityService(ActivityRepository(database), tracks),
         playlists,
     )
-    service = StatisticsService(StatisticsRepository(database), collections, playlists)
+    store = WaveformStore(default_waveform_store_path(database.db_path))
+    seed_spread_inputs(database, store)
+    analysis = WaveformAnalysisService(
+        WaveformWorkRepository(database),
+        store,
+        None,  # type: ignore[arg-type]
+    )
+    service = StatisticsService(
+        StatisticsRepository(database),
+        collections,
+        playlists,
+        waveform_store=store,
+        analysis_service=analysis,
+    )
     yield {"service": service, "tracks": tracks, "stored": stored}
+    store.close_all()
     database.close_all()
 
 
@@ -153,3 +187,57 @@ class TestPlaysAtScale:
 
         # The last week is one 52nd of the year's rows.
         assert week < year
+
+
+@pytest.mark.performance
+@pytest.mark.slow
+class TestSpreadsAtScale:
+    @pytest.fixture(scope="class")
+    def scan(self, library):
+        """The cost of one scan of the table: a count that reads every row."""
+        rule = RuleSet(rules=(FilterRule("year", "gte", 2000),))
+        query = BrowseQuery(rules=rule)
+        return median_seconds(lambda: library["tracks"].browse_count(query))
+
+    def test_the_spreads_cover_the_library_with_a_bar_for_each_value(self, library):
+        report = library["service"].spreads().to_dict()
+
+        assert report["total"] == TRACKS
+        assert len(report["year"]["buckets"]) == 30
+        assert len(report["date_added"]["buckets"]) == 120
+        assert len(report["tempo"]["buckets"]) > 80
+        assert report["loudness"]["buckets"]
+        assert report["loudness"]["no_file"]["count"] == 0
+        for name in ("genre", "tempo", "year", "date_added", "rating", "loudness"):
+            spread = report[name]
+            parts = [*spread["buckets"], spread["unknown"]]
+            if "no_file" in spread:
+                parts.append(spread["no_file"])
+            assert sum(part["count"] for part in parts) == TRACKS, name
+
+    def test_the_spreads_cost_a_few_scans_not_one_per_bucket(self, library, scan):
+        spreads = median_seconds(lambda: library["service"].spreads())
+
+        print(f"\nspreads: {spreads * 1000:.1f} ms, a scan {scan * 1000:.2f} ms")
+        assert spreads <= scan * SPREADS_VS_SCAN, (
+            f"spreads took {spreads * 1000:.1f} ms against {scan * 1000:.2f} ms for"
+            f" a scan ({spreads / scan:.0f}x; the ceiling is {SPREADS_VS_SCAN}x)"
+        )
+
+    def test_health_costs_a_few_scans_not_one_per_state(self, library, scan):
+        health = median_seconds(lambda: library["service"].health())
+
+        print(f"\nhealth: {health * 1000:.1f} ms, a scan {scan * 1000:.2f} ms")
+        assert health <= scan * HEALTH_VS_SCAN, (
+            f"health took {health * 1000:.1f} ms against {scan * 1000:.2f} ms for"
+            f" a scan ({health / scan:.0f}x; the ceiling is {HEALTH_VS_SCAN}x)"
+        )
+
+    def test_health_counts_every_track_in_each_group(self, library):
+        answer = library["service"].health().to_dict()
+
+        assert answer["total"] == TRACKS
+        assert sum(e["count"] for e in answer["files"].values()) == TRACKS
+        assert sum(e["count"] for e in answer["beatport"].values()) == TRACKS
+        assert sum(answer["analyzed"].values()) == TRACKS
+        assert answer["files"]["present"]["count"] == TRACKS

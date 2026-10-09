@@ -710,6 +710,34 @@ class WaveformStore:
             raise self._failed("read", exc) from exc
         return int(row[0])
 
+    def readings(
+        self, paths: Iterable[str], loudness_version: int
+    ) -> Dict[str, Tuple[int, float]]:
+        """Each path's integrated loudness as ``(size, LUFS)``, at one version.
+
+        Only a reading of ``loudness_version`` with a measured loudness answers;
+        a path with none, a stale version, or a file that was silent or could not
+        be measured is absent. Read from the loudness table alone, in chunks of
+        :data:`PATH_CHUNK`, for the Statistics page's spread (STATS-03).
+        """
+        wanted = list(dict.fromkeys(str(path) for path in paths))
+        found: Dict[str, Tuple[int, float]] = {}
+        connection = self.connect()
+        try:
+            for start in range(0, len(wanted), PATH_CHUNK):
+                chunk = wanted[start : start + PATH_CHUNK]
+                placeholders = ", ".join("?" for _ in chunk)
+                for path, size, lufs in connection.execute(
+                    "SELECT path, size_bytes, integrated_lufs FROM loudness"
+                    " WHERE loudness_version = ? AND integrated_lufs IS NOT NULL"
+                    f" AND path IN ({placeholders})",
+                    (int(loudness_version), *chunk),
+                ):
+                    found[str(path)] = (int(size), float(lufs))
+        except sqlite3.Error as exc:
+            raise self._failed("read", exc) from exc
+        return found
+
     def loudness_count(self) -> int:
         """How many loudness readings, of any version."""
         try:

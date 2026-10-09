@@ -17,6 +17,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    ContextManager,
     Dict,
     Iterable,
     Iterator,
@@ -74,7 +75,12 @@ if TYPE_CHECKING:
     )
     from cuepoint.models.library_source import LibrarySource
     from cuepoint.persistence.statistics_repository import PlayedName, PlayedTrack
-    from cuepoint.services.statistics_service import PlaysReport, PlaysScope
+    from cuepoint.services.statistics_service import (
+        StatisticsHealth,
+        PlaysReport,
+        PlaysScope,
+        SpreadsReport,
+    )
     from cuepoint.models.references import ReferenceSummary
     from cuepoint.models.track_metadata import TrackMetadata
     from cuepoint.models.track_credit import DerivedIndex, TrackCredit
@@ -2512,7 +2518,12 @@ class IWaveformAnalysisService(ABC):
 
     @abstractmethod
     def plan(
-        self, exclude: Iterable[str] = (), limit: int = 200, *, ordered: bool = True
+        self,
+        exclude: Iterable[str] = (),
+        limit: int = 200,
+        *,
+        ordered: bool = True,
+        track_ids: Optional[Iterable[int]] = None,
     ) -> "WorkPlan":
         """The library's present files against the store, and what to analyse next."""
         ...
@@ -3940,6 +3951,61 @@ class IStatisticsRepository(ABC):
         """``(never played, unknown)`` among the scope's tracks."""
         ...
 
+    @abstractmethod
+    def total(self, scope: "RuleSet") -> int:
+        """How many tracks the scope holds (STATS-03)."""
+        ...
+
+    @abstractmethod
+    def genre_spread(self, scope: "RuleSet") -> Tuple[List[Tuple[str, int]], int]:
+        """``(genres, none)``: each effective genre, commonest first, and those with none."""
+        ...
+
+    @abstractmethod
+    def tempo_spread(self, scope: "RuleSet") -> Tuple[List[Tuple[int, int]], int, int]:
+        """``(buckets, none, not_positive)`` by ``floor(bpm + 0.5)``, ascending."""
+        ...
+
+    @abstractmethod
+    def year_spread(self, scope: "RuleSet") -> Tuple[List[Tuple[int, int]], int, int]:
+        """``(buckets, none, not_positive)`` by effective year, ascending."""
+        ...
+
+    @abstractmethod
+    def rating_spread(self, scope: "RuleSet") -> Tuple[List[Tuple[int, int]], int]:
+        """``(stars, unrated)`` by effective rating, ascending."""
+        ...
+
+    @abstractmethod
+    def month_spread(self, scope: "RuleSet") -> Tuple[List[Tuple[str, int]], int]:
+        """``(months, unknown)`` by the month whose text range holds the date."""
+        ...
+
+    @abstractmethod
+    def present_files(self, scope: "RuleSet") -> List[Tuple[int, str, Optional[int]]]:
+        """``(track id, path, size)`` of each scope track the last check found present."""
+        ...
+
+    @abstractmethod
+    def snapshot(self) -> ContextManager[None]:
+        """Run the reads inside it against one snapshot of the library."""
+        ...
+
+    @abstractmethod
+    def file_states(self, scope: "RuleSet") -> Dict[str, int]:
+        """Each file state the scope's tracks are in and how many."""
+        ...
+
+    @abstractmethod
+    def match_states(self, scope: "RuleSet") -> Dict[str, int]:
+        """Each Beatport match state the scope's tracks are in and how many."""
+        ...
+
+    @abstractmethod
+    def last_checked(self, scope: "RuleSet") -> Optional[str]:
+        """When the most recent file check of a scope track's present path was made."""
+        ...
+
 
 class IStatisticsService(ABC):
     """Interface for the numbers behind the Statistics page (STATS-02).
@@ -3964,6 +4030,16 @@ class IStatisticsService(ABC):
         scope: Optional["PlaysScope"] = None,
     ) -> "PlaysReport":
         """The top tracks, artists and labels, with never played and unknown."""
+        ...
+
+    @abstractmethod
+    def spreads(self, scope: Optional["PlaysScope"] = None) -> "SpreadsReport":
+        """How the scope's tracks spread by genre, tempo, year, date added, rating, loudness."""
+        ...
+
+    @abstractmethod
+    def health(self, scope: Optional["PlaysScope"] = None) -> "StatisticsHealth":
+        """The scope's tracks by file state, Beatport match and analysis."""
         ...
 
 

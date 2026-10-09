@@ -32,32 +32,53 @@ The date is the user's local day: ``utc_offset`` turns ``since`` at local midnig
 into an instant, and the plays are counted from the first read at or after it. A date
 before the first read is clamped to it (``since_clamped``); one after the last read
 counts nothing. With no history at all, every "since" answers zero plays.
+
+Spreads and health (STATS-03)
+-----------------------------
+:meth:`StatisticsService.spreads` answers six fields at once, each as buckets, an
+unknown line and a total, and :meth:`StatisticsService.health` the scope's tracks
+by file state, Beatport match and analysis. A bucket that a rule can say carries
+the scope's rules plus its own, so it opens exactly the tracks it counted (the
+tests run every one through ``browse_count``). Where no rule can say it (a top-N
+remainder, a malformed date, a loudness) the rules are ``None`` and the number is
+the page's alone. The fields' buckets and their unknown lines sum to the scope.
 """
 
 from __future__ import annotations
 
+import logging
+import math
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from cuepoint.models.collection import KIND_COLLECTION, KIND_SET, KIND_SMART
+from cuepoint.data.audio_decode import LOUDNESS_VERSION
 from cuepoint.models.filter_rule import (
+    FILE_STATUS_CHOICES,
     OP_ANY_OF,
+    OP_BETWEEN,
     OP_GT,
+    OP_GTE,
     OP_IN_COLLECTION,
     OP_IS,
     OP_IS_EMPTY,
+    OP_LT,
     SOURCE_PLAYLIST,
     FilterRule,
     RuleSet,
 )
 from cuepoint.persistence.statistics_repository import PlayedName, PlayedTrack
+from cuepoint.persistence.waveform_store import WaveformStore, WaveformStoreError
 from cuepoint.services.interfaces import (
     ICollectionService,
     IPlaylistRepository,
     IStatisticsRepository,
     IStatisticsService,
+    IWaveformAnalysisService,
 )
+
+_logger = logging.getLogger(__name__)
 
 SCOPE_LIBRARY = "library"
 SCOPE_COLLECTION = "collection"
@@ -65,6 +86,32 @@ SCOPE_PLAYLIST = "playlist"
 
 #: The rows a list holds when the caller does not say.
 DEFAULT_LIMIT = 10
+
+#: Genres a spread names before the rest are one **Other** bucket.
+GENRE_LIMIT = 20
+
+#: Stars a rating spread always shows, even where a scale step has no track.
+RATING_STARS = (0, 1, 2, 3, 4, 5)
+
+#: The states health counts, in the order the page reads them; they are the
+#: filter's own choices, which the health tests hold them to.
+FILE_STATES = tuple(state for state, _ in FILE_STATUS_CHOICES)
+BEATPORT_STATES = (
+    "accepted",
+    "needs_review",
+    "rejected",
+    "no_match",
+    "not_matched",
+)
+
+LABEL_OTHER = "Other"
+LABEL_NO_GENRE = "No genre"
+LABEL_NO_TEMPO = "No tempo"
+LABEL_NO_YEAR = "No year"
+LABEL_UNKNOWN_DATE = "Unknown date"
+LABEL_UNRATED = "Unrated"
+LABEL_NOT_MEASURED = "Not measured"
+LABEL_NO_FILE = "No file"
 
 
 class ScopeNotFoundError(LookupError):
@@ -180,6 +227,146 @@ class PlaysReport:
         }
 
 
+def scope_name(scope: PlaysScope) -> str:
+    """A scope as the routes spell it: ``library``, ``collection:7`` or ``playlist:7``."""
+    if scope.id is None or scope.kind == SCOPE_LIBRARY:
+        return SCOPE_LIBRARY
+    return f"{scope.kind}:{scope.id}"
+
+
+@dataclass(frozen=True)
+class SpreadBucket:
+    """One bar of a spread.
+
+    Attributes:
+        label: What the bar is called.
+        value: The number or text the bucket stands for (a tempo, a year, a
+            ``YYYY-MM``, a genre, a loudness floor); ``None`` for **Other**.
+        count: The scope's tracks in it.
+        rules: What opens it in the Library, or ``None`` when no rule can say it.
+    """
+
+    label: str
+    value: Any
+    count: int
+    rules: Optional[RuleSet]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API."""
+        return {
+            "label": self.label,
+            "value": self.value,
+            "count": self.count,
+            "rules": None if self.rules is None else self.rules.to_dict(),
+        }
+
+
+@dataclass(frozen=True)
+class SpreadLine:
+    """A line beside the buckets: tracks with no value, or no file."""
+
+    label: str
+    count: int
+    rules: Optional[RuleSet]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API."""
+        return {
+            "label": self.label,
+            "count": self.count,
+            "rules": None if self.rules is None else self.rules.to_dict(),
+        }
+
+
+@dataclass(frozen=True)
+class Spread:
+    """One field's spread: its buckets, the tracks it cannot place, and their sum.
+
+    Attributes:
+        buckets: In the order the field reads: commonest first for genre,
+            ascending for the rest.
+        unknown: The scope's tracks the buckets do not hold.
+        total: The buckets, ``unknown`` and ``no_file`` together: the scope.
+        no_file: Loudness only: tracks with no present file. ``None`` elsewhere.
+    """
+
+    buckets: List[SpreadBucket]
+    unknown: SpreadLine
+    total: int
+    no_file: Optional[SpreadLine] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API; ``no_file`` is there for loudness alone."""
+        out: Dict[str, Any] = {
+            "buckets": [bucket.to_dict() for bucket in self.buckets],
+            "unknown": self.unknown.to_dict(),
+        }
+        if self.no_file is not None:
+            out["no_file"] = self.no_file.to_dict()
+        out["total"] = self.total
+        return out
+
+
+@dataclass(frozen=True)
+class SpreadsReport:
+    """The answer to the spreads route: six fields over one scope."""
+
+    scope: str
+    total: int
+    genre: Spread
+    tempo: Spread
+    year: Spread
+    date_added: Spread
+    rating: Spread
+    loudness: Spread
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API. A public shape; extend rather than rename."""
+        return {
+            "scope": self.scope,
+            "total": self.total,
+            "genre": self.genre.to_dict(),
+            "tempo": self.tempo.to_dict(),
+            "year": self.year.to_dict(),
+            "date_added": self.date_added.to_dict(),
+            "rating": self.rating.to_dict(),
+            "loudness": self.loudness.to_dict(),
+        }
+
+
+@dataclass(frozen=True)
+class StatisticsHealth:
+    """The answer to the health route.
+
+    Attributes:
+        scope: The scope as asked.
+        total: The scope's tracks.
+        files: Each file state and the tracks in it, with the rules that open it.
+        beatport: Each match state likewise.
+        analyzed: Analyzed, failed, waiting and no file, over the scope's tracks.
+            Counts only: no rule can say "analyzed".
+        checked_at: When the last file check of these tracks was made, or ``None``.
+    """
+
+    scope: str
+    total: int
+    files: Dict[str, PlaysCount]
+    beatport: Dict[str, PlaysCount]
+    analyzed: Dict[str, int]
+    checked_at: Optional[str]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API. A public shape; extend rather than rename."""
+        return {
+            "scope": self.scope,
+            "total": self.total,
+            "files": {name: row.to_dict() for name, row in self.files.items()},
+            "beatport": {name: row.to_dict() for name, row in self.beatport.items()},
+            "analyzed": dict(self.analyzed),
+            "checked_at": self.checked_at,
+        }
+
+
 def _instant(text: str) -> datetime:
     """A stored ``read_at`` as an aware instant; one with no zone is UTC."""
     moment = datetime.fromisoformat(text)
@@ -194,10 +381,19 @@ class StatisticsService(IStatisticsService):
         repository: IStatisticsRepository,
         collection_service: ICollectionService,
         playlist_repository: IPlaylistRepository,
+        *,
+        waveform_store: Optional[WaveformStore] = None,
+        analysis_service: Optional[IWaveformAnalysisService] = None,
+        loudness_version: int = LOUDNESS_VERSION,
     ) -> None:
         self._repository = repository
         self._collections = collection_service
         self._playlists = playlist_repository
+        # STATS-03: loudness and analysis live in waveforms.db. Without them
+        # nothing is measured and nothing is analysed, which is true to say.
+        self._store = waveform_store
+        self._analysis = analysis_service
+        self._loudness_version = int(loudness_version)
 
     def scope_rules(self, scope: PlaysScope) -> RuleSet:
         """The rules a scope stands for.
@@ -304,6 +500,246 @@ class StatisticsService(IStatisticsService):
                 unknown, self._with(rules, FilterRule("play_count", OP_IS_EMPTY))
             ),
         )
+
+    # ----------------------------------------------------------- spreads
+
+    def spreads(self, scope: Optional[PlaysScope] = None) -> SpreadsReport:
+        """How the scope's tracks spread by genre, tempo, year, date added, rating and loudness.
+
+        Raises:
+            ScopeNotFoundError: If the scope names a Collection or playlist that
+                is not there.
+        """
+        asked = scope or LIBRARY_SCOPE
+        rules = self.scope_rules(asked)
+        # One snapshot, so the total and every field count the same library.
+        with self._repository.snapshot():
+            total = self._repository.total(rules)
+            return SpreadsReport(
+                scope=scope_name(asked),
+                total=total,
+                genre=self._genre(rules),
+                tempo=self._tempo(rules),
+                year=self._year(rules),
+                date_added=self._date_added(rules),
+                rating=self._rating(rules),
+                loudness=self._loudness(rules, total),
+            )
+
+    def _genre(self, scope: RuleSet) -> Spread:
+        genres, none = self._repository.genre_spread(scope)
+        kept = genres[:GENRE_LIMIT]
+        buckets = [
+            SpreadBucket(
+                name, name, count, self._with(scope, FilterRule("genre", OP_IS, name))
+            )
+            for name, count in kept
+        ]
+        rest = sum(count for _, count in genres[GENRE_LIMIT:])
+        if rest:
+            buckets.append(SpreadBucket(LABEL_OTHER, None, rest, None))
+        return self._spread(
+            scope,
+            buckets,
+            none,
+            LABEL_NO_GENRE,
+            FilterRule("genre", OP_IS_EMPTY),
+        )
+
+    def _tempo(self, scope: RuleSet) -> Spread:
+        tempos, none, not_positive = self._repository.tempo_spread(scope)
+        buckets = [
+            SpreadBucket(
+                f"{n} BPM",
+                n,
+                count,
+                self._with(
+                    scope,
+                    FilterRule("bpm", OP_GTE, n - 0.5),
+                    FilterRule("bpm", OP_LT, n + 0.5),
+                ),
+            )
+            for n, count in tempos
+        ]
+        # A BPM of zero or less is "no tempo" to a reader, but `bpm` *is empty*
+        # finds only a missing one: with any such track present, no rule can say
+        # the line, and it is counted only.
+        return self._spread(
+            scope,
+            buckets,
+            none + not_positive,
+            LABEL_NO_TEMPO,
+            None if not_positive else FilterRule("bpm", OP_IS_EMPTY),
+        )
+
+    def _year(self, scope: RuleSet) -> Spread:
+        years, none, not_positive = self._repository.year_spread(scope)
+        buckets = [
+            SpreadBucket(
+                str(n), n, count, self._with(scope, FilterRule("year", OP_IS, n))
+            )
+            for n, count in years
+        ]
+        return self._spread(
+            scope,
+            buckets,
+            none + not_positive,
+            LABEL_NO_YEAR,
+            None if not_positive else FilterRule("year", OP_IS_EMPTY),
+        )
+
+    def _date_added(self, scope: RuleSet) -> Spread:
+        months, unknown = self._repository.month_spread(scope)
+        buckets = [
+            SpreadBucket(
+                month,
+                month,
+                count,
+                self._with(
+                    scope,
+                    FilterRule(
+                        "date_added", OP_BETWEEN, [f"{month}-01", f"{month}-31"]
+                    ),
+                ),
+            )
+            for month, count in months
+        ]
+        # No rule says "empty or malformed" (rule sets are AND-only): count only.
+        return self._spread(scope, buckets, unknown, LABEL_UNKNOWN_DATE, None)
+
+    def _rating(self, scope: RuleSet) -> Spread:
+        found, unrated = self._repository.rating_spread(scope)
+        counts = dict(found)
+        stars = [*RATING_STARS, *sorted(set(counts) - set(RATING_STARS))]
+        buckets = [
+            SpreadBucket(
+                f"{n} star" if n == 1 else f"{n} stars",
+                n,
+                counts.get(n, 0),
+                self._with(scope, FilterRule("rating", OP_IS, n)),
+            )
+            for n in stars
+        ]
+        return self._spread(
+            scope, buckets, unrated, LABEL_UNRATED, FilterRule("rating", OP_IS_EMPTY)
+        )
+
+    def _loudness(self, scope: RuleSet, total: int) -> Spread:
+        """Integrated loudness in 1 LU buckets, from the store, for present files."""
+        present = self._repository.present_files(scope)
+        readings: Dict[str, Tuple[int, float]] = {}
+        if self._store is not None and present:
+            try:
+                readings = self._store.readings(
+                    {path for _, path, _ in present}, self._loudness_version
+                )
+            except WaveformStoreError as exc:
+                _logger.warning("[statistics] The loudness could not be read: %s", exc)
+        counts: Dict[int, int] = {}
+        unmeasured = 0
+        for _, path, size in present:
+            reading = readings.get(path)
+            # The same rule as the analysis's: a reading is of the file as the
+            # last check saw it, so a changed size is a file measured no more.
+            if reading is None or (size is not None and reading[0] != size):
+                unmeasured += 1
+                continue
+            floor = math.floor(reading[1])
+            counts[floor] = counts.get(floor, 0) + 1
+        buckets = [
+            SpreadBucket(f"{n} LUFS", n, counts[n], None) for n in sorted(counts)
+        ]
+        return Spread(
+            buckets=buckets,
+            unknown=SpreadLine(LABEL_NOT_MEASURED, unmeasured, None),
+            total=total,
+            no_file=SpreadLine(LABEL_NO_FILE, total - len(present), None),
+        )
+
+    def _spread(
+        self,
+        scope: RuleSet,
+        buckets: List[SpreadBucket],
+        unknown: int,
+        label: str,
+        clause: Optional[FilterRule],
+    ) -> Spread:
+        """A spread whose total is its buckets and its unknown line."""
+        return Spread(
+            buckets=buckets,
+            unknown=SpreadLine(
+                label,
+                unknown,
+                None if clause is None else self._with(scope, clause),
+            ),
+            total=sum(bucket.count for bucket in buckets) + unknown,
+        )
+
+    # ------------------------------------------------------------ health
+
+    def health(self, scope: Optional[PlaysScope] = None) -> StatisticsHealth:
+        """The scope's tracks by file state, Beatport match and analysis.
+
+        Raises:
+            ScopeNotFoundError: If the scope names a Collection or playlist that
+                is not there.
+        """
+        asked = scope or LIBRARY_SCOPE
+        rules = self.scope_rules(asked)
+        with self._repository.snapshot():
+            total = self._repository.total(rules)
+            files = self._repository.file_states(rules)
+            matches = self._repository.match_states(rules)
+            return StatisticsHealth(
+                scope=scope_name(asked),
+                total=total,
+                files=self._states(rules, "file_status", FILE_STATES, files),
+                beatport=self._states(rules, "match_state", BEATPORT_STATES, matches),
+                analyzed=self._analyzed(rules, total),
+                checked_at=self._repository.last_checked(rules),
+            )
+
+    def _states(
+        self,
+        scope: RuleSet,
+        field: str,
+        states: Tuple[str, ...],
+        found: Dict[str, int],
+    ) -> Dict[str, PlaysCount]:
+        return {
+            state: PlaysCount(
+                found.get(state, 0), self._with(scope, FilterRule(field, OP_IS, state))
+            )
+            for state in states
+        }
+
+    def _analyzed(self, scope: RuleSet, total: int) -> Dict[str, int]:
+        """Analyzed, failed, waiting and no file, by ``plan()``'s own counting."""
+        analyzed = failed = 0
+        if self._analysis is None:
+            files = waiting = len(self._repository.present_files(scope))
+        else:
+            # An empty scope is the whole library, which `plan` counts by itself;
+            # reading its present files here too would be the same scan twice.
+            track_ids = (
+                {track for track, _, _ in self._repository.present_files(scope)}
+                if scope
+                else None
+            )
+            try:
+                plan = self._analysis.plan(limit=0, ordered=False, track_ids=track_ids)
+            except WaveformStoreError as exc:
+                _logger.warning("[statistics] The analysis could not be read: %s", exc)
+                files = waiting = len(self._repository.present_files(scope))
+            else:
+                analyzed, failed = plan.analysed, plan.failed
+                waiting, files = plan.remaining, plan.present
+        return {
+            "analyzed": analyzed,
+            "failed": failed,
+            "waiting": waiting,
+            "no_file": total - files,
+        }
 
     # --------------------------------------------------------------- helpers
 

@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 15: Statistics, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. STATS-01 is implemented (2026-10-08), ahead of Phase 14 (DEC-211); STATS-02 is implemented too (2026-10-09); STATS-03…STATS-07 wait for Phase 14.** Seven steps, STATS-01…STATS-07.
+Status: **Specified 2026-10-07. STATS-01 is implemented (2026-10-08), ahead of Phase 14 (DEC-211); Phase 14 is complete, and STATS-02 and STATS-03 are implemented (2026-10-09).** Seven steps, STATS-01…STATS-07.
 Writing the steps raised seven questions that Decision Round 14 did not answer. They were asked as
 Decision Round 18 (Q-163…Q-169) and settled the same day as DEC-162…DEC-168, each as recommended, so
 there are no open points. Where a step below says "if Q-NNN …", the recommended branch is the one
@@ -447,8 +447,8 @@ quietly mis-rank. The fixture's three refreshes and the clamp cases hold it.
 
 **Complexity**: **M**
 
-**Outcome**: Implemented (2026-10-09), ahead of Phase 14, so the playlist scope uses the "In playlist"
-field that already exists (FLW-7). `persistence/statistics_repository.py` (`IStatisticsRepository`)
+**Outcome**: Implemented (2026-10-09). The playlist scope uses Phase 14's "In playlist"
+field (FLW-7). `persistence/statistics_repository.py` (`IStatisticsRepository`)
 holds the SQL, `services/statistics_service.py` (`IStatisticsService`) decides the scope, the window
 and the rule sets, and `engine/statistics_api.py` is the route, registered in `server.py` before the
 waveforms routes and in `bootstrap.py`. The scope is compiled by `build_select_scoped`, the
@@ -568,6 +568,81 @@ and `current_files`; `HealthService.report()`; `WaveformAnalysisService.plan()`.
 opened Library could disagree; the equal-count test holds both.
 
 **Complexity**: **M**
+
+**Outcome**: Implemented (2026-10-09), extending STATS-02's module and scope resolution. Every
+spread is one grouped scan of the scope's tracks, projected through `build_select_scoped` with the
+filter vocabulary's own expression for the field (`field_spec(name).expression`, and the `file_status`
+and `match_state` expressions for health), so the value grouped is the value the Library's rule
+compares. The scope's tracks come back as one `NULL` group where a track fits no bucket, and the
+service names it. `StatisticsRepository` gains `total`, `genre_spread`, `tempo_spread`,
+`year_spread`, `rating_spread`, `month_spread`, `present_files`, `file_states`, `match_states` and
+`last_checked`; `StatisticsService` gains `spreads` and `health`; `engine/statistics_api.py` the two
+routes, which take `scope` and nothing else. `WaveformStore.readings` reads loudness for a list of
+paths at one version, in chunks, and `WaveformAnalysisService.plan()` takes the keyword-only `paths`.
+
+Decided while building:
+- **Answer shape.** Each spread is `{ buckets, unknown, total }`; a bucket is
+  `{ label, value, count, rules | null }` (`value` is the genre, tempo, year, `YYYY-MM`, star
+  count or whole LUFS the bar stands for, `null` for **Other**) and `unknown` is
+  `{ label, count, rules | null }`. Loudness alone adds `no_file`, a line like `unknown`, and has no
+  rules anywhere. The answer carries `scope` as it was asked (`library`, `collection:7`).
+  Health's `files` and `beatport` entries are `{ count, rules }` keyed by state, in the order the
+  page reads them (`present, missing, unreadable, not_checked`; `accepted, needs_review,
+  rejected, no_match, not_matched`); `analyzed` is four plain integers.
+- **Genre** groups `COLLATE NOCASE`, as the filter's `is` compares, and is named by its smallest
+  spelling (binary order, so `HOUSE` before `House`), not its commonest; ties sort by name. The
+  top 20 are cut after the grouping, and **Other** is present only when something is left.
+- **Tempo** is decided by comparison, not by adding: `n = trunc(bpm)`, plus one when
+  `bpm >= n + 0.5`. `floor(bpm + 0.5)` can round up in floating point while the rule `bpm < n + 0.5`
+  still says no, and the bucket must be the rule's. A BPM under 0.5 (zero or less, or too small to round to a tempo; an override can store one, an
+  import does not) is **No tempo** but cannot be opened with `bpm is empty`, so that line has
+  `rules: null` whenever one exists, and `bpm is empty` otherwise. **No year** is the same for a year
+  of zero or less.
+- **Date added** takes a month only for `YYYY-MM-` with a month 01 to 12 whose whole value lies in
+  `YYYY-MM-01 … YYYY-MM-31` as text, which is the `between` rule's own comparison: `2026-09-1` is in
+  September, `2026-09-31 12:00` is not, and `2026-13-05`, `soon` and a missing date are **Unknown
+  date** (count only).
+- **One snapshot.** `spreads` and `health` run all their reads inside one read transaction
+  (`StatisticsRepository.snapshot()`), so the total and every field count the same library even if a
+  refresh commits between them.
+- **Rating** always shows 0 to 5 stars, empty bars included, and any other value present after them;
+  **Unrated** is `rating is empty`.
+- **Loudness** is `floor(LUFS)` per bar, labelled `-9 LUFS` for [-9, -8). A track is counted where
+  its file was found present at its current path and the store has a reading of the current
+  `LOUDNESS_VERSION` whose size is the one the last check recorded (the analysis's own rule); any
+  other present file is **Not measured**, and a track with no present file (missing, unreadable,
+  never checked or checked at another path) is **No file**.
+- **Analyzed** is `plan(limit=0, ordered=False)`'s counts: `analyzed` and `failed` as it counts
+  them, `waiting` its `remaining`, and `no_file` the scope's tracks less its present files. `plan()`
+  takes a keyword-only `track_ids` (not paths): for the whole library none are passed, so the numbers
+  are `plan()`'s own; for a scope, the scope's present tracks, so a track outside the scope that
+  shares a path with one inside is not counted and the four always sum to the scope.
+- **`checked_at`** is the latest `checked_at` among the scope's `track_files` rows whose
+  `checked_path` is the track's current path, so a check of an old path does not date the answer;
+  `null` when none.
+- **Without the store.** A service built with no waveform store or analysis reads nothing as
+  measured and nothing as analyzed; a store that cannot be read is logged and read the same way.
+- **TypeScript.** None declares the answers until STATS-04, as for STATS-02. The contract test
+  pins the Python payloads and their rule vocabulary now, and holds the client's `StatisticsSpreads`
+  and `StatisticsHealth` types to them as soon as they are declared.
+
+Checked in the cloud container: `test_statistics_spreads.py` and `test_statistics_health.py`
+(overrides, the 124.49 / 124.5 / 123.5 tempo edges, `2026-09-1` and `soon`, empty values, the top-20
+cut, a stale loudness version, a changed file size, a missing file; every bucket and line with
+rules run through `browse_count` in the library, a Collection, a Set, a Smart Collection and a
+playlist, and each field's buckets and unknown lines summed to the scope's total),
+`test_statistics_api.py`, `test_statistics_contract.py`, `test_statistics_scale.py` (spreads and
+health at 20,000 tracks), the engine, services, persistence and reporting suites, ruff 0.14.0, the
+mypy gate, `smoke_engine_health.py`, the dead-code guard and `check_no_qt.py`.
+`scripts/bench_library.py --statistics` at 50,000 tracks, measured in the cloud container, with the
+tracks given thirty years, 120 months, 90 tempos and six ratings, a present file check each, and a
+waveform store with loudness for 70% of them (medians): whole-library `spreads` 462 ms
+(under the 1 s budget), `health` 436 ms (under 500 ms); in the largest playlist (700 tracks),
+`spreads` 9 ms and `health` 333 ms. `health` is held up by `plan()`, which builds an object for each
+of the library's present files whatever the scope is; it is the one number with little margin, and
+the place to look if the budget is ever missed. A scope that is a folder holding every playlist is
+dearer for every route, because the Library itself reads 175,000 playlist entries to open it.
+Not checked: a library of the owner's own, with real loudness measurements.
 
 ---
 
