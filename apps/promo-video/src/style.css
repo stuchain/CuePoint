@@ -731,6 +731,32 @@ canvas.scene3d {
   transform-style: preserve-3d;
 }
 
+/* the window is layered in depth: bar and sidebar nearest, then buttons, cards and cue marks */
+.panel div,
+.panel nav {
+  transform-style: preserve-3d;
+}
+
+.window__bar {
+  transform: translateZ(34px);
+}
+
+.sidebar {
+  transform: translateZ(18px);
+}
+
+.page .px-button,
+.toolbar .px-progress,
+.dialog h3,
+.dialog .field,
+.dialog .actions {
+  transform: translateZ(26px);
+}
+
+.cue {
+  transform: translateZ(40px);
+}
+
 /* the wide cut sits too close to the disc for a title above it; the caption names the shot */
 .wide .panel-keys .panel-title {
   display: none;

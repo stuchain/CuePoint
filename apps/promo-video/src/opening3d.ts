@@ -2,7 +2,7 @@ import { readPalette } from "../../website/src/three/palette";
 import { PHASES } from "../../website/src/three/phases";
 import { PIXEL_SIZE, PixelPipeline } from "../../website/src/three/pixel";
 import { createRenderer } from "../../website/src/three/renderer";
-import { cameraPose, create as createOpening } from "../../website/src/three/scenes/opening";
+import { cameraPose, create as createOpening, LABEL_HOLD } from "../../website/src/three/scenes/opening";
 import { at, BEAT, kickLevel, shot } from "./timing";
 
 /**
@@ -20,7 +20,8 @@ import { at, BEAT, kickLevel, shot } from "./timing";
 export const KEYS: ReadonlyArray<readonly [number, number]> = [
   [0, 0],
   [at(0, 0.15), PHASES.lift[0]],
-  [at(0, 3), (PHASES.tag[0] + PHASES.tag[1]) / 2 - 0.08],
+  // every record is on the board with its tag by the middle of the first bar, then the board holds
+  [at(0, 2.5), LABEL_HOLD[0] + 0.01],
   [at(1, 1), PHASES.fly[0]],
   [at(1, 3.25), 1],
 ];
@@ -72,7 +73,7 @@ export function cameraMove(t: number): CameraMove {
     const back = ease((t - at(0, 0.5)) / (at(0, 3) - at(0, 0.5))) * (1 - ease((t - at(1, 1)) / (BEAT * 2)));
     // the last half beat dives into the wheel's middle: the cut into the app finishes the move
     const push = ease((t - at(1, 3.5)) / (BEAT / 2));
-    return { yaw: -0.4 + 0.45 * ease(u), distance: 1.12 + 0.55 * back - 0.1 * ease(u) - 0.6 * push * push * push, rise: 0.8 * (1 - u), zoom: punch };
+    return { yaw: -0.6 + 0.7 * ease(u), distance: 1.12 + 0.55 * back - 0.1 * ease(u) - 0.6 * push * push * push, rise: 1.1 * (1 - u), zoom: punch };
   }
   // the end card: a slow, steady turn round the lit wheel, settling as the words land
   const v = (t - end) / (shot("end").end - end);

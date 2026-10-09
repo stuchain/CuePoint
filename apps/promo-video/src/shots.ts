@@ -37,11 +37,11 @@ const TOUR: readonly PanelId[] = ["clean", "keys", "discover", "prepare", "wavef
  */
 const LAYOUT: Readonly<Record<PanelId, Place>> = {
   clean: { x: 0, y: 0, z: 0, rx: 0, ry: 0 },
-  keys: { x: 3600, y: 200, z: -2200, rx: 0, ry: -30 },
-  discover: { x: -3400, y: -300, z: -4200, rx: 0, ry: 30 },
-  prepare: { x: 700, y: 1500, z: -6200, rx: -16, ry: -6 },
-  waveforms: { x: -1600, y: -200, z: -8200, rx: 16, ry: 18 },
-  export: { x: 3300, y: 100, z: -10200, rx: 0, ry: -22 },
+  keys: { x: 3600, y: 200, z: -2200, rx: 0, ry: -42 },
+  discover: { x: -3400, y: -300, z: -4200, rx: -6, ry: 40 },
+  prepare: { x: 700, y: 1500, z: -6200, rx: -22, ry: -14 },
+  waveforms: { x: -1600, y: -200, z: -8200, rx: 24, ry: 32 },
+  export: { x: 3300, y: 100, z: -10200, rx: 8, ry: -36 },
 };
 
 /** How close the camera settles on each panel, so each fills about the same share of the frame. */
@@ -56,8 +56,13 @@ const placeOf = (format: FormatId, id: PanelId): Place => {
   return { x: p.x * k, y: p.y * k, z: p.z * k, rx: p.rx, ry: p.ry };
 };
 
-/** The camera, as three nested elements (turn, tilt, move) so the inverse of a panel's transform is exact. */
+/**
+ * The camera, as four nested elements: dolly (an offset in the camera's own space: closer, aside, up), then
+ * turn, tilt and move, the exact inverse of a panel's transform, so a panel seen with no offset is dead
+ * level and centered, and a push or a slide moves the camera, never the panel.
+ */
 interface Camera {
+  readonly dolly: HTMLElement;
   readonly turn: HTMLElement;
   readonly tilt: HTMLElement;
   readonly move: HTMLElement;
@@ -67,19 +72,21 @@ interface Camera {
 type View = Partial<Place>;
 
 /** The tween values that put the camera at `place`, seen with `view`. */
-function camera(format: FormatId, place: Place, view: View = {}): { turn: gsap.TweenVars; tilt: gsap.TweenVars; move: gsap.TweenVars } {
+function camera(format: FormatId, place: Place, view: View = {}): { dolly: gsap.TweenVars; turn: gsap.TweenVars; tilt: gsap.TweenVars; move: gsap.TweenVars } {
   // on the phone the whole picture sits a little left, clear of the buttons down the right edge
   const shift = format === "tall" ? -20 : 0;
   return {
+    dolly: { x: (view.x ?? 0) + shift, y: view.y ?? 0, z: view.z ?? 0 },
     turn: { rotationY: -place.ry + (view.ry ?? 0) },
     tilt: { rotationX: -place.rx + (view.rx ?? 0) },
-    move: { x: -place.x + (view.x ?? 0) + shift, y: -place.y + (view.y ?? 0), z: -place.z + (view.z ?? 0) },
+    move: { x: -place.x, y: -place.y, z: -place.z },
   };
 }
 
 /** Flies the camera to `place` (seen with `view`) over `duration` seconds, starting at `t`. */
 function flyTo(tl: Timeline, cam: Camera, format: FormatId, place: Place, view: View, t: number, duration: number, ease: string): void {
   const c = camera(format, place, view);
+  tl.to(cam.dolly, { ...c.dolly, duration, ease }, t);
   tl.to(cam.turn, { ...c.turn, duration, ease }, t);
   tl.to(cam.tilt, { ...c.tilt, duration, ease }, t);
   tl.to(cam.move, { ...c.move, duration, ease }, t);
@@ -90,14 +97,16 @@ function createWorld(format: FormatId): { el: HTMLElement; cam: Camera; body: HT
   const origin = `50% ${CENTER[format]}px`;
   const el = h(`
     <div class="layer world" style="perspective-origin:${origin}">
-      <div class="cam turn" style="transform-origin:${origin}">
-        <div class="cam tilt" style="transform-origin:${origin}">
-          <div class="cam move"></div>
+      <div class="cam dolly">
+        <div class="cam turn" style="transform-origin:${origin}">
+          <div class="cam tilt" style="transform-origin:${origin}">
+            <div class="cam move"></div>
+          </div>
         </div>
       </div>
     </div>`);
-  const [turn, tilt, move] = [...el.querySelectorAll<HTMLElement>(".cam")] as [HTMLElement, HTMLElement, HTMLElement];
-  return { el, cam: { turn, tilt, move }, body: move };
+  const [dolly, turn, tilt, move] = [...el.querySelectorAll<HTMLElement>(".cam")] as [HTMLElement, HTMLElement, HTMLElement, HTMLElement];
+  return { el, cam: { dolly, turn, tilt, move }, body: move };
 }
 
 /** A panel at its place in the world; its content is centered on the panel's origin. */
@@ -336,7 +345,7 @@ function buildPrepare(format: FormatId, tl: Timeline): HTMLElement {
 
   const { start, end } = shot("prepare");
   el.querySelectorAll(".slot").forEach((slot, i) => {
-    tl.fromTo(slot, { z: 220, opacity: 0 }, { z: 0, opacity: 1, duration: BEAT * 0.5, ease: "power3.out" }, start + BEAT * (0.1 + i / 3));
+    tl.fromTo(slot, { z: 220, opacity: 0 }, { z: 24, opacity: 1, duration: BEAT * 0.5, ease: "power3.out" }, start + BEAT * (0.1 + i / 3));
   });
   el.querySelectorAll(".link").forEach((link, i) => {
     tl.fromTo(link, { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: BEAT / 2, ease: "power2.out" }, start + BEAT * (0.5 + i / 3));
@@ -346,10 +355,10 @@ function buildPrepare(format: FormatId, tl: Timeline): HTMLElement {
   slotEls.forEach((slot, i) => {
     const on = start + BEAT * (2 + i / 2);
     tl.set(slot, { attr: { "data-playing": "1" } }, on);
-    tl.to(slot, { z: 40, duration: BEAT / 4, ease: "power2.out" }, on);
+    tl.to(slot, { z: 70, duration: BEAT / 4, ease: "power2.out" }, on);
     if (i < slotEls.length - 1) {
       tl.set(slot, { attr: { "data-playing": "0" } }, on + BEAT / 2);
-      tl.to(slot, { z: 0, duration: BEAT / 4, ease: "power2.inOut" }, on + BEAT / 2);
+      tl.to(slot, { z: 24, duration: BEAT / 4, ease: "power2.inOut" }, on + BEAT / 2);
     }
   });
   const beats = Math.round((end - start) / BEAT);
@@ -392,7 +401,7 @@ function buildDiscover(format: FormatId, tl: Timeline): HTMLElement {
   el.append(windowShell(format, "Discover", page));
   const { start } = shot("discover");
   el.querySelectorAll(".release").forEach((card, i) => {
-    tl.fromTo(card, { z: 260, opacity: 0 }, { z: 0, opacity: 1, duration: BEAT / 3, ease: "power3.out" }, start + BEAT * 0.1 + (BEAT * i) / 6);
+    tl.fromTo(card, { z: 260, opacity: 0 }, { z: 36, opacity: 1, duration: BEAT / 3, ease: "power3.out" }, start + BEAT * 0.1 + (BEAT * i) / 6);
   });
   // two of them go on the wantlist, a beat apart
   const wants = [...el.querySelectorAll<HTMLElement>(".want")];
@@ -559,10 +568,12 @@ function tour(tl: Timeline, cam: Camera, format: FormatId): void {
   const clean = shot("clean");
   const p = (id: PanelId): Place => placeOf(format, id);
   // the arrival on the drop: from back and to the left, settling in three quarters of a beat
-  // on the phone the panels settle dead frontal: a narrow frame shows any lean as a slant
+  // every panel settles dead level: a window that leans reads as misaligned, so the motion at rest is a
+  // push in with a slide across (the window's layers sit at different depths and shift against each other)
   const wide = format === "wide";
-  const k = wide ? 1 : 0;
+  const k = 0;
   const c0 = camera(format, p("clean"), { z: -1800, x: -700, y: 200, ry: -30, rx: 8 });
+  tl.set(cam.dolly, c0.dolly, clean.start);
   tl.set(cam.turn, c0.turn, clean.start);
   tl.set(cam.tilt, c0.tilt, clean.start);
   tl.set(cam.move, c0.move, clean.start);
@@ -579,10 +590,14 @@ function tour(tl: Timeline, cam: Camera, format: FormatId): void {
     const side = sides[i]!;
     // the phone frame is narrow: every panel settles a step further back there
     const near = wide ? SETTLE[id] : id === "keys" ? 200 : SETTLE[id] - 50;
-    flyTo(tl, cam, format, p(id), { z: near - 120, ry: 8 * side * k, rx: -3 * side * k }, start - LEAD, FLY, "power3.inOut");
+    const slide = wide ? 30 : 14;
+    flyTo(tl, cam, format, p(id), { z: near - 140, x: -slide * side, ry: 8 * side * k, rx: -3 * side * k }, start - LEAD, FLY, "power3.inOut");
+    // a bank through the flight, level again on landing
+    tl.to(cam.tilt, { rotation: 5 * side, duration: FLY / 2, ease: "power2.out" }, start - LEAD);
+    tl.to(cam.tilt, { rotation: 0, duration: FLY / 2, ease: "power2.in" }, start - LEAD + FLY / 2);
     const last = id === "export";
     const driftEnd = last ? end - BEAT : end - LEAD;
-    flyTo(tl, cam, format, p(id), { z: near, ry: last ? 0 : -2 * side * k }, start + LEAD, driftEnd - start - LEAD, "sine.inOut");
+    flyTo(tl, cam, format, p(id), { z: near + 30, x: last ? 0 : slide * side, ry: last ? 0 : -2 * side * k }, start + LEAD, driftEnd - start - LEAD, "sine.inOut");
     // the way out: straight on through the last panel, into the end card
     if (last) flyTo(tl, cam, format, p(id), { z: near + 2800, y: -160 }, driftEnd, BEAT, "power3.in");
   });

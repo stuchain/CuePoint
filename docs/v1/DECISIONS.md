@@ -6128,7 +6128,10 @@ cleaner, keeps the 3D but drops the flashes, frame shake and fly-through exits, 
 and holds the captions level in one place. v5, after a second round of research and three reviews,
 puts all six app panels in one 3D world the camera flies through, lands each flight half a beat
 after the downbeat, drops the backdrop for a plain deep room, and starts the private track two bars
-before its second drop. `npm run mux` puts the user's own copy of a track under
+before its second drop. v6 lands every window dead level (the camera's push and slide are a screen-space
+dolly, so a panel never leans or drifts off center), banks through each flight, layers the window's bar,
+sidebar, buttons and cards in depth for parallax, and puts every record on the opening's tag board by
+mid-bar. `npm run mux` puts the user's own copy of a track under
 the picture for a private cut; licensed music is never committed or posted.
 
 **Decided with**: User · **Date**: 2026-10-08
