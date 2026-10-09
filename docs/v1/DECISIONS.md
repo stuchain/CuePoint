@@ -6131,7 +6131,11 @@ after the downbeat, drops the backdrop for a plain deep room, and starts the pri
 before its second drop. v6 lands every window dead level (the camera's push and slide are a screen-space
 dolly, so a panel never leans or drifts off center), banks through each flight, layers the window's bar,
 sidebar, buttons and cards in depth for parallax, and puts every record on the opening's tag board by
-mid-bar. `npm run mux` puts the user's own copy of a track under
+mid-bar. v7 shows the crate's records as vinyl (grooved discs with a label, one half out), fades each
+caption's box and letters in rather than popping them, lights the Camelot wheel's cells beat by beat
+behind the end card, lifts the compatible keys and counts them ("4 mix in key with 8A"), ticks each
+accepted row in Clean, vignettes the room, and shows the exported file as a card (XML, 6 tracks).
+`npm run mux` puts the user's own copy of a track under
 the picture for a private cut; licensed music is never committed or posted.
 
 **Decided with**: User · **Date**: 2026-10-08
