@@ -62,8 +62,8 @@
    * legibility.
    *
    * A system stack, not a second webfont: the packaged app must render the
-   * same offline, and one Google Fonts import is already a network dependency
-   * worth not doubling. It is a token, so a theme or a later decision can
+   * same offline, and bundling a second family would add weight for numerals
+   * the system already draws well. It is a token, so a theme or a later decision can
    * point it back at --font-pixel in one line.
    */
   --font-data: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui,

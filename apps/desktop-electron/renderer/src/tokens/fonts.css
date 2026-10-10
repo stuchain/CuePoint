@@ -1,1 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&display=swap");
+/*
+ * The pixel font is part of the app (DEC-232): @fontsource/pixelify-sans, SIL OFL 1.1, only the
+ * weights the stylesheets use. Nothing is requested from a font service, so it renders the same
+ * offline.
+ */
+@import "@fontsource/pixelify-sans/400.css";
+@import "@fontsource/pixelify-sans/600.css";
+@import "@fontsource/pixelify-sans/700.css";

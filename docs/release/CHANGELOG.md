@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The app's pixel font is bundled.** CuePoint no longer asks Google Fonts for Pixelify Sans each time it starts, so it looks the same offline and sends nothing to Google (DEC-232).
 - **Waveform analysis no longer stalls for 5 minutes on one track.** The bundled player's decoder could hang for good while writing its log, an upstream mpv bug (a lost wake-up in its log writer), and the analysis waited out the 5-minute limit on that track. A decode that stops making progress for 30 seconds is now stopped and the track decoded again; it is marked as timed out only if every try hangs (DEC-229).
 
 ## [1.0.0-test.1] - 2026-10-10

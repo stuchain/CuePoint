@@ -59,8 +59,8 @@ bevel/hover shades auto-derive via `themeDerivation.ts`. Custom themes persist t
 
 ## Typography
 
-Single family: `--font-pixel: "Pixelify Sans", "Segoe UI", sans-serif`, loaded via Google Fonts
-`@import` (weights 400/500/600/700). Discrete scale: `--font-size-xs: 10px×scale`,
+Single family: `--font-pixel: "Pixelify Sans", "Segoe UI", sans-serif`, bundled from
+`@fontsource/pixelify-sans` (SIL OFL 1.1; weights 400/600/700; DEC-232). Discrete scale: `--font-size-xs: 10px×scale`,
 `-sm: 12px`, `-md: 14px`, `-lg: 18px`, `-xl: 24px` (all ×scale). Buttons/panel titles use
 weight 600–700. **Open item already flagged in-repo**: `docs/ui-overhaul/phase-1-pixel-design-system.md`
 lists "Pixelify Sans acceptable for table readability (or swap font ADR)" as an unchecked
@@ -71,7 +71,7 @@ sign-off item — table-density readability at small sizes hasn't been formally 
 > buttons, labels, panel titles, navigation — stays on `--font-pixel`. The pixel identity lives
 > in the black outlines, the bevels, the hard zero-blur shadows and the square corners, not in
 > the numerals, and the track table is the one screen a user reads for hours. It is a system
-> stack rather than a second Google Fonts import, so the packaged app renders the same offline;
+> stack rather than a second bundled font, so the packaged app renders the same offline;
 > being a token, a theme or a later decision can point it back at `--font-pixel` in one line.
 
 ## Spacing

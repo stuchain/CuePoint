@@ -34,6 +34,10 @@ test.describe("Electron desktop smoke (TC-UI-001)", () => {
 
     try {
       const window = await app.firstWindow({ timeout: 60_000 });
+      // The pixel font is bundled (DEC-232): record what the window asks for, to prove no
+      // font service is among it. Attached as early as Playwright allows.
+      const requested: string[] = [];
+      window.on("request", (request) => requested.push(request.url()));
       await expect(window).toHaveTitle(/CuePoint/i, { timeout: 30_000 });
       await expect(
         window.getByRole("navigation", { name: /main navigation/i }),
@@ -48,6 +52,13 @@ test.describe("Electron desktop smoke (TC-UI-001)", () => {
       // even while no route matched and the content area was empty. Assert the
       // screen too.
       await expect(window.locator("main.app-main .screen")).toBeVisible({ timeout: 15_000 });
+      // The font loaded. Where it came from is the request check below (and fonts.test.ts).
+      const loaded = await window.evaluate(async () => {
+        await document.fonts.ready;
+        return [...document.fonts].some((f) => f.family.replace(/["']/g, "") === "Pixelify Sans" && f.status === "loaded");
+      });
+      expect(loaded).toBe(true);
+      expect(requested.filter((url) => /fonts\.(googleapis|gstatic)\.com/.test(url))).toEqual([]);
     } finally {
       await app.close();
       rmSync(userDataDir, { recursive: true, force: true });

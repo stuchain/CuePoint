@@ -6502,3 +6502,24 @@ about fivefold on throttled Linux did no better there. A limit the runner breaks
 about the app and kept the whole leg red.
 
 **Decided with**: User · **Date**: 2026-10-10
+
+---
+
+## DEC-232 — The App's Font Is Bundled, Not Fetched from Google
+
+**Status**: Approved · **Related**: DEC-048
+
+**Decision**: Pixelify Sans, the app's font, is bundled with the app from the npm package
+`@fontsource/pixelify-sans` (SIL OFL 1.1), weights 400, 600 and 700 only, imported in
+`renderer/src/tokens/fonts.css`. The app no longer imports a stylesheet from Google Fonts and requests
+nothing from a font service. The static package is used rather than the variable one: it keeps the family
+name "Pixelify Sans", so `--font-pixel` and the website's token sync do not change, and it ships only the
+three weights the stylesheets use (500 was never used). Inter stays out: it is a system-font fallback in
+`--font-data`, never downloaded (DEC-048), and that stays so. No Content-Security-Policy is added by this
+decision.
+
+**Reason**: The earlier `@import` asked Google for the font on every start, which sent the user's network
+address to Google, broke the look offline, and was the one network call the privacy notice did not name.
+DEC-048 called that import "already a network dependency"; this removes it.
+
+**Decided with**: User (Stelios asked "fix them all", 2026-10-10) · **Date**: 2026-10-10

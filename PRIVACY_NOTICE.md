@@ -43,6 +43,8 @@ CuePoint may make network requests when you use features that require them:
 
 These requests go directly from your device to the third-party service.
 
+The app's fonts are part of the app: CuePoint requests nothing from a font service.
+
 ## How we use information
 - **Local processing**: to parse your Rekordbox XML and generate results/exports.
 - **Caching** (optional/local): to speed up repeated lookups.
