@@ -654,10 +654,17 @@ class TestJobStoreStaysGeneral:
         from cuepoint.compat.gui_types import ProgressInfo
 
         release = threading.Event()
-        job = store.create_job(
-            job_type="library_import", runner=lambda _job: release.wait(timeout=5)
-        )
+        started = threading.Event()
+
+        def runner(_job) -> None:
+            started.set()
+            release.wait(timeout=5)
+
+        job = store.create_job(job_type="library_import", runner=runner)
         try:
+            # Running first: the job's thread marks it so, and on a busy Windows
+            # runner it had not been scheduled yet when progress was reported.
+            assert started.wait(timeout=10)
             store.report_progress(
                 job,
                 ProgressInfo(
