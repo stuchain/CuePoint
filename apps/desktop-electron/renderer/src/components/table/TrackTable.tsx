@@ -21,12 +21,15 @@
  * ground under the pointer on every window.
  */
 import {
+  memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type ReactElement,
   type ReactNode,
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -285,7 +288,12 @@ export function TrackTable<Row>({
     setInternalWidths((previous) => resolveWidths(columns, widths ?? previous, scale));
   }, [columns, widths, scale]);
 
-  const effectiveWidths = widths ? resolveWidths(columns, widths, scale) : internalWidths;
+  // Memoized: the widths feed the sticky offsets every row is given, and a new object on
+  // every render would render every row again.
+  const effectiveWidths = useMemo(
+    () => (widths ? resolveWidths(columns, widths, scale) : internalWidths),
+    [columns, widths, scale, internalWidths],
+  );
 
   const applyWidths = useCallback(
     (next: ColumnWidths) => {
@@ -423,30 +431,117 @@ export function TrackTable<Row>({
     });
   };
 
+  // Where each sticky cell sits, once per layout rather than once per cell.
+  const stickyLefts = useMemo(
+    () => columns.map((column, index) => (column.sticky ? stickyLeft(columns, ordered, index) : undefined)),
+    [columns, ordered],
+  );
+
+  // What a row's handlers act on, read when the event happens. A row keeps one set of
+  // handlers for its life, so a scroll that only moves the window re-renders only the rows
+  // that came in: with every row re-rendered on every scroll step, React's share of a step
+  // was the largest piece of main-thread work in a fast scroll.
+  const latest = useRef({
+    dropIndex,
+    onSelect,
+    onRowActivate,
+    onRowContextMenu,
+    onRowDragStart,
+    acceptsRowDrop,
+    onRowDrop,
+  });
+  useLayoutEffect(() => {
+    latest.current = {
+      dropIndex,
+      onSelect,
+      onRowActivate,
+      onRowContextMenu,
+      onRowDragStart,
+      acceptsRowDrop,
+      onRowDrop,
+    };
+  });
+  const rowActions = useMemo<TrackTableRowActions<Row>>(
+    () => ({
+      dragStart: (event, row, index, draggable) => {
+        const { onRowDragStart } = latest.current;
+        if (!row || !draggable || !onRowDragStart || !event.dataTransfer) return;
+        setLiftedIndex(index);
+        onRowDragStart(row, index, event.dataTransfer);
+      },
+      dragOver: (event, index) => {
+        const { onRowDrop, acceptsRowDrop } = latest.current;
+        if (!onRowDrop) return;
+        const transfer = event.dataTransfer;
+        if (!transfer || (acceptsRowDrop && !acceptsRowDrop(transfer))) {
+          setDropIndex(null);
+          return;
+        }
+        // Without this the browser refuses the drop, silently.
+        event.preventDefault();
+        // A drag that only copies (a track into a Set, PREP-11) is
+        // refused by a "move", silently too: answer what it allows.
+        transfer.dropEffect = transfer.effectAllowed === "copy" ? "copy" : "move";
+        // The upper half means before this row, the lower half
+        // after it: an insertion point, so the last row can be
+        // dropped past.
+        const rect = event.currentTarget.getBoundingClientRect();
+        const after = event.clientY > rect.top + rect.height / 2;
+        setDropIndex(index + (after ? 1 : 0));
+      },
+      dragLeave: () => setDropIndex(null),
+      drop: (event, index) => {
+        const { dropIndex: at, onRowDrop, acceptsRowDrop } = latest.current;
+        setDropIndex(null);
+        if (!onRowDrop || at === null || !event.dataTransfer) return;
+        if (acceptsRowDrop && !acceptsRowDrop(event.dataTransfer)) return;
+        event.preventDefault();
+        setSettledIndex(at);
+        onRowDrop(at, event.dataTransfer, index);
+      },
+      dragEnd: () => {
+        setDropIndex(null);
+        setLiftedIndex(null);
+      },
+      /**
+       * A mouse press gives the table focus without scrolling it into view
+       * (DEC-112).
+       *
+       * The table is focusable so the keyboard can reach it, and a browser scrolls
+       * an element into view as it takes focus. When the page around the table
+       * scrolls and a row is only partly visible, that moved the rows under the
+       * pointer between the two clicks of a double-click, and the second landed on
+       * another row. Focused here first, the press's own focus finds nothing to
+       * do. The keyboard's scrolling (`scrollToIndex`) is untouched.
+       */
+      mouseDown: (event) => {
+        if (event.button !== 0) return;
+        const element = scrollRef.current;
+        if (!element || document.activeElement === element) return;
+        element.focus({ preventScroll: true });
+      },
+      click: (event, row, index) => {
+        if (row) latest.current.onSelect?.(row, index, event);
+      },
+      doubleClick: (row, index) => {
+        if (row) latest.current.onRowActivate?.(row, index);
+      },
+      contextMenu: (event, row, index) => {
+        const { onRowContextMenu } = latest.current;
+        if (!row || !onRowContextMenu) return;
+        event.preventDefault();
+        onRowContextMenu(row, index, { x: event.clientX, y: event.clientY });
+      },
+    }),
+    [],
+  );
+
   const style = {
     ["--track-table-columns" as string]: template,
     ["--track-table-min-width" as string]: `${minWidth}px`,
   } as CSSProperties;
 
   const empty = source.total === 0;
-
-  /**
-   * A mouse press gives the table focus without scrolling it into view
-   * (DEC-112).
-   *
-   * The table is focusable so the keyboard can reach it, and a browser scrolls
-   * an element into view as it takes focus. When the page around the table
-   * scrolls and a row is only partly visible, that moved the rows under the
-   * pointer between the two clicks of a double-click, and the second landed on
-   * another row. Focused here first, the press's own focus finds nothing to
-   * do. The keyboard's scrolling (`scrollToIndex`) is untouched.
-   */
-  const focusWithoutScroll = (event: React.MouseEvent) => {
-    if (event.button !== 0) return;
-    const element = scrollRef.current;
-    if (!element || document.activeElement === element) return;
-    element.focus({ preventScroll: true });
-  };
 
   return (
     <div className="track-table" style={style} data-testid="track-table">
@@ -550,98 +645,23 @@ export function TrackTable<Row>({
               const selected = selectedKeys?.has(key) ?? false;
               const extra = row && rowClassName ? rowClassName(row) : undefined;
               const draggable = Boolean(row && onRowDragStart && (!canDragRow || canDragRow(row)));
+              const drop =
+                dropIndex === item.index ? "before" : dropIndex === item.index + 1 ? "after" : undefined;
               return (
-                <div
+                <TrackTableRow<Row>
                   key={key}
-                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${selected ? " track-table__row--selected" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
-                  style={{
-                    transform: `translateY(${item.start}px)`,
-                    height: `${item.size}px`,
-                  }}
-                  role="row"
-                  // Row 1 is the header, so the first track is row 2. This was
-                  // index + 1 while nothing claimed to be a row above it.
-                  aria-rowindex={item.index + 2}
-                  aria-selected={selected}
-                  data-index={item.index}
-                  data-placeholder={row ? undefined : "true"}
+                  row={row}
+                  index={item.index}
+                  start={item.start}
+                  size={item.size}
+                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${selected ? " track-table__row--selected" : ""}${drop === "before" ? " track-table__row--drop-before" : ""}${drop === "after" ? " track-table__row--drop-after" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
+                  selected={selected}
                   draggable={draggable}
-                  onDragStart={(event) => {
-                    if (!row || !draggable || !onRowDragStart || !event.dataTransfer) return;
-                    setLiftedIndex(item.index);
-                    onRowDragStart(row, item.index, event.dataTransfer);
-                  }}
-                  onDragOver={(event) => {
-                    if (!onRowDrop) return;
-                    const transfer = event.dataTransfer;
-                    if (!transfer || (acceptsRowDrop && !acceptsRowDrop(transfer))) {
-                      setDropIndex(null);
-                      return;
-                    }
-                    // Without this the browser refuses the drop, silently.
-                    event.preventDefault();
-                    // A drag that only copies (a track into a Set, PREP-11) is
-                    // refused by a "move", silently too: answer what it allows.
-                    transfer.dropEffect = transfer.effectAllowed === "copy" ? "copy" : "move";
-                    // The upper half means before this row, the lower half
-                    // after it: an insertion point, so the last row can be
-                    // dropped past.
-                    const rect = event.currentTarget.getBoundingClientRect();
-                    const after = event.clientY > rect.top + rect.height / 2;
-                    setDropIndex(item.index + (after ? 1 : 0));
-                  }}
-                  onDragLeave={() => setDropIndex(null)}
-                  onDrop={(event) => {
-                    const at = dropIndex;
-                    setDropIndex(null);
-                    if (!onRowDrop || at === null || !event.dataTransfer) return;
-                    if (acceptsRowDrop && !acceptsRowDrop(event.dataTransfer)) return;
-                    event.preventDefault();
-                    setSettledIndex(at);
-                    onRowDrop(at, event.dataTransfer, item.index);
-                  }}
-                  onDragEnd={() => {
-                    setDropIndex(null);
-                    setLiftedIndex(null);
-                  }}
-                  data-drop={
-                    dropIndex === item.index
-                      ? "before"
-                      : dropIndex === item.index + 1
-                        ? "after"
-                        : undefined
-                  }
-                  onMouseDown={focusWithoutScroll}
-                  onClick={(event) => row && onSelect?.(row, item.index, event)}
-                  onDoubleClick={() => row && onRowActivate?.(row, item.index)}
-                  onContextMenu={(event) => {
-                    if (!row || !onRowContextMenu) return;
-                    event.preventDefault();
-                    onRowContextMenu(row, item.index, { x: event.clientX, y: event.clientY });
-                  }}
-                >
-                  {columns.map((column, index) => (
-                    <div
-                      key={column.id}
-                      className={`track-table__cell${column.sticky ? " track-table__cell--sticky" : ""}${column.align === "right" ? " track-table__cell--right" : ""}`}
-                      style={
-                        column.sticky
-                          ? { left: stickyLeft(columns, ordered, index) }
-                          : undefined
-                      }
-                      role="cell"
-                      data-column={column.id}
-                    >
-                      {row ? (
-                        column.render(row)
-                      ) : (
-                        // A shape, not a spinner: fifty of them scrolling past
-                        // should read as "loading", not as an error.
-                        <span className="track-table__skeleton" aria-hidden />
-                      )}
-                    </div>
-                  ))}
-                </div>
+                  drop={drop}
+                  columns={columns}
+                  stickyLefts={stickyLefts}
+                  actions={rowActions}
+                />
               );
             })}
           </div>
@@ -650,3 +670,98 @@ export function TrackTable<Row>({
     </div>
   );
 }
+
+/** A row's handlers: one object for the table's life, so rows that did not change skip rendering. */
+interface TrackTableRowActions<Row> {
+  dragStart: (event: React.DragEvent<HTMLDivElement>, row: Row | undefined, index: number, draggable: boolean) => void;
+  dragOver: (event: React.DragEvent<HTMLDivElement>, index: number) => void;
+  dragLeave: () => void;
+  drop: (event: React.DragEvent<HTMLDivElement>, index: number) => void;
+  dragEnd: () => void;
+  mouseDown: (event: React.MouseEvent) => void;
+  click: (event: React.MouseEvent, row: Row | undefined, index: number) => void;
+  doubleClick: (row: Row | undefined, index: number) => void;
+  contextMenu: (event: React.MouseEvent, row: Row | undefined, index: number) => void;
+}
+
+interface TrackTableRowProps<Row> {
+  row: Row | undefined;
+  index: number;
+  start: number;
+  size: number;
+  className: string;
+  selected: boolean;
+  draggable: boolean;
+  drop: "before" | "after" | undefined;
+  columns: readonly TrackColumnDef<Row>[];
+  stickyLefts: readonly (number | undefined)[];
+  actions: TrackTableRowActions<Row>;
+}
+
+/**
+ * One row. Memoized: a scroll step renders the rows it brings in, not every row in the window.
+ * Everything it shows comes in as props, so a row whose data, selection, drop mark or place
+ * changed renders again, and the rest are left alone.
+ */
+const TrackTableRow = memo(function TrackTableRow<Row>({
+  row,
+  index,
+  start,
+  size,
+  className,
+  selected,
+  draggable,
+  drop,
+  columns,
+  stickyLefts,
+  actions,
+}: TrackTableRowProps<Row>) {
+  return (
+    <div
+      className={className}
+      style={{
+        transform: `translateY(${start}px)`,
+        height: `${size}px`,
+      }}
+      role="row"
+      // Row 1 is the header, so the first track is row 2. This was
+      // index + 1 while nothing claimed to be a row above it.
+      aria-rowindex={index + 2}
+      aria-selected={selected}
+      data-index={index}
+      data-placeholder={row ? undefined : "true"}
+      draggable={draggable}
+      onDragStart={(event) => actions.dragStart(event, row, index, draggable)}
+      onDragOver={(event) => actions.dragOver(event, index)}
+      onDragLeave={actions.dragLeave}
+      onDrop={(event) => actions.drop(event, index)}
+      onDragEnd={actions.dragEnd}
+      data-drop={drop}
+      onMouseDown={actions.mouseDown}
+      onClick={(event) => actions.click(event, row, index)}
+      onDoubleClick={() => actions.doubleClick(row, index)}
+      onContextMenu={(event) => actions.contextMenu(event, row, index)}
+    >
+      {columns.map((column, columnIndex) => {
+        const left = stickyLefts[columnIndex];
+        return (
+          <div
+            key={column.id}
+            className={`track-table__cell${column.sticky ? " track-table__cell--sticky" : ""}${column.align === "right" ? " track-table__cell--right" : ""}`}
+            style={column.sticky ? { left } : undefined}
+            role="cell"
+            data-column={column.id}
+          >
+            {row ? (
+              column.render(row)
+            ) : (
+              // A shape, not a spinner: fifty of them scrolling past
+              // should read as "loading", not as an error.
+              <span className="track-table__skeleton" aria-hidden />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}) as <Row>(props: TrackTableRowProps<Row> & { key?: React.Key }) => ReactElement;

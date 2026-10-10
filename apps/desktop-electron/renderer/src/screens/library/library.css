@@ -199,6 +199,8 @@
   /* 24%, not 22%: at 1.5× in the default window 22% left the tree's buttons and
      its bar one to a line (PAGES-05C); the table keeps what its toolbar needs. */
   grid-template-columns: clamp(140px, 24%, 16rem) minmax(0, 1fr);
+  /* Its one row is the region's height, not its content's: see `.app-shell`'s flex basis. */
+  grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
 }

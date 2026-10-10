@@ -947,3 +947,42 @@ describe("a column's hint (DEC-201)", () => {
     expect(onSortChange).toHaveBeenCalledWith({ key: "key", direction: "asc" });
   });
 });
+
+describe("rendering", () => {
+  // A scroll step, a selection or a drop mark used to render every row in the window again, and
+  // with a page of waveforms in them that was the largest piece of a fast scroll's main-thread
+  // work. A row whose props did not change is left alone.
+  it("renders again only the rows a change touches", () => {
+    const renders = new Map<number, number>();
+    const counted: TrackColumnDef<Track>[] = [
+      {
+        id: "title",
+        header: "Title",
+        render: (t) => {
+          renders.set(t.id, (renders.get(t.id) ?? 0) + 1);
+          return t.title;
+        },
+      },
+    ];
+    const source = inMemorySource(tracks(5));
+    const view = (selected: ReadonlySet<number>) => (
+      <ScaleProvider>
+        <TrackTable<Track>
+          columns={counted}
+          source={source}
+          getRowKey={(row) => row.id}
+          selectedKeys={selected}
+          onSelect={() => {}}
+        />
+      </ScaleProvider>
+    );
+    const { rerender } = render(view(new Set()));
+    expect(renderedRows()).toHaveLength(5);
+    renders.clear();
+
+    rerender(view(new Set([3])));
+
+    expect([...renders.keys()]).toEqual([3]);
+    expect(renderedRows()[2]).toHaveAttribute("aria-selected", "true");
+  });
+});

@@ -338,6 +338,17 @@ milliseconds at a time instead of a page of them at once. At 1.5x, frames that r
 scrolling on the compositor alone took the main thread's work over an unthrottled
 scroll from 31 s to 24 s.
 
+The Mac runners still went past 50 ms now and then at 1.5x, so the scroll was measured again
+with the processor slowed four times, three runs each. Two more causes showed. The app's frame
+took its height from its content, so every page of rows coming in laid out the whole window
+again (the sidebar and the Collections pane with it); it now takes the window's height. And
+every change to a table drew every row in it again; a row now draws again only when what it
+shows changed. Over the 1,288 pages at 1.5x, tasks past 50 ms went from 692 to 893 a scroll to
+153 to 224, and the layout inside them from 33 s to 2.3 s; the typical rendering task between
+frames halved, from 16 ms to 8 ms. At 1x, 13 new rows a page, nearly every page still runs past
+50 ms at four times slower (it passes unthrottled, as the check runs): what is left is the
+browser laying out and painting the rows that come in.
+
 Memory in that second run did what it did without motion: the renderer's working set
 grew by about 85 MB over the first lap on this machine (160 MB before, 245 MB after)
 and by nothing on the second lap, with 27 row elements in the page.

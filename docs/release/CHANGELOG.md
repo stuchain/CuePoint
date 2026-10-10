@@ -505,15 +505,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   restore), and a request takes over a connection an earlier one finished with. The engine also
   lets the app close each connection first, so its port no longer collects closed connections
   that on macOS could make a new one take a second to connect (DEC-223).
-- **Scrolling a long track table is smooth on slower Macs again.** Three things made one frame of
+- **Scrolling a long track table is smooth on slower Macs again.** Five things made one frame of
   a fast scroll run past 50 ms on the Mac runners, most often at the default 1.5× size. On a
   display that is not high-resolution, a track table scrolled on the main thread, and every row on
   screen became a layer of its own that had to be sorted out again as each page of rows came in; the
   table now scrolls on the compositor, which took the work of a scroll down by about a fifth. Every
   row also carried the hover bar's box, hidden off its edge; the bar is now drawn only on the row
-  under the pointer, and not while the table scrolls (it still steps in the same way). And with the
+  under the pointer, and not while the table scrolls (it still steps in the same way). With the
   Waveform column shown, a page of rows getting their pictures painted every canvas in one go;
-  waveforms are now painted a few at a time, a few milliseconds per turn.
+  waveforms are now painted a few at a time, a few milliseconds per turn. The app's frame took its
+  height from what it held, so every page of rows coming into the Library laid out the whole window
+  again, sidebar and Collections pane included; it now takes the window's height, and a 1.5×
+  scroll's layout work fell from 33 s to 2.3 s with the processor slowed four times. And every
+  change to a table (a scroll step, a page of rows arriving, a click) drew every row in it again;
+  a row now draws again only when what it shows changed, which halved the typical such task.
 - **The Library's toolbar keeps to two lines on Windows.** In a 1,280 × 800 window at 1.5× with Track details open, the row above the table took a third line on Windows (and the table lost a row), because it fit on Linux by about 10 pixels. Its two lines are now laid out on purpose, the six groups on the first and Clear selection, the count, Select all and Columns… on the second, with room to spare on every system; if the count does not fit it is cut short rather than pushing a button onto another line.
 - **A dialog opened while another is closing is read out by its own title.** Every dialog shared one title id, so while one played its exit the next one took the closing one's name for screen readers.
 - **Checking Rekordbox for changes, and refreshing, always come back.** Now and then the check or
