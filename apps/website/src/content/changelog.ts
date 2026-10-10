@@ -228,7 +228,7 @@ export function renderInline(text: string, base: string = import.meta.env.BASE_U
   });
   return escapeHtml(withoutCode.replace(/\u0000/g, "\u0001"))
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (whole, label: string, target: string) => {
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_whole, label: string, target: string) => {
       const href = linkTarget(target, base);
       return href ? `<a href="${href}">${label}</a>` : label;
     })
