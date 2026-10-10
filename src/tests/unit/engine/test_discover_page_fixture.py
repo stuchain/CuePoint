@@ -286,6 +286,12 @@ def run_tracks_all_owned(ctx: Situation) -> Any:
 def run_started(ctx: Situation) -> Any:
     started = ctx.post(api.RUN_START_PATH, ASK)
     finished(ctx.store, started["value"]["id"])
+    # The answer is read just after the job's thread starts, so it says
+    # "running" or, when that thread has not got going yet, "queued" (seen on
+    # Windows CI). Both are what the engine answers; the page treats them
+    # alike, so the fixture keeps the one it was written with.
+    assert started["value"]["state"] in ("queued", "running"), started
+    started["value"]["state"] = "running"
     return started
 
 
