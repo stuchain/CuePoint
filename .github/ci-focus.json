@@ -1,0 +1,1 @@
+{"runner":"ubuntu-latest","pytest":"","e2e":"e2e/rendererReports.spec.ts","repeat":10}
