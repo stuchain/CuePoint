@@ -415,6 +415,11 @@ test.describe("FLW-1: every action in the table has a visible place that works f
   test("Play, Play next and Add to queue: the selection bar's Play, and Track details", async () => {
     test.skip(!hasPlayer, NO_PLAYER);
     await openLibrary(win);
+    // The tones last a quarter of a second and mpv walks into the entry preloaded after the
+    // playing one by itself, so a queue left to run moves under the Play next checks below, even
+    // onto the very entry Play next just put there before they read where it landed. Repeat-one
+    // holds the playing entry where it is. Set here, not in beforeAll: the page restores its own.
+    await win.evaluate(() => (window as never as Bridge).cuepoint.player.setRepeat("one"));
 
     // The bar's Play ▸ holds all three. Playing one row plays the view behind it (DEC-012), so
     // the queue starts as the whole table; Play next then puts one more entry right after the
@@ -458,7 +463,11 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     // Track details' Play plays that one track, so the queue is now just it (the fixture's files
     // last about a second, so it may already have finished).
     await expect.poll(async () => (await queueState(win)).titles, { timeout: 30_000 }).toEqual(["Other Spare"]);
-    await win.evaluate(() => (window as never as Bridge).cuepoint.player.stop());
+    await win.evaluate(async () => {
+      const player = (window as never as Bridge).cuepoint.player;
+      await player.stop();
+      await player.setRepeat("off");
+    });
   });
 
   test("Copy and Show in folder: the selection bar's More, and Show in folder in Track details", async () => {
