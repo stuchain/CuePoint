@@ -485,6 +485,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer matches playlist files
 
 ### Fixed
+- **Edit values keeps what you type as it opens.** The dialog cleared its form just after it was
+  drawn, so a value typed in that moment (from Fix ▸ Edit values…, which opens it at once) was
+  wiped and Apply asked for a field. The form is now cleared before the dialog is shown.
 - **Opening a database connection no longer breaks another thread's `join()`.** Each connect to the
   library database or the waveform store closed ended threads' connections by asking every owner
   `is_alive()`. Before Python 3.13 that briefly takes the thread's own lock, so a join of that same

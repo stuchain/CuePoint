@@ -11,7 +11,7 @@
  * before it touches a track, and its refusal is shown beside the field it
  * names; fields already applied stay applied and say so.
  */
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 import type { OverrideField } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components";
@@ -58,7 +58,9 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
   // A big batch is asked about once, with its number, before it runs (LIB-11).
   const [asking, setAsking] = useState(false);
 
-  useEffect(() => {
+  // A fresh form in the commit that shows the dialog. A passive effect runs
+  // after the paint, so a value typed as the dialog appeared was wiped.
+  useLayoutEffect(() => {
     if (!open) return;
     setAsking(false);
     setDraft(emptyEditDraft());
