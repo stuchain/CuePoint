@@ -203,6 +203,11 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
+  "cuepoint/data/audio_decode.py::decode_envelope::the decoder stopped making progress, {LOG_ATTEMPTS} times": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
   "cuepoint/data/audio_decode.py::_decode_in::could not read the decoder's output: {exc}": {
     "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
     "verdict": "corpus"
