@@ -163,22 +163,43 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
 
       // Cancel closes it. Focus goes back to the button that opened it, so that button is on screen,
       // behind the backdrop that is still fading. The very next click is on it.
-      await dialog.getByRole("button", { name: "Cancel" }).click();
-      const box = (await reset.boundingBox())!;
-      const x = box.x + box.width / 2;
-      const y = box.y + box.height / 2;
+      // Cancel is pressed, and the point is read as React commits the close: a MutationObserver's
+      // callback runs in that same task, before any frame, so even a slow machine's exit is still
+      // on screen. Separate Playwright steps can outlast the exit on a loaded runner (ARM Mac CI).
+      // The button's centre is read then too: closing hands it focus, which may scroll it.
+      const opener = (await reset.elementHandle())!;
       const hit = await window.evaluate(
-        ([px, py]) => {
-          const element = document.elementFromPoint(px!, py!);
-          return {
-            leaving: document.querySelector(".cp-modal__backdrop[data-leaving]") !== null,
-            behind: element !== null && element.closest(".cp-modal__backdrop") === null,
-          };
-        },
-        [x, y],
+        (button) =>
+          new Promise<{ leaving: boolean; behind: boolean; x: number; y: number }>((resolve, reject) => {
+            const cancel = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(
+              (candidate) => candidate.textContent?.trim() === "Cancel",
+            );
+            if (!cancel) {
+              reject(new Error("no Cancel button in the dialog"));
+              return;
+            }
+            const observer = new MutationObserver(() => {
+              // The commit that closes the dialog: its backdrop is marked leaving, or gone.
+              if (document.querySelector(".cp-modal__backdrop:not([data-leaving])")) return;
+              observer.disconnect();
+              const box = button.getBoundingClientRect();
+              const x = box.left + box.width / 2;
+              const y = box.top + box.height / 2;
+              const element = document.elementFromPoint(x, y);
+              resolve({
+                leaving: document.querySelector(".cp-modal__backdrop[data-leaving]") !== null,
+                behind: element !== null && element.closest(".cp-modal__backdrop") === null,
+                x,
+                y,
+              });
+            });
+            observer.observe(document.body, { subtree: true, childList: true, attributes: true });
+            cancel.click();
+          }),
+        opener,
       );
-      // The exit is holding a copy, and a pointer over it reaches the page.
-      expect(hit).toEqual({ leaving: true, behind: true });
+      const { x, y } = hit;
+      expect({ leaving: hit.leaving, behind: hit.behind }).toEqual({ leaving: true, behind: true });
       await window.mouse.click(x, y);
       // The click landed on the button behind: its dialog opens again.
       await expect(window.getByRole("dialog")).toBeVisible({ timeout: 2_000 });
