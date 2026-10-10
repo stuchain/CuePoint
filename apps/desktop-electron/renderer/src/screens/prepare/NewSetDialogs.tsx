@@ -7,7 +7,7 @@
  * dialog, which says what a copy of that source means before anything is
  * written. One dialog per question, so neither grows a mode.
  */
-import { useEffect, useId, useState } from "react";
+import { useId, useLayoutEffect, useState } from "react";
 
 import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
@@ -46,7 +46,8 @@ export function NewSetDialog({ open, folders, busy = false, error = null, errorK
   const [problem, setProblem] = useState<string | null>(null);
   const ids = useId();
 
-  useEffect(() => {
+  // In the commit that opens it, so a name typed as the dialog appeared is kept.
+  useLayoutEffect(() => {
     if (!open) return;
     setName("");
     setParent("");
@@ -117,7 +118,9 @@ export function SetSourceDialog({ open, groups, onChoose, onClose }: SetSourceDi
   const ids = useId();
   const all = groups.flatMap((group) => group.sources);
 
-  useEffect(() => {
+  // In the commit that opens it: a passive effect ran after the paint and could undo a
+  // source chosen as the dialog appeared.
+  useLayoutEffect(() => {
     if (open) setChosen(all[0] ? sourceKey(all[0]) : "");
     // Only on opening: the first source is a default, not a rule.
     // oxlint-disable-next-line react-hooks/exhaustive-deps

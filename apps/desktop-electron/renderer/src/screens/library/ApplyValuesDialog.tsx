@@ -5,7 +5,7 @@
  * each track's accepted match into CuePoint's layer, as one batch. A track
  * without an accepted match is left as it is and counted, by the engine.
  */
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 import type { OverrideField } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components";
@@ -22,7 +22,9 @@ interface ApplyValuesDialogProps {
 export function ApplyValuesDialog({ open, count, onClose, onApply }: ApplyValuesDialogProps) {
   const [chosen, setChosen] = useState<OverrideField[]>([]);
 
-  useEffect(() => {
+  // In the commit that opens it, as EditValuesDialog does: a passive effect ran after the
+  // paint and could clear a box ticked as the dialog appeared.
+  useLayoutEffect(() => {
     if (open) setChosen([]);
   }, [open]);
 
