@@ -213,7 +213,14 @@ async function choose(win: Page, name: string | RegExp, max = 30) {
 // ----------------------------------------------------------------- the app
 
 function launch(userDataDir: string, cuepointHome: string): Promise<ElectronApplication> {
-  const env = { ...process.env, NODE_ENV: "production", CUEPOINT_HOME: cuepointHome } as Record<string, string>;
+  // Nothing here may reach Beatport: a match left to the real site on a CI runner sat in a
+  // request the cancel could not interrupt for over a minute on Windows.
+  const env = {
+    ...process.env,
+    NODE_ENV: "production",
+    CUEPOINT_HOME: cuepointHome,
+    CUEPOINT_SKIP_BEATPORT: "1",
+  } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
   return electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
 }
