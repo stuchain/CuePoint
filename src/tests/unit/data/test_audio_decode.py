@@ -833,6 +833,41 @@ elif mode == "summary-lost":
         summary = []
     log("[i][cplayer] " + os.environ["STUB_EXPECTED"], *summary, "[i][cplayer] Exiting... (End of file)")
     output(30)
+elif mode == "hang-once":
+    # mpv's log deadlock (DEC-229): the first run stops for good part-way, with
+    # some output written and its log silent; a second run goes through.
+    count_file = os.environ["STUB_COUNT_FILE"]
+    runs = int(open(count_file).read()) if os.path.exists(count_file) else 0
+    with open(count_file, "w") as handle:
+        handle.write(str(runs + 1))
+    if runs < int(os.environ.get("STUB_HANG_TIMES", "1")):
+        log("[i][cplayer] " + os.environ["STUB_EXPECTED"], "[d][lavfi] stuck in mp_msg")
+        output(3)
+        time.sleep(60)
+    log("[i][cplayer] " + os.environ["STUB_EXPECTED"], "[i][cplayer] Exiting... (End of file)")
+    output(30)
+elif mode == "slow":
+    # Healthy but slow: quiet in one channel, never in both, for longer than
+    # the stall limit. STUB_SLOW_KIND says whether output or the log grows.
+    kind = os.environ["STUB_SLOW_KIND"]
+    seconds = float(os.environ["STUB_SLOW_SECONDS"])
+    lines = ["[i][cplayer] " + os.environ["STUB_EXPECTED"]]
+    log(*lines)
+    frame = array("f", [0.25, 0.04, 0.01, 0.0]).tobytes()
+    written = 0
+    with open(options["--ao-pcm-file"], "wb") as out:
+        started = time.monotonic()
+        while time.monotonic() - started < seconds:
+            if kind == "output":
+                out.write(frame)
+                out.flush()
+                written += 1
+            else:
+                lines.append("[v][ffmpeg] still decoding")
+                log(*lines)
+            time.sleep(0.05)
+        out.write(frame * (30 - written) if written < 30 else b"")
+    log(*lines, "[i][cplayer] Exiting... (End of file)")
 elif mode == "wrong-format":
     log("[i][cplayer] AO: [pcm] 44100Hz 4.0 4ch float")
     output(30)
@@ -1075,6 +1110,84 @@ class TestStubDecoder:
         said = slow[0].getMessage()
         assert "song.flac" in said and "(pid " in said
         assert "[v][ao] stuck here" in said
+
+    @pytest.mark.parametrize("transport", ad.TRANSPORTS)
+    def test_a_decode_that_stops_making_progress_is_stopped_and_run_again(
+        self, stub, song, monkeypatch, workdirs, tmp_path, caplog, transport
+    ):
+        """Regression: one mpv child hung for good mid-analysis (DEC-229).
+
+        mpv's ``--log-file`` writer has a lost-wakeup deadlock: the decode and
+        log threads both waited on a signal already sent, at 0 CPU, and the
+        analysis sat out the whole per-file cap. The stalled child is stopped
+        long before that and the file decoded again, not failed.
+        """
+        count = tmp_path / "count"
+        monkeypatch.setenv("STUB_MODE", "hang-once")
+        monkeypatch.setenv("STUB_COUNT_FILE", str(count))
+        monkeypatch.setattr(ad, "STALL_SECONDS", 0.5, raising=False)
+        started = time.monotonic()
+        with caplog.at_level(logging.WARNING, logger=ad._logger.name):
+            envelope = ad.decode_envelope(
+                song,
+                stub,
+                timeout_seconds=10.0,
+                transport=transport,
+                workdir_root=workdirs,
+            )
+        assert envelope.frames == 30
+        assert count.read_text() == "2"
+        assert time.monotonic() - started < 8
+        stalled = [r for r in caplog.records if "no progress" in r.getMessage()]
+        assert len(stalled) == 1
+        said = stalled[0].getMessage()
+        assert "song.flac" in said and "(pid " in said
+        assert "stuck in mp_msg" in said
+        assert list(workdirs.iterdir()) == []
+        assert ad.live_children() == 0
+
+    def test_a_decode_that_stalls_every_time_ends_as_a_timeout(
+        self, stub, song, monkeypatch, workdirs, tmp_path
+    ):
+        count = tmp_path / "count"
+        monkeypatch.setenv("STUB_MODE", "hang-once")
+        monkeypatch.setenv("STUB_COUNT_FILE", str(count))
+        monkeypatch.setenv("STUB_HANG_TIMES", "99")
+        monkeypatch.setattr(ad, "STALL_SECONDS", 0.3, raising=False)
+        started = time.monotonic()
+        with pytest.raises(ad.DecodeFailed) as caught:
+            ad.decode_envelope(song, stub, timeout_seconds=10.0, workdir_root=workdirs)
+        assert caught.value.reason == "timeout"
+        assert count.read_text() == str(ad.LOG_ATTEMPTS)
+        assert time.monotonic() - started < 8
+        assert list(workdirs.iterdir()) == []
+        assert ad.live_children() == 0
+
+    @pytest.mark.parametrize("kind", ["output", "log"])
+    @pytest.mark.parametrize("transport", ad.TRANSPORTS)
+    def test_a_slow_decode_that_keeps_making_progress_is_not_stopped(
+        self, stub, song, monkeypatch, workdirs, tmp_path, transport, kind
+    ):
+        """Quiet in its log while it writes, or the other way round, is progress."""
+        monkeypatch.setenv("STUB_MODE", "slow")
+        monkeypatch.setenv("STUB_SLOW_KIND", kind)
+        monkeypatch.setenv("STUB_SLOW_SECONDS", "1.2")
+        monkeypatch.setattr(ad, "STALL_SECONDS", 0.4, raising=False)
+        envelope = ad.decode_envelope(
+            song, stub, timeout_seconds=10.0, transport=transport, workdir_root=workdirs
+        )
+        assert envelope.frames == 30
+
+    def test_a_decoder_that_writes_a_lot_is_read_as_it_writes(
+        self, stub, song, monkeypatch, workdirs
+    ):
+        """Output larger than a pipe's buffer arrives whole through the readers."""
+        monkeypatch.setenv("STUB_MODE", "good")
+        monkeypatch.setenv("STUB_FRAMES", "100000")
+        envelope = ad.decode_envelope(
+            song, stub, transport=ad.TRANSPORT_PIPE, workdir_root=workdirs
+        )
+        assert envelope.frames == 100000
 
     @pytest.mark.parametrize("transport", ad.TRANSPORTS)
     def test_a_cancel_mid_decode_kills_the_child_and_leaves_nothing(

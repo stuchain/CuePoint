@@ -70,7 +70,10 @@ The child process
 -----------------
 Lowered priority: nice +10 on macOS and Linux, ``BELOW_NORMAL_PRIORITY_CLASS``
 on Windows. A wall-clock cap of ``FILE_TIMEOUT_SECONDS``, after which it is
-killed and the file recorded as ``timeout``. A caller's cancel kills it too.
+killed and the file recorded as ``timeout``. A child that has made no progress
+(no new output, no new log line) for ``STALL_SECONDS`` is killed sooner and the
+file decoded again (DEC-229): ``mpv``'s log writer can deadlock, and a second
+run does not. A caller's cancel kills it too.
 Every live child is registered, so the engine can end them all when it stops
 (:func:`terminate_children`). On Windows each child also joins a job that ends
 it when the engine ends in any way, killed included (:func:`_engine_job`).
@@ -202,6 +205,19 @@ TIMEOUT_LOG_LINES = 20
 #: it is still going. Only a log line: nothing is stopped sooner for it.
 SLOW_DECODE_SECONDS = 20.0
 
+#: How long a decode may go without progress, no new byte of output and no new
+#: line in its log, before its child is killed and the file decoded again
+#: (DEC-229). ``mpv``'s ``--log-file`` writer has a lost-wakeup deadlock
+#: (``common/msg.c``, 0.41): with its 100-line buffer full, the decode thread
+#: can wait for a signal the log thread has already sent, and both sleep for
+#: good. A healthy decode is never quiet for long: its log has a line for each
+#: step up to the first samples, and from then output streams, an envelope
+#: frame for every 1/150 s of audio decoded at many times real time. Its
+#: longest silence is opening the file, a few seconds at worst on a drive that
+#: has to spin up. 30 s is ten times that, and a tenth of the
+#: ``FILE_TIMEOUT_SECONDS`` such a hang used to cost.
+STALL_SECONDS = 30.0
+
 #: How much the child's priority is lowered on macOS and Linux.
 NICE_INCREMENT = 10
 
@@ -216,8 +232,12 @@ AUDIO_EXTENSIONS = frozenset(
 REASON_UNDECODABLE = "undecodable"
 #: A file's failure: no audio stream, or nothing decoded.
 REASON_NO_AUDIO = "no_audio"
-#: A file's failure: it took longer than ``FILE_TIMEOUT_SECONDS``.
+#: A file's failure: it took longer than ``FILE_TIMEOUT_SECONDS``, or every
+#: attempt stopped making progress.
 REASON_TIMEOUT = "timeout"
+#: Why the watchdog killed a child that made no progress for ``STALL_SECONDS``.
+#: Never a file's failure on its own: the file is decoded again (DEC-229).
+REASON_STALLED = "stalled"
 #: The decoder's failure, never a file's: there is no decoder that can analyse.
 REASON_DECODER_MISSING = "decoder_missing"
 
@@ -937,6 +957,68 @@ def _read_text(path: Path) -> Optional[str]:
         return None
 
 
+def _log_tail(log_path: Optional[Path]) -> str:
+    """The last ``TIMEOUT_LOG_LINES`` of a decoder's log, for the engine's log."""
+    text = (_read_text(log_path) if log_path is not None else None) or ""
+    return "\n".join(text.strip().splitlines()[-TIMEOUT_LOG_LINES:]) or "(nothing)"
+
+
+def _size(path: Path) -> int:
+    """A file's size, or -1 while it is not there."""
+    try:
+        return path.stat().st_size
+    except OSError:
+        return -1
+
+
+class _Stalled(DecodeError):
+    """The child made no progress for ``STALL_SECONDS`` and was killed."""
+
+
+class _Drain:
+    """Reads one of the child's pipes to its end, on its own thread.
+
+    Read as it arrives, so the child never waits on a full pipe, and counted,
+    so the watchdog can tell a decode still writing from one that has stopped.
+    """
+
+    def __init__(self, stream: Optional[IO[bytes]], name: str) -> None:
+        self.received = 0
+        self._chunks: List[bytes] = []
+        self._stream = stream
+        self._thread = threading.Thread(target=self._run, name=name, daemon=True)
+
+    def start(self) -> None:
+        if self._stream is not None:
+            self._thread.start()
+
+    def _run(self) -> None:
+        stream = self._stream
+        if stream is None:
+            return
+        read = getattr(stream, "read1", stream.read)
+        try:
+            while True:
+                chunk = read(65536)
+                if not chunk:
+                    return
+                self._chunks.append(chunk)
+                self.received += len(chunk)
+        except (OSError, ValueError):
+            return
+
+    def result(self) -> bytes:
+        """Everything read, once the pipe has closed."""
+        if self._thread.is_alive():
+            self._thread.join()
+        if self._stream is not None:
+            try:
+                self._stream.close()
+            except OSError:
+                pass
+        return b"".join(self._chunks)
+
+
 def _watch(
     child: "subprocess.Popen[bytes]",
     finished: threading.Event,
@@ -946,39 +1028,61 @@ def _watch(
     source: Optional[Path] = None,
     log_path: Optional[Path] = None,
     slow_seconds: Optional[float] = None,
+    progress: Optional[Callable[[], object]] = None,
+    stall_seconds: Optional[float] = None,
 ) -> None:
-    """Kill the child on a cancel or at its deadline, and say which.
+    """Kill the child on a cancel, at its deadline or once it stalls; say which.
 
     A child still running after ``slow_seconds`` (:data:`SLOW_DECODE_SECONDS`
     when ``None``) is logged once, with where its log has got to, so a hang is
     named while it lasts.
+
+    ``progress`` answers something that changes whenever the child makes
+    progress. When it has not changed for ``stall_seconds``
+    (:data:`STALL_SECONDS` when ``None``), the child is killed as
+    :data:`REASON_STALLED`. Without it, nothing is stopped as stalled.
     """
     slow = SLOW_DECODE_SECONDS if slow_seconds is None else slow_seconds
+    stall = STALL_SECONDS if stall_seconds is None else stall_seconds
+    name = source.name if source is not None else "a file"
     started = time.monotonic()
     deadline = started + timeout_seconds
     slow_logged = False
+    seen = progress() if progress is not None else None
+    progressed = started
     while not finished.is_set():
         why: Optional[str] = None
         now = time.monotonic()
+        if progress is not None:
+            current = progress()
+            if current != seen:
+                seen = current
+                progressed = now
         if not slow_logged and now - started >= slow:
             slow_logged = True
-            said = (
-                ((_read_text(log_path) if log_path is not None else None) or "")
-                .strip()
-                .splitlines()[-TIMEOUT_LOG_LINES:]
-            )
             _logger.warning(
                 "[waveforms] the decoder (pid %s) has run %.0f seconds on %s; "
                 "its log so far ends with:\n%s",
                 child.pid,
                 now - started,
-                source.name if source is not None else "a file",
-                "\n".join(said) or "(nothing)",
+                name,
+                _log_tail(log_path),
             )
         if cancel is not None and cancel():
             why = "cancelled"
         elif now >= deadline:
             why = REASON_TIMEOUT
+        elif progress is not None and now - progressed >= stall:
+            why = REASON_STALLED
+            _logger.warning(
+                "[waveforms] the decoder (pid %s) made no progress for %.0f "
+                "seconds on %s; stopping it to decode the file again. Its log "
+                "ends with:\n%s",
+                child.pid,
+                now - progressed,
+                name,
+                _log_tail(log_path),
+            )
         if why is not None:
             stopped.append(why)
             try:
@@ -1037,7 +1141,9 @@ def decode_envelope(
     # The decoder can exit before its log is all on disk, most often on a busy
     # machine: the log then stops short of the output it opened, or of the
     # loudness summary, and a good file would read as having no audio. Such a
-    # decode is run again; the last attempt is judged on what it left.
+    # decode is run again; the last attempt is judged on what it left. So is a
+    # decode that stopped making progress (DEC-229): only when every attempt
+    # stalls is the file recorded, as a timeout.
     attempt = 1
     while True:
         workdir = Path(tempfile.mkdtemp(prefix=WORKDIR_PREFIX, dir=workdir_root))
@@ -1045,6 +1151,14 @@ def decode_envelope(
             returncode, raw, err, log_text = _decode_in(
                 workdir, source_path, decoder_path, mode, cancel, timeout_seconds
             )
+        except _Stalled:
+            if attempt < LOG_ATTEMPTS:
+                attempt += 1
+                continue
+            raise DecodeFailed(
+                REASON_TIMEOUT,
+                f"the decoder stopped making progress, {LOG_ATTEMPTS} times",
+            ) from None
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
         if log_text is not None and read_decoder_log(log_text).complete:
@@ -1106,17 +1220,30 @@ def _decode_in(
         _LIVE.add(child)
     finished = threading.Event()
     stopped: List[str] = []
+    # Each pipe is read on its own thread as it arrives, so the watchdog sees
+    # the output grow (DEC-229). The file transport's output is its file.
+    out = _Drain(child.stdout, "cuepoint-decode-out")
+    errors = _Drain(child.stderr, "cuepoint-decode-err")
+
+    def progress() -> Tuple[int, int, int]:
+        written = _size(envelope_path) if mode == TRANSPORT_FILE else 0
+        return out.received, written, _size(log_path)
+
     watchdog = threading.Thread(
         target=_watch,
         args=(child, finished, stopped, cancel, timeout_seconds, source, log_path),
+        kwargs={"progress": progress, "stall_seconds": STALL_SECONDS},
         name="cuepoint-decode-watch",
         daemon=True,
     )
     try:
         _join_engine_job(child)
         _lower_priority(child.pid)
+        out.start()
+        errors.start()
         watchdog.start()
-        raw, err = child.communicate()
+        child.wait()
+        raw, err = out.result(), errors.result()
     finally:
         finished.set()
         if watchdog.is_alive():
@@ -1130,19 +1257,19 @@ def _decode_in(
         # The engine is stopping; this decode was not the file's to fail.
         raise DecodeCancelled(str(source))
     if stopped:
+        if stopped[0] == REASON_STALLED:
+            # The watchdog has named it in the engine's log, with its last lines.
+            raise _Stalled(str(source))
         if stopped[0] == REASON_TIMEOUT:
             # A decoder that hangs does so rarely and on someone else's machine:
             # where its log stopped is what tells a hang at start-up from a slow
             # read, and the folder holding it is removed once this returns.
-            said = (
-                (_read_text(log_path) or "").strip().splitlines()[-TIMEOUT_LOG_LINES:]
-            )
             _logger.warning(
                 "[waveforms] the decoder was stopped after %g seconds on %s; "
                 "its log ended with:\n%s",
                 timeout_seconds,
                 source.name,
-                "\n".join(said) or "(nothing)",
+                _log_tail(log_path),
             )
             raise DecodeFailed(
                 REASON_TIMEOUT, f"took longer than {timeout_seconds:g} seconds"
@@ -1228,6 +1355,7 @@ __all__ = [
     "NOT_MEASURED",
     "REASON_DECODER_MISSING",
     "REASON_NO_AUDIO",
+    "REASON_STALLED",
     "REASON_TIMEOUT",
     "REASON_UNDECODABLE",
     "TRANSPORTS",

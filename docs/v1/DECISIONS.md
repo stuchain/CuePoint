@@ -6440,3 +6440,27 @@ is running, it offers only **Restart now** and **Cancel**.
 all of it could mean never restarting. The person chose about what they could see.
 
 **Decided with**: Claude (DIST-07) · **Date**: 2026-10-09
+
+---
+
+## DEC-229 — A Waveform Decode That Stops Making Progress Is Stopped and Run Again
+
+**Status**: Approved · **Related**: DEC-113, DEC-123, ADR-009, WAVE-01
+
+**Decision**: While a decoder child runs, the engine watches for progress: new bytes of decoded
+output (read from the pipe as they arrive, or the output file's size on Windows) or growth of its log
+file. A child with neither for 30 seconds (`STALL_SECONDS`) is killed, named in the engine's log with
+its pid and last log lines, and the file is decoded again. Such attempts count toward the same
+3 attempts as a log cut short; only when every attempt stalls is the file recorded as `timeout`.
+The 300-second cap on one attempt stays.
+
+**Reason**: This works around an upstream mpv bug, not a broken file. mpv's `--log-file` writer
+(`common/msg.c`, 0.41) has a lost-wakeup deadlock: when its 100-entry buffer is full, the decode
+thread waits for a signal that the log thread may already have sent, and both then sleep for good.
+CI caught one such child on macOS at 0 CPU. The decoder always writes that log, at debug level, in
+bursts of about 90 lines while the filter graph is set up, so the buffer can fill whenever the log
+thread falls behind. Each hang cost the analysis 5 minutes; a second run almost always goes through.
+A healthy decode is never quiet for long (its log has a line for each step before output starts,
+and output then streams), so 30 seconds is ten times its longest silence.
+
+**Decided with**: Claude (WAVE-01) · **Date**: 2026-10-10
