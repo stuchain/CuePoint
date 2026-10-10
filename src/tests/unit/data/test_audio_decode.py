@@ -1055,6 +1055,27 @@ class TestStubDecoder:
         assert "[v][ao] stuck here" in caplog.text
         assert list(workdirs.iterdir()) == []
 
+    def test_a_slow_decoder_is_named_while_it_runs(
+        self, stub, song, monkeypatch, workdirs, caplog
+    ):
+        """A decoder still going long before its deadline is logged once, as it runs.
+
+        One worker decodes on a small machine, so one hung decoder stalls the
+        whole analysis until the deadline; this line is what names it in time.
+        """
+        monkeypatch.setenv("STUB_MODE", "stuck")
+        monkeypatch.setattr(ad, "SLOW_DECODE_SECONDS", 0.3)
+        with caplog.at_level(logging.WARNING, logger=ad._logger.name):
+            with pytest.raises(ad.DecodeFailed):
+                ad.decode_envelope(
+                    song, stub, timeout_seconds=1.5, workdir_root=workdirs
+                )
+        slow = [r for r in caplog.records if "has run" in r.getMessage()]
+        assert len(slow) == 1
+        said = slow[0].getMessage()
+        assert "song.flac" in said and "(pid " in said
+        assert "[v][ao] stuck here" in said
+
     @pytest.mark.parametrize("transport", ad.TRANSPORTS)
     def test_a_cancel_mid_decode_kills_the_child_and_leaves_nothing(
         self, stub, song, monkeypatch, workdirs, tmp_path, transport

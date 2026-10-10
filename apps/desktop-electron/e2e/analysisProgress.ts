@@ -10,6 +10,7 @@
  * the limit is on a stall instead: no new track for `stalledMs` fails, however
  * long the whole run takes. The test's own timeout is then only the backstop.
  */
+import { execFileSync } from "node:child_process";
 import { expect } from "@playwright/test";
 
 export interface AnalysisProgress {
@@ -37,10 +38,45 @@ export async function untilAnalysed(
       last = progress;
       movedAt = Date.now();
     }
+    const quiet = Date.now() - movedAt;
     expect(
-      Date.now() - movedAt,
-      `the analysis stopped: ${now.state}, ${now.analysed} analysed, ${now.failed ?? 0} failed, ${now.remaining} left`,
+      quiet,
+      `the analysis stopped: ${now.state}, ${now.analysed} analysed, ${now.failed ?? 0} failed, ${now.remaining} left` +
+        (quiet >= stalledMs ? `\n${decoders()}` : ""),
     ).toBeLessThan(stalledMs);
     await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+}
+
+/**
+ * The waveform decoders running now, and on macOS where each one is stuck.
+ *
+ * A stall with the run still "running" is one decode that has not ended: the
+ * analysis decodes one file at a time on a small runner, and a decoder is only
+ * killed at its five-minute deadline. What it is doing is the evidence, and it
+ * is gone once the app closes, so it is read here, before the test fails.
+ */
+function decoders(): string {
+  if (process.platform === "win32") return "decoders: not listed on Windows";
+  try {
+    const listed = execFileSync("ps", ["-axo", "pid=,etime=,stat=,command="], { encoding: "utf-8" })
+      .split("\n")
+      .filter((line) => line.includes("--ao=pcm"));
+    if (listed.length === 0) return "decoders: none running";
+    const parts = [`decoders running:\n${listed.map((line) => line.slice(0, 160)).join("\n")}`];
+    if (process.platform === "darwin") {
+      for (const line of listed) {
+        const pid = line.trim().split(/\s+/)[0]!;
+        try {
+          const stacks = execFileSync("sample", [pid, "1"], { encoding: "utf-8", timeout: 15_000 });
+          parts.push(`sample ${pid}:\n${stacks.slice(0, 6000)}`);
+        } catch (error) {
+          parts.push(`sample ${pid} failed: ${String(error).slice(0, 200)}`);
+        }
+      }
+    }
+    return parts.join("\n");
+  } catch (error) {
+    return `decoders: could not be listed: ${String(error).slice(0, 200)}`;
   }
 }

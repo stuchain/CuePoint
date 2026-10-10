@@ -195,6 +195,13 @@ FILE_TIMEOUT_SECONDS = 300.0
 #: How much of a stopped decoder's log goes to the engine's log.
 TIMEOUT_LOG_LINES = 20
 
+#: How long a decode runs before the engine's log says so, once, with its pid
+#: and where its log has got to. A file takes a second or two; the analysis
+#: runs one file at a time on a small machine, so a decoder that hangs stalls
+#: it for up to ``FILE_TIMEOUT_SECONDS``, and this is what names the hang while
+#: it is still going. Only a log line: nothing is stopped sooner for it.
+SLOW_DECODE_SECONDS = 20.0
+
 #: How much the child's priority is lowered on macOS and Linux.
 NICE_INCREMENT = 10
 
@@ -936,14 +943,41 @@ def _watch(
     stopped: List[str],
     cancel: Optional[Callable[[], bool]],
     timeout_seconds: float,
+    source: Optional[Path] = None,
+    log_path: Optional[Path] = None,
+    slow_seconds: Optional[float] = None,
 ) -> None:
-    """Kill the child on a cancel or at its deadline, and say which."""
-    deadline = time.monotonic() + timeout_seconds
+    """Kill the child on a cancel or at its deadline, and say which.
+
+    A child still running after ``slow_seconds`` (:data:`SLOW_DECODE_SECONDS`
+    when ``None``) is logged once, with where its log has got to, so a hang is
+    named while it lasts.
+    """
+    slow = SLOW_DECODE_SECONDS if slow_seconds is None else slow_seconds
+    started = time.monotonic()
+    deadline = started + timeout_seconds
+    slow_logged = False
     while not finished.is_set():
         why: Optional[str] = None
+        now = time.monotonic()
+        if not slow_logged and now - started >= slow:
+            slow_logged = True
+            said = (
+                ((_read_text(log_path) if log_path is not None else None) or "")
+                .strip()
+                .splitlines()[-TIMEOUT_LOG_LINES:]
+            )
+            _logger.warning(
+                "[waveforms] the decoder (pid %s) has run %.0f seconds on %s; "
+                "its log so far ends with:\n%s",
+                child.pid,
+                now - started,
+                source.name if source is not None else "a file",
+                "\n".join(said) or "(nothing)",
+            )
         if cancel is not None and cancel():
             why = "cancelled"
-        elif time.monotonic() >= deadline:
+        elif now >= deadline:
             why = REASON_TIMEOUT
         if why is not None:
             stopped.append(why)
@@ -1074,7 +1108,7 @@ def _decode_in(
     stopped: List[str] = []
     watchdog = threading.Thread(
         target=_watch,
-        args=(child, finished, stopped, cancel, timeout_seconds),
+        args=(child, finished, stopped, cancel, timeout_seconds, source, log_path),
         name="cuepoint-decode-watch",
         daemon=True,
     )
