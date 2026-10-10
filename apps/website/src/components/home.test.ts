@@ -13,7 +13,7 @@ async function render(component: Parameters<AstroContainer["renderToString"]>[0]
 
 describe("the home page's components", () => {
   it("AppShot: a clearly labelled placeholder of the app window's size when there is no picture", async () => {
-    const html = await render(AppShot, { id: "discover" });
+    const html = await render(AppShot, { id: "discover", images: [] });
     expect(html).toContain("data-app-shot");
     expect(html).toContain('data-placeholder="true"');
     expect(html).toContain("aspect-ratio");
@@ -26,7 +26,7 @@ describe("the home page's components", () => {
   });
 
   it("AppShot: the slot's description is its caption, so a screen reader hears what will be there", async () => {
-    const html = await render(AppShot, { id: "discover" });
+    const html = await render(AppShot, { id: "discover", images: [] });
     expect(html).toContain("<figcaption");
   });
 

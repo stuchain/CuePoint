@@ -38,7 +38,7 @@ export const OPENING_STEPS: readonly OpeningStep[] = [
  * One picture slot. SITE-04 captures the real app into `src/assets/app/<id>-<theme>.png` (one command,
  * `npm run capture:showcase` in apps/desktop-electron; `shots.json` beside the files lists each shot with
  * the alt draft the capture wrote, and the `alt` here is that draft reviewed by hand). A slot with no
- * file (Discover, until the app lays out its runs column at the window's size) shows a clearly labelled placeholder of the right
+ * file shows a clearly labelled placeholder of the right
  * size (the app's default window, 1280 x 800, DEC-161); it never shows a made-up screenshot.
  * `src/lib/app-shots.ts` finds the file by this slot's id, and the slot is a placeholder if and only if
  * there is no such file. Nothing else changes.

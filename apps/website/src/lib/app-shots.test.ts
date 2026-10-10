@@ -31,10 +31,9 @@ describe("finding a shot's pictures by its id", () => {
     expect(shotImages("library", { "../assets/app/library-details-neoDark.png": img("x") })).toEqual([]);
   });
 
-  it("finds the captured pictures in the repository, and none for Discover (its runs column waits for a fix) (SITE-04)", () => {
-    for (const id of ["window", "clean", "clean-compare", "library", "keys", "statistics", "prepare", "waveforms", "export"]) {
+  it("finds every captured picture in the repository (SITE-04)", () => {
+    for (const id of ["window", "clean", "clean-compare", "library", "keys", "discover", "statistics", "prepare", "waveforms", "export"]) {
       expect(shotImages(id).map((f) => f.theme), id).toEqual(THEMES.map((t) => t.id));
     }
-    expect(shotImages("discover")).toEqual([]);
   });
 });

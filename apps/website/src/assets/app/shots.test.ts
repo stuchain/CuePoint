@@ -60,8 +60,9 @@ describe("shots.json and the pictures beside it", () => {
     }
   });
 
-  it("leaves Discover (its runs column waits for a fix) as a placeholder", () => {
-    expect(listed.shots["discover"]).toBeUndefined();
-    expect(files.some((f) => f.startsWith("discover-"))).toBe(false);
+  it("has a picture for every slot the home page defines, so no page shows a placeholder", () => {
+    for (const id of ["window", "clean", "clean-compare", "library", "keys", "discover", "statistics", "prepare", "waveforms", "export"]) {
+      expect(listed.shots[id], id).toBeDefined();
+    }
   });
 });

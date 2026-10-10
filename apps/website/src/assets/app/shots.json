@@ -45,6 +45,12 @@
       "height": 800,
       "scale": 2
     },
+    "discover": {
+      "alt": "The Discover page after a search: new tracks found on a Beatport chart by an artist in the library, with their artists and labels.",
+      "width": 1280,
+      "height": 800,
+      "scale": 2
+    },
     "clean": {
       "alt": "The Clean page's review queue: the tracks a Beatport match left waiting for a yes or no, with their tempo and genre beside them.",
       "width": 1280,

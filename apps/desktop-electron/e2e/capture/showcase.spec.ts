@@ -354,8 +354,20 @@ test.describe("the website's pictures (SITE-04)", () => {
               [{ trackId: row.id, filePath: row.file_path, title: row.title, artist: row.artist, key: row.effective_key ?? null, bpm: row.bpm ?? null, durationSeconds: row.duration_seconds ?? null }],
               0,
             );
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-            await c.player.seek(seconds);
+            // mpv refuses a seek until the file is loaded; on a busy machine that takes more than a
+            // moment, so ask again a few times rather than fail the whole capture
+            let seekError: unknown;
+            for (let attempt = 0; attempt < 10; attempt++) {
+              await new Promise((resolve) => setTimeout(resolve, 1500));
+              try {
+                await c.player.seek(seconds);
+                seekError = undefined;
+                break;
+              } catch (error) {
+                seekError = error;
+              }
+            }
+            if (seekError) throw seekError;
             await c.player.pause();
           },
           { title: played.title, seconds: Math.round(played.durationSeconds / 3) },
@@ -487,10 +499,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         await expect(dialog).toHaveCount(0);
       });
 
-      // Discover is held back until the app lays out the runs column at 1280 x 800 and 1.5x: today
-      // the run card is squashed under "Delete this search..." (reported to Phase 14). Set
-      // CUEPOINT_SHOWCASE_DISCOVER=1 to take it anyway; the site's tests expect no Discover picture.
-      if (process.env.CUEPOINT_SHOWCASE_DISCOVER) await test.step("discover: a search's results", async () => {
+      await test.step("discover: a search's results", async () => {
         await window.getByRole("link", { name: "Discover", exact: true }).click();
         await window.getByRole("tab", { name: "New search" }).click();
         const panel = window.getByRole("region", { name: "New search" });
@@ -504,7 +513,8 @@ test.describe("the website's pictures (SITE-04)", () => {
         const tip = window.getByRole("note", { name: "Also in Discover" });
         if (await tip.count()) await tip.getByRole("button", { name: "Got it" }).click();
         // Beatport's rows have nothing to inspect: the panel away gives the search its width
-        await window.getByRole("button", { name: "Hide track details" }).click();
+        const hide = window.getByRole("button", { name: "Hide track details" });
+        if (await hide.count()) await hide.click();
         await expect(window.locator(".cp-toast")).toHaveCount(0, { timeout: 60_000 });
         await found.evaluate((el) => el.scrollIntoView({ block: "end" }));
         await expect(found.locator(".track-table__row").nth(2)).toBeInViewport();
@@ -579,7 +589,6 @@ test.describe("the website's pictures (SITE-04)", () => {
       await test.step("shots.json", async () => {
         const shots: Record<string, { alt: string; width: number; height: number; scale: number }> = {};
         for (const id of Object.keys(ALT)) {
-          if (id === "discover" && !process.env.CUEPOINT_SHOWCASE_DISCOVER) continue;
           expect(taken[id], `${id} was taken`).toBeTruthy();
           shots[id] = { alt: taken[id]!, width: WINDOW.width, height: WINDOW.height, scale };
         }
