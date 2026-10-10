@@ -79,6 +79,18 @@ TOKEN = "clean-match-token"
 # --------------------------------------------------------------------- the stub
 
 
+def _thread_stacks() -> str:
+    """Every thread's stack, named, for a request that is taking too long."""
+    import sys
+    import traceback
+
+    names = {thread.ident: thread.name for thread in threading.enumerate()}
+    return "".join(
+        f"--- {names.get(ident, '?')}\n" + "".join(traceback.format_stack(frame))
+        for ident, frame in sys._current_frames().items()
+    )
+
+
 def found(idx: int, track: Track) -> TrackResult:
     best = BeatportCandidate(
         url=f"https://www.beatport.com/track/stub/{idx}",
@@ -604,10 +616,24 @@ class TestAThousandTracks:
             slowest_parts = (0.0, 0.0)
             query = urllib.parse.urlencode({"q": "Track 09", "limit": 50})
             path = f"/api/v1/library/search?{query}"
+            # A request still unanswered after half a second has every thread's
+            # stack taken once, so a slow one says what the engine was doing.
+            in_flight: List[float] = []
+            stacks: List[str] = []
+            done = threading.Event()
+
+            def watch() -> None:
+                while not done.wait(0.05):
+                    late = in_flight and time.monotonic() - in_flight[0] > 0.5
+                    if late and not stacks:
+                        stacks.append(_thread_stacks())
+
+            threading.Thread(target=watch, daemon=True).start()
             while started.job.state == JobState.RUNNING:
                 connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
                 try:
                     began = time.monotonic()
+                    in_flight[:] = [began]
                     connection.connect()
                     connected = time.monotonic()
                     connection.request(
@@ -617,6 +643,7 @@ class TestAThousandTracks:
                     payload = json.loads(response.read().decode("utf-8"))
                     answered = time.monotonic()
                 finally:
+                    in_flight.clear()
                     connection.close()
                 if answered - began > slowest:
                     slowest = answered - began
@@ -627,6 +654,7 @@ class TestAThousandTracks:
 
             job = finished(started.job, timeout=120)
         finally:
+            done.set()
             server.shutdown()
             thread.join(timeout=5)
 
@@ -635,4 +663,5 @@ class TestAThousandTracks:
         assert slowest < 1.0, (
             f"a browse request took {slowest:.2f} s during a match "
             f"({slowest_parts[0]:.2f} s to connect, {slowest_parts[1]:.2f} s to answer)"
+            "; every thread half a second into the first slow one:\n" + "".join(stacks)
         )
