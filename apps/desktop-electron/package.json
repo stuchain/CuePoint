@@ -1,7 +1,7 @@
 {
   "name": "@cuepoint/desktop-electron",
   "private": true,
-  "version": "1.0.0-test.1",
+  "version": "1.0.0-test.2",
   "type": "module",
   "description": "CuePoint Electron shell workspace (renderer + main process)",
   "repository": {

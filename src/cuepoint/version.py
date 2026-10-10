@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 # One version for every build, source or packaged: ``X.Y.Z`` or ``X.Y.Z-test.N`` (DEC-145, DEC-176).
-__version__ = "1.0.0-test.1"
+__version__ = "1.0.0-test.2"
 
 #: The release name every process reports to Sentry (REPORT-07, DEC-126). Electron main builds the
 #: same name from ``package.json``'s ``version`` (``app.getVersion()``); ``check_desktop_version_coupling.py``

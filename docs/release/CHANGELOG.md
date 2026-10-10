@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-test.2] - 2026-10-10
+
+
 ### Added
 - **Track tables work from the keyboard.** Up and Down select the previous or next track, Shift with them extends the selection, and Home, End, Page Up and Page Down jump. Ctrl+Space adds or removes the focused track (on a Mac, Cmd-click does: Cmd+Space is Spotlight), and Ctrl+A selects all where the table has a Select all. Enter does what a double-click does in the Library, Keys, Similar, Discover's Library half, and Prepare's source list (play), selects the focused row alone in Discover's Beatport tables, and edits the time in Prepare's Set table. The table scrolls to keep the track in view. Mouse selection is unchanged, except that Enter and Shift+F10 now act on the last row you clicked, including a Shift-click. Clean's review queue keeps its own keys. In Discover's tables, Shift+Down now keeps extending past the second row.
 
 ### Changed
+- A test version for checking that CuePoint updates itself: an installed 1.0.0-test.1 offers this one, downloads it and installs it when you restart or quit.
 - **Similar tracks' Open in Library brings the suggestions.** It opens the Library on the track you are comparing with and every suggestion shown, or only the ones you selected, under one filter, **Similar to “<track>” (N tracks)**, removed with its × like any other. Such a list cannot be saved as a Smart Collection; the Library says to add the tracks to a Collection instead.
 
 ### Fixed

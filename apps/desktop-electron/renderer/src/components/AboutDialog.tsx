@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "./index";
 import { hasEngineBridge, type AppBuildInfo } from "../api/cuepointBridge.types";
 
-export const DESKTOP_ENGINE_VERSION = "1.0.0-test.1";
+export const DESKTOP_ENGINE_VERSION = "1.0.0-test.2";
 
 /** The version shown for this app: the build's own, else the desktop version. */
 export function appVersion(build: AppBuildInfo | null): string {
