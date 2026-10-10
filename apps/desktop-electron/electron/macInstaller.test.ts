@@ -490,7 +490,9 @@ function runScript(
 
 const read = (app: string): string => fs.readFileSync(path.join(app, "Contents", "version"), "utf8");
 
-describe("the install script", () => {
+// The install script is sh and runs only on a Mac; Windows has no /bin/sh to run it with.
+// Linux and both Macs run these.
+describe.skipIf(process.platform === "win32")("the install script", () => {
   it("is plain sh with every path quoted", () => {
     expect(INSTALL_SCRIPT.startsWith("#!/bin/sh\n")).toBe(true);
     const check = spawnSync("/bin/sh", ["-n"], { input: INSTALL_SCRIPT });
@@ -594,7 +596,9 @@ describe("the install script", () => {
   });
 });
 
-describe("starting the script", () => {
+// The install script is sh and runs only on a Mac; Windows has no /bin/sh to run it with.
+// Linux and both Macs run these.
+describe.skipIf(process.platform === "win32")("starting the script", () => {
   it("is detached with no stdio, and unreferenced", () => {
     const updates = tempDir();
     const unref = vi.fn();
