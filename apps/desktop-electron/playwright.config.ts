@@ -11,6 +11,11 @@ process.env.CUEPOINT_E2E_DISPLAY ??= "left";
 
 export default defineConfig({
   testDir: "./e2e",
+  // The website's picture capture (SITE-04) has its own config and runs only
+  // from `npm run capture:showcase`; the suite never opens the app for it.
+  testIgnore: ["**/capture/**"],
+  // The specs are `*.spec.ts`; the `*.test.ts` files under e2e/ are vitest's.
+  testMatch: "**/*.spec.ts",
   timeout: 120_000,
   /**
    * One worker, deliberately.

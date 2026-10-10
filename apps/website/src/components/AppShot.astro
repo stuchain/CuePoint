@@ -1,10 +1,10 @@
 ---
 /**
- * A picture of the app (SITE-06). SITE-04 captures the real screenshots; until then each slot is a
- * clearly labelled placeholder of the right size (the app's default window, 1280 x 800), so the page
- * is laid out as it will be and never shows a made-up screenshot. The slot is a placeholder if and only
- * if src/lib/app-shots.ts finds no file for its id: adding `src/assets/app/<id>-<theme>.png` is the
- * whole change. The caption says what the picture shows, so the picture itself has empty alt text and
+ * A picture of the app (SITE-06), captured from the app by SITE-04 (`npm run capture:showcase` in
+ * apps/desktop-electron). A slot whose picture is not taken yet is a clearly labelled placeholder of
+ * the right size (the app's default window, 1280 x 800), so the page is laid out as it will be and
+ * never shows a made-up screenshot. The slot is a placeholder if and only if src/lib/app-shots.ts finds
+ * no file for its id: adding `src/assets/app/<id>-<theme>.png` is the whole change. The caption says what the picture shows, so the picture itself has empty alt text and
  * a screen reader hears it once.
  *
  * `bare` is for the copy that fades in over the opening scene: no caption,
@@ -27,6 +27,14 @@ const shot = APP_SHOTS[id];
 const found = images ?? shotImages(id);
 const ratio = `aspect-ratio: ${shot.width} / ${shot.height}`;
 const placeholder = found.length === 0;
+// One frame per distinct picture: the themes that share a file (the site ships one, DEC-222) share
+// its frame, so the page does not carry the same picture five times.
+const frames: { themes: string[]; image: ImageMetadata }[] = [];
+for (const { theme, image } of found) {
+  const frame = frames.find((f) => f.image.src === image.src);
+  if (frame) frame.themes.push(theme);
+  else frames.push({ themes: [theme], image });
+}
 ---
 
 <figure
@@ -45,14 +53,15 @@ const placeholder = found.length === 0;
         </div>
       </div>
     ) : (
-      found.map(({ theme, image }) => (
-        <div class="frame" data-slot-frame data-shot-theme={theme} style={ratio}>
+      frames.map(({ themes, image }) => (
+        <div class="frame" data-slot-frame data-shot-theme={themes.join(" ")} style={ratio}>
           <Img
             src={image as ImageMetadata}
             alt=""
             decorative
             width={shot.width}
             height={shot.height}
+            widths={[640, 1280, image.width]}
             sizes="(min-width: 72rem) 70rem, 100vw"
             loading="lazy"
           />
@@ -87,11 +96,11 @@ const placeholder = found.length === 0;
   .frame[data-shot-theme] {
     display: none;
   }
-  :global(:root[data-theme="neoDark"]) .frame[data-shot-theme="neoDark"],
-  :global(:root[data-theme="retro16"]) .frame[data-shot-theme="retro16"],
-  :global(:root[data-theme="qtEvolved"]) .frame[data-shot-theme="qtEvolved"],
-  :global(:root[data-theme="clubNeon"]) .frame[data-shot-theme="clubNeon"],
-  :global(:root[data-theme="mutedPro"]) .frame[data-shot-theme="mutedPro"] {
+  :global(:root[data-theme="neoDark"]) .frame[data-shot-theme~="neoDark"],
+  :global(:root[data-theme="retro16"]) .frame[data-shot-theme~="retro16"],
+  :global(:root[data-theme="qtEvolved"]) .frame[data-shot-theme~="qtEvolved"],
+  :global(:root[data-theme="clubNeon"]) .frame[data-shot-theme~="clubNeon"],
+  :global(:root[data-theme="mutedPro"]) .frame[data-shot-theme~="mutedPro"] {
     display: block;
   }
   .frame :global(img) {

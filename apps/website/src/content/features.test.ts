@@ -77,14 +77,13 @@ describe("the feature pages", () => {
       }
       expect(slugs.has(p.guide.page), `${p.slug} links guide/${p.guide.page}/`).toBe(true);
     }
-    expect(FEATURE_PAGES.filter((p) => !p.guide).map((p) => p.slug)).toEqual(["keys", "statistics"]);
+    expect(FEATURE_PAGES.filter((p) => !p.guide).map((p) => p.slug)).toEqual(["keys"]);
   });
 
   it("marks what the app does not ship yet, with the step that ships it", () => {
     expect(unshippedMarkers()).toEqual([
       { where: "library: The Camelot wheel", step: "PAGES-10" },
       { where: "keys", step: "PAGES-16" },
-      { where: "statistics", step: "STATS-02..07" },
     ]);
     for (const p of FEATURE_PAGES) {
       if (p.unshipped) expect(p.unshipped.shipped).toBe(false);

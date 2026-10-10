@@ -25,7 +25,7 @@ test.describe("the header", () => {
 
 test.describe("feature pages", () => {
   for (const p of FEATURE_PAGES) {
-    test(`${p.slug}: one h1, the guide, two related pages, the download action, and a labelled placeholder`, async ({ page }) => {
+    test(`${p.slug}: one h1, the guide, two related pages, the download action, and the app's picture`, async ({ page }) => {
       await page.goto(`features/${p.slug}/`);
       await expect(page.locator("h1")).toHaveCount(1);
       await expect(page.locator("h1")).toHaveText(p.heading);
@@ -37,10 +37,17 @@ test.describe("feature pages", () => {
       await expect(main.locator("[data-unshipped]")).toHaveCount(pending.length);
       for (const slug of p.related) await expect(main.locator(`a[href$="/features/${slug}/"]`)).toHaveCount(1);
       await expect(main.locator("[data-primary-action]")).toHaveCount(1);
-      // until SITE-04 captures the app, the picture is a placeholder that says so, never a made-up screenshot
-      await expect(main.locator("[data-app-shot]")).toHaveAttribute("data-placeholder", "true");
+      // the app's own picture (SITE-04), except where the capture holds a page back: then a
+      // placeholder that says so, never a made-up screenshot
       await expect(main.locator("[data-app-shot]")).toHaveCount(1);
-      await expect(main.locator("[data-app-shot] figcaption")).toContainText("Screenshot placeholder");
+      if (p.shot === "discover") {
+        await expect(main.locator("[data-app-shot]")).toHaveAttribute("data-placeholder", "true");
+        await expect(main.locator("[data-app-shot] figcaption")).toContainText("Screenshot placeholder");
+      } else {
+        await expect(main.locator("[data-app-shot]")).not.toHaveAttribute("data-placeholder", "true");
+        await expect(main.locator("[data-app-shot] figcaption")).not.toContainText(/placeholder/i);
+        await expect(main.locator("[data-app-shot] img").first()).toBeAttached();
+      }
       await expect(page.locator('script[type="application/ld+json"]').first()).toBeAttached();
     });
   }

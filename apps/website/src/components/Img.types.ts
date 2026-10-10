@@ -24,6 +24,8 @@ interface ImgBase {
   width?: number;
   height?: number;
   sizes?: string;
+  /** The widths to make the picture at, for a `srcset` (a screenshot is read at a 2x screen's size). */
+  widths?: number[];
   loading?: "lazy" | "eager";
   class?: string;
 }

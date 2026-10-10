@@ -35,11 +35,13 @@ export const OPENING_STEPS: readonly OpeningStep[] = [
 // ---- the app's pictures ----
 
 /**
- * One picture slot. Until SITE-04 captures the real app there is no file for it, and the page shows a
- * clearly labelled placeholder of the right size (the app's default window, 1280 x 800, DEC-161); it
- * never shows a made-up screenshot. To put the real picture in, add the file: `src/lib/app-shots.ts`
- * finds `src/assets/app/<id>-<theme>.png` by this slot's id (for example `library-neoDark.png`), and the
- * slot is a placeholder if and only if there is no such file. Nothing else changes.
+ * One picture slot. SITE-04 captures the real app into `src/assets/app/<id>-<theme>.png` (one command,
+ * `npm run capture:showcase` in apps/desktop-electron; `shots.json` beside the files lists each shot with
+ * the alt draft the capture wrote, and the `alt` here is that draft reviewed by hand). A slot with no
+ * file (Discover, until the app lays out its runs column at the window's size) shows a clearly labelled placeholder of the right
+ * size (the app's default window, 1280 x 800, DEC-161); it never shows a made-up screenshot.
+ * `src/lib/app-shots.ts` finds the file by this slot's id, and the slot is a placeholder if and only if
+ * there is no such file. Nothing else changes.
  */
 export interface AppShotDef {
   /** A short name, shown on the placeholder. */
@@ -52,52 +54,67 @@ export interface AppShotDef {
 
 const WINDOW = { width: 1280, height: 800 } as const;
 
-export type AppShotId = "window" | "clean" | "library" | "keys" | "discover" | "prepare" | "statistics" | "waveforms" | "export";
+export type AppShotId =
+  | "window"
+  | "clean"
+  | "clean-compare"
+  | "library"
+  | "keys"
+  | "discover"
+  | "prepare"
+  | "statistics"
+  | "waveforms"
+  | "export";
 
 export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
   window: {
     label: "The CuePoint window",
-    alt: "The CuePoint window on a library of tracks, with the Camelot wheel open and one key lit.",
+    alt: "The CuePoint window on a library of tracks, with the Camelot wheel open and the selected track's key lit with the keys that mix with it.",
     ...WINDOW,
   },
   clean: {
     label: "Clean",
-    alt: "The Clean page in the middle of matching a playlist, with the matched tracks and the ones that need review.",
+    alt: "The Clean page's review queue: the tracks a Beatport match left waiting for a yes or no, with their tempo and genre beside them.",
+    ...WINDOW,
+  },
+  "clean-compare": {
+    label: "Clean: the comparison",
+    alt: "Clean's comparison for a track that needs review: the library's values beside two Beatport candidates, with their scores, titles and artists.",
     ...WINDOW,
   },
   library: {
     label: "The Library",
-    alt: "The Library page: a table of tracks with their keys, tempos and genres, and the Track details panel open.",
+    alt: "The Library page: the table of tracks with the Collections and playlists beside it, and the Track details panel open on one track, showing its cover, key and waveform.",
     ...WINDOW,
   },
   keys: {
     label: "Keys",
-    alt: "The Keys page: the keys of a playlist counted on the Camelot wheel, with the list of tracks in the keys picked.",
+    alt: "The Keys page: the keys of three playlists counted on the Camelot wheel and as a list, with one key opened and its tracks counted beneath.",
     ...WINDOW,
   },
   discover: {
     label: "Discover",
-    alt: "The Discover page: new music on Beatport from artists and labels in the library.",
+    alt: "The Discover page after a search: new tracks found on a Beatport chart by an artist in the library, with their artists and labels.",
     ...WINDOW,
   },
   prepare: {
     label: "Prepare",
-    alt: "The Prepare page: a Set as a running order in chapters, with the checks between tracks.",
+    alt: "The Prepare page: a Set as a running order in chapters, with the checks between tracks and the transition strip open on one of them.",
     ...WINDOW,
   },
   statistics: {
     label: "Statistics",
-    alt: "The Statistics page: most played tracks, top artists and labels, and how the library spreads by genre and key.",
+    alt: "The Statistics page's Your library section: four charts of how the whole library spreads by genre, tempo, year and date added, with the count on every bar.",
     ...WINDOW,
   },
   waveforms: {
     label: "Waveforms and the player",
-    alt: "The player bar with a track's waveform, and Track details showing its cues, beat grid and loudness.",
+    alt: "The player bar with a paused track's waveform, and Track details showing the track's waveform, loudness and cue points.",
     ...WINDOW,
   },
   export: {
     label: "Export to Rekordbox",
-    alt: "The export preview, listing what will be written into the new Rekordbox file.",
+    alt: "The Export to Rekordbox window: how many tracks and which playlists the new Rekordbox file will hold, before anything is written.",
     ...WINDOW,
   },
 };

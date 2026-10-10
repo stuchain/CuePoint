@@ -5,6 +5,8 @@ test-results/
 !lighthouserc.json
 # the stills' record of what they were rendered from (SITE-05)
 !src/assets/stills/manifest.json
+# the app's pictures: each shot's size and alt draft beside the PNGs (SITE-04)
+!src/assets/app/shots.json
 
 # written by scripts/sync-assets.mjs from the app's icon files (run by build, check, test)
 public/favicon.ico

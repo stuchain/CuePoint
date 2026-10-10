@@ -499,7 +499,7 @@ test.describe("the scenes and their pictures", () => {
     expect(Math.abs(a.y - b.y)).toBeLessThan(2);
   });
 
-  test("every place the spec puts an app picture is a labelled placeholder of the right size", async ({ page }) => {
+  test("every place the spec puts an app picture shows the app's own picture, of the right size (SITE-04)", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("");
     const slots = page.locator("[data-app-shot]");
@@ -507,8 +507,10 @@ test.describe("the scenes and their pictures", () => {
     expect(await slots.count()).toBeGreaterThanOrEqual(1);
     expect(await slots.count()).toBeLessThanOrEqual(2);
     for (const slot of await slots.all()) {
-      await expect(slot).toHaveAttribute("data-placeholder", "true");
-      await expect(slot).toContainText(/screenshot/i);
+      // captured from the app by `npm run capture:showcase`: a real picture, never a placeholder
+      await expect(slot).not.toHaveAttribute("data-placeholder", "true");
+      await expect(slot).not.toContainText(/placeholder/i);
+      await expect(slot.locator("[data-slot-frame] img").first()).toBeAttached();
       // the layout size: the slabs tilt in 3D as they scroll (SITE-06), which skews the on-screen box
       const box = await slot.locator("[data-slot-frame]").evaluate((el) => ({ width: (el as HTMLElement).offsetWidth, height: (el as HTMLElement).offsetHeight }));
       expect(box.width / box.height).toBeCloseTo(1280 / 800, 1);

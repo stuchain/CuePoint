@@ -35,7 +35,7 @@ describe("the guide's table", () => {
   const files = guideFiles(GUIDE);
 
   it("has a row for every file in docs/user-guide and a file for every row", () => {
-    expect(files.length).toBe(17);
+    expect(files.length).toBe(18);
     expect(checkGuideTable(files)).toEqual({ missingRows: [], missingFiles: [], invalid: [] });
     expect(() => assertGuideTable(files)).not.toThrow();
   });

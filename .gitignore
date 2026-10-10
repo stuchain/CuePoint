@@ -429,3 +429,8 @@ apps/desktop-electron/resources/player/
 apps/website/node_modules/
 apps/website/dist/
 apps/website/.astro/
+
+# Test fixture (exception to user-output *.json above). The real artists and
+# labels the website's showcase library is checked against (SITE-04); without it
+# the showcase test cannot hold that every name in it is invented.
+!apps/desktop-electron/e2e/fixtures/showcase/real-names.json

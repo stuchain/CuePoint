@@ -1,0 +1,61 @@
+{
+  "themes": [
+    "neoDark"
+  ],
+  "shots": {
+    "library": {
+      "alt": "The Library page: the table of tracks with the Collections and playlists beside it, and the Track details panel open on one track, showing its cover, key and waveform.",
+      "width": 1280,
+      "height": 800,
+      "scale": 2
+    },
+    "window": {
+      "alt": "The CuePoint window on a library of tracks, with the Camelot wheel open and the selected track's key lit with the keys that mix with it.",
+      "width": 1280,
+      "height": 800,
+      "scale": 2
+    },
+    "waveforms": {
+      "alt": "The player bar with a paused track's waveform, and Track details showing the track's waveform, loudness and cue points.",
+      "width": 1280,
+      "height": 800,
+      "scale": 2
+    },
+    "keys": {
+      "alt": "The Keys page: the keys of three playlists counted on the Camelot wheel and as a list, with one key opened and its tracks counted beneath.",
+      "width": 1280,
+      "height": 800,
+      "scale": 2
+    },
+    "statistics": {
+      "alt": "The Statistics page's Your library section: four charts of how the whole library spreads by genre, tempo, year and date added, with the count on every bar.",
+      "width": 1280,
+      "height": 800,
+      "scale": 2
+    },
+    "prepare": {
+      "alt": "The Prepare page: a Set as a running order in chapters, with the checks between tracks and the transition strip open on one of them.",
+      "width": 1280,
+      "height": 800,
+      "scale": 2
+    },
+    "export": {
+      "alt": "The Export to Rekordbox window: how many tracks and which playlists the new Rekordbox file will hold, before anything is written.",
+      "width": 1280,
+      "height": 800,
+      "scale": 2
+    },
+    "clean": {
+      "alt": "The Clean page's review queue: the tracks a Beatport match left waiting for a yes or no, with their tempo and genre beside them.",
+      "width": 1280,
+      "height": 800,
+      "scale": 2
+    },
+    "clean-compare": {
+      "alt": "Clean's comparison for a track that needs review: the library's values beside two Beatport candidates, with their scores, titles and artists.",
+      "width": 1280,
+      "height": 800,
+      "scale": 2
+    }
+  }
+}

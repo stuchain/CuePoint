@@ -67,6 +67,31 @@ npm run check:lighthouse  # Lighthouse CI: LCP, TBT, CLS, four category scores, 
 - `website-links.yml` runs lychee over the external links of the built site every Monday and on demand,
   and opens an issue when one is dead.
 
+## The app's pictures (SITE-04)
+
+Every screenshot of the app on the site (`src/assets/app/<id>-neoDark.png`, listed in
+`src/assets/app/shots.json`) is taken from the running app by one command, on a made-up library
+(`apps/desktop-electron/e2e/fixtures/showcase/`: about 300 invented tracks, playlists, Collections, a
+Set, generated audio and stubbed Beatport answers; nothing in it is real, and a test holds every name
+against a list of real artists and labels). To retake them after the app changes, build the desktop
+app and run, in `apps/desktop-electron`:
+
+```
+npm run build && npm run capture:showcase
+```
+
+It needs the Python engine's dependencies, an mpv player (`CUEPOINT_MPV_PATH` on Linux) and, on a
+machine without a display, `xvfb-run -a`. The pictures are 2560 x 1600 (the app's default 1280 x 800
+window, DEC-161, at a device scale of 2) in the site's one theme. The library is written under a
+neutral root that was not there before, so the paths on screen are a DJ's and not the machine's:
+`/Users/dj` (macOS, or Linux as root), else `C:\DJ` or `/DJ` at the drive's root; a root that exists
+already (a real account) is left alone, and when neither can be made the capture stops and asks for
+`CUEPOINT_SHOWCASE_ROOT`, an empty folder (or one to make) whose path holds no username. The capture
+refuses a root whose path contains the machine's home folder or user name, since the Library header
+would print it. Afterwards only the files and folders the capture wrote are taken away. Each slot's
+`alt` text starts from `shots.json` and is reviewed by hand once. `shots.test.ts` holds the files and the JSON together; a slot with no file (Statistics,
+until its page lands) stays a labelled placeholder (`src/lib/app-shots.ts`).
+
 ## The 3D runtime (SITE-05)
 
 `src/three/` is the one runtime every scene uses; `<Scene name="cubes" />` puts a scene in a page
@@ -162,7 +187,7 @@ npm run check:lighthouse  # Lighthouse CI: LCP, TBT, CLS, four category scores, 
   `fromDecisions`, so it is re-checked when the guide gains the page.
 - **`shipped: false` markers.** A page or a section that describes something the app does not ship yet
   (`unshipped: { shipped: false, step }` in `features.ts` and `home.ts`: the Camelot wheel, PAGES-10; Keys,
-  PAGES-16; Statistics, STATS-02..07) shows a preview note and carries `data-unshipped="<step>"`. A preview build
+  PAGES-16) shows a preview note and carries `data-unshipped="<step>"`. A preview build
   may have them; **a public build fails** (the `unshipped` rule in `check-site`) until the step ships and the
   marker is removed. The overview's description and `featureList` leave unshipped features out. A page for an
   unshipped feature has no guide link until the guide has a page for it.
