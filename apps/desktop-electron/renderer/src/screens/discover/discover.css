@@ -98,7 +98,7 @@
 
 .discover-runs-view {
   display: grid;
-  grid-template-columns: minmax(calc(150px * var(--scale)), 20%) minmax(0, 1fr);
+  grid-template-columns: minmax(calc(220px * var(--scale)), 20%) minmax(0, 1fr);
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -183,12 +183,16 @@
 }
 
 .discover-runs__when {
+  min-width: 0;
   font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
 }
 
 .discover-runs__what,
 .discover-runs__found {
   grid-column: 1 / -1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
 }
@@ -661,17 +665,24 @@
   color: var(--fg-muted);
 }
 
-/* A past search's row: the search, and the way to delete it. */
+/* A past search's row: the search, and the way to delete it on its own line
+   beneath, so the card's text and its button never share a line to overlap on. */
 .discover-runs__row {
   display: flex;
+  flex-direction: column;
   align-items: stretch;
   gap: var(--space-xs);
+  min-width: 0;
 }
 
 .discover-runs__row > .discover-runs__item {
-  flex: 1;
   width: auto;
   min-width: 0;
+}
+
+.discover-runs__row > :not(.discover-runs__item) {
+  align-self: flex-start;
+  max-width: 100%;
 }
 
 .discover-run__looked-title {

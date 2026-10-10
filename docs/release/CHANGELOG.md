@@ -490,6 +490,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Edit values keeps what you type as it opens.** The dialog cleared its form just after it was
   drawn, so a value typed in that moment (from Fix ▸ Edit values…, which opens it at once) was
   wiped and Apply asked for a field. The form is now cleared before the dialog is shown.
+- **Discover's Results tab no longer squeezes a past search's card until its "Delete this search…" button covers the text.** At the default window and size the runs column was about 180 px wide. It now keeps a minimum width, the button sits on its own line under the card, and long text wraps (the summary also shows in full on hover).
 - **Opening a database connection no longer breaks another thread's `join()`.** Each connect to the
   library database or the waveform store closed ended threads' connections by asking every owner
   `is_alive()`. Before Python 3.13 that briefly takes the thread's own lock, so a join of that same

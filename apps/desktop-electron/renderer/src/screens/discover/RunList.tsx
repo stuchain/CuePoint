@@ -49,9 +49,13 @@ export function RunList({
               aria-current={selected === run.id ? "page" : undefined}
               onClick={() => onSelect(run.id)}
             >
-              <span className="discover-runs__when">{searchTitle(run.started_at)}</span>
+              <span className="discover-runs__when" title={searchTitle(run.started_at)}>
+                {searchTitle(run.started_at)}
+              </span>
               <Badge variant={BADGE[runStateTone(run)]}>{runStateLabel(run)}</Badge>
-              <span className="discover-runs__what">{runSummary(run, genres)}</span>
+              <span className="discover-runs__what" title={runSummary(run, genres)}>
+                {runSummary(run, genres)}
+              </span>
               <span className="discover-runs__found">
                 {pluralize(run.tracks_found, "track")} found
               </span>

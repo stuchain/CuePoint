@@ -522,6 +522,20 @@ describe("Results", () => {
     }
   });
 
+  it("keeps each card's delete button beside its text, not inside it, with the long text titled", async () => {
+    renderDiscover();
+    const list = await screen.findByRole("navigation", { name: "Past searches" });
+    for (const item of within(list).getAllByRole("listitem")) {
+      const card = item.querySelector<HTMLElement>(".discover-runs__item")!;
+      const remove = within(item).getByRole("button", { name: "Delete this search…" });
+      // A sibling of the card, so layout can put it on its own line.
+      expect(card.contains(remove)).toBe(false);
+      expect(remove.parentElement?.closest("li")).toBe(item);
+      const what = card.querySelector<HTMLElement>(".discover-runs__what")!;
+      expect(what).toHaveAttribute("title", what.textContent ?? "");
+    }
+  });
+
   it("opens the newest search, and says why it stopped", async () => {
     renderDiscover();
     expect(

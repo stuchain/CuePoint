@@ -167,6 +167,39 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await expect(row(window, found, /Harbour Lights/)).toBeVisible({ timeout: 15_000 });
       await expect(window.getByRole("table", { name: found }).getByRole("row")).toHaveCount(4);
       await expect(row(window, found, /Harbour Lights/)).toContainText("On a chart by Mara Veil: “Journey Selects”");
+
+      // Phase 14: at 1,280 × 800 and 1.5×, the run card's delete button sits clear of its text
+      // and the runs column does not push anything sideways.
+      const size = await window.evaluate(() => [window.innerWidth, window.innerHeight, getComputedStyle(document.documentElement).getPropertyValue("--scale").trim()]);
+      expect(size[2]).toBe("1.5");
+      const card = await window.evaluate(() => {
+        const box = (el: Element) => {
+          const r = el.getBoundingClientRect();
+          return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+        };
+        const item = document.querySelector(".discover-runs__row")!;
+        const del = item.querySelector("button:not(.discover-runs__item)")!;
+        const text = [...item.querySelectorAll(".discover-runs__when, .discover-runs__what, .discover-runs__found")].map(box);
+        const list = document.querySelector(".discover-runs-view__list")!;
+        const view = document.querySelector(".discover-runs-view")!;
+        return {
+          del: box(del),
+          text,
+          width: item.getBoundingClientRect().width,
+          listSpill: list.scrollWidth - list.clientWidth,
+          viewSpill: view.scrollWidth - view.clientWidth,
+          pageSpill: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        };
+      });
+      expect(card.text.length).toBe(3);
+      for (const t of card.text) {
+        const apart = card.del.top >= t.bottom || card.del.bottom <= t.top || card.del.left >= t.right || card.del.right <= t.left;
+        expect(apart, "the delete button's box is clear of the card's text").toBe(true);
+      }
+      expect(card.width, "the run card is wide enough to read").toBeGreaterThanOrEqual(240);
+      expect(card.listSpill, "the runs column does not scroll sideways").toBeLessThanOrEqual(0);
+      expect(card.viewSpill, "the Results tab does not scroll sideways").toBeLessThanOrEqual(0);
+      expect(card.pageSpill, "the page does not scroll sideways").toBeLessThanOrEqual(0);
       // A Beatport row is not a library row: the Inspector says so.
       await expect(window.getByText(/Tracks found on Beatport are not in your library/)).toBeVisible();
 
