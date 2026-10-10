@@ -408,12 +408,27 @@ class TestConcurrentImports:
         )
         assert status == 202
 
-    def test_concurrent_requests_produce_exactly_one_import(self, engine, tmp_path):
+    def test_concurrent_requests_produce_exactly_one_import(
+        self, engine, tmp_path, monkeypatch
+    ):
         """The check and the registration happen under one lock.
 
         Asking the store and then creating would let two requests arriving
         together both see an idle store.
         """
+        from cuepoint.engine import library_jobs
+
+        # The import is held until every request has its answer: an arm64 Mac
+        # once finished it before the last request arrived, which then rightly
+        # started a second one.
+        release = threading.Event()
+        run_import = library_jobs.run_library_import_job
+
+        def held_import(job, store, xml_path) -> None:
+            release.wait(timeout=60)
+            run_import(job, store, xml_path)
+
+        monkeypatch.setattr(library_jobs, "run_library_import_job", held_import)
         big = write_export(tmp_path, 8000, name="big.xml")
         results: list = []
 
@@ -432,6 +447,7 @@ class TestConcurrentImports:
             thread.start()
         for thread in threads:
             thread.join(timeout=20)
+        release.set()
 
         accepted = [payload for status, payload in results if status == 202]
         refused = [payload for status, payload in results if status == 409]
