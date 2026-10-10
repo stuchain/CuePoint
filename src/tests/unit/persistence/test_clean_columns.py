@@ -289,7 +289,8 @@ class TestChoices:
 
     def test_every_field_says_whether_it_has_choices(self):
         assert all("choices" in field for field in describe_fields())
-        assert len(describe_fields()) == len(FIELDS)
+        # Every field the Field list offers; Track (one-track filters) is never offered.
+        assert len(describe_fields()) == len([spec for spec in FIELDS if spec.offered])
 
     def test_each_value_has_a_name(self):
         for field in describe_fields():

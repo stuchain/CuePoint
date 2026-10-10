@@ -1096,6 +1096,11 @@
     "verdict": "exempt",
     "reason": "names of our own fields, parameters and code values, never a user value"
   },
+  "cuepoint/models/filter_rule.py::FilterRule._validated_list::A list of tracks holds at most {MAX_TRACK_LIST}": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names"
+  },
   "cuepoint/models/filter_rule.py::FilterRule._validated_list::{spec.label} 'any of' needs at least one value": {
     "holds": "our own field, label or code name",
     "verdict": "exempt",
@@ -1158,6 +1163,11 @@
   "cuepoint/models/filter_rule.py::_coerce_choice::{spec.label} is never {text!r} ({operator}). It is one of: ": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_id::{spec.label} needs an id, and {value!r} is too large to be one": {
+    "holds": "a value already read as a whole number, our own field label",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
   },
   "cuepoint/models/filter_rule.py::_coerce_id::{spec.label} is identified by a whole number, and {value!r} is not one": {
     "holds": "request or file text that failed validation: any user or library text",
