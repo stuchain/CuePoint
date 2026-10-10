@@ -64,7 +64,10 @@ class TestBeatportApiClientGet:
 
     def test_get_raises_on_500(self):
         """get() raises BeatportAPIError on 500 (after retries)."""
-        with patch.object(requests.Session, "request") as req:
+        with (
+            patch("cuepoint.services.reliability_retry.time.sleep"),
+            patch.object(requests.Session, "request") as req,
+        ):
             req.return_value = Mock(status_code=500)
             client = BeatportApiClient("https://api.test", "token")
             with pytest.raises(BeatportAPIError):

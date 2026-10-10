@@ -5,6 +5,18 @@ import pytest
 from cuepoint.services.reliability_retry import get_retry_config, run_with_retry
 
 
+@pytest.fixture(autouse=True)
+def slept(monkeypatch):
+    """The backoff delays run_with_retry asked for, without waiting them out.
+
+    Each retry sleeps 0.5, 1, 2 seconds plus jitter; slept for real, the retry
+    tests here cost five seconds and checked nothing about the delays.
+    """
+    delays = []
+    monkeypatch.setattr("cuepoint.services.reliability_retry.time.sleep", delays.append)
+    return delays
+
+
 def test_get_retry_config_defaults():
     """Without config_service, returns default max_retries and delays."""
     cfg = get_retry_config()
@@ -45,7 +57,7 @@ def test_run_with_retry_succeeds_first_try():
     assert len(calls) == 1
 
 
-def test_run_with_retry_retries_then_succeeds():
+def test_run_with_retry_retries_then_succeeds(slept):
     """Retries on failure then succeeds (Design 5.63)."""
     calls = []
 
@@ -58,6 +70,10 @@ def test_run_with_retry_retries_then_succeeds():
     result = run_with_retry(fail_twice, max_retries=3)
     assert result == 99
     assert len(calls) == 3
+    # delay = base * 2^attempt + jitter (Design 5.37), base 0.5 and jitter <= 0.25.
+    assert len(slept) == 2
+    assert 0.5 <= slept[0] <= 0.75
+    assert 1.0 <= slept[1] <= 1.25
 
 
 def test_run_with_retry_exhausted_raises():
@@ -73,7 +89,7 @@ def test_run_with_retry_exhausted_raises():
     assert len(calls) == 3  # 1 + 2 retries
 
 
-def test_run_with_retry_on_retry_callback():
+def test_run_with_retry_on_retry_callback(slept):
     """on_retry is called with attempt, max_attempts, delay, error (Design 5.42)."""
     retries_seen = []
 
@@ -89,3 +105,5 @@ def test_run_with_retry_on_retry_callback():
     assert retries_seen[0][0] == 1
     assert retries_seen[0][1] == 2
     assert retries_seen[0][3].args[0] == "network"
+    # The delay reported is the delay waited.
+    assert slept == [seen[2] for seen in retries_seen]
