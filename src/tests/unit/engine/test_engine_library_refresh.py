@@ -271,7 +271,10 @@ class TestPreviewWritesNothing:
 
         status, started = request(engine, PREVIEW, method="POST", body={})
         assert status == 202
-        assert started["state"] in ("queued", "running")
+        # The state the job had when the answer was written. A small job can
+        # finish before that, more so since a request stopped re-checking the
+        # schema (DEC-223), and a preview of an unchanged file is quick.
+        assert started["state"] in ("queued", "running", "succeeded")
         wait_for_job(engine, started["job_id"])
         diff = job_result(engine, started["job_id"])
 

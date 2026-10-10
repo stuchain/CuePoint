@@ -195,7 +195,10 @@ class TestStartingAnImport:
 
         assert status == 202
         assert payload["job_id"]
-        assert payload["state"] in ("queued", "running")
+        # The state the job had when the answer was written. A small job can
+        # finish before that, more so since a request stopped re-checking the
+        # schema (DEC-223): a 6-track import came back "succeeded" on a Mac.
+        assert payload["state"] in ("queued", "running", "succeeded")
 
         finished = wait_for_job(engine, payload["job_id"])
         assert finished["state"] == "succeeded"
