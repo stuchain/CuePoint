@@ -220,7 +220,7 @@ const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;"
 const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ESCAPES[c]!);
 
 /** One line of Markdown as safe HTML: code spans are taken out first, the rest is escaped, then **bold**, then the code goes back. */
-export function renderInline(text: string): string {
+export function renderInline(text: string, base: string = import.meta.env.BASE_URL): string {
   const codes: string[] = [];
   const withoutCode = text.replace(/`([^`]+)`/g, (_, code: string) => {
     codes.push(escapeHtml(code));
@@ -228,5 +228,25 @@ export function renderInline(text: string): string {
   });
   return escapeHtml(withoutCode.replace(/\u0000/g, "\u0001"))
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (whole, label: string, target: string) => {
+      const href = linkTarget(target, base);
+      return href ? `<a href="${href}">${label}</a>` : label;
+    })
     .replace(/\u0001(\d+)\u0001/g, (_, i: string) => `<code>${codes[Number(i)]}</code>`);
+}
+
+/**
+ * Where a changelog link points on the site. The changelog is written for GitHub: a guide link is
+ * `../user-guide/<page>.md#part` and becomes that guide page here; an https link is kept as it is
+ * (the text was escaped already, so quotes cannot break out of the attribute); anything else (a
+ * repository path, a bare file) has no page here and is shown as plain text.
+ */
+export function linkTarget(target: string, base: string): string | undefined {
+  const guide = /^(?:\.\.\/)?(?:docs\/)?user-guide\/([a-z0-9-]+)\.md(#[A-Za-z0-9_-]+)?$/.exec(target);
+  if (guide) {
+    const b = base.endsWith("/") ? base : `${base}/`;
+    return `${b}guide/${guide[1]}/${guide[2] ?? ""}`;
+  }
+  if (/^https:\/\/[^"'<>\s]+$/.test(target)) return target;
+  return undefined;
 }

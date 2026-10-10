@@ -131,6 +131,16 @@ describe("renderInline", () => {
       "A &lt;b&gt; &amp; <code>x&lt;y</code> and <strong>bold</strong>",
     );
   });
+  it("renders a guide link as the site's guide page and an https link as it is", () => {
+    expect(renderInline("See [Updates](../user-guide/updates.md#what-happens) and the [notice](https://github.com/stuchain/CuePoint/blob/main/PRIVACY_NOTICE.md).", "/")).toBe(
+      'See <a href="/guide/updates/#what-happens">Updates</a> and the <a href="https://github.com/stuchain/CuePoint/blob/main/PRIVACY_NOTICE.md">notice</a>.',
+    );
+  });
+  it("shows a link it cannot place on the site as plain text, and never lets a target break the attribute", () => {
+    expect(renderInline("Read [the script](scripts/run_tests.py) and [this](javascript:alert)", "/")).toBe("Read the script and this");
+    // the text is escaped before links are placed, so a quote in a target stays an entity inside the attribute
+    expect(renderInline('[x](https://a.b/"onclick="y)', "/")).toBe('<a href="https://a.b/&quot;onclick=&quot;y">x</a>');
+  });
   it("keeps markup inside a code span as text, quotes and scripts included", () => {
     expect(renderInline('Use `<script>alert("x")</script>` and `**not bold**`')).toBe(
       "Use <code>&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;</code> and <code>**not bold**</code>",
