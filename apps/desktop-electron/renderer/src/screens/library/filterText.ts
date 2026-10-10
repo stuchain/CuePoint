@@ -320,7 +320,7 @@ export function describeRule(
   if (named) return named;
   // A list of tracks no page named: its size, never its ids.
   if (rule.field === "track" && Array.isArray(rule.value)) {
-    return `These ${pluralize(rule.value.length, "track")}`;
+    return rule.value.length === 1 ? "This track" : `These ${pluralize(rule.value.length, "track")}`;
   }
   const field = fieldOf(vocabulary, rule.field);
   const label = field?.label ?? rule.field;

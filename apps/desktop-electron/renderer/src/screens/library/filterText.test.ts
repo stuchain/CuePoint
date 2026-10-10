@@ -357,7 +357,7 @@ describe("reading a clause back", () => {
       "These 3 tracks",
     );
     expect(describeRule(VOCABULARY, { field: "track", operator: "any_of", value: [7] })).toBe(
-      "These 1 track",
+      "This track",
     );
   });
 
