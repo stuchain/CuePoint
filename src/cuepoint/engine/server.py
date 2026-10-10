@@ -329,6 +329,14 @@ class ThreadingHTTPServer(_StdlibThreadingHTTPServer):
 
     request_queue_size = 128
 
+    #: Not on Windows. There ``SO_REUSEADDR`` lets a second socket bind a port
+    #: another socket is still listening on, and connections then go to either:
+    #: one sent to the listener nobody accepts on waits for good. A test's
+    #: engine was seen idle while its request timed out that way. Windows lets a
+    #: port in ``TIME_WAIT`` be bound again without it, which is all the stdlib
+    #: wants the option for.
+    allow_reuse_address = os.name != "nt"
+
     def server_bind(self) -> None:
         socketserver.TCPServer.server_bind(self)
         host, port = self.server_address[:2]
@@ -1617,6 +1625,9 @@ def start_engine_thread(
             stop()
         finally:
             sys.setswitchinterval(before)
+            # Closed with it: a listening socket left for the garbage collector
+            # still takes connections on its port, and answers none of them.
+            server.server_close()
 
     server.shutdown = shutdown_and_restore  # type: ignore[method-assign]
     # shutdown() waits out one poll of serve_forever, 0.5s by default: a test

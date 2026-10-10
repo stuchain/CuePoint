@@ -88,3 +88,33 @@ def test_an_engine_started_for_a_test_shuts_down_without_waiting_out_a_poll(
     finally:
         server.server_close()
     assert elapsed < 0.25, f"shutdown took {elapsed:.2f}s"
+
+
+def test_a_port_another_engine_listens_on_is_refused_not_shared():
+    """Regression: on Windows ``SO_REUSEADDR`` let two servers listen on one port.
+
+    Connections then went to either, and one sent to a listener nobody accepted
+    on timed out with the engine idle. Linux and macOS refuse the second bind
+    either way; this pins Windows to the same.
+    """
+    handler = server_module.make_handler(
+        EngineConfig(host="127.0.0.1", port=_free_port(), token="t")
+    )
+    first = server_module.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    try:
+        with pytest.raises(OSError):
+            second = server_module.ThreadingHTTPServer(
+                ("127.0.0.1", first.server_address[1]), handler
+            )
+            second.server_close()
+    finally:
+        first.server_close()
+
+
+def test_stopping_a_test_engine_closes_its_socket():
+    server, thread = server_module.start_engine_thread(
+        EngineConfig(host="127.0.0.1", port=_free_port(), token="t")
+    )
+    server.shutdown()
+    thread.join(timeout=2)
+    assert server.socket.fileno() == -1

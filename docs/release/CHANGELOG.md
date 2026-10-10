@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Similar tracks' Open in Library brings the suggestions.** It opens the Library on the track you are comparing with and every suggestion shown, or only the ones you selected, under one filter, **Similar to “<track>” (N tracks)**, removed with its × like any other. Such a list cannot be saved as a Smart Collection; the Library says to add the tracks to a Collection instead.
 
 ### Fixed
+- **On Windows the engine no longer shares its port.** It could bind a port another program was still listening on, and Windows then handed some of the app's requests to that program, where they waited unanswered. The engine now refuses a port in use on Windows, as it already did on macOS and Linux.
 - **The app's pixel font is bundled.** CuePoint no longer asks Google Fonts for Pixelify Sans each time it starts, so it looks the same offline and sends nothing to Google (DEC-232).
 - **Waveform analysis no longer stalls for 5 minutes on one track.** The bundled player's decoder could hang for good while writing its log, an upstream mpv bug (a lost wake-up in its log writer), and the analysis waited out the 5-minute limit on that track. A decode that stops making progress for 30 seconds is now stopped and the track decoded again; it is marked as timed out only if every try hangs (DEC-229).
 
