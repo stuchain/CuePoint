@@ -1418,6 +1418,9 @@ export function LibraryScreen({
         ]),
       ),
       beatport: new Map(Object.entries(openedNames)),
+      // Only a track list is named as a whole: an id rule's name is the id's
+      // (`beatport`), and "Beatport artist is Mara Veil" keeps its words.
+      rules: new Map(Object.entries(openedNames).filter(([key]) => key.startsWith("track:"))),
       source: new Map(
         filterSources.map((source) => [
           sourceKey(source.kind, source.id),

@@ -115,7 +115,7 @@ from cuepoint.models.collection import (
     SubtreeSummary,
     normalize_collection_name,
 )
-from cuepoint.models.filter_rule import FilterRuleError, RuleSet
+from cuepoint.models.filter_rule import FilterRuleError, RuleSet, field_spec
 from cuepoint.models.library_track import utc_now_iso
 from cuepoint.models.set_plan import MAX_SET_ENTRIES, SetLimitError
 from cuepoint.persistence.playlist_repository import PlaylistRepository
@@ -1061,6 +1061,11 @@ class CollectionService(ICollectionService):
                 (DEC-060).
         """
         valid = rules.validated()
+        if any(not field_spec(rule.field).offered for rule in valid.rules):
+            raise FilterRuleError(
+                "A Smart Collection is rules, and a list of tracks is not one: "
+                "add these tracks to a Collection instead."
+            )
         if not valid.rules:
             raise FilterRuleError(
                 "A smart collection needs at least one rule: a filter with none "

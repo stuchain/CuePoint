@@ -12,6 +12,8 @@
  * page has one address however it was reached.
  */
 import type { EntityKind, FilterRule } from "../../api/cuepointBridge.types";
+import { pluralize } from "../library/libraryFormat";
+import { libraryTracksState } from "../library/libraryLink";
 
 /** The route patterns, for `App.tsx`. */
 export const ARTIST_PAGE_ROUTE = "/discover/artist/:ref";
@@ -82,4 +84,24 @@ export function pageOfRule(rule: FilterRule): PageRef | null {
     default:
       return null;
   }
+}
+
+/**
+ * Where Similar tracks' Open in Library goes, and what the button says it does.
+ *
+ * The seed first, then the selected suggestions if any are selected, else every
+ * shown one; nobody twice. The Library shows them in its own sort order.
+ */
+export function similarLibraryState(
+  seed: { id: number; title: string },
+  shown: readonly number[],
+  selected: readonly number[],
+): { state: Record<string, unknown>; title: string } {
+  const picked = selected.length > 0;
+  const ids = [...new Set([seed.id, ...(picked ? selected : shown)])];
+  const label = `Similar to “${seed.title}” (${pluralize(ids.length, "track")})`;
+  const title = picked
+    ? `Opens the ${pluralize(selected.length, "selected track")} and “${seed.title}” in the Library`
+    : `Opens these ${pluralize(ids.length, "track")} in the Library`;
+  return { state: libraryTracksState(ids, label), title };
 }

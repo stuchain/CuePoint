@@ -84,7 +84,8 @@ class TestRegistry:
         assert described["rating"]["integer"] is True
 
     def test_describe_fields_covers_every_field(self):
-        assert len(describe_fields()) == len(FIELDS)
+        # Every field a person can pick; `track` is only ever handed over.
+        assert len(describe_fields()) == len([s for s in FIELDS if s.offered])
 
 
 class TestArity:
@@ -483,3 +484,34 @@ class TestBeatportFields:
             FieldSpec("x", "text", "X", group="Track", identity="artist")
         with pytest.raises(ValueError, match="not an identity kind"):
             FieldSpec("x", TYPE_BEATPORT, "X", group="Track", identity="genre")
+
+
+class TestTrackListField:
+    """A list of tracks another page hands the Library (not a field a person picks)."""
+
+    def test_any_of_validates_to_a_tuple_of_ints(self):
+        assert rule("track", "any_of", [3, "5"]).validated().value == (3, 5)
+
+    def test_only_any_of_exists(self):
+        assert OPERATORS_BY_TYPE["track"] == ("any_of",)
+        assert "track" in FIELD_TYPES
+
+    @pytest.mark.parametrize("value", [0, -1, "x", 2.5])
+    def test_anything_but_a_track_id_is_refused(self, value):
+        with pytest.raises(FilterRuleError, match="Track"):
+            rule("track", "any_of", [3, value]).validated()
+
+    def test_is_is_refused(self):
+        with pytest.raises(FilterRuleError, match="Track"):
+            rule("track", "is", 3).validated()
+
+    def test_an_empty_list_is_refused(self):
+        with pytest.raises(FilterRuleError):
+            rule("track", "any_of", []).validated()
+
+    def test_a_thousand_are_accepted_and_one_more_is_not(self):
+        assert (
+            len(rule("track", "any_of", list(range(1, 1001))).validated().value) == 1000
+        )
+        with pytest.raises(FilterRuleError, match="at most 1000"):
+            rule("track", "any_of", list(range(1, 1002))).validated()

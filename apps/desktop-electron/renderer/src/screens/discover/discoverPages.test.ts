@@ -31,6 +31,7 @@ import {
   beatportRef,
   entityPath,
   nameRef,
+  similarLibraryState,
   pageOfRule,
   similarPath,
   trackIdFromRoute,
@@ -452,5 +453,38 @@ describe("the pages' columns", () => {
     expect(owned.header).toBe("In your library");
     expect(owned.render({ ...row, owned: true })).toBe("In your library");
     expect(owned.render({ ...row, owned: false })).toBe("");
+  });
+});
+
+describe("Similar tracks' Open in Library", () => {
+  const seed = { id: 1, title: "Build" };
+  const opened = (shown: number[], selected: number[]) => {
+    const { state, title } = similarLibraryState(seed, shown, selected);
+    return { opening: libraryOpening({ state, key: "k" }), title };
+  };
+
+  it("carries the seed and every shown suggestion when nothing is selected", () => {
+    const { opening, title } = opened([2, 3, 4], []);
+    expect(opening?.rules.rules[0]).toEqual({ field: "track", operator: "any_of", value: [1, 2, 3, 4] });
+    expect(opening?.names).toEqual({ "track:[1,2,3,4]": "Similar to “Build” (4 tracks)" });
+    expect(title).toBe("Opens these 4 tracks in the Library");
+  });
+
+  it("carries the seed and only the selected suggestions", () => {
+    const { opening, title } = opened([2, 3, 4], [4, 2]);
+    expect(opening?.rules.rules[0].value).toEqual([1, 4, 2]);
+    expect(opening?.names).toEqual({ "track:[1,4,2]": "Similar to “Build” (3 tracks)" });
+    expect(title).toBe("Opens the 2 selected tracks and “Build” in the Library");
+  });
+
+  it("does not repeat the seed", () => {
+    expect(opened([1, 2, 2], []).opening?.rules.rules[0].value).toEqual([1, 2]);
+    expect(opened([2], [1, 2]).opening?.rules.rules[0].value).toEqual([1, 2]);
+  });
+
+  it("is just the seed when there are no suggestions", () => {
+    const { opening } = opened([], []);
+    expect(opening?.rules.rules[0].value).toEqual([1]);
+    expect(opening?.names).toEqual({ "track:[1]": "Similar to “Build” (1 track)" });
   });
 });

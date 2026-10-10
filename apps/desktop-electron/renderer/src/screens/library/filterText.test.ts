@@ -19,6 +19,7 @@ import {
   buildRule,
   buildableFields,
   describeRule,
+  ruleNameKey,
   emptyDraft,
   fieldOf,
   operatorLabel,
@@ -351,6 +352,15 @@ describe("a clause that cannot be built", () => {
 });
 
 describe("reading a clause back", () => {
+  it("says what the page that opened the Library calls a whole rule", () => {
+    const rule = { field: "track", operator: "any_of", value: [7, 3] };
+    const names = { rules: new Map([[ruleNameKey(rule), "Similar to “Build” (3 tracks)"]]) };
+    expect(describeRule(VOCABULARY, rule, names)).toBe("Similar to “Build” (3 tracks)");
+    expect(describeRule(VOCABULARY, { ...rule, value: [7, 4] }, names)).not.toBe(
+      "Similar to “Build” (3 tracks)",
+    );
+  });
+
   it("reads a text clause", () => {
     expect(
       describeRule(VOCABULARY, { field: "genre", operator: "is", value: "House" }),

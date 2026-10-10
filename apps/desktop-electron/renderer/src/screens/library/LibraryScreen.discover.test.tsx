@@ -341,6 +341,28 @@ describe("filter chips and the Inspector", () => {
     expect(hooks.onOpenEntity).toHaveBeenCalledWith("artist", "bp:301001");
   });
 
+  it("reads a list of tracks as the page's label, and removing it restores the library", async () => {
+    const label = "Similar to “Build” (3 tracks)";
+    renderScreen({
+      openWith: {
+        rules: { match: "all", rules: [{ field: "track", operator: "any_of", value: [1, 2, 3] }] },
+        token: "nav-3",
+        names: { "track:[1,2,3]": label },
+      },
+    });
+    await tableReady();
+    const chips = await screen.findByRole("list", { name: "Active filters" });
+    expect(await within(chips).findByText(label)).toBeInTheDocument();
+    const browse = bridge.browseLibrary as Mock;
+    await waitFor(() =>
+      expect(
+        browse.mock.calls.some((call) => JSON.stringify(call[0]).includes('"field":"track"')),
+      ).toBe(true),
+    );
+    fireEvent.click(within(chips).getByRole("button", { name: `Remove filter: ${label}` }));
+    await waitFor(() => expect(screen.queryByRole("list", { name: "Active filters" })).toBeNull());
+  });
+
   it("links the Inspector's credits to their pages", async () => {
     const hooks = renderScreen();
     await tableReady();

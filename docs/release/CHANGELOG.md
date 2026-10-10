@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Track tables work from the keyboard.** Up and Down select the previous or next track, Shift with them extends the selection, and Home, End, Page Up and Page Down jump. Ctrl+Space adds or removes the focused track (on a Mac, Cmd-click does: Cmd+Space is Spotlight), and Ctrl+A selects all where the table has a Select all. Enter does what a double-click does in the Library, Keys, Similar, Discover's Library half, and Prepare's source list (play), selects the focused row alone in Discover's Beatport tables, and edits the time in Prepare's Set table. The table scrolls to keep the track in view. Mouse selection is unchanged, except that Enter and Shift+F10 now act on the last row you clicked, including a Shift-click. Clean's review queue keeps its own keys. In Discover's tables, Shift+Down now keeps extending past the second row.
 
+### Changed
+- **Similar tracks' Open in Library brings the suggestions.** It opens the Library on the track you are comparing with and every suggestion shown, or only the ones you selected, under one filter, **Similar to “<track>” (N tracks)**, removed with its × like any other. Such a list cannot be saved as a Smart Collection; the Library says to add the tracks to a Collection instead.
+
 ### Fixed
 - **The app's pixel font is bundled.** CuePoint no longer asks Google Fonts for Pixelify Sans each time it starts, so it looks the same offline and sends nothing to Google (DEC-232).
 - **Waveform analysis no longer stalls for 5 minutes on one track.** The bundled player's decoder could hang for good while writing its log, an upstream mpv bug (a lost wake-up in its log writer), and the analysis waited out the 5-minute limit on that track. A decode that stops making progress for 30 seconds is now stopped and the track decoded again; it is marked as timed out only if every try hangs (DEC-229).

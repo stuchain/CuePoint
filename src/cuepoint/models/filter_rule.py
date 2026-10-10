@@ -101,6 +101,15 @@ TYPE_BEATPORT = "beatport"
 #: than a name because all three can be renamed.
 TYPE_SOURCE = "source"
 
+#: A list of tracks, by track id: what one page hands the Library when it opens
+#: it on "these tracks" (Similar tracks' Open in Library). Only ``any_of``, and
+#: never offered in the Field list.
+TYPE_TRACK = "track"
+
+#: The most tracks one ``track`` rule may name. The Similar page shows tens, and
+#: a bound keeps a rule from becoming a way to carry a whole library in a URL.
+MAX_TRACK_LIST = 1000
+
 #: The kinds of source a ``source`` value may name.
 SOURCE_PLAYLIST = "playlist"
 SOURCE_COLLECTION = "collection"
@@ -117,6 +126,7 @@ FIELD_TYPES = (
     TYPE_NAME,
     TYPE_BEATPORT,
     TYPE_SOURCE,
+    TYPE_TRACK,
 )
 
 #: The only ``match`` value v1 accepts (DEC-016).
@@ -220,6 +230,8 @@ OPERATORS_BY_TYPE: Dict[str, Tuple[str, ...]] = {
     # "In playlist is any of …" is the whole of FLW-7: a track filed in at
     # least one of the sources. "Is not in" is not a filter anyone asked for.
     TYPE_SOURCE: (OP_ANY_OF,),
+    # A list of tracks another page hands over; "is" one track is not a request.
+    TYPE_TRACK: (OP_ANY_OF,),
 }
 
 #: A rating's unit. Declared here rather than in a renderer so the five-star
@@ -402,6 +414,8 @@ class FieldSpec:
             field so the renderer keeps no second copy of the grouping. Never
             part of a rule: a rule names its field, so regrouping changes no
             saved Smart Collection.
+        offered: False for a field only another page sets: it is not in the
+            Field list the bar offers, and a Smart Collection refuses it.
     """
 
     name: str
@@ -418,6 +432,7 @@ class FieldSpec:
     choices: Tuple[Tuple[str, str], ...] = ()
     display: Optional[str] = None
     identity: Optional[str] = None
+    offered: bool = True
 
     def __post_init__(self) -> None:
         """Refuse a registry entry the query builder could not answer."""
@@ -720,6 +735,18 @@ FIELDS: Tuple[FieldSpec, ...] = (
     # and Sets at once. Its value is a list of ``{kind, id}`` sources, so the
     # Keys page's scope and a saved Smart Collection are one rule.
     FieldSpec("in_playlist", TYPE_SOURCE, "In playlist", group=GROUP_WHERE),
+    # The list of tracks another page hands the Library (Similar tracks' Open in
+    # Library). Not a public identity field to filter by: it is not in the Field
+    # list and a Smart Collection refuses it, which keeps faith with the note
+    # above that ids are not a contract for anyone to build on.
+    FieldSpec(
+        "track",
+        TYPE_TRACK,
+        "Track",
+        group=GROUP_TRACK,
+        column="tracks.id",
+        offered=False,
+    ),
     # --- Matching (CLEAN-04, DEC-067) ---------------------------------------
     # "Not matched" is a track with no state row, so it is the tracks the join
     # finds nothing for: the COALESCE is the anti-join, spelled as the value a
@@ -1069,6 +1096,8 @@ def _coerce_one(value: Any, spec: FieldSpec, operator: str) -> Any:
         return _coerce_beatport_id(value, spec, operator)
     if spec.type == TYPE_SOURCE:
         return _coerce_source(value, spec, operator)
+    if spec.type == TYPE_TRACK:
+        return _coerce_id(value, spec, operator)
     text = _coerce_text(value, spec, operator)
     if spec.choices and operator in CHOICE_OPERATORS:
         return _coerce_choice(text, spec, operator)
@@ -1184,6 +1213,8 @@ class FilterRule:
 
         if not values:
             raise FilterRuleError(f"{spec.label} 'any of' needs at least one value")
+        if spec.type == TYPE_TRACK and len(values) > MAX_TRACK_LIST:
+            raise FilterRuleError(f"A list of tracks holds at most {MAX_TRACK_LIST}")
         return tuple(_coerce_one(v, spec, operator) for v in values)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -1440,7 +1471,10 @@ def describe_fields() -> List[Dict[str, Any]]:
     """
     # Grouped in FIELD_GROUPS' order, each group in the registry's order (LIB-7):
     # the renderer draws what it is given, so the order is decided here.
-    ordered = sorted(FIELDS, key=lambda spec: FIELD_GROUPS.index(spec.group))
+    ordered = sorted(
+        (spec for spec in FIELDS if spec.offered),
+        key=lambda spec: FIELD_GROUPS.index(spec.group),
+    )
     return [
         {
             "name": spec.name,
@@ -1515,6 +1549,8 @@ __all__: Sequence[str] = (
     "TYPE_NAME",
     "TYPE_NUMBER",
     "TYPE_SOURCE",
+    "TYPE_TRACK",
+    "MAX_TRACK_LIST",
     "TYPE_TAG",
     "TYPE_TEXT",
     "UNIT_STARS",

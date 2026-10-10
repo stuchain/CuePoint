@@ -848,6 +848,27 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await win.evaluate(() => (window as never as Bridge).cuepoint.player.stop());
   });
 
+  test("Open in Library on Similar tracks brings the selected suggestions, under one filter", async () => {
+    const { seed, total } = await win.evaluate(async () => {
+      const page = await (window as never as Bridge).cuepoint.browseLibrary({ limit: 50 });
+      const build = page.tracks.find((track: { title: string }) => track.title === "Build");
+      return { seed: build.id as number, total: page.total as number };
+    });
+    await go(win, "#/library");
+    await go(win, `#/discover/similar/${seed}`);
+    const rows = win.getByRole("table", { name: "Similar tracks" }).locator('[role="row"][data-index]');
+    await expect(rows.first()).toBeVisible({ timeout: 30_000 });
+    await rows.first().click();
+    await use(win, win.getByRole("button", { name: "Open in Library" }), "Open in Library");
+    await expect(win).toHaveURL(/#\/library/, { timeout: 15_000 });
+    const filters = win.getByRole("list", { name: "Active filters" });
+    await expect(filters).toContainText("Similar to “Build” (2 tracks)", { timeout: 30_000 });
+    const libraryRows = libraryTable(win).locator('[role="row"][data-index]');
+    await expect(libraryRows).toHaveCount(2, { timeout: 30_000 });
+    await filters.getByRole("button", { name: /^Remove filter: Similar to/ }).click();
+    await expect(libraryRows).toHaveCount(total, { timeout: 30_000 });
+  });
+
   test("The keys of one or several playlists: the Keys page in the sidebar", async () => {
     await openLibrary(win);
     await use(win, win.getByRole("link", { name: "Keys" }), "the Keys link in the sidebar");

@@ -127,7 +127,12 @@ class TestEveryFieldKindHasAControl:
         # or a label is typed or picked from the facet as text, and the engine
         # folds it to its key, so what was typed is exactly what it wants.
         branching = filter_bar + filter_text
+        # `track` is a list of tracks another page hands the Library; no field
+        # of it is offered, so the bar needs no control for it.
+        offered = {spec.type for spec in FIELDS if spec.offered}
         for kind in FIELD_TYPES:
+            if kind not in offered:
+                continue
             if kind in ("text", "date", "name"):
                 continue
             assert f'"{kind}"' in branching, (

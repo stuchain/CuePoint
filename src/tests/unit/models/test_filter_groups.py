@@ -26,6 +26,7 @@ from cuepoint.models.filter_rule import (
 #: The ids as they stood before PAGES-05B, plus "in_playlist" (FLW-7). A saved
 #: Smart Collection names fields by these, so this list only ever grows.
 FIELD_IDS = (
+    "track",
     "title",
     "artist",
     "remixer",
@@ -82,7 +83,8 @@ def test_the_field_ids_are_unchanged():
 
 def test_every_field_has_a_group_and_it_is_sent():
     sent = describe_fields()
-    assert len(sent) == len(FIELDS)
+    assert len(sent) == len([spec for spec in FIELDS if spec.offered])
+    assert "track" not in {entry["name"] for entry in sent}
     for entry in sent:
         assert entry["group"] in FIELD_GROUPS, entry["name"]
 

@@ -1003,3 +1003,21 @@ class TestItIsStillANode:
             db.connect().execute("SELECT count(*) AS n FROM tracks").fetchone()["n"]
             == TRACK_COUNT
         )
+
+
+class TestATrackListIsNotASmartCollection:
+    def test_saving_one_is_refused_and_nothing_is_stored(self, db, service, ids):
+        rules = RuleSet(rules=(FilterRule("track", "any_of", ids[:2]),))
+        with pytest.raises(FilterRuleError, match="Collection instead"):
+            service.create_smart("Handful", rules)
+        count = db.connect().execute("SELECT count(*) FROM collections").fetchone()[0]
+        assert count == 0
+
+    def test_updating_to_one_is_refused_and_the_old_rules_stay(
+        self, db, service, smart, ids
+    ):
+        before = stored(db, smart.id, "rules_json")
+        rules = RuleSet(rules=(FilterRule("track", "any_of", ids[:2]),))
+        with pytest.raises(FilterRuleError, match="Collection instead"):
+            service.update_rules(smart.id, rules)
+        assert stored(db, smart.id, "rules_json") == before

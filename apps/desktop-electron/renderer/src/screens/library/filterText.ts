@@ -191,6 +191,12 @@ export interface ValueNames {
    */
   beatport?: ReadonlyMap<string, string>;
   /**
+   * What the page that opened the Library calls a whole rule, keyed by
+   * `ruleNameKey`: "Similar to “Build” (3 tracks)" for a list of track ids no
+   * one would read.
+   */
+  rules?: ReadonlyMap<string, string>;
+  /**
    * What a source "In playlist" names is called (FLW-7), keyed by `sourceKey`:
    * a playlist, a Collection or a Set, by kind and id.
    */
@@ -237,6 +243,11 @@ export function toggleSource(draft: DraftRule, token: string): DraftRule {
     ? chosen.filter((entry) => entry !== token)
     : [...chosen, token];
   return { ...draft, value: next.join(",") };
+}
+
+/** The key a whole rule's name is kept under in `ValueNames.rules`. */
+export function ruleNameKey(rule: FilterRule): string {
+  return `${rule.field}:${JSON.stringify(rule.value ?? null)}`;
 }
 
 /** The key a Beatport id rule's name is kept under in `ValueNames.beatport`. */
@@ -301,6 +312,8 @@ export function describeRule(
   rule: FilterRule,
   names?: ValueNames,
 ): string {
+  const named = names?.rules?.get(ruleNameKey(rule));
+  if (named) return named;
   const field = fieldOf(vocabulary, rule.field);
   const label = field?.label ?? rule.field;
   const operator = operatorLabel(rule.operator);

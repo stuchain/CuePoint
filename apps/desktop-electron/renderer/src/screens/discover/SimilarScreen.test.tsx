@@ -23,6 +23,7 @@ import { ToastProvider } from "../../components";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
+import { libraryOpening } from "../library/libraryLink";
 import { toQueueItem } from "../library/useLibraryPlayback";
 import { SimilarScreen, SIMILAR_LIMIT } from "./SimilarScreen";
 import { SIMILAR_ROUTE, entityPath, similarPath } from "./discoverLinks";
@@ -77,7 +78,12 @@ function mock(name: string): Fn {
 }
 
 function Where() {
-  return <p data-testid="where">{useLocation().pathname}</p>;
+  const location = useLocation();
+  return (
+    <p data-testid="where" data-state={JSON.stringify(location.state ?? null)}>
+      {location.pathname}
+    </p>
+  );
 }
 
 function renderAt(path: string) {
@@ -421,10 +427,39 @@ describe("the Inspector on Similar tracks", () => {
     }
   });
 
-  it("opens the Library on the seed, the way the library half opens it", async () => {
+  function openedWith() {
+    const state = JSON.parse(screen.getByTestId("where").dataset.state ?? "null");
+    return libraryOpening({ state, key: "k" });
+  }
+
+  it("opens the Library on the seed and every suggestion when none is selected", async () => {
     renderAt(similarPath(1));
     await listed();
-    fireEvent.click(screen.getByRole("button", { name: "Open in Library" }));
+    const button = screen.getByRole("button", { name: "Open in Library" });
+    expect(button).toHaveAttribute("title", "Opens these 6 tracks in the Library");
+    fireEvent.click(button);
     expect(where()).toBe("/library");
+    const ids = SIMILAR.value!.suggestions.map((entry) => entry.track_id);
+    expect(openedWith()?.rules.rules).toEqual([
+      { field: "track", operator: "any_of", value: [SEED.track.id, ...ids] },
+    ]);
+    expect(Object.values(openedWith()?.names ?? {})).toEqual([
+      `Similar to “${SEED.track.title}” (6 tracks)`,
+    ]);
+  });
+
+  it("opens the Library on the seed and only the selected suggestions", async () => {
+    renderAt(similarPath(1));
+    await listed();
+    fireEvent.click(within(table()).getByText(TITLES[0]));
+    fireEvent.click(within(table()).getByText(TITLES[2]), { ctrlKey: true });
+    const button = screen.getByRole("button", { name: "Open in Library" });
+    expect(button).toHaveAttribute(
+      "title",
+      `Opens the 2 selected tracks and “${SEED.track.title}” in the Library`,
+    );
+    fireEvent.click(button);
+    const ids = SIMILAR.value!.suggestions.map((entry) => entry.track_id);
+    expect(openedWith()?.rules.rules[0].value).toEqual([SEED.track.id, ids[0], ids[2]]);
   });
 });

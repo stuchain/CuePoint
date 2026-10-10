@@ -5,6 +5,7 @@
  * DISCOVER-08's rule scores closest to it, best first, each with the reasons
  * it scored. Reached from a track's operations list, in the Library, on a
  * page, or from a suggestion here, which becomes the next seed.
+ * Open in Library brings the seed and its suggestions (the selected ones, if any).
  *
  * **Suggestions are library rows**, read through the track-detail path in the
  * engine's order (fact 5), so they play and queue as the Library's do: a
@@ -35,12 +36,11 @@ import {
 import { CreditLinks } from "../library/CreditLinks";
 import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
 import { pluralize } from "../library/libraryFormat";
-import { libraryTrackState } from "../library/libraryLink";
 import { playItems, type TrackActionGroupId } from "../library/trackActions";
 import { TrackDetailPanel } from "../library/TrackDetailPanel";
 import { toQueueItem } from "../library/useLibraryPlayback";
 import { useTrackDetail } from "../library/useTrackDetail";
-import { entityPath, similarPath, trackIdFromRoute } from "./discoverLinks";
+import { entityPath, similarLibraryState, similarPath, trackIdFromRoute } from "./discoverLinks";
 import { refusalText } from "./discoverFormat";
 import { NO_ENGINE } from "./discoverTools";
 import { consideredLine, seedFacts, SIMILAR_INDEX_BUILDING } from "./entityFormat";
@@ -156,6 +156,19 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
     getRow: source.getRow,
     loadedRows,
   });
+  // Open in Library carries the seed and the suggestions: the selected ones if
+  // any are selected, else every one shown. It cannot without the seed's id.
+  const openInLibrary = useMemo(
+    () =>
+      shown && shown.seed.track.id != null
+        ? similarLibraryState(
+            { id: shown.seed.track.id, title: shown.seed.track.title },
+            rows.map((row) => row.id),
+            selection.rows.map((row) => row.id),
+          )
+        : null,
+    [rows, selection.rows, shown],
+  );
   const columns = useColumnLayout<SimilarRow>(SIMILAR_TABLE_LAYOUT_KEY, SIMILAR_COLUMNS);
 
   const openEntity = useCallback(
@@ -338,7 +351,8 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
           <Button
             variant="secondary"
             disabled={seed.track.id == null}
-            onClick={() => seed.track.id != null && navigate("/library", { state: libraryTrackState(seed.track.id) })}
+            title={openInLibrary?.title}
+            onClick={() => openInLibrary && navigate("/library", { state: openInLibrary.state })}
           >
             Open in Library
           </Button>

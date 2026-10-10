@@ -82,7 +82,8 @@ Nothing here changes your music. The Library page reads.
   and ratings, Rekordbox only, Beatport match, Files, Where it is). Filters
   stack, and the bar says how many tracks are left after them. The row scrolls
   sideways when there are many chips and says "+N more"; **Clear all filters**
-  removes them all.
+  removes them all. A filter another page opened, such as an artist (**Beatport
+  artist is …**) or **Similar to “…”**, is a chip like any other.
 - **In playlist** (under *Where it is*) keeps tracks that are in any of the
   playlists, Collections or Sets you pick. A Smart Collection cannot be picked:
   it is a rule, not a list, so CuePoint says so. Saving a Smart Collection while

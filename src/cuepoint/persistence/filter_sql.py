@@ -76,6 +76,7 @@ from cuepoint.models.filter_rule import (
     TYPE_NAME,
     TYPE_NUMBER,
     TYPE_SOURCE,
+    TYPE_TRACK,
     SOURCE_PLAYLIST,
     FieldSpec,
     LinkTable,
@@ -463,6 +464,10 @@ def compile_rule(rule: FilterRule) -> Tuple[str, Tuple[Any, ...]]:
         return _compile_beatport(spec, operator, value)
     if spec.type == TYPE_SOURCE:
         return _compile_source(spec, operator, value)
+    if spec.type == TYPE_TRACK:
+        # A list of ids another page handed over; an id with no row matches
+        # nothing rather than failing.
+        return f"tracks.id IN ({', '.join('?' for _ in value)})", tuple(value)
     if spec.is_membership:
         return _compile_membership(spec, operator, value)
     if spec.is_multivalued:

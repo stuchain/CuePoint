@@ -488,3 +488,32 @@ class TestCompiledShape:
         # a bug waiting for a name to collide.
         sql, _ = compile_rule_set(RuleSet(rules=(rule("genre", "is", "House"),)))
         assert "tracks.genre" in sql
+
+
+class TestTrackList:
+    """A list of tracks handed over by another page (the Similar tracks page)."""
+
+    def _ids(self, db, *rekordbox_ids):
+        marks = ",".join("?" for _ in rekordbox_ids)
+        rows = (
+            db.connect()
+            .execute(
+                f"SELECT id FROM tracks WHERE rekordbox_track_id IN ({marks}) ORDER BY id",
+                rekordbox_ids,
+            )
+            .fetchall()
+        )
+        return [int(row["id"]) for row in rows]
+
+    def test_it_compiles_to_an_id_list(self):
+        sql, params = compile_rule(rule("track", "any_of", [3, 5]).validated())
+        assert "tracks.id IN (?, ?)" in sql
+        assert tuple(params) == (3, 5)
+
+    def test_browse_returns_exactly_those_tracks(self, seeded, db):
+        wanted = self._ids(db, "1", "3")
+        assert matching(seeded, rule("track", "any_of", wanted)) == ["1", "3"]
+
+    def test_a_missing_id_matches_nothing(self, seeded, db):
+        wanted = self._ids(db, "2")
+        assert matching(seeded, rule("track", "any_of", wanted + [999999])) == ["2"]

@@ -13,6 +13,7 @@ import {
   libraryRulesState,
   libraryImportState,
   libraryTrackState,
+  libraryTracksState,
   importOpening,
   refreshOpening,
   rulesFromLocationState,
@@ -122,5 +123,17 @@ describe("an import asked for by the File menu (FLW-20)", () => {
     expect(refreshOpening({ state: libraryImportState(), key: "k" })).toBeNull();
     expect(libraryOpening({ state: libraryImportState(), key: "k" })).toBeNull();
     expect(trackOpening({ state: libraryImportState(), key: "k" })).toBeNull();
+  });
+});
+
+describe("opening the Library on a list of tracks", () => {
+  it("round-trips the rule and the label it is shown under", () => {
+    const label = "Similar to “Build” (2 tracks)";
+    const state = libraryTracksState([7, 3], label);
+    expect(libraryOpening({ state, key: "k" })).toEqual({
+      rules: { match: "all", rules: [{ field: "track", operator: "any_of", value: [7, 3] }] },
+      token: "k",
+      names: { "track:[7,3]": label },
+    });
   });
 });

@@ -14,6 +14,7 @@
  * query: a location can be pushed by any code in the renderer.
  */
 import type { FilterRule, FilterRuleSet } from "../../api/cuepointBridge.types";
+import { ruleNameKey } from "./filterText";
 
 const STATE_KEY = "cuepointLibraryRules";
 const NAMES_KEY = "cuepointLibraryRuleNames";
@@ -33,6 +34,20 @@ export function libraryRulesState(
   return names && Object.keys(names).length > 0
     ? { [STATE_KEY]: rules, [NAMES_KEY]: { ...names } }
     : { [STATE_KEY]: rules };
+}
+
+/**
+ * The location state that opens the Library on exactly these tracks, under one
+ * chip that reads `label` (Similar tracks' Open in Library). The rule is the
+ * engine's `track` list, which no Field list offers and no Smart Collection can
+ * keep.
+ */
+export function libraryTracksState(
+  trackIds: readonly number[],
+  label: string,
+): Record<string, unknown> {
+  const rule: FilterRule = { field: "track", operator: "any_of", value: [...trackIds] };
+  return libraryRulesState({ match: "all", rules: [rule] }, { [ruleNameKey(rule)]: label });
 }
 
 /** The names a location carries for its rules' ids; only text is kept. */

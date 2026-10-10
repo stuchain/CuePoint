@@ -707,3 +707,20 @@ class TestAuthentication:
         with pytest.raises(urllib.error.HTTPError) as exc:
             _get(f"{engine}{path}", token="wrong")
         assert exc.value.code == 401
+
+
+class TestATrackListBrowses:
+    def test_a_track_rule_returns_those_tracks(self, engine, seeded):
+        everything = get_json(engine, "/api/v1/library/search", mode="browse")
+        wanted = [row["id"] for row in everything["tracks"]][:2]
+        filters = json.dumps(
+            {
+                "match": "all",
+                "rules": [{"field": "track", "operator": "any_of", "value": wanted}],
+            }
+        )
+        payload = get_json(
+            engine, "/api/v1/library/search", mode="browse", filters=filters
+        )
+        assert payload["total"] == 2
+        assert sorted(row["id"] for row in payload["tracks"]) == sorted(wanted)

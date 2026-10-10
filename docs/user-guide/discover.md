@@ -315,8 +315,7 @@ Suggestions are your own tracks: double-click one to play the list from there,
 and use the bar under the table (**Play ▸**, **Explore ▸**, always shown and grayed
 out until you select some) or the right-click menu, which holds the same two groups,
 to **Play next** or **Add to queue**. **Similar tracks** under Explore makes a suggestion
-the next track to compare with. **Open in Library** shows the track you are comparing with
-in the Library, where organizing happens. The
+the next track to compare with. **Open in Library** opens the Library on the track you are comparing with and its suggestions, or on the suggestions you selected and that track, so you can tag, rate or collect them there. The filter reads **Similar to “<track>”**; remove it with its **×** or **Clear all filters**. The Library shows them in its own sort order. A list of tracks cannot be saved as a Smart Collection: add them to a Collection instead. The
 Track details shows the track you are comparing with until you select a suggestion.
 
 ## Where inCrate went
