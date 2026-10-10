@@ -163,12 +163,18 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
 
       // Cancel closes it. Focus goes back to the button that opened it, so that button is on screen,
       // behind the backdrop that is still fading. The very next click is on it.
-      await dialog.getByRole("button", { name: "Cancel" }).click();
       const box = (await reset.boundingBox())!;
       const x = box.x + box.width / 2;
       const y = box.y + box.height / 2;
+      // Cancel is pressed and the point read in the same task: the exit lasts a few frames, and a
+      // slow machine's round trips between two separate steps can outlast it (ARM Mac CI).
       const hit = await window.evaluate(
         ([px, py]) => {
+          const cancel = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(
+            (button) => button.textContent?.trim() === "Cancel",
+          );
+          if (!cancel) throw new Error("no Cancel button in the dialog");
+          cancel.click();
           const element = document.elementFromPoint(px!, py!);
           return {
             leaving: document.querySelector(".cp-modal__backdrop[data-leaving]") !== null,
