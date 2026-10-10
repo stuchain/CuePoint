@@ -137,9 +137,12 @@ describe("renderReleaseNotes", () => {
     ["open emphasis", "*a ".repeat(6_000)],
     ["open links", "[a](".repeat(5_000)],
   ])("renders %s quickly", (_what, text) => {
+    // Time the parse alone: that is where hostile input could backtrack. Mounting the capped
+    // ~500 elements in jsdom took 50-115 ms by itself and pushed a busy CI runner past the limit.
     const started = performance.now();
-    show(text);
+    const notes = renderReleaseNotes(text);
     expect(performance.now() - started).toBeLessThan(200);
+    expect(() => render(<div>{notes}</div>)).not.toThrow();
   });
 
   it("copes with deep emphasis and odd input without throwing", () => {
