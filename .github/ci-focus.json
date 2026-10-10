@@ -1,0 +1,1 @@
+{"runner": "macos-latest", "pytest": "", "e2e": "e2e/waveformSettings.spec.ts e2e/waveformAnalysis.spec.ts", "repeat": 6}
