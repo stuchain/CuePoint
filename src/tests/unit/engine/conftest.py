@@ -48,3 +48,28 @@ def _job_threads_finish_with_their_test():
             break
         for thread in started:
             thread.join(max(0.0, deadline - time.monotonic()))
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Name what the engine was doing when a request to it timed out.
+
+    A request that timed out was waiting on a handler thread that is, at this
+    moment, still stuck; its stack, and every other thread's, says on what.
+    Rare (Windows CI, one test in a few thousand), so it is caught as it fails.
+    """
+    outcome = yield
+    if call.excinfo is None or not call.excinfo.errisinstance(TimeoutError):
+        return
+    import sys
+    import traceback
+
+    names = {thread.ident: thread.name for thread in threading.enumerate()}
+    stacks = [
+        f"--- {names.get(ident, '?')} ({ident})\n"
+        + "".join(traceback.format_stack(frame))
+        for ident, frame in sys._current_frames().items()
+    ]
+    outcome.get_result().sections.append(
+        ("threads when the request timed out", "\n".join(stacks))
+    )
