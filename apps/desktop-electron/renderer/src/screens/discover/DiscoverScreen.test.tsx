@@ -758,12 +758,13 @@ describe("Results", () => {
     // The range keeps growing: the keyboard's row moves on while the range's anchor holds still.
     await user.keyboard("{Shift>}{ArrowDown}{/Shift}");
     expect(bar).toHaveTextContent("3 tracks selected");
-    // Enter on the active (anchor) row selects just it.
+    // Enter selects just the keyboard's row (the fourth), not the range's anchor.
     await user.keyboard("{Enter}");
     expect(bar).toHaveTextContent("1 track selected");
-    // Ctrl+Space acts on the keyboard's row, once: the first press adds it, the second takes it out.
+    expect(rowsOf("Tracks this search found")[3]).toHaveAttribute("aria-selected", "true");
+    // Ctrl+Space takes it out and puts it back, once each.
     await user.keyboard("{Control>} {/Control}");
-    expect(bar).toHaveTextContent("2 tracks selected");
+    expect(bar).not.toHaveTextContent("selected");
     await user.keyboard("{Control>} {/Control}");
     expect(bar).toHaveTextContent("1 track selected");
     // Ctrl+A selects every track the table has loaded.

@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Track tables work from the keyboard.** Up and Down select the previous or next track, Shift with them extends the selection, Home, End, Page Up and Page Down jump, Ctrl+Space (Cmd+Space) adds or removes a track, Ctrl+A selects all where the table has a Select all, and Enter plays or opens the track as a double-click does. The table scrolls to keep the track in view, and mouse selection is unchanged. This works in the Library, Discover, Keys, Prepare and Clean's missing files; the review queue keeps its own Up and Down. In Discover's tables, Shift+Down now keeps extending past the second row.
+- **Track tables work from the keyboard.** Up and Down select the previous or next track, Shift with them extends the selection, and Home, End, Page Up and Page Down jump. Ctrl+Space adds or removes the focused track (on a Mac, Cmd-click does: Cmd+Space is Spotlight), and Ctrl+A selects all where the table has a Select all. Enter does what a double-click does in the Library, Keys, Similar, Discover's Library half, and Prepare's source list (play), selects the focused row alone in Discover's Beatport tables, and edits the time in Prepare's Set table. The table scrolls to keep the track in view. Mouse selection is unchanged, except that Enter and Shift+F10 now act on the last row you clicked, including a Shift-click. Clean's review queue keeps its own keys. In Discover's tables, Shift+Down now keeps extending past the second row.
 
 ### Fixed
 - **The app's pixel font is bundled.** CuePoint no longer asks Google Fonts for Pixelify Sans each time it starts, so it looks the same offline and sends nothing to Google (DEC-232).

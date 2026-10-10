@@ -222,14 +222,14 @@ To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**
 | **Up** / **Down** | In any track table: select the previous or next track |
 | **Shift+Up** / **Shift+Down** | Add the next track up or down to the selection |
 | **Home** / **End**, **Page Up** / **Page Down** | Jump to the first or last track, or a page at a time |
-| **Ctrl+Space** | Add or remove the focused track |
+| **Ctrl+Space** | Add or remove the focused track (on a Mac, **Cmd+click** does this; Cmd+Space is Spotlight) |
 | **Esc** | Let go of a selection, or close what is open |
 | **Ctrl+B** | Collapse or expand the sidebar |
 | **Ctrl+I** | Show or hide Track details |
 | **Ctrl+Shift+A** | Open Activity |
 | **F1** or **Ctrl+?** | All keyboard shortcuts |
 
-In Clean's review queue, **Up** and **Down** move through the queue instead.
+Clean's review queue keeps its own keys, listed below, and the table's are off there.
 
 On Prepare, **Left** / **Right** resize the source panel once its divider has focus,
 and **Enter** saves an entry's In or Out time.

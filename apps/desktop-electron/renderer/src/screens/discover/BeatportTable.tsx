@@ -12,7 +12,7 @@
  * (DEC-097), and a Beatport row has none; a double-click that did something
  * else would teach a gesture the Library means differently.
  */
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
@@ -73,16 +73,23 @@ export function BeatportTable<Row>({
   /**
    * The keyboard's way through the rows: the table is the one tab stop. The
    * table itself moves the selection (the arrows, Home/End, Page Up/Down, Ctrl+Space,
-   * Ctrl+A); what is left here is Enter or plain Space selecting the active row alone.
+   * Ctrl+A); what is left here is Enter or plain Space selecting the keyboard's row alone.
    * A key pressed on a name link inside a row is the link's, not the table's.
    */
+  // The last row a click or key reported: a Shift range keeps the anchor where it began, but
+  // Enter and Space belong to the row the keyboard is on. A new anchor means a new start.
+  const reported = useRef<number | null>(null);
+  useEffect(() => {
+    reported.current = null;
+  }, [selection.anchor]);
+
   const onRowKeys = (event: React.KeyboardEvent<HTMLDivElement>) => {
     // The table answers a key it owns (the arrows, Ctrl+Space) and says so.
     if (event.defaultPrevented) return;
     if ((event.target as HTMLElement).getAttribute("role") !== "table") return;
     const total = source.total;
     if (total === 0) return;
-    const active = selection.anchor;
+    const active = selection.anchor === null ? null : (reported.current ?? selection.anchor);
     if ((event.key !== "Enter" && event.key !== " ") || active === null) return;
     if (event.ctrlKey || event.metaKey) return;
     const row = source.getRow(active);
@@ -110,14 +117,16 @@ export function BeatportTable<Row>({
           onSortChange={onSortChange}
           selectedKeys={selection.keys}
           getRowKey={(row) => idOf(row)}
-          onSelect={selection.onRowClick}
+          onSelect={(row, index, modifiers) => {
+            reported.current = index;
+            selection.onRowClick(row, index, modifiers);
+          }}
           onSelectAll={selection.selectAll}
           onRowContextMenu={(row, index, anchor) => {
             selection.onRowMenu(row, index);
             setMenu(anchor);
           }}
           activeIndex={selection.anchor}
-          scrollToIndex={selection.anchor}
           emptyState={emptyState}
           resetKey={resetKey}
           ariaLabel={label}

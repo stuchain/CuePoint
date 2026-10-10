@@ -8,6 +8,7 @@
  * page is more than one row.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { ScaleProvider } from "../../tokens/ScaleContext";
@@ -248,6 +249,27 @@ describe("the cursor", () => {
     expect(lastCall(onSelect).index).toBe(11);
   });
 
+  it("stays where a key put it when the screen's active row jumps as a result", () => {
+    // Prepare's active row snaps to a chapter heading or back to the anchor after a key.
+    const onSelect = vi.fn();
+    function Screen() {
+      const [active, setActive] = useState<number | null>(1);
+      return tree({
+        activeIndex: active,
+        onSelect: (...args) => {
+          onSelect(...args);
+          setActive(0);
+        },
+      });
+    }
+    render(<Screen />);
+    const table = screen.getByRole("table", { name: "Rows" });
+    table.focus();
+    fireEvent.keyDown(table, { key: "ArrowDown", shiftKey: true });
+    fireEvent.keyDown(table, { key: "ArrowDown", shiftKey: true });
+    expect(lastCall(onSelect).index).toBe(3);
+  });
+
   it("starts again from the top when the rows mean something else", () => {
     const { table, onSelect, again } = draw();
     fireEvent.keyDown(table, { key: "End" });
@@ -287,6 +309,15 @@ describe("a row that has not arrived", () => {
 
     again({ source: inMemorySource(rows(40)) });
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("is dropped when the active row goes away, as Escape clears the selection", () => {
+    const onSelect = vi.fn();
+    const { table, again } = draw({ source: pendingSource<Row>(40), onSelect, activeIndex: 0 });
+    fireEvent.keyDown(table, { key: "End" });
+    again({ activeIndex: null });
+    again({ source: inMemorySource(rows(40)), activeIndex: null });
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it("is dropped when another key replaces it", () => {

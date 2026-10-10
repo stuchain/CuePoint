@@ -175,7 +175,7 @@ That means *everything*, not just the rows on screen: select-all over a filtered
 47,000-track view selects 47,000 tracks. **Esc** lets go. **Ctrl+F** puts the
 cursor in the search box.
 
-With the table focused (click it or Tab to it), **Up** and **Down** select the previous or next track and **Shift** with them extends the selection; **Home**, **End**, **Page Up** and **Page Down** jump; **Ctrl+Space** adds or removes the focused track; **Enter** plays it. The list scrolls to keep it in view.
+With the table focused (click it or Tab to it), **Up** and **Down** select the previous or next track and **Shift** with them extends the selection; **Home**, **End**, **Page Up** and **Page Down** jump; **Ctrl+Space** adds or removes the focused track (on a Mac, Cmd+click does); **Enter** plays it. Enter and **Shift+F10** act on the last row you clicked, including a Shift-click. The list scrolls to keep it in view.
 
 A toolbar sits directly above the table: one line when there is room, two at
 the default window size, with the six groups on the first and **Clear

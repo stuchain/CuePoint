@@ -346,11 +346,21 @@ export function TrackTable<Row>({
   // A move onto a row that has not arrived: reported once it has.
   const pending = useRef<{ index: number; modifiers: RowSelectModifiers } | null>(null);
   const followedIndex = useRef(activeIndex);
+  // Set by a key that moved the cursor: the screen's active row may change as a result (Prepare
+  // snaps it to a chapter heading), and that must not drag the cursor back.
+  const movedByKey = useRef(false);
   useEffect(() => {
     if (followedIndex.current === activeIndex) return;
     followedIndex.current = activeIndex;
+    // A selection let go of (Escape) takes a move still waiting for its row with it.
+    if (activeIndex === null) pending.current = null;
+    if (movedByKey.current) return;
     setCursor(activeIndex);
   }, [activeIndex]);
+  // After the render the key caused, the cursor follows the screen again.
+  useEffect(() => {
+    movedByKey.current = false;
+  });
 
   // Back to the top when the rows start answering a different question.
   const previousResetKey = useRef(resetKey);
@@ -510,6 +520,7 @@ export function TrackTable<Row>({
       return;
     }
     const to = command.to;
+    movedByKey.current = true;
     const moved = to !== cursorRow;
     setCursor(to);
     setKeyboardCursor(true);
