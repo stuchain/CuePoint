@@ -469,6 +469,17 @@ pictures follow.
 
 **Complexity**: **M**
 
+**Outcome (2026-10-10)**: `npm run capture:showcase` in `apps/desktop-electron` (its own Playwright config under
+`e2e/capture/`, kept out of the normal suite) opens the real app on a generated library (`e2e/fixtures/showcase/`:
+300 invented tracks, 9 playlists, cues and beat grids, short generated WAVs, a Beatport fixture and seeded matches so
+the Keys page and the wheel light; a test holds every name against a shipped list of real artists, labels and song
+titles) and takes nine pictures at the default window and size, at 2x, into `apps/website/src/assets/app/` with
+`shots.json`. One theme only (DEC-222). The library lives under a neutral path (`/Users/dj` or `/DJ`, or
+`CUEPOINT_SHOWCASE_ROOT`), the capture refuses a path that would show a real user name and removes only what it
+wrote. Shots: window, library, waveforms, keys, prepare, export, clean (review queue), clean-compare, statistics.
+Discover stays a placeholder until the app lays out its runs column at 1280 x 800 (`CUEPOINT_SHOWCASE_DISCOVER=1`
+takes it anyway). Clips were not made. Windows run of the capture not yet tried.
+
 ---
 
 ## SITE-05 — The 3D Runtime: Loading, the Pixel Look, Stills and the Frame Budget
