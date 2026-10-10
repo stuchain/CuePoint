@@ -171,7 +171,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
       // on screen. Separate Playwright steps can outlast the exit on a loaded runner (ARM Mac CI).
       const hit = await window.evaluate(
         ([px, py]) =>
-          new Promise<{ leaving: boolean; behind: boolean }>((resolve, reject) => {
+          new Promise<{ leaving: boolean; behind: boolean; what: string }>((resolve, reject) => {
             const cancel = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(
               (button) => button.textContent?.trim() === "Cancel",
             );
@@ -184,6 +184,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
               return {
                 leaving: document.querySelector(".cp-modal__backdrop[data-leaving]") !== null,
                 behind: element !== null && element.closest(".cp-modal__backdrop") === null,
+                what: element ? `${element.tagName}.${element.className} pe=${getComputedStyle(element).pointerEvents} bd=${[...document.querySelectorAll(".cp-modal__backdrop")].map((b) => (b.hasAttribute("data-leaving") ? "L" : "O") + getComputedStyle(b).pointerEvents).join(",")}` : "null",
               };
             };
             const observer = new MutationObserver(() => {
@@ -199,7 +200,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
         [x, y],
       );
       // The exit is holding a copy, and a pointer over it reaches the page.
-      expect(hit).toEqual({ leaving: true, behind: true });
+      console.log('HIT', JSON.stringify(hit)); expect({ leaving: hit.leaving, behind: hit.behind }).toEqual({ leaving: true, behind: true });
       await window.mouse.click(x, y);
       // The click landed on the button behind: its dialog opens again.
       await expect(window.getByRole("dialog")).toBeVisible({ timeout: 2_000 });
