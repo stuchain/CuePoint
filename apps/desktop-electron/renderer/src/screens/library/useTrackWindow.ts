@@ -133,7 +133,8 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
   const key = queryKey(query);
   // A reload is a new identity for the same question, so everything below —
   // the reset, the first page, and what counts as a stale response — treats it
-  // exactly as it treats a change of sort.
+  // as it treats a change of sort, except that the old total stands until the
+  // new answer lands.
   const [generation, setGeneration] = useState(0);
   const identity = `${generation}\u0000${key}`;
 
@@ -158,6 +159,9 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
   // moment ago and have not been rendered yet.
   const loadedPages = useRef<Set<number>>(new Set());
 
+  // The question the held total answers, to tell a reload from a new question.
+  const totalKey = useRef(key);
+
   // A new question: everything loaded belongs to the old one.
   useEffect(() => {
     queryRef.current = identity;
@@ -166,11 +170,16 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
     loadedPages.current = new Set();
     centre.current = 0;
     setPages(new Map());
-    setTotal(0);
+    // A reload asks the same question again, so the old answer's total stands
+    // until the new one lands. Dropping it to 0 would read an "everything
+    // matching" selection as nothing selected, and switch off every button of
+    // the selection bar, for as long as the reload takes.
+    if (totalKey.current !== key) setTotal(0);
+    totalKey.current = key;
     setLoaded(false);
     setError(null);
     setStatus("loading");
-  }, [identity]);
+  }, [identity, key]);
 
   /**
    * Ask for whatever of `wanted` is not already held, in flight, or known to
