@@ -33,10 +33,18 @@ def _job_threads_finish_with_their_test():
     before = set(threading.enumerate())
     yield
     deadline = time.monotonic() + _JOB_THREAD_PATIENCE_SECONDS
-    started = [
-        thread
-        for thread in threading.enumerate()
-        if thread not in before and _JOB_THREAD.search(thread.name)
-    ]
-    for thread in started:
-        thread.join(max(0.0, deadline - time.monotonic()))
+    # Looked for again after each round of joins: a job starts its follow-ups
+    # as it finishes, so a list taken once missed them, and an import's
+    # artwork scan ran on into the next test (5 tests in the engine suite).
+    while time.monotonic() < deadline:
+        started = [
+            thread
+            for thread in threading.enumerate()
+            if thread not in before
+            and _JOB_THREAD.search(thread.name)
+            and thread.is_alive()
+        ]
+        if not started:
+            break
+        for thread in started:
+            thread.join(max(0.0, deadline - time.monotonic()))
