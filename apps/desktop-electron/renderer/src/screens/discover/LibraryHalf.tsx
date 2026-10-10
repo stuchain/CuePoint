@@ -274,6 +274,10 @@ export function LibraryHalf({
             onActivate();
             selection.onRowClick(row, index, event);
           }}
+          onSelectAll={() => {
+            onActivate();
+            selection.selectAllMatching();
+          }}
           // DEC-012: the row plays, and the whole of this table — the page's
           // rules, not the rows loaded — becomes the queue.
           onRowActivate={(_row, index) => void playback.playRow(index)}

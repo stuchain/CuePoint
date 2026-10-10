@@ -255,6 +255,7 @@ export function MissingFilesView({
           selectedKeys={selectedKeys}
           getRowKey={(entry) => entry.id ?? -1}
           onSelect={selection.onRowClick}
+          onSelectAll={selection.selectAllMatching}
           activeIndex={selection.selection.anchor}
           emptyState={emptyState}
           resetKey={queryKey(query)}

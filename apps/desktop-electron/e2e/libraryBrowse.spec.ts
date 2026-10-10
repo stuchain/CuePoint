@@ -32,6 +32,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { clickRowAt } from "./rowClick";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -261,6 +262,72 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
         .poll(async () => (await visibleTitles(window))[0], { timeout: 30_000 })
         .toBe("Track 35");
       await expect(window.getByText(/\d selected/)).toHaveCount(0);
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("selects tracks from the keyboard and keeps the row in view", async () => {
+    test.setTimeout(240_000);
+    const tracks = Array.from({ length: 300 }, (_, index) => spec(index + 1));
+    const app = await launch(userDataDir, cuepointHome);
+
+    try {
+      const window = await ready(app);
+      await importCollection(window, writeExport(workspace, tracks));
+      await openLibrary(window);
+      await expect(window.getByRole("table", { name: "Library tracks" })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(window.getByTestId("library-track-count")).toContainText("300 tracks");
+
+      const rowAt = (index: number) => window.locator(`.track-table__row[data-index="${index}"]`);
+      // The row's box is fully inside the scroller and below its sticky header.
+      const fullyInView = (index: number) =>
+        rowAt(index).evaluate((element) => {
+          const scroll = element.closest<HTMLElement>(".track-table__scroll")!;
+          const header = scroll.querySelector<HTMLElement>(".track-table__header")!;
+          const view = scroll.getBoundingClientRect();
+          const box = element.getBoundingClientRect();
+          return (
+            box.top >= header.getBoundingClientRect().bottom - 0.5 &&
+            box.bottom <= view.top + scroll.clientTop + scroll.clientHeight + 0.5
+          );
+        });
+      const selectedIndexes = () =>
+        window
+          .locator('.track-table__row[aria-selected="true"]')
+          .evaluateAll((rows) => rows.map((row) => Number(row.getAttribute("data-index"))));
+
+      await expect(rowAt(0)).toBeVisible({ timeout: 30_000 });
+      await clickRowAt(window, rowAt(0));
+      await expect(rowAt(0)).toHaveAttribute("aria-selected", "true");
+
+      // End: the last row, far past what was loaded, is selected and shown whole.
+      await window.keyboard.press("End");
+      await expect(rowAt(299)).toHaveAttribute("aria-selected", "true", { timeout: 30_000 });
+      await expect.poll(() => fullyInView(299), { timeout: 10_000 }).toBe(true);
+
+      // Home: back to the first.
+      await window.keyboard.press("Home");
+      await expect(rowAt(0)).toHaveAttribute("aria-selected", "true", { timeout: 30_000 });
+      await expect.poll(() => fullyInView(0), { timeout: 10_000 }).toBe(true);
+
+      // Page Down: a later row, selected alone and in view.
+      await window.keyboard.press("PageDown");
+      await expect
+        .poll(async () => (await selectedIndexes()).length === 1 && (await selectedIndexes())[0]! > 1, {
+          timeout: 10_000,
+        })
+        .toBe(true);
+      const paged = (await selectedIndexes())[0]!;
+      await expect.poll(() => fullyInView(paged), { timeout: 10_000 }).toBe(true);
+
+      // Shift+Down extends from there by one.
+      await window.keyboard.press("Home");
+      await expect(rowAt(0)).toHaveAttribute("aria-selected", "true", { timeout: 30_000 });
+      await window.keyboard.press("Shift+ArrowDown");
+      await expect(window.getByText(/2 selected/)).toBeVisible({ timeout: 10_000 });
     } finally {
       await app.close();
     }

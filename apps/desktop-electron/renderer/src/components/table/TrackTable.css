@@ -178,6 +178,14 @@
   z-index: 1;
 }
 
+/* The keyboard's row, drawn only after a key moved it. Dashed and inset so it reads apart from
+   the solid selection ring on a row that is both. */
+.track-table__row--cursor {
+  outline: var(--focus-ring-width) dashed var(--accent-info);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+  z-index: 1;
+}
+
 /* A row that has not arrived. Same height as any other, by construction. */
 .track-table__row--placeholder {
   cursor: progress;

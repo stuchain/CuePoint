@@ -707,6 +707,30 @@ describe("the review queue", () => {
     expect(bridge.decideMatch).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps Up and Down for the queue when the review table itself has focus", async () => {
+    renderClean();
+    await screen.findByText("Track 1");
+    const grid = screen.getByRole("table", { name: "Review queue" });
+    grid.focus();
+
+    // The table does not claim the key: by the time it reaches the document (after the table's
+    // handler, before the queue's window listener) nothing has prevented it.
+    let claimed: boolean | null = null;
+    const watch = (event: KeyboardEvent) => {
+      claimed = event.defaultPrevented;
+    };
+    document.addEventListener("keydown", watch);
+    try {
+      act(() => {
+        fireEvent.keyDown(grid, { key: "ArrowDown" });
+      });
+    } finally {
+      document.removeEventListener("keydown", watch);
+    }
+    expect(claimed).toBe(false);
+    await waitFor(() => expect(bridge.getTrackMatches).toHaveBeenCalledWith({ trackId: 1 }));
+  });
+
   it("keeps the reviewer's choice when the candidates are read again (CLEAN-14)", async () => {
     // A match ending reads the track's candidates again. The choice made with
     // Right must survive that, or A accepts a candidate nobody chose.

@@ -158,6 +158,7 @@ export function SourceTable<Row extends LibraryTrackRow>({
           selectedKeys={selection.keys}
           getRowKey={idOf}
           onSelect={selection.onRowClick}
+          onSelectAll={selection.selectAll}
           onRowActivate={(_row, index) => onPlayFrom(index)}
           onRowContextMenu={(row, index, anchor) => void openMenu(row, index, anchor.x, anchor.y)}
           activeIndex={selection.anchor}

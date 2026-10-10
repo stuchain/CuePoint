@@ -46,6 +46,7 @@ import {
   type TrackColumnDef,
 } from "./trackTableLayout";
 import type { TrackTableSource } from "./trackTableSource";
+import { pageSizeFor, revealOffset, rowKeyCommand, type RowSelectModifiers } from "./trackTableKeys";
 import "./TrackTable.css";
 
 type SortDirection = "asc" | "desc";
@@ -83,7 +84,24 @@ export interface TrackTableProps<Row> {
 
   /** Selected rows, by the key `getRowKey` returns (DEC-045). */
   selectedKeys?: ReadonlySet<string | number>;
-  onSelect?: (row: Row, index: number, event: React.MouseEvent) => void;
+  /**
+   * A row was picked, by a click or by the keyboard (Up/Down, Home/End, Page
+   * Up/Down, Ctrl+Space). Keys report the click the same move would have been,
+   * so only the three modifiers are promised; a MouseEvent still fits.
+   */
+  onSelect?: (row: Row, index: number, modifiers: RowSelectModifiers) => void;
+
+  /**
+   * Ctrl+A (Cmd+A on a Mac) with the table focused. Absent, the key is left to
+   * the page, which is what a table whose screen answers it itself wants.
+   */
+  onSelectAll?: () => void;
+
+  /**
+   * Whether Up, Down, Home, End, Page Up and Page Down move the selection.
+   * False for a table whose screen owns those keys (Clean's review queue).
+   */
+  keyboardNavigation?: boolean;
 
   /**
    * Double-click, or Enter on the active row.
@@ -117,8 +135,8 @@ export interface TrackTableProps<Row> {
   /**
    * The row the keyboard acts on: the last one clicked (LIBUI-09's anchor).
    *
-   * Only Shift+F10 and the menu key need it. Arrow-key row navigation is not
-   * this table's yet, so there is no roving focus to read instead.
+   * Where the keyboard starts: the table keeps its own cursor from here, so
+   * a Shift range that leaves this row where it was still walks on.
    */
   activeIndex?: number | null;
 
@@ -220,6 +238,8 @@ export function TrackTable<Row>({
   onColumnMove,
   selectedKeys,
   onSelect,
+  onSelectAll,
+  keyboardNavigation = true,
   onRowActivate,
   onRowContextMenu,
   onRowMove,
@@ -318,11 +338,28 @@ export function TrackTable<Row>({
     useFlushSync: false,
   });
 
+  // The keyboard's row. Separate from the screen's active row because a Shift range keeps that
+  // one where it started, and it is drawn only once a key has moved it, so a mouse user never
+  // sees a second highlight.
+  const [cursor, setCursor] = useState<number | null>(activeIndex);
+  const [keyboardCursor, setKeyboardCursor] = useState(false);
+  // A move onto a row that has not arrived: reported once it has.
+  const pending = useRef<{ index: number; modifiers: RowSelectModifiers } | null>(null);
+  const followedIndex = useRef(activeIndex);
+  useEffect(() => {
+    if (followedIndex.current === activeIndex) return;
+    followedIndex.current = activeIndex;
+    setCursor(activeIndex);
+  }, [activeIndex]);
+
   // Back to the top when the rows start answering a different question.
   const previousResetKey = useRef(resetKey);
   useEffect(() => {
     if (previousResetKey.current === resetKey) return;
     previousResetKey.current = resetKey;
+    setCursor(null);
+    setKeyboardCursor(false);
+    pending.current = null;
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
     virtualizer.scrollToOffset(0);
   }, [resetKey, virtualizer]);
@@ -333,6 +370,18 @@ export function TrackTable<Row>({
     // through a visible page does not jolt the rows under the reader.
     virtualizer.scrollToIndex(scrollToIndex, { align: "auto" });
   }, [scrollToIndex, source.total, virtualizer]);
+
+  // Clamped on the way out rather than stored, so a source that shrinks cannot leave it past the end.
+  const cursorRow = cursor == null || source.total === 0 ? null : Math.min(cursor, source.total - 1);
+
+  useEffect(() => {
+    const wanted = pending.current;
+    if (!wanted) return;
+    const row = source.getRow(wanted.index);
+    if (!row) return;
+    pending.current = null;
+    onSelect?.(row, wanted.index, wanted.modifiers);
+  }, [source, onSelect]);
 
   const virtualRows = virtualizer.getVirtualItems();
   const firstIndex = virtualRows[0]?.index ?? 0;
@@ -389,13 +438,15 @@ export function TrackTable<Row>({
    * the menu is hung on its top-left corner.
    */
   const onTableKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    // The row the keyboard acts on: where the arrows left it, else the last click.
+    const current = cursorRow ?? activeIndex;
     // Enter is the keyboard's double-click: whatever activation means to the
     // caller, it must not be reachable only with a mouse.
-    if (event.key === "Enter" && onRowActivate && activeIndex != null) {
-      const row = source.getRow(activeIndex);
+    if (event.key === "Enter" && onRowActivate && current != null) {
+      const row = source.getRow(current);
       if (!row) return;
       event.preventDefault();
-      onRowActivate(row, activeIndex);
+      onRowActivate(row, current);
       return;
     }
     if (
@@ -409,18 +460,66 @@ export function TrackTable<Row>({
       return;
     }
     const wanted = event.key === "ContextMenu" || (event.shiftKey && event.key === "F10");
-    if (!wanted || !onRowContextMenu || activeIndex == null) return;
-    const row = source.getRow(activeIndex);
+    if (!wanted) {
+      onRowSelectKey(event);
+      return;
+    }
+    if (!onRowContextMenu || current == null) return;
+    const row = source.getRow(current);
     if (!row) return;
     event.preventDefault();
     const element = scrollRef.current?.querySelector<HTMLElement>(
-      `[data-index="${activeIndex}"]`,
+      `[data-index="${current}"]`,
     );
     const rect = element?.getBoundingClientRect();
-    onRowContextMenu(row, activeIndex, {
+    onRowContextMenu(row, current, {
       x: rect ? rect.left + 8 : 0,
       y: rect ? rect.top + rect.height : 0,
     });
+  };
+
+  /**
+   * Up, Down, Home, End, Page Up, Page Down, Ctrl+Space and Ctrl+A: select from
+   * the keyboard. Only for a key pressed on the table itself, so a button or
+   * link inside a row keeps its own keys.
+   */
+  const onRowSelectKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const element = scrollRef.current;
+    if (!keyboardNavigation || !element || event.target !== event.currentTarget) return;
+    const header = element.querySelector<HTMLElement>(".track-table__header");
+    const headerHeight = header?.offsetHeight ?? rowHeight;
+    const command = rowKeyCommand(event, {
+      cursor: cursorRow,
+      total: source.total,
+      pageSize: pageSizeFor(element.clientHeight, headerHeight, rowHeight),
+      canSelectAll: Boolean(onSelectAll),
+    });
+    if (!command) return;
+    event.preventDefault();
+    pending.current = null;
+    if (command.kind === "selectAll") {
+      onSelectAll?.();
+      return;
+    }
+    if (command.kind === "toggle") {
+      const row = cursorRow == null ? undefined : source.getRow(cursorRow);
+      if (row && cursorRow != null) {
+        setKeyboardCursor(true);
+        onSelect?.(row, cursorRow, { shiftKey: false, ctrlKey: event.ctrlKey, metaKey: event.metaKey });
+      }
+      return;
+    }
+    const to = command.to;
+    const moved = to !== cursorRow;
+    setCursor(to);
+    setKeyboardCursor(true);
+    const offset = revealOffset(to, rowHeight, headerHeight, element.scrollTop, element.clientHeight);
+    if (offset != null) virtualizer.scrollToOffset(offset);
+    if (!moved) return;
+    const modifiers = { shiftKey: command.extend, ctrlKey: false, metaKey: false };
+    const row = source.getRow(to);
+    if (row) onSelect?.(row, to, modifiers);
+    else pending.current = { index: to, modifiers };
   };
 
   const style = {
@@ -553,7 +652,7 @@ export function TrackTable<Row>({
               return (
                 <div
                   key={key}
-                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${selected ? " track-table__row--selected" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
+                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${selected ? " track-table__row--selected" : ""}${keyboardCursor && cursorRow === item.index ? " track-table__row--cursor" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
                   style={{
                     transform: `translateY(${item.start}px)`,
                     height: `${item.size}px`,
@@ -611,8 +710,16 @@ export function TrackTable<Row>({
                         ? "after"
                         : undefined
                   }
-                  onMouseDown={focusWithoutScroll}
-                  onClick={(event) => row && onSelect?.(row, item.index, event)}
+                  onMouseDown={(event) => {
+                    setKeyboardCursor(false);
+                    focusWithoutScroll(event);
+                  }}
+                  onClick={(event) => {
+                    // The cursor goes where the click did, even when the screen's active row does not move.
+                    setCursor(item.index);
+                    pending.current = null;
+                    if (row) onSelect?.(row, item.index, event);
+                  }}
                   onDoubleClick={() => row && onRowActivate?.(row, item.index)}
                   onContextMenu={(event) => {
                     if (!row || !onRowContextMenu) return;

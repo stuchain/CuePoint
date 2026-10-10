@@ -46,6 +46,13 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Prepare", action: "Drop a typed time", shortcut: "Esc" },
   { context: "Prepare", action: "Move the selected entries", shortcut: "Alt+Up / Alt+Down" },
   { context: "Prepare", action: "Remove the selected entries", shortcut: "Delete" },
+  // Every track table: the table itself, once focused, answers these. Clean's review queue
+  // keeps its own Up and Down.
+  { context: "Tables", action: "Select the previous or next track", shortcut: "Up / Down" },
+  { context: "Tables", action: "Extend the selection", shortcut: "Shift+Up / Shift+Down" },
+  { context: "Tables", action: "First or last track", shortcut: "Home / End" },
+  { context: "Tables", action: "A page up or down", shortcut: "Page Up / Page Down" },
+  { context: "Tables", action: "Add or remove the focused track", shortcut: "Ctrl+Space" },
   // Clean's review queue (CLEAN-12). Bare keys, because reviewing thousands of
   // tracks is a keyboard job; they are not taken while typing in a field or
   // inside a dialog, and none of them is modified, so none collides with a

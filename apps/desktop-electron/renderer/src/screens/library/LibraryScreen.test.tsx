@@ -1426,6 +1426,20 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
     expect(await screen.findByText("1 selected")).toBeInTheDocument();
   });
 
+  it("selects from the keyboard once the table is focused: Down, then Shift+Down", async () => {
+    renderScreen();
+    await tableReady();
+    const grid = screen.getByRole("table", { name: "Library tracks" });
+    grid.focus();
+
+    fireEvent.keyDown(grid, { key: "ArrowDown" });
+    expect(await screen.findByText("1 selected")).toBeInTheDocument();
+    expect(screen.getByText("Track 1").closest('[role="row"]')).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.keyDown(grid, { key: "ArrowDown", shiftKey: true });
+    expect(await screen.findByText("2 selected")).toBeInTheDocument();
+  });
+
   it("selects everything matching on Ctrl+A, and lets go on Escape", async () => {
     renderScreen();
     await tableReady();

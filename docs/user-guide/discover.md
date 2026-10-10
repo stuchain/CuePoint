@@ -105,7 +105,7 @@ An empty wantlist says how to fill it: add tracks from Results or an artist page
 Select tracks with a click, add to the selection with Ctrl-click (Cmd-click on
 macOS), and extend it with Shift-click. The actions are always shown above the
 table; the ones that need tracks are grayed out until you select some, and their
-hint says why. The same actions are on the right-click menu:
+hint says why. From the keyboard, Up and Down move the selection, Shift extends it, and Ctrl+A selects every track the table has loaded. The same actions are on the right-click menu:
 
 | Action | Where | What it does |
 | --- | --- | --- |

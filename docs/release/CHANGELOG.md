@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Track tables work from the keyboard.** Up and Down select the previous or next track, Shift with them extends the selection, Home, End, Page Up and Page Down jump, Ctrl+Space (Cmd+Space) adds or removes a track, Ctrl+A selects all where the table has a Select all, and Enter plays or opens the track as a double-click does. The table scrolls to keep the track in view, and mouse selection is unchanged. This works in the Library, Discover, Keys, Prepare and Clean's missing files; the review queue keeps its own Up and Down. In Discover's tables, Shift+Down now keeps extending past the second row.
+
 ### Fixed
 - **The app's pixel font is bundled.** CuePoint no longer asks Google Fonts for Pixelify Sans each time it starts, so it looks the same offline and sends nothing to Google (DEC-232).
 - **Waveform analysis no longer stalls for 5 minutes on one track.** The bundled player's decoder could hang for good while writing its log, an upstream mpv bug (a lost wake-up in its log writer), and the analysis waited out the 5-minute limit on that track. A decode that stops making progress for 30 seconds is now stopped and the track decoded again; it is marked as timed out only if every try hangs (DEC-229).

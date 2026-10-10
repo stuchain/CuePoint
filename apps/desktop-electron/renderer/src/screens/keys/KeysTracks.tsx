@@ -530,6 +530,7 @@ export function KeysTracks({
           selectedKeys={selectedKeys}
           getRowKey={(row) => row.id ?? -1}
           onSelect={(row, index, event) => selection.onRowClick(row, index, event)}
+          onSelectAll={selection.selectAllMatching}
           // DEC-012: the row plays, and the whole of this table becomes the queue.
           onRowActivate={(_row, index) => void playback.playRow(index)}
           onRowContextMenu={(row, index, anchor) =>

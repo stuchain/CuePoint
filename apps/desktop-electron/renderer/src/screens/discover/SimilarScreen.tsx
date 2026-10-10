@@ -361,6 +361,7 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
             selectedKeys={selection.keys}
             getRowKey={idOf}
             onSelect={selection.onRowClick}
+            onSelectAll={selection.selectAll}
             onRowActivate={(_row, index) => void playFrom(index)}
             onRowContextMenu={(row, index, anchor) => void openMenu(row, index, anchor.x, anchor.y)}
             activeIndex={selection.anchor}

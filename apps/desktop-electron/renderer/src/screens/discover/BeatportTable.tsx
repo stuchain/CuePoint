@@ -71,31 +71,25 @@ export function BeatportTable<Row>({
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 
   /**
-   * The keyboard's way through the rows: the table is the one tab stop and the
-   * last clicked row is the active one. Up and Down move it (Shift extends),
-   * Enter or Space selects it (Ctrl or Cmd with Space adds or removes it). A
-   * key pressed on a name link inside a row is the link's, not the table's.
+   * The keyboard's way through the rows: the table is the one tab stop. The
+   * table itself moves the selection (the arrows, Home/End, Page Up/Down, Ctrl+Space,
+   * Ctrl+A); what is left here is Enter or plain Space selecting the active row alone.
+   * A key pressed on a name link inside a row is the link's, not the table's.
    */
   const onRowKeys = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    // The table answers a key it owns (the arrows, Ctrl+Space) and says so.
+    if (event.defaultPrevented) return;
     if ((event.target as HTMLElement).getAttribute("role") !== "table") return;
     const total = source.total;
     if (total === 0) return;
     const active = selection.anchor;
-    let to: number | null = null;
-    if (event.key === "ArrowDown") to = active === null ? 0 : Math.min(active + 1, total - 1);
-    else if (event.key === "ArrowUp") to = active === null ? 0 : Math.max(active - 1, 0);
-    else if ((event.key === "Enter" || event.key === " ") && active !== null) to = active;
-    if (to === null) return;
-    const row = source.getRow(to);
+    if ((event.key !== "Enter" && event.key !== " ") || active === null) return;
+    if (event.ctrlKey || event.metaKey) return;
+    const row = source.getRow(active);
     event.preventDefault();
     if (!row) return;
-    const arrow = event.key.startsWith("Arrow");
-    // An arrow without Shift moves the selection; Shift extends; Space with
-    // Ctrl toggles the active row; Enter and plain Space select it alone.
-    const modifiers = arrow
-      ? { shiftKey: event.shiftKey, ctrlKey: false, metaKey: false }
-      : { shiftKey: false, ctrlKey: event.ctrlKey && event.key === " ", metaKey: event.metaKey && event.key === " " };
-    selection.onRowClick(row, to, modifiers);
+    // Enter and plain Space select the active row alone.
+    selection.onRowClick(row, active, { shiftKey: false, ctrlKey: false, metaKey: false });
   };
 
   const run = (id: BeatportActionId) => {
@@ -117,6 +111,7 @@ export function BeatportTable<Row>({
           selectedKeys={selection.keys}
           getRowKey={(row) => idOf(row)}
           onSelect={selection.onRowClick}
+          onSelectAll={selection.selectAll}
           onRowContextMenu={(row, index, anchor) => {
             selection.onRowMenu(row, index);
             setMenu(anchor);

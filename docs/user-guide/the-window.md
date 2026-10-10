@@ -205,7 +205,7 @@ matches only the tracks it had not reached. See [Clean](clean.md#matching).
 
 ## Keyboard shortcuts
 
-To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**. The dialog lists them by context (Global, Library, Prepare, Clean, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. On a Mac, use **Cmd** where it says **Ctrl**.
+To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**. The dialog lists them by context (Global, Library, Tables, Prepare, Clean, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. On a Mac, use **Cmd** where it says **Ctrl**.
 
 | Shortcut | Does |
 | --- | --- |
@@ -219,11 +219,17 @@ To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**
 | **Shift+F10** | On the Library table: open the track menu |
 | **F2** / **Delete** | In the Collections list: rename or delete the selected Collection |
 | **Alt+Up** / **Alt+Down** | On the Library table, in a Collection: move the selected track up or down |
+| **Up** / **Down** | In any track table: select the previous or next track |
+| **Shift+Up** / **Shift+Down** | Add the next track up or down to the selection |
+| **Home** / **End**, **Page Up** / **Page Down** | Jump to the first or last track, or a page at a time |
+| **Ctrl+Space** | Add or remove the focused track |
 | **Esc** | Let go of a selection, or close what is open |
 | **Ctrl+B** | Collapse or expand the sidebar |
 | **Ctrl+I** | Show or hide Track details |
 | **Ctrl+Shift+A** | Open Activity |
 | **F1** or **Ctrl+?** | All keyboard shortcuts |
+
+In Clean's review queue, **Up** and **Down** move through the queue instead.
 
 On Prepare, **Left** / **Right** resize the source panel once its divider has focus,
 and **Enter** saves an entry's In or Out time.

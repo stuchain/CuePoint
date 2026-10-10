@@ -10,6 +10,7 @@ import playerShortcutsSource from "../components/player/usePlayerShortcuts.ts?ra
 import queuePanelSource from "../components/player/QueuePanel.tsx?raw";
 import libraryScreenSource from "../screens/library/LibraryScreen.tsx?raw";
 import trackTableSource from "../components/table/TrackTable.tsx?raw";
+import trackTableKeysSource from "../components/table/trackTableKeys.ts?raw";
 import collectionsPaneSource from "../screens/library/CollectionsPane.tsx?raw";
 import prepareLayoutSource from "../screens/prepare/PrepareLayout.tsx?raw";
 import entryZoneSource from "../screens/prepare/SetEntryZone.tsx?raw";
@@ -98,6 +99,27 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     }
     expect(KEYBOARD_SHORTCUTS.find((row) => row.shortcut === "Ctrl+0")?.action).toMatch(/default size/i);
     expect(KEYBOARD_SHORTCUTS.find((row) => row.shortcut === "Ctrl+O")?.action).toMatch(/import/i);
+  });
+
+  it("lists the track tables' keys, and answers them in the table's code", () => {
+    expect(rows("Tables").map((row) => row.shortcut)).toEqual([
+      "Up / Down",
+      "Shift+Up / Shift+Down",
+      "Home / End",
+      "Page Up / Page Down",
+      "Ctrl+Space",
+    ]);
+    expect(rows("Tables").map((row) => row.action)).toEqual([
+      "Select the previous or next track",
+      "Extend the selection",
+      "First or last track",
+      "A page up or down",
+      "Add or remove the focused track",
+    ]);
+    expect(trackTableKeysSource).toMatch(/case "ArrowDown"/);
+    expect(trackTableKeysSource).toMatch(/case "PageUp"/);
+    expect(trackTableKeysSource).toMatch(/case "Home"/);
+    expect(trackTableKeysSource).toMatch(/key === " "/);
   });
 
   it("lists Prepare's", () => {

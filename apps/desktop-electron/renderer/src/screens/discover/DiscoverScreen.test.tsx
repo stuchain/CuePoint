@@ -755,13 +755,20 @@ describe("Results", () => {
     expect(rowsOf("Tracks this search found")[0]).toHaveAttribute("aria-selected", "false");
     await user.keyboard("{Shift>}{ArrowDown}{/Shift}");
     expect(bar).toHaveTextContent("2 tracks selected");
-    // Enter on the active row selects just it; Ctrl+Space takes it out and puts it back.
+    // The range keeps growing: the keyboard's row moves on while the range's anchor holds still.
+    await user.keyboard("{Shift>}{ArrowDown}{/Shift}");
+    expect(bar).toHaveTextContent("3 tracks selected");
+    // Enter on the active (anchor) row selects just it.
     await user.keyboard("{Enter}");
     expect(bar).toHaveTextContent("1 track selected");
+    // Ctrl+Space acts on the keyboard's row, once: the first press adds it, the second takes it out.
     await user.keyboard("{Control>} {/Control}");
-    expect(bar).not.toHaveTextContent("selected");
+    expect(bar).toHaveTextContent("2 tracks selected");
     await user.keyboard("{Control>} {/Control}");
     expect(bar).toHaveTextContent("1 track selected");
+    // Ctrl+A selects every track the table has loaded.
+    await user.keyboard("{Control>}a{/Control}");
+    expect(bar).toHaveTextContent(`${HIDDEN.rows.length} tracks selected`);
   });
 
   it("keeps Enter on a name link its own: it opens the page and selects nothing", async () => {

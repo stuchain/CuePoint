@@ -651,6 +651,8 @@ export function ReviewView({
           onSelect={selection.onRowClick}
           activeIndex={cursor}
           scrollToIndex={scrollTo}
+          // The queue's own Up and Down move through it (reviewKeyboard).
+          keyboardNavigation={false}
           emptyState={emptyState}
           resetKey={queryKey(query)}
           ariaLabel="Review queue"

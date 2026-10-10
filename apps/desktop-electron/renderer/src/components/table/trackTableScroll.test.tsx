@@ -7,7 +7,7 @@
  * scroll the virtualizer asks for is observed on the scroll element.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { TrackTable } from "./TrackTable";
@@ -108,5 +108,44 @@ describe("a row kept in view", () => {
     rerender(table(-1));
     await settle();
     expect(asked()).toBe(before);
+  });
+});
+
+describe("the keyboard's own row", () => {
+  it("is scrolled into view by a key that moves the cursor", async () => {
+    // The virtualizer clamps a scroll to the element's scrollHeight, which jsdom reports as zero.
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", { configurable: true, get: () => 400 });
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", { configurable: true, get: () => 200_000 });
+    try {
+      render(table(null));
+      await screen.findByText("Row 1");
+      await settle();
+      const grid = screen.getByRole("table", { name: "Tracks" });
+      grid.focus();
+      scrolled.mockClear();
+
+      fireEvent.keyDown(grid, { key: "End" });
+
+      await vi.waitFor(() => {
+        const tops = scrolled.mock.calls.map(([options]) => (options as { top?: number }).top ?? 0);
+        expect(Math.max(...tops, 0)).toBeGreaterThan(0);
+      });
+    } finally {
+      Reflect.deleteProperty(HTMLElement.prototype, "clientHeight");
+      Reflect.deleteProperty(HTMLElement.prototype, "scrollHeight");
+    }
+  });
+
+  it("is not scrolled for by a click", async () => {
+    render(table(null));
+    const row = (await screen.findByText("Row 2")).closest('[role="row"]')!;
+    await settle();
+    scrolled.mockClear();
+
+    fireEvent.mouseDown(row, { button: 0 });
+    fireEvent.click(row);
+    await settle();
+
+    expect(scrolled).not.toHaveBeenCalled();
   });
 });
