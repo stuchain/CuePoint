@@ -4,7 +4,8 @@ import { BUG_FIELDS, CONTACT_FIELDS, HONEYPOT, isHoneypotFilled, isTooFast, vali
  * The browser side of the contact and bug-report forms (SITE-12). The forms work without it: they are
  * plain HTML that posts to Web3Forms. With it, a form checks its fields (each message under its field,
  * linked by aria-describedby, the first wrong field focused), sends in the background, and shows the
- * thank-you page. A failed send keeps what was typed and offers the email address.
+ * thank-you page. A failed send keeps what was typed and offers the repository's issues page (DEC-230: the
+ * site prints no contact address).
  *
  * The form-sent event is dispatched on document for analytics-client.ts; it carries only the form's name.
  */
@@ -62,15 +63,14 @@ function init(form: HTMLFormElement) {
   function fail() {
     if (!status) return;
     const noun = form.dataset["noun"] ?? "message";
-    const email = form.dataset["email"] ?? "";
+    const issues = form.dataset["issues"] ?? "";
     status.hidden = false;
     status.replaceChildren();
-    status.append(
-      `Sorry, we could not send your ${noun}. What you typed is still here, so you can try again. Or write to `,
-    );
+    status.append(`Sorry, we could not send your ${noun}. What you typed is still here, so you can try again, or `);
     const link = document.createElement("a");
-    link.href = `mailto:${email}`;
-    link.textContent = email;
+    link.href = issues;
+    link.rel = "noopener noreferrer";
+    link.textContent = "open an issue on GitHub";
     status.append(link, ".");
   }
 

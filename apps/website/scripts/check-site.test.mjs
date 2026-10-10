@@ -99,7 +99,7 @@ function cleanFiles() {
       body: `<h1>Home</h1><h2>Part</h2><h3>Detail</h3><img src="${BASE}_astro/pic.png" alt="A picture">
 <a href="${BASE}about/">About</a> <a href="about/#team">relative with fragment</a> <a href="${BASE}about/?ref=1">query</a>
 <a href="${BASE}faq">no slash dir</a> <a href="#part">self</a> <h2 id="part">Anchor</h2>
-<a href="https://other.test/x">external</a> <a href="mailto:a@b.test">mail</a>
+<a href="https://other.test/x">external</a> <a href="tel:+15550100">call</a>
 <img src="${BASE}_astro/pic.png" srcset="${BASE}_astro/pic.png 1x, ${BASE}_astro/pic2.png 2x" alt="">
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1 1"><use href="#part"/></svg>`,
     }),
@@ -356,6 +356,10 @@ const FAULTS = [
   ["robots.txt naming another sitemap", "robots-sitemap", (f) => {
     f["robots.txt"] = "Sitemap: https://example.test/sitemap.xml\n";
   }, "robots.txt"],
+  ["a mailto: link (DEC-230)", "no-email", replaceIn("about/index.html", "<h1>About</h1>", '<h1>About</h1><a href="mailto:someone@example.test">write</a>'), "about/index.html"],
+  ["a printed address (DEC-230)", "no-email", replaceIn("about/index.html", "<h1>About</h1>", "<h1>About</h1><p>Write to someone@example.test.</p>"), "about/index.html"],
+  ["an address inside a script (DEC-230)", "no-email", replaceIn("about/index.html", "<h1>About</h1>", '<h1>About</h1><script>const a = "someone@example.test";</script>'), "about/index.html"],
+  ["an address in a data attribute (DEC-230)", "no-email", replaceIn("about/index.html", "<h1>About</h1>", '<h1>About</h1><form data-email="someone@example.test"></form>'), "about/index.html"],
 ];
 
 describe("each rule fails with exactly its own message", () => {
@@ -502,7 +506,7 @@ describe("accepted forms", () => {
   });
 
   it("lets the 404 page use root-relative, fragment and absolute addresses", () => {
-    const edit = replaceIn("404.html", `<a href="${BASE}">Home</a>`, `<a href="${BASE}about/">a</a><a href="#top">b</a><a href="${SITE_URL}">c</a><a href="mailto:a@b.test">d</a>`);
+    const edit = replaceIn("404.html", `<a href="${BASE}">Home</a>`, `<a href="${BASE}about/">a</a><a href="#top">b</a><a href="${SITE_URL}">c</a><a href="tel:+15550100">d</a>`);
     expect(run(edit)).toEqual([]);
   });
 
@@ -564,29 +568,33 @@ describe("the 404 page's canonical", () => {
 describe("publisher placeholders (DEC-144) and the service keys (DEC-192, DEC-193)", () => {
   const UMAMI = "c1b7a806-c974-4e97-aed1-f94f53b6326c";
   const KEY = "06f937df-8912-4a4f-b495-9686e5714d68";
-  const source = (email, publisher, umami = UMAMI, key = KEY) =>
-    `export const PUBLISHER = "${publisher}";\nexport const CONTACT_EMAIL = "${email}";\n` +
+  const source = (publisher, umami = UMAMI, key = KEY) =>
+    `export const PUBLISHER = "${publisher}";\n` +
     `export const UMAMI_WEBSITE_ID = "${umami}";\nexport const WEB3FORMS_ACCESS_KEY: string = "${key}";\n`;
 
-  it("flags the placeholder email and publisher", () => {
-    const results = checkPublisherPlaceholders(source("contact@example.com", "stuchain"));
-    expect(results.map((r) => r.rule)).toEqual(["placeholder", "placeholder"]);
-    expect(results[0].message).toMatch(/CONTACT_EMAIL/);
-    expect(results[1].message).toMatch(/PUBLISHER/);
+  it("flags the placeholder publisher", () => {
+    const results = checkPublisherPlaceholders(source("stuchain"));
+    expect(results.map((r) => r.rule)).toEqual(["placeholder"]);
+    expect(results[0].message).toMatch(/PUBLISHER/);
   });
 
   it("passes real values", () => {
-    expect(checkPublisherPlaceholders(source("hello@usecuepoint.com", "Jane Doe"))).toEqual([]);
+    expect(checkPublisherPlaceholders(source("Jane Doe"))).toEqual([]);
+  });
+
+  it("does not look for a contact address: the site prints none (DEC-230)", () => {
+    const withAddress = `${source("Jane Doe")}export const CONTACT_EMAIL = "contact@example.com";\n`;
+    expect(checkPublisherPlaceholders(withAddress)).toEqual([]);
   });
 
   it.each(["TODO-umami-website-id", "", "not-an-id", "00000000-0000-0000-0000-000000000000"])("flags the Umami Website ID %j", (value) => {
-    const results = checkPublisherPlaceholders(source("hello@usecuepoint.com", "Jane Doe", value));
+    const results = checkPublisherPlaceholders(source("Jane Doe", value));
     expect(results.map((r) => r.rule)).toEqual(["placeholder"]);
     expect(results[0].message).toMatch(/UMAMI_WEBSITE_ID/);
   });
 
   it.each(["TODO-web3forms-access-key", "", "YOUR_ACCESS_KEY_HERE", "00000000-0000-0000-0000-000000000000"])("flags the Web3Forms key %j", (value) => {
-    const results = checkPublisherPlaceholders(source("hello@usecuepoint.com", "Jane Doe", UMAMI, value));
+    const results = checkPublisherPlaceholders(source("Jane Doe", UMAMI, value));
     expect(results.map((r) => r.rule)).toEqual(["placeholder"]);
     expect(results[0].message).toMatch(/WEB3FORMS_ACCESS_KEY/);
   });
@@ -596,7 +604,7 @@ describe("publisher placeholders (DEC-144) and the service keys (DEC-192, DEC-19
   });
 
   it("fails loudly when only the service keys are missing", () => {
-    expect(checkPublisherPlaceholders('export const PUBLISHER = "Jane";\nexport const CONTACT_EMAIL = "a@b.co";')[0].message).toMatch(/could not read/);
+    expect(checkPublisherPlaceholders('export const PUBLISHER = "Jane";')[0].message).toMatch(/could not read/);
   });
 });
 

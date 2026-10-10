@@ -1,6 +1,6 @@
 ---
 import PolicyLayout from "../components/PolicyLayout.astro";
-import { CONTACT_EMAIL, GITHUB_URL, PUBLISHER, SITE_NAME } from "../data/site";
+import { GITHUB_URL, PUBLISHER, SITE_NAME } from "../data/site";
 import { hrefFor } from "../lib/url";
 
 /**
@@ -24,8 +24,8 @@ const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`;
 
   <h2 id="publisher">Who these terms are from</h2>
   <p>
-    The website and {SITE_NAME} are published by {PUBLISHER}, as an individual. You can reach the publisher at{" "}
-    <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+    The website and {SITE_NAME} are published by {PUBLISHER}, as an individual. You can write to the publisher through the{" "}
+    <a href={hrefFor("contact/")}>contact form</a>.
   </p>
 
   <h2 id="license">The license</h2>
@@ -78,7 +78,7 @@ const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`;
 
   <h2 id="contact">Contact</h2>
   <p>
-    Questions about these terms: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>, or open an issue at{" "}
+    Questions about these terms: write to the publisher through the <a href={hrefFor("contact/")}>contact form</a>, or open an issue at{" "}
     <a href={`${GITHUB_URL}/issues`} rel="noopener noreferrer">{GITHUB_URL.replace("https://", "")}/issues</a>.
   </p>
 </PolicyLayout>

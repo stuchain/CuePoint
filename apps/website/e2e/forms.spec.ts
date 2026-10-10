@@ -152,7 +152,7 @@ for (const form of [
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     });
 
-    test("a send that fails keeps what was typed and offers the email address", async ({ page }) => {
+    test("a send that fails keeps what was typed and offers the repository's issues page", async ({ page }) => {
       await standIn(page, (route) => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ success: false, message: "down" }) }));
       await page.goto(form.path);
       if (form.name === "contact") await fillContact(page, { message: "Please keep this text." });
@@ -161,7 +161,8 @@ for (const form of [
       await page.getByRole("button", { name: form.send }).click();
       const alert = page.locator('[data-form-status][role="alert"]');
       await expect(alert).toContainText(/could not send|couldn't send/i);
-      await expect(alert.locator('a[href^="mailto:"]')).toHaveCount(1);
+      await expect(alert.locator('a[href^="mailto:"]')).toHaveCount(0);
+      await expect(alert.locator('a[href$="/issues"]')).toHaveCount(1);
       await expect(page).toHaveURL(new RegExp(`/${form.path}$`));
       await expect(page.getByLabel("Email", { exact: true })).toHaveValue("dj@example.test");
       if (form.name === "contact") await expect(page.getByLabel("Message")).toHaveValue("Please keep this text.");

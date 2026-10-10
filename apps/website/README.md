@@ -199,4 +199,7 @@ until its page lands) stays a labelled placeholder (`src/lib/app-shots.ts`).
 - **The `compare-source` rule** in `check-site`: every comparison page has facts (`data-compare-fact`), each with
   exactly one source (`data-compare-source`) holding an https link and a `<time datetime>` that is not after the
   build's day.
+- **The `no-email` rule** in `check-site` (every build, an error): no page in `dist/` carries a `mailto:` link or an
+  email-looking string, scripts and attributes included. The site prints no contact address (DEC-230): people reach
+  the publisher through the contact form, whose deliveries go to the Web3Forms account's mailbox, or GitHub issues.
 - **The header** folds into the Menu below 62.5rem, so it never wraps to two rows (`e2e/features.spec.ts`).

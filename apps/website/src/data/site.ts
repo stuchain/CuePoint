@@ -25,15 +25,14 @@ export const PRIMARY_ACTION = {
  * The publisher named in the footer, the privacy policy and the terms: the user, as an individual
  * (DEC-144). The name the user gave on 2026-10-08; the user approves the policy text before launch
  * (SITE-11, SITE-13).
+ *
+ * There is no contact address here, or anywhere on the site (DEC-230, which withdraws DEC-144's
+ * CONTACT_EMAIL placeholder): the owner chose on 2026-10-10 not to show one. People reach the publisher
+ * through the contact form (Web3Forms delivers to the account's mailbox, set in its dashboard, which the
+ * site never needs to know) or by opening an issue at GITHUB_URL. check-site's `no-email` rule fails a
+ * build in which an address or a mailto: link appears.
  */
 export const PUBLISHER = "Stelios Vasileiou";
-
-/**
- * The address people write to about privacy, the terms and anything else the publisher is asked.
- * TODO(DEC-144): a placeholder. The user gives the real address before launch; the privacy policy
- * and the terms render it from here (SITE-11, SITE-13). Never ship this value.
- */
-export const CONTACT_EMAIL = "contact@example.com";
 
 /**
  * Whether the app updates itself (DIST-06 to DIST-08; DEC-145, DEC-169, DEC-170, DEC-174, DEC-224 to

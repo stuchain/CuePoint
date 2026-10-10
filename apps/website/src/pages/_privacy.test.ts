@@ -2,7 +2,7 @@ import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CONTACT_EMAIL, PUBLISHER } from "../data/site";
+import { GITHUB_URL, PUBLISHER } from "../data/site";
 import Privacy from "./privacy.astro";
 import Terms from "./terms.astro";
 
@@ -22,6 +22,9 @@ async function render(component: Parameters<AstroContainer["renderToString"]>[0]
   return { html, plain };
 }
 
+/** An email-looking string, as check-site's `no-email` rule reads it (DEC-230). */
+const EMAIL = /[\w.+-]+@[\w-]+\.[a-z]{2,}/;
+
 /** Services the app itself uses: PRIVACY_NOTICE.md must name every one the policy names. */
 const APP_SERVICES = ["Sentry", "Beatport", "GitHub"];
 /** Services only the website uses. PRIVACY_NOTICE.md covers the app, so it need not name them: a known, accepted difference. */
@@ -33,7 +36,13 @@ describe("the privacy policy", async () => {
   it("names the analytics service, the form service, Sentry and the publisher", () => {
     for (const name of [...SITE_ONLY_SERVICES, "Sentry"]) expect(plain).toContain(name);
     expect(plain).toContain(PUBLISHER);
-    expect(plain).toContain(CONTACT_EMAIL);
+  });
+
+  it("points to the contact form and the repository's issues, and prints no address (DEC-230)", () => {
+    expect(html).toMatch(/<a href="[^"]*\/contact\/">contact form<\/a>/);
+    expect(html).toContain(`${GITHUB_URL}/issues`);
+    expect(html).not.toMatch(/mailto:/i);
+    expect(html).not.toMatch(EMAIL);
   });
 
   it("names the service where the site's pages are hosted and says it logs addresses", () => {
@@ -101,17 +110,23 @@ describe("the privacy policy", async () => {
 });
 
 describe("the terms", async () => {
-  const { plain } = await render(Terms);
+  const { html, plain } = await render(Terms);
 
   it("name the license, the publisher and the draft banner", () => {
     expect(plain).toContain("Apache License, Version 2.0");
     expect(plain).toContain(PUBLISHER);
-    expect(plain).toContain(CONTACT_EMAIL);
     expect(plain).toContain("Draft: awaiting the publisher's approval (DEC-144)");
     expect(plain).toMatch(/Last updated:? [A-Z][a-z]+ \d{1,2}, \d{4}/);
   });
 
   it("point to the privacy policy", () => {
     expect(plain).toMatch(/privacy policy/i);
+  });
+
+  it("point to the contact form and the repository's issues, and print no address (DEC-230)", () => {
+    expect(html).toMatch(/<a href="[^"]*\/contact\/">contact form<\/a>/);
+    expect(html).toContain(`${GITHUB_URL}/issues`);
+    expect(html).not.toMatch(/mailto:/i);
+    expect(html).not.toMatch(EMAIL);
   });
 });

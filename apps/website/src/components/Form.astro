@@ -7,7 +7,7 @@
  * Spam: a hidden `botcheck` field only a robot fills in, and a minimum fill time (form-client.ts). No puzzle.
  */
 import { PUBLIC } from "../../site.config";
-import { CONTACT_EMAIL, SITE_NAME, WEB3FORMS_ACCESS_KEY, WEB3FORMS_ENDPOINT } from "../data/site";
+import { GITHUB_URL, SITE_NAME, WEB3FORMS_ACCESS_KEY, WEB3FORMS_ENDPOINT } from "../data/site";
 import { canonicalFor, hrefFor } from "../lib/url";
 import Button from "./Button.astro";
 
@@ -32,7 +32,7 @@ const { kind, subject, thanks, send, noun } = Astro.props;
   action={WEB3FORMS_ENDPOINT}
   data-form={kind}
   data-thanks={hrefFor(thanks)}
-  data-email={CONTACT_EMAIL}
+  data-issues={`${GITHUB_URL}/issues`}
   data-noun={noun}
 >
   <input type="hidden" name="access_key" value={WEB3FORMS_ACCESS_KEY} />

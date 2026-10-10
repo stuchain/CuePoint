@@ -919,6 +919,8 @@ Help → Privacy clears cache and logs) and `PRIVACY_NOTICE.md` says the same. T
 Sections 7 and 8. The 404 has no canonical. Every page gets a generated 1200×630 sharing picture, and
 check-site's new `placeholder` rule refuses a public build while the contact address is a placeholder.
 Owed: the user's approval of the policy and terms text and the real contact address (DEC-144).
+On 2026-10-10 the address was dropped altogether (DEC-230): the site prints no email, the policy pages
+point to the contact form and GitHub issues, and check-site's `no-email` rule refuses a build that carries one.
 
 ---
 

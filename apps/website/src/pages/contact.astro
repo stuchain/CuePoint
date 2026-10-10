@@ -3,7 +3,7 @@ import Field from "../components/Field.astro";
 import Form from "../components/Form.astro";
 import PageHead from "../components/PageHead.astro";
 import Section from "../components/Section.astro";
-import { CONTACT_EMAIL, SITE_NAME } from "../data/site";
+import { GITHUB_URL, SITE_NAME } from "../data/site";
 import Page from "../layouts/Page.astro";
 import { SUBJECTS } from "../lib/forms";
 import { hrefFor } from "../lib/url";
@@ -28,9 +28,9 @@ const subjects = SUBJECTS.map((s) => ({ value: s, label: s }));
   <Section id="contact" layout="split">
     <div slot="aside" class="form-aside">
       <p>
-        The form is sent through a service called Web3Forms. The{" "}
-        <a href={hrefFor("privacy/#forms")}>privacy policy</a> says what it receives and keeps. You can also write to{" "}
-        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+        The form is the way to write to the publisher. It is sent through a service called Web3Forms; the{" "}
+        <a href={hrefFor("privacy/#forms")}>privacy policy</a> says what it receives and keeps. You can also{" "}
+        <a href={`${GITHUB_URL}/issues`} rel="noopener noreferrer">open an issue on GitHub</a>.
       </p>
     </div>
     <Form kind="contact" thanks="contact/thank-you/" send="Send message" noun="message">

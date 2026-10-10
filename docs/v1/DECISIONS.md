@@ -6464,3 +6464,21 @@ A healthy decode is never quiet for long (its log has a line for each step befor
 and output then streams), so 30 seconds is ten times its longest silence.
 
 **Decided with**: Claude (WAVE-01) · **Date**: 2026-10-10
+
+---
+
+## DEC-230 — The Site Prints No Contact Address (amends DEC-144)
+
+**Status**: Approved · **Related**: DEC-144, DEC-193, DEC-215, SITE-11, SITE-12, SITE-13
+
+**Decision**: No email address appears on any page of the website or in its source; DEC-144's
+`CONTACT_EMAIL` placeholder is withdrawn. The contact form and GitHub issues are the ways to reach the
+publisher: the privacy policy, the terms, the contact page and a form's failure message point to them.
+The form's deliveries go to the Web3Forms account's mailbox, set in that dashboard, which the site never
+needs to know. A build check (`no-email`, every build, an error) fails if an address or a `mailto:`
+link appears in any built page.
+
+**Reason**: The owner's choice on 2026-10-10 ("not let them see it"). It also keeps a personal address
+out of the repository, where it would be scraped.
+
+**Decided with**: User · **Date**: 2026-10-10

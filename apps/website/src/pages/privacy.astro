@@ -1,6 +1,6 @@
 ---
 import PolicyLayout from "../components/PolicyLayout.astro";
-import { CONTACT_EMAIL, GITHUB_URL, PUBLISHER, SITE_NAME } from "../data/site";
+import { GITHUB_URL, PUBLISHER, SITE_NAME } from "../data/site";
 import { hrefFor } from "../lib/url";
 
 /**
@@ -39,7 +39,7 @@ const UPDATED = "2026-10-10";
     <a href={GITHUB_URL} rel="noopener noreferrer">{GITHUB_URL.replace("https://", "")}</a>.
   </p>
   <p>
-    Contact: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. You can also open an issue in the repository.
+    Contact: write to the publisher through the <a href={hrefFor("contact/")}>contact form</a>. You can also open an issue in the repository.
   </p>
 
   <h2 id="website">This website</h2>
@@ -82,7 +82,7 @@ const UPDATED = "2026-10-10";
     you and to fix a problem. Web3Forms acts as a processor for the publisher, who decides what is done with the messages. Its privacy
     page (<a href="https://web3forms.com/privacy" rel="noopener noreferrer">web3forms.com/privacy</a>) says it stores submissions, on Amazon Web
     Services, for up to 3 years, and that it may pass your IP address and email address to spam-filtering services (CleanTalk and
-    Akismet). If you want a message you sent deleted, write to <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> and ask.
+    Akismet). If you want a message you sent deleted, write to the publisher through the <a href={hrefFor("contact/")}>contact form</a> and ask.
   </p>
 
   <h3 id="storage">Cookies and your browser's storage</h3>
@@ -192,7 +192,7 @@ const UPDATED = "2026-10-10";
     <li>Turn error reports off any time in <strong>Settings → Privacy → Send error reports</strong>.</li>
     <li>Clear the app's cache and logs in <strong>Help → Privacy</strong>, or have it do so each time it quits in <strong>Settings → Privacy → When CuePoint quits</strong>.</li>
     <li>Delete everything the app keeps, library included, by deleting the <code>~/.cuepoint</code> folder.</li>
-    <li>If you wrote to the publisher through a form or by email and want your message deleted, write to <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.</li>
+    <li>If you wrote to the publisher through a form and want your message deleted, write to the publisher through the <a href={hrefFor("contact/")}>contact form</a>.</li>
   </ul>
   <p>Nothing you send, and nothing the app or the site collects, is sold or rented.</p>
 
@@ -205,7 +205,7 @@ const UPDATED = "2026-10-10";
 
   <h2 id="contact">Contact</h2>
   <p>
-    Questions about privacy: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>, or open an issue at{" "}
+    Questions about privacy: write to the publisher through the <a href={hrefFor("contact/")}>contact form</a>, or open an issue at{" "}
     <a href={`${GITHUB_URL}/issues`} rel="noopener noreferrer">{GITHUB_URL.replace("https://", "")}/issues</a>.
   </p>
 </PolicyLayout>
