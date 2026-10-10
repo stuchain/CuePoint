@@ -310,6 +310,12 @@ accumulates, because nothing is kept: 29 row elements were in the page at the
 end of a 50,000-row scroll, and the rows behind them are fetched a window at a
 time and dropped when they are far enough behind.
 
+On an Apple M5 Pro (macOS 27) the app built from source measured 154–157 MB at the start,
+210–216 MB after one pass and 212–217 MB after a second, over three runs (2026-10-10):
+the same shape, about 2 MB added by the second pass. The same machine scrolled the
+5,000-track table with waveforms (`e2e/waveformPlaces.spec.ts`, the packaged app) three
+times with no task over 50 ms at 1x or 1.5x.
+
 ## Motion
 
 All ten kinds of motion are on in these measurements (Settings > Motion, **Turn all

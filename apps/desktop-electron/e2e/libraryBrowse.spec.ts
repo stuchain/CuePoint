@@ -103,11 +103,11 @@ function launch(userDataDir: string, cuepointHome: string): Promise<ElectronAppl
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
 
-  return electron.launch({
-    cwd: DESKTOP_ROOT,
-    args: [".", `--user-data-dir=${userDataDir}`],
-    env,
-  });
+  // `CUEPOINT_E2E_EXECUTABLE` runs the journey, and the memory run, against a packaged build.
+  const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
+  return packaged
+    ? electron.launch({ executablePath: packaged, args: [`--user-data-dir=${userDataDir}`], env })
+    : electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
 }
 
 async function ready(app: ElectronApplication): Promise<Page> {
