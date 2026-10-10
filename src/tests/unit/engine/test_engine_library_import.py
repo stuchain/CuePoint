@@ -62,6 +62,29 @@ def write_export(tmp_path: Path, count: int = 6, name: str = "collection.xml") -
     return str(path)
 
 
+def hold_imports(monkeypatch) -> threading.Event:
+    """Hold every import at its start until the returned event is set.
+
+    The tests below need an import still running when the next request
+    arrives. An 8,000-track export only made that likely, and its follow-up
+    file check and duplicate scan then held each test's teardown for 5 to 7
+    seconds on Windows; a held import is running for certain, so the export
+    can be small. The job's runner looks the function up when it runs, which
+    is why patching the module is enough.
+    """
+    from cuepoint.engine import library_jobs
+
+    release = threading.Event()
+    run_import = library_jobs.run_library_import_job
+
+    def held_import(job, store, xml_path) -> None:
+        release.wait(timeout=60)
+        run_import(job, store, xml_path)
+
+    monkeypatch.setattr(library_jobs, "run_library_import_job", held_import)
+    return release
+
+
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
@@ -353,10 +376,15 @@ class TestRejectedRequests:
 class TestConcurrentImports:
     """Two at once would interleave writes to the same tables."""
 
-    def test_a_second_import_is_refused_while_one_runs(self, engine, tmp_path):
-        big = write_export(tmp_path, 8000, name="big.xml")
+    def test_a_second_import_is_refused_while_one_runs(
+        self, engine, tmp_path, monkeypatch
+    ):
+        release = hold_imports(monkeypatch)
         _status, first = request(
-            engine, "/api/v1/library/import", method="POST", body={"xml_path": big}
+            engine,
+            "/api/v1/library/import",
+            method="POST",
+            body={"xml_path": write_export(tmp_path, 8, name="big.xml")},
         )
 
         status, payload = request(
@@ -366,6 +394,7 @@ class TestConcurrentImports:
             body={"xml_path": write_export(tmp_path, 5, name="small.xml")},
         )
 
+        release.set()
         assert status == 409
         assert payload["error"]["code"] == "LIBRARY_IMPORT_IN_PROGRESS"
         # The running job's id comes back, so a caller can follow it rather
@@ -374,21 +403,24 @@ class TestConcurrentImports:
 
         wait_for_job(engine, first["job_id"])
 
-    def test_the_refused_import_did_not_run(self, engine, tmp_path):
-        big = write_export(tmp_path, 8000, name="big.xml")
+    def test_the_refused_import_did_not_run(self, engine, tmp_path, monkeypatch):
+        release = hold_imports(monkeypatch)
+        big = write_export(tmp_path, 8, name="big.xml")
         _status, first = request(
             engine, "/api/v1/library/import", method="POST", body={"xml_path": big}
         )
-        request(
+        status, _payload = request(
             engine,
             "/api/v1/library/import",
             method="POST",
             body={"xml_path": write_export(tmp_path, 5, name="small.xml")},
         )
+        release.set()
+        assert status == 409
         wait_for_job(engine, first["job_id"])
 
         _status, summary = request(engine, "/api/v1/library/summary")
-        assert summary["track_count"] == 8000, "the second import overwrote the first"
+        assert summary["track_count"] == 8, "the second import overwrote the first"
         assert summary["source"]["xml_path"].endswith("big.xml")
 
     def test_another_import_is_allowed_once_the_first_finished(self, engine, tmp_path):
@@ -416,20 +448,11 @@ class TestConcurrentImports:
         Asking the store and then creating would let two requests arriving
         together both see an idle store.
         """
-        from cuepoint.engine import library_jobs
-
         # The import is held until every request has its answer: an arm64 Mac
         # once finished it before the last request arrived, which then rightly
         # started a second one.
-        release = threading.Event()
-        run_import = library_jobs.run_library_import_job
-
-        def held_import(job, store, xml_path) -> None:
-            release.wait(timeout=60)
-            run_import(job, store, xml_path)
-
-        monkeypatch.setattr(library_jobs, "run_library_import_job", held_import)
-        big = write_export(tmp_path, 8000, name="big.xml")
+        release = hold_imports(monkeypatch)
+        big = write_export(tmp_path, 8, name="big.xml")
         results: list = []
 
         def start() -> None:

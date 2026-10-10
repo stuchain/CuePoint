@@ -191,6 +191,26 @@ def do_preview(base, xml_path=None):
     return job_result(base, payload["job_id"])
 
 
+def hold(monkeypatch, module, name: str) -> threading.Event:
+    """Hold every job run by ``module.name`` at its start until the event is set.
+
+    These tests need one library job still running when the next request
+    arrives. A 4,000-track export only made that likely, at 5 to 14 seconds a
+    test on Windows, and a fast machine could still finish it first; a held job
+    is running for certain, so the export can be small. The job's runner looks
+    the function up when it runs, which is why patching the module is enough.
+    """
+    release = threading.Event()
+    run = getattr(module, name)
+
+    def held(*args, **kwargs) -> None:
+        release.wait(timeout=60)
+        run(*args, **kwargs)
+
+    monkeypatch.setattr(module, name, held)
+    return release
+
+
 def snapshot(db_path: Path):
     """Every row a refresh could touch, as bytes on disk see them."""
     connection = sqlite3.connect(str(db_path))
@@ -555,59 +575,67 @@ class TestOneLibraryJobAtATime:
     """An import and an apply write the same tables; a preview reads them."""
 
     def test_a_preview_is_refused_while_an_import_runs(
-        self, engine, library_db, tmp_path
+        self, engine, library_db, tmp_path, monkeypatch
     ):
-        big = write_export(tmp_path, tuple(range(4000)), "big.xml")
+        from cuepoint.engine import library_jobs
+
+        release = hold(monkeypatch, library_jobs, "run_library_import_job")
         status, started = request(
-            engine, "/api/v1/library/import", method="POST", body={"xml_path": big}
+            engine,
+            "/api/v1/library/import",
+            method="POST",
+            body={"xml_path": write_export(tmp_path)},
         )
         assert status == 202
 
         status, payload = request(engine, PREVIEW, method="POST", body={})
 
-        wait_for_job(engine, started["job_id"], timeout=60)
+        release.set()
+        wait_for_job(engine, started["job_id"])
         assert status == 409, payload
         assert payload["error"]["code"] == "LIBRARY_BUSY"
         assert payload["error"]["job_type"] == "library_import"
         assert payload["error"]["job_id"] == started["job_id"]
 
     def test_an_import_is_refused_while_a_preview_runs(
-        self, engine, library_db, tmp_path
+        self, engine, library_db, tmp_path, monkeypatch
     ):
-        """The direction a per-type lock would have missed.
+        """The direction a per-type lock would have missed."""
+        from cuepoint.engine import library_refresh
 
-        ``force`` because the preview has to still be running when the import
-        arrives, and LIBRARY-12's fast path answers an untouched export in
-        microseconds. Without it this test races the shortcut and passes only
-        when it loses.
-        """
-        big = write_export(tmp_path, tuple(range(4000)), "big.xml")
-        do_import(engine, big)
+        export = write_export(tmp_path)
+        do_import(engine, export)
+        release = hold(monkeypatch, library_refresh, "run_refresh_preview_job")
 
         status, started = request(engine, PREVIEW, method="POST", body={"force": True})
         assert status == 202
         status, payload = request(
-            engine, "/api/v1/library/import", method="POST", body={"xml_path": big}
+            engine, "/api/v1/library/import", method="POST", body={"xml_path": export}
         )
 
-        wait_for_job(engine, started["job_id"], timeout=60)
+        release.set()
+        wait_for_job(engine, started["job_id"])
         assert status == 409, payload
         assert payload["error"]["code"] == "LIBRARY_IMPORT_IN_PROGRESS"
         assert payload["error"]["job_id"] == started["job_id"]
 
-    def test_two_library_jobs_never_run_together(self, engine, library_db, tmp_path):
+    def test_two_library_jobs_never_run_together(
+        self, engine, library_db, tmp_path, monkeypatch
+    ):
         """Fired from threads, because the interesting case is simultaneous
         arrival — a check-then-create would let both through."""
-        big = write_export(tmp_path, tuple(range(4000)), "big.xml")
-        do_import(engine, big)
+        from cuepoint.engine import library_refresh
+
+        do_import(engine, write_export(tmp_path))
+        # Held, because a preview that finished at once would let all four
+        # through one after another, and the test would pass while proving
+        # nothing about exclusion.
+        release = hold(monkeypatch, library_refresh, "run_refresh_preview_job")
         results = []
         barrier = threading.Barrier(4)
 
         def fire():
             barrier.wait()
-            # `force` for the same reason as above: a preview that finishes
-            # instantly would let all four through one after another, and the
-            # test would pass while proving nothing about exclusion.
             results.append(
                 request(engine, PREVIEW, method="POST", body={"force": True})
             )
@@ -617,12 +645,13 @@ class TestOneLibraryJobAtATime:
             thread.start()
         for thread in threads:
             thread.join(timeout=60)
+        release.set()
 
         accepted = [payload for status, payload in results if status == 202]
         refused = [payload for status, payload in results if status == 409]
         assert len(accepted) == 1, [r[0] for r in results]
         assert len(refused) == 3
-        wait_for_job(engine, accepted[0]["job_id"], timeout=60)
+        wait_for_job(engine, accepted[0]["job_id"])
 
 
 @pytest.mark.unit
