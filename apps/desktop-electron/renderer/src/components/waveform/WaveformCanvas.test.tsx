@@ -5,6 +5,7 @@ import { ScaleProvider } from "../../tokens/ScaleContext";
 import { WaveformCanvas } from "./WaveformCanvas";
 import { BANDS } from "./waveformLayout";
 import { resetWaveformColourForTests, saveWaveformColour } from "./waveformColour";
+import { waveformPaints } from "./waveformPaintQueue";
 
 /**
  * The canvas (WAVE-05): sized in device pixels from its box, filled with the
@@ -26,6 +27,13 @@ beforeEach(() => {
   localStorage.clear();
   resetWaveformColourForTests();
   recorder = { fills: [], clears: 0 };
+  // Painted at once. The shared queue defers a paint once a task has painted
+  // for 6 ms, which a slow runner reached inside one render: the canvas was
+  // still 0 wide when read (Intel Mac CI). The queue has its own tests.
+  vi.spyOn(waveformPaints, "paint").mockImplementation((_key, paint) => {
+    paint();
+    return () => {};
+  });
   const context = {
     fillStyle: "",
     globalAlpha: 1,
