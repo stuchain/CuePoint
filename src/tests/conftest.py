@@ -20,6 +20,7 @@ from typing import Generator  # noqa: E402
 from unittest.mock import Mock  # noqa: E402
 
 import pytest  # noqa: E402
+from hypothesis import settings  # noqa: E402
 
 from cuepoint.models.beatport_candidate import BeatportCandidate  # noqa: E402
 from cuepoint.models.result import TrackResult  # noqa: E402
@@ -32,6 +33,13 @@ from cuepoint.services.interfaces import (  # noqa: E402
     IMatcherService,
 )
 from cuepoint.utils.di_container import DIContainer, reset_container  # noqa: E402
+
+# Hypothesis's per-example deadline (200 ms) times the first call too, which pays
+# for imports and warm caches: a property test failed on a CI runner at 262 ms
+# for its first example and 0.03 ms for the same one again. What the code costs
+# is checked by the tests that measure it, not by this default.
+settings.register_profile("cuepoint", deadline=None)
+settings.load_profile("cuepoint")
 
 
 @pytest.fixture(autouse=True)
