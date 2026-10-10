@@ -6523,3 +6523,22 @@ address to Google, broke the look offline, and was the one network call the priv
 DEC-048 called that import "already a network dependency"; this removes it.
 
 **Decided with**: User (Stelios asked "fix them all", 2026-10-10) · **Date**: 2026-10-10
+
+---
+
+## DEC-233 — The Browse-During-a-Match Check Judges the Engine's Answer, Not the Connect
+
+**Status**: Approved · **Related**: DEC-221, DEC-223, CI fix
+
+**Decision**: `test_the_engine_answers_browse_requests_while_it_runs` keeps its 1.0 s bound on every
+system, measured from the moment the connection is made to the moment the answer is read. The
+slowest connect is printed, not judged. A request still unanswered half a second after connecting
+has every thread's stack in the failure message.
+
+**Reason**: After DEC-223 the test still failed once on GitHub's Intel Mac: 1.02 s, of which 1.00 s
+was the connect and 0.02 s the answer. A stack of every thread, taken half a second into that
+request, showed the engine's listener idle in `select` and no request thread for it: nothing in the
+engine was busy or held anything. An exact 1.00 s connect is macOS sending its SYN again, which no
+engine code was running to cause or could shorten.
+
+**Decided with**: User (Stelios chose "Engine time only" on the CI fix thread's card) · **Date**: 2026-10-10

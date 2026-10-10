@@ -610,13 +610,15 @@ class TestAThousandTracks:
             wait_for(lambda: processor.asked() >= 8)
 
             answered_while_running = 0
+            # Judged from connected to answered: the engine's own time. A connect
+            # has taken exactly 1.00 s on GitHub's Intel Mac with the engine idle
+            # and no request reaching it, which is macOS sending its SYN again
+            # (DEC-233). That is printed, not judged.
             slowest = 0.0
-            # The slowest request's time to connect and then to be answered,
-            # so a slow one says whether TCP or the engine was slow.
-            slowest_parts = (0.0, 0.0)
+            slowest_connect = 0.0
             query = urllib.parse.urlencode({"q": "Track 09", "limit": 50})
             path = f"/api/v1/library/search?{query}"
-            # A request still unanswered after half a second has every thread's
+            # A request unanswered half a second after connecting has every thread's
             # stack taken once, so a slow one says what the engine was doing.
             in_flight: List[float] = []
             stacks: List[str] = []
@@ -633,9 +635,9 @@ class TestAThousandTracks:
                 connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
                 try:
                     began = time.monotonic()
-                    in_flight[:] = [began]
                     connection.connect()
                     connected = time.monotonic()
+                    in_flight[:] = [connected]
                     connection.request(
                         "GET", path, headers={"Authorization": f"Bearer {TOKEN}"}
                     )
@@ -645,9 +647,8 @@ class TestAThousandTracks:
                 finally:
                     in_flight.clear()
                     connection.close()
-                if answered - began > slowest:
-                    slowest = answered - began
-                    slowest_parts = (connected - began, answered - connected)
+                slowest = max(slowest, answered - connected)
+                slowest_connect = max(slowest_connect, connected - began)
                 assert payload["total"] == 100
                 if started.job.state == JobState.RUNNING:
                     answered_while_running += 1
@@ -660,8 +661,9 @@ class TestAThousandTracks:
 
         assert job.state == JobState.SUCCEEDED
         assert answered_while_running >= 10
+        print(f"slowest connect during the match: {slowest_connect:.2f} s")
         assert slowest < 1.0, (
-            f"a browse request took {slowest:.2f} s during a match "
-            f"({slowest_parts[0]:.2f} s to connect, {slowest_parts[1]:.2f} s to answer)"
-            "; every thread half a second into the first slow one:\n" + "".join(stacks)
+            f"the engine took {slowest:.2f} s to answer a browse request during a "
+            "match; every thread half a second into the first slow one:\n"
+            + "".join(stacks)
         )
