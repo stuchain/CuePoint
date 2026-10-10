@@ -100,7 +100,9 @@ export function similarLibraryState(
   const picked = selected.length > 0;
   const ids = [...new Set([seed.id, ...(picked ? selected : shown)])];
   const label = `Similar to “${seed.title}” (${pluralize(ids.length, "track")})`;
-  const title = picked
+  const title = !picked && ids.length === 1
+    ? `Opens “${seed.title}” in the Library`
+    : picked
     ? `Opens the ${pluralize(selected.length, "selected track")} and “${seed.title}” in the Library`
     : `Opens these ${pluralize(ids.length, "track")} in the Library`;
   return { state: libraryTracksState(ids, label), title };

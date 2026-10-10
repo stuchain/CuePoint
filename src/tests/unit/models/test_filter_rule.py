@@ -515,3 +515,12 @@ class TestTrackListField:
         )
         with pytest.raises(FilterRuleError, match="at most 1000"):
             rule("track", "any_of", list(range(1, 1002))).validated()
+
+    @pytest.mark.parametrize("value", [2**63, 1e300, "9" * 30, 2**70])
+    def test_an_id_sqlite_cannot_bind_is_refused(self, value):
+        with pytest.raises(FilterRuleError, match="too large"):
+            rule("track", "any_of", [value]).validated()
+
+    def test_the_largest_id_is_read_exactly(self):
+        assert rule("track", "any_of", [2**63 - 1]).validated().value == (2**63 - 1,)
+        assert rule("tag", "has_tag", 2**53 + 1).validated().value == 2**53 + 1

@@ -633,8 +633,9 @@ class CollectionService(ICollectionService):
             ValueError: If the name is unusable, or the parent does not exist or
                 is not a folder.
             FilterRuleError: If the rule set is empty, malformed, names a tag or
-                Collection that is gone, or names another Smart Collection
-                (DEC-060).
+                Collection that is gone, names another Smart Collection
+                (DEC-060), or uses a field only another page sets (a list of
+                tracks).
             BrowseQueryError: If the saved order is not one the library can be
                 read in.
         """
@@ -1061,6 +1062,8 @@ class CollectionService(ICollectionService):
                 (DEC-060).
         """
         valid = rules.validated()
+        # A field only another page sets (a list of tracks) is not a rule a
+        # Smart Collection can keep.
         if any(not field_spec(rule.field).offered for rule in valid.rules):
             raise FilterRuleError(
                 "A Smart Collection is rules, and a list of tracks is not one: "
@@ -1182,6 +1185,10 @@ def _decode_rules(text: Optional[str]) -> RuleSet:
     # already names it. A second check here could only change the wording, and a
     # branch no test can tell from its absence is a branch that is not there.
     parsed = RuleSet.from_dict(payload).validated()
+    if any(not field_spec(rule.field).offered for rule in parsed.rules):
+        raise FilterRuleError(
+            "its saved rules hold a list of tracks, which a Smart Collection cannot run"
+        )
     if not parsed.rules:
         raise FilterRuleError(
             "its saved rules are empty, and a filter with no rules is the whole "

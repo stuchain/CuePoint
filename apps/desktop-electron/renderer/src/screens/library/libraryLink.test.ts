@@ -133,7 +133,7 @@ describe("opening the Library on a list of tracks", () => {
     expect(libraryOpening({ state, key: "k" })).toEqual({
       rules: { match: "all", rules: [{ field: "track", operator: "any_of", value: [7, 3] }] },
       token: "k",
-      names: { "track:[7,3]": label },
+      names: { "rule:track:[7,3]": label },
     });
   });
 });

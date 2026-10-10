@@ -987,25 +987,37 @@ def _coerce_id(value: Any, spec: FieldSpec, operator: str) -> int:
     """
     if isinstance(value, bool):
         raise FilterRuleError(f"{spec.label} needs an id, not {value!r} ({operator})")
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        raise FilterRuleError(
-            f"{spec.label} needs an id, not {value!r} ({operator})"
-        ) from None
-    if number != number or number in (float("inf"), float("-inf")):
-        raise FilterRuleError(f"{spec.label} needs a real id, not {value!r}")
-    if number != int(number):
-        raise FilterRuleError(
-            f"{spec.label} is identified by a whole number, and {value!r} is not one"
-        )
-    identifier = int(number)
+    identifier: Optional[int] = None
+    if isinstance(value, int):
+        identifier = value
+    elif isinstance(value, str) and value.strip().lstrip("+-").isdigit():
+        # Exactly, never through a float, which cannot hold every id past 2**53.
+        identifier = int(value.strip())
+    if identifier is None:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            raise FilterRuleError(
+                f"{spec.label} needs an id, not {value!r} ({operator})"
+            ) from None
+        if number != number or number in (float("inf"), float("-inf")):
+            raise FilterRuleError(f"{spec.label} needs a real id, not {value!r}")
+        if number != int(number):
+            raise FilterRuleError(
+                f"{spec.label} is identified by a whole number, and {value!r} is not one"
+            )
+        identifier = int(number)
     if identifier <= 0:
         # Row ids start at 1. A zero or a negative is a renderer that sent an
         # index or a sentinel, and answering it with "nothing has that tag"
         # would hide the mistake behind an empty table.
         raise FilterRuleError(
             f"{spec.label} needs a positive id, not {value!r} ({operator})"
+        )
+    if identifier > MAX_BEATPORT_ID:
+        # The largest integer SQLite stores; a bigger one cannot be bound.
+        raise FilterRuleError(
+            f"{spec.label} needs an id, and {value!r} is too large to be one"
         )
     return identifier
 

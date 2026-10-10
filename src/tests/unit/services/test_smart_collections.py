@@ -589,6 +589,19 @@ class TestBroken:
         )
         assert "not valid JSON" in service.resolve(smart.id).problem
 
+    def test_a_stored_track_list_is_reported_not_run(self, db, service, smart):
+        stored_rules = json.dumps(
+            {
+                "match": "all",
+                "rules": [{"field": "track", "operator": "any_of", "value": [1]}],
+            }
+        )
+        db.connect().execute(
+            "UPDATE collections SET rules_json = ? WHERE id = ?",
+            (stored_rules, smart.id),
+        )
+        assert "list of tracks" in service.resolve(smart.id).problem
+
     def test_rules_that_are_not_an_object_report(self, db, service, smart):
         db.connect().execute(
             "UPDATE collections SET rules_json = ? WHERE id = ?", ("[1, 2]", smart.id)

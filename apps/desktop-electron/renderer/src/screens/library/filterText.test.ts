@@ -352,6 +352,24 @@ describe("a clause that cannot be built", () => {
 });
 
 describe("reading a clause back", () => {
+  it("reads an unnamed list of tracks by its count, never its ids", () => {
+    expect(describeRule(VOCABULARY, { field: "track", operator: "any_of", value: [7, 3, 9] })).toBe(
+      "These 3 tracks",
+    );
+    expect(describeRule(VOCABULARY, { field: "track", operator: "any_of", value: [7] })).toBe(
+      "These 1 track",
+    );
+  });
+
+  it("keeps a Beatport id rule's own words beside a name map of the same ids", () => {
+    const rule = { field: "beatport_artist", operator: "is", value: 5 };
+    const names = {
+      beatport: new Map([["beatport_artist:5", "Mara Veil"]]),
+      rules: new Map([["beatport_artist:5", "wrong"]]),
+    };
+    expect(describeRule(VOCABULARY, rule, names)).not.toBe("wrong");
+  });
+
   it("says what the page that opened the Library calls a whole rule", () => {
     const rule = { field: "track", operator: "any_of", value: [7, 3] };
     const names = { rules: new Map([[ruleNameKey(rule), "Similar to “Build” (3 tracks)"]]) };

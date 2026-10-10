@@ -466,14 +466,14 @@ describe("Similar tracks' Open in Library", () => {
   it("carries the seed and every shown suggestion when nothing is selected", () => {
     const { opening, title } = opened([2, 3, 4], []);
     expect(opening?.rules.rules[0]).toEqual({ field: "track", operator: "any_of", value: [1, 2, 3, 4] });
-    expect(opening?.names).toEqual({ "track:[1,2,3,4]": "Similar to “Build” (4 tracks)" });
+    expect(opening?.names).toEqual({ "rule:track:[1,2,3,4]": "Similar to “Build” (4 tracks)" });
     expect(title).toBe("Opens these 4 tracks in the Library");
   });
 
   it("carries the seed and only the selected suggestions", () => {
     const { opening, title } = opened([2, 3, 4], [4, 2]);
     expect(opening?.rules.rules[0].value).toEqual([1, 4, 2]);
-    expect(opening?.names).toEqual({ "track:[1,4,2]": "Similar to “Build” (3 tracks)" });
+    expect(opening?.names).toEqual({ "rule:track:[1,4,2]": "Similar to “Build” (3 tracks)" });
     expect(title).toBe("Opens the 2 selected tracks and “Build” in the Library");
   });
 
@@ -483,8 +483,9 @@ describe("Similar tracks' Open in Library", () => {
   });
 
   it("is just the seed when there are no suggestions", () => {
-    const { opening } = opened([], []);
+    const { opening, title } = opened([], []);
+    expect(title).toBe("Opens “Build” in the Library");
     expect(opening?.rules.rules[0].value).toEqual([1]);
-    expect(opening?.names).toEqual({ "track:[1]": "Similar to “Build” (1 track)" });
+    expect(opening?.names).toEqual({ "rule:track:[1]": "Similar to “Build” (1 track)" });
   });
 });

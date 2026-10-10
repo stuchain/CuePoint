@@ -347,7 +347,7 @@ describe("filter chips and the Inspector", () => {
       openWith: {
         rules: { match: "all", rules: [{ field: "track", operator: "any_of", value: [1, 2, 3] }] },
         token: "nav-3",
-        names: { "track:[1,2,3]": label },
+        names: { "rule:track:[1,2,3]": label },
       },
     });
     await tableReady();

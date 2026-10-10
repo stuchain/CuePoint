@@ -25,6 +25,7 @@ import type {
   LibraryFilterField,
   LibraryFilterVocabulary,
 } from "../../api/cuepointBridge.types";
+import { pluralize } from "./libraryFormat";
 
 type OperatorArity = "none" | "single" | "pair" | "list";
 
@@ -245,9 +246,12 @@ export function toggleSource(draft: DraftRule, token: string): DraftRule {
   return { ...draft, value: next.join(",") };
 }
 
-/** The key a whole rule's name is kept under in `ValueNames.rules`. */
+/**
+ * The key a whole rule's name is kept under in `ValueNames.rules`. Prefixed so
+ * it can never equal another map's key (`beatportNameKey` is `field:id`).
+ */
 export function ruleNameKey(rule: FilterRule): string {
-  return `${rule.field}:${JSON.stringify(rule.value ?? null)}`;
+  return `rule:${rule.field}:${JSON.stringify(rule.value ?? null)}`;
 }
 
 /** The key a Beatport id rule's name is kept under in `ValueNames.beatport`. */
@@ -314,6 +318,10 @@ export function describeRule(
 ): string {
   const named = names?.rules?.get(ruleNameKey(rule));
   if (named) return named;
+  // A list of tracks no page named: its size, never its ids.
+  if (rule.field === "track" && Array.isArray(rule.value)) {
+    return `These ${pluralize(rule.value.length, "track")}`;
+  }
   const field = fieldOf(vocabulary, rule.field);
   const label = field?.label ?? rule.field;
   const operator = operatorLabel(rule.operator);
