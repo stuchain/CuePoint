@@ -340,6 +340,29 @@ describe("a library that changed under a query that did not", () => {
     await waitFor(() => expect(result.current.answered).toBe(true));
   });
 
+  it("keeps the old answer's total until the new one lands", async () => {
+    // An "everything matching" selection counts from the total: were it 0 while
+    // the reload is in flight, the selection bar would read nothing selected and
+    // ignore a click on Organize (ORG-13).
+    const { result } = renderHook(() => useTrackWindow(query()));
+    await waitFor(() => expect(result.current.total).toBe(TOTAL));
+
+    let release: (() => void) | null = null;
+    browseLibrary.mockImplementation(
+      (params: Call & Record<string, unknown>) =>
+        new Promise<LibrarySearchResponse>((resolve) => {
+          release = () => resolve({ ...respond(params), total: TOTAL - 1 });
+        }),
+    );
+    act(() => result.current.reload());
+
+    await waitFor(() => expect(release).not.toBeNull());
+    expect(result.current.answered).toBe(false);
+    expect(result.current.total).toBe(TOTAL);
+    await act(async () => release!());
+    await waitFor(() => expect(result.current.total).toBe(TOTAL - 1));
+  });
+
   it("is not answered by a failure", async () => {
     browseLibrary.mockRejectedValue(new Error("engine down"));
     const { result } = renderHook(() => useTrackWindow(query()));
