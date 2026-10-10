@@ -865,7 +865,8 @@ elif mode == "slow":
             else:
                 lines.append("[v][ffmpeg] still decoding")
                 log(*lines)
-            time.sleep(0.05)
+            # Fewer than 30 frames in all, however long it is slow for.
+            time.sleep(0.2)
         out.write(frame * (30 - written) if written < 30 else b"")
     log(*lines, "[i][cplayer] Exiting... (End of file)")
 elif mode == "wrong-format":
@@ -1125,19 +1126,24 @@ class TestStubDecoder:
         count = tmp_path / "count"
         monkeypatch.setenv("STUB_MODE", "hang-once")
         monkeypatch.setenv("STUB_COUNT_FILE", str(count))
-        monkeypatch.setattr(ad, "STALL_SECONDS", 0.5, raising=False)
+        # The stub is a Python script: on GitHub's Intel Mac its interpreter
+        # took over half a second to write its first log line, so a stall
+        # limit under that stopped healthy attempts too (their logs read
+        # "(nothing)"). The limit sits well above start-up, and the cap well
+        # above the limit, so finishing early can only be the stall's doing.
+        monkeypatch.setattr(ad, "STALL_SECONDS", 3.0, raising=False)
         started = time.monotonic()
         with caplog.at_level(logging.WARNING, logger=ad._logger.name):
             envelope = ad.decode_envelope(
                 song,
                 stub,
-                timeout_seconds=10.0,
+                timeout_seconds=30.0,
                 transport=transport,
                 workdir_root=workdirs,
             )
         assert envelope.frames == 30
         assert count.read_text() == "2"
-        assert time.monotonic() - started < 8
+        assert time.monotonic() - started < 20
         stalled = [r for r in caplog.records if "no progress" in r.getMessage()]
         assert len(stalled) == 1
         said = stalled[0].getMessage()
@@ -1153,13 +1159,14 @@ class TestStubDecoder:
         monkeypatch.setenv("STUB_MODE", "hang-once")
         monkeypatch.setenv("STUB_COUNT_FILE", str(count))
         monkeypatch.setenv("STUB_HANG_TIMES", "99")
-        monkeypatch.setattr(ad, "STALL_SECONDS", 0.3, raising=False)
+        # Start-up as above; three stalls end well inside one attempt's cap.
+        monkeypatch.setattr(ad, "STALL_SECONDS", 2.0, raising=False)
         started = time.monotonic()
         with pytest.raises(ad.DecodeFailed) as caught:
-            ad.decode_envelope(song, stub, timeout_seconds=10.0, workdir_root=workdirs)
+            ad.decode_envelope(song, stub, timeout_seconds=60.0, workdir_root=workdirs)
         assert caught.value.reason == "timeout"
         assert count.read_text() == str(ad.LOG_ATTEMPTS)
-        assert time.monotonic() - started < 8
+        assert time.monotonic() - started < 30
         assert list(workdirs.iterdir()) == []
         assert ad.live_children() == 0
 
@@ -1171,10 +1178,11 @@ class TestStubDecoder:
         """Quiet in its log while it writes, or the other way round, is progress."""
         monkeypatch.setenv("STUB_MODE", "slow")
         monkeypatch.setenv("STUB_SLOW_KIND", kind)
-        monkeypatch.setenv("STUB_SLOW_SECONDS", "1.2")
-        monkeypatch.setattr(ad, "STALL_SECONDS", 0.4, raising=False)
+        # Longer than the stall limit, which sits above the stub's start-up.
+        monkeypatch.setenv("STUB_SLOW_SECONDS", "3.0")
+        monkeypatch.setattr(ad, "STALL_SECONDS", 1.5, raising=False)
         envelope = ad.decode_envelope(
-            song, stub, timeout_seconds=10.0, transport=transport, workdir_root=workdirs
+            song, stub, timeout_seconds=30.0, transport=transport, workdir_root=workdirs
         )
         assert envelope.frames == 30
 
