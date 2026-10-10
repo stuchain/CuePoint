@@ -9,6 +9,18 @@ from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.services.beatport_service import BeatportService
 
 
+@pytest.fixture(autouse=True)
+def _no_backoff_sleep():
+    """Fail at once instead of sleeping through the retry backoff.
+
+    A provider that raises is retried three times, 0.5 + 1 + 2 seconds plus
+    jitter apart: about four seconds of real waiting in every error test here,
+    none of which a test looks at. The retries themselves still happen.
+    """
+    with patch("cuepoint.services.reliability_retry.time.sleep"):
+        yield
+
+
 def _make_mock_provider(
     search_return=None,
     parse_return=None,

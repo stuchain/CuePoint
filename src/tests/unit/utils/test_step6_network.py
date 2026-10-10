@@ -104,7 +104,8 @@ class TestExponentialBackoff:
         result = test_func()
         assert result == "success"
 
-    def test_retry_succeeds(self):
+    @patch("cuepoint.utils.network.time.sleep")
+    def test_retry_succeeds(self, mock_sleep):
         """Test retry that eventually succeeds."""
         call_count = [0]
 
@@ -122,6 +123,8 @@ class TestExponentialBackoff:
         result = test_func()
         assert result == "success"
         assert call_count[0] == 2
+        # The one backoff is asked for, not slept through.
+        mock_sleep.assert_called_once()
 
     def test_retry_exhausted(self):
         """Test retry that exhausts all attempts."""
@@ -133,7 +136,8 @@ class TestExponentialBackoff:
         with pytest.raises(ConnectionError):
             test_func()
 
-    def test_retry_with_tracker(self):
+    @patch("cuepoint.utils.network.time.sleep")
+    def test_retry_with_tracker(self, mock_sleep):
         """Test retry with tracker."""
         tracker = RetryTracker()
         call_count = [0]
@@ -152,6 +156,7 @@ class TestExponentialBackoff:
         result = test_func()
         assert result == "success"
         assert tracker.attempts == 1
+        mock_sleep.assert_called_once_with(tracker.total_delay)
 
 
 class TestNetworkState:
