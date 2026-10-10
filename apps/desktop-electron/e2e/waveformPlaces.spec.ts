@@ -30,6 +30,9 @@ import { fileURLToPath } from "node:url";
 import { resolvePlayerBinary } from "../electron/playerLaunch";
 import { waitForEngine } from "./engineReady";
 
+/** GitHub's Intel Mac runner, where the scroll check records long tasks instead of failing (DEC-231). */
+const INTEL_MAC_RUNNER = Boolean(process.env.CI) && process.platform === "darwin" && process.arch === "x64";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
 const REPO_ROOT = path.resolve(DESKTOP_ROOT, "../..");
@@ -490,7 +493,15 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
         expect(report.last, "scrolled to the last row").toBe(ROWS + 1);
         expect(report.steps).toBeGreaterThan(50);
         expect(report.canvases).toBeGreaterThan(5);
-        expect(report.long.filter((duration) => duration > 50)).toEqual([]);
+        const over = report.long.filter((duration) => duration > 50);
+        if (INTEL_MAC_RUNNER) {
+          // GitHub's Intel Mac is a slow virtual machine that runs past 50 ms here with or without
+          // any change to the app, even at 1×, so it records the pauses rather than failing on them
+          // (Stelios, 2026-10-10). Windows, Linux and the ARM Mac keep the 50 ms limit.
+          test.info().annotations.push({ type: `over 50 ms at ${scale}× (Intel Mac, recorded)`, description: JSON.stringify(over) });
+        } else {
+          expect(over).toEqual([]);
+        }
       }
     } finally {
       await app.close();

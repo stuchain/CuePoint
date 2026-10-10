@@ -6482,3 +6482,23 @@ link appears in any built page.
 out of the repository, where it would be scraped.
 
 **Decided with**: User · **Date**: 2026-10-10
+
+---
+
+## DEC-231 — The Scroll Check Records, Not Fails, on GitHub's Intel Mac Runner
+
+**Status**: Approved · **Related**: PAGES (Phase 14), WAVE (Phase 11)
+
+**Decision**: The Library scroll check in `e2e/waveformPlaces.spec.ts` ("no long task over 50 ms while
+scrolling") records the long tasks it sees as a test annotation instead of failing when it runs in CI on
+an Intel Mac (`CI` set, `darwin`, `x64`). Windows, Linux and the Apple Silicon Mac keep failing on any
+long task over 50 ms. This reverses the earlier call that the Mac speed limits stay strict, for the
+Intel runner only.
+
+**Reason**: The owner's choice on 2026-10-10 ("Intel logs only"). GitHub's Intel Mac runner is a slow
+virtual machine that runs past 50 ms on this check with or without any app change: the unchanged app
+measured 166, 55, 165 and 67 ms at 1× and 54 to 109 ms at 1.5×, and a table rework that cut long tasks
+about fivefold on throttled Linux did no better there. A limit the runner breaks on its own says nothing
+about the app and kept the whole leg red.
+
+**Decided with**: User · **Date**: 2026-10-10
