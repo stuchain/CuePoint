@@ -13,7 +13,7 @@ Data collection:
 
 Network requests:
 - Beatport scraping/search: user-initiated only
-- Update checking: none; CuePoint does not check for updates
+- Updates: the installed app checks GitHub for updates at launch and every 4 hours, and downloads a new version from there. A check sends only what any download sends, with no id, no account and nothing from your library. You can also check in Settings → About & updates.
 
 Local storage:
 - Match history CSV exports and configuration on disk

@@ -51,6 +51,16 @@ describe("PrivacyDialog (REPORT-08, DEC-128)", () => {
     await waitFor(() => expect(screen.getByTestId("privacy-error-reports")).toHaveTextContent("Error reports: on"));
   });
 
+  it("says the installed app checks GitHub for updates, and that it sends nothing about you (DIST-06)", () => {
+    install(async () => ({ enabled: true, configured: true }));
+    show();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).not.toHaveTextContent(/does not check for updates/i);
+    expect(dialog).toHaveTextContent(/checks GitHub for updates at launch and every 4 hours/i);
+    expect(dialog).toHaveTextContent(/no id, no account and nothing from your library/);
+    expect(dialog).toHaveTextContent(/Settings → About & updates/);
+  });
+
   it("shows the switch's state when off, and when it cannot be read", async () => {
     install(async () => ({ enabled: false, configured: true }));
     const first = show();
