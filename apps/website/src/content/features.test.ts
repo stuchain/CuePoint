@@ -77,35 +77,25 @@ describe("the feature pages", () => {
       }
       expect(slugs.has(p.guide.page), `${p.slug} links guide/${p.guide.page}/`).toBe(true);
     }
-    expect(FEATURE_PAGES.filter((p) => !p.guide).map((p) => p.slug)).toEqual(["keys"]);
+    expect(FEATURE_PAGES.filter((p) => !p.guide).map((p) => p.slug)).toEqual([]);
+    expect(featureBySlug("keys")!.guide).toEqual({ page: "keys", label: "Read the Keys guide" });
   });
 
-  it("marks what the app does not ship yet, with the step that ships it", () => {
-    expect(unshippedMarkers()).toEqual([
-      { where: "library: The Camelot wheel", step: "PAGES-10" },
-      { where: "keys", step: "PAGES-16" },
-    ]);
+  it("carries no preview marker: Phase 14 shipped the Camelot wheel (PAGES-10) and the Keys page (PAGES-16)", () => {
+    expect(unshippedMarkers()).toEqual([]);
+    expect(shippedPages()).toEqual(FEATURE_PAGES);
     for (const p of FEATURE_PAGES) {
       if (p.unshipped) expect(p.unshipped.shipped).toBe(false);
       for (const h of p.how) if (h.unshipped) expect(h.unshipped.shipped).toBe(false);
     }
   });
 
-  it("never lets a shipped page or the overview claim an unshipped feature", () => {
+  it("never lets a shipped page relate to an unshipped one, and keeps the overview within the limits", () => {
     for (const p of shippedPages()) {
       for (const r of p.related) expect(featureBySlug(r)!.unshipped, `${p.slug} links ${r}`).toBeUndefined();
-      const live = [
-        p.title,
-        p.description,
-        p.heading,
-        p.summary,
-        ...p.problem,
-        ...p.doesNot,
-        ...p.how.filter((h) => !h.unshipped).flatMap((h) => [h.heading, ...h.paragraphs]),
-      ];
-      for (const line of live) expect(line, p.slug).not.toMatch(p.slug === "library" ? /\bwheel\b|Keys page|Statistics page/i : /Keys page|Statistics page/i);
     }
-    expect(OVERVIEW.description).not.toMatch(/wheel|statistic|keys page/i);
+    expect(featureBySlug("statistics")!.related).toEqual(["keys", "clean"]);
+    expect(featureBySlug("statistics")!.how.flatMap((h) => h.paragraphs).join(" ")).toContain("opens the Keys page");
     expect(OVERVIEW.description.length).toBeGreaterThanOrEqual(DESCRIPTION_MIN);
     expect(OVERVIEW.description.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
   });

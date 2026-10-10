@@ -96,18 +96,20 @@
   order: 7
   question: How does CuePoint update?
   answer: >-
-    CuePoint does not update itself yet. To get a new version, download the new installer and install it over the
-    old one. Your library stays where it is.
+    On Windows and Mac, CuePoint finds new versions itself. It checks GitHub shortly after it opens and every 4 hours,
+    downloads a new version in the background, and tells you in the status strip when it is ready. You choose
+    Restart now, or Later to install it the next time you quit. Your library and settings stay where they are.
 
 
-    Automatic updates are planned for a later release.
+    On Linux, CuePoint tells you a new version is out and shows a Download link; you install the new AppImage
+    yourself. Settings, then About & updates, shows your version and checks on demand.
   links:
-    - page: getting-started
-      heading: install
-      label: Installing CuePoint
-    - page: troubleshooting
-      heading: no-in-app-updates
-      label: No in-app updates
+    - page: updates
+      heading: what-happens
+      label: How updates work
+    - page: updates
+      heading: when-you-download-it-yourself
+      label: When you download it yourself
 
 - id: where-data
   order: 8

@@ -36,13 +36,13 @@ export const PUBLISHER = "Stelios Vasileiou";
 export const CONTACT_EMAIL = "contact@example.com";
 
 /**
- * Whether the app updates itself (DIST-06 and DIST-07; DEC-145, DEC-169, DEC-170, DEC-174). It is
- * false while `docs/user-guide/getting-started.md` still says "CuePoint does not update itself yet":
- * the download page then says what the guide says (install the new installer over the old one).
- * Whoever finishes DIST-07 and updates the guide flips this to true; `site.test.ts` fails if the two
- * disagree.
+ * Whether the app updates itself (DIST-06 to DIST-08; DEC-145, DEC-169, DEC-170, DEC-174, DEC-224 to
+ * DEC-228). It is true since `docs/user-guide/getting-started.md` says CuePoint "finds and installs new
+ * versions itself" on Windows and Mac (Linux shows a Download link): the download page then says what
+ * `docs/user-guide/updates.md` says. Flip it back to false only if the guide goes back to saying the
+ * app does not update itself; `site.test.ts` fails if the two disagree.
  */
-export const UPDATES_IN_APP = false;
+export const UPDATES_IN_APP = true;
 
 /**
  * Umami Cloud's Website ID (DEC-192). It identifies the site in the account, is public by design (it

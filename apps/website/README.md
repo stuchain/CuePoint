@@ -186,11 +186,12 @@ until its page lands) stays a labelled placeholder (`src/lib/app-shots.ts`).
   `docs/user-guide/`. A line the guide does not cover yet is written from the decisions and listed in the page's
   `fromDecisions`, so it is re-checked when the guide gains the page.
 - **`shipped: false` markers.** A page or a section that describes something the app does not ship yet
-  (`unshipped: { shipped: false, step }` in `features.ts` and `home.ts`: the Camelot wheel, PAGES-10; Keys,
-  PAGES-16) shows a preview note and carries `data-unshipped="<step>"`. A preview build
-  may have them; **a public build fails** (the `unshipped` rule in `check-site`) until the step ships and the
-  marker is removed. The overview's description and `featureList` leave unshipped features out. A page for an
-  unshipped feature has no guide link until the guide has a page for it.
+  (`unshipped: { shipped: false, step }` in `features.ts`) shows a preview note and carries
+  `data-unshipped="<step>"`. A preview build may have them; **a public build fails** (the `unshipped` rule in
+  `check-site`) until the step ships and the marker is removed. The overview's description and `featureList`
+  leave unshipped features out. A page for an unshipped feature has no guide link until the guide has a page for
+  it. None remains: Phase 14 shipped the Camelot wheel (PAGES-10) and the Keys page (PAGES-16), and
+  `features.test.ts` asserts the list is empty.
 - **Comparison pages** are `/compare/<tool>/`, written in `src/data/compare.ts` (DEC-197). Each fact about
   another tool has a `source` (one of the tool's own public pages) and a `checked` date; `COMPARE_CHECKED` is
   the day all of them were last read. To re-check: read each source, fix the text, set the date. Leave out what

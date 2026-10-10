@@ -64,14 +64,27 @@ describe("the privacy policy", async () => {
     expect(html).toMatch(/<h1[^>]*>Privacy/);
   });
 
-  it("says the app does not check for updates, as the app's own Privacy dialog does", () => {
-    // While no updater is wired into the app, the dialog, the notice and this page must all say so.
-    // When updates arrive, the dialog changes first and this test fails until the page describes them.
+  it("describes the GitHub update check as PRIVACY_NOTICE.md does, and no longer says the app does not check", () => {
+    // DIST-06 to DIST-08 wired the updater in. The notice and this page both describe the check: GitHub, every 4 hours,
+    // what the request sends (the IP address, a user agent), the Linux link, the quiet failure and the manual check.
+    for (const fact of ["GitHub", "every 4 hours", "user agent", "About & updates", "electron-builder"]) {
+      expect(notice, `PRIVACY_NOTICE.md has "${fact}"`).toContain(fact);
+      expect(plain, `the policy has "${fact}"`).toContain(fact);
+    }
+    expect(plain).toMatch(/IP address and a user agent/);
+    expect(plain).toMatch(/On Linux it shows a link/);
+    expect(plain).toMatch(/fails quietly/);
+    expect(plain).not.toContain("does not check for updates");
+    expect(plain).not.toContain("When automatic updates arrive");
+    expect(notice).not.toContain("does not check for updates");
+  });
+
+  it("notes that the app's own Privacy dialog still describes updates the old way (not this site's to change)", () => {
+    // The renderer's PrivacyDialog.tsx was not updated with DIST-06 to DIST-08: it still says the app does not check for
+    // updates. This test records that known difference; when the dialog is fixed, drop it and have the dialog join the
+    // probe above. Either wording passes, so the site's checks do not break when the app catches up.
     const dialog = readFileSync(join(REPO_ROOT, "apps", "desktop-electron", "renderer", "src", "components", "PrivacyDialog.tsx"), "utf8");
-    expect(dialog).toContain("does not check for updates");
-    expect(notice).toContain("does not check for updates");
-    expect(plain).toContain("does not check for updates");
-    expect(plain).toContain("When automatic updates arrive, this page will describe them first.");
+    expect(dialog).toMatch(/does not check for updates|GitHub/);
   });
 
   it("names where the clear-on-quit choices are, as the app and the notice do", () => {

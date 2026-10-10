@@ -34,7 +34,7 @@ describe("the home page's content", () => {
   });
 
   it("teases only what the app ships: no preview markers on the home page's teasers", () => {
-    // the Camelot wheel in the header (PAGES-10) and Keys (PAGES-16) are on their feature pages, marked there; Statistics has its own page
+    // the Camelot wheel in the header, Keys and Statistics have their own feature pages, linked from /features/
     for (const f of FEATURES) expect(f.text, f.id).not.toMatch(/wheel|Statistics|Keys page/i);
   });
 

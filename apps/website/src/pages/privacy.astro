@@ -8,7 +8,7 @@ import { hrefFor } from "../lib/url";
  * and held to PRIVACY_NOTICE.md (the app's notice, which this page never contradicts) by
  * privacy.test.ts. The publisher approves this text before launch.
  */
-const UPDATED = "2026-10-08";
+const UPDATED = "2026-10-10";
 ---
 
 <PolicyLayout
@@ -28,6 +28,7 @@ const UPDATED = "2026-10-08";
     <li><strong>The forms</strong> on this site send what you type, and only that, to the publisher's email through Web3Forms.</li>
     <li><strong>The app</strong> has no analytics and no usage tracking. Your Rekordbox collection stays on your computer.</li>
     <li><strong>The app sends an error report to Sentry</strong> (EU region) when it hits an unexpected error, unless you turn that off in <strong>Settings → Privacy → Send error reports</strong>. Reports are cleaned on your computer first, and are built not to carry file, folder, track, artist, label or playlist names.</li>
+    <li><strong>The app asks GitHub for new versions</strong>, about 10 seconds after it starts and then every 4 hours. That check sends only what any request to GitHub sends: your IP address and the name of the software asking. Nothing from your library goes with it.</li>
     <li>Nothing is sold or rented to anyone.</li>
   </ul>
 
@@ -141,8 +142,18 @@ const UPDATED = "2026-10-08";
 
   <h3 id="updates">Updates</h3>
   <p>
-    The app does not check for updates. You download new versions by hand from the project's releases on GitHub, and GitHub sees that
-    request like any download, including your IP address. When automatic updates arrive, this page will describe them first.
+    The installed app asks GitHub, where its versions are published, whether a newer version exists: about 10 seconds after it starts,
+    then every 4 hours while it is open, and whenever you choose <strong>Check for updates</strong> in <strong>Settings → About &amp; updates</strong>.
+    It does not do this when run from source. On Windows and Mac it then downloads the new version from GitHub and installs it when you
+    choose <strong>Restart now</strong>, or the next time you quit. On Linux it shows a link to the download instead.
+  </p>
+  <p>
+    A check sends only what any request to GitHub sends: your IP address and a user agent, the line that names the software asking. The
+    list of versions is asked for with a user agent that names {SITE_NAME} and the version you have; on Mac the download goes through
+    the app's built-in browser, whose user agent also names its own version and your operating system, and on Windows through
+    the update library, whose user agent is <code>electron-builder</code>. No id, no account and nothing from your library goes with it. If you
+    are offline or GitHub cannot be reached, the check fails quietly and is not sent as an error report. There is no setting to turn the check
+    off. The user guide's <a href={hrefFor("guide/updates/")}>Updates</a> page says what you see in the app.
   </p>
 
   <h3 id="lookups">Beatport and DuckDuckGo</h3>

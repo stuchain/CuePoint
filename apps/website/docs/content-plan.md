@@ -7,7 +7,7 @@ matches the page's `query` in `src/data/features.ts`, and no query may appear tw
 | Query | Page | Notes |
 | --- | --- | --- |
 | "fix Rekordbox key tags" | `features/clean/` | Matching to Beatport, applying key, tempo, genre, label and year. |
-| "filter Rekordbox tracks by key and BPM" | `features/library/` | Search, filters, columns. "Camelot wheel harmonic mixing Rekordbox" is held back until the header wheel ships (PAGES-10); it goes to the Library page then. |
+| "filter Rekordbox tracks by key and BPM" | `features/library/` | Search, filters, columns, and the header's Camelot wheel (shipped with PAGES-10). "Camelot wheel harmonic mixing Rekordbox" is a second query the Library page could take on. |
 | "keys in my Rekordbox playlist" | `features/keys/` | The Keys page. |
 | "find new music from artists and labels on Beatport" | `features/discover/` | Discover runs, wantlist. |
 | "plan a DJ set before the gig" | `features/prepare/` | Sets, chapters, times, checks, set lists. |

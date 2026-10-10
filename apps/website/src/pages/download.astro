@@ -25,7 +25,7 @@ const KIND: Record<string, { title: string; detail: string }> = {
   "linux-x64": { title: "Linux", detail: "AppImage for 64-bit Intel and AMD computers" },
 };
 const kind = (f: ReleaseFile) => KIND[`${f.system}-${f.chip}`] ?? { title: f.system, detail: f.chip };
-// The guide's own sentence, while the app does not update itself (UPDATES_IN_APP, src/data/site.ts).
+// The guide's old sentence, kept for the day UPDATES_IN_APP (src/data/site.ts) goes back to false.
 const UPDATE_BY_HAND =
   "CuePoint does not update itself yet. To get a new version, download the new installer and install it over the old one. Your library stays where it is.";
 const linuxFile = files.find((f) => f.system === "linux");
@@ -178,7 +178,9 @@ const schema = release
             </li>
             {
               UPDATES_IN_APP ? (
-                <li>CuePoint downloads new versions itself and installs them when you restart it or quit.</li>
+                <li>
+                  You only do that once. After that CuePoint finds new versions itself and downloads them in the background. When one is ready, the status strip says so: choose <strong>Restart now</strong> to install it and come back, or <strong>Later</strong> to install it the next time you quit.
+                </li>
               ) : (
                 <li>{UPDATE_BY_HAND}</li>
               )
@@ -200,7 +202,7 @@ const schema = release
             {
               UPDATES_IN_APP ? (
                 <li>
-                  You only do that once. After that CuePoint updates itself: it downloads the new version, swaps it in when you quit, and opens. If it cannot replace itself where it is installed, it offers the download instead.
+                  You only do that once. After that CuePoint finds new versions itself and downloads them in the background. When one is ready, the status strip says so: choose <strong>Restart now</strong> to install it and come back, or <strong>Later</strong> to install it the next time you quit. If CuePoint cannot replace itself where it is, for example when it runs from the disk image, it shows a <strong>Download</strong> link instead.
                 </li>
               ) : (
                 <li>{UPDATE_BY_HAND}</li>
@@ -219,7 +221,7 @@ const schema = release
             <li>The Linux build is experimental. It comes without the built-in music player.</li>
             {
               UPDATES_IN_APP ? (
-                <li>CuePoint does not install updates on Linux. It tells you when a new version is out, with a Download button that opens the release page.</li>
+                <li>CuePoint does not install updates on Linux. It tells you when a new version is out, with a <strong>Download</strong> link that opens the release page. Download the new AppImage and run it.</li>
               ) : (
                 <li>{UPDATE_BY_HAND}</li>
               )
@@ -243,8 +245,6 @@ const schema = release
     )
   }
 
-  {/* DIST-08 must update docs/user-guide/support-policy.md and features.md (their "Intel build is planned"
-      line) together with this list: DEC-129 ships an Intel Mac build, and the guide still says it is planned. */}
   <Section id="requirements" heading="What CuePoint runs on" layout="split">
     <ul>
       <li><strong>Windows:</strong> Windows 10 or newer, 64-bit (x64).</li>

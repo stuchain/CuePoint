@@ -195,10 +195,11 @@ export const TRUST: readonly TrustClaim[] = [
   {
     id: "local",
     title: "Runs on your computer",
-    text: "Your library is kept on your computer; CuePoint goes online when you ask it to look tracks up on Beatport, and sends error reports with your names removed, which you can turn off.",
+    text: "Your library is kept on your computer; CuePoint goes online to look tracks up on Beatport when you ask, to ask GitHub for a new version, and to send error reports with your names removed, which you can turn off.",
     evidence: [
       { file: "PRIVACY_NOTICE.md", phrase: "processes your Rekordbox collection locally on your device" },
-      { file: "PRIVACY_NOTICE.md", phrase: "only when you initiate actions" },
+      { file: "PRIVACY_NOTICE.md", phrase: "when you initiate actions that require it" },
+      { file: "PRIVACY_NOTICE.md", phrase: "checks GitHub for updates at launch and every 4 hours" },
       { file: "PRIVACY_NOTICE.md", phrase: "Settings \u2192 Privacy \u2192 Send error reports" },
       { file: "PRIVACY_NOTICE.md", phrase: "your file, folder, track, artist, label or playlist names" },
     ],

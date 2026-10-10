@@ -3,20 +3,19 @@ import type { AppShotId } from "./home";
 /**
  * What each feature page says (SITE-08): one page per thing the app does, at /features/<slug>/.
  * Plain American English for a DJ (DEC-132, DEC-158); never "engine" or "jobs" (DEC-155). Each claim is
- * backed by the user guide in docs/user-guide/. The lines the guide does not cover yet are written from
- * the decisions and named in `fromDecisions`, so they are found and re-checked when the guide gains the
- * page (the Keys page, DEC-200/201/206; the Camelot wheel, DEC-133).
+ * backed by the user guide in docs/user-guide/. A line written from the decisions rather than the guide
+ * names them in `fromDecisions`, so it is found and re-checked when the guide changes.
  *
  * Each page is written for one search a DJ types (`query`), listed in docs/content-plan.md with the
  * page that answers it; `features.test.ts` holds the plan, the limits and the links.
  */
 
 /**
- * A page or a section that describes something the app does not ship yet (the Camelot wheel button,
- * the Keys page). It stays in the preview so the page is ready, shows a visible note, and
- * carries `data-unshipped`; a public build fails while any marker remains (scripts/check-site.mjs).
- * `step` is the phase step that ships it: remove the marker when that step is merged and the guide
- * describes the feature.
+ * A page or a section that describes something the app does not ship yet. It stays in the preview so
+ * the page is ready, shows a visible note, and carries `data-unshipped`; a public build fails while
+ * any marker remains (scripts/check-site.mjs). `step` is the phase step that ships it: remove the
+ * marker when that step is merged and the guide describes the feature. None remains since Phase 14
+ * shipped the Camelot wheel (PAGES-10) and the Keys page (PAGES-16).
  */
 export interface Unshipped {
   readonly shipped: false;
@@ -51,8 +50,8 @@ export interface FeaturePage {
   /** What it does not do. */
   readonly doesNot: readonly string[];
   /**
-   * The guide page (a file of docs/user-guide without `.md`) and the words for the link. Left out while
-   * the guide has no page for the feature (Keys): only an unshipped page may leave it out.
+   * The guide page (a file of docs/user-guide without `.md`) and the words for the link. Left out only
+   * while the guide has no page for the feature: only an unshipped page may leave it out.
    */
   readonly guide?: { readonly page: string; readonly label: string };
   /** Set while the whole page describes a feature the app does not ship yet. */
@@ -152,7 +151,6 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       },
       {
         heading: "The Camelot wheel",
-        unshipped: { shipped: false, step: "PAGES-10" },
         paragraphs: [
           "A button next to search, on every page, opens a wheel of the 24 keys. It lights the key of the track you selected, or the one that is playing, and the keys that mix with it: the same number one step either way, and the relative key.",
           "Click a key and the Library shows every track in that key.",
@@ -214,8 +212,8 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       "It does not count Rekordbox's keys. A track with no Beatport key and none from you is listed as having no key.",
       "It does not work out a key from the audio.",
     ],
+    guide: { page: "keys", label: "Read the Keys guide" },
     related: ["library", "statistics"],
-    unshipped: { shipped: false, step: "PAGES-16" },
     fromDecisions: ["DEC-200", "DEC-201", "DEC-206"],
   },
   {
@@ -326,7 +324,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       {
         heading: "What the library looks like",
         paragraphs: [
-          "See how your tracks spread by genre, key, tempo, year, date added, rating and loudness. The key summary counts the keys CuePoint trusts and the tracks that still have none. A health section counts missing files, tracks matched to Beatport and tracks with waveforms analyzed.",
+          "See how your tracks spread by genre, key, tempo, year, date added, rating and loudness. The key summary counts the keys CuePoint trusts and the tracks that still have none, and opens the Keys page with the same playlists. A health section counts missing files, tracks matched to Beatport and tracks with waveforms analyzed.",
           "Every number leads somewhere: a bar or a row opens the Library on exactly those tracks.",
         ],
       },
@@ -338,7 +336,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       "It cannot show plays from before the history starts.",
     ],
     guide: { page: "statistics", label: "Read the Statistics guide" },
-    related: ["library", "clean"],
+    related: ["keys", "clean"],
     fromDecisions: ["DEC-136", "DEC-137", "DEC-138", "DEC-168", "DEC-206"],
   },
   {

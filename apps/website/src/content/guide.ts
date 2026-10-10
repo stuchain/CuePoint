@@ -147,11 +147,19 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     section: "use",
   },
   {
+    file: "updates.md",
+    title: "Updates",
+    description:
+      "How CuePoint finds and installs new versions itself on Windows and Mac, when to restart, what Linux shows instead, and what a check sends.",
+    order: 15,
+    section: "use",
+  },
+  {
     file: "troubleshooting.md",
     title: "Troubleshooting",
     description:
       "Fixes for import errors, slow runs, matches that will not appear and failed exports, plus how to send a support bundle or report a problem.",
-    order: 15,
+    order: 16,
     section: "help",
   },
   {
@@ -159,7 +167,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Performance",
     description:
       "Measured import and browse times for a 50,000-track library, what slows CuePoint down, and the settings that tune it for a big collection.",
-    order: 16,
+    order: 17,
     section: "help",
   },
   {
@@ -167,7 +175,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Glossary",
     description:
       "Plain definitions of the words CuePoint uses: Set, chapter, entry, planned time, waveform, hot cue, beat grid, LUFS, LU and more.",
-    order: 17,
+    order: 18,
     section: "help",
   },
   {
@@ -175,7 +183,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Support policy",
     description:
       "Which systems CuePoint supports, how fast problems are answered, what to send with a report and where the logs are kept.",
-    order: 18,
+    order: 19,
     section: "policy",
   },
 ];
