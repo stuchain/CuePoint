@@ -449,6 +449,13 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
             for (const entry of list.getEntries() as Array<PerformanceEntry & Record<string, any>>) {
               if (entry.duration <= 50) continue;
               frames.push({
+                start: entry.startTime,
+                end: entry.startTime + entry.duration,
+                // The app's own work in it: its scripts, and the style, layout and paint of its frame.
+                app: Math.round(
+                  (entry.renderStart ? entry.startTime + entry.duration - entry.renderStart : 0) +
+                    (entry.scripts ?? []).reduce((sum: number, script: Record<string, any>) => sum + script.duration, 0),
+                ),
                 at: Math.round(entry.startTime - scrollStart),
                 duration: Math.round(entry.duration),
                 blocking: Math.round(entry.blockingDuration ?? 0),
@@ -508,8 +515,22 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
           observer.disconnect();
           frameObserver.disconnect();
           const last = document.querySelector(".track-table__row:last-child")?.getAttribute("aria-rowindex");
+          // Each long task with the app's own work in the long frames it ran in. A task no frame
+          // was seen for counts whole: without the frames, nothing says the time was not the app's.
+          const timed = long
+            .filter((entry) => entry.start < probe)
+            .map((entry) => {
+              const inside = frames.filter(
+                (frame) => (frame.start as number) < entry.start + entry.duration && (frame.end as number) > entry.start,
+              );
+              return {
+                duration: entry.duration,
+                app: inside.length === 0 ? entry.duration : Math.max(...inside.map((frame) => frame.app as number)),
+              };
+            });
           return {
-            long: long.filter((entry) => entry.start < probe).map((entry) => entry.duration),
+            long: timed.map((entry) => entry.duration),
+            appWork: timed.map((entry) => entry.app),
             probeSeen: long.some((entry) => entry.start >= probe && entry.duration >= 80),
             frames: frames.filter((frame) => (frame.at as number) + scrollStart < probe),
             canvases,
@@ -525,19 +546,34 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
           `scroll at ${scale}x: ${JSON.stringify({ ...report, long: report.long.length === 0 ? "none" : report.long, frames: undefined })}`,
         );
         // eslint-disable-next-line no-console
-        if (report.long.some((duration) => duration > 50)) console.log(`long frames at ${scale}x: ${JSON.stringify(report.frames)}`);
+        if (report.long.some((duration) => duration > 50)) {
+          // eslint-disable-next-line no-console
+          console.log(`long tasks at ${scale}x (ms, app's own work): ${JSON.stringify(report.long.map((duration, index) => [duration, report.appWork[index]]))}`);
+          // eslint-disable-next-line no-console
+          console.log(`long frames at ${scale}x: ${JSON.stringify(report.frames)}`);
+        }
         expect(report.probeSeen, "the long-task observer works here").toBe(true);
         expect(report.last, "scrolled to the last row").toBe(ROWS + 1);
         expect(report.steps).toBeGreaterThan(50);
         expect(report.canvases).toBeGreaterThan(5);
         const over = report.long.filter((duration) => duration > 50);
+        // Judged on the app's own work (DEC-234): a pause fails when the app's scripts, style,
+        // layout and paint in it pass 50 ms. A stall with none of that in it, the virtual machine
+        // not running the app at all, is listed and not failed. Every system but the Intel Mac.
+        const appOver = report.long.filter((duration, index) => duration > 50 && report.appWork[index] > 50);
+        if (over.length > appOver.length) {
+          test.info().annotations.push({
+            type: `over 50 ms at ${scale}× with no app work over 50 ms (listed)`,
+            description: JSON.stringify(report.long.map((duration, index) => ({ duration, app: report.appWork[index] })).filter((entry) => entry.duration > 50)),
+          });
+        }
         if (INTEL_MAC_RUNNER) {
           // GitHub's Intel Mac is a slow virtual machine that runs past 50 ms here with or without
           // any change to the app, even at 1×, so it records the pauses rather than failing on them
-          // (Stelios, 2026-10-10). Windows, Linux and the ARM Mac keep the 50 ms limit.
+          // (Stelios, 2026-10-10). Windows, Linux and the ARM Mac keep the 50 ms limit on the app's work.
           test.info().annotations.push({ type: `over 50 ms at ${scale}× (Intel Mac, recorded)`, description: JSON.stringify(over) });
         } else {
-          expect(over).toEqual([]);
+          expect(appOver).toEqual([]);
         }
       }
     } finally {

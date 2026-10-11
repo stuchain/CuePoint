@@ -6542,3 +6542,20 @@ engine was busy or held anything. An exact 1.00 s connect is macOS sending its S
 engine code was running to cause or could shorten.
 
 **Decided with**: User (Stelios chose "Engine time only" on the CI fix thread's card) · **Date**: 2026-10-10
+
+## DEC-234 — The 5,000-Row Scroll Check Judges the App's Own Work
+
+**Status**: Approved · **Related**: DEC-231, DEC-233, WAVE-06, PAGES-12, CI fix
+
+**Decision**: `waveformPlaces.spec.ts`'s 5,000-row scroll keeps its 50 ms limit on Windows, Linux and
+the ARM Mac, judged on the app's own work. Each long task is matched with the long animation frames
+it ran in; it fails the test when the app's scripts plus that frame's style, layout and paint pass
+50 ms. A long task with no app work over 50 ms is listed in the test's annotations, not failed. A
+long task no frame was seen for counts whole. The Intel Mac still records rather than fails (DEC-231).
+
+**Reason**: On GitHub's ARM Mac the check failed 2 of 5 runs alone (pauses of 361, 63 and 190 ms).
+The long-frame report showed the 190 ms pause with no script, style, layout or paint in it at all:
+the virtual machine not running the app. Stelios's M5 Pro Mac passed it 3 of 3, and Windows and
+Linux pass. The rule still fails any pause the app causes, on every system that judges it.
+
+**Decided with**: User (Stelios chose "App's own work" on the CI fix thread's card) · **Date**: 2026-10-11
