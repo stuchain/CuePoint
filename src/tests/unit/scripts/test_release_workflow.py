@@ -41,7 +41,8 @@ def _runs(job: dict) -> str:
 
 
 def _gh_steps(job: dict) -> list:
-    return [s for s in job["steps"] if "gh " in s.get("run", "")]
+    """The steps that make the release; the website redeploy after it is not one (SITE-13)."""
+    return [s for s in job["steps"] if "gh release" in s.get("run", "")]
 
 
 def _index(text: str, needle: str) -> int:
@@ -178,6 +179,17 @@ class TestPublish:
         assert "gh release edit" in steps[-1]["run"]
         assert sum("gh release edit" in s["run"] for s in steps) == 1
         assert "gh release create" in steps[0]["run"]
+
+    def test_the_website_redeploys_after_the_publish_and_cannot_fail_it(self, job):
+        steps = job["steps"]
+        runs = [s.get("run", "") for s in steps]
+        dispatch = next(
+            i for i, r in enumerate(runs) if "gh workflow run website.yml" in r
+        )
+        edit = next(i for i, r in enumerate(runs) if "gh release edit" in r)
+        assert dispatch > edit
+        assert steps[dispatch].get("continue-on-error") is True
+        assert job["permissions"].get("actions") == "write"
 
     def test_a_test_tag_is_a_pre_release_and_not_latest(self, job):
         text = _runs(job)
