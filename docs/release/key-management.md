@@ -15,7 +15,7 @@ The Electron build signs and notarizes the macOS app only when the environment h
 
 `notarize.cjs` uses the API key if it is complete, and the Apple ID credentials otherwise. If either set is present but the app is not signed, it stops with an error instead of submitting a broken build.
 
-No workflow in `.github/workflows/` sets any of these today. The secrets the workflows use are the automatic `GITHUB_TOKEN`, which `publish-gh-pages-site.yml` and `docs-check.yml` read, and `SENTRY_AUTH_TOKEN` (below). A signed and notarized macOS build therefore comes from a machine where you set the variables above before running `npm run dist`. If you move signing into a workflow, add the secrets under **Settings > Secrets and variables > Actions** and pass them as environment variables to the `npm run dist` step.
+No workflow in `.github/workflows/` sets any of these today. The secrets the workflows use are the automatic `GITHUB_TOKEN`, which `docs-check.yml`, `release.yml` and `website.yml` read, and `SENTRY_AUTH_TOKEN` (below). A signed and notarized macOS build therefore comes from a machine where you set the variables above before running `npm run dist`. If you move signing into a workflow, add the secrets under **Settings > Secrets and variables > Actions** and pass them as environment variables to the `npm run dist` step.
 
 ## No build is signed (DEC-170)
 

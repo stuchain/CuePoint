@@ -275,13 +275,19 @@ Tips: use plain language, do not oversell, say how to install, and thank people.
 - If the release is broken, follow the [Rollback Runbook](rollback.md). For a live incident, see the [Incident Response Runbook](incident-response-runbook.md).
 - Write down what went wrong or slowly, and plan the next release.
 
-## The GitHub Pages site
+## The website
 
-`gh-pages-root/` holds the project's landing page (`index.html`, `logo.png`, `robots.txt`, `sitemap.xml`; the site is at <https://stuchain.github.io/CuePoint/>). `.github/workflows/publish-gh-pages-site.yml` publishes it to the `gh-pages` branch with `scripts/publish_feeds.py --site-only`. It runs on a push to `main` that changes `gh-pages-root/`, and on manual dispatch. It does not need a release tag, and it leaves everything else on `gh-pages` as it is. It commits only those four files. The script creates the `gh-pages` branch if it does not exist.
+The website, <https://usecuepoint.com>, is built from `apps/website/` by `.github/workflows/website.yml` and
+deployed to GitHub Pages (Pages source: **GitHub Actions**) only from the `website` branch (DEC-235).
+To publish site changes that are on `feature`, run `git push origin feature:website`; the branch never
+has commits of its own. If the push changes no file the workflow watches, run **Website** by hand on
+`website` from the **Actions** tab. A release dispatches the same workflow after it publishes, so the
+download page lists the new version. To undo a publish, move `website` back to the previous commit.
 
-To set it up once, open **Settings > Pages** in the repository, choose the `gh-pages` branch and the `/ (root)` folder, and save. Then run the workflow from the **Actions** tab. The site can take a few minutes to appear. If you get a 404, check that the `gh-pages` branch exists and holds `index.html`, and check the workflow log.
-
-The script's name is a leftover: it used to publish update feeds as well. It now publishes only the site.
+The DNS records live at Papaki: four A and four AAAA records for GitHub Pages, `www` as a CNAME to
+`stuchain.github.io.`, and the TXT records `_github-pages-challenge-stuchain` and
+`google-site-verification`, which keep the domain verified with GitHub and Google. Keep all of them.
+The old `gh-pages` branch is kept as it was and is no longer served.
 
 ## Reproducible builds
 

@@ -40,8 +40,6 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
   also run by `validate_compliance.py`.
 - `validate_compliance.py`: Checks the in-app privacy disclosure (the Electron `PrivacyDialog.tsx`),
   `PRIVACY_NOTICE.md` and licences. `compliance-check.yml`.
-- `publish_feeds.py`: Publishes the GitHub Pages site (`gh-pages-root/` index, logo, robots, sitemap) to the
-  `gh-pages` branch. `publish-gh-pages-site.yml`. The name is historical; it no longer publishes update feeds.
 
 ## Run by the CLI
 

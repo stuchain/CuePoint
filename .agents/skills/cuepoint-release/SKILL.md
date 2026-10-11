@@ -179,8 +179,8 @@ After publishing, verify rather than assume:
 - The release body carries this release's changelog entries.
 - One installer downloads and installs on a clean machine, and **About CuePoint...** shows the
   right version.
-- The GitHub Pages site, if `gh-pages-root/` changed, is published by
-  `publish-gh-pages-site.yml`; check that workflow ran.
+- The website (usecuepoint.com) redeploys after the publish: the release dispatches `website.yml` on
+  the `website` branch (DEC-235); check that run is green, so the download page lists the release.
 
 ## Sources of truth
 
@@ -191,7 +191,7 @@ After publishing, verify rather than assume:
   `docs/user-guide/support-policy.md`. Support targets: `docs/policy/support-sla.md`.
 - Changelog: `docs/release/CHANGELOG.md` and `docs/policy/changelog-policy.md`.
 - Workflows: `desktop-electron.yml`, `release-gates.yml`, `test.yml`, `security-scan.yml`,
-  `compliance-check.yml`, `license-compliance.yml`, `docs-check.yml`, `publish-gh-pages-site.yml`.
+  `compliance-check.yml`, `license-compliance.yml`, `docs-check.yml`, `website.yml`.
 - Versions: `src/cuepoint/version.py` and the desktop `package.json` `version`.
 - Reproducible build inputs: `requirements-build.txt`, `build/engine-sidecar.spec`,
   `scripts/player_sidecar_manifest.json`.
