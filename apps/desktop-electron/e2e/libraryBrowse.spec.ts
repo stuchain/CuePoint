@@ -200,6 +200,39 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
         .poll(async () => (await visibleTitles(window))[0], { timeout: 30_000 })
         .toBe("Track 40");
 
+      // --- scrollbar ----------------------------------------------------
+      // The themed bar (tokens/scrollbars.css) only applies while nothing sets the standard
+      // scrollbar-color/-width, which Chromium prefers over the ::-webkit-scrollbar rules.
+      const scrollbar = await window.locator(".track-table__scroll").evaluate((el) => {
+        const resolve = (token: string) => {
+          const probe = document.createElement("i");
+          probe.style.color = `var(${token})`;
+          document.body.appendChild(probe);
+          const colour = getComputedStyle(probe).color;
+          probe.remove();
+          return colour;
+        };
+        const style = getComputedStyle(el);
+        return {
+          thumb: getComputedStyle(el, "::-webkit-scrollbar-thumb").backgroundColor,
+          track: getComputedStyle(el, "::-webkit-scrollbar-track").backgroundColor,
+          expectedThumb: resolve("--border-highlight"),
+          expectedTrack: resolve("--bg-toolbar"),
+          scrollbarColor: style.scrollbarColor,
+          scrollbarWidth: style.scrollbarWidth,
+          // The bar's own width: the rule's colours read back even when Chromium draws its
+          // standard bar instead, but its width does not.
+          barWidth:
+            el.offsetWidth - el.clientWidth - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth),
+          expectedWidth: 8 * parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--scale")),
+        };
+      });
+      expect(scrollbar.scrollbarColor).toBe("auto");
+      expect(scrollbar.scrollbarWidth).toBe("auto");
+      expect(scrollbar.thumb).toBe(scrollbar.expectedThumb);
+      expect(scrollbar.track).toBe(scrollbar.expectedTrack);
+      expect(scrollbar.barWidth).toBeCloseTo(scrollbar.expectedWidth, 0);
+
       // --- scope --------------------------------------------------------
       const tree = window.getByRole("tree", { name: "Playlists" });
       await tree.getByText("Warmup", { exact: true }).click();

@@ -54,8 +54,6 @@
   min-height: 0;
   overflow: auto;
   padding-bottom: var(--space-sm);
-  scrollbar-color: var(--border-muted) var(--bg-toolbar);
-  scrollbar-width: thin;
 }
 
 .cp-playlist-pane__row {

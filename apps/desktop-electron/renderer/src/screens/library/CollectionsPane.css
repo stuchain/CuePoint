@@ -26,8 +26,6 @@
   overflow: auto;
   border-right: var(--border-width) solid var(--border-outline);
   background: var(--bg-panel);
-  scrollbar-color: var(--border-muted) var(--bg-toolbar);
-  scrollbar-width: thin;
 }
 
 /* Inside the pane a section is not its own scroll container or its own edge. */

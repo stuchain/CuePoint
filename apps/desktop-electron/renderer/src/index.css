@@ -1,6 +1,7 @@
 @import "./tokens/fonts.css";
 @import "./tokens/tokens.css";
 @import "./tokens/layout.css";
+@import "./tokens/scrollbars.css";
 @import "./tokens/themes/retro16.css";
 @import "./tokens/themes/neoDark.css";
 @import "./tokens/themes/qtEvolved.css";

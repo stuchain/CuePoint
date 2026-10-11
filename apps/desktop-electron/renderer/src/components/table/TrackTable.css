@@ -2,7 +2,7 @@
  * The Universal Track Table (LIBUI-04).
  *
  * The chrome is the retired Results table's, deliberately: the black outline, the
- * sticky header on the toolbar background, the hard-edged scrollbar and the
+ * sticky header on the toolbar background, the themed scrollbar (tokens/scrollbars.css) and the
  * inset selection ring are the pixel signature, and a second table that looked
  * different would read as a second application.
  *
@@ -30,8 +30,6 @@
   min-height: 0;
   overflow: auto;
   position: relative;
-  scrollbar-color: var(--border-muted) var(--bg-toolbar);
-  scrollbar-width: thin;
   scrollbar-gutter: stable;
   /*
    * Scrolled by the compositor. On a 1x display Chromium otherwise keeps this box on the main
@@ -41,20 +39,6 @@
    * frame: 8.6 s of the main thread over the scroll, and 2.2 s with this.
    */
   will-change: scroll-position;
-}
-
-.track-table__scroll::-webkit-scrollbar {
-  width: calc(10px * var(--scale));
-  height: calc(10px * var(--scale));
-}
-
-.track-table__scroll::-webkit-scrollbar-track {
-  background: var(--bg-toolbar);
-}
-
-.track-table__scroll::-webkit-scrollbar-thumb {
-  background: var(--border-muted);
-  border: var(--hairline) solid var(--border-outline);
 }
 
 .track-table__header {
