@@ -55,6 +55,51 @@ def _job_threads_finish_with_their_test():
             thread.join(max(0.0, deadline - time.monotonic()))
 
 
+#: What the system said of a request's sockets while it was still unanswered.
+_LIVE_REPORTS: list[str] = []
+
+#: How long a request to an engine goes unanswered before its sockets are looked at.
+_LIVE_REPORT_AFTER_SECONDS = 3.0
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _look_at_unanswered_requests():
+    """Look at a request's connection while it is still waiting for its answer.
+
+    The Windows timeout left the engine's listener idle with nothing accepted,
+    and by the time the test failed the client had closed its end, taking the
+    evidence with it. So a request still unanswered after a few seconds has its
+    own connection, and every socket on the engine's port, recorded then.
+    """
+    import http.client
+
+    original = http.client.HTTPConnection.getresponse
+
+    def getresponse(self, *args, **kwargs):
+        def look() -> None:
+            try:
+                local = self.sock.getsockname() if self.sock else None
+            except OSError:
+                local = None
+            _LIVE_REPORTS.append(
+                f"request to {self.host}:{self.port} from {local}, "
+                f"unanswered after {_LIVE_REPORT_AFTER_SECONDS} s\n"
+                + _socket_report({self.port, *([local[1]] if local else [])})
+            )
+
+        timer = threading.Timer(_LIVE_REPORT_AFTER_SECONDS, look)
+        timer.daemon = True
+        timer.start()
+        try:
+            return original(self, *args, **kwargs)
+        finally:
+            timer.cancel()
+
+    http.client.HTTPConnection.getresponse = getresponse
+    yield
+    http.client.HTTPConnection.getresponse = original
+
+
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     """Name what the engine was doing when a request to it timed out.
@@ -64,8 +109,14 @@ def pytest_runtest_makereport(item, call):
     Rare (Windows CI, one test in a few thousand), so it is caught as it fails.
     """
     outcome = yield
+    live = _LIVE_REPORTS[:]
+    _LIVE_REPORTS.clear()
     if call.excinfo is None or not call.excinfo.errisinstance(TimeoutError):
         return
+    if live:
+        outcome.get_result().sections.append(
+            ("sockets while the request waited", "\n\n".join(live))
+        )
     import traceback
 
     names = {thread.ident: thread.name for thread in threading.enumerate()}
