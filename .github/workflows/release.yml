@@ -112,6 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     concurrency:
       group: release-${{ github.ref_name }}
       cancel-in-progress: false
@@ -190,3 +191,10 @@ jobs:
           else
             gh release edit "${TAG}" --draft=false --latest
           fi
+
+      # SITE-13: the download page reads the release list when the site builds, so rebuild and
+      # redeploy it. The site deploys from `feature` until v1 is on `main` (DEC-195). The release is
+      # already out, so a failed dispatch fails nothing.
+      - name: Redeploy the website
+        continue-on-error: true
+        run: gh workflow run website.yml --ref feature
