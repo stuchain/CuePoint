@@ -507,6 +507,26 @@ describe("shutdown", () => {
     await expect(supervisor.play("/music/a.flac")).rejects.toThrow(/shut down/i);
   });
 
+  it("stops an mpv whose start a quit landed in the middle of", async () => {
+    // Playwright asks the app to quit through the inspector, which runs the quit
+    // in the middle of whatever JavaScript is running: here, between the spawn
+    // and the supervisor keeping the child. dispose() found nothing to stop and
+    // that mpv outlived the app, holding the test runner's pipes (Linux e2e).
+    let disposing: Promise<void> | null = null;
+    const h = track(
+      harness({
+        onSpawn: () => {
+          disposing = h.supervisor.dispose();
+        },
+      }),
+    );
+    await expect(h.supervisor.play("/music/a.flac")).rejects.toThrow(/shut down/i);
+    await disposing;
+
+    expect(h.children).toHaveLength(1);
+    expect(h.children[0].killed).toBe(true);
+  });
+
   it("clears playback state on stop", async () => {
     const { supervisor } = track(harness());
     await supervisor.play("/music/a.flac");

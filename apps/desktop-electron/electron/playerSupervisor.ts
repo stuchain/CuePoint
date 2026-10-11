@@ -556,6 +556,18 @@ export class PlayerSupervisor {
     });
 
     this.child = child;
+    // A quit can land between the spawn and here: Playwright asks the app to quit through the
+    // inspector, which runs it in the middle of whatever JavaScript is running. dispose() then
+    // found no child to stop, and this mpv outlived the app, holding the e2e runner's pipes.
+    if (this.disposed) {
+      this.child = null;
+      try {
+        child.kill();
+      } catch {
+        /* already gone */
+      }
+      throw new PlayerUnavailableError("The player has been shut down.");
+    }
 
     const client = this.clientFactory(socketPath);
     try {
