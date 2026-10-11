@@ -63,7 +63,13 @@ function itemsOf(bodies: string[], type: string): Array<Record<string, any>> {
 }
 
 function launch(userDataDir: string, dsn: string | null): Promise<ElectronApplication> {
-  const env = { ...process.env, NODE_ENV: "production" } as Record<string, string>;
+  // Its own engine home as well as its own profile: without it the engine opens the real
+  // `~/.cuepoint`, so a run on a developer's machine reads their library and rotates their backups.
+  const env = {
+    ...process.env,
+    NODE_ENV: "production",
+    CUEPOINT_HOME: path.join(userDataDir, "cuepoint-home"),
+  } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.CUEPOINT_SENTRY_DSN;
   if (dsn !== null) env.CUEPOINT_SENTRY_DSN = dsn;

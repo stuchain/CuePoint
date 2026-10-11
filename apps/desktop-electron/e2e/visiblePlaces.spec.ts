@@ -197,7 +197,11 @@ async function choose(win: Page, name: string | RegExp, max = 30) {
   await expect(win.getByRole("menu").last()).toBeVisible({ timeout: 10_000 });
   for (let presses = 0; presses < max; presses += 1) {
     const at = await win.evaluate(() => {
-      const active = [...document.querySelectorAll(".cp-track-menu__item--active")].pop();
+      // A menu that just closed leaves a still copy of itself for its exit (`useLeaveGhost`), with
+      // its own marked entry, for up to 400 ms. It is not the menu the keys move in.
+      const active = [...document.querySelectorAll(".cp-track-menu__item--active")]
+        .filter((item) => !item.closest("[data-ghost]"))
+        .pop();
       return (active?.textContent ?? "").replace("▸", "").trim();
     });
     const hit = typeof name === "string" ? at === name : name.test(at);
