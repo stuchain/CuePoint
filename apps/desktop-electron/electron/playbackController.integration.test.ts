@@ -225,7 +225,14 @@ describeWithMpv("a queue playing through real mpv", () => {
       0,
     );
 
-    await waitFor(() => controller.queueWindow(0, 1_000).items[1].status === "playing");
+    // Waited for on mpv's own events: the second tone lasts a third of a
+    // second and the queue sets it back to pending when the queue ends, so on
+    // a loaded runner "items[1] is playing" was never seen (Intel Mac, a5a4abb).
+    await waitFor(
+      () =>
+        marks.some((mark) => mark.what === "end") &&
+        marks.filter((mark) => mark.what === "start").length >= 2,
+    );
 
     const firstEnd = marks.find((mark) => mark.what === "end");
     // The second start: the first is the file this test asked for by hand.
