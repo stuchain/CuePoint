@@ -58,6 +58,9 @@
   --results-col-write: var(--results-col-min);
   --results-table-min-width: 87.5rem;
   --results-grid-columns: var(--results-col-min) var(--results-col-min) minmax(9.375rem, 1fr) minmax(9.375rem, 1fr) minmax(10.9375rem, 1.2fr) minmax(9.375rem, 1fr) var(--results-col-min) var(--results-col-min) var(--results-col-min) minmax(9.375rem, 1fr) var(--results-col-min) var(--results-col-min) var(--results-col-min) var(--results-col-min);
+  --scrollbar-radius: 0;
+  --scrollbar-size: 0.625rem;
+  --scrollbar-inset: 0.1563rem;
 }
 
 :root,
