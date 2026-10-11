@@ -1314,7 +1314,17 @@ def _outcome(
             raise FileGone(str(source))
         if not log.errors:
             # A failed load that logged no error found nothing to decode: a
-            # valid container with no samples, such as an empty WAV.
+            # valid container with no samples, such as an empty WAV. Written to
+            # the engine's log with how the decoder exited: a good tone.m4a read
+            # this way once on an Intel Mac, and nothing said why.
+            _logger.warning(
+                "[waveforms] the decoder exited with %s for %s and logged no "
+                "error; read as no audio. Its log ends:\n%s",
+                returncode,
+                source.name,
+                "\n".join(log_text.strip().splitlines()[-TIMEOUT_LOG_LINES:])
+                or "(nothing)",
+            )
             raise DecodeFailed(REASON_NO_AUDIO, "the file holds no audio to decode")
         raise DecodeFailed(REASON_UNDECODABLE, log.first_error())
     if not log.outputs or len(raw) < _FRAME_BYTES:
