@@ -763,7 +763,7 @@ left; no quarantine flag on the replaced app and nothing for Stelios to report f
 for this install); `config.yaml` byte-identical and every library table's row count unchanged (5,574
 tracks) but the activity log's launch entries; a launch backup before each start; `lastSeenVersion`
 1.0.0-test.2 and no `pendingInstall`; only `updates/1.0.0-test.2/notes.md` kept, for **What's new**.
-**Still owed:** the same run on an Intel Mac, the read-only-folder run that shows **Download**, and the
+**Still owed:** the same run on an Intel Mac (there is none to hand, so it needs CI's Intel runner), the read-only-folder run that shows **Download**, and the
 quit-instead-of-restart path, which needs a `v1.0.0-test.3`.
 
 ---
@@ -847,9 +847,11 @@ by switching the user's theme.
 **Checked on macOS (2026-10-11):** in the Dock of Stelios's Mac the installed test.2 shows the wheel
 on the violet tile with its outline and hard shadow. The tile fills its whole square with square corners,
 unlike macOS's inset rounded icon shape, so it reads larger than its neighbours; the spec asks for no
-macOS shape, so this is recorded, not changed. Still owed: the DMG window and Finder at small sizes
-(including whether Finder uses the hand-drawn 16 and 32 grids from the PNG `icp4`/`icp5` entries)
-and the Linux AppImage check. The 64 px mark in Settings › About & updates rides PAGES-01.
+macOS shape, so this is recorded, not changed. The test.1 DMG's window and Finder's Applications folder,
+in icon and list view, were then checked by eye on the same Mac and judged fine. Not confirmed: whether
+Finder draws the hand-drawn 16 and 32 grids (the PNG `icp4`/`icp5` entries) rather than a scaled one, and
+whether macOS 27 frames the square tile in its grey rounded shape at large sizes (an `NSWorkspace` render at
+128 px did). Still owed: the Linux AppImage check. The 64 px mark in Settings › About & updates rides PAGES-01.
 
 ---
 
