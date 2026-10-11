@@ -6592,3 +6592,22 @@ toward the next cut; halves finish sooner and leave room. A hung test is stopped
 thread's stack, so the step limit is no longer the only guard against hangs.
 
 **Decided with**: CI fix thread · **Date**: 2026-10-11
+
+---
+
+## DEC-237 — The Mac Icon Takes macOS's Rounded Square
+
+**Status**: Approved · **Related**: DEC-210, DIST-09
+
+**Decision**: On macOS only, the icon is the Camelot wheel on Neo Dark's violet tile reshaped to
+macOS's rounded square: a transparent margin of 100/1024, corners at 22.37% of the tile, the light
+and dark bands at top and bottom, and no black outline or hard shadow. The wheel is the hand-drawn
+grid's own, ring and hub included, at a whole-pixel scale, so every size stays sharp.
+`scripts/build_app_icons.py` builds it into `icon.icns`; Windows' `icon.ico` and Linux's PNGs keep
+DEC-210's square tile unchanged.
+
+**Reason**: macOS 26 and later draws an app icon that is not its rounded square inside a grey rounded
+box, so on Stelios's Mac CuePoint sat boxed among native icons (2026-10-11). Of two rounded versions
+drawn by the Mac, the user picked the one without the outline; macOS trims most of an outline anyway.
+
+**Decided with**: User · **Date**: 2026-10-11

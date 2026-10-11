@@ -6,6 +6,12 @@ Standard library only. The sources are ``mark-N.svg`` (N = 16, 24, 32, 48, 64),
 each one ``<rect>`` per opaque pixel. Sizes 16..64 come from their own grid; the
 larger sizes are the 64 grid scaled nearest-neighbour by an integer factor.
 
+The macOS icon (``icon.icns``) is a separate variant: macOS 26 draws any app icon
+that is not the native rounded-square shape inside a grey rounded "jail", and the
+square pixel tile is full-bleed. So the Mac variant is the violet tile reshaped to
+the macOS rounded square (transparent margin, no outline or shadow) with the pixel
+Camelot wheel inside. Windows and Linux files keep the square tile unchanged.
+
 Outputs (under ``apps/desktop-electron/build``): ``icon.ico``, ``icon.icns``,
 ``icon.png`` (512) and ``icons/<size>x<size>.png`` for Linux. The bytes are
 deterministic, so ``--check`` can compare the committed files with the sources.
@@ -53,6 +59,16 @@ Grid = list[list[Pixel]]
 
 _TRANSPARENT = (0, 0, 0, 0)
 
+MAC_SIZES = (16, 32, 64, 128, 256, 512, 1024)
+_TILE = (139, 92, 246)  # #8b5cf6
+_BAND_LIGHT = (167, 139, 250)  # #a78bfa
+_BAND_DARK = (109, 40, 217)  # #6d28d9
+_VIOLET = frozenset({_TILE, _BAND_LIGHT, _BAND_DARK})
+_TILE_COLOURS = frozenset({_TILE, _BAND_LIGHT, _BAND_DARK, (0, 0, 0)})
+_MAC_RADIUS = 0.2237
+_MAC_WHEEL_TARGET = 0.62
+_MAC_WHEEL_TOLERANCE = 0.15
+
 
 def parse_svg(text: str) -> Grid:
     """Parse a mark SVG into an N x N grid of RGBA tuples (rows of pixels).
@@ -97,6 +113,111 @@ def scale_grid(grid: Grid, factor: int) -> Grid:
         wide = [px for px in row for _ in range(factor)]
         out.extend([list(wide) for _ in range(factor)])
     return out
+
+
+def _is_wheel_colour(px: Pixel) -> bool:
+    return px[3] == 255 and px[:3] not in _TILE_COLOURS
+
+
+def wheel_crop(grid: Grid) -> Grid:
+    """The wheel's bounding box, including its own black ring.
+
+    The wheel is every opaque non-tile-colour pixel plus the black pixels
+    8-connected to it through black (its ring); the tile's black outline is not
+    connected to the wheel, so it stays out.
+    """
+    size = len(grid)
+    seen = {
+        (x, y) for y in range(size) for x in range(size) if _is_wheel_colour(grid[y][x])
+    }
+    stack = list(seen)
+    while stack:
+        x, y = stack.pop()
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                nx, ny = x + dx, y + dy
+                if (
+                    0 <= nx < size
+                    and 0 <= ny < size
+                    and (nx, ny) not in seen
+                    and grid[ny][nx] == (0, 0, 0, 255)
+                ):
+                    seen.add((nx, ny))
+                    stack.append((nx, ny))
+    x0, x1 = min(x for x, _ in seen), max(x for x, _ in seen)
+    y0, y1 = min(y for _, y in seen), max(y for _, y in seen)
+    return [row[x0 : x1 + 1] for row in grid[y0 : y1 + 1]]
+
+
+def pick_wheel(size: int, widths: dict[int, int]) -> tuple[int, int]:
+    """Choose (source grid n, integer scale k) for the wheel on a Mac icon."""
+    margin = size * 100 // 1024
+    body = size - 2 * margin
+    band = max(1, round(body / 14))
+    room = body - 2 * band
+    target = _MAC_WHEEL_TARGET * size
+    fitting: list[tuple[float, int, int]] = []
+    for n in sorted(widths, reverse=True):
+        w = widths[n]
+        ks = [k for k in range(1, room // w + 1)]
+        if not ks:
+            continue
+        k = min(ks, key=lambda k: abs(k * w - target))
+        diff = abs(k * w - target)
+        if diff <= _MAC_WHEEL_TOLERANCE * target:
+            return n, k
+        fitting.append((diff, n, k))
+    if not fitting:
+        raise ValueError(f"no mark's wheel fits a {size} px Mac icon")
+    _, n, k = min(fitting, key=lambda t: t[0])  # stable: largest n wins ties
+    return n, k
+
+
+def mac_grid(size: int, source_grids: dict[int, Grid]) -> Grid:
+    """The macOS icon: violet rounded-square tile with the pixel wheel inside."""
+    margin = size * 100 // 1024
+    body = size - 2 * margin
+    band = max(1, round(body / 14))
+    radius = body * _MAC_RADIUS
+    centre = margin + body / 2
+    inner = body / 2 - radius
+    crops = {n: wheel_crop(source_grids[n]) for n in SOURCE_SIZES}
+    n, k = pick_wheel(size, {n: len(c[0]) for n, c in crops.items()})
+
+    def inside(x: float, y: float) -> bool:
+        dx = max(abs(x - centre) - inner, 0.0)
+        dy = max(abs(y - centre) - inner, 0.0)
+        return margin <= x < margin + body and (
+            margin <= y < margin + body and dx * dx + dy * dy <= radius * radius
+        )
+
+    grid: Grid = [[_TRANSPARENT] * size for _ in range(size)]
+    for y in range(size):
+        if y < margin + band:
+            rgb = _BAND_LIGHT
+        elif y >= size - margin - band:
+            rgb = _BAND_DARK
+        else:
+            rgb = _TILE
+        for x in range(size):
+            hits = sum(
+                inside(x + 0.125 + 0.25 * a, y + 0.125 + 0.25 * b)
+                for a in range(4)
+                for b in range(4)
+            )
+            if hits:
+                grid[y][x] = (*rgb, round(255 * hits / 16))
+    crop = crops[n]
+    if len(crop) != len(crop[0]):
+        raise ValueError(f"mark-{n}.svg's wheel is not square")
+    left = (size - k * len(crop[0])) // 2
+    for cy, row in enumerate(crop):
+        for cx, px in enumerate(row):
+            if px[3] == 255 and px[:3] not in _VIOLET:
+                for dy in range(k):
+                    for dx in range(k):
+                        grid[left + cy * k + dy][left + cx * k + dx] = px
+    return grid
 
 
 def _chunk(kind: bytes, data: bytes) -> bytes:
@@ -166,9 +287,10 @@ def build_outputs(source_dir: Path = DEFAULT_SOURCE_DIR) -> dict[str, bytes]:
     """Every output file as {path relative to the out dir: bytes}."""
     grids = load_grids(Path(source_dir))
     pngs = {n: encode_png(g) for n, g in grids.items()}
+    mac_pngs = {n: encode_png(mac_grid(n, grids)) for n in MAC_SIZES}
     outputs: dict[str, bytes] = {
         "icon.ico": encode_ico([(n, pngs[n]) for n in ICO_SIZES]),
-        "icon.icns": encode_icns([(t, pngs[n]) for t, n in ICNS_TYPES]),
+        "icon.icns": encode_icns([(t, mac_pngs[n]) for t, n in ICNS_TYPES]),
         "icon.png": pngs[512],
     }
     for n in LINUX_SIZES:

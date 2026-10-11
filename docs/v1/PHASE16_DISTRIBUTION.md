@@ -851,7 +851,9 @@ macOS shape, so this is recorded, not changed. The test.1 DMG's window and Finde
 in icon and list view, were then checked by eye on the same Mac and judged fine. Not confirmed: whether
 Finder draws the hand-drawn 16 and 32 grids (the PNG `icp4`/`icp5` entries) rather than a scaled one, and
 whether macOS 27 frames the square tile in its grey rounded shape at large sizes (an `NSWorkspace` render at
-128 px did). Still owed: the Linux AppImage check. The 64 px mark in Settings › About & updates rides PAGES-01.
+128 px did). Stelios then saw it boxed among his apps, so the Mac icon was redrawn in macOS's rounded square
+(DEC-237): `icon.icns` only, Windows and Linux unchanged, and the Mac draws it without the grey box. Still
+owed: the new Mac icon in an installed build, and the Linux AppImage check. The 64 px mark in Settings › About & updates rides PAGES-01.
 
 ---
 

@@ -125,15 +125,153 @@ def test_ico_holds_exactly_the_expected_sizes_and_pixels() -> None:
         assert_pixels(png, w, _expected(w))
 
 
-def test_icns_holds_every_ostype_with_the_right_pixels() -> None:
-    expected = {
-        "icp4": 16, "icp5": 32, "icp6": 64, "ic07": 128, "ic08": 256, "ic09": 512,
-        "ic10": 1024, "ic11": 32, "ic12": 64, "ic13": 256, "ic14": 512,
-    }  # fmt: skip
+_TILE_RGB = {(139, 92, 246), (167, 139, 250), (109, 40, 217), (0, 0, 0)}
+_VIOLET_RGB = {(139, 92, 246), (167, 139, 250), (109, 40, 217)}
+_ICNS = {
+    "icp4": 16, "icp5": 32, "icp6": 64, "ic07": 128, "ic08": 256, "ic09": 512,
+    "ic10": 1024, "ic11": 32, "ic12": 64, "ic13": 256, "ic14": 512,
+}  # fmt: skip
+
+
+def _wheel_box(n: int):
+    """Wheel plus its black ring: colour pixels, grown through touching black."""
+    g = svg_grid(n)
+    todo = [
+        (x, y)
+        for y in range(n)
+        for x in range(n)
+        if g[y][x][3] == 255 and g[y][x][:3] not in _TILE_RGB
+    ]
+    got = set(todo)
+    while todo:
+        x, y = todo.pop()
+        for nx in range(x - 1, x + 2):
+            for ny in range(y - 1, y + 2):
+                if (
+                    0 <= nx < n
+                    and 0 <= ny < n
+                    and (nx, ny) not in got
+                    and g[ny][nx] == (0, 0, 0, 255)
+                ):
+                    got.add((nx, ny))
+                    todo.append((nx, ny))
+    xs, ys = [p[0] for p in got], [p[1] for p in got]
+    return min(xs), min(ys), max(xs) - min(xs) + 1, max(ys) - min(ys) + 1
+
+
+def _ref_pick(size: int):
+    m = size * 100 // 1024
+    b = size - 2 * m
+    h = max(1, round(b / 14))
+    room, target = b - 2 * h, 0.62 * size
+    best = None
+    for n in (64, 48, 32, 24, 16):
+        w = _wheel_box(n)[2]
+        ks = [k for k in range(1, room // w + 1)]
+        if not ks:
+            continue
+        k = min(ks, key=lambda k: abs(k * w - target))
+        d = abs(k * w - target)
+        if d <= 0.15 * target:
+            return n, k
+        if best is None or d < best[0]:
+            best = (d, n, k)
+    return best[1], best[2]
+
+
+def _ref_mac(size: int):
+    m = size * 100 // 1024
+    b = size - 2 * m
+    h = max(1, round(b / 14))
+    r = b * 0.2237
+    c = m + b / 2
+    out = [[(0, 0, 0, 0)] * size for _ in range(size)]
+    for y in range(size):
+        rgb = (
+            (167, 139, 250)
+            if y < m + h
+            else ((109, 40, 217) if y >= size - m - h else (139, 92, 246))
+        )
+        for x in range(size):
+            cnt = 0
+            for i in range(4):
+                for j in range(4):
+                    px, py = x + 0.125 + 0.25 * i, y + 0.125 + 0.25 * j
+                    if not (m <= px < m + b and m <= py < m + b):
+                        continue
+                    qx = max(abs(px - c) - (b / 2 - r), 0)
+                    qy = max(abs(py - c) - (b / 2 - r), 0)
+                    cnt += qx * qx + qy * qy <= r * r
+            if cnt:
+                out[y][x] = (*rgb, round(255 * cnt / 16))
+    n, k = _ref_pick(size)
+    x0, y0, w, hh = _wheel_box(n)
+    src = svg_grid(n)
+    left = (size - k * w) // 2
+    for sy in range(hh):
+        for sx in range(w):
+            p = src[y0 + sy][x0 + sx]
+            if p[3] == 255 and p[:3] not in _VIOLET_RGB:
+                for dy in range(k):
+                    for dx in range(k):
+                        out[left + sy * k + dy][left + sx * k + dx] = p
+    return out
+
+
+def test_icns_holds_every_ostype_with_the_mac_icon_pixels() -> None:
     entries = icns_entries((_BUILD / "icon.icns").read_bytes())
-    assert set(entries) == set(expected)
-    for ostype, size in expected.items():
-        assert_pixels(entries[ostype], size, _expected(size))
+    assert set(entries) == set(_ICNS)
+    for ostype, size in _ICNS.items():
+        assert_pixels(entries[ostype], size, _ref_mac(size))
+
+
+def test_mac_wheel_picks() -> None:
+    picks = {s: _ref_pick(s) for s in (16, 32, 64, 128, 256, 512, 1024)}
+    assert picks == {
+        16: (16, 1), 32: (32, 1), 64: (48, 1), 128: (48, 2),
+        256: (64, 3), 512: (64, 7), 1024: (64, 14),
+    }  # fmt: skip
+    widths = {n: _wheel_box(n)[2] for n in (16, 24, 32, 48, 64)}
+    assert widths == {16: 11, 24: 19, 32: 20, 48: 35, 64: 46}
+    for s, (n, k) in picks.items():
+        assert icons.pick_wheel(s, widths) == (n, k)
+
+
+def test_mac_icon_has_transparent_corners_and_opaque_centre() -> None:
+    entries = icns_entries((_BUILD / "icon.icns").read_bytes())
+    for ostype, size in _ICNS.items():
+        _w, _h, rows = decode_png(entries[ostype])
+        assert rows[0][0] == (0, 0, 0, 0)
+        assert rows[size - 1][size - 1] == (0, 0, 0, 0)
+        assert rows[size // 2][size // 2][3] == 255
+
+
+def test_mac_icon_geometry_at_1024() -> None:
+    """Pinned by hand, not by re-running the rule: margin 100, body 824, bands 59."""
+    _w, _h, rows = decode_png(icns_entries((_BUILD / "icon.icns").read_bytes())["ic10"])
+    # The transparent margin on every side.
+    for i in range(100):
+        assert rows[512][i][3] == 0 and rows[512][1023 - i][3] == 0
+        assert rows[i][512][3] == 0 and rows[1023 - i][512][3] == 0
+    # The light band's first and last rows, the dark band's, and the tile between, at the centre column.
+    assert rows[100][512] == (167, 139, 250, 255) and rows[158][512] == (
+        167,
+        139,
+        250,
+        255,
+    )
+    assert rows[159][512] == (139, 92, 246, 255)
+    assert rows[865][512] == (109, 40, 217, 255) and rows[923][512] == (
+        109,
+        40,
+        217,
+        255,
+    )
+    # The wheel (64 grid x14, 644 px from 190) stays between the bands.
+    band_colours = {(167, 139, 250, 255), (109, 40, 217, 255)}
+    assert rows[189][512] in band_colours | {(139, 92, 246, 255)}
+    for y in (190, 833):
+        assert rows[y][512] not in band_colours
 
 
 def test_icon_png_is_the_scaled_512() -> None:
@@ -172,7 +310,8 @@ def test_check_fails_after_a_source_changes(
     svg = src / "mark-16.svg"
     text = svg.read_text(encoding="utf-8")
     svg.write_text(
-        re.sub(r'fill="#[0-9a-f]{6}"', 'fill="#123456"', text, count=1),
+        # The hub's white pixel: a change inside the wheel, which every output draws.
+        text.replace('fill="#fafafa"', 'fill="#123456"', 1),
         encoding="utf-8",
     )
     assert icons.main(args) != 0

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **The Mac icon looks native.** On macOS it is now a rounded square like the apps around it, instead of a square tile that macOS put inside a grey box. Windows and Linux keep the square tile.
 - **Scrollbars match the theme.** Every list and panel has a narrow, square scrollbar in the theme's colours, in place of the system's grey bar. It lightens under the pointer and takes the theme's accent colour while you drag it.
 
 ## [1.0.0-test.2] - 2026-10-10
