@@ -85,6 +85,8 @@ def _look_at_unanswered_requests():
                 f"request to {self.host}:{self.port} from {local}, "
                 f"unanswered after {_LIVE_REPORT_AFTER_SECONDS} s\n"
                 + _socket_report({self.port, *([local[1]] if local else [])})
+                + "\n\nthreads then:\n"
+                + _thread_stacks()
             )
 
         timer = threading.Timer(_LIVE_REPORT_AFTER_SECONDS, look)
@@ -117,21 +119,25 @@ def pytest_runtest_makereport(item, call):
         outcome.get_result().sections.append(
             ("sockets while the request waited", "\n\n".join(live))
         )
-    import traceback
-
-    names = {thread.ident: thread.name for thread in threading.enumerate()}
-    stacks = [
-        f"--- {names.get(ident, '?')} ({ident})\n"
-        + "".join(traceback.format_stack(frame))
-        for ident, frame in sys._current_frames().items()
-    ]
     outcome.get_result().sections.append(
-        ("threads when the request timed out", "\n".join(stacks))
+        ("threads when the request timed out", _thread_stacks())
     )
     report = outcome.get_result()
     ports = _engine_ports(item)
     report.sections.append(
         ("sockets when the request timed out", _socket_report(ports))
+    )
+
+
+def _thread_stacks() -> str:
+    """Every thread's name and stack, as it is now."""
+    import traceback
+
+    names = {thread.ident: thread.name for thread in threading.enumerate()}
+    return "\n".join(
+        f"--- {names.get(ident, '?')} ({ident})\n"
+        + "".join(traceback.format_stack(frame))
+        for ident, frame in sys._current_frames().items()
     )
 
 
