@@ -343,8 +343,10 @@ describe("the entry on the Library's notice line", () => {
   it("is gone once all four are done and after a remount", async () => {
     install({ token: true, played: true, health: health(10, 2) });
     const first = mountNote();
-    await waitFor(() => expect(screen.queryByText(/First steps:/)).toBeNull());
-    expect(localStorage.getItem(DONE_KEY)).toBe("1");
+    // Waited on the stored mark, not the line's absence: the line is also absent before the
+    // checks have loaded, so that wait could end at once, with nothing stored yet.
+    await waitFor(() => expect(localStorage.getItem(DONE_KEY)).toBe("1"));
+    expect(screen.queryByText(/First steps:/)).toBeNull();
     first.unmount();
     install({ health: health(10, 10) });
     const { container } = mountNote();
