@@ -193,8 +193,8 @@ jobs:
           fi
 
       # SITE-13: the download page reads the release list when the site builds, so rebuild and
-      # redeploy it. The site deploys from `feature` until v1 is on `main` (DEC-195). The release is
+      # redeploy it from the published `website` branch (DEC-235). The release is
       # already out, so a failed dispatch fails nothing.
       - name: Redeploy the website
         continue-on-error: true
-        run: gh workflow run website.yml --ref feature
+        run: gh workflow run website.yml --ref website

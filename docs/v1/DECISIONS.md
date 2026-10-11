@@ -6559,3 +6559,19 @@ the virtual machine not running the app. Stelios's M5 Pro Mac passed it 3 of 3, 
 Linux pass. The rule still fails any pause the app causes, on every system that judges it.
 
 **Decided with**: User (Stelios chose "App's own work" on the CI fix thread's card) · **Date**: 2026-10-11
+
+## DEC-235 — The Live Site Deploys From a `website` Branch
+
+**Status**: Approved · **Related**: DEC-139, DEC-195, SITE-13
+
+**Decision**: The website deploys to GitHub Pages only from the `website` branch (and from the run the
+release workflow dispatches on it after a release), not on every push to `feature`. All site work
+stays on `feature`; publishing moves `website` up to `feature` (`git push origin feature:website`), so
+the branch never has commits of its own. Moving it back one publish restores the previous site. The
+`github-pages` environment allows `website`. Amends SITE-13's "deploy on pushes to `feature`".
+
+**Reason**: Every thread pushes to `feature` several times an hour, and the guide is built from
+`docs/user-guide/`, which describes features before they are released. Deploying from `feature`
+would change the live site on every push and could show features nobody can download yet.
+
+**Decided with**: User (Stelios chose "Website branch" on the website thread's card) · **Date**: 2026-10-11

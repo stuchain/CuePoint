@@ -1,7 +1,9 @@
 # Type-checks, tests and builds the website (apps/website) and uploads the built site.
 # After the build: DEC-141's checks (SITE-03), each its own step so a failure names the check.
-# SITE-13: on `feature` (DEC-195), after every check passes, the public build deploys to GitHub Pages
-# and a smoke job fetches it back. Every other build stays a preview with noindex.
+# SITE-13: on the `website` branch (DEC-235), after every check passes, the public build deploys to
+# GitHub Pages and a smoke job fetches it back. Every other build stays a preview with noindex.
+# Publishing is `git push origin feature:website`: the branch only ever moves up to `feature`. A
+# publish that changes no file below is deployed by running this workflow by hand on `website`.
 name: Website
 
 on:
@@ -121,7 +123,7 @@ jobs:
   # public rules of check-site (no placeholder, nothing unshipped, no noindex on a content page).
   deploy:
     needs: website
-    if: github.ref == 'refs/heads/feature' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/website' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
