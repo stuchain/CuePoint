@@ -16,7 +16,12 @@ test that deliberately leaves a job blocked costs time rather than hanging.
 
 from __future__ import annotations
 
+import gc
+import os
 import re
+import socket
+import subprocess
+import sys
 import threading
 import time
 
@@ -61,7 +66,6 @@ def pytest_runtest_makereport(item, call):
     outcome = yield
     if call.excinfo is None or not call.excinfo.errisinstance(TimeoutError):
         return
-    import sys
     import traceback
 
     names = {thread.ident: thread.name for thread in threading.enumerate()}
@@ -73,3 +77,75 @@ def pytest_runtest_makereport(item, call):
     outcome.get_result().sections.append(
         ("threads when the request timed out", "\n".join(stacks))
     )
+    report = outcome.get_result()
+    ports = _engine_ports(item)
+    report.sections.append(
+        ("sockets when the request timed out", _socket_report(ports))
+    )
+
+
+_URL_PORT = re.compile(r"^https?://(?:127\.0\.0\.1|localhost):(\d+)")
+
+
+def _engine_ports(item) -> set[int]:
+    """The ports of the engines this test was talking to, from its fixtures."""
+    ports: set[int] = set()
+    for value in getattr(item, "funcargs", {}).values():
+        values = value if isinstance(value, (tuple, list)) else (value,)
+        for one in values:
+            if isinstance(one, str) and (found := _URL_PORT.match(one)):
+                ports.add(int(found.group(1)))
+            address = getattr(one, "server_address", None)
+            if isinstance(address, tuple) and len(address) >= 2:
+                ports.add(int(address[1]))
+    return ports
+
+
+def _socket_report(ports: set[int]) -> str:
+    """Every socket this process holds, and what the system says of the ports.
+
+    The Windows timeout (a5a4abb) left serve_forever idle in select with no
+    handler thread: the request's connection never reached the engine's
+    listening socket. Who else holds the port, and in what state, says why.
+    """
+    lines = [
+        f"engine ports: {sorted(ports) or 'none found'}",
+        "",
+        f"this process ({os.getpid()}):",
+    ]
+    for obj in gc.get_objects():
+        if not isinstance(obj, socket.socket):
+            continue
+        try:
+            fd = obj.fileno()
+            local = obj.getsockname() if fd != -1 else None
+            try:
+                remote = obj.getpeername() if fd != -1 else None
+            except OSError:
+                remote = None
+            lines.append(
+                f"  fd={fd} local={local} remote={remote} {type(obj).__name__}"
+            )
+        except OSError as error:
+            lines.append(f"  {type(obj).__name__}: {error}")
+    lines += ["", "the system:"]
+    if sys.platform == "win32":
+        command = ["netstat", "-ano", "-p", "TCP"]
+    elif sys.platform == "darwin":
+        command = ["lsof", "-nP", "-iTCP"]
+    else:
+        command = ["ss", "-tanp"]
+    try:
+        output = subprocess.run(
+            command, capture_output=True, text=True, timeout=20, check=False
+        ).stdout
+    except (OSError, subprocess.SubprocessError) as error:
+        return "\n".join([*lines, f"  {command[0]} failed: {error}"])
+    wanted = [f":{port}" for port in ports]
+    lines += [
+        "  " + line.strip()
+        for line in output.splitlines()
+        if not wanted
+        or any(f"{port} " in line + " " or f"{port}->" in line for port in wanted)
+    ]
+    return "\n".join(lines)
