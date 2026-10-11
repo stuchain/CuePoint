@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 16: Distribution, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. DIST-09 built 2026-10-08 (packaged checks owed). DIST-01…DIST-05 built 2026-10-08, ahead of Phases 14 and 15 (DEC-214); their CI and first-tag checks are owed. DIST-06 and DIST-07 built 2026-10-09 and DIST-08's docs written the same day (the real update on three systems is owed: it needs two test tags). Nothing is tagged.** Nine steps, DIST-01…DIST-09 (DIST-09, the app's icon, added by DEC-198 on 2026-10-07).
+Status: **Specified 2026-10-07. DIST-09 built 2026-10-08 (packaged checks owed). DIST-01…DIST-05 built 2026-10-08, ahead of Phases 14 and 15 (DEC-214); their CI and first-tag checks are owed. DIST-06 and DIST-07 built 2026-10-09 and DIST-08's docs written the same day. v1.0.0-test.1 and v1.0.0-test.2 released 2026-10-10; the real update passed on Windows 2026-10-11, the Macs are owed.** Nine steps, DIST-01…DIST-09 (DIST-09, the app's icon, added by DEC-198 on 2026-10-07).
 Writing the steps raised ten questions that Decision Round 14 did not answer. They were asked as
 Decision Round 19 (Q-170…Q-179) and settled the same day as DEC-169…DEC-178: nine as recommended,
 and Q-171 otherwise. There is no Apple Developer account, so the Macs ship unsigned and update
@@ -747,10 +747,13 @@ Updates page, features, support policy), `docs/features/update-system.md`, the p
 changelog and the doc indexes. One thing differs from the design: the privacy notice does not say
 "the app's version in the user agent" for every request. The release list is asked for as `CuePoint/<version>`, the Mac
 downloads use Electron's default user agent, and `electron-updater` sends `electron-builder` on Windows. The notice
-says so. **Still owed:** the real update on Windows, an Apple Silicon Mac and an Intel Mac, from
-`v1.0.0-test.1` to `v1.0.0-test.2`. It needs two test tags, and tagging is Stelios's call. Nothing has
-been tagged, so no update has run on a real install, and the claims that fact 5 and fact 6 call inferred (no
-Gatekeeper prompt on a replaced app, no Windows prompt) are still unconfirmed.
+says so. **The real update, 2026-10-11:** `v1.0.0-test.1` (published 2026-10-10, 22:42 Athens) and
+`v1.0.0-test.2` (23:49) were released from tags. On Stelios's Windows PC an installed test.1 found test.2
+within 24 s of starting, downloaded it, and after **Restart now** came back as 1.0.0-test.2 six seconds
+later, with **What's new** shown once, no SmartScreen prompt (fact 6 confirmed for this install),
+settings and library untouched, no leftover processes, `lastSeenVersion` 1.0.0-test.2 and no `pendingInstall`.
+**Still owed:** the same run on an Apple Silicon and an Intel Mac (fact 5, no Gatekeeper prompt on a
+replaced app, is still unconfirmed), and the quit-instead-of-restart path, which needs a `v1.0.0-test.3`.
 
 ---
 
