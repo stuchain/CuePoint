@@ -16,6 +16,8 @@ describe("the Content-Security-Policy", () => {
     expect(pub["script-src"]).toContain("https://cloud.umami.is");
     expect(pub["connect-src"]).toContain("https://cloud.umami.is");
     expect(pub["connect-src"]).toContain("https://api-gateway.umami.dev");
+    // where today's script.js sends its events: missing it, the live site counted no visit at launch
+    expect(pub["connect-src"]).toContain("https://gateway.umami.is");
   });
   it("this build's policy is the preview one while PUBLIC is false", () => {
     expect(CSP).toBe(buildCsp(CSP_DIRECTIVES));

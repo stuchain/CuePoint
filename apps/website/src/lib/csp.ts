@@ -9,11 +9,12 @@ export type Directives = Readonly<Record<string, readonly string[]>>;
 
 /**
  * Umami Cloud's hosts (DEC-192), allowed only in a public build, the only one that loads its script.
- * The script comes from cloud.umami.is and sends its events to the host it was loaded from, or to
- * api-gateway.umami.dev; both are connect targets.
+ * The script comes from cloud.umami.is and sends its events to gateway.umami.is (its default since
+ * late 2026; a blocked send counted nothing at launch), or to the older cloud.umami.is and
+ * api-gateway.umami.dev; all three are connect targets.
  */
 const UMAMI_SCRIPT_HOSTS = ["https://cloud.umami.is"] as const;
-const UMAMI_CONNECT_HOSTS = ["https://cloud.umami.is", "https://api-gateway.umami.dev"] as const;
+const UMAMI_CONNECT_HOSTS = ["https://gateway.umami.is", "https://cloud.umami.is", "https://api-gateway.umami.dev"] as const;
 
 export function directivesFor(isPublic: boolean): Directives {
   return {
