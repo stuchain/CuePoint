@@ -56,8 +56,10 @@ jobs:
         # and its line tracer doubles the suite: Ubuntu ran it in 14 minutes on 3.11
         # against 7.5 on 3.12, and Windows in 29 of its 30 minutes. The 3.11 legs still
         # run every unit test; the 3.12 legs on all three systems hold the coverage gate.
+        # A test that hangs stops the run at 300 s with every thread's stack, where the step's
+        # own 30 minutes stopped it with none: one hung on Windows 3.12 with nothing to say why.
         run: |
-          pytest src/tests/unit/ -v --durations=30 ${{ matrix.python-version != '3.11' && '--cov=src/cuepoint --cov-report=xml' || '' }}
+          pytest src/tests/unit/ -v --durations=30 --timeout=300 --timeout-method=thread ${{ matrix.python-version != '3.11' && '--cov=src/cuepoint --cov-report=xml' || '' }}
         env:
           COVERAGE_CORE: sysmon
         timeout-minutes: 30
