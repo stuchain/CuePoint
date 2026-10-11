@@ -22,7 +22,7 @@ PRUNE-05 is implemented (2026-10-07): no Electron or renderer file, export or cl
 PRUNE-06 is implemented (2026-10-07): every dependency left has a live importer.
 PRUNE-07 is implemented (2026-10-07): 250 docs became 135, each checked against the code.
 PRUNE-08 is implemented (2026-10-07): a guard in CI keeps dead code out, and Phase 12 is complete in
-code; a Windows and macOS run is owed.
+code; the Windows run passed (2026-10-07) and a macOS run is owed.
 Phase 11 is specified in `PHASE11_WAVEFORMS.md` (WAVE-01…WAVE-08), unblocked by Decision Round 13
 (DEC-113…DEC-123); WAVE-01 to WAVE-08 are implemented, WAVE-08 (loudness, DEC-124, which
 supersedes DEC-121) the last. Phase 11's acceptance is met on Windows, in the
@@ -819,7 +819,7 @@ Specified 2026-10-06 in `PHASE12_CLEANUP.md`, in eight steps:
 - **PRUNE-06:** dependencies. *Implemented 2026-10-07.*
 - **PRUNE-07:** the docs. *Implemented 2026-10-07.*
 - **PRUNE-08:** a dead-code guard in CI, and the phase comes together. *Implemented 2026-10-07;
-  the Windows and macOS runs are owed.*
+  the Windows run passed the same day, and the macOS run is owed.*
 
 The prefix is PRUNE because CLEAN is Phase 7's.
 

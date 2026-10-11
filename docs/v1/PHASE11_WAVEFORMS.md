@@ -422,7 +422,17 @@ a user yet: WAVE-02 is the first caller.
 | Envelope length against each fixture's own | within one envelope sample |
 | `bands.flac`'s bands | at least 23.7 dB apart |
 
-Timings of the pinned Windows and macOS builds are owed; their correctness is checked in CI.
+**Measured on the pinned Windows build** (2026-10-11, Windows 11 x86_64, 16 cores, mpv
+v0.41.0-dev-gfd9265a90 from a packaged build; `bench_decoder.py --mpv`, three runs):
+
+| Measure | Result |
+| --- | --- |
+| A 6-minute track | 1.00–1.50 s by format (WAV fastest, M4A slowest); MP3 not measured, the build has no MP3 encoder to make the fixture |
+| Search p95 over 10,000 tracks, four analyses running | 1.30×, 1.52× and 1.53× idle (idle 26.8, 20.4 and 18.6 ms), against a budget of 1.5× |
+
+Two of the three runs ended just over the 1.5× budget. In absolute terms the p95 with analyses running
+was 28–35 ms, and idle moved more between runs than the ratio's overrun. The macOS timings are owed;
+correctness on both is checked in CI.
 
 **Where the specification was wrong, and what was done instead.** Each was settled the most durable
 way and is recorded here and in ADR-009.

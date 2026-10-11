@@ -1791,7 +1791,9 @@ with the transition strip 5 and 1; with the player's bar and the lanes 4 and 2, 
 bar too (6). `prepare.spec.ts` holds Linux at 7, 5, 5, 4 and 5 (Set, player, lanes, strip, source). `e2e/scale.spec.ts`
 (new) passes: a fresh profile opens at 1.5×, no border width or shadow length is fractional on the Library and Settings at
 1.5×, nothing scrolls sideways at 1×, 1.5×, 2× or 3× on the Library or Settings, and body rows equal the header cells and
-`--row-height` (33, 50, 66, 99) with no cell cut. `playerBar.spec.ts` fits at all four sizes. Windows re-measure owed.
+`--row-height` (33, 50, 66, 99) with no cell cut. `playerBar.spec.ts` fits at all four sizes. Re-measured on Windows (2026-10-11, packaged build of `36b303bd`): all
+three specs pass; Prepare shows 8, 6, 6, 5 and 5 whole rows (Set, player, lanes, strip, source), and nothing
+scrolls sideways on the Library or Settings at 1×, 1.5×, 2× or 3×.
 
 ---
 

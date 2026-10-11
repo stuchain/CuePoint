@@ -316,6 +316,11 @@ the same shape, about 2 MB added by the second pass. The same machine scrolled t
 5,000-track table with waveforms (`e2e/waveformPlaces.spec.ts`, the packaged app) three
 times with no task over 50 ms at 1x or 1.5x.
 
+On Windows 11 (16 cores, 2026-10-11) the packaged app measured 121–126 MB at the start,
+186–205 MB after one pass and 186–203 MB after a second, over three runs, with no task over 50 ms
+at 1x or 1.5x in any of them; the 5,000-track table with waveforms also scrolled three times with
+no task over 50 ms.
+
 ## Motion
 
 All ten kinds of motion are on in these measurements (Settings > Motion, **Turn all
