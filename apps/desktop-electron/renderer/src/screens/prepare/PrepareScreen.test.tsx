@@ -258,7 +258,7 @@ describe("with no Sets", () => {
     fireEvent.change(within(dialog).getByLabelText("In"), { target: { value: String(IDS.gigs) } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
 
-    await waitFor(() => expect(where()).toBe(preparePath(50)));
+    await waitFor(() => expect(where()).toBe(preparePath(50)), LOADED);
     expect(sets.create).toHaveBeenCalledWith({ name: "Friday II", parent_id: IDS.gigs });
     expect(await screen.findByText("Made the Set “Friday II”.")).toBeInTheDocument();
   });
@@ -299,7 +299,7 @@ describe("with no Sets", () => {
     expect(within(dialog).getByText(/Rekordbox playlist “Sunday”/)).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
 
-    await waitFor(() => expect(where()).toBe(preparePath(51)));
+    await waitFor(() => expect(where()).toBe(preparePath(51)), LOADED);
     expect(sets.createFrom).toHaveBeenCalledWith({
       source: { kind: "playlist", id: 7 },
       name: "Sunday",
@@ -338,7 +338,7 @@ describe("New Set from the header (PRP-1)", () => {
     const dialog = await screen.findByRole("dialog", { name: "New Set" });
     fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Saturday" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
-    await waitFor(() => expect(where()).toBe(preparePath(50)));
+    await waitFor(() => expect(where()).toBe(preparePath(50)), LOADED);
     expect(sets.create).toHaveBeenCalledWith({ name: "Saturday", parent_id: null });
   });
 
