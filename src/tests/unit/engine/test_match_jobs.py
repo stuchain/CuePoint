@@ -626,7 +626,9 @@ class TestAThousandTracks:
 
             def watch() -> None:
                 while not done.wait(0.05):
-                    late = in_flight and time.monotonic() - in_flight[0] > 0.5
+                    # One read: the request loop empties the list between requests.
+                    since = next(iter(in_flight), None)
+                    late = since is not None and time.monotonic() - since > 0.5
                     if late and not stacks:
                         stacks.append(_thread_stacks())
 
