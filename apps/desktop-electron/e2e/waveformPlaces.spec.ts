@@ -441,6 +441,37 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
             for (const entry of list.getEntries()) long.push({ start: entry.startTime, duration: entry.duration });
           });
           observer.observe({ type: "longtask", buffered: false });
+          // What a long task was, for the report when one is over: the long animation frames, with
+          // the scripts that ran in them and the style and layout they forced.
+          const scrollStart = performance.now();
+          const frames: Array<Record<string, unknown>> = [];
+          const frameObserver = new PerformanceObserver((list) => {
+            for (const entry of list.getEntries() as Array<PerformanceEntry & Record<string, any>>) {
+              if (entry.duration <= 50) continue;
+              frames.push({
+                at: Math.round(entry.startTime - scrollStart),
+                duration: Math.round(entry.duration),
+                blocking: Math.round(entry.blockingDuration ?? 0),
+                render: Math.round(entry.renderStart ? entry.startTime + entry.duration - entry.renderStart : 0),
+                styleAndLayout: Math.round(
+                  entry.styleAndLayoutStart ? entry.startTime + entry.duration - entry.styleAndLayoutStart : 0,
+                ),
+                scripts: (entry.scripts ?? []).map((script: Record<string, any>) => ({
+                  invoker: script.invoker,
+                  fn: script.sourceFunctionName,
+                  source: String(script.sourceURL ?? "").split("/").pop(),
+                  at: script.sourceCharPosition,
+                  duration: Math.round(script.duration),
+                  forcedLayout: Math.round(script.forcedStyleAndLayoutDuration ?? 0),
+                })),
+              });
+            }
+          });
+          try {
+            frameObserver.observe({ type: "long-animation-frame", buffered: false });
+          } catch {
+            // Not in this Chromium: the long tasks alone are reported.
+          }
           const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
           const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
           let canvases = 0;
@@ -475,10 +506,12 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
           );
           await wait(500);
           observer.disconnect();
+          frameObserver.disconnect();
           const last = document.querySelector(".track-table__row:last-child")?.getAttribute("aria-rowindex");
           return {
             long: long.filter((entry) => entry.start < probe).map((entry) => entry.duration),
             probeSeen: long.some((entry) => entry.start >= probe && entry.duration >= 80),
+            frames: frames.filter((frame) => (frame.at as number) + scrollStart < probe),
             canvases,
             steps,
             last: Number(last),
@@ -488,7 +521,11 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
 
         test.info().annotations.push({ type: `scroll at ${scale}×`, description: JSON.stringify(report) });
         // eslint-disable-next-line no-console
-        console.log(`scroll at ${scale}x: ${JSON.stringify({ ...report, long: report.long.length === 0 ? "none" : report.long })}`);
+        console.log(
+          `scroll at ${scale}x: ${JSON.stringify({ ...report, long: report.long.length === 0 ? "none" : report.long, frames: undefined })}`,
+        );
+        // eslint-disable-next-line no-console
+        if (report.long.some((duration) => duration > 50)) console.log(`long frames at ${scale}x: ${JSON.stringify(report.frames)}`);
         expect(report.probeSeen, "the long-task observer works here").toBe(true);
         expect(report.last, "scrolled to the last row").toBe(ROWS + 1);
         expect(report.steps).toBeGreaterThan(50);
