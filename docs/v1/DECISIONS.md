@@ -6575,3 +6575,20 @@ the branch never has commits of its own. Moving it back one publish restores the
 would change the live site on every push and could show features nobody can download yet.
 
 **Decided with**: User (Stelios chose "Website branch" on the website thread's card) · **Date**: 2026-10-11
+
+## DEC-236 — Windows Runs the Unit Tests in Two Halves
+
+**Status**: Approved · **Related**: DEC-220
+
+**Decision**: Release Gates runs the Windows unit tests as two jobs side by side: the engine and
+persistence tests, and everything else. Each keeps the step's 30-minute limit. The Windows 3.12
+halves' coverage is combined in a `Windows coverage` job and held to the same 35% gate as Linux and
+macOS. The integration tests run once, with the engine half. Linux and macOS still run the suite whole.
+
+**Reason**: GitHub's Windows runners take three to four times Linux's 7 minutes for the suite, and
+one commit took 24 minutes in one run and over 30 in the next, failing on the step's limit with no
+test hung (every test passed up to the cut). Raising the limit would let the suite keep growing
+toward the next cut; halves finish sooner and leave room. A hung test is stopped at 300 s with every
+thread's stack, so the step limit is no longer the only guard against hangs.
+
+**Decided with**: CI fix thread · **Date**: 2026-10-11

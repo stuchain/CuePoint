@@ -37,6 +37,18 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ['3.11', '3.12']
+        # Windows runs the unit tests in two halves side by side. Its runners take three to
+        # four times Linux's 7 minutes, and the whole suite there grew from 24 to over 30
+        # minutes from one run to the next on one commit. Halves keep each run well inside
+        # the step's 30 minutes without raising it. `engine` holds the engine and
+        # persistence tests (about 46% of the time), `rest` everything else.
+        part: [all, engine, rest]
+        exclude:
+          - { os: windows-latest, part: all }
+          - { os: ubuntu-latest, part: engine }
+          - { os: ubuntu-latest, part: rest }
+          - { os: macos-latest, part: engine }
+          - { os: macos-latest, part: rest }
 
     steps:
       - uses: actions/checkout@v4
@@ -58,20 +70,43 @@ jobs:
         # run every unit test; the 3.12 legs on all three systems hold the coverage gate.
         # A test that hangs stops the run at 300 s with every thread's stack, where the step's
         # own 30 minutes stopped it with none: one hung on Windows 3.12 with nothing to say why.
+        # A Windows half writes its coverage data for the windows-coverage job to combine.
+        shell: bash
         run: |
-          pytest src/tests/unit/ -v --durations=30 --timeout=300 --timeout-method=thread ${{ matrix.python-version != '3.11' && '--cov=src/cuepoint --cov-report=xml' || '' }}
+          case "${{ matrix.part }}" in
+            engine) paths="src/tests/unit/engine src/tests/unit/persistence" ;;
+            rest) paths="src/tests/unit/ --ignore=src/tests/unit/engine --ignore=src/tests/unit/persistence" ;;
+            *) paths="src/tests/unit/" ;;
+          esac
+          cov=""
+          if [ "${{ matrix.python-version }}" != "3.11" ]; then
+            if [ "${{ matrix.part }}" = "all" ]; then cov="--cov=src/cuepoint --cov-report=xml"; else cov="--cov=src/cuepoint --cov-report="; fi
+          fi
+          # shellcheck disable=SC2086
+          pytest $paths -v --durations=30 --timeout=300 --timeout-method=thread $cov
         env:
           COVERAGE_CORE: sysmon
+          COVERAGE_FILE: ${{ matrix.part == 'all' && '.coverage' || format('coverage-data-{0}', matrix.part) }}
         timeout-minutes: 30
         continue-on-error: false
 
+      - name: Keep this half's coverage data
+        if: matrix.part != 'all' && matrix.python-version != '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-data-windows-${{ matrix.part }}
+          path: coverage-data-${{ matrix.part }}
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Run integration tests
+        if: matrix.part != 'rest'
         run: |
           pytest src/tests/integration/ -v --timeout=120
         continue-on-error: false
 
       - name: Upload coverage
-        if: matrix.python-version != '3.11'
+        if: matrix.part == 'all' && matrix.python-version != '3.11'
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage.xml
@@ -79,10 +114,48 @@ jobs:
           minimum_coverage: 35
 
       - name: Check test coverage
-        if: matrix.python-version != '3.11'
+        if: matrix.part == 'all' && matrix.python-version != '3.11'
         run: |
           coverage report --fail-under=35
         continue-on-error: false
+
+  windows-coverage:
+    name: Windows coverage
+    # The Windows 3.12 halves' coverage, combined and held to the same gate as the other systems.
+    needs: test-gates
+    if: github.event_name != 'pull_request'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install coverage
+        run: pip install coverage==7.13.1
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-data-windows-*
+          merge-multiple: true
+
+      - name: Combine the two halves
+        run: |
+          coverage combine coverage-data-engine coverage-data-rest
+          coverage xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+          minimum_coverage: 35
+
+      - name: Check test coverage
+        run: |
+          coverage report --fail-under=35
 
   code-quality-gates:
     name: Code Quality Gates
