@@ -431,7 +431,8 @@ v0.41.0-dev-gfd9265a90 from a packaged build; `bench_decoder.py --mpv`, three ru
 | Search p95 over 10,000 tracks, four analyses running | 1.30×, 1.52× and 1.53× idle (idle 26.8, 20.4 and 18.6 ms), against a budget of 1.5× |
 
 Two of the three runs ended just over the 1.5× budget. In absolute terms the p95 with analyses running
-was 28–35 ms, and idle moved more between runs than the ratio's overrun. The macOS timings are owed;
+was 28–35 ms, and idle moved more between runs than the ratio's overrun. The user kept the budget
+and treated the overrun as noise (2026-10-11). The macOS timings are owed;
 correctness on both is checked in CI.
 
 **Where the specification was wrong, and what was done instead.** Each was settled the most durable
