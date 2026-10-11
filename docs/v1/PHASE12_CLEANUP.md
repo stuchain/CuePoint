@@ -8,7 +8,7 @@ class is unreached. PRUNE-04 is implemented (2026-10-07): the retired app's pipe
 script nothing runs are gone. PRUNE-06 is implemented (2026-10-07): every dependency left has a
 live importer. PRUNE-07 is implemented (2026-10-07): 250 docs became 135, each checked against
 the code. PRUNE-08 is implemented (2026-10-07): CI's dead-code guard keeps the repository clean,
-and the phase is complete in code; the Windows run passed (2026-10-07) and a macOS run is owed.** Eight steps, PRUNE-01…PRUNE-08. Per the
+and the phase is complete in code; the Windows run passed (2026-10-07), and the macOS run (2026-10-11) passed but for one spec.** Eight steps, PRUNE-01…PRUNE-08. Per the
 process, no implementation happens from this document. Each step needs an explicit "Implement
 PRUNE-NN" instruction, scoped to exactly that step, and its outcome is recorded under the step
 afterwards. There are no open points. The measurements taken while writing it are in cross-cutting
@@ -1256,7 +1256,20 @@ the baseline):
 8. Met on Windows: the end-to-end suite passes and the build is made with `npm run dist` and
    starts (above). CI's macOS build is still owed.
 
-**Still owed:** the macOS run.
+**The macOS run** (2026-10-11, Apple M5 Pro, macOS 27.0.1, Python 3.12.14, Node 24.18.0): `npm run
+pack:full` on `36b303bd` built and ad-hoc signed the app, engine sidecar rebuilt from that commit. The
+end-to-end suite against it (`CUEPOINT_E2E_EXECUTABLE`; specs that launch only from source ran from
+source): 133 passed, 3 failed, 2 skipped, in 11.8 minutes. Two failures were the specs':
+`reportErrors.spec.ts` and `rendererReports.spec.ts` launched without `CUEPOINT_HOME`, so they opened the
+real `~/.cuepoint` (a refusal answered for an existing track 1, and the launches rotated its backups),
+and `visiblePlaces.spec.ts`'s menu helper read a just-closed menu's leave-ghost (`0af43153` fixes both;
+the report specs pass 10 of 10 and visiblePlaces 5 runs of 22). The third is open:
+`organization.spec.ts`'s "changes everything a query matches, as a job that can be stopped" fails every
+time on this machine, because the 50,000-track favourite batch finishes in about 1.1 s while the import's
+file check holds the status strip, so the strip never shows "Updating" to stop. The spec needs a way to
+hold the batch; the app is not shown to be at fault.
+
+**Still owed:** a fix for that spec, and CI's red Test on macOS (acceptance point 4).
 
 ---
 

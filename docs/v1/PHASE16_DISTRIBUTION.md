@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 16: Distribution, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. DIST-09 built 2026-10-08 (packaged checks owed). DIST-01…DIST-05 built 2026-10-08, ahead of Phases 14 and 15 (DEC-214); their CI and first-tag checks are owed. DIST-06 and DIST-07 built 2026-10-09 and DIST-08's docs written the same day. v1.0.0-test.1 and v1.0.0-test.2 released 2026-10-10; the real update passed on Windows 2026-10-11, the Macs are owed.** Nine steps, DIST-01…DIST-09 (DIST-09, the app's icon, added by DEC-198 on 2026-10-07).
+Status: **Specified 2026-10-07. DIST-09 built 2026-10-08 (packaged checks owed). DIST-01…DIST-05 built 2026-10-08, ahead of Phases 14 and 15 (DEC-214); their CI and first-tag checks are owed. DIST-06 and DIST-07 built 2026-10-09 and DIST-08's docs written the same day. v1.0.0-test.1 and v1.0.0-test.2 released 2026-10-10; the real update passed on Windows and on an Apple Silicon Mac 2026-10-11; the Intel Mac is owed.** Nine steps, DIST-01…DIST-09 (DIST-09, the app's icon, added by DEC-198 on 2026-10-07).
 Writing the steps raised ten questions that Decision Round 14 did not answer. They were asked as
 Decision Round 19 (Q-170…Q-179) and settled the same day as DEC-169…DEC-178: nine as recommended,
 and Q-171 otherwise. There is no Apple Developer account, so the Macs ship unsigned and update
@@ -752,8 +752,19 @@ says so. **The real update, 2026-10-11:** `v1.0.0-test.1` (published 2026-10-10,
 within 24 s of starting, downloaded it, and after **Restart now** came back as 1.0.0-test.2 six seconds
 later, with **What's new** shown once, no SmartScreen prompt (fact 6 confirmed for this install),
 settings and library untouched, no leftover processes, `lastSeenVersion` 1.0.0-test.2 and no `pendingInstall`.
-**Still owed:** the same run on an Apple Silicon and an Intel Mac (fact 5, no Gatekeeper prompt on a
-replaced app, is still unconfirmed), and the quit-instead-of-restart path, which needs a `v1.0.0-test.3`.
+On Stelios's Apple Silicon Mac (M5 Pro, macOS 27.0.1) the test.1 DMG from the release (its SHA-256
+matching `SHA256SUMS-macos-arm64.txt`) was copied to `/Applications` and its quarantine cleared as the
+guide says. The update ran twice the same evening (Athens time). First: test.1 started at 19:37:18, the
+updater's script logged the install at 19:37:37 after **Restart now**, and 1.0.0-test.2 was running at
+19:37:43, with **What's new** shown. Second, from a fresh test.1: started at 19:49:26 (test.2 had been
+downloaded by 19:40:27, 8 s after an earlier launch), installed at 19:50:43, and 1.0.0-test.2's
+engine up at 19:50:51. After it: no test.1 CuePoint, engine or mpv process; no `CuePoint.app.cuepoint-old`
+left; no quarantine flag on the replaced app and nothing for Stelios to report from Gatekeeper (fact 5,
+for this install); `config.yaml` byte-identical and every library table's row count unchanged (5,574
+tracks) but the activity log's launch entries; a launch backup before each start; `lastSeenVersion`
+1.0.0-test.2 and no `pendingInstall`; only `updates/1.0.0-test.2/notes.md` kept, for **What's new**.
+**Still owed:** the same run on an Intel Mac, the read-only-folder run that shows **Download**, and the
+quit-instead-of-restart path, which needs a `v1.0.0-test.3`.
 
 ---
 
@@ -833,7 +844,10 @@ Start menu and desktop shortcuts at 16, 32 and 48 px, the title bar and the dark
 hand-drawn wheel. The light taskbar was judged from the tile, opaque with a dark outline, rather than
 by switching the user's theme.
 
-Still owed: the macOS DMG/Dock/Finder check
+**Checked on macOS (2026-10-11):** in the Dock of Stelios's Mac the installed test.2 shows the wheel
+on the violet tile with its outline and hard shadow. The tile fills its whole square with square corners,
+unlike macOS's inset rounded icon shape, so it reads larger than its neighbours; the spec asks for no
+macOS shape, so this is recorded, not changed. Still owed: the DMG window and Finder at small sizes
 (including whether Finder uses the hand-drawn 16 and 32 grids from the PNG `icp4`/`icp5` entries)
 and the Linux AppImage check. The 64 px mark in Settings › About & updates rides PAGES-01.
 

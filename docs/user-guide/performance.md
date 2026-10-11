@@ -321,6 +321,11 @@ On Windows 11 (16 cores, 2026-10-11) the packaged app measured 121–126 MB at t
 at 1x or 1.5x in any of them; the 5,000-track table with waveforms also scrolled three times with
 no task over 50 ms.
 
+The same M5 Pro, with the packaged app (2026-10-11): 155–158 MB at the start, 207–221 MB after one
+pass and 211–222 MB after a second, over three runs, with no task over 50 ms at 1x or 1.5x; the
+5,000-track table with waveforms again scrolled three times with no task over 50 ms (384 pages at 1x,
+1,302 at 1.5x).
+
 ## Motion
 
 All ten kinds of motion are on in these measurements (Settings > Motion, **Turn all
