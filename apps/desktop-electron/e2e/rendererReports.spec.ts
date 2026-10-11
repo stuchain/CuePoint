@@ -164,9 +164,13 @@ test.describe("the renderer reports (REPORT-06)", () => {
       await ready(window);
 
       await chooseMenuItem(app, "report-problem");
+      // The menu's command reaches the page after `chooseMenuItem` returns. Until the dialog is
+      // up, a page-wide "textbox" is the Library's search field, so an unscoped lookup typed the
+      // note there.
+      const dialog = window.getByRole("dialog", { name: "Report a problem" });
       const note = "I dragged a track onto /Users/me/Music/Secret Song.mp3 and it froze";
-      await window.getByRole("textbox").fill(note);
-      await window.getByRole("button", { name: "Send" }).click();
+      await dialog.getByRole("textbox").fill(note);
+      await dialog.getByRole("button", { name: "Send" }).click();
       await expect(window.getByText(/your note was sent/i)).toBeVisible();
 
       await expect.poll(() => itemsOf(fake.bodies, "feedback").length, { timeout: 15_000 }).toBe(1);
