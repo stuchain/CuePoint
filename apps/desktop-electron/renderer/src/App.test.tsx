@@ -24,6 +24,13 @@ import { LAST_DESTINATION_STORAGE_KEY } from "./components/shell";
  */
 const HOME = /Nothing imported yet/i;
 
+/**
+ * Settings is the heaviest screen to mount; on a busy CI runner its first
+ * render alone can pass the 1 s default, so its waits get the same bound as
+ * the Prepare tests' route loads.
+ */
+const LOADED = { timeout: 3000 };
+
 /** Several screens also link to Settings, so navigation is driven from the nav. */
 function navLink(name: string): HTMLElement {
   return within(screen.getByRole("navigation", { name: /main navigation/i })).getByRole(
@@ -112,7 +119,7 @@ describe("App shell", () => {
     const before = container.querySelector(".app-shell__inspector .cp-inspector");
 
     await user.click(navLink("Settings"));
-    await screen.findByRole("heading", { level: 1, name: "Settings" });
+    await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
 
     expect(container.querySelector(".app-shell__inspector .cp-inspector")).toBe(before);
   });
@@ -173,7 +180,7 @@ describe("App shell", () => {
     try {
       render(<App />);
       await user.click(navLink("Settings"));
-      await screen.findByRole("heading", { level: 1, name: "Settings" });
+      await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
 
       await user.click(await screen.findByRole("button", { name: "Strobe" }));
       expect(window.location.hash).toBe("#/library");
@@ -237,14 +244,14 @@ describe("App shell", () => {
       const user = userEvent.setup();
       const first = render(<App />);
       await user.click(navLink("Settings"));
-      await screen.findByRole("heading", { level: 1, name: "Settings" });
+      await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
       first.unmount();
 
       // A fresh mount stands in for a fresh launch: the router starts at "/"
       // either way, and only what is stored can bring it back.
       render(<App />);
 
-      expect(await screen.findByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED)).toBeInTheDocument();
     });
 
     it.each([
@@ -267,7 +274,7 @@ describe("App shell", () => {
       const user = userEvent.setup();
       localStorage.setItem(LAST_DESTINATION_STORAGE_KEY, "settings");
       render(<App />);
-      await screen.findByRole("heading", { level: 1, name: "Settings" });
+      await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
 
       await user.click(navLink("Discover"));
 
@@ -362,7 +369,7 @@ describe("App shell", () => {
       act(() => {
         window.location.hash = "#/settings";
       });
-      await screen.findByRole("heading", { level: 1, name: "Settings" });
+      await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
 
       act(() => {
         window.location.hash = hash;
