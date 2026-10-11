@@ -190,6 +190,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/website/package-lock.json
+
+      # smoke-live reads the address through check-site.mjs, which imports the site's packages
+      - name: Install dependencies
+        run: npm ci
 
       # Pages' own address for this deploy: the custom domain once it is set, else the github.io one.
       - name: Fetch the live site
