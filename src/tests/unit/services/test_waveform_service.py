@@ -34,6 +34,11 @@ from typing import Callable, Dict, List, Optional, Sequence
 import pytest
 
 from cuepoint.core.waveform import COLUMNS, decode, downsample, encode, reduce
+from cuepoint.core.waveform_detail import (
+    DETAIL_FORMAT_VERSION,
+    decode_detail,
+    reduce_detail,
+)
 from cuepoint.data.audio_decode import (
     ANALYSIS_VERSION,
     LOUDNESS_SILENT,
@@ -984,3 +989,310 @@ class TestLoudness:
 
         assert service.analyse(track).outcome == OUTCOME_FAILED
         assert store.loudness_count() == 0
+
+
+@pytest.mark.unit
+class TestDetail:
+    """T4 (ADR-011): the zoomed waveform, made by the same decode."""
+
+    def test_one_decode_writes_both_the_overview_and_the_detail(
+        self, service, decoder, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        path = str(music / "a.flac")
+
+        outcome = service.analyse(track, detail=True)
+
+        assert outcome.outcome == OUTCOME_READY
+        assert len(decoder.opened) == 1
+        assert store.get(path, ANALYSIS_VERSION) is not None
+        stored = store.get_detail(path, ANALYSIS_VERSION, DETAIL_FORMAT_VERSION)
+        assert stored is not None
+        bands = [envelope().full, envelope().low, envelope().mid, envelope().high]
+        assert decode_detail(stored.data) == reduce_detail(bands, 20_000)
+        info = os.stat(path)
+        assert (stored.size_bytes, stored.mtime_ns) == (info.st_size, info.st_mtime_ns)
+
+    def test_a_plain_analysis_writes_no_detail(
+        self, service, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+
+        service.analyse(track)
+
+        assert store.detail_count() == 0
+
+    def test_a_current_overview_with_detail_decodes_once_and_leaves_it(
+        self, service, decoder, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        service.analyse(track)
+        before = stored_rows(store)
+
+        outcome = service.analyse(track, detail=True)
+
+        assert outcome.outcome == OUTCOME_READY
+        assert len(decoder.opened) == 2
+        assert store.detail_count() == 1
+        assert [tuple(r) for r in stored_rows(store)] == [tuple(r) for r in before]
+
+    def test_a_current_detail_is_not_decoded_again(
+        self, service, decoder, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        service.analyse(track, detail=True)
+
+        assert service.analyse(track, detail=True).outcome == OUTCOME_CURRENT
+        assert service.analyse(track).outcome == OUTCOME_CURRENT
+        assert len(decoder.opened) == 1
+
+    def test_a_stale_overview_is_rewritten_with_the_detail(
+        self, make_service, decoder, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        path = music / "a.flac"
+        service = make_service()
+        service.analyse(track)
+        path.write_bytes(b"a different file entirely")
+
+        assert service.analyse(track, detail=True).outcome == OUTCOME_READY
+
+        info = os.stat(path)
+        assert store.get(str(path), ANALYSIS_VERSION).size_bytes == info.st_size
+        assert (
+            store.get_detail(
+                str(path), ANALYSIS_VERSION, DETAIL_FORMAT_VERSION
+            ).size_bytes
+            == info.st_size
+        )
+
+    def test_a_changed_file_has_its_detail_made_again(
+        self, service, decoder, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        service.analyse(track, detail=True)
+        (music / "a.flac").write_bytes(b"a repaired download")
+
+        assert service.analyse(track, detail=True).outcome == OUTCOME_READY
+        assert len(decoder.opened) == 2
+
+    def test_a_detail_of_another_format_version_is_made_again(
+        self, make_service, decoder, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        make_service().analyse(track, detail=True)
+
+        newer = make_service(detail_version=2)
+
+        assert newer.detail(track).state.state == STATE_WAITING
+        assert newer.analyse(track, detail=True).outcome == OUTCOME_READY
+        assert len(decoder.opened) == 2
+
+    def test_a_file_that_fails_is_stored_failed_and_has_no_detail(
+        self, service, decoder, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        decoder.answers[str(music / "a.flac")] = DecodeFailed("undecodable", "x")
+
+        assert service.analyse(track, detail=True).outcome == OUTCOME_FAILED
+
+        assert store.detail_count() == 0
+        answer = service.detail(track)
+        assert (answer.state.state, answer.state.reason) == (
+            STATE_FAILED,
+            "undecodable",
+        )
+
+    def test_the_cap_bounds_the_cache(
+        self, make_service, store, tracks, db, files, music
+    ):
+        service = make_service(detail_cap_bytes=1)
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+
+        service.analyse(track, detail=True)
+
+        assert store.detail_count() == 0
+        assert service.detail(track).state.state == STATE_WAITING
+
+    def test_the_cap_defaults_to_256_megabytes(self):
+        assert module.DETAIL_CAP_BYTES == 256 * 1024 * 1024
+
+    def test_the_answer_for_a_ready_detail(self, service, tracks, db, files, music):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        service.analyse(track, detail=True)
+
+        answer = service.detail(track)
+
+        assert answer.state.state == STATE_READY
+        assert answer.state.duration_ms == 20_000
+        assert (answer.rate_hz, answer.columns) == (75, 1_500)
+        assert len(answer.data) == 1_500 * 4
+
+    def test_a_detail_read_makes_it_recently_used(
+        self, service, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        service.analyse(track, detail=True)
+        connection = store.connect()
+        connection.execute("UPDATE waveform_details SET used_at = 1")
+        connection.commit()
+
+        service.detail(track)
+
+        used = connection.execute("SELECT used_at FROM waveform_details").fetchone()[0]
+        assert used > 1
+
+    def test_states_without_a_detail(
+        self, make_service, decoder, tracks, db, files, music
+    ):
+        service = make_service()
+        analysed, plain = present(tracks, db, files, music, ["a.flac", "b.flac"])
+        service.analyse(analysed)
+        missing_path = str(music / "missing.flac")
+        missing, unchecked = add(
+            tracks, db, [missing_path, audio(music, "unchecked.flac")]
+        )
+        check(files, missing, missing_path, FILE_MISSING)
+
+        got = {
+            "overview_only": service.detail(analysed).state,
+            "nothing": service.detail(plain).state,
+            "missing": service.detail(missing).state,
+            "unchecked": service.detail(unchecked).state,
+        }
+
+        assert got["overview_only"].state == STATE_WAITING
+        assert got["nothing"].state == STATE_WAITING
+        assert (got["missing"].state, got["missing"].reason) == (
+            STATE_MISSING,
+            FILE_MISSING,
+        )
+        assert got["unchecked"].state == STATE_UNCHECKED
+        assert service.detail(analysed).data is None
+
+    def test_a_ready_overview_of_a_file_not_present_is_missing_not_waiting(
+        self, service, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        service.analyse(track)
+        check(files, track, str(music / "a.flac"), FILE_MISSING)
+
+        state = service.detail(track).state
+
+        assert (state.state, state.reason) == (STATE_MISSING, FILE_MISSING)
+
+    def test_a_ready_overview_of_an_unchecked_file_is_unchecked(
+        self, service, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        service.analyse(track)
+        connection = db.connect()
+        connection.execute("DELETE FROM track_files")
+        connection.commit()
+
+        assert service.detail(track).state.state == STATE_UNCHECKED
+
+    @pytest.mark.parametrize(
+        "failure",
+        [DecodeFailed("timeout", "x"), DecodeFailed("undecodable", "x"), None],
+    )
+    def test_a_failed_detail_decode_keeps_a_current_overview(
+        self, service, decoder, store, tracks, db, files, music, failure
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        path = str(music / "a.flac")
+        service.analyse(track)
+        decoder.answers[path] = failure if failure is not None else envelope(frames=0)
+
+        outcome = service.analyse(track, detail=True)
+
+        assert outcome.outcome == OUTCOME_FAILED
+        assert store.get(path, ANALYSIS_VERSION).state == STORED_READY
+        assert service.detail(track).state.state == STATE_WAITING
+
+    def test_a_stale_detail_is_hidden_whatever_the_overview_is(
+        self, service, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        path = str(music / "a.flac")
+        service.analyse(track, detail=True)
+        info = os.stat(path)
+        store.put(service._failed_row(path, info.st_size + 1, 1, "undecodable"))
+
+        answer = service.detail(track)
+
+        assert answer.data is None
+        assert answer.state.state == STATE_FAILED
+
+    def test_no_decoder_is_unavailable_unless_the_detail_is_stored(
+        self, make_service, decoder, tracks, db, files, music
+    ):
+        stored, bare = present(tracks, db, files, music, ["a.flac", "b.flac"])
+        make_service().analyse(stored, detail=True)
+        gone = make_service(decoder=lambda: None)
+
+        assert gone.detail(bare).state.state == STATE_UNAVAILABLE
+        assert gone.detail(stored).state.state == STATE_READY
+        assert gone.analyse(bare, detail=True).outcome == OUTCOME_UNAVAILABLE
+
+    def test_an_id_that_is_no_track_is_none(self, service):
+        assert service.detail(424242) is None
+
+    def test_a_refused_blob_is_deleted_and_waits(
+        self, service, store, tracks, db, files, music, logs
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        service.analyse(track, detail=True)
+        path = str(music / "a.flac")
+        connection = store.connect()
+        garbage = b"CPWD" + bytes(40)
+        connection.execute(
+            "UPDATE waveform_details SET data = ?, bytes = ?", (garbage, len(garbage))
+        )
+        connection.commit()
+
+        answer = service.detail(track)
+
+        assert answer.state.state == STATE_WAITING
+        assert answer.data is None
+        assert store.get_detail(path, ANALYSIS_VERSION, DETAIL_FORMAT_VERSION) is None
+        assert "refused" in logs.text
+        assert store.get(path, ANALYSIS_VERSION) is not None
+
+    def test_a_detail_of_a_changed_file_is_not_shown(
+        self, service, decoder, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        service.analyse(track, detail=True)
+        (music / "a.flac").write_bytes(b"a different file entirely")
+        service.analyse(track, force=True)
+
+        assert service.detail(track).state.state == STATE_WAITING
+
+    def test_an_unreadable_store_answers_as_if_empty(
+        self, service, store, tracks, db, files, music, logs, monkeypatch
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+
+        def broken(*args, **kwargs):
+            raise WaveformStoreError("boom")
+
+        monkeypatch.setattr(store, "get_detail", broken)
+
+        assert service.detail(track).state.state == STATE_WAITING
+        assert "could not be read" in logs.text
+
+    def test_a_fifteen_minute_track_is_stored_and_read_back(
+        self, service, decoder, store, tracks, db, files, music
+    ):
+        """67,500 columns: more than the overview's u16 can count."""
+        (track,) = present(tracks, db, files, music, ["long.flac"])
+        decoder.answers[str(music / "long.flac")] = envelope(frames=15 * 60 * 150)
+
+        assert service.analyse(track, detail=True).outcome == OUTCOME_READY
+
+        answer = service.detail(track)
+        assert answer.columns == 67_500 > 0xFFFF
+        assert len(answer.data) == 67_500 * 4
+        assert answer.state.duration_ms == 900_000
+        assert service.waveform(track, 120).state.state == STATE_READY

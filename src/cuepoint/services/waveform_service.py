@@ -70,6 +70,13 @@ from cuepoint.core.waveform import (
     encode,
     reduce,
 )
+from cuepoint.core.waveform_detail import (
+    DETAIL_FORMAT_VERSION,
+    WaveformDetail,
+    decode_detail,
+    encode_detail,
+    reduce_detail,
+)
 from cuepoint.data.audio_decode import (
     ANALYSIS_VERSION,
     LOUDNESS_VERSION,
@@ -104,6 +111,8 @@ from cuepoint.models.waveform import (
     STORED_FAILED,
     STORED_READY,
     AnalysisOutcome,
+    DetailAnswer,
+    StoredDetail,
     StoredLoudness,
     StoredWaveform,
     WaveformAnswer,
@@ -123,6 +132,10 @@ STATE_BATCH = 200
 
 #: Why a present file with no path reason was not opened: nobody checked it.
 REASON_UNCHECKED = "unchecked"
+
+#: The most the zoomed waveforms (``waveform_details``) may take: about 5,000 to
+#: 7,000 tracks, least recently used first out (ADR-011).
+DETAIL_CAP_BYTES = 256 * 1024 * 1024
 
 #: Decodes one file: ``(source, decoder, cancel) -> Envelope``, raising WAVE-01's
 #: vocabulary. :func:`decode_envelope` in the engine; a stand-in in tests.
@@ -149,6 +162,8 @@ class WaveformService(IWaveformService):
         clock: Callable[[], str] = utc_now_iso,
         analysis_version: int = ANALYSIS_VERSION,
         loudness_version: int = LOUDNESS_VERSION,
+        detail_version: int = DETAIL_FORMAT_VERSION,
+        detail_cap_bytes: int = DETAIL_CAP_BYTES,
     ) -> None:
         """Wire the service.
 
@@ -162,6 +177,8 @@ class WaveformService(IWaveformService):
             clock: The time an analysis is stamped with.
             analysis_version: The version rows are stored and read at.
             loudness_version: The version loudness is stored and read at.
+            detail_version: The ``CPWD`` version details are stored and read at.
+            detail_cap_bytes: The most detail data the store keeps.
         """
         self._files = file_status_repository
         self._store = store
@@ -171,6 +188,8 @@ class WaveformService(IWaveformService):
         self._clock = clock
         self._version = int(analysis_version)
         self._loudness_version = int(loudness_version)
+        self._detail_version = int(detail_version)
+        self._detail_cap = int(detail_cap_bytes)
 
     @property
     def analysis_version(self) -> int:
@@ -194,6 +213,7 @@ class WaveformService(IWaveformService):
         *,
         cancel: Optional[Callable[[], bool]] = None,
         force: bool = False,
+        detail: bool = False,
     ) -> AnalysisOutcome:
         """Analyse one track's file into the store.
 
@@ -207,10 +227,16 @@ class WaveformService(IWaveformService):
         4. Decode, reduce, encode, and write the row, ready or failed, with its
            loudness, in one transaction.
 
+        With ``detail`` (T4, ADR-011) the zoomed waveform is made from the same
+        decode: a current overview no longer answers on its own, the file is
+        decoded when the detail is missing or stale, the overview is written
+        only if it was stale, and the detail is stored under the cap.
+
         Args:
             track_id: The track.
             cancel: Polled while the decoder runs.
             force: Decode even when a stored row already answers.
+            detail: Also make the track's detail waveform.
 
         Raises:
             WaveformStoreError: If the store cannot be read or written.
@@ -245,13 +271,18 @@ class WaveformService(IWaveformService):
             return AnalysisOutcome(track_id, OUTCOME_NOT_FOUND)
         size, mtime_ns = int(info.st_size), int(info.st_mtime_ns)
 
+        overview_current = False
         if not force:
             stored = self._store.summaries([path], self._version).get(path)
-            if (
+            overview_current = (
                 stored is not None
                 and stored.counts_for(size, mtime_ns)
                 and stored.measured(self._loudness_version)
+            )
+            if overview_current and (
+                not detail or self._has_detail(path, size, mtime_ns)
             ):
+                assert stored is not None
                 return AnalysisOutcome(track_id, OUTCOME_CURRENT, stored.reason)
 
         try:
@@ -266,32 +297,50 @@ class WaveformService(IWaveformService):
                 track_id, OUTCOME_UNAVAILABLE, REASON_DECODER_MISSING
             )
         except DecodeFailed as failure:
-            self._store.put(self._failed_row(path, size, mtime_ns, failure.reason))
+            if not overview_current:
+                self._store.put(self._failed_row(path, size, mtime_ns, failure.reason))
             return AnalysisOutcome(track_id, OUTCOME_FAILED, failure.reason)
 
         if envelope.frames == 0:
-            self._store.put(self._failed_row(path, size, mtime_ns, REASON_NO_AUDIO))
+            if not overview_current:
+                self._store.put(self._failed_row(path, size, mtime_ns, REASON_NO_AUDIO))
             return AnalysisOutcome(track_id, OUTCOME_FAILED, REASON_NO_AUDIO)
-        waveform = reduce(
-            [envelope.full, envelope.low, envelope.mid, envelope.high],
-            envelope.duration_ms,
-        )
-        self._store.put(
-            StoredWaveform(
-                path=path,
-                size_bytes=size,
-                mtime_ns=mtime_ns,
-                analysis_version=self._version,
-                state=STORED_READY,
-                analysed_at=self._clock(),
-                duration_ms=waveform.duration_ms,
-                data=encode(waveform),
-                loudness=self._reading(envelope.loudness),
+        bands = [envelope.full, envelope.low, envelope.mid, envelope.high]
+        if not overview_current:
+            waveform = reduce(bands, envelope.duration_ms)
+            self._store.put(
+                StoredWaveform(
+                    path=path,
+                    size_bytes=size,
+                    mtime_ns=mtime_ns,
+                    analysis_version=self._version,
+                    state=STORED_READY,
+                    analysed_at=self._clock(),
+                    duration_ms=waveform.duration_ms,
+                    data=encode(waveform),
+                    loudness=self._reading(envelope.loudness),
+                )
             )
-        )
+        if detail:
+            self._store.put_detail(
+                StoredDetail(
+                    path=path,
+                    size_bytes=size,
+                    mtime_ns=mtime_ns,
+                    analysis_version=self._version,
+                    detail_version=self._detail_version,
+                    used_at=0,
+                    data=encode_detail(reduce_detail(bands, envelope.duration_ms)),
+                ),
+                self._detail_cap,
+            )
         return AnalysisOutcome(
             track_id, OUTCOME_READY, decode_errors=envelope.decode_errors
         )
+
+    def _has_detail(self, path: str, size: int, mtime_ns: int) -> bool:
+        stored = self._store.get_detail(path, self._version, self._detail_version)
+        return stored is not None and stored.counts_for(size, mtime_ns)
 
     def _reading(self, loudness: Loudness) -> StoredLoudness:
         return StoredLoudness(
@@ -372,6 +421,69 @@ class WaveformService(IWaveformService):
         """One track's picture at ``width``, or ``None`` when it is not a track."""
         found = self.waveforms([track_id], width)
         return found[0] if found else None
+
+    def detail(self, track_id: int) -> Optional[DetailAnswer]:
+        """One track's zoomed waveform, or the state that explains its absence.
+
+        ``None`` when the id is no track. A stored detail answers ``ready`` when
+        its versions are current, it decodes, and it was made from the file the
+        overview was (its size and modified time agree). One that does not
+        decode is refused whole: it is logged, deleted so the next request
+        makes it again, and the track answers ``waiting``. Without a detail,
+        a track whose overview is ready answers as one with no row does: ``missing``
+        or ``unchecked`` when its file was not found present, else ``waiting``
+        (or ``unavailable`` with no decoder); any other state is the overview's.
+        Touches no file.
+        """
+        found = self._files.current_files([int(track_id)])
+        if not found:
+            return None
+        current = found[0]
+        available = self.decoder_available()
+        summary = self._read(self._summaries, found).get(current.path)
+        picture = self._detail_of(current.path, summary)
+        if picture is not None:
+            state = WaveformState(
+                current.track_id, STATE_READY, duration_ms=picture.duration_ms
+            )
+            return DetailAnswer(state, picture.rate_hz, picture.columns, picture.data)
+        state = _state(current, summary, available, self._loudness_version)
+        if state.state == STATE_READY:
+            # An overview with no detail: the file's own state, when it cannot
+            # be opened, else waiting (or unavailable with no decoder).
+            state = _state(current, None, available, self._loudness_version)
+        return DetailAnswer(state)
+
+    def _detail_of(
+        self, path: str, summary: Optional[WaveformSummary]
+    ) -> Optional[WaveformDetail]:
+        """A path's stored detail, decoded, or ``None``."""
+        if not path:
+            return None
+        try:
+            row = self._store.get_detail(path, self._version, self._detail_version)
+        except WaveformStoreError as exc:
+            _logger.warning("[waveforms] The store could not be read: %s", exc)
+            return None
+        if row is None:
+            return None
+        if summary is not None and not row.counts_for(
+            summary.size_bytes, summary.mtime_ns
+        ):
+            # Made from another file than the overview now describes.
+            return None
+        try:
+            return decode_detail(row.data)
+        except (WaveformFormatError, ValueError) as exc:
+            _logger.warning(
+                "[waveforms] A stored detail was refused and will be made again: %s",
+                exc,
+            )
+            try:
+                self._store.delete_detail(path)
+            except WaveformStoreError:
+                pass
+            return None
 
     # ------------------------------------------------------------ helpers
 
@@ -459,6 +571,7 @@ def _state(
 
 
 __all__: Sequence[str] = (
+    "DETAIL_CAP_BYTES",
     "Decode",
     "REASON_UNCHECKED",
     "STATE_BATCH",

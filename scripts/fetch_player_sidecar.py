@@ -59,6 +59,7 @@ import argparse
 import hashlib
 import io
 import json
+import math
 import os
 import platform
 import re
@@ -903,6 +904,14 @@ ANALYSIS_SECTIONS: Tuple[str, ...] = ("low", "mid", "high")
 MIN_BAND_SEPARATION_DB = 12.0
 #: Envelope samples left out at each edge of a section, where filters settle.
 SECTION_MARGIN_SAMPLES = 15
+#: How long each of the fixture's sections lasts, in seconds.
+SECTION_SECONDS = 2.0
+#: How far a section's edge may sit from where the fixture puts it, in detail
+#: columns (T4): one column is 13 ms at 75 a second. The overview hides any
+#: decoder delay; a beat grid laid over the detail would show it.
+MAX_DETAIL_EDGE_COLUMNS = 1.0
+#: Where a band's edge is, as a share of the band's own peak amplitude.
+DETAIL_EDGE_LEVEL = 0.5
 
 
 def _load_audio_decode() -> Any:
@@ -1031,6 +1040,84 @@ def check_loudness(binary: Path, *, quiet: bool = False) -> str:
     return line
 
 
+def _load_waveform_detail() -> Any:
+    """``cuepoint.core.waveform_detail``, imported with ``src`` on the path.
+
+    It needs nothing but the standard library and ``core/waveform.py``, whose
+    package imports run nothing else.
+    """
+    src = str(PROJECT_ROOT / "src")
+    if src not in sys.path:
+        sys.path.insert(0, src)
+    import importlib
+
+    return importlib.import_module("cuepoint.core.waveform_detail")
+
+
+def _detail_edge(levels: bytes, rising: bool, expected: int, window: int) -> float:
+    """Where a band's step is, in columns: its first column past half its peak.
+
+    A rising step is the first column at or above the threshold, a falling one
+    the first below it, searched within ``window`` columns of ``expected``.
+    ``nan`` when there is none.
+    """
+    if max(levels, default=0) == 0:
+        return float("nan")
+    threshold = max(levels) * math.sqrt(DETAIL_EDGE_LEVEL)
+    for column in range(max(0, expected - window), min(len(levels), expected + window)):
+        if (levels[column] >= threshold) == rising:
+            return float(column)
+    return float("nan")
+
+
+def check_detail_alignment(
+    decode: Any, envelope: Any, transport: str, fixture_name: str
+) -> str:
+    """The zoomed waveform's steps fall where the fixture puts them (T4).
+
+    Reduces the envelope to detail and finds each band's step: the low band
+    ends at 2.000 s, the mid starts there and ends at 4.000 s, the high starts
+    there. Each must be within :data:`MAX_DETAIL_EDGE_COLUMNS` of its place. A
+    decoder delay would put the beat grid drawn over the detail off the audio.
+    """
+    detail_module = _load_waveform_detail()
+    detail = detail_module.reduce_detail(
+        [envelope.full, envelope.low, envelope.mid, envelope.high],
+        envelope.duration_ms,
+        source_rate_hz=decode.ENVELOPE_RATE_HZ,
+    )
+    rate = detail.rate_hz
+    window = int(SECTION_SECONDS / 2 * rate)
+    worst = 0.0
+    last = len(ANALYSIS_SECTIONS) - 1
+    for index, band in enumerate(ANALYSIS_SECTIONS):
+        levels = detail.band(band)
+        for rising, seconds in (
+            (True, index * SECTION_SECONDS),
+            (False, (index + 1) * SECTION_SECONDS),
+        ):
+            if (rising and index == 0) or (not rising and index == last):
+                continue  # the file's own start and end, not a step
+            expected = round(seconds * rate)
+            found = _detail_edge(levels, rising, expected, window)
+            offset = found - expected
+            if not abs(offset) <= MAX_DETAIL_EDGE_COLUMNS:
+                where = "not found" if math.isnan(found) else f"{offset:+.0f} columns"
+                raise SmokeTestError(
+                    f"{fixture_name} ({transport}): the {band} band's "
+                    f"{'start' if rising else 'end'} should fall at {seconds:.3f} s "
+                    f"but is {where} ({1000 * offset / rate:+.0f} ms) from it; "
+                    f"at most {MAX_DETAIL_EDGE_COLUMNS:g} column is allowed. The "
+                    "decoder delays the envelope, and a beat grid over the "
+                    "detail would be off."
+                )
+            worst = max(worst, abs(offset))
+    return (
+        f"analysis detail ({transport}): {detail.columns} columns at {rate} a "
+        f"second, every band's step within {worst:g} column of its place"
+    )
+
+
 def check_analysis(
     binary: Path, fixture_dir: Path = FIXTURE_DIR, *, quiet: bool = False
 ) -> List[str]:
@@ -1042,6 +1129,10 @@ def check_analysis(
       so nothing is padded (encode mode pads; the pipeline must not);
     - each section peaks in its own band, ``MIN_BAND_SEPARATION_DB`` above the
       other two, which also proves the channel order.
+
+    And the same envelope, reduced to the zoomed waveform's 75 columns a second
+    (T4), must put each band's step within a column of 2.000 s and 4.000 s
+    (:func:`check_detail_alignment`).
 
     Then every format fixture decodes to an envelope, with signal where the
     fixture holds a tone. A decoder that cannot run the filters fails here
@@ -1098,6 +1189,10 @@ def check_analysis(
             f"analysis ({transport}): {count} samples for {expected:.2f} expected, "
             f"bands at least {worst:.1f} dB apart"
         )
+        checked.append(line)
+        if not quiet:
+            print(f"  {line}")
+        line = check_detail_alignment(decode, envelope, transport, fixture.name)
         checked.append(line)
         if not quiet:
             print(f"  {line}")

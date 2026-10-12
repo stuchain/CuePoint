@@ -33,6 +33,8 @@ from cuepoint.engine.waveform_jobs import SETTING_PAUSED, AnalysisSettings, bind
 from cuepoint.engine.waveforms_api import (
     ANALYSIS_PATH,
     DELETE_DATA_PATH,
+    DETAIL_PATH,
+    DETAIL_REQUEST_PATH,
     MAX_REQUESTED,
     MAX_TRACKS,
     PAUSE_PATH,
@@ -128,6 +130,7 @@ def engine(lib, tmp_path, services):
         service=lambda: lib.analysis,
         settings=AnalysisSettings(lambda config=ConfigService(config_file): config),
         workers=1,
+        detail_service=lambda: lib.waveforms,
     )
     base, server, thread = serve(store)
     try:
@@ -695,3 +698,256 @@ def test_wave_05_s_routes_need_the_token(engine, path, method):
     status, payload = engine.call(path, method=method, body=b"{}", token=None)
 
     assert status == 401 and payload["error"]["code"] == "UNAUTHORIZED"
+
+
+class TestDetail:
+    """T4 (ADR-011): the zoomed waveform, and asking for it."""
+
+    def wait_ready(self, engine, track_id: int) -> Dict[str, Any]:
+        import time
+
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            status, body = engine.call(f"{DETAIL_PATH}?track_id={track_id}")
+            assert status == 200
+            if body["state"] not in ("working", "waiting"):
+                return body
+            time.sleep(0.02)
+        raise AssertionError("the detail never became ready")
+
+    def test_the_paths(self):
+        assert DETAIL_PATH == "/api/v1/waveforms/detail"
+        assert DETAIL_REQUEST_PATH == "/api/v1/waveforms/detail/request"
+        assert handles_get(DETAIL_PATH) and not handles_post(DETAIL_PATH)
+        assert handles_post(DETAIL_REQUEST_PATH) and not handles_get(
+            DETAIL_REQUEST_PATH
+        )
+
+    def test_a_track_not_yet_made_waits(self, lib, engine):
+        track = lib.add("a")
+
+        status, body = engine.call(f"{DETAIL_PATH}?track_id={track}")
+
+        assert status == 200
+        assert body == {
+            "track_id": track,
+            "state": "waiting",
+            "reason": None,
+            "rate_hz": None,
+            "duration_ms": None,
+            "columns": None,
+            "data": None,
+        }
+
+    def test_a_request_makes_it_and_the_read_answers_it(self, lib, engine):
+        track = lib.add("a")
+
+        status, requested = engine.call(
+            DETAIL_REQUEST_PATH,
+            method="POST",
+            body=json.dumps({"track_id": track}).encode(),
+        )
+        body = self.wait_ready(engine, track)
+
+        assert status == 200
+        assert requested == {"track_id": track, "state": "working"}
+        assert body["state"] == "ready"
+        assert (body["track_id"], body["rate_hz"], body["reason"]) == (track, 75, None)
+        assert body["duration_ms"] == 20_000
+        assert body["columns"] == 1_500
+        raw = base64.b64decode(body["data"], validate=True)
+        assert len(raw) == body["columns"] * 4
+        # A track with no work: the engine made nothing for any other.
+        assert lib.decoder.names() == ["a"]
+
+    def test_working_is_said_while_it_is_made(self, lib, engine):
+        track = lib.add("a")
+        entered, release = threading.Event(), threading.Event()
+
+        def hold(source):
+            entered.set()
+            assert release.wait(15)
+            return envelope()
+
+        lib.decoder.default = hold
+        engine.call(
+            DETAIL_REQUEST_PATH,
+            method="POST",
+            body=json.dumps({"track_id": track}).encode(),
+        )
+        assert entered.wait(15)
+
+        _, during = engine.call(f"{DETAIL_PATH}?track_id={track}")
+        _, again = engine.call(
+            DETAIL_REQUEST_PATH,
+            method="POST",
+            body=json.dumps({"track_id": track}).encode(),
+        )
+        release.set()
+        after = self.wait_ready(engine, track)
+
+        assert during["state"] == "working" and during["data"] is None
+        assert again == {"track_id": track, "state": "working"}
+        assert after["state"] == "ready"
+        assert lib.decoder.names() == ["a"]
+
+    def test_a_request_for_a_ready_detail_answers_ready_and_decodes_nothing(
+        self, lib, engine
+    ):
+        track = lib.add("a")
+        lib.waveforms.analyse(track, detail=True)
+        lib.decoder.opened.clear()
+
+        status, body = engine.call(
+            DETAIL_REQUEST_PATH,
+            method="POST",
+            body=json.dumps({"track_id": track}).encode(),
+        )
+
+        assert (status, body) == (200, {"track_id": track, "state": "ready"})
+        assert lib.decoder.opened == []
+
+    def test_a_request_gives_the_reason_it_cannot_be_made(self, lib, engine):
+        missing = lib.add("missing", checked=False)
+        lib.files.record(
+            [
+                TrackFileStatus(
+                    missing,
+                    FILE_MISSING,
+                    str(lib.file_of("missing")),
+                    "2026-10-03T12:00:00+00:00",
+                )
+            ]
+        )
+        unchecked = lib.add("unchecked", checked=False)
+        failing = lib.add("failing")
+        lib.decoder.answers[str(lib.path("failing"))] = DecodeFailed("undecodable", "x")
+        lib.waveforms.analyse(failing)
+
+        answers = {
+            name: engine.call(
+                DETAIL_REQUEST_PATH,
+                method="POST",
+                body=json.dumps({"track_id": track}).encode(),
+            )[1]["state"]
+            for name, track in (
+                ("missing", missing),
+                ("unchecked", unchecked),
+                ("failing", failing),
+            )
+        }
+
+        assert answers == {
+            "missing": "missing",
+            "unchecked": "unchecked",
+            "failing": "failed",
+        }
+        assert lib.decoder.names() == ["failing"]
+
+    def test_a_read_gives_the_reason_with_the_state(self, lib, engine):
+        failing = lib.add("failing")
+        lib.decoder.answers[str(lib.path("failing"))] = DecodeFailed("undecodable", "x")
+        lib.waveforms.analyse(failing)
+
+        _, body = engine.call(f"{DETAIL_PATH}?track_id={failing}")
+
+        assert (body["state"], body["reason"], body["data"]) == (
+            "failed",
+            "undecodable",
+            None,
+        )
+
+    def test_no_decoder_is_unavailable(self, lib, engine):
+        track = lib.add("a")
+        lib.decoder_path = None
+
+        _, read = engine.call(f"{DETAIL_PATH}?track_id={track}")
+        _, requested = engine.call(
+            DETAIL_REQUEST_PATH,
+            method="POST",
+            body=json.dumps({"track_id": track}).encode(),
+        )
+
+        assert read["state"] == "unavailable"
+        assert requested == {"track_id": track, "state": "unavailable"}
+
+    def test_an_id_that_is_no_track_is_not_found(self, engine):
+        status, body = engine.call(f"{DETAIL_PATH}?track_id=999")
+        post_status, post_body = engine.call(
+            DETAIL_REQUEST_PATH, method="POST", body=b'{"track_id": 999}'
+        )
+
+        assert status == post_status == 404
+        assert body["error"]["code"] == post_body["error"]["code"] == "NOT_FOUND"
+
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "",
+            "?track_id=",
+            "?track_id=0",
+            "?track_id=-1",
+            "?track_id=x",
+            "?track_id=1.5",
+            "?track_id=1&track_id=2",
+            "?track_id=1&width=120",
+            "?track_ids=1",
+        ],
+    )
+    def test_a_bad_read_is_refused(self, engine, query):
+        status, body = engine.call(DETAIL_PATH + query)
+
+        assert status == 400
+        assert body["error"]["code"] == "INVALID_REQUEST"
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            b"",
+            b"{}",
+            b'{"track_id": 0}',
+            b'{"track_id": "1"}',
+            b'{"track_id": true}',
+            b'{"track_id": 1, "x": 2}',
+            b'{"track_ids": [1]}',
+            b"[1]",
+            b"nope",
+        ],
+    )
+    def test_a_bad_request_is_refused(self, engine, body):
+        status, answer = engine.call(DETAIL_REQUEST_PATH, method="POST", body=body)
+
+        assert status == 400
+        assert answer["error"]["code"] == "INVALID_REQUEST"
+
+    def test_both_routes_need_the_token(self, lib, engine):
+        track = lib.add("a")
+
+        read, _ = engine.call(f"{DETAIL_PATH}?track_id={track}", token=None)
+        write, _ = engine.call(
+            DETAIL_REQUEST_PATH, method="POST", body=b'{"track_id": 1}', token=None
+        )
+
+        assert (read, write) == (401, 401)
+
+    def test_an_unavailable_library_is_a_503(self, lib, engine):
+        reset_container()
+
+        status, body = engine.call(f"{DETAIL_PATH}?track_id=1")
+
+        assert status == 503
+        assert body["error"]["code"] == UNAVAILABLE
+
+    def test_a_store_that_cannot_be_read_is_an_unrecognized_failure_not_a_deletion_one(
+        self, lib, engine, monkeypatch
+    ):
+        lib.add("a")
+
+        def broken(*args, **kwargs):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(lib.waveforms, "detail", broken)
+        status, body = engine.call(f"{DETAIL_PATH}?track_id=1")
+
+        assert status == 500
+        assert body["error"]["code"] == "WAVEFORMS_FAILED"

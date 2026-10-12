@@ -422,9 +422,101 @@ class WaveformAnswer:
             raise ValueError(f"{self.width} columns need {self.width * 4} bytes")
 
 
+@dataclass(frozen=True)
+class StoredDetail:
+    """A row of ``waveform_details``: one file's zoomed waveform (T4, ADR-011).
+
+    Keyed by the file's path as :class:`StoredWaveform` is, and stamped with the
+    file's size and modified time and both versions it was made at, so a row of
+    another file or another rule is never shown.
+
+    Attributes:
+        path: The file's path, exactly as the library holds it.
+        size_bytes: The file's size when decoded.
+        mtime_ns: The file's modified time when decoded, in nanoseconds.
+        analysis_version: The decoder's ``ANALYSIS_VERSION`` that decoded it.
+        detail_version: The ``CPWD`` format version of ``data``.
+        used_at: When it was last stored or read, in nanoseconds: what the
+            least-recently-used eviction orders by.
+        data: The encoded detail (``core/waveform_detail.py``).
+    """
+
+    path: str
+    size_bytes: int
+    mtime_ns: int
+    analysis_version: int
+    detail_version: int
+    used_at: int
+    data: bytes
+
+    def __post_init__(self) -> None:
+        """Validate the row, as the table's checks would."""
+        required_text(self.path, "path")
+        object.__setattr__(
+            self, "size_bytes", non_negative(self.size_bytes, "size_bytes")
+        )
+        object.__setattr__(self, "mtime_ns", whole_number(self.mtime_ns, "mtime_ns"))
+        object.__setattr__(
+            self,
+            "analysis_version",
+            required_id(self.analysis_version, "analysis_version"),
+        )
+        object.__setattr__(
+            self, "detail_version", required_id(self.detail_version, "detail_version")
+        )
+        object.__setattr__(self, "used_at", whole_number(self.used_at, "used_at"))
+        if not isinstance(self.data, (bytes, bytearray, memoryview)):
+            raise TypeError("data must be bytes")
+        object.__setattr__(self, "data", bytes(self.data))
+        if not self.data:
+            raise ValueError("A stored detail has data")
+
+    @property
+    def bytes(self) -> int:
+        """The size of ``data``, which the cache's cap is counted in."""
+        return len(self.data)
+
+    def counts_for(self, size_bytes: int, mtime_ns: int) -> bool:
+        """True when the row answers for the file as it is now."""
+        return self.size_bytes == int(size_bytes) and self.mtime_ns == int(mtime_ns)
+
+
+@dataclass(frozen=True)
+class DetailAnswer:
+    """A track's zoomed waveform, or the state that explains its absence.
+
+    Attributes:
+        state: The track's state: ``ready`` with the data, else why not. A
+            decode in flight is the engine's to know (``waveform_jobs``), which
+            says ``working`` where this says ``waiting``.
+        rate_hz: A ready detail's columns a second.
+        columns: A ready detail's column count.
+        data: ``columns × 4`` bytes, each column's full, low, mid and high,
+            when ready; otherwise ``None``.
+    """
+
+    state: WaveformState
+    rate_hz: Optional[int] = None
+    columns: Optional[int] = None
+    data: Optional[bytes] = None
+
+    def __post_init__(self) -> None:
+        """Validate the answer."""
+        ready = self.state.state == STATE_READY
+        if ready != (self.data is not None):
+            raise ValueError("A ready detail, and only a ready one, has data")
+        if self.data is not None and (
+            self.columns is None
+            or self.rate_hz is None
+            or len(self.data) != self.columns * 4
+        ):
+            raise ValueError("A detail's data is columns × 4 bytes")
+
+
 __all__ = (
     "ANALYSIS_OUTCOMES",
     "AnalysisOutcome",
+    "DetailAnswer",
     "LOUDNESS_NOT_MEASURED",
     "LOUDNESS_REASONS",
     "LOUDNESS_SILENT",
@@ -446,6 +538,7 @@ __all__ = (
     "STORED_FAILED",
     "STORED_READY",
     "STORED_STATES",
+    "StoredDetail",
     "StoredFile",
     "StoredLoudness",
     "StoredWaveform",

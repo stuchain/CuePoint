@@ -33,6 +33,7 @@ from cuepoint.models.waveform import (
     LOUDNESS_TOO_QUIET,
     STORED_FAILED,
     STORED_READY,
+    StoredDetail,
     StoredFile,
     StoredLoudness,
     StoredWaveform,
@@ -194,7 +195,7 @@ class TestTheSchema:
         journal = connection.execute("PRAGMA journal_mode").fetchone()[0]
         connection.close()
 
-        assert tables == {"meta", "waveforms", "loudness"}
+        assert tables == {"meta", "waveforms", "loudness", "waveform_details"}
         assert version == (str(SCHEMA_VERSION),)
         assert columns == [
             "path",
@@ -963,7 +964,8 @@ class TestDeletingTheData:
         store.clear()
 
         assert full > 1_000_000
-        assert store.disk_bytes() < full // 10
+        # An empty store is its schema's pages: with T4's table and index, 12.
+        assert store.disk_bytes() < full // 8
 
     def test_the_store_works_after_it_is_cleared(self, store):
         store.put(ready("/music/a.flac"))
@@ -1247,3 +1249,253 @@ class TestLoudness:
         assert store.loudness_count() == 1
         store.clear()
         assert store.loudness_count() == 0
+
+
+def detail(
+    path: str = "/music/a.flac", size: int = 1_000, version: int = 1, **overrides
+) -> StoredDetail:
+    values = dict(
+        path=path,
+        size_bytes=size,
+        mtime_ns=5,
+        analysis_version=version,
+        detail_version=1,
+        used_at=0,
+        data=b"CPWD" + bytes(size - 4),
+    )
+    values.update(overrides)
+    return StoredDetail(**values)
+
+
+class TestDetails:
+    """T4 (ADR-011): the zoomed waveform's bounded, least-recently-used table."""
+
+    def test_a_fresh_store_has_the_table_and_its_index(self, store, store_path):
+        store.count()
+        connection = raw(store_path)
+        columns = [
+            row[1] for row in connection.execute("PRAGMA table_info(waveform_details)")
+        ]
+        indexed = [
+            row[2]
+            for row in connection.execute("PRAGMA index_info(waveform_details_used)")
+        ]
+        connection.close()
+
+        assert columns == [
+            "path",
+            "size_bytes",
+            "mtime_ns",
+            "analysis_version",
+            "detail_version",
+            "used_at",
+            "bytes",
+            "data",
+        ]
+        assert indexed == ["used_at"]
+
+    def test_a_store_made_before_it_gains_the_table_and_keeps_its_rows(
+        self, store, store_path
+    ):
+        store.put(ready("/music/kept.flac"))
+        store.close_all()
+        connection = raw(store_path)
+        connection.execute("DROP TABLE waveform_details")
+        connection.commit()
+        connection.close()
+
+        reopened = WaveformStore(store_path)
+        try:
+            assert reopened.get_detail("/music/kept.flac", 1, 1) is None
+            assert reopened.put_detail(detail(), 10_000) == 0
+            assert reopened.get("/music/kept.flac", 1) is not None
+            assert reopened.get_detail("/music/a.flac", 1, 1) is not None
+        finally:
+            reopened.close_all()
+
+    def test_the_schema_version_is_not_bumped(self, store, store_path):
+        store.count()
+        connection = raw(store_path)
+        value = connection.execute(
+            "SELECT value FROM meta WHERE key = 'schema_version'"
+        ).fetchone()[0]
+        connection.close()
+
+        assert value == "1" == str(SCHEMA_VERSION)
+
+    def test_a_failed_touch_does_not_hide_a_ready_detail(self, store):
+        store.put_detail(detail(), 1_000_000)
+        connection = store.connect()
+        connection.execute(
+            "CREATE TRIGGER no_touch BEFORE UPDATE ON waveform_details"
+            " BEGIN SELECT RAISE(ABORT, 'database is locked'); END"
+        )
+        connection.commit()
+
+        got = store.get_detail("/music/a.flac", 1, 1)
+
+        assert got is not None
+        assert got.path == "/music/a.flac"
+
+    def test_a_detail_round_trips(self, store):
+        row = detail(data=b"CPWD" + bytes(range(200)))
+        store.put_detail(row, 1_000_000)
+
+        got = store.get_detail(row.path, 1, 1)
+
+        assert got is not None
+        assert (got.path, got.size_bytes, got.mtime_ns, got.data) == (
+            row.path,
+            row.size_bytes,
+            row.mtime_ns,
+            row.data,
+        )
+        assert got.bytes == len(row.data)
+
+    def test_only_the_current_versions_answer(self, store):
+        store.put_detail(detail(), 1_000_000)
+
+        assert store.get_detail("/music/a.flac", 2, 1) is None
+        assert store.get_detail("/music/a.flac", 1, 2) is None
+        assert store.get_detail("/music/other.flac", 1, 1) is None
+
+    def test_a_put_replaces_the_paths_row(self, store):
+        store.put_detail(detail(size=100), 1_000_000)
+        store.put_detail(detail(size=300, mtime_ns=9), 1_000_000)
+
+        got = store.get_detail("/music/a.flac", 1, 1)
+        assert (got.bytes, got.mtime_ns) == (300, 9)
+        assert store.detail_count() == 1
+        assert store.detail_bytes() == 300
+
+    def test_a_detail_has_no_waveform_row_and_needs_none(self, store):
+        store.put_detail(detail(), 1_000_000)
+
+        assert store.count() == 0
+        assert store.paths() == []
+
+    def test_evicts_the_least_recently_used_down_to_the_cap(self, store):
+        for name in ("a", "b", "c"):
+            store.put_detail(detail(f"/music/{name}.flac", 400), 10_000)
+
+        evicted = store.put_detail(detail("/music/d.flac", 400), 1_300)
+
+        assert evicted == 1
+        assert store.detail_bytes() == 1_200
+        assert store.get_detail("/music/a.flac", 1, 1) is None
+        for name in ("b", "c", "d"):
+            assert store.get_detail(f"/music/{name}.flac", 1, 1) is not None
+
+    def test_a_read_makes_a_detail_recent(self, store):
+        for name in ("a", "b", "c"):
+            store.put_detail(detail(f"/music/{name}.flac", 400), 10_000)
+        assert store.get_detail("/music/a.flac", 1, 1) is not None
+
+        store.put_detail(detail("/music/d.flac", 400), 1_300)
+
+        assert store.get_detail("/music/b.flac", 1, 1) is None
+        assert store.get_detail("/music/a.flac", 1, 1) is not None
+
+    def test_evicts_as_many_as_the_new_row_needs(self, store):
+        for name in ("a", "b", "c"):
+            store.put_detail(detail(f"/music/{name}.flac", 100), 10_000)
+
+        evicted = store.put_detail(detail("/music/big.flac", 500), 600)
+
+        assert evicted == 2
+        assert store.detail_count() == 2
+        assert store.detail_bytes() == 600
+        assert store.get_detail("/music/big.flac", 1, 1) is not None
+
+    def test_the_total_never_exceeds_the_cap_after_a_put(self, store):
+        for index in range(40):
+            store.put_detail(detail(f"/music/{index}.flac", 100 + index), 1_000)
+            assert store.detail_bytes() <= 1_000
+
+    def test_a_row_larger_than_the_cap_is_not_kept(self, store):
+        evicted = store.put_detail(detail(size=900), 500)
+
+        assert evicted == 1
+        assert store.detail_count() == 0
+
+    def test_a_cap_of_zero_keeps_nothing(self, store):
+        store.put_detail(detail(), 0)
+
+        assert store.detail_count() == 0
+
+    def test_delete_detail(self, store):
+        store.put_detail(detail(), 10_000)
+
+        assert store.delete_detail("/music/a.flac") is True
+        assert store.delete_detail("/music/a.flac") is False
+        assert store.get_detail("/music/a.flac", 1, 1) is None
+
+    def test_delete_removes_the_details_too(self, store):
+        store.put(ready())
+        store.put_detail(detail(), 10_000)
+
+        store.delete("/music/a.flac")
+
+        assert store.detail_count() == 0
+
+    def test_delete_paths_removes_the_details_too(self, store):
+        for name in ("a", "b", "c"):
+            store.put_detail(detail(f"/music/{name}.flac", 100), 10_000)
+
+        store.delete_paths(["/music/a.flac", "/music/b.flac"])
+
+        assert store.detail_count() == 1
+        assert store.get_detail("/music/c.flac", 1, 1) is not None
+
+    def test_delete_paths_removes_details_with_no_waveform_row(self, store):
+        store.put_detail(detail(), 10_000)
+
+        store.delete_paths(["/music/a.flac"])
+
+        assert store.detail_count() == 0
+
+    def test_clear_removes_every_detail(self, store):
+        store.put(ready())
+        for name in ("a", "b"):
+            store.put_detail(detail(f"/music/{name}.flac", 100), 10_000)
+
+        store.clear()
+
+        assert store.detail_count() == 0
+        assert store.detail_bytes() == 0
+
+    def test_a_failed_write_leaves_the_table_as_it_was(self, store, store_path):
+        store.put_detail(detail("/music/kept.flac", 100), 10_000)
+        store.close_all()
+        connection = raw(store_path)
+        connection.execute(
+            "CREATE TRIGGER refuse BEFORE INSERT ON waveform_details"
+            " WHEN new.path = '/music/bad.flac'"
+            " BEGIN SELECT RAISE(ABORT, 'refused'); END"
+        )
+        connection.commit()
+        connection.close()
+
+        with pytest.raises(WaveformStoreError):
+            store.put_detail(detail("/music/bad.flac", 100), 10_000)
+
+        assert store.detail_count() == 1
+
+    def test_the_table_refuses_a_row_whose_size_is_not_its_data(
+        self, store, store_path
+    ):
+        store.count()
+        connection = raw(store_path)
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                "INSERT INTO waveform_details VALUES ('/p', 1, 1, 1, 1, 1, 99, x'00')"
+            )
+        connection.close()
+
+    def test_the_model_refuses_what_the_table_would(self):
+        with pytest.raises(ValueError):
+            detail(data=b"")
+        with pytest.raises(ValueError):
+            detail(path=" ")
+        with pytest.raises(TypeError):
+            detail(data="text")

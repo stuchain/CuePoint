@@ -148,7 +148,8 @@ def restored(library, tmp_path):
     library.importer.import_rekordbox_xml(str(write_export(tmp_path)))
     library.check()
     for name, track_id in library.ids().items():
-        assert library.waveforms.analyse(track_id).outcome == OUTCOME_READY, name
+        outcome = library.waveforms.analyse(track_id, detail=True)
+        assert outcome.outcome == OUTCOME_READY, name
     expected = {
         "ids": library.ids(),
         "marks": library.marks.get(library.ids()["one.flac"]),
@@ -198,6 +199,18 @@ class TestARestoredLaunchBackup:
         assert (plan.present, plan.analysed, plan.pending_total) == (3, 3, 0)
         assert library.decoder.opened == []
 
+    def test_finds_every_detail_waveform_by_its_path_too(self, library, restored):
+        """T4: the zoomed waveforms live in the store, so a restore keeps them."""
+        expected, _ = restored
+        ids = list(expected["ids"].values())
+
+        answers = [library.waveforms.detail(track_id) for track_id in ids]
+
+        assert [a.state.state for a in answers] == [STATE_READY] * len(NAMES)
+        assert all(a.data is not None and a.columns for a in answers)
+        assert library.store.detail_count() == len(NAMES)
+        assert library.decoder.opened == []
+
     def test_leaves_the_store_alone_and_holds_none_of_it(self, library, restored):
         expected, backup = restored
         assert library.store.path.read_bytes() == expected["store"]
@@ -216,3 +229,5 @@ class TestARestoredLaunchBackup:
             copy.close()
         assert {"tracks", "track_cues", "track_beat_grid"} <= tables
         assert not any("waveform" in table for table in tables)
+        # Nor a zoomed waveform: they are in the store, with the rest.
+        assert "waveform_details" not in tables

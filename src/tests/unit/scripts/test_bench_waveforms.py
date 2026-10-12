@@ -48,6 +48,60 @@ def test_the_budgets_are_the_phases():
     assert bench.DEFAULT_RUNS == 2
 
 
+def test_the_zoomed_waveforms_budgets_are_t4s():
+    # ADR-011: 60 ms to reduce and encode six minutes, 20 ms (the picture's)
+    # to read and decode one, 50 ms to write one at a full cap.
+    assert bench.DETAIL_BUILD_BUDGET_MS == 60
+    assert bench.DETAIL_READ_BUDGET_MS == bench.ONE_BUDGET_MS == 20
+    assert bench.DETAIL_PUT_BUDGET_MS == 50
+    assert bench.DETAIL_FRAMES == 54_000  # six minutes at the decoder's 150 Hz
+    assert bench.DETAIL_CAP_BYTES == 256 * 1024 * 1024
+
+
+def test_the_detail_rows_are_measured_and_the_mean_size_reported(tmp_path):
+    built = bench.bench_waveform_store.build(tmp_path, 60, worst_case=False)
+    try:
+        rows = bench.measure_detail(built, repeats=3, cap_bytes=3_000_000)
+        store = built["store"]
+        held = store.detail_bytes()
+        count = store.detail_count()
+    finally:
+        built["store"].close_all()
+        built["db"].close_all()
+
+    labels = [row["label"] for row in rows]
+    assert labels[:2] == [
+        "A six-minute detail, reduce and encode",
+        "One detail, read and decode",
+    ]
+    assert labels[2].startswith("A detail written at a full cap")
+    assert labels[3] == "The mean detail"
+    budgets = {row["label"]: row["budget"] for row in rows}
+    assert budgets["A six-minute detail, reduce and encode"] == 60
+    assert budgets["One detail, read and decode"] == 20
+    assert budgets["The mean detail"] is None
+    mean = rows[3]
+    assert mean["unit"] == "KB" and mean["value"] > 5
+    assert not mean["over_budget"]
+    # The cap held: the store filled to it, and every write evicted down to it.
+    assert 2_500_000 < held <= 3_000_000 + 200_000
+    assert count > 10
+
+
+def test_the_report_prints_the_mean_detail_in_kilobytes(capsys):
+    rows = [bench._row("The mean detail", 45.5, "KB", None, "note")]
+    bench.report(
+        {
+            "tracks": 1_000,
+            "platform": "Test",
+            "python": "3",
+            "sqlite": "3",
+            "runs": [{"run": 1, "seconds": 1.0, "rows": rows}],
+        }
+    )
+    assert "| The mean detail | 45.5 KB |  |" in capsys.readouterr().out
+
+
 def test_every_track_carries_eight_marks():
     cues, grid = bench.prepared_marks(12)
     assert len(cues) == 7 and len(grid) == 1

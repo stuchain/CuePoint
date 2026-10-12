@@ -29,7 +29,7 @@ from typing import Callable, List, Optional
 
 import pytest
 
-from cuepoint.data.audio_decode import DecodeFailed, DecoderUnavailable
+from cuepoint.data.audio_decode import DecodeCancelled, DecodeFailed, DecoderUnavailable
 from cuepoint.engine import waveform_jobs
 from cuepoint.engine.file_check_jobs import JOB_TYPE_FILE_CHECK
 from cuepoint.engine.jobs import Job, JobState, JobStore
@@ -106,7 +106,13 @@ def engine(lib, config_file):
     """A job store and the analysis bound to it, as the engine makes them."""
     store = JobStore()
     settings = AnalysisSettings(lambda config=ConfigService(config_file): config)
-    analysis = bind(store, service=lambda: lib.analysis, settings=settings, workers=1)
+    analysis = bind(
+        store,
+        service=lambda: lib.analysis,
+        settings=settings,
+        workers=1,
+        detail_service=lambda: lib.waveforms,
+    )
     yield store, analysis
     for job in store.list_all():
         if job.type != JOB_TYPE_WAVEFORM_ANALYSIS and job.state.value == "running":
@@ -940,3 +946,278 @@ def test_the_paused_setting_is_read_through_the_coordinator(lib, engine):
     assert analysis.paused() is False
     analysis.pause()
     assert analysis.paused() is True
+
+
+class TestTheDetailFill:
+    """T4 (ADR-011): a cache fill on one worker, not a job."""
+
+    def detail_of(self, lib, name: str):
+        return lib.store.get_detail(
+            str(lib.path(name)), lib.waveforms.analysis_version, 1
+        )
+
+    def test_it_makes_the_detail_and_the_overview_from_one_decode(self, lib, engine):
+        store, analysis = engine
+        lib.add("a")
+
+        assert analysis.request_detail(lib.id("a")) is True
+        wait_for(lambda: self.detail_of(lib, "a") is not None, "the detail")
+
+        assert lib.decoder.names() == ["a"]
+        assert lib.stored() == {"a": STORED_READY}
+
+    def test_it_is_not_a_job(self, lib, engine):
+        store, analysis = engine
+        lib.add("a")
+
+        analysis.request_detail(lib.id("a"))
+        wait_for(lambda: self.detail_of(lib, "a") is not None, "the detail")
+
+        assert store.list_all() == []
+        assert lib.events() == []
+
+    def test_it_runs_while_the_analysis_is_paused(self, lib, engine):
+        store, analysis = engine
+        lib.add("a")
+        analysis.pause()
+
+        assert analysis.request_detail(lib.id("a")) is True
+        wait_for(lambda: self.detail_of(lib, "a") is not None, "the detail")
+
+        assert analysis.status().paused is True
+        assert analysis_jobs(store) == []
+
+    def test_it_says_when_a_track_is_in_flight(self, lib, engine):
+        _, analysis = engine
+        lib.add("a")
+        gate = Gate()
+        lib.decoder.default = gate
+
+        analysis.request_detail(lib.id("a"))
+        assert gate.entered.wait(TIMEOUT)
+
+        assert analysis.detail_in_flight(lib.id("a")) is True
+        assert analysis.detail_in_flight(999) is False
+        gate.release.set()
+        wait_for(lambda: not analysis.detail_in_flight(lib.id("a")), "the end")
+
+    def test_the_same_track_asked_twice_is_one_decode(self, lib, engine):
+        _, analysis = engine
+        lib.add("a")
+        gate = Gate()
+        lib.decoder.default = gate
+
+        analysis.request_detail(lib.id("a"))
+        assert gate.entered.wait(TIMEOUT)
+        assert analysis.request_detail(lib.id("a")) is True
+        gate.release.set()
+        wait_for(lambda: self.detail_of(lib, "a") is not None, "the detail")
+        wait_for(lambda: not analysis.detail_in_flight(lib.id("a")), "the end")
+
+        assert lib.decoder.names() == ["a"]
+
+    def test_a_newer_request_replaces_a_queued_one_and_the_running_one_finishes(
+        self, lib, engine
+    ):
+        _, analysis = engine
+        for name in ("a", "b", "c"):
+            lib.add(name)
+        gate = Gate()
+        lib.decoder.answers[str(lib.path("a"))] = gate
+
+        analysis.request_detail(lib.id("a"))
+        assert gate.entered.wait(TIMEOUT)
+        analysis.request_detail(lib.id("b"))
+        analysis.request_detail(lib.id("c"))
+        assert analysis.detail_in_flight(lib.id("b")) is False
+        gate.release.set()
+        wait_for(lambda: self.detail_of(lib, "c") is not None, "the newest")
+        wait_for(lambda: not analysis.detail_in_flight(lib.id("c")), "the end")
+
+        assert lib.decoder.names() == ["a", "c"]
+        assert self.detail_of(lib, "a") is not None
+        assert self.detail_of(lib, "b") is None
+
+    @pytest.mark.parametrize("busy", STEPS_ASIDE_FOR)
+    def test_it_waits_for_a_job_it_gives_way_to(self, lib, engine, busy):
+        store, analysis = engine
+        lib.add("a")
+        done = hold(store, busy)
+
+        assert analysis.request_detail(lib.id("a")) is True
+        time.sleep(0.3)
+        assert lib.decoder.opened == []
+        assert analysis.detail_in_flight(lib.id("a")) is True
+
+        done.set()
+        wait_for(lambda: self.detail_of(lib, "a") is not None, "the detail")
+
+    def test_it_waits_for_the_last_of_two_such_jobs(self, lib, engine):
+        store, analysis = engine
+        lib.add("a")
+        first = hold(store, JOB_TYPE_TAG_WRITE)
+        second = hold(store, JOB_TYPE_FILE_CHECK)
+        analysis.request_detail(lib.id("a"))
+
+        first.set()
+        time.sleep(0.3)
+        assert lib.decoder.opened == []
+        second.set()
+        wait_for(lambda: self.detail_of(lib, "a") is not None, "the detail")
+
+    def test_it_cancels_a_decode_already_going_for_a_job_that_starts(self, lib, engine):
+        store, analysis = engine
+        lib.add("a")
+        gate = Gate()
+        lib.decoder.default = gate
+        analysis.request_detail(lib.id("a"))
+        assert gate.entered.wait(TIMEOUT)
+        run = analysis._detail_run
+        assert run is not None and not run.cancelled.is_set()
+
+        done = hold(store, JOB_TYPE_TAG_WRITE)
+        wait_for(lambda: run.cancelled.is_set(), "the cancel")
+        gate.release.set()
+        done.set()
+
+    def test_a_crashed_worker_is_replaced_by_the_next_request(
+        self, lib, engine, monkeypatch
+    ):
+        _, analysis = engine
+        lib.add("a")
+        lib.add("b")
+
+        def boom(run):
+            raise RuntimeError("boom")
+
+        original = analysis._make_detail
+        monkeypatch.setattr(analysis, "_make_detail", boom)
+        analysis.request_detail(lib.id("a"))
+        wait_for(lambda: analysis._detail_worker is None, "the worker to end")
+
+        monkeypatch.setattr(analysis, "_make_detail", original)
+        analysis.request_detail(lib.id("b"))
+        wait_for(lambda: self.detail_of(lib, "b") is not None, "the next detail")
+
+    def test_it_refuses_without_a_decoder_or_a_track_id(self, lib, engine):
+        _, analysis = engine
+        lib.add("a")
+
+        assert analysis.request_detail(0) is False
+        assert analysis.request_detail(True) is False
+        lib.decoder_path = None
+        assert analysis.request_detail(lib.id("a")) is False
+        assert lib.decoder.opened == []
+
+    def test_a_failure_does_not_stop_the_worker(self, lib, engine):
+        _, analysis = engine
+        lib.add("a")
+        lib.add("b")
+        lib.decoder.answers[str(lib.path("a"))] = RuntimeError("boom")
+
+        analysis.request_detail(lib.id("a"))
+        wait_for(lambda: not analysis.detail_in_flight(lib.id("a")), "the failure")
+        analysis.request_detail(lib.id("b"))
+        wait_for(lambda: self.detail_of(lib, "b") is not None, "the next detail")
+
+    def test_delete_data_drops_what_is_queued_cancels_the_decode_and_waits(
+        self, lib, engine
+    ):
+        from cuepoint.services.waveform_service import WaveformService
+
+        store, analysis = engine
+        for name in ("a", "b"):
+            lib.add(name)
+        entered = threading.Event()
+        opened: List[str] = []
+
+        def decode(source, decoder, cancel):
+            opened.append(Path(source).name)
+            entered.set()
+            deadline = time.monotonic() + TIMEOUT
+            while time.monotonic() < deadline:
+                if cancel is not None and cancel():
+                    raise DecodeCancelled()
+                time.sleep(0.01)
+            raise AssertionError("never cancelled")
+
+        service = WaveformService(
+            lib.files,
+            lib.store,
+            decoder=lambda: lib.decoder_path,
+            decode_file=decode,
+        )
+        own_store = JobStore()
+        cancelling = bind(
+            own_store, service=lambda: lib.analysis, detail_service=lambda: service
+        )
+        cancelling.request_detail(lib.id("a"))
+        assert entered.wait(TIMEOUT)
+        cancelling.request_detail(lib.id("b"))
+
+        deleted = cancelling.delete_data(wait_seconds=TIMEOUT)
+
+        assert deleted.waveforms == 0
+        assert opened == ["a"]
+        assert cancelling.detail_in_flight(lib.id("a")) is False
+        assert cancelling.detail_in_flight(lib.id("b")) is False
+        assert lib.store.detail_count() == 0
+
+    def test_delete_data_cancels_the_analysis_before_waiting_for_the_detail(
+        self, lib, engine
+    ):
+        import types
+
+        _, analysis = engine
+        lib.add("a")
+        gate = Gate()
+        lib.decoder.default = gate
+        analysis.request_detail(lib.id("a"))
+        assert gate.entered.wait(TIMEOUT)
+        order: List[str] = []
+        ended = threading.Event()
+        ended.set()
+        analysis._job = object()
+        analysis._control = types.SimpleNamespace(
+            owed=None, stop=None, ended=ended, whole=False
+        )
+        analysis._request_cancel = lambda job: order.append("cancel")
+        run = analysis._detail_run
+
+        def waiting(timeout=None):
+            order.append("wait")
+            gate.release.set()
+            return True
+
+        run.ended = types.SimpleNamespace(wait=waiting, set=run.ended.set)
+
+        try:
+            analysis.delete_data(wait_seconds=TIMEOUT)
+        finally:
+            analysis._job = None
+            analysis._control = None
+
+        assert order[:2] == ["cancel", "wait"]
+
+    def test_nothing_is_written_after_the_store_is_emptied(self, lib, engine):
+        store, analysis = engine
+        lib.add("a")
+        gate = Gate()
+        lib.decoder.default = gate
+        analysis.request_detail(lib.id("a"))
+        assert gate.entered.wait(TIMEOUT)
+
+        done = threading.Event()
+
+        def deleting() -> None:
+            analysis.delete_data(wait_seconds=TIMEOUT)
+            done.set()
+
+        threading.Thread(target=deleting, daemon=True).start()
+        time.sleep(0.2)
+        assert not done.is_set(), "the deletion did not wait for the decode"
+        gate.release.set()
+        assert done.wait(TIMEOUT)
+        settle(store)
+
+        assert lib.store.detail_count() <= 1

@@ -18,6 +18,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import math
 import sys
 import tarfile
 import urllib.error
@@ -978,7 +979,9 @@ def _flat_or_banded(module, frames: int, banded: bool, loudness=None):
     """
     from array import array
 
-    third = frames // 3
+    # The fixture's sections are two seconds each; a short stand-in is thirds.
+    section = round(fps.SECTION_SECONDS * module.ENVELOPE_RATE_HZ)
+    third = section if frames >= 3 * section else frames // 3
     bands = {name: array("f", [0.0] * frames) for name in module.BANDS}
     for index, name in enumerate(("low", "mid", "high")):
         for i in range(index * third, (index + 1) * third):
@@ -1066,6 +1069,79 @@ class TestAnalysisCheck:
         )
         with pytest.raises(fps.SmokeTestError, match="wrong order"):
             fps.check_analysis(tmp_path / "mpv", quiet=True)
+
+    def _delayed(self, module, samples: int):
+        """The banded envelope, every band late (or early, when negative) by ``samples``."""
+        from array import array
+
+        made = _flat_or_banded(module, self._expected_frames(), banded=True)
+        bands = {}
+        for name in module.BANDS:
+            band = made.band(name)
+            if samples >= 0:
+                shifted = array("f", [0.0] * samples) + band[: len(band) - samples]
+            else:
+                shifted = band[-samples:] + array("f", [0.0] * -samples)
+            bands[name] = shifted
+        return module.Envelope(
+            rate_hz=module.ENVELOPE_RATE_HZ, loudness=made.loudness, **bands
+        )
+
+    def test_the_detail_steps_fall_in_their_places(self, monkeypatch, tmp_path):
+        module = _decode_module()
+        frames = self._expected_frames()
+        self._patched(
+            monkeypatch,
+            module,
+            lambda *a, **k: _flat_or_banded(module, frames, banded=True),
+        )
+
+        lines = fps.check_analysis(tmp_path / "mpv", quiet=True)
+
+        detail = [line for line in lines if line.startswith("analysis detail")]
+        assert len(detail) == 2  # both transports
+        assert all("within 0 column of its place" in line for line in detail)
+
+    @pytest.mark.parametrize("samples", [0, 1, 2, -2], ids=lambda n: f"{n}-samples")
+    def test_a_delay_of_one_column_or_less_passes(self, monkeypatch, tmp_path, samples):
+        """150 Hz samples are two to a 75 Hz column: 2 samples is one column."""
+        module = _decode_module()
+        envelope = self._delayed(module, samples)
+        self._patched(monkeypatch, module, lambda *a, **k: envelope)
+
+        lines = fps.check_analysis(tmp_path / "mpv", quiet=True)
+
+        assert any(line.startswith("analysis detail") for line in lines)
+
+    @pytest.mark.parametrize("samples", [6, -6], ids=["late", "early"])
+    def test_a_decoder_delay_of_three_columns_fails(
+        self, monkeypatch, tmp_path, samples
+    ):
+        module = _decode_module()
+        envelope = self._delayed(module, samples)
+        self._patched(monkeypatch, module, lambda *a, **k: envelope)
+
+        with pytest.raises(fps.SmokeTestError, match="beat grid") as failure:
+            fps.check_analysis(tmp_path / "mpv", quiet=True)
+
+        assert "should fall at" in str(failure.value)
+        assert "at most 1 column" in str(failure.value)
+
+    def test_a_band_with_no_step_is_not_found(self):
+        silent = bytes(100)
+        loud = bytes([200]) * 100
+
+        assert math.isnan(fps._detail_edge(silent, True, 50, 20))
+        assert math.isnan(fps._detail_edge(loud, False, 50, 20))
+        # A step is found where it is: loud from column 50 on.
+        step = bytes(50) + bytes([200]) * 50
+        assert fps._detail_edge(step, True, 50, 20) == 50.0
+        assert fps._detail_edge(step[::-1], False, 50, 20) == 50.0
+
+    def test_the_detail_check_is_the_documented_one(self):
+        assert fps.SECTION_SECONDS == 2.0
+        assert fps.MAX_DETAIL_EDGE_COLUMNS == 1.0
+        assert "check_detail_alignment" in fps.check_analysis.__doc__
 
     def test_a_padded_envelope_fails(self, monkeypatch, tmp_path):
         module = _decode_module()

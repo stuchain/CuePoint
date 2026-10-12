@@ -25,6 +25,8 @@ from cuepoint.models.track_marks import CUE_KINDS
 from cuepoint.models.waveform import LOUDNESS_REASONS, WAVEFORM_STATES
 from cuepoint.models.waveform_analysis import ANALYSIS_STATES
 from cuepoint.services.config_service import ConfigService
+from cuepoint.services.interfaces import IWaveformService
+from cuepoint.utils.di_container import get_container, reset_container
 from tests.fixtures.job_settling import wait_until_settled
 from tests.fixtures.waveform_library import WaveformLibrary
 from tests.unit.engine.test_discover_contract import _client, _fields, _union
@@ -33,9 +35,15 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.fixture
-def store(tmp_path):
-    library = WaveformLibrary(tmp_path / "library")
-    library.add("a")
+def library(tmp_path):
+    made = WaveformLibrary(tmp_path / "library")
+    made.add("a")
+    yield made
+    made.close()
+
+
+@pytest.fixture
+def store(library, tmp_path):
     jobs = JobStore()
     bind(
         jobs,
@@ -43,10 +51,10 @@ def store(tmp_path):
         settings=AnalysisSettings(
             lambda config=ConfigService(tmp_path / "config.yaml"): config
         ),
+        detail_service=lambda: library.waveforms,
     )
     yield jobs
     wait_until_settled(jobs, "the contract's jobs")
-    library.close()
 
 
 def test_the_status_carries_exactly_the_declared_fields(store):
@@ -112,3 +120,35 @@ def test_the_client_declares_every_field_of_every_waveform_answer():
         ("WaveformAnalysisStatus", answers["analysis"]),
     ):
         assert _fields(name) == set(answer), name
+
+
+@pytest.fixture
+def resolved(library):
+    """The service the detail routes resolve, over the test's library."""
+    reset_container()
+    get_container().register_singleton(IWaveformService, library.waveforms)
+    yield library
+    reset_container()
+
+
+def test_every_detail_state_is_typed():
+    text = _client()
+    start = text.index("export type WaveformDetailState =")
+    declared = text[start : text.index(";\n", start)]
+    assert "WaveformTrackState" in declared  # the overview's states, by name
+    assert _union("WaveformDetailState") == {api.STATE_WORKING}
+
+
+def test_the_client_declares_every_field_of_the_detail_answers(resolved, store):
+    """T4: each against the engine's own answers, ready and not."""
+    track = resolved.id("a")
+    waiting = api.detail({"track_id": [str(track)]}, store)
+    resolved.waveforms.analyse(track, detail=True)
+    ready = api.detail({"track_id": [str(track)]}, store)
+    requested = api.request_detail({"track_id": track}, store)
+
+    assert waiting["state"] == "waiting" and ready["state"] == "ready"
+    assert requested == {"track_id": track, "state": "ready"}
+    for answer in (waiting, ready):
+        assert _fields("WaveformDetail") == set(answer)
+    assert _fields("WaveformDetailRequested") == set(requested)

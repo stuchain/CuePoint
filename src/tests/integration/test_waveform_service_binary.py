@@ -193,3 +193,39 @@ def test_a_broken_file_is_stored_as_failed_and_not_retried(library, tmp_path):
     assert outcome.reason in ("undecodable", "no_audio")
     assert service.states([track])[0].state == STATE_FAILED
     assert service.analyse(track).outcome == OUTCOME_CURRENT
+
+
+def test_the_detail_is_made_by_the_same_decode_and_its_steps_fall_in_place(
+    library, tmp_path
+):
+    """T4: 75 columns a second, and a band's step within a column of its place."""
+    db, files, store, service = library
+    copy = tmp_path / "bands.flac"
+    shutil.copyfile(_FIXTURES / "bands.flac", copy)
+    track = add_present(db, files, copy)
+
+    assert service.analyse(track, detail=True).outcome == OUTCOME_READY
+
+    answer = service.detail(track)
+    assert answer.state.state == STATE_READY
+    assert answer.rate_hz == 75
+    length_ms = float(mutagen.File(copy).info.length) * 1000
+    assert abs(answer.columns - length_ms * 75 / 1000) <= 2
+    assert len(answer.data) == answer.columns * 4
+    # bands.flac: 60 Hz, 1 kHz and 6 kHz, two seconds each. Each band's step
+    # is where the file puts it, to a column (13 ms).
+    columns = [answer.data[i * 4 : i * 4 + 4] for i in range(answer.columns)]
+    for band, rising, second in (
+        (1, False, 2),
+        (2, True, 2),
+        (2, False, 4),
+        (3, True, 4),
+    ):
+        peak = max(c[band] for c in columns)
+        loud = [c[band] >= peak * 0.7 for c in columns]
+        step = next(
+            i for i in range(second * 75 - 40, second * 75 + 40) if loud[i] == rising
+        )
+        assert abs(step - second * 75) <= 1, (band, rising, step)
+    # One decode made both the overview and the detail.
+    assert store.get(str(copy), ANALYSIS_VERSION) is not None

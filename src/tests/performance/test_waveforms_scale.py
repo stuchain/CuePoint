@@ -63,11 +63,22 @@ def test_every_measurement_is_taken(result):
         "One picture at 1,200 with its marks",
         "The work list, a refill of 200",
         "The work list, a count",
+        "A six-minute detail, reduce and encode",
+        "One detail, read and decode",
+        # The cap is 256 MB whatever the library's size, so its row count is
+        # whatever fills it: not asserted here.
+        next(label for label in _rows(result) if label.startswith("A detail written")),
+        "The mean detail",
         "The marks read, typical (3.3 marks a track)",
         "The marks read, prepared (8.0 marks a track)",
     ]
     assert all(row["value"] > 0 for row in _rows(result).values())
-    assert all(row["budget"] is not None for row in _rows(result).values())
+    # Every row has a budget but the mean detail's size, which is only reported.
+    assert all(
+        row["budget"] is not None
+        for label, row in _rows(result).items()
+        if label != "The mean detail"
+    )
 
 
 def test_the_store_is_inside_its_budget_for_its_size(result):

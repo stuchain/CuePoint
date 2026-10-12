@@ -28,6 +28,21 @@ themselves, requests and "Delete waveform data".
 - ``POST /api/v1/waveforms/delete-data``: empty the store, and start the
   analysis again unless paused. Answers what went and the state after.
 
+T4 (ADR-011) adds the zoomed waveform:
+
+- ``GET /api/v1/waveforms/detail?track_id=N``: ``{"track_id", "state", "reason",
+  "rate_hz", "duration_ms", "columns", "data"}``. ``state`` is the overview's
+  words (``ready``, ``waiting``, ``missing``, ``unchecked``, ``failed``,
+  ``unavailable``) and ``working``, a ``waiting`` track whose detail is being
+  made now. ``data`` is the base64 of ``columns × 4`` bytes (each column's full,
+  low, mid and high at ``rate_hz`` columns a second) only when ``ready``,
+  otherwise null. An id that is no track answers 404 ``NOT_FOUND``.
+- ``POST /api/v1/waveforms/detail/request``: ``{"track_id": N}``. Answers
+  ``{"track_id", "state"}``: ``ready`` when it is stored, ``working`` once it is
+  queued (even while the analysis is paused), or the reason it cannot be made
+  (``missing``, ``unchecked``, ``failed``, ``unavailable``). Not a job: Activity
+  and the status strip never show it.
+
 Every handler validates and delegates: when a run starts and what stops it is
 ``engine/waveform_jobs.py``'s, and a picture is ``services/waveform_service.py``'s.
 A query parameter or a body key a route does not take is refused, naming it.
@@ -63,6 +78,8 @@ PAUSE_PATH = ANALYSIS_PATH + "/pause"
 RESUME_PATH = ANALYSIS_PATH + "/resume"
 REQUEST_PATH = PREFIX + "request"
 DELETE_DATA_PATH = PREFIX + "delete-data"
+DETAIL_PATH = PREFIX + "detail"
+DETAIL_REQUEST_PATH = DETAIL_PATH + "/request"
 
 INVALID_REQUEST = "INVALID_REQUEST"
 SETTING_FAILED = "WAVEFORMS_SETTING_FAILED"
@@ -72,8 +89,18 @@ UNAVAILABLE = "WAVEFORMS_UNAVAILABLE"
 #: The refusal codes a caller can branch on.
 REFUSAL_CODES: Tuple[str, ...] = (INVALID_REQUEST, SETTING_FAILED, STORE_FAILED)
 
-GET_PATHS: Tuple[str, ...] = (WAVEFORMS_PATH, ANALYSIS_PATH)
-POST_PATHS: Tuple[str, ...] = (PAUSE_PATH, RESUME_PATH, REQUEST_PATH, DELETE_DATA_PATH)
+GET_PATHS: Tuple[str, ...] = (WAVEFORMS_PATH, ANALYSIS_PATH, DETAIL_PATH)
+POST_PATHS: Tuple[str, ...] = (
+    PAUSE_PATH,
+    RESUME_PATH,
+    REQUEST_PATH,
+    DELETE_DATA_PATH,
+    DETAIL_REQUEST_PATH,
+)
+
+#: A detail whose decode is queued or going, as a track's state: the overview's
+#: ``waiting`` with something on the way.
+STATE_WORKING = "working"
 
 #: Tracks one waveform read answers: one library query and one store query.
 MAX_TRACKS = 200
@@ -240,6 +267,58 @@ def waveforms(params: Dict[str, List[str]], store: JobStore) -> Dict[str, Any]:
     }
 
 
+def _detail_answer(track_id: int) -> Any:
+    """The service's answer for one track, or a 404."""
+    answer = _resolve("IWaveformService").detail(track_id)
+    if answer is None:
+        raise not_found("NOT_FOUND", "No such track")
+    return answer
+
+
+def _working(state: str, track_id: int, store: JobStore) -> str:
+    from cuepoint.engine.waveform_jobs import detail_in_flight
+
+    if state == "waiting" and detail_in_flight(store, track_id):
+        return STATE_WORKING
+    return state
+
+
+def detail(params: Dict[str, List[str]], store: JobStore) -> Dict[str, Any]:
+    """One track's zoomed waveform, or the state that explains its absence."""
+    query = _params(params, ("track_id",))
+    if "track_id" not in query:
+        raise bad_request("track_id is required")
+    text = query["track_id"].strip()
+    if not text.isdigit():
+        raise bad_request("track_id must be a whole number above 0")
+    track_id = _id(int(text))
+    answer = _detail_answer(track_id)
+    state = answer.state
+    ready = answer.data is not None
+    return {
+        "track_id": track_id,
+        "state": _working(state.state, track_id, store),
+        "reason": state.reason,
+        "rate_hz": answer.rate_hz if ready else None,
+        "duration_ms": state.duration_ms if ready else None,
+        "columns": answer.columns if ready else None,
+        "data": base64.b64encode(answer.data).decode("ascii") if ready else None,
+    }
+
+
+def request_detail(body: Dict[str, Any], store: JobStore) -> Dict[str, Any]:
+    """Queue a track's zoomed waveform; its state after."""
+    from cuepoint.engine.waveform_jobs import request_detail as queue
+
+    _only(body, ("track_id",))
+    track_id = _id(body.get("track_id"))
+    answer = _detail_answer(track_id)
+    state = answer.state.state
+    if state == "waiting":
+        state = STATE_WORKING if queue(store, track_id) else "unavailable"
+    return {"track_id": track_id, "state": state}
+
+
 def analysis(store: JobStore) -> Dict[str, Any]:
     """The analysis as a whole."""
     from cuepoint.engine.waveform_jobs import analysis_status
@@ -297,6 +376,7 @@ _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], JobStore], Dict[str, Any]]] = 
     RESUME_PATH: _without_body(resume),
     REQUEST_PATH: request,
     DELETE_DATA_PATH: _without_body(delete_data),
+    DETAIL_REQUEST_PATH: request_detail,
 }
 
 
@@ -319,6 +399,8 @@ def handle_get(
     if path == ANALYSIS_PATH:
         _no_params(params)
         return 200, analysis(job_store)
+    if path == DETAIL_PATH:
+        return 200, detail(params, job_store)
     raise not_found("NOT_FOUND", "Unknown path")
 
 
@@ -359,6 +441,8 @@ def status_for(exc: BaseException) -> Tuple[int, Dict[str, Any]]:
 __all__: Sequence[str] = (
     "ANALYSIS_PATH",
     "DELETE_DATA_PATH",
+    "DETAIL_PATH",
+    "DETAIL_REQUEST_PATH",
     "GET_PATHS",
     "INVALID_REQUEST",
     "MAX_REQUESTED",
@@ -370,6 +454,7 @@ __all__: Sequence[str] = (
     "REQUEST_PATH",
     "RESUME_PATH",
     "SETTING_FAILED",
+    "STATE_WORKING",
     "STORE_FAILED",
     "UNAVAILABLE",
     "WAVEFORMS_PATH",

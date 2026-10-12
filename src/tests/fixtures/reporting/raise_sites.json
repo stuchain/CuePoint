@@ -140,6 +140,51 @@
     "verdict": "exempt",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
   },
+  "cuepoint/core/waveform_detail.py::WaveformDetail.__post_init__::columns must be 1 to {MAX_COLUMNS}, not {self.columns!r}": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/core/waveform_detail.py::WaveformDetail.__post_init__::duration_ms is out of range: {self.duration_ms!r}": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/core/waveform_detail.py::WaveformDetail.__post_init__::rate_hz must be 1 to 65535, not {self.rate_hz!r}": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/core/waveform_detail.py::WaveformDetail.__post_init__::{self.columns} columns need {self.columns * BAND_COUNT} bytes, not {len(self.data)}": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/core/waveform_detail.py::decode_detail::format version {version!r}, not {DETAIL_FORMAT_VERSION}": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/core/waveform_detail.py::decode_detail::the body does not decompress: {exc}": {
+    "holds": "exception text",
+    "verdict": "exempt",
+    "reason": "zlib.error text: a fixed phrase and a code, never data"
+  },
+  "cuepoint/core/waveform_detail.py::decode_detail::the body holds {len(planar)} bytes, not {expected}": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/core/waveform_detail.py::decode_detail::{band_count} bands, not {BAND_COUNT}": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
+  "cuepoint/core/waveform_detail.py::reduce_detail::A waveform has {BAND_COUNT} bands, not {len(bands)}": {
+    "holds": "a number or count, our own constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+  },
   "cuepoint/data/artwork.py::_base64::a picture is not valid base64: {exc}": {
     "holds": "exception text",
     "verdict": "exempt",

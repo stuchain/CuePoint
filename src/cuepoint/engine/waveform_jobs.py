@@ -46,6 +46,18 @@ What stops it
   would leave a job the next start resumes anyway, so a cancel of this job,
   from any route, is a pause and is named for what it does.
 
+The zoomed waveform (T4, ADR-011)
+---------------------------------
+:meth:`AnalysisCoordinator.request_detail` fills the detail cache for the track
+the player has loaded. It is **not a job**: it is a cache fill, not user work,
+so Activity and the status strip never show it. One worker thread decodes one
+track at a time; a newer request replaces a queued one and the one already
+decoding finishes. It runs while the analysis is paused, as a request does. It
+does not start beside a job in :data:`STEPS_ASIDE_FOR` (a tag write is
+rewriting the file, a file check is deciding which may be opened); it waits and
+starts as the last of them ends. "Delete waveform data" drops what is queued,
+cancels the decode in flight and waits for it before emptying the store.
+
 Both observe the job store (:meth:`JobStore.add_listeners`), so no job it gives
 way to needs to know it exists.
 """
@@ -84,7 +96,7 @@ from cuepoint.models.waveform_analysis import (
 )
 
 if TYPE_CHECKING:
-    from cuepoint.services.interfaces import IWaveformAnalysisService
+    from cuepoint.services.interfaces import IWaveformAnalysisService, IWaveformService
 
 _logger = logging.getLogger(__name__)
 
@@ -130,6 +142,10 @@ TRIGGER_DATA_DELETED = "data_deleted"
 #: emptied anyway, and a file finishing later is a correct waveform of it.
 DELETE_WAIT_SECONDS = 30.0
 
+#: How often a waiting detail worker looks again at the jobs it gives way to,
+#: should a wake-up have been missed.
+DETAIL_RECHECK_SECONDS = 1.0
+
 #: Why a cancel ended the job, beside ``JOB_CANCELLED``.
 ERROR_DECODER_UNAVAILABLE = "WAVEFORM_DECODER_UNAVAILABLE"
 ERROR_ANALYSIS_FAILED = "WAVEFORM_ANALYSIS_FAILED"
@@ -167,6 +183,17 @@ class _Owed:
 
     trigger: str
     verify: bool
+
+
+class _DetailRun:
+    """One detail decode in flight."""
+
+    def __init__(self, track_id: int) -> None:
+        self.track_id = track_id
+        #: Set when "Delete waveform data" or a job it gives way to stops the decode.
+        self.cancelled = threading.Event()
+        #: Set when the worker has finished with it, however it ended.
+        self.ended = threading.Event()
 
 
 class _Control:
@@ -234,6 +261,7 @@ class AnalysisCoordinator:
         settings: AnalysisSettings,
         workers: Optional[int] = None,
         clock: Callable[[], float] = time.monotonic,
+        detail_service: Optional[Callable[[], "IWaveformService"]] = None,
     ) -> None:
         """Coordinate the analysis on ``store``.
 
@@ -244,6 +272,8 @@ class AnalysisCoordinator:
             settings: The pause setting.
             workers: Files decoded at once; the service's default when None.
             clock: Times the status route's count.
+            detail_service: Answers the ``IWaveformService`` that makes
+                detail waveforms, asked at each use; the engine's by default.
         """
         self._store_ref = weakref.ref(store)
         self._service = service
@@ -251,6 +281,12 @@ class AnalysisCoordinator:
         self._workers = workers
         self._clock = clock
         self._lock = threading.Lock()
+        self._detail_service = detail_service or _default_detail_service
+        #: Wakes the detail worker: a request, or a job it gave way to ending.
+        self._detail_wake = threading.Condition(self._lock)
+        self._detail_queued: Optional[int] = None
+        self._detail_run: Optional[_DetailRun] = None
+        self._detail_worker: Optional[threading.Thread] = None
         self._requests: "OrderedDict[int, None]" = OrderedDict()
         self._job: Optional[Job] = None
         self._control: Optional[_Control] = None
@@ -395,9 +431,21 @@ class AnalysisCoordinator:
                 control.owed = None
                 if control.stop is None:
                     control.stop = STOP_DATA_DELETED
+            self._detail_queued = None
+            detail_run = self._detail_run
+            if detail_run is not None:
+                detail_run.cancelled.set()
         try:
             if job is not None and control is not None:
+                # Both stops are requested before either is waited for.
                 self._request_cancel(job)
+            if detail_run is not None and not detail_run.ended.wait(wait_seconds):
+                _logger.warning(
+                    "[waveforms] a detail decode had not stopped after %.0f s;"
+                    " deleting the waveform data anyway",
+                    wait_seconds,
+                )
+            if job is not None and control is not None:
                 if not control.ended.wait(wait_seconds):
                     _logger.warning(
                         "[waveforms] the analysis had not stopped after %.0f s;"
@@ -409,6 +457,7 @@ class AnalysisCoordinator:
             with self._lock:
                 self._deleting -= 1
                 self._count = None
+                self._detail_wake.notify_all()
             self._start_after_deletion()
         return result
 
@@ -487,10 +536,126 @@ class AnalysisCoordinator:
             store_bytes=store_bytes,
         )
 
+    # ------------------------------------------------------ the detail fill
+
+    def request_detail(self, track_id: int) -> bool:
+        """Make this track's detail waveform, if it is not already being made.
+
+        A newer request replaces one still queued; the decode already going
+        finishes. The same track asked twice is one decode. Runs while the
+        analysis is paused, and not at all without a decoder.
+
+        Returns:
+            True when the track's detail is queued or being made, False when it
+            cannot be: no decoder, or not a track id.
+        """
+        if isinstance(track_id, bool) or int(track_id) < 1:
+            return False
+        track_id = int(track_id)
+        if not self._detail_decoder_available():
+            return False
+        with self._lock:
+            run = self._detail_run
+            if (
+                run is not None
+                and run.track_id == track_id
+                and not run.cancelled.is_set()
+            ):
+                return True
+            self._detail_queued = track_id
+            if self._detail_worker is None:
+                worker = threading.Thread(
+                    target=self._detail_loop, name="waveform-detail", daemon=True
+                )
+                self._detail_worker = worker
+                worker.start()
+            self._detail_wake.notify_all()
+        return True
+
+    def detail_in_flight(self, track_id: int) -> bool:
+        """True when this track's detail is queued or being made now."""
+        with self._lock:
+            run = self._detail_run
+            return self._detail_queued == int(track_id) or (
+                run is not None and run.track_id == int(track_id)
+            )
+
+    def _detail_decoder_available(self) -> bool:
+        try:
+            return bool(self._detail_service().decoder_available())
+        except Exception:  # noqa: BLE001 — no service, no detail
+            return False
+
+    def _detail_blocked(self) -> bool:
+        """True while something the fill gives way to is going. Under the lock."""
+        if self._deleting:
+            return True
+        store = self._store_ref()
+        if store is None:
+            return False
+        return any(
+            job.type in STEPS_ASIDE_FOR and job.state.value in ("queued", "running")
+            for job in store.list_all()
+        )
+
+    def _detail_loop(self) -> None:
+        """The detail worker: take the queued track when nothing blocks, decode it."""
+        try:
+            self._detail_loop_body()
+        except Exception:  # noqa: BLE001 — logged; a later request starts a fresh worker
+            _logger.exception("[waveforms] the detail worker stopped unexpectedly")
+        finally:
+            with self._lock:
+                if self._detail_worker is threading.current_thread():
+                    self._detail_worker = None
+                self._detail_wake.notify_all()
+
+    def _detail_loop_body(self) -> None:
+        while True:
+            with self._lock:
+                while self._detail_queued is None or self._detail_blocked():
+                    if self._detail_queued is None:
+                        # Nothing left: end, and let the next request start a worker.
+                        self._detail_worker = None
+                        return
+                    if self._store_ref() is None:
+                        self._detail_queued = None
+                        continue
+                    self._detail_wake.wait(DETAIL_RECHECK_SECONDS)
+                run = _DetailRun(self._detail_queued)
+                self._detail_queued = None
+                self._detail_run = run
+            try:
+                self._make_detail(run)
+            finally:
+                with self._lock:
+                    self._detail_run = None
+                    run.ended.set()
+
+    def _make_detail(self, run: _DetailRun) -> None:
+        try:
+            outcome = self._detail_service().analyse(
+                run.track_id, cancel=run.cancelled.is_set, detail=True
+            )
+            _logger.debug(
+                "[waveforms] detail for track %d: %s", run.track_id, outcome.outcome
+            )
+        except Exception as exc:  # noqa: BLE001 — a cache fill never raises
+            _logger.warning(
+                "[waveforms] the detail for track %d was not made: %s",
+                run.track_id,
+                exc,
+            )
+
     # ------------------------------------------------------- the job store
 
     def _job_started(self, job: Job) -> None:
         if job.type in STEPS_ASIDE_FOR:
+            with self._lock:
+                detail_run = self._detail_run
+                if detail_run is not None:
+                    # A decode in flight gives way too; a later request makes it again.
+                    detail_run.cancelled.set()
             if self.step_aside():
                 _logger.info(
                     "[waveforms] the analysis steps aside for the %s job", job.type
@@ -498,6 +663,8 @@ class AnalysisCoordinator:
 
     def _job_ended(self, job: Job) -> None:
         if job.type in STEPS_ASIDE_FOR:
+            with self._lock:
+                self._detail_wake.notify_all()
             # Refused while another of them still runs; the last to end starts it.
             self.start(job.type)
 
@@ -706,6 +873,15 @@ def _default_service() -> "IWaveformAnalysisService":
     return get_container().resolve(IWaveformAnalysisService)  # type: ignore[type-abstract]
 
 
+def _default_detail_service() -> "IWaveformService":
+    from cuepoint.engine.jobs import _ensure_services
+    from cuepoint.services.interfaces import IWaveformService
+    from cuepoint.utils.di_container import get_container
+
+    _ensure_services()
+    return get_container().resolve(IWaveformService)  # type: ignore[type-abstract]
+
+
 def _default_config() -> Any:
     from cuepoint.engine.jobs import _ensure_services
     from cuepoint.services.interfaces import IConfigService
@@ -722,6 +898,7 @@ def bind(
     settings: Optional[AnalysisSettings] = None,
     workers: Optional[int] = None,
     clock: Callable[[], float] = time.monotonic,
+    detail_service: Optional[Callable[[], "IWaveformService"]] = None,
 ) -> AnalysisCoordinator:
     """The analysis over ``store``, made with these parts if it is not made yet."""
     with _REGISTRY_LOCK:
@@ -734,6 +911,7 @@ def bind(
             settings=settings or AnalysisSettings(_default_config),
             workers=workers,
             clock=clock,
+            detail_service=detail_service,
         )
         _COORDINATORS[store] = made
         return made
@@ -763,6 +941,16 @@ def analysis_after_file_check(store: JobStore, trigger: str) -> Optional[Job]:
 def request_analysis(store: JobStore, track_ids: Iterable[int]) -> Optional[Job]:
     """Analyse these tracks first; see :meth:`AnalysisCoordinator.request`."""
     return coordinator(store).request(track_ids)
+
+
+def request_detail(store: JobStore, track_id: int) -> bool:
+    """Make this track's detail waveform; see :meth:`AnalysisCoordinator.request_detail`."""
+    return coordinator(store).request_detail(track_id)
+
+
+def detail_in_flight(store: JobStore, track_id: int) -> bool:
+    """True while the detail is queued or made; see :meth:`AnalysisCoordinator.detail_in_flight`."""
+    return coordinator(store).detail_in_flight(track_id)
 
 
 def pause_analysis(store: JobStore) -> AnalysisStatus:
@@ -817,6 +1005,7 @@ __all__ = (
     "AnalysisCoordinator",
     "AnalysisSettings",
     "DELETE_WAIT_SECONDS",
+    "DETAIL_RECHECK_SECONDS",
     "ERROR_ANALYSIS_FAILED",
     "ERROR_DECODER_UNAVAILABLE",
     "JOB_TYPE_WAVEFORM_ANALYSIS",
@@ -836,8 +1025,10 @@ __all__ = (
     "bind",
     "coordinator",
     "delete_waveform_data",
+    "detail_in_flight",
     "pause_analysis",
     "request_analysis",
+    "request_detail",
     "resume_analysis",
     "schedule_launch_analysis",
 )

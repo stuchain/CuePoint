@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from cuepoint.models.file_status import CurrentFile, TrackFileStatus
     from cuepoint.models.waveform import (
         AnalysisOutcome,
+        DetailAnswer,
         WaveformAnswer,
         WaveformState,
     )
@@ -2491,8 +2492,12 @@ class IWaveformService(ABC):
         *,
         cancel: Optional[Callable[[], bool]] = None,
         force: bool = False,
+        detail: bool = False,
     ) -> "AnalysisOutcome":
-        """Analyse one track's file into the store; raise only for the store."""
+        """Analyse one track's file into the store; raise only for the store.
+
+        With ``detail``, also make the track's zoomed waveform from the same decode.
+        """
         ...
 
     @abstractmethod
@@ -2508,6 +2513,11 @@ class IWaveformService(ABC):
     @abstractmethod
     def waveform(self, track_id: int, width: int) -> Optional["WaveformAnswer"]:
         """One track's picture at a width, or None when it is not a track."""
+        ...
+
+    @abstractmethod
+    def detail(self, track_id: int) -> Optional["DetailAnswer"]:
+        """One track's zoomed waveform or why not, or None when it is not a track."""
         ...
 
 

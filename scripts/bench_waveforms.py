@@ -20,6 +20,11 @@ folder; nothing touches ``~/.cuepoint`` and nothing decodes audio.
 - **One picture at 1,200 with its marks** (the Inspector's read: the picture
   and the track's cues and grid, as the route reads them), against the same
   20 ms. Every track carries eight marks, the most a library is likely to.
+- **The zoomed waveform** (T4, ADR-011): reduce and encode a six-minute detail
+  (60 ms of engine CPU), read and decode one stored detail through the route's
+  service (20 ms), and a ``put_detail`` that evicts at a full 256 MB cap
+  (50 ms). The cap is filled with ``synthetic_envelope``'s details, which
+  compress worse than music; their mean size is reported.
 - **The work list**: the analysis's refill of 200 files in its order, and its
   count, over a library whose every file is analysed. WAVE-03 recorded 285 ms
   and 264 ms at 50,000 without a budget; WAVE-07 sets one of 500 ms each.
@@ -46,6 +51,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import platform
 import random
 import shutil
@@ -54,6 +60,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from array import array
 from typing import Any, Dict, List, Optional, Sequence
 
 _SCRIPTS = Path(__file__).resolve().parent
@@ -65,6 +72,14 @@ import bench_marks  # noqa: E402
 import bench_waveform_store  # noqa: E402
 
 from cuepoint.core.waveform import COLUMNS  # noqa: E402
+from cuepoint.core.waveform_detail import (  # noqa: E402
+    DETAIL_FORMAT_VERSION,
+    SOURCE_RATE_HZ,
+    encode_detail,
+    reduce_detail,
+)
+from cuepoint.data.audio_decode import ANALYSIS_VERSION  # noqa: E402
+from cuepoint.models.waveform import StoredDetail  # noqa: E402
 from cuepoint.models.track_marks import CueValues, GridValues  # noqa: E402
 from cuepoint.persistence.track_marks_repository import TrackMarksRepository  # noqa: E402
 from cuepoint.persistence.waveform_work_repository import (  # noqa: E402
@@ -74,7 +89,10 @@ from cuepoint.services.waveform_analysis_service import (  # noqa: E402
     REFILL,
     WaveformAnalysisService,
 )
-from cuepoint.services.waveform_service import WaveformService  # noqa: E402
+from cuepoint.services.waveform_service import (  # noqa: E402
+    DETAIL_CAP_BYTES,
+    WaveformService,
+)
 
 DEFAULT_TRACKS = 50_000
 DEFAULT_RUNS = 2
@@ -88,6 +106,15 @@ BATCH_BUDGET_MS = bench_waveform_store.BATCH_BUDGET_MS
 ONE_BUDGET_MS = bench_waveform_store.ONE_BUDGET_MS
 #: Set by WAVE-07; see the module's docstring.
 WORK_LIST_BUDGET_MS = 500.0
+#: T4's: reduce and encode a six-minute detail, one read and decode, and a
+#: write that evicts at a full cap.
+DETAIL_BUILD_BUDGET_MS = 60.0
+DETAIL_READ_BUDGET_MS = ONE_BUDGET_MS
+DETAIL_PUT_BUDGET_MS = 50.0
+#: A six-minute track at the decoder's rate.
+DETAIL_FRAMES = 6 * 60 * SOURCE_RATE_HZ
+#: Distinct details made once and reused under other paths to fill the cap.
+DETAIL_VARIANTS = 8
 TYPICAL_READ_BUDGET_RATIO = bench_marks.TYPICAL_READ_BUDGET_RATIO
 PREPARED_READ_BUDGET_RATIO = bench_marks.PREPARED_READ_BUDGET_RATIO
 
@@ -164,6 +191,129 @@ def _check_at_stored_sizes(built: Dict[str, Any]) -> None:
         )
 
 
+def synthetic_envelope(generator: random.Random) -> List[array]:
+    """A six-minute, four-band envelope with a beat and sections, as the decoder makes.
+
+    Noisier than music, so its details compress worse: the size it gives is a
+    ceiling.
+    """
+    beat_frames = SOURCE_RATE_HZ * 60 / generator.choice((120, 126, 128, 130))
+    master = generator.uniform(0.35, 1.0)
+    sections = [generator.uniform(0.3, 1.0) for _ in range(6)]
+    bands = []
+    for band in range(4):
+        values = array("f")
+        for index in range(DETAIL_FRAMES):
+            section = sections[index * len(sections) // DETAIL_FRAMES]
+            phase = (index % beat_frames) / beat_frames
+            pulse = 0.75 + 0.25 * math.cos(2 * math.pi * phase)
+            base = master * section * pulse / (1 + band * 0.5)
+            values.append(base * generator.uniform(0.8, 1.0))
+        bands.append(values)
+    return bands
+
+
+def measure_detail(
+    built: Dict[str, Any],
+    repeats: int,
+    cap_bytes: int = DETAIL_CAP_BYTES,
+) -> List[Dict[str, Any]]:
+    """The zoomed waveform (T4): its making, its read, and its eviction."""
+    generator = random.Random(bench_waveform_store._SEED + 3)
+    envelope = synthetic_envelope(generator)
+    duration_ms = DETAIL_FRAMES * 1000 // SOURCE_RATE_HZ
+
+    def build() -> bytes:
+        return encode_detail(reduce_detail(envelope, duration_ms))
+
+    building = bench_waveform_store._timed(build, repeats)
+    blobs = [build()]
+    for _ in range(DETAIL_VARIANTS - 1):
+        blobs.append(
+            encode_detail(reduce_detail(synthetic_envelope(generator), duration_ms))
+        )
+    mean = sum(len(blob) for blob in blobs) / len(blobs)
+
+    store = built["store"]
+    ids: List[int] = built["ids"]
+    rows = max(1, math.ceil(cap_bytes / mean))
+    connection = store.connect()
+    connection.execute("BEGIN")
+    connection.executemany(
+        "INSERT OR REPLACE INTO waveform_details (path, size_bytes, mtime_ns,"
+        " analysis_version, detail_version, used_at, bytes, data)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            (
+                # The first tracks' own paths, at the size and time their
+                # overview was stored with, so the route's read finds them.
+                bench_waveform_store._path(n)
+                if n < len(ids)
+                else f"/bench/detail/{n}.flac",
+                10_000_000 + n,
+                1_700_000_000_000_000_000 + n,
+                ANALYSIS_VERSION,
+                DETAIL_FORMAT_VERSION,
+                n + 1,
+                len(blobs[n % len(blobs)]),
+                blobs[n % len(blobs)],
+            )
+            for n in range(rows)
+        ),
+    )
+    connection.execute("COMMIT")
+
+    files = bench_waveform_store.FileStatusRepository(built["db"])
+    service = WaveformService(files, store, decoder=lambda: Path("mpv"))
+    picker = random.Random(bench_waveform_store._SEED + 4)
+    readable = min(rows, len(ids))
+
+    def read() -> None:
+        answer = service.detail(ids[picker.randrange(readable)])
+        assert answer is not None and answer.data is not None
+
+    reading = bench_waveform_store._timed(read, repeats)
+
+    full = store.detail_bytes()
+    counter = [0]
+
+    def put() -> None:
+        counter[0] += 1
+        store.put_detail(
+            StoredDetail(
+                path=f"/bench/new/{counter[0]}.flac",
+                size_bytes=1,
+                mtime_ns=1,
+                analysis_version=ANALYSIS_VERSION,
+                detail_version=DETAIL_FORMAT_VERSION,
+                used_at=0,
+                data=blobs[counter[0] % len(blobs)],
+            ),
+            full,
+        )
+
+    putting = bench_waveform_store._timed(put, repeats)
+    return [
+        _timing_row(
+            "A six-minute detail, reduce and encode", building, DETAIL_BUILD_BUDGET_MS
+        ),
+        _timing_row("One detail, read and decode", reading, DETAIL_READ_BUDGET_MS),
+        _timing_row(
+            f"A detail written at a full cap ({rows:,} rows)",
+            putting,
+            DETAIL_PUT_BUDGET_MS,
+        ),
+        _row(
+            "The mean detail",
+            mean / 1000,
+            "KB",
+            None,
+            f"{rows:,} details fill {full / 1_000_000:.0f} MB; synthetic, so a"
+            " ceiling for music",
+        ),
+    ]
+
+
 def measure_store(
     workspace: Path, total: int, repeats: int, work_repeats: int
 ) -> List[Dict[str, Any]]:
@@ -202,6 +352,8 @@ def measure_store(
 
         refilled = bench_waveform_store._timed(refill, work_repeats)
         counted = bench_waveform_store._timed(count, work_repeats)
+        # Last: it fills the store with details, which the rows above do not want.
+        details = measure_detail(built, repeats)
     finally:
         built["store"].close_all()
         built["db"].close_all()
@@ -226,6 +378,7 @@ def measure_store(
             f"The work list, a refill of {REFILL}", refilled, WORK_LIST_BUDGET_MS
         ),
         _timing_row("The work list, a count", counted, WORK_LIST_BUDGET_MS),
+        *details,
     ]
 
 
@@ -301,7 +454,7 @@ def _budget_text(row: Dict[str, Any]) -> str:
         return ""
     if row["unit"] == "×":
         return f"{row['budget']:g}×"
-    unit = "MB" if row["unit"] == "MB" else "ms"
+    unit = row["unit"] if row["unit"] in ("MB", "KB") else "ms"
     return f"{row['budget']:g} {unit}"
 
 

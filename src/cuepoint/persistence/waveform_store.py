@@ -75,6 +75,13 @@ and has each file measured again in the background.
 table is its own primary key's index, and the work list's join on the path
 reads it with no second lookup.
 
+T4 (ADR-011) adds ``waveform_details``, the zoomed waveform's cache, created the
+same way (``IF NOT EXISTS``, no schema bump). Unlike ``waveforms`` it is
+bounded: :meth:`WaveformStore.put_detail` evicts the least recently used rows,
+by ``used_at``, until the rows' ``bytes`` fit the cap it is given. A read
+(:meth:`WaveformStore.get_detail`) refreshes ``used_at``. Deleting a path's
+waveform, the prune and "Delete waveform data" delete its detail too.
+
 Connections are one per thread, as the library database's are, and a thread
 that has ended has its connection closed when the next one is opened.
 """
@@ -84,6 +91,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import (
@@ -100,6 +108,7 @@ from typing import (
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
 from cuepoint.models.waveform import (
+    StoredDetail,
     StoredFile,
     StoredLoudness,
     StoredWaveform,
@@ -171,6 +180,18 @@ CREATE TABLE IF NOT EXISTS loudness (
     CHECK ((reason IS NULL) = (integrated_lufs IS NOT NULL)),
     CHECK (reason IS NOT NULL OR peak_dbfs IS NOT NULL)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS waveform_details (
+    path             TEXT    PRIMARY KEY NOT NULL CHECK (length(path) > 0),
+    size_bytes       INTEGER NOT NULL CHECK (size_bytes >= 0),
+    mtime_ns         INTEGER NOT NULL,
+    analysis_version INTEGER NOT NULL CHECK (analysis_version > 0),
+    detail_version   INTEGER NOT NULL CHECK (detail_version > 0),
+    used_at          INTEGER NOT NULL,
+    bytes            INTEGER NOT NULL,
+    data             BLOB    NOT NULL,
+    CHECK (bytes = length(data))
+);
+CREATE INDEX IF NOT EXISTS waveform_details_used ON waveform_details (used_at);
 INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '{SCHEMA_VERSION}');
 """
 
@@ -191,6 +212,24 @@ _PUT = (
     f" VALUES ({', '.join('?' for _ in _COLUMNS)})"
     " ON CONFLICT (path) DO UPDATE SET "
     + ", ".join(f"{column} = excluded.{column}" for column in _COLUMNS[1:])
+)
+
+_DETAIL_COLUMNS = (
+    "path",
+    "size_bytes",
+    "mtime_ns",
+    "analysis_version",
+    "detail_version",
+    "used_at",
+    "bytes",
+    "data",
+)
+
+_PUT_DETAIL = (
+    f"INSERT INTO waveform_details ({', '.join(_DETAIL_COLUMNS)})"
+    f" VALUES ({', '.join('?' for _ in _DETAIL_COLUMNS)})"
+    " ON CONFLICT (path) DO UPDATE SET "
+    + ", ".join(f"{column} = excluded.{column}" for column in _DETAIL_COLUMNS[1:])
 )
 
 _LOUDNESS_COLUMNS = (
@@ -328,6 +367,7 @@ class WaveformStore:
         self._busy_timeout = float(busy_timeout_seconds)
         self._lock = threading.Lock()
         self._prepared = False
+        self._used_at = 0
         self._local = threading.local()
         self._connections: List[Tuple[sqlite3.Connection, threading.Thread]] = []
         self._generation = 0
@@ -791,6 +831,137 @@ class WaveformStore:
         except sqlite3.Error as exc:
             raise self._failed("write", exc) from exc
 
+    # ------------------------------------------------------------- details
+
+    def _tick(self) -> int:
+        """A ``used_at`` later than any this store has given: the clock, made strict.
+
+        Two uses in one clock tick would otherwise tie, and an eviction would
+        not know which was older.
+        """
+        with self._lock:
+            self._used_at = max(time.time_ns(), self._used_at + 1)
+            return self._used_at
+
+    def get_detail(
+        self, path: str, analysis_version: int, detail_version: int
+    ) -> Optional[StoredDetail]:
+        """One path's detail at these versions, or ``None``; a read makes it recent."""
+        connection = self.connect()
+        try:
+            row = connection.execute(
+                f"SELECT {', '.join(_DETAIL_COLUMNS)} FROM waveform_details"
+                " WHERE path = ? AND analysis_version = ? AND detail_version = ?",
+                (str(path), int(analysis_version), int(detail_version)),
+            ).fetchone()
+            if row is None:
+                return None
+        except sqlite3.Error as exc:
+            raise self._failed("read", exc) from exc
+        used_at = self._tick()
+        try:
+            connection.execute(
+                "UPDATE waveform_details SET used_at = ? WHERE path = ?",
+                (used_at, str(path)),
+            )
+        except sqlite3.Error as exc:
+            # Only the recency is lost; the picture was read.
+            _logger.warning("[waveforms] A detail's use was not recorded: %s", exc)
+        return StoredDetail(
+            **{column: row[column] for column in _DETAIL_COLUMNS if column != "bytes"}
+            | {"used_at": used_at}
+        )
+
+    def put_detail(self, row: StoredDetail, cap_bytes: int) -> int:
+        """Store a detail, then evict the least recently used down to the cap.
+
+        The row is stamped as just used (its own ``used_at`` is not taken), and
+        the write and the eviction are one transaction, so the table never
+        holds more than ``cap_bytes`` of ``data`` once this returns. A row
+        larger than the cap is evicted with the rest.
+
+        Returns:
+            How many rows were evicted, the new one included when it did not fit.
+        """
+        used_at = self._tick()
+        values = (
+            row.path,
+            row.size_bytes,
+            row.mtime_ns,
+            row.analysis_version,
+            row.detail_version,
+            used_at,
+            row.bytes,
+            row.data,
+        )
+        cap = max(0, int(cap_bytes))
+        evicted = 0
+        connection = self.connect()
+        try:
+            with _writing(connection):
+                connection.execute(_PUT_DETAIL, values)
+                total = int(
+                    connection.execute(
+                        "SELECT COALESCE(SUM(bytes), 0) FROM waveform_details"
+                    ).fetchone()[0]
+                )
+                if total > cap:
+                    doomed: List[str] = []
+                    for path, size in connection.execute(
+                        "SELECT path, bytes FROM waveform_details ORDER BY used_at"
+                    ):
+                        if total <= cap:
+                            break
+                        doomed.append(str(path))
+                        total -= int(size)
+                    for start in range(0, len(doomed), PATH_CHUNK):
+                        chunk = doomed[start : start + PATH_CHUNK]
+                        connection.execute(
+                            "DELETE FROM waveform_details WHERE path IN"
+                            f" ({', '.join('?' for _ in chunk)})",
+                            chunk,
+                        )
+                    evicted = len(doomed)
+        except sqlite3.Error as exc:
+            raise self._failed("write", exc) from exc
+        return evicted
+
+    def delete_detail(self, path: str) -> bool:
+        """Delete a path's detail; True when there was one."""
+        connection = self.connect()
+        try:
+            with _writing(connection):
+                cursor = connection.execute(
+                    "DELETE FROM waveform_details WHERE path = ?", (str(path),)
+                )
+        except sqlite3.Error as exc:
+            raise self._failed("write", exc) from exc
+        return cursor.rowcount == 1
+
+    def detail_count(self) -> int:
+        """How many details, of any version."""
+        try:
+            row = (
+                self.connect()
+                .execute("SELECT count(*) FROM waveform_details")
+                .fetchone()
+            )
+        except sqlite3.Error as exc:
+            raise self._failed("read", exc) from exc
+        return int(row[0])
+
+    def detail_bytes(self) -> int:
+        """The bytes of detail data held, which the cap is counted in."""
+        try:
+            row = (
+                self.connect()
+                .execute("SELECT COALESCE(SUM(bytes), 0) FROM waveform_details")
+                .fetchone()
+            )
+        except sqlite3.Error as exc:
+            raise self._failed("read", exc) from exc
+        return int(row[0])
+
     def delete(self, path: str) -> bool:
         """Delete a path's row and its loudness; True when there was a row."""
         connection = self.connect()
@@ -800,6 +971,9 @@ class WaveformStore:
                     "DELETE FROM waveforms WHERE path = ?", (str(path),)
                 )
                 connection.execute("DELETE FROM loudness WHERE path = ?", (str(path),))
+                connection.execute(
+                    "DELETE FROM waveform_details WHERE path = ?", (str(path),)
+                )
         except sqlite3.Error as exc:
             raise self._failed("write", exc) from exc
         return cursor.rowcount == 1
@@ -825,6 +999,10 @@ class WaveformStore:
                     deleted += max(0, cursor.rowcount)
                     connection.execute(
                         f"DELETE FROM loudness WHERE path IN ({placeholders})", chunk
+                    )
+                    connection.execute(
+                        f"DELETE FROM waveform_details WHERE path IN ({placeholders})",
+                        chunk,
                     )
         except sqlite3.Error as exc:
             raise self._failed("write", exc) from exc
@@ -852,6 +1030,7 @@ class WaveformStore:
             with _writing(connection):
                 cursor = connection.execute("DELETE FROM waveforms")
                 connection.execute("DELETE FROM loudness")
+                connection.execute("DELETE FROM waveform_details")
         except sqlite3.Error as exc:
             raise self._failed("write", exc) from exc
         deleted = max(0, cursor.rowcount)
