@@ -45,7 +45,7 @@ export interface PrepareEditing {
     press: (id: EntryButtonId) => void;
     /** Opens the entry's context menu at a point: what the "Actions ▾" button does when the row has no room for the five. */
     openMenu: (row: EntryRow, anchor: { x: number; y: number }) => void;
-    /** The least width the selected row's title keeps (about 6 characters), in px at the current scale: the buttons never take it (DEC-249). */
+    /** The least width the selected row's title keeps (about 5 characters), in px at the current scale: the buttons never take it (DEC-249). */
     titleMinWidth: number;
   };
   /** The chapter buttons' actions, and how many chapters there are. */

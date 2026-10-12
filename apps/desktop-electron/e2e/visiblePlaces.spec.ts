@@ -39,6 +39,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { setInnerSize } from "./windowSizes";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 import { clickRowAt } from "./rowClick";
 
@@ -741,6 +742,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
 
   test("Move up, Move down, Start a chapter here, Repeat after and Remove: Prepare's entry buttons", async () => {
     const setId = await makeSet(win, "Entry buttons", ["Warm One", "Warm Two", "Build", "Peak Jump"]);
+    await setInnerSize(app, win);
     await openSet(win, setId);
     await expect(setRow(win, "Build")).toBeVisible({ timeout: 30_000 });
     const entries = win.getByRole("group", { name: "Selected entries" });

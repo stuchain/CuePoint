@@ -7046,7 +7046,7 @@ accepted") and the transition caption said everything it knew, including every w
   none is drawn, and none is while a Mix in or Mix out on that row is being typed in, so they never
   cover the fields. They are not hover-only: they show on the selected row.
 - **Compact forms, by measurement.** The room is what the Set's scroll area has beside the # column and a
-  small title minimum (about 6 characters, 40 px x scale), not the Title column's current width: the
+  small title minimum (about 5 characters, 32 px x scale; 40 until 2026-10-12, when the glyphs missed Windows' default 1264 px window by 6 px), not the Title column's current width: the
   buttons may cover the Title column's tail, and the selected row's title ellipsises short of them. The
   words are used when they fit that room; when only the glyphs fit, each button is a short symbol
   (`↑`, `↓`, "Chapter", `↻`, `×`) with its full name kept as its name and hint (at a 1280 window the

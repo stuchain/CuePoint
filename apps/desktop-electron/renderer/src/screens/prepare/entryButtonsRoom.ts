@@ -3,7 +3,7 @@
  *
  * The five buttons sit at the right end of the row, over its last columns. They may cover those,
  * and the tail of the selected row's title (it ellipsises short of them), never the row's number
- * or the first ~6 characters of the title. So the room is what the Set's scroll area has beside
+ * or the first ~5 characters of the title. So the room is what the Set's scroll area has beside
  * the number column and that small title minimum, not the Title column's current width:
  *
  * - **words** ("↑ ↓ Chapter here Repeat after Remove") when the words fit in the room;
@@ -17,8 +17,8 @@ import { useLayoutEffect, useState, type RefObject } from "react";
 
 export type EntryButtonsForm = "words" | "glyphs" | "actions";
 
-/** The least the selected row's title keeps, in px at scale 1 (about 6 characters): the buttons never take it. */
-export const ENTRY_TITLE_KEEP_PX = 40;
+/** The least the selected row's title keeps, in px at scale 1 (about 5 characters): the buttons never take it. Small enough for the glyphs to fit at Windows' default window (1264 px inside). */
+export const ENTRY_TITLE_KEEP_PX = 32;
 
 /** The scroll area's room for the buttons: what is left beside the number and the title's small minimum. */
 export function roomBesideTitle(scrollWidth: number, numberWidth: number, titleMin: number): number {
