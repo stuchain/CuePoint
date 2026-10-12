@@ -600,6 +600,185 @@ class TestBeatportsImage:
         assert files.opened == ["/m/a.mp3"]
 
 
+def candidate_id(db, beatport_id: str) -> int:
+    row = (
+        db.connect()
+        .execute(
+            "SELECT id FROM match_candidates WHERE url = ? ORDER BY id DESC",
+            (page_of(beatport_id),),
+        )
+        .fetchone()
+    )
+    return int(row["id"])
+
+
+def artwork_rows(db) -> int:
+    return int(
+        db.connect().execute("SELECT COUNT(*) AS n FROM track_artwork").fetchone()["n"]
+    )
+
+
+def stored_artwork_url(db, cid: int) -> Optional[str]:
+    return (
+        db.connect()
+        .execute("SELECT artwork_url FROM match_candidates WHERE id = ?", (cid,))
+        .fetchone()["artwork_url"]
+    )
+
+
+@pytest.mark.unit
+class TestACandidatesImage:
+    def test_a_candidate_shows_its_image_whatever_its_state_from_one_download(
+        self, service, tracks, db, activity, web
+    ):
+        [track] = add(tracks, db, ["/m/a.mp3"])
+        matched(db, tracks, activity, track, "1", art("one"), score=80.0)
+        cid = candidate_id(db, "1")
+        web.images[fetched_url("one")] = jpeg("green")
+
+        assert decoded(service.candidate_thumbnail(cid, "row")).size == (108, 108)
+        assert decoded(service.candidate_thumbnail(cid, "inspector")).size == (
+            288,
+            288,
+        )
+        assert web.fetched == [fetched_url("one")]
+        assert web.looked_up == []
+
+    def test_it_writes_no_track_artwork_row(
+        self, service, tracks, db, activity, web, artwork
+    ):
+        [track] = add(tracks, db, ["/m/a.mp3"])
+        matched(db, tracks, activity, track, "1", art("one"))
+        cid = candidate_id(db, "1")
+        web.images[fetched_url("one")] = jpeg()
+        before = artwork_rows(db)
+
+        assert service.candidate_thumbnail(cid, "row") is not None
+
+        assert artwork_rows(db) == before
+        assert record(artwork, track) is None
+
+    def test_the_cache_answers_a_second_service_without_a_download(
+        self, make_service, tracks, db, activity, web
+    ):
+        [track] = add(tracks, db, ["/m/a.mp3"])
+        matched(db, tracks, activity, track, "1", art("one"))
+        cid = candidate_id(db, "1")
+        web.images[fetched_url("one")] = jpeg()
+
+        assert make_service().candidate_thumbnail(cid, "row") is not None
+        assert make_service().candidate_thumbnail(cid, "inspector") is not None
+
+        assert web.fetched == [fetched_url("one")]
+
+    def test_a_url_off_beatports_hosts_is_refused_and_never_fetched(
+        self, service, tracks, db, activity, web
+    ):
+        [track] = add(tracks, db, ["/m/a.mp3"])
+        matched(db, tracks, activity, track, "1", "https://evil.example/a.jpg")
+
+        assert service.candidate_thumbnail(candidate_id(db, "1"), "row") is None
+        assert web.fetched == [] and web.looked_up == []
+
+    def test_offline_is_empty_and_not_asked_again_until_later(
+        self, service, tracks, db, activity, web, clock
+    ):
+        [track] = add(tracks, db, ["/m/a.mp3"])
+        matched(db, tracks, activity, track, "1", art("one"))
+        cid = candidate_id(db, "1")
+
+        assert service.candidate_thumbnail(cid, "row") is None
+        assert service.candidate_thumbnail(cid, "inspector") is None
+        assert web.fetched == [fetched_url("one")]
+
+        clock.now += RETRY_FAILED_AFTER_SECONDS
+        web.images[fetched_url("one")] = jpeg()
+        assert service.candidate_thumbnail(cid, "row") is not None
+        assert len(web.fetched) == 2
+
+    def test_a_refused_image_is_shown_as_nothing_and_not_decoded_again(
+        self, service, tracks, db, activity, web, artwork, clock
+    ):
+        [track] = add(tracks, db, ["/m/a.mp3"])
+        matched(db, tracks, activity, track, "1", art("one"))
+        cid = candidate_id(db, "1")
+        web.images[fetched_url("one")] = b"<html>an error page</html>"
+
+        assert service.candidate_thumbnail(cid, "row") is None
+        clock.now += RETRY_FAILED_AFTER_SECONDS * 2
+        assert service.candidate_thumbnail(cid, "row") is None
+
+        assert web.fetched == [fetched_url("one")]
+        assert record(artwork, track) is None
+
+    def test_a_candidate_with_no_image_url_is_looked_up_once_in_memory_only(
+        self, service, tracks, db, activity, web, artwork
+    ):
+        [track] = add(tracks, db, ["/m/a.mp3"])
+        matched(db, tracks, activity, track, "1", None, score=80.0)
+        cid = candidate_id(db, "1")
+        web.pages[page_of("1")] = art("found")
+        web.images[fetched_url("found")] = jpeg()
+
+        assert service.candidate_thumbnail(cid, "row") is not None
+        assert service.candidate_thumbnail(cid, "inspector") is not None
+
+        assert web.looked_up == [page_of("1")]
+        assert stored_artwork_url(db, cid) is None
+        assert record(artwork, track) is None
+
+    def test_a_page_with_no_image_is_remembered_as_none(
+        self, service, tracks, db, activity, web
+    ):
+        [track] = add(tracks, db, ["/m/a.mp3"])
+        matched(db, tracks, activity, track, "1", None)
+        cid = candidate_id(db, "1")
+        web.pages[page_of("1")] = ""
+
+        assert service.candidate_thumbnail(cid, "row") is None
+        assert service.candidate_thumbnail(cid, "row") is None
+
+        assert web.looked_up == [page_of("1")]
+        assert web.fetched == []
+
+    def test_a_page_that_cannot_be_read_is_nothing(
+        self, service, tracks, db, activity, web
+    ):
+        [track] = add(tracks, db, ["/m/a.mp3"])
+        matched(db, tracks, activity, track, "1", None)
+
+        assert service.candidate_thumbnail(candidate_id(db, "1"), "row") is None
+        assert web.fetched == []
+
+    def test_services_sharing_a_memory_look_a_page_up_once(
+        self, make_service, tracks, db, activity, web
+    ):
+        memory = module.CandidateMemory()
+        [track] = add(tracks, db, ["/m/a.mp3"])
+        matched(db, tracks, activity, track, "1", None)
+        cid = candidate_id(db, "1")
+        web.pages[page_of("1")] = art("found")
+        web.images[fetched_url("found")] = jpeg()
+
+        first = make_service(candidate_memory=memory)
+        second = make_service(candidate_memory=memory)
+        assert first.candidate_thumbnail(cid, "row") is not None
+        assert second.candidate_thumbnail(cid, "row") is not None
+
+        assert web.looked_up == [page_of("1")]
+
+    def test_an_unknown_candidate_is_a_lookup_error(self, service):
+        with pytest.raises(LookupError):
+            service.candidate_thumbnail(999, "row")
+
+    def test_any_other_size_is_refused(self, service, tracks, db, activity):
+        [track] = add(tracks, db, ["/m/a.mp3"])
+        matched(db, tracks, activity, track, "1", art("one"))
+
+        with pytest.raises(ValueError):
+            service.candidate_thumbnail(candidate_id(db, "1"), "huge")
+
+
 # ------------------------------------------------------------------ the gate
 
 
@@ -657,6 +836,28 @@ class TestTheNetworkEdges:
         with mock.patch("requests.get") as get:
             assert fetch_image("https://evil.example/a.jpg") is None
         get.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            r"https://evil.com\@geo-media.beatport.com/a.jpg",
+            "https://user@geo-media.beatport.com/a.jpg",
+            "https://geo-media.beatport.com:8443/a.jpg",
+        ],
+    )
+    def test_an_ambiguous_url_is_not_requested(self, url):
+        with mock.patch("requests.get") as get:
+            assert fetch_image(url) is None
+        get.assert_not_called()
+
+    def test_the_url_requested_is_rebuilt_from_the_checked_parts(self):
+        response = mock.MagicMock(status_code=200)
+        response.__enter__.return_value = response
+        response.iter_content.side_effect = lambda _size: iter([b"x"])
+        with mock.patch("requests.get", return_value=response) as get:
+            fetch_image("https://GEO-MEDIA.beatport.com:443/a.jpg?w=1#frag")
+
+        assert get.call_args.args[0] == "https://geo-media.beatport.com/a.jpg?w=1"
 
     def test_a_download_is_read_no_further_than_the_cap(self):
         chunk = b"x" * (1024 * 1024)

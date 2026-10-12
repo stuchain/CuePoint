@@ -48,6 +48,7 @@ JOURNEY = (
 URL_ONE = "https://www.beatport.com/track/tone-one/1001"
 URL_TWOS = "https://www.beatport.com/track/tone-twos/2002"
 URL_EXTENDED = "https://www.beatport.com/track/tone-twos-extended/2001"
+SAMPLE = "https://geo-samples.beatport.com/track/journey.LOFI.mp3"
 IMAGE = "https://geo-media.beatport.com/image_size/500x500/journey-cover.jpg"
 
 
@@ -85,6 +86,8 @@ class TestReadingTheFile:
             ({"pages": ["x"]}, "pages must map"),
             ({"pages": {"u": 1}}, "pages must map"),
             ({"images": {"u": None}}, "images must map"),
+            ({"previews": {"u": None}}, "previews must map"),
+            ({"previews": ["x"]}, "previews must map"),
             ({"api": {}}, "api must be a list"),
             ({"api": ["catalog/genres"]}, "is an object"),
             ({"api": [{"path": "a", "query": {}}]}, "does not take 'query'"),
@@ -118,6 +121,7 @@ class TestReadingTheFile:
         assert fixture.search("anything", 10) == []
         assert fixture.page(URL_ONE) is None
         assert fixture.image(IMAGE) is None
+        assert fixture.preview(SAMPLE) is None
         assert fixture.api_answer("GET", "catalog/genres/").status == UNLISTED_STATUS
 
 
@@ -151,6 +155,23 @@ class TestAnswering:
     def test_a_listed_image_is_its_bytes(self):
         data = load(JOURNEY).image(IMAGE)
         assert data is not None and data[:2] == b"\xff\xd8"
+
+    def test_a_listed_preview_is_its_bytes_and_an_unlisted_one_is_nothing(
+        self, tmp_path
+    ):
+        (tmp_path / "sample.mp3").write_bytes(b"ID3audio")
+        fixture = load(write(tmp_path, {"previews": {SAMPLE: "sample.mp3"}}))
+
+        assert fixture.preview(SAMPLE) == b"ID3audio"
+        assert fixture.preview(SAMPLE + "?x") is None
+
+    def test_a_preview_outside_the_fixture_folder_is_refused(self, tmp_path):
+        (tmp_path / "secret.mp3").write_bytes(b"no")
+        inner = tmp_path / "inner"
+        inner.mkdir()
+        fixture = load(write(inner, {"previews": {"u": "../secret.mp3"}}))
+        with pytest.raises(BeatportFixtureError, match="outside"):
+            fixture.preview("u")
 
     def test_a_page_outside_the_fixture_folder_is_refused(self, tmp_path):
         (tmp_path / "secret.txt").write_text("no", "utf-8")

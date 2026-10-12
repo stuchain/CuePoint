@@ -155,6 +155,8 @@ ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 JOB_ROUTE = re.compile(r"^/api/v1/jobs/([^/]+)(?:/(results|events))?$")
 JOB_CANCEL_ROUTE = re.compile(r"^/api/v1/jobs/([^/]+)/cancel$")
 ARTWORK_ROUTE = re.compile(r"^/api/v1/library/tracks/(\d+)/artwork$")
+CANDIDATE_ARTWORK_ROUTE = re.compile(r"^/api/v1/clean/candidates/(\d+)/artwork$")
+CANDIDATE_PREVIEW_ROUTE = re.compile(r"^/api/v1/clean/candidates/(\d+)/preview$")
 
 
 def _resolve_job_repository() -> Optional[Any]:
@@ -446,6 +448,14 @@ def make_handler(
             self.end_headers()
             self.wfile.write(body)
 
+        def _send_audio(self, body: bytes, content_type: str = "audio/mpeg") -> None:
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+
         def _send_no_content(self) -> None:
             self.send_response(204)
             self.send_header("Content-Length", "0")
@@ -486,6 +496,78 @@ def make_handler(
                 self._send_no_content()
                 return
             self._send_image(body)
+
+        def _handle_candidate_artwork(self, raw_candidate_id: str, query: str) -> None:
+            """A match candidate's Beatport artwork as JPEG bytes (DEC-076).
+
+            204 when the candidate has none or Beatport cannot be reached, which
+            the renderer draws as an empty state; never a URL, never the
+            original image.
+            """
+            if not self._authorized():
+                self._send_json(
+                    401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                )
+                return
+            sizes = parse_qs(query).get("size", [])
+            if len(sizes) != 1:
+                self._send_json(
+                    400,
+                    error_payload("INVALID_REQUEST", "size is required, once"),
+                )
+                return
+            from cuepoint.engine.jobs import _ensure_services
+            from cuepoint.services.interfaces import IArtworkService
+            from cuepoint.utils.di_container import get_container
+
+            try:
+                _ensure_services()
+                body = (
+                    get_container()
+                    .resolve(IArtworkService)
+                    .candidate_thumbnail(int(raw_candidate_id), sizes[0])
+                )
+            except ValueError as exc:
+                self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                return
+            except LookupError as exc:
+                self._send_json(404, error_payload("CANDIDATE_NOT_FOUND", str(exc)))
+                return
+            except Exception as exc:  # noqa: BLE001 — surface to API client
+                self._send_unexpected(exc, error_payload("ARTWORK_FAILED", str(exc)))
+                return
+            if body is None:
+                self._send_no_content()
+                return
+            self._send_image(body)
+
+        def _handle_candidate_preview(self, raw_candidate_id: str) -> None:
+            """A match candidate's audio preview as MP3 bytes (DEC-012).
+
+            204 when the candidate has none or Beatport cannot be reached; the
+            renderer plays the bytes and never loads a remote URL.
+            """
+            if not self._authorized():
+                self._send_json(
+                    401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                )
+                return
+            from cuepoint.engine.jobs import _ensure_services
+            from cuepoint.services.candidate_preview import shared_preview_service
+
+            try:
+                _ensure_services()
+                audio = shared_preview_service().preview(int(raw_candidate_id))
+            except LookupError as exc:
+                self._send_json(404, error_payload("CANDIDATE_NOT_FOUND", str(exc)))
+                return
+            except Exception as exc:  # noqa: BLE001 — surface to API client
+                self._send_unexpected(exc, error_payload("PREVIEW_FAILED", str(exc)))
+                return
+            if audio is None:
+                self._send_no_content()
+                return
+            self._send_audio(audio.data, audio.content_type)
 
         def _authorized(self) -> bool:
             if not config.token:
@@ -962,6 +1044,14 @@ def make_handler(
             artwork = ARTWORK_ROUTE.match(path)
             if artwork:
                 self._handle_artwork(artwork.group(1), parsed.query)
+                return
+            candidate_artwork = CANDIDATE_ARTWORK_ROUTE.match(path)
+            if candidate_artwork:
+                self._handle_candidate_artwork(candidate_artwork.group(1), parsed.query)
+                return
+            candidate_preview = CANDIDATE_PREVIEW_ROUTE.match(path)
+            if candidate_preview:
+                self._handle_candidate_preview(candidate_preview.group(1))
                 return
             if clean_handles_get(path):
                 # Before the track prefix below, for the organization routes'

@@ -1837,3 +1837,63 @@ class TestBestBeatportMatch:
             assert (
                 mock_parse.call_count <= 2
             )  # May be called once or twice depending on timing
+
+
+class TestCandidatePreview:
+    """The page's sample is carried to the stored candidate; the score is not read from it."""
+
+    PAGE = "https://www.beatport.com/track/test-track/123456"
+    SAMPLE = "https://geo-samples.beatport.com/track/abc.LOFI.mp3"
+    PARSED = (
+        "Test Track",
+        "Test Artist",
+        "E Major",
+        2023,
+        "128",
+        "Test Label",
+        "House",
+        "Test Release",
+        "2023-01-01",
+    )
+
+    def _match(self, preview):
+        from cuepoint.data import beatport
+
+        with beatport._page_artwork_lock:
+            beatport._page_preview.clear()
+        if preview is not None:
+            beatport.remember_page_preview(self.PAGE, preview)
+        with (
+            patch("cuepoint.core.matcher.track_urls", return_value=[self.PAGE]),
+            patch("cuepoint.core.matcher.parse_track_page", return_value=self.PARSED),
+        ):
+            return best_beatport_match(
+                idx=1,
+                track_title="Test Track",
+                track_artists_for_scoring="Test Artist",
+                title_only_mode=False,
+                queries=["Test Track Test Artist"],
+                input_year=None,
+                input_key=None,
+                input_mix=None,
+                input_generic_phrases=None,
+            )
+
+    def test_the_preview_the_page_named_is_carried(self):
+        best, candidates, _, _ = self._match(self.SAMPLE)
+
+        assert [c.preview_url for c in candidates] == [self.SAMPLE]
+        assert best.preview_url == self.SAMPLE
+
+    def test_a_page_with_no_sample_carries_none(self):
+        _, candidates, _, _ = self._match(None)
+
+        assert [c.preview_url for c in candidates] == [None]
+
+    def test_the_score_is_identical_with_or_without_a_preview(self):
+        with_preview = self._match(self.SAMPLE)[1][0]
+        without = self._match(None)[1][0]
+
+        assert with_preview.score == without.score
+        assert with_preview.base_score == without.base_score
+        assert with_preview.guard_ok == without.guard_ok

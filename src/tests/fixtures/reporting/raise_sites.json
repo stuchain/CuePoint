@@ -1912,6 +1912,11 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
+  "cuepoint/services/artwork_service.py::ArtworkService.candidate_thumbnail::There is no match candidate {candidate_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
   "cuepoint/services/artwork_service.py::ArtworkService.thumbnail::There is no track {track_id} in the library": {
     "holds": "an integer id",
     "verdict": "exempt",
@@ -2042,6 +2047,11 @@
   "cuepoint/services/beatport_resolve_service.py::BeatportResolveService.__init__::max_consecutive_failures must be at least 1, got {max_consecutive_failures!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
+  },
+  "cuepoint/services/candidate_preview.py::CandidatePreviewService.preview::There is no match candidate {candidate_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
   },
   "cuepoint/services/collection_service.py::CollectionService._check_destination::That would put part of {node.name!r} deeper than {MAX_COLLECTION_DEPTH} levels": {
     "holds": "a playlist, collection, tag, chapter or Set name",

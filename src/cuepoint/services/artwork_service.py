@@ -80,6 +80,7 @@ from cuepoint.services.interfaces import (
     IArtworkService,
     IBatchService,
     IDatabaseService,
+    IMatchRepository,
     ITrackRepository,
 )
 
@@ -116,6 +117,10 @@ FAILURE_MEMORY_LIMIT = 10_000
 #: Failures in a row after which a fetch over a scope stops: Beatport cannot be
 #: reached, and every further track would only spend a timeout.
 UNREACHABLE_AFTER_FAILURES = 20
+
+#: Candidates' pages, and refused candidate images, remembered in memory at once
+#: (a candidate is shown, never recorded; the oldest is forgotten first).
+CANDIDATE_MEMORY_LIMIT = 512
 
 #: Files read per committed chunk of a scan, threads reading them, and tracks
 #: fetched between two looks at the cancel flag.
@@ -182,6 +187,16 @@ def size_pixels(size: str) -> int:
     return THUMBNAIL_SIZES[size]
 
 
+def _remember(
+    memory: "OrderedDict[str, Any]", key: str, value: Any, limit: int
+) -> None:
+    """Remember ``key``, forgetting the oldest past ``limit``."""
+    memory[key] = value
+    memory.move_to_end(key)
+    while len(memory) > limit:
+        memory.popitem(last=False)
+
+
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -194,22 +209,24 @@ def fetch_image(url: str) -> Optional[bytes]:
     whole — or None when it could not be downloaded. Redirects are not
     followed: an image is fetched from Beatport's hosts or not at all.
     """
-    from cuepoint.data.beatport import is_beatport_artwork_url
+    from cuepoint.data.beatport import beatport_request_url
     from cuepoint.models.config import HEADERS
 
-    if not is_beatport_artwork_url(url):
+    # The URL requested is rebuilt from the parts that were checked.
+    target = beatport_request_url(url)
+    if target is None:
         return None
     from cuepoint.data import beatport_fixture
 
     fixture = beatport_fixture.active()
     if fixture is not None:
         # End-to-end tests answer from files (CLEAN-14).
-        return fixture.image(url)
+        return fixture.image(target)
     try:
         import requests
 
         with requests.get(
-            url,
+            target,
             headers=HEADERS,
             timeout=BEATPORT_FETCH_TIMEOUT,
             stream=True,
@@ -226,7 +243,7 @@ def fetch_image(url: str) -> Optional[bytes]:
                     break
             return b"".join(chunks)
     except Exception as exc:  # noqa: BLE001 — offline is an empty state
-        _logger.debug("[artwork] could not fetch %s: %s", url, exc)
+        _logger.debug("[artwork] could not fetch %s: %s", target, exc)
         return None
 
 
@@ -242,6 +259,43 @@ def lookup_page_artwork(page_url: str) -> Optional[str]:
     if soup is None:
         return None
     return artwork_url_from_page(soup) or ""
+
+
+class CandidateMemory:
+    """What displays of match candidates learned, shared by every service made.
+
+    The artwork service is built for each request, so what a candidate's page
+    named, and which images the guard refused, are kept here: one for the
+    engine, created beside the :class:`FetchGate`. In memory only, bounded, and
+    never written to the stored candidates or ``track_artwork``.
+    """
+
+    def __init__(self, limit: int = CANDIDATE_MEMORY_LIMIT) -> None:
+        """Hold at most ``limit`` pages and ``limit`` refused images."""
+        self.lock = threading.Lock()
+        self._limit = int(limit)
+        self._pages: "OrderedDict[str, str]" = OrderedDict()
+        self._refused: "OrderedDict[str, None]" = OrderedDict()
+
+    def page(self, page_url: str) -> Optional[str]:
+        """What a page was found to name ("" for none), or None if not asked."""
+        with self.lock:
+            return self._pages.get(page_url)
+
+    def remember_page(self, page_url: str, artwork_url: str) -> None:
+        """Remember what a page named."""
+        with self.lock:
+            _remember(self._pages, page_url, artwork_url, self._limit)
+
+    def refused(self, image_url: str) -> bool:
+        """True when the guard refused this image."""
+        with self.lock:
+            return image_url in self._refused
+
+    def remember_refused(self, image_url: str) -> None:
+        """Remember an image the guard refused."""
+        with self.lock:
+            _remember(self._refused, image_url, None, self._limit)
 
 
 class FetchGate:
@@ -461,17 +515,23 @@ class ArtworkService(IArtworkService):
         cache: ArtworkCache,
         *,
         gate: Optional[FetchGate] = None,
-        fetcher: ImageFetcher = fetch_image,
-        page_lookup: PageLookup = lookup_page_artwork,
+        fetcher: Optional[ImageFetcher] = None,
+        page_lookup: Optional[PageLookup] = None,
         reader: EmbeddedReader = inspect_embedded,
         clock: Callable[[], str] = utc_now_iso,
         monotonic: Callable[[], float] = time.monotonic,
+        match_repository: Optional[IMatchRepository] = None,
+        candidate_memory: Optional[CandidateMemory] = None,
     ) -> None:
         """Store collaborators.
 
         ``fetcher``, ``page_lookup`` and ``reader`` are where the service meets
         the network and the files; tests replace them, so no test reaches
         Beatport. ``gate`` is shared by every service the engine makes.
+        ``match_repository`` reads the candidates :meth:`candidate_thumbnail`
+        shows; left out, one is made over ``database_service``.
+        ``candidate_memory`` is shared by every service the engine makes, as
+        ``gate`` is; left out, this service keeps its own.
         """
         self._artwork = artwork_repository
         self._tracks = track_repository
@@ -480,11 +540,17 @@ class ArtworkService(IArtworkService):
         self._db = database_service
         self._cache = cache
         self._gate = gate if gate is not None else FetchGate()
-        self._fetch_image = fetcher
-        self._lookup_page = page_lookup
+        self._fetch_image = fetcher if fetcher is not None else fetch_image
+        self._lookup_page = (
+            page_lookup if page_lookup is not None else lookup_page_artwork
+        )
         self._read = reader
         self._clock = clock
         self._monotonic = monotonic
+        self._matches = match_repository
+        self._memory = (
+            candidate_memory if candidate_memory is not None else CandidateMemory()
+        )
 
     # ---------------------------------------------------------------- show
 
@@ -504,6 +570,72 @@ class ArtworkService(IArtworkService):
         if image is not None:
             return image
         return self._beatport(int(track_id), record, pixels).images.get(pixels)
+
+    @property
+    def gate(self) -> FetchGate:
+        """The gate every Beatport request of this engine goes through."""
+        return self._gate
+
+    def candidate_thumbnail(self, candidate_id: int, size: str) -> Optional[bytes]:
+        """A match candidate's Beatport image as a JPEG at a named size, or None.
+
+        Shown for the candidate on screen, whatever its state (DEC-076): through
+        the same host check, gate, cache, guard and failure memory as a track's
+        image. Writes no ``track_artwork`` row. A candidate stored without an
+        image URL has its page read once through the gate and the answer held in
+        memory; the stored candidate is never rewritten (DEC-066).
+
+        Raises:
+            ValueError: If the size is not a named size.
+            LookupError: If there is no such candidate.
+        """
+        from cuepoint.data.beatport import artwork_url_at_size, is_beatport_artwork_url
+
+        pixels = size_pixels(size)
+        found = self._candidate_repository().get_candidate(int(candidate_id))
+        if found is None:
+            raise LookupError(f"There is no match candidate {candidate_id}")
+        artwork = found.artwork_url or self._candidate_page_artwork(found.url)
+        if not artwork or not is_beatport_artwork_url(artwork):
+            return None
+        source = artwork_url_at_size(artwork, BEATPORT_FETCH_SIZE)
+        key = _sha256(source.encode("utf-8"))
+        cached = self._cache.get(key, pixels)
+        if cached is not None:
+            return cached
+        if self._memory.refused(source):
+            return None
+        data = self._gate.run(f"image:{source}", lambda: self._fetch_image(source))
+        if data is None:
+            return None
+        try:
+            return self._store_thumbnails(key, data)[pixels]
+        except ArtworkRefused as refused:
+            _logger.info(
+                "[artwork] candidate %s: Beatport's image is unreadable (%s)",
+                candidate_id,
+                refused.reason,
+            )
+            self._memory.remember_refused(source)
+            return None
+
+    def _candidate_repository(self) -> IMatchRepository:
+        if self._matches is None:
+            from cuepoint.persistence.match_repository import MatchRepository
+
+            self._matches = MatchRepository(self._db)
+        return self._matches
+
+    def _candidate_page_artwork(self, page_url: str) -> Optional[str]:
+        """The image a candidate's page names, read once and held in memory."""
+        known = self._memory.page(page_url)
+        if known is not None:
+            return known
+        looked = self._gate.run(f"page:{page_url}", lambda: self._lookup_page(page_url))
+        if looked is None:
+            return None
+        self._memory.remember_page(page_url, looked)
+        return looked
 
     def _embedded_thumbnail(
         self,

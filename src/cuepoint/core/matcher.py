@@ -44,6 +44,7 @@ from cuepoint.core.text_processing import (
 from cuepoint.data.beatport import (
     get_last_cache_hit,
     page_artwork_url,
+    page_preview_url,
     parse_track_page,
     track_urls,
 )
@@ -853,6 +854,7 @@ def best_beatport_match(
             # CLEAN-09: the page's artwork, carried to the stored candidate.
             # Nothing above reads it; the score is already decided.
             artwork_url=page_artwork_url(u),
+            preview_url=page_preview_url(u),
         )
         candidates_log.append(cand)
 

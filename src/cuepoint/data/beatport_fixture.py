@@ -6,12 +6,13 @@
 A test must never reach Beatport, and an end-to-end journey still has to see a
 match accepted and another left for review. ``CUEPOINT_SKIP_BEATPORT`` answers
 every search with nothing, which can show neither. ``CUEPOINT_BEATPORT_FIXTURE``
-names a JSON file instead, and the four places CuePoint reaches Beatport answer
+names a JSON file instead, and the places CuePoint reaches Beatport answer
 from it:
 
 - a search (:func:`cuepoint.data.beatport.track_urls`),
 - a track page (:func:`cuepoint.data.beatport.request_html`),
-- an image (:func:`cuepoint.services.artwork_service.fetch_image`), and
+- an image (:func:`cuepoint.services.artwork_service.fetch_image`),
+- an audio preview (:func:`cuepoint.services.candidate_preview.fetch_preview`), and
 - a v4 API request (:class:`cuepoint.services.beatport_api_client.BeatportApiClient`),
   which Discover makes (DISCOVER-10).
 
@@ -30,6 +31,7 @@ The file::
       ],
       "pages": {"https://www.beatport.com/track/tone-one/1001": "pages/1001.html"},
       "images": {"https://geo-media.beatport.com/image_size/500x500/c.jpg": "c.jpg"},
+      "previews": {"https://geo-samples.beatport.com/track/t.LOFI.mp3": "t.mp3"},
       "api": [
         {"path": "catalog/charts", "params": {"genre_id": 5}, "body": {"results": []}},
         {"method": "POST", "path": "my/playlists", "status": 403, "body": {}}
@@ -37,7 +39,7 @@ The file::
     }
 
 A search answers the URLs of every entry whose ``contains`` appears in the
-query, ignoring case, in the order listed and each once. A page or image the
+query, ignoring case, in the order listed and each once. A page, image or preview the
 file does not list answers as a page that is gone does: nothing. Paths are
 relative to the file and must stay inside its folder.
 
@@ -174,6 +176,7 @@ class BeatportFixture:
     pages: Dict[str, str]
     images: Dict[str, str]
     api: Tuple[_ApiEntry, ...] = ()
+    previews: Dict[str, str] = field(default_factory=dict)
 
     def search(self, query: str, max_results: int) -> List[str]:
         """The URLs every matching entry lists, in order, each once."""
@@ -192,6 +195,11 @@ class BeatportFixture:
     def image(self, url: str) -> Optional[bytes]:
         """An image's bytes, or None for one the file does not list."""
         name = self.images.get(url)
+        return None if name is None else self._read(name)
+
+    def preview(self, url: str) -> Optional[bytes]:
+        """An audio preview's bytes, or None for one the file does not list."""
+        name = self.previews.get(url)
         return None if name is None else self._read(name)
 
     def api_answer(
@@ -337,6 +345,7 @@ def load(path: Path) -> BeatportFixture:
         pages=_mapping(data.get("pages"), "pages"),
         images=_mapping(data.get("images"), "images"),
         api=_api_entries(data.get("api")),
+        previews=_mapping(data.get("previews"), "previews"),
     )
 
 

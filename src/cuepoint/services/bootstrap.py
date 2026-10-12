@@ -147,7 +147,11 @@ from cuepoint.services.set_list_service import SetListService
 from cuepoint.services.set_service import SetService
 from cuepoint.services.set_suggestion_service import SetSuggestionService
 from cuepoint.services.artwork_cache import ArtworkCache, default_artwork_cache_dir
-from cuepoint.services.artwork_service import ArtworkService, FetchGate
+from cuepoint.services.artwork_service import (
+    ArtworkService,
+    CandidateMemory,
+    FetchGate,
+)
 from cuepoint.services.waveform_analysis_service import WaveformAnalysisService
 from cuepoint.services.waveform_service import WaveformService
 from cuepoint.services.duplicate_service import DuplicateService
@@ -658,6 +662,7 @@ def bootstrap_services() -> None:
     # requests and the cache's byte count hold across every request thread. The
     # cache follows its directory, which follows CUEPOINT_HOME.
     artwork_gate = FetchGate()
+    candidate_memory = CandidateMemory()
     artwork_caches: list[ArtworkCache] = []
     artwork_cache_lock = threading.Lock()
 
@@ -677,6 +682,7 @@ def bootstrap_services() -> None:
             database_service=container.resolve(IDatabaseService),
             cache=artwork_cache(),
             gate=artwork_gate,
+            candidate_memory=candidate_memory,
         )
 
     container.register_factory(IArtworkService, create_artwork_service)

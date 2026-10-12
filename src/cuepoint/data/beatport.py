@@ -34,7 +34,7 @@ import socket
 import ssl
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import requests
 from bs4 import BeautifulSoup
@@ -105,6 +105,10 @@ logger = logging.getLogger(__name__)
 #: a database that named anywhere else is not followed.
 _ARTWORK_HOST = "beatport.com"
 
+#: Previews are only ever fetched from the host Beatport serves its samples
+#: from (the recorded track page names ``geo-samples.beatport.com``), over HTTPS.
+_MEDIA_HOSTS = ("geo-samples.beatport.com",)
+
 _ARTWORK_SIZE_PLACEHOLDER = "{w}x{h}"
 _ARTWORK_SIZE_SEGMENT = re.compile(r"/image_size/\d+x\d+/")
 _TRACK_ID_IN_URL = re.compile(r"/track/[^/]*/(\d+)")
@@ -116,16 +120,77 @@ _PAGE_ARTWORK_LIMIT = 4096
 _page_artwork: "OrderedDict[str, Optional[str]]" = OrderedDict()
 _page_artwork_lock = threading.Lock()
 
+#: The sample each parsed page named, remembered as the artwork is and under
+#: the same lock and limit.
+_page_preview: "OrderedDict[str, Optional[str]]" = OrderedDict()
+
+
+def _artwork_host_ok(host: str) -> bool:
+    return host == _ARTWORK_HOST or host.endswith("." + _ARTWORK_HOST)
+
+
+def _media_host_ok(host: str) -> bool:
+    return host in _MEDIA_HOSTS
+
+
+def _checked_parts(url: Optional[str], host_ok: Callable[[str], bool]) -> Any:
+    """The parts of an unambiguous HTTPS URL on an allowed host, else None.
+
+    Refused outright: a backslash, ``@``, whitespace or a control character
+    anywhere (parsers disagree on what these mean, and the host a check reads
+    must be the host a request connects to), any userinfo, and a port other than
+    443.
+    """
+    if not isinstance(url, str):
+        return None
+    text = url.strip()
+    if not text or any(
+        char in "\\@" or char.isspace() or ord(char) < 0x20 or ord(char) == 0x7F
+        for char in text
+    ):
+        return None
+    try:
+        parsed = urlparse(text)
+        host = (parsed.hostname or "").lower()
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in (None, 443)
+        or not host_ok(host)
+    ):
+        return None
+    return parsed
+
+
+def _rebuilt(parsed: Any) -> str:
+    host = (parsed.hostname or "").lower()
+    query = f"?{parsed.query}" if parsed.query else ""
+    return f"https://{host}{parsed.path}{query}"
+
 
 def is_beatport_artwork_url(url: Optional[str]) -> bool:
-    """True for an HTTPS URL on Beatport's own hosts."""
-    if not isinstance(url, str) or not url.strip():
-        return False
-    parsed = urlparse(url.strip())
-    host = (parsed.hostname or "").lower()
-    return parsed.scheme == "https" and (
-        host == _ARTWORK_HOST or host.endswith("." + _ARTWORK_HOST)
-    )
+    """True for an unambiguous HTTPS URL on Beatport's own hosts."""
+    return _checked_parts(url, _artwork_host_ok) is not None
+
+
+def is_beatport_media_url(url: Optional[str]) -> bool:
+    """True for an unambiguous HTTPS URL on a host Beatport serves samples from."""
+    return _checked_parts(url, _media_host_ok) is not None
+
+
+def beatport_request_url(url: Optional[str], *, media: bool = False) -> Optional[str]:
+    """The URL to request for a checked one, rebuilt from the parts that were checked.
+
+    None when the URL is not on Beatport's artwork hosts (or, with ``media``, its
+    sample host). The host, path and query it names are the ones the check read,
+    so what is checked is what is fetched.
+    """
+    parsed = _checked_parts(url, _media_host_ok if media else _artwork_host_ok)
+    return None if parsed is None else _rebuilt(parsed)
 
 
 def artwork_url_at_size(url: str, size: int) -> str:
@@ -156,22 +221,24 @@ def artwork_url_from_page(soup: BeautifulSoup) -> Optional[str]:
     return found if is_beatport_artwork_url(found) else None
 
 
-def _release_image_url(soup: BeautifulSoup) -> Optional[str]:
-    """``release.image_url`` of the page's own track, from ``__NEXT_DATA__``.
+def _track_details(soup: BeautifulSoup) -> List[Dict[str, Any]]:
+    """The page's own track data, from the ``track-details`` queries of ``__NEXT_DATA__``.
 
-    Only the track-details query is read: the same data holds the charts and
-    recommendations the page shows, each with images of other releases.
+    Only those queries are read: the same data holds the charts and
+    recommendations the page shows, each with images and samples of other
+    tracks. Every one is returned, in order, so a field one lacks can come from
+    the next.
     """
     tag = soup.find("script", id="__NEXT_DATA__")
     if tag is None or not tag.string:
-        return None
+        return []
     try:
         data = json.loads(tag.string)
     except ValueError:
-        return None
+        return []
     state = ((data.get("props") or {}).get("pageProps") or {}).get("dehydratedState")
-    queries = (state or {}).get("queries") or []
-    for query in queries:
+    found: List[Dict[str, Any]] = []
+    for query in (state or {}).get("queries") or []:
         if not isinstance(query, dict):
             continue
         key = query.get("queryKey")
@@ -180,10 +247,27 @@ def _release_image_url(soup: BeautifulSoup) -> Optional[str]:
         ):
             continue
         track = (query.get("state") or {}).get("data")
-        release = track.get("release") if isinstance(track, dict) else None
+        if isinstance(track, dict):
+            found.append(track)
+    return found
+
+
+def _release_image_url(soup: BeautifulSoup) -> Optional[str]:
+    """``release.image_url`` of the page's own track, from ``__NEXT_DATA__``."""
+    for track in _track_details(soup):
+        release = track.get("release")
         image = release.get("image_url") if isinstance(release, dict) else None
         if isinstance(image, str) and image.strip():
             return image.strip()
+    return None
+
+
+def sample_url_from_page(soup: BeautifulSoup) -> Optional[str]:
+    """``sample_url`` of the page's own track: its audio preview, if Beatport hosts it."""
+    for track in _track_details(soup):
+        sample = track.get("sample_url")
+        if isinstance(sample, str) and is_beatport_media_url(sample):
+            return sample.strip()
     return None
 
 
@@ -201,6 +285,22 @@ def remember_page_artwork(url: str, artwork_url: Optional[str]) -> None:
         _page_artwork.move_to_end(key)
         while len(_page_artwork) > _PAGE_ARTWORK_LIMIT:
             _page_artwork.popitem(last=False)
+
+
+def remember_page_preview(url: str, preview_url: Optional[str]) -> None:
+    """Remember the sample a parsed page named, dropping the oldest past the limit."""
+    key = _artwork_key(url)
+    with _page_artwork_lock:
+        _page_preview[key] = preview_url
+        _page_preview.move_to_end(key)
+        while len(_page_preview) > _PAGE_ARTWORK_LIMIT:
+            _page_preview.popitem(last=False)
+
+
+def page_preview_url(url: str) -> Optional[str]:
+    """The sample a parsed page for this track named, if one was parsed."""
+    with _page_artwork_lock:
+        return _page_preview.get(_artwork_key(url))
 
 
 def page_artwork_url(url: str) -> Optional[str]:
@@ -660,6 +760,10 @@ def parse_track_page(
         try:
             remember_page_artwork(url, artwork_url_from_page(soup))
         except Exception:  # noqa: BLE001 — artwork must never cost a parse
+            pass
+        try:
+            remember_page_preview(url, sample_url_from_page(soup))
+        except Exception:  # noqa: BLE001 — a preview must never cost a parse
             pass
 
         info.update(_parse_structured_json_ld(soup))

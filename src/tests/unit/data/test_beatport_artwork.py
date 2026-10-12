@@ -32,9 +32,13 @@ from cuepoint.data.beatport import (
     artwork_url_at_size,
     artwork_url_from_page,
     is_beatport_artwork_url,
+    is_beatport_media_url,
     page_artwork_url,
+    page_preview_url,
     parse_track_page,
     remember_page_artwork,
+    remember_page_preview,
+    sample_url_from_page,
 )
 from tests.fixtures import beatport_scoring
 from tests.fixtures.beatport_scoring import PAGES, score_recorded_pages
@@ -53,9 +57,11 @@ STROBE_ARTWORK = (
 def forget_pages():
     with beatport._page_artwork_lock:
         beatport._page_artwork.clear()
+        beatport._page_preview.clear()
     yield
     with beatport._page_artwork_lock:
         beatport._page_artwork.clear()
+        beatport._page_preview.clear()
 
 
 def soup_of(name: str) -> BeautifulSoup:
@@ -279,6 +285,204 @@ class TestThePageMemory:
         assert page_artwork_url("https://www.beatport.com/track/t/2") is None
 
 
+STROBE_SAMPLE = "https://geo-samples.beatport.com/track/7ca684fe-b968-412b-bd7f-334eca8bb84e.LOFI.mp3"
+SAMPLE = "https://geo-samples.beatport.com/track/own.LOFI.mp3"
+
+
+def sample_query(key: str, sample: Any) -> Dict[str, Any]:
+    return {"queryKey": [key], "state": {"data": {"sample_url": sample}}}
+
+
+@pytest.mark.unit
+class TestThePreviewSample:
+    def test_the_recorded_page_yields_its_own_sample(self):
+        assert sample_url_from_page(soup_of("track_page_artwork.html")) == STROBE_SAMPLE
+
+    def test_a_page_with_no_sample_yields_none(self):
+        assert sample_url_from_page(soup_of("track_page_standard.html")) is None
+
+    def test_only_the_track_details_query_counts_not_the_recommendations(self):
+        found = sample_url_from_page(
+            page(
+                [
+                    sample_query("track-1-recommended", SAMPLE + "?other=1"),
+                    sample_query("track-details-1", SAMPLE),
+                    sample_query("track-2-more", SAMPLE + "?other=2"),
+                ]
+            )
+        )
+
+        assert found == SAMPLE
+
+    def test_without_track_details_there_is_no_sample(self):
+        assert sample_url_from_page(page([sample_query("charts", SAMPLE)])) is None
+
+    @pytest.mark.parametrize(
+        "sample",
+        [
+            "http://geo-samples.beatport.com/a.mp3",
+            "https://evil.example/a.mp3",
+            "https://beatport.com.evil.example/a.mp3",
+            "",
+            "   ",
+            42,
+        ],
+    )
+    def test_a_sample_off_beatports_media_hosts_is_never_taken(self, sample):
+        assert (
+            sample_url_from_page(page([sample_query("track-details-1", sample)]))
+            is None
+        )
+
+    def test_malformed_page_data_yields_none_without_raising(self):
+        broken = BeautifulSoup('<script id="__NEXT_DATA__">{not json</script>', "lxml")
+
+        assert sample_url_from_page(broken) is None
+        assert sample_url_from_page(page([])) is None
+
+    def test_parsing_the_page_remembers_its_sample_for_the_matcher(self):
+        with mock.patch.object(
+            beatport, "request_html", side_effect=beatport_scoring._soup
+        ):
+            parse_track_page(STROBE)
+            parse_track_page(STANDARD)
+
+        assert page_preview_url(STROBE) == STROBE_SAMPLE
+        assert page_preview_url(STANDARD) is None
+
+    def test_a_sample_can_never_cost_a_parse(self):
+        with mock.patch.object(
+            beatport, "request_html", side_effect=beatport_scoring._soup
+        ):
+            parsed = parse_track_page(STROBE)
+            with mock.patch.object(
+                beatport, "sample_url_from_page", side_effect=RuntimeError("shape")
+            ):
+                beatport._page_preview.clear()
+                again = parse_track_page(STROBE)
+
+        assert again == parsed
+        assert page_preview_url(STROBE) is None
+        assert page_artwork_url(STROBE) == STROBE_ARTWORK
+
+    def test_two_slugs_for_one_track_share_a_sample(self):
+        remember_page_preview("https://www.beatport.com/track/old/77", SAMPLE)
+
+        assert page_preview_url("https://www.beatport.com/track/new/77") == SAMPLE
+
+    def test_the_memory_is_bounded_and_forgets_the_oldest(self, monkeypatch):
+        monkeypatch.setattr(beatport, "_PAGE_ARTWORK_LIMIT", 2)
+        for number in (1, 2, 3):
+            remember_page_preview(
+                f"https://www.beatport.com/track/t/{number}", f"u{number}"
+            )
+
+        assert page_preview_url("https://www.beatport.com/track/t/1") is None
+        assert page_preview_url("https://www.beatport.com/track/t/3") == "u3"
+
+
+@pytest.mark.unit
+class TestOneUrlForTheCheckAndTheFetch:
+    @pytest.mark.parametrize(
+        "host", ["geo-samples.beatport.com", "geo-media.beatport.com"]
+    )
+    @pytest.mark.parametrize(
+        "tail",
+        [
+            r"evil.com\@{host}/a.mp3",
+            "user@{host}/a.mp3",
+            "user:pass@{host}/a.mp3",
+            "{host}:8443/a.mp3",
+            "{host}:80/a.mp3",
+            "{host}/a b.mp3",
+            "{host}/a\tb.mp3",
+            "{host}/a\nb.mp3",
+            "{host}/a\\b.mp3",
+            "{host}/a\x00.mp3",
+            " {host}/a.mp3 \x07",
+        ],
+    )
+    def test_an_ambiguous_url_is_refused_by_both_checks(self, host, tail):
+        url = "https://" + tail.format(host=host)
+        if host.startswith("geo-samples"):
+            assert not is_beatport_media_url(url)
+        else:
+            assert not is_beatport_artwork_url(url)
+
+    def test_the_default_https_port_is_fine(self):
+        assert is_beatport_media_url("https://geo-samples.beatport.com:443/a.mp3")
+        assert is_beatport_artwork_url("https://geo-media.beatport.com:443/a.jpg")
+
+    def test_the_request_url_is_rebuilt_from_the_checked_parts(self):
+        from cuepoint.data.beatport import beatport_request_url
+
+        assert (
+            beatport_request_url("https://GEO-Media.beatport.com:443/a/b.jpg?x=1#frag")
+            == "https://geo-media.beatport.com/a/b.jpg?x=1"
+        )
+        assert beatport_request_url("https://evil.com/a.jpg") is None
+        assert (
+            beatport_request_url(r"https://evil.com\@geo-media.beatport.com/a") is None
+        )
+
+
+@pytest.mark.unit
+class TestFirstTrackDetailsWithTheField:
+    def test_a_later_track_details_query_supplies_a_missing_image(self):
+        soup = page(
+            [
+                {"queryKey": ["track-details-1"], "state": {"data": {"release": {}}}},
+                query("track-details-2", "https://geo-media.beatport.com/second.jpg"),
+            ]
+        )
+
+        assert (
+            artwork_url_from_page(soup) == "https://geo-media.beatport.com/second.jpg"
+        )
+
+    def test_a_later_track_details_query_supplies_a_missing_sample(self):
+        soup = page(
+            [
+                {"queryKey": ["track-details-1"], "state": {"data": {"name": "x"}}},
+                sample_query("track-details-2", SAMPLE),
+            ]
+        )
+
+        assert sample_url_from_page(soup) == SAMPLE
+
+
+@pytest.mark.unit
+class TestMediaHosts:
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://geo-samples.beatport.com/track/a.LOFI.mp3",
+            "https://GEO-SAMPLES.Beatport.com/track/a.mp3",
+        ],
+    )
+    def test_the_sample_host_beatport_uses_is_allowed(self, url):
+        assert is_beatport_media_url(url)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            None,
+            "",
+            42,
+            "http://geo-samples.beatport.com/a.mp3",
+            "ftp://geo-samples.beatport.com/a.mp3",
+            "https://geo-media.beatport.com/a.mp3",
+            "https://beatport.com/a.mp3",
+            "https://www.beatport.com/a.mp3",
+            "https://geo-samples.beatport.com.evil.example/a.mp3",
+            "https://evil.example/geo-samples.beatport.com/a.mp3",
+            "https://user@geo-samples.beatport.com@evil.example/a.mp3",
+        ],
+    )
+    def test_anything_else_is_not(self, url):
+        assert not is_beatport_media_url(url)
+
+
 @pytest.mark.unit
 class TestScoringDoesNotMove:
     def test_every_recorded_page_scores_exactly_as_before_the_parser_change(self):
@@ -315,6 +519,9 @@ class TestScoringDoesNotMove:
         by_url = {candidate.url: candidate.artwork_url for candidate in candidates}
         assert by_url[STROBE] == STROBE_ARTWORK
         assert by_url[STANDARD] is None
+        previews = {candidate.url: candidate.preview_url for candidate in candidates}
+        assert previews[STROBE] == STROBE_SAMPLE
+        assert previews[STANDARD] is None
 
 
 @pytest.mark.unit
