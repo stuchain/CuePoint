@@ -6848,3 +6848,114 @@ unchanged.
 **Amends**: PREP-11's "an empty Set's note takes the first drop".
 
 **Decided with**: User · **Date**: 2026-10-12
+
+## DEC-244 — Collections Leaves the Sidebar
+
+**Status**: Approved · **Related**: DEC-062, DEC-156, NAV-3, C1
+
+**Context**: C1 reported that Collections sat indented under Library in the sidebar and opened the
+same page as Library. Both were deliberate (DEC-156 nested it; DEC-062 made it the Library page with
+focus on the Collections tree), but they read as a duplicate entry. The tree already has its own
+New Collection / New Set / New folder buttons in the Library's left pane.
+
+**Decision** (Stelios's pick 10-12, option A):
+- The sidebar has no Collections entry. Collections' one home is the Library's left pane.
+- `/collections` and a remembered `collections` launch id are retired to `/library` through
+  `RETIRED_DESTINATIONS`, so old links and stored ids open the Library.
+- The now-unused nesting and page-sharing fields (`parentId`, `pageId`, `pageDestination`) and the
+  Collections focus plumbing (`LibraryScreen focus`, `collectionsFocusToken`, `focusToken`) are removed.
+
+**Supersedes**: DEC-156. **Amends**: DEC-062's Collections destination.
+
+**Decided with**: User · **Date**: 2026-10-12
+
+## DEC-245 — The Collections Tree's Bar Shows Only With a Selection
+
+**Status**: Approved · **Related**: DEC-209, DEC-217, FLW-10, C3
+
+**Context**: C3 said the Collections pane showed too much: an empty tree had a four-line paragraph and
+two big "Create your first…" buttons repeating the New buttons over the tree, and the
+Rename/Duplicate/Delete/Export bar was drawn, all dimmed, even with nothing selected.
+
+**Decision** (Stelios's pick 10-12, option A):
+- An empty tree says one line: "No Collections yet". The New buttons over the tree are the only way
+  to make one.
+- The bar is drawn only while a Collection, Set or folder is selected (FLW-10's own wording). A
+  per-node refusal, such as Duplicate on a plain Collection, still shows as a dimmed button with its
+  reason.
+- After Delete from the bar, focus moves to the tree (or the section's heading when the tree is
+  empty), since the button it came from is gone.
+- Accepted cost: selecting a node moves the Rekordbox playlists below down by one bar's height; the
+  clicked row itself does not move.
+
+**Amends**: DEC-209 for the Collections tree bar only. The Library selection bar, Prepare and
+Discover bars stay always shown.
+
+**Decided with**: User · **Date**: 2026-10-12
+
+## DEC-246 — Track Details Is Compact
+
+**Status**: Approved · **Related**: INS-3, INS-6, FLW-9, DEC-057, DEC-205, DEC-217, DEC-241, C5
+
+**Context**: C5 said Track details showed too much: five tall buttons in two rows, an open Yours
+section with a "From Rekordbox" line, a big Favorite button and an explanatory paragraph.
+
+**Decision** (Stelios's pick 10-12, option A):
+- The actions are one row of small buttons on the DEC-241 control tokens: Play, Play next, Queue,
+  Similar, Folder. Accessible names and hover titles keep the full names ("Add to queue", "Similar
+  tracks", "Show in folder"). Labels never wrap; at the narrowest inspector they shorten with an
+  ellipsis. The buttons are smaller than `--hit-min`, on the DEC-217 toolbar precedent.
+- Favorite is a small heart toggle beside the stars (`aria-pressed`, title Favorite / Remove favorite).
+- Yours starts folded. A fold the person already chose is still remembered. Folded, its heading
+  says what is inside, for example "4 stars · favorite · 2 tags", and follows edits made there.
+- Which layer a rating comes from (DEC-057) moves from a visible line to the stars' hover title; the
+  clear button still names Rekordbox's rating when there is one.
+- Edit values… stays; the paragraph explaining it goes.
+
+**Amends**: INS-3 (Yours starts folded), INS-6 (rating source on hover), FLW-9 (one row of short
+buttons), DEC-205 (no explanation under Edit values…).
+
+**Decided with**: User · **Date**: 2026-10-12
+
+## DEC-247 — The Export Dialog Leads With a Summary
+
+**Status**: Approved · **Related**: DEC-083, DEC-084, DEC-089, C15f
+
+**Context**: C15f: the Export to Rekordbox dialog showed up to about 18 notes and lines before the
+button.
+
+**Decision** (Stelios's pick 10-12):
+- The dialog leads with one line, for example "179 tracks, 42 with changed values, and 3 playlists."
+  It follows the ticked playlists. When the key notation is not the default (it is remembered from
+  the last export), the line also says so, for example "Keys written as Camelot (8A)."
+- Always shown: Save as, a refusal, the source-changed note with Refresh first, every warning that
+  changes the result (entries dropped from playlists, missing files with Show missing files, a folder
+  collision), and the blocker, working and problem lines.
+- Behind a Details button (the shared MoreAbout, closed each time the dialog opens): the From line,
+  the track and field lists, the playlist chooser and list, the notes that change nothing, and the
+  Key notation choice.
+- The done step is unchanged.
+
+**Amends**: the presentation of DEC-084 only. Everything DEC-084 requires is still stated, behind
+Details where it does not change the result.
+
+**Decided with**: User · **Date**: 2026-10-12
+
+## DEC-248 — First Steps Is a Header Chip
+
+**Status**: Approved · **Related**: RUN-3, LIB-2, C15g
+
+**Context**: C15g: "First steps: 3 of 4 done" was a big button on the Library's notice line, and it
+gave way to other notices.
+
+**Decision** (Stelios's pick 10-12):
+- Once something is imported, First steps is a small chip beside the Library heading, "First steps
+  2/4", that opens the same list. Its accessible name stays "First steps: 2 of 4 done". It is gone
+  once all four are done or it is dismissed, and it no longer competes with other notices.
+- The empty Library's full list (LIB-2) is unchanged.
+- `LibraryKeyNote`'s `onShownChange`, which only existed so First steps knew when the line was free,
+  is removed.
+
+**Amends**: RUN-3's notice-line placement.
+
+**Decided with**: User · **Date**: 2026-10-12
