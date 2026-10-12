@@ -448,6 +448,8 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await win.getByRole("button", { name: "Export ▾" }).click();
       await menu(win, "Export to Rekordbox…");
       const dialog = win.getByRole("dialog", { name: "Export to Rekordbox" });
+      // The playlist ticks sit behind Details, which starts closed (DEC-247).
+      await dialog.getByRole("button", { name: "Details" }).click({ timeout: 30_000 });
       await expect(dialog.getByRole("checkbox", { name: /^Friday/ })).toBeChecked({ timeout: 30_000 });
       await expect(dialog.getByRole("list", { name: "Playlists to add" })).toContainText("7 tracks", { timeout: 30_000 });
       await dialog.getByRole("button", { name: "Choose…" }).click();
