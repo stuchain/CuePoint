@@ -9,6 +9,11 @@
  *
  * Writing replaces the file whole through a temporary file beside it, the pattern of
  * `mainSettings.ts`. `safeStorage` is injected, so this runs in tests without Electron.
+ *
+ * On macOS the first use of `safeStorage` makes a key in the Keychain, and the Keychain may need
+ * the person for that (no login keychain, or a build signed differently from the one that made
+ * the key). The call waits for them on the main thread, so the app freezes until they answer. So
+ * nothing here touches it until there is a token to keep or a file to read.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -52,28 +57,45 @@ export class BeatportTokenStore {
   /** What this launch holds; the only copy when storage is not secure. */
   private memory: StoredBeatportToken | null = null;
   private loaded = false;
+  /** The last answer `isSecure` had from the system; null until it has asked. */
+  private lastSecure: boolean | null = null;
 
   constructor(
     private readonly file: string,
     private readonly safeStorage: SafeStorageLike,
     /** Told when the file could not be removed (a message with no token in it). */
     private readonly onProblem: (message: string) => void = () => undefined,
+    private readonly platform: NodeJS.Platform = process.platform,
   ) {}
 
-  /** Whether the token is encrypted at rest and so survives a restart. */
+  /** Whether the token is encrypted at rest and so survives a restart. Asks the system. */
   isSecure(): boolean {
+    let secure: boolean;
     try {
-      if (!this.safeStorage.isEncryptionAvailable()) return false;
-      return this.safeStorage.getSelectedStorageBackend?.() !== "basic_text";
+      secure = this.safeStorage.isEncryptionAvailable() && this.safeStorage.getSelectedStorageBackend?.() !== "basic_text";
     } catch {
-      return false;
+      secure = false;
     }
+    this.lastSecure = secure;
+    return secure;
+  }
+
+  /**
+   * Whether a token kept now would survive a restart, for the Settings line. On macOS it does not
+   * ask the Keychain (see above): the Keychain is always there, so the answer is yes until a save
+   * or a read has asked and been told otherwise.
+   */
+  canKeep(): boolean {
+    if (this.platform !== "darwin") return this.isSecure();
+    return this.lastSecure ?? true;
   }
 
   /** The stored token; null when signed out, when the file is damaged or when it cannot be decrypted. */
   load(): StoredBeatportToken | null {
     if (this.loaded) return this.memory;
     this.loaded = true;
+    // No file, nothing to decrypt: signed out, without asking the system anything.
+    if (!fs.existsSync(this.file)) return this.memory;
     if (!this.isSecure()) return this.memory;
     try {
       const encrypted = fs.readFileSync(this.file);

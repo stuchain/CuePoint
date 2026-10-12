@@ -82,7 +82,12 @@ class FakeStore implements TokenStoreLike {
   value: StoredBeatportToken | null = null;
   secure = true;
   saves = 0;
+  secureAsks = 0;
   isSecure() {
+    this.secureAsks += 1;
+    return this.secure;
+  }
+  canKeep() {
     return this.secure;
   }
   load() {
@@ -973,6 +978,13 @@ describe("when the engine starts", () => {
     expect(newer.store.value.token).toBe("signed-in-token-1");
     // The file's copy is stale either way and does not stay behind in the clear.
     expect(newer.engine.blanked).toBe(1);
+  });
+
+  it("does not ask secure storage when the config file holds no token", async () => {
+    const t = setup();
+    await t.auth.onEngineStarted();
+    t.auth.status();
+    expect(t.store.secureAsks).toBe(0);
   });
 
   it("runs the migration once per launch", async () => {

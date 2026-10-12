@@ -169,6 +169,54 @@ describe("clearing", () => {
   });
 });
 
+describe("the macOS Keychain", () => {
+  /** A safeStorage that counts every call: on macOS each can wait for the person. */
+  function counted() {
+    const storage = fakeSafeStorage();
+    let calls = 0;
+    const wrap = <A extends unknown[], R>(f: (...args: A) => R) => (...args: A): R => {
+      calls += 1;
+      return f(...args);
+    };
+    return {
+      storage: {
+        isEncryptionAvailable: wrap(storage.isEncryptionAvailable),
+        encryptString: wrap(storage.encryptString),
+        decryptString: wrap(storage.decryptString),
+      } satisfies SafeStorageLike,
+      calls: () => calls,
+    };
+  }
+
+  it("is not asked by a signed-out launch: no file to read, and the Settings line", () => {
+    const { storage, calls } = counted();
+    const store = new BeatportTokenStore(tokenFile(), storage, undefined, "darwin");
+    expect(store.load()).toBeNull();
+    expect(store.canKeep()).toBe(true);
+    expect(calls()).toBe(0);
+  });
+
+  it("is asked to read a file that is there, and to keep a token", () => {
+    const file = tokenFile();
+    new BeatportTokenStore(file, fakeSafeStorage(), undefined, "darwin").save(SIGNIN);
+    const { storage, calls } = counted();
+    expect(new BeatportTokenStore(file, storage, undefined, "darwin").load()).toEqual(SIGNIN);
+    expect(calls()).toBeGreaterThan(0);
+  });
+
+  it("says a token will not survive a restart once the Keychain has said no", () => {
+    const store = new BeatportTokenStore(tokenFile(), fakeSafeStorage({ available: false }), undefined, "darwin");
+    expect(store.canKeep()).toBe(true);
+    expect(store.save(SIGNIN)).toBe(false);
+    expect(store.canKeep()).toBe(false);
+  });
+
+  it("elsewhere the Settings line asks the system, which needs nobody", () => {
+    const store = new BeatportTokenStore(tokenFile(), fakeSafeStorage({ backend: "basic_text" }), undefined, "linux");
+    expect(store.canKeep()).toBe(false);
+  });
+});
+
 describe("the storage backends", () => {
   it.each(["gnome_libsecret", "kwallet5", "kwallet6", "kwallet"])("%s is secure", (backend) => {
     expect(new BeatportTokenStore(tokenFile(), fakeSafeStorage({ backend })).isSecure()).toBe(true);
