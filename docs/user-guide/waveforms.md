@@ -5,8 +5,8 @@ long the intro runs, where the drop lands. CuePoint draws one for every track
 whose file it can find, from the audio itself, and shows it in four places: the
 player bar, Track details, a Library column and Prepare's transition strip.
 
-Each is the whole track at once, with a line where playback is. There is no
-zoomed, scrolling view.
+Each is the whole track at once, with a line where playback is. While a track
+plays, a fifth, zoomed view sits above the player bar.
 
 ## Where you see them
 
@@ -16,6 +16,17 @@ across it and let go to jump once. The part already played is dimmed. The
 keyboard and screen readers seek exactly as they did with the slider, which is
 still there underneath. Until the waveform is ready, the bar shows the plain
 slider, and hovering it says why. See [Playing music](player.md#waveforms).
+
+**The zoomed waveform.** A full-width strip just above the player bar shows
+about 8 seconds either side of the playhead, which stays in the middle while
+the music scrolls past. It draws a thin line on every beat and a stronger one
+on each bar, from the track's Rekordbox beat grid; a track without a grid shows
+no lines (hover the strip to read why), because CuePoint never guesses one.
+Click anywhere on it to jump there. The first time a track plays, the strip
+shows the coarse whole-track waveform stretched for a second or two while
+CuePoint reads the file again in detail; tracks played recently come back at
+once. Turn it off with **Settings → Waveforms → Zoomed waveform above the
+player**.
 
 **Track details.** The selected track's waveform sits under its title, with its
 hot cues (each with its letter), memory cues, loops and beat grid. When that
@@ -172,6 +183,9 @@ Waveforms are kept in `waveforms.db`, beside your library in CuePoint's folder
 - **"Clear cache" leaves it alone**, and so does clearing the cache on exit:
   making it again takes hours.
 - **It is not in the support bundle.**
+- **Zoomed waveforms are kept for recently played tracks only**, up to
+  256 MB (about 35 KB a track): the oldest are dropped first, and a dropped one
+  is made again the next time its track plays.
 - **About 5 KB a track**, its loudness included: about 250 MB for 50,000
   tracks, and less for real music, which packs tighter than the test data
   this was measured with.

@@ -7021,3 +7021,30 @@ the Title (see the compact forms above). The Set pane's floor (DEC-112) is uncha
 **Amends**: DEC-209 (for Prepare), DEC-112's facts line, FLW-17's toolbar.
 
 **Decided with**: User · **Date**: 2026-10-12
+
+## DEC-250 — A Zoomed Waveform Above the Player Bar
+
+**Status**: Approved · **Related**: DEC-115, DEC-122, DEC-241, C13, C16c · **ADR**: ADR-012
+
+**Context**: C13: Stelios asked for a zoomed, scrolling waveform with the beat grid, the view DEC-115
+deferred. The overview has 1,200 columns whatever the track's length (about 3 a second for a 6-minute
+track), and the engine threw away the 150-a-second envelope it reduces from.
+
+**Decision** (Stelios's picks 10-12, "all recommended"):
+- **Where:** a full-width strip just above the player bar, about 8 s either side of a centred playhead,
+  scrolling with playback. The bar itself is unchanged (C16c): its markup, look and the C7 centring.
+- **Beat grid:** a line on every beat and a stronger one on each bar, only from Rekordbox's `TEMPO`
+  markers. A track without markers shows no lines, and the strip's hint says "No beat grid: grids come
+  from Rekordbox". CuePoint never guesses a grid from the BPM.
+- **Data:** a second waveform stream, 75 columns a second (`CPWD`, ADR-012), made on demand when a
+  track plays and kept for recently played tracks only, in a 256 MB cache that drops the least
+  recently used. The first play shows the stretched overview for a second or two; a replay is instant.
+- **A cache fill, not a job:** the decode is not shown in Activity, runs while analysis is paused,
+  and waits for tag writes, imports, refreshes and file checks like the analysis does.
+- **On by default**, with **Settings → Waveforms → Zoomed waveform above the player** to turn it off.
+- Click the strip to seek. The scroll runs only while playing and the window is visible; with motion
+  turned off it moves in steps on each position update.
+
+**Supersedes**: DEC-115 (an overview only).
+
+**Decided with**: User · **Date**: 2026-10-12

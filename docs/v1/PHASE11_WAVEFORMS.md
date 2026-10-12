@@ -2233,9 +2233,9 @@ Points 1 to 15 are the phase as specified; point 16 is WAVE-08's (DEC-124), chec
 
 ## Deferred, with reasons
 
-- **A zoomed, scrolling detail view** (DEC-115). It needs a second, much denser resolution, scrolling
-  kept in time with `mpv`'s position, and zoom controls. The overview answers the planning questions
-  this app is for.
+- ~~**A zoomed, scrolling detail view** (DEC-115).~~ Built after the phase as C13 (DEC-250, ADR-012):
+  a 75-a-second detail stream made on demand into a 256 MB cache, drawn in a strip above the player
+  bar with Rekordbox's beat grid. There are still no zoom controls.
 - **Editing cues or beat grids, and writing them to Rekordbox** (DEC-118, DEC-077). They are
   Rekordbox's data. Writing them back means generating the XML's most valuable part, which DEC-077
   exists to never do.

@@ -145,6 +145,12 @@ kept in this store, in a table of its own.
   text, so its row ids are SQLite's own, and `VACUUM`, which `clear()` runs, may renumber them.
   A reading keyed by one could follow another file's row.
 
+## Amendment (C13, 2026-10-12): the zoomed detail, in a bounded table
+
+`waveform_details` holds the zoomed waveform's 75-a-second detail for recently played tracks, capped
+at 256 MB with least-recently-used eviction, created `IF NOT EXISTS` without a schema bump. It
+follows the waveforms on delete, prune and clear. See ADR-012.
+
 ## Signals to revisit
 
 - **The store outgrows its budget:** a real library's mean picture exceeds about 5 KB, which would put

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Zoomed waveform above the player.** While a track plays, a strip above the player bar shows about 8 seconds either side of the playhead, scrolling with the music, with a line on every beat and a stronger one on each bar from the track's Rekordbox beat grid (a track without one shows no lines). Click it to seek. The first play of a track takes a second or two to sharpen; recently played tracks are kept, up to 256 MB. Turn it off in **Settings → Waveforms** (DEC-250).
 - **Hover hints.** Resting the pointer on a button for a moment shows its themed hint, the same one the keyboard shows, everywhere in the app, disabled buttons included. The player bar's title, artist and key have one too.
 - **Sign in to Beatport.** Settings → Beatport and Discover's banner have a **Sign in to Beatport** button that opens Beatport's own page in a window of its own. When you have signed in, CuePoint keeps the sign-in encrypted on your computer and renews it by itself; **Sign out** forgets it. Pasting a token still works, under **Paste a token instead**. Where the system has no secure key store (some Linux setups), you sign in again each time CuePoint starts. Where the system has a secure key store, a token already saved in your config file is moved into the encrypted store on the first launch; otherwise it stays in the file and is still used. CuePoint uses your own Beatport account and the same low request rate as before.
 

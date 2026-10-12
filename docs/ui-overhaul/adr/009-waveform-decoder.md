@@ -267,6 +267,12 @@ the engine holds, made to kill on close, so the operating system ends every deco
 engine however the engine ends. Elsewhere the pipe transport already makes a decoder whose
 engine has died fail its next write.
 
+## Amendment (C13, 2026-10-12): the decode also feeds the zoomed detail
+
+The same decode now also makes the zoomed waveform's 75-a-second detail (ADR-012) when a track
+plays. One decode writes both streams; a detail request on a track whose overview is current
+decodes the file once more, on its own single worker at the same lowered priority.
+
 ## Signals to revisit
 
 - **A pinned build changes behaviour:** `--check-analysis` fails on a new pin,
