@@ -297,7 +297,7 @@ test.describe("the website's pictures (SITE-04)", () => {
           env: { ...process.env, CUEPOINT_HOME: cuepointHome, PYTHONPATH: path.join(REPO_ROOT, "src") },
           stdio: "inherit",
         });
-        await window.evaluate(() => (window as never as Bridge).cuepoint.setBeatportToken("showcase-not-a-real-token"));
+        await window.evaluate(() => (window as never as Bridge).cuepoint.saveBeatportPastedToken("showcase-not-a-real-token"));
       });
 
       await test.step("a folder of Collections and a Set with chapters", async () => {

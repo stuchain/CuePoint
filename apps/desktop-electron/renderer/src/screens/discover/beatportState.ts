@@ -4,14 +4,14 @@
  *
  * The engine names one of five failures — no token, a token Beatport rejected,
  * one it refused for this, a rate limit, Beatport out of reach — and never the
- * token itself. Each notice is one line with one next step: a token is fixed in
- * Settings, and waiting is the only fix for the other two. The page stays
+ * token itself. Each notice is one line with one next step: a missing, ended or
+ * refused sign-in is fixed by signing in to Beatport (C12), and waiting is the
+ * only fix for the other two. The page stays
  * usable in every one of them: past searches and the wantlist are CuePoint's
  * own, and read without Beatport (DEC-098).
  *
- * The words are a DJ's (DSC-3): the token is "your Beatport sign-in key", named
- * once as a "token" so the Settings field it is pasted into is recognized, and
- * a refusal never says "scope".
+ * The words are a DJ's (DSC-3): a person signs in to Beatport, and a refusal
+ * never says "scope".
  */
 import type {
   BeatportErrorClass,
@@ -19,14 +19,16 @@ import type {
   DiscoverRefusal,
 } from "../../api/cuepointBridge.types";
 
-/** What the notice offers: Settings for the token, or asking again. */
-type BeatportNoticeAction = "settings" | "retry";
+/** What the notice offers: signing in to Beatport (again), or asking again. */
+type BeatportNoticeAction = "signin" | "retry";
 
 interface BeatportNotice {
   state: BeatportErrorClass;
   headline: string;
   hint: string;
   action: BeatportNoticeAction;
+  /** The button's words: "Sign in to Beatport", "Sign in again", "Open Settings", "Try again". */
+  actionLabel: string;
 }
 
 /** Whole seconds, as a person reads a wait. */
@@ -57,21 +59,24 @@ export function beatportNotice(
         state,
         headline: "Sign in to Beatport to search its charts and releases.",
         hint: "",
-        action: "settings",
+        action: "signin",
+        actionLabel: "Sign in to Beatport",
       };
     case "rejected":
       return {
         state,
         headline: "Beatport sign-in ended or the token was refused.",
         hint: "",
-        action: "settings",
+        action: "signin",
+        actionLabel: "Sign in again",
       };
     case "forbidden":
       return {
         state,
         headline: "Beatport refused this token.",
         hint: "",
-        action: "settings",
+        action: "signin",
+        actionLabel: "Sign in again",
       };
     case "rate_limited":
       return {
@@ -79,6 +84,7 @@ export function beatportNotice(
         headline: "Beatport is limiting requests",
         hint: `Wait ${waitFor(retryAfter)}.`,
         action: "retry",
+        actionLabel: "Try again",
       };
     case "unavailable":
       return {
@@ -86,6 +92,7 @@ export function beatportNotice(
         headline: "Beatport cannot be reached",
         hint: message ? `${message.replace(/\.$/, "")}.` : "",
         action: "retry",
+        actionLabel: "Try again",
       };
   }
 }
@@ -113,7 +120,5 @@ export function beatportUsable(state: DiscoverBeatportState): boolean {
 /** Why an action that asks Beatport is not offered, in the button's hint. */
 export function unusableReason(state: DiscoverBeatportState): string | null {
   if (beatportUsable(state)) return null;
-  return state === "no_token"
-    ? "Needs a Beatport token, in Settings."
-    : "Needs a Beatport token Beatport accepts, in Settings.";
+  return state === "forbidden" ? "Beatport refused this token." : "Needs a Beatport sign-in.";
 }

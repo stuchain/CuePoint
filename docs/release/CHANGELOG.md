@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Hover hints.** Resting the pointer on a button for a moment shows its themed hint, the same one the keyboard shows, everywhere in the app, disabled buttons included. The player bar's title, artist and key have one too.
+- **Sign in to Beatport.** Settings → Beatport and Discover's banner have a **Sign in to Beatport** button that opens Beatport's own page in a window of its own. When you have signed in, CuePoint keeps the sign-in encrypted on your computer and renews it by itself; **Sign out** forgets it. Pasting a token still works, under **Paste a token instead**. Where the system has no secure key store (some Linux setups), you sign in again each time CuePoint starts. Where the system has a secure key store, a token already saved in your config file is moved into the encrypted store on the first launch; otherwise it stays in the file and is still used. CuePoint uses your own Beatport account and the same low request rate as before.
 
 ### Changed
+- Discover's banner says **Sign in to Beatport** (or **Sign in again**, also when Beatport refused the token) with the button beside it, where it said Open Settings. Settings → Beatport lost its "How do I get a token?" help.
 - The Camelot wheel (header and Keys page) is drawn as smooth wedges with even gaps.
 - **Space plays and pauses after a click.** Space now plays or pauses unless you are typing, a dialog or menu is open, or you Tabbed to the control. Clicking Next and then pressing Space pauses instead of skipping again, and Space works after clicking the waveform. The player bar and the queue can no longer be drag-selected.
 - The player bar's waveform sits centred between the controls on either side of it.

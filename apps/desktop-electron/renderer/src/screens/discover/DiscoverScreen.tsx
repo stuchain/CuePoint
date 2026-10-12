@@ -19,7 +19,6 @@
  * describe a row it does not.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import type {
   BeatportPlaylistRequest,
@@ -36,7 +35,6 @@ import { Tabs } from "../../components/Tabs";
 import { jobExplainer, useActiveJob } from "../../components/shell/useActiveJob";
 import { useToast } from "../../components/Toast";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
-import { settingsFocusState } from "../settingsLink";
 import { DiscoverHintCard } from "./DiscoverHintCard";
 import { NewRunPanel } from "./NewRunPanel";
 import { RunsView } from "./RunsView";
@@ -57,6 +55,7 @@ import {
   resolvePrompt,
 } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
+import { BeatportSignInButton } from "./BeatportSignInButton";
 import { openOnBeatport } from "./openOnBeatport";
 import { useDiscoverJob } from "./useDiscoverJob";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -81,7 +80,6 @@ interface PushNotice {
 }
 
 export function DiscoverScreen() {
-  const navigate = useNavigate();
   const { push: toast } = useToast();
   const [section, setSection] = useState<DiscoverSection>(loadDiscoverSection);
   const [options, setOptions] = useState<DiscoverOptions | null>(null);
@@ -314,16 +312,11 @@ export function DiscoverScreen() {
             <strong>{notice.headline}</strong>
             {notice.hint ? <span>{notice.hint}</span> : null}
           </div>
-          {notice.action === "settings" ? (
-            <Button
-              variant="secondary"
-              onClick={() => navigate("/settings", { state: settingsFocusState("beatport-token") })}
-            >
-              Open Settings
-            </Button>
+          {notice.action === "signin" ? (
+            <BeatportSignInButton label={notice.actionLabel} onDone={reloadOptions} />
           ) : (
             <Button variant="secondary" onClick={reloadOptions}>
-              Try again
+              {notice.actionLabel}
             </Button>
           )}
         </div>

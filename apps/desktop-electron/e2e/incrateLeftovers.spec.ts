@@ -240,7 +240,10 @@ test.describe("What inCrate left behind (DISCOVER-12)", () => {
       });
       await expect(window).toHaveURL(/#\/discover$/, { timeout: 15_000 });
       await expect(window.getByText("Sign in to Beatport to search its charts and releases.")).toBeVisible({ timeout: 30_000 });
+      await expect(window.getByRole("button", { name: "Sign in to Beatport" })).toBeVisible();
       await window.getByRole("link", { name: "Settings" }).click();
+      // The token field is the paste fallback, behind its own button.
+      await window.getByRole("button", { name: "Paste a token instead" }).click();
       await expect(window.locator("#settings-beatport-token")).toBeVisible({ timeout: 15_000 });
       await idle(window);
     } finally {

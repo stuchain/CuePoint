@@ -182,8 +182,14 @@ describe("the Beatport test result", () => {
       masked: "••••abcd",
     }));
     (window.cuepoint as unknown as Record<string, unknown>).testBeatportToken = vi.fn(async () => answer);
+    (window.cuepoint as unknown as Record<string, unknown>).getBeatportAuth = vi.fn(async () => ({
+      state: "signed_in",
+      masked: "••••abcd",
+      expires_at: null,
+      secure_storage: true,
+    }));
     renderSettings();
-    const button = within(region("Beatport")).getByRole("button", { name: "Test connection" });
+    const button = await within(region("Beatport")).findByRole("button", { name: "Test connection" });
     await waitFor(() => expect(button).toBeEnabled());
     await userEvent.click(button);
     return await within(region("Beatport")).findByRole("status");

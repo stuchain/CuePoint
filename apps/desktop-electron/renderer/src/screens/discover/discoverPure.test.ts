@@ -108,16 +108,17 @@ describe("Beatport's state", () => {
   });
 
   it.each([
-    ["options_no_token", "Sign in to Beatport to search its charts and releases.", "settings"],
-    ["options_rejected", "Beatport sign-in ended or the token was refused.", "settings"],
-    ["options_forbidden", "Beatport refused this token.", "settings"],
-    ["options_rate_limited", "Beatport is limiting requests", "retry"],
-    ["options_unavailable", "Beatport cannot be reached", "retry"],
-  ] as const)("draws %s from the engine's class", (state, headline, action) => {
+    ["options_no_token", "Sign in to Beatport to search its charts and releases.", "signin", "Sign in to Beatport"],
+    ["options_rejected", "Beatport sign-in ended or the token was refused.", "signin", "Sign in again"],
+    ["options_forbidden", "Beatport refused this token.", "signin", "Sign in again"],
+    ["options_rate_limited", "Beatport is limiting requests", "retry", "Try again"],
+    ["options_unavailable", "Beatport cannot be reached", "retry", "Try again"],
+  ] as const)("draws %s from the engine's class", (state, headline, action, label) => {
     const beatport = (fixture[state].value as unknown as DiscoverOptions).beatport;
     const notice = beatportNotice(beatport.state, beatport.message, beatport.retry_after)!;
     expect(notice.headline).toBe(headline);
     expect(notice.action).toBe(action);
+    expect(notice.actionLabel).toBe(label);
     // One line: a hint only where it says something more.
     expect(notice.hint.length).toBeLessThan(80);
     expect(notice.hint).not.toContain("still open without it");
@@ -154,7 +155,9 @@ describe("Beatport's state", () => {
     expect(beatportUsable("unavailable")).toBe(true);
     for (const state of ["no_token", "rejected", "forbidden"] as const) {
       expect(beatportUsable(state)).toBe(false);
-      expect(unusableReason(state)).toMatch(/Settings/);
+      expect(unusableReason(state)).toBe(
+        state === "forbidden" ? "Beatport refused this token." : "Needs a Beatport sign-in.",
+      );
     }
     expect(unusableReason("ok")).toBeNull();
   });

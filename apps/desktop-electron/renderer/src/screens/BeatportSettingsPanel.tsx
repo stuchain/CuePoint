@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
-import { Button, Panel, TextField } from "../components";
+import { Button, MoreAbout, Panel, TextField } from "../components";
+import type { BeatportAuth } from "../api/cuepointBridge.types";
 import { useBeatportToken } from "../hooks/useBeatportToken";
 import "./beatport-settings.css";
 
@@ -12,13 +13,22 @@ interface BeatportSettingsPanelProps {
 }
 
 /**
- * Settings → Beatport (SET-5): the token Discover searches Beatport with, what
- * it is for, how to get one, and whether Beatport accepts it.
+ * Settings → Beatport (SET-5, C12): whether CuePoint is signed in to Beatport, which is what lets
+ * Discover search it, and whether Beatport accepts the sign-in. The sign-in is a window of its own
+ * that main opens; pasting a token stays as the way around it. The token never reaches this page
+ * except the one being pasted.
  */
 export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSettingsPanelProps) {
   const {
     engineAvailable,
     status,
+    auth,
+    canPaste: signedOutOrEnded,
+    signingIn,
+    signingOut,
+    authError,
+    signIn,
+    signOut,
     draft,
     setDraft,
     loading,
@@ -28,16 +38,18 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
     testMessage,
     testOk,
     testReason,
-    save,
+    savePasted,
     test,
   } = useBeatportToken();
+  const lineId = useId();
+  const lineRef = useRef<HTMLParagraphElement>(null);
 
-  // Discover's "no token" and "token rejected" states link here, to the token
-  // field (DISCOVER-10). Scrolled to and focused once per navigation — once
-  // its status has been read: the field is disabled while it loads, and a
-  // field disabled after it was focused loses the focus without a word.
+  // Discover and the Library link here, to the token field (DISCOVER-10). Scrolled to and
+  // focused once per navigation — once its status and the sign-in state have been read: the
+  // field is disabled while it loads, and a field disabled after it was focused loses the focus
+  // without a word.
   const focused = useRef<string | null>(null);
-  const fieldReady = engineAvailable && loaded && !loading;
+  const fieldReady = engineAvailable && loaded && !loading && auth !== null;
   useEffect(() => {
     if (!focusToken || !fieldReady || focused.current === focusToken) return;
     focused.current = focusToken;
@@ -46,82 +58,177 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
     field?.focus();
   }, [fieldReady, fieldId, focusToken]);
 
+  if (auth === null) {
+    return (
+      <Panel title="Beatport">
+        <div className="settings-form">
+          <p className="cp-beatport-settings__lead">Checking Beatport…</p>
+        </div>
+      </Panel>
+    );
+  }
+
+  const { state, masked } = auth;
+  const signedIn = state === "signed_in" || state === "pasted";
+  const env = state === "env";
+  // Linked to from somewhere that wants the token field: a signed-in person may replace the token.
+  const replacing = signedIn && focusToken !== null;
+  const showPaste = signedOutOrEnded || replacing;
+  const line = lineFor(state, masked);
+  const fromConfig = !signedIn && !env && status.configured && status.source === "config";
+  const signInLabel = state === "expired" ? "Sign in again" : "Sign in to Beatport";
+  const noDesktop = !engineAvailable;
+
   const tokenHint = engineAvailable
     ? status.configured
       ? `Saved token ${status.masked ?? ""}. Paste a new one to replace it.`
       : "Kept on this computer only."
     : "Open CuePoint as a desktop app to save a token.";
 
+  const settled = (): void => lineRef.current?.focus();
+
+  const testResult = testMessage ? (
+    <p
+      className={`cp-beatport-settings__result cp-beatport-settings__result--${testOk ? "accepted" : testReason === "unreachable" ? "unreachable" : "rejected"}`}
+      role="status"
+    >
+      {testOk
+        ? "Accepted. Beatport took the token."
+        : testReason === "rejected"
+          ? `Beatport rejected the token. ${testMessage}`
+          : testReason === "unreachable"
+            ? `Couldn't reach Beatport. ${testMessage}`
+            : testMessage}
+    </p>
+  ) : null;
+
   return (
     <Panel title="Beatport">
       <div className="settings-form">
-        <p className="cp-beatport-settings__lead">
-          Discover uses your own Beatport token to search Beatport. Without one, Discover can still
-          open past runs and your wantlist.
+        <p id={lineId} ref={lineRef} tabIndex={-1} className="cp-beatport-settings__lead">
+          {line}
         </p>
-        <TextField
-          label="Beatport token"
-          id={fieldId}
-          type="password"
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder={
-            status.configured ? "Paste a new token to replace the saved one" : "Paste your Beatport access token"
-          }
-          hint={loading ? "Loading token status…" : tokenHint}
-          disabled={!engineAvailable || loading}
-        />
-        <div className="match-actions">
-          <Button
-            variant="primary"
-            loading={saving}
-            disabled={!engineAvailable || !draft.trim()}
-            onClick={() => void save()}
-          >
-            Save token
-          </Button>
-          <Button
-            variant="secondary"
-            loading={testing}
-            disabled={!engineAvailable || (!draft.trim() && !status.configured)}
-            onClick={() => void test()}
-          >
-            Test connection
-          </Button>
-        </div>
-        {testMessage ? (
-          <p
-            className={`cp-beatport-settings__result cp-beatport-settings__result--${testOk ? "accepted" : testReason === "unreachable" ? "unreachable" : "rejected"}`}
-            role="status"
-          >
-            {testOk
-              ? "Accepted. Beatport took the token."
-              : testReason === "rejected"
-                ? `Beatport rejected the token. ${testMessage}`
-                : testReason === "unreachable"
-                  ? `Couldn't reach Beatport. ${testMessage}`
-                  : testMessage}
+        {fromConfig ? (
+          <p className="cp-beatport-settings__lead">
+            Using the token saved in CuePoint&apos;s config file · {status.masked ?? "••••"}
           </p>
         ) : null}
-        <details className="cp-beatport-settings__help">
-          <summary>How do I get a token?</summary>
-          <p>Beatport does not hand out tokens from your account page. You ask for API access, then exchange what they give you for a token.</p>
-          <ol>
-            <li>
-              Fill in Beatport&apos;s API key request form (app name, what you will use it for) and
-              wait for approval. Beatport sends you a client ID, and possibly a client secret.
-            </li>
-            <li>
-              Use your client ID to get an access token from Beatport: the password flow if you have
-              a client secret, the authorization code flow if you have only a client ID. The token is
-              the <code>access_token</code> value in Beatport&apos;s answer. Keep your client secret
-              private.
-            </li>
-            <li>Paste the token above, choose Save token, then Test connection.</li>
-          </ol>
-          <p>A token expires after a while. When Discover says Beatport rejected it, get a new one and save it.</p>
-        </details>
+        {!env && !auth.secure_storage ? (
+          <p className="cp-beatport-settings__lead">
+            This system has no secure key store, so you sign in again each time CuePoint starts.
+          </p>
+        ) : null}
+        {noDesktop ? (
+          <p className="cp-beatport-settings__lead">Open CuePoint as a desktop app to sign in.</p>
+        ) : null}
+        {signingIn ? (
+          <p className="cp-beatport-settings__lead" role="status">
+            Finish signing in in the Beatport window.
+          </p>
+        ) : null}
+        {authError ? (
+          <p className="cp-beatport-settings__result cp-beatport-settings__result--rejected" role="alert">
+            {authError}
+          </p>
+        ) : null}
+        <div className="match-actions">
+          {signedIn || env ? (
+            <>
+              <Button
+                variant="secondary"
+                loading={testing}
+                disabled={noDesktop}
+                onClick={() => void test()}
+              >
+                Test connection
+              </Button>
+              {signedIn ? (
+                <Button
+                  variant="secondary"
+                  loading={signingOut}
+                  disabled={noDesktop}
+                  onClick={() => void signOut().then(settled)}
+                >
+                  Sign out
+                </Button>
+              ) : null}
+            </>
+          ) : (
+            <Button
+              variant="primary"
+              disabled={noDesktop || state === "unavailable" || signingIn || signingOut}
+              onClick={() => void signIn().then(settled)}
+            >
+              {signInLabel}
+            </Button>
+          )}
+        </div>
+        {!showPaste ? testResult : null}
+        {showPaste ? (
+          <MoreAbout label="Paste a token instead" describedBy={lineId} defaultOpen={focusToken !== null}>
+            <div className="settings-form">
+              <p className="cp-beatport-settings__lead">
+                Without a sign-in, past runs and wantlist still open.
+              </p>
+              <TextField
+                label="Beatport token"
+                id={fieldId}
+                type="password"
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder={
+                  status.configured
+                    ? "Paste a new token to replace the saved one"
+                    : "Paste your Beatport access token"
+                }
+                hint={loading ? "Loading token status…" : tokenHint}
+                disabled={noDesktop || loading}
+              />
+              <div className="match-actions">
+                <Button
+                  variant="primary"
+                  loading={saving}
+                  disabled={noDesktop || !draft.trim() || signingIn}
+                  onClick={() => void savePasted()}
+                >
+                  Save token
+                </Button>
+                {signedOutOrEnded ? (
+                  <Button
+                    variant="secondary"
+                    loading={testing}
+                    disabled={noDesktop || (!draft.trim() && !status.configured)}
+                    onClick={() => void test(true)}
+                  >
+                    Test connection
+                  </Button>
+                ) : null}
+              </div>
+              {signedOutOrEnded ? testResult : null}
+            </div>
+          </MoreAbout>
+        ) : null}
+        {replacing ? testResult : null}
       </div>
     </Panel>
   );
+}
+
+/** The one line that says where the sign-in stands. */
+function lineFor(state: BeatportAuth["state"], masked: string | null): string {
+  const tail = masked ? ` · ${masked}` : "";
+  switch (state) {
+    case "signed_in":
+      return `Signed in to Beatport${tail} · renews by itself`;
+    case "pasted":
+      return `Using a pasted token${tail}`;
+    case "expired":
+      return "Beatport sign-in ended";
+    case "env":
+      return "Using BEATPORT_ACCESS_TOKEN from the environment";
+    case "unavailable":
+      return "Signing in to Beatport isn't available on this system.";
+    case "signed_out":
+      return "Sign in to let Discover search Beatport.";
+  }
 }

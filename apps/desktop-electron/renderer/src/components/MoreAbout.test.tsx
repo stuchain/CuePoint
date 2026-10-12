@@ -46,4 +46,10 @@ describe("MoreAbout", () => {
     render(<MoreAbout label="Why?">The detail.</MoreAbout>);
     expect(screen.getByRole("button", { name: "Why?" })).toHaveAttribute("aria-expanded", "false");
   });
+
+  it("can start open, for a link that must land inside it", () => {
+    render(<MoreAbout defaultOpen>The detail.</MoreAbout>);
+    expect(screen.getByRole("button", { name: "Less" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("The detail.")).toBeVisible();
+  });
 });

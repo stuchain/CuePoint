@@ -3200,7 +3200,7 @@ decision up again rather than amending it.
 
 ## DEC-098 — The Beatport Token Is Handled as It Is Today
 
-**Status**: Approved · **Against recommendation** (OS secure storage)
+**Status**: Superseded by DEC-239 · **Against recommendation** (OS secure storage)
 
 **Decision**: Phase 9 does not change how the Beatport token is entered, stored or refreshed. A user
 pastes it into Settings, it is kept in `~/.cuepoint/config.yaml` as `incrate.beatport_access_token`
@@ -3246,6 +3246,11 @@ product to rescue a token without playlist scope, and the placeholder URL is a l
   with it.
 
 **Decided with**: User · **Date**: 2026-09-21
+
+**Amended by DEC-239 (2026-10-12)**: The Beatport sign-in window is a sign-in surface only.
+CuePoint never automates a Beatport page and never does playlist work through the browser, so
+playlists stay API-only. The token the window captures must carry user scope: a guest token is
+refused at sign-in, so the playlist refusal above is not met by a token that could never work.
 
 ---
 
@@ -6720,5 +6725,75 @@ the one height for controls app-wide, while `--hit-min` stays for rows and the p
 **Reason**: the user found selected rows' heavy frame and the bevelled buttons too much to read
 (2026-10-12) and picked the lighter fill with an accent bar (C4 A), flat pixel-font buttons (C11 B),
 and thin panels, underline tabs and flat pane buttons (C16 a, b, d).
+
+**Decided with**: User · **Date**: 2026-10-12
+
+---
+
+## DEC-239 — In-app Beatport Sign-in Window
+
+**Status**: Approved · **Supersedes**: DEC-098 · **Amends**: DEC-099 · **Related**: ADR-011, DIST-07
+
+**Decision**: Settings and Discover sign in to Beatport in a window of CuePoint's own, in place of
+a pasted token.
+- **The window.** Main opens a second, modal `BrowserWindow` on Beatport's own site, in the
+  persistent partition `persist:beatport-signin` that the main window never shares. It is
+  sandboxed, with context isolation, no Node and no preload, and its permission requests are
+  refused. Navigation is limited to `https` on `*.beatport.com` and the hosts of the social
+  sign-ins Beatport offers; those popups open in the same partition under the same rules.
+- **Capturing the token.** Two ways, whichever comes first: the `Authorization: Bearer` header the
+  site sends to `api.beatport.com/v4` (read on that partition's `webRequest` only, never changed or
+  logged), and the website's own `/api/auth/session` JSON, polled while the window is open. A
+  candidate is accepted only when Beatport's introspection says it is live and belongs to a user. A
+  `user:anon` guest token is rejected, because playlist work would be refused with it (DEC-099).
+- **Where the token lives.** Main encrypts it with `safeStorage` into the user data folder, and
+  hands it to the engine over the authenticated loopback, which keeps it in memory only. The
+  renderer is told a state and a masked preview (`••••abcd`), never the token; the live token joins
+  what the report scrubber removes.
+- **Order.** `BEATPORT_ACCESS_TOKEN` wins, then the desktop sign-in's token, then
+  `incrate.beatport_access_token`. The config key is still read, so existing files load and a
+  headless engine still works.
+- **Renewal.** Before the token ends, a hidden window in the same partition loads Beatport and
+  waits for a new token. If none comes before the token's end, Settings says the sign-in ended and
+  offers Sign in again; CuePoint keeps retrying for a while after. How long Beatport's own sign-in
+  lasts was not measured; where it does not renew, that is a new sign-in about every ten hours.
+- **Migration, once.** On the first launch after the update, where secure storage exists, a token
+  in the config key is moved to it as a pasted token, and the key's value is then blanked (the key
+  stays). A crash between the steps leaves it in both places, and the next launch repeats the step.
+  Where it does not exist, the token stays in the config file and is still used; Settings says so.
+- **Paste stays.** "Paste a token instead" in Settings is the fallback for when the window cannot
+  be used. It goes to main like a sign-in does; the desktop app no longer writes a token to the
+  config file.
+- **Linux without a keyring.** When `safeStorage` reports the `basic_text` backend, the token is
+  kept in memory only and the person signs in again at each launch; Settings says so in one line.
+  Plain text on disk is not an option.
+- **Sign out** deletes the stored token, clears the partition's cookies, storage and cache, and
+  tells the engine to forget it.
+- **Playlists stay API-only** (DEC-099): the window is for signing in. CuePoint never scripts a
+  Beatport page.
+
+**Reason**: Getting a Beatport token meant a developer-key request and an OAuth exchange that a DJ
+cannot be asked to do, so Discover was out of reach of the people it was for (DEC-098 left that for
+a later phase). Beatport's website already holds a user token for a signed-in person, and reading
+it with the person's consent is what their own browser does. The token on disk in plain text was
+the other thing DEC-098 recorded as a known weakness; this closes it.
+
+**Terms of service**: This uses a token Beatport issues to its own website, with the person's own
+account, outside an approved API key. Pasting a token was the same in kind; the window makes it
+easier, so it is stated. Mitigations: only the signed-in person's own account; no credentials
+stored or typed by CuePoint, and the login form is never scraped; the existing low request rate.
+Beatport may change its sign-in and break the capture, and may limit or flag an account; the paste
+fallback stays for that. The user guide says it in one line.
+
+**Implications**:
+- A second window and a second partition are an exception to the one-window rule; ADR-011 records
+  it and what keeps it contained.
+- The partition's cookie jar is itself a long-lived credential; Chromium encrypts it with the OS
+  key on macOS and Windows, and on Linux that depends on the keyring. Sign out clears it.
+- End-to-end runs may point the sign-in and API URLs at a local stand-in through
+  `CUEPOINT_E2E_BEATPORT_SIGNIN_URL` and `CUEPOINT_E2E_BEATPORT_API_URL`, honoured only when
+  `CUEPOINT_E2E_DISPLAY` is set and the app is not packaged.
+- A real sign-in on each platform, the renewal after ten hours, and a playlist push with the
+  captured token can only be checked by hand.
 
 **Decided with**: User · **Date**: 2026-10-12

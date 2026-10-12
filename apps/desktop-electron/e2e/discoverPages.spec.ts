@@ -336,7 +336,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
           await window.cuepoint!.player!.setVolume(0);
           await window.cuepoint!.player!.setRepeat("one");
           // A placeholder in the sandboxed config; the fixture answers for Beatport.
-          await window.cuepoint!.setBeatportToken("e2e-not-a-real-token");
+          await window.cuepoint!.saveBeatportPastedToken("e2e-not-a-real-token");
         });
       });
 

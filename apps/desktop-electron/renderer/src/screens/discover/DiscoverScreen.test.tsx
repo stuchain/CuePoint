@@ -137,6 +137,12 @@ function install(overrides: Record<string, Fn> = {}) {
             : fixture.discovery_result,
     })),
     openBeatportPage: vi.fn(async () => true),
+    beatportSignIn: vi.fn(async () => ({
+      state: "signed_in",
+      masked: "••••abcd",
+      expires_at: null,
+      secure_storage: true,
+    })),
     ...overrides,
   };
   (window as unknown as { cuepoint: unknown }).cuepoint = bridge;
@@ -348,9 +354,9 @@ describe("the card that points to the other pages (DSC-11)", () => {
 
 describe("Beatport's state", () => {
   it.each([
-    ["options_no_token", "Sign in to Beatport to search its charts and releases.", "Open Settings"],
-    ["options_rejected", "Beatport sign-in ended or the token was refused.", "Open Settings"],
-    ["options_forbidden", "Beatport refused this token.", "Open Settings"],
+    ["options_no_token", "Sign in to Beatport to search its charts and releases.", "Sign in to Beatport"],
+    ["options_rejected", "Beatport sign-in ended or the token was refused.", "Sign in again"],
+    ["options_forbidden", "Beatport refused this token.", "Sign in again"],
     ["options_rate_limited", "Beatport is limiting requests", "Try again"],
     ["options_unavailable", "Beatport cannot be reached", "Try again"],
   ] as const)("draws %s, and the page stays usable", async (state, headline, action) => {
@@ -384,14 +390,49 @@ describe("Beatport's state", () => {
     ).closest(".discover-banner") as HTMLElement;
     expect(banner).not.toHaveTextContent("still open without it");
     expect(banner.querySelectorAll(".discover-banner__text > *")).toHaveLength(1);
-    expect(within(banner).getByRole("button", { name: "Open Settings" })).toBeInTheDocument();
+    expect(within(banner).getByRole("button", { name: "Sign in to Beatport" })).toBeInTheDocument();
+    expect(within(banner).queryByRole("button", { name: "Open Settings" })).toBeNull();
+    expect(banner.querySelectorAll("button")).toHaveLength(1);
   });
 
-  it("links to the token field in Settings", async () => {
+  it("opens the Beatport sign-in from the banner, then asks Beatport again", async () => {
     install({ getDiscoverOptions: vi.fn(async () => asAnswer(fixture.options_no_token)) });
     renderDiscover();
-    fireEvent.click(await screen.findByRole("button", { name: "Open Settings" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in to Beatport" }));
+    await waitFor(() => expect(bridge.beatportSignIn).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(bridge.getDiscoverOptions).toHaveBeenCalledTimes(2));
+  });
+
+  it("says in one line when the sign-in window could not open", async () => {
+    install({
+      getDiscoverOptions: vi.fn(async () => asAnswer(fixture.options_rejected)),
+      beatportSignIn: vi.fn(async () => {
+        throw new Error("no window");
+      }),
+    });
+    renderDiscover();
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in again" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't open the Beatport sign-in.");
+    expect(bridge.getDiscoverOptions).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers the sign-in again for a token Beatport refused, not Settings", async () => {
+    install({ getDiscoverOptions: vi.fn(async () => asAnswer(fixture.options_forbidden)) });
+    renderDiscover();
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in again" }));
+    await waitFor(() => expect(bridge.beatportSignIn).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
+  });
+
+  it("goes to the token field in Settings instead when the token is from the environment", async () => {
+    install({
+      getDiscoverOptions: vi.fn(async () => asAnswer(fixture.options_rejected)),
+      getBeatportAuth: vi.fn(async () => ({ state: "env", masked: null, expires_at: null, secure_storage: true })),
+    });
+    renderDiscover();
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in again" }));
     expect(await screen.findByTestId("settings")).toHaveTextContent('"settingsFocus":"beatport-token"');
+    expect(bridge.beatportSignIn).not.toHaveBeenCalled();
   });
 
   it("asks again when told to try again", async () => {
@@ -410,7 +451,7 @@ describe("Beatport's state", () => {
     await openNewSearch();
     const start = await screen.findByRole("button", { name: "Start looking" });
     expect(start).toBeDisabled();
-    expect(screen.getByText("Needs a Beatport token, in Settings.")).toBeInTheDocument();
+    expect(screen.getByText("Needs a Beatport sign-in.")).toBeInTheDocument();
   });
 
   it("shows a token refused as a search starts, over what options said", async () => {

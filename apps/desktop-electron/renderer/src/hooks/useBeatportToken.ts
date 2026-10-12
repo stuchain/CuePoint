@@ -1,13 +1,42 @@
 import { useCallback, useEffect, useState } from "react";
-import type { BeatportTokenStatus, BeatportTokenTestResult } from "../api/cuepointBridge.types";
+import type {
+  BeatportAuth,
+  BeatportTokenStatus,
+  BeatportTokenTestResult,
+} from "../api/cuepointBridge.types";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 
+/** What Settings shows when there is no desktop bridge, or main cannot answer. */
+const SIGNED_OUT: BeatportAuth = {
+  state: "signed_out",
+  masked: null,
+  expires_at: null,
+  secure_storage: true,
+};
+
+/** Whether the paste field is the way to a token: signed out, ended, or no sign-in available. */
+function canPasteIn(state: BeatportAuth["state"]): boolean {
+  return state === "signed_out" || state === "expired" || state === "unavailable";
+}
+
+/**
+ * The Beatport sign-in and the token behind it. The sign-in itself lives in main (C12); this
+ * only asks for it and shows its state. No token is ever held here except the one being pasted.
+ */
 export function useBeatportToken() {
   const engineAvailable = hasEngineBridge();
   const [status, setStatus] = useState<BeatportTokenStatus>({
     configured: false,
     masked: null,
   });
+  // Null until main has answered (or there is no main to ask), so the page shows neither state
+  // before it knows which one is true.
+  const [auth, setAuth] = useState<BeatportAuth | null>(null);
+  // The sign-in window is open (or a sign-out is running): its buttons wait.
+  const [signingIn, setSigningIn] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  // One line saying why a sign-in, sign-out or paste did not work; null otherwise.
+  const [authError, setAuthError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
   // Whether the status has been read once: until then the field is about to
@@ -42,29 +71,108 @@ export function useBeatportToken() {
     }
   }, [engineAvailable, refresh]);
 
-  const save = useCallback(async () => {
-    if (!window.cuepoint?.setBeatportToken) {
-      throw new Error("Open CuePoint as a desktop app to save a token.");
+  // The sign-in state, read once and then followed: main announces every change, including a
+  // renewal that happens while Settings is open. The token status follows each change.
+  useEffect(() => {
+    const cuepoint = window.cuepoint;
+    let current = true;
+    if (!cuepoint?.getBeatportAuth) {
+      setAuth(SIGNED_OUT);
+      return;
+    }
+    const apply = (next: BeatportAuth): void => {
+      if (!current) return;
+      setAuth(next);
+      // A half-typed token is dropped once the field is no longer the way in.
+      if (!canPasteIn(next.state)) setDraft("");
+      void refresh();
+    };
+    cuepoint
+      .getBeatportAuth()
+      .then((next) => {
+        if (current) setAuth(next);
+      })
+      .catch(() => {
+        if (current) setAuth(SIGNED_OUT);
+      });
+    const unsubscribe = cuepoint.onBeatportAuthChanged?.(apply);
+    return () => {
+      current = false;
+      unsubscribe?.();
+    };
+  }, [refresh]);
+
+  const signIn = useCallback(async () => {
+    if (!window.cuepoint?.beatportSignIn) {
+      setAuthError("Open CuePoint as a desktop app to sign in.");
+      return null;
+    }
+    setSigningIn(true);
+    setAuthError(null);
+    try {
+      const next = await window.cuepoint.beatportSignIn();
+      setAuth(next);
+      if (!canPasteIn(next.state)) setDraft("");
+      await refresh();
+      return next;
+    } catch {
+      setAuthError("Couldn't open the Beatport sign-in. Try again.");
+      return null;
+    } finally {
+      setSigningIn(false);
+    }
+  }, [refresh]);
+
+  const signOut = useCallback(async () => {
+    if (!window.cuepoint?.beatportSignOut) return null;
+    setSigningOut(true);
+    setAuthError(null);
+    try {
+      const next = await window.cuepoint.beatportSignOut();
+      setAuth(next);
+      setTestMessage(null);
+      setTestOk(null);
+      setTestReason(null);
+      await refresh();
+      return next;
+    } catch {
+      setAuthError("Couldn't sign out. Try again.");
+      return null;
+    } finally {
+      setSigningOut(false);
+    }
+  }, [refresh]);
+
+  // The paste fallback goes to main, which encrypts it; the engine never writes it to a file.
+  const savePasted = useCallback(async () => {
+    if (!window.cuepoint?.saveBeatportPastedToken) {
+      setAuthError("Open CuePoint as a desktop app to save a token.");
+      return null;
     }
     const token = draft.trim();
-    if (!token) {
-      return status;
-    }
+    if (!token) return null;
     setSaving(true);
+    setAuthError(null);
     try {
-      const next = await window.cuepoint.setBeatportToken(token);
-      setStatus(next);
+      const next = await window.cuepoint.saveBeatportPastedToken(token);
+      setAuth(next);
       setDraft("");
       setTestMessage(null);
       setTestOk(null);
       setTestReason(null);
+      await refresh();
       return next;
+    } catch {
+      setAuthError("Couldn't save the token. Try again.");
+      return null;
     } finally {
       setSaving(false);
     }
-  }, [draft, status]);
+  }, [draft, refresh]);
 
-  const test = useCallback(async () => {
+  // `useDraft` is for the paste field's own button: it tests what is typed there. The signed-in
+  // and environment buttons test the token CuePoint holds, whatever the field holds.
+  const test = useCallback(async (useDraft = false) => {
     if (!window.cuepoint?.testBeatportToken) {
       throw new Error("Open CuePoint as a desktop app to test a token.");
     }
@@ -74,7 +182,7 @@ export function useBeatportToken() {
     setTestReason(null);
     try {
       const result = await window.cuepoint.testBeatportToken(
-        draft.trim() ? { token: draft.trim() } : undefined,
+        useDraft && draft.trim() ? { token: draft.trim() } : undefined,
       );
       setTestMessage(result.message);
       setTestOk(result.ok);
@@ -88,6 +196,13 @@ export function useBeatportToken() {
   return {
     engineAvailable,
     status,
+    auth,
+    canPaste: auth ? canPasteIn(auth.state) : false,
+    signingIn,
+    signingOut,
+    authError,
+    signIn,
+    signOut,
     draft,
     setDraft,
     loading,
@@ -98,7 +213,7 @@ export function useBeatportToken() {
     testOk,
     testReason,
     refresh,
-    save,
+    savePasted,
     test,
   };
 }

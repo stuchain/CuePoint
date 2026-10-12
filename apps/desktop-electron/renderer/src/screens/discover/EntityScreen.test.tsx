@@ -376,9 +376,9 @@ describe("a page's identity (DEC-095)", () => {
 
 describe("the Beatport half, in every state", () => {
   const STANDING_IN: Array<[Fixture, string, string | null]> = [
-    ["half_no_token", "Sign in to Beatport to search its charts and releases.", "Open Settings"],
-    ["half_rejected", "Beatport sign-in ended or the token was refused.", "Open Settings"],
-    ["half_forbidden", "Beatport refused this token.", "Open Settings"],
+    ["half_no_token", "Sign in to Beatport to search its charts and releases.", "Sign in to Beatport"],
+    ["half_rejected", "Beatport sign-in ended or the token was refused.", "Sign in again"],
+    ["half_forbidden", "Beatport refused this token.", "Sign in again"],
     ["half_rate_limited", "Beatport is limiting requests", "Try again"],
     ["half_unavailable", "Beatport cannot be reached", "Try again"],
     ["half_not_resolved_resolvable", "Not linked to Beatport yet", "Look them up now"],
@@ -401,13 +401,34 @@ describe("the Beatport half, in every state", () => {
     expect(buttons).toEqual(action ? [action] : []);
   });
 
-  it("sends a token problem to the token field in Settings", async () => {
+  it("opens the Beatport sign-in from a missing sign-in, then reads Beatport again", async () => {
+    const signIn = vi.fn(async () => ({ state: "signed_in", masked: "••••abcd", expires_at: null, secure_storage: true }));
+    (window.cuepoint as unknown as Record<string, unknown>).beatportSignIn = signIn;
     mock("getEntityBeatport").mockResolvedValue(pages.half_no_token);
     renderAt(entityPath("label", "bp:40211"));
-    fireEvent.click(await screen.findByRole("button", { name: "Open Settings" }, LOADED));
-    expect(where()).toBe("/settings");
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in to Beatport" }, LOADED));
+    await waitFor(() => expect(signIn).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mock("getEntityBeatport")).toHaveBeenLastCalledWith(expect.objectContaining({ refresh: true })),
+    );
+  });
+
+  it("sends an environment token to the token field in Settings instead of signing in", async () => {
+    const signIn = vi.fn();
+    (window.cuepoint as unknown as Record<string, unknown>).beatportSignIn = signIn;
+    (window.cuepoint as unknown as Record<string, unknown>).getBeatportAuth = vi.fn(async () => ({
+      state: "env",
+      masked: null,
+      expires_at: null,
+      secure_storage: true,
+    }));
+    mock("getEntityBeatport").mockResolvedValue(pages.half_forbidden);
+    renderAt(entityPath("label", "bp:40211"));
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in again" }, LOADED));
+    await waitFor(() => expect(where()).toBe("/settings"));
     const state = JSON.parse(screen.getByTestId("where").dataset.state ?? "null");
     expect(settingsFocus({ state })?.focus).toBe("beatport-token");
+    expect(signIn).not.toHaveBeenCalled();
   });
 
   it("asks Beatport again, however fresh the copy, when it was busy", async () => {

@@ -7,7 +7,7 @@
  * open on Beatport.
  *
  * **Every answer is a state** (DISCOVER-07). When there are no tracks to show,
- * the half says why and offers the one thing that helps: Settings for a token,
+ * the half says why and offers the one thing that helps: signing in to Beatport,
  * the resolve job for a name CuePoint could link, the artists who share a
  * name as choices, or asking again when Beatport was busy or out of reach. An
  * artist is never looked up by name (DEC-095), so a name page says so rather
@@ -35,7 +35,7 @@ import type {
 import { Button } from "../../components/Button";
 import { useToast } from "../../components/Toast";
 import { formatCount, pluralize } from "../library/libraryFormat";
-import { settingsFocusState } from "../settingsLink";
+import { BeatportSignInButton } from "./BeatportSignInButton";
 import { BeatportTable } from "./BeatportTable";
 import { HideOwnedSwitch } from "./HideOwnedSwitch";
 import { useHideOwned } from "./useHideOwned";
@@ -397,12 +397,10 @@ export function BeatportHalf({
           </ul>
         )}
         {half.action === "settings" && (
-          <Button
-            variant="secondary"
-            onClick={() => navigate("/settings", { state: settingsFocusState("beatport-token") })}
-          >
-            Open Settings
-          </Button>
+          <BeatportSignInButton
+            label={half.state === "no_token" ? "Sign in to Beatport" : "Sign in again"}
+            onDone={readAgain}
+          />
         )}
         {half.action === "resolve" && (
           <Button

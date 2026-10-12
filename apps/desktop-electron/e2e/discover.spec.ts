@@ -4,7 +4,8 @@
  * The specification's journey against a real engine, a real preload and a
  * real library: start a search, watch it in the status strip, open it, add two
  * tracks to the wantlist, and mark one bought. And the state a first visit
- * meets: no Beatport token, said plainly, with a way to the token field.
+ * meets: no Beatport sign-in, said plainly, with the sign-in beside it and the
+ * token field still reachable in Settings.
  *
  * Beatport is stubbed at the engine: `CUEPOINT_BEATPORT_FIXTURE` names
  * `src/tests/fixtures/beatport/discover/fixture.json`, whose `api` entries
@@ -118,7 +119,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
     }
   });
 
-  test("says Beatport is not connected, and leads to the token field", async () => {
+  test("says Beatport is not connected, and leads to the sign-in and the token field", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
@@ -131,8 +132,11 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await window.getByRole("tab", { name: "Wantlist" }).click();
       await expect(window.getByText("Your wantlist is empty.")).toBeVisible();
 
-      await window.getByRole("button", { name: "Open Settings" }).click();
-      await expect(window.locator("#settings-beatport-token")).toBeFocused({ timeout: 15_000 });
+      // The banner offers the sign-in itself; the paste fallback is still in Settings.
+      await expect(window.getByRole("button", { name: "Sign in to Beatport" })).toBeVisible();
+      await window.getByRole("link", { name: "Settings" }).click();
+      await window.getByRole("button", { name: "Paste a token instead" }).click();
+      await expect(window.locator("#settings-beatport-token")).toBeVisible({ timeout: 15_000 });
     } finally {
       await app.close();
     }
@@ -143,7 +147,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
     try {
       const window = await ready(app);
       await importLibrary(window, writeExport(workspace));
-      await window.evaluate(() => window.cuepoint!.setBeatportToken("e2e-not-a-real-token"));
+      await window.evaluate(() => window.cuepoint!.saveBeatportPastedToken("e2e-not-a-real-token"));
 
       await window.getByRole("link", { name: "Discover" }).click();
       await window.getByRole("tab", { name: "New search" }).click();

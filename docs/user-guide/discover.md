@@ -7,8 +7,8 @@ recent releases on your labels, remembers every search it makes, and knows which
 of the tracks it finds are already in your library.
 
 It works on the library you imported on the [Library](library.md) page, so
-import a collection first. It reads Beatport with your Beatport sign-in key (a
-"token"), which you enter in **Settings** (see [A Beatport token](#a-beatport-token)).
+import a collection first. It reads Beatport as you, once you sign in to Beatport (see
+[Signing in to Beatport](#signing-in-to-beatport)).
 
 Discover has three tabs, **New search**, **Results** and **Wantlist**, and
 reopens on the tab you used last. From any artist or label name in a table you
@@ -129,28 +129,49 @@ double-click does nothing and they cannot be played. Selecting one lights its
 key on the Camelot wheel in the header, and Track details says there is nothing
 to inspect.
 
-## A Beatport token
+## Signing in to Beatport
 
-Discover reads Beatport with your own Beatport token, entered in **Settings →
-Beatport** in the **Beatport token** field (**Kept on this computer only**). Without one, or when Beatport does not accept it, the
-page says so at the top, with **Open Settings**, which takes you straight to the
-token field:
+Discover reads Beatport as you. Choose **Sign in to Beatport**, in **Settings →
+Beatport** or in the banner at the top of Discover, and sign in on Beatport's own
+page in the window that opens. The window closes by itself when you are in. Your
+password goes to Beatport, never to CuePoint. CuePoint then keeps the sign-in on
+your computer, encrypted, and renews it by itself while you use the app. Settings
+shows **Signed in to Beatport · ••••abcd · renews by itself**, with **Test
+connection** and **Sign out**.
+
+CuePoint uses your own Beatport account, at the same low request rate as before.
+Beatport may change how its sign-in works, which can stop this from working until
+CuePoint is updated, and you should check that Beatport's terms suit how you use it.
+
+When the page says something else:
 
 | The page says | Means | What to do |
 | --- | --- | --- |
-| **Sign in to Beatport to search its charts and releases.** | No token is set | Enter one in Settings |
-| **Beatport sign-in ended or the token was refused.** | The token is wrong or has expired | Enter a new one in Settings |
-| **Beatport refused this token.** | The token works but is not allowed to do this | Enter a token that is |
+| **Sign in to Beatport to search its charts and releases.** | You are not signed in | **Sign in to Beatport** |
+| **Beatport sign-in ended or the token was refused.** | The sign-in ran out and could not be renewed, or Beatport refused it | **Sign in again** |
+| **Beatport refused this token.** | The token works but is not allowed to do this | **Sign in again**; a pasted token that is refused needs replacing under **Paste a token instead** |
 | **Beatport is limiting requests** | Too many requests; it says how long to wait | **Try again** later |
 | **Beatport cannot be reached** | No connection, or Beatport is down | **Try again** later |
 
-Without a token you can still open past searches and use your wantlist; a new
+Without a sign-in you can still open past searches and use your wantlist; a new
 search and a playlist need one.
 
-### Getting a token
+**Sign out** deletes the sign-in from your computer and clears what the sign-in
+window kept. Where the system has no secure key store (some Linux setups without
+a keyring), CuePoint cannot keep the sign-in safely, so you sign in again each
+time it starts; Settings says so.
 
-Beatport does not hand out tokens from your account page. You ask for API
-access, and then exchange what they give you for a token.
+### Pasting a token instead
+
+If the sign-in window does not work for you, **Settings → Beatport → Paste a
+token instead** takes a token you already have. Paste it into **Beatport token**,
+choose **Save token**, then **Test connection**: CuePoint calls Beatport once and
+tells you whether it accepted the token (in green) or rejected it (in red). Once
+it is saved, the field is replaced by **Using a pasted token · ••••abcd** with
+**Test connection** and **Sign out**; to replace the token, sign out first.
+
+Beatport does not hand out tokens from your account page. You ask for API access,
+and then exchange what they give you for a token.
 
 1. Fill in [Beatport's API key request form](https://accounts.beatport.com/developer/request-api-key)
    (app name, what you will use it for) and wait for approval. Beatport then
@@ -162,23 +183,15 @@ access, and then exchange what they give you for a token.
    [Beatport v4 reference](../development/beatport-v4-api.md#getting-a-token).
    Keep your client secret private. The answer is a JSON object; the token is its
    `access_token` value.
-3. In CuePoint, open **Settings → Beatport**, paste the token into **Beatport
-   token** and choose **Save token**. The field hides the value and shows a masked copy once
-   it is saved; to replace the token, enter a new one.
-4. Choose **Test connection**. CuePoint calls Beatport once and tells you whether
-   it accepted the token (in green) or rejected it (in red), so you do not have to
-   start a search to find out.
+3. Paste the token as above.
 
-The same steps, shortened, are under **How do I get a token?** in Settings →
-Beatport.
+A pasted token is not renewed. It expires after a while (Beatport's answer says
+when, in `expires_in`); when Discover says **Beatport sign-in ended or the token
+was refused.**, sign in, or paste a new one.
 
 You can set the environment variable `BEATPORT_ACCESS_TOKEN` instead. It takes
-priority over the saved token.
-
-A token expires after a while (Beatport's answer says when, in `expires_in`).
-CuePoint does not refresh it: when Discover says **Beatport sign-in ended or the
-token was refused.**, get a new one as above, or use the refresh token you got with the first
-(see the reference), and save it.
+priority over a sign-in and over a saved token; Settings then says **Using
+BEATPORT_ACCESS_TOKEN from the environment** and turns the sign-in button off.
 
 ### Linking tracks to Beatport
 
@@ -186,8 +199,8 @@ Once your tracks are matched on Beatport (see [Clean](clean.md)), Discover reads
 those tracks from Beatport to learn which Beatport artists and labels they
 credit. That makes searches and artist pages more accurate, because they can
 find your artists and labels exactly rather than by spelling. **CuePoint does
-this by itself** when a match finishes, as long as a token is set, and the status
-strip shows it as **Linking tracks to Beatport**. With no token it does nothing.
+this by itself** when a match finishes, as long as you are signed in, and the status
+strip shows it as **Linking tracks to Beatport**. When you are not signed in it does nothing.
 
 If some tracks are still waiting, for example because you added the token later,
 the page says how many and offers **Look them up now**. While it works, the page
@@ -271,7 +284,7 @@ When there is nothing to list, the half says why:
 | **Not linked to Beatport yet** | CuePoint does not know which Beatport artist this is. It never searches Beatport for an artist by name, because the wrong artist of the same name is worse than none | **Look them up now**, when some of the artist's tracks are matched on Beatport |
 | **Several Beatport artists share this name** | Your tracks by this name are matched to different Beatport artists | Choose the one you mean |
 | **No match** | Beatport has no label by this name | None |
-| **Sign in to Beatport to search its charts and releases.**, and the other token states | As at the top of Discover (see [A Beatport token](#a-beatport-token)) | **Open Settings**, or **Try again** |
+| **Sign in to Beatport to search its charts and releases.**, and the other token states | As at the top of Discover (see [Signing in to Beatport](#signing-in-to-beatport)) | **Sign in to Beatport**, **Sign in again**, or **Try again** |
 
 A label known only by name is looked up on Beatport by its name, and the page
 says **Found by name on Beatport** when it was.
@@ -338,8 +351,12 @@ remove them. Both are safe to delete by hand:
 
 Playlists inCrate made on your Beatport account are yours and stay there.
 
-**Settings keep their `incrate.` names.** The Beatport token is still stored as
-`incrate.beatport_access_token` in `~/.cuepoint/config.yaml`, and Discover's
+**Settings keep their `incrate.` names.** The config key `incrate.beatport_access_token`
+in `~/.cuepoint/config.yaml` is still read. Where the system has a secure key
+store, a token in it is moved into the encrypted store the first time you start
+CuePoint after updating (the key stays, emptied); otherwise it stays in the file
+and is still used, and Settings says **Using the token saved in CuePoint's config
+file**. Discover's
 defaults as `incrate.new_releases_days`, `incrate.discovery_genre_ids` and
 `incrate.playlist_name_format`: the prefix is historical, and renaming it would
 break your existing file. These inCrate settings are read by nothing now, and
