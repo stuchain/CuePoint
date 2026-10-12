@@ -1,0 +1,191 @@
+/**
+ * The zoomed waveform above the player (T4), in the running app.
+ *
+ * `bands.flac` with a Rekordbox TEMPO marker is imported (one track, no
+ * copies), analysed, and played silently. The strip (`.cp-detail-strip`) shows
+ * above the bar as its sibling, reaches `data-detail="ready"`, and its canvas
+ * holds painted pixels. Settings > Waveforms' "Zoomed waveform above the
+ * player" removes it and brings it back.
+ *
+ * Skips where no `mpv` was fetched. Each launch gets its own
+ * `--user-data-dir` and `CUEPOINT_HOME`.
+ */
+import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { resolvePlayerBinary } from "../electron/playerLaunch";
+import { waitForEngine } from "./engineReady";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DESKTOP_ROOT = path.resolve(__dirname, "..");
+const REPO_ROOT = path.resolve(DESKTOP_ROOT, "../..");
+const BANDS = path.join(REPO_ROOT, "src", "tests", "fixtures", "audio", "bands.flac");
+
+const hasDecoder = Boolean(
+  resolvePlayerBinary({ packaged: false, repoRoot: REPO_ROOT, env: process.env }),
+);
+
+
+const location = (file: string) => "file://localhost/" + file.replace(/\\/g, "/").replace(/^\/+/, "");
+
+function writeExport(dir: string): { xml: string; file: string } {
+  const music = path.join(dir, "music");
+  mkdirSync(music, { recursive: true });
+  const file = path.join(music, "bands.flac");
+  copyFileSync(BANDS, file);
+  const xml = path.join(dir, "collection.xml");
+  writeFileSync(
+    xml,
+    `<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS Version="1.0.0">
+  <PRODUCT Name="rekordbox" Version="6.8.5" Company="AlphaTheta"/>
+  <COLLECTION Entries="1">
+<TRACK TrackID="1" Name="Bands" Artist="Fixture" Location="${location(file)}"><TEMPO Inizio="0.000" Bpm="120.00" Metro="4/4" Battito="1"/></TRACK>
+  </COLLECTION>
+  <PLAYLISTS><NODE Name="ROOT" Type="0"/></PLAYLISTS>
+</DJ_PLAYLISTS>
+`,
+    "utf-8",
+  );
+  return { xml, file };
+}
+
+function launch(userDataDir: string, cuepointHome: string): Promise<ElectronApplication> {
+  const env = { ...process.env, NODE_ENV: "production", CUEPOINT_HOME: cuepointHome } as Record<
+    string,
+    string
+  >;
+  delete env.ELECTRON_RUN_AS_NODE;
+  return electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+}
+
+async function ready(app: ElectronApplication): Promise<Page> {
+  const window = await app.firstWindow({ timeout: 60_000 });
+  await window.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
+  await window.reload();
+  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await waitForEngine(window);
+  return window;
+}
+
+
+/** How many pixels of the strip's canvas are not transparent. */
+function painted(window: Page): Promise<number> {
+  return window.evaluate(() => {
+    const canvas = document.querySelector(".cp-detail-strip__canvas") as HTMLCanvasElement | null;
+    if (!canvas || canvas.width === 0 || canvas.height === 0) return 0;
+    const data = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
+    let count = 0;
+    for (let i = 3; i < data.length; i += 4) if (data[i]! > 0) count += 1;
+    return count;
+  });
+}
+
+test.describe("The zoomed waveform above the player (T4)", () => {
+  test.skip(!hasDecoder, "no mpv: run `python scripts/fetch_player_sidecar.py`");
+
+  let userDataDir: string;
+  let cuepointHome: string;
+  let workspace: string;
+
+  test.beforeEach(() => {
+    userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-e2e-"));
+    cuepointHome = mkdtempSync(path.join(tmpdir(), "cuepoint-home-"));
+    workspace = mkdtempSync(path.join(tmpdir(), "cuepoint-detail-"));
+  });
+
+  test.afterEach(() => {
+    for (const dir of [userDataDir, cuepointHome, workspace]) rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("the strip shows above the bar, fills, and the setting removes and restores it", async () => {
+    test.setTimeout(180_000);
+    const { xml, file } = writeExport(workspace);
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1400, 900));
+      await window.evaluate((xmlPath) => window.cuepoint!.startLibraryImport!({ xml_path: xmlPath }), xml);
+      await expect
+        .poll(
+          async () => {
+            const status = (await window.evaluate(() => window.cuepoint!.waveforms!.analysis())).value!;
+            return `${status.present} ${status.analysed}`;
+          },
+          { timeout: 90_000 },
+        )
+        .toBe("1 1");
+      let trackId = 0;
+      for (let id = 1; id <= 5 && trackId === 0; id += 1) {
+        const answer = await window.evaluate(
+          (track) => window.cuepoint!.waveforms!.get({ track_ids: [track], width: 120 }),
+          id,
+        );
+        if (answer.value?.waveforms[0]?.state === "ready") trackId = id;
+      }
+      expect(trackId).toBeGreaterThan(0);
+
+      // Nothing before the first play.
+      await expect(window.locator(".cp-detail-strip")).toHaveCount(0);
+
+      await window.evaluate(
+        async ({ file, trackId }) => {
+          const player = (window as never as { cuepoint: Record<string, any> }).cuepoint.player;
+          await player.setVolume(0);
+          await player.playQueue(
+            [{ trackId, filePath: file, title: "Bands", artist: "Fixture", durationSeconds: 6 }],
+            0,
+          );
+        },
+        { file, trackId },
+      );
+
+      const strip = window.locator(".cp-detail-strip");
+      await expect(strip).toBeVisible({ timeout: 20_000 });
+      await expect(strip).toHaveAttribute("data-detail", "ready", { timeout: 60_000 });
+      await expect(strip.locator(".cp-detail-strip__canvas")).toBeVisible();
+      await expect.poll(() => painted(window), { timeout: 15_000 }).toBeGreaterThan(0);
+
+      // The bar is untouched: the strip is its sibling, just before it.
+      const placement = await window.evaluate(() => {
+        const stripEl = document.querySelector(".cp-detail-strip")!;
+        const bar = document.querySelector(".cp-player-bar")!;
+        return {
+          insideBar: bar.contains(stripEl),
+          barInsideStrip: stripEl.contains(bar),
+          sameParent: stripEl.parentElement === bar.parentElement,
+          before: Boolean(stripEl.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING),
+          next: stripEl.nextElementSibling === bar,
+        };
+      });
+      expect(placement).toEqual({
+        insideBar: false,
+        barInsideStrip: false,
+        sameParent: true,
+        before: true,
+        next: true,
+      });
+      await expect(window.locator(".cp-player-bar .cp-detail-strip")).toHaveCount(0);
+
+      // Off in Settings > Waveforms: gone. On again: back.
+      await window.getByRole("link", { name: "Settings" }).click();
+      const box = window.getByRole("checkbox", { name: "Zoomed waveform above the player" });
+      await box.scrollIntoViewIfNeeded();
+      await expect(box).toBeChecked();
+      await box.uncheck();
+      await expect(window.locator(".cp-detail-strip")).toHaveCount(0);
+      await expect(window.locator(".cp-player-bar")).toBeVisible();
+
+      await box.check();
+      await expect(window.locator(".cp-detail-strip")).toBeVisible({ timeout: 20_000 });
+      await expect(window.locator(".cp-detail-strip")).toHaveAttribute("data-detail", "ready", { timeout: 60_000 });
+      await expect.poll(() => painted(window), { timeout: 15_000 }).toBeGreaterThan(0);
+
+    } finally {
+      await app.close();
+    }
+  });
+});
