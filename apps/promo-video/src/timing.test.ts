@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { at, BAR, BEAT, CAPTIONS, CUTS, DURATION, FINAL_HIT, FRAMES, FPS, KICKS, kickLevel, SHOTS, SNARES, snareLevel } from "./timing";
 
 describe("the promo's clock", () => {
-  it("is 17 bars at 132 BPM, about 31 seconds at 30 fps", () => {
-    expect(DURATION).toBeCloseTo(17 * BAR, 9);
-    expect(DURATION).toBeGreaterThan(30);
-    expect(DURATION).toBeLessThan(32);
+  it("is 15 bars at 136 BPM, about 26 seconds at 30 fps", () => {
+    expect(DURATION).toBeCloseTo(15 * BAR, 9);
+    expect(DURATION).toBeGreaterThan(26);
+    expect(DURATION).toBeLessThan(27);
     expect(FRAMES).toBe(Math.round(DURATION * FPS));
     expect(FPS).toBe(30);
   });
@@ -32,12 +32,12 @@ describe("the promo's clock", () => {
   });
 
   it("pulses only where the music has a kick", () => {
-    expect(kickLevel(0)).toBe(0); // bars 0 and 1 are pads and arps alone
-    expect(kickLevel(at(1))).toBe(0);
-    expect(kickLevel(at(2))).toBeCloseTo(1, 9);
-    expect(kickLevel(at(2) + 0.3)).toBeLessThan(0.1);
-    expect(kickLevel(at(3, 3))).toBeLessThan(0.05); // the riser: no kick
-    expect(kickLevel(at(4))).toBeCloseTo(1, 9); // the drop, on the cut into the app
+    expect(kickLevel(0)).toBe(0); // bar 0 is pads and arps alone
+    expect(kickLevel(at(0, 3))).toBe(0);
+    expect(kickLevel(at(1))).toBeCloseTo(1, 9);
+    expect(kickLevel(at(1) + 0.3)).toBeLessThan(0.1);
+    expect(kickLevel(at(2, 3))).toBeLessThan(0.05); // the riser: no kick
+    expect(kickLevel(at(3))).toBeCloseTo(1, 9); // the drop, on the cut into the app
     expect(kickLevel(FINAL_HIT)).toBeCloseTo(1, 9);
     expect(kickLevel(DURATION)).toBe(0);
   });
@@ -48,7 +48,7 @@ describe("the promo's clock", () => {
       expect(Math.abs(sixteenths - Math.round(sixteenths))).toBeCloseTo(0, 6);
       expect(k).toBeLessThan(DURATION);
     }
-    expect(snareLevel(at(5, 1))).toBeCloseTo(1, 9);
+    expect(snareLevel(at(4, 1))).toBeCloseTo(1, 9);
     expect(CUTS).toHaveLength(SHOTS.length - 1);
   });
 });

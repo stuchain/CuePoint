@@ -6126,6 +6126,9 @@ records and the Camelot wheel use the app's accent purples instead of a rainbow;
 from its first frame; and two three-reviewer passes aligned the panels (Discover cards and Prepare
 rows fit their windows, no panel pokes in beside another, values cut in whole). The opening scene is
 the video's own frozen copy (`src/scene/`), so the website's home page can change without touching it.
+Later the same day, on the user's note that the opening paused and the whole cut felt slow, it tightened to
+26 s (15 bars at 136 BPM): a three-bar opening whose camera never rests, Discover and Prepare a bar and a
+half each (their cut on the third beat), and the panels hung closer together so no flight shows an empty room.
 
 **Implications**: Embedding it on the site belongs to Phase 17's thread. When real captures exist,
 the stand-ins are swapped and `APP_PREVIEW` turned off.

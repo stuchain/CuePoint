@@ -1,6 +1,6 @@
 # CuePoint promo video
 
-A 31-second promo in two cuts, made from code so it can be re-rendered whenever the app or the site
+A 26-second promo in two cuts, made from code so it can be re-rendered whenever the app or the site
 changes:
 
 - `cuepoint-promo-16x9` (1920 x 1080) for the website's home page and YouTube
@@ -30,18 +30,18 @@ node scripts/render.mjs --format=tall --frames=90  # the first three seconds of 
 After a render, put a piece of a track you own under the picture:
 
 ```sh
-npm run mux -- --track=/path/to/track.mp3 --start=228.975 --bpm=130
+npm run mux -- --track=/path/to/track.mp3 --start=230.821 --bpm=130
 ```
 
 `--start` is where the piece begins in the track and `--bpm` the track's tempo; the piece is stretched
 to the promo's tempo, so starting it a whole number of bars before a drop puts the drop on a cut
-(two bars before a drop lands it on the cut into Clean; the example starts two bars before Water's second drop, after the breakdown). The files come out as `out/*-PRIVATE.mp4`.
+(three bars before a drop lands it on the cut into Clean; the example starts three bars before Water's second drop, after the breakdown). The files come out as `out/*-PRIVATE.mp4`.
 They are for your own use: posting commercial music needs a license, and platforms may mute or claim
 it. Never commit the track (`.gitignore` keeps audio files out).
 
 ## How it is made
 
-- **One clock** (`src/timing.ts`): 132 BPM, 17 bars, about 31 s at 30 fps. Shots, captions and
+- **One clock** (`src/timing.ts`): 136 BPM, 15 bars, about 26 s at 30 fps. Shots, captions and
   the music all sit on the same beat grid.
 - **The opening** is the website's 3D scene, the crate becoming the Camelot wheel (DEC-189), driven by
   time instead of scroll. The video keeps its own frozen copy in `src/scene/` (see its README), so the

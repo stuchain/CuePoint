@@ -37,11 +37,13 @@ const TOUR: readonly PanelId[] = ["clean", "keys", "discover", "prepare", "wavef
  */
 const LAYOUT: Readonly<Record<PanelId, Place>> = {
   clean: { x: 0, y: 0, z: 0, rx: 0, ry: 0 },
-  keys: { x: 3600, y: 200, z: -2200, rx: 0, ry: -42 },
-  discover: { x: -3400, y: -300, z: -4200, rx: -6, ry: 40 },
-  prepare: { x: 700, y: 1500, z: -6200, rx: -22, ry: -14 },
-  waveforms: { x: -1300, y: 100, z: -8200, rx: 24, ry: 32 },
-  export: { x: 3300, y: 100, z: -10200, rx: 8, ry: -36 },
+  // the panels hang close enough that one is always leaving the frame as the next enters: a flight
+  // between them never shows an empty room
+  keys: { x: 1700, y: 120, z: -2200, rx: 0, ry: -24 },
+  discover: { x: -1600, y: -180, z: -4200, rx: -6, ry: 22 },
+  prepare: { x: 400, y: 700, z: -6200, rx: -16, ry: -12 },
+  waveforms: { x: -800, y: 60, z: -8200, rx: 14, ry: 20 },
+  export: { x: 1500, y: 60, z: -10200, rx: 6, ry: -22 },
 };
 
 /** How close the camera settles on each panel, so each fills about the same share of the frame. */
@@ -378,15 +380,15 @@ function buildPrepare(format: FormatId, tl: Timeline): HTMLElement {
   el.querySelectorAll(".link").forEach((link, i) => {
     tl.fromTo(link, { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: BEAT / 2, ease: "power2.out" }, start + BEAT * (0.6 + i / 2));
   });
-  // then the set plays through: each track in turn steps forward and lights up, half a beat apiece
+  // then the set plays through: each track in turn steps forward and lights up, three quarters of a beat apiece
   const slotEls = [...el.querySelectorAll<HTMLElement>(".slot")];
   slotEls.forEach((slot, i) => {
-    const on = start + BEAT * (2.75 + i);
+    const on = start + BEAT * 2.25 + BEAT * 0.75 * i;
     tl.set(slot, { attr: { "data-playing": "1" } }, on);
     tl.to(slot, { z: 30, duration: BEAT / 4, ease: "power2.out" }, on);
     if (i < slotEls.length - 1) {
-      tl.set(slot, { attr: { "data-playing": "0" } }, on + BEAT);
-      tl.to(slot, { z: 12, duration: BEAT / 4, ease: "power2.inOut" }, on + BEAT);
+      tl.set(slot, { attr: { "data-playing": "0" } }, on + BEAT * 0.75);
+      tl.to(slot, { z: 12, duration: BEAT / 4, ease: "power2.inOut" }, on + BEAT * 0.75);
     }
   });
   const beats = Math.round((end - start) / BEAT);
@@ -447,9 +449,9 @@ function buildDiscover(format: FormatId, tl: Timeline): HTMLElement {
   cardEls.forEach((card, i) => {
     tl.fromTo(card, { z: 160, opacity: 0 }, { z: 0, opacity: 1, duration: BEAT / 2, ease: "power3.out" }, start + BEAT * 0.1 + (BEAT * i) / 4);
   });
-  // two of them go on the wantlist, two beats apart; the picked card lifts a little as its button goes
+  // two of them go on the wantlist, seven quarter beats apart; the picked card lifts a little as its button goes
   const wants = [...el.querySelectorAll<HTMLElement>(".want")];
-  const picks = new Map([[0, start + BEAT * 3.5], [4, start + BEAT * 5.5]]);
+  const picks = new Map([[0, start + BEAT * 2.5], [4, start + BEAT * 4.25]]);
   picks.forEach((t, i) => {
     tl.to(cardEls[i]!, { z: 14, duration: BEAT / 4, ease: "power2.out" }, t);
     tl.to(cardEls[i]!, { z: 0, duration: BEAT / 2, ease: "power2.inOut" }, t + BEAT / 2);

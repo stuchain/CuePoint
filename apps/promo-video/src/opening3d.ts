@@ -20,13 +20,13 @@ import { addWheelLights } from "./wheelLights";
  * the flight into the wheel, the wheel facing us.
  */
 export const KEYS: ReadonlyArray<readonly [number, number]> = [
-  // the first bar is the dig: the crate at rest while the camera comes up out of it
+  // the first half bar is the dig: the crate at rest while the camera comes up out of it
   [0, 0],
-  [at(1, 0), PHASES.lift[0]],
-  // every record is on the board with its tag by the middle of the third bar, then the board holds
-  [at(2, 2), LABEL_HOLD[0] + 0.01],
-  [at(2, 2.5), PHASES.fly[0]],
-  [at(3, 3), 1],
+  [at(0, 2), PHASES.lift[0]],
+  // every record is on the board with its tag by the third bar, and the flight starts at once
+  [at(2, 0), LABEL_HOLD[0] + 0.01],
+  [at(2, 0.25), PHASES.fly[0]],
+  [at(2, 3.5), 1],
 ];
 
 /** From here the wheel is lit, and the kick pumps it (the site does this with the visitor's sound). */
@@ -72,15 +72,15 @@ export function cameraMove(t: number): CameraMove {
   if (t < end) {
     const u = t / shot("opening").end;
     // the dig: the first frame is low and close inside the crate, flipping past the sleeves; over the
-    // first bar and a half the camera rises and pulls back to the site's own view of the crate
-    const dig = 1 - ease((t + 0.6) / at(1, 2));
+    // first bar the camera rises and pulls back to the site's own view of the crate
+    const dig = 1 - ease((t + 0.35) / at(1, 0));
     // further back than the site while the records take their tags, so the tags never fill the frame,
     // then in to the wheel, and in the last beat a short push toward it that the cut finishes
     // and further still while the records fly past, so none crosses the lens
-    const back = ease((t - at(1, 0.5)) / (at(2, 0) - at(1, 0.5))) * (1 - ease((t - at(3, 2.5)) / (BEAT * 2)));
-    const flyBack = ease((t - at(2, 2.5)) / (BEAT * 1.5)) * (1 - ease((t - at(3, 2.5)) / (BEAT * 2)));
+    const back = ease((t - at(0, 2)) / (at(1, 2) - at(0, 2))) * (1 - ease((t - at(2, 2)) / (BEAT * 2)));
+    const flyBack = ease((t - at(2, 0)) / (BEAT * 1.5)) * (1 - ease((t - at(2, 2)) / (BEAT * 2)));
     // the last half beat dives into the wheel's middle: the cut into the app finishes the move
-    const push = ease((t - at(3, 3.5)) / (BEAT / 2));
+    const push = ease((t - at(2, 3.5)) / (BEAT / 2));
     const distance = (1.12 + 0.55 * back + 0.25 * flyBack + 0.16 * ease(u) - 0.2 * push * push * push) * (1 - 0.52 * dig);
     return { yaw: -0.6 + 0.7 * ease(u) + 0.45 * dig, distance, rise: 1.1 * (1 - u) - 1.4 * dig, zoom: punch };
   }

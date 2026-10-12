@@ -2,13 +2,13 @@
 /**
  * `npm run beat`: writes out/beat.wav, the promo's music, made here from nothing but math, so there is
  * no sample or track to license. Melodic breakbeat in the spirit of Bicep: a broken beat, wide detuned
- * pads, a rolling arp through a dotted-eighth delay, a sub bass, and a big room on everything. 132 BPM
- * in A minor (8A on the wheel), 17 bars on the same grid as the picture (src/timing.ts):
+ * pads, a rolling arp through a dotted-eighth delay, a sub bass, and a big room on everything. 136 BPM
+ * in A minor (8A on the wheel), 15 bars on the same grid as the picture (src/timing.ts):
  *
- *   bars 0-1   pads and arp, filtered, alone
- *   bars 2-3   the breakbeat comes in; a riser clears the second half of bar 3
- *   bars 4-14  the drop: bass, open pads, the lead arp (the app shots)
- *   bars 15-16 the end card: everything open, one last hit on the third beat of the final bar
+ *   bar 0      pads and arp, filtered, alone
+ *   bars 1-2   the breakbeat comes in; a riser clears the second half of bar 2
+ *   bars 3-12  the drop: bass, open pads, the lead arp (the app shots)
+ *   bars 13-14 the end card: everything open, one last hit on the third beat of the final bar
  *
  * Deterministic: the noise is seeded, so every run writes the same file.
  */
