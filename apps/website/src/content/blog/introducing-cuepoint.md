@@ -1,12 +1,10 @@
 ---
 title: "Introducing CuePoint"
 description: "CuePoint is a free desktop app that cleans up a Rekordbox library: it matches your tracks to Beatport, fills in what is missing, and keeps your own values."
-date: 2026-10-08
+date: 2026-10-12
 image: "../../assets/og/default.png"
 imageAlt: "The CuePoint card: the pixel mark and the name CuePoint on a violet background."
 tags: ["announcement", "rekordbox", "beatport"]
-# Held back until the author approves the text (SITE-10): a draft shows only in preview builds.
-draft: true
 ---
 
 If you have played for a few years, your Rekordbox collection has a few years of mess in it. Keys that are blank. Tempos that are off. Labels spelled three ways. Files that moved when you changed drives.
