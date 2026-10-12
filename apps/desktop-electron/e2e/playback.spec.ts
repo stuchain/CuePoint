@@ -247,11 +247,17 @@ test.describe("Phase 5 end to end", () => {
       await expect.poll(() => currentTitle(win), { timeout: 15_000 }).not.toBe(titleBeforeNext);
       await win.evaluate(() => (window as never as Bridge).cuepoint.player.pause());
       await expect.poll(() => isPaused(win), { timeout: 15_000 }).toBe(true);
-      const titleAfterNext = await currentTitle(win);
+      // Counted on the button itself: the title cannot tell a second Next from the quarter-second
+      // fixture ending by itself once Space plays it, and with repeat off it does.
+      await win.evaluate(() => {
+        const next = document.querySelector<HTMLButtonElement>('button[aria-label="Next track"]')!;
+        (window as never as { nextClicks: number }).nextClicks = 0;
+        next.addEventListener("click", () => void ((window as never as { nextClicks: number }).nextClicks += 1));
+      });
       await win.keyboard.press("Space");
       await expect.poll(() => isPaused(win), { timeout: 15_000 }).toBe(false);
       // Space toggled playback and did not press Next again.
-      expect(await currentTitle(win)).toBe(titleAfterNext);
+      expect(await win.evaluate(() => (window as never as { nextClicks: number }).nextClicks)).toBe(0);
 
       // Clicking the seek slider focuses it; Space is still play/pause.
       await win.evaluate(() => (window as never as Bridge).cuepoint.player.pause());
