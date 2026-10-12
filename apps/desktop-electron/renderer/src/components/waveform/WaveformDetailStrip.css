@@ -1,0 +1,40 @@
+/*
+ * The zoomed waveform above the player bar (T4). A strip the player slot's
+ * full width and `--player-detail-height` tall (two table rows, scaled), its
+ * one canvas filling it; the canvas's own pixels are the display's, laid out by
+ * `waveformDetailLayout.ts`. Colours are the waveform tokens, drawn by script.
+ */
+
+.cp-detail-strip {
+  position: relative;
+  box-sizing: border-box;
+  height: var(--player-detail-height);
+  min-height: 0;
+  overflow: hidden;
+  border-top: var(--border-width) solid var(--border-outline);
+  background: var(--bg-panel);
+  cursor: pointer;
+}
+
+.cp-detail-strip__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* Words only when there is nothing to draw: over the empty strip, never over a picture. */
+.cp-detail-strip__words {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 var(--space-sm);
+  overflow: hidden;
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  pointer-events: none;
+}

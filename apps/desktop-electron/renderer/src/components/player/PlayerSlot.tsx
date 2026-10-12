@@ -3,7 +3,10 @@ import { PlayerRegion } from "../shell/PlayerRegion";
 import { PlayerAnnouncer } from "./PlayerAnnouncer";
 import { PlayerBar } from "./PlayerBar";
 import { QueuePanel } from "./QueuePanel";
-import { selectHasPlayed } from "./playerFormat";
+import type { PlayerSnapshot } from "../../api/cuepointBridge.types";
+import { WaveformDetailStrip } from "../waveform/WaveformDetailStrip";
+import { useWaveformDetailSetting } from "../waveform/waveformDetailSetting";
+import { selectCurrentItem, selectHasPlayed } from "./playerFormat";
 import { usePlayerValue } from "./playerStore";
 import { usePlayerNotices } from "./usePlayerNotices";
 import { usePlayerShortcuts } from "./usePlayerShortcuts";
@@ -28,7 +31,16 @@ import "./PlayerSlot.css";
  * The queue panel opens above the bar rather than over the content: it is a
  * place to work — reorder, remove, jump — not something glanced at, and it
  * must not cover the table the queue was built from.
+ *
+ * Between the queue and the bar sits the zoomed waveform (T4), while the track
+ * in the player is in the library and Settings › Waveforms has it on. The bar
+ * itself is not touched: the strip is a row of the slot, above it.
  */
+/** The library id of the track in the player; a slice, so the slot repaints for a new track only. */
+function selectCurrentTrackId(state: PlayerSnapshot | null): number | null {
+  return selectCurrentItem(state)?.trackId ?? null;
+}
+
 interface PlayerSlotProps {
   /** Open the playing track in the Library, or its artist's page (BAR-4). */
   onOpenTrack?: (trackId: number) => void;
@@ -48,6 +60,8 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
   const hasPlayed = usePlayerValue(selectHasPlayed);
   const [everPlayed, setEverPlayed] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
+  const [detailOn] = useWaveformDetailSetting();
+  const trackId = usePlayerValue(selectCurrentTrackId);
 
   useEffect(() => {
     if (hasPlayed) setEverPlayed(true);
@@ -70,6 +84,7 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
             <QueuePanel onClose={() => setQueueOpen(false)} />
           </div>
         )}
+        {detailOn && trackId !== null ? <WaveformDetailStrip key={trackId} trackId={trackId} /> : null}
         <PlayerBar
           queueOpen={queueOpen}
           onToggleQueue={() => setQueueOpen((open) => !open)}

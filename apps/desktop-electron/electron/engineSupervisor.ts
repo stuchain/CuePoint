@@ -98,6 +98,8 @@ import {
   type WaveformAnswer,
   type WaveformBatch,
   type WaveformDataDeletion,
+  type WaveformDetail,
+  type WaveformDetailRequested,
   type WaveformsRequested,
 } from "./engineClient";
 import type { BuildInfo } from "./buildInfo";
@@ -1273,6 +1275,18 @@ export class EngineSupervisor {
     params: Parameters<EngineClient["requestWaveforms"]>[0],
   ): Promise<WaveformAnswer<WaveformsRequested>> {
     return (await this.readyClient()).requestWaveforms(params);
+  }
+
+  async getWaveformDetail(
+    params: Parameters<EngineClient["getWaveformDetail"]>[0],
+  ): Promise<WaveformAnswer<WaveformDetail>> {
+    return (await this.readyClient()).getWaveformDetail(params);
+  }
+
+  async requestWaveformDetail(
+    params: Parameters<EngineClient["requestWaveformDetail"]>[0],
+  ): Promise<WaveformAnswer<WaveformDetailRequested>> {
+    return (await this.readyClient()).requestWaveformDetail(params);
   }
 
   async deleteWaveformData(): Promise<WaveformAnswer<WaveformDataDeletion>> {

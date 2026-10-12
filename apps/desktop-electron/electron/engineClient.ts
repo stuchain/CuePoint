@@ -2471,6 +2471,33 @@ export interface WaveformsRequested {
   job_id: string | null;
 }
 
+/**
+ * A track's zoomed waveform state (T4): the overview's states, and `working`
+ * while the engine decodes it for the player.
+ */
+export type WaveformDetailState = WaveformTrackState | "working";
+
+/**
+ * One track's zoomed waveform (T4): `columns × 4` bytes at `rate_hz` columns a
+ * second, each column's full, low, mid and high band, 0-255. Decoded from the
+ * engine's base64 in main. Everything but the state is null unless ready.
+ */
+export interface WaveformDetail {
+  track_id: number;
+  state: WaveformDetailState;
+  reason: string | null;
+  rate_hz: number | null;
+  duration_ms: number | null;
+  columns: number | null;
+  data: Uint8Array | null;
+}
+
+/** What `waveforms.requestDetail` answers: the state after the request. */
+export interface WaveformDetailRequested {
+  track_id: number;
+  state: WaveformDetailState;
+}
+
 /** What "Delete waveform data" deleted. */
 export interface WaveformDataDeleted {
   waveforms: number;
@@ -3439,6 +3466,28 @@ export class EngineClient {
       },
       refusal: null,
     };
+  }
+
+  /** One track's zoomed waveform, or why there is none yet (T4). */
+  async getWaveformDetail(params: { track_id: number }): Promise<WaveformAnswer<WaveformDetail>> {
+    const query = new URLSearchParams({ track_id: String(params.track_id) });
+    const res = await fetch(this.url(`/api/v1/waveforms/detail?${query}`), {
+      headers: this.headers(),
+    });
+    type Wire = Omit<WaveformDetail, "data"> & { data: string | null };
+    const answer = await readWaveformAnswer<Wire>(res);
+    if (answer.refusal) return answer;
+    return {
+      value: { ...answer.value, data: waveformBytes(answer.value.data) },
+      refusal: null,
+    };
+  }
+
+  /** Ask for a track's zoomed waveform to be made, ahead of the queue. */
+  async requestWaveformDetail(params: {
+    track_id: number;
+  }): Promise<WaveformAnswer<WaveformDetailRequested>> {
+    return this.waveformsPost("/api/v1/waveforms/detail/request", { track_id: params.track_id });
   }
 
   /** Analyse these tracks first, at most 50, even while the analysis is paused. */

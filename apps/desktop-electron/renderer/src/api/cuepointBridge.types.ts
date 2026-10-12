@@ -3159,6 +3159,33 @@ export interface WaveformsRequested {
   job_id: string | null;
 }
 
+/**
+ * A track's zoomed waveform state (T4): the overview's states, and `working`
+ * while the engine decodes it for the player.
+ */
+export type WaveformDetailState = WaveformTrackState | "working";
+
+/**
+ * One track's zoomed waveform (T4): `columns × 4` bytes at `rate_hz` columns a
+ * second, each column's full, low, mid and high band, 0-255. Decoded from the
+ * engine's base64 in main. Everything but the state is null unless ready.
+ */
+export interface WaveformDetail {
+  track_id: number;
+  state: WaveformDetailState;
+  reason: string | null;
+  rate_hz: number | null;
+  duration_ms: number | null;
+  columns: number | null;
+  data: Uint8Array | null;
+}
+
+/** What `waveforms.requestDetail` answers: the state after the request. */
+export interface WaveformDetailRequested {
+  track_id: number;
+  state: WaveformDetailState;
+}
+
 /** What "Delete waveform data" deleted. */
 export interface WaveformDataDeleted {
   waveforms: number;
@@ -3184,6 +3211,10 @@ export interface WaveformsBridge {
    * with `marks`, their cues and grid; with `data: false`, no pictures.
    */
   get: (params: WaveformsQuery) => Promise<WaveformAnswer<WaveformBatch>>;
+  /** One track's zoomed waveform, or why there is none yet (T4). */
+  detail: (params: { track_id: number }) => Promise<WaveformAnswer<WaveformDetail>>;
+  /** Ask for a track's zoomed waveform to be made, ahead of the queue. */
+  requestDetail: (params: { track_id: number }) => Promise<WaveformAnswer<WaveformDetailRequested>>;
   /** Analyse these tracks first, at most 50, even while paused. */
   request: (params: { track_ids: number[] }) => Promise<WaveformAnswer<WaveformsRequested>>;
   /** Empty the waveform data; the analysis starts again unless paused. */

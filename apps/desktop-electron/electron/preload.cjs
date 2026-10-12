@@ -376,6 +376,8 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
     resume: () => ipcRenderer.invoke("engine:resumeWaveformAnalysis"),
     get: (params) => ipcRenderer.invoke("engine:getWaveforms", params),
     request: (params) => ipcRenderer.invoke("engine:requestWaveforms", params),
+    detail: (params) => ipcRenderer.invoke("engine:getWaveformDetail", params),
+    requestDetail: (params) => ipcRenderer.invoke("engine:requestWaveformDetail", params),
     deleteData: () => ipcRenderer.invoke("engine:deleteWaveformData"),
   },
   startLibraryImport: (params) =>

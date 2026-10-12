@@ -13,6 +13,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { aboutDuration } from "../shell/useActiveJob";
 import type { WaveformEntry } from "./waveformCache";
+import type { DetailEntry } from "./waveformDetailCache";
 
 /** What the one button beside the analysis does, if there is one. */
 type WaveformAnalysisAction = "pause" | "resume" | "start" | null;
@@ -201,6 +202,29 @@ export const INSPECTOR_PICTURE_TITLE = "The track's waveform. Play the track to 
 
 /** The Inspector's title over the playing track's waveform. */
 export const INSPECTOR_SEEK_TITLE = "Click to seek";
+
+/** What the zoomed strip says while the engine makes a track's detail (T4). */
+export const DETAIL_READING_WORDS = "Reading detail…";
+
+/** The zoomed strip's title over a track with no Rekordbox beat grid (T4). */
+export const NO_BEAT_GRID_TITLE = "No beat grid: grids come from Rekordbox";
+
+/** The zoomed strip's title otherwise. */
+export const DETAIL_SEEK_TITLE = "Zoomed waveform. Click to seek";
+
+/**
+ * Why the zoomed strip has no detail yet, in words (T4); null when it has one.
+ * The strip draws the overview stretched while it waits, and these words sit
+ * over it only when it has nothing to draw at all.
+ */
+export function detailWords(entry: DetailEntry | null | undefined): string | null {
+  if (!entry || entry.kind === "loading") return null;
+  if (entry.kind === "error") return `Its zoomed waveform could not be read: ${entry.message}`;
+  const { state, reason } = entry.detail;
+  if (state === "ready") return null;
+  if (state === "working" || state === "waiting") return DETAIL_READING_WORDS;
+  return waveformStateWords({ state, reason }, false) || "No waveform yet";
+}
 
 /** The words a view shows for an answer that loads, while it loads. */
 export const WAVEFORM_LOADING_WORDS = "Reading its waveform…";

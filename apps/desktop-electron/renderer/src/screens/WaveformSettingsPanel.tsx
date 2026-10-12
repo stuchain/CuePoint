@@ -25,6 +25,7 @@ import {
   WAVEFORM_COLOUR_OPTIONS,
   useWaveformColour,
 } from "../components/waveform/waveformColour";
+import { useWaveformDetailSetting } from "../components/waveform/waveformDetailSetting";
 import { useWaveformBox } from "../components/waveform/waveformEnvironment";
 import { ResetToDefaults } from "./ResetToDefaults";
 import "./waveform-settings.css";
@@ -85,6 +86,7 @@ function WaveformPreview() {
 export function WaveformSettingsPanel() {
   const analysis = useWaveformAnalysis();
   const [mode, setMode] = useWaveformColour();
+  const [detailOn, setDetailOn] = useWaveformDetailSetting();
   const colorsId = useId();
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -110,6 +112,11 @@ export function WaveformSettingsPanel() {
 
   const chooseMode = (next: typeof mode) => {
     setMode(next);
+    markSaved();
+  };
+
+  const chooseDetail = (on: boolean) => {
+    setDetailOn(on);
     markSaved();
   };
 
@@ -185,6 +192,22 @@ export function WaveformSettingsPanel() {
             />
           </div>
         </fieldset>
+
+        <div className="cp-waveform-settings__choice">
+          <label className="cp-waveform-settings__option">
+            <input
+              type="checkbox"
+              checked={detailOn}
+              onChange={(event) => chooseDetail(event.target.checked)}
+            />
+            <span>Zoomed waveform above the player</span>
+          </label>
+          <p className="cp-waveform-settings__hint">
+            Shows about 8 seconds either side of the playhead, scrolling as the track plays, with a
+            line on every beat and a stronger one on each bar. Beat lines come from the grid
+            Rekordbox wrote; a track without one has none.
+          </p>
+        </div>
 
         <WaveformPreview />
 

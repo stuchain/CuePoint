@@ -99,6 +99,8 @@ beforeEach(() => {
     resume: vi.fn().mockResolvedValue(answer(status({ state: "running", job_id: "job-1" }))),
     get: vi.fn(),
     request: vi.fn(),
+    detail: vi.fn(),
+    requestDetail: vi.fn(),
     deleteData: vi.fn(),
   };
   install({ waveforms: waveforms as unknown as WaveformsBridge });

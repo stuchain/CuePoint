@@ -18,6 +18,10 @@ import {
   WAVEFORM_COLOUR_STORAGE_KEY,
   resetWaveformColourForTests,
 } from "../components/waveform/waveformColour";
+import {
+  WAVEFORM_DETAIL_STORAGE_KEY,
+  resetWaveformDetailForTests,
+} from "../components/waveform/waveformDetailSetting";
 import { ScaleProvider } from "../tokens/ScaleContext";
 import { WaveformSettingsPanel } from "./WaveformSettingsPanel";
 
@@ -154,6 +158,7 @@ async function openDiskSpace(user: ReturnType<typeof userEvent.setup>) {
 beforeEach(() => {
   localStorage.clear();
   resetWaveformColourForTests();
+  resetWaveformDetailForTests();
   resetPlayerStore();
   forgetWaveforms();
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
@@ -164,7 +169,23 @@ afterEach(() => {
   forgetWaveforms();
   localStorage.clear();
   resetWaveformColourForTests();
+  resetWaveformDetailForTests();
   delete (window as { cuepoint?: unknown }).cuepoint;
+});
+
+describe("the zoomed waveform switch (T4)", () => {
+  it("is on by default, and switching it off is remembered", async () => {
+    install();
+    renderPanel();
+    const toggle = screen.getByRole("checkbox", { name: "Zoomed waveform above the player" });
+    expect(toggle).toBeChecked();
+    await userEvent.setup().click(toggle);
+    expect(toggle).not.toBeChecked();
+    expect(localStorage.getItem(WAVEFORM_DETAIL_STORAGE_KEY)).toBe("off");
+    await userEvent.setup().click(toggle);
+    expect(toggle).toBeChecked();
+    expect(localStorage.getItem(WAVEFORM_DETAIL_STORAGE_KEY)).toBe("on");
+  });
 });
 
 describe("the page's words (SET-6)", () => {

@@ -39,6 +39,7 @@ import type {
   WaveformsQuery,
 } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
+import { waveformDetailCache } from "./waveformDetailCache";
 
 /** Ids per request: the engine's own limit. */
 export const BATCH_SIZE = 200;
@@ -392,4 +393,5 @@ export const waveformCache = new WaveformCache({
 /** Empty the shared cache: after "Delete waveform data" and a finished refresh. */
 export function forgetWaveforms(): void {
   waveformCache.forget();
+  waveformDetailCache.forget();
 }

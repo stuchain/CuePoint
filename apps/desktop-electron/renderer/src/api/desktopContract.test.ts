@@ -1626,7 +1626,7 @@ describe("desktop contract", () => {
   });
 
   describe("waveforms and their analysis (WAVE-03, WAVE-05)", () => {
-    // Six engine methods on `window.cuepoint.waveforms`, named here because
+    // Eight engine methods on `window.cuepoint.waveforms`, named here because
     // the generic checks compare the files with each other, and a method
     // missing from all six passes every one of them.
     type Method = {
@@ -1674,6 +1674,20 @@ describe("desktop contract", () => {
         params: true,
         answer: "WaveformsRequested",
       },
+      detail: {
+        client: "getWaveformDetail",
+        route: "`/api/v1/waveforms/detail?${query}`",
+        post: false,
+        params: true,
+        answer: "WaveformDetail",
+      },
+      requestDetail: {
+        client: "requestWaveformDetail",
+        route: '"/api/v1/waveforms/detail/request"',
+        post: true,
+        params: true,
+        answer: "WaveformDetailRequested",
+      },
       deleteData: {
         client: "deleteWaveformData",
         route: '"/api/v1/waveforms/delete-data"',
@@ -1717,7 +1731,7 @@ describe("desktop contract", () => {
       },
     );
 
-    it("exposes exactly these six on waveforms", () => {
+    it("exposes exactly these eight on waveforms", () => {
       const keys = [...waveformsBlock().matchAll(/^ {4}([A-Za-z]+):/gm)].map((m) => m[1]);
       expect(keys.sort()).toEqual(Object.keys(METHODS).sort());
     });
@@ -1809,6 +1823,8 @@ describe("desktop contract", () => {
       "WaveformsRequested",
       "WaveformDataDeleted",
       "WaveformDataDeletion",
+      "WaveformDetail",
+      "WaveformDetailRequested",
     ])("declares %s the same in both processes", (name) => {
       const start = `export interface ${name} {`;
       expect(fields(bridgeTypes, start).length).toBeGreaterThan(0);
@@ -1819,6 +1835,7 @@ describe("desktop contract", () => {
       "WaveformAnalysisState",
       "WaveformRefusalCode",
       "WaveformTrackState",
+      "WaveformDetailState",
       "WaveformLoudnessReason",
       "WaveformsQuery",
     ])(

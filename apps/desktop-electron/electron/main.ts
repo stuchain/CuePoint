@@ -875,6 +875,8 @@ function registerIpcHandlers(): void {
   // The waveforms themselves (WAVE-05); the engine validates every parameter.
   handle("engine:getWaveforms", (_event, params) => engine.getWaveforms(params));
   handle("engine:requestWaveforms", (_event, params) => engine.requestWaveforms(params));
+  handle("engine:getWaveformDetail", (_event, params) => engine.getWaveformDetail(params));
+  handle("engine:requestWaveformDetail", (_event, params) => engine.requestWaveformDetail(params));
   handle("engine:deleteWaveformData", () => engine.deleteWaveformData());
   handle("engine:startLibraryImport", (_event, params) =>
     engine.startLibraryImport(params),

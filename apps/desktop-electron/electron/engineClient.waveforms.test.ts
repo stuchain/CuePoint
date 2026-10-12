@@ -166,3 +166,64 @@ describe("requests and deleting the data", () => {
     });
   });
 });
+
+describe("the zoomed waveform (T4)", () => {
+  it("GETs a track's detail and answers its columns as bytes", async () => {
+    const data = Buffer.alloc(8 * 4, 90).toString("base64");
+    const calls = engineAnswering(200, {
+      track_id: 12,
+      state: "ready",
+      reason: null,
+      rate_hz: 75,
+      duration_ms: 106,
+      columns: 8,
+      data,
+    });
+
+    const answer = await client().getWaveformDetail({ track_id: 12 });
+
+    expect(calls[0]!.url).toBe(`${BASE}/api/v1/waveforms/detail?track_id=12`);
+    expect(calls[0]!.init?.method).toBeUndefined();
+    expect((calls[0]!.init?.headers as Record<string, string>).Authorization).toBe(`Bearer ${TOKEN}`);
+    expect(answer.refusal).toBeNull();
+    expect(answer.value!.data).toBeInstanceOf(Uint8Array);
+    expect(Buffer.isBuffer(answer.value!.data)).toBe(false);
+    expect(answer.value!.data!.length).toBe(32);
+    expect(answer.value!.data!.buffer.byteLength).toBe(32);
+    expect(answer.value).toMatchObject({ rate_hz: 75, columns: 8, state: "ready" });
+  });
+
+  it("answers no bytes while the detail is being made", async () => {
+    engineAnswering(200, {
+      track_id: 12,
+      state: "working",
+      reason: null,
+      rate_hz: null,
+      duration_ms: null,
+      columns: null,
+      data: null,
+    });
+
+    const answer = await client().getWaveformDetail({ track_id: 12 });
+
+    expect(answer.value!.state).toBe("working");
+    expect(answer.value!.data).toBeNull();
+  });
+
+  it("throws a track that does not exist, as every other read does", async () => {
+    engineAnswering(404, { error: { code: "NOT_FOUND", message: "No such track" } });
+
+    await expect(client().getWaveformDetail({ track_id: 99 })).rejects.toThrow("No such track");
+  });
+
+  it("POSTs the request for a track's detail", async () => {
+    const calls = engineAnswering(200, { track_id: 12, state: "working" });
+
+    const answer = await client().requestWaveformDetail({ track_id: 12 });
+
+    expect(calls[0]!.url).toBe(`${BASE}/api/v1/waveforms/detail/request`);
+    expect(calls[0]!.init?.method).toBe("POST");
+    expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ track_id: 12 });
+    expect(answer.value).toEqual({ track_id: 12, state: "working" });
+  });
+});
