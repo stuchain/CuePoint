@@ -1,6 +1,5 @@
 import { BoxGeometry, Color, Group, InstancedMesh, MeshBasicMaterial, Object3D, type Scene } from "three";
 import { KEYS, RECORD_COUNT, WHEEL, wheelLift, wheelSlot, wheelTilt } from "./scene/opening";
-import { keyColor } from "./content";
 import { BEAT, kickLevel, shot } from "./timing";
 
 /**
@@ -28,7 +27,9 @@ export function addWheelLights(scene: Scene): WheelLights {
 
   const dummy = new Object3D();
   const tint = new Color();
-  const colors = KEYS.map((k) => new Color(keyColor(k)));
+  // the app's accent family, as the tagged records and the wheel's cells wear it
+  const family = ["#8b5cf6", "#6366f1", "#a78bfa", "#7c3aed"];
+  const colors = KEYS.map((_, i) => new Color(family[(Math.floor(i / 2) + (i % 2) * 2) % family.length]));
   const { start } = shot("end");
 
   return {

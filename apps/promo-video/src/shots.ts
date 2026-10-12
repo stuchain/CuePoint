@@ -291,16 +291,19 @@ function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
   const disc = el.querySelector(".disc")!;
   const spin = el.querySelector(".spin")!;
   const { start, end } = shot("keys");
-  // the disc tips back into a floor and turns slowly under the camera
-  tl.fromTo(disc, { rotationX: 15, scale: 0.8 }, { rotationX: 48, scale: 1, duration: BEAT, ease: "power3.out" }, start);
-  tl.fromTo(spin, { rotationZ: -50 }, { rotationZ: -12, duration: BEAT, ease: "power3.out" }, start);
-  tl.to(spin, { rotationZ: 12, duration: end - start - BEAT, ease: "sine.inOut" }, start + BEAT);
+  // the disc is already tipping back into a floor and turning as the camera flies in on it (the panel
+  // shows from the start of that flight), settles a beat after the landing, and never stops turning
+  const appear = start - LEAD - FLY;
+  const settle = appear + FLY + LEAD + BEAT;
+  tl.fromTo(disc, { rotationX: 12, scale: 0.78 }, { rotationX: 48, scale: 1, duration: settle - appear, ease: "power2.out" }, appear);
+  tl.fromTo(spin, { rotationZ: -75 }, { rotationZ: -12, duration: settle - appear, ease: "power2.out" }, appear);
+  tl.to(spin, { rotationZ: 14, duration: end - settle, ease: "sine.inOut" }, settle);
   const tileEls = [...el.querySelectorAll<HTMLElement>(".tile")];
   // all 24 stand up in a sweep round the wheel, then one key is picked (the Library's key filter):
   // 8A rises and the rest dim
   const order = [...tileEls].sort((a, b) => Number.parseInt(a.dataset["key"]!, 10) - Number.parseInt(b.dataset["key"]!, 10));
-  order.forEach((tile, i) => tl.fromTo(tile, { z: 0, opacity: 0.25 }, { z: 30, opacity: 1, duration: BEAT / 4, ease: "steps(2)" }, start + BEAT / 4 + (i * BEAT) / 24));
-  const lift = start + BEAT * 1.5;
+  order.forEach((tile, i) => tl.fromTo(tile, { z: 0, opacity: 0.25 }, { z: 30, opacity: 1, duration: BEAT / 4, ease: "steps(2)" }, start + BEAT / 4 + (i * BEAT) / 16));
+  const lift = start + BEAT * 3;
   // 8A is picked; the keys that mix with it (same number, or one step on the same letter) come up with it
   const mixes = new Set(["8A", "8B", "7A", "9A"]);
   for (const tile of tileEls) {
@@ -357,20 +360,20 @@ function buildPrepare(format: FormatId, tl: Timeline): HTMLElement {
 
   const { start, end } = shot("prepare");
   el.querySelectorAll(".slot").forEach((slot, i) => {
-    tl.fromTo(slot, { z: 220, opacity: 0 }, { z: 24, opacity: 1, duration: BEAT * 0.5, ease: "power3.out" }, start + BEAT * (0.1 + i / 3));
+    tl.fromTo(slot, { z: 180, opacity: 0 }, { z: 12, opacity: 1, duration: BEAT * 0.5, ease: "power3.out" }, start + BEAT * (0.1 + i / 2));
   });
   el.querySelectorAll(".link").forEach((link, i) => {
-    tl.fromTo(link, { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: BEAT / 2, ease: "power2.out" }, start + BEAT * (0.5 + i / 3));
+    tl.fromTo(link, { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: BEAT / 2, ease: "power2.out" }, start + BEAT * (0.6 + i / 2));
   });
   // then the set plays through: each track in turn steps forward and lights up, half a beat apiece
   const slotEls = [...el.querySelectorAll<HTMLElement>(".slot")];
   slotEls.forEach((slot, i) => {
-    const on = start + BEAT * (2 + i / 2);
+    const on = start + BEAT * (3.5 + i * 0.75);
     tl.set(slot, { attr: { "data-playing": "1" } }, on);
-    tl.to(slot, { z: 70, duration: BEAT / 4, ease: "power2.out" }, on);
+    tl.to(slot, { z: 30, duration: BEAT / 4, ease: "power2.out" }, on);
     if (i < slotEls.length - 1) {
-      tl.set(slot, { attr: { "data-playing": "0" } }, on + BEAT / 2);
-      tl.to(slot, { z: 24, duration: BEAT / 4, ease: "power2.inOut" }, on + BEAT / 2);
+      tl.set(slot, { attr: { "data-playing": "0" } }, on + BEAT * 0.75);
+      tl.to(slot, { z: 12, duration: BEAT / 4, ease: "power2.inOut" }, on + BEAT * 0.75);
     }
   });
   const beats = Math.round((end - start) / BEAT);
@@ -426,12 +429,18 @@ function buildDiscover(format: FormatId, tl: Timeline): HTMLElement {
   const el = panel(format, "discover");
   el.append(windowShell(format, "Discover", page));
   const { start } = shot("discover");
-  el.querySelectorAll(".release").forEach((card, i) => {
-    tl.fromTo(card, { z: 260, opacity: 0 }, { z: 36, opacity: 1, duration: BEAT / 3, ease: "power3.out" }, start + BEAT * 0.1 + (BEAT * i) / 6);
+  // the cards settle flat in the window (a card standing proud of it looked out of line)
+  const cardEls = [...el.querySelectorAll<HTMLElement>(".release")];
+  cardEls.forEach((card, i) => {
+    tl.fromTo(card, { z: 160, opacity: 0 }, { z: 0, opacity: 1, duration: BEAT / 2, ease: "power3.out" }, start + BEAT * 0.1 + (BEAT * i) / 4);
   });
-  // two of them go on the wantlist, a beat apart
+  // two of them go on the wantlist, two beats apart; the picked card lifts a little as its button goes
   const wants = [...el.querySelectorAll<HTMLElement>(".want")];
-  const picks = new Map([[0, start + BEAT * 2.25], [4, start + BEAT * 3.25]]);
+  const picks = new Map([[0, start + BEAT * 3.5], [4, start + BEAT * 5.5]]);
+  picks.forEach((t, i) => {
+    tl.to(cardEls[i]!, { z: 14, duration: BEAT / 4, ease: "power2.out" }, t);
+    tl.to(cardEls[i]!, { z: 0, duration: BEAT / 2, ease: "power2.inOut" }, t + BEAT / 2);
+  });
   wants.forEach((button, i) => {
     const t = picks.get(i);
     textTrack(button, tl, t === undefined ? [[0, "+ Wantlist"]] : [[0, "+ Wantlist"], [t + BEAT / 4, "On wantlist"]]);
@@ -470,10 +479,11 @@ function buildWaveforms(format: FormatId, tl: Timeline): HTMLElement {
   tl.fromTo(el.querySelector(".wave .grid"), { opacity: 0 }, { opacity: 1, duration: BEAT / 2, ease: "power1.out" }, start + BEAT / 2);
   const cueEls = [...el.querySelectorAll<HTMLElement>(".cue")];
   cueEls.forEach((cue, i) => {
-    tl.fromTo(cue, { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: BEAT / 2, ease: "power3.out" }, start + BEAT * (0.25 + i / 4));
+    tl.fromTo(cue, { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: BEAT / 2, ease: "power3.out" }, start + BEAT * (0.25 + i / 3));
   });
-  // the playhead runs from beat 1 to the end of the bar; it reaches cue B exactly on beat 3, and the cue flashes
-  const run = { from: 4, to: 40 };
+  // the playhead runs from beat 1 to the end of the shot; it reaches cue B exactly on beat 5 (the second
+  // bar's downbeat), and the cue flashes
+  const run = { from: 4, to: 46 };
   const beats = Math.round((end - start) / BEAT);
   tl.fromTo(el.querySelector(".wave .head"), { left: `${run.from}%` }, { left: `${run.to}%`, duration: end - start - BEAT, ease: "none" }, start + BEAT);
   tl.fromTo(el.querySelector(".wave .played"), { width: `${run.from}%` }, { width: `${run.to}%`, duration: end - start - BEAT, ease: "none" }, start + BEAT);
@@ -513,7 +523,7 @@ function buildExport(format: FormatId, tl: Timeline): HTMLElement {
   // the file rises out of the Export button and floats beside the dialog (above it on the phone)
   const file = el.querySelector(".file")!;
   const from = wide ? { x: width / 2 - 160, y: 150 } : { x: width / 2 - 140, y: 190 };
-  const to = wide ? { x: width / 2 - 110, y: -215 } : { x: 0, y: -430 };
+  const to = wide ? { x: width / 2 - 170, y: -180 } : { x: 0, y: -430 };
   tl.fromTo(file, { ...from, z: 40, scale: 0.3, opacity: 0, rotationY: -30 }, { ...to, z: 60, scale: 0.85, opacity: 1, rotationY: 14, duration: BEAT * 1.25, ease: "power3.out" }, beat(2));
   tl.to(file, { y: to.y - 14, rotationY: -8, duration: end - beat(3.25), ease: "sine.inOut" }, beat(3.25));
   tl.fromTo(el.querySelector(".toast"), { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: BEAT / 2, ease: "power2.out" }, beat(2.25));

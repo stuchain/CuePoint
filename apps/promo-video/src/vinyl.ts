@@ -14,7 +14,7 @@ const DISC = { radius: 1.32, thick: 0.06, peek: 0.45 } as const;
 const HERO = { index: RECORD_COUNT - 1, peek: 1.35 } as const;
 const RING = { radius: 0.92, thick: 0.07 } as const;
 const LABEL = { radius: 0.42, thick: 0.09 } as const;
-const LABEL_TOKENS = ["accent-primary", "accent-success", "accent-warning", "accent-danger", "accent-info", "accent-secondary"] as const;
+const LABEL_TOKENS = ["accent-primary", "fg-muted", "accent-info", "border-light", "accent-primary-hover", "border-highlight"] as const;
 
 const slot = (token: (typeof PALETTE_TOKENS)[number]): number => PALETTE_TOKENS.indexOf(token);
 const toColor = (c: readonly [number, number, number]): Color => new Color(c[0], c[1], c[2]);

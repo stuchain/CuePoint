@@ -460,7 +460,7 @@ canvas.scene3d {
 .slot[data-playing="1"] {
   background: var(--bg-panel-alt);
   border-color: var(--accent-primary);
-  box-shadow: 6px 6px 0 var(--accent-primary-pressed);
+  box-shadow: 4px 4px 0 var(--accent-primary-pressed);
 }
 
 .slot[data-playing="1"] .n {
@@ -485,7 +485,7 @@ canvas.scene3d {
   display: flex;
   align-items: center;
   gap: 14px;
-  height: 44px;
+  height: 58px;
   padding-left: 98px;
   font-family: var(--font-pixel);
   font-weight: 600;
@@ -1012,19 +1012,20 @@ canvas.scene3d {
 /* Discover: new releases as cards */
 .releases {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 26px;
   margin-top: 10px;
 }
 
 .tall .releases {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
 .release {
+  min-width: 0;
   display: grid;
-  grid-template-columns: 170px 1fr;
+  grid-template-columns: 170px minmax(0, 1fr);
   grid-template-rows: auto auto 1fr;
   column-gap: 18px;
   padding: 18px;
@@ -1034,8 +1035,9 @@ canvas.scene3d {
 }
 
 .tall .release {
-  grid-template-columns: 110px 1fr;
-  padding: 14px;
+  grid-template-columns: 104px minmax(0, 1fr);
+  column-gap: 14px;
+  padding: 12px;
 }
 
 .tall .r-title {
@@ -1063,20 +1065,33 @@ canvas.scene3d {
   font-weight: 700;
   font-size: 34px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .r-artist {
   font-size: 26px;
   color: var(--fg-muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+/* one width whatever the button says, so a press never shifts the card's layout */
 .release .want {
   white-space: nowrap;
   align-self: end;
   justify-self: start;
+  justify-content: center;
+  min-width: 196px;
   font-size: 24px;
   padding: 6px 14px 8px;
+}
+
+.tall .release .want {
+  min-width: 172px;
+  font-size: 22px;
+  padding: 5px 10px 7px;
 }
 
 .release .want[data-on="1"] {

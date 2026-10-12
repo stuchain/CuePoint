@@ -1,12 +1,12 @@
 /**
- * The promo's clock. Everything is placed on the beat: 132 BPM, 11 bars of 4 beats, exactly 20 seconds,
+ * The promo's clock. Everything is placed on the beat: 132 BPM, 17 bars of 4 beats, about 31 seconds,
  * so cuts, pops and camera kicks land on the music (scripts/beat.mjs plays the same grid).
  */
 export const FPS = 30;
 export const BPM = 132;
 export const BEAT = 60 / BPM;
 export const BAR = BEAT * 4;
-export const BARS = 11;
+export const BARS = 17;
 export const DURATION = BAR * BARS;
 export const FRAMES = Math.round(DURATION * FPS);
 
@@ -14,18 +14,19 @@ export const FRAMES = Math.round(DURATION * FPS);
 export const at = (bar: number, beat = 0): number => bar * BAR + beat * BEAT;
 
 /**
- * The shots, in bars: the hook and Clean get two bars each, then the features come one bar apiece (the
- * fastest part, on the drop), and the end card holds for two.
+ * The shots, in bars: the hook gets four (a slow dig into the crate, then the records lift, take their
+ * tags and fly into the wheel), Clean and the next four features two bars each, Export one (the drop's
+ * fastest cut), and the end card holds for two.
  */
 export const SHOTS = [
-  { id: "opening", from: 0, to: 2 },
-  { id: "clean", from: 2, to: 4 },
-  { id: "keys", from: 4, to: 5 },
-  { id: "discover", from: 5, to: 6 },
-  { id: "prepare", from: 6, to: 7 },
-  { id: "waveforms", from: 7, to: 8 },
-  { id: "export", from: 8, to: 9 },
-  { id: "end", from: 9, to: 11 },
+  { id: "opening", from: 0, to: 4 },
+  { id: "clean", from: 4, to: 6 },
+  { id: "keys", from: 6, to: 8 },
+  { id: "discover", from: 8, to: 10 },
+  { id: "prepare", from: 10, to: 12 },
+  { id: "waveforms", from: 12, to: 14 },
+  { id: "export", from: 14, to: 15 },
+  { id: "end", from: 15, to: 17 },
 ] as const;
 
 export type ShotId = (typeof SHOTS)[number]["id"];
@@ -43,21 +44,24 @@ export const CUTS: readonly number[] = SHOTS.slice(1).map((s) => at(s.from));
  * website's home page already says (apps/website/src/data/home.ts): no claim the app does not back up.
  */
 export const CAPTIONS = [
-  { text: "A messy library?", from: 0, to: at(1) },
-  { text: "Matched on Beatport.", from: at(1), to: at(2) },
+  { text: "A messy library?", from: at(0, 2), to: at(2, 1) },
+  { text: "Matched on Beatport.", from: at(2, 1), to: at(4) },
   // the app shots: each caption lands with the camera, half a beat after the downbeat
-  { text: "Keys and tempos, fixed.", from: at(2, 0.75), to: at(4, 0.5) },
-  { text: "Filter by key.", from: at(4, 0.5), to: at(5, 0.5) },
-  { text: "Find new music.", from: at(5, 0.5), to: at(6, 0.5) },
-  { text: "Plan sets in key.", from: at(6, 0.5), to: at(7, 0.5) },
-  { text: "See the drop coming.", from: at(7, 0.5), to: at(8, 0.5) },
-  { text: "Back to Rekordbox.", from: at(8, 0.5), to: at(9, 0.25) },
+  { text: "Keys and tempos, fixed.", from: at(4, 0.75), to: at(6, 0.5) },
+  { text: "Filter by key.", from: at(6, 0.5), to: at(8, 0.5) },
+  { text: "Find new music.", from: at(8, 0.5), to: at(10, 0.5) },
+  { text: "Plan sets in key.", from: at(10, 0.5), to: at(12, 0.5) },
+  { text: "See the drop coming.", from: at(12, 0.5), to: at(14, 0.5) },
+  { text: "Back to Rekordbox.", from: at(14, 0.5), to: at(15, 0.25) },
 ] as const;
 
-/** Which bars the drums play. The intro bar is pads and arps; the riser clears bar 1's second half. */
+/** The bar the drop lands on: the cut into the app. */
+const DROP_BAR = SHOTS[1].from;
+
+/** Which bars the drums play. The first two bars are pads and arps; the riser clears the bar before the drop's second half. */
 const DRUM_BARS = (bar: number, beat: number): boolean => {
-  if (bar === 0) return false;
-  if (bar === 1 && beat >= 2) return false; // the riser into the app shots
+  if (bar < DROP_BAR - 2) return false;
+  if (bar === DROP_BAR - 1 && beat >= 2) return false; // the riser into the app shots
   if (bar === BARS - 1 && beat >= 2) return false; // the last hit, alone
   return true;
 };

@@ -254,9 +254,11 @@ export function cameraPose(progress: number): CameraPose {
 // ---- the Three.js side ----
 
 // palette slots (see PALETTE_TOKENS in ../palette)
-const SLOT = { panel: 1, panelAlt: 2, highlight: 4, muted: 6, text: 7, primary: 8, primaryHover: 9, secondary: 11, success: 12, warning: 13, danger: 14, info: 15 } as const;
-const SLEEVE_SLOTS = [SLOT.danger, SLOT.warning, SLOT.info, SLOT.success, SLOT.secondary, SLOT.muted] as const;
-const WHEEL_SLOTS = [SLOT.primary, SLOT.success, SLOT.warning, SLOT.danger, SLOT.primaryHover, SLOT.info] as const;
+const SLOT = { panel: 1, panelAlt: 2, borderMuted: 3, highlight: 4, muted: 6, text: 7, primary: 8, primaryHover: 9, pressed: 10, secondary: 11, success: 12, warning: 13, danger: 14, info: 15 } as const;
+// the app's own colors (promo v8): untagged sleeves are plain grays; a tagged record, and its cell in the
+// wheel, takes the accent family, as the app's wheel and key badges do
+const SLEEVE_SLOTS = [SLOT.borderMuted, SLOT.highlight, SLOT.panelAlt] as const;
+const WHEEL_SLOTS = [SLOT.primary, SLOT.info, SLOT.primaryHover, SLOT.pressed] as const;
 
 /**
  * One tag texel, in world units. A tag shows the key only ("8A"), because a texel that covers less than one
@@ -412,9 +414,9 @@ export function create(): SceneInstance {
     planks.instanceMatrix.needsUpdate = true;
     if (planks.instanceColor) planks.instanceColor.needsUpdate = true;
     for (let i = 0; i < RECORD_COUNT; i++) {
-      // blank sleeves in colors that do not go together; the wheel's colors go by the key's number
-      sleeveColors[i]!.copy(toColor(palette.colors[SLEEVE_SLOTS[Math.floor(rand(i, 8) * SLEEVE_SLOTS.length)]!]!));
-      keyColors[i]!.copy(toColor(palette.colors[WHEEL_SLOTS[(Math.floor(i / 2) + (i % 2) * 3) % WHEEL_SLOTS.length]!]!));
+      // blank gray sleeves (no two neighbours alike); the tag's color goes by the key's number and letter
+      sleeveColors[i]!.copy(toColor(palette.colors[SLEEVE_SLOTS[(i + Math.floor(i / SLEEVE_SLOTS.length)) % SLEEVE_SLOTS.length]!]!));
+      keyColors[i]!.copy(toColor(palette.colors[WHEEL_SLOTS[(Math.floor(i / 2) + (i % 2) * 2) % WHEEL_SLOTS.length]!]!));
     }
     for (const tag of tags) paintTag(tag, palette);
   }
@@ -431,10 +433,10 @@ export function create(): SceneInstance {
       dummy.updateMatrix();
       records.setMatrixAt(i, dummy.matrix);
       const lit = litAmount(i, progress);
-      records.setColorAt(i, tint.copy(sleeveColors[i]!).lerp(keyColors[i]!, lit));
-
       const tag = tags[i]!;
       const a = labelAmount(i, progress);
+      // the sleeve takes its key's color with its tag, and keeps it as a cell of the wheel
+      records.setColorAt(i, tint.copy(sleeveColors[i]!).lerp(keyColors[i]!, Math.max(a, lit)));
       tag.mesh.visible = a > 0.01;
       if (tag.mesh.visible) {
         // a sticker on the sleeve's face
