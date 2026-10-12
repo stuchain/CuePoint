@@ -261,6 +261,8 @@ export class PlayerSupervisor {
    */
   private opening: Promise<void> | null = null;
   private opened: (() => void) | null = null;
+  /** The playlist entry the current open waits on; see the `end-file` handler. */
+  private openingEntryId: number | null | undefined = null;
   /** What the user asked for; see `AudioState`. */
   private audio: AudioSettings = { ...DEFAULT_AUDIO_SETTINGS };
   /** What is actually in use, which a fallback can pull away from it. */
@@ -600,10 +602,34 @@ export class PlayerSupervisor {
       for (const listener of this.startFileListeners) listener(info);
     });
     client.on("event", (event: { event?: string }) => {
-      if (event.event === "file-loaded") this.settleOpening();
+      if (event.event !== "file-loaded") return;
+      // mpv's `file-loaded` carries no playlist entry id (and mpvClient passes
+      // it through raw), so it cannot be matched to an open the way `end-file`
+      // is; it settles whatever is opening.
+      this.settleOpening();
+      // mpv's `end-file` for the file this one replaced (or for the track that
+      // ended into a gapless successor) cleared `playing`, and `pause` does not
+      // change across a switch, so nothing else would set it again. The
+      // `filePath` check keeps a late event after `stopPlayback()` from
+      // reviving the state.
+      this.playback = {
+        ...this.playback,
+        playing: !this.playback.paused && this.playback.filePath !== null,
+      };
+      this.push(true);
     });
     client.on("end-file", (info) => {
-      this.settleOpening();
+      // Only the end of the entry being opened settles its wait; the file it
+      // replaced ends first and must not release a seek meant for the new one.
+      // `undefined` = `loadFile` has not answered yet; `null` = mpv gave no id.
+      const waitingFor = this.openingEntryId;
+      if (
+        waitingFor === null ||
+        info.playlistEntryId === undefined ||
+        (waitingFor !== undefined && info.playlistEntryId === waitingFor)
+      ) {
+        this.settleOpening();
+      }
       this.playback = { ...this.playback, playing: false };
       this.push(true);
       for (const listener of this.endFileListeners) listener(info);
@@ -981,10 +1007,17 @@ export class PlayerSupervisor {
     this.idleActive = false;
     this.push(true);
     this.settleOpening();
-    this.opening = new Promise((resolve) => (this.opened = resolve));
+    const opening = new Promise<void>((resolve) => (this.opened = resolve));
+    this.opening = opening;
+    this.openingEntryId = undefined;
     // `replace` clears mpv's playlist, so any preloaded entry goes with it —
     // verified against the bundled build, where playlist-count returns to 1.
     const entryId = await client.loadFile(filePath, "replace");
+    // Only if no newer open has started while the command was in flight: an
+    // older answer must not stand in for the newer open's entry id.
+    if (this.opening === opening && this.openingEntryId === undefined) {
+      this.openingEntryId = entryId ?? null;
+    }
     await client.setPaused(false);
     return entryId;
   }
@@ -1071,6 +1104,7 @@ export class PlayerSupervisor {
     this.opened?.();
     this.opened = null;
     this.opening = null;
+    this.openingEntryId = null;
   }
 
   /** Stop playback without shutting the process down. */

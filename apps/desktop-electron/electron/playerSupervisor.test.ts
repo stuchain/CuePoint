@@ -111,8 +111,16 @@ class FakeClient extends EventEmitter {
     this.handlers.get(name)?.(value);
   }
 
-  async loadFile(file: string, mode = "replace"): Promise<void> {
+  /** Answer `loadfile` with a playlist entry id, as mpv does; off, it answers nothing. */
+  returnEntryIds = false;
+  private nextEntryId = 1;
+  /** When set, each `loadfile` waits on the next of these before answering. */
+  loadGates: Array<Promise<void>> = [];
+  async loadFile(file: string, mode = "replace"): Promise<number | undefined> {
     this.commands.push(["loadfile", file, mode]);
+    const gate = this.loadGates.shift();
+    if (gate) await gate;
+    return this.returnEntryIds ? this.nextEntryId++ : undefined;
   }
   async stop(): Promise<void> {
     this.commands.push(["stop"]);
@@ -957,6 +965,108 @@ describe("state from mpv", () => {
     await supervisor.play("/music/a.flac");
     clients[0].emitProperty("idle-active", true);
     expect(supervisor.getSnapshot().playback.playing).toBe(false);
+  });
+
+  it("still says playing after switching tracks mid-play (C8)", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    clients[0].emit("event", { event: "file-loaded" });
+    await supervisor.play("/music/b.flac");
+    clients[0].emit("end-file", { reason: "stop", playlistEntryId: 1 }); // the replaced file
+    clients[0].emit("start-file", { playlistEntryId: 2 });
+    clients[0].emit("event", { event: "file-loaded" });
+    expect(supervisor.getSnapshot().playback.playing).toBe(true);
+  });
+
+  it("still says playing when mpv moves gaplessly to the next entry (C8)", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    await supervisor.enqueue("/music/b.flac");
+    clients[0].emit("event", { event: "file-loaded" });
+    clients[0].emit("end-file", { reason: "eof", playlistEntryId: 1 });
+    clients[0].emit("start-file", { playlistEntryId: 2 });
+    clients[0].emit("event", { event: "file-loaded" });
+    expect(supervisor.getSnapshot().playback.playing).toBe(true);
+  });
+
+  it("does not revive playing on a stray file-loaded after stopPlayback (C8)", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    await supervisor.stopPlayback();
+    clients[0].emit("event", { event: "file-loaded" });
+    expect(supervisor.getSnapshot().playback.playing).toBe(false);
+  });
+
+  it("does not report playing on file-loaded while paused (C8)", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    clients[0].emitProperty("pause", true);
+    clients[0].emit("event", { event: "file-loaded" });
+    expect(supervisor.getSnapshot().playback.playing).toBe(false);
+  });
+
+  it("pushes a last snapshot with playing: true after a switch (C8)", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    clients[0].emit("event", { event: "file-loaded" });
+    await supervisor.play("/music/b.flac");
+    const seen: boolean[] = [];
+    supervisor.onSnapshot((s) => seen.push(s.playback.playing));
+    clients[0].emit("end-file", { reason: "stop", playlistEntryId: 1 });
+    clients[0].emit("start-file", { playlistEntryId: 2 });
+    clients[0].emit("event", { event: "file-loaded" });
+    expect(seen.at(-1)).toBe(true);
+  });
+
+  it("does not let the replaced file's end-file release the new file's seek wait", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac"); // the client exists once it has played
+    clients[0].returnEntryIds = true;
+    await supervisor.play("/music/b.flac"); // mpv answers: entry 1
+    let calls = 0;
+    clients[0].seek = async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("property unavailable");
+    };
+    const seeking = supervisor.seek(30);
+    clients[0].emit("end-file", { reason: "stop", playlistEntryId: 99 }); // the replaced file
+    await settle(10);
+    expect(calls).toBe(1); // still waiting on entry 1
+    clients[0].emit("event", { event: "file-loaded" });
+    await seeking;
+    expect(calls).toBe(2);
+  });
+
+  it("does not let an older play's entry id stand in for a newer open's", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    clients[0].returnEntryIds = true;
+    let openA: () => void = () => undefined;
+    let openB: () => void = () => undefined;
+    clients[0].loadGates = [
+      new Promise<void>((resolve) => (openA = resolve)),
+      new Promise<void>((resolve) => (openB = resolve)),
+    ];
+    const playA = supervisor.play("/music/a2.flac"); // will be entry 1
+    await settle(5);
+    const playB = supervisor.play("/music/b.flac"); // will be entry 2
+    await settle(5);
+    openA(); // the older command answers first
+    await settle(5);
+    openB();
+    await Promise.all([playA, playB]);
+    let calls = 0;
+    clients[0].seek = async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("property unavailable");
+    };
+    const seeking = supervisor.seek(30);
+    clients[0].emit("end-file", { reason: "stop", playlistEntryId: 1 }); // A, replaced
+    await settle(10);
+    expect(calls).toBe(1); // still waiting on B's entry 2
+    clients[0].emit("event", { event: "file-loaded" });
+    await seeking;
+    expect(calls).toBe(2);
   });
 });
 
