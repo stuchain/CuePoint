@@ -55,51 +55,85 @@ def _job_threads_finish_with_their_test():
             thread.join(max(0.0, deadline - time.monotonic()))
 
 
-#: What the system said of a request's sockets while it was still unanswered.
+#: What the engine's threads did while a request waited, one entry per waiting request.
 _LIVE_REPORTS: list[str] = []
 
-#: How long a request to an engine goes unanswered before its sockets are looked at.
-_LIVE_REPORT_AFTER_SECONDS = 3.0
+#: How long a request to an engine goes unanswered before its threads are sampled.
+_LIVE_REPORT_AFTER_SECONDS = 1.0
+
+#: How often a waiting request's threads are sampled after that.
+_LIVE_SAMPLE_EVERY_SECONDS = 0.25
 
 
 @pytest.fixture(autouse=True, scope="session")
 def _look_at_unanswered_requests():
-    """Look at a request's connection while it is still waiting for its answer.
+    """Watch the engine while a request is still waiting for its answer.
 
-    The Windows timeout left the engine's listener idle with nothing accepted,
-    and by the time the test failed the client had closed its end, taking the
-    evidence with it. So a request still unanswered after a few seconds has its
-    own connection, and every socket on the engine's port, recorded then.
+    The Windows timeout is a request accepted by the engine whose handler then
+    gives no answer for seconds. A single look at its stack (3 s, d662947) found
+    it at the entry of a cheap function both at 3 s and at the 5 s timeout, but
+    that look itself held the interpreter's lock for a while. So a request still
+    unanswered after 1 s has its handler threads' innermost frames sampled every
+    quarter second, with the process's CPU time: CPU time that grows while the
+    handler stays put is the lock going elsewhere; CPU time that stands still is
+    the process not being run at all.
     """
     import http.client
 
     original = http.client.HTTPConnection.getresponse
 
     def getresponse(self, *args, **kwargs):
-        def look() -> None:
-            try:
-                local = self.sock.getsockname() if self.sock else None
-            except OSError:
-                local = None
+        answered = threading.Event()
+        began = time.monotonic()
+        samples: list[str] = []
+
+        def sample() -> None:
+            if answered.wait(_LIVE_REPORT_AFTER_SECONDS):
+                return
+            while True:
+                cpu = os.times()
+                samples.append(
+                    f"{time.monotonic() - began:5.2f}s cpu user={cpu.user:.2f} "
+                    f"system={cpu.system:.2f} switch={sys.getswitchinterval()}\n"
+                    + _handler_frames()
+                )
+                if answered.wait(_LIVE_SAMPLE_EVERY_SECONDS):
+                    break
             _LIVE_REPORTS.append(
-                f"request to {self.host}:{self.port} from {local}, "
-                f"unanswered after {_LIVE_REPORT_AFTER_SECONDS} s\n"
-                + _socket_report({self.port, *([local[1]] if local else [])})
-                + "\n\nthreads then:\n"
-                + _thread_stacks()
+                f"request to {self.host}:{self.port}, answered or given up "
+                f"after {time.monotonic() - began:.2f} s\n" + "\n".join(samples)
             )
 
-        timer = threading.Timer(_LIVE_REPORT_AFTER_SECONDS, look)
-        timer.daemon = True
-        timer.start()
+        sampler = threading.Thread(target=sample, name="request-sampler", daemon=True)
+        sampler.start()
         try:
             return original(self, *args, **kwargs)
         finally:
-            timer.cancel()
+            answered.set()
+            sampler.join(2.0)
 
     http.client.HTTPConnection.getresponse = getresponse
     yield
     http.client.HTTPConnection.getresponse = original
+
+
+def _handler_frames() -> str:
+    """The innermost frames of every thread serving a request, cheaply."""
+    names = {thread.ident: thread.name for thread in threading.enumerate()}
+    lines = []
+    for ident, frame in sys._current_frames().items():
+        name = names.get(ident, "?")
+        if "process_request_thread" not in name:
+            continue
+        inner = []
+        while frame is not None and len(inner) < 4:
+            code = frame.f_code
+            inner.append(
+                f"{os.path.basename(code.co_filename)}:{frame.f_lineno} {code.co_name}"
+            )
+            frame = frame.f_back
+        lines.append(f"  {name}: " + " < ".join(inner))
+    return "\n".join(lines) or "  no thread serving a request"
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -117,7 +151,7 @@ def pytest_runtest_makereport(item, call):
         return
     if live:
         outcome.get_result().sections.append(
-            ("sockets while the request waited", "\n\n".join(live))
+            ("the engine while the request waited", "\n\n".join(live))
         )
     outcome.get_result().sections.append(
         ("threads when the request timed out", _thread_stacks())
