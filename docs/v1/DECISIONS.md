@@ -94,6 +94,12 @@ For the key only, accepting a match is what sets the value the app shows, export
 Beatport's key, unless the user has corrected it (DEC-201). Every other field keeps this decision:
 applying stays a separate, explicit act.
 
+### Amended (2026-10-12, DEC-251) — the Match area
+
+In the Match area (DEC-251) the explicit act is the ticks plus **Correct**, which accepts the match and
+applies the ticked values together, as one batch. Auto-accept at the high tier still applies nothing
+(DEC-067): it links the track to the Beatport release and, for the key, gives it Beatport's.
+
 ---
 
 ## DEC-005 — Player Backend
@@ -304,6 +310,14 @@ matches common library/player app behavior.
 the queue from the active view's current filtered/sorted track list at play time.
 
 **Decided with**: User · **Date**: 2026-09-01
+
+### Amended (2026-10-12, DEC-251) — a Beatport preview plays outside the queue
+
+A Beatport preview in the Match area (DEC-251) is a short sample played by the page's own audio, not by
+the player. It never enters the queue, one plays at a time, and it plays on the system's default
+output, not the device chosen in Settings → Audio. Starting a preview pauses the player, and **Play
+your file** (this decision's queue path, over the Match list) stops the preview. Space stays the
+player's.
 
 ---
 
@@ -1768,6 +1782,13 @@ tracks left, and an interrupted match's Activity entry offers **Resume**. Still 
 nothing resumes on its own. The file-based match this decision retired is removed with inKey
 (DEC-071), and the CLI keeps its own path unchanged.
 
+### Amended (2026-10-12, DEC-251) — runs are listed
+
+A run now stores a short label of what was matched (a playlist's name, "Whole library", "N chosen
+tracks"), and the runs are listed in the Match area's Past searches (DEC-251). The resumes that
+finished a run are one run (`resumed_from` chain), with counts for found, waiting for you, not found, rejected and not
+reached. The counts are where the tracks stand now, so they change as the user works. Runs from before the label was stored show "N tracks".
+
 ---
 
 ## DEC-066 — Every Match Attempt Is Kept, With All Its Candidates
@@ -1810,6 +1831,12 @@ each of forty query variants returned a page of results never seen before. Live 
 variants of one title overlap heavily, which is why a track with no match stored no more than one
 with a match. Storing every candidate is unchanged. CLEAN-14's scale step measures the review
 queue against these numbers, as the implications above already say.
+
+### Amended (2026-10-12, DEC-251) — previews
+
+New candidates carry the Beatport preview address (`preview_url`), taken from the track's own detail
+page. The evidence already stored is not rewritten: a candidate from an older match has no preview
+address, and its card says no preview is available until the track is searched again.
 
 ---
 
@@ -1862,6 +1889,12 @@ changes a user's accept or reject, and one click cannot erase an afternoon of re
 Under DEC-201 an accepted match supplies the track's key, and every accept counts, the automatic ones
 included (DEC-202). An automatic accept stays not sticky, so a re-match can change a key; History
 records the change.
+
+### Amended (2026-10-12, DEC-251) — thresholds unchanged
+
+DEC-251 changes how a person works through what waits, not what waits: the thresholds and the guards
+are unchanged, and no new bucket was added. "Waiting for you", "Changed since you decided", Accepted,
+Rejected, No match and Not matched are the same states, now chosen with **Show**.
 
 ---
 
@@ -1952,6 +1985,13 @@ frozen, and nothing is right only sometimes.
 For the key, the effective value is the user's correction, else the accepted Beatport match's key,
 else none. Rekordbox's key is never the fallback. BPM, genre, label and year keep this decision as it
 stands, and the key's history and revert work as here.
+
+### Amended (2026-10-12, DEC-251) — Correct writes the same layer
+
+**Correct** (DEC-251) writes the same override layer as Apply did. It is one batch with one batch id
+(accept plus the ticked fields, in one transaction), shown in each track's History and revertable
+from there, from Activity, and from the **Undo** beside the line that says what Correct did. Undo is
+offered only when Correct changed something.
 
 ---
 
@@ -2166,6 +2206,13 @@ Nothing here changes the decision. What building it settled, recorded in full in
   recorded; History has no membership rows to put it on.
 - **A write the engine stopped in the middle of is offered for restoring** in Activity, with how many
   of its writes may not have finished (DEC-070).
+
+### Amended (2026-10-12, DEC-251) — the tabs and the Match area
+
+The Clean tabs are now **Match**, **Fix values**, **Missing files**, **Duplicates** and **Health**
+(DEC-251). The tab keeps its internal id `review`, so a remembered tab, a link and Health's counts
+still reach it. The comparison grid is retired; Match has three views: One at a time, Table and Past
+searches. Tabs carry no introduction line (see DEC-132).
 
 ---
 
@@ -2404,6 +2451,13 @@ Nothing here changes the decision or its amendment. What building it settled, re
   a scope stops after twenty failures in a row.
 - **Vocabulary**: `artwork` is `embedded`, `beatport`, `none` or `unknown` — what the table would
   show, with a file answer read at another path counting as not read.
+
+### Amended (2026-10-12, DEC-251) — the candidate on screen
+
+In the Match area (DEC-251) Beatport's artwork is also shown for the candidate on screen, not only
+for accepted matches. It is fetched lazily through the same gate and cache as the rest of the
+artwork (Beatport's own image hosts only, size and decoder limits, offline gives no picture). It is
+drawn from a temporary URL: nothing is written to `track_artwork` and nothing is embedded in a file.
 
 ---
 
@@ -4484,6 +4538,11 @@ gets:
 
 **Decided with**: User · **Date**: 2026-10-06
 
+### Amended (2026-10-12, DEC-251) — no per-tab introductions on Clean (C15b; CLN-1)
+
+The one-line introduction above each Clean tab (CLN-1) is removed (DEC-251): the tab names, the empty
+states and the controls say what a tab is for. Health keeps its count of tracks in the library.
+
 ---
 
 ## DEC-133 — A Camelot Wheel in the Header, Lit and Filtering
@@ -5831,6 +5890,15 @@ Beatport's key as a correction on accept".
 
 **Decided with**: User · **Date**: 2026-10-08
 
+### Amended (2026-10-12, DEC-251) — the Key tick
+
+The Match area (DEC-251) has a **Key** tick. Accepting a match already makes Beatport's key the
+shown key unless the track has the user's own correction (`key_source` "yours"). So the tick appears
+only for such a track, when its key differs from the candidate's, and ticking it means "replace my
+key with Beatport's": the engine clears the key override, recorded and revertable. The tick is
+**off by default**, unlike the other fields, and a choice made is remembered. Otherwise the Key row
+reads "comes with Correct". Key is still never "applied", and typing a key stays in Fix values.
+
 ---
 
 ## DEC-202 — Every Accepted Match Gives the Key, Automatic Ones Included
@@ -7048,5 +7116,46 @@ track), and the engine threw away the 150-a-second envelope it reduces from.
   turned off it moves in steps on each position update.
 
 **Supersedes**: DEC-115 (an overview only).
+
+**Decided with**: User · **Date**: 2026-10-12
+
+## DEC-251 — Matching Is One Match Area: One at a Time, Table, Past Searches
+
+**Status**: Approved · **Related**: DEC-004, DEC-012, DEC-065, DEC-066, DEC-067, DEC-068, DEC-072, DEC-076, DEC-132, DEC-201, C14, C15b
+
+**Context**: C14: reviewing Beatport matches took too many steps. A person picked a track in a
+queue, read a comparison grid, chose a candidate, pressed Accept, then had to open "Apply from the
+accepted match", untick what they did not want and press Apply. The earlier runs were visible only
+as a resume note, and there was no way to hear the Beatport result or see its cover.
+
+**Decision** (Stelios's pick):
+- The Clean tab "Review matches" becomes **Match**: one area, three views of one list. **One at a
+  time** is the default: your track beside the best match Beatport found (artwork, key, BPM, genre,
+  label, year, length), a "% likely" between them, the other results as chips, and **Play your
+  file** / **Play Beatport preview**. **Table** is the same list for many tracks, with each value as
+  before → after and "Take ticked values". **Past searches** lists every run.
+- **Correct = accept + the ticked values, in one act.** Under the card, "When I say Correct, also
+  update" ticks BPM, genre, label and year (all on) and, only where it applies, the key (**off by
+  default**: it would replace a key the user typed, DEC-201). The ticks are remembered and are the
+  same in both views. Correct is one batch with one **Undo**, offered only when something changed.
+- Not piled into buckets: no new match states and no new thresholds. **Show** keeps the old
+  scopes; **From** (All searches, or one run) is added, and the old "In" menu is dropped (match a
+  playlist, then choose that run).
+- **Past searches** are the stored runs. A run's resumes count as one. Each shows when, what was
+  matched, how many tracks, the results line and a status (Done, Stopped at N, Running), with Open,
+  Resume and Match again.
+- Keys: A Correct, R Not this track, N Skip, ← → other results, ↑ ↓ previous or next track, B
+  Beatport preview, Y your file, Esc stops the preview. Space stays the player's.
+- A Beatport preview and the candidate's artwork come from Beatport's own hosts only
+  (`geo-samples.beatport.com` for samples), are not stored, and play outside the queue on the
+  system's default output (not the Audio-settings device).
+- The introduction line above each Clean tab is removed (C15b).
+
+**Rejected**: keeping Accept and Apply as two steps; a fourth sub-tab for the comparison grid;
+storing Beatport artwork or previews; routing the preview through the player (it would join the
+queue and change the Audio-settings device's meaning).
+
+**Amends**: DEC-004, DEC-067, DEC-068, DEC-201, DEC-072, DEC-076, DEC-012, DEC-132 (CLN-1). **Notes**:
+DEC-065 (runs are labelled and listed), DEC-066 (new candidates carry `preview_url`).
 
 **Decided with**: User · **Date**: 2026-10-12

@@ -190,9 +190,9 @@ function bpRow(window: Page, table: string, title: string) {
   return window.getByRole("table", { name: table }).getByRole("row").filter({ hasText: title });
 }
 
-/** A row of the Clean page's review queue. */
+/** A row of the Match area's Table. */
 function queueRow(window: Page, title: string) {
-  return window.getByRole("table", { name: "Review queue" }).getByRole("row").filter({ hasText: title });
+  return window.getByRole("table", { name: "Match table" }).getByRole("row").filter({ hasText: title });
 }
 
 /**
@@ -343,7 +343,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
       await test.step("match and accept two tracks", async () => {
         await nav(window).getByRole("link", { name: "Clean", exact: true }).click();
         await expect(window.getByText("Match your library on Beatport")).toBeVisible({ timeout: 30_000 });
-        await window.getByRole("combobox", { name: "In" }).selectOption({ label: "To match" });
+        await window.getByRole("tab", { name: "Table", exact: true }).click();
         await window.getByRole("combobox", { name: "Show" }).selectOption("not_matched");
         await expect(queueRow(window, "Low Tide")).toBeVisible({ timeout: 15_000 });
         await window.getByRole("button", { name: "Match tracks…" }).click();

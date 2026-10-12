@@ -56,8 +56,8 @@ const ALT: Record<string, string> = {
   prepare: "The Prepare page: a Set as a running order in chapters, with the checks between tracks and the transition strip open on one of them.",
   export: "The Export to Rekordbox window: how many tracks and which playlists the new Rekordbox file will hold, before anything is written.",
   discover: "The Discover page after a search: new tracks found on a Beatport chart by an artist in the library, with their artists and labels.",
-  clean: "The Clean page's review queue: the tracks a Beatport match left waiting for a yes or no, with their tempo and genre beside them.",
-  "clean-compare": "Clean's comparison for a track that needs review: the library's values beside two Beatport candidates, with their scores, titles and artists.",
+  clean: "The Clean page's Match area as a table: the tracks a Beatport match left waiting for a yes or no, with their tempo and genre beside them.",
+  "clean-compare": "Clean's Match area, One at a time: a track from the library beside the best match Beatport found, with its likelihood, the other results, and the Correct button.",
 };
 
 function python(): string {
@@ -521,11 +521,12 @@ test.describe("the website's pictures (SITE-04)", () => {
         await shoot(window, "discover", taken);
       });
 
-      await test.step("clean: the review queue after a playlist is matched", async () => {
+      await test.step("clean: the Match table after a playlist is matched", async () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
         await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
-        const queue = window.getByRole("table", { name: "Review queue" });
-        await expect(queue.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
+        await window.getByRole("tab", { name: "Table", exact: true }).click();
+        const queue = window.getByRole("table", { name: "Match table" });
+        await expect(window.getByRole("button", { name: "Match tracks…" })).toBeVisible({ timeout: 30_000 });
         await window.getByRole("button", { name: "Match tracks…" }).click();
         const matchWindow = window.getByRole("dialog", { name: "Match tracks" });
         await matchWindow.getByRole("radio", { name: /^Tracks in chosen playlists/ }).click();
@@ -541,6 +542,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         await openLibrary(window);
         await window.getByRole("link", { name: "Clean", exact: true }).click();
         await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
+        await window.getByRole("tab", { name: "Table", exact: true }).click();
         await window.getByRole("combobox", { name: "Show" }).selectOption("needs_review");
         // the queue's rows have nothing to inspect yet: the panel away gives the table its tempo and genre columns
         const hide = window.getByRole("button", { name: "Hide track details" });
@@ -553,36 +555,23 @@ test.describe("the website's pictures (SITE-04)", () => {
         await shoot(window, "clean", taken);
       });
 
-      await test.step("clean-compare: a track that needs review beside its candidates", async () => {
+      await test.step("clean-compare: One at a time, a track beside the best match Beatport found", async () => {
         await expect(window.locator(".cp-toast")).toHaveCount(0, { timeout: 60_000 });
-        await window.getByRole("combobox", { name: "Show" }).selectOption("needs_review");
-        const queue = window.getByRole("table", { name: "Review queue" });
-        const first = queue.locator('.track-table__row [data-column="title"]').first();
-        await expect(first).toBeVisible({ timeout: 30_000 });
-        await first.click();
-        const comparison = window.getByRole("region", { name: "Comparison" });
-        await expect(comparison.getByRole("group", { name: "Decide" })).toBeVisible({ timeout: 30_000 });
-        await expect(comparison.getByRole("button", { name: /^#1 · / })).toBeVisible();
-        // the covers, decoded by the app from the fixture
+        await window.getByRole("tab", { name: "One at a time", exact: true }).click();
+        const yours = window.getByRole("region", { name: "Your track" });
+        const theirs = window.getByRole("region", { name: "Best match on Beatport" });
+        await expect(yours.getByRole("heading").nth(1)).toBeVisible({ timeout: 30_000 });
+        await expect(theirs.getByTestId("likelihood")).toBeVisible({ timeout: 30_000 });
+        await expect(window.getByRole("group", { name: "Decide" }).getByRole("button", { name: /^Correct/ })).toBeVisible();
+        // the covers, decoded by the app from the fixture, and the Beatport art fetched through the engine
+        await expect(yours.locator("img.match-card__art")).toBeVisible({ timeout: 30_000 });
+        await expect(theirs.locator("img.match-card__art")).toBeVisible({ timeout: 30_000 });
         await expect
-          .poll(() => comparison.locator("img").evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0)), {
+          .poll(() => window.locator(".match-one img").evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0)), {
             timeout: 30_000,
           })
           .toBe(true);
-        // the comparison is taller than the window: its top, the track beside its candidates, is the picture
-        await comparison.evaluate((el) => {
-          el.scrollIntoView({ block: "start" });
-          // the queue's selection bar sticks to the top of the scrolling pane: if it covers the
-          // comparison's heading, scroll back by the bar's height so the heading sits under it
-          let pane: HTMLElement | null = el.parentElement;
-          while (pane && !/(auto|scroll)/.test(getComputedStyle(pane).overflowY)) pane = pane.parentElement;
-          const top = el.getBoundingClientRect();
-          let hit = document.elementFromPoint(top.left + 8, top.top + 2) as HTMLElement | null;
-          if (!pane || !hit || el.contains(hit)) return;
-          while (hit.parentElement && hit.parentElement !== pane && getComputedStyle(hit).position !== "sticky") hit = hit.parentElement;
-          pane.scrollTop -= hit.getBoundingClientRect().bottom - top.top;
-        });
-        await expect(comparison.getByRole("button", { name: /^#1 · / })).toBeInViewport();
+        await expect(window.getByRole("group", { name: "Decide" })).toBeInViewport();
         await shoot(window, "clean-compare", taken);
       });
 

@@ -157,11 +157,17 @@ function libraryRow(window: Page, title: string) {
     .filter({ hasText: title });
 }
 
+/** A row of the Match area's Table, which the Match tab opens on after One at a time. */
 function queueRow(window: Page, title: string) {
   return window
-    .getByRole("table", { name: "Review queue" })
+    .getByRole("table", { name: "Match table" })
     .getByRole("row")
     .filter({ hasText: title });
+}
+
+/** The Match area has three views of one list; the journey reads rows in the Table. */
+async function matchView(window: Page, view: "One at a time" | "Table" | "Past searches") {
+  await window.getByRole("tab", { name: view, exact: true }).click();
 }
 
 test.describe("Clean, end to end (CLEAN-14)", () => {
@@ -196,7 +202,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       await test.step("match a playlist", async () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
         await expect(window.getByText("Match your library on Beatport")).toBeVisible({ timeout: 30_000 });
-        await window.getByRole("combobox", { name: "In" }).selectOption({ label: "Journey" });
+        await matchView(window, "Table");
         await window.getByRole("combobox", { name: "Show" }).selectOption("not_matched");
         await expect(queueRow(window, "Tone Two")).toBeVisible({ timeout: 15_000 });
         await window.getByRole("button", { name: "Match tracks…" }).click();
@@ -240,32 +246,61 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         expect(artwork!.height).toBe(artwork!.width);
       });
 
-      await test.step("review from the keyboard, choosing the second-best candidate", async () => {
-        await queueRow(window, "Tone Two").getByText("Tone Two").click();
-        const comparison = window.getByRole("region", { name: "Comparison" });
-        await expect(comparison.getByRole("heading", { name: "Tone Two" })).toBeVisible();
-        const decide = comparison.getByRole("group", { name: "Decide" });
-        // The page opens on the matcher's proposal, the 94 out of 100. Candidates are
+      await test.step("correct from the keyboard, choosing the second-best result", async () => {
+        // Double-clicking a row of the Table opens it in One at a time.
+        await window.getByRole("combobox", { name: "Show" }).selectOption("needs_review");
+        await queueRow(window, "Tone Two").getByText("Tone Two").dblclick();
+        await expect(window.getByRole("region", { name: "Your track" }).getByRole("heading", { name: "Tone Two" })).toBeVisible();
+        const results = window.getByRole("group", { name: "Other results" });
+        // The page opens on the matcher's proposal, the 94%. Results are
         // listed in the order the matcher scored them, which depends on which
         // page its workers fetched first, so the proposal is #1 or #2.
-        const proposal = comparison.getByRole("button", { name: /^#\d · Very likely \(94\/100\)/ });
+        const proposal = results.getByRole("button", { name: /^\d · .* · 94%/ });
         await expect(proposal).toHaveAttribute("aria-pressed", "true", { timeout: 15_000 });
-        const proposed = Number(/#(\d)/.exec(await proposal.innerText())![1]);
+        const proposed = Number(/^(\d)/.exec(await proposal.innerText())![1]);
         const other = proposed === 1 ? 2 : 1;
-        await expect(decide.getByRole("button", { name: `Accept #${proposed}` })).toBeVisible();
+        await expect(window.getByTestId("likelihood")).toHaveText("94% likely");
 
-        // Focus the queue, not a field: bare keys belong to the review there.
-        await queueRow(window, "Tone Two").getByText("Tone Two").click();
+        // Focus the page, not a field: bare keys belong to the Match area there.
+        await window.getByRole("region", { name: "Your track" }).getByRole("heading", { name: "Tone Two" }).click();
         await window.keyboard.press(proposed === 1 ? "ArrowRight" : "ArrowLeft");
-        await expect(decide.getByRole("button", { name: `Accept #${other}` })).toBeVisible();
         await expect(
-          comparison.getByRole("button", { name: new RegExp(`^#${other} · Very likely \\(91/100\\)`) }),
+          results.getByRole("button", { name: new RegExp(`^${other} · .* · 91%`) }),
         ).toHaveAttribute("aria-pressed", "true");
+        await expect(window.getByTestId("likelihood")).toHaveText("91% likely");
+
+        // Correct copies the ticked values with the match. Keep only the BPM here.
+        const ticks = window.getByRole("group", { name: /^When I say/ });
+        for (const field of ["Genre", "Label", "Year"]) {
+          const tick = ticks.getByRole("checkbox", { name: new RegExp(`^${field}`) });
+          if (await tick.count()) await tick.uncheck();
+        }
+        await expect(ticks.getByRole("checkbox", { name: /^BPM/ })).toBeChecked();
+        await expect(ticks.getByRole("checkbox", { name: /^Key/ })).toHaveCount(0);
         await window.keyboard.press("a");
 
-        // Accepted, it leaves the queue of what needs review.
+        // Corrected, it leaves the Waiting list, and Undo is offered because something changed.
+        const status = window.getByRole("status").filter({ hasText: /^Corrected/ });
+        await expect(status).toContainText("Corrected “Tone Two”.", { timeout: 15_000 });
+        await expect(status.getByRole("button", { name: "Undo" })).toBeVisible();
+
+        // Undo hands the track back to Waiting for you; then decide it again.
+        await status.getByRole("button", { name: "Undo" }).click();
+        await expect(window.getByRole("region", { name: "Your track" }).getByRole("heading", { name: "Tone Two" })).toBeVisible({ timeout: 15_000 });
+        await matchView(window, "Table");
+        await expect(queueRow(window, "Tone Two")).toBeVisible({ timeout: 15_000 });
+        await queueRow(window, "Tone Two").getByText("Tone Two").dblclick();
+        await expect(window.getByTestId("likelihood")).toBeVisible({ timeout: 15_000 });
+        await expect(
+          window.getByRole("group", { name: "Other results" }).getByRole("button", { name: new RegExp(`^${other} · .* · 91%`) }),
+        ).toBeVisible();
+        await window.getByRole("button", { name: new RegExp(`^${other} · .* · 91%`) }).click();
+        await window.getByRole("region", { name: "Your track" }).getByRole("heading", { name: "Tone Two" }).click();
+        await window.keyboard.press("a");
+        await expect(window.getByRole("status").filter({ hasText: /^Corrected/ })).toContainText("Corrected “Tone Two”.", { timeout: 15_000 });
+        await matchView(window, "Table");
         await expect(queueRow(window, "Tone Two")).toHaveCount(0, { timeout: 15_000 });
-        // And the engine holds the second candidate, the one chosen.
+        // And the engine holds the second result, the one chosen.
         const decided = await window.evaluate(async () => {
           const found = await window.cuepoint!.browseLibrary!({ q: "Tone Two", limit: 1 });
           const matches = await window.cuepoint!.getTrackMatches!({ trackId: found.tracks[0]!.id! });
@@ -281,21 +316,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         expect(decided).toMatchObject({ state: "accepted", decidedBy: "user", chosen: "E Minor" });
       });
 
-      await test.step("apply the chosen candidate's BPM; the key comes from the match", async () => {
-        await window.getByRole("combobox", { name: "Show" }).selectOption("accepted");
-        await queueRow(window, "Tone Two").getByText("Tone Two").click();
-        const comparison = window.getByRole("region", { name: "Comparison" });
-        const apply = comparison.getByRole("group", { name: "Apply from the accepted match" });
-        await expect(apply).toContainText("125", { timeout: 15_000 });
-        await expect(apply.getByRole("checkbox", { name: /^Key/ })).toHaveCount(0);
-        for (const field of ["Genre", "Label", "Year"]) {
-          await apply.getByRole("checkbox", { name: new RegExp(`^${field}`) }).uncheck();
-        }
-        await apply.getByRole("button", { name: "Apply 1 field" }).click();
-        await expect(comparison.getByRole("status")).toContainText(/Applied/, { timeout: 15_000 });
-      });
-
-      await test.step("see the applied BPM and the match's key in the Library", async () => {
+      await test.step("see the corrected BPM and the match's key in the Library", async () => {
         await window.getByRole("link", { name: "Library", exact: true }).click();
         const row = libraryRow(window, "Tone Two");
         await expect(row).toContainText("125.0", { timeout: 30_000 });
@@ -306,7 +327,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         ).toBeAttached();
       });
 
-      await test.step("revert the apply", async () => {
+      await test.step("revert the correction", async () => {
         await libraryRow(window, "Tone Two").getByText("Tone Two").click();
         const inspector = window.locator(".cp-track-detail");
         // History starts folded in Track details (PAGES-06): open it first.
@@ -333,7 +354,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       await test.step("see Health's counts and follow one to the tab that fixes it", async () => {
         await window.getByRole("tab", { name: "Health" }).click();
         await expect(
-          window.getByRole("button", { name: "1 Waiting for you: open Review matches" }),
+          window.getByRole("button", { name: "1 Waiting for you: open Match" }),
         ).toHaveCount(0);
         await window
           .getByRole("button", { name: "1 Missing or unreadable files: open Missing files" })

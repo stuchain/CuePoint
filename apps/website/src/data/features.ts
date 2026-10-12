@@ -101,7 +101,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         heading: "Match to Beatport, then review",
         paragraphs: [
           "Pick a playlist, a Collection, your selection or the whole library and choose Match. CuePoint looks each track up on Beatport and keeps every candidate it found, with a score and the reason it turned down the ones it did not pick.",
-          "It accepts a match on its own only when the best candidate scores 95 or more and passes every check. Everything else waits for you in the review queue, where the keyboard does the work: A accepts, R rejects, N moves on.",
+          "It accepts a match on its own only when the best candidate scores 95 or more and passes every check. Everything else waits for you in Match, one track beside its best Beatport result, where the keyboard does the work: A corrects, R says not this track, N skips.",
         ],
       },
       {

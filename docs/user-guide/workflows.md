@@ -8,8 +8,8 @@ Common workflows for using CuePoint effectively.
 2. **Import**: Load your Rekordbox XML file
 3. **Preflight**: Fix any validation errors or proceed past warnings
 4. **Process**: Enrich tracks with Beatport data
-5. **Run summary**: Review matches, unmatched, and output paths
-6. **Review**: Check match scores and metadata
+5. **Run summary**: Matched, unmatched, and output paths
+6. **Match**: On the Clean page, open **Match** and go through what waits for you, one track at a time, with **Correct** to accept a match and update the ticked values (see [Clean](clean.md#match))
 7. **Export**: Save results to file
 
 ## Batch Processing Workflow
@@ -17,14 +17,14 @@ Common workflows for using CuePoint effectively.
 1. Import multiple XML files (one at a time)
 2. Process all tracks
 3. Preflight validation runs before each playlist
-4. Review matches in batches
+4. Check the matches in **Match**, a search at a time (**From** picks the search)
 5. Export each batch separately
 
 ## Quality Assurance Workflow
 
 1. Process tracks
 2. Filter by match score (< 80%)
-3. Review low-score matches manually
+3. Open the low-score matches in **Match** and choose **Correct** or **Not this track**
 4. Correct any mismatches
 5. Re-export with corrections
 

@@ -228,20 +228,23 @@ To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**
 | **Ctrl+Shift+A** | Open Activity |
 | **F1** or **Ctrl+?** | All keyboard shortcuts |
 
-Clean's review queue keeps its own keys, listed below, and the table's are off there.
+Clean's Match area keeps its own keys, listed below, and the table's are off in One at a time.
 
 On Prepare, **Left** / **Right** resize the source panel once its divider has focus,
 and **Enter** saves an entry's In or Out time.
 
-In Clean's review queue:
+In Clean's Match area, One at a time:
 
 | Shortcut | Does |
 | --- | --- |
+| **A** | Correct: accept the match and update the ticked values |
+| **R** | Not this track |
+| **N** | Skip for now |
+| **Left** / **Right** | Choose another result |
 | **Up** / **Down** | Previous or next track |
-| **Left** / **Right** | Choose another candidate |
-| **A** | Accept the chosen candidate |
-| **R** | Reject the match |
-| **N** | Next track without deciding |
+| **B** | Play or stop the Beatport preview |
+| **Y** | Play your file (stops a preview) |
+| **Esc** | Stop the preview |
 
 These keys do nothing while you are typing in a field or have a dialog open.
 

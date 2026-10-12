@@ -37,20 +37,19 @@ CuePoint then checks, in the background, that your files are where Rekordbox say
 ### 3. Match on Beatport
 
 1. Go to **Clean**.
-2. In **In**, choose the playlist to match, or leave it on the whole library.
-3. The first time, choose **Match all N tracks**, then **Start matching** with **Tracks not looked up yet** chosen. To start with one playlist instead, choose **Match tracks…** in the header, then **Tracks in chosen playlists, Collections or Sets**, and tick the playlist. Later, use **Match tracks…** the same way.
+2. The first time, choose **Match all N tracks**, then **Start matching** with **Tracks not looked up yet** chosen. To start with one playlist instead, choose **Match tracks…** in the header, then **Tracks in chosen playlists, Collections or Sets**, and tick the playlist. Later, use **Match tracks…** the same way.
 
 Matching runs in the background, so you can keep working. Tracks CuePoint is certain about are accepted for you. The rest wait under **Waiting for you**.
 
-### 4. Review
+### 4. Check the matches
 
-1. In **Show**, choose **Waiting for you**.
-2. Select a track. The comparison below shows it beside Beatport's candidates, with differences marked.
-3. Press **Left** or **Right** to choose a candidate and **A** to accept it, or **R** to reject the match. **Down** moves to the next track.
+1. Open **Match**. **Show** is on **Waiting for you**, in **One at a time**.
+2. Your track is on the left and the best match Beatport found is on the right, with the values that would change marked. Press **Left** or **Right** for another result.
+3. Under the cards, tick the values **Correct** should also copy (BPM, genre, label, year). Press **A** to Correct, **R** for **Not this track**, or **N** to skip. **Undo** takes the last Correct back.
 
-### 5. Use Beatport's values
+### 5. Beatport's values
 
-For an accepted match, **Apply from the accepted match** copies the fields you tick (BPM, genre, label, year) into your own values. The key needs no apply: an accepted match gives it. Rekordbox's values stay underneath, and you can revert any change from the track's History.
+**Correct** accepts the match and copies the values you ticked into your own values in one step. The key needs no tick: an accepted match gives it. Rekordbox's values stay underneath, and you can revert any change from the track's History.
 
 CuePoint never deletes or moves tracks or files, and never writes to your Rekordbox export.
 

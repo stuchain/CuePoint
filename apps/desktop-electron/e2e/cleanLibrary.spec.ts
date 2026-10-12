@@ -414,7 +414,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await expect(genre).toContainText("Rekordbox House");
       await expect(genre).toContainText("Beatport Melodic House & Techno");
       await expect(genre).toContainText("Using House (from Rekordbox)");
-      // Applying Beatport's values is Review's and Fix values' job, not this panel's.
+      // Applying Beatport's values is Match's and Fix values' job, not this panel's.
       await expect(zone.getByRole("button", { name: /^Apply/ })).toHaveCount(0);
 
       await window.evaluate(async () => {
@@ -433,11 +433,13 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       ).toBeAttached();
 
       await zone.getByRole("button", { name: "Open on the Clean page" }).click();
-      const comparison = window.getByRole("region", { name: "Comparison" });
-      await expect(comparison.getByRole("heading", { name: "Tone One" })).toBeVisible({ timeout: 15_000 });
+      // It opens Match, on One at a time, at the track.
+      await expect(window.getByRole("tab", { name: /^Match/, selected: true })).toBeVisible({ timeout: 15_000 });
+      const yours = window.getByRole("region", { name: "Your track" });
+      await expect(yours.getByRole("heading", { name: "Tone One" })).toBeVisible({ timeout: 15_000 });
       await expect(window.getByRole("combobox", { name: "Show" })).toHaveValue("accepted");
 
-      // With the comparison and the Inspector both full, the window itself
+      // With the cards and the Inspector both full, the window itself
       // never scrolls: each part scrolls on its own.
       const page = await window.evaluate(() => ({
         scroll: document.scrollingElement!.scrollHeight,

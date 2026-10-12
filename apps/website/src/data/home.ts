@@ -74,12 +74,12 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
   },
   clean: {
     label: "Clean",
-    alt: "The Clean page's review queue: the tracks a Beatport match left waiting for a yes or no, with their tempo and genre beside them.",
+    alt: "The Clean page's Match area as a table: the tracks a Beatport match left waiting for a yes or no, with their tempo and genre beside them.",
     ...WINDOW,
   },
   "clean-compare": {
-    label: "Clean: the comparison",
-    alt: "Clean's comparison for a track that needs review: the library's values beside two Beatport candidates, with their scores, titles and artists.",
+    label: "Clean: one at a time",
+    alt: "Clean's Match area, One at a time: a track from the library beside the best match Beatport found, with its likelihood, the other results, and the Correct button.",
     ...WINDOW,
   },
   library: {

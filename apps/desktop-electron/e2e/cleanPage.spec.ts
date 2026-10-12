@@ -141,8 +141,9 @@ test.describe("The Clean page (CLEAN-12)", () => {
         timeout: 30_000,
       });
       await expect(window.getByRole("button", { name: "Match all 3 tracks…" })).toBeEnabled();
+      await window.getByRole("tab", { name: "Table", exact: true }).click();
       await window.getByRole("combobox", { name: "Show" }).selectOption("not_matched");
-      const queue = window.getByRole("table", { name: "Review queue" });
+      const queue = window.getByRole("table", { name: "Match table" });
       await expect(queue.getByText("Present One")).toBeVisible();
       await expect(window.getByRole("button", { name: "Match tracks…" })).toBeEnabled();
 
@@ -218,7 +219,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await app.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()[0]!.webContents.setZoomFactor(0.4),
       );
-      await window.getByRole("tab", { name: "Review matches" }).click();
+      await window.getByRole("tab", { name: /^Match/ }).click();
       const widths = await window.evaluate(() => ({
         main: document.querySelector(".app-main")!.getBoundingClientRect().width,
         page: document.querySelector(".clean-screen")!.getBoundingClientRect().width,
@@ -230,7 +231,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
     }
   });
 
-  test("keeps the match window on screen and each tab's intro clear of its body at 1280x800", async () => {
+  test("keeps the match window on screen and shows no intro line above any tab at 1280x800", async () => {
     test.setTimeout(240_000);
     const app = await launch(userDataDir, cuepointHome);
     try {
@@ -240,7 +241,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       });
       await importAndCheck(window, writeExport(workspace));
       await window.getByRole("link", { name: "Clean" }).click();
-      await expect(window.getByRole("tab", { name: /^Review matches/ })).toBeVisible({ timeout: 30_000 });
+      await expect(window.getByRole("tab", { name: /^Match/ })).toBeVisible({ timeout: 30_000 });
 
       const inViewport = async (locator: ReturnType<Page["locator"]>) => {
         const box = await locator.boundingBox();
@@ -253,27 +254,21 @@ test.describe("The Clean page (CLEAN-12)", () => {
         await window.evaluate((value) => localStorage.setItem("cuepoint-ui-lab-scale", String(value)), scale);
         await window.reload();
         await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
-        await expect(window.getByRole("tab", { name: /^Review matches/ })).toBeVisible({ timeout: 30_000 });
+        await expect(window.getByRole("tab", { name: /^Match/ })).toBeVisible({ timeout: 30_000 });
         expect(
           await window.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--scale").trim()),
         ).toBe(String(scale));
 
-        // Each tab's one-line introduction sits above its body, not under it.
-        for (const tab of ["Review matches", "Fix values", "Missing files", "Duplicates", "Health"]) {
+        // The page has five tabs and no line of introduction above their body (C15b).
+        const tabNames = ["Match", "Fix values", "Missing files", "Duplicates", "Health"];
+        await expect(window.getByRole("tab").filter({ hasText: /^(Match|Fix values|Missing files|Duplicates|Health)/ })).toHaveCount(5);
+        for (const tab of tabNames) {
           await window.getByRole("tab", { name: new RegExp(`^${tab}`) }).click();
-          const lede = window.locator(".clean-screen__lede");
-          await expect(lede).toBeVisible();
-          const apart = await window.evaluate(() => {
-            const intro = document.querySelector(".clean-screen__lede")!.getBoundingClientRect();
-            const body = document.querySelector(".clean-screen__body")!.getBoundingClientRect();
-            return { introHeight: intro.height, introBottom: intro.bottom, bodyTop: body.top };
-          });
-          expect(apart.introHeight, `${tab} intro has height at ${scale}x`).toBeGreaterThan(8);
-          expect(apart.introBottom, `${tab} intro ends above its body at ${scale}x`).toBeLessThanOrEqual(
-            apart.bodyTop + 1,
-          );
+          await expect(window.locator(".clean-screen__lede"), `${tab} has no intro at ${scale}x`).toHaveCount(0);
+          await expect(window.locator(".clean-screen__body")).toBeVisible();
           if (shots) await window.screenshot({ path: path.join(shots, `tab-${tab.split(" ")[0]}-${scale}.png`) });
         }
+        await window.getByRole("tab", { name: /^Match/ }).click();
 
         // The match window keeps its title and Start matching on screen, also
         // with the places list open.
