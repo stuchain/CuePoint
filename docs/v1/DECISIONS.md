@@ -6708,7 +6708,7 @@ Hint; the meta line and the seek area drop their own `title` so no native tip sh
 - **Panels, dropdowns, menus, toasts and the search box** get a 1px border and no shadow. Dialogs
   keep one soft shadow, `--shadow-dialog`, so they lift off the page.
 - **Tabs** are underline tabs: the active tab is `--fg-primary` at weight 700 over an accent
-  underline (`--tab-underline-color`, which Classic sets to a brighter blue to reach 3:1).
+  underline (`--tab-underline-color`, which Classic sets to a brighter blue to reach 3:1, and a custom theme derives from its accent).
 - A new theme token, `--border-control`, is derived for custom themes and reaches 3:1 against the
   toolbar and the panel in every built-in theme; `selectionContrast.test.ts` holds that and the
   selected-row contrasts.

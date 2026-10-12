@@ -14,6 +14,7 @@ const TOKEN_KEYS = [
   "border-light",
   "border-muted",
   "border-control",
+  "tab-underline-color",
   "bevel-highlight",
   "bevel-shadow",
   "fg-primary",
@@ -194,6 +195,8 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "border-light": borderLight,
     "border-muted": borderMuted,
     "border-control": borderControl,
+    // The active tab's underline is the accent, moved only as far as 3:1 on the toolbar needs.
+    "tab-underline-color": withContrast(accentPrimary, bgToolbar, 3),
     "bevel-highlight": borderHighlight,
     "bevel-shadow": borderShadow,
     "fg-primary": fgPrimary,

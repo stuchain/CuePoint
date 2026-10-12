@@ -41,9 +41,9 @@ const SELECTED_MIX = Number(/--bg-selected:\s*color-mix\(in srgb,\s*var\(--accen
 /**
  * Seeded custom palettes beyond the default, checked for the control border only (a custom
  * theme's accent is the user's choice, so its bar contrast is theirs): a light theme, mid-tones (the second is the one
- * the old two-step derivation left at 2.46:1) and a saturated accent. A custom theme gets no
- * --tab-underline-color, so its active tab leans on the accent underline plus the bold active
- * weight as the second cue; only the built-in themes pick a dedicated underline colour.
+ * the old two-step derivation left at 2.46:1) and a saturated accent. Every theme, built-in or
+ * custom, sets --tab-underline-color: the accent, moved only as far as 3:1 on the toolbar needs,
+ * so a custom theme never inherits a built-in theme's underline.
  */
 const palette = (bgApp: string, bgPanel: string, bgInput: string, fg: string, muted: string, accent: string): CustomThemeColors => ({
   ...NEO_DARK_EDITOR_COLORS,
@@ -96,8 +96,8 @@ describe.each(CASES)("selection and control edges in %s", (_name, t) => {
   });
 
   it("draws the active tab's underline at 3:1 against the toolbar", () => {
-    const underline = t["tab-underline-color"] ?? t["accent-primary"]!;
-    expect(contrastRatio(underline, t["bg-toolbar"]!)).toBeGreaterThanOrEqual(3);
+    expect(t["tab-underline-color"], "every theme sets its own underline colour").toBeTruthy();
+    expect(contrastRatio(t["tab-underline-color"]!, t["bg-toolbar"]!)).toBeGreaterThanOrEqual(3);
   });
 });
 
@@ -106,6 +106,11 @@ describe.each(CUSTOM_PALETTES)("the control border in %s", (_name, colors) => {
     const t = deriveThemeTokens(colors);
     expect(contrastRatio(t["border-control"]!, t["bg-toolbar"]!), "toolbar").toBeGreaterThanOrEqual(3);
     expect(contrastRatio(t["border-control"]!, t["bg-panel"]!), "panel").toBeGreaterThanOrEqual(3);
+  });
+
+  it("derives its own tab underline at 3:1 against the toolbar", () => {
+    const t = deriveThemeTokens(colors);
+    expect(contrastRatio(t["tab-underline-color"]!, t["bg-toolbar"]!)).toBeGreaterThanOrEqual(3);
   });
 });
 

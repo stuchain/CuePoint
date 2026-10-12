@@ -23,6 +23,7 @@ describe("themeDerivation", () => {
     expect(tokens["bg-toolbar"]).toBeTruthy();
     expect(tokens["bg-panel-alt"]).toBeTruthy();
     expect(tokens["border-control"]).toBeTruthy();
+    expect(tokens["tab-underline-color"]).toBe("#8b5cf6");
   });
 
   it("pickContrastText returns black on light backgrounds", () => {
