@@ -123,6 +123,22 @@ interface TrackDetailPanelProps {
   leadZone?: ReactNode;
 }
 
+/**
+ * What the folded "Yours" heading still says, in words that read well aloud:
+ * "4 stars · favorite · 2 tags", or null when there is nothing of the person's in it.
+ */
+function yoursSummary(
+  metadata: { effective_rating: number | null; favorite: boolean },
+  tags: readonly unknown[],
+): string | null {
+  const parts: string[] = [];
+  const stars = metadata.effective_rating;
+  if (stars != null && stars > 0) parts.push(stars === 1 ? "1 star" : `${stars} stars`);
+  if (metadata.favorite) parts.push("favorite");
+  if (tags.length > 0) parts.push(tags.length === 1 ? "1 tag" : `${tags.length} tags`);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 /** Absent is absent: an em dash, never a zero. */
 function text(value: string | null | undefined): string {
   return value == null || value === "" ? "—" : value;
@@ -209,6 +225,12 @@ export function TrackDetailPanel({
   // re-read. A local append would show entries the engine did not write:
   // re-saving the same note records nothing at all.
   const [written, setWritten] = useState(0);
+  // What TrackYours shows now: its edits are optimistic and never reload `detail`.
+  const [shown, setShown] = useState<{
+    trackId: number;
+    metadata: { effective_rating: number | null; favorite: boolean };
+    tags: readonly unknown[];
+  } | null>(null);
   const trackId = detail?.track.id ?? null;
   const history = useTrackHistory(trackId, written);
   const writes = useTrackWrites(trackId, written);
@@ -364,8 +386,9 @@ export function TrackDetailPanel({
             {`Edit values for ${selectionCount.toLocaleString()} tracks…`}
           </RouteButton>
         )}
+        {/* One row of short names (DEC-246); the aria-labels and titles keep the
+            full ones, so assistive technology hears what it always did. */}
         <div className="cp-track-actions" role="group" aria-label="Actions for this track">
-          <div className="cp-track-actions__row">
           {queue.play && (
             <button type="button" className="cp-track-actions__button" disabled={acting !== null} onClick={() => void act("play")}>
               Play
@@ -377,32 +400,39 @@ export function TrackDetailPanel({
             </button>
           )}
           {queue.end && (
-            <button type="button" className="cp-track-actions__button" disabled={acting !== null} onClick={() => void act("end")}>
-              Add to queue
+            <button
+              type="button"
+              className="cp-track-actions__button"
+              aria-label="Add to queue"
+              title="Add to queue"
+              disabled={acting !== null}
+              onClick={() => void act("end")}
+            >
+              Queue
             </button>
           )}
-          </div>
-          <div className="cp-track-actions__row">
           {track.id != null && (
             <RouteButton
               to={selectionCount > 1 && gatherSelectedRows ? similarTarget : similarPath(track.id)}
               className="cp-track-actions__button"
+              aria-label="Similar tracks"
+              title="Similar tracks"
             >
-              Similar tracks
+              Similar
             </RouteButton>
           )}
           {onReveal && track.file_path && (
             <button
               type="button"
               className="cp-track-actions__button"
+              aria-label="Show in folder"
               disabled={selectionCount > 1}
-              title={selectionCount > 1 ? "Select one track to show its file in the folder" : undefined}
+              title={selectionCount > 1 ? "Select one track to show its file in the folder" : "Show in folder"}
               onClick={() => onReveal(track.file_path)}
             >
-              Show in folder
+              Folder
             </button>
           )}
-          </div>
         </div>
         <dl className="cp-track-detail__keyline" data-testid="track-key">
           <Row
@@ -435,7 +465,16 @@ export function TrackDetailPanel({
       {/* A track with no id is not editable, and there is nothing to say
           about that: the id is what every write is addressed to. */}
       {track.id != null && (
-        <DisclosureSection id="yours" title="Yours" defaultOpen className="cp-track-section--yours">
+        <DisclosureSection
+          id="yours"
+          title="Yours"
+          defaultOpen={false}
+          summary={
+            shown && shown.trackId === track.id
+              ? yoursSummary(shown.metadata, shown.tags)
+              : yoursSummary(detail.metadata, detail.tags)
+          }
+          className="cp-track-section--yours">
           <TrackYours
             // A different track is a different editor: a note being typed
             // belongs to the track it was typed against, and remounting is what
@@ -446,6 +485,9 @@ export function TrackDetailPanel({
             tags={detail.tags}
             onError={report}
             onSaved={onSaved}
+            onShown={(metadata, shownTags) =>
+              setShown({ trackId: track.id as number, metadata, tags: shownTags })
+            }
             track={editable ? { ...track, id: track.id } : undefined}
             // Only an accepted match's key is what clearing the edit gives back (DEC-201).
             beatportKey={matchState === "accepted" ? (matches.matches?.candidate?.key ?? null) : null}
@@ -470,7 +512,7 @@ export function TrackDetailPanel({
           {/* Stars, not a number: the parser converted Rekordbox's 0/51/…/255
               encoding at import, so what is stored is already a star count. This
               row stays Rekordbox's own value whatever CuePoint's layer says —
-              the resolved one is above, with its source beside it. */}
+              the resolved one is above, with its source on hover. */}
           <Row
             label="Rating"
             value={track.rating == null ? "—" : starsFor(track.rating)}

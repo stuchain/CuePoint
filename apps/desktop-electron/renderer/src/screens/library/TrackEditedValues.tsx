@@ -82,10 +82,6 @@ export function TrackEditedValues({ track, beatportKey, onSaved, onError }: Trac
 
   return (
     <div className="cp-track-values">
-      <p className="cp-track-values__lead">
-        Change this track&rsquo;s key, BPM, genre, label or year in CuePoint. Rekordbox&rsquo;s value is
-        kept, and you can go back to it. For the key, going back returns to Beatport&rsquo;s key, or to none.
-      </p>
       <button type="button" className="cp-track-values__edit" onClick={() => setEditing(true)}>
         Edit values…
       </button>

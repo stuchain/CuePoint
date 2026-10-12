@@ -249,7 +249,13 @@
   gap: calc(2px * var(--scale));
 }
 
-.cp-track-yours__stars,
+.cp-track-yours__stars {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(2px * var(--scale));
+}
+
 .cp-track-yours__group {
   display: flex;
   align-items: center;
@@ -301,18 +307,22 @@
   font-size: var(--font-size-xs);
 }
 
+/* An icon toggle beside the stars (DEC-246), on the DEC-241 control look. */
 .cp-track-yours__favorite {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
-  align-self: flex-start;
-  min-height: var(--hit-min);
-  padding: var(--space-xs) var(--space-sm);
-  border: var(--hairline) solid var(--border-muted);
+  justify-content: center;
+  min-width: var(--control-height);
+  min-height: var(--control-height);
+  margin-left: var(--space-xs);
+  padding: 0 var(--space-xs);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-muted);
   font-family: var(--font-pixel);
-  font-size: var(--font-size-xs);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -643,34 +653,30 @@
  * disclosure. Every size is a token, so the panel scales with the app.
  */
 
-/* Two rows at most: Play, Play next, Add to queue; then Similar tracks and
-   Show in folder. Wrapping to three pushed Yours below the fold. */
+/* One row of five short names (DEC-246). The buttons are the Library
+   toolbar's compact control height (DEC-217), not --hit-min, and share the
+   row's width. */
 .cp-track-actions {
   display: flex;
-  flex-direction: column;
   gap: var(--space-xs);
   margin-top: var(--space-xs);
 }
 
-.cp-track-actions__row {
-  display: flex;
-  gap: var(--space-xs);
-}
-
-.cp-track-actions__row > * {
-  flex: 1 1 0;
-  min-width: 0;
-  justify-content: center;
-}
-
 .cp-track-actions__button {
-  min-height: var(--hit-min);
-  padding: var(--space-xs) var(--space-sm);
-  border: var(--hairline) solid var(--border-muted);
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(--control-height);
+  padding: 0 calc(var(--space-xs) / 2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-primary);
   font-family: var(--font-pixel);
-  font-size: var(--font-size-xs);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
+  line-height: 1.2;
   cursor: pointer;
 }
 
@@ -743,13 +749,6 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-xs);
-}
-
-.cp-track-values__lead {
-  margin: 0;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  line-height: 1.5;
 }
 
 .cp-track-values__edit {

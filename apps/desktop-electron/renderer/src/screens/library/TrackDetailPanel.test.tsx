@@ -33,6 +33,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
 import { SelectionActions } from "./SelectionActions";
+import { TRACK_DETAILS_SECTIONS_KEY } from "./DisclosureSection";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { copySummary, tracksAsText, writeClipboard } from "./trackClipboard";
 import { useTrackDetail } from "./useTrackDetail";
@@ -96,6 +97,11 @@ const DETAIL: LibraryTrackDetail = {
 function rowFor(label: string): HTMLElement {
   return screen.getByText(label).closest(".cp-track-detail__row") as HTMLElement;
 }
+
+// Yours starts folded (DEC-246); the tests below that read inside it want it open.
+beforeEach(() => {
+  localStorage.setItem(TRACK_DETAILS_SECTIONS_KEY, JSON.stringify({ yours: true }));
+});
 
 describe("what the panel shows", () => {
   it("names the track and the artist", () => {
@@ -233,7 +239,7 @@ describe("the editable zone (ORG-10)", () => {
     expect(screen.getByLabelText("Add a tag")).toBeInTheDocument();
   });
 
-  it("shows the resolved rating, with its source beside it", () => {
+  it("shows the resolved rating, with its source on hover", () => {
     render(
       <TrackDetailPanel
         detail={{
@@ -251,7 +257,11 @@ describe("the editable zone (ORG-10)", () => {
       "aria-checked",
       "true",
     );
-    expect(screen.getByText("From Rekordbox")).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "Your rating" })).toHaveAttribute(
+      "title",
+      "From Rekordbox",
+    );
+    expect(screen.queryByText("From Rekordbox")).not.toBeInTheDocument();
   });
 
   it("shows Rekordbox's comment and your notes as two labelled things", () => {

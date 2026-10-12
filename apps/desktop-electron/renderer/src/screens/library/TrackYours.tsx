@@ -14,7 +14,7 @@
  * model becomes visible instead of mysterious, which is why its label changes
  * with what is underneath it.
  */
-import { useCallback, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
 import { SuggestInput } from "../../components/SuggestInput";
@@ -41,6 +41,8 @@ interface TrackYoursProps {
   onError: (message: string) => void;
   /** Fired after every accepted write, so the History section re-reads. */
   onSaved?: () => void;
+  /** What this zone currently shows (edits are optimistic), so a folded heading can say it. */
+  onShown?: (metadata: TrackMetadata, tags: readonly TrackTag[]) => void;
   /**
    * The track, when this build can type the five values CuePoint overrides
    * (CLEAN-13). Absent, the zone is ORG-10's: rating, favorite, notes, tags.
@@ -60,6 +62,7 @@ export function TrackYours({
   tags,
   onError,
   onSaved,
+  onShown,
   track,
   beatportKey,
   onValueSaved,
@@ -73,6 +76,12 @@ export function TrackYours({
   const tagId = useId();
 
   const record = editor.metadata;
+  const shownTags = tagging.tags;
+  useEffect(() => {
+    onShown?.(record, shownTags);
+    // onShown is a fresh closure each render; only what is shown should refire it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record, shownTags]);
   const lit = record.effective_rating ?? 0;
   const clearLabel = clearRatingLabel(record);
 
@@ -145,6 +154,8 @@ export function TrackYours({
             className="cp-track-yours__group"
             role="radiogroup"
             aria-labelledby={ratingId}
+            // Which layer is showing (DEC-057) is said on hover, not as a line (DEC-246).
+            title={describeRatingSource(record)}
             onKeyDown={onStarKeys}
           >
             {STARS.map((star) => (
@@ -174,23 +185,20 @@ export function TrackYours({
               {clearLabel}
             </button>
           )}
+          <button
+            type="button"
+            className={`cp-track-yours__favorite${
+              record.favorite ? " cp-track-yours__favorite--on" : ""
+            }`}
+            aria-label="Favorite"
+            aria-pressed={record.favorite}
+            title={record.favorite ? "Remove favorite" : "Favorite"}
+            onClick={() => editor.setFavorite(!record.favorite)}
+          >
+            {record.favorite ? "♥" : "♡"}
+          </button>
         </div>
-        {/* Which layer is showing, in words: DEC-057's whole point is that the
-            effective value carries its source. */}
-        <p className="cp-track-yours__source">{describeRatingSource(record)}</p>
       </div>
-
-      <button
-        type="button"
-        className={`cp-track-yours__favorite${
-          record.favorite ? " cp-track-yours__favorite--on" : ""
-        }`}
-        aria-pressed={record.favorite}
-        onClick={() => editor.setFavorite(!record.favorite)}
-      >
-        <span aria-hidden="true">{record.favorite ? "♥" : "♡"}</span>
-        Favorite
-      </button>
 
       <div className="cp-track-yours__field">
         <label className="cp-track-yours__label" htmlFor={notesId}>

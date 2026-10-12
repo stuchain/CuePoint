@@ -297,7 +297,7 @@ needs Beatport.
 
 ## Similar tracks
 
-**Similar tracks**, in a track's details in the Library (and on its right-click
+**Similar** in a track's details in the Library (and on its right-click
 menu), lists the tracks in your library that **mix well** with it, best match
 first, and says why each one is there. It works offline, needs no token, and only
 ever suggests your own tracks.

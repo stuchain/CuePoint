@@ -108,7 +108,7 @@ removes the one you merged away. It is the fix for noticing you have both
 ## Ratings, favorites and notes
 
 CuePoint keeps its own rating for a track, separate from the one Rekordbox
-imported. Track details shows both, and says which one you are looking at.
+imported. Track details shows both; hover the stars to see which one you are looking at.
 
 - **Rate** from Track details, the selection bar's **Organize ▸** or a track's
   right-click menu.

@@ -169,7 +169,9 @@ describe("the rating", () => {
 
   it("says which layer it is showing", () => {
     draw({ rekordbox_rating: 4, effective_rating: 4, rating_source: "rekordbox" });
-    expect(screen.getByText("From Rekordbox")).toBeInTheDocument();
+    // On hover, not as a line of text (DEC-246).
+    expect(screen.getByRole("radiogroup", { name: "Your rating" })).toHaveAttribute("title", "From Rekordbox");
+    expect(screen.queryByText("From Rekordbox")).not.toBeInTheDocument();
   });
 
   it("offers no clear when there is nothing of yours to clear", () => {
@@ -203,7 +205,9 @@ describe("the rating", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Use Rekordbox's ★★★★" }));
 
-    await waitFor(() => expect(screen.getByText("From Rekordbox")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("radiogroup", { name: "Your rating" })).toHaveAttribute("title", "From Rekordbox"),
+    );
     expect(star(4)).toHaveAttribute("aria-checked", "true");
   });
 
@@ -271,6 +275,13 @@ describe("the favorite", () => {
     );
   });
 
+  it("sits beside the stars, as an icon", () => {
+    draw();
+    const heart = screen.getByRole("button", { name: "Favorite" });
+    expect(heart).toHaveTextContent("♡");
+    expect(heart.parentElement).toBe(screen.getByRole("radiogroup").parentElement);
+  });
+
   it("turns off again", async () => {
     draw({ favorite: true });
 
@@ -286,6 +297,10 @@ describe("the favorite", () => {
     expect(screen.getByRole("button", { name: "Favorite" })).toHaveAttribute(
       "aria-pressed",
       "true",
+    );
+    expect(screen.getByRole("button", { name: "Favorite" })).toHaveAttribute(
+      "title",
+      "Remove favorite",
     );
   });
 

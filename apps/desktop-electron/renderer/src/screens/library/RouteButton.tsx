@@ -17,15 +17,18 @@ interface RouteButtonProps {
   className?: string;
   children: ReactNode;
   title?: string;
+  /** The full name, when the visible text is a short form of it. */
+  "aria-label"?: string;
 }
 
-function Inside({ to, state, className, children, title }: RouteButtonProps) {
+function Inside({ to, state, className, children, title, "aria-label": ariaLabel }: RouteButtonProps) {
   const navigate = useNavigate();
   return (
     <button
       type="button"
       className={className}
       title={title}
+      aria-label={ariaLabel}
       onClick={() => {
         if (typeof to === "string") {
           navigate(to, { state });

@@ -218,10 +218,10 @@ Selecting one track fills Track details. From the top:
 - **The track's artwork**, or *No artwork* when it has none, its title, and its
   artists and label. Each artist in the credit, and the label, is a link to
   their page (see [Discover](discover.md#artist-and-label-pages)).
-- **Five buttons**: **Play**, **Play next**, **Add to queue**, **Similar tracks**
-  and **Show in folder**. With several tracks selected, the first three act on
-  all of them; **Similar tracks** uses the first, and **Show in folder** the one
-  shown.
+- **One row of buttons**: **Play**, **Play next**, **Queue** (add to queue),
+  **Similar** (similar tracks) and **Folder** (show in folder). With several
+  tracks selected, the first three act on all of them; **Similar** uses the
+  first, and **Folder** the one shown.
 - **Key**, with where it came from: "8A · A minor · Beatport", "8A · A minor ·
   yours", or "No Beatport key" with **Match on Beatport**, which matches this one
   track in Clean's match window.
@@ -231,10 +231,11 @@ Selecting one track fills Track details. From the top:
 
 Then the sections, each folded or opened by clicking its heading:
 
-- **Yours** — what you have added in CuePoint: your rating, favorite, notes and
-  tags, and **Edit values…** for your key, BPM, genre, label and year. See
+- **Yours** — what you have added in CuePoint: your rating, favorite (the heart
+  beside the stars), notes and tags, and **Edit values…** for your key, BPM, genre, label and year. See
   [Organizing your library](organization.md) and
-  [Your own values](#your-own-values).
+  [Your own values](#your-own-values). It starts folded, with a short summary
+  beside its name, and stays as you leave it.
 - **Details from Rekordbox** — everything the import captured: remixer, album,
   label, genre, key (marked "not used"), BPM, year, length, rating, plays, color,
   comment, bitrate, when it was added and where the file is. **This part is
@@ -530,7 +531,7 @@ Copying Beatport's values is done in Review and in Fix values, not here.
 
 ### Your own values
 
-Choose **Edit values…** under **Yours** to set a key, BPM, genre, label or year
+Open **Yours**, then choose **Edit values…** to set a key, BPM, genre, label or year
 for the track. It is the same editor Clean's Fix values uses, and shows what each
 value is now. Choose *Clear mine* for a field to go back. The **Your values**
 line under it lists what you have edited, opens by itself when there is

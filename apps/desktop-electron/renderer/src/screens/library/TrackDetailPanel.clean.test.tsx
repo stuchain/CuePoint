@@ -225,8 +225,8 @@ afterEach(() => {
 });
 
 function panel(props: Partial<Parameters<typeof TrackDetailPanel>[0]> = {}) {
-  // Beatport and History start folded (INS-3); these tests are about their contents.
-  localStorage.setItem(TRACK_DETAILS_SECTIONS_KEY, JSON.stringify({ beatport: true, history: true }));
+  // Yours, Beatport and History start folded (INS-3, DEC-246); these tests are about their contents.
+  localStorage.setItem(TRACK_DETAILS_SECTIONS_KEY, JSON.stringify({ yours: true, beatport: true, history: true }));
   const handlers = {
     onError: vi.fn(),
     onTrackChanged: vi.fn(),
@@ -405,6 +405,7 @@ describe("your five values (DEC-205)", () => {
   });
 
   it("reads the track again, and keeps what is being typed in the editor", async () => {
+    localStorage.setItem(TRACK_DETAILS_SECTIONS_KEY, JSON.stringify({ yours: true }));
     const { rerender } = render(<TrackDetailPanel detail={detailOf()} />);
     await userEvent.click(await screen.findByRole("button", { name: "Edit values…" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit values" });

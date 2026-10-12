@@ -221,6 +221,8 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await row(window, "Tone One").getByText("Tone One").click();
 
       const inspector = window.locator(".cp-track-detail");
+      // Yours starts folded (DEC-246): open it to reach Edit values….
+      await inspector.getByRole("button", { name: /^Yours/ }).click();
       await inspector.getByRole("button", { name: "Edit values…" }).click();
       const dialog = window.getByRole("dialog", { name: "Edit values" });
       await expect(dialog).toContainText("Now: none");

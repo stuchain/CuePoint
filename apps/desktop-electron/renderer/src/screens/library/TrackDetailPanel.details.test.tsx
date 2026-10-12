@@ -137,6 +137,8 @@ let player: Record<string, ReturnType<typeof vi.fn>>;
 
 beforeEach(() => {
   localStorage.clear();
+  // Yours starts folded (DEC-246); the tests that read inside it want it open.
+  localStorage.setItem(SECTIONS_KEY, JSON.stringify({ yours: true }));
   player = {
     playQueue: vi.fn().mockResolvedValue({ ok: true }),
     playNext: vi.fn().mockResolvedValue({ ok: true }),
@@ -169,9 +171,10 @@ describe("the order (INS-3)", () => {
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
-  it("opens the header, Yours and Details, and folds Beatport and History", async () => {
+  it("opens the header and Details, and folds Yours, Beatport and History", async () => {
+    localStorage.clear();
     show();
-    expect(section("Yours")).toHaveAttribute("aria-expanded", "true");
+    expect(section("Yours")).toHaveAttribute("aria-expanded", "false");
     expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "true");
     expect(section("Beatport")).toHaveAttribute("aria-expanded", "false");
     expect(section("History")).toHaveAttribute("aria-expanded", "false");
@@ -203,12 +206,58 @@ describe("folding and remembering (INS-3)", () => {
     expect(screen.getByText("Bitrate")).toBeVisible();
   });
 
+  it("Yours starts folded and remembers being opened", () => {
+    localStorage.clear();
+    const first = show();
+    expect(section("Yours")).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(section("Yours"));
+    first.unmount();
+    show();
+    expect(section("Yours")).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("says what is in Yours while it is folded", () => {
+    localStorage.clear();
+    const detail = detailOf();
+    show({}, { ...detail, metadata: { ...detail.metadata, effective_rating: 4, favorite: true } });
+    expect(section("Yours")).toHaveTextContent("4 stars · favorite");
+  });
+
+  it("words one tag, many tags, a single star, and skips a zero rating", () => {
+    localStorage.clear();
+    const detail = detailOf();
+    const tag = (id: number) => ({ id, name: `t${id}`, track_count: 1 }) as never;
+    const one = show({}, { ...detail, tags: [tag(1)], metadata: { ...detail.metadata, effective_rating: 1 } });
+    expect(section("Yours")).toHaveTextContent("1 star · 1 tag");
+    one.unmount();
+    show({}, { ...detail, tags: [tag(1), tag(2)], metadata: { ...detail.metadata, effective_rating: 0 } });
+    expect(section("Yours")).toHaveTextContent("2 tags");
+    expect(section("Yours")).not.toHaveTextContent("star");
+  });
+
+  it("calls an empty track's folded heading exactly Yours", () => {
+    localStorage.clear();
+    show();
+    expect(section("Yours").textContent?.replace(/^[▸▾]/, "")).toBe("Yours");
+  });
+
+  it("updates the folded summary after a rating or favorite in Yours", async () => {
+    const detail = detailOf();
+    bridge.setTrackMetadata = vi.fn().mockResolvedValue({ metadata: { ...detail.metadata, effective_rating: 3, rating: 3, favorite: true } });
+    show();
+    fireEvent.click(screen.getByRole("radio", { name: /3 stars?/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Favorite" }));
+    fireEvent.click(section("Yours"));
+    expect(section("Yours")).toHaveTextContent("3 stars · favorite");
+  });
+
   it("remembers every fold in one key", () => {
     show();
     fireEvent.click(section("Details from Rekordbox"));
     fireEvent.click(section("Beatport"));
     const stored = JSON.parse(localStorage.getItem(SECTIONS_KEY) ?? "{}");
-    expect(Object.values(stored)).toHaveLength(2);
+    // Yours (seeded open), Details and Beatport.
+    expect(Object.values(stored)).toHaveLength(3);
   });
 
   it("restores the folds on a fresh mount, and for the next track", () => {
@@ -229,8 +278,9 @@ describe("folding and remembering (INS-3)", () => {
       throw new Error("blocked");
     });
     show();
-    fireEvent.click(section("Yours"));
     expect(section("Yours")).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(section("Yours"));
+    expect(section("Yours")).toHaveAttribute("aria-expanded", "true");
     get.mockRestore();
     set.mockRestore();
   });
@@ -242,6 +292,12 @@ describe("Edit values… (INS-4, DEC-205)", () => {
     expect(screen.queryByLabelText("Your key")).toBeNull();
     expect(screen.queryByLabelText("Your BPM")).toBeNull();
     expect(screen.getByRole("button", { name: "Edit values…" })).toBeInTheDocument();
+  });
+
+  it("has no explanatory paragraph under Edit values…", () => {
+    const { container } = show();
+    expect(container.querySelector(".cp-track-values__lead")).toBeNull();
+    expect(screen.queryByText(/going back returns to Beatport/)).toBeNull();
   });
 
   it("folds the disclosure when nothing is edited", () => {
@@ -428,12 +484,21 @@ describe("an unmatched track (INS-5)", () => {
 
 describe("the buttons under the title (FLW-9)", () => {
   const labels = ["Play", "Play next", "Add to queue", "Similar tracks", "Show in folder"];
+  const shown = ["Play", "Play next", "Queue", "Similar", "Folder"];
 
   it("offers the five", () => {
     show();
     for (const name of labels) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
+  });
+
+  it("draws them on one row, with short names", () => {
+    show();
+    const group = screen.getByRole("group", { name: "Actions for this track" });
+    expect(group.children).toHaveLength(5);
+    for (const child of Array.from(group.children)) expect(child.tagName).toBe("BUTTON");
+    expect(Array.from(group.children).map((child) => child.textContent)).toEqual(shown);
   });
 
   it("has one Show in folder, not one in the File row too", () => {
