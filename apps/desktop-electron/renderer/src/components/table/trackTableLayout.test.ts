@@ -19,6 +19,7 @@ import {
   columnMinWidth,
   defaultWidths,
   gridTemplate,
+  insertionAt,
   orderedWidths,
   readRowHeight,
   resolveWidths,
@@ -197,5 +198,30 @@ describe("the --row-height token", () => {
     expect(layoutCss).toMatch(
       /--row-height:\s*round\(nearest,\s*calc\(var\(--hit-min\) \* 0\.75\),\s*1px\);/,
     );
+  });
+});
+
+describe("insertionAt", () => {
+  // Rows of 20 px, four of them: the body runs 0 to 80 below its own top.
+  it("puts the upper half of a row before it and the lower half after it", () => {
+    expect(insertionAt(0, 20, 4)).toEqual({ insertAt: 0, over: 0 });
+    expect(insertionAt(9, 20, 4)).toEqual({ insertAt: 0, over: 0 });
+    expect(insertionAt(11, 20, 4)).toEqual({ insertAt: 1, over: 0 });
+    expect(insertionAt(45, 20, 4)).toEqual({ insertAt: 2, over: 2 });
+    expect(insertionAt(79, 20, 4)).toEqual({ insertAt: 4, over: 3 });
+  });
+
+  it("appends below the last row, over the last row", () => {
+    expect(insertionAt(80, 20, 4)).toEqual({ insertAt: 4, over: 3 });
+    expect(insertionAt(900, 20, 4)).toEqual({ insertAt: 4, over: 3 });
+  });
+
+  it("means the start above the first row, where the header is", () => {
+    expect(insertionAt(-12, 20, 4)).toEqual({ insertAt: 0, over: 0 });
+  });
+
+  it("has no row to be over in an empty table", () => {
+    expect(insertionAt(0, 20, 0)).toEqual({ insertAt: 0, over: -1 });
+    expect(insertionAt(300, 20, 0)).toEqual({ insertAt: 0, over: -1 });
   });
 });

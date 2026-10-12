@@ -189,6 +189,28 @@ export function readRowHeight(): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : ROW_HEIGHT_FALLBACK;
 }
 
+/**
+ * Where a drop at `offsetY` below the top of the rows lands: an insertion point from 0 to `total`,
+ * and the row it was over.
+ *
+ * The upper half of a row means before it and the lower half after it. Past the last row is the
+ * end, over the last row; above the first (the header) is the start; an empty table has no row
+ * to be over. Pure, so the table can work it out from the pointer on every dragover and on the
+ * drop itself, and never has to remember where the last dragover was.
+ */
+export function insertionAt(
+  offsetY: number,
+  rowHeight: number,
+  total: number,
+): { insertAt: number; over: number } {
+  if (total <= 0) return { insertAt: 0, over: -1 };
+  if (offsetY < 0) return { insertAt: 0, over: 0 };
+  if (offsetY >= total * rowHeight) return { insertAt: total, over: total - 1 };
+  const row = Math.floor(offsetY / rowHeight);
+  const after = offsetY - row * rowHeight > rowHeight / 2;
+  return { insertAt: row + (after ? 1 : 0), over: row };
+}
+
 /** A column's width after a drag of `deltaX`, never below its minimum. */
 export function widthAfterDrag<Row>(
   column: TrackColumnDef<Row>,

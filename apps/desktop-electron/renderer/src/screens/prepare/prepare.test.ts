@@ -312,7 +312,7 @@ describe("the words", () => {
 
   it("points the empty Set at the panel beside it (PRP-2)", () => {
     expect(EMPTY_SET).toBe(
-      "This Set is empty. Pick tracks on the right under Library and choose Insert here, or drag them in from the Library or the Collections tree.",
+      "This Set is empty. Drag tracks here from the list on the right, or select them and choose Insert here.",
     );
   });
 

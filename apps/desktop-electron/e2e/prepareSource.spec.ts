@@ -231,6 +231,19 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
         })
         .toEqual(["Track 21", "Track 07"]);
 
+      // --- below the last row: the dead space under the rows takes a drop too -------
+      await panel.getByRole("searchbox", { name: "Search" }).fill("Track 22");
+      await expect(libraryRows).toHaveCount(1, { timeout: 30_000 });
+      const below = rowTitled(win, "Library tracks to add", "Track 22");
+      await expect(below).toBeVisible({ timeout: 30_000 });
+      const setTable = win.getByRole("table", { name: "Set entries" });
+      const setBox = (await setTable.boundingBox())!;
+      await below.dragTo(setTable, {
+        sourcePosition: { x: 30, y: 8 },
+        targetPosition: { x: 60, y: setBox.height - 6 },
+      });
+      await expect.poll(async () => (await runningOrder(win, setId)).at(-1)?.title).toBe("Track 22");
+
       // --- the lanes: open, and a column selects its entry -----------------------
       await win.getByRole("button", { name: "View ▾" }).click();
       await win.getByRole("menuitem", { name: "Show tempo and key lanes" }).click();
@@ -251,6 +264,47 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       await expect(
         win.getByRole("region", { name: "Add to the Set" }).getByRole("tab", { name: "Library" }),
       ).toHaveAttribute("aria-selected", "true");
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("an empty Set takes a drop anywhere in its table (C18)", async () => {
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const win = await app.firstWindow({ timeout: 60_000 });
+      await waitForEngine(win);
+      await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
+      const started = await win.evaluate(
+        (xml) => (window as never as Bridge).cuepoint.startLibraryImport({ xml_path: xml }),
+        writeLibrary(workspace),
+      );
+      await finished(win, started.job_id);
+      const setId: number = await win.evaluate(async () => {
+        const made = await (window as never as Bridge).cuepoint.sets.create({ name: "Blank" });
+        return made.value.set.id;
+      });
+
+      await win.reload();
+      await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await win.getByRole("link", { name: "Prepare", exact: true }).click();
+      await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
+      const setTable = win.getByRole("table", { name: "Set entries" });
+      await expect(setTable).toBeVisible({ timeout: 30_000 });
+      await expect(win.getByText(/This Set is empty/)).toBeVisible();
+
+      const panel = win.getByRole("region", { name: "Add to the Set" });
+      await panel.getByRole("tab", { name: "Library" }).click();
+      await panel.getByRole("searchbox", { name: "Search" }).fill("Track 21");
+      const libraryRows = win.getByRole("table", { name: "Library tracks to add" }).locator(".track-table__row");
+      await expect(libraryRows).toHaveCount(1, { timeout: 30_000 });
+      const found = rowTitled(win, "Library tracks to add", "Track 21");
+      await expect(found).toBeVisible({ timeout: 30_000 });
+
+      // The centre of the table, well away from the note at its top.
+      await found.dragTo(setTable, { sourcePosition: { x: 30, y: 8 } });
+      await expect(win.getByText("Inserted 1 track into “Blank”.")).toBeVisible({ timeout: 15_000 });
+      await expect.poll(async () => (await runningOrder(win, setId)).map((entry) => entry.title)).toEqual(["Track 21"]);
     } finally {
       await app.close();
     }

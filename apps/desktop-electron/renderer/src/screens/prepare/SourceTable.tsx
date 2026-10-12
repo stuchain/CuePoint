@@ -70,6 +70,21 @@ interface Menu<Row> {
   credits: TrackCreditLinks | null;
 }
 
+/**
+ * A small "3 tracks" label as the drag image when several rows go at once, because the
+ * browser's own ghost is the one row that was grabbed. jsdom has no setDragImage.
+ */
+function dragChip(transfer: DataTransfer, label: string) {
+  if (typeof transfer.setDragImage !== "function") return;
+  const chip = document.createElement("div");
+  chip.textContent = label;
+  chip.className = "drag-chip";
+  document.body.appendChild(chip);
+  transfer.setDragImage(chip, 0, 0);
+  // The browser has taken its snapshot by the next frame.
+  window.setTimeout(() => chip.remove(), 0);
+}
+
 export function SourceTable<Row extends LibraryTrackRow>({
   ariaLabel,
   columns,
@@ -169,6 +184,7 @@ export function SourceTable<Row extends LibraryTrackRow>({
             setDraggedTrackIds(transfer, ids);
             // A copy: the track stays where it is and goes into the Set too.
             transfer.effectAllowed = "copy";
+            if (ids.length > 1) dragChip(transfer, pluralize(ids.length, "track"));
           }}
           emptyState={emptyState}
           resetKey={resetKey}

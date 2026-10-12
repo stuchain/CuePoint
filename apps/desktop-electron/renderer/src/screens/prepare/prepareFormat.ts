@@ -217,17 +217,14 @@ export function notesLinkTitle(notes: string | null): string {
 }
 
 /** What the page says with no Sets at all (DEC-104). */
-export const WHAT_A_SET_IS =
-  "A Set is a running order: tracks in the order you will play them, in chapters, " +
-  "with the times you plan to bring each one in and out. CuePoint checks every " +
-  "transition and plays the Set as the queue.";
+export const WHAT_A_SET_IS = "A Set is a running order of tracks.";
 
 /** Said in a shell without the Sets bridge: a browser tab, an older shell. */
 export const NO_SETS = "Prepare needs the desktop app with CuePoint's library service running.";
 
 /** An empty Set's table. */
 export const EMPTY_SET =
-  "This Set is empty. Pick tracks on the right under Library and choose Insert here, or drag them in from the Library or the Collections tree.";
+  "This Set is empty. Drag tracks here from the list on the right, or select them and choose Insert here.";
 
 /**
  * What deleting a chapter does, before it is done (DEC-103): its entries join

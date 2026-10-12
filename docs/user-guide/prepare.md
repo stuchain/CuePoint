@@ -258,7 +258,11 @@ first track; add that one from the Library tab.
 
 **Putting a track in.** Select one or more rows and choose **Insert here**
 (**Insert 3 here** for three; it reads **Pick tracks** until you select
-one, and clicking it takes you to the table), or drag them into the Set where you want them.
+one, and clicking it takes you to the table), or drag them into the Set. Drop anywhere in the Set table, even in the empty space
+below the last row: while you drag, the Set is outlined and says “Drop here to add to” its
+name, and a line shows where the tracks will land (above a chapter's heading means the end
+of the chapter before, and the line names the chapter). Rows you can drag have a small grip
+at their left edge; dragging several selected rows shows a label such as “3 tracks”.
 Double-click a row to hear it; its right-click menu also queues it, and opens its
 Similar tracks and its artist's or label's page.
 

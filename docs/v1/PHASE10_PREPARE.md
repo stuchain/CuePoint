@@ -2614,7 +2614,7 @@ the Set keeps every row PREP-10 measured, and the panel shows 4 whole Suggestion
   - `dropPlace` (in `prepareRows.ts`) is the place a drop names: a heading's chapter start, or before
     or after an entry, in that entry's chapter. `dropMove` is now that place, counted as the engine
     counts a move.
-  - An empty Set's note takes the first drop.
+  - The whole Set table takes a drop, empty or not (C18, DEC-243): the first drop on an empty Set goes to the start of its first chapter; with entries, the pointer picks the place, below the last row included.
 - **The lanes** (`prepareLanes.ts`, `SetLanes.tsx`):
   - A strip above the Set table, drawn as inline SVG rectangles in whole pixels with `crispEdges`,
     `currentColor` and theme tokens, and no chart library.

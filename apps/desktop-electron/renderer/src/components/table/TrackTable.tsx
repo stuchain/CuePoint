@@ -36,6 +36,7 @@ import { PixelSpinner } from "../PixelSpinner";
 import { useScale } from "../../tokens/ScaleContext";
 import {
   gridTemplate,
+  insertionAt,
   orderedWidths,
   readRowHeight,
   resolveWidths,
@@ -186,6 +187,31 @@ export interface TrackTableProps<Row> {
   onRowDrop?: (toIndex: number, transfer: DataTransfer, over: number) => void;
 
   /**
+   * A drop the table accepted while it has no rows. There is no row to be over and no index to
+   * report, so the table's whole area takes it and the owner decides where it goes.
+   */
+  onEmptyDrop?: (transfer: DataTransfer) => void;
+
+  /**
+   * What to say while an accepted drag is over the table ("Drop here to add to “Friday”").
+   * Drawn over the rows with a dashed outline; absent, the table says nothing of the kind.
+   */
+  dropLabel?: string;
+
+  /**
+   * A drag the owner knows is in progress somewhere else, so the outline shows before the
+   * pointer arrives. Only drawn when `dropLabel` is given.
+   */
+  dragActive?: boolean;
+
+  /**
+   * A small tag the insertion line carries when it sits above this row (`data-drop-chapter`),
+   * for a caller whose rows are not all alike: the end of one chapter and the start of the next
+   * draw the same line, and the tag says which side a drop on a heading means.
+   */
+  dropTag?: (row: Row) => string | undefined;
+
+  /**
    * Whether a row can be picked up at all. Absent, every row that has arrived
    * can be, when `onRowDragStart` is given.
    */
@@ -246,6 +272,10 @@ export function TrackTable<Row>({
   onRowDragStart,
   acceptsRowDrop,
   onRowDrop,
+  onEmptyDrop,
+  dropTag,
+  dropLabel,
+  dragActive = false,
   canDragRow,
   rowClassName,
   activeIndex = null,
@@ -268,6 +298,8 @@ export function TrackTable<Row>({
   // Interaction motion, and both are set by a drag, never by a scroll.
   const [liftedIndex, setLiftedIndex] = useState<number | null>(null);
   const [settledIndex, setSettledIndex] = useState<number | null>(null);
+  // An accepted drag is over the table, wherever in it; the outline and label follow this.
+  const [dropReady, setDropReady] = useState(false);
   useEffect(() => {
     if (settledIndex === null) return;
     const timer = window.setTimeout(() => setSettledIndex(null), 600);
@@ -541,6 +573,35 @@ export function TrackTable<Row>({
   const empty = source.total === 0;
 
   /**
+   * Where a drag at `clientY` would land, worked out from the pointer and the rows' own top.
+   *
+   * Asked on every dragover and again on the drop, never remembered between them: a dragleave
+   * between two cells clears state, and a drop that read it would be lost. A row under the
+   * pointer answers by its own rectangle; anywhere else (below the rows, over the header) the
+   * body's top gives the offset.
+   */
+  const placeAt = (target: EventTarget | null, clientY: number) => {
+    // Over the header means the top of the table, not whatever the pointer's offset works out to.
+    if (target instanceof Element && target.closest(".track-table__header")) return { insertAt: 0, over: 0 };
+    const rowElement = target instanceof Element ? target.closest<HTMLElement>(".track-table__row") : null;
+    const index = rowElement ? Number(rowElement.dataset.index) : Number.NaN;
+    if (rowElement && Number.isInteger(index)) {
+      const rect = rowElement.getBoundingClientRect();
+      const after = clientY > rect.top + rect.height / 2;
+      return { insertAt: index + (after ? 1 : 0), over: index };
+    }
+    const body = scrollRef.current?.querySelector(".track-table__body");
+    const top = body ? body.getBoundingClientRect().top : 0;
+    return insertionAt(clientY - top, rowHeight, source.total);
+  };
+
+  /** Whether this table would take the drag: someone is listening, and the owner accepts it. */
+  const takesDrag = (transfer: DataTransfer | null | undefined): transfer is DataTransfer => {
+    if (!transfer || !(empty ? onEmptyDrop : onRowDrop)) return false;
+    return !acceptsRowDrop || acceptsRowDrop(transfer);
+  };
+
+  /**
    * A mouse press gives the table focus without scrolling it into view
    * (DEC-112).
    *
@@ -559,7 +620,14 @@ export function TrackTable<Row>({
   };
 
   return (
-    <div className="track-table" style={style} data-testid="track-table">
+    <div
+      className="track-table"
+      style={style}
+      data-testid="track-table"
+      data-drop-ready={dropLabel && dropReady ? "" : undefined}
+      data-drag-active={dropLabel && dragActive ? "" : undefined}
+      data-empty={empty ? "" : undefined}
+    >
       {/* The rows, headers and cells below are ARIA table parts, so something
           has to be the table: without this they describe nothing and a screen
           reader reads a pile of groups. `aria-rowcount` is the whole result,
@@ -576,6 +644,46 @@ export function TrackTable<Row>({
         // somewhere to give focus back to when it closes.
         tabIndex={0}
         onKeyDown={onTableKeyDown}
+        // The whole scroll area is the drop target, so the space below the rows and an empty
+        // table's padding take a drop too, and one handler places it from the pointer.
+        onDragOver={(event) => {
+          const transfer = event.dataTransfer;
+          if (!takesDrag(transfer)) {
+            setDropIndex(null);
+            setDropReady(false);
+            return;
+          }
+          // Without this the browser refuses the drop, silently.
+          event.preventDefault();
+          // A drag that only copies (a track into a Set, PREP-11) is refused by a "move",
+          // silently too: answer what it allows.
+          transfer.dropEffect = transfer.effectAllowed === "copy" ? "copy" : "move";
+          setDropReady(true);
+          setDropIndex(empty ? null : placeAt(event.target, event.clientY).insertAt);
+        }}
+        onDragLeave={(event) => {
+          // A move from one cell to the next leaves the cell it was in; only leaving the table
+          // takes the mark away.
+          const next = event.relatedTarget;
+          if (next instanceof Node && event.currentTarget.contains(next)) return;
+          setDropIndex(null);
+          setDropReady(false);
+        }}
+        onDrop={(event) => {
+          const transfer = event.dataTransfer;
+          setDropIndex(null);
+          setDropReady(false);
+          setLiftedIndex(null);
+          if (!takesDrag(transfer)) return;
+          event.preventDefault();
+          if (empty) {
+            onEmptyDrop?.(transfer);
+            return;
+          }
+          const { insertAt, over } = placeAt(event.target, event.clientY);
+          setSettledIndex(insertAt);
+          onRowDrop?.(insertAt, transfer, over);
+        }}
       >
         {/* Row 1, which is what makes the body rows row 2 onward. */}
         <div className="track-table__header" role="row" aria-rowindex={1}>
@@ -663,7 +771,7 @@ export function TrackTable<Row>({
               return (
                 <div
                   key={key}
-                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${selected ? " track-table__row--selected" : ""}${keyboardCursor && cursorRow === item.index ? " track-table__row--cursor" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
+                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${selected ? " track-table__row--selected" : ""}${keyboardCursor && cursorRow === item.index ? " track-table__row--cursor" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}${draggable ? " track-table__row--draggable" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
                   style={{
                     transform: `translateY(${item.start}px)`,
                     height: `${item.size}px`,
@@ -678,37 +786,9 @@ export function TrackTable<Row>({
                   draggable={draggable}
                   onDragStart={(event) => {
                     if (!row || !draggable || !onRowDragStart || !event.dataTransfer) return;
+                    setDropIndex(null);
                     setLiftedIndex(item.index);
                     onRowDragStart(row, item.index, event.dataTransfer);
-                  }}
-                  onDragOver={(event) => {
-                    if (!onRowDrop) return;
-                    const transfer = event.dataTransfer;
-                    if (!transfer || (acceptsRowDrop && !acceptsRowDrop(transfer))) {
-                      setDropIndex(null);
-                      return;
-                    }
-                    // Without this the browser refuses the drop, silently.
-                    event.preventDefault();
-                    // A drag that only copies (a track into a Set, PREP-11) is
-                    // refused by a "move", silently too: answer what it allows.
-                    transfer.dropEffect = transfer.effectAllowed === "copy" ? "copy" : "move";
-                    // The upper half means before this row, the lower half
-                    // after it: an insertion point, so the last row can be
-                    // dropped past.
-                    const rect = event.currentTarget.getBoundingClientRect();
-                    const after = event.clientY > rect.top + rect.height / 2;
-                    setDropIndex(item.index + (after ? 1 : 0));
-                  }}
-                  onDragLeave={() => setDropIndex(null)}
-                  onDrop={(event) => {
-                    const at = dropIndex;
-                    setDropIndex(null);
-                    if (!onRowDrop || at === null || !event.dataTransfer) return;
-                    if (acceptsRowDrop && !acceptsRowDrop(event.dataTransfer)) return;
-                    event.preventDefault();
-                    setSettledIndex(at);
-                    onRowDrop(at, event.dataTransfer, item.index);
                   }}
                   onDragEnd={() => {
                     setDropIndex(null);
@@ -720,6 +800,11 @@ export function TrackTable<Row>({
                       : dropIndex === item.index + 1
                         ? "after"
                         : undefined
+                  }
+                  // A chapter's heading names its chapter on the line, so the line at a boundary
+                  // says which side it means.
+                  data-drop-chapter={
+                    row && dropIndex === item.index ? (dropTag?.(row) ?? undefined) : undefined
                   }
                   onMouseDown={(event) => {
                     setKeyboardCursor(false);
@@ -765,6 +850,11 @@ export function TrackTable<Row>({
           </div>
         )}
       </div>
+      {dropLabel && (dropReady || dragActive) && (
+        <div className="track-table__drop-label" aria-hidden>
+          <span>{dropLabel}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -899,6 +899,113 @@ describe("dragging rows (ORG-11)", () => {
     expect(row).not.toHaveAttribute("data-drop");
   });
 
+  it("lands a drop that comes right after a dragleave", () => {
+    // Moving from one cell to the next fires dragleave on the way, and a drop that beats the
+    // next dragover must not find the place already forgotten.
+    const onRowDrop = vi.fn();
+    renderTable({ onRowDrop });
+    const row = renderedRows()[2]!;
+    const dataTransfer = transfer();
+
+    drag("dragover", row, dataTransfer, 5);
+    fireEvent.dragLeave(row);
+    drag("drop", row, dataTransfer, 5);
+
+    expect(onRowDrop).toHaveBeenCalledWith(3, dataTransfer, 2);
+  });
+
+  it("takes a drop below the last row as the end", () => {
+    const onRowDrop = vi.fn();
+    renderTable({ onRowDrop });
+    const table = screen.getByRole("table");
+    const body = table.querySelector(".track-table__body") as HTMLElement;
+    body.getBoundingClientRect = () => ({ top: 0, bottom: 180, left: 0, right: 0, width: 0, height: 180, x: 0, y: 0, toJSON: () => ({}) });
+    const dataTransfer = transfer();
+
+    drag("dragover", table, dataTransfer, 4000);
+    drag("drop", table, dataTransfer, 4000);
+
+    expect(onRowDrop).toHaveBeenCalledWith(5, dataTransfer, 4);
+  });
+
+  it("takes a drop over the header as the very start", () => {
+    const onRowDrop = vi.fn();
+    renderTable({ onRowDrop });
+    const header = screen.getAllByRole("row").find((row) => row.dataset.index === undefined)!;
+    const dataTransfer = transfer();
+
+    drag("dragover", header, dataTransfer, 900);
+    drag("drop", header, dataTransfer, 900);
+
+    expect(onRowDrop).toHaveBeenCalledWith(0, dataTransfer, 0);
+  });
+
+  it("tags the line above a row that dropTag names", () => {
+    renderTable({ onRowDrop: vi.fn(), dropTag: (row) => (row.id === 2 ? "Peak" : undefined) });
+    drag("dragover", renderedRows()[1]!, transfer(), 0);
+    expect(renderedRows()[1]).toHaveAttribute("data-drop-chapter", "Peak");
+    drag("dragover", renderedRows()[2]!, transfer(), 0);
+    expect(renderedRows()[1]).not.toHaveAttribute("data-drop-chapter");
+    expect(renderedRows()[2]).not.toHaveAttribute("data-drop-chapter");
+  });
+
+  it("hands an empty table's drop to onEmptyDrop, wherever in it", () => {
+    const onEmptyDrop = vi.fn();
+    renderTable({ source: inMemorySource([]), onEmptyDrop });
+    const table = screen.getByRole("table");
+    const dataTransfer = transfer();
+
+    const over = new MouseEvent("dragover", { bubbles: true, cancelable: true });
+    Object.defineProperty(over, "dataTransfer", { value: dataTransfer });
+    fireEvent(table, over);
+    expect(over.defaultPrevented).toBe(true);
+    drag("drop", table, dataTransfer, 300);
+
+    expect(onEmptyDrop).toHaveBeenCalledWith(dataTransfer);
+  });
+
+  it("says a drop is welcome while an accepted drag is over, and stops when it is gone", () => {
+    renderTable({ onRowDrop: vi.fn(), dropLabel: "Drop here to add to “Friday”" });
+    const root = screen.getByTestId("track-table");
+    expect(root).not.toHaveAttribute("data-drop-ready");
+
+    const dataTransfer = transfer();
+    drag("dragover", renderedRows()[1]!, dataTransfer, 0);
+    expect(root).toHaveAttribute("data-drop-ready");
+    expect(screen.getByText("Drop here to add to “Friday”")).toBeInTheDocument();
+
+    fireEvent.dragLeave(screen.getByRole("table"));
+    expect(root).not.toHaveAttribute("data-drop-ready");
+
+    drag("dragover", renderedRows()[1]!, dataTransfer, 0);
+    drag("drop", renderedRows()[1]!, dataTransfer, 0);
+    expect(root).not.toHaveAttribute("data-drop-ready");
+    expect(screen.queryByText("Drop here to add to “Friday”")).not.toBeInTheDocument();
+  });
+
+  it("keeps the mark while the pointer moves between its own cells", () => {
+    renderTable({ onRowDrop: vi.fn(), dropLabel: "Drop here" });
+    const row = renderedRows()[1]!;
+    drag("dragover", row, transfer(), 0);
+
+    // A MouseEvent, because jsdom's plain Event has no relatedTarget to carry.
+    fireEvent(row, new MouseEvent("dragleave", { bubbles: true, relatedTarget: renderedRows()[2] }));
+
+    expect(screen.getByTestId("track-table")).toHaveAttribute("data-drop-ready");
+  });
+
+  it("shows the label and the outline for a drag the owner says is in progress", () => {
+    renderTable({ onRowDrop: vi.fn(), dropLabel: "Drop here", dragActive: true });
+    expect(screen.getByTestId("track-table")).toHaveAttribute("data-drag-active");
+    expect(screen.getByText("Drop here")).toBeInTheDocument();
+  });
+
+  it("gives a draggable row its grip class, and a plain row none", () => {
+    renderTable({ onRowDragStart: vi.fn(), canDragRow: (row) => row.id !== 2 });
+    expect(renderedRows()[0]).toHaveClass("track-table__row--draggable");
+    expect(renderedRows()[1]).not.toHaveClass("track-table__row--draggable");
+  });
+
   it("accepts no drop at all when nobody is listening for one", () => {
     renderTable();
     drag("dragover", renderedRows()[0]!, transfer(), 0);

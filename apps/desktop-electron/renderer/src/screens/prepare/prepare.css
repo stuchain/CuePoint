@@ -287,14 +287,6 @@ body.prepare-resizing {
   flex: 1;
 }
 
-/* An empty Set's note takes the first drop (PREP-11), so it fills the table. */
-.prepare-set__drop {
-  display: flex;
-  align-items: flex-start;
-  min-height: calc(var(--row-height) * 2);
-  padding: var(--space-sm);
-}
-
 /* --------------------------------------------------------------- the lanes */
 
 /* DEC-111: the Set's tempo and key in whole pixels. Every colour is a theme
@@ -968,4 +960,16 @@ body.prepare-resizing {
 
 .prepare-source__in-set {
   color: var(--fg-muted);
+}
+
+/* The drag image for several tracks at once; off-screen, the browser snapshots it. */
+.drag-chip {
+  position: fixed;
+  top: -100px;
+  left: -100px;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--accent-primary);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
 }

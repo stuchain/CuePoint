@@ -68,7 +68,7 @@ import { RekordboxExportDialog } from "../library/RekordboxExportDialog";
 import type { FolderOption } from "../library/SaveSmartDialog";
 import { TrackDetailPanel } from "../library/TrackDetailPanel";
 import { flattenCollections, isSet, setPickerNodes } from "../library/collectionTree";
-import { TRACK_IDS_MIME, draggedTrackIds } from "../library/collectionDrag";
+import { TRACK_IDS_MIME, draggedTrackIds, isTrackDrag } from "../library/collectionDrag";
 import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
 import { newSetMadeLine, setSourceOf, type NewSetSource } from "../library/newSetFrom";
 import { useCollectionTree } from "../library/useCollectionTree";
@@ -621,6 +621,30 @@ export function PrepareScreen({
     [insertTracks, point],
   );
 
+  // A track drag is in progress somewhere on the page: the Set outlines itself before the pointer
+  // arrives. Document-level, because the drag starts in the source panel, not here. A Set entry's
+  // own drag does not need it.
+  const [trackDragging, setTrackDragging] = useState(false);
+  useEffect(() => {
+    const start = (event: DragEvent) => setTrackDragging(isTrackDrag(event.dataTransfer));
+    const end = () => setTrackDragging(false);
+    document.addEventListener("dragstart", start);
+    document.addEventListener("dragend", end);
+    document.addEventListener("drop", end);
+    // A drag can end without a dragend reaching the document (the source row was re-rendered
+    // away, a drop outside the window). Pointer and mouse events do not fire during a native
+    // drag, so the next one means it is over.
+    document.addEventListener("pointermove", end);
+    document.addEventListener("mousedown", end);
+    return () => {
+      document.removeEventListener("pointermove", end);
+      document.removeEventListener("mousedown", end);
+      document.removeEventListener("dragstart", start);
+      document.removeEventListener("dragend", end);
+      document.removeEventListener("drop", end);
+    };
+  }, []);
+
   const moveByDrop = useCallback(
     (insertAt: number, transfer: DataTransfer, over: number) => {
       if (!Array.from(transfer.types ?? []).includes(SET_ENTRY_MIME)) {
@@ -1102,26 +1126,17 @@ export function PrepareScreen({
           acceptsRowDrop={accepts}
           onRowDrop={moveByDrop}
           scrollToIndex={scrollTo}
-          emptyState={
-            // An empty Set has no rows to drop on, so its note takes the drop:
-            // the first track goes to the start of the first chapter.
-            <div
-              className="prepare-set__drop"
-              onDragOver={(event) => {
-                if (!event.dataTransfer || !Array.from(event.dataTransfer.types ?? []).includes(TRACK_IDS_MIME)) return;
-                event.preventDefault();
-                event.dataTransfer.dropEffect = "copy";
-              }}
-              onDrop={(event) => {
-                const ids = draggedTrackIds(event.dataTransfer);
-                if (ids.length === 0) return;
-                event.preventDefault();
-                void insertTracks(ids, { position: 0, chapter_id: firstChapter?.id ?? null }, ids.map(() => null));
-              }}
-            >
-              <p className="prepare-note">{EMPTY_SET}</p>
-            </div>
-          }
+          onEmptyDrop={(transfer) => {
+            // An empty Set has no rows to drop on, so the whole table takes it: the first track
+            // goes to the start of the first chapter.
+            const ids = draggedTrackIds(transfer);
+            if (ids.length === 0) return;
+            void insertTracks(ids, { position: 0, chapter_id: firstChapter?.id ?? null }, ids.map(() => null));
+          }}
+          dropLabel={`Drop here to add to “${setName}”`}
+          dragActive={trackDragging}
+          dropTag={(row) => (row.kind === "heading" ? chapterName(row.chapter) : undefined)}
+          emptyState={<p className="prepare-note">{EMPTY_SET}</p>}
           resetKey={String(shown.setId)}
           ariaLabel="Set entries"
         />

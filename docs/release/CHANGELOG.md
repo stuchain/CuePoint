@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Charts no longer say "Point at or tab to a bar to read it."** A bar's name still shows when you point at it or reach it with Tab.
 
 ### Fixed
+- **Dragging tracks into a Set.** Drop anywhere in the Set table, including the space below the last row and an empty Set's whole area: the Set is outlined and says where the tracks will go, a line shows the spot, and dragging several rows shows "3 tracks". Draggable rows have a grip (DEC-243).
 - The Play button showed Play while music played after you switched tracks during playback, or after a track ran on into the next one.
 - The key in the player bar's track line sat lower than the words around it.
 

@@ -627,6 +627,31 @@ describe("inserting", () => {
     expect(data.effectAllowed).toBe("copy");
   });
 
+  it("sets a drag image chip only when more than one track is dragged", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    const rows = await suggestionRows();
+    const withImage = () => {
+      const data = transfer();
+      const setDragImage = vi.fn();
+      Object.assign(data, { setDragImage });
+      return { data, setDragImage };
+    };
+
+    const single = withImage();
+    drag("dragstart", rows[0], single.data);
+    expect(single.setDragImage).not.toHaveBeenCalled();
+
+    fireEvent.click(rows[0]);
+    fireEvent.click(rows[1], { ctrlKey: true });
+    const several = withImage();
+    drag("dragstart", rows[0], several.data);
+    expect(several.setDragImage).toHaveBeenCalledTimes(1);
+    const chip = several.setDragImage.mock.calls[0][0] as HTMLElement;
+    expect(chip).toHaveClass("drag-chip");
+    expect(chip.textContent).toBe("2 tracks");
+  });
+
   it("drops tracks where they land: a heading's chapter start, or below an entry in its chapter", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
@@ -654,10 +679,90 @@ describe("inserting", () => {
     expect(await screen.findByText("Inserted 2 tracks into “Build”.", {}, LOADED)).toBeInTheDocument();
   });
 
+  it("an empty Set takes a drop anywhere in its table", async () => {
+    renderAt(preparePath(SOURCE_IDS.blank));
+    await opened("Blank");
+    const table = screen.getByRole("table", { name: "Set entries" });
+    const tracks = transfer({ [TRACK_IDS_MIME]: "[7]" });
+    const over = new MouseEvent("dragover", { bubbles: true, cancelable: true });
+    Object.defineProperty(over, "dataTransfer", { value: tracks });
+    fireEvent(table, over);
+    expect(over.defaultPrevented).toBe(true);
+    drag("drop", table, tracks);
+    await waitFor(() =>
+      expect(bridge.insertTrackInCollection).toHaveBeenCalledWith({
+        collection_id: SOURCE_IDS.blank,
+        track_id: 7,
+        position: 0,
+        chapter_id: BLANK.plan.chapters[0].id,
+      }),
+    );
+  });
+
+  it("a drop below the last row appends to the last chapter", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    const table = screen.getByRole("table", { name: "Set entries" });
+    const body = table.querySelector(".track-table__body") as HTMLElement;
+    body.getBoundingClientRect = () => ({ top: 0, bottom: 100, left: 0, right: 0, width: 0, height: 100, x: 0, y: 0, toJSON: () => ({}) });
+    const tracks = transfer({ [TRACK_IDS_MIME]: "[5]" });
+    drag("dragover", table, tracks, 5000);
+    drag("drop", table, tracks, 5000);
+    await waitFor(() =>
+      expect(bridge.insertTrackInCollection).toHaveBeenCalledWith({
+        collection_id: SOURCE_IDS.build,
+        track_id: 5,
+        position: BUILD.entries.entries.length,
+        chapter_id: PEAK,
+      }),
+    );
+  });
+
+  it("outlines the Set, labelled, while a track is being dragged", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    const rows = await suggestionRows();
+    // The source row sets the MIME itself, as the browser's drag would carry it.
+    drag("dragstart", rows[0], transfer());
+    expect(screen.getByText("Drop here to add to “Build”")).toBeInTheDocument();
+    fireEvent(document, new Event("dragend", { bubbles: true }));
+    await waitFor(() => expect(screen.queryByText("Drop here to add to “Build”")).not.toBeInTheDocument());
+  });
+
+  it("clears the outline on a document drop, and on the next pointer move when no dragend came", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    const rows = await suggestionRows();
+    drag("dragstart", rows[0], transfer());
+    expect(screen.getByText("Drop here to add to “Build”")).toBeInTheDocument();
+    fireEvent(document, new Event("drop", { bubbles: true }));
+    await waitFor(() => expect(screen.queryByText("Drop here to add to “Build”")).not.toBeInTheDocument());
+
+    drag("dragstart", rows[0], transfer());
+    expect(screen.getByText("Drop here to add to “Build”")).toBeInTheDocument();
+    fireEvent.pointerMove(document.body);
+    await waitFor(() => expect(screen.queryByText("Drop here to add to “Build”")).not.toBeInTheDocument());
+  });
+
+  it("does not outline the Set for a Set entry's own drag", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    drag("dragstart", setRow(OPEN_ONE), transfer());
+    expect(screen.queryByText("Drop here to add to “Build”")).not.toBeInTheDocument();
+  });
+
+  it("tags the line on a heading with its chapter's name", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    drag("dragover", setRow(-PEAK), transfer({ [TRACK_IDS_MIME]: "[5]" }), 0);
+    expect(setRow(-PEAK)).toHaveAttribute("data-drop-chapter", "Peak");
+    expect(setRow(OPEN_ONE)).not.toHaveAttribute("data-drop-chapter");
+  });
+
   it("takes the first track into an empty Set by a drop on its note", async () => {
     renderAt(preparePath(SOURCE_IDS.blank));
     await opened("Blank");
-    const note = screen.getByText(/This Set is empty/).closest(".prepare-set__drop") as HTMLElement;
+    const note = screen.getByText(/This Set is empty/);
     const tracks = transfer({ [TRACK_IDS_MIME]: "[7]" });
     drag("dragover", note, tracks);
     drag("drop", note, tracks);

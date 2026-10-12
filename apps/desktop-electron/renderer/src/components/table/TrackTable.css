@@ -14,6 +14,7 @@
  */
 
 .track-table {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -264,4 +265,76 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
 
 .track-table__row--drop-after {
   box-shadow: inset 0 calc(-2px * var(--scale)) 0 0 var(--accent-primary);
+}
+
+/* An insertion line at the end of a chapter's heading says whose start it is. */
+.track-table__row[data-drop-chapter]::after {
+  content: attr(data-drop-chapter);
+  position: absolute;
+  top: 0;
+  right: var(--space-sm);
+  padding: 0 var(--space-xs);
+  background: var(--accent-primary);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+/*
+ * A drop is welcome here (C18): the whole scroll area is the target, so while an accepted drag
+ * is over it, or a track drag is in progress somewhere the owner can see, it is tinted, and the
+ * overlay draws the dashed outline. The outline lives on the overlay, above the sticky header
+ * and the positioned rows, which would hide one drawn on the scroll element.
+ */
+.track-table[data-drop-ready] .track-table__scroll,
+.track-table[data-drag-active] .track-table__scroll {
+  background: color-mix(in srgb, var(--accent-primary) 8%, var(--bg-input));
+}
+
+.track-table[data-drop-ready] .track-table__scroll {
+  background: color-mix(in srgb, var(--accent-primary) 14%, var(--bg-input));
+}
+
+.track-table__drop-label {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  border: calc(2px * var(--scale)) dashed var(--accent-primary);
+  color: var(--accent-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* With rows under it the outline and the insertion line are enough; the words would only cover
+   the end of the line. */
+.track-table:not([data-empty]) .track-table__drop-label > span {
+  display: none;
+}
+
+/* The grip says a row can be picked up; the Library table has it too. Out of the column flow, at
+   the row's left edge, so a narrow right-aligned first column keeps its content. Empty alt text,
+   so a screen reader skips it. */
+.track-table__row--draggable::before {
+  content: "⠿" / "";
+  position: absolute;
+  left: var(--space-xs);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  color: var(--fg-muted);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.track-table__row--draggable > .track-table__cell:first-child {
+  padding-left: calc(var(--space-xs) + 1.2em);
 }

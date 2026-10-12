@@ -6796,4 +6796,35 @@ fallback stays for that. The user guide says it in one line.
 - A real sign-in on each platform, the renewal after ten hours, and a playlist push with the
   captured token can only be checked by hand.
 
+## DEC-243 — The Whole Set Table Takes a Drop
+
+**Status**: Approved · **Related**: DEC-241, PREP-10, PREP-11, C18
+
+**Context**: C18 reported that dragging tracks into a Prepare Set did not work. The drag itself did;
+the drop target was the problem. Three root causes: only an empty Set's note took a drop (not the
+table around it); there was nothing to drop on below the last row, so a track could not be added at
+the end by dragging; and the rows cleared their insertion state on `dragleave`, which fires between
+two cells of one row, so a quick drop that followed one lost its place and did nothing.
+
+**Decision** (Stelios's pick 10-12):
+- The whole scroll area of the Set table is the drop target. The insertion place is worked out from
+  the pointer on every `dragover` and again on the `drop`, never remembered between them, so a
+  `dragleave` cannot lose it. Over the header the place is the very start.
+- While a track drag is on anywhere on the page, the Set is outlined with a dashed accent border and
+  says "Drop here to add to “<Set>”" (the words only when the Set is empty; with rows the outline
+  and the line are enough). A Set entry's own drag does not outline it. The outline clears on
+  `dragend`, on a document `drop`, or on the next pointer move or press if neither arrived.
+- The insertion line includes the end of the Set. At a chapter boundary `dropPlace` decides the side,
+  and the line on a heading carries the chapter's name (`data-drop-chapter`) so it is clear which
+  chapter a drop means.
+- Draggable rows show a grip at the row's left edge in every `TrackTable`, the Library's included.
+- Dragging more than one selected row shows a "3 tracks" chip as the drag image (`.drag-chip`).
+
+**Implications**: `TrackTable` gains `onEmptyDrop`, `dropLabel`, `dragActive` and `dropTag`; the row-level
+drop handlers move to the scroll element. An empty Set's note no longer takes the drop itself and
+the table does. Other tables are unchanged apart from the grip. The `EMPTY_SET` sentence is
+unchanged.
+
+**Amends**: PREP-11's "an empty Set's note takes the first drop".
+
 **Decided with**: User · **Date**: 2026-10-12
