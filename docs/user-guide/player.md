@@ -104,8 +104,8 @@ background.
 read from your machine each time you open the panel, so an interface you just
 plugged in is there.
 
-Under the picker, Settings says how many outputs it found, and that if the
-chosen one is unplugged CuePoint switches to System default.
+Under the picker, Settings says how many outputs it found. **More about this**
+adds that if the chosen one is unplugged CuePoint switches to System default.
 
 **Exclusive output** (Windows and macOS): leave it off unless you use an audio
 interface. It takes the device for CuePoint alone

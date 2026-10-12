@@ -29,6 +29,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
+import { MoreAbout } from "../../components/MoreAbout";
 import { Panel } from "../../components/Panel";
 import { useToast } from "../../components/Toast";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
@@ -47,6 +48,7 @@ import { refusalText } from "./discoverFormat";
 import { NO_ENGINE } from "./discoverTools";
 import {
   facetValueText,
+  identityDetail,
   identityHint,
   identityLabel,
   INDEX_BUILDING,
@@ -261,6 +263,9 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
         </p>
         <h1 className="screen__title">{pageTitle(shown)}</h1>
         <p className="discover-note">{identityHint(shown)}</p>
+        <MoreAbout>
+          <p className="discover-note">{identityDetail(shown)}</p>
+        </MoreAbout>
         {shown.redirected_from && <p className="discover-note">{redirectedLine(kind)}</p>}
         {!shown.library.index_current && (
           <p className="discover-note discover-note--warning" role="status">

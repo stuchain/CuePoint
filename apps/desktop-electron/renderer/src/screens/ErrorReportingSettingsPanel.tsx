@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { Panel } from "../components";
+import { MoreAbout, Panel } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { reportUnexpected, setReportingChoice } from "../reporting/reporting";
 import "./error-reporting-settings.css";
@@ -109,10 +109,15 @@ export function ErrorReportingSettingsPanel({
           <SavedTick signal={saved} />
         </div>
         <p className="cp-error-reporting__text">
-          A report says what went wrong, where in CuePoint&apos;s code, and the steps that led to it.
-          It is built not to carry your file, folder, track, artist, label or playlist names, your
-          notes, tags or tokens: they are removed on your computer before it is sent.
+          Sends what went wrong, never your track or file names.
         </p>
+        <MoreAbout>
+          <p className="cp-error-reporting__text">
+            A report says what went wrong, where in CuePoint&apos;s code, and the steps that led to
+            it. It is built not to carry your file, folder, track, artist, label or playlist names,
+            your notes, tags or tokens: they are removed on your computer before it is sent.
+          </p>
+        </MoreAbout>
         {!available && (
           <p className="cp-error-reporting__text">Open CuePoint as a desktop app to change this.</p>
         )}

@@ -320,8 +320,7 @@ Here is where each kind shows:
 custom theme you made: **Create custom theme…** asks for nine colors, and the
 borders and bevels are made from them. **Delete** asks first. **Size of text and
 controls** is **Small (1×)**, **Medium (1.5×)** (the default), **Large (2×)** or
-**Extra large (3×)**. Edges and lines snap to whole pixels at every size, so the
-pixel style stays sharp. Table rows are as tall as the size says, so the text in
+**Extra large (3×)**. Table rows are as tall as the size says, so the text in
 them is never cut. If you chose a size before, CuePoint keeps it; if you never
 did, it opens at Medium.
 

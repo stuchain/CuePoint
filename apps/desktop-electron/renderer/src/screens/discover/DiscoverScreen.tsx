@@ -80,10 +80,6 @@ interface PushNotice {
   tone: "success" | "warning";
 }
 
-/** What the page says under its title (DSC-1). */
-export const DISCOVER_INTRO =
-  "Find new music from the artists and labels already in your library, keep what you want on a wantlist, and send it to a Beatport playlist.";
-
 export function DiscoverScreen() {
   const navigate = useNavigate();
   const { push: toast } = useToast();
@@ -305,7 +301,6 @@ export function DiscoverScreen() {
     <div className="screen discover-screen">
       <header className="discover-screen__header">
         <h1 className="screen__title">Discover</h1>
-        <p className="discover-screen__intro">{DISCOVER_INTRO}</p>
         <Tabs
           tabs={DISCOVER_SECTIONS.map((entry) => ({ id: entry.id, label: entry.label }))}
           activeId={section}
@@ -317,7 +312,7 @@ export function DiscoverScreen() {
         <div className="discover-banner discover-banner--warning" role="status">
           <div className="discover-banner__text">
             <strong>{notice.headline}</strong>
-            <span>{notice.hint}</span>
+            {notice.hint ? <span>{notice.hint}</span> : null}
           </div>
           {notice.action === "settings" ? (
             <Button
@@ -393,6 +388,7 @@ export function DiscoverScreen() {
               options={tools.options}
               usable={beatportUsable(state)}
               unusableReason={unusableReason(state)}
+              signedOut={state === "no_token"}
               busy={discovery.jobId !== null}
               onStart={startRun}
             />

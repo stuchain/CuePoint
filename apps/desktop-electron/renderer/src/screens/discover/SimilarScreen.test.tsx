@@ -201,8 +201,8 @@ describe("the seed and its suggestions", () => {
     expect(headers).toContain("Match");
     expect(headers).not.toContain("Score");
     expect(
-      screen.getByText("Tracks from your library that would mix well after this one."),
-    ).toBeInTheDocument();
+      screen.queryByText("Tracks from your library that would mix well after this one."),
+    ).toBeNull();
     const bands = SIMILAR.value!.suggestions.map((entry) => matchBand(entry.score));
     expect(bands).toEqual(["Strong", "Strong", "Good", "Some", "Some"]);
   });

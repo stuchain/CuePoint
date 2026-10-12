@@ -279,7 +279,13 @@ describe("a page's identity (DEC-095)", () => {
     // The name as typed is replaced with the page's own reference.
     await waitFor(() => expect(where()).toBe(entityPath("artist", "name:kiko")));
     expect(screen.getByText("Your tracks by this name")).toBeInTheDocument();
-    expect(screen.getByText(/has not linked this artist to Beatport yet/)).toBeInTheDocument();
+    expect(screen.getByText("Your tracks credited with this name")).toBeInTheDocument();
+    // The rest is behind "More about this", closed on load.
+    expect(screen.getByRole("button", { name: "More about this" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.getByText(/has not linked this artist to Beatport yet/)).not.toBeVisible();
     expect(screen.getByText("3 tracks in your library")).toBeInTheDocument();
     for (const title of ["Harbour Lights", "Night Bus", "Untimed"]) {
       expect(await within(yourTracks()).findByText(title, {}, LOADED)).toBeInTheDocument();
@@ -294,7 +300,7 @@ describe("a page's identity (DEC-095)", () => {
     renderAt(entityPath("artist", "name:Mara Veil"));
     await opened("Mara Veil");
     await waitFor(() => expect(where()).toBe(entityPath("artist", "bp:301001")));
-    expect(screen.getByText("Linked to Beatport")).toBeInTheDocument();
+    expect(screen.getAllByText("Linked to Beatport")).toHaveLength(2);
     expect(screen.getByText(/Opened by name/)).toBeInTheDocument();
     expect(screen.getByText(/credited as Mara Veil/)).toBeInTheDocument();
     // The page answered for the id is not asked for again at the id's address.
@@ -305,7 +311,7 @@ describe("a page's identity (DEC-095)", () => {
   it("draws a label page in both identities", async () => {
     const view = renderAt(entityPath("label", "bp:40211"));
     await opened("Nightfall Audio");
-    expect(screen.getByText("Linked to Beatport")).toBeInTheDocument();
+    expect(screen.getAllByText("Linked to Beatport").length).toBeGreaterThan(0);
     expect(screen.getByText(/Artists:/)).toBeInTheDocument();
     view.unmount();
     renderAt(entityPath("label", "name:Cold Room"));
@@ -371,9 +377,9 @@ describe("a page's identity (DEC-095)", () => {
 
 describe("the Beatport half, in every state", () => {
   const STANDING_IN: Array<[Fixture, string, string | null]> = [
-    ["half_no_token", "Connect your Beatport account", "Open Settings"],
-    ["half_rejected", "Beatport rejected the token", "Open Settings"],
-    ["half_forbidden", "Beatport refused this token", "Open Settings"],
+    ["half_no_token", "Sign in to Beatport to search its charts and releases.", "Open Settings"],
+    ["half_rejected", "Beatport sign-in ended or the token was refused.", "Open Settings"],
+    ["half_forbidden", "Beatport refused this token.", "Open Settings"],
     ["half_rate_limited", "Beatport is limiting requests", "Try again"],
     ["half_unavailable", "Beatport cannot be reached", "Try again"],
     ["half_not_resolved_resolvable", "Not linked to Beatport yet", "Look them up now"],

@@ -118,7 +118,6 @@ export function LibraryHeader({
         <h1 className="screen__title library-header__title">
           Library
         </h1>
-        <p className="library-header__subtitle">Your Rekordbox library, as CuePoint sees it.</p>
         <div className="library-header__actions">
           <Button variant="primary" onClick={onImport} disabled={disabled}>
             {busy === "importing" ? busyLabel : "Import your Rekordbox collection…"}

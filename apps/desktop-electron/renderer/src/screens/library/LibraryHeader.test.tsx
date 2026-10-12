@@ -232,9 +232,7 @@ describe("before the first import", () => {
       summary: { ...SUMMARY, track_count: 0, library_empty: true, source: null },
     });
     expect(screen.getAllByRole("button")).toHaveLength(1);
-    expect(
-      screen.getByText("Your Rekordbox library, as CuePoint sees it."),
-    ).toBeInTheDocument();
+    expect(screen.queryByText("Your Rekordbox library, as CuePoint sees it.")).toBeNull();
   });
 
   it("says importing on its button while it works", () => {

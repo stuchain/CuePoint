@@ -342,9 +342,6 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
           )}
         </p>
         {facts && <p className="discover-note">{facts}</p>}
-        <p className="discover-note">
-          Tracks from your library that would mix well after this one.
-        </p>
         <p className="discover-note">{consideredLine(answer)}</p>
         {unused && <p className="discover-note">{unused}</p>}
         <div className="discover-page__actions">

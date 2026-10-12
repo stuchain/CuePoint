@@ -65,12 +65,6 @@
   margin-left: auto;
 }
 
-.library-header__subtitle {
-  margin: 0;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-}
-
 /* The full labels, laid out and never seen: what the header measures to decide
    whether the visible ones must shorten. */
 .library-header__measure {

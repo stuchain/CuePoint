@@ -112,17 +112,17 @@ export function runRequest(form: NewRunForm): DiscoverRunRequest {
 }
 
 /**
- * The chart dates in words, for the line shown above "More options" (DSC-5):
- * "Charts from the last 30 days." while they are the engine's default window,
- * the two dates once they are not.
+ * The chart dates in a few words, for the genres legend (DSC-5):
+ * "last 30 days" while they are the engine's default window, the two dates
+ * once they are not.
  */
-export function chartsWindowText(form: NewRunForm, defaults: DiscoverDefaults): string {
+export function chartsWindowShort(form: NewRunForm, defaults: DiscoverDefaults): string {
   const from = dayOf(form.chartsFrom);
   const to = dayOf(form.chartsTo);
-  if (from === null || to === null) return "Charts from the dates below.";
+  if (from === null || to === null) return "dates under More options";
   const isDefault =
     form.chartsFrom === defaults.charts_from && form.chartsTo === defaults.charts_to;
   const days = to - from;
-  if (isDefault && days >= 1) return `Charts from the last ${days} days.`;
-  return `Charts from ${form.chartsFrom} to ${form.chartsTo}.`;
+  if (isDefault && days >= 1) return `last ${days} days`;
+  return `${form.chartsFrom} to ${form.chartsTo}`;
 }

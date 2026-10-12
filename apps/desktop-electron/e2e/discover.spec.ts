@@ -124,7 +124,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       const window = await ready(app);
       await window.getByRole("link", { name: "Discover" }).click();
       await expect(window.getByRole("heading", { name: "Discover", level: 1 })).toBeVisible();
-      await expect(window.getByText("Connect your Beatport account")).toBeVisible({ timeout: 30_000 });
+      await expect(window.getByText("Sign in to Beatport to search its charts and releases.")).toBeVisible({ timeout: 30_000 });
       // Usable without a token: past searches and the wantlist are CuePoint's own.
       await window.getByRole("tab", { name: "New search" }).click();
       await expect(window.getByRole("button", { name: "Start looking" })).toBeDisabled();
@@ -149,7 +149,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await window.getByRole("tab", { name: "New search" }).click();
       const panel = window.getByRole("region", { name: "New search" });
       await expect(panel).toBeVisible({ timeout: 30_000 });
-      await expect(window.getByText("Connect your Beatport account")).toHaveCount(0);
+      await expect(window.getByText("Sign in to Beatport to search its charts and releases.")).toHaveCount(0);
       await panel.getByRole("checkbox", { name: "House" }).check();
       await panel.getByRole("button", { name: "Start looking" }).click();
 

@@ -198,10 +198,7 @@ export function RunsView({
           </div>
         )}
         <p className="discover-empty__headline">No searches yet</p>
-        <p className="discover-note">
-          Choose genres, artists or labels, and CuePoint looks for what is new from your artists
-          and labels. What it finds appears here.
-        </p>
+        <p className="discover-note">What a search finds appears here.</p>
         <Button onClick={onNewSearch}>New search</Button>
       </div>
     );

@@ -26,7 +26,7 @@ import { formatCount, pluralize } from "../library/libraryFormat";
 import { ScopeDialog } from "./ScopeDialog";
 import { refusalText } from "./discoverFormat";
 import {
-  chartsWindowText,
+  chartsWindowShort,
   defaultForm,
   formProblems,
   runRequest,
@@ -40,6 +40,8 @@ interface NewRunPanelProps {
   /** False when Beatport cannot be asked; the reason says why. */
   usable: boolean;
   unusableReason: string | null;
+  /** True when there is no Beatport sign-in at all. */
+  signedOut?: boolean;
   /** True while a start is being asked for, or a run is running. */
   busy: boolean;
   onStart: (request: DiscoverRunRequest) => Promise<DiscoverRefusal | null>;
@@ -103,6 +105,7 @@ export function NewRunPanel({
   options,
   usable,
   unusableReason,
+  signedOut = false,
   busy,
   onStart,
 }: NewRunPanelProps) {
@@ -151,9 +154,6 @@ export function NewRunPanel({
     <section className="discover-new" aria-label="New search">
       <header className="discover-new__header">
         <h2 className="discover-section__title">New search</h2>
-        <p className="discover-note">
-          Pick artists, labels or charts, then press Start looking.
-        </p>
       </header>
 
       {emptyLibrary && (
@@ -171,15 +171,14 @@ export function NewRunPanel({
       <div className="discover-new__grid">
         <fieldset className="discover-new__genres">
           <legend className="cp-field__label">
-            Genres for DJ charts ({formatCount(form.genreIds.length)} chosen)
+            Genres for DJ charts ({formatCount(form.genreIds.length)} chosen) ·{" "}
+            {chartsWindowShort(form, options.defaults)}
           </legend>
-          <p className="discover-note">
-            On Beatport, artists publish charts — short lists of tracks they play. CuePoint reads
-            the charts made by artists in your library, in the genres you tick.
-          </p>
           {options.genres.length === 0 ? (
             <p className="discover-note">
-              Beatport's genres could not be read, so no charts can be chosen now.
+              {signedOut
+                ? "Genres appear after you sign in."
+                : "Beatport's genres could not be read, so no charts can be chosen now."}
             </p>
           ) : (
             <>
@@ -205,7 +204,6 @@ export function NewRunPanel({
               </ul>
             </>
           )}
-          <p className="discover-note">{chartsWindowText(form, options.defaults)}</p>
           <details className="discover-new__more">
             <summary>More options</summary>
             <div className="discover-new__dates">

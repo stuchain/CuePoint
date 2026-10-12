@@ -51,7 +51,7 @@ import {
   loadDiscoverSection,
   saveDiscoverSection,
 } from "./discoverSections";
-import { chartsWindowText, defaultForm, formProblems, runRequest, type NewRunForm } from "./newRun";
+import { chartsWindowShort, defaultForm, formProblems, runRequest, type NewRunForm } from "./newRun";
 
 const OPTIONS = fixture.options_ok.value as unknown as DiscoverOptions;
 const LIMITS: DiscoverLimits = OPTIONS.limits;
@@ -108,9 +108,9 @@ describe("Beatport's state", () => {
   });
 
   it.each([
-    ["options_no_token", "Connect your Beatport account", "settings"],
-    ["options_rejected", "Beatport rejected the token", "settings"],
-    ["options_forbidden", "Beatport refused this token", "settings"],
+    ["options_no_token", "Sign in to Beatport to search its charts and releases.", "settings"],
+    ["options_rejected", "Beatport sign-in ended or the token was refused.", "settings"],
+    ["options_forbidden", "Beatport refused this token.", "settings"],
     ["options_rate_limited", "Beatport is limiting requests", "retry"],
     ["options_unavailable", "Beatport cannot be reached", "retry"],
   ] as const)("draws %s from the engine's class", (state, headline, action) => {
@@ -118,20 +118,16 @@ describe("Beatport's state", () => {
     const notice = beatportNotice(beatport.state, beatport.message, beatport.retry_after)!;
     expect(notice.headline).toBe(headline);
     expect(notice.action).toBe(action);
-    // Every one says the page still works without Beatport (DEC-098).
-    expect(notice.hint).toContain("Your past searches and wantlist still open without it.");
+    // One line: a hint only where it says something more.
+    expect(notice.hint.length).toBeLessThan(80);
+    expect(notice.hint).not.toContain("still open without it");
   });
 
-  it("explains the token in plain words, and where to find out how to get one (DSC-3)", () => {
-    const notice = beatportNotice("no_token")!;
-    expect(notice.hint).toBe(
-      "Discover reads Beatport's charts and releases with your Beatport sign-in key (a “token”). " +
-        "Paste it in Settings, where “How do I get a token?” shows where to find it. " +
-        "Your past searches and wantlist still open without it.",
-    );
-    const refused = beatportNotice("forbidden")!;
-    expect(refused.hint).toContain("Beatport accepted the key but won't allow this action with it.");
-    expect(refused.hint).not.toMatch(/scope/i);
+  it("is one line for a missing, rejected or refused token (C15a)", () => {
+    expect(beatportNotice("no_token")!.hint).toBe("");
+    expect(beatportNotice("rejected")!.hint).toBe("");
+    expect(beatportNotice("forbidden")!.hint).toBe("");
+    expect(beatportNotice("unavailable")!.hint).toBe("");
   });
 
   it("says how long a rate limit asked for, and why Beatport was out of reach", () => {
@@ -139,8 +135,8 @@ describe("Beatport's state", () => {
     expect(beatportNotice("rate_limited", null, 1)!.hint).toContain("in 1 second.");
     expect(beatportNotice("rate_limited", null, 300)!.hint).toContain("in 5 minutes");
     expect(beatportNotice("rate_limited", null, null)!.hint).toContain("in a little while");
-    expect(beatportNotice("unavailable", "Beatport answered 503")!.hint).toMatch(
-      /^Beatport answered 503\. Check the connection/,
+    expect(beatportNotice("unavailable", "Beatport answered 503")!.hint).toBe(
+      "Beatport answered 503.",
     );
   });
 
@@ -255,9 +251,9 @@ describe("the New search form", () => {
   });
 
   it("says the engine's default 30-day window as 30 days, and other windows by their dates", () => {
-    expect(chartsWindowText(form(), OPTIONS.defaults)).toBe("Charts from the last 30 days.");
-    expect(chartsWindowText(form({ chartsFrom: "2026-09-01" }), OPTIONS.defaults)).toBe(
-      `Charts from 2026-09-01 to ${OPTIONS.defaults.charts_to}.`,
+    expect(chartsWindowShort(form(), OPTIONS.defaults)).toBe("last 30 days");
+    expect(chartsWindowShort(form({ chartsFrom: "2026-09-01" }), OPTIONS.defaults)).toBe(
+      `2026-09-01 to ${OPTIONS.defaults.charts_to}`,
     );
   });
 

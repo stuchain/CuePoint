@@ -7,7 +7,7 @@
  * start an export, which DEC-087 keeps where the scope is in view.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type { RekordboxExportHistory } from "../api/cuepointBridge.types";
@@ -29,13 +29,15 @@ afterEach(() => {
 });
 
 describe("the Rekordbox export in Settings", () => {
-  it("says where to export from, and that these remember the last export", async () => {
+  it("says it remembers the last export, and where to export from under More about this", async () => {
     render(<RekordboxExportSettingsPanel />);
-    expect(
-      await screen.findByText(
-        "To export, use “Export to Rekordbox…” in the Library or on a Collection's menu. These remember your last export.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Remembers your last export.")).toBeInTheDocument();
+    const where = screen.getByText(
+      "To export, use “Export to Rekordbox…” in the Library or on a Collection's menu.",
+    );
+    expect(where).not.toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "More about this" }));
+    expect(where).toBeVisible();
   });
 
   it("calls the notation Keys written as", async () => {
@@ -84,7 +86,8 @@ describe("the Rekordbox export in Settings", () => {
     render(<RekordboxExportSettingsPanel />);
     await screen.findByRole("list");
 
-    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    // The only button is "More about this"; nothing starts an export.
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["More about this"]);
     expect(screen.getByText(/To export, use “Export to Rekordbox…” in the Library/)).toBeInTheDocument();
   });
 
@@ -94,7 +97,7 @@ describe("the Rekordbox export in Settings", () => {
 
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();
-    expect(screen.getByText(/These remember your last export\./)).toBeInTheDocument();
+    expect(screen.getByText("Remembers your last export.")).toBeInTheDocument();
   });
 
   it("says why it cannot read the history, and reads it again when asked", async () => {

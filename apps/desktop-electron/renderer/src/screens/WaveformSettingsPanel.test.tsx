@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -168,12 +168,14 @@ afterEach(() => {
 });
 
 describe("the page's words (SET-6)", () => {
-  it("says what the waveforms are for, before anything else", async () => {
+  it("has no purpose line, and keeps the colors explanation under More about this", async () => {
     install();
     renderPanel();
-    expect(
-      screen.getByText("Waveforms are drawn from your audio files, in the background, a few at a time."),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/drawn from your audio files/)).toBeNull();
+    const detail = screen.getByText(/Three bands draws the lows, mids and highs/);
+    expect(detail).not.toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "More about this" }));
+    expect(detail).toBeVisible();
   });
 
   it("orders status, colors and preview, then a collapsed Disk space", async () => {

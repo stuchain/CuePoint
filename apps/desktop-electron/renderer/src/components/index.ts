@@ -13,6 +13,7 @@ export type { TrackContextMenuItem } from "./TrackContextMenu";
 export { Badge } from "./Badge";
 export { Button } from "./Button";
 export { Modal } from "./Modal";
+export { MoreAbout } from "./MoreAbout";
 export { Panel } from "./Panel";
 export { Select } from "./Select";
 export { TextField } from "./TextField";

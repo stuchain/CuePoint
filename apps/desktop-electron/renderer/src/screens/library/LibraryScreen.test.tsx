@@ -604,9 +604,7 @@ describe("the empty state", () => {
       "Click Import your Rekordbox collection… and pick that file.",
       "CuePoint reads it; nothing in Rekordbox is changed. Later, Check Rekordbox for changes picks up what you changed there.",
     ]);
-    expect(
-      screen.getByText("Your Rekordbox library, as CuePoint sees it."),
-    ).toBeInTheDocument();
+    expect(screen.queryByText("Your Rekordbox library, as CuePoint sees it.")).toBeNull();
     // One import button on the page, and it is the header's.
     expect(screen.getAllByRole("button", { name: /Import your Rekordbox collection/ })).toHaveLength(1);
   });

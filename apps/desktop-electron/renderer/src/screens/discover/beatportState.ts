@@ -38,8 +38,6 @@ function waitFor(seconds: number | null): string {
   return `in ${minutes} minutes`;
 }
 
-const STILL_USABLE = "Your past searches and wantlist still open without it.";
-
 /**
  * The notice for a state, or null when Beatport answered.
  *
@@ -57,41 +55,36 @@ export function beatportNotice(
     case "no_token":
       return {
         state,
-        headline: "Connect your Beatport account",
-        hint:
-          "Discover reads Beatport's charts and releases with your Beatport sign-in key (a “token”). " +
-          "Paste it in Settings, where “How do I get a token?” shows where to find it. " +
-          STILL_USABLE,
+        headline: "Sign in to Beatport to search its charts and releases.",
+        hint: "",
         action: "settings",
       };
     case "rejected":
       return {
         state,
-        headline: "Beatport rejected the token",
-        hint: `It may have expired. Enter a new one in Settings. ${STILL_USABLE}`,
+        headline: "Beatport sign-in ended or the token was refused.",
+        hint: "",
         action: "settings",
       };
     case "forbidden":
       return {
         state,
-        headline: "Beatport refused this token",
-        hint:
-          "Beatport accepted the key but won't allow this action with it. " +
-          `Enter a different one in Settings. ${STILL_USABLE}`,
+        headline: "Beatport refused this token.",
+        hint: "",
         action: "settings",
       };
     case "rate_limited":
       return {
         state,
         headline: "Beatport is limiting requests",
-        hint: `Try again ${waitFor(retryAfter)}. ${STILL_USABLE}`,
+        hint: `Try again ${waitFor(retryAfter)}.`,
         action: "retry",
       };
     case "unavailable":
       return {
         state,
         headline: "Beatport cannot be reached",
-        hint: `${message ? `${message}. ` : ""}Check the connection and try again. ${STILL_USABLE}`,
+        hint: message ? `${message}.` : "",
         action: "retry",
       };
   }

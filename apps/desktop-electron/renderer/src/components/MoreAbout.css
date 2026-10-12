@@ -1,0 +1,19 @@
+.cp-more-about {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.cp-more-about__toggle {
+  min-width: 0;
+}
+
+.cp-more-about__body {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.cp-more-about__body[hidden] {
+  display: none;
+}

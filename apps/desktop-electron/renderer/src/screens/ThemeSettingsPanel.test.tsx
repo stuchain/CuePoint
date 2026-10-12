@@ -104,13 +104,9 @@ describe("size of text and controls", () => {
     ).toEqual([DEFAULT_SCALE]);
   });
 
-  it("explains that lines snap to whole pixels", () => {
+  it("has no line about lines snapping to whole pixels", () => {
     renderPanel();
-    expect(
-      screen.getByText(
-        "Edges and lines snap to whole pixels at every size, so the pixel style stays sharp.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/snap to whole pixels/)).toBeNull();
   });
 
   it("offers four sizes in order, with 1.5 selected by default", () => {

@@ -41,6 +41,7 @@ import {
   consideredLine,
   facetValueText,
   freshnessLine,
+  identityDetail,
   identityHint,
   identityLabel,
   pageTitle,
@@ -142,21 +143,26 @@ describe("what a page says (DEC-095: it says which identity it is)", () => {
     expect(identityLabel(page("page_label_name"))).toBe("Your tracks by this name");
   });
 
+  it("says the identity in a few words (C15b)", () => {
+    expect(identityHint(page("page_artist_id"))).toBe("Linked to Beatport");
+    expect(identityHint(page("page_artist_name"))).toBe("Your tracks credited with this name");
+  });
+
   it("explains a name group, and an id with the spellings it gathers", () => {
-    expect(identityHint(page("page_artist_name"))).toContain(
+    expect(identityDetail(page("page_artist_name"))).toContain(
       "CuePoint has not linked this artist to Beatport yet",
     );
-    expect(identityHint(page("page_label_name"))).toContain("whose label spells this name");
-    expect(identityHint(page("page_artist_name"))).toContain("whose credits spell this name");
-    expect(identityHint(page("page_artist_id"))).toContain("credited as Mara Veil");
-    expect(identityHint({ ...page("page_artist_id"), names: [] })).toBe(
+    expect(identityDetail(page("page_label_name"))).toContain("whose label spells this name");
+    expect(identityDetail(page("page_artist_name"))).toContain("whose credits spell this name");
+    expect(identityDetail(page("page_artist_id"))).toContain("credited as Mara Veil");
+    expect(identityDetail({ ...page("page_artist_id"), names: [] })).toBe(
       "Linked to Beatport, from your tracks matched there.",
     );
     expect(redirectedLine("artist")).toContain("linked this artist to Beatport");
     // No id is ever said aloud (DSC-9).
     for (const words of [
-      identityHint(page("page_artist_name")),
-      identityHint(page("page_artist_id")),
+      identityDetail(page("page_artist_name")),
+      identityDetail(page("page_artist_id")),
       redirectedLine("label"),
     ]) {
       expect(words).not.toMatch(/\bid\b/);
@@ -198,9 +204,9 @@ describe("what a page says (DEC-095: it says which identity it is)", () => {
       half_label_ok: "On Beatport",
       half_label_owned_hidden: "On Beatport",
       half_found_by_name: "On Beatport",
-      half_no_token: "Connect your Beatport account",
-      half_rejected: "Beatport rejected the token",
-      half_forbidden: "Beatport refused this token",
+      half_no_token: "Sign in to Beatport to search its charts and releases.",
+      half_rejected: "Beatport sign-in ended or the token was refused.",
+      half_forbidden: "Beatport refused this token.",
       half_rate_limited: "Beatport is limiting requests",
       half_unavailable: "Beatport cannot be reached",
       half_not_resolved_resolvable: "Not linked to Beatport yet",

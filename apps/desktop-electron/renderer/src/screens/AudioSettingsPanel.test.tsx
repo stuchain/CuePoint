@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -112,38 +112,41 @@ describe("the panel's words", () => {
     expect(screen.queryByRole("heading", { name: "Audio" })).toBeNull();
   });
 
-  it("counts outputs, and says what happens when the chosen one is unplugged", async () => {
+  it("counts outputs in one line, with the unplug detail under More about this", async () => {
     install();
     renderPanel();
-    expect(
-      await screen.findByText(
-        "3 outputs found. If the chosen one is unplugged, CuePoint switches to System default.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("3 outputs found.")).toBeInTheDocument();
+    const detail = screen.getByText(
+      "If the chosen one is unplugged, CuePoint switches to System default.",
+    );
+    expect(detail).not.toBeVisible();
+    fireEvent.click(screen.getAllByRole("button", { name: "More about this" })[0]!);
+    expect(detail).toBeVisible();
   });
 
   it("keeps the singular right", async () => {
     install({ devices: [DEVICES[0]!] });
     renderPanel();
-    expect(
-      await screen.findByText(
-        "1 output found. If the chosen one is unplugged, CuePoint switches to System default.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("1 output found.")).toBeInTheDocument();
   });
 
-  it("tells a beginner to leave exclusive output off, with the detail under More", async () => {
+  it("says exclusive output in one line, with the detail under More about this", async () => {
     install();
-    const { container } = renderPanel();
+    renderPanel();
     expect(
       await screen.findByText(
-        "Leave off unless you use an audio interface. On: CuePoint plays to the device directly, at its own quality, and other apps can't use it until you turn it off.",
+        "Plays straight to your audio interface. Other apps can't use it meanwhile.",
       ),
     ).toBeInTheDocument();
-    const more = container.querySelector("details")!;
-    expect(more.querySelector("summary")).toHaveTextContent("More");
-    expect(more).not.toHaveAttribute("open");
-    expect(more).toHaveTextContent("bypassing the system mixer");
+    const leave = screen.getByText(/Leave off unless you use an audio interface/);
+    const mixer = screen.getByText(/bypassing the system mixer/);
+    expect(leave).not.toBeVisible();
+    expect(mixer).not.toBeVisible();
+    expect(document.querySelector("details")).toBeNull();
+    const buttons = screen.getAllByRole("button", { name: "More about this" });
+    fireEvent.click(buttons[buttons.length - 1]!);
+    expect(leave).toBeVisible();
+    expect(mixer).toBeVisible();
   });
 
   it("shows Saved after a change the player accepted, and not after one it refused", async () => {
@@ -268,9 +271,8 @@ describe("exclusive output", () => {
     renderPanel();
 
     await waitFor(() => expect(exclusive()).toBeDisabled());
-    expect(
-      screen.getByText(/Exclusive output is a Windows and macOS feature/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Not available on this system.")).toBeInTheDocument();
+    expect(screen.getByText(/Exclusive output is a Windows and macOS feature/i)).not.toBeVisible();
   });
 });
 

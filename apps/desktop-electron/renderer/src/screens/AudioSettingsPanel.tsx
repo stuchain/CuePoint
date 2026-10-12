@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { AudioDevice } from "../api/cuepointBridge.types";
-import { Panel } from "../components";
+import { MoreAbout, Panel } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { audioFellBack, selectAudio } from "../components/player/playerFormat";
 import {
@@ -128,9 +128,16 @@ export function AudioSettingsPanel() {
           {loading
             ? "Reading the devices this machine has…"
             : available
-              ? `${devices.length} ${devices.length === 1 ? "output" : "outputs"} found. If the chosen one is unplugged, CuePoint switches to System default.`
+              ? `${devices.length} ${devices.length === 1 ? "output" : "outputs"} found.`
               : "Open CuePoint as a desktop app to choose an output device."}
         </p>
+        {available && !loading && (
+          <MoreAbout>
+            <p className="cp-audio-settings__hint">
+              If the chosen one is unplugged, CuePoint switches to System default.
+            </p>
+          </MoreAbout>
+        )}
 
         <label className="cp-audio-settings__toggle">
           <input
@@ -144,24 +151,32 @@ export function AudioSettingsPanel() {
         {audio.exclusiveSupported ? (
           <>
             <p className="cp-audio-settings__hint">
-              Leave off unless you use an audio interface. On: CuePoint plays to the device directly,
-              at its own quality, and other apps can&apos;t use it until you turn it off.
+              Plays straight to your audio interface. Other apps can&apos;t use it meanwhile.
             </p>
-            <details className="cp-audio-settings__more">
-              <summary>More</summary>
+            <MoreAbout>
+              <p className="cp-audio-settings__hint">
+                Leave off unless you use an audio interface. On: CuePoint plays to the device
+                directly, at its own quality, and other apps can&apos;t use it until you turn it
+                off.
+              </p>
               <p className="cp-audio-settings__hint">
                 CuePoint takes the device for itself and plays to it directly, bypassing the system
                 mixer — no resampling, no volume applied by anything else. While it is on, other
                 applications cannot use that device, and CuePoint falls back to shared output if
                 something else already has it.
               </p>
-            </details>
+            </MoreAbout>
           </>
         ) : (
-          <p className="cp-audio-settings__hint">
-            Exclusive output is a Windows and macOS feature. This system has no equivalent, so
-            CuePoint plays through the shared device.
-          </p>
+          <>
+            <p className="cp-audio-settings__hint">Not available on this system.</p>
+            <MoreAbout>
+              <p className="cp-audio-settings__hint">
+                Exclusive output is a Windows and macOS feature. This system has no equivalent, so
+                CuePoint plays through the shared device.
+              </p>
+            </MoreAbout>
+          </>
         )}
 
         {fellBack && (

@@ -253,14 +253,10 @@ describe("the page", () => {
     );
   });
 
-  it("says what Discover is for under the title (DSC-1)", async () => {
+  it("has no intro line under the title (C15a)", async () => {
     renderDiscover();
     await screen.findAllByRole("tab");
-    expect(
-      screen.getByText(
-        "Find new music from the artists and labels already in your library, keep what you want on a wantlist, and send it to a Beatport playlist.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/Find new music from the artists/)).toBeNull();
   });
 
   it("never shows the word Run to the user", async () => {
@@ -352,9 +348,9 @@ describe("the card that points to the other pages (DSC-11)", () => {
 
 describe("Beatport's state", () => {
   it.each([
-    ["options_no_token", "Connect your Beatport account", "Open Settings"],
-    ["options_rejected", "Beatport rejected the token", "Open Settings"],
-    ["options_forbidden", "Beatport refused this token", "Open Settings"],
+    ["options_no_token", "Sign in to Beatport to search its charts and releases.", "Open Settings"],
+    ["options_rejected", "Beatport sign-in ended or the token was refused.", "Open Settings"],
+    ["options_forbidden", "Beatport refused this token.", "Open Settings"],
     ["options_rate_limited", "Beatport is limiting requests", "Try again"],
     ["options_unavailable", "Beatport cannot be reached", "Try again"],
   ] as const)("draws %s, and the page stays usable", async (state, headline, action) => {
@@ -370,9 +366,9 @@ describe("Beatport's state", () => {
     renderDiscover();
     await screen.findByRole("navigation", { name: "Past searches" });
     for (const headline of [
-      "Connect your Beatport account",
-      "Beatport rejected the token",
-      "Beatport refused this token",
+      "Sign in to Beatport to search its charts and releases.",
+      "Beatport sign-in ended or the token was refused.",
+      "Beatport refused this token.",
       "Beatport is limiting requests",
       "Beatport cannot be reached",
     ]) {
@@ -380,15 +376,15 @@ describe("Beatport's state", () => {
     }
   });
 
-  it("explains the token and where to get one, then goes to the token field", async () => {
+  it("says it in one line, with the action beside it", async () => {
     install({ getDiscoverOptions: vi.fn(async () => asAnswer(fixture.options_no_token)) });
     renderDiscover();
-    const banner = (await screen.findByText("Connect your Beatport account")).closest(
-      ".discover-banner",
-    ) as HTMLElement;
-    expect(banner).toHaveTextContent("Beatport sign-in key (a “token”)");
-    expect(banner).toHaveTextContent("“How do I get a token?”");
-    expect(banner).toHaveTextContent("Your past searches and wantlist still open without it.");
+    const banner = (
+      await screen.findByText("Sign in to Beatport to search its charts and releases.")
+    ).closest(".discover-banner") as HTMLElement;
+    expect(banner).not.toHaveTextContent("still open without it");
+    expect(banner.querySelectorAll(".discover-banner__text > *")).toHaveLength(1);
+    expect(within(banner).getByRole("button", { name: "Open Settings" })).toBeInTheDocument();
   });
 
   it("links to the token field in Settings", async () => {
@@ -426,7 +422,7 @@ describe("Beatport's state", () => {
     await openNewSearch();
     fireEvent.click(await screen.findByRole("checkbox", { name: "House" }));
     fireEvent.click(screen.getByRole("button", { name: "Start looking" }));
-    expect(await screen.findByText("Connect your Beatport account")).toBeInTheDocument();
+    expect(await screen.findByText("Sign in to Beatport to search its charts and releases.")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("no token");
   });
 });
@@ -1027,29 +1023,24 @@ describe("New search", () => {
     install({ listDiscoveryRuns: vi.fn(async () => asAnswer(fixture.runs_empty)) });
   });
 
-  it("says what to do first", async () => {
+  it("has no instruction line under the title (C15a)", async () => {
     renderDiscover();
     const panel = await openNewSearch();
-    expect(
-      within(panel).getByText("Pick artists, labels or charts, then press Start looking."),
-    ).toBeInTheDocument();
+    expect(within(panel).queryByText(/then press Start looking/)).toBeNull();
   });
 
-  it("explains charts, and folds the chart dates under More options (DSC-5)", async () => {
+  it("shows the chart window in the legend, and folds the chart dates under More options (DSC-5)", async () => {
     renderDiscover();
     const panel = await openNewSearch();
-    expect(within(panel).getByText(/Genres for DJ charts \(0 chosen\)/)).toBeInTheDocument();
     expect(
-      within(panel).getByText(
-        "On Beatport, artists publish charts — short lists of tracks they play. CuePoint reads the charts made by artists in your library, in the genres you tick.",
-      ),
+      within(panel).getByText(/Genres for DJ charts \(0 chosen\) · last \d+ days/),
     ).toBeInTheDocument();
+    expect(within(panel).queryByText(/artists publish charts/)).toBeNull();
     const more = within(panel).getByText("More options").closest("details") as HTMLDetailsElement;
     expect(more.open).toBe(false);
     expect(more).toContainElement(within(panel).getByLabelText("Charts from"));
     expect(more).toContainElement(within(panel).getByLabelText("Charts to"));
-    // The default shown as words, so the dates need not be opened to be understood.
-    expect(within(panel).getByText(/Charts from the last \d+ days\./)).toBeInTheDocument();
+    expect(within(panel).queryByText(/Charts from the last \d+ days\./)).toBeNull();
   });
 
   it("starts from the engine's defaults, and asks for what was chosen", async () => {

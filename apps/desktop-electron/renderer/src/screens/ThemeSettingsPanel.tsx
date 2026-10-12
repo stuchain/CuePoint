@@ -181,9 +181,6 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
             label: scaleOptionLabel(option),
           }))}
         />
-        <p className="theme-settings__hint">
-          Edges and lines snap to whole pixels at every size, so the pixel style stays sharp.
-        </p>
 
         <div className="theme-settings__actions">
           <Button variant="primary" onClick={openCreate}>

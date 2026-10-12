@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Button, Modal, Panel } from "../components";
+import { Button, Modal, MoreAbout, Panel } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { selectCurrentItem, selectPosition } from "../components/player/playerFormat";
 import { usePlayerValue } from "../components/player/playerStore";
@@ -128,10 +128,6 @@ export function WaveformSettingsPanel() {
   return (
     <Panel title="Waveforms" badge={<SavedTick signal={saved} />}>
       <div className="cp-waveform-settings">
-        <p className="cp-waveform-settings__hint">
-          Waveforms are drawn from your audio files, in the background, a few at a time.
-        </p>
-
         {!analysis.supported ? (
           <p className="cp-waveform-settings__hint">
             Open CuePoint as a desktop app to analyze waveforms.
@@ -172,10 +168,12 @@ export function WaveformSettingsPanel() {
               <span>{option.label}</span>
             </label>
           ))}
-          <p className="cp-waveform-settings__hint">
-            Three bands draws the lows, mids and highs in colors of their own, as Rekordbox does. One
-            color draws the whole sound in one.
-          </p>
+          <MoreAbout>
+            <p className="cp-waveform-settings__hint">
+              Three bands draws the lows, mids and highs in colors of their own, as Rekordbox does.
+              One color draws the whole sound in one.
+            </p>
+          </MoreAbout>
           <div className="cp-waveform-settings__reset">
             <ResetToDefaults
               section="Waveforms"

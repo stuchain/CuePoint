@@ -631,14 +631,6 @@
   font-size: var(--font-size-sm);
 }
 
-/* DSC-1: the line under the title. */
-.discover-screen__intro {
-  margin: 0;
-  max-width: 70ch;
-  font-size: var(--font-size-sm);
-  color: var(--fg-muted);
-}
-
 /* An action and the few words beside it ("All 48 shown"). */
 .discover-table__action {
   display: inline-flex;

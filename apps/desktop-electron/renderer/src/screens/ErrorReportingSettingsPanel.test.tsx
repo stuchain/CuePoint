@@ -5,7 +5,7 @@
  * once, a refusal puts the switch back, and without a bridge it is disabled.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ErrorReportingSettingsPanel } from "./ErrorReportingSettingsPanel";
@@ -43,8 +43,15 @@ describe("the error-reporting switch", () => {
 
   it("says what a report carries, and what it never does", () => {
     render(<ErrorReportingSettingsPanel />);
+    expect(
+      screen.getByText("Sends what went wrong, never your track or file names."),
+    ).toBeInTheDocument();
+    // The full paragraph is behind "More about this", closed on load.
+    const detail = screen.getByText(/built not to carry your file, folder, track/);
+    expect(detail).not.toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "More about this" }));
+    expect(detail).toBeVisible();
     expect(screen.getByText(/the steps that led to it/)).toBeInTheDocument();
-    expect(screen.getByText(/built not to carry your file, folder, track/)).toBeInTheDocument();
   });
 
   it("calls the bridge once with the opposite value, and shows the answer", async () => {

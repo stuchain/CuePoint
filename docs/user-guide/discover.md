@@ -28,10 +28,10 @@ See [Where inCrate went](#where-incrate-went) if you used it.
 
 - **Genres for DJ charts.** On Beatport, artists publish charts, which are short
   lists of tracks they play. CuePoint reads the charts made by artists in your
-  library, in the genres you tick. Tick no genre and it reads no charts. A line
-  under the genres says which dates it will read ("Charts from the last 30
-  days"); to choose other dates open **More options**, which holds **Charts
-  from** and **Charts to**.
+  library, in the genres you tick. Tick no genre and it reads no charts. The
+  heading says which dates it will read ("last 30 days"); to choose other dates
+  open **More options**, which holds **Charts from** and **Charts to**. Until
+  you sign in to Beatport, the genres read "Genres appear after you sign in."
 - **Releases from the last … days.** New releases on your labels in that many
   days.
 - **Artists** and **Labels.** Every artist or label in your library, only the
@@ -138,9 +138,9 @@ token field:
 
 | The page says | Means | What to do |
 | --- | --- | --- |
-| **Connect your Beatport account** | No token is set | Enter one in Settings |
-| **Beatport rejected the token** | The token is wrong or has expired | Enter a new one in Settings |
-| **Beatport refused this token** | The token works but is not allowed to do this | Enter a token that is |
+| **Sign in to Beatport to search its charts and releases.** | No token is set | Enter one in Settings |
+| **Beatport sign-in ended or the token was refused.** | The token is wrong or has expired | Enter a new one in Settings |
+| **Beatport refused this token.** | The token works but is not allowed to do this | Enter a token that is |
 | **Beatport is limiting requests** | Too many requests; it says how long to wait | **Try again** later |
 | **Beatport cannot be reached** | No connection, or Beatport is down | **Try again** later |
 
@@ -271,7 +271,7 @@ When there is nothing to list, the half says why:
 | **Not linked to Beatport yet** | CuePoint does not know which Beatport artist this is. It never searches Beatport for an artist by name, because the wrong artist of the same name is worse than none | **Look them up now**, when some of the artist's tracks are matched on Beatport |
 | **Several Beatport artists share this name** | Your tracks by this name are matched to different Beatport artists | Choose the one you mean |
 | **No match** | Beatport has no label by this name | None |
-| **Connect your Beatport account**, and the other token states | As at the top of Discover (see [A Beatport token](#a-beatport-token)) | **Open Settings**, or **Try again** |
+| **Sign in to Beatport to search its charts and releases.**, and the other token states | As at the top of Discover (see [A Beatport token](#a-beatport-token)) | **Open Settings**, or **Try again** |
 
 A label known only by name is looked up on Beatport by its name, and the page
 says **Found by name on Beatport** when it was.
