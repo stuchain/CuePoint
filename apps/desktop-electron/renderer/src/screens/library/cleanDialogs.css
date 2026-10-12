@@ -55,13 +55,14 @@
 .clean-dialog__select,
 .clean-dialog__input {
   min-width: 0;
-  min-height: var(--hit-min);
-  padding: var(--space-xs);
-  border: var(--hairline) solid var(--border-muted);
+  min-height: var(--control-height);
+  padding: 0 var(--space-xs);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-primary);
-  font-family: var(--font-data);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-pixel);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
 }
 
 .clean-dialog__input:disabled,

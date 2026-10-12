@@ -33,13 +33,13 @@
 
 .cp-global-search__input {
   width: 100%;
-  min-height: var(--hit-min);
-  padding: var(--space-xs) var(--space-sm);
+  min-height: var(--control-height);
+  padding: 0 var(--space-sm);
   background: var(--bg-app);
-  border: var(--border-width) solid var(--border-outline);
-  box-shadow: var(--shadow-bevel-sm);
+  border: var(--control-border-width) solid var(--border-control);
   color: var(--fg-primary);
-  font-size: var(--font-size-sm);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
 }
 
 .cp-global-search__input:focus-visible {
@@ -57,8 +57,7 @@
   overflow-y: auto;
   padding: var(--space-sm);
   background: var(--bg-panel);
-  border: var(--border-width) solid var(--border-outline);
-  box-shadow: var(--shadow-panel);
+  border: var(--control-border-width) solid var(--border-control);
 }
 
 .cp-global-search__note {
@@ -115,9 +114,7 @@
 
 /* The row ↑/↓ is on, which Enter opens and Shift+Enter plays. */
 .cp-global-search__option--active {
-  background: var(--bg-app);
-  outline: var(--hairline) solid var(--accent-info);
-  outline-offset: calc(-1 * var(--hairline));
+  background: var(--selected-row-background);
 }
 
 .cp-global-search__play {

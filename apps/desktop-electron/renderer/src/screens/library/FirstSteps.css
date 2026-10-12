@@ -83,6 +83,5 @@
   overflow: auto;
   padding: var(--space-sm);
   background: var(--bg-panel);
-  border: var(--border-width) solid var(--border-outline);
-  box-shadow: var(--shadow-panel);
+  border: var(--control-border-width) solid var(--border-control);
 }

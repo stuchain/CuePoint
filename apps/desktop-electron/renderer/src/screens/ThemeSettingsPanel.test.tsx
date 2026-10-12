@@ -140,7 +140,7 @@ describe("custom themes", () => {
   it("says what the empty list is for", () => {
     renderPanel();
     expect(
-      screen.getByText("No custom themes yet. Pick nine colors; borders and bevels are made from them."),
+      screen.getByText("No custom themes yet. Pick nine colors; borders are made from them."),
     ).toBeInTheDocument();
   });
 
@@ -182,7 +182,7 @@ describe("custom themes", () => {
     );
     expect(listed()).toBeNull();
     expect(
-      screen.getByText("No custom themes yet. Pick nine colors; borders and bevels are made from them."),
+      screen.getByText("No custom themes yet. Pick nine colors; borders are made from them."),
     ).toBeInTheDocument();
   });
 });

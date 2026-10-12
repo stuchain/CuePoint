@@ -97,12 +97,14 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
-  padding: calc(var(--space-xs) / 2) round(down, calc(var(--space-xs) * 0.75), 1px);
-  border: var(--border-width) solid var(--border-muted);
+  min-height: var(--control-height);
+  padding: 0 round(down, calc(var(--space-xs) * 0.75), 1px);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-toolbar);
   color: var(--fg-primary);
   font: inherit;
-  font-size: var(--font-size-xs);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
   line-height: 1;
   /* Text only and never broken: in the default window the pane is ~160px wide,
      so the buttons wrap onto at most two lines instead of one each. */
@@ -113,12 +115,12 @@
 /* The bar's buttons carry whole words ("Duplicate"), so they spend the least
    on padding: Rename and Duplicate share a line in a pane about 170px wide. */
 .cp-collections__bar-button {
-  padding: calc(var(--space-xs) / 2) round(down, calc(var(--space-xs) / 3), 1px);
+  padding: 0 round(down, calc(var(--space-xs) / 3), 1px);
 }
 
 .cp-collections__make:hover,
 .cp-collections__bar-button:hover {
-  border-color: var(--border-outline);
+  border-color: var(--border-light);
 }
 
 .cp-collections__make:focus-visible,
@@ -155,7 +157,7 @@
   align-items: center;
   gap: 1px;
   padding: 2px var(--space-xs);
-  border: var(--border-width) solid transparent;
+  border: var(--control-border-width) solid transparent;
   background: none;
   color: var(--fg-muted);
   font: inherit;
@@ -274,11 +276,14 @@
 }
 
 .cp-collections__empty button {
-  padding: var(--space-xs) var(--space-sm);
-  border: var(--border-width) solid var(--border-muted);
+  min-height: var(--control-height);
+  padding: 0 var(--space-sm);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-panel-alt);
   color: var(--fg-primary);
   font: inherit;
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
   cursor: pointer;
 }
 

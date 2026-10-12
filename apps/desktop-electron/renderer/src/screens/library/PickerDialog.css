@@ -100,12 +100,14 @@
 
 .cp-picker__create {
   align-self: flex-start;
-  padding: var(--space-xs) var(--space-sm);
-  border: var(--border-width) solid var(--border-muted);
+  min-height: var(--control-height);
+  padding: 0 var(--space-sm);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-primary);
   font-family: var(--font-pixel);
-  font-size: var(--font-size-xs);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
   cursor: pointer;
 }
 

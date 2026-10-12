@@ -148,7 +148,7 @@
 .cp-activity__action {
   min-height: var(--hit-min);
   padding: var(--space-xs) var(--space-sm);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-primary);
   font-family: var(--font-pixel);

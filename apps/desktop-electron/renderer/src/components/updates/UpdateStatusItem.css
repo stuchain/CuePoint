@@ -19,7 +19,7 @@
   min-height: var(--icon-size);
   padding: 0 var(--space-xs);
   background: transparent;
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--control-border-width) solid var(--border-control);
   color: var(--fg-primary);
   font-size: var(--font-size-xs);
   cursor: pointer;

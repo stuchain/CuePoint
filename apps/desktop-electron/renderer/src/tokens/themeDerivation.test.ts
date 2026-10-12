@@ -22,6 +22,7 @@ describe("themeDerivation", () => {
     expect(tokens["fg-inverse"]).toBe("#ffffff");
     expect(tokens["bg-toolbar"]).toBeTruthy();
     expect(tokens["bg-panel-alt"]).toBeTruthy();
+    expect(tokens["border-control"]).toBeTruthy();
   });
 
   it("pickContrastText returns black on light backgrounds", () => {

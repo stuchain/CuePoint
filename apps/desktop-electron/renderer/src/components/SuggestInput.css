@@ -24,8 +24,7 @@
   overflow-y: auto;
   list-style: none;
   background: var(--bg-panel);
-  border: var(--border-width) solid var(--border-outline);
-  box-shadow: var(--shadow-panel);
+  border: var(--control-border-width) solid var(--border-control);
 }
 
 /* No room below (a panel that scrolls clips it): open upward from the field instead. */
@@ -67,7 +66,5 @@
 
 /* The option ↑/↓ is on, which Enter chooses. */
 .cp-suggest__option--active {
-  background: var(--bg-app);
-  outline: var(--hairline) solid var(--accent-info);
-  outline-offset: calc(-1 * var(--hairline));
+  background: var(--selected-row-background);
 }

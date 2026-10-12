@@ -318,7 +318,7 @@ Here is where each kind shows:
 **Settings → Appearance** has two choices, both remembered. **Active theme** is
 **Neo dark**, **Retro 16-bit**, **Classic**, **Club neon** or **Muted**, or a
 custom theme you made: **Create custom theme…** asks for nine colors, and the
-borders and bevels are made from them. **Delete** asks first. **Size of text and
+borders are made from them. **Delete** asks first. **Size of text and
 controls** is **Small (1×)**, **Medium (1.5×)** (the default), **Large (2×)** or
 **Extra large (3×)**. Table rows are as tall as the size says, so the text in
 them is never cut. If you chose a size before, CuePoint keeps it; if you never

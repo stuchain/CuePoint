@@ -9,12 +9,11 @@
   z-index: 940;
   box-sizing: border-box;
   /* The wheel's 48 cells, then the padding and the border around them. */
-  width: calc(48 * 4px * var(--scale) + 2 * var(--space-md) + 2 * var(--border-width));
+  width: calc(48 * 4px * var(--scale) + 2 * var(--space-md) + 2 * var(--control-border-width));
   max-width: calc(100vw - 2 * var(--space-md));
   padding: var(--space-md);
   background: var(--bg-panel);
-  border: var(--border-width) solid var(--border-outline);
-  box-shadow: var(--shadow-panel);
+  border: var(--control-border-width) solid var(--border-control);
   /*
    * Never taller than the window below the header: at the largest size the wheel
    * and its caption are taller than a laptop screen, so the popover scrolls (the

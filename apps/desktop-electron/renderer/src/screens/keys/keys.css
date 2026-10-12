@@ -67,19 +67,13 @@
   font-size: var(--font-size-xs);
 }
 
-/* The three actions are one row at the default size; the buttons are short, as the filter
-   bar's are, because a tall row is a table row lost. */
+/* The three actions are one row at the default size; the buttons take the one control
+   height every button has (DEC-241), because a tall row is a table row lost. */
 .keys-page__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
   padding: var(--space-xs) var(--space-md) var(--space-sm);
-}
-
-.keys-page__actions > .cp-btn {
-  min-height: calc(var(--hit-min) * 0.75);
-  padding: var(--space-xs) var(--space-sm);
-  font-size: var(--font-size-xs);
 }
 
 .keys-page__tracks {
@@ -218,8 +212,9 @@
 }
 
 .keys-counts__row[aria-pressed="true"] {
-  background: var(--accent-primary);
-  color: var(--border-outline);
+  background: var(--selected-row-background);
+  background-origin: border-box;
+  color: inherit;
   font-weight: 700;
 }
 
@@ -249,8 +244,9 @@
   border-color: var(--accent-success);
 }
 
-.keys-counts__row[aria-pressed="true"] .keys-counts__mix {
-  color: var(--border-outline);
+/* A selected row that is also lit keeps its left border clear so the accent bar shows in full. */
+.keys-counts__row[aria-pressed="true"][data-lit] {
+  border-left-color: transparent;
 }
 
 .keys-counts__bar {
@@ -265,8 +261,8 @@
   background: var(--accent-primary);
 }
 
-.keys-counts__row[aria-pressed="true"] .keys-counts__bar > span {
-  background: var(--border-outline);
+.keys-counts__row[aria-pressed="true"] .keys-counts__bar {
+  background: var(--bg-input);
 }
 
 .keys-counts__count {

@@ -11,10 +11,9 @@
 
 .cp-toast {
   padding: var(--space-md) var(--space-lg);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--control-border-width) solid var(--border-outline);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  box-shadow: var(--shadow-panel);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -31,7 +30,7 @@
 .cp-toast__action {
   flex: none;
   padding: var(--space-xs) var(--space-sm);
-  border: var(--border-width) solid currentColor;
+  border: var(--control-border-width) solid currentColor;
   background: transparent;
   color: inherit;
   font: inherit;

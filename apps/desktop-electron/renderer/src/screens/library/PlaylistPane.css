@@ -76,9 +76,9 @@
   outline-offset: calc(-1 * var(--focus-ring-width));
 }
 
-.cp-playlist-pane__row--selected {
-  background: var(--bg-input);
-  box-shadow: inset 0 0 0 var(--focus-ring-width) var(--accent-info);
+.cp-playlist-pane__row--selected,
+.cp-playlist-pane__row--selected:hover {
+  background: var(--selected-row-background);
 }
 
 .cp-playlist-pane__twisty {

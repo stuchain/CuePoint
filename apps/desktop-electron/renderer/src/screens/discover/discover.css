@@ -170,7 +170,7 @@
   gap: var(--space-xs);
   width: 100%;
   padding: var(--space-xs) var(--space-sm);
-  border: var(--border-width) solid var(--border-muted);
+  border: var(--hairline) solid var(--border-muted);
   background: var(--bg-panel);
   color: var(--fg-primary);
   text-align: left;
@@ -178,8 +178,10 @@
 }
 
 .discover-runs__item--selected {
-  border-color: var(--accent-info);
-  background: var(--bg-panel-alt);
+  background: var(--selected-row-background);
+  background-origin: border-box;
+  /* Transparent so the accent bar, drawn from the border edge, shows in full. */
+  border-left-color: transparent;
 }
 
 .discover-runs__when {

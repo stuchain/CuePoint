@@ -224,7 +224,7 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
           </ul>
         ) : (
           <p className="theme-settings__hint">
-            No custom themes yet. Pick nine colors; borders and bevels are made from them.
+            No custom themes yet. Pick nine colors; borders are made from them.
           </p>
         )}
       </div>

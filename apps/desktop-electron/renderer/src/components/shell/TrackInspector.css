@@ -80,7 +80,7 @@
   min-height: var(--icon-size);
   padding: 0 var(--space-xs);
   background: var(--bg-panel);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--control-border-width) solid var(--border-control);
   color: var(--fg-muted);
   font-size: var(--font-size-sm);
   cursor: pointer;

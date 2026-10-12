@@ -33,6 +33,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { clickRowAt } from "./rowClick";
+import { probeScrollbar } from "./scrollbarProbe";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -203,35 +204,24 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       // --- scrollbar ----------------------------------------------------
       // The themed bar (tokens/scrollbars.css) only applies while nothing sets the standard
       // scrollbar-color/-width, which Chromium prefers over the ::-webkit-scrollbar rules.
-      const scrollbar = await window.locator(".track-table__scroll").evaluate((el) => {
-        const resolve = (token: string) => {
-          const probe = document.createElement("i");
-          probe.style.color = `var(${token})`;
-          document.body.appendChild(probe);
-          const colour = getComputedStyle(probe).color;
-          probe.remove();
-          return colour;
-        };
-        const style = getComputedStyle(el);
-        return {
-          thumb: getComputedStyle(el, "::-webkit-scrollbar-thumb").backgroundColor,
-          track: getComputedStyle(el, "::-webkit-scrollbar-track").backgroundColor,
-          expectedThumb: resolve("--border-highlight"),
-          expectedTrack: resolve("--bg-toolbar"),
-          scrollbarColor: style.scrollbarColor,
-          scrollbarWidth: style.scrollbarWidth,
-          // The bar's own width: the rule's colours read back even when Chromium draws its
-          // standard bar instead, but its width does not.
-          barWidth:
-            el.offsetWidth - el.clientWidth - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth),
-          expectedWidth: 8 * parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--scale")),
-        };
-      });
-      expect(scrollbar.scrollbarColor).toBe("auto");
-      expect(scrollbar.scrollbarWidth).toBe("auto");
-      expect(scrollbar.thumb).toBe(scrollbar.expectedThumb);
-      expect(scrollbar.track).toBe(scrollbar.expectedTrack);
-      expect(scrollbar.barWidth).toBeCloseTo(scrollbar.expectedWidth, 0);
+      // The inspector scrolls inside its own panel, so a track is selected first.
+      await window.locator(".track-table__row").first().click();
+      await expect(window.locator(".cp-inspector__body").first()).toBeVisible();
+      // A pointer resting over a scroller reads back the thumb's hover colour; park it away.
+      await window.mouse.move(0, 0);
+      for (const selector of [".track-table__scroll", ".cp-inspector__body"]) {
+        // The inspector fits at 1x; at 2x its content outgrows it, so its bar width is asserted too.
+        const scrollbar = await probeScrollbar(window, selector, selector === ".track-table__scroll" ? {} : { scale: 2 });
+        if (selector === ".track-table__scroll") expect(scrollbar.overflows, "40 rows overflow the table").toBe(true);
+        expect(scrollbar.overflowY, `${selector} scrolls inside its own box`).toMatch(/auto|scroll/);
+        expect(scrollbar.pageScrolls, `the page itself does not scroll (${selector})`).toBe(false);
+        expect(scrollbar.scrollbarColor).toBe("auto");
+        expect(scrollbar.scrollbarWidth).toBe("auto");
+        expect(scrollbar.thumb).toBe(scrollbar.expectedThumb);
+        expect(scrollbar.track).toBe(scrollbar.expectedTrack);
+        if (selector !== ".track-table__scroll") expect(scrollbar.overflows, "the inspector overflows at 2x").toBe(true);
+        if (scrollbar.overflows) expect(scrollbar.barWidth).toBeCloseTo(scrollbar.expectedWidth, 0);
+      }
 
       // --- scope --------------------------------------------------------
       const tree = window.getByRole("tree", { name: "Playlists" });

@@ -86,7 +86,7 @@
   margin-bottom: var(--space-xs);
   padding: 0 var(--space-xs);
   background: var(--bg-panel);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--control-border-width) solid var(--border-control);
   color: var(--fg-muted);
   font-size: var(--font-size-sm);
   cursor: pointer;
@@ -161,11 +161,11 @@
   background: var(--bg-panel);
 }
 
-.cp-sidebar__link--active {
+.cp-sidebar__link--active,
+.cp-sidebar__link--active:hover {
   color: var(--fg-primary);
-  background: var(--bg-panel);
-  border-color: var(--border-outline);
-  box-shadow: var(--shadow-bevel-sm);
+  background: var(--selected-row-background);
+  background-origin: border-box;
   font-weight: 700;
 }
 

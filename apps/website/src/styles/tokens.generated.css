@@ -27,6 +27,15 @@
   --shadow-modal: 10px 10px 0 var(--border-shadow);
   --shadow-badge: 2px 2px 0 var(--border-shadow);
   --shadow-inset-deep: inset var(--bevel-size) var(--bevel-size) 0 rgba(0, 0, 0, 0.35);
+  --control-border-width: var(--hairline);
+  --control-height: 1.5625rem;
+  --control-font-size: var(--font-size-xs);
+  --control-font-weight: 400;
+  --selected-bar-width: 0.125rem;
+  --bg-selected: color-mix(in srgb, var(--accent-primary) 18%, var(--bg-input));
+  --selected-row-background: linear-gradient( to right, var(--accent-primary) var(--selected-bar-width), var(--bg-selected) var(--selected-bar-width) );
+  --shadow-dialog: 0 5px 20px rgba(0, 0, 0, 0.45);
+  --tab-underline: 0.125rem;
   --space-xs: 0.3125rem;
   --space-sm: 0.4688rem;
   --space-md: 0.625rem;
@@ -75,6 +84,7 @@
   --border-outline: #000000;
   --border-light: #a1a1aa;
   --border-muted: #52525b;
+  --border-control: #71717a;
   --bevel-highlight: #71717a;
   --bevel-shadow: #09090b;
   --fg-primary: #fafafa;
@@ -112,6 +122,7 @@
   --border-outline: #000000;
   --border-light: #00e5ff;
   --border-muted: #2a2a40;
+  --border-control: #6a6a8a;
   --bevel-highlight: #5a5a80;
   --bevel-shadow: #050508;
   --fg-primary: #f0f0ff;
@@ -149,6 +160,7 @@
   --border-outline: #000000;
   --border-light: #9ca3af;
   --border-muted: #3d4656;
+  --border-control: #7b8190;
   --bevel-highlight: #6b7280;
   --bevel-shadow: #111318;
   --fg-primary: #e8eaed;
@@ -186,6 +198,8 @@
   --border-outline: #000000;
   --border-light: #6a6a6a;
   --border-muted: #3c3c3c;
+  --border-control: #7e7e7e;
+  --tab-underline-color: #3794ff;
   --bevel-highlight: #5a5a5a;
   --bevel-shadow: #141414;
   --fg-primary: #ffffff;
@@ -223,6 +237,7 @@
   --border-outline: #000000;
   --border-light: #e0fbfc;
   --border-muted: #415a77;
+  --border-control: #98c1d9;
   --bevel-highlight: #98c1d9;
   --bevel-shadow: #0d1b2a;
   --fg-primary: #e0fbfc;

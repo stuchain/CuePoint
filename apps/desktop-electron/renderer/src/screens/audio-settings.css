@@ -25,14 +25,15 @@
 }
 
 .cp-audio-settings__select {
-  min-height: var(--hit-min);
+  min-height: var(--control-height);
   max-width: 100%;
   padding: 0 var(--space-sm);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-primary);
-  font: inherit;
-  font-size: var(--font-size-sm);
+  font-family: var(--font-pixel);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
 }
 
 .cp-audio-settings__select:disabled {

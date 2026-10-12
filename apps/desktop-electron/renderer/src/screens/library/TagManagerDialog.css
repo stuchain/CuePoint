@@ -37,9 +37,9 @@
   background: var(--bg-panel-alt);
 }
 
-.cp-tag-manager__row--on {
-  background: var(--accent-primary);
-  color: var(--fg-inverse);
+.cp-tag-manager__row--on,
+.cp-tag-manager__row--on:hover {
+  background: var(--selected-row-background);
 }
 
 .cp-tag-manager__swatch {
@@ -60,10 +60,6 @@
   flex: 0 0 auto;
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
-}
-
-.cp-tag-manager__row--on .cp-tag-manager__hint {
-  color: inherit;
 }
 
 .cp-tag-manager__empty,

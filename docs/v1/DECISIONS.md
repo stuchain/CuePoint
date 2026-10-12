@@ -6641,8 +6641,6 @@ clubNeon's unlit fill is only 1.06:1 against its panel.
 **Reason**: Stelios found the stepped wheel unattractive and picked option A, smooth wedges with
 gaps, from six renders (Changes wish list, 2026-10-12).
 
-**Decided with**: User · **Date**: 2026-10-12
-
 ---
 
 ## DEC-239 — Space Plays and Pauses Unless You Are Typing, in a Dialog, or Tabbed There
@@ -6682,5 +6680,45 @@ Hint; the meta line and the seek area drop their own `title` so no native tip sh
 
 **Reason**: Hovering a player button showed only the slow, plain system tip, sometimes not at all
 (C10, option A: everywhere).
+
+**Decided with**: User · **Date**: 2026-10-12
+
+---
+
+## DEC-241 — Quieter Chrome: One Selected-Row Look, Flat Controls, Thin Borders, Underline Tabs
+
+**Status**: Approved · **Related**: DEC-048, DEC-135, DEC-161, DEC-217, C4, C11, C16
+
+**Decision**: The app's chrome drops the bevels and hard offset shadows.
+- **Selected rows** everywhere (track tables, Collections tree, sidebar, global search, suggestion
+  lists, Discover runs, the Keys list, the tag manager) show one look: a lighter fill
+  (`--bg-selected`, 18% accent over `--bg-input`) with a thin accent bar on the left, drawn by
+  `--selected-row-background`. Mouse selection shows no ring; the keyboard focus ring stays. Row
+  hover is a grey fill that never looks selected.
+- **Controls** (buttons, selects, text fields, pane buttons) are C11's look B: the pixel font at
+  `--control-font-size` and weight 400, one height `--control-height` (DEC-217's 30px toolbar
+  height at 1.5×, now app-wide), a 1px `--border-control` border, no bevel or shadow. A press keeps
+  DEC-135's one-pixel step without the bevel. Toggles that are on stay filled, and menus keep
+  their solid accent highlight.
+- **Panels, dropdowns, menus, toasts and the search box** get a 1px border and no shadow. Dialogs
+  keep one soft shadow, `--shadow-dialog`, so they lift off the page.
+- **Tabs** are underline tabs: the active tab is `--fg-primary` at weight 700 over an accent
+  underline (`--tab-underline-color`, which Classic sets to a brighter blue to reach 3:1).
+- A new theme token, `--border-control`, is derived for custom themes and reaches 3:1 against the
+  toolbar and the panel in every built-in theme; `selectionContrast.test.ts` holds that and the
+  selected-row contrasts.
+- The existing `--border-width`, `--hit-min`, `--shadow-*` and `--bevel-*` keep their values: the
+  player bar, the queue-count badge and the website still use them. New lengths follow DEC-161.
+
+**Exempt**: the player bar keeps its boxed buttons exactly as before (C16c, rejected by the user);
+`playerBarLook.test.ts` guards it. `PlayerBar.css` still calls `--hit-min` "the same floor `Button` uses"; since this decision only the player bar and rows use it.
+
+**Amends**: DEC-048's reason, so the app's identity now lives in the pixel font, square corners and
+pixel motion rather than bevels and hard shadows; DEC-217 #5, whose 30px control height becomes
+the one height for controls app-wide, while `--hit-min` stays for rows and the player bar.
+
+**Reason**: the user found selected rows' heavy frame and the bevelled buttons too much to read
+(2026-10-12) and picked the lighter fill with an accent bar (C4 A), flat pixel-font buttons (C11 B),
+and thin panels, underline tabs and flat pane buttons (C16 a, b, d).
 
 **Decided with**: User · **Date**: 2026-10-12

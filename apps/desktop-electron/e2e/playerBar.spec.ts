@@ -103,6 +103,36 @@ test("the player bar fits the shell at every scale", async () => {
       expect(report.minButton, `hit targets at ${scale}x`).toBeGreaterThanOrEqual(24);
       expect(report.clipped, `nothing clipped at ${scale}x`).toBe(false);
     }
+    // The transport buttons keep the heavy border and the hit target (C16c): the border is
+    // --border-width, nothing casts a shadow, and the box is at least --hit-min tall.
+    for (const scale of [1, 2]) {
+      const button = await win.evaluate((s) => {
+        document.documentElement.dataset.scale = String(s);
+        document.documentElement.style.setProperty("--scale", String(s));
+        const resolve = (token: string, property: "borderTopWidth" | "height") => {
+          const probe = document.createElement("i");
+          probe.style.cssText = `display:block;position:absolute;visibility:hidden;${
+            property === "height" ? "height" : "border-top-width"
+          }:var(${token});${property === "borderTopWidth" ? "border-top-style:solid;" : ""}`;
+          document.body.appendChild(probe);
+          const value = parseFloat(getComputedStyle(probe)[property]);
+          probe.remove();
+          return value;
+        };
+        const el = document.querySelector<HTMLElement>(".cp-player-bar__button")!;
+        const style = getComputedStyle(el);
+        return {
+          borderTop: parseFloat(style.borderTopWidth),
+          boxShadow: style.boxShadow,
+          height: el.getBoundingClientRect().height,
+          expectedBorder: resolve("--border-width", "borderTopWidth"),
+          hitMin: resolve("--hit-min", "height"),
+        };
+      }, scale);
+      expect(button.borderTop, `button border is --border-width at ${scale}x`).toBeCloseTo(button.expectedBorder, 1);
+      expect(button.boxShadow, `button has no shadow at ${scale}x`).toBe("none");
+      expect(button.height, `button is at least --hit-min tall at ${scale}x`).toBeGreaterThanOrEqual(button.hitMin - 0.5);
+    }
     await win.evaluate(() => {
       document.documentElement.dataset.scale = "1.5";
       document.documentElement.style.setProperty("--scale", "1.5");

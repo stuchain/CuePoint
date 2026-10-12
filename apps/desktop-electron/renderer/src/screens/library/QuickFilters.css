@@ -15,18 +15,21 @@
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-sm);
+  min-height: var(--control-height);
+  padding: 0 var(--space-sm);
   background: var(--bg-input);
-  border: var(--hairline) solid var(--border-outline);
+  border: var(--control-border-width) solid var(--border-control);
   color: var(--fg-primary);
-  font-family: var(--font-data);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-pixel);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
   white-space: nowrap;
   cursor: pointer;
 }
 
 .cp-quick__button--on {
   background: var(--accent-primary);
+  border-color: var(--accent-primary);
   color: var(--fg-inverse);
 }
 
@@ -48,8 +51,7 @@
   padding: var(--space-sm);
   overflow-y: auto;
   background: var(--bg-panel);
-  border: var(--border-width) solid var(--border-outline);
-  box-shadow: var(--shadow-badge);
+  border: var(--control-border-width) solid var(--border-control);
 }
 
 .cp-quick__list {

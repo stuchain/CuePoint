@@ -13,6 +13,7 @@ const TOKEN_KEYS = [
   "border-outline",
   "border-light",
   "border-muted",
+  "border-control",
   "bevel-highlight",
   "bevel-shadow",
   "fg-primary",
@@ -117,6 +118,25 @@ export function withContrast(hex: string, background: string, min = WAVEFORM_MIN
   return towardsWhite ? "#ffffff" : "#000000";
 }
 
+/**
+ * A control's edge: the nearest colour to `lighten(panel, .15)` that stands at 3:1 against both
+ * the toolbar and the panel. Steps lighter and darker alternate, so the hue of the start is kept
+ * as far as it can be; black or white (whichever clears both by more) is the last resort. One
+ * search over both backgrounds, because fixing one by moving towards an end can break the other.
+ */
+export function controlBorder(panel: string, toolbar: string, min = 3): string {
+  const start = lighten(panel, 0.15);
+  const holds = (c: string) => contrastRatio(c, toolbar) >= min && contrastRatio(c, panel) >= min;
+  for (let step = 0; step <= 20; step += 1) {
+    const lighter = lighten(start, step / 20);
+    if (holds(lighter)) return lighter;
+    const darker = darken(start, step / 20);
+    if (holds(darker)) return darker;
+  }
+  const worst = (c: string) => Math.min(contrastRatio(c, toolbar), contrastRatio(c, panel));
+  return worst("#ffffff") >= worst("#000000") ? "#ffffff" : "#000000";
+}
+
 function rgba(hex: string, alpha: number): string {
   const { r, g, b } = hexToRgb(hex);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
@@ -159,6 +179,8 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
   const borderHighlight = lighten(bgPanel, 0.15);
   const borderLight = lighten(bgPanel, 0.22);
   const borderMuted = darken(bgPanel, 0.12);
+  // A control's edge reads at 3:1 against the toolbar and the panel it sits on.
+  const borderControl = controlBorder(bgPanel, bgToolbar);
 
   return {
     "bg-app": bgApp,
@@ -171,6 +193,7 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "border-outline": "#000000",
     "border-light": borderLight,
     "border-muted": borderMuted,
+    "border-control": borderControl,
     "bevel-highlight": borderHighlight,
     "bevel-shadow": borderShadow,
     "fg-primary": fgPrimary,

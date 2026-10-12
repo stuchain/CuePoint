@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
+import { probeScrollbar } from "./scrollbarProbe";
 
 /**
  * The Keys page (PAGES-16, FLW-21): tick two playlists, read the counts, click
@@ -150,6 +151,33 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
 
     // Click a key: its tracks fill the table.
     await list.getByRole("button", { name: /^8A/ }).click();
+
+    // The pressed key's row is lit by the selected-row background, a gradient from the accent.
+    const pressed = list.getByRole("button", { name: /^8A/ });
+    await expect(pressed).toHaveAttribute("aria-pressed", "true");
+    const lit = await pressed.evaluate((el) => {
+      const probe = document.createElement("i");
+      probe.style.color = "var(--accent-primary)";
+      document.body.appendChild(probe);
+      const accent = getComputedStyle(probe).color;
+      probe.remove();
+      return { image: getComputedStyle(el).backgroundImage, accent };
+    });
+    expect(lit.image, "the pressed row paints a gradient").toContain("linear-gradient");
+    expect(lit.image, "from the accent colour").toContain(lit.accent);
+
+    // The key list scrolls inside its own box with the themed bar, never the page.
+    // A pointer resting over a scroller reads back the thumb's hover colour; park it away.
+    await win.mouse.move(0, 0);
+    const counts = await probeScrollbar(win, ".keys-counts");
+    expect(counts.overflowY, "the key list scrolls inside its own box").toMatch(/auto|scroll/);
+    expect(counts.pageScrolls, "the page itself does not scroll").toBe(false);
+    expect(counts.scrollbarColor).toBe("auto");
+    expect(counts.scrollbarWidth).toBe("auto");
+    expect(counts.thumb).toBe(counts.expectedThumb);
+    expect(counts.track).toBe(counts.expectedTrack);
+    // Two playlists give a few keys, which fit; only colours and overflow-y are checked unless it overflows.
+    if (counts.overflows) expect(counts.barWidth).toBeCloseTo(counts.expectedWidth, 0);
     const rows = win.locator(".track-table__row");
     await expect(rows).toHaveCount(3, { timeout: 30_000 });
     const titles = await win

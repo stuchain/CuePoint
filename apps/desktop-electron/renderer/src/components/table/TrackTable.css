@@ -157,13 +157,21 @@
   background: color-mix(in srgb, var(--bg-panel) 35%, var(--bg-input));
 }
 
-.track-table__row--selected {
-  box-shadow: inset 0 0 0 var(--focus-ring-width) var(--accent-info);
+/* Selected (C4): a lighter fill and a thin accent bar on the left. The :hover pair is there
+   because the hover rule above has the same weight and would otherwise win. */
+.track-table__row--selected,
+.track-table__row--selected:hover {
+  background: var(--selected-row-background);
   z-index: 1;
 }
 
-/* The keyboard's row, drawn only after a key moved it. Dashed and inset one ring width further
-   than the selection ring, so on a row that is both it sits inside the ring and stays visible. */
+/* A click or Space on a row selects the row, never the text in it. */
+.track-table__scroll .track-table__row {
+  user-select: none;
+}
+
+/* The keyboard's row, drawn only after a key moved it. Dashed and inset one ring width in
+   from the edge, so on a selected row it stays visible against the selected fill and its bar. */
 .track-table__row--cursor {
   outline: var(--focus-ring-width) dashed var(--accent-info);
   outline-offset: calc(-2 * var(--focus-ring-width));
@@ -204,6 +212,17 @@
   background: inherit;
 }
 
+/* Inheriting a selected row's gradient would repeat the accent bar in every sticky cell, so a
+   selected row's sticky cells take the flat fill; only a sticky cell at the row's left edge
+   keeps the gradient and so draws the one bar. Explicit values, so hover needs no rule. */
+.track-table__row--selected .track-table__cell--sticky {
+  background: var(--bg-selected);
+}
+
+.track-table__row--selected .track-table__cell--sticky:first-child {
+  background: var(--selected-row-background);
+}
+
 .track-table__skeleton {
   display: block;
   width: 60%;
@@ -228,7 +247,7 @@ body.track-table--resizing {
   user-select: none;
 }
 
-body.track-table--resizing .track-table__row:hover {
+body.track-table--resizing .track-table__row:hover:not(.track-table__row--selected) {
   background: var(--bg-input);
 }
 

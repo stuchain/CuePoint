@@ -42,6 +42,26 @@
   --shadow-badge: calc(2px * var(--scale)) calc(2px * var(--scale)) 0 var(--border-shadow);
   --shadow-inset-deep: inset var(--bevel-size) var(--bevel-size) 0 rgba(0, 0, 0, 0.35);
 
+  /*
+   * Quieter chrome (C4, C11, C16): one control look and one selected look.
+   * Every length is whole pixels (DEC-161), so a border and a bar never land on a fraction.
+   * The player bar keeps --border-width and --hit-min on purpose (C16c).
+   */
+  --control-border-width: var(--hairline);
+  --control-height: round(nearest, calc(20px * var(--scale)), 1px);
+  --control-font-size: var(--font-size-xs);
+  --control-font-weight: 400;
+  --selected-bar-width: max(2px, round(down, calc(2px * var(--scale)), 1px));
+  --bg-selected: color-mix(in srgb, var(--accent-primary) 18%, var(--bg-input));
+  --selected-row-background: linear-gradient(
+    to right,
+    var(--accent-primary) var(--selected-bar-width),
+    var(--bg-selected) var(--selected-bar-width)
+  );
+  --shadow-dialog: 0 round(calc(4px * var(--scale)), 1px) round(calc(16px * var(--scale)), 1px)
+    rgba(0, 0, 0, 0.45);
+  --tab-underline: max(2px, round(down, calc(2px * var(--scale)), 1px));
+
   /* Spacing */
   --space-xs: calc(var(--unit) * 1);
   --space-sm: calc(var(--unit) * 1.5);

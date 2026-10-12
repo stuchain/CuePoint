@@ -97,13 +97,11 @@
 }
 
 /* Compact: ten controls share the row, and every line of it is a line the table
-   loses (the Library's height is held, DEC-112). So the buttons take the small
-   type and the small padding, and do not stretch to the hit-target floor the
-   page's primary buttons keep. */
+   loses (the Library's height is held, DEC-112). So the buttons are the compact
+   control height every .cp-btn has, with the width floor dropped. */
 .library-toolbar .library-toolbar__button {
   min-width: 0;
-  min-height: 0;
-  padding: calc(var(--space-xs) / 2) var(--space-sm);
+  min-height: var(--control-height);
   font-size: var(--font-size-xs);
   line-height: 1.2;
 }

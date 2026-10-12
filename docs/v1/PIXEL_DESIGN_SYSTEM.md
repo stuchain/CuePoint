@@ -93,6 +93,15 @@ sign-off item — table-density readability at small sizes hasn't been formally 
 - Buttons get a physical pressed-state: `.cp-btn:active` translates `(1px×scale, 1px×scale)` and
   swaps to `--shadow-bevel-pressed` (inverted bevel) — simulates a depressed 3D button.
 
+> **Quieter chrome (DEC-241, 2026-10-12).** The app's controls and panels no longer use the bevel
+> and offset-shadow tokens above; they stay defined for the player bar, the queue-count badge and
+> the website. Controls (Button, Select, TextField, pane buttons) are flat: one height
+> `--control-height`, a 1px `--border-control` border, the pixel font at `--control-font-size` and
+> weight 400; `.cp-btn:active` keeps the 1px translate without the bevel. Panels, menus, toasts,
+> dropdowns and the search box have a 1px border and no shadow; dialogs keep one soft
+> `--shadow-dialog`. Selected rows use `--selected-row-background` (a lighter `--bg-selected` fill
+> with a thin accent bar on the left). Tabs are underline tabs. The player bar keeps its boxed look.
+
 ## Icons — the one real asset gap
 
 > **Partly closed by FOUNDATION-14.** Icons now exist as 12×12 pixel grids in
@@ -124,15 +133,15 @@ pipeline Aseprite → PNG") **was never implemented** — everything visual toda
 
 | Component | Notes |
 |---|---|
-| `Button` | primary / secondary / danger variants; hover = brightness filter; active = translate + inverted bevel; disabled = 0.55 opacity; loading reuses pressed visual |
-| `Panel` | black-outlined box, bevel + drop shadow, optional header/badge, `--fill` variant for viewport-filling layouts |
-| `Modal` | full-screen backdrop + centered box, heavier 3px border, 88×88 close button; 15 feature dialogs built on it |
-| `TextField` / `Select` | recessed "carved-in" look via deep inset shadow; focus = solid accent-info ring; error = red border + hint text |
+| `Button` | primary / secondary / danger variants; flat C11-B control (DEC-241): `--control-height`, 1px `--border-control`, pixel font xs/400, no bevel or shadow; hover = brightness filter; active = 1px translate; disabled = 0.55 opacity |
+| `Panel` | 1px `--border-control` box, no bevel or shadow (DEC-241), optional header/badge, `--fill` variant for viewport-filling layouts |
+| `Modal` | full-screen backdrop + centered box, 1px border and one soft `--shadow-dialog` (DEC-241), flat close button; 15 feature dialogs built on it |
+| `TextField` / `Select` | flat control (DEC-241): `--control-height`, 1px `--border-control`, no inset shadow; `:focus-visible` = accent-info ring; error = red border + hint text |
 | `ResultsTable` | virtualized (`@tanstack/react-virtual`), sortable, resizable, sticky header + Write/Index columns, 14-column grid, themed scrollbar, column widths persist to `localStorage` |
 | `ListRow` | simpler 3-col grid row primitive; hover tint via `color-mix`; selected = inset accent-info outline |
-| `Toast` | fixed bottom-right stack, 4 variants, slide-up-fade-in, black-outlined with hard shadow |
+| `Toast` | fixed bottom-right stack, 4 variants, slide-up-fade-in, 1px border, no shadow (DEC-241) |
 | `Badge` | small square (not pill) label, 5 variants, 2px offset shadow |
-| `Tabs` | segmented control; active tab filled + inverse text; **flagged in design-signoff**: tab height (66px @2×) is below the 44px CSS-px hit-target floor — unresolved |
+| `Tabs` | underline tabs (DEC-241): transparent tabs, active = `--fg-primary` weight 700 over an accent underline; strip has a hairline bottom border |
 | `ProgressBar`, `ToolbarIcon`, `AppMenuBar`, `EngineStatusBanner` | present, consistent with the system |
 
 ## What this means for the target design system work

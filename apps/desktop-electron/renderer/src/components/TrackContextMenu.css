@@ -11,9 +11,8 @@
   z-index: 60;
   min-width: calc(180px * var(--scale));
   padding: var(--space-xs) 0;
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-panel);
-  box-shadow: var(--shadow-panel);
   outline: none;
   /*
    * Taller than the window is a menu whose last entries cannot be reached at
@@ -100,7 +99,6 @@
   overflow-y: auto;
   min-width: calc(140px * var(--scale));
   padding: var(--space-xs) 0;
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-panel);
-  box-shadow: var(--shadow-panel);
 }

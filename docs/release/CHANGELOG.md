@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Camelot wheel (header and Keys page) is drawn as smooth wedges with even gaps.
 - **Space plays and pauses after a click.** Space now plays or pauses unless you are typing, a dialog or menu is open, or you Tabbed to the control. Clicking Next and then pressing Space pauses instead of skipping again, and Space works after clicking the waveform. The player bar and the queue can no longer be drag-selected.
 - The player bar's waveform sits centred between the controls on either side of it.
+- **Quieter look.** A selected row now shows a lighter fill with a thin accent bar on its left, in every list, instead of a heavy frame; the frame only appears while you move with the keyboard. Buttons, menus, dialogs and the search box lose their bevels and black drop shadows: buttons keep the pixel font at one height with a thin border, and tabs are underlined instead of boxed. The player bar keeps its look (DEC-241).
+- **Charts no longer say "Point at or tab to a bar to read it."** A bar's name still shows when you point at it or reach it with Tab.
 
 ### Fixed
 - The Play button showed Play while music played after you switched tracks during playback, or after a track ran on into the next one.

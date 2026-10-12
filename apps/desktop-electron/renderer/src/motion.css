@@ -109,14 +109,14 @@
    so the bar moves, not the row. Only the row under the pointer has the bar at all, and only while
    the table holds still: a bar on every row made each row a scroll mounts cost a box of its own
    to style, lay out and paint, and on a slower machine a page of new rows ran past 50 ms. */
-:root[data-motion-hover] .track-table__scroll:not([data-scrolling]) .track-table__row:hover::before {
+:root[data-motion-hover] .track-table__scroll:not([data-scrolling]) .track-table__row:not(.track-table__row--selected):hover::before {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
   left: 0;
   width: var(--motion-step-px);
-  background: var(--accent-primary);
+  background: var(--border-highlight);
   pointer-events: none;
   animation: cp-edge-in var(--motion-instant) steps(1);
 }

@@ -9,12 +9,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: var(--hit-min);
-  min-height: var(--hit-min);
+  min-width: var(--control-height);
+  min-height: var(--control-height);
   padding: 0;
   background: var(--bg-app);
-  border: var(--border-width) solid var(--border-outline);
-  box-shadow: var(--shadow-bevel-sm);
+  border: var(--control-border-width) solid var(--border-control);
   color: var(--fg-primary);
   cursor: pointer;
 }

@@ -1,7 +1,6 @@
 .cp-panel {
   background: var(--bg-panel);
-  border: var(--border-width) solid var(--border-outline);
-  box-shadow: var(--shadow-bevel-panel), var(--shadow-panel);
+  border: var(--control-border-width) solid var(--border-control);
 }
 
 .cp-panel--alt {
