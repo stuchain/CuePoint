@@ -329,6 +329,31 @@ class TestTheRefusal:
         assert _fields("DiscoverRefusal") == sent
 
 
+class TestTheNoTokenMessage:
+    def test_it_offers_sign_in_and_still_names_the_config_key(self, monkeypatch):
+        from cuepoint.services.beatport_api_client import BeatportApiClient
+
+        monkeypatch.delenv("BEATPORT_ACCESS_TOKEN", raising=False)
+        _status, payload = api.status_for(
+            _raised_by(
+                BeatportApiClient(
+                    base_url="https://x.invalid/v4", access_token=""
+                ).require_token
+            )
+        )
+        message = payload["error"]["message"]
+        assert "sign in to Beatport in Settings" in message
+        assert "incrate.beatport_access_token" in message
+
+
+def _raised_by(call):
+    try:
+        call()
+    except Exception as exc:  # noqa: BLE001 - the test wants the exception itself
+        return exc
+    raise AssertionError("did not raise")
+
+
 # ------------------------------------------------------------------ requests
 
 

@@ -86,7 +86,8 @@ MAX_CONSECUTIVE_FAILURES = 3
 
 _NO_TOKEN_MESSAGE = (
     "Configure Beatport API token "
-    "(incrate.beatport_access_token or BEATPORT_ACCESS_TOKEN)"
+    "(incrate.beatport_access_token or BEATPORT_ACCESS_TOKEN), "
+    "or sign in to Beatport in Settings"
 )
 
 # One gate for the engine: every client shares it unless a test passes its own.

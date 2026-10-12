@@ -79,6 +79,14 @@ function currentTraceHeaders(): Record<string, string> {
   }
 }
 
+/** What the engine answers about the Beatport token: never the token itself. */
+export interface BeatportTokenStatusWire {
+  configured: boolean;
+  masked: string | null;
+  /** Where the token in force comes from; absent from an older engine. */
+  source?: "env" | "session" | "config" | null;
+}
+
 /** The two thumbnail sizes the engine makes (CLEAN-09): a table row, the Inspector. */
 export type ArtworkSize = "row" | "inspector";
 
@@ -3942,18 +3950,45 @@ export class EngineClient {
     return readJson(res);
   }
 
-  async getBeatportTokenStatus(): Promise<{ configured: boolean; masked: string | null }> {
+  async getBeatportTokenStatus(): Promise<BeatportTokenStatusWire> {
     const res = await fetch(this.url("/api/v1/config/beatport-token"), {
       headers: this.headers(),
     });
     return readJson(res);
   }
 
-  async setBeatportToken(token: string): Promise<{ configured: boolean; masked: string | null }> {
+  async setBeatportToken(token: string): Promise<BeatportTokenStatusWire> {
     const res = await fetch(this.url("/api/v1/config/beatport-token"), {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({ token }),
+    });
+    return readJson(res);
+  }
+
+  /**
+   * Hold the Beatport sign-in token in the engine's memory, or forget it (`null`). Main only:
+   * there is no IPC for it, so the renderer never handles a token. The answer is a status; the
+   * engine never echoes the token.
+   */
+  async setBeatportSessionToken(token: string | null): Promise<BeatportTokenStatusWire> {
+    const res = await fetch(this.url("/api/v1/config/beatport-session"), {
+      method: "PUT",
+      headers: this.headers(),
+      body: JSON.stringify({ token }),
+    });
+    return readJson(res);
+  }
+
+  /**
+   * The token the config key held (null when none). Main only, once, to move a pasted token into
+   * secure storage; the only engine route that answers a secret.
+   */
+  async takeLegacyBeatportToken(): Promise<{ token: string | null }> {
+    const res = await fetch(this.url("/api/v1/config/beatport-token/take-legacy"), {
+      method: "POST",
+      headers: this.headers(),
+      body: "{}",
     });
     return readJson(res);
   }

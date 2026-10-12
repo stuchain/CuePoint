@@ -51,6 +51,7 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
+import dataclasses
 import logging
 import os
 import re
@@ -217,6 +218,20 @@ def _context() -> ScrubContext:
     if _scrub_context is None:
         _scrub_context = ScrubContext.from_environment()
     return _scrub_context
+
+
+def add_scrub_token(token: str) -> None:
+    """Add a secret (the Beatport sign-in token) to what a report removes by value."""
+    global _scrub_context
+    value = (token or "").strip()
+    if not value:
+        return
+    with _lock:
+        current = _context()
+        if value not in current.tokens:
+            _scrub_context = dataclasses.replace(
+                current, tokens=(*current.tokens, value)
+            )
 
 
 # ---------------------------------------------------------------------------

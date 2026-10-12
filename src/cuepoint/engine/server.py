@@ -21,9 +21,12 @@ from urllib.parse import parse_qs, urlparse
 
 from cuepoint.engine.config_api import (
     get_beatport_token_status,
+    parse_beatport_session_body,
     parse_beatport_token_body,
     parse_beatport_token_test_body,
     set_beatport_token,
+    set_session_token,
+    take_legacy_token,
     test_beatport_token,
 )
 from cuepoint.engine.api_errors import error_payload as _error_payload
@@ -1151,6 +1154,26 @@ def make_handler(
                 return
             self._send_json(status, payload)
 
+        def do_PUT(self) -> None:  # noqa: N802
+            self._dispatch(self._route_put)
+
+        def _route_put(self) -> None:
+            path = urlparse(self.path).path
+            if not self._authorized():
+                self._send_json(
+                    401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                )
+                return
+            if path == "/api/v1/config/beatport-session":
+                try:
+                    body = parse_beatport_session_body(self._read_body())
+                except ValueError as exc:
+                    self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
+                    return
+                self._send_json(200, set_session_token(body["token"]))
+                return
+            self._send_json(404, error_payload("NOT_FOUND", "Unknown endpoint"))
+
         def do_POST(self) -> None:  # noqa: N802
             self._dispatch(self._route_post)
 
@@ -1308,6 +1331,19 @@ def make_handler(
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 self._send_json(200, payload)
+                return
+
+            if path == "/api/v1/config/beatport-token/take-legacy":
+                # The one route that answers a secret: never on an engine with no bearer.
+                if not config.token:
+                    self._send_json(
+                        403,
+                        error_payload(
+                            "FORBIDDEN", "This engine has no access token set"
+                        ),
+                    )
+                    return
+                self._send_json(200, take_legacy_token())
                 return
 
             if path == "/api/v1/config/beatport-token/test":

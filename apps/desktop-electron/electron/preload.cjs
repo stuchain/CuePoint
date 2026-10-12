@@ -372,6 +372,18 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   getBeatportTokenStatus: () => ipcRenderer.invoke("engine:getBeatportTokenStatus"),
   setBeatportToken: (token) => ipcRenderer.invoke("engine:setBeatportToken", token),
   testBeatportToken: (body) => ipcRenderer.invoke("engine:testBeatportToken", body),
+  // The Beatport sign-in lives in main. Every one of these answers a state and a masked
+  // preview ("••••abcd"); none of them ever returns the token.
+  beatportSignIn: () => ipcRenderer.invoke("beatport:signIn"),
+  beatportSignOut: () => ipcRenderer.invoke("beatport:signOut"),
+  getBeatportAuth: () => ipcRenderer.invoke("beatport:getAuth"),
+  // The renderer sends a pasted token one way, to main, which stores it; the answer is a status.
+  saveBeatportPastedToken: (token) => ipcRenderer.invoke("beatport:savePastedToken", token),
+  onBeatportAuthChanged: (listener) => {
+    const handler = (_event, status) => listener(status);
+    ipcRenderer.on("beatport:authChanged", handler);
+    return () => ipcRenderer.removeListener("beatport:authChanged", handler);
+  },
   exportSupportBundle: (options) => ipcRenderer.invoke("support:exportBundle", options ?? {}),
   showItemInFolder: (filePath) => ipcRenderer.invoke("shell:showItemInFolder", filePath),
   openBeatportPage: (url) => ipcRenderer.invoke("shell:openBeatportPage", url),

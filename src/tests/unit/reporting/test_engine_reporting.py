@@ -839,7 +839,7 @@ def test_every_http_verb_is_dispatched_through_the_guard():
         for n in ast.walk(tree)
         if isinstance(n, ast.FunctionDef) and n.name.startswith("do_")
     ]
-    assert {v.name for v in verbs} == {"do_GET", "do_POST"}
+    assert {v.name for v in verbs} == {"do_GET", "do_POST", "do_PUT"}
     for verb in verbs:
         assert _calls(verb, "_dispatch"), f"{verb.name} bypasses the guard"
 

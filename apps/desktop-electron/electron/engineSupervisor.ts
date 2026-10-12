@@ -8,6 +8,7 @@ import type { WebContents } from "electron";
 import {
   EngineClient,
   type ActivityFeed,
+  type BeatportTokenStatusWire,
   type EngineJobList,
   type LibraryBrowseParams,
   type CompatibleKeys,
@@ -205,6 +206,12 @@ interface EngineSupervisorOptions {
    * imports the Sentry SDK. Absent, nothing is reported.
    */
   reporter?: ProcessReporter;
+  /**
+   * Called after every successful health wait: the first start, the user's `restart()` and an
+   * automatic restart alike. The engine keeps the Beatport session token only in memory, so main
+   * uses this to push the stored one again. Never awaited; a throw is swallowed.
+   */
+  onStarted?: () => void;
   /** Replaces `RESTART_BACKOFF_MS`; for tests. */
   restartBackoffMs?: readonly number[];
   /** Replaces `HEALTH_TIMEOUT_MS`; for tests. */
@@ -525,6 +532,11 @@ export class EngineSupervisor {
     }
     // It answers: if it came back from an exit, that is the incident's one event.
     this.incidents.recovered(this.outputTail());
+    try {
+      this.options.onStarted?.();
+    } catch {
+      /* what main does with a started engine must not fail the start */
+    }
     return this.getStatus();
   }
 
@@ -1302,12 +1314,22 @@ export class EngineSupervisor {
     return (await this.readyClient()).cancelJob(jobId);
   }
 
-  async getBeatportTokenStatus(): Promise<{ configured: boolean; masked: string | null }> {
+  async getBeatportTokenStatus(): Promise<BeatportTokenStatusWire> {
     return (await this.readyClient()).getBeatportTokenStatus();
   }
 
-  async setBeatportToken(token: string): Promise<{ configured: boolean; masked: string | null }> {
+  async setBeatportToken(token: string): Promise<BeatportTokenStatusWire> {
     return (await this.readyClient()).setBeatportToken(token);
+  }
+
+  /** Main only: hold the Beatport sign-in token in the engine's memory (`null` forgets it). */
+  async setBeatportSessionToken(token: string | null): Promise<BeatportTokenStatusWire> {
+    return (await this.readyClient()).setBeatportSessionToken(token);
+  }
+
+  /** Main only: the token the config key held, for the one-time move into secure storage. */
+  async takeLegacyBeatportToken(): Promise<{ token: string | null }> {
+    return (await this.readyClient()).takeLegacyBeatportToken();
   }
 
   async testBeatportToken(body?: {

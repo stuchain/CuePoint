@@ -8,11 +8,11 @@ Bootstrap function to register all services with the DI container.
 This should be called at application startup.
 """
 
-import os
 import threading
 
 from cuepoint.services.beatport_api import BeatportApi
 from cuepoint.services.beatport_api_client import BeatportApiClient
+from cuepoint.services.beatport_token import resolve_access_token
 from cuepoint.services.beatport_service import BeatportService
 from cuepoint.services.cache_service import CacheService
 from cuepoint.services.config_service import ConfigService
@@ -830,14 +830,10 @@ def bootstrap_services() -> None:
         base_url = (
             cfg.get("incrate.beatport_api_base_url") or "https://api.beatport.com/v4"
         ).strip()
-        token = (
-            os.environ.get("BEATPORT_ACCESS_TOKEN")
-            or cfg.get("incrate.beatport_access_token")
-            or ""
-        ).strip()
+        token, _source = resolve_access_token(cfg)
         timeout = int(cfg.get("incrate.beatport_api_timeout") or 30)
         client = BeatportApiClient(
-            base_url=base_url, access_token=token, timeout=timeout
+            base_url=base_url, access_token=token or "", timeout=timeout
         )
         return BeatportApi(client=client, cache_service=cache_service)
 

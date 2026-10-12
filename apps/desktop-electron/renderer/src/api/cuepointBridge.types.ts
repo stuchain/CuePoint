@@ -360,6 +360,25 @@ export type SaveExportDialogResult =
 export interface BeatportTokenStatus {
   configured: boolean;
   masked: string | null;
+  /**
+   * Where the token in force comes from: the environment, the desktop sign-in (held in the
+   * engine's memory) or the config key. Additive: an older engine sends none.
+   */
+  source?: "env" | "session" | "config" | null;
+}
+
+/**
+ * The Beatport sign-in, as main reports it (C12). A state and a masked preview, never the token:
+ * the token lives in main and the engine's memory, and no bridge method returns it.
+ */
+export interface BeatportAuth {
+  state: "signed_out" | "signed_in" | "expired" | "pasted" | "env" | "unavailable";
+  /** "••••abcd", or null when there is no token to show (signed out, or the environment's). */
+  masked: string | null;
+  /** When the sign-in ends, as an ISO date-time; null when it has no known end. */
+  expires_at: string | null;
+  /** Whether the token is encrypted at rest. False means a sign-in lasts until the app quits. */
+  secure_storage: boolean;
 }
 
 export interface BeatportTokenTestResult {
@@ -3245,6 +3264,15 @@ export interface CuePointBridge {
   getBeatportTokenStatus: () => Promise<BeatportTokenStatus>;
   setBeatportToken: (token: string) => Promise<BeatportTokenStatus>;
   testBeatportToken: (body?: { token?: string }) => Promise<BeatportTokenTestResult>;
+  /** Open the Beatport sign-in window; resolves with the state once it is signed in or closed. */
+  beatportSignIn: () => Promise<BeatportAuth>;
+  /** Forget the sign-in everywhere: stored token, the window's cookies and the engine's copy. */
+  beatportSignOut: () => Promise<BeatportAuth>;
+  getBeatportAuth: () => Promise<BeatportAuth>;
+  /** Hand a pasted token to main to keep; the answer is a status, not the token. */
+  saveBeatportPastedToken: (token: string) => Promise<BeatportAuth>;
+  /** Called with every change of the sign-in; returns the unsubscribe. */
+  onBeatportAuthChanged: (listener: (auth: BeatportAuth) => void) => () => void;
   getRecentActivity?: (params?: {
     limit?: number;
     type?: string;

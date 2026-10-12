@@ -1,7 +1,7 @@
 /**
  * Electron main process — Spike S1: spawn engine and expose status to renderer.
  */
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, net, screen, session, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, net, safeStorage, screen, session, shell, systemPreferences } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import { execFile, spawn } from "node:child_process";
 import fs from "node:fs";
@@ -10,6 +10,9 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
+import { BEATPORT_PARTITION, BeatportAuth, ElectronSignInHost } from "./beatportAuth";
+import { beatportEndpoints } from "./beatportAuthRules";
+import { BEATPORT_TOKEN_FILE, BeatportTokenStore } from "./beatportTokenStore";
 import { resolveAppIconPath } from "./appIcon";
 import { installAppMenu, type MenuPlatform } from "./appMenu";
 import { beatportPageUrl } from "./externalLinks";
@@ -22,6 +25,7 @@ import { currentBuildInfo } from "./buildInfo";
 import { isOwnPage } from "./navigationGuard";
 import { ErrorReportingChoice } from "./errorReporting";
 import {
+  addReportingToken,
   breadcrumb,
   mainReportingDsn,
   markQuitting,
@@ -161,7 +165,62 @@ const engine: EngineSupervisor = new EngineSupervisor({
   build,
   // The engine's exits, restarts and give-ups, once per incident (REPORT-05).
   reporter: processReporter,
+  // The engine keeps the Beatport sign-in token in memory only: after every start, hand it over
+  // again (C12). Not awaited, so the start is not held up by it.
+  onStarted: (): void => {
+    void beatportAuth()
+      .onEngineStarted()
+      .catch(() => breadcrumb("beatport", "could not hand the token to the engine"));
+  },
 });
+
+/**
+ * The Beatport sign-in (C12). Built when first needed, after the app is ready: the sign-in
+ * partition and `safeStorage` are not available before that. The token never leaves main; the
+ * renderer is told a state and a masked preview only.
+ */
+let beatportSignIn: BeatportAuth | null = null;
+let beatportSignInSession: Electron.Session | null = null;
+
+function beatportAuth(): BeatportAuth {
+  if (beatportSignIn) return beatportSignIn;
+  const partition = session.fromPartition(BEATPORT_PARTITION);
+  beatportSignInSession = partition;
+  const endpoints = beatportEndpoints(process.env, {
+    packaged: app.isPackaged,
+    e2e: displayChoice(process.env[E2E_DISPLAY_ENV]) !== null,
+  });
+  beatportSignIn = new BeatportAuth({
+    host: new ElectronSignInHost({
+      BrowserWindow,
+      session: partition,
+      parent: () => mainWindow,
+      packaged: app.isPackaged,
+      endpoints,
+    }),
+    store: new BeatportTokenStore(path.join(app.getPath("userData"), BEATPORT_TOKEN_FILE), safeStorage, (message) => breadcrumb("beatport", message)),
+    engine: {
+      setSession: (token) => engine.setBeatportSessionToken(token),
+      takeLegacy: () => engine.takeLegacyBeatportToken(),
+      blankLegacy: () => engine.setBeatportToken(""),
+    },
+    fetch: netFetch,
+    apiBase: endpoints.apiBase,
+    envTokenSet: () => (process.env.BEATPORT_ACCESS_TOKEN ?? "").trim() !== "",
+    broadcast: (status) => {
+      // Only the main window has the bridge; the sign-in windows have no preload.
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("beatport:authChanged", status);
+    },
+    // The live token joins what the report scrubber removes.
+    onToken: addReportingToken,
+    breadcrumb: (message) => breadcrumb("beatport", message),
+  });
+  beatportSignIn.init();
+  return beatportSignIn;
+}
+
+/** The app's one main window, which the sign-in window is modal to. */
+let mainWindow: BrowserWindow | null = null;
 
 /**
  * The audio player (PLAYER-03, DEC-050).
@@ -819,6 +878,11 @@ function registerIpcHandlers(): void {
   handle("engine:getBeatportTokenStatus", () => engine.getBeatportTokenStatus());
   handle("engine:setBeatportToken", (_event, token: string) => engine.setBeatportToken(token));
   handle("engine:testBeatportToken", (_event, body) => engine.testBeatportToken(body));
+  // The Beatport sign-in (C12). Each answers a state and a masked preview, never the token.
+  handle("beatport:signIn", () => beatportAuth().signIn());
+  handle("beatport:signOut", () => beatportAuth().signOut());
+  handle("beatport:getAuth", () => beatportAuth().status());
+  handle("beatport:savePastedToken", (_event, token: unknown) => beatportAuth().savePastedToken(token));
   handle("engine:getLogsDir", () => engine.getLogsDir());
   handle("engine:getCuepointLog", (_event, body) => engine.getCuepointLog(body));
   handle("engine:clearCuepointLogs", () => engine.clearCuepointLogs());
@@ -1269,6 +1333,13 @@ async function createWindow(): Promise<void> {
     },
   });
 
+  mainWindow = win;
+  win.on("closed", () => {
+    if (mainWindow === win) mainWindow = null;
+    // A hidden renewal window would otherwise keep the app from quitting (no `window-all-closed`).
+    beatportSignIn?.dispose();
+  });
+
   // The window shows the app's own page and nothing else (DIST-07 review): no new windows, and
   // no navigation away, whatever a link, a drop or a script asks. Pages open in the browser only
   // through the narrow helpers above.
@@ -1357,6 +1428,7 @@ app.on("will-quit", () => updater.closeInstalls());
 
 app.on("window-all-closed", () => {
   breadcrumb("app", "window-all-closed");
+  beatportSignIn?.dispose();
   if (process.platform !== "darwin") app.quit();
 });
 
@@ -1392,6 +1464,7 @@ if (reportingOn) {
 // leave the engine running (EXPORT-07).
 quitAfter(app, async () => {
   markQuitting();
+  beatportSignIn?.dispose();
   breadcrumb("app", "before-quit");
   const tasks: Array<Promise<unknown>> = [];
   if (privacyExitPrefs.clearCacheOnExit) tasks.push(engine.clearCuepointCache());
@@ -1403,6 +1476,7 @@ quitAfter(app, async () => {
   // loses the last write: a repeat mode changed just before quitting came back
   // as the one before it (PLAYER-07).
   session.defaultSession.flushStorageData();
+  beatportSignInSession?.flushStorageData();
   // Given back before anything else: an accelerator still registered at quit
   // takes the machine's media keys away from whatever the user turns to next.
   mediaKeys.release();
