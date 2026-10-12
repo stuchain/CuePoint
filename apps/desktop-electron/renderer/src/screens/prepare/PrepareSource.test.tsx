@@ -1004,7 +1004,8 @@ describe("the transition strip (WAVE-07)", () => {
     expect(screen.getByTestId("transition-to")).toHaveAttribute("data-entry", String(OPEN_TWO));
     expect(within(strip()!).getByText("Open One")).toBeInTheDocument();
     expect(within(strip()!).getByText("Open Two")).toBeInTheDocument();
-    expect(screen.getByTestId("transition-words")).toHaveTextContent("No out time → no times");
+    // The caption reads the keys and tempo; the times (none here) are the halves' titles'.
+    expect(screen.getByTestId("transition-words")).not.toHaveTextContent(/Out|In |no times/);
 
     fireEvent.click(screen.getByTestId("transition-to"));
     await waitFor(() => expect(setRow(OPEN_TWO)).toHaveAttribute("aria-selected", "true"));

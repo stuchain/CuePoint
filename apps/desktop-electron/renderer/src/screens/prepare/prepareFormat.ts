@@ -1,9 +1,8 @@
 /**
  * The Prepare page in words (PREP-10, DEC-106, DEC-107).
  *
- * The running time counts timed entries only and says how many are not
- * (DEC-107): "1:34:20 planned · 3 without times", or "No times planned yet"
- * while none is typed (PRP-3). A heading states its chapter's
+ * The running time counts timed entries only and says how many are not in its
+ * title (DEC-107): "1:34:20 planned", left out while none is typed (PRP-3). A heading states its chapter's
  * time against its target and its BPM range. A transition is summed up in a
  * few words for its cell; the whole sentence, `describeSetWarning`'s, is the
  * cell's title and the Inspector's line.
@@ -23,26 +22,34 @@ function counted(count: number, one: string, many: string): string {
   return `${count.toLocaleString()} ${count === 1 ? one : many}`;
 }
 
-/** Said until a time is typed, when "0:00 planned" would read as a plan (PRP-3). */
-const NO_TIMES_YET = "No times planned yet";
+/** Said in the track count's title while no time is typed, when "0:00 planned" would read as a plan (PRP-3). */
+const NO_TIMES_YET =
+  "No times planned yet. Select an entry and type its Mix in and Mix out in the table to plan the Set's length. Times are optional.";
 
 /**
- * "1:34:20 planned · 3 without times"; "No times planned yet" while no entry
- * has one. An empty Set has nothing to time, so it reads "0:00 planned".
+ * "1:34:20 planned"; null while no entry has a time (PRP-3), and for an empty
+ * Set, which has nothing to time. How many entries are not timed is
+ * `withoutTimesLine`, in the fact's title (DEC-107).
  */
-export function runningTimeLine(running: SetRunningTime): string {
-  if (running.seconds === 0 && running.timed === 0 && running.untimed > 0) return NO_TIMES_YET;
-  const planned = `${formatTime(running.seconds)} planned`;
-  return running.untimed > 0
-    ? `${planned} · ${running.untimed.toLocaleString()} without times`
-    : planned;
+export function runningTimeLine(running: SetRunningTime): string | null {
+  if (running.timed === 0 && running.seconds === 0) return null;
+  return `${formatTime(running.seconds)} planned`;
 }
 
-/** The header's count: warnings still open, and how many were accepted. */
+/** "3 without times"; null when every entry has one. */
+export function withoutTimesLine(running: SetRunningTime): string | null {
+  return running.untimed > 0 ? `${running.untimed.toLocaleString()} without times` : null;
+}
+
+/** The header's count of warnings still open; the accepted ones are `acceptedLine`, in its title. */
 export function warningCountLine(analysis: SetAnalysis): string {
   const open = Object.values(analysis.counts).reduce((sum, count) => sum + (count ?? 0), 0);
-  const head = open === 0 ? "No warnings" : counted(open, "warning", "warnings");
-  return analysis.acknowledged > 0 ? `${head} · ${analysis.acknowledged.toLocaleString()} accepted` : head;
+  return open === 0 ? "No warnings" : counted(open, "warning", "warnings");
+}
+
+/** "2 accepted"; null when none is. */
+function acceptedLine(analysis: SetAnalysis): string | null {
+  return analysis.acknowledged > 0 ? `${analysis.acknowledged.toLocaleString()} accepted` : null;
 }
 
 /** One fact in the header's line: its words, a longer title, and whether it is a warning. */
@@ -75,31 +82,28 @@ const KIND_WORDS: Record<SetWarning["kind"], [string, string]> = {
 };
 
 /**
- * The header's one line (DEC-112 keeps it to one): how many entries, the
- * running time, the warnings, and what the file checks leave unknown, each
- * short, the longer sentence in its title.
+ * The header's one line (DEC-112 keeps it to one): "32 tracks · 9:00 planned ·
+ * 19 warnings", the running time only once something is planned, each short,
+ * the longer sentence in its title. What the line leaves out is in a title: the
+ * untimed entries in the time's, the accepted warnings in the warnings'.
  */
 export function headerFacts(
   entryCount: number,
   running: SetRunningTime,
   analysis: SetAnalysis,
 ): HeaderFact[] {
+  const planned = runningTimeLine(running);
   const facts: HeaderFact[] = [
-    { text: counted(entryCount, "entry", "entries") },
-    {
-      text: runningTimeLine(running),
-      title:
-        runningTimeLine(running) === NO_TIMES_YET
-          ? "Select an entry and type its Mix in and Mix out in the table to plan the Set's length. Times are optional."
-          : undefined,
-    },
+    { text: counted(entryCount, "track", "tracks"), title: planned || entryCount === 0 ? undefined : NO_TIMES_YET },
   ];
+  if (planned) facts.push({ text: planned, title: withoutTimesLine(running) ?? undefined });
   const kinds = (Object.keys(KIND_WORDS) as SetWarning["kind"][])
     .filter((kind) => (analysis.counts[kind] ?? 0) > 0)
     .map((kind) => counted(analysis.counts[kind] ?? 0, ...KIND_WORDS[kind]));
+  const title = [...kinds, acceptedLine(analysis)].filter(Boolean).join(", ");
   facts.push({
     text: warningCountLine(analysis),
-    title: kinds.length > 0 ? kinds.join(", ") : undefined,
+    title: title || undefined,
     strong: kinds.length > 0,
   });
   const files = describeFileCheck(analysis.files);

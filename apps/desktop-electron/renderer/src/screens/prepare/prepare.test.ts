@@ -27,6 +27,7 @@ import {
   summarizeWarnings,
   timeCell,
   warningCountLine,
+  withoutTimesLine,
 } from "./prepareFormat";
 import { SOURCE_DEFAULT_WIDTH, SOURCE_MIN_WIDTH, clampSourceWidth, loadSourceWidth, saveSourceWidth } from "./prepareLayoutState";
 import {
@@ -197,13 +198,18 @@ describe("chapter starts and repeats", () => {
 });
 
 describe("the words", () => {
-  it("counts the timed entries and says how many are not (DEC-107)", () => {
-    expect(runningTimeLine(FRIDAY.plan.running_time)).toBe("9:00 planned · 4 without times");
+  it("counts the timed entries; how many are not is said apart (DEC-107)", () => {
+    expect(runningTimeLine(FRIDAY.plan.running_time)).toBe("9:00 planned");
     expect(runningTimeLine({ seconds: 5660, timed: 3, untimed: 0 })).toBe("1:34:20 planned");
+    expect(withoutTimesLine(FRIDAY.plan.running_time)).toBe("4 without times");
+    expect(withoutTimesLine({ seconds: 5660, timed: 3, untimed: 0 })).toBeNull();
+    // Nothing planned is nothing to say: no "0:00 planned" to read as a plan (PRP-3).
+    expect(runningTimeLine({ seconds: 0, timed: 0, untimed: 6 })).toBeNull();
+    expect(runningTimeLine({ seconds: 0, timed: 0, untimed: 0 })).toBeNull();
   });
 
   it("counts the open warnings and the accepted ones", () => {
-    expect(warningCountLine(FRIDAY.analysis)).toBe("5 warnings · 1 accepted");
+    expect(warningCountLine(FRIDAY.analysis)).toBe("5 warnings");
     expect(warningCountLine({ ...FRIDAY.analysis, counts: {}, acknowledged: 0 })).toBe("No warnings");
     expect(warningCountLine({ ...FRIDAY.analysis, counts: { key_clash: 1 }, acknowledged: 0 })).toBe(
       "1 warning",
@@ -262,47 +268,41 @@ describe("the words", () => {
     expect(warningCountLine(keyless)).toBe(warningCountLine(FRIDAY.analysis));
   });
 
-  it("puts the header's facts on one line, each longer sentence in its title", () => {
+  it("puts the header's facts on one line, each longer sentence in its title (C15d)", () => {
     const facts = headerFacts(6, FRIDAY.plan.running_time, FRIDAY.analysis);
-    expect(facts.map((fact) => fact.text)).toEqual([
-      "6 entries",
-      "9:00 planned · 4 without times",
-      "5 warnings · 1 accepted",
-      "Files not checked",
-    ]);
+    expect(facts.map((fact) => fact.text)).toEqual(["6 tracks", "9:00 planned", "5 warnings", "Files not checked"]);
+    // What is left out of the line is in a title: the untimed, and the accepted warnings.
+    expect(facts[1].title).toBe("4 without times");
+    // Transitions, then entries, then chapters, in words that count.
+    expect(facts[2]).toEqual({
+      text: "5 warnings",
+      title: "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range, 1 accepted",
+      strong: true,
+    });
     // The files fact is the one that acts: it starts Clean's file check (PRP-6).
     expect(facts[3]).toMatchObject({ action: "check_files", actionText: "Check now" });
     expect(facts[3].title).toContain("never been checked");
-    // Transitions, then entries, then chapters, in words that count.
-    expect(facts[2]).toEqual({
-      text: "5 warnings · 1 accepted",
-      title: "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range",
-      strong: true,
-    });
     const partly = { ...FRIDAY.analysis.files, never_checked: false, checked: 3, unchecked: 2 };
     expect(headerFacts(1, FRIDAY.plan.running_time, { ...FRIDAY.analysis, files: partly })[3].text).toBe(
       "2 files not checked",
     );
     const checked = { ...FRIDAY.analysis.files, never_checked: false, checked: 5, unchecked: 0 };
     const quiet = headerFacts(1, FRIDAY.plan.running_time, { ...FRIDAY.analysis, counts: {}, files: checked });
-    expect(quiet.map((fact) => fact.text)).toEqual(["1 entry", "9:00 planned · 4 without times", "No warnings · 1 accepted"]);
-    expect(quiet[2].strong).toBe(false);
+    expect(quiet.map((fact) => fact.text)).toEqual(["1 track", "9:00 planned", "No warnings"]);
+    expect(quiet[2]).toEqual({ text: "No warnings", title: "1 accepted", strong: false });
   });
 
-  it("says no times are planned until one is typed, and that times are optional (PRP-3)", () => {
+  it("says no times are planned only in the count's title, and that times are optional (PRP-3)", () => {
     const none = { seconds: 0, timed: 0, untimed: 6 };
     const facts = headerFacts(6, none, FRIDAY.analysis);
-    expect(facts[1].text).toBe("No times planned yet");
-    // True now that Track details holds the fields; the table's own cells come with FLW-18.
-    expect(facts[1].title).toBe(
-      "Select an entry and type its Mix in and Mix out in the table to plan the Set's length. Times are optional.",
+    expect(facts.map((fact) => fact.text).slice(0, 2)).toEqual(["6 tracks", "5 warnings"]);
+    expect(facts[0].title).toBe(
+      "No times planned yet. Select an entry and type its Mix in and Mix out in the table to plan the Set's length. Times are optional.",
     );
-    expect(runningTimeLine(none)).toBe("No times planned yet");
     // One timed entry is a plan; an empty Set has no entries to be untimed.
-    expect(headerFacts(6, { seconds: 0, timed: 1, untimed: 5 }, FRIDAY.analysis)[1].text).toBe(
-      "0:00 planned · 5 without times",
-    );
-    expect(headerFacts(0, { seconds: 0, timed: 0, untimed: 0 }, FRIDAY.analysis)[1].text).toBe("0:00 planned");
+    const one = headerFacts(6, { seconds: 0, timed: 1, untimed: 5 }, FRIDAY.analysis);
+    expect([one[1].text, one[1].title]).toEqual(["0:00 planned", "5 without times"]);
+    expect(headerFacts(0, { seconds: 0, timed: 0, untimed: 0 }, FRIDAY.analysis)[1].text).toBe("5 warnings");
   });
 
   it("labels Notes with a count mark once the Set has notes (PRP-10)", () => {

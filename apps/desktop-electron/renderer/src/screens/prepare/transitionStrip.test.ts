@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import type { SetEntry } from "../../api/cuepointBridge.types";
+import type { SetEntry, SetWarning } from "../../api/cuepointBridge.types";
 import { FRIDAY, IDS } from "./prepare.testFixture";
 import {
+  KEYS_CLASH,
   NO_BEATPORT_KEY,
+  captionDetail,
   captionSegments,
+  mainWarning,
   halfTimesWords,
-  inWords,
-  outWords,
   shadedTimes,
   transitionOf,
-  transitionWords,
   type TransitionHalf,
 } from "./transitionStrip";
 
@@ -89,29 +89,6 @@ describe("transitionOf", () => {
 });
 
 describe("the words", () => {
-  it("say how the one goes out and the next comes in", () => {
-    expect(transitionWords(transitionOf(ENTRIES, 1)!)).toEqual(["Out 5:42", "→", "In 0:16"]);
-    expect(transitionWords(transitionOf(ENTRIES, 1)!).join(" ")).toBe("Out 5:42 → In 0:16");
-  });
-
-  it("say there is no out time for an out never typed, and for a next entry with no times planned", () => {
-    expect(transitionWords(transitionOf(ENTRIES, 2)!).join(" ")).toBe("Out 6:10 → no times");
-    expect(transitionWords(transitionOf(ENTRIES, 3)!).join(" ")).toBe("No out time → In 1:00");
-  });
-
-  it("are the last entry's out alone", () => {
-    expect(transitionWords(transitionOf(ENTRIES, 4)!)).toEqual(["No out time"]);
-    expect(transitionWords(transitionOf(ENTRIES.slice(0, 1), 1)!)).toEqual(["Out 5:42"]);
-  });
-
-  it("read an empty in time as the start of the track, for an entry that is timed", () => {
-    expect(inWords(half(null, 300))).toBe("In 0:00");
-    expect(inWords(half(16, null))).toBe("In 0:16");
-    expect(inWords(half(null, null))).toBe("no times");
-    expect(outWords(half(16, null))).toBe("No out time");
-    expect(outWords(half(null, 3_725))).toBe("Out 1:02:05");
-  });
-
   it("give each half its planned times", () => {
     expect(halfTimesWords(half(16, 342))).toBe("In 0:16 · Out 5:42");
     expect(halfTimesWords(half(null, 342))).toBe("In 0:00 · Out 5:42");
@@ -131,43 +108,28 @@ describe("the shading", () => {
   });
 });
 
-describe("the loudness difference (WAVE-08)", () => {
-  it("ends the words between the halves when there is one", () => {
-    const transition = transitionOf(ENTRIES, 1)!;
-    expect(transitionWords(transition, "+2.1 LU").join(" ")).toBe("Out 5:42 → In 0:16 · +2.1 LU");
-    expect(transitionWords(transition, null)).toEqual(["Out 5:42", "→", "In 0:16"]);
-  });
-
-  it("is never said after the last entry, which has no next", () => {
-    const last = transitionOf(ENTRIES, ENTRIES[ENTRIES.length - 1]!.entry_id)!;
-    expect(transitionWords(last, "+2.1 LU")).toEqual([outWords(last.from)]);
-  });
-});
-
 // ------------------------------------------------------------- the caption
 
 /** Friday's entries and the engine's own shape of them (FLW-19). */
 const FRIDAY_ENTRIES = FRIDAY.entries.entries;
 const SHAPE = FRIDAY.analysis.shape;
 const [E1, E2, E3, E4, E6, E5] = IDS.friday_entries;
-const captionFrom = (entryId: number, shape = SHAPE, difference: string | null = null) =>
-  captionSegments(transitionOf(FRIDAY_ENTRIES, entryId)!, shape, difference);
+const captionFrom = (entryId: number, shape = SHAPE) => captionSegments(transitionOf(FRIDAY_ENTRIES, entryId)!, shape);
 
-describe("the caption (FLW-19)", () => {
-  it("reads the keys, how they relate, the tempos and the planned times", () => {
-    expect(captionFrom(E1).join(" · ")).toBe(
-      "8A → 9A · next key up · 122 → 124 BPM (+1.6%) · Out 4:30 → In 0:00",
-    );
+describe("the caption (FLW-19, C15d)", () => {
+  it("reads the keys, how they relate and the tempo change, with no planned times", () => {
+    expect(captionFrom(E1).join(" · ")).toBe("8A → 9A · next key up · +1.6% BPM");
+    expect(captionFrom(E1).join(" ")).not.toMatch(/Out|In /);
   });
 
   it("names a step down, a relative key and a clash in the key words", () => {
-    expect(captionFrom(E2).slice(0, 3)).toEqual(["9A → 8A", "next key down", "124 → 128 BPM (+3.2%)"]);
-    expect(captionFrom(E6).slice(0, 3)).toEqual(["8A → 8B", "relative key", "122 → 125 BPM (+2.5%)"]);
-    expect(captionFrom(E3).slice(0, 3)).toEqual(["8A → 3B", "keys clash", "128 → 140 BPM (+9.4%)"]);
+    expect(captionFrom(E2)).toEqual(["9A → 8A", "next key down", "+3.2% BPM"]);
+    expect(captionFrom(E6)).toEqual(["8A → 8B", "relative key", "+2.5% BPM"]);
+    expect(captionFrom(E3)).toEqual(["8A → 3B", KEYS_CLASH, "+9.4% BPM"]);
   });
 
   it("says a slower tempo with a minus sign, and the same key as the same", () => {
-    expect(captionFrom(E4)[2]).toBe("140 → 122 BPM (−12.9%)");
+    expect(captionFrom(E4)[2]).toBe("−12.9% BPM");
     const same = {
       ...SHAPE,
       transitions: SHAPE.transitions.map((t) => (t.from_entry_id === E1 ? { ...t, key_relation: "same" as const } : t)),
@@ -175,8 +137,10 @@ describe("the caption (FLW-19)", () => {
     expect(captionFrom(E1, same).slice(0, 2)).toEqual(["8A → 9A", "same key"]);
   });
 
-  it("puts the loudness last, after the times", () => {
-    expect(captionFrom(E1, SHAPE, "+2.1 LU").slice(-2)).toEqual(["Out 4:30 → In 0:00", "+2.1 LU"]);
+  it("keeps the full tempos for the title: the detail", () => {
+    expect(captionDetail(transitionOf(FRIDAY_ENTRIES, E1)!, SHAPE)).toBe("122 → 124 BPM (+1.6%)");
+    expect(captionDetail(transitionOf(FRIDAY_ENTRIES, E1)!, null)).toBeNull();
+    expect(captionDetail(transitionOf(FRIDAY_ENTRIES, E5)!, SHAPE)).toBeNull();
   });
 
   it("says once that a key is missing, and that it was not checked", () => {
@@ -185,7 +149,7 @@ describe("the caption (FLW-19)", () => {
       entries: SHAPE.entries.map((e) => (e.entry_id === E2 ? { ...e, key: null, camelot: null } : e)),
     };
     expect(NO_BEATPORT_KEY).toBe("No Beatport key: key not checked");
-    expect(captionFrom(E1, keyless).slice(0, 2)).toEqual([NO_BEATPORT_KEY, "122 → 124 BPM (+1.6%)"]);
+    expect(captionFrom(E1, keyless)).toEqual([NO_BEATPORT_KEY, "+1.6% BPM"]);
   });
 
   it("leaves the tempo out when either side has none, and everything out without the shape", () => {
@@ -193,19 +157,49 @@ describe("the caption (FLW-19)", () => {
       ...SHAPE,
       entries: SHAPE.entries.map((e) => (e.entry_id === E2 ? { ...e, bpm: null } : e)),
     };
-    expect(captionFrom(E1, noBpm)).toEqual(["8A → 9A", "next key up", "Out 4:30 → In 0:00"]);
-    expect(captionSegments(transitionOf(FRIDAY_ENTRIES, E1)!, null, null)).toEqual(["Out 4:30 → In 0:00"]);
+    expect(captionFrom(E1, noBpm)).toEqual(["8A → 9A", "next key up"]);
+    expect(captionSegments(transitionOf(FRIDAY_ENTRIES, E1)!, null)).toEqual([]);
   });
 
-  it("is the out time alone for the last entry", () => {
-    expect(captionFrom(E5)).toEqual(["No out time"]);
+  it("says a clash in the caption even with a key clash warning listed: the warning is a line of its own", () => {
+    expect(captionFrom(E3)).toContain(KEYS_CLASH);
   });
 
-  it("says the same tempo as the same", () => {
+  it("is empty for the last entry: there is no transition to read", () => {
+    expect(captionFrom(E5)).toEqual([]);
+  });
+
+  it("says the same tempo as 0%", () => {
     const flat = {
       ...SHAPE,
       entries: SHAPE.entries.map((e) => (e.entry_id === E2 ? { ...e, bpm: 122 } : e)),
     };
-    expect(captionFrom(E1, flat)[2]).toBe("122 → 122 BPM (0%)");
+    expect(captionFrom(E1, flat)[2]).toBe("0% BPM");
+  });
+});
+
+describe("the one warning the caption shows (C15d)", () => {
+  // Only the kind and whether it is accepted are read.
+  const warn = (kind: SetWarning["kind"], acknowledged = false): SetWarning =>
+    ({ kind, acknowledged }) as unknown as SetWarning;
+
+  it("is the first still open, key clash before tempo jump before tempo unknown, the rest counted", () => {
+    const list = [warn("tempo_unknown"), warn("tempo_jump"), warn("key_clash")];
+    const { shown, others } = mainWarning(list);
+    expect(shown?.kind).toBe("key_clash");
+    expect(others.map((w) => w.kind)).toEqual(["tempo_jump", "tempo_unknown"]);
+    expect(mainWarning([warn("tempo_unknown"), warn("tempo_jump")]).shown?.kind).toBe("tempo_jump");
+  });
+
+  it("passes an accepted one over for an open one, and falls back to it when all are accepted", () => {
+    expect(mainWarning([warn("key_clash", true), warn("tempo_jump")]).shown?.kind).toBe("tempo_jump");
+    const all = mainWarning([warn("tempo_jump", true), warn("key_clash", true)]);
+    expect(all.shown?.kind).toBe("key_clash");
+    expect(all.others).toHaveLength(1);
+  });
+
+  it("is none for no warnings, or for kinds the strip does not carry", () => {
+    expect(mainWarning([])).toEqual({ shown: null, others: [] });
+    expect(mainWarning([warn("file_missing")])).toEqual({ shown: null, others: [] });
   });
 });

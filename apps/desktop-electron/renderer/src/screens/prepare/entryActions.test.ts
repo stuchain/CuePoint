@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildSetRows } from "./prepareRows";
 import { FRIDAY, IDS, PLAIN } from "./prepare.testFixture";
-import { NO_ENTRY_SELECTED, entryButtons, stepMoves } from "./entryActions";
+import { entryButtons, stepMoves } from "./entryActions";
 
 /**
  * The entry buttons (FLW-17): which are enabled, why one is not, and the
@@ -56,8 +56,8 @@ describe("Move up and Move down", () => {
 describe("the five buttons", () => {
   const by = (list: ReturnType<typeof entryButtons>) => Object.fromEntries(list.map((b) => [b.id, b]));
 
-  it("are always there, in order, and say 'Select an entry' until one is selected (DEC-209)", () => {
-    const list = entryButtons(rows, ids());
+  it("are the five, in order, with the words a row has room for and the names kept (C15d)", () => {
+    const list = entryButtons(rows, ids(E2));
     expect(list.map((button) => button.label)).toEqual([
       "Move up",
       "Move down",
@@ -65,11 +65,27 @@ describe("the five buttons", () => {
       "Repeat after",
       "Remove",
     ]);
-    for (const button of list) {
-      expect(button.disabled).toBe(true);
-      expect(button.reason).toBe(NO_ENTRY_SELECTED);
-    }
-    expect(NO_ENTRY_SELECTED).toBe("Select an entry");
+    expect(list.map((button) => button.short)).toEqual(["↑", "↓", "Chapter here", "Repeat after", "Remove"]);
+    // A pane with no room for the words draws these instead (DEC-249).
+    expect(list.map((button) => button.glyph)).toEqual(["↑", "↓", "Chapter", "↻", "×"]);
+  });
+
+  it("are none while nothing is selected: the row they sit on is the selected one (DEC-249)", () => {
+    expect(entryButtons(rows, ids())).toEqual([]);
+    expect(entryButtons(rows, ids(99999))).toEqual([]);
+  });
+
+  it("say what they do in the hint, and for how many, with the key", () => {
+    const one = by(entryButtons(rows, ids(E2)));
+    expect(one.up.hint).toBe("Move up (Alt+↑)");
+    expect(one.remove.hint).toBe("Remove (Delete)");
+    expect(one.split.hint).toBe("Start a chapter here");
+    const several = by(entryButtons(rows, ids(E2, E3)));
+    expect(several.up.hint).toBe("Move 2 entries up (Alt+↑)");
+    expect(several.down.hint).toBe("Move 2 entries down (Alt+↓)");
+    expect(several.remove.hint).toBe("Remove 2 entries (Delete)");
+    // A reason, when there is one, is the hint.
+    expect(by(entryButtons(rows, ids(E1))).up.hint).toBe("Already first in the Set");
   });
 
   it("name their keys: Alt+Up, Alt+Down and Delete", () => {

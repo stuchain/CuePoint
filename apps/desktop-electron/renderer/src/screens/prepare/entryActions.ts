@@ -2,10 +2,11 @@
  * The buttons for the selected entries (FLW-17), apart from their drawing.
  *
  * Move up, Move down, Start a chapter here, Repeat after and Remove sit on the
- * Set's facts line and are always shown, disabled with a reason until there is
- * something to act on (DEC-209). Which are enabled, and what "Move up" asks of
- * the engine for one entry or several, is decided here so it is a unit test and
- * not a glimpse through a component.
+ * focused entry's row, in short words (DEC-249, which amends DEC-209). With no
+ * entry selected there is no such row and none is drawn; with several selected
+ * they act on all of them, and a button that cannot says why in its hint. Which
+ * are enabled, and what "Move up" asks of the engine for one entry or several,
+ * is decided here so it is a unit test and not a glimpse through a component.
  *
  * A move is one step in the table as it reads: past the entry above or below,
  * and, at a chapter's edge, across its heading, which is a step of its own (the
@@ -17,20 +18,25 @@ import { canSplitAt, isEntryRow, type EntryMove, type PrepareRow } from "./prepa
 
 export type EntryButtonId = "up" | "down" | "split" | "repeat" | "remove";
 
+/** A button's id in the page: stable, so focus can return to it when its row is redrawn (only one row has them). */
+export const entryButtonDomId = (id: EntryButtonId): string => `prepare-entry-button-${id}`;
+
 export interface EntryButton {
   id: EntryButtonId;
+  /** The full name: the button's accessible name. */
   label: string;
+  /** What the row has room for: "↑" for Move up, "Chapter here" for Start a chapter here. */
+  short: string;
+  /** What stands for `short` when the row has no room for the words (DEC-249): "Chapter" for the longest, the arrows and symbols for the rest. */
+  glyph: string;
   disabled: boolean;
   /** Why it is disabled, said in its hint; null when it is not. */
   reason: string | null;
   /** The key that does the same, as it is written in a hint. */
   shortcut: string | null;
-  /** What stands for the label when the line has no room for the words (DEC-112). */
-  glyph: string;
+  /** The button's hint: the reason it is disabled, else what it does (to how many) and its key. */
+  hint: string;
 }
-
-/** What every button says until an entry is selected. */
-export const NO_ENTRY_SELECTED = "Select an entry";
 
 type Item =
   | { kind: "heading"; chapterId: number }
@@ -97,33 +103,55 @@ export function stepMoves(
   return moves;
 }
 
-const GLYPHS: Record<EntryButtonId, string> = { up: "↑", down: "↓", split: "¶", repeat: "↻", remove: "×" };
+const SHORT: Record<EntryButtonId, string> = {
+  up: "↑",
+  down: "↓",
+  split: "Chapter here",
+  repeat: "Repeat after",
+  remove: "Remove",
+};
+const GLYPHS: Record<EntryButtonId, string> = { up: "↑", down: "↓", split: "Chapter", repeat: "↻", remove: "×" };
+
+/** What a button does, to the entries it acts on: "Move 3 entries up", "Remove". */
+function doing(id: EntryButtonId, label: string, count: number): string {
+  if (count < 2) return label;
+  if (id === "up" || id === "down") return `Move ${count.toLocaleString()} entries ${id}`;
+  if (id === "remove") return `Remove ${count.toLocaleString()} entries`;
+  return label;
+}
 
 const button = (
   id: EntryButtonId,
   label: string,
+  count: number,
   reason: string | null,
   shortcut: string | null = null,
-): EntryButton => ({ id, label, disabled: reason !== null, reason, shortcut, glyph: GLYPHS[id] });
+): EntryButton => ({
+  id,
+  label,
+  short: SHORT[id],
+  glyph: GLYPHS[id],
+  disabled: reason !== null,
+  reason,
+  shortcut,
+  hint: reason ?? (shortcut ? `${doing(id, label, count)} (${shortcut})` : doing(id, label, count)),
+});
 
 /**
- * The five buttons for the entries selected, in the order they are drawn.
- * Start a chapter here uses the first selected entry; Repeat after needs
- * exactly one.
+ * The five buttons for the entries selected, in the order they are drawn; none
+ * when no entry is selected. Start a chapter here uses the first selected
+ * entry; Repeat after needs exactly one.
  */
 export function entryButtons(rows: readonly PrepareRow[], selected: ReadonlySet<number>): EntryButton[] {
   const chosen = rows.filter(isEntryRow).filter((row) => selected.has(row.entry.entry_id));
-  const none = chosen.length === 0 ? NO_ENTRY_SELECTED : null;
   const first = chosen[0];
+  if (!first) return [];
+  const n = chosen.length;
   return [
-    button("up", "Move up", none ?? (stepMoves(rows, selected, -1).length > 0 ? null : "Already first in the Set"), "Alt+↑"),
-    button("down", "Move down", none ?? (stepMoves(rows, selected, 1).length > 0 ? null : "Already last in the Set"), "Alt+↓"),
-    button(
-      "split",
-      "Start a chapter here",
-      none ?? (first && canSplitAt(rows, first.entry.entry_id) ? null : "Already starts a chapter"),
-    ),
-    button("repeat", "Repeat after", none ?? (chosen.length === 1 ? null : "Select one entry")),
-    button("remove", "Remove", none, "Delete"),
+    button("up", "Move up", n, stepMoves(rows, selected, -1).length > 0 ? null : "Already first in the Set", "Alt+↑"),
+    button("down", "Move down", n, stepMoves(rows, selected, 1).length > 0 ? null : "Already last in the Set", "Alt+↓"),
+    button("split", "Start a chapter here", n, canSplitAt(rows, first.entry.entry_id) ? null : "Already starts a chapter"),
+    button("repeat", "Repeat after", n, n === 1 ? null : "Select one entry"),
+    button("remove", "Remove", n, null, "Delete"),
   ];
 }

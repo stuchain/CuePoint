@@ -83,7 +83,7 @@ track is in, and each opens there too.
 - **Drag** an entry to a new place. Dropping on the top half of an entry puts it
   before that entry, the bottom half after it, and on a chapter's heading at the
   start of that chapter.
-- **Move up** and **Move down**, on the buttons' line under the header (also Alt+↑ and
+- **↑** and **↓** (Move up and Move down), on the selected row (also Alt+↑ and
   Alt+↓ while the table has focus, as in the queue), move the selected entries
   one place. At the edge of a chapter the entry crosses into the next one first.
   With several selected, they move together.
@@ -91,9 +91,20 @@ track is in, and each opens there too.
   entry's right-click menu, removes the selected entries and nothing else. No
   track is ever deleted.
 
-These buttons are always there. Until an entry is selected they are disabled and
-say "Select an entry"; one that cannot act says why ("Already first in the
-Set"). Drag and right-click work as before.
+The buttons are at the right end of the selected row, so they push nothing down.
+With nothing selected there are none; with several entries selected they are on
+the one you clicked last, and act on all of them (hover one: "Move 3 entries
+up"). One that cannot act says why ("Already first in the Set"). They are
+**↑**, **↓**, **Chapter here** (Start a chapter here), **Repeat after** and
+**Remove**; each is a Tab stop (Tab from the table goes to them) and keeps its
+full name for a screen reader. They never cover the row's number or the title: in
+a narrow pane they shrink to symbols (**↑ ↓ Chapter ↻ ×**), and when even those
+do not fit, to one **Actions ▾** button that opens the same menu as a right-click
+on the entry. They step aside while you type a Mix in or Mix out on that row.
+Because a double-click on the row plays it, they ignore the pointer for half a
+second after they appear, and a click on **Remove** takes half a second to act, so
+a double-click aimed at the row's end plays it and removes nothing. Drag and
+right-click work as before.
 
 Selecting a Set in the Library's tree shows its tracks in the table there, each
 once, in the order it first plays; the Library says so above the table. The
@@ -102,17 +113,18 @@ running order with its repeats is the Prepare page's.
 ## The page
 
 The header's picker names the Set open. Beside it are **New Set ▾**, **Play
-Set** and **Export ▾**. Under them, one line says how many entries the Set has,
-its planned running time ("No times planned yet" until you type one), how many
-warnings its checks found and how many you accepted, and — when it applies —
+Set** and **Export ▾**. Under them, one line says how many tracks the Set has, its planned
+running time (left out until you type a time), and how many warnings its
+checks found ("32 tracks · 19 warnings"; hover the time for how many entries
+have no time, and the warnings for what they are and how many you accepted), and
+— when it applies —
 "Files not checked" with **Check now**, which starts the same check as **Check
 every file** on the [Clean](clean.md) page, and "3 without key" with **Match
 tracks…**, which opens Clean's match window on those entries' tracks (hover for
 the whole sentence). A missing key is not a warning: those entries are simply not
 checked for key. The counts shorten to fit (hover them for the whole line); these
-two never do. On a line of their own below are the buttons for the selected
-entries, in words: **Move up**, **Move down**, **Start a chapter here**,
-**Repeat after** and **Remove**. **Notes** holds notes for the whole Set:
+two never do. The buttons for the selected entries are on the selected row, not
+here. **Notes** holds notes for the whole Set:
 the venue, the set times, anything you want to remember; it reads **Notes (1)**
 once the Set has some. **View ▾** shows or hides the tempo and key lanes and the
 transition strip, and chooses the table's columns.
@@ -173,8 +185,9 @@ under the header says, the reason first and the entry's name last ("Not saved:
 
 - **An entry is timed when it has an out time.** It plays for its out time less
   its in time, which the **Plays for** column shows.
-- **The running time counts timed entries only**, and says how many it did not
-  count: "9:00 planned · 4 without times", or "No times planned yet" while none is typed.
+- **The running time counts timed entries only**: "9:00 planned", and it says how
+  many it did not count ("4 without times") when you hover it. It is left out while
+  no time is typed ("No times planned yet", in the track count's hover).
   Times are optional. It never guesses how long an entry without an out time
   will play.
 - **Starts at** is when each entry begins, counted from the Set's start. It stops at
@@ -295,20 +308,21 @@ after it, so you can see how one track ends and the next begins:
   A track whose waveform has not been made yet says so in place, with how far
   the analysis has got ("Not made yet — 312 of 4,000"; hover for the whole
   sentence), and **See progress** under the words opens Settings at Waveforms.
-- **Between them**, a caption in words: the keys, how they relate, the tempos,
-  and how the one goes out and the next comes in: "8A → 9A · next key up · 124 →
-  126 BPM (+1.6%) · Out 5:30 → In 0:45". The key words are the ones Similar
-  tracks uses ("same key", "next key up" or "down", "relative key", "keys
-  clash"; not said twice when the warning below says it). When either track has no Beatport key it says "No Beatport key: key
-  not checked" instead. "No out time" stands for an out time not typed yet, and
-  "no times" for a next entry with none planned at all. When both tracks have a
-  loudness, the caption ends with how much louder or quieter the next one is:
-  "… · +2.1 LU", which means the next track is 2.1 dB louder
-  (hover the words for this). CuePoint changes neither track's volume; see
+- **Between them**, a short caption: the keys, how they relate, and how far the
+  tempo changes: "8A → 9A · next key up · +1.6% BPM". The key words are the ones
+  Similar tracks uses ("same key", "next key up" or "down", "relative key", "keys
+  clash", in the warning colour, even when the warning below says it too).
+  When either track has no Beatport key it says "No Beatport key: key not
+  checked" instead. Hover the caption for the whole tempos ("124 → 126 BPM") and,
+  when both tracks have a loudness, how much louder or quieter the next one is:
+  "+2.1 LU" means the next track is 2.1 dB louder. The planned times are in the
+  titles above. CuePoint changes neither track's volume; see
   [Loudness](waveforms.md#loudness).
 - **A warning on that transition** is a few words at the end of the caption ("Tempo
   jump", "Keys clash"; hover for the sentence), with
-  **Accept** beside it ("Undo accept" once accepted). The strip is no taller for
+  **Accept** beside it ("Undo accept" once accepted). Only one is shown, the first
+  you have not accepted (a key clash before a tempo jump); any others, accepted or
+  not, are counted as "+1 more" (hover it), and the Inspector lists them all. The strip is no taller for
   it.
 
 With nothing selected the strip says to select an entry; with the last entry

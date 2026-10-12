@@ -7,19 +7,15 @@
  *
  * - **Each half's times** (DEC-107): "In 0:16 · Out 5:42". An empty in time is
  *   the start of the track, and an entry without an out time has "No out time".
- * - **The words between the halves:** the first entry's out and the next
- *   one's in, "Out 5:42 → In 0:16". "No out time" stands for an out time that
- *   was never typed, and "no times" for a next entry with none planned at all.
- *   The last entry's words are its out alone; its second half reads "End of
- *   Set".
+ * - **The last entry's second half** reads "End of Set".
  * - **Its shading:** the planned times in milliseconds, for the drawing's
  *   regions before the in and after the out. Planned times are text as well as
  *   shading, because no picture is the only place a fact appears (DEC-120).
- * - **Its caption** (FLW-19): the keys, how they relate, the tempos and the
- *   planned times in one line of segments, "8A → 9A · next key up · 124 → 126
- *   BPM (+1.6%) · Out 5:30 → In 0:45", in the key words everywhere else uses.
- * - **Its loudness** (WAVE-08): the words gain how much louder the next track
- *   sits than the selected one, "+2.1 LU", when both are measured.
+ * - **Its caption** (FLW-19, C15d): the keys, how they relate and the tempo change
+ *   in one line of segments, "8A → 9A · next key up · +1.6% BPM", in the key words
+ *   everywhere else uses. The planned times are the halves' titles'.
+ * - **Its loudness** (WAVE-08): how much louder the next track sits than the
+ *   selected one, "+2.1 LU", when both are measured, is in the caption's title.
  *   `loudnessWords.ts` says each number.
  */
 import type { SetEntry, SetShape, SetWarning } from "../../api/cuepointBridge.types";
@@ -76,11 +72,6 @@ export function transitionOf(
   return { from: halfOf(entries[at]!), to: next ? halfOf(next) : null };
 }
 
-/** True when an entry has neither time planned. */
-function unplanned(half: TransitionHalf): boolean {
-  return half.inSeconds === null && half.outSeconds === null;
-}
-
 /** What an out time never typed reads as (PRP-3): the count stays honest without a word to decode. */
 const NO_OUT_TIME = "No out time";
 
@@ -91,28 +82,6 @@ export function halfTimesWords(half: TransitionHalf): string {
   }
   if (half.inSeconds !== null) return `In ${formatTime(half.inSeconds)} · no out time`;
   return NO_OUT_TIME;
-}
-
-/** The out half of the words: "Out 5:42", or "No out time". */
-export function outWords(half: TransitionHalf): string {
-  return half.outSeconds !== null ? `Out ${formatTime(half.outSeconds)}` : NO_OUT_TIME;
-}
-
-/** The in half of the words: "In 0:16", "In 0:00" for a timed entry from its start, or "no times". */
-export function inWords(half: TransitionHalf): string {
-  if (unplanned(half)) return "no times";
-  return `In ${formatTime(half.inSeconds ?? 0)}`;
-}
-
-/**
- * The words between the halves, in reading order, ending with the loudness
- * difference when there is one (WAVE-08): "Out 5:42 → In 0:16 · +2.1 LU".
- */
-export function transitionWords(transition: Transition, difference: string | null = null): string[] {
-  const out = outWords(transition.from);
-  if (!transition.to) return [out];
-  const words = [out, "→", inWords(transition.to)];
-  return difference ? [...words, "·", difference] : words;
 }
 
 /** The shading of a half: the planned in and out in milliseconds, or null where nothing is shaded. */
@@ -137,52 +106,82 @@ function relationWords(
   return `${words} ${(to.number - from.number + 12) % 12 === 1 ? "up" : "down"}`;
 }
 
-/** "122 → 124 BPM (+1.6%)": the tempos and how far the second is from the first. */
-function tempoWords(from: number, to: number): string {
+/** The change of tempo as the caption says it: "+2.8% BPM", "−12.9% BPM", "0% BPM". */
+function tempoChange(from: number, to: number): string {
   const change = ((to - from) / from) * 100;
   const rounded = Math.round(Math.abs(change) * 10) / 10;
   const sign = rounded === 0 ? "" : change > 0 ? "+" : "−";
-  return `${formatBpm(from)} → ${formatBpm(to)} BPM (${sign}${rounded}%)`;
+  return `${sign}${rounded}% BPM`;
+}
+
+/** "122 → 124 BPM (+1.6%)": the tempos and how far the second is from the first, for a title. */
+function tempoWords(from: number, to: number): string {
+  const change = tempoChange(from, to).replace(" BPM", "");
+  return `${formatBpm(from)} → ${formatBpm(to)} BPM (${change})`;
+}
+
+/** What the caption says in place of a key relation that is a clash (shown in the warning colour). */
+export const KEYS_CLASH = "keys clash";
+
+/** The two entries of a transition in the Set's shape, when both have one. */
+function shapeOf(transition: Transition, shape: SetShape | null) {
+  const to = transition.to;
+  if (!to || !shape) return null;
+  const from = shape.entries.find((entry) => entry.entry_id === transition.from.entryId);
+  const next = shape.entries.find((entry) => entry.entry_id === to.entryId);
+  return from && next ? { from, next } : null;
 }
 
 /**
- * The caption's segments, joined with " · " when it is drawn (FLW-19): the keys
- * and how they relate, the tempos, the planned times, the loudness difference.
- * A segment with nothing to say is left out; a missing key is said once, as the
- * reason no key was compared. Without the Set's shape only the times are said.
+ * The caption's segments, joined with " · " when it is drawn (FLW-19, C15d): the
+ * keys and how they relate ("8A → 4A · next key up", or "keys clash"), and the
+ * tempo change ("+2.8% BPM"). The planned times are the halves' titles' and the
+ * loudness difference the caption's title's, so neither is here. A segment
+ * with nothing to say is left out; a missing key is said once, as the reason no
+ * key was compared. Without the Set's shape, or after the last entry, nothing.
  */
-export function captionSegments(
-  transition: Transition,
-  shape: SetShape | null,
-  difference: string | null = null,
-  warnings: readonly SetWarning[] = [],
-): string[] {
+export function captionSegments(transition: Transition, shape: SetShape | null): string[] {
   const segments: string[] = [];
-  const clashes = warnings.some((warning) => warning.kind === "key_clash");
-  const to = transition.to;
-  if (to && shape) {
-    const from = shape.entries.find((entry) => entry.entry_id === transition.from.entryId);
-    const next = shape.entries.find((entry) => entry.entry_id === to.entryId);
-    if (from && next) {
-      if (from.camelot && next.camelot) {
-        const link = shape.transitions.find(
-          (step) => step.from_entry_id === from.entry_id && step.to_entry_id === next.entry_id,
-        );
-        segments.push(`${from.key} → ${next.key}`);
-        // A listed key clash says so itself: the caption does not say it twice.
-        if (!clashes) segments.push(relationWords(link?.key_relation ?? null, from.camelot, next.camelot));
-      } else {
-        segments.push(NO_BEATPORT_KEY);
-      }
-      if (from.bpm != null && next.bpm != null && from.bpm > 0) {
-        segments.push(tempoWords(from.bpm, next.bpm));
-      }
-    }
+  const pair = shapeOf(transition, shape);
+  if (!pair || !shape) return segments;
+  const { from, next } = pair;
+  if (from.camelot && next.camelot) {
+    const link = shape.transitions.find(
+      (step) => step.from_entry_id === from.entry_id && step.to_entry_id === next.entry_id,
+    );
+    segments.push(`${from.key} → ${next.key}`);
+    // A clash is said here in the warning colour even when the warning beside the caption says it too:
+    // the keys line reads whole, and the warning is the one to accept.
+    segments.push(relationWords(link?.key_relation ?? null, from.camelot, next.camelot));
+  } else {
+    segments.push(NO_BEATPORT_KEY);
   }
-  const times = transitionWords(transition).join(" ");
-  segments.push(times);
-  if (difference && to) segments.push(difference);
+  if (from.bpm != null && next.bpm != null && from.bpm > 0) {
+    segments.push(tempoChange(from.bpm, next.bpm));
+  }
   return segments;
+}
+
+/** The whole tempos behind the caption's "+2.8% BPM", for its title; null when it has none. */
+export function captionDetail(transition: Transition, shape: SetShape | null): string | null {
+  const pair = shapeOf(transition, shape);
+  if (!pair || pair.from.bpm == null || pair.next.bpm == null || pair.from.bpm <= 0) return null;
+  return tempoWords(pair.from.bpm, pair.next.bpm);
+}
+
+/** The order the strip shows a warning in: the clash first, then the tempo's. */
+const WARNING_ORDER: SetWarning["kind"][] = ["key_clash", "tempo_jump", "tempo_unknown"];
+
+/**
+ * The one warning the caption shows, with Accept (C15d): the first still open in
+ * the order key clash, tempo jump, tempo unknown, or, when every one is
+ * accepted, the first of them so its Undo stays reachable; every other, accepted
+ * or not, is counted in a "+N more" and listed in its title. Only the warnings of a transition are its to show.
+ */
+export function mainWarning(warnings: readonly SetWarning[]): { shown: SetWarning | null; others: SetWarning[] } {
+  const ordered = WARNING_ORDER.flatMap((kind) => warnings.filter((warning) => warning.kind === kind));
+  const shown = ordered.find((warning) => !warning.acknowledged) ?? ordered[0] ?? null;
+  return { shown, others: ordered.filter((warning) => warning !== shown) };
 }
 
 /**

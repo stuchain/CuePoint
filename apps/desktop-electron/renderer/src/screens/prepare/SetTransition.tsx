@@ -15,14 +15,15 @@
  * strip walks the Set one transition at a time. Both tracks shown are put
  * first in the analysis while they wait for it, as the Inspector's is.
  *
- * **The caption** (FLW-19) sits between the halves over the strip's whole
- * height: the keys and how they relate, the tempos, the planned times and the
- * loudness difference, with a warning on the transition as a sentence at its
- * end and Accept beside it. It takes the strip's own height, so a warning grows
- * the strip by nothing.
+ * **The caption** (FLW-19, C15d) sits between the halves over the strip's whole
+ * height: the keys and how they relate and the tempo change, with the one main
+ * warning on the transition at its end, Accept beside it and any others as
+ * "+N more" in a title. The planned times are the halves' titles'; the whole
+ * tempos and the loudness difference are the caption's title's. It takes the
+ * strip's own height, so a warning grows the strip by nothing.
  *
  * Loudness (WAVE-08, DEC-124): each title ends with its track's, and the words
- * between the halves gain the difference, "+2.1 LU", when both are measured.
+ * between the halves have the difference, "+2.1 LU", in their title when both are measured.
  * Read without pictures for the two tracks, so a title and the words agree
  * whatever each half has drawn. Shown, never applied.
  */
@@ -51,11 +52,14 @@ import { WaveformCanvas } from "../../components/waveform/WaveformCanvas";
 import type { WaveformEntry } from "../../components/waveform/waveformCache";
 import { useWaveformBox } from "../../components/waveform/waveformEnvironment";
 import { useScaleFactor } from "../../tokens/ScaleContext";
-import { describeSetWarning, isAcknowledgeable } from "./setWarnings";
+import { describeSetWarning } from "./setWarnings";
 import {
   END_OF_SET,
+  KEYS_CLASH,
   NO_SELECTION_WORDS,
+  captionDetail,
   captionSegments,
+  mainWarning,
   stripWarningWords,
   halfTimesWords,
   shadedTimes,
@@ -144,6 +148,10 @@ function loudnessOf(entry: WaveformEntry | undefined): WaveformLoudness | null {
   return entry?.kind === "track" && entry.track.state === "ready" ? entry.track.loudness : null;
 }
 
+/** A warning's whole sentence, for a title. */
+const describeShown = (warning: SetWarning) =>
+  `${describeSetWarning(warning)}${warning.acknowledged ? " (accepted)" : ""}`;
+
 function Title({ half, entry }: { half: TransitionHalf; entry: WaveformEntry | undefined }) {
   const track = entry?.kind === "track" ? entry.track : null;
   const loudness = loudnessShort(track);
@@ -193,6 +201,11 @@ export function SetTransition({
   const fromEntry = transition ? numbers.get(transition.from.trackId) : undefined;
   const toEntry = transition?.to ? numbers.get(transition.to.trackId) : undefined;
   const difference = loudnessDifference(loudnessOf(fromEntry), loudnessOf(toEntry));
+  const { shown, others } = mainWarning(warnings);
+  const segments = transition ? captionSegments(transition, shape) : [];
+  // The whole tempos and the loudness difference are the caption's title's (C15d).
+  const tempos = transition ? captionDetail(transition, shape) : null;
+  const captionTitle = [tempos, loudnessUnitsTitle(difference)].filter(Boolean).join(". ");
 
   return (
     <section
@@ -212,44 +225,46 @@ export function SetTransition({
             analysis={analysis}
             onSeeProgress={onSeeProgress}
           />
-          <div className="prepare-transition__caption" data-testid="transition-caption">
-            <p
-              className="prepare-transition__words"
-              data-testid="transition-words"
-              title={loudnessUnitsTitle(difference)}
-            >
-              {captionSegments(transition, shape, difference, warnings).map((segment, index) => (
-                <span key={segment + index} className="prepare-transition__piece">
-                  {index > 0 && <span aria-hidden="true">{" · "}</span>}
-                  <span className="prepare-transition__segment" title={segment}>
-                    {segment}
+          <div className="prepare-transition__caption" data-testid="transition-caption" title={captionTitle}>
+            {segments.length > 0 && (
+              <p className="prepare-transition__words" data-testid="transition-words">
+                {segments.map((segment, index) => (
+                  <span
+                    key={segment + index}
+                    className={`prepare-transition__piece${segment === KEYS_CLASH ? " prepare-transition__piece--warning" : ""}`}
+                  >
+                    {index > 0 && <span aria-hidden="true">{" · "}</span>}
+                    <span className="prepare-transition__segment" title={segment}>
+                      {segment}
+                    </span>
                   </span>
+                ))}
+              </p>
+            )}
+            {shown && (
+              <p
+                className={`prepare-transition__warning${shown.acknowledged ? " prepare-transition__warning--accepted" : ""}`}
+                data-testid="transition-warning"
+              >
+                <span className="prepare-transition__sentence" title={describeShown(shown)}>
+                  {`${stripWarningWords(shown)}${shown.acknowledged ? " (accepted)" : ""}`}
                 </span>
-              ))}
-            </p>
-            {warnings.filter(isAcknowledgeable).map((warning) => {
-              const sentence = `${describeSetWarning(warning)}${warning.acknowledged ? " (accepted)" : ""}`;
-              return (
-                <p
-                  key={`${warning.kind}-${warning.detail}`}
-                  className={`prepare-transition__warning${warning.acknowledged ? " prepare-transition__warning--accepted" : ""}`}
-                  data-testid="transition-warning"
-                >
-                  <span className="prepare-transition__sentence" title={sentence}>
-                    {`${stripWarningWords(warning)}${warning.acknowledged ? " (accepted)" : ""}`}
+                {onAccept && (
+                  <Button
+                    variant="secondary"
+                    className="prepare-transition__accept"
+                    onClick={() => onAccept(shown, !shown.acknowledged)}
+                  >
+                    {shown.acknowledged ? "Undo accept" : "Accept"}
+                  </Button>
+                )}
+                {others.length > 0 && (
+                  <span className="prepare-transition__more" title={others.map(describeShown).join("\n")}>
+                    {`+${others.length.toLocaleString()} more`}
                   </span>
-                  {onAccept && (
-                    <Button
-                      variant="secondary"
-                      className="prepare-transition__accept"
-                      onClick={() => onAccept(warning, !warning.acknowledged)}
-                    >
-                      {warning.acknowledged ? "Undo accept" : "Accept"}
-                    </Button>
-                  )}
-                </p>
-              );
-            })}
+                )}
+              </p>
+            )}
           </div>
           {transition.to ? (
             <Half

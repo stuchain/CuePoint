@@ -31,7 +31,7 @@
  *   lands. Either way the tracks go in one at a time through the one path that
  *   writes an entry (PREP-02).
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import type {
@@ -47,7 +47,6 @@ import type {
   TrackCreditLinks,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
-import { Hint } from "../../components/Hint";
 import { Modal } from "../../components/Modal";
 import { Panel } from "../../components/Panel";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
@@ -55,7 +54,7 @@ import { useToast } from "../../components/Toast";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { settingsFocusState } from "../settingsLink";
 import { ColumnPicker, TrackTable, inMemorySource, useColumnLayout } from "../../components/table";
-import { readRowHeight } from "../../components/table/trackTableLayout";
+import { columnMinWidth, readRowHeight } from "../../components/table/trackTableLayout";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { trackCount } from "../clean/cleanFormat";
 import { cleanMatchState } from "../clean/cleanLink";
@@ -77,6 +76,7 @@ import { useTrackDetail } from "../library/useTrackDetail";
 import { ChapterDialog } from "./ChapterDialog";
 import { NewSetDialog, SetSourceDialog } from "./NewSetDialogs";
 import { PrepareLayout } from "./PrepareLayout";
+import { EntryButtons } from "./prepareEditing";
 import { PrepareEditingContext, type PrepareEditing, type TimeSaveResult } from "./prepareEditingContext";
 import { SetEntryZone } from "./SetEntryZone";
 import { SetLanes } from "./SetLanes";
@@ -84,7 +84,7 @@ import { SetNotesDialog } from "./SetNotesDialog";
 import { SetTransition } from "./SetTransition";
 import { useSetAreaFloor } from "./setAreaFloor";
 import { SourcePanel } from "./SourcePanel";
-import { entryButtons, stepMoves, type EntryButton } from "./entryActions";
+import { entryButtonDomId, entryButtons, stepMoves, type EntryButton } from "./entryActions";
 import { nextTimeTarget, timeRefusalWords, timeTexts, timesToSave, type TimeField, type TimeTarget, type TimeTexts } from "./timeEditing";
 import { newSetSources } from "./newSetSources";
 import { PREPARE_COLUMNS, PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
@@ -135,12 +135,6 @@ import "../screens.css";
 import "./prepare.css";
 
 /** The page's own memory of the tree's folders, apart from the Library pane's. */
-/**
- * How the buttons for the selected entries read on the third header line:
- * "words" (the default), or "glyphs" for a line that has no room (DEC-112).
- */
-const ENTRY_BUTTONS_AS: "words" | "glyphs" = "words";
-
 const PREPARE_TREE_STORAGE_KEY = "cuepoint-prepare-tree";
 
 /** What an entry drag carries: the entry, which is not the track (DEC-107). */
@@ -458,8 +452,29 @@ export function PrepareScreen({
     return moving.current;
   }, []);
 
+  // The button last pressed, for getting focus back: pressing "↓" has React move the row's DOM node,
+  // and Remove unmounts the buttons, and either leaves focus on the page's body.
+  const pressed = useRef<{ id: EntryButton["id"]; at: number } | null>(null);
+  const rowsBox = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const last = pressed.current;
+    if (!last) return;
+    // Only a press that was just made, and only if focus was lost to the page.
+    if (Date.now() - last.at > 5000) pressed.current = null;
+    if (document.activeElement && document.activeElement !== document.body) return;
+    const host = rowsBox.current;
+    const target =
+      last.id === "remove"
+        ? host?.querySelector<HTMLElement>('[role="table"]')
+        : host?.querySelector<HTMLElement>(`#${entryButtonDomId(last.id)}:not(:disabled)`);
+    if (!target) return;
+    pressed.current = null;
+    target.focus();
+  }, [rows]);
+
   const pressEntryButton = useCallback(
     (id: EntryButton["id"]) => {
+      pressed.current = { id, at: Date.now() };
       const first = selected[0];
       if (id === "up") void moveSelected(-1);
       else if (id === "down") void moveSelected(1);
@@ -553,7 +568,23 @@ export function PrepareScreen({
   // the table itself has focus; a field being typed in keeps its keys.
   const onSetKeys = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if ((event.target as HTMLElement).getAttribute("role") !== "table") return;
+      const target = event.target as HTMLElement;
+      // Tab goes from the table to the focused row's buttons, which sit at the row's right end where
+      // the browser's order (the row's cells, then the page) would pass them by; Shift+Tab on the
+      // first of them comes back to the table.
+      if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+        const group = rowsBox.current?.querySelector<HTMLElement>('.prepare-row-buttons[role="group"]');
+        const first = group?.querySelector<HTMLElement>("button:not(:disabled)");
+        if (!event.shiftKey && target.getAttribute("role") === "table" && first) {
+          event.preventDefault();
+          first.focus();
+        } else if (event.shiftKey && first && target === first) {
+          event.preventDefault();
+          target.closest<HTMLElement>('[role="table"]')?.focus();
+        }
+        return;
+      }
+      if (target.getAttribute("role") !== "table") return;
       const plain = !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
       const act = (run: () => void) => {
         event.preventDefault();
@@ -806,6 +837,14 @@ export function PrepareScreen({
     splitAt,
   ]);
 
+  // The Set's pane, for the floor below; the scale, for what the title keeps free of the entry buttons.
+  const setBox = useRef<HTMLDivElement>(null);
+  const scale = useScaleFactor();
+  const titleMinWidth = useMemo(() => {
+    const title = PREPARE_COLUMNS.find((column) => column.id === "title");
+    return title ? columnMinWidth(title, scale) : 0;
+  }, [scale]);
+
   const editing = useMemo(
     (): PrepareEditing => ({
       editing: timeEditing,
@@ -813,6 +852,14 @@ export function PrepareScreen({
       startTimeEdit,
       commitTime,
       stopTimeEdit,
+      entryButtons: {
+        buttons,
+        entryId: focused ? focused.entry.entry_id : null,
+        press: pressEntryButton,
+        openMenu: (row, anchor) =>
+          void openEntryMenu(row, Math.max(0, rows.findIndex((candidate) => candidate === row)), anchor.x, anchor.y),
+        titleMinWidth,
+      },
       chapters: {
         count: shown?.plan.chapters.length ?? 0,
         edit: (chapter) => {
@@ -823,7 +870,20 @@ export function PrepareScreen({
         remove: setChapterDeleting,
       },
     }),
-    [commitTime, moveChapter, shown, startTimeEdit, stopTimeEdit, timeEditing, timeWords],
+    [buttons, commitTime, focused, moveChapter, openEntryMenu, pressEntryButton, rows, shown, startTimeEdit, stopTimeEdit, timeEditing, timeWords, titleMinWidth],
+  );
+
+  // The buttons are on the focused entry's row, and not while a time on that row is being typed in:
+  // they would cover the Mix in and Mix out fields.
+  const focusedId = focused ? focused.entry.entry_id : null;
+  const typingId = timeEditing ? timeEditing.entryId : null;
+  const hasButtons = buttons.length > 0;
+  const rowEnd = useCallback(
+    (row: PrepareRow) =>
+      row.kind === "entry" && hasButtons && focusedId === row.entry.entry_id && typingId !== row.entry.entry_id ? (
+        <EntryButtons row={row} />
+      ) : null,
+    [focusedId, hasButtons, typingId],
   );
 
   // A different Set starts with nothing being typed.
@@ -853,8 +913,6 @@ export function PrepareScreen({
   const transitionShown = transitionOpen && entries.length > 0;
 
   // The Set keeps two whole rows under the lanes and the strip (WAVE-07).
-  const setBox = useRef<HTMLDivElement>(null);
-  const scale = useScaleFactor();
   // oxlint-disable-next-line react-hooks/exhaustive-deps
   const rowHeight = useMemo(() => readRowHeight(), [scale]);
   const setFloor = useSetAreaFloor(
@@ -1082,7 +1140,7 @@ export function PrepareScreen({
           }}
         />
       )}
-      <div className="prepare-set__rows" onKeyDownCapture={onSetKeys}>
+      <div className="prepare-set__rows" ref={rowsBox} onKeyDownCapture={onSetKeys}>
         <PrepareEditingContext.Provider value={editing}>
         <TrackTable<PrepareRow>
           columns={columns.visible}
@@ -1093,6 +1151,7 @@ export function PrepareScreen({
           selectedKeys={selection.keys}
           getRowKey={idOfRow}
           rowClassName={(row) => (row.kind === "heading" ? "prepare-heading" : undefined)}
+          rowEnd={rowEnd}
           onSelect={(row, index, event) => {
             // Picking is only picking. A Set's entry does not move into the Inspector as a shared
             // element: a view transition sends the pointer to the page root while it plays, which
@@ -1253,32 +1312,6 @@ export function PrepareScreen({
           >
             View ▾
           </Button>
-          <span
-            className={`prepare-header__entries${ENTRY_BUTTONS_AS === "glyphs" ? " prepare-header__entries--glyphs" : ""}`}
-            role="group"
-            aria-label="Selected entries"
-          >
-            {buttons.map((entryButton) => (
-              <Hint
-                key={entryButton.id}
-                text={
-                  entryButton.reason ??
-                  (entryButton.shortcut ? `${entryButton.label} (${entryButton.shortcut})` : entryButton.label)
-                }
-              >
-                <Button
-                  variant="secondary"
-                  className="prepare-header__button prepare-header__entry"
-                  aria-label={entryButton.label}
-                  data-glyph={entryButton.glyph}
-                  disabled={entryButton.disabled}
-                  onClick={() => pressEntryButton(entryButton.id)}
-                >
-                  {entryButton.label}
-                </Button>
-              </Hint>
-            ))}
-          </span>
         </p>
       </header>
 

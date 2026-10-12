@@ -278,7 +278,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await win.keyboard.press("Tab");
       await win.getByRole("textbox", { name: /^Mix out for/ }).fill("4:30");
       await win.keyboard.press("Enter");
-      await expect(facts(win)).toContainText("4:00 planned · 5 without times", { timeout: 15_000 });
+      await expect(facts(win)).toContainText("4:00 planned", { timeout: 15_000 });
       expect(
         (await readSet(win, setId)).entries.entries.find((entry: { position: number }) => entry.position === 0),
       ).toMatchObject({ in_seconds: 30, out_seconds: 270 });
@@ -295,9 +295,9 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await setTable(win).evaluate((element) => {
         element.scrollLeft = 0;
       });
-      await expect(facts(win)).toContainText("4:00 planned · 5 without times", { timeout: 15_000 });
+      await expect(facts(win)).toContainText("4:00 planned", { timeout: 15_000 });
       await time("Warm Two", "", "5:00");
-      await expect(facts(win)).toContainText("9:00 planned · 4 without times", { timeout: 15_000 });
+      await expect(facts(win)).toContainText("9:00 planned", { timeout: 15_000 });
       await expect(startsOf(win, "Build")).toHaveText("9:00");
       await expect(startsOf(win, "Warm Two")).toHaveText("4:00");
       // Warm Two dragged above Warm One: it opens now, and Warm One starts at 5:00.
@@ -309,14 +309,59 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(startsOf(win, "Warm Two")).toHaveText("0:00");
       await expect(startsOf(win, "Build")).toHaveText("9:00");
       expect((await order(win, setId)).slice(0, 2)).toEqual(["Warm Two", "Warm One"]);
-      // FLW-17: the entry buttons order the Set too. Disabled until an entry is selected, then
+      // FLW-17: the entry buttons order the Set too. They are on the selected row only (DEC-249):
       // Move down and Move up put Warm Two back where it was.
-      await expect(win.getByRole("button", { name: "Move up", exact: true })).toBeVisible();
       await at(win, row(win, "Warm Two"));
-      await win.getByRole("button", { name: "Move down", exact: true }).click();
+      // At the default size the pane has no room for the buttons beside # and the title: one Actions ▾
+      // opens the row's menu. A smaller size leaves room for them.
+      await row(win, "Warm Two").getByRole("button", { name: "Actions" }).click();
+      await expect(win.getByRole("menu").getByRole("menuitem", { name: "Remove from Set" })).toBeVisible();
+      await win.keyboard.press("Escape");
+      // The columns keep the widths they had at the old size, so they start again too.
+    await win.evaluate(() => (localStorage.setItem("cuepoint-ui-lab-scale", "1"), localStorage.removeItem("cuepoint-prepare-set-layout")));
+      await win.reload();
+      await expect(row(win, "Warm Two")).toBeVisible({ timeout: 30_000 });
+      await at(win, row(win, "Warm Two"));
+      await expect(win.getByRole("button", { name: "Move up", exact: true })).toHaveCount(1);
+      await expect(row(win, "Warm Two").getByRole("button", { name: "Move up", exact: true })).toBeVisible();
+      // The end cell stops at the scroll area's bar: its right edge is the area's, less the bar and border.
+      // A bar is forced on, as a Set of many rows has one: a reserved gutter with no bar in it is not
+      // taken out of what a sticky cell sticks to.
+      const edge = await setTable(win).evaluate((scroll) => {
+        scroll.style.overflowY = "scroll";
+        const end = scroll.querySelector(".track-table__row .track-table__end")!.getBoundingClientRect();
+        const area = scroll.getBoundingClientRect().right - (scroll.offsetWidth - scroll.clientWidth);
+        scroll.style.overflowY = "";
+        return { end: end.right, area };
+      });
+      expect(Math.abs(edge.end - edge.area)).toBeLessThan(1);
+      // A time cell on the selected row is not covered by the buttons: its field is what a click
+      // at its own centre reaches, and the buttons stand aside for the typing.
+      const mixIn = row(win, "Warm Two").getByRole("textbox", { name: /^Mix in for/ });
+      await row(win, "Warm Two").getByRole("button", { name: /^Mix in for/ }).click();
+      await expect(mixIn).toBeVisible();
+      expect(
+        await mixIn.evaluate((field) => {
+          const box = field.getBoundingClientRect();
+          return document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2) === field;
+        }),
+      ).toBe(true);
+      await expect(row(win, "Warm Two").getByRole("group", { name: "Selected entries" })).toHaveCount(0);
+      await win.keyboard.press("Escape");
+      await expect(row(win, "Warm Two").getByRole("group", { name: "Selected entries" })).toBeVisible();
+      // One press of ↓ from the keyboard: React moves the row's node, and focus is still on the button.
+      const down = win.getByRole("button", { name: "Move down", exact: true });
+      await down.focus();
+      await win.keyboard.press("Enter");
       await expect.poll(async () => (await order(win, setId)).slice(0, 2)).toEqual(["Warm One", "Warm Two"]);
+      await expect
+        .poll(() => win.evaluate(() => document.activeElement?.getAttribute("data-entry-button")))
+        .toBe("down");
       await win.getByRole("button", { name: "Move up", exact: true }).click();
       await expect.poll(async () => (await order(win, setId)).slice(0, 2)).toEqual(["Warm Two", "Warm One"]);
+      await win.evaluate(() => (localStorage.removeItem("cuepoint-ui-lab-scale"), localStorage.removeItem("cuepoint-prepare-set-layout")));
+      await win.reload();
+      await expect(row(win, "Warm Two")).toBeVisible({ timeout: 30_000 });
 
       // --- 4. a gap from Suggestions, and a key warning accepted -------------------
       await at(win, row(win, "Warm Two"));
@@ -334,20 +379,22 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const zone = inspector(win).getByRole("region", { name: "In this Set" });
       const clash = zone.getByRole("listitem").filter({ hasText: /Keys clash/ });
       await clash.getByRole("button", { name: "Accept" }).click();
-      await expect(facts(win)).toContainText("1 accepted", { timeout: 15_000 });
+      // "1 accepted" is in the warnings count's title, not the line (C15d).
+      await expect(facts(win).getByTitle(/1 accepted/)).toBeVisible({ timeout: 15_000 });
       await expect(clash.getByRole("button", { name: "Undo accept" })).toBeVisible();
       expect((await readSet(win, setId)).analysis.acknowledged).toBe(1);
       // FLW-19: the strip's caption reads the keys and tempos of the selected entry into the next,
-      // and the warning on that transition ends it, accepted, with Undo accept beside it.
+      // and one warning on that transition ends it, with Accept beside it.
       await win.getByRole("button", { name: "View ▾" }).click();
       await win.getByRole("menuitem", { name: "Show transition strip" }).click();
       await at(win, row(win, "Build"));
       const caption = win.getByTestId("transition-caption");
-      await expect(caption.getByTestId("transition-words")).toContainText(/BPM \([+−]?[\d.]+%\)/, { timeout: 15_000 });
+      await expect(caption.getByTestId("transition-words")).toContainText(/[+−]?[\d.]+% BPM/, { timeout: 15_000 });
       await expect(caption.getByTestId("transition-words")).toContainText(/→/);
-      const clashLine = caption.getByTestId("transition-warning").filter({ hasText: "Keys clash" });
-      await expect(clashLine).toContainText("(accepted)");
-      await expect(caption.getByRole("button", { name: "Undo accept" })).toBeVisible();
+      // One warning is shown, the first still open; the accepted key clash is the "+1 more" (C15d).
+      await expect(caption.getByTestId("transition-warning")).toHaveCount(1);
+      await expect(caption.getByText(/^\+\d+ more$/)).toHaveAttribute("title", /Keys clash.*\(accepted\)/);
+      await expect(caption.getByTestId("transition-warning").getByRole("button", { name: "Accept" })).toBeVisible();
       await win.getByRole("button", { name: "View ▾" }).click();
       await win.getByRole("menuitem", { name: "Hide transition strip" }).click();
 
@@ -421,7 +468,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await waitForEngine(win);
       await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
       await expect(row(win, "Warm-up")).toBeVisible({ timeout: 30_000 });
-      await expect(facts(win)).toContainText("1 accepted");
+      await expect(facts(win).getByTitle(/1 accepted/)).toBeVisible();
       await expect(win.getByRole("button", { name: "Notes (1)" })).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
       expect(await readSet(win, setId)).toEqual(before);
 

@@ -244,6 +244,40 @@ describe("rows", () => {
   });
 });
 
+describe("a cell at the row's end (rowEnd, C15d)", () => {
+  it("is drawn on the rows the caller asks for, after the columns, with the row and its index", () => {
+    const rowEnd = vi.fn((row: Track) => (row.id === 2 ? <button type="button">Act on {row.title}</button> : null));
+    renderTable({ source: inMemorySource(tracks(3)), rowEnd });
+
+    const rowsNow = renderedRows();
+    expect(within(rowsNow[0]!).queryByRole("button")).toBeNull();
+    expect(within(rowsNow[2]!).queryByRole("button")).toBeNull();
+    const cell = within(rowsNow[1]!).getByRole("button", { name: "Act on Track 2" }).closest(".track-table__end");
+    expect(cell).not.toBeNull();
+    // The last child of the row, a sticky cell of its own: no column, so the grid and the picker are as they were.
+    expect(rowsNow[1]!.lastElementChild).toBe(cell);
+    expect(rowEnd).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }), 1);
+    expect(rowsNow[1]!.querySelectorAll(":scope > .track-table__cell")).toHaveLength(COLUMNS.length);
+    // Only a row with one is clipped for it (a sticky cell sticks to the table, not to the row).
+    expect(rowsNow[1]!).toHaveClass("track-table__row--end");
+    expect(rowsNow[0]!).not.toHaveClass("track-table__row--end");
+    // The end cell spans the row's one grid row, so its cells are placed by hand, in order.
+    const placed = [...rowsNow[1]!.querySelectorAll<HTMLElement>(":scope > .track-table__cell")].map((c) => c.getAttribute("style") ?? "");
+    expect(placed.map((style) => /grid-column:\s*(\d+)/.exec(style)?.[1])).toEqual(COLUMNS.map((_, index) => String(index + 1)));
+  });
+
+  it("draws no cell at all when the caller has nothing for the row", () => {
+    renderTable({ source: inMemorySource(tracks(2)), rowEnd: () => null });
+    expect(document.querySelector(".track-table__end")).toBeNull();
+  });
+
+  it("is not drawn for a row that has not arrived", () => {
+    const rowEnd = vi.fn(() => <span>end</span>);
+    renderTable({ source: pendingSource(3), rowEnd });
+    expect(rowEnd).not.toHaveBeenCalled();
+  });
+});
+
 describe("moving the active row with Alt+↑ and Alt+↓ (FLW-10)", () => {
   const table = () => screen.getByRole("table");
 

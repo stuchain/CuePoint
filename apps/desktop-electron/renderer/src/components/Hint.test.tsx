@@ -382,4 +382,22 @@ describe("Hint on hover", () => {
     renderHint({ inline: true });
     expect(hoverTarget()).toHaveClass("cp-hint", "cp-hint--inline");
   });
+
+  it("draws the tip in document.body when asked to, still tied to the control, and shows it on keyboard focus", async () => {
+    const user = userEvent.setup();
+    render(
+      <div data-testid="clipped" style={{ transform: "translateY(0)", overflow: "hidden" }}>
+        <Hint text="Move up (Alt+↑)" portal>
+          <button type="button">Up</button>
+        </Hint>
+      </div>,
+    );
+    await user.tab();
+    const tip = screen.getByRole("tooltip");
+    expect(tip.parentElement).toBe(document.body);
+    expect(screen.getByTestId("clipped")).not.toContainElement(tip);
+    expect(screen.getByRole("button", { name: "Up" })).toHaveAttribute("aria-describedby", tip.id);
+    await user.tab();
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
 });

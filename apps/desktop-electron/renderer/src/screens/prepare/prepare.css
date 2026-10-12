@@ -55,7 +55,7 @@
   gap: var(--space-xs);
   min-width: 0;
   padding: var(--space-xs) var(--space-sm);
-  border-bottom: var(--border-width) solid var(--border-muted);
+  border-bottom: var(--control-border-width) solid var(--border-muted);
 }
 
 .prepare-header__controls {
@@ -80,10 +80,10 @@
   font-weight: 700;
 }
 
-/* Two lines, whatever the width (DEC-112): the facts, with Notes and View, then
-   the buttons for the selected entries on a line of their own. The facts give way
+/* One line, whatever the width (DEC-112): the facts, with Notes and View. The facts give way
    (ellipsis, the whole in their titles); what asks something of the person (a
-   refused time, Match tracks…, Check now) never does. */
+   refused time, Match tracks…, Check now) never does. The buttons for the selected
+   entries are not here: they sit on the focused row (DEC-249). */
 .prepare-header__facts {
   display: flex;
   flex-wrap: wrap;
@@ -141,34 +141,6 @@
   flex: 0 100 auto;
 }
 
-/* The entry buttons, their words, alone on the third line. */
-.prepare-header__entries {
-  display: flex;
-  flex: 0 0 100%;
-  gap: var(--space-xs);
-  min-width: 0;
-}
-
-.prepare-header__entries > .cp-hint {
-  flex: none;
-  display: inline-flex;
-}
-
-/* The other way to draw them, for a line with no room: a glyph for each, the
-   words kept as the name (aria-label). Not used while the words fit. */
-.prepare-header__entries--glyphs .prepare-header__entry .cp-btn__label {
-  font-size: 0;
-}
-
-.prepare-header__entries--glyphs .prepare-header__button.prepare-header__entry.cp-btn {
-  padding: 0 var(--space-xs);
-}
-
-.prepare-header__entries--glyphs .prepare-header__entry::before {
-  content: attr(data-glyph);
-  font-size: var(--font-size-xs);
-}
-
 .prepare-header__warnings {
   color: var(--fg-primary);
   font-weight: 700;
@@ -194,15 +166,15 @@
   cursor: progress;
 }
 
-/* Notes and View: real buttons, a facts line tall (PRP-10, DEC-112). */
+/* Notes and View: real buttons, in the one control look (C11), a control tall (PRP-10, DEC-112). */
 .prepare-header__button.cp-btn {
   min-width: 0;
-  min-height: 0;
+  min-height: var(--control-height);
   margin-left: 0;
   padding: 0 var(--space-sm);
-  border-width: var(--hairline);
-  font-size: var(--font-size-xs);
-  /* Inside the facts line's own height: the button grows the header by nothing. */
+  border: var(--control-border-width) solid var(--border-control);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
   line-height: 1;
 }
 
@@ -295,7 +267,7 @@ body.prepare-resizing {
   display: flex;
   min-width: 0;
   padding: calc(2px * var(--scale)) var(--space-sm);
-  border-bottom: var(--border-width) solid var(--border-muted);
+  border-bottom: var(--control-border-width) solid var(--border-muted);
   background: var(--bg-panel-alt);
 }
 
@@ -378,7 +350,7 @@ body.prepare-resizing {
   column-gap: var(--space-sm);
   min-width: 0;
   padding: 0 var(--space-sm) calc(2px * var(--scale));
-  border-bottom: var(--border-width) solid var(--border-muted);
+  border-bottom: var(--control-border-width) solid var(--border-muted);
   background: var(--bg-panel-alt);
 }
 
@@ -515,6 +487,11 @@ body.prepare-resizing {
   max-width: 100%;
 }
 
+/* A key clash in the caption, in the warning colour; the words say it too (colour is not the only cue). */
+.prepare-transition__piece--warning {
+  color: var(--accent-warning, var(--accent-danger));
+}
+
 .prepare-transition__segment {
   min-width: 0;
   overflow: hidden;
@@ -548,11 +525,20 @@ body.prepare-resizing {
 .prepare-transition__accept.cp-btn {
   flex: none;
   min-width: 0;
-  min-height: 0;
+  min-height: var(--control-height);
   padding: 0 var(--space-sm);
-  border-width: var(--hairline);
-  font-size: var(--font-size-xs);
+  border: var(--control-border-width) solid var(--border-control);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
   line-height: 1.15;
+}
+
+/* "+1 more": the other warnings on the transition, in the title. */
+.prepare-transition__more {
+  flex: none;
+  color: var(--fg-muted);
+  font-weight: 400;
+  white-space: nowrap;
 }
 
 .prepare-transition__none {
@@ -594,25 +580,81 @@ body.prepare-resizing {
   gap: var(--space-xs);
 }
 
-.prepare-heading__button {
+.prepare-heading__button,
+.prepare-row-buttons__button {
   padding: 0 var(--space-xs);
-  border: var(--hairline) solid var(--border-muted);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-panel);
   color: var(--fg-primary);
   font: inherit;
-  font-size: var(--font-size-xs);
-  font-weight: 400;
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
   line-height: 1.2;
   cursor: pointer;
 }
 
-.prepare-heading__button:hover:not(:disabled) {
-  border-color: var(--fg-muted);
+.prepare-heading__button:hover:not(:disabled),
+.prepare-row-buttons__button:hover:not(:disabled) {
+  filter: brightness(1.08);
 }
 
-.prepare-heading__button:disabled {
-  opacity: 0.5;
-  cursor: default;
+.prepare-heading__button:disabled,
+.prepare-row-buttons__button:disabled {
+  opacity: 0.55;
+  color: var(--fg-disabled);
+  cursor: not-allowed;
+}
+
+/* The selected entries' buttons, at the right end of the focused row (DEC-249): the row's own
+   height, in the table's sticky end cell. Short words and a hairline apart; "↑" and "↓" are one
+   glyph wide. */
+.prepare-row-buttons {
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-xs);
+  height: 100%;
+  align-items: center;
+}
+
+.prepare-row-buttons > .cp-hint {
+  height: calc(100% - 2 * var(--hairline));
+}
+
+.prepare-row-buttons__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: var(--control-height);
+  height: calc(100% - 2 * var(--hairline));
+  font-family: var(--font-pixel);
+  white-space: nowrap;
+}
+
+.prepare-row-buttons > .cp-hint > .prepare-row-buttons__button {
+  height: 100%;
+}
+
+/* The words and the glyphs, drawn unseen and out of the flow so the end cell can be measured for
+   both whichever is on show (entryButtonsRoom). */
+.prepare-row-buttons--measure {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: max-content;
+  height: 100%;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.prepare-row-buttons--measure .prepare-row-buttons__button {
+  border: var(--control-border-width) solid transparent;
+  height: 100%;
+}
+
+.prepare-row-buttons__button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline-offset: calc(-1 * var(--hairline));
 }
 
 /* Mix in and Mix out: the cell is its time, and a field once it is clicked
@@ -675,7 +717,7 @@ body.prepare-resizing {
   flex-direction: column;
   gap: var(--space-xs);
   padding-bottom: var(--space-sm);
-  border-bottom: var(--border-width) solid var(--border-muted);
+  border-bottom: var(--control-border-width) solid var(--border-muted);
 }
 
 .prepare-entry-zone__place,
@@ -724,7 +766,7 @@ body.prepare-resizing {
   font: inherit;
   color: var(--fg-primary);
   background: var(--bg-input);
-  border: var(--border-width) solid var(--border-muted);
+  border: var(--control-border-width) solid var(--border-control);
 }
 
 .prepare-entry-zone__warnings {
@@ -810,19 +852,16 @@ body.prepare-resizing {
   overflow: hidden;
 }
 
-
-
+/* Underline tabs (C11) as everywhere, in a narrow column: the strip's own hairline stays. */
 .prepare-source .cp-tabs {
   padding: 0;
-  border: none;
-  box-shadow: none;
   background: transparent;
 }
 
 .prepare-source .cp-tabs__tab {
-  min-height: calc(20px * var(--scale));
-  padding: calc(2px * var(--scale)) var(--space-xs);
-  font-size: var(--font-size-xs);
+  min-height: var(--control-height);
+  padding: 0 var(--space-xs);
+  border-bottom-width: var(--tab-underline);
 }
 
 /* The pool, and the panel's one action at the end of its line: the select
@@ -844,13 +883,14 @@ body.prepare-resizing {
   flex: 1;
   width: 100%;
   min-width: 0;
-  min-height: calc(20px * var(--scale));
-  padding: calc(2px * var(--scale)) var(--space-xs);
-  border: var(--border-width) solid var(--border-outline);
+  min-height: var(--control-height);
+  padding: 0 var(--space-xs);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-primary);
   font-family: var(--font-pixel);
-  font-size: var(--font-size-xs);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
 }
 
 .prepare-source__select {
@@ -892,14 +932,14 @@ body.prepare-resizing {
 /* The panel's one action: compact, and the accent, so it reads as the verb. */
 .prepare-source__insert {
   flex: none;
-  min-height: calc(20px * var(--scale));
-  padding: calc(2px * var(--scale)) var(--space-sm);
-  border: var(--border-width) solid var(--border-outline);
+  min-height: var(--control-height);
+  padding: 0 var(--space-sm);
+  border: var(--control-border-width) solid var(--accent-primary);
   background: var(--accent-primary);
   color: var(--fg-inverse);
   font-family: var(--font-pixel);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
   cursor: pointer;
 }
 
@@ -909,6 +949,7 @@ body.prepare-resizing {
 
 /* Nothing picked: still a button (it takes you to the table), no longer dim. */
 .prepare-source__insert[data-idle] {
+  border-color: var(--border-control);
   background: var(--bg-input);
   color: var(--fg-primary);
 }

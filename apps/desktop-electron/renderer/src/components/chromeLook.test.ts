@@ -18,6 +18,7 @@ import button from "./Button.css?raw";
 import textField from "./TextField.css?raw";
 import sidebar from "./shell/Sidebar.css?raw";
 import themeSettings from "../screens/theme-settings.css?raw";
+import prepare from "../screens/prepare/prepare.css?raw";
 
 /**
  * Quieter chrome (C11, C16): flat controls and panels draw no bevel or offset shadow.
@@ -42,6 +43,7 @@ const SHEETS: Record<string, string> = {
   TextField: textField,
   Sidebar: sidebar,
   "theme-settings": themeSettings,
+  prepare,
 };
 
 const HEAVY = /--shadow-(panel|badge|bevel[a-z-]*|modal|inset-deep)\b/;

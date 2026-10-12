@@ -9,6 +9,7 @@ import {
   type FocusEvent,
   type ReactElement,
 } from "react";
+import { createPortal } from "react-dom";
 import "./Hint.css";
 
 interface HintProps {
@@ -18,6 +19,12 @@ interface HintProps {
   children: ReactElement<Record<string, unknown>>;
   /** Render the wrapper `display: inline`, for a control inside a text line. */
   inline?: boolean;
+  /**
+   * Draw the tip in `document.body` instead of beside the control. For a control inside something
+   * that is transformed or clipped (a table row): a fixed tip inside it would be placed against
+   * that ancestor and cut by it. The tip is tied to the control with `aria-describedby` all the same.
+   */
+  portal?: boolean;
 }
 
 /** How long the pointer rests on a control before the tip shows. */
@@ -64,7 +71,7 @@ function focusIsVisible(target: EventTarget & Element): boolean {
  * The tooltip is positioned in the viewport, not inside the wrapper: the status
  * strip it was first made for clips anything that overflows it.
  */
-export function Hint({ text, children, inline = false }: HintProps) {
+export function Hint({ text, children, inline = false, portal = false }: HintProps) {
   const id = useId();
   const wrapper = useRef<HTMLSpanElement | null>(null);
   const tip = useRef<HTMLSpanElement | null>(null);
@@ -162,6 +169,15 @@ export function Hint({ text, children, inline = false }: HintProps) {
     else hide();
   };
 
+  const tipNode = place ? (
+    <span id={id} role="tooltip" className="cp-hint__tip"
+      style={{ left: place.left, bottom: place.bottom, top: place.top }}
+      ref={tip}
+    >
+      {text}
+    </span>
+  ) : null;
+
   return (
     <span
       className={`cp-hint${inline ? " cp-hint--inline" : ""}`}
@@ -182,17 +198,7 @@ export function Hint({ text, children, inline = false }: HintProps) {
           hide();
         },
       })}
-      {place && (
-        <span
-          id={id}
-          role="tooltip"
-          className="cp-hint__tip"
-          style={{ left: place.left, bottom: place.bottom, top: place.top }}
-          ref={tip}
-        >
-          {text}
-        </span>
-      )}
+      {tipNode && (portal ? createPortal(tipNode, document.body) : tipNode)}
     </span>
   );
 }

@@ -13,13 +13,23 @@
  *   double-click is the table's: it plays the row, and the typing is dropped.
  * - **A heading's buttons** are Edit, up, down and delete for its chapter (their
  *   names say "Move chapter up" and so on), so no chapter action is right-click only.
+ * - **An entry's buttons** are the five for the selected entries, drawn on the
+ *   focused entry's row only (DEC-249): short words, glyphs where the row has no room for
+ *   the words, or one "Actions ▾" button where it has no room for those either; the
+ *   full names are kept. Not drawn while a time on that row is being typed in.
  */
-import { useContext, useEffect, useRef, useState, type MouseEvent } from "react";
+import { useContext, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 
-import { PrepareEditingContext, type PrepareEditing } from "./prepareEditingContext";
+import { Hint } from "../../components/Hint";
+import { entryButtonDomId, type EntryButton } from "./entryActions";
+import { useEntryButtonsForm } from "./entryButtonsRoom";
+import { DOUBLE_CLICK_MS, PrepareEditingContext, type PrepareEditing } from "./prepareEditingContext";
 import { timeCell } from "./prepareFormat";
 import type { EntryRow, HeadingRow } from "./prepareRows";
 import type { TimeField } from "./timeEditing";
+
+/** The "Actions ▾" button's id: where focus returns to if the row is redrawn under it. */
+const ACTIONS_BUTTON_ID = "prepare-entry-actions";
 
 const FIELD_WORDS: Record<TimeField, string> = { in: "Mix in", out: "Mix out" };
 
@@ -107,6 +117,29 @@ export function TimeCell({ row, field }: { row: EntryRow | HeadingRow; field: Ti
 
 const quiet = (event: MouseEvent) => event.stopPropagation();
 
+/** The keys the table acts on (Enter and F2 edit or play, arrows move, Delete removes, the menu key): a button's own are kept from it. */
+const TABLE_KEYS = new Set([
+  "Enter",
+  " ",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+  "Delete",
+  "Backspace",
+  "F2",
+  "ContextMenu",
+]);
+
+/** A row's buttons keep the keys the table acts on; Escape, Tab and the app's own keys go through. */
+const stopTableKeys = (event: KeyboardEvent) => {
+  if (TABLE_KEYS.has(event.key)) event.stopPropagation();
+};
+
 /** A chapter heading's Edit, up, down and delete (FLW-17). */
 export function ChapterButtons({ row }: { row: HeadingRow }) {
   const editing = useContext(PrepareEditingContext);
@@ -133,21 +166,141 @@ export function ChapterButtons({ row }: { row: HeadingRow }) {
       onClick={quiet}
       onDoubleClick={quiet}
       onMouseDown={quiet}
-      onKeyDown={(event) => event.stopPropagation()}
+      onKeyDown={stopTableKeys}
     >
       {buttons.map((button) => (
-        <button
-          key={button.name}
-          type="button"
-          className="prepare-heading__button"
-          aria-label={button.name}
-          title={button.name}
-          disabled={button.disabled}
-          onClick={button.run}
-        >
-          {button.label}
-        </button>
+        <Hint key={button.name} text={button.name} portal>
+          <button
+            type="button"
+            className="prepare-heading__button"
+            aria-label={button.name}
+            disabled={button.disabled}
+            onClick={button.run}
+          >
+            {button.label}
+          </button>
+        </Hint>
       ))}
     </span>
+  );
+}
+
+/**
+ * The buttons for the selected entries, at the end of the focused entry's row
+ * (FLW-17, DEC-249). They act on every selected entry, so another selected row
+ * carries none; a press stops at them, so it neither selects nor plays the row.
+ *
+ * Their form is measured (entryButtonsRoom): the words, the glyphs, or one "Actions ▾" button
+ * that opens the row's context menu, so they never cover the row's number or the least of its
+ * title. Both groups are also drawn hidden, for the measuring.
+ */
+export function EntryButtons({ row }: { row: EntryRow }) {
+  const editing = useContext(PrepareEditingContext);
+  // They appear where the first click of a double-click has just landed, over the row's right end:
+  // for the length of a double-click the pointer goes through them to the row, so the second click
+  // plays the row instead of pressing a button. Keys and Tab are not held back.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setArmed(true), DOUBLE_CLICK_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  const measure = useRef<HTMLSpanElement>(null);
+  const form = useEntryButtonsForm(measure, editing?.entryButtons.titleMinWidth ?? 0);
+  // A mouse click on Remove waits out a double-click: the first click of one aimed at the row would
+  // otherwise remove it. A second click, or the double-click, cancels it. There is no Undo to offer
+  // instead (Prepare has none for a remove).
+  const pendingRemove = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const press = useRef(editing?.entryButtons.press);
+  press.current = editing?.entryButtons.press;
+  const cancelRemove = () => {
+    if (pendingRemove.current === null) return false;
+    clearTimeout(pendingRemove.current);
+    pendingRemove.current = null;
+    return true;
+  };
+  useEffect(() => () => void cancelRemove(), []);
+
+  if (!editing || editing.entryButtons.entryId !== row.entry.entry_id || editing.entryButtons.buttons.length === 0) {
+    return null;
+  }
+  const { buttons, openMenu } = editing.entryButtons;
+  const onPress = (button: EntryButton) => (event: MouseEvent<HTMLButtonElement>) => {
+    // Enter and Space press at once (detail 0); only a click of the mouse waits.
+    if (button.id !== "remove" || event.detail === 0) {
+      press.current?.(button.id);
+      return;
+    }
+    if (cancelRemove()) return;
+    pendingRemove.current = setTimeout(() => {
+      pendingRemove.current = null;
+      press.current?.("remove");
+    }, DOUBLE_CLICK_MS);
+  };
+  return (
+    <>
+      <span className="prepare-row-buttons prepare-row-buttons--measure" aria-hidden="true" data-measure="words" ref={measure}>
+        {buttons.map((button) => (
+          <span key={button.id} className="prepare-row-buttons__button">
+            {button.short}
+          </span>
+        ))}
+      </span>
+      <span className="prepare-row-buttons prepare-row-buttons--measure" aria-hidden="true" data-measure="glyphs">
+        {buttons.map((button) => (
+          <span key={button.id} className="prepare-row-buttons__button">
+            {button.glyph}
+          </span>
+        ))}
+      </span>
+      {/* Each is a Tab stop, and its keys stay its own: Enter presses it and does not start typing a time. */}
+      <span
+        className="prepare-row-buttons"
+        role="group"
+        aria-label="Selected entries"
+        style={armed ? undefined : { pointerEvents: "none" }}
+        onClick={quiet}
+        onDoubleClick={(event) => {
+          // A double-click on Remove is one aimed at the row: it plays it, and nothing is removed.
+          cancelRemove();
+          if (!(event.target as Element).closest('[data-entry-button="remove"]')) event.stopPropagation();
+        }}
+        onMouseDown={quiet}
+        onKeyDown={stopTableKeys}
+      >
+        {form === "actions" ? (
+          <Hint text="Actions for this entry" portal>
+            <button
+              type="button"
+              id={ACTIONS_BUTTON_ID}
+              className="prepare-row-buttons__button"
+              aria-label="Actions"
+              aria-haspopup="menu"
+              onClick={(event) => {
+                const box = event.currentTarget.getBoundingClientRect();
+                openMenu(row, { x: box.left, y: box.bottom });
+              }}
+            >
+              Actions ▾
+            </button>
+          </Hint>
+        ) : (
+          buttons.map((button) => (
+            <Hint key={button.id} text={button.hint} portal>
+              <button
+                type="button"
+                id={entryButtonDomId(button.id)}
+                data-entry-button={button.id}
+                className="prepare-row-buttons__button"
+                aria-label={button.label}
+                disabled={button.disabled}
+                onClick={onPress(button)}
+              >
+                {form === "glyphs" ? button.glyph : button.short}
+              </button>
+            </Hint>
+          ))
+        )}
+      </span>
+    </>
   );
 }

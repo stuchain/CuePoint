@@ -223,6 +223,14 @@ export interface TrackTableProps<Row> {
    */
   rowClassName?: (row: Row) => string | undefined;
 
+  /**
+   * A cell at the right end of a row that has arrived, for a caller's buttons on the row they
+   * belong to (Prepare's entry buttons, DEC-249). It is no column: it sits over the row's right
+   * edge, sticky, with the row's own background, so the column layout and the picker are as
+   * they were. Return null for a row that has nothing there.
+   */
+  rowEnd?: (row: Row, index: number) => ReactNode;
+
   /** Shown instead of rows when the query matched nothing. */
   emptyState?: ReactNode;
 
@@ -278,6 +286,7 @@ export function TrackTable<Row>({
   dragActive = false,
   canDragRow,
   rowClassName,
+  rowEnd,
   activeIndex = null,
   scrollToIndex = null,
   getRowKey,
@@ -768,10 +777,12 @@ export function TrackTable<Row>({
               const selected = selectedKeys?.has(key) ?? false;
               const extra = row && rowClassName ? rowClassName(row) : undefined;
               const draggable = Boolean(row && onRowDragStart && (!canDragRow || canDragRow(row)));
+              const end = row && rowEnd ? rowEnd(row, item.index) : null;
+              const hasEnd = end != null && end !== false;
               return (
                 <div
                   key={key}
-                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${selected ? " track-table__row--selected" : ""}${keyboardCursor && cursorRow === item.index ? " track-table__row--cursor" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}${draggable ? " track-table__row--draggable" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
+                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${selected ? " track-table__row--selected" : ""}${keyboardCursor && cursorRow === item.index ? " track-table__row--cursor" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}${draggable ? " track-table__row--draggable" : ""}${hasEnd ? " track-table__row--end" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
                   style={{
                     transform: `translateY(${item.start}px)`,
                     height: `${item.size}px`,
@@ -827,11 +838,11 @@ export function TrackTable<Row>({
                     <div
                       key={column.id}
                       className={`track-table__cell${column.sticky ? " track-table__cell--sticky" : ""}${column.align === "right" ? " track-table__cell--right" : ""}`}
-                      style={
-                        column.sticky
-                          ? { left: stickyLeft(columns, ordered, index) }
-                          : undefined
-                      }
+                      style={{
+                        ...(column.sticky ? { left: stickyLeft(columns, ordered, index) } : null),
+                        // The end cell takes the whole first grid row, so the cells are placed by hand.
+                        ...(hasEnd ? { gridColumn: index + 1, gridRow: 1 } : null),
+                      }}
                       role="cell"
                       data-column={column.id}
                     >
@@ -844,6 +855,11 @@ export function TrackTable<Row>({
                       )}
                     </div>
                   ))}
+                  {hasEnd && (
+                    <div className="track-table__end" role="cell">
+                      {end}
+                    </div>
+                  )}
                 </div>
               );
             })}

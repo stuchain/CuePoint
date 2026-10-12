@@ -746,13 +746,25 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     const entries = win.getByRole("group", { name: "Selected entries" });
     const names = ["Move up", "Move down", "Start a chapter here", "Repeat after", "Remove"];
 
-    // Always shown, and disabled until an entry is selected (DEC-209).
-    for (const name of names) await expect(entries.getByRole("button", { name, exact: true })).toBeDisabled();
+    // On the selected row only (DEC-249): none until an entry is selected.
+    await expect(entries).toHaveCount(0);
 
     const order = () => setTitles(win, setId);
     const first = await order();
-
+    // At the default size the Set pane has no room for the buttons beside # and the title: the row
+    // has one Actions ▾, reached by Tab from the table, which opens the entry's menu.
     await pickEntry(win, first[1]);
+    await expect(entries.getByRole("button")).toHaveCount(1);
+    await use(win, entries.getByRole("button", { name: "Actions" }), "Actions");
+    await expect(win.getByRole("menu").getByRole("menuitem", { name: "Remove from Set" })).toBeVisible();
+    await win.keyboard.press("Escape");
+    // The smallest size leaves room for the glyphs: the five buttons themselves.
+    // The columns keep the widths they had at the old size, so they start again too.
+    await win.evaluate(() => (localStorage.setItem("cuepoint-ui-lab-scale", "1"), localStorage.removeItem("cuepoint-prepare-set-layout")));
+    await win.reload();
+    await expect(setRow(win, "Build")).toBeVisible({ timeout: 30_000 });
+    await pickEntry(win, first[1]);
+    for (const name of names) await expect(entries.getByRole("button", { name, exact: true })).toBeEnabled();
     await use(win, entries.getByRole("button", { name: "Move down", exact: true }), "Move down");
     await expect.poll(order, { timeout: 15_000 }).toEqual([first[0], first[2], first[1], first[3]]);
     await use(win, entries.getByRole("button", { name: "Move up", exact: true }), "Move up");
@@ -773,6 +785,8 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await use(win, entries.getByRole("button", { name: "Remove", exact: true }), "Remove");
     await expect.poll(async () => (await order()).length, { timeout: 15_000 }).toBe(4);
     expect(await order()).not.toContain(first[0]);
+    await win.evaluate(() => (localStorage.removeItem("cuepoint-ui-lab-scale"), localStorage.removeItem("cuepoint-prepare-set-layout")));
+    await win.reload();
   });
 
   test("Edit, move and delete a chapter: the chapter heading's buttons", async () => {
@@ -1091,6 +1105,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 15_000 });
     await expect(setTable(win)).toBeVisible({ timeout: 30_000 });
     // The Library does not edit a Set's chapters or times: Prepare owns them.
+    await pickEntry(win, "Warm One");
     await expect(win.getByRole("group", { name: "Selected entries" })).toBeVisible();
   });
 });

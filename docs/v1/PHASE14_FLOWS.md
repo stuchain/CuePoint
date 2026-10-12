@@ -596,7 +596,7 @@ not ALL, like some will be too much, only the most important ones we need to be 
 
 **Mark**: **Yes** (2026-10-08)
 
-**What**: Selecting an entry in Prepare shows buttons above the Set: Move up, Move down (also Alt+↑ and Alt+↓, as in the queue), Start a chapter here, Repeat after, Remove. A chapter heading gets an Edit button. Drag and right-click keep working.
+**What**: Selecting an entry in Prepare shows buttons on its row (DEC-249; first built above the Set, DEC-209): Move up, Move down (also Alt+↑ and Alt+↓, as in the queue), Start a chapter here, Repeat after, Remove. A chapter heading gets an Edit button. Drag and right-click keep working.
 
 **Why**: Ordering, chapters and removing are drag or right-click only today.
 
@@ -705,8 +705,9 @@ step text in `PHASE14_PAGES.md` is the authority; in short:
 - **One home each** (FLW-2): matching many tracks is Clean's window, editing is one editor (Track
   details for one track, Fix values for many, DEC-205), export is the Library's and the tree's, never
   the app menu (DEC-087), and the keys of playlists are the Keys page's (DEC-206).
-- **Bars never jump** (DEC-209): the selection bar, the tree's bar and Prepare's entry buttons are
-  always shown, disabled with a reason until something is selected.
+- **Bars never jump** (DEC-209): the selection bar and the tree's bar are always shown, disabled
+  with a reason until something is selected. Prepare's entry buttons are drawn on the selected row
+  instead, which pushes nothing down (DEC-249).
 - **Nothing hover-only**: reasons shown in a title are also shown on keyboard focus, and the queue's
   failure reason is text on the row.
 - **Discover's tabs** (FLW-15) replace DSC-2's names; the Wantlist keeps its three-way "In your

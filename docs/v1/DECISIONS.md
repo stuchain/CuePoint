@@ -5972,7 +5972,9 @@ buttons are disabled and say what to select.
 **Reason**: A bar that appears on selection pushes down the rows the user is about to click. Asked as Q-207; the user chose the recommendation ("Use recommended", 2026-10-08).
 
 **Implications**:
-- Prepare's buttons sit on a line it already has, so DEC-112's floor is not spent on them.
+- ~~Prepare's buttons sit on a line it already has, so DEC-112's floor is not spent on them.~~
+  Prepare's buttons now sit on the selected row, which is no line of their own either, so the floor is
+  still not spent on them (DEC-249).
 
 **Decided with**: User · **Date**: 2026-10-08
 
@@ -6957,5 +6959,65 @@ gave way to other notices.
   is removed.
 
 **Amends**: RUN-3's notice-line placement.
+
+## DEC-249 — Prepare's Entry Buttons Sit on the Selected Row
+
+**Status**: Approved · **Related**: DEC-209, DEC-112, DEC-241, FLW-17, FLW-19, PREP-10, C15d
+
+**Context**: Prepare's five entry buttons (Move up, Move down, Start a chapter here, Repeat after,
+Remove) sat on the Set's facts line (DEC-209), always shown and disabled until something was
+selected. The facts line was long ("6 entries · 9:00 planned · 4 without times · 5 warnings · 1
+accepted") and the transition caption said everything it knew, including every warning.
+
+**Decision** (Stelios's pick 10-12):
+- The five buttons are drawn at the right end of the focused entry's row (the selection's anchor),
+  in short words: `↑`, `↓`, "Chapter here", "Repeat after", "Remove". Their accessible names stay the
+  full ones ("Move up" and so on), and a hint (the app's Hint, drawn in the page, so on keyboard
+  focus as well as hover) keeps the reason it is disabled or what it does and its key. They act on the
+  whole selection, as before, and the hint says how many ("Move 3 entries up"). With nothing selected
+  none is drawn, and none is while a Mix in or Mix out on that row is being typed in, so they never
+  cover the fields. They are not hover-only: they show on the selected row.
+- **Compact forms, by measurement.** The room is what the Set's scroll area has beside the # column and
+  the Title column (or the Title's minimum, if it is narrower). The words are used when they fit that
+  room (at the default 1280 window they do); when only the glyphs fit, each button is a short symbol
+  (`↑`, `↓`, "Chapter", `↻`, `×`) with its full name kept as its name and hint; when not even those fit
+  (a narrow pane at a large scale), the row shows one "Actions ▾" button that opens the same context menu
+  as a right-click on the entry. The buttons never cover the row's number or the least of its title.
+- A press on one does not reach the row (it neither selects nor plays it). For a double-click's length
+  (500 ms, the Windows default) after they appear the pointer goes through them to the row, so a
+  double-click aimed at the row's right end plays it; and a mouse click on Remove waits that long and
+  is dropped by a double-click, so the first click of one does not remove the entry (Prepare has no
+  Undo for a remove to offer instead; Enter or Space on Remove acts at once). Each button is a Tab stop:
+  Tab from the table goes to the first enabled button of the focused row, and Shift+Tab on it comes back.
+  They keep the keys the table acts on (Enter, Space, arrows, Delete, F2) and let Escape and the app's
+  keys through. The keys are unchanged: Alt+↑, Alt+↓, Delete, Enter or F2 on the table. After a press
+  focus is kept on the button once the Set is read again (a row that moves is redrawn), and after Remove
+  it goes to the table.
+- The facts line is "32 tracks · 19 warnings", with the planned running time only once something is
+  planned. "N without times" is the time's title and "N accepted" the warnings' title. "Check now"
+  and "Match tracks…" stay beside it while they have something to say (files not checked, entries with
+  no key), and are hidden otherwise.
+- The transition caption reads "8A → 4A · next key up · +2.8% BPM", with "keys clash" in the warning
+  colour for a clash, whether or not a key clash warning is also listed; the full tempos and the
+  loudness difference are its title's, and the planned times (the halves' titles carry them) are gone.
+  It then shows one warning with Accept (also for a key clash, so the clash is said twice, once as the
+  keys' relation and once as the warning to accept): the first still open by kind, key clash before
+  tempo jump before tempo unknown, or, when every one is accepted, the first of them so its "Undo
+  accept" stays reachable. "+N more" counts every other warning on that transition, accepted or not,
+  and its title lists them (accepted ones marked).
+- Prepare's own buttons, selects, tabs and panels take the quieter chrome's tokens (DEC-241): the one
+  control height, 1px control border, no bevel or offset shadow.
+
+**Reason**: DEC-209 kept the buttons always visible so a bar appearing on selection would not push
+the rows down. Drawn inside the selected row they push nothing, which was DEC-209's reason, and they
+sit where the eye already is.
+
+**Implications**: `TrackTable` gains `rowEnd`, a sticky cell over the right end of a row, no column;
+its right edge is the scroll area's, less the bar. `Hint` gains `portal`, for a control inside a
+transformed or clipped row. The entry buttons, their glyph labels and `ENTRY_BUTTONS_AS` leave the
+header. The buttons sit over the row's last columns while it is focused, never over # or the least of
+the Title (see the compact forms above). The Set pane's floor (DEC-112) is unchanged.
+
+**Amends**: DEC-209 (for Prepare), DEC-112's facts line, FLW-17's toolbar.
 
 **Decided with**: User · **Date**: 2026-10-12

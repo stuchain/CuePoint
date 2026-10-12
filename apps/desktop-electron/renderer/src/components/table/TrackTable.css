@@ -151,6 +151,8 @@
   background: var(--bg-input);
   border-bottom: var(--hairline) solid var(--border-muted);
   cursor: default;
+  /* Hidden on purpose: a row is a scroll container of its own, which is what keeps its sticky
+     left cells where they are. Only a row with an end cell is clipped instead (below). */
   overflow: hidden;
 }
 
@@ -222,6 +224,46 @@
 
 .track-table__row--selected .track-table__cell--sticky:first-child {
   background: var(--selected-row-background);
+}
+
+/* A caller's cell at the row's right end (rowEnd, DEC-249): over every column, as the sticky
+   left cell is over the ones it passes, so it stays in view when the table scrolls sideways. It
+   takes the row's own fill, flat, so the selected row's accent bar is not drawn a second time. */
+.track-table__end {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  justify-self: end;
+  position: sticky;
+  /* The scroll area's `scrollbar-gutter: stable` already leaves the bar's room out of what a
+     sticky cell sticks to, so the cell's edge is the bar's edge with no offset of its own. */
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 0 var(--space-xs);
+  background: var(--bg-input);
+}
+
+/* A row with an end cell is clipped, not hidden: "hidden" makes the row a scroll container of its
+   own, and the end cell would stick to a row that never scrolls instead of to the table. The
+   row's left sticky cells stay where the other rows' are (the table pins none of them). */
+.track-table__row--end {
+  overflow: clip;
+}
+
+.track-table__row--end .track-table__cell--sticky {
+  position: static;
+}
+
+.track-table__row:hover .track-table__end {
+  background: color-mix(in srgb, var(--bg-panel) 35%, var(--bg-input));
+}
+
+.track-table__row--selected .track-table__end,
+.track-table__row--selected:hover .track-table__end {
+  background: var(--bg-selected);
 }
 
 .track-table__skeleton {

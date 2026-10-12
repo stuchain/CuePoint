@@ -29,6 +29,7 @@ import { TRACK_DETAIL } from "../library/librarySets.testFixture";
 import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
 import { toQueueItem } from "../library/useLibraryPlayback";
 import { cleanMatchState } from "../clean/cleanLink";
+import { DOUBLE_CLICK_MS } from "./prepareEditingContext";
 import { PrepareScreen, SET_ENTRY_MIME, SET_GONE_LINE } from "./PrepareScreen";
 import { EDITS, FRIDAY, IDS, PLAIN, REFUSALS, TREE, answered, refused } from "./prepare.testFixture";
 import { NO_SETS, WHAT_A_SET_IS } from "./prepareFormat";
@@ -367,9 +368,11 @@ describe("the header's facts and buttons (PRP-3, PRP-6, PRP-10)", () => {
     renderAt(preparePath(IDS.plain));
     await opened("Plain");
     const facts = screen.getByRole("status", { name: "" });
-    expect(within(facts).getByText("No times planned yet")).toHaveAttribute(
+    // No "0:00 planned" to read as a plan: the count's title says no times are planned yet.
+    expect(facts).not.toHaveTextContent("planned");
+    expect(within(facts).getByText(/ tracks?$/)).toHaveAttribute(
       "title",
-      expect.stringMatching(/Mix in and Mix out in the table/),
+      expect.stringMatching(/^No times planned yet.*Mix in and Mix out in the table/),
     );
   });
 
@@ -478,15 +481,18 @@ describe("the Set", () => {
     await opened();
     const facts = screen.getByRole("status", { name: "" });
     expect(facts).toHaveTextContent(
-      "6 entries · 9:00 planned · 4 without times · 5 warnings · 1 accepted",
+      "6 tracks · 9:00 planned · 5 warnings",
     );
     // What asks something of the person sits beside the facts, never inside them (they give way).
     expect(facts).toHaveTextContent("Files not checked · Check now");
-    // Each short fact carries its sentence.
+    // Each short fact carries its sentence: the untimed and the accepted are in their titles.
+    expect(within(facts).getByText("9:00 planned")).toHaveAttribute("title", "4 without times");
     expect(within(facts).getByText(/5 warnings/)).toHaveAttribute(
       "title",
-      "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range",
+      "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range, 1 accepted",
     );
+    expect(facts).not.toHaveTextContent("without times");
+    expect(facts).not.toHaveTextContent("accepted");
     expect(within(facts).getByRole("button", { name: "Check now" })).toHaveAttribute(
       "title",
       expect.stringMatching(/^Files in this Set have never been checked/),
@@ -991,29 +997,308 @@ describe("set lists and the export", () => {
 
 // ------------------------------------------------------------------ FLW-17
 
-/** The facts line, which is also the entry buttons' line (PREP-10, DEC-112). */
+/** The facts line. */
 const factsLine = () => document.querySelector(".prepare-header__facts") as HTMLElement;
-const button = (name: string) => within(factsLine()).getByRole("button", { name });
+/** An entry button, on the row it is drawn on (C15d, DEC-249). */
+const button = (name: string, index = 2) => within(rowAt(index)).getByRole("button", { name });
 const tableKey = (init: KeyboardEventInit) => fireEvent.keyDown(table(), init);
 
-describe("the entry buttons (FLW-17)", () => {
-  it("are on the facts line, always, disabled with 'Select an entry' until one is selected (DEC-209)", async () => {
+describe("the entry buttons (FLW-17, C15d)", () => {
+  const names = ["Move up", "Move down", "Start a chapter here", "Repeat after", "Remove"];
+
+  it("are drawn only on the selected row, in short words with the full names kept (DEC-249)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    const names = ["Move up", "Move down", "Start a chapter here", "Repeat after", "Remove"];
-    for (const name of names) {
-      expect(button(name)).toBeDisabled();
-      expect(button(name)).toHaveAttribute("title", "Select an entry");
-      expect(button(name).closest("header")).toBe(factsLine().closest("header"));
-    }
-    // Notes and View stay on the facts; the entry buttons are their own group, the third line.
-    const group = within(factsLine()).getByRole("group", { name: "Selected entries" });
-    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual(names);
-    expect(group).not.toHaveClass("prepare-header__entries--glyphs");
-    expect(within(group).queryByRole("button", { name: "Notes (1)" })).toBeNull();
+    // Nothing selected: nothing drawn, on the row or on the facts line.
+    for (const name of names) expect(screen.queryByRole("button", { name })).toBeNull();
+    expect(within(factsLine()).queryByRole("group", { name: "Selected entries" })).toBeNull();
 
     fireEvent.click(rowAt(2));
+    const group = within(rowAt(2)).getByRole("group", { name: "Selected entries" });
+    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "↑",
+      "↓",
+      "Chapter here",
+      "Repeat after",
+      "Remove",
+    ]);
     for (const name of names) expect(button(name)).toBeEnabled();
+    expect(button("Move up")).toHaveAttribute("title", "Move up (Alt+↑)");
+    expect(button("Remove")).toHaveAttribute("title", "Remove (Delete)");
+    // Only the one row carries them.
+    expect(screen.getAllByRole("button", { name: "Move up" })).toHaveLength(1);
+    // The facts line has none of them any more.
+    for (const name of names) expect(within(factsLine()).queryByRole("button", { name })).toBeNull();
+  });
+
+  it("sit on the focused entry's row when several are selected, and say how many they act on", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    fireEvent.click(rowAt(4), { ctrlKey: true });
+    expect(screen.getAllByRole("button", { name: "Move up" })).toHaveLength(1);
+    expect(button("Move up", 4)).toHaveAttribute("title", "Move 2 entries up (Alt+↑)");
+    expect(button("Remove", 4)).toHaveAttribute("title", "Remove 2 entries (Delete)");
+  });
+
+  it("leave the selection alone when pressed, once they let the pointer through", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      fireEvent.click(rowAt(2));
+      fireEvent.click(rowAt(4), { ctrlKey: true });
+      const group = within(rowAt(4)).getByRole("group", { name: "Selected entries" });
+      // Not yet: the pointer goes through to the row, so these presses would not be the buttons'.
+      expect(getComputedStyle(group).pointerEvents).toBe("none");
+      act(() => void vi.advanceTimersByTime(DOUBLE_CLICK_MS));
+      expect(getComputedStyle(group).pointerEvents).not.toBe("none");
+    } finally {
+      vi.useRealTimers();
+    }
+    // A press that reached the row would select it alone (a click) or play it (a double-click).
+    fireEvent.mouseDown(button("Move up", 4));
+    fireEvent.click(button("Move up", 4));
+    fireEvent.doubleClick(button("Move up", 4));
+    expect(player.playQueue).not.toHaveBeenCalled();
+    expect(rowAt(2)).toHaveAttribute("aria-selected", "true");
+    expect(rowAt(4)).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(sets.moveEntry).toHaveBeenCalled());
+  });
+
+  it("let the pointer through for a double-click's length (500 ms) after they appear, so its second click plays the row", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      fireEvent.click(rowAt(2));
+      const group = within(rowAt(2)).getByRole("group", { name: "Selected entries" });
+      expect(DOUBLE_CLICK_MS).toBe(500);
+      expect(getComputedStyle(group).pointerEvents).toBe("none");
+      act(() => void vi.advanceTimersByTime(DOUBLE_CLICK_MS - 1));
+      expect(getComputedStyle(group).pointerEvents).toBe("none");
+      act(() => void vi.advanceTimersByTime(1));
+      expect(getComputedStyle(group).pointerEvents).not.toBe("none");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("hold a mouse click on Remove back for a double-click's length, and drop it for a double-click", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      // A click of the mouse (detail 1): nothing yet, then Remove after the interval.
+      fireEvent.click(button("Remove"), { detail: 1 });
+      act(() => void vi.advanceTimersByTime(DOUBLE_CLICK_MS - 1));
+      expect(bridge.removeCollectionEntries).not.toHaveBeenCalled();
+      act(() => void vi.advanceTimersByTime(1));
+      expect(bridge.removeCollectionEntries).toHaveBeenCalledWith({ entry_ids: [E2] });
+
+      // A double-click aimed at the row's right end: it plays the row, and removes nothing.
+      (bridge.removeCollectionEntries as Fn).mockClear();
+      fireEvent.click(button("Remove"), { detail: 1 });
+      fireEvent.click(button("Remove"), { detail: 2 });
+      fireEvent.doubleClick(button("Remove"));
+      act(() => void vi.advanceTimersByTime(DOUBLE_CLICK_MS * 2));
+      expect(bridge.removeCollectionEntries).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+    await waitFor(() => expect(player.playQueue).toHaveBeenCalled());
+  });
+
+  describe("take the form the row has room for (DEC-249)", () => {
+    // jsdom lays nothing out, so the widths the browser would measure are stood in for: a Set scroll
+    // area `scroll` wide, a number column 50 and a title 200 beside it; the words 400, the glyphs 150.
+    let restore: (() => void)[] = [];
+    function layout(scroll: number) {
+      const widths = (element: Element) =>
+        element.matches('[data-column="position"]')
+          ? 50
+          : element.matches('[data-column="title"]')
+            ? 200
+            : element.matches('[data-measure="words"]')
+              ? 400
+              : element.matches('[data-measure="glyphs"]')
+                ? 150
+                : 0;
+      const offset = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth");
+      const client = Object.getOwnPropertyDescriptor(Element.prototype, "clientWidth");
+      Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+        configurable: true,
+        get(this: HTMLElement) {
+          return widths(this);
+        },
+      });
+      Object.defineProperty(Element.prototype, "clientWidth", {
+        configurable: true,
+        get(this: Element) {
+          return this.classList.contains("track-table__scroll") ? scroll : 0;
+        },
+      });
+      restore.push(() => {
+        if (offset) Object.defineProperty(HTMLElement.prototype, "offsetWidth", offset);
+        else delete (HTMLElement.prototype as unknown as Record<string, unknown>).offsetWidth;
+        if (client) Object.defineProperty(Element.prototype, "clientWidth", client);
+        else delete (Element.prototype as unknown as Record<string, unknown>).clientWidth;
+      });
+    }
+    afterEach(() => {
+      restore.forEach((undo) => undo());
+      restore = [];
+    });
+
+    it("draws the words where they fit beside the number and the title", async () => {
+      layout(700); // room 700 - 250 = 450
+      renderAt(preparePath(IDS.friday));
+      await opened();
+      fireEvent.click(rowAt(2));
+      expect(within(within(rowAt(2)).getByRole("group", { name: "Selected entries" })).getAllByRole("button").map((b) => b.textContent)).toEqual([
+        "↑",
+        "↓",
+        "Chapter here",
+        "Repeat after",
+        "Remove",
+      ]);
+    });
+
+    it("draws glyphs where only they fit, the full names kept", async () => {
+      layout(500); // room 250: the words (400) do not fit, the glyphs (150) do
+      renderAt(preparePath(IDS.friday));
+      await opened();
+      fireEvent.click(rowAt(2));
+      expect(button("Start a chapter here").textContent).toBe("Chapter");
+      expect(button("Repeat after").textContent).toBe("↻");
+      expect(button("Remove").textContent).toBe("×");
+    });
+
+    it("draws one Actions button that opens the row's menu where not even the glyphs fit", async () => {
+      layout(350); // room 100
+      renderAt(preparePath(IDS.friday));
+      await opened();
+      fireEvent.click(rowAt(2));
+      const group = within(rowAt(2)).getByRole("group", { name: "Selected entries" });
+      expect(within(group).getAllByRole("button")).toHaveLength(1);
+      expect(within(group).queryByRole("button", { name: "Remove" })).toBeNull();
+      fireEvent.click(within(group).getByRole("button", { name: "Actions" }));
+      // The entry's own context menu, as a right-click opens it.
+      expect(await menuItem("Remove from Set")).toBeInTheDocument();
+      expect(await menuItem("Play Set from here")).toBeInTheDocument();
+    });
+  });
+
+  it("press Remove at once from the keyboard", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    // Enter or Space on a button is a click with no detail.
+    fireEvent.click(button("Remove"), { detail: 0 });
+    await waitFor(() => expect(bridge.removeCollectionEntries).toHaveBeenCalledWith({ entry_ids: [E2] }));
+  });
+
+  it("are not drawn while a time on their row is being typed in, so they never cover its fields", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    expect(within(rowAt(2)).getByRole("group", { name: "Selected entries" })).toBeInTheDocument();
+    tableKey({ key: "F2" });
+    await within(rowAt(2)).findByRole("textbox");
+    expect(within(rowAt(2)).queryByRole("group", { name: "Selected entries" })).toBeNull();
+    // Escape drops the typing, and the buttons are back.
+    fireEvent.keyDown(within(rowAt(2)).getByRole("textbox"), { key: "Escape" });
+    await waitFor(() => expect(within(rowAt(2)).getByRole("group", { name: "Selected entries" })).toBeInTheDocument());
+  });
+
+  it("tell their hint with the themed tip on keyboard focus, drawn in the page and not inside the clipped row", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    act(() => button("Move up").focus());
+    const tip = await screen.findByRole("tooltip");
+    expect(tip).toHaveTextContent("Move up (Alt+↑)");
+    expect(tip.parentElement).toBe(document.body);
+    expect(button("Move up")).toHaveAttribute("aria-describedby", tip.id);
+  });
+
+  it("let Tab go from the table to the row's first enabled button, and Shift+Tab on it back to the table", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    // The first entry cannot move up: its first enabled button is Move down.
+    fireEvent.click(rowAt(1));
+    act(() => table().focus());
+    expect(fireEvent.keyDown(table(), { key: "Tab" })).toBe(false);
+    expect(button("Move down", 1)).toHaveFocus();
+    // Tab between the buttons is the browser's.
+    expect(fireEvent.keyDown(button("Move down", 1), { key: "Tab" })).toBe(true);
+    // Shift+Tab on the first one is the table's.
+    expect(fireEvent.keyDown(button("Move down", 1), { key: "Tab", shiftKey: true })).toBe(false);
+    expect(table()).toHaveFocus();
+    // Shift+Tab on a later button is the browser's.
+    expect(fireEvent.keyDown(button("Remove", 1), { key: "Tab", shiftKey: true })).toBe(true);
+  });
+
+  it("leave Tab alone with no entry selected", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    act(() => table().focus());
+    expect(fireEvent.keyDown(table(), { key: "Tab" })).toBe(true);
+  });
+
+  it("keep only the keys the table acts on, and let Escape and the app's keys through", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    const seen: string[] = [];
+    const spy = (event: KeyboardEvent) => seen.push(event.key);
+    document.addEventListener("keydown", spy);
+    try {
+      for (const key of ["Escape", "Enter", "ArrowDown", "Delete", "F2", "F5", "Tab"]) {
+        fireEvent.keyDown(button("Move up"), { key });
+      }
+    } finally {
+      document.removeEventListener("keydown", spy);
+    }
+    expect(seen).toEqual(["Escape", "F5", "Tab"]);
+  });
+
+  it("keep focus on ↓ after the Set is re-read and the row's node is moved", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    const [one, two, ...rest] = FRIDAY.entries.entries;
+    const [first, ...others] = FRIDAY.plan.chapters;
+    // The answer to Move down: E2 and E3 swapped (E3 is the next chapter's first).
+    sets.moveEntry.mockImplementationOnce(async () => {
+      // A real browser drops focus to the page when React moves the row's node; jsdom does not.
+      (document.activeElement as HTMLElement | null)?.blur();
+      sets.entries.mockImplementation(async () =>
+        answered({ ...FRIDAY.entries, entries: [one, rest[0], two, ...rest.slice(1)].map((entry, position) => ({ ...entry, position })) }),
+      );
+      sets.plan.mockImplementation(async () => answered({ ...FRIDAY.plan, chapters: [first, ...others] }));
+      return answered(EDITS.moved);
+    });
+    const down = button("Move down");
+    act(() => down.focus());
+    fireEvent.click(down);
+    await waitFor(() => expect(sets.moveEntry).toHaveBeenCalled());
+    // However React redraws the row, focus is on the same button afterwards, never lost to the page.
+    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+    expect(document.activeElement).toHaveAttribute("data-entry-button", "down");
+
+  });
+
+  it("put focus on the table after Remove, when the buttons are gone", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    const remove = button("Remove");
+    act(() => remove.focus());
+    fireEvent.click(remove);
+    await waitFor(() => expect(bridge.removeCollectionEntries).toHaveBeenCalled());
+    await waitFor(() => expect(document.activeElement).toBe(table()));
   });
 
   it("move an entry up and down by one, and across a chapter's heading as a step", async () => {
@@ -1055,7 +1340,7 @@ describe("the entry buttons (FLW-17)", () => {
     await opened();
     fireEvent.click(rowAt(2));
     fireEvent.click(rowAt(4), { ctrlKey: true });
-    fireEvent.click(button("Move up"));
+    fireEvent.click(button("Move up", 4));
     await waitFor(() => expect(sets.moveEntry).toHaveBeenCalledTimes(2));
     expect(sets.moveEntry.mock.calls.map(([call]) => call)).toEqual([
       { entry_id: E2, position: 0, chapter_id: 1 },
@@ -1067,11 +1352,11 @@ describe("the entry buttons (FLW-17)", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.click(rowAt(1));
-    expect(button("Move up")).toBeDisabled();
-    expect(button("Move up")).toHaveAttribute("title", "Already first in the Set");
-    expect(button("Start a chapter here")).toBeDisabled();
+    expect(button("Move up", 1)).toBeDisabled();
+    expect(button("Move up", 1)).toHaveAttribute("title", "Already first in the Set");
+    expect(button("Start a chapter here", 1)).toBeDisabled();
     fireEvent.click(rowAt(8));
-    expect(button("Move down")).toHaveAttribute("title", "Already last in the Set");
+    expect(button("Move down", 8)).toHaveAttribute("title", "Already last in the Set");
   });
 
   it("start a chapter at the first selected entry, repeat one entry and remove all selected", async () => {
@@ -1079,11 +1364,12 @@ describe("the entry buttons (FLW-17)", () => {
     await opened();
     fireEvent.click(rowAt(2));
     fireEvent.click(rowAt(5), { ctrlKey: true });
-    expect(button("Repeat after")).toBeDisabled();
-    expect(button("Repeat after")).toHaveAttribute("title", "Select one entry");
-    fireEvent.click(button("Start a chapter here"));
+    // The focused row is the last one picked.
+    expect(button("Repeat after", 5)).toBeDisabled();
+    expect(button("Repeat after", 5)).toHaveAttribute("title", "Select one entry");
+    fireEvent.click(button("Start a chapter here", 5));
     await waitFor(() => expect(sets.splitChapter).toHaveBeenCalledWith({ entry_id: E2 }));
-    fireEvent.click(button("Remove"));
+    fireEvent.click(button("Remove", 5));
     await waitFor(() => expect(bridge.removeCollectionEntries).toHaveBeenCalledWith({ entry_ids: [E2, E4] }));
 
     fireEvent.click(rowAt(2));
@@ -1371,7 +1657,7 @@ describe("the key notice (FLW-19)", () => {
     await opened();
     const notice = within(factsLine()).getByText(/^2 without key/);
     expect(notice).toHaveAttribute("title", expect.stringMatching(/^2 entries have no Beatport key/));
-    expect(factsLine()).toHaveTextContent("5 warnings · 1 accepted");
+    expect(factsLine()).toHaveTextContent("5 warnings");
   });
 
   it("opens Clean's match window on those entries' tracks", async () => {
@@ -1406,33 +1692,27 @@ describe("the transition strip's caption and Accept (FLW-19)", () => {
     };
   }
 
-  it("reads the keys, tempos and times of the selected entry into the next", async () => {
+  it("reads the keys and the tempo change of the selected entry into the next, without its times", async () => {
     openStrip();
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.click(rowAt(1));
-    expect(await screen.findByTestId("transition-words")).toHaveTextContent(
-      "8A → 9A · next key up · 122 → 124 BPM (+1.6%) · Out 4:30 → In 0:00",
-    );
+    expect(await screen.findByTestId("transition-words")).toHaveTextContent(/^8A → 9A · next key up · \+1\.6% BPM$/);
   });
 
-  it("ends the line with the transition's warning, and Accept writes the acceptance", async () => {
+  it("ends the line with one warning, the first still open, and Accept writes the acceptance", async () => {
     openStrip();
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.click(rowAt(4));
-    const warnings = await screen.findAllByTestId("transition-warning");
-    expect(warnings.map((warning) => warning.textContent)).toEqual([
-      expect.stringMatching(/^Tempo jumpAccept$/),
-      expect.stringMatching(/^Keys clash \(accepted\)Undo accept$/),
-    ]);
-    fireEvent.click(within(warnings[0]).getByRole("button", { name: "Accept" }));
+    // The tempo jump is open and the key clash accepted: one is shown, the other is "+1 more".
+    const warning = await screen.findByTestId("transition-warning");
+    expect(screen.getAllByTestId("transition-warning")).toHaveLength(1);
+    expect(warning).toHaveTextContent(/^Tempo jumpAccept\+1 more$/);
+    expect(within(warning).getByText("+1 more")).toHaveAttribute("title", "Keys clash: 8A → 3B (accepted)");
+    fireEvent.click(within(warning).getByRole("button", { name: "Accept" }));
     await waitFor(() =>
       expect(sets.acknowledge).toHaveBeenCalledWith({ from_entry_id: E3, to_entry_id: E4, warning: "tempo_jump" }),
-    );
-    fireEvent.click(within(warnings[1]).getByRole("button", { name: "Undo accept" }));
-    await waitFor(() =>
-      expect(sets.unacknowledge).toHaveBeenCalledWith({ from_entry_id: E3, to_entry_id: E4, warning: "key_clash" }),
     );
   });
 });

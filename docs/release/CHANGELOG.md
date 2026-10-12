@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Track details is compact.** One row of small buttons (Play, Play next, Queue, Similar, Folder), the favourite heart beside the stars, and Yours folded until you open it, with a short summary on its heading. Hover the stars to see where a rating comes from (DEC-246).
 - **The Export to Rekordbox dialog leads with a summary** of tracks, changed values and playlists. Warnings that change the result stay in view; the rest, including the playlist ticks and key notation, is under **Details** (DEC-247).
 - **First steps is a small chip** beside the Library heading ("First steps 2/4") instead of a big button above the filters (DEC-248).
+- **Prepare's entry buttons are on the selected row.** ↑, ↓, Chapter here, Repeat after and Remove sit at the right end of the selected entry's row instead of under the header, and none shows until an entry is selected. The line under the header reads "32 tracks · 19 warnings" (the planned time once you plan one), and the transition caption keeps the keys, the tempo change and one warning with Accept (DEC-249).
 
 ### Fixed
 - **Dragging tracks into a Set.** Drop anywhere in the Set table, including the space below the last row and an empty Set's whole area: the Set is outlined and says where the tracks will go, a line shows the spot, and dragging several rows shows "3 tracks". Draggable rows have a grip (DEC-243).

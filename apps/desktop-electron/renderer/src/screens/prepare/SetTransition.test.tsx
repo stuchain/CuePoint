@@ -14,6 +14,7 @@ import type {
 import { ROW_HEIGHT_FALLBACK, readRowHeight } from "../../components/table/trackTableLayout";
 import { forgetWaveforms } from "../../components/waveform/waveformCache";
 import { SetTransition } from "./SetTransition";
+import { describeSetWarning } from "./setWarnings";
 import { END_OF_SET, NO_SELECTION_WORDS } from "./transitionStrip";
 
 /**
@@ -174,7 +175,8 @@ describe("the transition strip", () => {
     expect(within(strip).getByText("In 0:00 · Out 0:04")).toBeInTheDocument();
     expect(within(strip).getByText("Build")).toBeInTheDocument();
     expect(within(strip).getByText("In 0:01 · Out 0:05")).toBeInTheDocument();
-    expect(screen.getByTestId("transition-words")).toHaveTextContent("Out 0:04 → In 0:01");
+    // The times are the halves' own; the caption between them does not repeat them (C15d).
+    expect(screen.queryByTestId("transition-words")).toBeNull();
     expect(screen.getByRole("button", { name: "Intro, In 0:00 · Out 0:04" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Build, In 0:01 · Out 0:05" })).toBeInTheDocument();
     await drawn("from", "to");
@@ -203,7 +205,7 @@ describe("the transition strip", () => {
     render(<SetTransition entries={ENTRIES} selectedEntryId={2} onSelect={vi.fn()} />);
     await drawn("from", "to");
 
-    expect(screen.getByTestId("transition-words")).toHaveTextContent("Out 0:05 → no times");
+    expect(screen.queryByTestId("transition-words")).toBeNull();
     expect(within(screen.getByRole("region", { name: "Transition" })).getByText("No out time")).toBeInTheDocument();
     expect(fillsOf("to").some((fill) => fill.colour === PLAYED)).toBe(false);
   });
@@ -215,7 +217,7 @@ describe("the transition strip", () => {
 
     expect(screen.getByTestId("transition-to")).toHaveTextContent(END_OF_SET);
     expect(screen.getByTestId("transition-to").tagName).toBe("P");
-    expect(screen.getByTestId("transition-words")).toHaveTextContent(/^No out time$/);
+    expect(screen.queryByTestId("transition-words")).toBeNull();
     expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(waveforms.get).toHaveBeenCalledWith({ track_ids: [40], width: 160, marks: true });
   });
@@ -260,7 +262,6 @@ describe("the transition strip", () => {
 
     expect(screen.getByTestId("transition-from")).toHaveAttribute("data-entry", "2");
     expect(screen.getByTestId("transition-to")).toHaveAttribute("data-entry", "3");
-    expect(screen.getByTestId("transition-words")).toHaveTextContent("Out 0:05 → no times");
     await drawn("from", "to");
   });
 
@@ -285,8 +286,8 @@ describe("the transition strip", () => {
     await waitFor(() => expect(screen.getByTestId("transition-to")).toHaveTextContent("File missing"));
     expect(screen.getByTestId("transition-from")).toHaveTextContent("Not made yet");
     expect(screen.getByTestId("transition-to")).toHaveAttribute("title", "File missing");
-    // The times are said whether or not there is a picture.
-    expect(screen.getByTestId("transition-words")).toHaveTextContent("Out 0:04 → In 0:01");
+    // The times are said in the halves' titles whether or not there is a picture.
+    expect(screen.getByText("In 0:01 · Out 0:05")).toBeInTheDocument();
   });
 });
 
@@ -344,8 +345,9 @@ describe("the strip's loudness (WAVE-08)", () => {
     install((id) => waveform(id, "ready", { loudness: measured(id === 10 ? -10.5 : -8.4) }));
     render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
 
-    await waitFor(() => expect(screen.getByTestId("transition-words")).toHaveTextContent("+2.1 LU"));
-    expect(screen.getByTestId("transition-words")).toHaveTextContent(/^Out 0:04 → In 0:01 · \+2\.1 LU$/);
+    // The difference is the caption's title's, not a segment of its line (C15d).
+    await waitFor(() => expect(screen.getByTestId("transition-caption")).toHaveAttribute("title", expect.stringContaining("+2.1 LU")));
+    expect(screen.queryByTestId("transition-words")).toBeNull();
     const titles = screen.getAllByTestId("transition-loudness").map((each) => each.textContent);
     expect(titles).toEqual([" · −10.5 LUFS", " · −8.4 LUFS"]);
     expect(screen.getByText("Intro").parentElement).toHaveAttribute(
@@ -364,15 +366,15 @@ describe("the strip's loudness (WAVE-08)", () => {
     render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
 
     await waitFor(() => expect(screen.getAllByTestId("transition-loudness")).toHaveLength(1));
-    expect(screen.getByTestId("transition-words")).toHaveTextContent(/^Out 0:04 → In 0:01$/);
+    expect(screen.getByTestId("transition-caption").getAttribute("title")).not.toMatch(/means/);
     await drawn("from", "to");
   });
 
   it("explains the loudness units in a title (PRP-8)", async () => {
     install((id) => waveform(id, "ready", { loudness: measured(id === 10 ? -10.5 : -8.4) }));
     render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
-    await waitFor(() => expect(screen.getByTestId("transition-words")).toHaveTextContent("+2.1 LU"));
-    expect(screen.getByTestId("transition-words")).toHaveAttribute(
+    await waitFor(() => expect(screen.getByTestId("transition-caption").getAttribute("title")).toMatch(/\+2\.1 LU/));
+    expect(screen.getByTestId("transition-caption")).toHaveAttribute(
       "title",
       "Loudness (LUFS). +2.1 LU means the next track is 2.1 dB louder.",
     );
@@ -384,7 +386,7 @@ describe("the strip's loudness (WAVE-08)", () => {
     render(<SetTransition entries={ENTRIES} selectedEntryId={4} onSelect={vi.fn()} />);
 
     await waitFor(() => expect(screen.getAllByTestId("transition-loudness")).toHaveLength(1));
-    expect(screen.getByTestId("transition-words")).toHaveTextContent(/^No out time$/);
+    expect(screen.queryByTestId("transition-words")).toBeNull();
     await drawn("from");
   });
 
@@ -419,11 +421,18 @@ describe("the caption and its warning (FLW-19)", () => {
     acknowledged: false,
   };
 
-  it("reads the keys and tempos before the times, on the one caption", async () => {
+  it("reads the keys and the tempo change, with no planned times, the clash in the warning colour", async () => {
     install();
     render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} shape={SHAPE} />);
-    expect(screen.getByTestId("transition-words")).toHaveTextContent(
-      /^8A → 3B · keys clash · 124 → 126 BPM \(\+1\.6%\) · Out 0:04 → In 0:01$/,
+    const words = screen.getByTestId("transition-words");
+    expect(words).toHaveTextContent(/^8A → 3B · keys clash · \+1\.6% BPM$/);
+    expect(within(words).getByText("keys clash").closest(".prepare-transition__piece")).toHaveClass(
+      "prepare-transition__piece--warning",
+    );
+    // The whole tempos are the title's.
+    expect(screen.getByTestId("transition-caption")).toHaveAttribute(
+      "title",
+      expect.stringContaining("124 → 126 BPM (+1.6%)"),
     );
     await drawn("from", "to");
   });
@@ -432,7 +441,7 @@ describe("the caption and its warning (FLW-19)", () => {
     install();
     render(<SetTransition entries={ENTRIES} selectedEntryId={2} onSelect={vi.fn()} shape={SHAPE} />);
     expect(screen.getByTestId("transition-words")).toHaveTextContent(
-      /^No Beatport key: key not checked · 126 → 126 BPM \(0%\) · Out 0:05 → no times$/,
+      /^No Beatport key: key not checked · 0% BPM$/,
     );
     await drawn("from", "to");
   });
@@ -457,15 +466,67 @@ describe("the caption and its warning (FLW-19)", () => {
     // A few words on the line, the whole sentence in the title (the strip has no room for it).
     expect(warning).toHaveTextContent(/^Keys clashAccept$/);
     expect(within(warning).getByTitle("Keys clash: 8A → 3B")).toBeInTheDocument();
-    // The caption does not say "keys clash" a second time.
+    // The caption still says "keys clash", in the warning colour, as the mockup draws it.
     expect(within(caption).getByTestId("transition-words")).toHaveTextContent(
-      /^8A → 3B · 124 → 126 BPM \(\+1\.6%\) · Out 0:04 → In 0:01$/,
+      /^8A → 3B · keys clash · \+1\.6% BPM$/,
     );
     expect(
       screen.getByTestId("transition-words").compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     fireEvent.click(within(warning).getByRole("button", { name: "Accept" }));
     expect(onAccept).toHaveBeenCalledWith(CLASH, true);
+    await drawn("from", "to");
+  });
+
+  it("shows one warning with Accept, the first open by kind, and the others as +N more in a title", async () => {
+    install();
+    const onAccept = vi.fn();
+    const jump: SetWarning = {
+      kind: "tempo_jump",
+      detail: "faster",
+      compared: { from: 124, to: 140, percent: 12.9 },
+      acknowledged: false,
+    };
+    render(
+      <SetTransition
+        entries={ENTRIES}
+        selectedEntryId={1}
+        onSelect={vi.fn()}
+        shape={SHAPE}
+        warnings={[jump, CLASH]}
+        onAccept={onAccept}
+      />,
+    );
+    const shown = screen.getAllByTestId("transition-warning");
+    expect(shown).toHaveLength(1);
+    expect(shown[0]).toHaveTextContent(/^Keys clashAccept\+1 more$/);
+    const more = within(screen.getByTestId("transition-caption")).getByText("+1 more");
+    expect(more).toHaveAttribute("title", expect.stringContaining(describeSetWarning(jump)));
+    fireEvent.click(within(shown[0]).getByRole("button", { name: "Accept" }));
+    expect(onAccept).toHaveBeenCalledWith(CLASH, true);
+    await drawn("from", "to");
+  });
+
+  it("moves on to the next warning once the first is accepted", async () => {
+    install();
+    const jump: SetWarning = {
+      kind: "tempo_jump",
+      detail: "faster",
+      compared: { from: 124, to: 140, percent: 12.9 },
+      acknowledged: false,
+    };
+    render(
+      <SetTransition
+        entries={ENTRIES}
+        selectedEntryId={1}
+        onSelect={vi.fn()}
+        shape={SHAPE}
+        warnings={[{ ...CLASH, acknowledged: true }, jump]}
+        onAccept={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("transition-warning")).toHaveTextContent(/^Tempo jumpAccept\+1 more$/);
+    expect(screen.getByText("+1 more")).toBeInTheDocument();
     await drawn("from", "to");
   });
 
