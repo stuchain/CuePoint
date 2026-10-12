@@ -921,6 +921,20 @@ def _id_list(count: int) -> str:
     return ", ".join("?" for _ in range(count))
 
 
+#: The candidate columns a row's proposal reads, under the names it carries them.
+_PROPOSAL_COLUMNS: Tuple[Tuple[str, str], ...] = (
+    ("candidate_id", "id"),
+    ("key", "key"),
+    ("bpm", "bpm"),
+    ("genre", "genre"),
+    ("label", "label"),
+    ("year", "release_year"),
+    ("title", "title"),
+    ("score", "score"),
+    ("guard_ok", "guard_ok"),
+)
+
+
 def build_clean_states(count: int) -> str:
     """Build the read of :data:`CLEAN_STATE_FIELDS` for ``count`` track ids."""
     columns = ", ".join(
@@ -929,6 +943,14 @@ def build_clean_states(count: int) -> str:
     # The accepted match's key, for the row's resolved key (DEC-201): the row
     # resolves it in Python beside the override and where that came from.
     columns += f", {KEY_BEATPORT_SQL} AS beatport_key"
+    # The candidate the state points at (C14's match_proposal): columns of the
+    # candidate join the row already makes for the key, so a window of rows asks
+    # nothing more of the database than it did.
+    candidate = MATCH_CANDIDATE_ALIAS
+    columns += "".join(
+        f", {candidate}.{column} AS proposal_{name}"
+        for name, column in _PROPOSAL_COLUMNS
+    )
     joins = set(_field_joins(CLEAN_STATE_FIELDS)) | {MATCH_ALIAS, MATCH_CANDIDATE_ALIAS}
     return (
         f"SELECT tracks.id AS id, {columns}"

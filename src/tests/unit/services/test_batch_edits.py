@@ -59,6 +59,7 @@ from cuepoint.services.batch_service import (
     EVENT_BATCH_APPLIED,
     OPERATION_ACCEPT_MATCH,
     OPERATION_APPLY_MATCH,
+    OPERATION_CORRECT_MATCH,
     OPERATION_ADD_TAG,
     OPERATION_ADD_TO_COLLECTION,
     OPERATION_REJECT_MATCH,
@@ -474,9 +475,10 @@ class TestTheTargetIsFixedOnce:
 
 @pytest.mark.unit
 class TestTheVocabulary:
-    def test_every_operation_is_one_of_ten(self):
-        # ORG-07's six, CLEAN-04's two match decisions, and CLEAN-05's apply
-        # and override, in the same vocabulary.
+    def test_every_operation_is_one_of_eleven(self):
+        # ORG-07's six, CLEAN-04's two match decisions, CLEAN-05's apply and
+        # override, and C14's correct (accept and apply as one), in the same
+        # vocabulary.
         assert BATCH_OPERATIONS == (
             OPERATION_SET_RATING,
             OPERATION_SET_FAVORITE,
@@ -488,6 +490,7 @@ class TestTheVocabulary:
             OPERATION_REJECT_MATCH,
             OPERATION_APPLY_MATCH,
             OPERATION_SET_OVERRIDE,
+            OPERATION_CORRECT_MATCH,
         )
 
     def test_an_unknown_operation_is_refused_by_name(self, service, ids):

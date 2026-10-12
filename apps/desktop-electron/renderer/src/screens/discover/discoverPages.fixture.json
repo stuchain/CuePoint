@@ -74,6 +74,17 @@
       "key_source": "yours",
       "label": "Nightfall Audio",
       "match_disputed": false,
+      "match_proposal": {
+        "bpm": null,
+        "candidate_id": 1,
+        "genre": null,
+        "guard_ok": true,
+        "key": null,
+        "label": null,
+        "mix": null,
+        "score": 90.0,
+        "year": null
+      },
       "match_score": null,
       "match_state": "accepted",
       "overridden": [
@@ -167,6 +178,7 @@
       "key_source": "yours",
       "label": "Cold Room",
       "match_disputed": false,
+      "match_proposal": null,
       "match_score": null,
       "match_state": "not_matched",
       "overridden": [
@@ -734,6 +746,17 @@
         "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
+        "match_proposal": {
+          "bpm": null,
+          "candidate_id": 1,
+          "genre": null,
+          "guard_ok": true,
+          "key": null,
+          "label": null,
+          "mix": null,
+          "score": 90.0,
+          "year": null
+        },
         "match_score": null,
         "match_state": "accepted",
         "overridden": [
@@ -776,6 +799,7 @@
         "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
+        "match_proposal": null,
         "match_score": null,
         "match_state": "not_matched",
         "overridden": [
@@ -853,6 +877,17 @@
         "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
+        "match_proposal": {
+          "bpm": null,
+          "candidate_id": 1,
+          "genre": null,
+          "guard_ok": true,
+          "key": null,
+          "label": null,
+          "mix": null,
+          "score": 90.0,
+          "year": null
+        },
         "match_score": null,
         "match_state": "accepted",
         "overridden": [
@@ -895,6 +930,7 @@
         "key_source": "yours",
         "label": "Cold Room",
         "match_disputed": false,
+        "match_proposal": null,
         "match_score": null,
         "match_state": "not_matched",
         "overridden": [
@@ -937,6 +973,7 @@
         "key_source": null,
         "label": null,
         "match_disputed": false,
+        "match_proposal": null,
         "match_score": null,
         "match_state": "not_matched",
         "overridden": [],
@@ -1010,6 +1047,17 @@
         "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
+        "match_proposal": {
+          "bpm": null,
+          "candidate_id": 1,
+          "genre": null,
+          "guard_ok": true,
+          "key": null,
+          "label": null,
+          "mix": null,
+          "score": 90.0,
+          "year": null
+        },
         "match_score": null,
         "match_state": "accepted",
         "overridden": [
@@ -1052,6 +1100,7 @@
         "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
+        "match_proposal": null,
         "match_score": null,
         "match_state": "not_matched",
         "overridden": [
@@ -1094,6 +1143,17 @@
         "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
+        "match_proposal": {
+          "bpm": null,
+          "candidate_id": 2,
+          "genre": null,
+          "guard_ok": true,
+          "key": null,
+          "label": null,
+          "mix": null,
+          "score": 90.0,
+          "year": null
+        },
         "match_score": null,
         "match_state": "accepted",
         "overridden": [
@@ -1728,6 +1788,7 @@
         "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
+        "match_proposal": null,
         "match_score": null,
         "match_state": "not_matched",
         "overridden": [
@@ -1821,6 +1882,7 @@
         "key_source": "yours",
         "label": "Cold Room",
         "match_disputed": false,
+        "match_proposal": null,
         "match_score": null,
         "match_state": "not_matched",
         "overridden": [
@@ -1906,6 +1968,7 @@
         "key_source": "yours",
         "label": "Cold Room",
         "match_disputed": false,
+        "match_proposal": null,
         "match_score": null,
         "match_state": "not_matched",
         "overridden": [
@@ -1991,6 +2054,17 @@
         "key_source": "yours",
         "label": "Nightfall Audio",
         "match_disputed": false,
+        "match_proposal": {
+          "bpm": null,
+          "candidate_id": 2,
+          "genre": null,
+          "guard_ok": true,
+          "key": null,
+          "label": null,
+          "mix": null,
+          "score": 90.0,
+          "year": null
+        },
         "match_score": null,
         "match_state": "accepted",
         "overridden": [
@@ -2076,6 +2150,17 @@
         "key_source": "yours",
         "label": "Elsewhere",
         "match_disputed": false,
+        "match_proposal": {
+          "bpm": null,
+          "candidate_id": 3,
+          "genre": null,
+          "guard_ok": true,
+          "key": null,
+          "label": null,
+          "mix": null,
+          "score": 90.0,
+          "year": null
+        },
         "match_score": null,
         "match_state": "accepted",
         "overridden": [

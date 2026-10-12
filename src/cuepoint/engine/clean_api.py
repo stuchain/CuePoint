@@ -366,11 +366,26 @@ def start_match(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, An
     """Start matching a selection on Beatport, as a resumable job (DEC-065)."""
     from cuepoint.engine.match_jobs import start_match_job
 
-    _only(data, ("selection", "rematch"))
+    _only(data, ("selection", "rematch", "label"))
     started = start_match_job(
-        job_store, _selection(data), rematch=_optional_bool(data, "rematch")
+        job_store,
+        _selection(data),
+        rematch=_optional_bool(data, "rematch"),
+        label=_label(data),
     )
     return _started(started.job, started.to_dict())
+
+
+def _label(data: Dict[str, Any]) -> Optional[str]:
+    """The words a run is listed under: trimmed, never blank, a name not a paste."""
+    from cuepoint.models.match_attempt import MAX_LABEL_LENGTH
+
+    if data.get("label") is None:
+        return None
+    label = _require_str(data, "label")
+    if len(label) > MAX_LABEL_LENGTH:
+        raise bad_request(f"label is at most {MAX_LABEL_LENGTH} characters")
+    return label
 
 
 def resume_match(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
@@ -401,6 +416,54 @@ def resumable_matches(params: Dict[str, List[str]]) -> Dict[str, Any]:
         ],
         "total": len(jobs),
     }
+
+
+#: A page of past searches (C14): twenty by default, as the Match area lists them.
+MATCH_JOBS_LIMIT_DEFAULT = 20
+MATCH_JOBS_LIMIT_MAX = 200
+
+
+def match_run_to_dict(run: Any) -> Dict[str, Any]:
+    """Serialize one past search: a run and the resumes that finished it."""
+    return {
+        "job_id": run.job_id,
+        "created_at": run.created_at,
+        "label": run.label,
+        "rematch": run.rematch,
+        "selected": run.selected,
+        "excluded": run.excluded,
+        "planned": run.planned,
+        "done": run.done,
+        "found": run.found,
+        "waiting": run.waiting,
+        "not_found": run.not_found,
+        "rejected": run.rejected,
+        "disputed": run.disputed,
+        "status": run.status,
+        "finished_at": run.finished_at,
+        "latest_job_id": run.latest_job_id,
+        "resume_job_id": run.resume_job_id,
+    }
+
+
+def past_matches(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """Past searches, newest first: one entry per run, however often it resumed.
+
+    ``q`` finds text in a run's label or date; ``limit`` and ``offset`` page. The
+    counts are the tracks' current state, so they move as matches are reviewed.
+    """
+    limit = _query_int(params, "limit")
+    offset = _query_int(params, "offset")
+    limit = MATCH_JOBS_LIMIT_DEFAULT if limit is None else limit
+    offset = 0 if offset is None else offset
+    if not 1 <= limit <= MATCH_JOBS_LIMIT_MAX:
+        raise bad_request(f"limit must be between 1 and {MATCH_JOBS_LIMIT_MAX}")
+    if offset < 0:
+        raise bad_request("offset cannot be negative")
+    runs, total = _service("IMatchJobRepository").history(
+        _query_value(params, "q"), limit, offset
+    )
+    return {"jobs": [match_run_to_dict(run) for run in runs], "total": total}
 
 
 def track_matches(track_id: int) -> Dict[str, Any]:
@@ -577,6 +640,70 @@ def apply_match(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, An
         job_store, _selection(data), BatchOperation(OPERATION_APPLY_MATCH, fields)
     )
     return _batch_answer(result, job)
+
+
+def correct_match(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
+    """Accept a candidate and copy the ticked fields as one act (C14, DEC-068).
+
+    The Match area's Correct. For one track, ``candidate_id`` is the candidate on
+    screen and everything it writes shares one ``batch_id``, so "Undo" is the
+    existing revert-batch. ``fields`` may be empty (accept alone) and never holds
+    the key: ``replace_key`` clears a key that is the person's own so Beatport's
+    shows (DEC-201). A selection accepts what each track proposes and copies the
+    fields, as a batch (DEC-063). ``/clean/decide`` and ``/clean/apply`` keep
+    their own shapes.
+    """
+    from cuepoint.engine.batch_jobs import apply_or_start
+    from cuepoint.services.batch_service import OPERATION_CORRECT_MATCH, BatchOperation
+    from cuepoint.services.match_correct import correct_fields
+
+    _only(data, ("track_id", "candidate_id", "selection", "fields", "replace_key"))
+    fields = correct_fields(_fields_list(data))
+    replace_key = _optional_bool(data, "replace_key")
+    if _one_of_track_or_selection(data):
+        track_id = _require_int(data, "track_id")
+        _require_track(track_id)
+        if data.get("candidate_id") is None:
+            raise bad_request("A correct names the candidate_id it accepts")
+        candidate_id = _require_int(data, "candidate_id")
+        if _service("IMatchRepository").get_candidate(candidate_id) is None:
+            raise not_found(
+                "CANDIDATE_NOT_FOUND", f"No candidate with id {candidate_id}"
+            )
+        outcome = _service("IMatchCorrectService").correct(
+            track_id, candidate_id, fields, replace_key=replace_key
+        )
+        return 200, {
+            "match": match_state_to_dict(track_id, outcome.match),
+            "track": _track_row(track_id),
+            "batch_id": outcome.batch_id,
+            "changed": outcome.changed,
+            "applied": outcome.applied,
+            "skipped": outcome.skipped,
+            "unchanged": outcome.unchanged,
+            "key": outcome.key,
+        }
+    if data.get("candidate_id") is not None:
+        raise bad_request(
+            "A selection accepts the candidate each track proposes; name a"
+            " candidate_id only for one track"
+        )
+    result, job = apply_or_start(
+        job_store,
+        _selection(data),
+        BatchOperation(
+            OPERATION_CORRECT_MATCH, {"fields": fields, "replace_key": replace_key}
+        ),
+    )
+    return _batch_answer(result, job)
+
+
+def _fields_list(data: Dict[str, Any]) -> List[Any]:
+    """The ``fields`` of a correct: a list that may be empty, named or not."""
+    fields = data.get("fields")
+    if not isinstance(fields, list) or not all(isinstance(n, str) for n in fields):
+        raise bad_request("fields must be a list of field names (it may be empty)")
+    return fields
 
 
 def set_overrides(track_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -885,6 +1012,7 @@ def export_review(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, 
 
 _GET_ROUTES: Dict[str, Callable[[Dict[str, List[str]]], Dict[str, Any]]] = {
     "/api/v1/clean/match/resumable": resumable_matches,
+    "/api/v1/clean/match/jobs": past_matches,
     "/api/v1/clean/duplicates": duplicate_groups,
     "/api/v1/clean/tags/writes": tag_writes,
     "/api/v1/clean/health": library_health,
@@ -895,6 +1023,7 @@ _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any
     "/api/v1/clean/match/resume": resume_match,
     "/api/v1/clean/decide": decide,
     "/api/v1/clean/apply": apply_match,
+    "/api/v1/clean/correct": correct_match,
     "/api/v1/library/revert": revert_change,
     "/api/v1/library/revert/batch": revert_batch,
     "/api/v1/clean/files/check": check_files,

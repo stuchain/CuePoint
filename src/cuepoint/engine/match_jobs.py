@@ -234,7 +234,10 @@ def _create(store: JobStore, runner: Callable[[Job], None]) -> Job:
 
 
 def start_match_job(
-    store: JobStore, selection: BatchSelection, rematch: bool = False
+    store: JobStore,
+    selection: BatchSelection,
+    rematch: bool = False,
+    label: Optional[str] = None,
 ) -> StartedMatch:
     """Start matching a selection on Beatport.
 
@@ -245,7 +248,7 @@ def start_match_job(
         JobTypeBusyError: If a match job is running or a refresh is applying.
     """
     service = _match_service()
-    draft = service.prepare(selection, rematch)
+    draft = service.prepare(selection, rematch, label)
 
     def runner(job: Job) -> None:
         run_match_job(job, store, lambda svc: svc.write_plan(job.id, draft))

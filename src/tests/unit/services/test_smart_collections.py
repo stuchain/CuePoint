@@ -1034,3 +1034,12 @@ class TestATrackListIsNotASmartCollection:
         with pytest.raises(FilterRuleError, match="Collection instead"):
             service.update_rules(smart.id, rules)
         assert stored(db, smart.id, "rules_json") == before
+
+
+class TestAMatchRunIsNotASmartCollection:
+    def test_saving_one_is_refused_and_nothing_is_stored(self, db, service):
+        rules = RuleSet(rules=(FilterRule("match_run", "is", "some-job"),))
+        with pytest.raises(FilterRuleError):
+            service.create_smart("A search", rules)
+        count = db.connect().execute("SELECT count(*) FROM collections").fetchone()[0]
+        assert count == 0

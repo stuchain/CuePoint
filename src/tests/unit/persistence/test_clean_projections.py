@@ -314,3 +314,56 @@ class TestSeveralOverridesAtOnce:
         with pytest.raises(ValueError):
             metadata.set_overrides(track_id, {"genre": "Techno", "colour": "red"})
         assert metadata.get(track_id) is None
+
+
+@pytest.mark.unit
+class TestTheProposal:
+    """The candidate a state points at rides the read a row already makes (C14)."""
+
+    def test_it_adds_columns_and_no_join(self):
+        sql = build_clean_states(2)
+        assert sql.count("JOIN match_candidates") == 1
+        assert sql.count("JOIN track_match") == 1
+
+    def test_a_waiting_and_an_accepted_track_carry_it(self, container):
+        waiting, accepted, never = add(3)
+        match(
+            waiting,
+            1,
+            score=80.0,
+            title="Song (Extended Mix)",
+            key="A min",
+            bpm="126",
+            genre="Techno",
+            label="Drumcode",
+            release_year=2019,
+        )
+        match(accepted, 2, score=97.0, genre="House")
+
+        states = resolve("ITrackRepository").clean_states([waiting, accepted, never])
+
+        proposal = states[waiting].proposal
+        assert proposal is not None
+        assert (proposal.key, proposal.bpm, proposal.genre) == (
+            "A min",
+            126.0,
+            "Techno",
+        )
+        assert (proposal.label, proposal.year, proposal.score) == (
+            "Drumcode",
+            2019,
+            80.0,
+        )
+        assert proposal.title == "Song (Extended Mix)" and proposal.guard_ok is True
+        assert states[accepted].proposal.genre == "House"
+        assert states[never].proposal is None
+
+    def test_a_rejection_proposes_nothing(self, container):
+        [track_id] = add(1)
+        match(track_id, 3, score=80.0)
+        resolve("IMatchStateService").reject(track_id)
+
+        assert (
+            resolve("ITrackRepository").clean_states([track_id])[track_id].proposal
+            is None
+        )

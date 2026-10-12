@@ -34,7 +34,7 @@ from cuepoint.models.filter_rule import (
 )
 from cuepoint.models.collection import KIND_COLLECTION, KIND_SET
 from cuepoint.models.library_track import LibraryTrack, QueueTrack
-from cuepoint.models.track_clean_state import TrackCleanState
+from cuepoint.models.track_clean_state import MatchProposal, TrackCleanState
 from cuepoint.models.track_metadata import (
     OVERRIDE_FIELDS,
     TrackMetadata,
@@ -51,7 +51,7 @@ from cuepoint.persistence.track_query import (
     search_key,
 )
 from cuepoint.core.similarity import MusicalKey, compatible_keys, key_relation
-from cuepoint.services.key_resolver import resolve_key
+from cuepoint.services.key_resolver import camelot_of, resolve_key
 from cuepoint.services.override_values import parse_key
 from cuepoint.utils.quoting import quoted
 
@@ -219,7 +219,33 @@ def track_to_dict(
     answers = clean.to_dict() if clean is not None else {}
     for name in CLEAN_ROW_FIELDS:
         payload[name] = answers.get(name)
+    # C14: the candidate a waiting or accepted match points at, for the Match
+    # table's "before -> after" cells. Additive; null when there is none.
+    payload["match_proposal"] = proposal_to_dict(clean.proposal if clean else None)
     return payload
+
+
+def proposal_to_dict(proposal: Optional[MatchProposal]) -> Optional[Dict[str, Any]]:
+    """Serialize the candidate a row proposes: its values as the table compares them.
+
+    The key is Camelot, as every key in the app is shown (DEC-201), and the mix is
+    the version the candidate's title names.
+    """
+    if proposal is None:
+        return None
+    from cuepoint.services.match_comparison import mix_of
+
+    return {
+        "candidate_id": proposal.candidate_id,
+        "key": camelot_of(proposal.key),
+        "bpm": proposal.bpm,
+        "genre": proposal.genre,
+        "label": proposal.label,
+        "year": proposal.year,
+        "mix": mix_of(proposal.title),
+        "score": proposal.score,
+        "guard_ok": proposal.guard_ok,
+    }
 
 
 #: The Clean answers a row carries (CLEAN-11), in the order it carries them.

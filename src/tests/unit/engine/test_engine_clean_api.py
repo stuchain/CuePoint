@@ -2111,3 +2111,425 @@ class TestExportingAReviewList:
             post(engine, "/api/v1/clean/export", body), 400, "INVALID_REQUEST", word
         )
         assert not (tmp_path / "review.csv").exists()
+
+
+# -------------------------------------------------- correct (C14, DEC-068)
+
+
+def proposed_track(name: str, **fields: Any) -> Tuple[int, int]:
+    """A track whose match waits for review: ``(track id, candidate id)``."""
+    [track_id] = add_tracks(track(name, genre="Deep House", bpm=120.0, key="8A"))
+    values: Dict[str, Any] = {
+        "genre": "Techno",
+        "key": "A min",
+        "bpm": "124",
+        "label": "Drumcode",
+        "score": 80.0,
+    }
+    values.update(fields)
+    attempt(track_id, candidate(abs(hash(name)) % 100000, **values), candidate(7))
+    state = resolve("IMatchRepository").get_match(track_id)
+    assert state is not None and state.state == "needs_review"
+    return track_id, int(state.candidate_id or 0)
+
+
+@pytest.mark.unit
+class TestCorrectingOneTrack:
+    def test_it_accepts_applies_and_answers_the_row_with_one_batch(self, engine):
+        track_id, candidate_id = proposed_track("Corrected")
+
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {
+                    "track_id": track_id,
+                    "candidate_id": candidate_id,
+                    "fields": ["genre", "bpm"],
+                },
+            )
+        )
+
+        assert payload["match"]["state"] == "accepted"
+        assert payload["match"]["decided_by"] == "user"
+        assert payload["match"]["candidate_id"] == candidate_id
+        assert payload["applied"] == ["genre", "bpm"]
+        assert payload["skipped"] == [] and payload["unchanged"] == []
+        assert payload["key"] is None
+        assert payload["batch_id"]
+        row = payload["track"]
+        assert row["id"] == track_id
+        assert (row["effective_genre"], row["effective_bpm"]) == ("Techno", 124.0)
+        assert row["effective_label"] is None
+        assert sorted(row["overridden"]) == ["bpm", "genre"]
+        assert row["match_state"] == "accepted"
+
+    def test_a_correct_that_changes_nothing_has_no_batch_to_undo(self, engine):
+        track_id, candidate_id = proposed_track("TwiceOver")
+        body = {"track_id": track_id, "candidate_id": candidate_id, "fields": ["bpm"]}
+        first = ok(post(engine, "/api/v1/clean/correct", body))
+        assert first["changed"] is True and first["batch_id"]
+
+        again = ok(post(engine, "/api/v1/clean/correct", body))
+
+        assert again["changed"] is False
+        assert again["batch_id"] is None
+        assert again["unchanged"] == ["bpm"]
+
+    def test_no_fields_is_only_an_accept(self, engine):
+        track_id, candidate_id = proposed_track("JustAccept")
+
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"track_id": track_id, "candidate_id": candidate_id, "fields": []},
+            )
+        )
+
+        assert payload["match"]["state"] == "accepted"
+        assert payload["applied"] == []
+        assert payload["track"]["overridden"] == []
+
+    def test_a_field_with_no_value_is_skipped_and_named(self, engine):
+        track_id, candidate_id = proposed_track("Skips", label=None)
+
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {
+                    "track_id": track_id,
+                    "candidate_id": candidate_id,
+                    "fields": ["label", "genre"],
+                },
+            )
+        )
+
+        assert payload["skipped"] == ["label"]
+        assert payload["applied"] == ["genre"]
+
+    def test_replace_key_clears_the_persons_own_key(self, engine):
+        track_id, candidate_id = proposed_track("KeyMine")
+        ok(post(engine, f"/api/v1/library/tracks/{track_id}/overrides", {"key": "5A"}))
+
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {
+                    "track_id": track_id,
+                    "candidate_id": candidate_id,
+                    "fields": [],
+                    "replace_key": True,
+                },
+            )
+        )
+
+        assert payload["key"] == "replaced"
+        assert payload["track"]["key_source"] == "beatport"
+        assert payload["track"]["effective_key"] == "8A"
+
+    def test_undo_is_reverting_the_batch(self, engine):
+        track_id, candidate_id = proposed_track("Undone")
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {
+                    "track_id": track_id,
+                    "candidate_id": candidate_id,
+                    "fields": ["genre"],
+                },
+            )
+        )
+
+        ok(
+            post(
+                engine,
+                "/api/v1/library/revert/batch",
+                {"batch_id": payload["batch_id"]},
+            )
+        )
+
+        states = ok(get(engine, f"/api/v1/library/tracks/{track_id}/matches"))["state"]
+        assert states["state"] == "needs_review"
+        metadata = resolve("IMetadataService").get(track_id)
+        assert metadata is None or metadata.genre is None
+
+    def test_another_tracks_candidate(self, engine):
+        track_id, _ = proposed_track("Mine")
+        _, theirs = proposed_track("Theirs")
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"track_id": track_id, "candidate_id": theirs, "fields": []},
+            ),
+            400,
+            "INVALID_REQUEST",
+        )
+
+    def test_an_unknown_track_and_an_unknown_candidate(self, engine):
+        track_id, candidate_id = proposed_track("Known")
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"track_id": 999999, "candidate_id": candidate_id, "fields": []},
+            ),
+            404,
+            "TRACK_NOT_FOUND",
+        )
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"track_id": track_id, "candidate_id": 999999, "fields": []},
+            ),
+            404,
+            "CANDIDATE_NOT_FOUND",
+        )
+
+    @pytest.mark.parametrize(
+        "extra, word",
+        [
+            ({"fields": None}, "fields"),
+            ({"fields": "genre"}, "fields"),
+            ({"fields": [1]}, "fields"),
+            ({"fields": ["colour"]}, "colour"),
+            ({"fields": ["key"]}, "replace_key"),
+            ({"fields": [], "replace_key": "yes"}, "replace_key"),
+            ({"fields": [], "surprise": 1}, "surprise"),
+        ],
+    )
+    def test_a_body_that_cannot_be_honoured(self, engine, extra, word):
+        track_id, candidate_id = proposed_track(f"Bad{word}{extra}")
+        body: Dict[str, Any] = {"track_id": track_id, "candidate_id": candidate_id}
+        body.update(extra)
+        refused(
+            post(engine, "/api/v1/clean/correct", body), 400, "INVALID_REQUEST", word
+        )
+
+    def test_a_single_track_needs_its_candidate(self, engine):
+        track_id, _ = proposed_track("NoCandidate")
+        refused(
+            post(engine, "/api/v1/clean/correct", {"track_id": track_id, "fields": []}),
+            400,
+            "INVALID_REQUEST",
+            "candidate_id",
+        )
+
+    def test_a_track_and_a_selection_together_or_neither(self, engine):
+        track_id, candidate_id = proposed_track("Both")
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {
+                    "track_id": track_id,
+                    "candidate_id": candidate_id,
+                    "fields": [],
+                    "selection": ids_selection(track_id),
+                },
+            ),
+            400,
+            "INVALID_REQUEST",
+        )
+        refused(
+            post(engine, "/api/v1/clean/correct", {"fields": []}),
+            400,
+            "INVALID_REQUEST",
+        )
+
+    def test_the_token_is_required(self, engine):
+        status, _ = call(engine, "POST", "/api/v1/clean/correct", {}, token=None)
+        assert status == 401
+
+
+@pytest.mark.unit
+class TestCorrectingASelection:
+    def test_each_track_takes_what_it_proposes_inline(self, engine):
+        first, _ = proposed_track("Sel1")
+        second, _ = proposed_track("Sel2")
+
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"selection": ids_selection(first, second), "fields": ["genre"]},
+            )
+        )
+
+        assert payload["applied"]["operation"] == "correct_match"
+        assert payload["applied"]["changed"] == 2
+        for track_id in (first, second):
+            assert resolve("IMetadataService").get(track_id).genre == "Techno"
+            state = resolve("IMatchRepository").get_match(track_id)
+            assert state.state == "accepted"
+
+    def test_above_the_threshold_it_is_a_job(self, engine, store, monkeypatch):
+        monkeypatch.setattr(batch_jobs, "BATCH_JOB_THRESHOLD", 1)
+        first, _ = proposed_track("Job1")
+        second, _ = proposed_track("Job2")
+
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"selection": ids_selection(first, second), "fields": []},
+            ),
+            202,
+        )
+
+        job = finished(store, payload["job_id"])
+        assert job.state == JobState.SUCCEEDED
+        assert job.result["changed"] == 2
+
+    def test_a_selection_names_no_candidate(self, engine):
+        first, _ = proposed_track("SelNamed")
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"selection": ids_selection(first), "fields": [], "candidate_id": 1},
+            ),
+            400,
+            "INVALID_REQUEST",
+            "candidate_id",
+        )
+
+    def test_fields_are_validated_before_any_track_is_touched(self, engine):
+        first, _ = proposed_track("SelBad")
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"selection": ids_selection(first), "fields": ["colour"]},
+            ),
+            400,
+            "INVALID_REQUEST",
+            "colour",
+        )
+        states = ok(get(engine, f"/api/v1/library/tracks/{first}/matches"))["state"]
+        assert states["state"] == "needs_review"
+
+
+# ----------------------------------------- past searches (C14, DEC-065)
+
+
+@pytest.mark.unit
+class TestPastSearches:
+    def plan(self, ids: List[int], job_id: str, label: Optional[str] = None) -> str:
+        resolve("IMatchJobRepository").create(
+            job_id,
+            ids,
+            rematch=False,
+            selected=len(ids),
+            created_at=NOW,
+            label=label,
+        )
+        return job_id
+
+    def test_the_shape_of_a_run(self, engine):
+        ids = add_tracks(track("A"), track("B"), track("C"))
+        job_id = self.plan(ids, "run-1", 'Playlist "all"')
+        resolve("IMatchJobRepository").mark_done(job_id, 0)
+        resolve("IMatchJobRepository").mark_done(job_id, 1)
+
+        payload = ok(get(engine, "/api/v1/clean/match/jobs"))
+
+        assert payload["total"] == 1
+        assert payload["jobs"] == [
+            {
+                "job_id": "run-1",
+                "created_at": NOW,
+                "label": 'Playlist "all"',
+                "rematch": False,
+                "selected": 3,
+                "excluded": 0,
+                "planned": 3,
+                "done": 2,
+                "found": 0,
+                "waiting": 0,
+                "not_found": 2,
+                "rejected": 0,
+                "disputed": 0,
+                "status": "stopped",
+                "finished_at": None,
+                "latest_job_id": "run-1",
+                "resume_job_id": "run-1",
+            }
+        ]
+
+    def test_it_is_searched_and_paged(self, engine):
+        ids = add_tracks(track("Pg"))
+        for number in range(3):
+            self.plan(ids, f"run-{number}", f"Label {number}")
+
+        page = ok(get(engine, "/api/v1/clean/match/jobs", limit=2, offset=1))
+        found = ok(get(engine, "/api/v1/clean/match/jobs", q="label 1"))
+
+        assert page["total"] == 3
+        assert [job["job_id"] for job in page["jobs"]] == ["run-1", "run-0"]
+        assert [job["job_id"] for job in found["jobs"]] == ["run-1"]
+
+    @pytest.mark.parametrize(
+        "params", [{"limit": "x"}, {"limit": 0}, {"limit": 1000}, {"offset": -1}]
+    )
+    def test_a_page_that_cannot_be_honoured(self, engine, params):
+        refused(
+            get(engine, "/api/v1/clean/match/jobs", **params), 400, "INVALID_REQUEST"
+        )
+
+    def test_the_resumable_list_keeps_its_shape(self, engine):
+        ids = add_tracks(track("Same"), track("Shape"))
+        self.plan(ids, "run-r", "Named")
+
+        listed = ok(get(engine, "/api/v1/clean/match/resumable"))
+
+        assert set(listed["jobs"][0]) == {
+            "job_id",
+            "remaining",
+            "planned",
+            "selected",
+            "excluded",
+            "rematch",
+            "created_at",
+            "resumed_from",
+        }
+
+    def test_a_match_started_with_a_label_stores_it(self, engine, store, monkeypatch):
+        def write_the_plan(job: Job, jobs: JobStore, prepare: Any) -> None:
+            prepare(resolve("IMatchService"))
+            jobs.finish(job, state=JobState.SUCCEEDED, result={})
+
+        monkeypatch.setattr(match_jobs, "run_match_job", write_the_plan)
+        ids = add_tracks(track("Lab1"), track("Lab2"))
+
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/match",
+                {"selection": ids_selection(*ids), "label": "  Whole library  "},
+            ),
+            202,
+        )
+        finished(store, payload["job_id"])
+
+        listed = ok(get(engine, "/api/v1/clean/match/jobs"))["jobs"]
+        assert [job["label"] for job in listed] == ["Whole library"]
+
+    @pytest.mark.parametrize("label", [7, "", "x" * 201])
+    def test_a_label_that_cannot_be_kept(self, engine, label):
+        ids = add_tracks(track(f"BadLab{len(str(label))}"))
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/match",
+                {"selection": ids_selection(*ids), "label": label},
+            ),
+            400,
+            "INVALID_REQUEST",
+            "label",
+        )

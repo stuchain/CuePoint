@@ -71,6 +71,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from cuepoint.models.track_metadata import normalize_rating
 from cuepoint.services.match_apply import chosen_fields
+from cuepoint.services.match_correct import correct_fields
 from cuepoint.services.override_values import (
     NOTATION_CLASSIC,
     normalize_override,
@@ -84,6 +85,7 @@ from cuepoint.services.interfaces import (
     ICollectionService,
     IDatabaseService,
     IMatchApplyService,
+    IMatchCorrectService,
     IMatchStateService,
     IMetadataService,
     ITagService,
@@ -105,6 +107,7 @@ OPERATION_ACCEPT_MATCH = "accept_match"
 OPERATION_REJECT_MATCH = "reject_match"
 OPERATION_APPLY_MATCH = "apply_match"
 OPERATION_SET_OVERRIDE = "set_override"
+OPERATION_CORRECT_MATCH = "correct_match"
 
 BATCH_OPERATIONS: Tuple[str, ...] = (
     OPERATION_SET_RATING,
@@ -117,6 +120,7 @@ BATCH_OPERATIONS: Tuple[str, ...] = (
     OPERATION_REJECT_MATCH,
     OPERATION_APPLY_MATCH,
     OPERATION_SET_OVERRIDE,
+    OPERATION_CORRECT_MATCH,
 )
 
 #: Operations that take no value: what they decide is already on each track.
@@ -242,6 +246,8 @@ class BatchOperation:
             )
         if kind == OPERATION_SET_OVERRIDE:
             return replace(self, kind=kind, value=_override_request(self.value))
+        if kind == OPERATION_CORRECT_MATCH:
+            return replace(self, kind=kind, value=_correct_request(self.value))
         if kind in _VALUELESS_OPERATIONS:
             # Refused rather than ignored: a caller that sent a candidate id
             # believes it chose one, and a batch accepts what each track
@@ -334,6 +340,7 @@ class BatchService(IBatchService):
         database_service: IDatabaseService,
         match_state_service: IMatchStateService,
         match_apply_service: IMatchApplyService,
+        match_correct_service: Optional[IMatchCorrectService] = None,
     ) -> None:
         """Initialize the service.
 
@@ -348,6 +355,8 @@ class BatchService(IBatchService):
                 No SQL is run here.
             match_state_service: Match decisions, with their history (CLEAN-04).
             match_apply_service: Applying accepted matches (CLEAN-05).
+            match_correct_service: Accepting and applying in one act (C14);
+                without it ``correct_match`` is refused.
         """
         self._metadata = metadata_service
         self._tags = tag_service
@@ -357,6 +366,7 @@ class BatchService(IBatchService):
         self._db = database_service
         self._states = match_state_service
         self._apply = match_apply_service
+        self._correct = match_correct_service
 
     def resolve(self, selection: BatchSelection) -> List[int]:
         """Turn a selection into the ids it names, once.
@@ -522,7 +532,11 @@ class BatchService(IBatchService):
         with self._db.transaction():
             for track_id in chunk:
                 try:
-                    applied = applier.apply((track_id,), batch_id)
+                    # A savepoint per track: one that fails after some of its
+                    # writes (a Correct that accepted, then could not write a
+                    # field) is undone whole, not left half done in the chunk.
+                    with self._db.savepoint():
+                        applied = applier.apply((track_id,), batch_id)
                 except (ValueError, sqlite3.Error) as exc:
                     _logger.info("[batch] track %s skipped: %s", track_id, exc)
                     failed += 1
@@ -562,6 +576,10 @@ class BatchService(IBatchService):
             return _ApplyMatch(self._apply, self._metadata, operation.value)
         if operation.kind == OPERATION_SET_OVERRIDE:
             return _SetOverride(self._metadata, operation.value)
+        if operation.kind == OPERATION_CORRECT_MATCH:
+            if self._correct is None:
+                raise ValueError("Correcting matches is not available")
+            return _CorrectMatch(self._correct, self._metadata, operation.value)
         # The last one rather than an else-raise: ``validated`` has already
         # refused everything that is not in the vocabulary, and a branch no
         # test can reach is a branch that is not there.
@@ -875,6 +893,60 @@ class _ApplyMatch(_Applier):
         return f"Applied the Beatport {result.target} to {_tracks(result.changed)}"
 
 
+class _CorrectMatch(_Applier):
+    """Accept what each track proposes and copy the ticked fields (C14, DEC-068).
+
+    Accepting follows :class:`_DecideMatch`'s rule, so a decision a person made
+    is kept; unlike it, a track the person accepted still gets the fields. Each
+    field follows :class:`_ApplyMatch`'s: one the candidate has no value for is
+    skipped, never written empty. With ``replace_key`` a key that is the
+    person's own correction is cleared so Beatport's shows (DEC-201).
+    """
+
+    operation = OPERATION_CORRECT_MATCH
+
+    def __init__(
+        self,
+        correct: IMatchCorrectService,
+        metadata: IMetadataService,
+        request: Dict[str, Any],
+    ) -> None:
+        self._correct = correct
+        self._metadata = metadata
+        self._fields: Tuple[str, ...] = tuple(request["fields"])
+        self._replace_key: bool = request["replace_key"]
+        self._notation = ""
+
+    def target(self) -> str:
+        if not self._fields:
+            return "Beatport match"
+        return ", ".join(_FIELD_WORDS[name] for name in self._fields)
+
+    def begin(self) -> None:
+        # Asked once for the whole batch, as an apply asks it, and only when
+        # the key is in play: no other field reads the notation.
+        if self._replace_key:
+            self._notation = self._metadata.key_notation()
+
+    def apply(self, track_ids: Sequence[int], batch_id: str) -> int:
+        return sum(
+            1
+            for track_id in track_ids
+            if self._correct.correct_proposed(
+                int(track_id),
+                self._fields,
+                self._replace_key,
+                batch_id,
+                self._notation,
+            )
+        )
+
+    def describe(self, result: BatchResult) -> str:
+        if not self._fields:
+            return f"Accepted the Beatport match for {_tracks(result.changed)}"
+        return f"Corrected {_tracks(result.changed)} with the Beatport {result.target}"
+
+
 class _SetOverride(_Applier):
     """Type one override onto tracks, or clear it (CLEAN-05, DEC-069)."""
 
@@ -955,6 +1027,30 @@ def _override_request(value: Any) -> Dict[str, Any]:
     field = require_field(value["field"])
     typed = normalize_override(field, value["value"], NOTATION_CLASSIC)
     return {"field": field, "value": value["value"] if field == "key" else typed}
+
+
+def _correct_request(value: Any) -> Dict[str, Any]:
+    """Validate ``{"fields": [...], "replace_key"?: bool}`` for a batch Correct.
+
+    ``fields`` may be empty: a batch that only accepts is a Correct with nothing
+    ticked.
+    """
+    if (
+        not isinstance(value, dict)
+        or "fields" not in value
+        or not set(value) <= {"fields", "replace_key"}
+    ):
+        raise ValueError(
+            'correct_match needs {"fields": [...], "replace_key": true | false},'
+            " not " + repr(value)
+        )
+    replace_key = value.get("replace_key", False)
+    if not isinstance(replace_key, bool):
+        raise ValueError("replace_key must be true or false")
+    return {
+        "fields": tuple(correct_fields(_listed(value["fields"]))),
+        "replace_key": replace_key,
+    }
 
 
 def _require_collection_named(

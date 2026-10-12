@@ -29,6 +29,8 @@ from cuepoint.models.library_track import LibraryTrack
 from cuepoint.models.match_attempt import (
     DECIDED_BY_AUTO,
     DECIDED_BY_USER,
+    STATE_ACCEPTED,
+    STATE_NEEDS_REVIEW,
     STATE_NO_MATCH,
     STATE_REJECTED,
     MatchJobTrack,
@@ -556,3 +558,213 @@ class TestInterrupted:
         repo.create("job", ids[:2], rematch=False, selected=2, created_at=NOW)
         job_record(db, "job", "running", job_type="library_batch")
         assert repo.interrupted("clean_match") == []
+
+
+# --------------------------------------------------------------------- labels
+
+
+class TestLabel:
+    def test_a_plan_stores_the_label_it_was_given(self, repo, ids):
+        created = repo.create(
+            "job",
+            ids[:2],
+            rematch=False,
+            selected=2,
+            created_at=NOW,
+            label='Playlist "all"',
+        )
+        assert created.label == 'Playlist "all"'
+        assert repo.get("job").label == 'Playlist "all"'
+
+    def test_no_label_is_none(self, repo, ids):
+        repo.create("job", ids[:2], rematch=False, selected=2, created_at=NOW)
+        assert repo.get("job").label is None
+
+    def test_a_resume_keeps_its_roots_label(self, repo, ids):
+        repo.create(
+            "first", ids[:4], rematch=False, selected=4, created_at=NOW, label="Mine"
+        )
+        repo.mark_done("first", 0)
+        assert repo.take_over("first", "second", LATER).label == "Mine"
+        repo.take_over("second", "third", LATER)
+        assert repo.get("third").label == "Mine"
+
+
+# -------------------------------------------------------------------- history
+
+
+def settle(matches, track_id: int, state: str, by: str = DECIDED_BY_USER) -> None:
+    """Give a track the state a finished match leaves it in."""
+    stored = attempt(
+        matches, track_id, matched() if state != STATE_NO_MATCH else judged()
+    )
+    winner = matches.winner_of(stored.id)
+    matches.set_match(
+        TrackMatch(
+            track_id=track_id,
+            state=state,
+            decided_by=by,
+            attempt_id=stored.id,
+            candidate_id=None
+            if state == STATE_NO_MATCH or winner is None
+            else winner.id,
+            decided_at=NOW,
+        )
+    )
+
+
+class TestHistory:
+    def run_of(self, repo, db, matches, ids):
+        """One run of eight tracks: stopped at five, resumed, and finished."""
+        repo.create("first", ids, rematch=False, selected=9, created_at=NOW, label="L")
+        for position in range(5):
+            repo.mark_done("first", position)
+        repo.take_over("first", "second", LATER)
+        for position in range(5, 8):
+            repo.mark_done("second", position)
+        job_record(db, "first", "succeeded")
+        job_record(db, "second", "succeeded")
+        settle(matches, ids[0], STATE_ACCEPTED, "auto")
+        settle(matches, ids[1], STATE_ACCEPTED)
+        settle(matches, ids[2], STATE_NEEDS_REVIEW, "auto")
+        settle(matches, ids[3], STATE_NO_MATCH, "auto")
+        settle(matches, ids[4], STATE_REJECTED)
+        settle(matches, ids[5], STATE_NEEDS_REVIEW, "auto")
+        # ids[6] finished with no state row at all: it was not found.
+
+    def test_the_plan_is_read_from_the_pages_roots_not_by_scanning_every_plan(
+        self, repo, db, ids
+    ):
+        from cuepoint.persistence.match_job_repository import _HISTORY
+
+        repo.create("first", ids, rematch=False, selected=9, created_at=NOW)
+        plan = db.connect().execute(
+            "EXPLAIN QUERY PLAN " + _HISTORY.format(where=""),
+            {"limit": 20, "offset": 0},
+        )
+        details = [row["detail"] for row in plan]
+        # The plan joins the table as ``t``; SQLite names the alias when it scans.
+        assert not [
+            detail
+            for detail in details
+            if detail in ("SCAN t", "SCAN match_job_tracks")
+        ], details
+        assert any(
+            "SEARCH t USING" in detail and "job_id=?" in detail for detail in details
+        ), details
+
+    def test_a_chain_of_resumes_is_one_run_with_the_roots_identity(
+        self, repo, db, matches, ids
+    ):
+        self.run_of(repo, db, matches, ids)
+
+        jobs, total = repo.history(None, 20, 0)
+
+        assert total == 1
+        [run] = jobs
+        assert (run.job_id, run.label, run.created_at) == ("first", "L", NOW)
+        assert run.latest_job_id == "second"
+        assert (run.selected, run.excluded, run.planned) == (9, 1, 8)
+
+    def test_counts_are_the_tracks_current_state(self, repo, db, matches, ids):
+        self.run_of(repo, db, matches, ids)
+
+        [run] = repo.history(None, 20, 0)[0]
+
+        assert run.done == 8
+        assert (run.found, run.waiting, run.not_found, run.rejected) == (2, 2, 3, 1)
+        # The numbers move as the person reviews: that is intended (OQ1).
+        settle(matches, ids[2], STATE_ACCEPTED)
+        [later] = repo.history(None, 20, 0)[0]
+        assert (later.found, later.waiting) == (3, 1)
+
+    def test_a_finished_run_is_done(self, repo, db, matches, ids):
+        self.run_of(repo, db, matches, ids)
+        [run] = repo.history(None, 20, 0)[0]
+        assert run.status == "done"
+        assert run.resume_job_id is None
+        assert run.finished_at is not None
+
+    def test_a_run_with_tracks_left_is_stopped_and_resumes_its_latest_job(
+        self, repo, db, ids
+    ):
+        repo.create("first", ids[:6], rematch=False, selected=6, created_at=NOW)
+        repo.mark_done("first", 0)
+        repo.mark_done("first", 1)
+        repo.take_over("first", "second", LATER)
+        job_record(db, "first", "cancelled")
+        job_record(db, "second", "cancelled")
+
+        [run] = repo.history(None, 20, 0)[0]
+
+        assert (run.status, run.done, run.planned) == ("stopped", 2, 6)
+        assert run.resume_job_id == "second"
+
+    def test_a_run_whose_job_is_live_is_running(self, repo, db, ids):
+        repo.create("job", ids[:3], rematch=False, selected=3, created_at=NOW)
+        job_record(db, "job", "running")
+
+        [run] = repo.history(None, 20, 0)[0]
+
+        assert run.status == "running"
+        assert run.resume_job_id is None
+
+    def test_a_deleted_track_drops_out_of_every_count(self, repo, db, matches, ids):
+        self.run_of(repo, db, matches, ids)
+        with db.transaction() as conn:
+            conn.execute("DELETE FROM tracks WHERE id = ?", (ids[1],))
+
+        [run] = repo.history(None, 20, 0)[0]
+
+        assert (run.planned, run.done, run.found) == (7, 7, 1)
+
+    def test_newest_first_and_paged_with_the_whole_total(self, repo, ids):
+        for number in range(5):
+            repo.create(
+                f"run-{number}", ids[:1], rematch=False, selected=1, created_at=NOW
+            )
+
+        first, total = repo.history(None, 2, 0)
+        second, _ = repo.history(None, 2, 2)
+
+        assert total == 5
+        assert [r.job_id for r in first] == ["run-4", "run-3"]
+        assert [r.job_id for r in second] == ["run-2", "run-1"]
+
+    def test_the_search_reads_the_label_and_the_date_and_not_the_wildcards(
+        self, repo, ids
+    ):
+        repo.create(
+            "a",
+            ids[:1],
+            rematch=False,
+            selected=1,
+            created_at="2026-10-01T09:00:00+00:00",
+            label="Friday set",
+        )
+        repo.create(
+            "b",
+            ids[:1],
+            rematch=False,
+            selected=1,
+            created_at="2026-10-02T09:00:00+00:00",
+            label="100% house",
+        )
+
+        assert [r.job_id for r in repo.history("friday", 20, 0)[0]] == ["a"]
+        assert [r.job_id for r in repo.history("2026-10-02", 20, 0)[0]] == ["b"]
+        assert [r.job_id for r in repo.history("100%", 20, 0)[0]] == ["b"]
+        assert repo.history("%", 20, 0)[1] == 1
+        assert repo.history("nothing", 20, 0) == ([], 0)
+
+    def test_a_run_with_a_missing_root_is_its_own_root(self, repo, db, ids):
+        repo.create("first", ids[:4], rematch=False, selected=4, created_at=NOW)
+        repo.mark_done("first", 0)
+        repo.take_over("first", "second", LATER)
+        with db.transaction() as conn:
+            conn.execute("DELETE FROM match_jobs WHERE job_id = 'first'")
+
+        jobs, total = repo.history(None, 20, 0)
+
+        assert total == 1
+        assert [r.job_id for r in jobs] == ["second"]

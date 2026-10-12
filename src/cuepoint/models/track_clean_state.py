@@ -22,8 +22,45 @@ from typing import Any, Dict, Optional
 
 from cuepoint.models.filter_rule import ARTWORK_UNKNOWN, ARTWORK_VALUES
 from cuepoint.models.file_status import FILE_NOT_CHECKED, FILE_STATUSES
-from cuepoint.models.match_attempt import MATCH_STATES, STATE_NOT_MATCHED
+from cuepoint.models.match_attempt import (
+    MATCH_STATES,
+    STATE_ACCEPTED,
+    STATE_NEEDS_REVIEW,
+    STATE_NOT_MATCHED,
+)
 from cuepoint.models.row_values import flag, one_of, required_id
+
+#: The states whose candidate a row proposes: a match waiting for review, and
+#: one the person (or the rule) accepted. A rejection refused its candidate, so
+#: the Match table has nothing to offer for it (C14).
+PROPOSING_STATES = (STATE_NEEDS_REVIEW, STATE_ACCEPTED)
+
+
+@dataclass(frozen=True)
+class MatchProposal:
+    """The Beatport candidate a track's state points at, as the Match table draws it.
+
+    Raw, as stored: the row serializer resolves the key to Camelot and reads the
+    version out of the title (``engine/library_api.py``).
+
+    Attributes:
+        candidate_id: The candidate, which Correct accepts.
+        key, bpm, genre, label: What Beatport says, or None.
+        year: The release year, or None.
+        title: The candidate's title, where its mix is written.
+        score: The candidate's score.
+        guard_ok: Whether the candidate passed the matcher's guard.
+    """
+
+    candidate_id: int
+    key: Optional[str] = None
+    bpm: Optional[float] = None
+    genre: Optional[str] = None
+    label: Optional[str] = None
+    year: Optional[int] = None
+    title: Optional[str] = None
+    score: Optional[float] = None
+    guard_ok: bool = True
 
 
 @dataclass(frozen=True)
@@ -53,6 +90,10 @@ class TrackCleanState:
     match_score: Optional[float] = None
     # Beatport's key from the accepted match, raw (DEC-201); the row resolves it.
     beatport_key: Optional[str] = None
+    # The candidate a waiting or accepted state points at (C14). Not one of the
+    # five answers: the row carries it as ``match_proposal``, shaped by the
+    # engine, so ``to_dict`` leaves it out.
+    proposal: Optional[MatchProposal] = None
 
     def __post_init__(self) -> None:
         """Refuse an answer the vocabulary could not have given."""
@@ -94,7 +135,26 @@ class TrackCleanState:
             file_status=data["file_status"],
             artwork=data["artwork"],
             beatport_key=data.get("beatport_key"),
+            proposal=_proposal(data),
         )
 
 
-__all__ = ("TrackCleanState",)
+def _proposal(data: Dict[str, Any]) -> Optional[MatchProposal]:
+    """The proposal a row of :func:`build_clean_states` holds, or None."""
+    candidate_id = data.get("proposal_candidate_id")
+    if candidate_id is None or data.get("match_state") not in PROPOSING_STATES:
+        return None
+    return MatchProposal(
+        candidate_id=int(candidate_id),
+        key=data.get("proposal_key"),
+        bpm=data.get("proposal_bpm"),
+        genre=data.get("proposal_genre"),
+        label=data.get("proposal_label"),
+        year=data.get("proposal_year"),
+        title=data.get("proposal_title"),
+        score=data.get("proposal_score"),
+        guard_ok=bool(data.get("proposal_guard_ok", 1)),
+    )
+
+
+__all__ = ("PROPOSING_STATES", "MatchProposal", "TrackCleanState")

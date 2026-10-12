@@ -336,6 +336,19 @@ async function readWaveformAnswer<T>(res: Response): Promise<WaveformAnswer<T>> 
   throw engineErrorFrom(res, error);
 }
 
+/** C14: the candidate a library row proposes, as the Match table compares it. */
+export interface MatchProposal {
+  candidate_id: number;
+  key: string | null;
+  bpm: number | null;
+  genre: string | null;
+  label: string | null;
+  year: number | null;
+  mix: string | null;
+  score: number | null;
+  guard_ok: boolean;
+}
+
 export interface LibraryTrackRow {
   id: number | null;
   rekordbox_track_id: string;
@@ -380,6 +393,8 @@ export interface LibraryTrackRow {
   match_disputed?: boolean | null;
   /** CLEAN-13: the score of the candidate the state points at. */
   match_score?: number | null;
+  /** C14: the candidate a waiting or accepted match points at; null when none. */
+  match_proposal?: MatchProposal | null;
   file_status?: FileStatusValue | null;
   artwork?: ArtworkStateValue | null;
 }

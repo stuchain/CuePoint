@@ -44,6 +44,7 @@ from cuepoint.exceptions.cuepoint_exceptions import CuePointException
 from cuepoint.services.batch_service import (
     BATCH_JOB_THRESHOLD,
     OPERATION_APPLY_MATCH,
+    OPERATION_CORRECT_MATCH,
     OPERATION_SET_OVERRIDE,
     OPERATION_ACCEPT_MATCH,
     OPERATION_ADD_TAG,
@@ -88,6 +89,7 @@ _PROGRESS_MESSAGES = {
     OPERATION_REJECT_MATCH: "Rejecting matches",
     OPERATION_APPLY_MATCH: "Applying Beatport values",
     OPERATION_SET_OVERRIDE: "Editing tracks",
+    OPERATION_CORRECT_MATCH: "Correcting matches",
 }
 
 

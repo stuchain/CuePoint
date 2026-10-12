@@ -342,3 +342,97 @@ class TestTheSentence:
         assert (
             describe_interrupted_tags(restoring, recorded_rows, unconfirmed) == expected
         )
+
+
+@pytest.mark.unit
+class TestTheProposalOnARow:
+    """``match_proposal`` is the candidate a track's state points at (C14)."""
+
+    def test_a_row_carries_what_the_match_table_draws(self, engine):
+        [waiting] = add_tracks(track("Waiting"))
+        attempt(
+            waiting,
+            candidate(
+                1,
+                score=82.0,
+                title="Waiting (Extended Mix)",
+                key="A min",
+                bpm="126",
+                genre="Techno",
+                label="Drumcode",
+                release_year=2019,
+            ),
+        )
+
+        proposal = by_title(engine)["Waiting"]["match_proposal"]
+
+        assert proposal == {
+            "candidate_id": proposal["candidate_id"],
+            "key": "8A",
+            "bpm": 126.0,
+            "genre": "Techno",
+            "label": "Drumcode",
+            "year": 2019,
+            "mix": "Extended Mix",
+            "score": 82.0,
+            "guard_ok": True,
+        }
+        assert proposal["candidate_id"] == (
+            resolve("IMatchRepository").get_match(waiting).candidate_id
+        )
+
+    def test_an_accepted_match_is_still_the_proposal(self, engine):
+        [taken] = add_tracks(track("Taken"))
+        attempt(taken, candidate(2, score=97.0, genre="House"))
+
+        proposal = by_title(engine)["Taken"]["match_proposal"]
+
+        assert proposal["genre"] == "House"
+        assert proposal["key"] is None
+
+    def test_no_state_and_a_rejection_have_none(self, engine):
+        never, rejected, nothing = add_tracks(
+            track("Never"), track("Refused"), track("Nothing")
+        )
+        attempt(rejected, candidate(3, score=82.0))
+        ok(
+            post(
+                engine,
+                "/api/v1/clean/decide",
+                {"decision": "reject", "track_id": rejected},
+            )
+        )
+        attempt(nothing, candidate(4, score=30.0), winner=None)
+
+        found = by_title(engine)
+
+        assert found["Never"]["match_proposal"] is None
+        assert found["Refused"]["match_proposal"] is None
+        assert found["Nothing"]["match_proposal"] is None
+        assert never != rejected != nothing
+
+    def test_the_inspector_row_and_an_edit_answer_carry_it_too(self, engine):
+        [waiting] = add_tracks(track("Same"))
+        attempt(waiting, candidate(5, score=82.0, genre="Techno"))
+
+        detail = ok(get(engine, f"/api/v1/library/tracks/{waiting}"))["track"]
+        edited = ok(
+            post(
+                engine,
+                f"/api/v1/library/tracks/{waiting}/overrides",
+                {"bpm": 126},
+            )
+        )["track"]
+
+        assert detail["match_proposal"]["genre"] == "Techno"
+        assert edited["match_proposal"]["genre"] == "Techno"
+
+    def test_from_a_run_the_rows_are_that_runs_tracks(self, engine):
+        ids = add_tracks(track("In"), track("Out"))
+        resolve("IMatchJobRepository").create(
+            "run-x", ids[:1], rematch=False, selected=1, created_at=NOW
+        )
+
+        found = rows(engine, filters=json.dumps(rule("match_run", "is", "run-x")))
+
+        assert [row["title"] for row in found] == ["In"]

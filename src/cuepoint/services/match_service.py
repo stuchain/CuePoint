@@ -179,11 +179,14 @@ class MatchDraft:
         track_ids: The tracks to match, deduplicated, in the selection's order.
         selected: How many library tracks the selection named.
         rematch: Whether settled tracks were kept in.
+        label: What the person asked to match, in their words, for Past
+            searches (C14); ``None`` when none was given.
     """
 
     track_ids: Tuple[int, ...]
     selected: int
     rematch: bool
+    label: Optional[str] = None
 
     @property
     def planned(self) -> int:
@@ -380,7 +383,12 @@ class MatchService(IMatchService):
 
     # ------------------------------------------------------------- planning
 
-    def prepare(self, selection: "BatchSelection", rematch: bool = False) -> MatchDraft:
+    def prepare(
+        self,
+        selection: "BatchSelection",
+        rematch: bool = False,
+        label: Optional[str] = None,
+    ) -> MatchDraft:
         """Resolve a selection into the tracks a match job will cover.
 
         Raises:
@@ -402,7 +410,12 @@ class MatchService(IMatchService):
                 " up: matched, waiting for you, or decided. Choose “Look up tracks"
                 " that already have a match again” to search Beatport again."
             )
-        return MatchDraft(track_ids=wanted, selected=len(named), rematch=bool(rematch))
+        return MatchDraft(
+            track_ids=wanted,
+            selected=len(named),
+            rematch=bool(rematch),
+            label=label,
+        )
 
     def write_plan(self, job_id: str, draft: MatchDraft) -> MatchPlan:
         """Write a prepared selection as a job's plan, in one transaction."""
@@ -412,6 +425,7 @@ class MatchService(IMatchService):
             rematch=draft.rematch,
             selected=draft.selected,
             created_at=utc_now_iso(),
+            label=draft.label,
         )
 
     def resumable(self) -> List[ResumableMatch]:

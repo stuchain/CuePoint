@@ -516,6 +516,21 @@
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
   },
+  "cuepoint/engine/clean_api.py::_label::label is at most {MAX_LABEL_LENGTH} characters": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/engine/clean_api.py::correct_match::No candidate with id {candidate_id}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/engine/clean_api.py::past_matches::limit must be between 1 and {MATCH_JOBS_LIMIT_MAX}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
   "cuepoint/engine/discover_api.py::_body_choice::{key} must be one of {', '.join(allowed)}, not {value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
@@ -1223,6 +1238,11 @@
     "holds": "a playlist, collection, tag, chapter or Set name",
     "verdict": "corpus"
   },
+  "cuepoint/models/filter_rule.py::_coerce_run::{spec.label} {operator!r} needs a job id": {
+    "holds": "our own field, label or code name",
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
   "cuepoint/models/library_track.py::LibraryTrack.__post_init__::bpm out of range: {self.bpm!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
@@ -1265,6 +1285,11 @@
     "holds": "a Python type name, our own field, label or code name",
     "verdict": "exempt",
     "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/models/match_attempt.py::MatchPlan.__post_init__::label is at most {MAX_LABEL_LENGTH} characters": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/models/rekordbox_export.py::RekordboxExport.__post_init__::changed_track_count ({self.changed_track_count}) cannot exceed track_count ({self.track_count})": {
     "holds": "a number or count",
@@ -3410,5 +3435,15 @@
   "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Support bundle created: {quoted(bundle_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
+  },
+  "cuepoint/services/match_correct.py::MatchCorrectService._require_track::No such track: {track_id}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/match_correct.py::MatchCorrectService.correct::No candidate {candidate_id}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   }
 }

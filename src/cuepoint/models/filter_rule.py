@@ -106,6 +106,13 @@ TYPE_SOURCE = "source"
 #: never offered in the Field list.
 TYPE_TRACK = "track"
 
+#: The tracks one match run covered (C14's From): the value is the job id of the
+#: run's first job, and the run is that job and every resume that took its
+#: tracks over. Only ``is``, and never offered in the Field list: the Match area
+#: sets it, and a Smart Collection refuses it as it refuses ``track``, because a
+#: job id is not something a rule should outlive.
+TYPE_MATCH_RUN = "match_run"
+
 #: The most tracks one ``track`` rule may name. The Similar page shows tens, and
 #: a bound keeps a rule from becoming a way to carry a whole library in a URL.
 MAX_TRACK_LIST = 1000
@@ -127,6 +134,7 @@ FIELD_TYPES = (
     TYPE_BEATPORT,
     TYPE_SOURCE,
     TYPE_TRACK,
+    TYPE_MATCH_RUN,
 )
 
 #: The only ``match`` value v1 accepts (DEC-016).
@@ -232,6 +240,8 @@ OPERATORS_BY_TYPE: Dict[str, Tuple[str, ...]] = {
     TYPE_SOURCE: (OP_ANY_OF,),
     # A list of tracks another page hands over; "is" one track is not a request.
     TYPE_TRACK: (OP_ANY_OF,),
+    # One run at a time: "these tracks, from that search".
+    TYPE_MATCH_RUN: (OP_IS,),
 }
 
 #: A rating's unit. Declared here rather than in a renderer so the five-star
@@ -747,6 +757,16 @@ FIELDS: Tuple[FieldSpec, ...] = (
         column="tracks.id",
         offered=False,
     ),
+    # The tracks one match run covered, across its resumes (C14's From). Not in
+    # the Field list, and refused by a Smart Collection, like ``track`` above.
+    FieldSpec(
+        "match_run",
+        TYPE_MATCH_RUN,
+        "Match run",
+        group=GROUP_BEATPORT,
+        column="tracks.id",
+        offered=False,
+    ),
     # --- Matching (CLEAN-04, DEC-067) ---------------------------------------
     # "Not matched" is a track with no state row, so it is the tracks the join
     # finds nothing for: the COALESCE is the anti-join, spelled as the value a
@@ -1075,6 +1095,13 @@ def _coerce_source(value: Any, spec: FieldSpec, operator: str) -> Dict[str, Any]
     return {"kind": kind, "id": _coerce_id(value.get("id"), spec, operator)}
 
 
+def _coerce_run(value: Any, spec: FieldSpec, operator: str) -> str:
+    """Coerce a match run's job id: text, trimmed, never blank."""
+    if not isinstance(value, str) or not value.strip():
+        raise FilterRuleError(f"{spec.label} {operator!r} needs a job id")
+    return value.strip()
+
+
 def _coerce_text(value: Any, spec: FieldSpec, operator: str) -> str:
     """Coerce one value for a text or date field."""
     if value is None or isinstance(value, (list, tuple, dict, bool)):
@@ -1110,6 +1137,8 @@ def _coerce_one(value: Any, spec: FieldSpec, operator: str) -> Any:
         return _coerce_source(value, spec, operator)
     if spec.type == TYPE_TRACK:
         return _coerce_id(value, spec, operator)
+    if spec.type == TYPE_MATCH_RUN:
+        return _coerce_run(value, spec, operator)
     text = _coerce_text(value, spec, operator)
     if spec.choices and operator in CHOICE_OPERATORS:
         return _coerce_choice(text, spec, operator)
@@ -1561,6 +1590,7 @@ __all__: Sequence[str] = (
     "TYPE_NAME",
     "TYPE_NUMBER",
     "TYPE_SOURCE",
+    "TYPE_MATCH_RUN",
     "TYPE_TRACK",
     "MAX_TRACK_LIST",
     "TYPE_TAG",

@@ -70,6 +70,7 @@ from cuepoint.services.interfaces import (
     ILoggingService,
     IMatcherService,
     IMatchApplyService,
+    IMatchCorrectService,
     IMatchJobRepository,
     IMatchRepository,
     IMatchService,
@@ -161,6 +162,7 @@ from cuepoint.services.health_service import HealthService
 from cuepoint.services.review_export_service import ReviewExportService
 from cuepoint.services.rekordbox_export_service import RekordboxExportService
 from cuepoint.services.match_apply import MatchApplyService
+from cuepoint.services.match_correct import MatchCorrectService
 from cuepoint.services.match_service import MatchService
 from cuepoint.services.match_state import MatchStateService
 from cuepoint.services.metadata_service import MetadataService
@@ -540,9 +542,25 @@ def bootstrap_services() -> None:
             database_service=container.resolve(IDatabaseService),
             match_state_service=container.resolve(IMatchStateService),
             match_apply_service=container.resolve(IMatchApplyService),
+            match_correct_service=container.resolve(IMatchCorrectService),
         )
 
     container.register_factory(IBatchService, create_batch_service)
+
+    # Accepting a match and copying the ticked fields as one act (C14). It sits
+    # beside apply because it reads the same candidate and writes the same
+    # layer, but it has its own rules for an empty field list and for the key.
+    def create_match_correct_service() -> IMatchCorrectService:
+        return MatchCorrectService(
+            match_state_service=container.resolve(IMatchStateService),
+            match_repository=container.resolve(IMatchRepository),
+            metadata_service=container.resolve(IMetadataService),
+            metadata_repository=container.resolve(ITrackMetadataRepository),
+            track_repository=container.resolve(ITrackRepository),
+            database_service=container.resolve(IDatabaseService),
+        )
+
+    container.register_factory(IMatchCorrectService, create_match_correct_service)
 
     # Copying an accepted match's values into CuePoint's layer (CLEAN-05,
     # DEC-068). Separate from deciding, as DEC-004 separates the two acts.

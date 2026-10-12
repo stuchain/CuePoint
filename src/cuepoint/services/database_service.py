@@ -366,6 +366,33 @@ class DatabaseService(IDatabaseService):
                 context={"db_path": str(self.db_path)},
             ) from exc
 
+    @contextmanager
+    def savepoint(self) -> Iterator[sqlite3.Connection]:
+        """Run part of the open transaction so that it can fail alone.
+
+        An exception undoes what the block wrote and propagates; the enclosing
+        transaction stays open and its owner still decides its outcome. Used
+        where one item of many may fail without taking the others with it.
+
+        Raises:
+            DatabaseError: If no transaction is open.
+        """
+        connection = self.connect()
+        if not connection.in_transaction:
+            raise DatabaseError(
+                message="A savepoint needs a transaction to be open",
+                error_code="DB_NO_TRANSACTION",
+                context={"db_path": str(self.db_path)},
+            )
+        connection.execute("SAVEPOINT item")
+        try:
+            yield connection
+        except BaseException:
+            connection.execute("ROLLBACK TO item")
+            connection.execute("RELEASE item")
+            raise
+        connection.execute("RELEASE item")
+
     def execute_script(self, script: str) -> None:
         """Execute a multi-statement SQL script (used by migrations).
 

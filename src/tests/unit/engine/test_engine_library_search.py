@@ -248,6 +248,8 @@ class TestResponseShape:
             "match_score",
             "file_status",
             "artwork",
+            # C14: the candidate a waiting or accepted match points at.
+            "match_proposal",
         }
 
     def test_total_is_the_match_count_not_the_page_length(self, seeded, engine):

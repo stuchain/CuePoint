@@ -64,6 +64,7 @@ FIELD_IDS = (
     "match_state",
     "match_decided_by",
     "match_disputed",
+    "match_run",
     "match_score",
     "file_status",
     "file_checked_at",

@@ -587,6 +587,9 @@ class MatchPlan:
             original's.
         created_at: When the plan was written.
         resumed_from: The job whose remaining tracks this one took over.
+        label: What the person asked to match, in the words the renderer
+            chose (``m0028``); ``None`` for a run started without one. A
+            resume carries its original's.
     """
 
     job_id: str
@@ -596,6 +599,7 @@ class MatchPlan:
     attempt_watermark: int
     created_at: str
     resumed_from: Optional[str] = None
+    label: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Validate the plan, refusing anything its table would refuse."""
@@ -617,6 +621,13 @@ class MatchPlan:
             _set(self, "resumed_from", required_text(self.resumed_from, "resumed_from"))
             if self.resumed_from == self.job_id:
                 raise ValueError("A match job cannot resume itself")
+        if self.label is not None:
+            text = self.label.strip() if isinstance(self.label, str) else None
+            if text is None:
+                raise ValueError("label must be text")
+            if len(text) > MAX_LABEL_LENGTH:
+                raise ValueError(f"label is at most {MAX_LABEL_LENGTH} characters")
+            _set(self, "label", text or None)
 
     @property
     def planned(self) -> int:
@@ -633,6 +644,7 @@ class MatchPlan:
             "excluded": self.excluded,
             "attempt_watermark": self.attempt_watermark,
             "created_at": self.created_at,
+            "label": self.label,
         }
 
     @classmethod
@@ -647,7 +659,75 @@ class MatchPlan:
             excluded=data["excluded"],
             attempt_watermark=data["attempt_watermark"],
             created_at=data["created_at"],
+            label=data.get("label"),
         )
+
+
+#: The longest label a run keeps: a name, not a paste.
+MAX_LABEL_LENGTH = 200
+
+#: What a past search is doing, in the words the Match area's status chip uses.
+RUN_RUNNING = "running"
+RUN_STOPPED = "stopped"
+RUN_DONE = "done"
+
+
+@dataclass(frozen=True)
+class MatchRunSummary:
+    """One past search: a match job and the resumes that finished it (C14).
+
+    A resume moves the waiting rows to a new job, so one run is a chain of jobs
+    (``resumed_from``) and this is the whole chain under its root's identity.
+    The outcome counts are the tracks' **current** state, so they move as the
+    person reviews; they are not a snapshot of what the run found.
+
+    Attributes:
+        job_id: The chain's root: the job the person started.
+        created_at: When the root's plan was written.
+        label: The root's label, or ``None``.
+        rematch: Whether the run was a re-match.
+        selected: Tracks the root was handed.
+        excluded: Tracks left out of the root before matching.
+        planned: Tracks in the chain's plans that are still library tracks.
+        done: Of those, tracks finished.
+        found: Finished tracks now accepted.
+        waiting: Finished tracks now waiting for review.
+        not_found: Finished tracks with no match.
+        rejected: Finished tracks the person rejected.
+        disputed: Tracks a newer attempt disagrees with the person about.
+        latest_job_id: The last job of the chain: the one that is or was running.
+        latest_state: That job's recorded state, or ``None`` with no record.
+        finished_at: When that job's record was last written, if it has ended.
+    """
+
+    job_id: str
+    created_at: str
+    label: Optional[str]
+    rematch: bool
+    selected: int
+    excluded: int
+    planned: int
+    done: int
+    found: int
+    waiting: int
+    not_found: int
+    rejected: int
+    disputed: int
+    latest_job_id: str
+    latest_state: Optional[str] = None
+    finished_at: Optional[str] = None
+
+    @property
+    def status(self) -> str:
+        """``running`` while its latest job is live, ``stopped`` with tracks left."""
+        if self.latest_state in ("queued", "running"):
+            return RUN_RUNNING
+        return RUN_STOPPED if self.planned > self.done else RUN_DONE
+
+    @property
+    def resume_job_id(self) -> Optional[str]:
+        """The job to resume when the run stopped, else ``None``."""
+        return self.latest_job_id if self.status == RUN_STOPPED else None
 
 
 @dataclass(frozen=True)

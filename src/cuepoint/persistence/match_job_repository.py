@@ -43,9 +43,14 @@ from __future__ import annotations
 
 import dataclasses
 import sqlite3
-from typing import Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
-from cuepoint.models.match_attempt import MatchJobTrack, MatchPlan, ResumableMatch
+from cuepoint.models.match_attempt import (
+    MatchJobTrack,
+    MatchPlan,
+    MatchRunSummary,
+    ResumableMatch,
+)
 from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
 from cuepoint.services.interfaces import IDatabaseService, IMatchJobRepository
 
@@ -88,6 +93,51 @@ _RESUMABLE = (
     "{where}"
     " GROUP BY p.job_id HAVING remaining > 0 ORDER BY p.rowid DESC"
 )
+
+
+#: A page of past searches (C14). Roots are paged first, so a 50,000-track run
+#: is aggregated only when it is on the page: the chain is walked from the page's
+#: roots, and each track's current state is one join on its primary key.
+#: ``{where}`` narrows the roots by the person's search.
+_HISTORY = """
+WITH RECURSIVE roots AS (
+  SELECT job_id, rowid AS ord FROM match_jobs
+  WHERE (resumed_from IS NULL
+         OR resumed_from NOT IN (SELECT job_id FROM match_jobs)){where}
+  ORDER BY rowid DESC LIMIT :limit OFFSET :offset),
+chain(root, job_id, depth) AS (
+  SELECT job_id, job_id, 0 FROM roots
+  UNION ALL
+  SELECT c.root, m.job_id, c.depth + 1
+  FROM match_jobs m JOIN chain c ON m.resumed_from = c.job_id),
+plan AS (
+  SELECT c.root, t.track_id, t.done FROM chain c
+  CROSS JOIN match_job_tracks t ON t.job_id = c.job_id
+  JOIN tracks ON tracks.id = t.track_id)
+SELECT r.job_id, p.created_at, p.label, p.rematch, p.selected, p.excluded,
+  COUNT(pl.track_id) AS planned,
+  COALESCE(SUM(pl.done), 0) AS done,
+  COALESCE(SUM(pl.done = 1 AND tm.state = 'accepted'), 0) AS found,
+  COALESCE(SUM(pl.done = 1 AND tm.state = 'needs_review'), 0) AS waiting,
+  COALESCE(SUM(pl.done = 1
+               AND (tm.state = 'no_match' OR tm.state IS NULL)), 0) AS not_found,
+  COALESCE(SUM(pl.done = 1 AND tm.state = 'rejected'), 0) AS rejected,
+  COALESCE(SUM(tm.newer_attempt_id IS NOT NULL), 0) AS disputed,
+  (SELECT c2.job_id FROM chain c2 WHERE c2.root = r.job_id
+   ORDER BY c2.depth DESC LIMIT 1) AS latest_job_id
+FROM roots r JOIN match_jobs p ON p.job_id = r.job_id
+LEFT JOIN plan pl ON pl.root = r.job_id
+LEFT JOIN track_match tm ON tm.track_id = pl.track_id
+GROUP BY r.job_id ORDER BY r.ord DESC
+"""
+
+_HISTORY_ROOTS = (
+    "SELECT COUNT(*) FROM match_jobs WHERE (resumed_from IS NULL"
+    " OR resumed_from NOT IN (SELECT job_id FROM match_jobs)){where}"
+)
+
+#: A search matches a run's label or its date, with LIKE's wildcards escaped.
+_HISTORY_SEARCH = " AND (label LIKE :q ESCAPE '\\' OR created_at LIKE :q ESCAPE '\\')"
 
 
 class MatchJobRepository(IMatchJobRepository):
@@ -142,6 +192,7 @@ class MatchJobRepository(IMatchJobRepository):
         rematch: bool,
         selected: int,
         created_at: str,
+        label: Optional[str] = None,
     ) -> MatchPlan:
         """Write a job's plan: its options and one row per track, in order.
 
@@ -152,6 +203,7 @@ class MatchJobRepository(IMatchJobRepository):
             selected: How many tracks the selection named; the difference from
                 ``len(track_ids)`` is what was left out.
             created_at: When the plan is written.
+            label: What was matched, in the person's words, if they were given.
 
         Raises:
             ValueError: If the plan is empty, names a track twice, holds more
@@ -177,6 +229,7 @@ class MatchJobRepository(IMatchJobRepository):
                 excluded=selected - len(ids),
                 attempt_watermark=_attempt_watermark(conn),
                 created_at=created_at,
+                label=label,
             )
             _insert_plan(conn, plan, list(enumerate(ids)))
         return plan
@@ -223,6 +276,7 @@ class MatchJobRepository(IMatchJobRepository):
                 attempt_watermark=original.attempt_watermark,
                 created_at=created_at,
                 resumed_from=from_job_id,
+                label=original.label,
             )
             _insert_plan(conn, plan, kept)
             conn.execute(
@@ -325,8 +379,85 @@ class MatchJobRepository(IMatchJobRepository):
         )
         return [_resumable(row) for row in rows]
 
+    def history(
+        self, query: Optional[str], limit: int, offset: int
+    ) -> Tuple[List[MatchRunSummary], int]:
+        """Return a page of past searches, newest first, and how many match.
+
+        A chain of resumes is one run, listed under its root. Counts are the
+        tracks' current state (see :class:`MatchRunSummary`), and a track since
+        deleted is in none of them.
+
+        Args:
+            query: Text to find in a run's label or date, or ``None``.
+            limit: Runs on the page.
+            offset: Runs to skip.
+
+        Returns:
+            ``(runs, total)``: the page, and how many runs match in all.
+        """
+        params: dict = {"limit": max(0, int(limit)), "offset": max(0, int(offset))}
+        where = ""
+        text = (query or "").strip()
+        if text:
+            escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            params["q"] = f"%{escaped}%"
+            where = _HISTORY_SEARCH
+        connection = self._db.connect()
+        rows = connection.execute(_HISTORY.format(where=where), params).fetchall()
+        total_params = {"q": params["q"]} if text else {}
+        total = int(
+            connection.execute(
+                _HISTORY_ROOTS.format(where=where), total_params
+            ).fetchone()[0]
+        )
+        records = _job_records(connection, [row["latest_job_id"] for row in rows])
+        runs: List[MatchRunSummary] = []
+        for row in rows:
+            state, updated_at = records.get(row["latest_job_id"], (None, None))
+            runs.append(
+                MatchRunSummary(
+                    job_id=row["job_id"],
+                    created_at=row["created_at"],
+                    label=row["label"],
+                    rematch=bool(row["rematch"]),
+                    selected=int(row["selected"]),
+                    excluded=int(row["excluded"]),
+                    planned=int(row["planned"]),
+                    done=int(row["done"]),
+                    found=int(row["found"]),
+                    waiting=int(row["waiting"]),
+                    not_found=int(row["not_found"]),
+                    rejected=int(row["rejected"]),
+                    disputed=int(row["disputed"]),
+                    latest_job_id=row["latest_job_id"],
+                    latest_state=state,
+                    finished_at=(
+                        updated_at if state not in (None, "queued", "running") else None
+                    ),
+                )
+            )
+        return runs, total
+
 
 # ------------------------------------------------------------------ helpers
+
+
+def _job_records(
+    conn: sqlite3.Connection, job_ids: Sequence[str]
+) -> Dict[str, Tuple[str, str]]:
+    """Return ``{job id: (state, updated_at)}`` for the jobs that have a record."""
+    wanted = list(dict.fromkeys(job_ids))
+    if not wanted:
+        return {}
+    placeholders = ", ".join("?" for _ in wanted)
+    return {
+        row["id"]: (row["state"], row["updated_at"])
+        for row in conn.execute(
+            f"SELECT id, state, updated_at FROM jobs WHERE id IN ({placeholders})",
+            wanted,
+        )
+    }
 
 
 def _attempt_watermark(conn: sqlite3.Connection) -> int:

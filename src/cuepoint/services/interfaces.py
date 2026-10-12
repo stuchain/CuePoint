@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     # Imported for typing only: these modules import their interface from this
     # module, so a runtime import here would create a circular import.
     # Annotations referencing them are quoted forward references.
+    from cuepoint.services.match_correct import CorrectOutcome
     from cuepoint.migrations import Migration
     from cuepoint.models.duplicate_group import (
         DuplicateDismissal,
@@ -140,6 +141,7 @@ if TYPE_CHECKING:
         MatchCandidate,
         MatchJobTrack,
         MatchPlan,
+        MatchRunSummary,
         ResumableMatch,
         TrackMatch,
     )
@@ -696,6 +698,18 @@ class IDatabaseService(ABC):
                 that block still owns the commit or rollback. This is what lets
                 several repositories succeed or fail together — a refresh that
                 deletes tracks and then fails must undo the deletion.
+        """
+        ...
+
+    @abstractmethod
+    def savepoint(self) -> "AbstractContextManager[sqlite3.Connection]":
+        """Context manager for a part of the open transaction that can fail alone.
+
+        On an exception everything written inside is undone and the exception
+        propagates; the transaction itself stays open for its owner to decide.
+
+        Raises:
+            DatabaseError: If no transaction is open.
         """
         ...
 
@@ -2134,6 +2148,7 @@ class IMatchJobRepository(ABC):
         rematch: bool,
         selected: int,
         created_at: str,
+        label: Optional[str] = None,
     ) -> "MatchPlan":
         """Write a job's plan and one waiting row per track, in one transaction."""
         ...
@@ -2178,6 +2193,13 @@ class IMatchJobRepository(ABC):
         """Return resumable jobs whose job record still says they are running."""
         ...
 
+    @abstractmethod
+    def history(
+        self, query: Optional[str], limit: int, offset: int
+    ) -> Tuple[List["MatchRunSummary"], int]:
+        """Return a page of past searches, newest first, and how many there are."""
+        ...
+
 
 class IMatchService(ABC):
     """Interface for matching library tracks on Beatport as a resumable job.
@@ -2189,7 +2211,10 @@ class IMatchService(ABC):
 
     @abstractmethod
     def prepare(
-        self, selection: "BatchSelection", rematch: bool = False
+        self,
+        selection: "BatchSelection",
+        rematch: bool = False,
+        label: Optional[str] = None,
     ) -> "MatchDraft":
         """Resolve a selection into the tracks a match job will cover."""
         ...
@@ -2852,6 +2877,39 @@ class IMatchApplyService(ABC):
         self, track_id: int, fields: Sequence[str], batch_id: str, notation: str
     ) -> bool:
         """Batch form: apply what the accepted candidate has; True if changed."""
+        ...
+
+
+class IMatchCorrectService(ABC):
+    """Interface for accepting a match and copying ticked fields as one act.
+
+    The Match area's Correct (C14): the accept (DEC-067) and the ticked fields
+    (DEC-068) commit together under one batch id, so reverting that batch is
+    Undo. DEC-004 kept the two acts apart; this is the one place they join.
+    """
+
+    @abstractmethod
+    def correct(
+        self,
+        track_id: int,
+        candidate_id: int,
+        fields: Sequence[str],
+        replace_key: bool = False,
+        batch_id: Optional[str] = None,
+    ) -> "CorrectOutcome":
+        """Accept a candidate and copy the ticked fields, all or nothing."""
+        ...
+
+    @abstractmethod
+    def correct_proposed(
+        self,
+        track_id: int,
+        fields: Sequence[str],
+        replace_key: bool,
+        batch_id: str,
+        notation: str,
+    ) -> bool:
+        """Batch form: accept what the track proposes and copy the fields."""
         ...
 
 

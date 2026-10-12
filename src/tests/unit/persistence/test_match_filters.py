@@ -26,6 +26,7 @@ from cuepoint.models.beatport_candidate import BeatportCandidate
 from cuepoint.models.filter_rule import (
     ARTWORK_ALIAS,
     FILES_ALIAS,
+    FilterRuleError,
     MATCH_ALIAS,
     MATCH_CANDIDATE_ALIAS,
     METADATA_ALIAS,
@@ -44,6 +45,7 @@ from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
 from cuepoint.persistence.activity_repository import ActivityRepository
 from cuepoint.persistence.filter_sql import required_joins, requires_metadata
+from cuepoint.persistence.match_job_repository import MatchJobRepository
 from cuepoint.persistence.match_repository import MatchRepository
 from cuepoint.persistence.track_metadata_repository import TrackMetadataRepository
 from cuepoint.persistence.track_query import (
@@ -416,3 +418,75 @@ class TestTheVocabulary:
         assert spec.joins == (MATCH_ALIAS,)
         assert STATE_NOT_MATCHED in spec.expression
         assert spec.metadata is False
+
+
+# ----------------------------------------------------------------- match_run
+
+
+class TestMatchRun:
+    """``match_run`` is the From filter: the tracks one search covered (C14)."""
+
+    @pytest.fixture
+    def runs(self, db, library):
+        """Run one is a chain of two resumes over three tracks; run two has one."""
+        jobs = MatchJobRepository(db)
+        first = [library["never_a"], library["review_a"], library["no_match_a"]]
+        jobs.create("one", first, rematch=False, selected=3, created_at="t")
+        jobs.mark_done("one", 0)
+        jobs.take_over("one", "one-b", "t")
+        jobs.create(
+            "two", [library["review_b"]], rematch=False, selected=1, created_at="t"
+        )
+        return jobs
+
+    def test_a_run_finds_every_track_across_its_chain(self, tracks, library, runs):
+        assert named(tracks, library, ("match_run", "is", "one")) == {
+            "never_a",
+            "review_a",
+            "no_match_a",
+        }
+
+    def test_the_latest_job_of_a_chain_finds_only_what_it_took_over(
+        self, tracks, library, runs
+    ):
+        assert named(tracks, library, ("match_run", "is", "one-b")) == {
+            "review_a",
+            "no_match_a",
+        }
+
+    def test_another_run_is_another_set(self, tracks, library, runs):
+        assert named(tracks, library, ("match_run", "is", "two")) == {"review_b"}
+
+    def test_an_unknown_run_finds_nothing(self, tracks, library, runs):
+        assert count(tracks, ("match_run", "is", "nope")) == 0
+
+    def test_it_composes_with_the_match_state(self, tracks, library, runs):
+        assert named(
+            tracks,
+            library,
+            ("match_run", "is", "one"),
+            ("match_state", "is", "needs_review"),
+        ) == {"review_a"}
+
+    def test_a_deleted_track_drops_out(self, db, tracks, library, runs):
+        with db.transaction() as conn:
+            conn.execute("DELETE FROM tracks WHERE id = ?", (library["never_a"],))
+        assert named(tracks, library, ("match_run", "is", "one")) == {
+            "review_a",
+            "no_match_a",
+        }
+
+    def test_it_takes_one_job_id_and_only_is(self):
+        field = field_spec("match_run")
+        assert field.operators == ("is",)
+        assert field.offered is False
+        for value in (None, "", "   ", 7, ["a"]):
+            with pytest.raises(FilterRuleError):
+                FilterRule("match_run", "is", value).validated()
+        with pytest.raises(FilterRuleError):
+            FilterRule("match_run", "any_of", ["a"]).validated()
+
+    def test_it_needs_no_join(self, tracks):
+        query = BrowseQuery(rules=rules(("match_run", "is", "one")))
+        assert required_joins(query.rules) == set()
+        assert not requires_metadata(query.rules)

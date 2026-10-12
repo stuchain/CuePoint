@@ -31,6 +31,10 @@ _ALLOWED = {
     "services/migration_runner.py",  # owns schema_version and migrations
     "services/interfaces.py",  # declares the contracts
     "services/bootstrap.py",  # wires them together
+    # Correct: the accept and every ticked field are one transaction, so the
+    # service opens it through IDatabaseService. The SQL is the match, metadata
+    # and activity repositories'; no query is run in this module.
+    "services/match_correct.py",
     # Backup/restore operates on the database as a whole — SQLite's backup API
     # and PRAGMA quick_check — and never queries library tables. The rule here
     # is about queries against the schema being spread around, which is what

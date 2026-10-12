@@ -76,6 +76,7 @@ from cuepoint.models.filter_rule import (
     TYPE_NAME,
     TYPE_NUMBER,
     TYPE_SOURCE,
+    TYPE_MATCH_RUN,
     TYPE_TRACK,
     SOURCE_PLAYLIST,
     FieldSpec,
@@ -468,6 +469,16 @@ def compile_rule(rule: FilterRule) -> Tuple[str, Tuple[Any, ...]]:
         # A list of ids another page handed over; an id with no row matches
         # nothing rather than failing.
         return f"tracks.id IN ({', '.join('?' for _ in value)})", tuple(value)
+    if spec.type == TYPE_MATCH_RUN:
+        # The run is its first job and every resume that took tracks over, so the
+        # chain is walked from the id. A resume moved its waiting rows, and the
+        # original kept the ones it finished: together they are the run.
+        return (
+            "tracks.id IN (WITH RECURSIVE ch(j) AS (SELECT ? UNION"
+            " SELECT m.job_id FROM match_jobs m JOIN ch ON m.resumed_from = ch.j)"
+            " SELECT t.track_id FROM match_job_tracks t JOIN ch ON t.job_id = ch.j)",
+            (value,),
+        )
     if spec.is_membership:
         return _compile_membership(spec, operator, value)
     if spec.is_multivalued:
