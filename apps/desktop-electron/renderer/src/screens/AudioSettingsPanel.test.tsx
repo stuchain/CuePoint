@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -120,7 +120,11 @@ describe("the panel's words", () => {
       "If the chosen one is unplugged, CuePoint switches to System default.",
     );
     expect(detail).not.toBeVisible();
-    fireEvent.click(screen.getAllByRole("button", { name: "More about this" })[0]!);
+    fireEvent.click(
+      within(detail.closest(".cp-more-about") as HTMLElement).getByRole("button", {
+        name: "More about this",
+      }),
+    );
     expect(detail).toBeVisible();
   });
 
@@ -138,15 +142,17 @@ describe("the panel's words", () => {
         "Plays straight to your audio interface. Other apps can't use it meanwhile.",
       ),
     ).toBeInTheDocument();
-    const leave = screen.getByText(/Leave off unless you use an audio interface/);
-    const mixer = screen.getByText(/bypassing the system mixer/);
-    expect(leave).not.toBeVisible();
-    expect(mixer).not.toBeVisible();
+    const detail = screen.getByText(/Leave it off unless you use an audio interface/);
+    expect(detail).not.toBeVisible();
     expect(document.querySelector("details")).toBeNull();
-    const buttons = screen.getAllByRole("button", { name: "More about this" });
-    fireEvent.click(buttons[buttons.length - 1]!);
-    expect(leave).toBeVisible();
-    expect(mixer).toBeVisible();
+    const toggle = within(detail.closest(".cp-more-about") as HTMLElement).getByRole("button", {
+      name: "More about this",
+    });
+    expect(toggle).toHaveAccessibleDescription(
+      "Plays straight to your audio interface. Other apps can't use it meanwhile.",
+    );
+    fireEvent.click(toggle);
+    expect(detail).toBeVisible();
   });
 
   it("shows Saved after a change the player accepted, and not after one it refused", async () => {
@@ -249,7 +255,7 @@ describe("exclusive output", () => {
     renderPanel();
 
     expect(
-      await screen.findByText(/other applications cannot use that device/i),
+      await screen.findByText(/Other apps can.t use it meanwhile/i),
     ).toBeInTheDocument();
   });
 

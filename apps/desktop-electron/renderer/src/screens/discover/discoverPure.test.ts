@@ -130,11 +130,19 @@ describe("Beatport's state", () => {
     expect(beatportNotice("unavailable")!.hint).toBe("");
   });
 
+  it("never says scope in a refusal (DSC-3)", () => {
+    const forbidden = beatportNotice("forbidden")!;
+    expect(`${forbidden.headline} ${forbidden.hint}`).not.toMatch(/scope/i);
+  });
+
   it("says how long a rate limit asked for, and why Beatport was out of reach", () => {
-    expect(beatportNotice("rate_limited", null, 12)!.hint).toContain("in 12 seconds");
-    expect(beatportNotice("rate_limited", null, 1)!.hint).toContain("in 1 second.");
-    expect(beatportNotice("rate_limited", null, 300)!.hint).toContain("in 5 minutes");
-    expect(beatportNotice("rate_limited", null, null)!.hint).toContain("in a little while");
+    expect(beatportNotice("rate_limited", null, 12)!.hint).toBe("Wait 12 seconds.");
+    expect(beatportNotice("rate_limited", null, 1)!.hint).toBe("Wait 1 second.");
+    expect(beatportNotice("rate_limited", null, 300)!.hint).toBe("Wait 5 minutes.");
+    expect(beatportNotice("rate_limited", null, null)!.hint).toBe("Wait a little while.");
+    expect(beatportNotice("unavailable", "Beatport answered 503.")!.hint).toBe(
+      "Beatport answered 503.",
+    );
     expect(beatportNotice("unavailable", "Beatport answered 503")!.hint).toBe(
       "Beatport answered 503.",
     );

@@ -4,10 +4,10 @@
  *
  * The engine names one of five failures — no token, a token Beatport rejected,
  * one it refused for this, a rate limit, Beatport out of reach — and never the
- * token itself. Each is a different sentence and a different next step: a token
- * is fixed in Settings, and waiting is the only fix for the other two. The page
- * stays usable in every one of them: past searches and the wantlist are
- * CuePoint's own, and read without Beatport.
+ * token itself. Each notice is one line with one next step: a token is fixed in
+ * Settings, and waiting is the only fix for the other two. The page stays
+ * usable in every one of them: past searches and the wantlist are CuePoint's
+ * own, and read without Beatport (DEC-098).
  *
  * The words are a DJ's (DSC-3): the token is "your Beatport sign-in key", named
  * once as a "token" so the Settings field it is pasted into is recognized, and
@@ -31,11 +31,11 @@ interface BeatportNotice {
 
 /** Whole seconds, as a person reads a wait. */
 function waitFor(seconds: number | null): string {
-  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return "in a little while";
+  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return "a little while";
   const whole = Math.ceil(seconds);
-  if (whole < 90) return `in ${whole} ${whole === 1 ? "second" : "seconds"}`;
+  if (whole < 90) return `${whole} ${whole === 1 ? "second" : "seconds"}`;
   const minutes = Math.ceil(whole / 60);
-  return `in ${minutes} minutes`;
+  return `${minutes} minutes`;
 }
 
 /**
@@ -77,18 +77,21 @@ export function beatportNotice(
       return {
         state,
         headline: "Beatport is limiting requests",
-        hint: `Try again ${waitFor(retryAfter)}.`,
+        hint: `Wait ${waitFor(retryAfter)}.`,
         action: "retry",
       };
     case "unavailable":
       return {
         state,
         headline: "Beatport cannot be reached",
-        hint: message ? `${message}.` : "",
+        hint: message ? `${message.replace(/\.$/, "")}.` : "",
         action: "retry",
       };
   }
 }
+
+/** The states whose headline already says all there is to say. */
+export const TOKEN_STATES: ReadonlySet<string> = new Set(["no_token", "rejected", "forbidden"]);
 
 /** The Beatport state a refusal reports, or null when it is not Beatport's. */
 export function refusalState(refusal: DiscoverRefusal | null): BeatportErrorClass | null {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 
 import type { AudioDevice } from "../api/cuepointBridge.types";
 import { MoreAbout, Panel } from "../components";
@@ -97,6 +97,8 @@ export function AudioSettingsPanel() {
   // The chosen device may not be in the list: it was unplugged, or the settings
   // were written on another machine. It stays selected — losing the choice
   // because the interface is asleep is worse than showing one that is missing.
+  const outputsId = useId();
+  const exclusiveId = useId();
   const known = devices.some((device) => device.name === audio.device);
   const fellBack = audioFellBack(audio);
 
@@ -124,7 +126,7 @@ export function AudioSettingsPanel() {
             )}
           </select>
         </label>
-        <p className="cp-audio-settings__hint">
+        <p id={outputsId} className="cp-audio-settings__hint">
           {loading
             ? "Reading the devices this machine has…"
             : available
@@ -132,7 +134,7 @@ export function AudioSettingsPanel() {
               : "Open CuePoint as a desktop app to choose an output device."}
         </p>
         {available && !loading && (
-          <MoreAbout>
+          <MoreAbout describedBy={outputsId}>
             <p className="cp-audio-settings__hint">
               If the chosen one is unplugged, CuePoint switches to System default.
             </p>
@@ -150,27 +152,23 @@ export function AudioSettingsPanel() {
         </label>
         {audio.exclusiveSupported ? (
           <>
-            <p className="cp-audio-settings__hint">
+            <p id={exclusiveId} className="cp-audio-settings__hint">
               Plays straight to your audio interface. Other apps can&apos;t use it meanwhile.
             </p>
-            <MoreAbout>
+            <MoreAbout describedBy={exclusiveId}>
               <p className="cp-audio-settings__hint">
-                Leave off unless you use an audio interface. On: CuePoint plays to the device
-                directly, at its own quality, and other apps can&apos;t use it until you turn it
-                off.
-              </p>
-              <p className="cp-audio-settings__hint">
-                CuePoint takes the device for itself and plays to it directly, bypassing the system
-                mixer — no resampling, no volume applied by anything else. While it is on, other
-                applications cannot use that device, and CuePoint falls back to shared output if
-                something else already has it.
+                Leave it off unless you use an audio interface. CuePoint bypasses the system mixer
+                (no resampling, no outside volume), and uses shared output if another app already
+                has the device.
               </p>
             </MoreAbout>
           </>
         ) : (
           <>
-            <p className="cp-audio-settings__hint">Not available on this system.</p>
-            <MoreAbout>
+            <p id={exclusiveId} className="cp-audio-settings__hint">
+              Not available on this system.
+            </p>
+            <MoreAbout describedBy={exclusiveId}>
               <p className="cp-audio-settings__hint">
                 Exclusive output is a Windows and macOS feature. This system has no equivalent, so
                 CuePoint plays through the shared device.

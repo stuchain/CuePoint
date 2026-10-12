@@ -42,7 +42,6 @@ import {
   facetValueText,
   freshnessLine,
   identityDetail,
-  identityHint,
   identityLabel,
   pageTitle,
   redirectedLine,
@@ -141,11 +140,6 @@ describe("what a page says (DEC-095: it says which identity it is)", () => {
     expect(identityLabel(page("page_label_id"))).toBe("Linked to Beatport");
     expect(identityLabel(page("page_artist_name"))).toBe("Your tracks by this name");
     expect(identityLabel(page("page_label_name"))).toBe("Your tracks by this name");
-  });
-
-  it("says the identity in a few words (C15b)", () => {
-    expect(identityHint(page("page_artist_id"))).toBe("Linked to Beatport");
-    expect(identityHint(page("page_artist_name"))).toBe("Your tracks credited with this name");
   });
 
   it("explains a name group, and an id with the spellings it gathers", () => {

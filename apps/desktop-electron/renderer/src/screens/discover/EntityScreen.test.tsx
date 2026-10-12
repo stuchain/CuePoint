@@ -279,7 +279,6 @@ describe("a page's identity (DEC-095)", () => {
     // The name as typed is replaced with the page's own reference.
     await waitFor(() => expect(where()).toBe(entityPath("artist", "name:kiko")));
     expect(screen.getByText("Your tracks by this name")).toBeInTheDocument();
-    expect(screen.getByText("Your tracks credited with this name")).toBeInTheDocument();
     // The rest is behind "More about this", closed on load.
     expect(screen.getByRole("button", { name: "More about this" })).toHaveAttribute(
       "aria-expanded",
@@ -300,7 +299,7 @@ describe("a page's identity (DEC-095)", () => {
     renderAt(entityPath("artist", "name:Mara Veil"));
     await opened("Mara Veil");
     await waitFor(() => expect(where()).toBe(entityPath("artist", "bp:301001")));
-    expect(screen.getAllByText("Linked to Beatport")).toHaveLength(2);
+    expect(screen.getByText("Linked to Beatport")).toBeInTheDocument();
     expect(screen.getByText(/Opened by name/)).toBeInTheDocument();
     expect(screen.getByText(/credited as Mara Veil/)).toBeInTheDocument();
     // The page answered for the id is not asked for again at the id's address.
@@ -311,7 +310,7 @@ describe("a page's identity (DEC-095)", () => {
   it("draws a label page in both identities", async () => {
     const view = renderAt(entityPath("label", "bp:40211"));
     await opened("Nightfall Audio");
-    expect(screen.getAllByText("Linked to Beatport").length).toBeGreaterThan(0);
+    expect(screen.getByText("Linked to Beatport")).toBeInTheDocument();
     expect(screen.getByText(/Artists:/)).toBeInTheDocument();
     view.unmount();
     renderAt(entityPath("label", "name:Cold Room"));
@@ -394,7 +393,10 @@ describe("the Beatport half, in every state", () => {
     renderAt(half.kind === "artist" ? entityPath("artist", "bp:301001") : entityPath("label", "bp:40211"));
     const state = await screen.findByRole("status", { name: "Beatport" }, LOADED);
     expect(within(state).getByText(headline)).toBeInTheDocument();
-    expect(within(state).getByText(`${half.message}.`)).toBeInTheDocument();
+    // A missing or refused token is said by the headline alone.
+    const reason = within(state).queryByText(`${half.message.replace(/\.$/, "")}.`);
+    if (["no_token", "rejected", "forbidden"].includes(half.state)) expect(reason).toBeNull();
+    else expect(reason).toBeInTheDocument();
     const buttons = within(state).queryAllByRole("button").map((button) => button.textContent);
     expect(buttons).toEqual(action ? [action] : []);
   });

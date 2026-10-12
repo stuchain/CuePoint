@@ -119,7 +119,7 @@ export function runRequest(form: NewRunForm): DiscoverRunRequest {
 export function chartsWindowShort(form: NewRunForm, defaults: DiscoverDefaults): string {
   const from = dayOf(form.chartsFrom);
   const to = dayOf(form.chartsTo);
-  if (from === null || to === null) return "dates under More options";
+  if (from === null || to === null) return "chosen dates";
   const isDefault =
     form.chartsFrom === defaults.charts_from && form.chartsTo === defaults.charts_to;
   const days = to - from;

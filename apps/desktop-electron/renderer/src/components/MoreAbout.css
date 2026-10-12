@@ -10,10 +10,6 @@
 }
 
 .cp-more-about__body {
-  color: var(--fg-secondary);
+  color: var(--fg-muted);
   font-size: var(--font-size-sm);
-}
-
-.cp-more-about__body[hidden] {
-  display: none;
 }

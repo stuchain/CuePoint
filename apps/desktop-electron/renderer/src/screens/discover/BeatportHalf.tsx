@@ -40,6 +40,7 @@ import { BeatportTable } from "./BeatportTable";
 import { HideOwnedSwitch } from "./HideOwnedSwitch";
 import { useHideOwned } from "./useHideOwned";
 import { PushDialog } from "./PushDialog";
+import { TOKEN_STATES } from "./beatportState";
 import { beatportRowKey } from "./beatportKey";
 import { beatportSelectedId, useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { runActions, type BeatportActionId } from "./beatportActions";
@@ -378,7 +379,9 @@ export function BeatportHalf({
         aria-label="Beatport"
       >
         <p className="discover-empty__headline">{beatportHeadline(half)}</p>
-        <p className="discover-note">{half.message}.</p>
+        {!TOKEN_STATES.has(half.state) && (
+          <p className="discover-note">{half.message.replace(/\.$/, "")}.</p>
+        )}
         {shared && links.length > 0 && (
           <ul className="discover-page__links" aria-label={`Beatport ${nounOf(kind)}s with this name`}>
             {links.map((link) => (

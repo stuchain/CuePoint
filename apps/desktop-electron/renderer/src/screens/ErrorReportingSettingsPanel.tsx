@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { MoreAbout, Panel } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
@@ -32,6 +32,7 @@ export function ErrorReportingSettingsPanel({
 }: ErrorReportingSettingsPanelProps) {
   const reporting = window.cuepoint?.errorReporting;
   const available = reporting !== undefined;
+  const lineId = useId();
   const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(available);
   const [busy, setBusy] = useState(false);
@@ -108,10 +109,10 @@ export function ErrorReportingSettingsPanel({
           </label>
           <SavedTick signal={saved} />
         </div>
-        <p className="cp-error-reporting__text">
+        <p id={lineId} className="cp-error-reporting__text">
           Sends what went wrong, never your track or file names.
         </p>
-        <MoreAbout>
+        <MoreAbout describedBy={lineId}>
           <p className="cp-error-reporting__text">
             A report says what went wrong, where in CuePoint&apos;s code, and the steps that led to
             it. It is built not to carry your file, folder, track, artist, label or playlist names,

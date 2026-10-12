@@ -49,7 +49,6 @@ import { NO_ENGINE } from "./discoverTools";
 import {
   facetValueText,
   identityDetail,
-  identityHint,
   identityLabel,
   INDEX_BUILDING,
   kindTitle,
@@ -262,7 +261,6 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
           </Badge>
         </p>
         <h1 className="screen__title">{pageTitle(shown)}</h1>
-        <p className="discover-note">{identityHint(shown)}</p>
         <MoreAbout>
           <p className="discover-note">{identityDetail(shown)}</p>
         </MoreAbout>

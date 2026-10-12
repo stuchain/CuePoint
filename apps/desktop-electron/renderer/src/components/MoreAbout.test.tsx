@@ -27,6 +27,18 @@ describe("MoreAbout", () => {
     expect(screen.getByText("The detail.")).not.toBeVisible();
   });
 
+  it("is described by the line it belongs to", () => {
+    render(
+      <>
+        <p id="line">One line.</p>
+        <MoreAbout describedBy="line">The detail.</MoreAbout>
+      </>,
+    );
+    expect(screen.getByRole("button", { name: "More about this" })).toHaveAccessibleDescription(
+      "One line.",
+    );
+  });
+
   it("takes a custom label and does not remember being open", () => {
     const { unmount } = render(<MoreAbout label="Why?">The detail.</MoreAbout>);
     fireEvent.click(screen.getByRole("button", { name: "Why?" }));

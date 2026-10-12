@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 
 import type { RekordboxExportHistory } from "../api/cuepointBridge.types";
 import { Button, MoreAbout, Panel } from "../components";
@@ -59,13 +59,16 @@ export function RekordboxExportSettingsPanel() {
     void load();
   }, [load]);
 
+  const lineId = useId();
   const remembered = history?.remembered ?? null;
 
   return (
     <Panel title="Rekordbox export">
       <div className="cp-export-settings">
-        <p className="cp-export-settings__hint">Remembers your last export.</p>
-        <MoreAbout>
+        <p id={lineId} className="cp-export-settings__hint">
+          Remembers your last export.
+        </p>
+        <MoreAbout describedBy={lineId}>
           <p className="cp-export-settings__hint">
             To export, use “Export to Rekordbox…” in the Library or on a Collection&apos;s menu.
           </p>

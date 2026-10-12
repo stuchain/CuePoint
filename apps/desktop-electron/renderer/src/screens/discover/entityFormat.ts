@@ -35,12 +35,6 @@ export function identityLabel(page: Pick<EntityPage, "kind" | "identity">): stri
   return page.identity === "beatport" ? "Linked to Beatport" : "Your tracks by this name";
 }
 
-/** What the identity is, in a few words; `identityDetail` says what it means. */
-export function identityHint(page: Pick<EntityPage, "kind" | "identity">): string {
-  if (page.identity === "beatport") return "Linked to Beatport";
-  return page.kind === "label" ? "Your tracks with this label name" : "Your tracks credited with this name";
-}
-
 /** What the identity means, in a sentence or two (behind "More about this"). */
 export function identityDetail(page: Pick<EntityPage, "kind" | "identity" | "names">): string {
   const noun = nounOf(page.kind);

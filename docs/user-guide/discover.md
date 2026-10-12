@@ -176,8 +176,8 @@ You can set the environment variable `BEATPORT_ACCESS_TOKEN` instead. It takes
 priority over the saved token.
 
 A token expires after a while (Beatport's answer says when, in `expires_in`).
-CuePoint does not refresh it: when Discover says **Beatport rejected the
-token**, get a new one as above, or use the refresh token you got with the first
+CuePoint does not refresh it: when Discover says **Beatport sign-in ended or the
+token was refused.**, get a new one as above, or use the refresh token you got with the first
 (see the reference), and save it.
 
 ### Linking tracks to Beatport
@@ -221,8 +221,8 @@ always says how it knows who it is about:
 - **Linked to Beatport** means CuePoint knows which Beatport artist or label
   this is, from your tracks that are matched on Beatport (see [Linking tracks to
   Beatport](#linking-tracks-to-beatport)). The page holds the tracks Beatport
-  credits to them, and your other tracks spelled the same way, and says which
-  spellings it includes. A name page you open for someone CuePoint has since
+  credits to them, and your other tracks spelled the same way. The spellings it
+  includes are under **More about this**. A name page you open for someone CuePoint has since
   linked becomes their Beatport page, and says it was opened by name.
 
 The page is titled with the name your library spells most often, or **Unknown

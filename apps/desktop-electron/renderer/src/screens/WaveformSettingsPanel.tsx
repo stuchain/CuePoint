@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Button, Modal, MoreAbout, Panel } from "../components";
@@ -85,6 +85,7 @@ function WaveformPreview() {
 export function WaveformSettingsPanel() {
   const analysis = useWaveformAnalysis();
   const [mode, setMode] = useWaveformColour();
+  const colorsId = useId();
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [saved, markSaved] = useSavedSignal();
@@ -155,7 +156,9 @@ export function WaveformSettingsPanel() {
         )}
 
         <fieldset className="cp-waveform-settings__choice">
-          <legend className="cp-waveform-settings__label">Colors</legend>
+          <legend id={colorsId} className="cp-waveform-settings__label">
+            Colors
+          </legend>
           {WAVEFORM_COLOUR_OPTIONS.map((option) => (
             <label key={option.mode} className="cp-waveform-settings__option">
               <input
@@ -168,7 +171,7 @@ export function WaveformSettingsPanel() {
               <span>{option.label}</span>
             </label>
           ))}
-          <MoreAbout>
+          <MoreAbout describedBy={colorsId}>
             <p className="cp-waveform-settings__hint">
               Three bands draws the lows, mids and highs in colors of their own, as Rekordbox does.
               One color draws the whole sound in one.
