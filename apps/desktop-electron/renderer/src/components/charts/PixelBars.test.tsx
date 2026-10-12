@@ -34,14 +34,29 @@ function chart(props: Partial<React.ComponentProps<typeof PixelBars>> = {}) {
 }
 
 describe("PixelBars", () => {
-  it("does not tell a person to tab to a chart that has nothing to tab to", () => {
+  it("shows no idle caption, with or without onSelect", () => {
     const { container, rerender } = chart({ onSelect: undefined });
     const caption = () => container.querySelector(".cp-pixel-bars__caption")!.textContent;
-    expect(caption()).toBe("Point at a bar to read it");
+    expect(caption()).toBe("");
     rerender(
       <PixelBars title="Tempo" buckets={TEMPO} orientation="vertical" barName={name} onSelect={() => undefined} />,
     );
-    expect(caption()).toBe("Point at or tab to a bar to read it");
+    expect(caption()).toBe("");
+  });
+
+  it("writes the bar's name on hover and on keyboard focus, and clears it after", async () => {
+    const user = userEvent.setup();
+    const { container } = chart();
+    const caption = () => container.querySelector(".cp-pixel-bars__caption")!.textContent;
+    const slot = container.querySelector("[data-bar-slot='2']")!;
+    await user.hover(slot);
+    expect(caption()).toBe("124 BPM, 312 tracks");
+    await user.unhover(slot);
+    expect(caption()).toBe("");
+    await user.tab();
+    expect(caption()).toBe("122 BPM, 40 tracks");
+    await user.tab();
+    expect(caption()).toBe("");
   });
 
   it("makes each bar with tracks a button named by the formatter", () => {

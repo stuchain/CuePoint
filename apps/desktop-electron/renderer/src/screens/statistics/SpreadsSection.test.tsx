@@ -190,11 +190,11 @@ describe("the spreads (STATS-06)", () => {
     const user = userEvent.setup();
     renderSection();
     const tempo = panel("Tempo");
-    expect(within(tempo).getByText("Point at or tab to a bar to read it")).toBeInTheDocument();
+    expect(within(tempo).queryByText(/to read it/)).not.toBeInTheDocument();
     await user.hover(tempo.querySelector('[data-bar-slot="1"]')!);
     expect(within(tempo).getByText("124 BPM, 312 tracks", { selector: "p" })).toBeInTheDocument();
     await user.unhover(tempo.querySelector('[data-bar-slot="1"]')!);
-    expect(within(tempo).getByText("Point at or tab to a bar to read it")).toBeInTheDocument();
+    expect(within(tempo).queryByText("124 BPM, 312 tracks", { selector: "p" })).not.toBeInTheDocument();
   });
 
   it("groups thousands the American way, and puts units in the screen-reader table", () => {
