@@ -763,8 +763,13 @@ left; no quarantine flag on the replaced app and nothing for Stelios to report f
 for this install); `config.yaml` byte-identical and every library table's row count unchanged (5,574
 tracks) but the activity log's launch entries; a launch backup before each start; `lastSeenVersion`
 1.0.0-test.2 and no `pendingInstall`; only `updates/1.0.0-test.2/notes.md` kept, for **What's new**.
-**Still owed:** the same run on an Intel Mac (there is none to hand, so it needs CI's Intel runner), the read-only-folder run that shows **Download**, and the
-quit-instead-of-restart path, which needs a `v1.0.0-test.3`.
+**Quit instead of restart, 2026-10-12:** `v1.0.0-test.3` was released from its tag (the run started 12:11
+Athens). On Stelios's Windows PC an installed test.2 downloaded test.3 at 17:05:32. Stelios quit CuePoint
+without touching the **ready** chip, and the update installed at quit (the install folder rewritten at
+17:15:04). Reopened, CuePoint was 1.0.0-test.3, with `lastSeenVersion` 1.0.0-test.3, no `pendingInstall`
+and its first check at 17:15:24.
+**Still owed:** the same run on an Intel Mac (there is none to hand, so it needs CI's Intel runner) and
+the read-only-folder run that shows **Download**.
 
 ---
 
