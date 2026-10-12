@@ -6120,6 +6120,13 @@ music is synthesized in code so nothing needs a license.
 **Reason**: The user's choice of every recommended option on 2026-10-08. Made from code, it can be
 re-rendered when the redesigned pages land instead of re-edited by hand.
 
+**v8 (2026-10-12)**: the cut grew to 31 s (17 bars at 132 BPM) on the user's note that the intro went
+too fast: the opening is a dig, the camera starting low inside the crate and rising out of it; the
+records and the Camelot wheel use the app's accent purples instead of a rainbow; the Keys wheel turns
+from its first frame; and two three-reviewer passes aligned the panels (Discover cards and Prepare
+rows fit their windows, no panel pokes in beside another, values cut in whole). The opening scene is
+the video's own frozen copy (`src/scene/`), so the website's home page can change without touching it.
+
 **Implications**: Embedding it on the site belongs to Phase 17's thread. When real captures exist,
 the stand-ins are swapped and `APP_PREVIEW` turned off.
 
