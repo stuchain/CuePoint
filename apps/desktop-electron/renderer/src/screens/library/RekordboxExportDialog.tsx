@@ -6,10 +6,12 @@
  * so there is one preview and one confirm path.
  *
  * It is built in the order DEC-084 set — choose, read a computed preview,
- * confirm — and states what will be written in the order the specification
- * gives: the destination, the source file and any staleness, the tracks and
- * what changes in them, the playlists, the warnings, and last the key
- * notation with its consequence beside it. Every sentence comes from
+ * confirm. It leads with a one-line summary, and always shows what could
+ * change the outcome: the destination, a refusal, staleness, and the warnings
+ * that alter the file. The rest of what DEC-084 requires is stated behind
+ * Details (DEC-247), in the specification's order: the source file, the
+ * tracks and what changes in them, the playlists to tick, the notes, and last
+ * the key notation with its consequence beside it. Every sentence comes from
  * `rekordboxExport.ts`, over the engine's own answer.
  *
  * **Nothing is written until confirm**, and confirm answers only the preview on
@@ -29,7 +31,7 @@ import type {
   RememberedRekordboxExport,
 } from "../../api/cuepointBridge.types";
 import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
-import { Button, Modal } from "../../components";
+import { Button, Modal, MoreAbout } from "../../components";
 import type { CollectionTreeNode } from "./collectionTree";
 import { followJob, type FollowHandle } from "./followJob";
 import { fileName, jobErrorMessage } from "./libraryFormat";
@@ -45,6 +47,7 @@ import {
   coveredByFolder,
   exportChoice,
   exportNodeLabel,
+  exportSummaryLine,
   exportWarnings,
   fieldLines,
   keyFormatConsequence,
@@ -341,6 +344,27 @@ export function RekordboxExportDialog({
   const consequence = keyFormatConsequence(keyFormat);
   const staleness = preview ? stalenessWarning(preview.source) : null;
   const warnings = preview ? exportWarnings(preview) : [];
+  // What changes the file stays in view; what is only worth knowing sits behind Details.
+  const loudWarnings = warnings.filter((warning) => warning.tone === "warning");
+  const noteWarnings = warnings.filter((warning) => warning.tone === "note");
+  const renderWarning = (warning: (typeof warnings)[number]) => (
+    <li
+      key={warning.key}
+      data-warning={warning.key}
+      className={
+        warning.tone === "warning"
+          ? "rekordbox-export__warning"
+          : "rekordbox-export__warning rekordbox-export__warning--note"
+      }
+    >
+      <span>{warning.text}</span>
+      {warning.key === "missing" && onOpenMissingFiles && (
+        <Button variant="secondary" onClick={onOpenMissingFiles}>
+          Show missing files
+        </Button>
+      )}
+    </li>
+  );
   const show = window.cuepoint?.showItemInFolder;
 
   const primary =
@@ -455,154 +479,160 @@ export function RekordboxExportDialog({
               </section>
             )}
 
-            {/* 2. The file it patches, and whether it has moved on. */}
+            {/* 2. The answer in one line, then what must be seen before anything is written. */}
             {preview && (
-              <section className="rekordbox-export__part" aria-label="Source">
-                <h3 className="rekordbox-export__heading">From</h3>
-                <p className="clean-dialog__note" title={preview.source.path}>
-                  {sourceLine(preview.source)}
-                </p>
-                {staleness && (
-                  <div className="rekordbox-export__stale" role="alert">
-                    <p>{staleness}</p>
-                    <Button variant="secondary" onClick={onRefreshFirst}>
-                      Refresh first
-                    </Button>
-                  </div>
-                )}
-                {unknownTracksLine(preview) && (
-                  <p className="clean-dialog__note">{unknownTracksLine(preview)}</p>
-                )}
+              <p className="rekordbox-export__summary" data-testid="export-summary" role="status">
+                {exportSummaryLine(preview, keyFormat)}
+              </p>
+            )}
+
+            {staleness && (
+              <section className="rekordbox-export__part" aria-label="Source changed">
+                <div className="rekordbox-export__stale" role="alert">
+                  <p>{staleness}</p>
+                  <Button variant="secondary" onClick={onRefreshFirst}>
+                    Refresh first
+                  </Button>
+                </div>
               </section>
             )}
 
-            {/* 3. The tracks, and what changes in them. */}
-            {preview && (
-              <section className="rekordbox-export__part" aria-label="Tracks">
-                <h3 className="rekordbox-export__heading">Tracks</h3>
-                <p className="clean-dialog__headline" data-testid="export-track-count">
-                  {trackCountLine(preview)}
-                </p>
-                <p>{changeLine(preview)}</p>
-                {fieldLines(preview).length > 0 && (
-                  <ul className="clean-dialog__lines" aria-label="Changed fields">
-                    {fieldLines(preview).map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                )}
-                {copyLine(preview) && <p className="clean-dialog__note">{copyLine(preview)}</p>}
-              </section>
-            )}
-
-            {/* 4. The playlists: what to tick, and what that appends. */}
-            <section className="rekordbox-export__part" aria-label="Playlists">
-              <h3 className="rekordbox-export__heading">Playlists</h3>
-              {rows.length === 0 ? (
-                <p className="clean-dialog__note">
-                  You have no Collections or Sets yet, so no playlists are added. To send
-                  tracks to Rekordbox as a playlist, add them to a Collection or a Set first.
-                </p>
-              ) : (
-                <fieldset
-                  className="rekordbox-export__choose"
-                  disabled={phase === "exporting"}
-                >
-                  <legend>Collections and Sets to add as playlists</legend>
-                  {rows.map(({ node, depth }) => {
-                    const implied = covered.has(node.id);
-                    return (
-                      <label
-                        key={node.id}
-                        className="clean-dialog__check rekordbox-export__node"
-                        style={{ paddingLeft: `calc(${depth} * var(--space-md))` }}
-                        title={node.broken ? (node.problem ?? "Its rules cannot be run") : undefined}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={implied || ticked.has(node.id)}
-                          disabled={implied || node.broken}
-                          onChange={(event) => toggle(node.id, event.target.checked)}
-                        />
-                        <span>{node.name}</span>
-                        <span className="rekordbox-export__kind">{exportNodeLabel(node)}</span>
-                      </label>
-                    );
-                  })}
-                </fieldset>
-              )}
-              {preview && (
-                <>
-                  <p data-testid="export-playlist-headline">
-                    {playlistHeadline(preview, choice.length)}
-                  </p>
-                  {preview.playlists.length > 0 && (
-                    <ul className="rekordbox-export__playlists" aria-label="Playlists to add">
-                      {preview.playlists.map((playlist) => (
-                        <li key={`${playlist.collection_id}-${playlist.path}`}>
-                          <span className="rekordbox-export__playlist-path">{playlist.path}</span>
-                          <span>
-                            {playlistCount(playlist)}
-                            {playlistKindNote(playlist) ? ` · ${playlistKindNote(playlist)}` : ""}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </>
-              )}
-            </section>
-
-            {/* 5. What the preview wants seen before anything is written. */}
-            {warnings.length > 0 && (
+            {loudWarnings.length > 0 && (
               <section className="rekordbox-export__part" aria-label="Warnings">
                 <h3 className="rekordbox-export__heading">Before you export</h3>
                 <ul className="rekordbox-export__warnings">
-                  {warnings.map((warning) => (
-                    <li
-                      key={warning.key}
-                      data-warning={warning.key}
-                      className={
-                        warning.tone === "warning"
-                          ? "rekordbox-export__warning"
-                          : "rekordbox-export__warning rekordbox-export__warning--note"
-                      }
-                    >
-                      <span>{warning.text}</span>
-                      {warning.key === "missing" && onOpenMissingFiles && (
-                        <Button variant="secondary" onClick={onOpenMissingFiles}>
-                          Show missing files
-                        </Button>
-                      )}
-                    </li>
-                  ))}
+                  {loudWarnings.map(renderWarning)}
                 </ul>
               </section>
             )}
 
-            {/* 6. Last, the notation, with what choosing it costs (DEC-089). */}
-            <section className="rekordbox-export__part" aria-label="Key notation">
-              <label className="clean-dialog__inline">
-                Key notation
-                <select
-                  className="clean-dialog__select"
-                  value={keyFormat}
-                  disabled={phase === "exporting"}
-                  onChange={(event) => setKeyFormat(event.target.value as RekordboxKeyFormat)}
-                >
-                  {EXPORT_KEY_FORMATS.map((format) => (
-                    <option key={format.value} value={format.value}>
-                      {format.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {consequence && (
-                <p className="rekordbox-export__consequence" data-testid="export-key-consequence">
-                  {consequence}
-                </p>
-              )}
-            </section>
+            {/* 3. Everything else DEC-084 asks to be stated, one click away (DEC-247). */}
+            <MoreAbout label="Details">
+              <div className="rekordbox-export__details">
+                {preview && (
+                  <section className="rekordbox-export__part" aria-label="Source">
+                    <h3 className="rekordbox-export__heading">From</h3>
+                    <p className="clean-dialog__note" title={preview.source.path}>
+                      {sourceLine(preview.source)}
+                    </p>
+                    {unknownTracksLine(preview) && (
+                      <p className="clean-dialog__note">{unknownTracksLine(preview)}</p>
+                    )}
+                  </section>
+                )}
+
+                {preview && (
+                  <section className="rekordbox-export__part" aria-label="Tracks">
+                    <h3 className="rekordbox-export__heading">Tracks</h3>
+                    <p className="clean-dialog__headline" data-testid="export-track-count">
+                      {trackCountLine(preview)}
+                    </p>
+                    <p>{changeLine(preview)}</p>
+                    {fieldLines(preview).length > 0 && (
+                      <ul className="clean-dialog__lines" aria-label="Changed fields">
+                        {fieldLines(preview).map((line) => (
+                          <li key={line}>{line}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {copyLine(preview) && (
+                      <p className="clean-dialog__note">{copyLine(preview)}</p>
+                    )}
+                  </section>
+                )}
+
+                {/* The playlists: what to tick, and what that appends. */}
+                <section className="rekordbox-export__part" aria-label="Playlists">
+                  <h3 className="rekordbox-export__heading">Playlists</h3>
+                  {rows.length === 0 ? (
+                    <p className="clean-dialog__note">
+                      You have no Collections or Sets yet, so no playlists are added. To send
+                      tracks to Rekordbox as a playlist, add them to a Collection or a Set first.
+                    </p>
+                  ) : (
+                    <fieldset
+                      className="rekordbox-export__choose"
+                      disabled={phase === "exporting"}
+                    >
+                      <legend>Collections and Sets to add as playlists</legend>
+                      {rows.map(({ node, depth }) => {
+                        const implied = covered.has(node.id);
+                        return (
+                          <label
+                            key={node.id}
+                            className="clean-dialog__check rekordbox-export__node"
+                            style={{ paddingLeft: `calc(${depth} * var(--space-md))` }}
+                            title={node.broken ? (node.problem ?? "Its rules cannot be run") : undefined}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={implied || ticked.has(node.id)}
+                              disabled={implied || node.broken}
+                              onChange={(event) => toggle(node.id, event.target.checked)}
+                            />
+                            <span>{node.name}</span>
+                            <span className="rekordbox-export__kind">{exportNodeLabel(node)}</span>
+                          </label>
+                        );
+                      })}
+                    </fieldset>
+                  )}
+                  {preview && (
+                    <>
+                      <p data-testid="export-playlist-headline">
+                        {playlistHeadline(preview, choice.length)}
+                      </p>
+                      {preview.playlists.length > 0 && (
+                        <ul className="rekordbox-export__playlists" aria-label="Playlists to add">
+                          {preview.playlists.map((playlist) => (
+                            <li key={`${playlist.collection_id}-${playlist.path}`}>
+                              <span className="rekordbox-export__playlist-path">{playlist.path}</span>
+                              <span>
+                                {playlistCount(playlist)}
+                                {playlistKindNote(playlist) ? ` · ${playlistKindNote(playlist)}` : ""}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                </section>
+
+                {noteWarnings.length > 0 && (
+                  <section className="rekordbox-export__part" aria-label="Notes">
+                    <h3 className="rekordbox-export__heading">Good to know</h3>
+                    <ul className="rekordbox-export__warnings">
+                      {noteWarnings.map(renderWarning)}
+                    </ul>
+                  </section>
+                )}
+
+                {/* Last, the notation, with what choosing it costs (DEC-089). */}
+                <section className="rekordbox-export__part" aria-label="Key notation">
+                  <label className="clean-dialog__inline">
+                    Key notation
+                    <select
+                      className="clean-dialog__select"
+                      value={keyFormat}
+                      disabled={phase === "exporting"}
+                      onChange={(event) => setKeyFormat(event.target.value as RekordboxKeyFormat)}
+                    >
+                      {EXPORT_KEY_FORMATS.map((format) => (
+                        <option key={format.value} value={format.value}>
+                          {format.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {consequence && (
+                    <p className="rekordbox-export__consequence" data-testid="export-key-consequence">
+                      {consequence}
+                    </p>
+                  )}
+                </section>
+              </div>
+            </MoreAbout>
 
             {previewing && phase === "choosing" && (
               <p className="clean-dialog__note" role="status">

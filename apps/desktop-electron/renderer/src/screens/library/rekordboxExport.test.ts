@@ -33,6 +33,7 @@ import {
   coveredByFolder,
   exportChoice,
   exportNodeLabel,
+  exportSummaryLine,
   exportWarnings,
   fieldLines,
   formatSize,
@@ -202,6 +203,55 @@ describe("sizes", () => {
   });
 });
 
+describe("the summary line", () => {
+  it("counts tracks, changed tracks and playlists in one sentence", () => {
+    expect(exportSummaryLine(CHOSEN)).toBe("4 tracks, 2 with changed values, and 4 playlists.");
+  });
+
+  it("says none and no where a count is zero", () => {
+    expect(exportSummaryLine({ ...CHOSEN, changed_track_count: 0 })).toBe(
+      "4 tracks, none with changed values, and 4 playlists.",
+    );
+    expect(exportSummaryLine({ ...CHOSEN, playlists: [] })).toBe(
+      "4 tracks, 2 with changed values, and no playlists.",
+    );
+    expect(exportSummaryLine({ ...CHOSEN, changed_track_count: 0, playlists: [] })).toBe(
+      "4 tracks, none with changed values, and no playlists.",
+    );
+  });
+
+  it("keeps singulars singular", () => {
+    expect(
+      exportSummaryLine({
+        ...CHOSEN,
+        track_count: 1,
+        changed_track_count: 1,
+        playlists: CHOSEN.playlists.slice(0, 1),
+      }),
+    ).toBe("1 track, 1 with changed values, and 1 playlist.");
+  });
+
+  it("names a notation other than classic, and says nothing for classic", () => {
+    expect(exportSummaryLine(CHOSEN, "normal")).toBe(
+      "4 tracks, 2 with changed values, and 4 playlists.",
+    );
+    expect(exportSummaryLine(CHOSEN, "camelot")).toBe(
+      "4 tracks, 2 with changed values, and 4 playlists. Keys written as Camelot (8A).",
+    );
+    expect(exportSummaryLine(CHOSEN, "short")).toBe(
+      "4 tracks, 2 with changed values, and 4 playlists. Keys written as short (Amin).",
+    );
+    expect(exportSummaryLine(WHOLE, "camelot")).toBe(
+      "4 tracks, an exact copy: nothing changed, no playlists. Keys written as Camelot (8A).",
+    );
+  });
+
+  it("calls an export that changes nothing an exact copy", () => {
+    expect(WHOLE.changes_nothing).toBe(true);
+    expect(exportSummaryLine(WHOLE)).toBe("4 tracks, an exact copy: nothing changed, no playlists.");
+  });
+});
+
 describe("the tracks", () => {
   it("counts the tracks in the exported file, which are the file's own", () => {
     expect(trackCountLine(CHOSEN)).toBe("4 tracks in the exported file");
@@ -294,7 +344,7 @@ describe("the warnings", () => {
       tone: "warning",
       text:
         "1 track in your library is not in this file, so 2 playlist entries pointing at it are " +
-        "left out. The playlists above count what is left.",
+        "left out. Each playlist's count, under Details, is what is left.",
     });
   });
 

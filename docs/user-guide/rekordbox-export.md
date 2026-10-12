@@ -51,17 +51,21 @@ open in Rekordbox.
 2. **Choose…** where to save the file. The save dialog opens in the folder your
    last export went to and suggests a name with today's date. It never suggests
    the last file's name, so an export never quietly replaces the previous one.
-3. **Tick the Collections and Sets** you want as playlists, or none to export
-   only your values.
-4. **Read the preview.** It is worked out from your library and the file as
-   they are now, and it is exactly what the export will write:
-   - where the file goes,
-   - the file it is made from, and whether that file has changed since you
-     imported it,
+3. **Read the summary.** It is worked out from your library and the file as
+   they are now, and says in one line how many tracks the export holds, how
+   many get your values and how many playlists it adds. Without opening anything you
+   see where the file goes, anything that stops the export, a file that has
+   changed since you imported it (with **Refresh first**), and the warnings
+   that change what is written (below).
+4. **Open Details** to see the rest and to choose playlists. Details starts
+   closed each time:
+   - the file the export is made from,
    - how many tracks the exported file holds and how many get your values,
      field by field,
-   - each playlist, where it lands and how many tracks it holds,
-   - anything you should know first (below),
+   - **the Collections and Sets to tick** as playlists, or none to export
+     only your values, and each playlist, where it lands and how many tracks
+     it holds,
+   - the notes (below),
    - the key notation.
 5. **Export.** The button says what it will do — "Export 3,880 tracks and 4
    playlists". Nothing is written before you press it.
@@ -72,6 +76,11 @@ complete. Afterwards the export is listed in **Activity**, and **Settings →
 Rekordbox export** shows where your exports went.
 
 ## What the preview may tell you
+
+These warnings always show, without opening Details: the file has changed,
+tracks missing from the file whose playlist entries are left out, missing audio
+files, and a folder name that is already taken. The rest are notes, shown in
+Details.
 
 - **The file has changed since you imported it.** You saved a new export from
   Rekordbox, or edited the file. The preview says what changed and offers
@@ -105,7 +114,9 @@ later **import the exported file into CuePoint**, CuePoint stores those keys as
 they are in the file, so the tracks the export rewrote read `8A` while the rest
 still read `Am`. If you only open the file in Rekordbox, this does not arise.
 
-The notation you use becomes the default for your next export.
+The notation you use becomes the default for your next export. The choice lives
+under **Details**; when it is not the default, the summary line at the top names it
+(for example, "Keys written as Camelot (8A).").
 
 The key written is the track's own: yours, or else its accepted Beatport match's
 key. A track with neither keeps the key Rekordbox already has in the file; the

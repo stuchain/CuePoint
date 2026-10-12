@@ -155,8 +155,15 @@ const confirmButton = () =>
   within(dialog()).getByRole("button", { name: /^Export( |$)/ });
 const box = (name: string) => within(dialog()).getByRole("checkbox", { name: new RegExp(`^${name}`) });
 
-async function previewed(text = /in the exported file/) {
-  await within(dialog()).findByText(text);
+/** The Details toggle: closed on every open, and its button says "Less" once open. */
+const detailsButton = () => within(dialog()).getByRole("button", { name: /^(Details|Less)$/ });
+
+async function openDetails(user = userEvent.setup()) {
+  if (detailsButton().getAttribute("aria-expanded") !== "true") await user.click(detailsButton());
+}
+
+async function previewed() {
+  await within(dialog()).findByTestId("export-summary");
   await waitFor(() => expect(screen.queryByText(/Working out what the export/)).toBeNull());
 }
 
@@ -169,6 +176,7 @@ describe("the two ways in (DEC-087)", () => {
   it("opens from the header with nothing ticked and previews the whole file", async () => {
     renderDialog({ initialIds: [] });
     await previewed();
+    await openDetails();
 
     for (const name of ["Gigs", "Saturday", "Summer", "Loose", "Fast"]) {
       expect(box(name)).not.toBeChecked();
@@ -185,6 +193,7 @@ describe("the two ways in (DEC-087)", () => {
   it("opens from a Collection's menu with that node ticked, and previews it", async () => {
     renderDialog({ initialIds: [7] });
     await previewed();
+    await openDetails();
 
     expect(box("Loose")).toBeChecked();
     expect(box("Saturday")).not.toBeChecked();
@@ -197,6 +206,7 @@ describe("the two ways in (DEC-087)", () => {
   it("opens from a Smart Collection's menu with it ticked", async () => {
     renderDialog({ initialIds: [8] });
     await previewed();
+    await openDetails();
     expect(box("Fast")).toBeChecked();
     expect(bridge.previewRekordboxExport).toHaveBeenLastCalledWith({
       collection_ids: [8],
@@ -207,6 +217,7 @@ describe("the two ways in (DEC-087)", () => {
   it("opens from a folder's menu with everything under it ticked and fixed", async () => {
     renderDialog({ initialIds: [1] });
     await previewed();
+    await openDetails();
 
     expect(box("Gigs")).toBeChecked();
     for (const name of ["Saturday", "2026", "Summer"]) {
@@ -225,6 +236,7 @@ describe("choosing what to send", () => {
     const user = userEvent.setup();
     renderDialog();
     await previewed();
+    await openDetails(user);
 
     await user.click(box("Saturday"));
     await user.click(box("Gigs"));
@@ -243,6 +255,7 @@ describe("choosing what to send", () => {
   it("offers no tick for a broken Smart Collection, and says why", async () => {
     renderDialog();
     await previewed();
+    await openDetails();
     expect(box("Tagged")).toBeDisabled();
     expect(box("Tagged").closest("label")).toHaveAttribute("title", "Its tag was deleted");
   });
@@ -250,6 +263,7 @@ describe("choosing what to send", () => {
   it("says what to do when there are no Collections at all", async () => {
     renderDialog({ tree: [] });
     await previewed();
+    await openDetails();
     expect(within(dialog()).getByText(/You have no Collections or Sets yet/)).toBeInTheDocument();
     expect(within(dialog()).queryByRole("checkbox")).toBeNull();
   });
@@ -258,6 +272,7 @@ describe("choosing what to send", () => {
     bridge.previewRekordboxExport.mockResolvedValue(answer("empty_folder"));
     renderDialog({ initialIds: [3] });
     await previewed();
+    await openDetails();
     expect(within(dialog()).getByTestId("export-playlist-headline")).toHaveTextContent(
       "What you ticked holds no Collections or Sets, so no playlists are added.",
     );
@@ -272,6 +287,7 @@ describe("choosing what to send", () => {
     renderDialog({ initialIds: [] });
     await waitFor(() => expect(bridge.previewRekordboxExport).toHaveBeenCalledTimes(1));
 
+    await openDetails(user);
     await user.click(box("Loose"));
     await previewed();
     resolveFirst(answer("collision"));
@@ -303,6 +319,7 @@ describe("a Set (PREP-07, DEC-109)", () => {
   it("is in the tree, named as a Set with its entries counted", async () => {
     renderDialog({ tree: WITH_SET });
     await previewed();
+    await openDetails();
 
     expect(box("Friday").closest("label")).toHaveTextContent("FridaySet · 4");
     expect(box("Saturday").closest("label")).toHaveTextContent("Saturday2");
@@ -311,6 +328,7 @@ describe("a Set (PREP-07, DEC-109)", () => {
   it("opens from a Set's menu with it ticked, and sends it as a Collection is sent", async () => {
     renderDialog({ tree: WITH_SET, initialIds: [10, 7] });
     await previewed();
+    await openDetails();
 
     expect(box("Friday")).toBeChecked();
     expect(bridge.previewRekordboxExport).toHaveBeenLastCalledWith({
@@ -322,6 +340,7 @@ describe("a Set (PREP-07, DEC-109)", () => {
   it("previews one playlist at its folder path, in its running order", async () => {
     renderDialog({ tree: WITH_SET, initialIds: [10, 7] });
     await previewed();
+    await openDetails();
 
     const list = within(dialog()).getByRole("list", { name: "Playlists to add" });
     expect(within(list).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
@@ -335,6 +354,7 @@ describe("a Set (PREP-07, DEC-109)", () => {
     const user = userEvent.setup();
     renderDialog({ tree: WITH_SET });
     await previewed();
+    await openDetails(user);
 
     await user.click(box("Gigs"));
     await waitFor(() =>
@@ -353,32 +373,134 @@ describe("numbers only for the question on screen", () => {
     const user = userEvent.setup();
     renderDialog({ initialIds: [7] });
     await previewed();
+    await openDetails(user);
     expect(within(dialog()).getByTestId("export-track-count")).toBeInTheDocument();
+    expect(within(dialog()).getByTestId("export-summary")).toBeInTheDocument();
 
     bridge.previewRekordboxExport.mockImplementation(() => new Promise(() => undefined));
     await user.click(box("Saturday"));
 
     await waitFor(() => expect(within(dialog()).queryByTestId("export-track-count")).toBeNull());
+    expect(within(dialog()).queryByTestId("export-summary")).toBeNull();
     expect(within(dialog()).queryByRole("list", { name: "Playlists to add" })).toBeNull();
     expect(confirmButton()).toHaveTextContent(/^Export$/);
     expect(confirmButton()).toBeDisabled();
   });
 });
 
-describe("what the preview says, in order", () => {
-  it("states the destination, source, tracks, playlists, warnings and notation in that order", async () => {
+describe("the summary and Details (DEC-247)", () => {
+  it("leads with one summary line", async () => {
     renderDialog({ initialIds: [7] });
     await previewed();
+    expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(
+      "4 tracks, 2 with changed values, and 4 playlists.",
+    );
+  });
+
+  it("updates the summary when a playlist is ticked", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await previewed();
+    expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(
+      /^4 tracks, an exact copy: nothing changed, no playlists\.$/,
+    );
+    await openDetails(user);
+
+    await user.click(box("Loose"));
+    await waitFor(() =>
+      expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(
+        "4 tracks, 2 with changed values, and 4 playlists.",
+      ),
+    );
+  });
+
+  it("names a remembered notation in the summary, and says nothing for classic", async () => {
+    const user = userEvent.setup();
+    bridge.getRekordboxExportHistory.mockResolvedValue(HISTORY);
+    renderDialog({ initialIds: [7] });
+    await previewed();
+    expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(
+      /Keys written as Camelot \(8A\)\.$/,
+    );
+
+    await openDetails(user);
+    await user.selectOptions(within(dialog()).getByRole("combobox", { name: /Key notation/ }), "normal");
+    await waitFor(() =>
+      expect(within(dialog()).getByTestId("export-summary")).not.toHaveTextContent(/Keys written/),
+    );
+  });
+
+  it("starts with Details closed, and opens and closes it", async () => {
+    const user = userEvent.setup();
+    renderDialog({ initialIds: [7] });
+    await previewed();
+
+    expect(detailsButton()).toHaveAttribute("aria-expanded", "false");
+    expect(within(dialog()).queryByRole("region", { name: "Tracks" })).toBeNull();
+    expect(within(dialog()).queryByRole("region", { name: "Playlists" })).toBeNull();
+    expect(within(dialog()).queryByRole("combobox", { name: /Key notation/ })).toBeNull();
+    expect(within(dialog()).getByTestId("export-playlist-headline")).not.toBeVisible();
+
+    await user.click(detailsButton());
+    expect(detailsButton()).toHaveAttribute("aria-expanded", "true");
+    expect(within(dialog()).getByRole("region", { name: "Tracks" })).toBeVisible();
+    expect(within(dialog()).getByRole("combobox", { name: /Key notation/ })).toBeVisible();
+
+    await user.click(detailsButton());
+    expect(within(dialog()).queryByRole("region", { name: "Tracks" })).toBeNull();
+  });
+
+  it("closes Details again every time the dialog opens", async () => {
+    const user = userEvent.setup();
+    const props = { initialIds: [7], tree: TREE, onClose: vi.fn(), onRefreshFirst: vi.fn() };
+    const { rerender } = render(<RekordboxExportDialog open {...props} />);
+    await previewed();
+    await user.click(detailsButton());
+    expect(detailsButton()).toHaveAttribute("aria-expanded", "true");
+
+    rerender(<RekordboxExportDialog open={false} {...props} />);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    rerender(<RekordboxExportDialog open {...props} />);
+    await previewed();
+    expect(detailsButton()).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("orders the regions: Save as, the warnings, then the rest in Details", async () => {
+    renderDialog({ initialIds: [7] });
+    await previewed();
+    await openDetails();
 
     const order = within(dialog())
       .getAllByRole("region")
       .map((section) => section.getAttribute("aria-label"));
-    expect(order).toEqual(["Destination", "Source", "Tracks", "Playlists", "Warnings", "Key notation"]);
+    expect(order).toEqual(["Destination", "Warnings", "Source", "Tracks", "Playlists", "Key notation"]);
+  });
+
+  it("shows the warnings that change the file without opening Details", async () => {
+    const handlers = renderDialog({ initialIds: [7] });
+    await previewed();
+
+    const warnings = within(dialog()).getByRole("region", { name: "Warnings" });
+    expect(warnings).toBeVisible();
+    expect(within(warnings).getByText(/2 playlist entries pointing at it are left out/)).toBeVisible();
+    expect(within(warnings).getByText(/1 track has its audio file missing/)).toBeVisible();
+    await userEvent.setup().click(within(warnings).getByRole("button", { name: "Show missing files" }));
+    expect(handlers.onOpenMissingFiles).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the notes behind Details", async () => {
+    renderDialog();
+    await previewed();
+    expect(within(dialog()).getByText(/Files have never been checked/)).not.toBeVisible();
+    await openDetails();
+    expect(within(dialog()).getByText(/Files have never been checked/)).toBeVisible();
   });
 
   it("counts the tracks and what changes in them, field by field", async () => {
     renderDialog({ initialIds: [7] });
     await previewed();
+    await openDetails();
 
     expect(within(dialog()).getByTestId("export-track-count")).toHaveTextContent(
       "4 tracks in the exported file",
@@ -395,6 +517,7 @@ describe("what the preview says, in order", () => {
   it("lists each playlist at the path it lands on, with what the file cannot hold", async () => {
     renderDialog({ initialIds: [7] });
     await previewed();
+    await openDetails();
 
     const list = within(dialog()).getByRole("list", { name: "Playlists to add" });
     const items = within(list).getAllByRole("listitem").map((item) => item.textContent);
@@ -409,6 +532,7 @@ describe("what the preview says, in order", () => {
   it("names the source and says it is never changed", async () => {
     renderDialog();
     await previewed();
+    await openDetails();
     expect(
       within(dialog()).getByText(/Patches a copy of collection\.xml.*never changed/),
     ).toBeInTheDocument();
@@ -417,21 +541,10 @@ describe("what the preview says, in order", () => {
     ).toBeInTheDocument();
   });
 
-  it("draws every warning: tracks the file lacks and missing files", async () => {
-    const handlers = renderDialog({ initialIds: [7] });
-    await previewed();
-
-    const warnings = within(dialog()).getByRole("region", { name: "Warnings" });
-    expect(within(warnings).getByText(/2 playlist entries pointing at it are left out/)).toBeInTheDocument();
-    expect(within(warnings).getByText(/1 track has its audio file missing/)).toBeInTheDocument();
-
-    await userEvent.setup().click(within(warnings).getByRole("button", { name: "Show missing files" }));
-    expect(handlers.onOpenMissingFiles).toHaveBeenCalledTimes(1);
-  });
-
   it("draws a never-checked library as not counted, never as zero", async () => {
     renderDialog();
     await previewed();
+    await openDetails();
     expect(within(dialog()).getByText(/Files have never been checked/)).toBeInTheDocument();
     expect(within(dialog()).queryByText(/0 tracks have their audio file missing/)).toBeNull();
   });
@@ -440,6 +553,7 @@ describe("what the preview says, in order", () => {
     bridge.previewRekordboxExport.mockResolvedValue(answer("collision"));
     renderDialog({ initialIds: [7] });
     await previewed();
+    // A collision changes where the playlists land, so it shows without Details.
     expect(
       within(dialog()).getByText(/already has a top-level folder called “CuePoint”.*“CuePoint \(2\)”/),
     ).toBeInTheDocument();
@@ -448,6 +562,8 @@ describe("what the preview says, in order", () => {
   it("describes an export that changes nothing as a copy", async () => {
     renderDialog();
     await previewed();
+    expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(/exact copy/);
+    await openDetails();
     expect(within(dialog()).getByText(/exact copy of your collection file/)).toBeInTheDocument();
   });
 });
@@ -457,6 +573,7 @@ describe("the key notation (DEC-089)", () => {
     bridge.getRekordboxExportHistory.mockResolvedValue(HISTORY);
     renderDialog({ initialIds: [7] });
     await previewed();
+    await openDetails();
 
     expect(within(dialog()).getByRole("combobox", { name: /Key notation/ })).toHaveValue("camelot");
     expect(bridge.previewRekordboxExport).toHaveBeenCalledTimes(1);
@@ -466,6 +583,7 @@ describe("the key notation (DEC-089)", () => {
   it("starts in classic, saying nothing, when nothing has been exported", async () => {
     renderDialog();
     await previewed();
+    await openDetails();
     expect(within(dialog()).getByRole("combobox", { name: /Key notation/ })).toHaveValue("normal");
     expect(within(dialog()).queryByTestId("export-key-consequence")).toBeNull();
   });
@@ -477,6 +595,7 @@ describe("the key notation (DEC-089)", () => {
     const user = userEvent.setup();
     renderDialog({ initialIds: [7] });
     await previewed();
+    await openDetails(user);
 
     await user.selectOptions(within(dialog()).getByRole("combobox", { name: /Key notation/ }), format);
     const line = await within(dialog()).findByTestId("export-key-consequence");
@@ -495,6 +614,7 @@ describe("the key notation (DEC-089)", () => {
     bridge.getRekordboxExportHistory.mockResolvedValue(HISTORY);
     renderDialog({ initialIds: [7] });
     await previewed();
+    await openDetails(user);
     expect(within(dialog()).getByTestId("export-key-consequence")).toBeInTheDocument();
 
     await user.selectOptions(within(dialog()).getByRole("combobox", { name: /Key notation/ }), "normal");
@@ -504,6 +624,7 @@ describe("the key notation (DEC-089)", () => {
   it("offers the three labels the file-tag path offers", async () => {
     renderDialog();
     await previewed();
+    await openDetails();
     const options = within(within(dialog()).getByRole("combobox", { name: /Key notation/ }))
       .getAllByRole("option")
       .map((option) => option.textContent);
@@ -570,6 +691,7 @@ describe("confirming", () => {
     const user = userEvent.setup();
     renderDialog({ initialIds: [7] });
     await previewed();
+    await openDetails(user);
 
     await user.click(box("Saturday"));
     await user.selectOptions(within(dialog()).getByRole("combobox", { name: /Key notation/ }), "camelot");
@@ -684,6 +806,7 @@ describe("refusals (DEC-082, DEC-083)", () => {
     await chooseDestination(user);
 
     const refused = await within(dialog()).findByRole("region", { name: "Refused" });
+    expect(refused).toBeVisible();
     expect(refused).toHaveTextContent(words);
     expect(confirmButton()).toBeDisabled();
     expect(within(dialog()).getByTestId("export-blocker")).toHaveTextContent("problem above");
@@ -744,7 +867,9 @@ describe("staleness (DEC-082)", () => {
     await previewed();
     await chooseDestination(user);
 
-    const source = within(dialog()).getByRole("region", { name: "Source" });
+    // Said without opening Details: it changes what the export patches.
+    const source = within(dialog()).getByRole("region", { name: "Source changed" });
+    expect(source).toBeVisible();
     expect(within(source).getByRole("alert")).toHaveTextContent(
       /collection\.xml has changed since you imported it.*830 bytes, was 821 bytes/,
     );
@@ -757,6 +882,7 @@ describe("staleness (DEC-082)", () => {
     const handlers = renderDialog({ initialIds: [7] });
     await previewed();
 
+    expect(within(dialog()).getByRole("button", { name: "Refresh first" })).toBeVisible();
     await user.click(within(dialog()).getByRole("button", { name: "Refresh first" }));
     expect(handlers.onRefreshFirst).toHaveBeenCalledTimes(1);
     expect(bridge.startRekordboxExport).not.toHaveBeenCalled();

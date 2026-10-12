@@ -25,7 +25,7 @@ import type {
   RememberedRekordboxExport,
 } from "../../api/cuepointBridge.types";
 import type { CollectionTreeNode } from "./collectionTree";
-import { fileName, formatWhen, pluralize } from "./libraryFormat";
+import { fileName, formatCount, formatWhen, pluralize } from "./libraryFormat";
 import { KEY_FORMATS } from "./tagWriting";
 
 // ------------------------------------------------------------------ notation
@@ -136,6 +136,34 @@ export function unknownTracksLine(preview: RekordboxExportPreview): string | nul
   return (
     `${pluralize(count, "track")} in the file ${count === 1 ? "is" : "are"} not in your CuePoint ` +
     `library. ${count === 1 ? "It is" : "They are"} exported exactly as ${count === 1 ? "it is" : "they are"}.`
+  );
+}
+
+// ----------------------------------------------------------------- the summary
+
+/**
+ * The dialog's headline: what the export holds, in one sentence.
+ *
+ * Everything it counts is spelled out behind Details (DEC-247), so this only
+ * has to be true and short. A notation other than classic is named at its end.
+ */
+export function exportSummaryLine(
+  preview: RekordboxExportPreview,
+  keyFormat: RekordboxKeyFormat = DEFAULT_EXPORT_KEY_FORMAT,
+): string {
+  const tracks = pluralize(preview.track_count, "track");
+  // The notation is remembered from the last export and chosen under Details,
+  // so a non-default one is named here rather than left out of sight.
+  const keys =
+    keyFormat === DEFAULT_EXPORT_KEY_FORMAT ? "" : ` Keys written as ${keyFormatName(keyFormat)}.`;
+  if (preview.changes_nothing) {
+    return `${tracks}, an exact copy: nothing changed, no playlists.${keys}`;
+  }
+  const changed = preview.changed_track_count;
+  const playlists = preview.playlists.length;
+  return (
+    `${tracks}, ${changed === 0 ? "none" : formatCount(changed)} with changed values, and ` +
+    `${playlists === 0 ? "no playlists" : pluralize(playlists, "playlist")}.${keys}`
   );
 }
 
@@ -258,7 +286,7 @@ export function exportWarnings(preview: RekordboxExportPreview): ExportWarning[]
         dropped > 0
           ? `${who}, so ${pluralize(dropped, "playlist entry", "playlist entries")} pointing at ${
               absent === 1 ? "it" : "them"
-            } ${dropped === 1 ? "is" : "are"} left out. The playlists above count what is left.`
+            } ${dropped === 1 ? "is" : "are"} left out. Each playlist's count, under Details, is what is left.`
           : `${who}. None of the playlists above holds ${absent === 1 ? "it" : "them"}.`,
     });
   }

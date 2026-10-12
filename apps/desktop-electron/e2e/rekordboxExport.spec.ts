@@ -156,10 +156,16 @@ function exportDialog(window: Page) {
 }
 
 async function previewed(dialog: ReturnType<typeof exportDialog>) {
-  await expect(dialog.getByTestId("export-track-count")).toBeVisible({ timeout: 30_000 });
+  await expect(dialog.getByTestId("export-summary")).toBeVisible({ timeout: 30_000 });
   await expect(dialog.getByText(/Working out what the export would write/)).toHaveCount(0, {
     timeout: 30_000,
   });
+}
+
+/** The tick list, the lists and the notation sit behind Details; it starts closed (DEC-247). */
+async function openDetails(dialog: ReturnType<typeof exportDialog>) {
+  const toggle = dialog.getByRole("button", { name: /^(Details|Less)$/ });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
 }
 
 test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
@@ -248,6 +254,12 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         const dialog = exportDialog(window);
         await previewed(dialog);
 
+        // Nothing is ticked, so no playlist is added; two tracks carry values that differ from the file.
+        await expect(dialog.getByTestId("export-summary")).toHaveText(
+          "3 tracks, 2 with changed values, and no playlists.",
+        );
+        await expect(dialog.getByRole("button", { name: "Details" })).toHaveAttribute("aria-expanded", "false");
+        await openDetails(dialog);
         await expect(dialog.getByTestId("export-track-count")).toHaveText("3 tracks in the exported file");
         await expect(dialog.getByRole("checkbox", { name: /^Saturday/ })).not.toBeChecked();
         await expect(dialog.getByTestId("export-playlist-headline")).toContainText("No playlists are added");
@@ -262,6 +274,9 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         await expect(dialog.getByTestId("export-playlist-headline")).toHaveText(
           "1 playlist added, in a folder called “CuePoint”",
           { timeout: 30_000 },
+        );
+        await expect(dialog.getByTestId("export-summary")).toHaveText(
+          "3 tracks, 2 with changed values, and 1 playlist.",
         );
         await expect(dialog.getByRole("list", { name: "Playlists to add" })).toContainText("CuePoint/Saturday");
         await expect(dialog.getByRole("list", { name: "Playlists to add" })).toContainText("4 tracks");
@@ -354,6 +369,7 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         await window.getByRole("menuitem", { name: "Export to Rekordbox…" }).click();
         const dialog = exportDialog(window);
         await previewed(dialog);
+        await openDetails(dialog);
         await expect(dialog.getByRole("checkbox", { name: /^Techno/ })).toBeChecked();
         await expect(dialog.getByRole("checkbox", { name: /^Saturday/ })).not.toBeChecked();
         await expect(dialog.getByText(new RegExp(`the save dialog opens in ${exports.replace(/\\/g, "\\\\")}`))).toBeVisible();
@@ -393,11 +409,14 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         await exportFromHeader(window);
         const dialog = exportDialog(window);
         await previewed(dialog);
-        await expect(dialog.getByRole("region", { name: "Source" })).toContainText(
+        await expect(dialog.getByRole("region", { name: "Source changed" })).toContainText(
           "collection.xml has changed since you imported it",
         );
         await expect(dialog.getByRole("button", { name: "Refresh first" })).toBeVisible();
+        // The remembered notation is not classic, so the summary names it.
+        await expect(dialog.getByTestId("export-summary")).toHaveText(/ Keys written as Camelot \(8A\)\.$/);
         await saveDialogAnswers(app, path.join(exports, "Stale.xml"));
+        await openDetails(dialog);
         await expect(dialog.getByRole("combobox", { name: /Key notation/ })).toHaveValue("camelot");
         await dialog.getByRole("button", { name: "Choose…" }).click();
         await expect(dialog.getByRole("button", { name: "Export 3 tracks" })).toBeEnabled({ timeout: 30_000 });
