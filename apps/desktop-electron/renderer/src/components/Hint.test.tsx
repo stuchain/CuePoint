@@ -4,8 +4,8 @@
  * A reason in a `title` shows on hover only, so a keyboard user never sees it.
  * Hint keeps the title and adds a tooltip while the control has focus.
  */
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Hint } from "./Hint";
@@ -129,5 +129,226 @@ describe("Hint", () => {
     await user.tab();
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Go" })).not.toHaveAttribute("title");
+  });
+});
+
+describe("Hint on hover", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  // userEvent's own async waits hang under fake timers here, so the pointer is
+  // driven with fireEvent; the timing under test is the component's own.
+  const setup = () => {
+    vi.useFakeTimers();
+    return {
+      hover: async (el: HTMLElement) => void fireEvent.pointerEnter(el),
+      unhover: async (el: HTMLElement) => void fireEvent.pointerLeave(el),
+      keyboard: async (_keys: string) => void fireEvent.keyDown(window, { key: "Escape" }),
+    };
+  };
+  const button = () => screen.getByRole("button", { name: "Activity" });
+  const hoverTarget = () => button().parentElement as HTMLElement;
+  const renderHint = (props: { disabled?: boolean; inline?: boolean } = {}) =>
+    render(
+      <>
+        <Hint text="Opens the log" inline={props.inline}>
+          <button type="button" title="own" disabled={props.disabled}>
+            Activity
+          </button>
+        </Hint>
+        <button type="button">Other</button>
+      </>,
+    );
+
+  it("shows after 400 ms and not at 399", async () => {
+    const user = setup();
+    renderHint();
+    await user.hover(button());
+    act(() => {
+      vi.advanceTimersByTime(399);
+    });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Opens the log");
+  });
+
+  it("shows nothing when the pointer leaves before 400 ms", async () => {
+    const user = setup();
+    renderHint();
+    await user.hover(button());
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    await user.unhover(button());
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["leave", async (u: ReturnType<typeof setup>) => u.unhover(button())],
+    ["scroll", async () => void fireEvent.scroll(document.body)],
+    ["Escape", async (u: ReturnType<typeof setup>) => u.keyboard("{Escape}")],
+    ["pointerdown", async () => void fireEvent.pointerDown(document.body)],
+  ])("hides on %s", async (_name, act_) => {
+    const user = setup();
+    renderHint();
+    await user.hover(button());
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    await act_(user);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("takes the child's title away while hovered and gives it back", async () => {
+    const user = setup();
+    renderHint();
+    expect(button()).toHaveAttribute("title", "Opens the log");
+    await user.hover(button());
+    expect(button()).not.toHaveAttribute("title");
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(button()).not.toHaveAttribute("title");
+    expect(button().getAttribute("aria-describedby")).toBe(screen.getByRole("tooltip").id);
+    await user.unhover(button());
+    expect(button()).toHaveAttribute("title", "Opens the log");
+  });
+
+  it("shows on hover over a disabled child", async () => {
+    const user = setup();
+    renderHint({ disabled: true });
+    await user.hover(hoverTarget());
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Opens the log");
+  });
+
+  it("flips below the control near the top edge", async () => {
+    const user = setup();
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const isTip = this.getAttribute("role") === "tooltip";
+      const box = isTip
+        ? { top: 0, bottom: 20, left: 0, right: 100, width: 100, height: 20 }
+        : { top: 2, bottom: 22, left: 10, right: 60, width: 50, height: 20 };
+      return { ...box, x: box.left, y: box.top, toJSON: () => ({}) } as DOMRect;
+    });
+    renderHint();
+    await user.hover(button());
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    const tip = screen.getByRole("tooltip");
+    expect(tip.style.top).toBe("26px");
+    expect(tip.style.bottom).toBe("");
+  });
+
+  it("stays above when there is room", async () => {
+    const user = setup();
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const isTip = this.getAttribute("role") === "tooltip";
+      const box = isTip
+        ? { top: 0, bottom: 20, left: 0, right: 100, width: 100, height: 20 }
+        : { top: 300, bottom: 320, left: 10, right: 60, width: 50, height: 20 };
+      return { ...box, x: box.left, y: box.top, toJSON: () => ({}) } as DOMRect;
+    });
+    renderHint();
+    await user.hover(button());
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    const tip = screen.getByRole("tooltip");
+    expect(tip.style.top).toBe("");
+    expect(tip.style.bottom).not.toBe("");
+  });
+
+  it("does not bring the tip back, or hold the title off, after the reason comes and goes", async () => {
+    const user = setup();
+    const ui = (text: string | undefined) => (
+      <Hint text={text}>
+        <button type="button">Activity</button>
+      </Hint>
+    );
+    const { rerender } = render(ui("Opens the log"));
+    await user.hover(button());
+    rerender(ui(undefined));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    rerender(ui("Opens the log"));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    expect(button()).toHaveAttribute("title", "Opens the log");
+  });
+
+  it("keeps a tip that keyboard focus put up when the pointer passes over and leaves", async () => {
+    const user = setup();
+    renderHint();
+    await act(async () => {
+      button().focus();
+    });
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    await user.hover(button());
+    await user.unhover(button());
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+  });
+
+  it("pulls the tip in from the right edge", async () => {
+    const user = setup();
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const isTip = this.getAttribute("role") === "tooltip";
+      const box = isTip
+        ? { top: 0, bottom: 20, left: 0, right: 100, width: 100, height: 20 }
+        : { top: 300, bottom: 320, left: window.innerWidth - 20, right: window.innerWidth, width: 20, height: 20 };
+      return { ...box, x: box.left, y: box.top, toJSON: () => ({}) } as DOMRect;
+    });
+    renderHint();
+    await user.hover(button());
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(screen.getByRole("tooltip").style.left).toBe(`${window.innerWidth - 100 - 4}px`);
+  });
+
+  it("flips only when the tip and its gap do not fit above", async () => {
+    const user = setup();
+    // Tip 20 high: room above is top - GAP(4) - 20. top 24 leaves 0 < 4: flip.
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const isTip = this.getAttribute("role") === "tooltip";
+      const box = isTip
+        ? { top: 0, bottom: 20, left: 0, right: 100, width: 100, height: 20 }
+        : { top: 26, bottom: 46, left: 10, right: 60, width: 50, height: 20 };
+      return { ...box, x: box.left, y: box.top, toJSON: () => ({}) } as DOMRect;
+    });
+    renderHint();
+    await user.hover(button());
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    // 26 - 4 - 20 = 2 < 4, so it flips below (the old check, 26 - 20 = 6, did not).
+    expect(screen.getByRole("tooltip").style.top).toBe("50px");
+  });
+
+  it("renders the wrapper inline on request", () => {
+    renderHint({ inline: true });
+    expect(hoverTarget()).toHaveClass("cp-hint", "cp-hint--inline");
   });
 });

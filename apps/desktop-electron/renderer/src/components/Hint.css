@@ -1,7 +1,12 @@
-/* Hint: a control's reason, shown on keyboard focus (the title covers hover). */
+/* Hint: a control's reason, shown on keyboard focus and on hover. */
 .cp-hint {
   display: inline-flex;
   min-width: 0;
+}
+
+/* For a control inside a text line: the wrapper takes part in the line. */
+.cp-hint--inline {
+  display: inline;
 }
 
 /* Fixed, so the strip's overflow clipping does not hide it. */
@@ -13,6 +18,8 @@
   background: var(--bg-panel);
   border: var(--border-width) solid var(--border-outline);
   color: var(--fg-primary);
+  /* Not inherited: inside the player's meta line that would be the data font. */
+  font-family: var(--font-pixel);
   font-size: var(--font-size-xs);
   line-height: 1.4;
   white-space: normal;
