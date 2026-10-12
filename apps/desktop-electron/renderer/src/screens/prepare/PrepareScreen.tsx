@@ -54,7 +54,7 @@ import { useToast } from "../../components/Toast";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { settingsFocusState } from "../settingsLink";
 import { ColumnPicker, TrackTable, inMemorySource, useColumnLayout } from "../../components/table";
-import { columnMinWidth, readRowHeight } from "../../components/table/trackTableLayout";
+import { readRowHeight } from "../../components/table/trackTableLayout";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { trackCount } from "../clean/cleanFormat";
 import { cleanMatchState } from "../clean/cleanLink";
@@ -76,6 +76,7 @@ import { useTrackDetail } from "../library/useTrackDetail";
 import { ChapterDialog } from "./ChapterDialog";
 import { NewSetDialog, SetSourceDialog } from "./NewSetDialogs";
 import { PrepareLayout } from "./PrepareLayout";
+import { ENTRY_TITLE_KEEP_PX } from "./entryButtonsRoom";
 import { EntryButtons } from "./prepareEditing";
 import { PrepareEditingContext, type PrepareEditing, type TimeSaveResult } from "./prepareEditingContext";
 import { SetEntryZone } from "./SetEntryZone";
@@ -840,10 +841,7 @@ export function PrepareScreen({
   // The Set's pane, for the floor below; the scale, for what the title keeps free of the entry buttons.
   const setBox = useRef<HTMLDivElement>(null);
   const scale = useScaleFactor();
-  const titleMinWidth = useMemo(() => {
-    const title = PREPARE_COLUMNS.find((column) => column.id === "title");
-    return title ? columnMinWidth(title, scale) : 0;
-  }, [scale]);
+  const titleMinWidth = ENTRY_TITLE_KEEP_PX * scale;
 
   const editing = useMemo(
     (): PrepareEditing => ({

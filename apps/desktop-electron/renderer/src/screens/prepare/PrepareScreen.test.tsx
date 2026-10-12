@@ -1112,7 +1112,8 @@ describe("the entry buttons (FLW-17, C15d)", () => {
 
   describe("take the form the row has room for (DEC-249)", () => {
     // jsdom lays nothing out, so the widths the browser would measure are stood in for: a Set scroll
-    // area `scroll` wide, a number column 50 and a title 200 beside it; the words 400, the glyphs 150.
+    // area `scroll` wide, a number column 50 and a title column 200 (which the buttons may cover); the words 400, the glyphs 150.
+    // The room is the scroll width less the number and the title's minimum (40 at scale 1).
     let restore: (() => void)[] = [];
     function layout(scroll: number) {
       const widths = (element: Element) =>
@@ -1152,7 +1153,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     });
 
     it("draws the words where they fit beside the number and the title", async () => {
-      layout(700); // room 700 - 250 = 450
+      layout(600); // room 600 - (50 + 40) = 510
       renderAt(preparePath(IDS.friday));
       await opened();
       fireEvent.click(rowAt(2));
@@ -1166,7 +1167,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     });
 
     it("draws glyphs where only they fit, the full names kept", async () => {
-      layout(500); // room 250: the words (400) do not fit, the glyphs (150) do
+      layout(400); // room 310: the words (400) do not fit, the glyphs (150) do
       renderAt(preparePath(IDS.friday));
       await opened();
       fireEvent.click(rowAt(2));
@@ -1176,7 +1177,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     });
 
     it("draws one Actions button that opens the row's menu where not even the glyphs fit", async () => {
-      layout(350); // room 100
+      layout(230); // room 140
       renderAt(preparePath(IDS.friday));
       await opened();
       fireEvent.click(rowAt(2));

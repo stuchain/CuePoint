@@ -2,8 +2,9 @@
  * Which form the entry buttons take on the focused row (C15d, DEC-249): measured, not guessed.
  *
  * The five buttons sit at the right end of the row, over its last columns. They may cover those,
- * never the row's number or the least of its title. So the room is what the Set's scroll area has
- * beside the number column and the title column (or the title's minimum, if it is narrower):
+ * and the tail of the selected row's title (it ellipsises short of them), never the row's number
+ * or the first ~6 characters of the title. So the room is what the Set's scroll area has beside
+ * the number column and that small title minimum, not the Title column's current width:
  *
  * - **words** ("↑ ↓ Chapter here Repeat after Remove") when the words fit in the room;
  * - **glyphs** ("↑ ↓ Chapter ↻ ×", the full names kept as the names and the hints) when only those fit;
@@ -16,9 +17,12 @@ import { useLayoutEffect, useState, type RefObject } from "react";
 
 export type EntryButtonsForm = "words" | "glyphs" | "actions";
 
-/** The scroll area's room for the buttons: what is left beside the number and the title (at least its minimum). */
-export function roomBesideTitle(scrollWidth: number, numberWidth: number, titleWidth: number, titleMin: number): number {
-  return scrollWidth - (numberWidth + Math.max(titleWidth, titleMin));
+/** The least the selected row's title keeps, in px at scale 1 (about 6 characters): the buttons never take it. */
+export const ENTRY_TITLE_KEEP_PX = 40;
+
+/** The scroll area's room for the buttons: what is left beside the number and the title's small minimum. */
+export function roomBesideTitle(scrollWidth: number, numberWidth: number, titleMin: number): number {
+  return scrollWidth - (numberWidth + titleMin);
 }
 
 /** Words if they fit, else glyphs if they fit, else the one Actions button. A width not measured (<= 0) takes the words. */
@@ -46,8 +50,21 @@ export function measureForm(measure: HTMLElement, titleMin: number): EntryButton
   if (!end || !row || !scroll || !glyphs || scroll.clientWidth <= 0) return null;
   const style = getComputedStyle(end);
   const padding = (Number.parseFloat(style.paddingLeft) || 0) + (Number.parseFloat(style.paddingRight) || 0);
-  const room = roomBesideTitle(scroll.clientWidth, widthOf(row, "position"), widthOf(row, "title"), titleMin);
+  const room = roomBesideTitle(scroll.clientWidth, widthOf(row, "position"), titleMin);
   return entryButtonsForm(room, measure.offsetWidth + padding, glyphs.offsetWidth + padding);
+}
+
+/**
+ * How far the end cell reaches over the title cell, as the row's `--title-cover`: the title's
+ * padding takes it, so its text (and its ellipsis) ends before the buttons, never under them.
+ */
+export function keepTitleClear(measure: HTMLElement): void {
+  const row = measure.closest<HTMLElement>(".track-table__row");
+  const end = measure.closest<HTMLElement>(".track-table__end");
+  const title = row?.querySelector<HTMLElement>(':scope > [data-column="title"]');
+  if (!row || !end || !title) return;
+  const cover = Math.max(0, Math.ceil(title.getBoundingClientRect().right - end.getBoundingClientRect().left));
+  row.style.setProperty("--title-cover", `${cover}px`);
 }
 
 /**
@@ -59,13 +76,22 @@ export function useEntryButtonsForm(measure: RefObject<HTMLElement | null>, titl
   useLayoutEffect(() => {
     const element = measure.current;
     if (!element) return undefined;
-    const update = () => setForm(measureForm(element, titleMin) ?? "words");
-    update();
+    const row = element.closest<HTMLElement>(".track-table__row");
     const scroll = element.closest(".track-table__scroll");
-    if (!scroll || typeof ResizeObserver === "undefined") return undefined;
-    const observer = new ResizeObserver(update);
-    observer.observe(scroll);
-    return () => observer.disconnect();
+    const update = () => {
+      setForm(measureForm(element, titleMin) ?? "words");
+      keepTitleClear(element);
+    };
+    update();
+    if (!scroll) return undefined;
+    scroll.addEventListener("scroll", update, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(scroll);
+    return () => {
+      scroll.removeEventListener("scroll", update);
+      observer?.disconnect();
+      row?.style.removeProperty("--title-cover");
+    };
   });
   return form;
 }

@@ -1014,3 +1014,15 @@ body.prepare-resizing {
   font-family: var(--font-pixel);
   font-size: var(--font-size-xs);
 }
+
+/* An entry's title shortens with an ellipsis. On the focused row the entry buttons may cover the
+   title's tail (entryButtonsRoom): the row's --title-cover is padding, so the text ends short of them. */
+.prepare-entry__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-table__row--end > [data-column="title"] {
+  padding-right: calc(var(--space-sm) + var(--title-cover, 0px));
+}

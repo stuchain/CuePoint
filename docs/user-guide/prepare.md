@@ -97,9 +97,11 @@ the one you clicked last, and act on all of them (hover one: "Move 3 entries
 up"). One that cannot act says why ("Already first in the Set"). They are
 **↑**, **↓**, **Chapter here** (Start a chapter here), **Repeat after** and
 **Remove**; each is a Tab stop (Tab from the table goes to them) and keeps its
-full name for a screen reader. They never cover the row's number or the title: in
-a narrow pane they shrink to symbols (**↑ ↓ Chapter ↻ ×**), and when even those
-do not fit, to one **Actions ▾** button that opens the same menu as a right-click
+full name for a screen reader. They never cover the row's number or the first
+six or so characters of the title (the rest of the selected row's title is shortened
+with "…" to make room): in a moderately narrow pane, which includes the default
+size in a 1280-wide window, they shrink to symbols (**↑ ↓ Chapter ↻ ×**), and when
+even those do not fit (a very narrow pane, or the largest sizes), to one **Actions ▾** button that opens the same menu as a right-click
 on the entry. They step aside while you type a Mix in or Mix out on that row.
 Because a double-click on the row plays it, they ignore the pointer for half a
 second after they appear, and a click on **Remove** takes half a second to act, so

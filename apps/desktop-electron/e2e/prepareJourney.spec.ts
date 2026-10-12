@@ -312,16 +312,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       // FLW-17: the entry buttons order the Set too. They are on the selected row only (DEC-249):
       // Move down and Move up put Warm Two back where it was.
       await at(win, row(win, "Warm Two"));
-      // At the default size the pane has no room for the buttons beside # and the title: one Actions ▾
-      // opens the row's menu. A smaller size leaves room for them.
-      await row(win, "Warm Two").getByRole("button", { name: "Actions" }).click();
-      await expect(win.getByRole("menu").getByRole("menuitem", { name: "Remove from Set" })).toBeVisible();
-      await win.keyboard.press("Escape");
-      // The columns keep the widths they had at the old size, so they start again too.
-    await win.evaluate(() => (localStorage.setItem("cuepoint-ui-lab-scale", "1"), localStorage.removeItem("cuepoint-prepare-set-layout")));
-      await win.reload();
-      await expect(row(win, "Warm Two")).toBeVisible({ timeout: 30_000 });
-      await at(win, row(win, "Warm Two"));
+      // At the default size the buttons show as glyphs (↑ ↓ Chapter ↻ ×), the title shortened under them.
       await expect(win.getByRole("button", { name: "Move up", exact: true })).toHaveCount(1);
       await expect(row(win, "Warm Two").getByRole("button", { name: "Move up", exact: true })).toBeVisible();
       // The end cell stops at the scroll area's bar: its right edge is the area's, less the bar and border.
@@ -359,11 +350,12 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
         .toBe("down");
       await win.getByRole("button", { name: "Move up", exact: true }).click();
       await expect.poll(async () => (await order(win, setId)).slice(0, 2)).toEqual(["Warm Two", "Warm One"]);
-      await win.evaluate(() => (localStorage.removeItem("cuepoint-ui-lab-scale"), localStorage.removeItem("cuepoint-prepare-set-layout")));
-      await win.reload();
-      await expect(row(win, "Warm Two")).toBeVisible({ timeout: 30_000 });
 
       // --- 4. a gap from Suggestions, and a key warning accepted -------------------
+      // The Mix in field above scrolled the table sideways; a click at the row's left needs its left edge.
+      await setTable(win).evaluate((element) => {
+        element.scrollLeft = 0;
+      });
       await at(win, row(win, "Warm Two"));
       const panel = win.getByRole("region", { name: "Add to the Set" });
       await expect(panel.getByRole("status", { name: /^Inserting: between “Warm Two” and “Warm One”/ })).toBeVisible();

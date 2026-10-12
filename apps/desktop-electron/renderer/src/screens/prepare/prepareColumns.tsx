@@ -116,7 +116,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
       }
       const own = row.warnings;
       return (
-        <span>
+        <span className="prepare-entry__title">
           {own.length > 0 && (
             <span
               className="prepare-entry__flag"

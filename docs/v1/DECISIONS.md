@@ -6977,12 +6977,14 @@ accepted") and the transition caption said everything it knew, including every w
   whole selection, as before, and the hint says how many ("Move 3 entries up"). With nothing selected
   none is drawn, and none is while a Mix in or Mix out on that row is being typed in, so they never
   cover the fields. They are not hover-only: they show on the selected row.
-- **Compact forms, by measurement.** The room is what the Set's scroll area has beside the # column and
-  the Title column (or the Title's minimum, if it is narrower). The words are used when they fit that
-  room (at the default 1280 window they do); when only the glyphs fit, each button is a short symbol
-  (`↑`, `↓`, "Chapter", `↻`, `×`) with its full name kept as its name and hint; when not even those fit
-  (a narrow pane at a large scale), the row shows one "Actions ▾" button that opens the same context menu
-  as a right-click on the entry. The buttons never cover the row's number or the least of its title.
+- **Compact forms, by measurement.** The room is what the Set's scroll area has beside the # column and a
+  small title minimum (about 6 characters, 40 px x scale), not the Title column's current width: the
+  buttons may cover the Title column's tail, and the selected row's title ellipsises short of them. The
+  words are used when they fit that room; when only the glyphs fit, each button is a short symbol
+  (`↑`, `↓`, "Chapter", `↻`, `×`) with its full name kept as its name and hint (at a 1280 window the
+  glyphs show at the default 1.5 scale); when not even those fit (a narrow pane, or 2x scale), the row
+  shows one "Actions ▾" button that opens the same context menu as a right-click on the entry. The
+  buttons never cover the row's number or the first ~6 characters of its title.
 - A press on one does not reach the row (it neither selects nor plays it). For a double-click's length
   (500 ms, the Windows default) after they appear the pointer goes through them to the row, so a
   double-click aimed at the row's right end plays it; and a mouse click on Remove waits that long and
