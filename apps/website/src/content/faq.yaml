@@ -49,14 +49,14 @@
   answer: >-
     A collection exported from Rekordbox as XML, and a computer running Windows 10 or newer (64-bit) or macOS 12
     or newer. Linux is experimental and has no built-in player. Discover, which finds new music on Beatport, also
-    needs a Beatport token that you enter in Settings.
+    needs you to sign in to Beatport in Settings.
   links:
     - page: support-policy
       heading: supported-platforms
       label: Supported platforms
     - page: discover
-      heading: a-beatport-token
-      label: Getting a Beatport token
+      heading: signing-in-to-beatport
+      label: Signing in to Beatport
 
 - id: mac-chips
   order: 5
