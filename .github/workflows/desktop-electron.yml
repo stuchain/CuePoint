@@ -286,6 +286,7 @@ jobs:
       # launch `CUEPOINT_E2E_EXECUTABLE` (smoke.spec.ts is the "it starts" check); the rest drive the
       # source tree.
       - name: Packaged app end-to-end (Intel Mac)
+        id: packaged-e2e
         if: matrix.leg == 'macos-x64'
         working-directory: apps/desktop-electron
         env:
@@ -293,6 +294,18 @@ jobs:
         # Every spec that can launch a packaged app, found when the step runs, so a new one is included.
         shell: bash
         run: npm run test:e2e -- $(grep -l CUEPOINT_E2E_EXECUTABLE e2e/*.spec.ts)
+
+      # The packaged run's own snapshots: the ones printed above were taken before it ran.
+      - name: Print the packaged run's failure snapshots (Intel Mac)
+        if: failure() && steps.packaged-e2e.outcome == 'failure'
+        shell: bash
+        working-directory: apps/desktop-electron
+        run: |
+          find test-results -name error-context.md 2>/dev/null | sort | while read -r f; do
+            echo "::group::$f"
+            head -c 20000 "$f"
+            echo "::endgroup::"
+          done
 
       # A failed Mac check keeps the leg's files, so the app that failed it can be downloaded.
       - name: Generate SHA256SUMS
