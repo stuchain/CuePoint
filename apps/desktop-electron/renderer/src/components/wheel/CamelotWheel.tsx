@@ -65,7 +65,8 @@ function nameOf(code: string, relation: KeyRelation | undefined): string {
 
 /**
  * The Camelot wheel's drawing (PAGES-10): 24 keys in two rings, A inside and B
- * outside, 12 at the top. Each is a button; the track's own key and the keys that
+ * outside, 12 at the top, each a smooth wedge with an even gap to its neighbours
+ * (C2). Each is a button, cut to its wedge; the track's own key and the keys that
  * mix with it are lit. It draws what it is given and knows nothing of tracks or the
  * Library, so PAGES-16's Keys page can draw on it as well.
  */

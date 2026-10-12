@@ -76,12 +76,12 @@ you.** They are deliberately different keys, because they do different things.
 
 ## The Camelot wheel
 
-The button beside the search field opens a wheel of the 24 keys, drawn in pixels: the
-minor keys (A) in the inner ring and the major keys (B) in the outer one, 12 at the
-top like a clock. It lights the key of the track you have selected, or, with nothing
-selected, the track that is playing, and the keys that mix with it: one step either
-way round the wheel in the same ring, and the relative key in the other ring. A line
-under the wheel names the track and its key, for example "Selected: Strobe · 8A" or
+The button beside the search field opens a wheel of the 24 keys, drawn as two rings of
+wedges: the minor keys (A) in the inner ring and the major keys (B) in the outer one,
+12 at the top like a clock. It lights the key of the track you have selected, or, with
+nothing selected, the track that is playing, and the keys that mix with it: one step
+either way round the wheel in the same ring, and the relative key in the other ring. A
+line under the wheel names the track and its key, for example "Selected: Strobe · 8A" or
 "Playing: Strobe · 8A".
 
 The key is the track's Beatport key (see [Library](library.md)); Rekordbox's key is

@@ -1,5 +1,5 @@
 /**
- * The Camelot wheel's places: 24 keys, their names, their pixel shapes and the
+ * The Camelot wheel's places: 24 keys, their names, their smooth sector shapes (C2) and the
  * keyboard's moves between them (PAGES-10).
  *
  * This is drawing data. Which keys mix with a track's key is DEC-096's rule and
@@ -7,16 +7,19 @@
  * that 9A mixes with 8A. PAGES-16's Keys page draws on the same places.
  */
 
-/** The wheel is drawn on a square of this many cells; a cell is a whole CSS pixel count. */
+/** The wheel is drawn on a square of this many units; a unit is a whole CSS pixel count. */
 export const GRID_CELLS = 48;
 
 const CENTER = GRID_CELLS / 2;
-/** The A ring (minor keys) inside, the B ring (major keys) outside, in cells from the center. */
-const RING_RADII = { A: [7, 15.5], B: [16.5, 23.5] } as const;
-/** A segment's full span is 30 degrees; half of it. */
-const HALF_SPAN = 15;
-/** Cells whose centers lie this near (in cells) to the line between two keys stay empty: the gap. */
-const GAP = 0.5;
+/** Each ring's inner and outer radius, in units from the center: A (minor keys) inside, B outside. */
+export const RING_RADII: Readonly<Record<Ring, readonly [inner: number, outer: number]>> = {
+  A: [7, 15.5],
+  B: [16.5, 23.5],
+};
+/** The straight gap between two neighbouring wedges, in units (as wide everywhere). */
+export const WEDGE_GAP = 1;
+/** An arc is drawn as one SVG arc, and cut for clicks as chords this many degrees apart. */
+export const ARC_STEP_DEGREES = 2;
 
 export type Ring = "A" | "B";
 
@@ -69,115 +72,152 @@ export function moveOnRing(code: string, move: WheelMove): string {
   return `${((place.number - 1 + step + 12) % 12) + 1}${place.letter}`;
 }
 
+/** A wedge's geometry: where it sits and how wide, before any drawing. */
+export interface SectorGeometry {
+  /** The radii of its inner and outer arcs, in units. */
+  inner: number;
+  outer: number;
+  /** Its edges, in degrees clockwise from 12 o'clock (`end - start` is 30). */
+  start: number;
+  end: number;
+  /** The width of the straight gap kept between it and each neighbour, in units. */
+  gap: number;
+}
+
 export interface SegmentShape {
-  /** The outline's corners in whole cells, clockwise; every edge is horizontal or vertical. */
-  cells: [number, number][];
-  /** The same outline as a CSS `polygon()` in percentages of the square. */
+  sector: SectorGeometry;
+  /** The click polygon in units, clockwise: both arcs sampled, both ends included. */
+  points: [number, number][];
+  /** The same polygon as a CSS `polygon()` in percentages of the square. */
   polygon: string;
-  /** The same outline as an SVG path in cell units, for the drawing. */
+  /** The wedge as an SVG path in units: two `A` arcs and two lines, for the drawing. */
   path: string;
-  /** How many cells the wedge covers. */
-  count: number;
+  /** The area of `points`, in square units. */
+  area: number;
   /** Where its label sits, in percent of the square. */
   label: { x: number; y: number };
 }
 
-type Cell = readonly [number, number];
-const keyOf = (x: number, y: number) => `${x},${y}`;
+const radiansOf = (degrees: number) => (degrees * Math.PI) / 180;
+const round3 = (value: number) => Number(value.toFixed(3));
 
-/** The cells of the grid whose centers lie in the wedge: this is what makes it stepped. */
-function wedgeCells(place: CamelotPlace): Set<string> {
+/** The wedge of a place: 30 degrees centred on its number times 30, so 12 is at the top. */
+export function sectorOf(place: CamelotPlace): SectorGeometry {
   const [inner, outer] = RING_RADII[place.letter];
-  const middle = place.number * 30;
-  const cells = new Set<string>();
-  for (let y = 0; y < GRID_CELLS; y++) {
-    for (let x = 0; x < GRID_CELLS; x++) {
-      const dx = x + 0.5 - CENTER;
-      const dy = y + 0.5 - CENTER;
-      const radius = Math.hypot(dx, dy);
-      if (radius < inner || radius >= outer) continue;
-      const degrees = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
-      const away = Math.abs(((degrees - middle + 540) % 360) - 180);
-      if (away > HALF_SPAN) continue;
-      // The line between this key and its neighbor stays empty, so the panel shows through.
-      if (radius * Math.sin(((HALF_SPAN - away) * Math.PI) / 180) < GAP) continue;
-      cells.add(keyOf(x, y));
-    }
-  }
-  return cells;
+  return { inner, outer, start: place.number * 30 - 15, end: place.number * 30 + 15, gap: WEDGE_GAP };
+}
+
+/** The point at a radius and an angle (degrees clockwise from 12 o'clock), in units. */
+export function sectorPoint(radius: number, degrees: number): [number, number] {
+  const radians = radiansOf(degrees);
+  return [CENTER + radius * Math.sin(radians), CENTER - radius * Math.cos(radians)];
 }
 
 /**
- * The corners of the outline round a set of cells, clockwise, with only horizontal
- * and vertical edges between them. At a corner where two cells meet diagonally the
- * path turns right, so the wedge stays one piece.
+ * How many degrees an edge moves in at a radius, so that the gap between two neighbours is a
+ * straight band `gap` wide: each edge sits gap/2 from the radial line, and asin(gap / 2r) is
+ * the angle at which that is true at radius r.
  */
-function outline(cells: ReadonlySet<string>): Cell[] {
-  const has = (x: number, y: number) => cells.has(keyOf(x, y));
-  const out = new Map<string, Cell[]>();
-  const add = (from: Cell, to: Cell) => {
-    const k = keyOf(from[0], from[1]);
-    out.set(k, [...(out.get(k) ?? []), to]);
-  };
-  for (const key of cells) {
-    const [x, y] = key.split(",").map(Number) as [number, number];
-    if (!has(x, y - 1)) add([x, y], [x + 1, y]);
-    if (!has(x + 1, y)) add([x + 1, y], [x + 1, y + 1]);
-    if (!has(x, y + 1)) add([x + 1, y + 1], [x, y + 1]);
-    if (!has(x - 1, y)) add([x, y + 1], [x, y]);
-  }
-  const first = [...out.keys()].sort((a, b) => {
-    const [ax, ay] = a.split(",").map(Number) as [number, number];
-    const [bx, by] = b.split(",").map(Number) as [number, number];
-    return ay - by || ax - bx;
-  })[0];
-  if (first === undefined) return [];
-  const start = first.split(",").map(Number) as [number, number];
-  const path: Cell[] = [start];
-  let at: Cell = start;
-  let heading: Cell = [1, 0];
-  for (let guard = 0; guard < 10_000; guard++) {
-    const options = out.get(keyOf(at[0], at[1])) ?? [];
-    if (options.length === 0) break;
-    // Turn right when there is a choice: (dx, dy) becomes (-dy, dx) on a y-down grid.
-    const right: Cell = [-heading[1], heading[0]];
-    const next =
-      options.find((to) => to[0] - at[0] === right[0] && to[1] - at[1] === right[1]) ?? options[0]!;
-    heading = [next[0] - at[0], next[1] - at[1]];
-    at = next;
-    if (at[0] === start[0] && at[1] === start[1]) break;
-    path.push(at);
-  }
-  // Keep corners only: a point on a straight run is not one.
-  return path.filter((cell, index) => {
-    const before = path[(index + path.length - 1) % path.length]!;
-    const after = path[(index + 1) % path.length]!;
-    return (cell[0] - before[0]) * (after[1] - cell[1]) !== (cell[1] - before[1]) * (after[0] - cell[0]);
-  });
+export function edgeInset(radius: number, gap: number): number {
+  return (Math.asin(gap / (2 * radius)) * 180) / Math.PI;
 }
 
-const percent = (cells: number) => Number(((cells / GRID_CELLS) * 100).toFixed(3));
-const toPolygon = (corners: readonly Cell[]) =>
-  `polygon(${corners.map(([x, y]) => `${percent(x)}% ${percent(y)}%`).join(", ")})`;
+/** A coordinate as the path and the polygon write it: three decimals, so they stay stable. */
+const text = (value: number) => String(round3(value));
+const at = ([x, y]: readonly [number, number]) => `${text(x)} ${text(y)}`;
 
 /**
- * One key's shape: a stepped wedge of its ring, 12 at the top and 3 on the right
- * like a clock. It is made of whole cells, so every edge is horizontal or vertical
- * and the staircase is pixel art rather than a smooth curve.
+ * The wedge as an SVG path: the outer arc clockwise, a straight edge in, the inner arc back,
+ * and a straight edge out. The edges are inset by `edgeInset` at each radius.
+ */
+export function sectorPath(s: SectorGeometry): string {
+  const outerInset = edgeInset(s.outer, s.gap);
+  const innerInset = edgeInset(s.inner, s.gap);
+  return (
+    `M${at(sectorPoint(s.outer, s.start + outerInset))} ` +
+    `A${text(s.outer)} ${text(s.outer)} 0 0 1 ${at(sectorPoint(s.outer, s.end - outerInset))} ` +
+    `L${at(sectorPoint(s.inner, s.end - innerInset))} ` +
+    `A${text(s.inner)} ${text(s.inner)} 0 0 0 ${at(sectorPoint(s.inner, s.start + innerInset))} Z`
+  );
+}
+
+/** `count` points along an arc from one angle to the other, both ends included. */
+function arcPoints(radius: number, from: number, to: number, count: number): [number, number][] {
+  return Array.from({ length: count + 1 }, (_, index) =>
+    sectorPoint(radius, from + ((to - from) * index) / count),
+  );
+}
+
+/**
+ * The click polygon: the outer arc's points clockwise, then the inner arc's counter-clockwise.
+ * Each arc takes as many steps as a full 30 degrees needs at `stepDegrees`, so every wedge has
+ * the same number of points and no chord is longer than the step. The points are exact, not
+ * rounded: only the strings round, so a point never drifts outside `inSector`.
+ */
+export function sectorOutline(
+  s: SectorGeometry,
+  stepDegrees: number = ARC_STEP_DEGREES,
+): [number, number][] {
+  const steps = Math.ceil((s.end - s.start) / stepDegrees);
+  const outerInset = edgeInset(s.outer, s.gap);
+  const innerInset = edgeInset(s.inner, s.gap);
+  return [
+    ...arcPoints(s.outer, s.start + outerInset, s.end - outerInset, steps),
+    ...arcPoints(s.inner, s.end - innerInset, s.start + innerInset, steps),
+  ];
+}
+
+/**
+ * Whether a point (in units) is inside the wedge: between its two radii, and at least half the
+ * gap from each edge's radial line. `epsilon` (default 0) loosens every bound a little, for
+ * points that sit exactly on the boundary.
+ */
+export function inSector(s: SectorGeometry, x: number, y: number, epsilon = 0): boolean {
+  const dx = x - CENTER;
+  const dy = CENTER - y;
+  const radius = Math.hypot(dx, dy);
+  if (radius < s.inner - epsilon || radius > s.outer + epsilon) return false;
+  const middle = (s.start + s.end) / 2;
+  const away = (((Math.atan2(dx, dy) * 180) / Math.PI - middle + 540) % 360) - 180;
+  const span = (s.end - s.start) / 2;
+  const half = s.gap / 2 - epsilon;
+  return (
+    radius * Math.sin(radiansOf(span + away)) >= half &&
+    radius * Math.sin(radiansOf(span - away)) >= half
+  );
+}
+
+const percent = (units: number) => Number(((units / GRID_CELLS) * 100).toFixed(3));
+const toPolygon = (points: readonly (readonly [number, number])[]) =>
+  `polygon(${points.map(([x, y]) => `${percent(x)}% ${percent(y)}%`).join(", ")})`;
+
+/** The area of a polygon by the shoelace sum; positive when it runs clockwise on a y-down grid. */
+function areaOf(points: readonly (readonly [number, number])[]): number {
+  let sum = 0;
+  points.forEach(([x, y], index) => {
+    const [nx, ny] = points[(index + 1) % points.length]!;
+    sum += x * ny - nx * y;
+  });
+  return sum / 2;
+}
+
+/**
+ * One key's shape: a smooth annular sector of its ring, 12 at the top and 3 on the right
+ * like a clock, with an even straight gap to each neighbour.
  */
 export function segmentShape(code: string): SegmentShape {
   const place = parseCode(code);
   if (!place) throw new Error(`${code} is not a place on the Camelot wheel`);
-  const whole = wedgeCells(place);
-  const corners = outline(whole);
-  const [inner, outer] = RING_RADII[place.letter];
-  const radians = (place.number * 30 * Math.PI) / 180;
-  const radius = (inner + outer) / 2;
+  const sector = sectorOf(place);
+  const points = sectorOutline(sector);
+  const radians = radiansOf(place.number * 30);
+  const radius = (sector.inner + sector.outer) / 2;
   return {
-    cells: corners as [number, number][],
-    polygon: toPolygon(corners),
-    path: `M${corners.map(([x, y]) => `${x} ${y}`).join(" L")} Z`,
-    count: whole.size,
+    sector,
+    points,
+    polygon: toPolygon(points),
+    path: sectorPath(sector),
+    area: areaOf(points),
     label: {
       x: percent(CENTER + radius * Math.sin(radians)),
       y: percent(CENTER - radius * Math.cos(radians)),

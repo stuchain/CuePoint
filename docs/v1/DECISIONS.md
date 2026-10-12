@@ -6621,3 +6621,22 @@ box, so on Stelios's Mac CuePoint sat boxed among native icons (2026-10-11). Of 
 drawn by the Mac, the user picked the one without the outline; macOS trims most of an outline anyway.
 
 **Decided with**: User · **Date**: 2026-10-11
+
+---
+
+## DEC-238 — The Camelot Wheel Is Drawn in Smooth Wedges
+
+**Status**: Approved · **Related**: DEC-133, PAGES-10, PAGES-16, C2
+
+**Decision**: The Camelot wheel, in the header and on the Keys page, draws each key as a smooth
+ring sector instead of DEC-133's pixel-art staircase: B outside, A inside, 12 at the top, with a
+straight 1-unit gap between neighbours. The drawing square stays 48 units, so the wheel keeps its
+size at every scale. Each key's button is still the whole square cut with `clip-path: polygon()`,
+its arcs sampled every 2 degrees, so clicks follow the curve and the buttons keep their focus and
+keyboard moves. The colours are unchanged, and the unlit wedges keep their hairline rim, because
+clubNeon's unlit fill is only 1.06:1 against its panel.
+
+**Reason**: Stelios found the stepped wheel unattractive and picked option A, smooth wedges with
+gaps, from six renders (Changes wish list, 2026-10-12).
+
+**Decided with**: User · **Date**: 2026-10-12

@@ -91,4 +91,11 @@ describe("the wheel's styles", () => {
     const mark = rules.find(([, selector]) => /__mark\[data-mark="focus"\]/.test(selector!));
     expect(mark?.[2]).toMatch(/stroke:\s*var\(--fg-primary\)/);
   });
+
+  it("draws the art smoothly", () => {
+    const art = rules.find(([, selector]) => /\.cp-wheel__art\b/.test(selector!));
+    expect(art?.[2]).not.toMatch(/crispEdges/);
+    const shape = rules.find(([, selector]) => selector!.trim() === ".cp-wheel__shape");
+    expect(shape?.[2]).toMatch(/stroke:\s*var\(--fg-muted\)/);
+  });
 });

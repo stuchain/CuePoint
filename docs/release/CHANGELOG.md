@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The Camelot wheel (header and Keys page) is drawn as smooth wedges with even gaps.
+
 ## [1.0.0-test.3] - 2026-10-12
 
 ### Changed

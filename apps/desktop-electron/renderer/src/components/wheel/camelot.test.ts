@@ -8,12 +8,17 @@ import {
   CAMELOT_CODES,
   COUNT_LEVEL_MIX,
   GRID_CELLS,
+  ARC_STEP_DEGREES,
   compactCount,
   countLevel,
   countedName,
+  edgeInset,
+  inSector,
   keyName,
   moveOnRing,
   parseCode,
+  sectorOf,
+  sectorPoint,
   segmentShape,
   tracksWord,
 } from "./camelot";
@@ -58,43 +63,20 @@ describe("moving with the keyboard", () => {
   });
 });
 
+/** Whether a point is inside a polygon, by counting crossings of a ray to the right. */
+function inPolygon(polygon: readonly (readonly [number, number])[], x: number, y: number): boolean {
+  let inside = false;
+  polygon.forEach(([ax, ay], index) => {
+    const [bx, by] = polygon[(index + 1) % polygon.length]!;
+    if (ay > y !== by > y && x < ax + ((y - ay) / (by - ay)) * (bx - ax)) inside = !inside;
+  });
+  return inside;
+}
+
 describe("the shapes", () => {
-  it.each(CAMELOT_CODES)("%s is a polygon of whole cells inside the grid", (code) => {
-    const { cells } = segmentShape(code);
-    expect(cells.length).toBeGreaterThanOrEqual(6);
-    for (const [x, y] of cells) {
-      expect(Number.isInteger(x) && Number.isInteger(y)).toBe(true);
-      expect(x).toBeGreaterThanOrEqual(0);
-      expect(x).toBeLessThanOrEqual(GRID_CELLS);
-      expect(y).toBeGreaterThanOrEqual(0);
-      expect(y).toBeLessThanOrEqual(GRID_CELLS);
-    }
-  });
+  const ringOf = (code: string) => code.slice(-1) as "A" | "B";
 
-  it.each(CAMELOT_CODES)("%s is stepped: only horizontal and vertical edges", (code) => {
-    const { cells } = segmentShape(code);
-    let area = 0;
-    cells.forEach(([x, y], index) => {
-      const [nx, ny] = cells[(index + 1) % cells.length]!;
-      expect(x === nx || y === ny, `${code}: ${x},${y} to ${nx},${ny}`).toBe(true);
-      expect(x === nx && y === ny).toBe(false);
-      area += x * ny - nx * y;
-    });
-    // One clockwise piece (positive on a y-down grid) with room for a label.
-    expect(area / 2).toBeGreaterThan(30);
-  });
-
-  it.each(["A", "B"])("gives the %s ring's twelve wedges near-equal cell counts", (letter) => {
-    const counts = CAMELOT_CODES.filter((code) => code.endsWith(letter)).map(
-      (code) => segmentShape(code).count,
-    );
-    expect(counts).toHaveLength(12);
-    expect(Math.max(...counts) - Math.min(...counts), counts.join(",")).toBeLessThanOrEqual(4);
-  });
-
-  it("gives each wedge its own cells, none shared", () => {
-    // The corners of different wedges never describe the same outline, and every
-    // wedge has an SVG path of its own.
+  it("gives each wedge its own path, none shared", () => {
     const paths = CAMELOT_CODES.map((code) => segmentShape(code).path);
     expect(new Set(paths).size).toBe(24);
   });
@@ -117,8 +99,136 @@ describe("the shapes", () => {
   });
 
   it("gives no two keys the same shape", () => {
-    const shapes = CAMELOT_CODES.map((code) => JSON.stringify(segmentShape(code).cells));
+    const shapes = CAMELOT_CODES.map((code) => JSON.stringify(segmentShape(code).points));
     expect(new Set(shapes).size).toBe(24);
+  });
+
+  it.each(CAMELOT_CODES)("%s's path is two arcs and two lines", (code) => {
+    const { path, sector } = segmentShape(code);
+    expect(path).toMatch(/^M[^A]+A[^A]+L[^A]+A[^A]+Z$/);
+    // The first arc is the outer one, the second the inner one.
+    const radii = [...path.matchAll(/A([\d.]+) /g)].map((match) => Number(match[1]));
+    expect(radii).toEqual([sector.outer, sector.inner]);
+  });
+
+  it.each(CAMELOT_CODES)("%s's click polygon stays inside the drawing", (code) => {
+    const { sector, points } = segmentShape(code);
+    expect(points.length).toBeGreaterThanOrEqual(2 * (30 / ARC_STEP_DEGREES));
+    for (const [x, y] of points) {
+      expect(inSector(sector, x, y, 1e-6), `${code}: ${x},${y}`).toBe(true);
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(GRID_CELLS);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(GRID_CELLS);
+    }
+    // Each edge's midpoint too: a chord of an arc sags a hair inside it, within 0.005.
+    points.forEach(([x, y], index) => {
+      const [nx, ny] = points[(index + 1) % points.length]!;
+      expect(inSector(sector, (x + nx) / 2, (y + ny) / 2, 0.005), `${code}: edge ${index}`).toBe(true);
+    });
+  });
+
+  it.each(CAMELOT_CODES)("%s's polygon string matches its points", (code) => {
+    const { points, polygon } = segmentShape(code);
+    const read = [...polygon.matchAll(/(-?[\d.]+)% (-?[\d.]+)%/g)].map(
+      (match) => [(Number(match[1]) / 100) * GRID_CELLS, (Number(match[2]) / 100) * GRID_CELLS],
+    );
+    expect(read).toHaveLength(points.length);
+    read.forEach(([x, y], index) => {
+      expect(Math.abs(x! - points[index]![0])).toBeLessThan(1e-3);
+      expect(Math.abs(y! - points[index]![1])).toBeLessThan(1e-3);
+    });
+  });
+
+  it.each(CAMELOT_CODES)("%s's polygon area matches the sector", (code) => {
+    const { sector, area } = segmentShape(code);
+    const { inner, outer, gap } = sector;
+    const ideal = (30 / 360) * Math.PI * (outer ** 2 - inner ** 2) - gap * (outer - inner);
+    expect(Math.abs(area - ideal) / ideal).toBeLessThan(0.01);
+  });
+
+  it.each(["A", "B"])("gives the %s ring's twelve wedges the same area", (letter) => {
+    const areas = CAMELOT_CODES.filter((code) => ringOf(code) === letter).map(
+      (code) => segmentShape(code).area,
+    );
+    expect(areas).toHaveLength(12);
+    expect(Math.max(...areas) - Math.min(...areas)).toBeLessThan(1e-6);
+  });
+
+  it.each(["A", "B"])("never overlaps neighbours on the %s ring, and keeps the gap", (letter) => {
+    const sectors = Array.from({ length: 12 }, (_, index) =>
+      sectorOf({ number: index + 1, letter: letter as "A" | "B" }),
+    );
+    for (let index = 0; index < 12; index++) {
+      const one = sectors[index]!;
+      const next = sectors[(index + 1) % 12]!;
+      const overlaps: string[] = [];
+      for (let i = 0; i <= GRID_CELLS * 10; i++) {
+        for (let j = 0; j <= GRID_CELLS * 10; j++) {
+          const x = i / 10;
+          const y = j / 10;
+          if (inSector(one, x, y) && inSector(next, x, y)) overlaps.push(`${x},${y}`);
+        }
+      }
+      expect(overlaps, `wedge ${index + 1}`).toEqual([]);
+      // The click areas (the polygons) must not overlap either.
+      const onePoints = segmentShape(`${index + 1}${letter}`).points;
+      const nextPoints = segmentShape(`${((index + 1) % 12) + 1}${letter}`).points;
+      const shared: string[] = [];
+      for (let i = 0; i <= GRID_CELLS * 10; i++) {
+        for (let j = 0; j <= GRID_CELLS * 10; j++) {
+          const x = i / 10;
+          const y = j / 10;
+          if (inPolygon(onePoints, x, y) && inPolygon(nextPoints, x, y)) shared.push(`${x},${y}`);
+        }
+      }
+      expect(shared, `click areas ${index + 1}`).toEqual([]);
+      // On the radial line between the two, in the middle of the ring, neither claims the point.
+      const middle = (one.inner + one.outer) / 2;
+      const [x, y] = sectorPoint(middle, one.end);
+      expect(inSector(one, x, y)).toBe(false);
+      expect(inSector(next, x, y)).toBe(false);
+    }
+  });
+
+  it.each(CAMELOT_CODES)("%s's label point is in its own sector and no other", (code) => {
+    const { label } = segmentShape(code);
+    const x = (label.x / 100) * GRID_CELLS;
+    const y = (label.y / 100) * GRID_CELLS;
+    const holders = CAMELOT_CODES.filter((other) => {
+      const place = parseCode(other)!;
+      return inSector(sectorOf(place), x, y);
+    });
+    expect(holders).toEqual([code]);
+  });
+
+  it.each(CAMELOT_CODES)("%s keeps the gap straight: its edge ends sit 0.5 from the radial line", (code) => {
+    const { sector, points, path } = segmentShape(code);
+    // Distance from the radial line at `degrees` to a point, in units.
+    const away = (degrees: number, [x, y]: readonly [number, number]) => {
+      const radians = (degrees * Math.PI) / 180;
+      const dx = x - GRID_CELLS / 2;
+      const dy = GRID_CELLS / 2 - y;
+      return Math.abs(dx * Math.cos(radians) - dy * Math.sin(radians));
+    };
+    const last = points.length - 1;
+    // The outline runs outer arc (start to end), then inner arc (end to start).
+    const half = points.length / 2;
+    const ends: [number, [number, number]][] = [
+      [sector.start, points[0]!],
+      [sector.end, points[half - 1]!],
+      [sector.end, points[half]!],
+      [sector.start, points[last]!],
+    ];
+    for (const [degrees, point] of ends) expect(Math.abs(away(degrees, point) - 0.5)).toBeLessThan(1e-3);
+    // The path's M and L corners are the same four points.
+    const corners = [...path.matchAll(/[ML]([\d.]+) ([\d.]+)/g)].map(
+      (match) => [Number(match[1]), Number(match[2])] as [number, number],
+    );
+    expect(corners).toHaveLength(2);
+    expect(Math.abs(away(sector.start, corners[0]!) - 0.5)).toBeLessThan(1e-3);
+    expect(Math.abs(away(sector.end, corners[1]!) - 0.5)).toBeLessThan(1e-3);
+    expect(edgeInset(sector.inner, 1)).toBeGreaterThan(edgeInset(sector.outer, 1));
   });
 });
 

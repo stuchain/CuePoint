@@ -500,4 +500,17 @@ describe("the wheel in counts mode (PAGES-16)", () => {
     expect(document.querySelector('[data-label-for="8A"]')).toHaveTextContent(/^8A$/);
     expect(document.querySelector('[data-shape="8A"]')).not.toHaveAttribute("data-level");
   });
+
+  it("cuts each key's button to its smooth wedge", () => {
+    render(<CamelotWheel lit={new Map()} focusCode="8A" onFocusCode={() => undefined} onPick={() => undefined} />);
+    const buttons = document.querySelectorAll<HTMLElement>("[data-key]");
+    expect(buttons).toHaveLength(24);
+    for (const button of buttons) {
+      const code = button.getAttribute("data-key")!;
+      const clip = button.style.clipPath;
+      expect(clip, code).toMatch(/^polygon\(/);
+      expect(clip.split(",").length, code).toBeGreaterThanOrEqual(30);
+      expect(document.querySelector(`[data-shape="${code}"]`)?.getAttribute("d"), code).toContain(" A");
+    }
+  });
 });

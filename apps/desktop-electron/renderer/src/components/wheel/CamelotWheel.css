@@ -1,8 +1,8 @@
 /*
- * The Camelot wheel's drawing (PAGES-10). One square of 48 cells; a cell is
- * 4 CSS pixels times the size, so a whole number at every size the app offers
- * (6 at 1.5x). Each key is a button as big as the square, cut to its stepped wedge
- * with clip-path, so a click only lands inside its own wedge.
+ * The Camelot wheel's drawing (PAGES-10, C2). One square of 48 units; a unit is
+ * 4 CSS pixels times the size. The wedges are smooth annular sectors with even gaps.
+ * Each key is a button as big as the square, cut with clip-path to its wedge's arcs
+ * sampled every 2 degrees, so a click only lands inside its own wedge.
  */
 .cp-wheel {
   --wheel-cell: calc(4px * var(--scale));
@@ -14,13 +14,13 @@
   margin-inline: auto;
 }
 
-/* The drawing: one SVG on the 48-cell grid, so every edge falls on a whole pixel. */
+/* The drawing: one SVG on the 48-unit square; the arcs are anti-aliased, not snapped. */
 .cp-wheel__art {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  shape-rendering: crispEdges;
+  shape-rendering: geometricPrecision;
   pointer-events: none;
 }
 
@@ -29,6 +29,7 @@
   /* The unlit wedges carry an outline, so they never vanish into the panel. */
   stroke: var(--fg-muted);
   stroke-width: var(--hairline);
+  stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 
