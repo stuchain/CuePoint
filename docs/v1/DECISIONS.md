@@ -3200,7 +3200,7 @@ decision up again rather than amending it.
 
 ## DEC-098 — The Beatport Token Is Handled as It Is Today
 
-**Status**: Superseded by DEC-239 · **Against recommendation** (OS secure storage)
+**Status**: Superseded by DEC-242 · **Against recommendation** (OS secure storage)
 
 **Decision**: Phase 9 does not change how the Beatport token is entered, stored or refreshed. A user
 pastes it into Settings, it is kept in `~/.cuepoint/config.yaml` as `incrate.beatport_access_token`
@@ -3247,7 +3247,7 @@ product to rescue a token without playlist scope, and the placeholder URL is a l
 
 **Decided with**: User · **Date**: 2026-09-21
 
-**Amended by DEC-239 (2026-10-12)**: The Beatport sign-in window is a sign-in surface only.
+**Amended by DEC-242 (2026-10-12)**: The Beatport sign-in window is a sign-in surface only.
 CuePoint never automates a Beatport page and never does playlist work through the browser, so
 playlists stay API-only. The token the window captures must carry user scope: a guest token is
 refused at sign-in, so the playlist refusal above is not met by a token that could never work.
@@ -6730,7 +6730,7 @@ and thin panels, underline tabs and flat pane buttons (C16 a, b, d).
 
 ---
 
-## DEC-239 — In-app Beatport Sign-in Window
+## DEC-242 — In-app Beatport Sign-in Window
 
 **Status**: Approved · **Supersedes**: DEC-098 · **Amends**: DEC-099 · **Related**: ADR-011, DIST-07
 

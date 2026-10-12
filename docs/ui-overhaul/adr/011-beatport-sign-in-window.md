@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (C12, 2026-10-12). Records DEC-239. It makes one exception to DIST-07's rule that the app
+Accepted (C12, 2026-10-12). Records DEC-242. It makes one exception to DIST-07's rule that the app
 has a single window that shows only its own pages.
 
 ## Context
@@ -39,7 +39,7 @@ The main window cannot be that place:
 - **The main window is unchanged.** It still denies window opens and keeps its navigation rule.
   The sign-in window is opened only by main, on the renderer's `beatport:signIn` request, and is
   modal to the main window.
-- **The token stays in main.** The renderer gets a state and a masked preview; see DEC-239.
+- **The token stays in main.** The renderer gets a state and a masked preview; see DEC-242.
 
 The rules the window applies are pure functions in `electron/beatportAuthRules.ts` with tests; the
 logic is in `electron/beatportAuth.ts`, tested with fakes; the Electron part is a thin host.
