@@ -306,7 +306,7 @@ canvas.scene3d {
   display: grid;
   grid-template-columns: 2.1fr 1.6fr 0.8fr 0.8fr 1.4fr 1.3fr;
   align-items: center;
-  height: 70px;
+  height: 66px;
   padding: 0 18px;
   gap: 14px;
   border-top: 2px solid var(--border-muted);
@@ -328,7 +328,7 @@ canvas.scene3d {
 }
 
 .row.head {
-  height: 52px;
+  height: 48px;
   border-top: 0;
   background: var(--bg-panel-alt);
   font-family: var(--font-pixel);
@@ -450,7 +450,7 @@ canvas.scene3d {
   grid-template-columns: 54px 1fr auto auto;
   align-items: center;
   gap: 22px;
-  height: 78px;
+  height: 72px;
   padding: 0 22px;
   font-size: 32px;
   background: var(--bg-panel);
@@ -474,7 +474,7 @@ canvas.scene3d {
 }
 
 .slot .bpm {
-  font-family: var(--font-pixel);
+  font-family: var(--font-data);
   font-weight: 600;
   color: var(--fg-muted);
   min-width: 90px;
@@ -485,7 +485,7 @@ canvas.scene3d {
   display: flex;
   align-items: center;
   gap: 14px;
-  height: 58px;
+  height: 52px;
   padding-left: 98px;
   font-family: var(--font-pixel);
   font-weight: 600;
@@ -560,7 +560,7 @@ canvas.scene3d {
   font-size: 24px;
   padding: 4px 10px 6px;
   color: var(--border-outline);
-  background: var(--accent-info);
+  background: var(--accent-primary);
   border: 3px solid var(--border-outline);
 }
 
@@ -760,8 +760,13 @@ canvas.scene3d {
 
 .tall .keys-count {
   left: 54px;
-  top: 250px;
+  top: 384px;
   font-size: 36px;
+}
+
+/* the phone's narrow page: the subtitle takes its own line, so the chips stay together */
+.tall .panel-waveforms .page__head p {
+  flex-basis: 100%;
 }
 
 .status .tick {
@@ -819,26 +824,6 @@ canvas.scene3d {
 
 .cue {
   transform: translateZ(40px);
-}
-
-/* the wide cut sits too close to the disc for a title above it; the caption names the shot */
-.wide .panel-keys .panel-title {
-  display: none;
-}
-
-.panel-title {
-  position: absolute;
-  left: -200px;
-  width: 400px;
-  margin-top: -92px;
-  padding: 12px 24px 16px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 16px;
-  font-family: var(--font-pixel);
-  font-weight: 700;
-  font-size: 40px;
 }
 
 /* Keys: the icon as a floor, the keys standing on it */
@@ -1012,7 +997,7 @@ canvas.scene3d {
 /* Discover: new releases as cards */
 .releases {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 26px;
   margin-top: 10px;
 }
@@ -1025,10 +1010,10 @@ canvas.scene3d {
 .release {
   min-width: 0;
   display: grid;
-  grid-template-columns: 170px minmax(0, 1fr);
+  grid-template-columns: 140px minmax(0, 1fr);
   grid-template-rows: auto auto 1fr;
   column-gap: 18px;
-  padding: 18px;
+  padding: 14px 18px;
   background: var(--bg-panel-alt);
   border: var(--line) solid var(--border-outline);
   box-shadow: 6px 6px 0 var(--border-shadow);

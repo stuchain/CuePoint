@@ -38,7 +38,7 @@ export function addVinyl(scene: Scene): Vinyl {
   const discs = new InstancedMesh(discGeometry, discMaterial, RECORD_COUNT);
   const rings = new InstancedMesh(ringGeometry, ringMaterial, RECORD_COUNT);
   const labels = new InstancedMesh(labelGeometry, labelMaterial, RECORD_COUNT);
-  discs.castShadow = true;
+  discs.castShadow = false;
   scene.add(discs, rings, labels);
 
   const dummy = new Object3D();

@@ -124,7 +124,7 @@ const h = (html: string): HTMLElement => {
 
 const esc = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
-const POP = { scale: 1.4, opacity: 0 };
+const POP = { scale: 1.15, opacity: 0 };
 const IN = { scale: 1, opacity: 1, duration: BEAT / 2, ease: "steps(3)" };
 
 /** How big the windows are and where the captions sit in each cut: inside a 5% safe area. */
@@ -230,10 +230,10 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
   tl.set(match, { attr: { "data-pressed": "1" } }, beat(0.5));
   tl.set(match, { attr: { "data-pressed": "0" } }, beat(0.75));
   const first = beat(0.75);
-  const step = BEAT / 4;
+  const step = BEAT / 2;
   tl.to(bar, { width: "100%", duration: step * n, ease: `steps(${n * 4})` }, first);
   const matchedAt = (i: number): number => first + step * (i + 1) - step / 2;
-  const applyAt = beat(3);
+  const applyAt = beat(5);
   textTrack(el.querySelector(".count")!, tl, [
     [0, "Ready"],
     ...rowEls.map((_, i) => [matchedAt(i), `Matching ${i + 1} of ${n}`] as const),
@@ -245,14 +245,15 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
   rowEls.forEach((row, i) => {
     const t = matchedAt(i);
     const keyCell = [...row.querySelectorAll(".c-key")].filter((c) => c.querySelector(".new"));
-    tl.to(oldOf(keyCell), { opacity: 0, duration: BEAT / 4, ease: "steps(2)" }, t);
+    // the old value goes the instant the new one lands: the two never overlap
+    tl.set(oldOf(keyCell), { opacity: 0 }, t);
     tl.fromTo(row.querySelectorAll(".c-key .new, .status .new"), { ...POP }, { ...IN }, t);
     const tick = row.querySelector(".tick");
     if (tick) tl.fromTo(tick, { scale: 2.2, rotation: -20 }, { scale: 1, rotation: 0, duration: BEAT * 0.4, ease: "back.out(2.5)" }, t + BEAT / 8);
     if (row.classList.contains("is-bad")) tl.to(row, { backgroundColor: "rgba(0,0,0,0)", duration: BEAT / 2, ease: "steps(2)" }, t);
   });
   // Apply from the accepted matches: tempo and genre, row by row
-  tl.from(apply, { scale: 0, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, beat(2.5));
+  tl.from(apply, { scale: 0, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, beat(4.5));
   // GSAP owns this button's transform (it pops in), so the press moves it through GSAP as well
   tl.set(apply, { x: 4, y: 4, attr: { "data-pressed": "1" } }, applyAt);
   tl.set(apply, { x: 0, y: 0, attr: { "data-pressed": "0" } }, applyAt + BEAT / 2);
@@ -260,7 +261,7 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
     const t = applyAt + BEAT / 2 + (i * BEAT) / 6;
     const cells = [...row.querySelectorAll(".apply")].filter((c) => c.querySelector(".new"));
     if (cells.length === 0) return;
-    tl.to(oldOf(cells), { opacity: 0, duration: BEAT / 4, ease: "steps(2)" }, t);
+    tl.set(oldOf(cells), { opacity: 0 }, t);
     tl.fromTo(cells.map((c) => c.querySelector(".new")!), { ...POP }, { ...IN }, t);
   });
   return el;
@@ -273,7 +274,7 @@ let keysHud: HTMLElement | undefined;
 
 function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
   const wide = format === "wide";
-  const mark = wide ? 608 : 448; // whole multiples of the 32-pixel mark
+  const mark = wide ? 608 : 416; // whole multiples of the 32-pixel mark
   const rA = mark * 0.64;
   const rB = rA + 100;
   const el = panel(format, "keys");
@@ -284,9 +285,7 @@ function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
     const a = (n / 12) * Math.PI * 2 - Math.PI / 2;
     return `<span class="tile" data-key="${n}${ring}" style="left:${Math.cos(a) * r}px;top:${Math.sin(a) * r}px;background:${keyColor(`${n}${ring}`)}">${n}${ring}</span>`;
   }).join("");
-  const w = FRAME[format].window;
-  el.append(h(`<div class="panel-title px-panel" style="top:${-w.height / 2 + 10}px">Keys${APP_PREVIEW ? ` <span class="px-badge preview">Preview</span>` : ""}</div>`));
-  el.innerHTML += `<div class="disc" style="top:${wide ? 30 : 10}px"><div class="spin"><img src="${markUrl}" alt="" style="width:${mark}px;height:${mark}px;margin:${-mark / 2}px 0 0 ${-mark / 2}px" />${tiles}</div></div>`;
+  el.innerHTML += `<div class="disc" style="top:${wide ? -50 : 10}px"><div class="spin"><img src="${markUrl}" alt="" style="width:${mark}px;height:${mark}px;margin:${-mark / 2}px 0 0 ${-mark / 2}px" />${tiles}</div></div>`;
   // two transforms: the outer one tips the wheel back into a floor, the inner one turns it in its own plane
   const disc = el.querySelector(".disc")!;
   const spin = el.querySelector(".spin")!;
@@ -295,7 +294,7 @@ function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
   // shows from the start of that flight), settles a beat after the landing, and never stops turning
   const appear = start - LEAD - FLY;
   const settle = appear + FLY + LEAD + BEAT;
-  tl.fromTo(disc, { rotationX: 12, scale: 0.78 }, { rotationX: 48, scale: 1, duration: settle - appear, ease: "power2.out" }, appear);
+  tl.fromTo(disc, { rotationX: 12, scale: 0.72 }, { rotationX: 48, scale: wide ? 0.92 : 1, duration: settle - appear, ease: "power2.out" }, appear);
   tl.fromTo(spin, { rotationZ: -75 }, { rotationZ: -12, duration: settle - appear, ease: "power2.out" }, appear);
   tl.to(spin, { rotationZ: 14, duration: end - settle, ease: "sine.inOut" }, settle);
   const tileEls = [...el.querySelectorAll<HTMLElement>(".tile")];
@@ -305,17 +304,29 @@ function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
   order.forEach((tile, i) => tl.fromTo(tile, { z: 0, opacity: 0.25 }, { z: 30, opacity: 1, duration: BEAT / 4, ease: "steps(2)" }, start + BEAT / 4 + (i * BEAT) / 16));
   const lift = start + BEAT * 3;
   // 8A is picked; the keys that mix with it (same number, or one step on the same letter) come up with it
-  const mixes = new Set(["8A", "8B", "7A", "9A"]);
+  // one every half beat: 8A, then its neighbours; the rest darken (by shade, not by alpha, which went muddy)
+  const mixes = new Map([["8A", 0], ["8B", 0.5], ["7A", 1], ["9A", 1.5]]);
+  const lit = "saturate(1) brightness(1)";
+  const dim = "saturate(0.45) brightness(0.45)";
   for (const tile of tileEls) {
     const key = tile.dataset["key"]!;
+    const step = mixes.get(key);
     if (key === "8A") tl.to(tile, { z: 120, scale: 1.4, duration: BEAT / 2, ease: "power2.out" }, lift);
-    else if (mixes.has(key)) tl.to(tile, { z: 70, scale: 1.15, duration: BEAT / 2, ease: "power2.out" }, lift + BEAT / 8);
+    else if (step !== undefined) tl.to(tile, { z: 70, scale: 1.15, duration: BEAT / 2, ease: "power2.out" }, lift + BEAT * step);
     // from an explicit start: the rise sweep's last tiles are still landing at `lift`
-    else tl.fromTo(tile, { opacity: 1, z: 30 }, { opacity: 0.4, z: 0, duration: BEAT / 2, ease: "power1.out", immediateRender: false }, lift + BEAT / 4);
+    else tl.fromTo(tile, { filter: lit, z: 30 }, { filter: dim, z: 0, duration: BEAT / 2, ease: "power1.out", immediateRender: false }, lift + BEAT / 4);
+  }
+  // on the next bar's downbeat the picked keys step up once more and the rest sink: the filter settles
+  const second = start + BEAT * 6;
+  for (const tile of tileEls) {
+    const key = tile.dataset["key"]!;
+    if (key === "8A") tl.to(tile, { z: 150, duration: BEAT / 2, ease: "power2.out" }, second);
+    else if (mixes.has(key)) tl.to(tile, { z: 95, duration: BEAT / 2, ease: "power2.out" }, second);
+    else tl.to(tile, { z: -40, filter: "saturate(0.35) brightness(0.32)", duration: BEAT / 2, ease: "power2.inOut" }, second);
   }
   const count = h(`<div class="keys-count px-panel"><b>${mixes.size}</b> mix in key with <span class="key" style="background:${keyColor("8A")}">8A</span></div>`);
   keysHud = count;
-  tl.fromTo(count, { opacity: 0, y: 20, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: BEAT / 2, ease: "power3.out" }, lift + BEAT / 2);
+  tl.fromTo(count, { opacity: 0, y: 20, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: BEAT / 2, ease: "power3.out" }, lift + BEAT * 1.75);
   tl.to(count, { opacity: 0, y: -16, duration: BEAT / 4, ease: "power2.in" }, end - LEAD - BEAT / 4);
   return el;
 }
@@ -368,12 +379,12 @@ function buildPrepare(format: FormatId, tl: Timeline): HTMLElement {
   // then the set plays through: each track in turn steps forward and lights up, half a beat apiece
   const slotEls = [...el.querySelectorAll<HTMLElement>(".slot")];
   slotEls.forEach((slot, i) => {
-    const on = start + BEAT * (3.5 + i * 0.75);
+    const on = start + BEAT * (4 + i);
     tl.set(slot, { attr: { "data-playing": "1" } }, on);
     tl.to(slot, { z: 30, duration: BEAT / 4, ease: "power2.out" }, on);
     if (i < slotEls.length - 1) {
-      tl.set(slot, { attr: { "data-playing": "0" } }, on + BEAT * 0.75);
-      tl.to(slot, { z: 12, duration: BEAT / 4, ease: "power2.inOut" }, on + BEAT * 0.75);
+      tl.set(slot, { attr: { "data-playing": "0" } }, on + BEAT);
+      tl.to(slot, { z: 12, duration: BEAT / 4, ease: "power2.inOut" }, on + BEAT);
     }
   });
   const beats = Math.round((end - start) / BEAT);
@@ -491,7 +502,7 @@ function buildWaveforms(format: FormatId, tl: Timeline): HTMLElement {
   const cueB = cueEls[1]!;
   tl.to(cueB, { scale: 1.6, duration: BEAT / 4, ease: "power2.out" }, hit);
   tl.to(cueB, { scale: 1, duration: BEAT / 2, ease: "power2.inOut" }, hit + BEAT / 4);
-  tl.fromTo(el.querySelector(".wave .ring"), { scale: 0.3, opacity: 1 }, { scale: 3, opacity: 0, duration: BEAT * 0.75, ease: "power2.out" }, hit);
+  tl.fromTo(el.querySelector(".wave .ring"), { scale: 0.3, opacity: 1 }, { scale: 3, opacity: 0, duration: BEAT * 0.75, ease: "power2.out", immediateRender: false }, hit);
   return el;
 }
 
@@ -522,9 +533,9 @@ function buildExport(format: FormatId, tl: Timeline): HTMLElement {
   tl.to(el.querySelector(".px-progress > i"), { width: "100%", duration: BEAT, ease: "steps(8)" }, beat(1));
   // the file rises out of the Export button and floats beside the dialog (above it on the phone)
   const file = el.querySelector(".file")!;
-  const from = wide ? { x: width / 2 - 160, y: 150 } : { x: width / 2 - 140, y: 190 };
-  const to = wide ? { x: width / 2 - 170, y: -180 } : { x: 0, y: -430 };
-  tl.fromTo(file, { ...from, z: 40, scale: 0.3, opacity: 0, rotationY: -30 }, { ...to, z: 60, scale: 0.85, opacity: 1, rotationY: 14, duration: BEAT * 1.25, ease: "power3.out" }, beat(2));
+  const to = wide ? { x: width / 2 - 170, y: -180 } : { x: width / 2 - 180, y: -330 };
+  const from = { x: to.x + 40, y: to.y + 90 };
+  tl.fromTo(file, { ...from, z: 60, scale: 0.5, opacity: 0, rotationY: -30 }, { ...to, z: 60, scale: 0.85, opacity: 1, rotationY: 14, duration: BEAT * 0.75, ease: "power3.out" }, beat(2));
   tl.to(file, { y: to.y - 14, rotationY: -8, duration: end - beat(3.25), ease: "sine.inOut" }, beat(3.25));
   tl.fromTo(el.querySelector(".toast"), { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: BEAT / 2, ease: "power2.out" }, beat(2.25));
   return el;
@@ -627,15 +638,15 @@ function tour(tl: Timeline, cam: Camera, format: FormatId): void {
   flyTo(tl, cam, format, p("clean"), { z: -100 }, clean.start + BEAT * 0.75, BEAT * 2, "sine.inOut");
   // the push in on the table as Apply fills it
   const pushed: View = { z: wide ? 120 : 60, x: wide ? -60 : 0, y: wide ? -10 : -20 };
-  flyTo(tl, cam, format, p("clean"), { ...pushed, ry: 3 * k, rx: 2 * k }, clean.start + BEAT * 2.75, BEAT * 1.25, "power3.inOut");
-  flyTo(tl, cam, format, p("clean"), { ...pushed, z: pushed.z! + 30, ry: -2 * k }, clean.start + BEAT * 4, clean.end - LEAD - (clean.start + BEAT * 4), "sine.inOut");
+  flyTo(tl, cam, format, p("clean"), { ...pushed, ry: 3 * k, rx: 2 * k }, clean.start + BEAT * 4.75, BEAT * 1.25, "power3.inOut");
+  flyTo(tl, cam, format, p("clean"), { ...pushed, z: pushed.z! + 30, ry: -2 * k }, clean.start + BEAT * 6, clean.end - LEAD - (clean.start + BEAT * 6), "sine.inOut");
   // then one panel a bar: a fast flight, arriving a little off-axis, and a drift to frontal
   const sides = [1, -1, 1, -1, 1];
   TOUR.slice(1).forEach((id, i) => {
     const { start, end } = shot(id);
     const side = sides[i]!;
     // the phone frame is narrow: every panel settles a step further back there
-    const near = wide ? SETTLE[id] : id === "keys" ? 200 : SETTLE[id] - 50;
+    const near = wide ? SETTLE[id] : id === "keys" ? 230 : SETTLE[id] + 10;
     const slide = wide ? 30 : 14;
     flyTo(tl, cam, format, p(id), { z: near - 140, x: -slide * side, ry: 8 * side * k, rx: -3 * side * k }, start - LEAD, FLY, "power3.inOut");
     // a bank through the flight, level again on landing
