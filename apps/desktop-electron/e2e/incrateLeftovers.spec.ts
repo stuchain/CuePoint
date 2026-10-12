@@ -26,6 +26,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { execSync } from "node:child_process";
+const T0 = Date.now();
+const mark = (what: string) => console.log(`[incrate ${((Date.now() - T0) / 1000).toFixed(1)}s] ${what}`);
+function dump(pid: number | undefined) {
+  try { console.log(execSync("ps -axo pid,ppid,stat,etime,command | grep -i -E 'cuepoint|mpv|security' | grep -v grep", { encoding: "utf-8" })); } catch (e) { console.log(String(e)); }
+  if (pid) { try { console.log(execSync(`sample ${pid} 3 -mayDie`, { encoding: "utf-8", maxBuffer: 64 << 20 }).slice(0, 60000)); } catch (e) { console.log(String(e)); } }
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -191,9 +198,13 @@ test.describe("What inCrate left behind (DISCOVER-12)", () => {
       config: snapshot(config),
     };
 
+    mark("launching");
     const app = await launch(userDataDir, cuepointHome, leftovers.env);
+    mark("launched");
+    const watchdog = setInterval(() => { mark("watchdog"); dump(app.process().pid); }, 45_000);
     try {
       const window = await ready(app);
+      mark("ready");
 
       // A library, imported, and everything that follows an import.
       const started = await window.evaluate(
@@ -207,6 +218,7 @@ test.describe("What inCrate left behind (DISCOVER-12)", () => {
         )
         .toBe("succeeded");
       await idle(window);
+      mark("imported");
 
       // Every Discover read, and the settings the engine loads from the file.
       const answers = await window.evaluate(async () => {
@@ -221,6 +233,7 @@ test.describe("What inCrate left behind (DISCOVER-12)", () => {
         const token = await bridge.getBeatportTokenStatus();
         return { summary, options, runs, wantlist, page, similar, token };
       });
+      mark("answers");
       expect(answers.summary.track_count).toBe(2);
       // The settings loaded: Discover's release window is the file's 14 days.
       expect(answers.options.refusal).toBeNull();
@@ -241,14 +254,21 @@ test.describe("What inCrate left behind (DISCOVER-12)", () => {
       await expect(window).toHaveURL(/#\/discover$/, { timeout: 15_000 });
       await expect(window.getByText("Sign in to Beatport to search its charts and releases.")).toBeVisible({ timeout: 30_000 });
       await expect(window.getByRole("button", { name: "Sign in to Beatport" })).toBeVisible();
+      mark("discover shown");
       await window.getByRole("link", { name: "Settings" }).click();
+      mark("settings");
       // The token field is the paste fallback, behind its own button.
       await window.getByRole("button", { name: "Paste a token instead" }).click();
       await expect(window.locator("#settings-beatport-token")).toBeVisible({ timeout: 15_000 });
+      mark("token field");
       await idle(window);
+      mark("idle");
     } finally {
       // Quitting stops the engine, so nothing it holds is still open below.
+      mark("closing");
       await app.close();
+      mark("closed");
+      clearInterval(watchdog);
     }
 
     expect(snapshot(leftovers.inventory)).toEqual(before.inventory);

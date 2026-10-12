@@ -128,6 +128,14 @@ jobs:
         if: needs.plan.outputs.e2e != ''
         run: python scripts/fetch_player_sidecar.py
 
+      - name: Build the packaged app (experiment)
+        if: needs.plan.outputs.e2e != '' && runner.os == 'macOS'
+        shell: bash
+        run: |
+          python scripts/build_engine_sidecar.py
+          cd apps/desktop-electron && npm run package -- --x64 --dir
+          ls release
+
       - name: Give the Windows runner a sound device
         if: needs.plan.outputs.e2e != '' && runner.os == 'Windows'
         uses: LABSN/sound-ci-helpers@v1
@@ -154,6 +162,7 @@ jobs:
             pactl set-default-sink ci_null
             CUEPOINT_MPV_PATH=/usr/bin/mpv xvfb-run -a npx playwright test $SPECS --retries=0 --repeat-each="$REPEAT"
           else
+            export CUEPOINT_E2E_EXECUTABLE="$PWD/release/mac/CuePoint.app/Contents/MacOS/CuePoint"
             npx playwright test $SPECS --retries=0 --repeat-each="$REPEAT"
           fi
 
