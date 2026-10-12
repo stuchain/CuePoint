@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PlayerSnapshot } from "../../api/cuepointBridge.types";
+import { resetFocusOrigin } from "../shell/focusOrigin";
 import { EMPTY_AUDIO_STATE } from "./playerFormat";
 import { resetPlayerStore } from "./playerStore";
 import { PLAYER_VOLUME_STEP, usePlayerShortcuts } from "./usePlayerShortcuts";
@@ -73,7 +74,10 @@ function Probe({ children }: { children?: React.ReactNode }) {
   return <div>{children}</div>;
 }
 
-beforeEach(() => resetPlayerStore());
+beforeEach(() => {
+  resetPlayerStore();
+  resetFocusOrigin();
+});
 
 afterEach(() => {
   resetPlayerStore();
@@ -208,7 +212,8 @@ describe("keys that belong to something else", () => {
         </button>
       </Probe>,
     );
-    screen.getByRole("button", { name: "Import" }).focus();
+    await userEvent.tab();
+    expect(screen.getByRole("button", { name: "Import" })).toHaveFocus();
 
     await userEvent.keyboard(" ");
 
@@ -225,7 +230,183 @@ describe("keys that belong to something else", () => {
         </div>
       </Probe>,
     );
+    await userEvent.tab();
+    expect(screen.getByTestId("row")).toHaveFocus();
+
+    await userEvent.keyboard(" ");
+
+    expect(player.toggle).not.toHaveBeenCalled();
+  });
+
+  it("toggles on Space after a mouse click on a button, without a second click", async () => {
+    const player = install();
+    const clicked = vi.fn();
+    render(
+      <Probe>
+        <button type="button" onClick={clicked}>
+          Next
+        </button>
+      </Probe>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.keyboard(" ");
+
+    expect(player.toggle).toHaveBeenCalledTimes(1);
+    expect(clicked).toHaveBeenCalledTimes(1);
+  });
+
+  it("toggles on Space for a keyboard-reached range input, which has no Space action", async () => {
+    const player = install();
+    render(
+      <Probe>
+        <input type="range" aria-label="Volume" />
+        <div role="slider" tabIndex={0} aria-valuenow={1} data-testid="slider" />
+      </Probe>,
+    );
+
+    await userEvent.tab();
+    expect(screen.getByLabelText("Volume")).toHaveFocus();
+    await userEvent.keyboard(" ");
+    expect(player.toggle).toHaveBeenCalledTimes(1);
+
+    await userEvent.tab();
+    expect(screen.getByTestId("slider")).toHaveFocus();
+    await userEvent.keyboard(" ");
+    expect(player.toggle).toHaveBeenCalledTimes(2);
+  });
+
+  it("toggles on Space after clicking a Tab-reached button, which the click made the pointer's", async () => {
+    const player = install();
+    const clicked = vi.fn();
+    render(
+      <Probe>
+        <button type="button" onClick={clicked}>
+          Import
+        </button>
+      </Probe>,
+    );
+    await userEvent.tab();
+    expect(screen.getByRole("button", { name: "Import" })).toHaveFocus();
+
+    await userEvent.click(screen.getByRole("button", { name: "Import" }));
+    await userEvent.keyboard(" ");
+
+    expect(player.toggle).toHaveBeenCalledTimes(1);
+    expect(clicked).toHaveBeenCalledTimes(1); // the click only, not the Space
+  });
+
+  it("sees Space as keyboard input even though the shortcut stops it at window capture", async () => {
+    const player = install();
+    render(
+      <Probe>
+        <button type="button">Import</button>
+        <div role="option" tabIndex={0} aria-selected="false" data-testid="row">
+          Queued
+        </div>
+      </Probe>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Import" })); // pointer
+    await userEvent.keyboard(" "); // toggles; stopped at window capture
+    expect(player.toggle).toHaveBeenCalledTimes(1);
+
+    // Focus moves with no further input: programmatic, after that Space press.
+    // If the stopped Space had not been seen, the last input would still be
+    // the pointer and this row would count as pointer-reached.
     screen.getByTestId("row").focus();
+    await userEvent.keyboard(" ");
+    expect(player.toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("toggles on Space after clicking a role=option row", async () => {
+    const player = install();
+    render(
+      <Probe>
+        <div role="option" tabIndex={0} aria-selected="false" data-testid="row">
+          Queued track
+        </div>
+      </Probe>,
+    );
+
+    await userEvent.click(screen.getByTestId("row"));
+    await userEvent.keyboard(" ");
+
+    expect(player.toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("toggles on Space after clicking a range input", async () => {
+    const player = install();
+    render(
+      <Probe>
+        <input type="range" aria-label="Seek" />
+      </Probe>,
+    );
+
+    await userEvent.click(screen.getByLabelText("Seek"));
+    await userEvent.keyboard(" ");
+
+    expect(player.toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves Space to a keyboard-reached treeitem that handles it itself", async () => {
+    const player = install();
+    const own = vi.fn();
+    render(
+      <Probe>
+        <div
+          role="treeitem"
+          tabIndex={0}
+          aria-selected="false"
+          data-testid="node"
+          onKeyDown={(e) => e.key === " " && own()}
+        >
+          Folder
+        </div>
+      </Probe>,
+    );
+
+    await userEvent.tab();
+    await userEvent.keyboard(" ");
+
+    expect(own).toHaveBeenCalledTimes(1);
+    expect(player.toggle).not.toHaveBeenCalled();
+  });
+
+  it("toggles for a mouse-reached treeitem and does not run its own handler", async () => {
+    const player = install();
+    const own = vi.fn();
+    render(
+      <Probe>
+        <div
+          role="treeitem"
+          tabIndex={0}
+          aria-selected="false"
+          data-testid="node"
+          onKeyDown={(e) => e.key === " " && own()}
+        >
+          Folder
+        </div>
+      </Probe>,
+    );
+
+    await userEvent.click(screen.getByTestId("node"));
+    await userEvent.keyboard(" ");
+
+    expect(player.toggle).toHaveBeenCalledTimes(1);
+    expect(own).not.toHaveBeenCalled();
+  });
+
+  it("leaves Space alone while a menu is open", async () => {
+    const player = install();
+    render(
+      <Probe>
+        <div role="menu">
+          <div role="menuitem" tabIndex={0}>
+            Play
+          </div>
+        </div>
+      </Probe>,
+    );
 
     await userEvent.keyboard(" ");
 

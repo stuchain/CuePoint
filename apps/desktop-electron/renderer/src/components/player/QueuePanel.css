@@ -78,6 +78,7 @@
   min-height: 0;
   overflow-y: auto;
   position: relative;
+  user-select: none;
 }
 
 .cp-queue__sizer {

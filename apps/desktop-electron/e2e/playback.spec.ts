@@ -239,6 +239,27 @@ test.describe("Phase 5 end to end", () => {
       await win.keyboard.press("Space");
       await expect.poll(() => isPaused(win), { timeout: 15_000 }).toBe(false);
 
+      // A mouse click leaves focus on the clicked control; Space must still be
+      // play/pause, not a second press of that control (C9).
+      const titleBeforeNext = await currentTitle(win);
+      await win.getByRole("button", { name: "Next track" }).click();
+      // Wait for the advance itself, so it cannot land after the title is read.
+      await expect.poll(() => currentTitle(win), { timeout: 15_000 }).not.toBe(titleBeforeNext);
+      await win.evaluate(() => (window as never as Bridge).cuepoint.player.pause());
+      await expect.poll(() => isPaused(win), { timeout: 15_000 }).toBe(true);
+      const titleAfterNext = await currentTitle(win);
+      await win.keyboard.press("Space");
+      await expect.poll(() => isPaused(win), { timeout: 15_000 }).toBe(false);
+      // Space toggled playback and did not press Next again.
+      expect(await currentTitle(win)).toBe(titleAfterNext);
+
+      // Clicking the seek slider focuses it; Space is still play/pause.
+      await win.evaluate(() => (window as never as Bridge).cuepoint.player.pause());
+      await expect.poll(() => isPaused(win), { timeout: 15_000 }).toBe(true);
+      await win.getByRole("slider", { name: "Seek" }).click({ force: true });
+      await win.keyboard.press("Space");
+      await expect.poll(() => isPaused(win), { timeout: 15_000 }).toBe(false);
+
       // Typing in the library's search box must not touch playback.
       await win.evaluate(() => (window as never as Bridge).cuepoint.player.pause());
       await expect.poll(() => isPaused(win), { timeout: 15_000 }).toBe(true);

@@ -87,8 +87,8 @@ The panel says the gestures under its title: "Drag to reorder · Alt+↑/↓ mov
 | **Alt+Up** / **Alt+Down** | Move a track in the queue |
 | **Delete** | Remove a track from the queue |
 
-Space is ignored while you are typing, while a button or a list row has focus,
-and while a dialog is open — so it never stops the music halfway through a
+Space is ignored while you are typing, while a dialog is open, or when you
+Tabbed to a button or list row — so it never stops the music halfway through a
 search.
 
 Your keyboard's **media keys** (play/pause, next, previous) drive CuePoint
