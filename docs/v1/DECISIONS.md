@@ -1279,6 +1279,8 @@ it because both are queue-order concepts and the panel is where their effect is 
 - Repeat-one must not fight gapless (DEC-056); it is a queue-advance rule, not a decoder setting.
 - The transport pixel icons drawn in FOUNDATION-14 are finally used; shuffle, repeat and queue
   icons are new and follow `PIXEL_DESIGN_SYSTEM.md`.
+- The position (waveform) sits centred between the groups on either side of it: the track name
+  grows no wider than its text, so the gap is the same on both sides (C7, 2026-10-12).
 
 **Decided with**: User · **Date**: 2026-09-05
 
@@ -6638,5 +6640,47 @@ clubNeon's unlit fill is only 1.06:1 against its panel.
 
 **Reason**: Stelios found the stepped wheel unattractive and picked option A, smooth wedges with
 gaps, from six renders (Changes wish list, 2026-10-12).
+
+**Decided with**: User · **Date**: 2026-10-12
+
+---
+
+## DEC-239 — Space Plays and Pauses Unless You Are Typing, in a Dialog, or Tabbed There
+
+**Status**: Approved · **Supersedes**: PLAYER-12's "the focused control keeps Space" rule · **Related**: SHELL-10, C9
+
+**Decision**: Space plays and pauses the player everywhere except: while you type in a text field,
+while a dialog or menu is open, or when the focused control was reached with the keyboard (Tab or
+arrows), which keeps Space as its own key. A control the mouse put focus on does not keep Space, so
+clicking Next and then pressing Space pauses instead of skipping again. Sliders (seek, volume),
+checkboxes reached by the mouse and tree rows reached by the mouse all give Space to the player. A
+slider has no Space action, so it gives Space to the player even when Tabbed to. The listener runs
+first (capture phase) and consumes Space when it acts, so no control acts on the same key press
+twice. How focus arrived is recorded as it arrives (`components/shell/focusOrigin.ts`), not read
+from `:focus-visible` at the key press. The player bar and the queue list cannot be drag-selected.
+
+**Reason**: After any mouse click, focus stayed on the clicked control, so Space pressed it again
+instead of pausing, and a clicked waveform (the seek slider) swallowed Space. A Library tree row
+both selected and toggled playback on one press, breaking SHELL-10's "no key has two meanings".
+Keyboard users keep the platform rule for the control they Tabbed to.
+
+**Decided with**: User (C9, option A) · **Date**: 2026-10-12
+
+---
+
+## DEC-240 — The Themed Hint Shows on Hover Too
+
+**Status**: Approved · **Amends**: PAGES-03 (Hint shown on focus only), BAR-7 · **Related**: C10
+
+**Decision**: `Hint` shows its themed tip when the pointer rests on a control for 400 ms, as well as
+on keyboard focus, everywhere it is used, disabled controls included (the wrapper takes the
+pointer). It hides when the pointer leaves, on a click, on scroll and on Escape. While hovered, the
+control's native `title` is held back so the system tip never doubles the themed one; at rest the
+`title` stays for tests and assistive technology. The tip flips below the control when there is no
+room above and stays inside the window's right edge. The player bar's title, artist and key gain a
+Hint; the meta line and the seek area drop their own `title` so no native tip shows through.
+
+**Reason**: Hovering a player button showed only the slow, plain system tip, sometimes not at all
+(C10, option A: everywhere).
 
 **Decided with**: User · **Date**: 2026-10-12

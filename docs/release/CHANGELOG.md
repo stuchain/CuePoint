@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Hover hints.** Resting the pointer on a button for a moment shows its themed hint, the same one the keyboard shows, everywhere in the app, disabled buttons included. The player bar's title, artist and key have one too.
+
 ### Changed
 - The Camelot wheel (header and Keys page) is drawn as smooth wedges with even gaps.
+- **Space plays and pauses after a click.** Space now plays or pauses unless you are typing, a dialog or menu is open, or you Tabbed to the control. Clicking Next and then pressing Space pauses instead of skipping again, and Space works after clicking the waveform. The player bar and the queue can no longer be drag-selected.
+- The player bar's waveform sits centred between the controls on either side of it.
+
+### Fixed
+- The Play button showed Play while music played after you switched tracks during playback, or after a track ran on into the next one.
+- The key in the player bar's track line sat lower than the words around it.
 
 ## [1.0.0-test.3] - 2026-10-12
 
