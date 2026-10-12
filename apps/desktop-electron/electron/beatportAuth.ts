@@ -74,7 +74,10 @@ export interface SignInHost {
 }
 
 export interface TokenStoreLike {
+  /** Asks the system; the macOS Keychain may need the person for it. */
   isSecure(): boolean;
+  /** The same answer for display, without asking where asking could need the person. */
+  canKeep(): boolean;
   load(): StoredBeatportToken | null;
   save(stored: StoredBeatportToken): boolean;
   clear(): void;
@@ -153,7 +156,7 @@ export class BeatportAuth {
       envSet: this.options.envTokenSet(),
       stored: this.options.store.load(),
       expired: this.expired,
-      secureStorage: this.options.store.isSecure(),
+      secureStorage: this.options.store.canKeep(),
       now: this.now(),
     });
   }
@@ -220,9 +223,11 @@ export class BeatportAuth {
    */
   async migrateLegacyToken(): Promise<void> {
     const { store, engine } = this.options;
-    if (!store.isSecure()) return;
+    // The file first: secure storage is asked only when there is a token to move, so a launch
+    // with none never touches the Keychain.
     const { token } = await engine.takeLegacy();
     if (!token) return;
+    if (!store.isSecure()) return;
     if (store.load()) {
       // A token is already kept (an interrupted earlier migration, or a newer sign-in): the file's
       // copy is stale either way, and must not stay behind in the clear.
