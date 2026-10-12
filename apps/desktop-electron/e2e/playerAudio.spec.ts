@@ -138,6 +138,10 @@ test("choosing an output device, keeping it, and surviving it going away", async
     } else {
       // DEC-055: disabled with a reason rather than a control that lies.
       await expect(exclusive).toBeDisabled();
+      await expect(panel.getByText("Not available on this system.")).toBeVisible();
+      // The reason itself is behind "More about this" since the Settings text cuts.
+      const more = panel.locator(".cp-more-about").filter({ hasText: /Windows and macOS feature/i });
+      await more.getByRole("button", { name: "More about this" }).click();
       await expect(panel.getByText(/Windows and macOS feature/i)).toBeVisible();
     }
 

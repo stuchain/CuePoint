@@ -380,8 +380,11 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       await setTable.locator(".track-table__row").first().click({ position: { x: 60, y: 10 } });
       // Step 7 made the second track a copy of bands.flac: the two sit level.
       // The fixtures carry no Beatport key, so the strip first says the key was not checked (PAGES-09B).
-      await expect(window.getByTestId("transition-words")).toHaveText(
-        "No Beatport key: key not checked · Out 0:05 → In 0:00 · 0.0 LU",
+      // The loudness difference is the caption's title, and planned times are not in it (C15d, DEC-249).
+      await expect(window.getByTestId("transition-words")).toHaveText("No Beatport key: key not checked");
+      await expect(window.getByTestId("transition-caption")).toHaveAttribute(
+        "title",
+        /0\.0 LU means the two tracks are equally loud/,
       );
       await expect(strip).toContainText("In 0:01 · Out 0:05 · −3.5 LUFS");
       await expect(strip).toContainText("In 0:00 · no out time · −3.5 LUFS");
@@ -408,7 +411,8 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       // A click on the next half selects that entry.
       await window.getByTestId("transition-to").click();
       await expect(setTable.locator(".track-table__row").nth(1)).toHaveAttribute("aria-selected", "true");
-      await expect(window.getByTestId("transition-words")).toHaveText(/^No Beatport key: key not checked · No out time → /);
+      await expect(window.getByTestId("transition-words")).toHaveText("No Beatport key: key not checked");
+      await expect(strip).toContainText("In 0:00 · no out time · −3.5 LUFS");
 
       // --- 9. delete waveform data, and the library analysed again ----------
       await window.getByRole("link", { name: "Settings" }).click();
