@@ -178,12 +178,10 @@ describe("what the section shows", () => {
     expect(within(rowFor("Sets")).queryByText("0")).not.toBeInTheDocument();
   });
 
-  it("says what a Collection is when there are none", () => {
+  it("says there are none, in one line", () => {
     paneWith([], []);
-    expect(screen.getByText(/A Collection is your own list of tracks/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Create your first Collection/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No Collections yet")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Create your first/i })).toBeNull();
   });
 
   it("folds the whole section away", async () => {
@@ -772,132 +770,6 @@ describe("at the size a real library reaches (ORG-09's DoD)", () => {
     fireEvent.click(rowFor("Set 19-8"));
 
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ name: "Set 19-8" }));
-  });
-});
-
-/**
- * Being asked for (ORG-13, DEC-062).
- *
- * The Collections nav destination resolves to the Library page "with the
- * Collections tree focused". Focus is an act, so it arrives as a token that
- * changed rather than a flag that is true — and a flag is exactly what these
- * tests rule out: it would pull the caret back on every render, out of
- * whatever the user had gone on to do.
- */
-describe("when something asks to be put in the tree", () => {
-  it("does nothing on its own", () => {
-    // Zero is "nobody has asked". A pane that grabbed focus on mount would
-    // take it from the page every time the Library opened.
-    paneWith();
-    expect(document.body.contains(document.activeElement)).toBe(true);
-    expect(document.activeElement).toBe(document.body);
-  });
-
-  it("focuses the tree's tab stop when asked", () => {
-    paneWith(NODES, [1], { focusToken: 1 });
-
-    expect(document.activeElement).toHaveAttribute("role", "treeitem");
-    expect(document.activeElement).toHaveTextContent("Sets");
-  });
-
-  it("does not ask again for the same token", () => {
-    const { view, tree } = paneWith(NODES, [1], { focusToken: 1 });
-    expect(document.activeElement).toHaveAttribute("role", "treeitem");
-
-    // Somewhere else entirely, then an unrelated re-render. The page hands a
-    // fresh `onToggleSection` on every render — which is what makes this the
-    // real case rather than one React would skip anyway.
-    const elsewhere = document.createElement("button");
-    document.body.appendChild(elsewhere);
-    elsewhere.focus();
-    view.rerender(
-      <CollectionsPane
-        tree={tree}
-        rows={collectionRows(tree, [1])}
-        selected={null}
-        focusToken={1}
-        onToggleSection={vi.fn()}
-        onSelect={vi.fn()}
-        onExpand={vi.fn()}
-        onCreate={vi.fn(async () => ({ ok: true }))}
-        onRename={vi.fn(async () => ({ ok: true }))}
-        onMove={vi.fn(async () => ({ ok: true }))}
-        onPreviewDelete={vi.fn(async () => SUBTREE)}
-        onDelete={vi.fn(async () => ({ ok: true }))}
-        onDropTracks={vi.fn(async () => ({ ok: true }))}
-      />,
-    );
-
-    expect(document.activeElement).toBe(elsewhere);
-  });
-
-  it("answers a second ask", () => {
-    // Clicking Collections again, having wandered off, must work.
-    const { view, tree } = paneWith(NODES, [1], { focusToken: 1 });
-    const elsewhere = document.createElement("button");
-    document.body.appendChild(elsewhere);
-    elsewhere.focus();
-
-    view.rerender(
-      <CollectionsPane
-        tree={tree}
-        rows={collectionRows(tree, [1])}
-        selected={null}
-        focusToken={2}
-        onSelect={vi.fn()}
-        onExpand={vi.fn()}
-        onCreate={vi.fn(async () => ({ ok: true }))}
-        onRename={vi.fn(async () => ({ ok: true }))}
-        onMove={vi.fn(async () => ({ ok: true }))}
-        onPreviewDelete={vi.fn(async () => SUBTREE)}
-        onDelete={vi.fn(async () => ({ ok: true }))}
-        onDropTracks={vi.fn(async () => ({ ok: true }))}
-      />,
-    );
-
-    expect(document.activeElement).toHaveAttribute("role", "treeitem");
-  });
-
-  it("opens the section first when it was folded away", () => {
-    // A collapsed section has nothing to focus, and silently focusing nothing
-    // would be a nav entry that appears to do nothing at all.
-    const onToggleSection = vi.fn();
-    paneWith(NODES, [1], { collapsed: true, focusToken: 1, onToggleSection });
-
-    expect(onToggleSection).toHaveBeenCalledWith(false);
-  });
-
-  it("focuses once the section it opened is open", () => {
-    const { view, tree } = paneWith(NODES, [1], { collapsed: true, focusToken: 1 });
-    expect(document.activeElement).toBe(document.body);
-
-    view.rerender(
-      <CollectionsPane
-        tree={tree}
-        rows={collectionRows(tree, [1])}
-        selected={null}
-        collapsed={false}
-        focusToken={1}
-        onSelect={vi.fn()}
-        onExpand={vi.fn()}
-        onCreate={vi.fn(async () => ({ ok: true }))}
-        onRename={vi.fn(async () => ({ ok: true }))}
-        onMove={vi.fn(async () => ({ ok: true }))}
-        onPreviewDelete={vi.fn(async () => SUBTREE)}
-        onDelete={vi.fn(async () => ({ ok: true }))}
-        onDropTracks={vi.fn(async () => ({ ok: true }))}
-      />,
-    );
-
-    expect(document.activeElement).toHaveAttribute("role", "treeitem");
-  });
-
-  it("lands on the invitation when there are no Collections", () => {
-    // An empty tree has no row to focus, and the one useful thing in the
-    // section is the button that makes the first one.
-    paneWith([], [], { focusToken: 1 });
-
-    expect(document.activeElement).toHaveTextContent("Create your first Collection");
   });
 });
 

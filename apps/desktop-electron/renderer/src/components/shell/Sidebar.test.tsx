@@ -91,7 +91,7 @@ describe("Sidebar", () => {
     expect(within(nav()).queryByText("Tools")).not.toBeInTheDocument();
     expect(within(nav()).queryByRole("link", { name: "inCrate" })).not.toBeInTheDocument();
     const links = destinationNames();
-    expect(links).toEqual(["Library", "Collections", "Keys", "Clean", "Discover", "Prepare", "Statistics", "Settings"]);
+    expect(links).toEqual(["Library", "Keys", "Clean", "Discover", "Prepare", "Statistics", "Settings"]);
   });
 
   it("marks the active destination with aria-current", () => {
@@ -256,16 +256,7 @@ describe("Sidebar", () => {
     });
   });
 
-  describe("Collections under Library, Settings at the bottom (NAV-3, NAV-6)", () => {
-    it("marks Collections as a sub-entry of the Library", () => {
-      renderSidebar();
-      const collections = within(nav()).getByRole("link", { name: "Collections" });
-      expect(collections).toHaveAttribute("data-sub", "true");
-      expect(within(nav()).getByRole("link", { name: "Library" })).not.toHaveAttribute("data-sub");
-      const order = within(nav()).getAllByRole("link").map((link) => link.getAttribute("aria-label") ?? "");
-      expect(order.indexOf("Collections")).toBe(order.indexOf("Library") + 1);
-    });
-
+  describe("Settings at the bottom (NAV-6)", () => {
     it("pins Settings in a group of its own, below a divider", () => {
       renderSidebar();
       const groups = nav().querySelectorAll(".cp-sidebar__group");
@@ -277,15 +268,13 @@ describe("Sidebar", () => {
     });
   });
 
-  describe("Keys, a page of its own after the Collections (PAGES-16, DEC-200)", () => {
-    it("comes after Library and its nested Collections, at the top level", () => {
+  describe("Keys, a page of its own after the Library (PAGES-16, DEC-200)", () => {
+    it("comes after Library, at the top level", () => {
       renderSidebar();
       const keys = within(nav()).getByRole("link", { name: "Keys" });
       expect(keys).toHaveAttribute("href", "/keys");
-      // DEC-156 nests Collections because it is the Library's own tree; Keys is not.
-      expect(keys).not.toHaveAttribute("data-sub");
       const order = destinationNames();
-      expect(order.indexOf("Keys")).toBe(order.indexOf("Collections") + 1);
+      expect(order.indexOf("Keys")).toBe(order.indexOf("Library") + 1);
     });
 
     it("says what it is for, under its name and in its title", () => {
@@ -304,9 +293,9 @@ describe("Sidebar", () => {
   });
 
   describe("before the first import (NAV-5)", () => {
-    const dimmed = ["Collections", "Keys", "Clean", "Discover", "Prepare", "Statistics"];
+    const dimmed = ["Keys", "Clean", "Discover", "Prepare", "Statistics"];
 
-    it("dims Collections, Keys, Clean, Discover, Prepare and Statistics, still clickable, with the reason", async () => {
+    it("dims Keys, Clean, Discover, Prepare and Statistics, still clickable, with the reason", async () => {
       libraryIs(true);
       renderSidebar();
 

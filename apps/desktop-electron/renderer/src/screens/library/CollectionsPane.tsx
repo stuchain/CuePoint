@@ -75,19 +75,6 @@ interface CollectionsPaneProps {
   error?: string | null;
   collapsed?: boolean;
   onToggleSection?: (collapsed: boolean) => void;
-  /**
-   * Bumped when something outside the pane asks to be put in it (ORG-13).
-   *
-   * The Collections nav destination resolves to the Library page "with the
-   * Collections tree focused" (DEC-062), and focus is an act rather than a
-   * state — so it arrives as a number that changed rather than a flag that is
-   * true, which would re-focus on every unrelated render and steal the caret
-   * from whatever the user had gone on to do.
-   *
-   * A collapsed section expands first and focuses on the next pass. Zero is
-   * "nobody has asked", so the pane never grabs focus on mount.
-   */
-  focusToken?: number;
   onSelect: (node: CollectionNode | null) => void;
   onExpand: (id: number, expanded: boolean) => void;
   onCreate: (
@@ -159,6 +146,15 @@ interface CollectionsPaneProps {
 }
 
 /** A new node's name before the user has typed one. */
+/** One button on the bar; `short` is what it says in a narrow pane, `label` stays its name. */
+interface BarButton {
+  id: string;
+  label: string;
+  short?: string;
+  reason: string | null;
+  run: () => void;
+}
+
 const UNTITLED: Record<CreatableKind, string> = {
   folder: "New folder",
   collection: "New Collection",
@@ -173,7 +169,6 @@ export function CollectionsPane({
   error = null,
   collapsed = false,
   onToggleSection,
-  focusToken = 0,
   onSelect,
   onExpand,
   onCreate,
@@ -209,34 +204,6 @@ export function CollectionsPane({
   const [menu, setMenu] = useState<{ node: CollectionTreeNode; x: number; y: number } | null>(
     null,
   );
-  const sectionRef = useRef<HTMLElement>(null);
-  // The last token acted on. Held in a ref rather than state because consuming
-  // it must not itself cause a render — and because the effect below has to be
-  // able to run twice for one token: once to expand, once to focus.
-  const answered = useRef(0);
-
-  useEffect(() => {
-    if (focusToken === answered.current) return;
-    if (collapsed) {
-      // Expand and let the effect run again against the open section. The
-      // token stays unanswered, which is what makes the second pass happen.
-      onToggleSection?.(false);
-      return;
-    }
-    answered.current = focusToken;
-    const section = sectionRef.current;
-    if (!section) return;
-    // The tree's one tab stop, the empty state's button, or the fold — in that
-    // order, because a section with no Collections in it has no tree row to
-    // land on and the first useful thing there is "create one".
-    const target =
-      section.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]') ??
-      section.querySelector<HTMLElement>(".cp-collections__empty button") ??
-      section.querySelector<HTMLElement>(".cp-collections__fold");
-    target?.focus();
-    target?.scrollIntoView?.({ block: "nearest" });
-  }, [collapsed, focusToken, onToggleSection]);
-
   const say = useCallback(
     (message: string, tone: "info" | "warning") => {
       setNote(message);
@@ -244,6 +211,21 @@ export function CollectionsPane({
     },
     [onNotify],
   );
+
+  // The id of a node just deleted from here. The confirm dialog's return target (the bar's Delete
+  // button) goes with the selection, so focus would fall to <body>; once the node is deselected
+  // it moves to the tree instead.
+  const [deletedId, setDeletedId] = useState<number | null>(null);
+  const rootRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (deletedId === null || selected?.id === deletedId) return;
+    setDeletedId(null);
+    const root = rootRef.current;
+    const target =
+      root?.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]') ??
+      root?.querySelector<HTMLElement>(".cp-collections__fold");
+    target?.focus();
+  }, [deletedId, selected]);
 
   const nodeFor = (key: string) => findCollection(tree, Number(key));
 
@@ -279,7 +261,10 @@ export function CollectionsPane({
     setDeleting(false);
     setPending(null);
     if (!result.ok) say(result.error ?? "Could not delete that.", "warning");
-    else say(`Deleted ${pending.node.name}.`, "info");
+    else {
+      say(`Deleted ${pending.node.name}.`, "info");
+      setDeletedId(pending.node.id);
+    }
   };
 
   const duplicate = async (node: CollectionTreeNode) => {
@@ -454,48 +439,41 @@ export function CollectionsPane({
   };
 
   /** The bar under the tree: one list, so the toolbar's keys and its buttons agree. */
-  const barButtons = (() => {
-    const none = selected === null ? "Select a Collection or Set" : null;
+  const barButtons = ((): BarButton[] => {
     const node = selected;
-    // `short` is what the button says in a narrow pane; `label` stays its name.
-    const buttons: {
-      id: string;
-      label: string;
-      short?: string;
-      reason: string | null;
-      run: () => void;
-    }[] = [
+    // No selection, no bar; the hook below still runs, with a count of zero.
+    if (node === null) return [];
+    const buttons: BarButton[] = [
       {
         id: "rename",
         label: "Rename",
-        reason: none,
-        run: () => node && setRenamingId(node.id),
+        reason: null,
+        run: () => setRenamingId(node.id),
       },
     ];
-    const canDuplicate = node !== null && (isSet(node) ? onDuplicateSet : node.kind === "smart" ? onDuplicateSmart : undefined);
+    const canDuplicate = isSet(node) ? onDuplicateSet : node.kind === "smart" ? onDuplicateSmart : undefined;
     buttons.push({
       id: "duplicate",
       label: "Duplicate",
-      reason:
-        none ?? (canDuplicate ? null : "Only a Smart Collection or a Set can be duplicated"),
-      run: () => node && void duplicate(node),
+      reason: canDuplicate ? null : "Only a Smart Collection or a Set can be duplicated",
+      run: () => void duplicate(node),
     });
     buttons.push({
       id: "delete",
       label: "Delete",
-      reason: none,
-      run: () => node && void askToDelete(node),
+      reason: null,
+      run: () => void askToDelete(node),
     });
     if (onExport) {
       buttons.push({
         id: "export",
         label: "Export to Rekordbox…",
         short: "Export…",
-        reason: none,
-        run: () => node && onExport(node),
+        reason: null,
+        run: () => onExport(node),
       });
     }
-    if (node !== null && isSet(node)) {
+    if (isSet(node)) {
       if (onOpenInPrepare) {
         buttons.push({
           id: "open-in-prepare",
@@ -546,7 +524,7 @@ export function CollectionsPane({
 
   return (
     <nav
-      ref={sectionRef}
+      ref={rootRef}
       className="cp-playlist-pane cp-collections"
       aria-label="Collections"
     >
@@ -712,25 +690,7 @@ export function CollectionsPane({
           )}
         >
           {status === "ready" && rows.length === 0 && (
-            <div className="cp-collections__empty">
-              {/* "A set you are building" used to be one of a Collection's
-                  examples. Since DEC-102 that is what a Set is, so the two are
-                  told apart here, where a user first meets both. */}
-              <p>
-                A Collection is your own list of tracks — a shortlist, a crate for a
-                gig, anything Rekordbox has no folder for. A Set is a running order you
-                are preparing to play. Both live in CuePoint, and nothing outside it can
-                change them.
-              </p>
-              <button type="button" onClick={() => void create("collection")}>
-                Create your first Collection
-              </button>
-              {canMakeSets && (
-                <button type="button" onClick={() => void create("set")}>
-                  Create your first Set
-                </button>
-              )}
-            </div>
+            <p className="cp-collections__empty">No Collections yet</p>
           )}
         </PaneTree>
       )}
@@ -748,9 +708,10 @@ export function CollectionsPane({
         />
       )}
 
-      {/* What can be done to the selected node, always shown (FLW-10). Freeze,
-          "Copy set list" and "New Set from…" stay on the right-click menu. */}
-      {!collapsed && (
+      {/* What can be done to the selected node, shown while a node is selected
+          (DEC-245). Freeze, "Copy set list" and "New Set from…" stay on the
+          right-click menu. */}
+      {!collapsed && selected !== null && (
         <div
           ref={barKeys.ref}
           className="cp-collections__bar"

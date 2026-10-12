@@ -24,13 +24,12 @@ also reopens on the page you were last using.
 The sidebar lists the pages available to you, with the CuePoint logo and name at
 its top (click them to go home, to the Library). Each page has a one-line hint
 under its name, and the same line is its tooltip when the sidebar is collapsed:
-**Library** "Your Rekordbox tracks", **Collections** "Your own groups and smart
-lists", **Keys** "The keys in your playlists, Collections and Sets", **Clean** "Fix values with Beatport", **Discover** "Find new music",
-**Prepare** "Plan a set", **Statistics** "See what you play most and how your library is made up" and **Settings** "Look, sound, accounts". **Collections**
-sits indented under **Library**, because it is a way into the Library page's own
-tree; **Keys** follows it (see [Keys](keys.md)). **Settings** is pinned to the bottom, under a thin line.
+**Library** "Your Rekordbox tracks", **Keys** "The keys in your playlists, Collections and Sets", **Clean** "Fix values with Beatport", **Discover** "Find new music",
+**Prepare** "Plan a set", **Statistics** "See what you play most and how your library is made up" and **Settings** "Look, sound, accounts". Your Collections
+are not a page of their own: they are the tree in the Library's left pane. **Keys**
+follows **Library** (see [Keys](keys.md)). **Settings** is pinned to the bottom, under a thin line.
 
-Until you import a Rekordbox collection, **Collections**, **Keys**, **Clean**, **Discover**,
+Until you import a Rekordbox collection, **Keys**, **Clean**, **Discover**,
 **Prepare** and **Statistics** are dimmed and their hint reads "Import your Rekordbox collection
 first". They still open: they just have nothing to show yet. They light up on their
 own after the first import.

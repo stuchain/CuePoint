@@ -129,8 +129,9 @@
   outline-offset: 1px;
 }
 
-/* The bar for the selected node: always there, so the tree does not move when
-   a node is selected. aria-disabled, so the arrow keys still land on it. */
+/* The bar for the selected node: drawn only while a node is selected (DEC-245).
+   aria-disabled marks a refusal such as Duplicate on a plain Collection, so the arrow
+   keys still land on it. */
 .cp-collections__bar {
   display: flex;
   flex-wrap: wrap;
@@ -260,36 +261,10 @@
 }
 
 .cp-collections__empty {
+  margin: 0;
   padding: var(--space-sm);
   color: var(--fg-muted);
   font-size: var(--font-size-sm);
-}
-
-.cp-collections__empty p {
-  margin: 0 0 var(--space-sm);
-}
-
-/* A Collection and a Set, side by side, wrapping in a narrow pane (PREP-09). */
-.cp-collections__empty button + button {
-  margin-left: var(--space-xs);
-  margin-top: var(--space-xs);
-}
-
-.cp-collections__empty button {
-  min-height: var(--control-height);
-  padding: 0 var(--space-sm);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-panel-alt);
-  color: var(--fg-primary);
-  font: inherit;
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  cursor: pointer;
-}
-
-.cp-collections__empty button:hover {
-  border-color: var(--accent-primary);
-  color: var(--fg-primary);
 }
 
 /* The inline rename field, sized to the row it replaces a name in. */

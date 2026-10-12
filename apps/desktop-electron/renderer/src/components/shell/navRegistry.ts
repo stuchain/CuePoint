@@ -49,28 +49,6 @@ interface NavDestinationBase {
   /** False for a destination declared but not yet built. */
   enabled: boolean;
   /**
-   * The destination whose page this one shows, when it is not its own page.
-   *
-   * DEC-062 put CuePoint's Collections in the Library page's left pane rather
-   * than behind a second browser, and then kept the Collections entry in the
-   * sidebar: it is a way *in*, aimed at the tree. Two sidebar entries, one
-   * page — and DEC-027's launch memory has to resolve one of them, or the two
-   * ids fight over which is "where I was" and the answer depends on which
-   * link was clicked last.
-   *
-   * So the page has an owner, declared here. Everything that asks "which page
-   * is this" goes through :func:`pageDestination`, and the one thing that
-   * persists — the last-visited id — stores the owner. The entry point keeps
-   * its own path and its own sidebar row; it just does not get remembered as
-   * a second identity for a page that already has one.
-   */
-  pageId?: string;
-  /**
-   * The entry this one is drawn under, indented (NAV-3, DEC-156): Collections sits under
-   * the Library because it is a way into the Library page's own tree.
-   */
-  parentId?: string;
-  /**
    * True for a page that has nothing to show before the first import (NAV-5). While the
    * library is empty the sidebar dims it and says why; it stays clickable.
    */
@@ -105,14 +83,12 @@ export const EMPTY_LIBRARY_HINT = "Import your Rekordbox collection first";
 
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
   // Not built yet (DEC-020). Each is enabled by the phase that builds it.
-  // Collections is enabled and points into Library's own page (DEC-062).
   // Clean is enabled by CLEAN-12 (DEC-072), Discover by DISCOVER-10 (DEC-021),
   // Prepare by PREP-10 (DEC-104), its Sets pages under it (`/prepare/:setId`).
   // The Library is home (DEC-100).
   { id: "library", label: "Library", hint: "Your Rekordbox tracks", path: "/library", group: "workspace", icon: "library", enabled: true },
-  { id: "collections", label: "Collections", hint: "Your own groups and smart lists", path: "/collections", group: "workspace", icon: "collections", parentId: "library", needsLibrary: true, enabled: true, pageId: "library" },
-  // A page of its own, not a part of the Library's tree (DEC-200): it sits after the Library and
-  // the Collections that nest under it, at the top level.
+  // A page of its own, not a part of the Library's tree (DEC-200): it sits after the Library, at
+  // the top level.
   { id: "keys", label: "Keys", hint: "The keys in your playlists, Collections and Sets", path: "/keys", group: "workspace", icon: "keys", needsLibrary: true, enabled: true },
   { id: "clean", label: "Clean", hint: "Fix values with Beatport", path: "/clean", group: "workspace", icon: "clean", needsLibrary: true, enabled: true },
   { id: "discover", label: "Discover", hint: "Find new music", path: "/discover", group: "workspace", icon: "discover", needsLibrary: true, enabled: true, nested: true },
@@ -141,13 +117,16 @@ export interface RetiredDestination {
 /**
  * inKey and Results became Clean in Phase 7 (DEC-071). In Phase 9 inCrate
  * became Discover, and Tools — whose landing page was `/` — gave way to the
- * Library as home (DEC-100).
+ * Library as home (DEC-100). Collections left the sidebar for the Library's left pane
+ * (DEC-244).
  */
 export const RETIRED_DESTINATIONS: readonly RetiredDestination[] = [
   { id: "match", path: "/match", replacedBy: "clean" },
   { id: "results", path: "/results", replacedBy: "clean" },
   { id: "incrate", path: "/incrate", replacedBy: "discover" },
   { id: "tools", path: "/", replacedBy: "library" },
+  // Collections left the sidebar (DEC-244); the tree is the Library's left pane.
+  { id: "collections", path: "/collections", replacedBy: "library" },
 ];
 
 /**
@@ -202,21 +181,6 @@ export function findDestinationById(
  * Exact-path lookup. Query strings are not part of a destination's identity —
  * `/results?filter=needs_review` is still Results — so callers pass a pathname.
  */
-/**
- * The destination that owns the page this one renders — itself, usually.
- *
- * An entry point declaring a `pageId` that names nothing resolves to itself
- * rather than throwing: a sidebar row that leads somewhere is better than a
- * shell that will not mount, and the registry test catches the typo instead.
- */
-export function pageDestination(
-  destination: NavDestination,
-  destinations: readonly NavDestination[] = NAV_DESTINATIONS,
-): NavDestination {
-  if (!destination.pageId) return destination;
-  return findDestinationById(destination.pageId, destinations) ?? destination;
-}
-
 export function findDestinationByPath(
   pathname: string,
   destinations: readonly NavDestination[] = NAV_DESTINATIONS,

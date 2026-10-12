@@ -211,11 +211,6 @@
   white-space: nowrap;
 }
 
-/* Collections is a way into the Library, so it is drawn under it, indented (NAV-3). */
-.cp-sidebar:not(.cp-sidebar--collapsed) .cp-sidebar__link[data-sub="true"] {
-  margin-left: var(--space-md);
-}
-
 /* Pages with nothing to show before the first import (NAV-5): quieter, still clickable. */
 .cp-sidebar__link--dimmed {
   opacity: 0.55;

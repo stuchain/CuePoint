@@ -715,8 +715,8 @@ below.
   match is Review's job (FLW-2, FLW-12). Copy and Show in folder are visible buttons today
   (`SelectionActions.tsx:89-100`) and stay visible, under More ▸.
 - **The tree** (FLW-10): "New Collection", "New Set" and "New folder" as labelled buttons over the
-  tree, and a bar under it for the selected node, always shown and disabled with "Select a Collection
-  or Set" when none is: Rename, Duplicate, Delete (with today's confirm), Export to Rekordbox… on
+  tree, and a bar under it for the selected node, shown only while one is selected (DEC-245 amends
+  DEC-209 for this bar; it was always shown and disabled): Rename, Duplicate, Delete (with today's confirm), Export to Rekordbox… on
   every node, folders included (DEC-087's precision), and for a Set, Open in Prepare and Save set
   list…. Hover icons and right-click keep working; Freeze, "Copy set list" and "New Set from…" stay
   on right-click, as the narrowed FLW-1 table says. A Collection's tracks, reordered today only by

@@ -273,25 +273,6 @@ function AppShell() {
             fixWith={cleanFixOpening(location)}
           />
         );
-      // DEC-062: Collections is a way into the Library page, not a second
-      // browser. Same screen, aimed at the tree — and `destinationToRemember`
-      // stores `library` for it, so the two entries never fight over which one
-      // the app reopens on.
-      case "collections":
-        return (
-          <LibraryScreen
-            focus="collections"
-            onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
-            onOpenInClean={openInClean}
-            onOpenMissingFiles={openMissingFiles}
-            onOpenMatch={openMatching}
-            onOpenFix={openFix}
-            onOpenEntity={openEntity}
-            onOpenSimilar={openSimilar}
-            onOpenInPrepare={openInPrepare}
-            onOpenKeys={openKeys}
-          />
-        );
       // PAGES-16 (DEC-200): the keys of chosen playlists, Collections and Sets. The Library's Key
       // list opens it with the open playlist or Collection ticked.
       case "keys":

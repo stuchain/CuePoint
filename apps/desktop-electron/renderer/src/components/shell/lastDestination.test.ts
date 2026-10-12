@@ -16,7 +16,12 @@ import {
   resolveLaunchDestination,
   saveLastDestinationId,
 } from "./lastDestination";
-import { HOME_DESTINATION_ID, NAV_DESTINATIONS, RETIRED_DESTINATIONS } from "./navRegistry";
+import {
+  HOME_DESTINATION_ID,
+  NAV_DESTINATIONS,
+  replacementFor,
+  RETIRED_DESTINATIONS,
+} from "./navRegistry";
 
 /**
  * The disabled cases, against the real registry with one flag turned off.
@@ -91,7 +96,6 @@ describe("a page that was retired (DEC-071, DEC-100)", () => {
     for (const retired of RETIRED_DESTINATIONS) {
       const page = resolveLaunchDestination(retired.id);
       expect(page.enabled).toBe(true);
-      expect(page.pageId).toBeUndefined();
       expect(page.id).toBe(retired.replacedBy);
     }
   });
@@ -153,41 +157,24 @@ describe("destinationToRemember", () => {
 });
 
 /**
- * DEC-062's rule: the Library page has two sidebar entries and one identity.
- *
- * Collections is a way in, aimed at the tree. If it were remembered as itself,
- * the app would reopen pointing at a tree the user last looked at an hour of
- * browsing ago — and which of the two ids "where I was" meant would depend on
- * which link was clicked, not on where the user actually spent the session.
+ * Collections left the sidebar (DEC-244): its tree is the Library's left pane, and the
+ * old path and a stored `collections` id are retired to the Library.
  */
-describe("one page, not two ids (DEC-062)", () => {
-  it("remembers the Library page when the user came in through Collections", () => {
-    expect(destinationToRemember("/collections")?.id).toBe("library");
+describe("the retired Collections destination (DEC-244)", () => {
+  it("does not remember /collections", () => {
+    expect(destinationToRemember("/collections")).toBeNull();
   });
 
-  it("remembers the Library page when the user came in through Library", () => {
+  it("remembers the Library when the user is in it", () => {
     expect(destinationToRemember("/library")?.id).toBe("library");
   });
 
-  it("never remembers an id that is only a way into another page", () => {
-    // The property, rather than the one case: every path in the registry
-    // remembers something that owns its own page.
-    for (const destination of NAV_DESTINATIONS) {
-      const remembered = destinationToRemember(destination.path);
-      if (remembered) expect(remembered.pageId).toBeUndefined();
-    }
-  });
-
-  it("opens the page when an older build stored the way in", () => {
-    // Nothing this build writes can be "collections", but a hand-edited value
-    // or a downgrade could be, and it must not reopen on a focus gesture.
+  it("opens the Library when an older build stored the Collections id", () => {
+    // Home is also the Library, so the launch result alone cannot tell a retirement from the
+    // fallback; the registry entry is what is asserted.
+    expect(RETIRED_DESTINATIONS.map((retired) => retired.id)).toContain("collections");
+    expect(replacementFor("collections")?.id).toBe("library");
     expect(resolveLaunchDestination("collections").id).toBe("library");
-  });
-
-  it("resolves every stored id to something that owns its own page", () => {
-    for (const destination of NAV_DESTINATIONS) {
-      expect(resolveLaunchDestination(destination.id).pageId).toBeUndefined();
-    }
   });
 });
 

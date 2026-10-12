@@ -55,8 +55,6 @@ interface LibraryPaneProps {
     silent?: boolean;
   }>;
   onNotify?: (message: string, tone: "info" | "warning") => void;
-  /** Bumped to put the keyboard in the Collections tree (ORG-13, DEC-062). */
-  collectionsFocusToken?: number;
   /** A Collection's "Export to Rekordbox…" (EXPORT-07, DEC-087). */
   onExportCollection?: (node: CollectionNode) => void;
   /**
@@ -80,7 +78,6 @@ export function LibraryPane({
   onSelectCollection,
   onDropTracks,
   onNotify,
-  collectionsFocusToken = 0,
   onExportCollection,
   onOpenInPrepare,
   onSaveSetList,
@@ -127,7 +124,6 @@ export function LibraryPane({
         error={collections.error}
         collapsed={collections.collapsed}
         onToggleSection={collections.setCollapsed}
-        focusToken={collectionsFocusToken}
         onSelect={onSelectCollection}
         onExpand={collections.expand}
         onCreate={collections.create}

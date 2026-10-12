@@ -161,7 +161,7 @@ describe("making a Set", () => {
     expect(screen.getByRole("button", { name: "New Collection" })).toBeInTheDocument();
   });
 
-  it("is offered beside the first Collection in an empty tree", async () => {
+  it("makes a Set in an empty tree from New Set over the tree", async () => {
     const onCreate = vi.fn(async () => ({ ok: true }));
     render(
       <CollectionsPane
@@ -179,8 +179,8 @@ describe("making a Set", () => {
         canMakeSets
       />,
     );
-    expect(screen.getByText(/A Set is a running order you are preparing to play/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Create your first Set" }));
+    expect(screen.getByText("No Collections yet")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "New Set" }));
     expect(onCreate).toHaveBeenCalledWith("set", "New Set", null);
   });
 });

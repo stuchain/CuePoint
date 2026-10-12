@@ -220,7 +220,7 @@ test.describe("Application shell navigation", () => {
 
       // Every destination is still reachable with labels hidden — the state
       // DEC-022 chose, where an icon is all there is to go on.
-      for (const label of ["Library", "Collections", "Clean", "Discover", "Statistics", "Settings"]) {
+      for (const label of ["Library", "Clean", "Discover", "Statistics", "Settings"]) {
         await expect(nav.getByRole("link", { name: label, exact: true })).toBeVisible();
       }
     } finally {
@@ -238,7 +238,7 @@ test.describe("Application shell navigation", () => {
       // Activity button — the last shell region. Every region has to appear on
       // the way, or some part of the app is mouse-only. Walked to a stop rather
       // than a count: a count had to change with every page a phase enabled
-      // (Collections, Clean, Discover), and a stop still fails on focus lost to
+      // (Clean, Discover, Statistics), and a stop still fails on focus lost to
       // the body or a region skipped. Bounded, so a trap fails rather than hangs.
       const reached: string[] = [];
       for (let i = 0; i < 40 && !reached.join("|").includes("Activity"); i += 1) {

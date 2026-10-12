@@ -19,7 +19,6 @@ import {
   HOME_DESTINATION_ID,
   NAV_DESTINATIONS,
   NAV_GROUPS,
-  pageDestination,
   replacementFor,
   RETIRED_DESTINATIONS,
   retiredRedirects,
@@ -88,14 +87,14 @@ describe("navRegistry", () => {
     // DEC-020: declared now, rendered when the phase that builds it flips the
     // flag. If these disappear, the registry has stopped describing the target.
     const declared = NAV_DESTINATIONS.map((d) => d.id);
-    for (const id of ["library", "collections", "clean", "discover", "prepare"]) {
+    for (const id of ["library", "clean", "discover", "prepare"]) {
       expect(declared).toContain(id);
     }
   });
 
   it("has every declared destination built (PREP-10)", () => {
-    // Library came on in LIBRARY-11, Collections in ORG-13, Clean in CLEAN-12,
-    // Discover in DISCOVER-10 and Prepare, the last, in PREP-10.
+    // Library came on in LIBRARY-11, Clean in CLEAN-12, Discover in
+    // DISCOVER-10 and Prepare, the last, in PREP-10.
     expect(NAV_DESTINATIONS.filter((d) => !d.enabled)).toEqual([]);
   });
 
@@ -107,7 +106,6 @@ describe("navRegistry", () => {
     expect(prepare.icon).toBe("prepare");
     // `/prepare/:setId` keeps Prepare lit and is remembered as Prepare.
     expect(prepare.nested).toBe(true);
-    expect(pageDestination(prepare).id).toBe("prepare");
   });
 
   it("has Statistics enabled after Prepare, in the workspace, as its own page (STATS-04)", () => {
@@ -116,7 +114,6 @@ describe("navRegistry", () => {
     expect(statistics.group).toBe("workspace");
     expect(statistics.path).toBe("/statistics");
     expect(statistics.icon).toBe("statistics");
-    expect(pageDestination(statistics).id).toBe("statistics");
     const ids = NAV_DESTINATIONS.map((d) => d.id);
     expect(ids.indexOf("statistics")).toBe(ids.indexOf("prepare") + 1);
   });
@@ -127,69 +124,25 @@ describe("navRegistry", () => {
     expect(discover.group).toBe("workspace");
     expect(discover.path).toBe("/discover");
     expect(discover.icon).toBe("discover");
-    expect(pageDestination(discover).id).toBe("discover");
   });
 
   it("renders exactly what has been built", () => {
     // Tools and inCrate retired in DISCOVER-12 (DEC-100).
     const enabled = enabledDestinations().map((d) => d.id);
-    expect(enabled).toEqual(["library", "collections", "keys", "clean", "discover", "prepare", "statistics", "settings"]);
+    expect(enabled).toEqual(["library", "keys", "clean", "discover", "prepare", "statistics", "settings"]);
   });
 
-  describe("a destination that renders another's page (DEC-062)", () => {
-    it("sends Collections to the Library page", () => {
-      // Not a second browser: DEC-062 amended DEC-020 so CuePoint's own tree
-      // is browsed beside the Rekordbox mirror, with one table under both.
-      const collections = findDestinationById("collections")!;
-      expect(collections.pageId).toBe("library");
-      expect(pageDestination(collections).id).toBe("library");
+  describe("Collections left the sidebar (DEC-244)", () => {
+    it("is no longer a destination", () => {
+      expect(findDestinationById("collections")).toBeNull();
+      expect(findDestinationByPath("/collections")).toBeNull();
     });
 
-    it("leaves a destination that is its own page alone", () => {
-      for (const id of ["library", "clean", "discover", "settings"]) {
-        const destination = findDestinationById(id)!;
-        expect(destination.pageId).toBeUndefined();
-        expect(pageDestination(destination).id).toBe(id);
-      }
+    it("is retired to the Library, so old links and a stored id land there", () => {
+      expect(RETIRED_DESTINATIONS).toContainEqual({ id: "collections", path: "/collections", replacedBy: "library" });
+      expect(replacementFor("collections")?.id).toBe("library");
+      expect(retiredRedirects()).toContainEqual({ id: "collections", from: "/collections", to: "/library" });
     });
-
-    it("never points at a page that is not declared", () => {
-      // A typo here would be a sidebar entry that leads to the fallback and a
-      // launch memory that stores an id nothing can resolve.
-      for (const destination of NAV_DESTINATIONS) {
-        if (!destination.pageId) continue;
-        expect(findDestinationById(destination.pageId)).not.toBeNull();
-      }
-    });
-
-    it("never points at a page that is not enabled", () => {
-      // An entry point into a page nobody can reach is a link to nowhere.
-      for (const destination of enabledDestinations()) {
-        expect(pageDestination(destination).enabled).toBe(true);
-      }
-    });
-
-    it("never chains: a page is a page, not another entry point", () => {
-      // One hop is a rule that can be read; two is a graph, and `pageId` is
-      // deliberately not one.
-      for (const destination of NAV_DESTINATIONS) {
-        expect(pageDestination(destination).pageId).toBeUndefined();
-      }
-    });
-
-    it("falls back to itself when the page it names is gone", () => {
-      const orphan = [
-        { ...findDestinationById("collections")!, pageId: "a-page-that-was-removed" },
-      ];
-      // A sidebar row that leads somewhere beats a shell that will not mount;
-      // the typo is caught by the test above, not by a crash in front of a user.
-      expect(pageDestination(orphan[0]!, orphan).id).toBe("collections");
-    });
-  });
-
-  it("puts Collections in the workspace group beside Library (DEC-062)", () => {
-    expect(findDestinationById("collections")?.group).toBe("workspace");
-    expect(findDestinationById("collections")?.path).toBe("/collections");
   });
 
   it("has no Tools group and no inCrate (DEC-100)", () => {
@@ -249,6 +202,7 @@ describe("retired destinations (DEC-071, DEC-100)", () => {
       { id: "results", from: "/results", to: "/clean" },
       { id: "incrate", from: "/incrate", to: "/discover" },
       { id: "tools", from: "/", to: "/library" },
+      { id: "collections", from: "/collections", to: "/library" },
     ]);
   });
 
@@ -336,12 +290,11 @@ describe("groupedDestinations", () => {
     expect(entries[0]?.destinations.map((d) => d.id)).toEqual(["library"]);
   });
 
-  describe("hints, the sub-entry and the library-first pages (NAV-1, NAV-3, NAV-5)", () => {
+  describe("hints and the library-first pages (NAV-1, NAV-5)", () => {
     it("gives every destination the one-line hint the sidebar shows (NAV-1)", () => {
       const hints = Object.fromEntries(NAV_DESTINATIONS.map((d) => [d.id, d.hint]));
       expect(hints).toEqual({
         library: "Your Rekordbox tracks",
-        collections: "Your own groups and smart lists",
         keys: "The keys in your playlists, Collections and Sets",
         clean: "Fix values with Beatport",
         discover: "Find new music",
@@ -358,22 +311,13 @@ describe("groupedDestinations", () => {
       }
     });
 
-    it("nests Collections under the Library (NAV-3, DEC-156)", () => {
-      expect(findDestinationById("collections")?.parentId).toBe("library");
-      for (const destination of NAV_DESTINATIONS) {
-        if (destination.parentId) {
-          expect(findDestinationById(destination.parentId)).not.toBeNull();
-        }
-      }
-    });
-
     it("names the pages that need a library before the first import (NAV-5)", () => {
       const needing = NAV_DESTINATIONS.filter((d) => d.needsLibrary).map((d) => d.id);
-      expect(needing).toEqual(["collections", "keys", "clean", "discover", "prepare", "statistics"]);
+      expect(needing).toEqual(["keys", "clean", "discover", "prepare", "statistics"]);
       expect(EMPTY_LIBRARY_HINT).toBe("Import your Rekordbox collection first");
     });
 
-    it("declares Keys at the top level, after Library and its Collections (PAGES-16, DEC-200)", () => {
+    it("declares Keys at the top level, after Library (PAGES-16, DEC-200)", () => {
       const keys = findDestinationById("keys")!;
       expect(keys).toMatchObject({
         label: "Keys",
@@ -383,11 +327,8 @@ describe("groupedDestinations", () => {
         enabled: true,
         needsLibrary: true,
       });
-      expect(keys.parentId).toBeUndefined();
-      expect(keys.pageId).toBeUndefined();
       const ids = NAV_DESTINATIONS.map((d) => d.id);
-      expect(ids.indexOf("keys")).toBe(ids.indexOf("collections") + 1);
-      expect(pageDestination(keys).id).toBe("keys");
+      expect(ids.indexOf("keys")).toBe(ids.indexOf("library") + 1);
     });
 
     it("keeps Settings last, in its own group, for the pinned bottom (NAV-6)", () => {

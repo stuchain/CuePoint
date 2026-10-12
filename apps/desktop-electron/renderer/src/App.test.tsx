@@ -43,11 +43,8 @@ function navLink(name: string): HTMLElement {
  * nothing (or rendered the wrong screen) fails rather than passing on the mere
  * presence of a `.screen` element. */
 const ROUTES = [
-  // Both of the workspace entries. Without `window.cuepoint` the Library page
-  // is its import prompt, which is the same prompt either way in — and that
-  // sameness is the point of DEC-062 (ORG-13).
+  // Without `window.cuepoint` the Library page is its import prompt.
   { link: "Library", marker: /Nothing imported yet/i },
-  { link: "Collections", marker: /Nothing imported yet/i },
   { link: "Clean", marker: /^Clean$/ },
   { link: "Discover", marker: /Discover needs the desktop app/i },
   { link: "Prepare", marker: /Prepare needs the desktop app/i },
@@ -496,52 +493,36 @@ describe("App shell", () => {
   });
 
   /**
-   * DEC-062: two entries in the sidebar, one page behind them.
-   *
-   * The registry tests prove the rule; these prove the app obeys it, which is
-   * the part that would otherwise be true in a module and false in a shell.
+   * DEC-244: Collections left the sidebar; its tree is the Library's left pane, and the old
+   * path and a stored id are retired to the Library.
    */
-  describe("the Collections destination (ORG-13)", () => {
-    it("is in the sidebar beside Library", () => {
+  describe("the retired Collections destination (DEC-244)", () => {
+    // Home is the Library, so the two redirect tests below would also pass through the catch-all;
+    // the retirement itself is proved in navRegistry.test.ts and lastDestination.test.ts.
+    it("has no sidebar link", () => {
       render(<App />);
       expect(navLink("Library")).toBeInTheDocument();
-      expect(navLink("Collections")).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("navigation", { name: /main navigation/i })).queryByRole("link", {
+          name: "Collections",
+        }),
+      ).toBeNull();
     });
 
-    it("renders the Library page rather than a second browser", async () => {
-      const user = userEvent.setup();
-      const { container } = render(<App />);
+    it("sends #/collections to the Library", async () => {
+      window.location.hash = "#/collections";
+      render(<App />);
 
-      await user.click(navLink("Collections"));
-
+      await waitFor(() => expect(window.location.hash).toBe("#/library"));
       expect(await screen.findByText(/Nothing imported yet/i)).toBeInTheDocument();
-      expect(container.querySelectorAll("main.app-main .screen")).toHaveLength(1);
-      expect(consoleError).not.toHaveBeenCalled();
     });
 
-    it("remembers the page, not the way in", async () => {
-      const user = userEvent.setup();
-      render(<App />);
-
-      await user.click(navLink("Collections"));
-      await screen.findByText(/Nothing imported yet/i);
-
-      expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("library");
-    });
-
-    it("reopens on the Library page after a visit through Collections", async () => {
-      // The failure this rule prevents: reopening aimed at a tree the user
-      // last looked at an hour of browsing ago.
-      const user = userEvent.setup();
-      const first = render(<App />);
-      await user.click(navLink("Collections"));
-      await screen.findByText(/Nothing imported yet/i);
-      first.unmount();
-      window.location.hash = "";
+    it("reopens on the Library for a stored collections id", async () => {
+      localStorage.setItem(LAST_DESTINATION_STORAGE_KEY, "collections");
 
       render(<App />);
 
-      expect(window.location.hash).toBe("#/library");
+      await waitFor(() => expect(window.location.hash).toBe("#/library"));
     });
   });
 });
@@ -695,26 +676,6 @@ describe("the Library page inside the shell (LIBUI-10)", () => {
     // The Inspector is the shell's, and the page reached it.
     const inspector = screen.getByRole("complementary", { name: /track details/i });
     await waitFor(() => expect(within(inspector).getByText("Contact")).toBeInTheDocument());
-  });
-
-  it("puts the keyboard in the Collections tree when that is the way in", async () => {
-    // The half of DEC-062 the registry cannot express: arriving through the
-    // Collections entry has to *do* something on the page it lands on.
-    render(<App />);
-    await userEvent.click(navLink("Collections"));
-
-    await screen.findByRole("table", { name: "Library tracks" });
-    const tree = await screen.findByRole("tree", { name: "Collections" });
-    await waitFor(() => expect(tree.contains(document.activeElement)).toBe(true));
-  });
-
-  it("leaves the keyboard alone when Library is the way in", async () => {
-    render(<App />);
-    await userEvent.click(navLink("Library"));
-
-    await screen.findByRole("table", { name: "Library tracks" });
-    const tree = await screen.findByRole("tree", { name: "Collections" });
-    expect(tree.contains(document.activeElement)).toBe(false);
   });
 
   it("empties the Inspector when the user leaves the page", async () => {

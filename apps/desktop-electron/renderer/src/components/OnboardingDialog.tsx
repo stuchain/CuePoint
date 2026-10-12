@@ -56,9 +56,7 @@ const SCREENS: Screen[] = [
 
 /** The last screen: the sidebar's pages with their hints, then how to play and where work shows. */
 function Around() {
-  const pages = NAV_DESTINATIONS.filter(
-    (d) => d.enabled && d.group === "workspace" && !d.parentId,
-  );
+  const pages = NAV_DESTINATIONS.filter((d) => d.enabled && d.group === "workspace");
   return (
     <div className="onboarding-dialog__around">
       <ul className="onboarding-dialog__pages" aria-label="Pages">

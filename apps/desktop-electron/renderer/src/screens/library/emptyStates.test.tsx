@@ -102,7 +102,7 @@ describe("a library nobody has tagged yet", () => {
 });
 
 describe("a library with no Collections", () => {
-  it("explains what one is and offers to make the first", () => {
+  it("says there are none, in one line", () => {
     expect(COLLECTIONS).toEqual([]);
 
     const tree = buildCollectionTree(COLLECTIONS);
@@ -123,10 +123,8 @@ describe("a library with no Collections", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("button", { name: "Create your first Collection" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/your own list of tracks/)).toBeInTheDocument();
+    expect(screen.getByText("No Collections yet")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Create your first/ })).toBeNull();
   });
 });
 

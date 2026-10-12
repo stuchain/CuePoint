@@ -507,7 +507,6 @@ function renderScreen(
     onOpenMatch?: (tracks?: unknown) => void;
     onOpenToken?: () => void;
     onOpenKeys?: (sources: Array<{ kind: "playlist" | "collection" | "set"; id: number }>) => void;
-    focus?: "collections";
     openWith?: { rules: FilterRuleSet; token: string } | null;
     refreshWith?: string | null;
   } = {},
@@ -3262,66 +3261,6 @@ describe("the tag manager (ORG-12)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText(/already called that/)).toBeInTheDocument();
-  });
-});
-
-/**
- * DEC-062: the Collections destination is a way into this page, not a page.
- *
- * What is asserted here is the half that is not in `navRegistry` — arriving
- * that way actually puts the keyboard in the tree, and arriving the ordinary
- * way does not move it.
- */
-describe("arriving on the Collections destination (ORG-13)", () => {
-  beforeEach(() => {
-    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
-  });
-
-  it("puts the keyboard in the Collections tree", async () => {
-    renderScreen({ focus: "collections" });
-    await tableReady();
-
-    const tree = await screen.findByRole("tree", { name: "Collections" });
-    await waitFor(() => expect(tree.contains(document.activeElement)).toBe(true));
-    // The tree's one tab stop, which is a row rather than the container.
-    expect(document.activeElement).toHaveAttribute("role", "treeitem");
-  });
-
-  it("leaves the focus alone when the page was opened as Library", async () => {
-    renderScreen();
-    await tableReady();
-
-    const tree = await screen.findByRole("tree", { name: "Collections" });
-    expect(tree.contains(document.activeElement)).toBe(false);
-  });
-
-  it("does not take the focus back on a later render", async () => {
-    // A flag would; a token that has been answered does not. Typing in the
-    // search box is the ordinary thing a user does next.
-    renderScreen({ focus: "collections" });
-    await tableReady();
-    const tree = await screen.findByRole("tree", { name: "Collections" });
-    await waitFor(() => expect(tree.contains(document.activeElement)).toBe(true));
-
-    const search = screen.getByLabelText("Search");
-    search.focus();
-    fireEvent.change(search, { target: { value: "techno" } });
-
-    await waitFor(() => expect(lastBrowse()).toMatchObject({ q: "techno" }));
-    expect(document.activeElement).toBe(search);
-  });
-
-  it("offers the first Collection to a library that has none", async () => {
-    // Nothing to focus in an empty tree, so the gesture lands on the one thing
-    // worth doing there.
-    install({ getCollections: vi.fn().mockResolvedValue({ collections: [], total: 0 }) });
-    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
-    renderScreen({ focus: "collections" });
-    await tableReady();
-
-    await waitFor(() =>
-      expect(document.activeElement).toHaveTextContent("Create your first Collection"),
-    );
   });
 });
 

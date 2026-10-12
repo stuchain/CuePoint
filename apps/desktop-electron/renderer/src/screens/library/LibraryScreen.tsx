@@ -173,14 +173,6 @@ export interface LibraryScreenProps {
   /** Opens the "how do I export from Rekordbox" dialog the shell owns. */
   onOpenRekordboxInstructions?: () => void;
   /**
-   * Which part of the page the user asked for (DEC-062, ORG-13).
-   *
-   * The Collections nav destination renders this same page aimed at the tree.
-   * It is a prop rather than a route read here, so the page stays a component
-   * that is handed what it needs and the routing stays in `App.tsx`.
-   */
-  focus?: "collections";
-  /**
    * Rules to open the whole library filtered by (CLEAN-12, DEC-075).
    *
    * What a Health count hands over. Applied once per navigation — its token is
@@ -206,23 +198,23 @@ export interface LibraryScreenProps {
   /**
    * Called once a one-shot opening (`trackWith`, `importWith`) has been applied, so the
    * caller can clear it from the history: Back must not reopen the file chooser or
-   * re-select the track. A prop for `focus`'s reason: routing stays in `App.tsx`.
+   * re-select the track. A prop so routing stays in `App.tsx`.
    */
   onOpeningApplied?: () => void;
   /**
-   * Open a track on the Clean page (CLEAN-13). A prop for `focus`'s reason:
-   * routing stays in `App.tsx`. Absent, the Inspector offers no link.
+   * Open a track on the Clean page (CLEAN-13). A prop so routing stays in
+   * `App.tsx`. Absent, the Inspector offers no link.
    */
   onOpenInClean?: (trackId: number) => void;
   /**
    * Clean's missing-file view (DEC-088), which the Rekordbox export's
-   * missing-file count links to. A prop for `focus`'s reason.
+   * missing-file count links to. A prop so routing stays in `App.tsx`.
    */
   onOpenMissingFiles?: () => void;
   /**
    * Clean's match window (FLW-13), where "No tracks have a Beatport key yet" and
    * the Key is empty list send the user. Called with no tracks, it opens on the
-   * tracks not looked up yet; with some, on those. A prop for `focus`'s reason;
+   * tracks not looked up yet; with some, on those. A prop so routing stays in `App.tsx`;
    * absent, the notes offer no button.
    */
   onOpenMatch?: (tracks?: CleanTracks) => void;
@@ -234,31 +226,30 @@ export interface LibraryScreenProps {
   /**
    * Clean's Fix values with these tracks chosen (FLW-12): the selection bar's
    * Beatport ▸ and Fix ▸, and the right-click menu's. An action starts that
-   * dialog at once. A prop for `focus`'s reason; absent, those entries are left
+   * dialog at once. A prop so routing stays in `App.tsx`; absent, those entries are left
    * out.
    */
   onOpenFix?: (tracks: CleanTracks, action: FixAction) => void;
   /**
    * Open an artist's or a label's page (DISCOVER-11): from the Inspector's
-   * credits, a filter chip and the operations list. A prop for `focus`'s
-   * reason. Absent, none of them is offered.
+   * credits, a filter chip and the operations list. A prop so routing stays in
+   * `App.tsx`. Absent, none of them is offered.
    */
   onOpenEntity?: (kind: EntityKind, ref: string) => void;
   /** Open Similar tracks for one track (DISCOVER-11). Absent, not offered. */
   onOpenSimilar?: (trackId: number) => void;
   /**
    * Open a Set on the Prepare page (DEC-104): the tree's "Open in Prepare",
-   * the Inspector's Sets and the Set scope's note. A prop for `focus`'s
-   * reason. Absent, nothing offers it.
+   * the Inspector's Sets and the Set scope's note. A prop so routing stays in
+   * `App.tsx`. Absent, nothing offers it.
    */
   onOpenInPrepare?: (setId: number) => void;
-  /** Open Settings at the Beatport token (RUN-3's checklist). A prop for `focus`'s reason. */
+  /** Open Settings at the Beatport token (RUN-3's checklist). A prop so routing stays in `App.tsx`. */
   onOpenToken?: () => void;
 }
 
 export function LibraryScreen({
   onOpenRekordboxInstructions,
-  focus,
   openWith,
   refreshWith,
   trackWith,
@@ -413,23 +404,11 @@ export function LibraryScreen({
     () => new Set(),
   );
   /**
-   * Bumped to put the keyboard in the Collections tree (ORG-13).
-   *
-   * A count rather than a flag: arriving on the Collections destination is an
-   * event, and a flag that stayed true would pull focus back out of whatever
-   * the user did next on every render.
-   */
-  const [collectionsFocus, setCollectionsFocus] = useState(0);
-  /**
    * What the Beatport ids in rules an Artist or Label page sent are called
    * (DISCOVER-11), so their chips read as names. Kept while the page stays,
    * since a rule the user keeps is still that artist.
    */
   const [openedNames, setOpenedNames] = useState<Readonly<Record<string, string>>>({});
-
-  useEffect(() => {
-    if (focus === "collections") setCollectionsFocus((token) => token + 1);
-  }, [focus]);
 
   /**
    * Open on the rules a Health count sent (CLEAN-12).
@@ -1954,7 +1933,6 @@ export function LibraryScreen({
           onSelectCollection={(node) => scopeToCollection(node)}
           onDropTracks={dropTracks}
           onNotify={(message, tone) => push(message, tone === "warning" ? "warning" : "success")}
-          collectionsFocusToken={collectionsFocus}
           onExportCollection={(node) => openExport([node.id])}
           onOpenInPrepare={onOpenInPrepare ? (node) => onOpenInPrepare(node.id) : undefined}
           onSaveSetList={setList.available ? (node) => void setList.save(node) : undefined}

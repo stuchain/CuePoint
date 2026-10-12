@@ -31,8 +31,7 @@ hold tracks.
 - **Act on the one you selected** with the bar under the tree: **Rename**,
   **Duplicate** (a Smart Collection or a Set), **Delete** and **Export…** (it
   opens Export to Rekordbox, and its hover text says so), which every Collection, Smart Collection, Set and folder has. The
-  bar is always there; with nothing selected it is dimmed and says "Select a
-  Collection or Set". The pencil, the ✕, F2 and Delete work too.
+  bar appears when you select one; with nothing selected it is not shown. The pencil, the ✕, F2 and Delete work too.
 - **Right-click** a Collection, Smart Collection or folder — or press the menu
   key or Shift+F10 — for the same actions, plus the few that have no button:
   **Freeze to a Collection…** on a Smart Collection, **New Set from…**, and

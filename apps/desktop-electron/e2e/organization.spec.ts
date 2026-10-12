@@ -9,8 +9,8 @@
  *
  * It asserts, in one session:
  *
- *  1. The Collections destination opens the Library page, not a second browser
- *     (DEC-062), and remembers itself as the Library page.
+ *  1. The Library page carries the Collections tree in its left pane, not a second
+ *     browser (DEC-062); Collections is not a sidebar entry (DEC-244).
  *  2. A folder and a Collection are created from the pane and renamed in place.
  *  3. A selection of tracks is filed into the Collection, and is there
  *     afterwards — scoped by the same table, in the Collection's own order.
@@ -236,13 +236,13 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await importCollection(window, xml);
 
       // ---------------------------------------------------------------- 1
-      await window.getByRole("link", { name: "Collections" }).click();
+      await window.getByRole("link", { name: "Library", exact: true }).click();
       await expect(window.getByRole("heading", { name: "Library", level: 1 })).toBeVisible();
       // One page, not two: the Collections tree is a section of the Library
       // page's left pane (DEC-062).
       await expect(collectionsTree(window)).toBeVisible({ timeout: 30_000 });
       await expect(window.locator("main.app-main .screen")).toHaveCount(1);
-      // And DEC-027 remembers the page rather than the way in.
+      // And DEC-027 remembers the Library as where the user was.
       expect(
         await window.evaluate(() =>
           localStorage.getItem("cuepoint-ui-shell-last-destination"),

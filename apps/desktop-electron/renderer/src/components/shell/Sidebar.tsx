@@ -49,7 +49,6 @@ function DestinationLink({ destination, collapsed, dimmed }: {
       aria-label={destination.label}
       // Collapsed, the title also carries the label the rail has no room for.
       title={collapsed ? `${destination.label}: ${hint}` : hint}
-      data-sub={destination.parentId ? "true" : undefined}
       data-dimmed={dimmed ? "true" : undefined}
     >
       <span className="cp-sidebar__icon" aria-hidden>

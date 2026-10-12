@@ -2,10 +2,10 @@
  * The tree's labelled buttons and the bar under it (FLW-10, PAGES-05C).
  *
  * "New Collection", "New Set" and "New folder" say their names over the tree.
- * Under it, a bar for the selected node is always shown: Rename, Duplicate,
- * Delete and Export to Rekordbox… on every node (folders too, DEC-087), and for
- * a Set also Open in Prepare and Save set list…. With no node selected the bar
- * is disabled and says "Select a Collection or Set". Hover icons and the
+ * Under it, a bar for the selected node is shown while a node is selected (DEC-245):
+ * Rename, Duplicate, Delete and Export to Rekordbox… on every node (folders too,
+ * DEC-087), and for a Set also Open in Prepare and Save set list…. With nothing
+ * selected there is no bar. Hover icons and the
  * right-click menu keep working; Freeze, "Copy set list" and "New Set from…"
  * stay on the right-click menu only.
  */
@@ -86,12 +86,15 @@ describe("the labelled buttons over the tree", () => {
 });
 
 describe("the bar under the tree", () => {
-  it("is always shown, disabled with the reason while nothing is selected", () => {
+  it("is not drawn while nothing is selected", () => {
     paneWith(null);
+    expect(screen.queryByRole("toolbar", { name: "Selected Collection or Set" })).toBeNull();
+  });
+
+  it("appears when a node is selected, with Rename, Duplicate, Delete and Export", () => {
+    paneWith(WARMUP);
     for (const name of ["Rename", "Duplicate", "Delete", "Export to Rekordbox…"]) {
-      const button = within(bar()).getByRole("button", { name });
-      expect(button).toHaveAttribute("aria-disabled", "true");
-      expect(button).toHaveAttribute("title", "Select a Collection or Set");
+      expect(within(bar()).getByRole("button", { name })).toBeInTheDocument();
     }
     // A Set's two are not drawn until a Set is selected.
     expect(within(bar()).queryByRole("button", { name: "Open in Prepare" })).toBeNull();
@@ -113,12 +116,43 @@ describe("the bar under the tree", () => {
     expect(props.onDelete).toHaveBeenCalledWith(WARMUP.id);
   });
 
-  it("does nothing when a disabled button is pressed", async () => {
-    const props = paneWith(null);
+  it("moves focus to the tree once the deleted node is deselected", async () => {
+    const tree = buildCollectionTree(TREE);
+    const rows = collectionRows(tree, [GIGS.id]);
+    const props = {
+      tree,
+      rows,
+      onSelect: vi.fn(),
+      onExpand: vi.fn(),
+      onCreate: vi.fn(async () => ({ ok: true })),
+      onRename: vi.fn(async () => ({ ok: true })),
+      onMove: vi.fn(async () => ({ ok: true })),
+      onPreviewDelete: vi.fn(async () => null),
+      onDelete: vi.fn(async () => ({ ok: true })),
+      onDropTracks: vi.fn(async () => ({ ok: true, added: 0, skipped: 0 })),
+      canMakeSets: true,
+    };
+    const { rerender } = render(
+      <CollectionsPane {...props} selected={findCollection(tree, WARMUP.id) ?? null} />,
+    );
     await userEvent.click(within(bar()).getByRole("button", { name: "Delete" }));
-    await userEvent.click(within(bar()).getByRole("button", { name: "Export to Rekordbox…" }));
-    expect(props.onPreviewDelete).not.toHaveBeenCalled();
-    expect(props.onExport).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", { name: `Delete ${WARMUP.name}?` });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    expect(props.onDelete).toHaveBeenCalledWith(WARMUP.id);
+
+    // The parent deselects the deleted node, so the bar unmounts.
+    rerender(<CollectionsPane {...props} selected={null} />);
+    expect(screen.queryByRole("toolbar", { name: "Selected Collection or Set" })).toBeNull();
+    const stop = document.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
+    expect(stop).not.toBeNull();
+    expect(stop).toHaveFocus();
+  });
+
+  it("does nothing when a refused button is pressed", async () => {
+    const props = paneWith(WARMUP);
+    await userEvent.click(within(bar()).getByRole("button", { name: "Duplicate" }));
+    expect(props.onDuplicateSet).not.toHaveBeenCalled();
+    expect(props.onDuplicateSmart).not.toHaveBeenCalled();
   });
 
   it("exports any node, a folder included (DEC-087)", async () => {

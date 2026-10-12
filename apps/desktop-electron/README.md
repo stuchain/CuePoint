@@ -54,7 +54,6 @@ automatically. A packaged app runs the bundled engine sidecar instead.
 | Route | Screen |
 |-------|--------|
 | `/library` | Library: the imported collection, and home |
-| `/collections` | The Library page, aimed at Collections |
 | `/clean` | Clean: matching, review, missing files, duplicates, Health |
 | `/discover` | Discover: runs, the wantlist, and under it the Artist, Label and Similar tracks pages |
 | `/prepare` | Prepare: Sets, with a Set's own page at `/prepare/:setId` |
@@ -63,7 +62,8 @@ automatically. A packaged app runs the bundled engine sidecar instead.
 `/match` and `/results`, inKey's and Results' old addresses, redirect to
 `/clean` (DEC-071). `/incrate`, the screen Discover replaced, redirects to
 `/discover`, and `/`, the landing page of the Tools group that is gone, to
-`/library` (DEC-100). A path that matches nothing redirects to
+`/library` (DEC-100). `/collections`, the old Collections entry, redirects to
+`/library` (DEC-244). A path that matches nothing redirects to
 the Library too. `renderer/src/components/shell/navRegistry.ts` declares every
 destination and every retired one.
 

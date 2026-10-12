@@ -137,7 +137,7 @@ test.describe("the renderer reports (REPORT-06)", () => {
       // The steps before it are destination ids.
       const crumbs = (event!.breadcrumbs ?? []) as Array<{ category?: string; message?: string }>;
       for (const crumb of crumbs.filter((c) => c.category === "navigation")) {
-        expect(["library", "clean", "settings", "discover", "prepare", "collections"]).toContain(crumb.message);
+        expect(["library", "clean", "settings", "discover", "prepare"]).toContain(crumb.message);
       }
     } finally {
       await app.close();
