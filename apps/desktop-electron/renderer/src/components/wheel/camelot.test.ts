@@ -64,6 +64,23 @@ describe("moving with the keyboard", () => {
 });
 
 /** Whether a point is inside a polygon, by counting crossings of a ray to the right. */
+/**
+ * The tenth-of-a-cell grid points around a wedge: its click polygon's box, one cell wider on
+ * each side for the arcs' bulge between points. A point in two wedges is in the first, so
+ * looking only here finds every overlap the whole grid would, at a sixth of the points.
+ */
+function gridAround(points: readonly (readonly [number, number])[]): [number, number][] {
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const from = (low: number) => Math.max(0, Math.floor((low - 1) * 10));
+  const to = (high: number) => Math.min(GRID_CELLS * 10, Math.ceil((high + 1) * 10));
+  const grid: [number, number][] = [];
+  for (let i = from(Math.min(...xs)); i <= to(Math.max(...xs)); i++) {
+    for (let j = from(Math.min(...ys)); j <= to(Math.max(...ys)); j++) grid.push([i / 10, j / 10]);
+  }
+  return grid;
+}
+
 function inPolygon(polygon: readonly (readonly [number, number])[], x: number, y: number): boolean {
   let inside = false;
   polygon.forEach(([ax, ay], index) => {
@@ -162,25 +179,18 @@ describe("the shapes", () => {
     for (let index = 0; index < 12; index++) {
       const one = sectors[index]!;
       const next = sectors[(index + 1) % 12]!;
+      const onePoints = segmentShape(`${index + 1}${letter}`).points;
+      const nextPoints = segmentShape(`${((index + 1) % 12) + 1}${letter}`).points;
+      const grid = gridAround(onePoints);
       const overlaps: string[] = [];
-      for (let i = 0; i <= GRID_CELLS * 10; i++) {
-        for (let j = 0; j <= GRID_CELLS * 10; j++) {
-          const x = i / 10;
-          const y = j / 10;
-          if (inSector(one, x, y) && inSector(next, x, y)) overlaps.push(`${x},${y}`);
-        }
+      for (const [x, y] of grid) {
+        if (inSector(one, x, y) && inSector(next, x, y)) overlaps.push(`${x},${y}`);
       }
       expect(overlaps, `wedge ${index + 1}`).toEqual([]);
       // The click areas (the polygons) must not overlap either.
-      const onePoints = segmentShape(`${index + 1}${letter}`).points;
-      const nextPoints = segmentShape(`${((index + 1) % 12) + 1}${letter}`).points;
       const shared: string[] = [];
-      for (let i = 0; i <= GRID_CELLS * 10; i++) {
-        for (let j = 0; j <= GRID_CELLS * 10; j++) {
-          const x = i / 10;
-          const y = j / 10;
-          if (inPolygon(onePoints, x, y) && inPolygon(nextPoints, x, y)) shared.push(`${x},${y}`);
-        }
+      for (const [x, y] of grid) {
+        if (inPolygon(onePoints, x, y) && inPolygon(nextPoints, x, y)) shared.push(`${x},${y}`);
       }
       expect(shared, `click areas ${index + 1}`).toEqual([]);
       // On the radial line between the two, in the middle of the ring, neither claims the point.
