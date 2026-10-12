@@ -326,6 +326,37 @@ describe("Hint on hover", () => {
     expect(screen.getByRole("tooltip").style.left).toBe(`${window.innerWidth - 100 - 4}px`);
   });
 
+  it("places a tip whose width follows its position once, without looping (SHELL-10)", async () => {
+    // A fixed tip with an automatic width shrinks to the room right of its
+    // left edge, so near the right edge each pull to the left made it wider,
+    // which asked for another pull: React gave up ("Maximum update depth
+    // exceeded") and the app fell to its Reload screen while Tabbing.
+    const user = userEvent.setup();
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const isTip = this.getAttribute("role") === "tooltip";
+      const left = isTip ? parseFloat(this.style.left || "0") : window.innerWidth - 20;
+      const width = isTip ? Math.min(300, window.innerWidth - left) : 20;
+      const box = isTip
+        ? { top: 0, bottom: 20, left, right: left + width, width, height: 20 }
+        : { top: 300, bottom: 320, left, right: left + width, width, height: 20 };
+      return { ...box, x: box.left, y: box.top, toJSON: () => ({}) } as DOMRect;
+    });
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <Hint text="Opens the log">
+        <button type="button">Activity</button>
+      </Hint>,
+    );
+    await user.tab();
+    const tip = screen.getByRole("tooltip");
+    expect(errors).not.toHaveBeenCalled();
+    const left = parseFloat(tip.style.left);
+    expect(left).toBeGreaterThanOrEqual(4);
+    expect(left).toBeLessThan(window.innerWidth - 20);
+  });
+
   it("flips only when the tip and its gap do not fit above", async () => {
     const user = setup();
     // Tip 20 high: room above is top - GAP(4) - 20. top 24 leaves 0 < 4: flip.

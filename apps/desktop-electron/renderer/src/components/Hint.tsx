@@ -32,6 +32,8 @@ interface Place {
   bottom?: number;
   /** Flipped below the control: distance from the viewport top. */
   top?: number;
+  /** Measured and placed once; never moved again for the same showing. */
+  settled?: true;
 }
 
 /**
@@ -107,17 +109,20 @@ export function Hint({ text, children, inline = false }: HintProps) {
   }, []);
 
   // Once the tip is drawn it can be measured: flip it below when it would
-  // leave the top of the viewport, and pull it in from the right edge.
+  // leave the top of the viewport, and pull it in from the right edge. Once
+  // only: moving a tip can change its size, and re-measuring after every move
+  // never settled near the right edge (SHELL-10's Tab walk hit React's update
+  // limit), so the second render keeps whatever the first measure decided.
   useLayoutEffect(() => {
-    if (!place || place.top !== undefined) return;
+    if (!place || place.settled) return;
     const box = wrapper.current?.getBoundingClientRect();
     const size = tip.current?.getBoundingClientRect();
     if (!box || !size) return;
     const left = Math.max(GAP, Math.min(place.left, window.innerWidth - size.width - GAP));
     if (box.top - GAP - size.height < GAP) {
-      setPlace({ left, top: box.bottom + GAP });
-    } else if (left !== place.left) {
-      setPlace({ ...place, left });
+      setPlace({ left, top: box.bottom + GAP, settled: true });
+    } else {
+      setPlace({ ...place, left, settled: true });
     }
   }, [place]);
 
@@ -178,7 +183,13 @@ export function Hint({ text, children, inline = false }: HintProps) {
         },
       })}
       {place && (
-        <span id={id} role="tooltip" className="cp-hint__tip" style={place} ref={tip}>
+        <span
+          id={id}
+          role="tooltip"
+          className="cp-hint__tip"
+          style={{ left: place.left, bottom: place.bottom, top: place.top }}
+          ref={tip}
+        >
           {text}
         </span>
       )}

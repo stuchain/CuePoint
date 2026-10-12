@@ -13,6 +13,9 @@
 .cp-hint__tip {
   position: fixed;
   z-index: 60;
+  /* Its own text's width, whatever its left edge: an automatic width would
+     shrink to the room right of it, and change as the tip is pulled in. */
+  width: max-content;
   max-width: min(calc(360px * var(--scale)), calc(100vw - 8px));
   padding: var(--space-xs) var(--space-sm);
   background: var(--bg-panel);
