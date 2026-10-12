@@ -194,6 +194,7 @@ describe("the waveform as the seek control's picture", () => {
     expect(holder()).toHaveClass("cp-player-bar__wave--drawn");
     expect(holder()).toContainElement(input);
     expect(holder().querySelector("canvas")).toHaveAttribute("aria-hidden", "true");
+    expect(slider()).not.toHaveAttribute("title");
     expect(region()).not.toHaveAttribute("title");
   });
 
@@ -267,11 +268,11 @@ describe("without a picture, the slider exactly as before", () => {
     ["missing", "missing", "not_found", false, "File missing"],
     ["unchecked", "unchecked", null, false, "Not checked yet"],
     ["without a decoder", "unavailable", "decoder_missing", false, DECODER_MISSING_WORDS],
-  ])("%s: no picture, and the region's title says why", async (_name, state, reason, paused, words) => {
+  ])("%s: no picture, and the slider's title says why", async (_name, state, reason, paused, words) => {
     install(snapshot(), (id) => waveform(id, state, { reason }), { paused });
     render(<PlayerBar />);
 
-    await waitFor(() => expect(region()).toHaveAttribute("title", words));
+    await waitFor(() => expect(slider()).toHaveAttribute("title", words));
     expect(holder().querySelector("canvas")).toBeNull();
     expect(holder()).not.toHaveClass("cp-player-bar__wave--drawn");
     expect(slider()).toBeEnabled();
@@ -285,7 +286,7 @@ describe("without a picture, the slider exactly as before", () => {
     render(<PlayerBar />);
 
     await waitFor(() =>
-      expect(region()).toHaveAttribute("title", "Its waveform could not be read: engine unreachable"),
+      expect(slider()).toHaveAttribute("title", "Its waveform could not be read: engine unreachable"),
     );
     expect(holder().querySelector("canvas")).toBeNull();
   });
@@ -297,6 +298,7 @@ describe("without a picture, the slider exactly as before", () => {
 
     await waitFor(() => expect(waveforms.get).toHaveBeenCalled());
     expect(holder().querySelector("canvas")).toBeNull();
+    expect(slider()).not.toHaveAttribute("title");
     expect(region()).not.toHaveAttribute("title");
   });
 
@@ -318,6 +320,7 @@ describe("without a picture, the slider exactly as before", () => {
 
     expect(waveforms.get).not.toHaveBeenCalled();
     expect(waveforms.request).not.toHaveBeenCalled();
+    expect(slider()).not.toHaveAttribute("title");
     expect(region()).not.toHaveAttribute("title");
   });
 });

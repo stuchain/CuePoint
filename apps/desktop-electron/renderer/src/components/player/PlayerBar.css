@@ -4,7 +4,8 @@
  * Four regions on one row: transport, what is playing, the position, and
  * volume. The position takes the space that is left, because it is the only
  * one that benefits from being wider — the others are a fixed size whatever the
- * window does.
+ * window does. What is playing is no wider than its text, so the position sits
+ * centred between the groups on either side of it.
  *
  * Built from the existing tokens and the pixel chrome the rest of the shell
  * uses (PIXEL_DESIGN_SYSTEM.md): square corners, hard borders, zero-blur
@@ -31,6 +32,8 @@
   border-top: var(--border-width) solid var(--border-outline);
   background: var(--bg-panel);
   min-width: 0;
+  /* Dragging across the bar selects nothing (C9). */
+  user-select: none;
 }
 
 .cp-player-bar__transport {
@@ -45,9 +48,16 @@
  * controls had been placed. Starting at zero means they absorb the squeeze and
  * the bar only wraps when the *controls* genuinely do not fit, which is 3x.
  * The position bar takes twice the share, being the one that benefits.
+ *
+ * The track name stops growing at its text's width (`max-inline-size:
+ * max-content`), capped at its share as before, so a short title leaves the
+ * rest to the position bar: the waveform then sits centred between the
+ * transport/track group and the controls, one gap each side (C7). The basis
+ * stays zero, so wrapping is decided exactly as above.
  */
 .cp-player-bar__track {
   flex: 1 1 0;
+  max-inline-size: max-content;
 }
 
 .cp-player-bar__seek {
@@ -339,8 +349,7 @@
   color: inherit;
   font: inherit;
   line-height: var(--keybtn-size);
-  text-align: center;
-  vertical-align: middle;
+  vertical-align: baseline;
   cursor: pointer;
 }
 

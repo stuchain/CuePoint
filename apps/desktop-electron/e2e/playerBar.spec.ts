@@ -109,3 +109,162 @@ test("the player bar fits the shell at every scale", async () => {
     });
   } finally { await app.close(); }
 });
+
+/**
+ * C7: the waveform is centred between the left and right groups. C17: the key
+ * sits on the text baseline of the meta line.
+ *
+ * Both are layout, which jsdom cannot measure. Text is measured with a `Range`
+ * (the box of the track section is wider than its words).
+ */
+test("the waveform is centred and the key sits on the baseline", async () => {
+  test.skip(!hasPlayer, NO_PLAYER);
+  const env = { ...process.env, NODE_ENV: "production",
+    CUEPOINT_HOME: mkdtempSync(path.join(tmpdir(), "cp-home-")) } as Record<string, string>;
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ cwd: ROOT,
+    args: [".", `--user-data-dir=${mkdtempSync(path.join(tmpdir(), "cp-ud-"))}`], env });
+  try {
+    const win: Page = await app.firstWindow({ timeout: 60_000 });
+    await expect(win).toHaveTitle(/CuePoint/i, { timeout: 30_000 });
+    await win.waitForSelector(".app-shell", { timeout: 20_000 });
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.setContentSize(1280, 800);
+    });
+
+    const files = [path.join(AUDIO, "tone.flac"), path.join(AUDIO, "tone.wav")];
+    const titles = [
+      ["short title", "Tone One"],
+      ["long title", "Some Long Track Title That Keeps Going And Going"],
+    ];
+    for (const [label, trackTitle] of titles) {
+      await win.evaluate(async ([fs, name]) => {
+        const w = window as never as Record<string, any>;
+        await w.cuepoint.player.playQueue(
+          (fs as string[]).map((f) => ({ filePath: f, title: name, artist: "An Artist",
+            key: "8A", bpm: 128, durationSeconds: 600 })), 0);
+        await w.cuepoint.player.pause();
+      }, [files, trackTitle] as const);
+      await win.waitForSelector(".cp-player-bar", { timeout: 10_000 });
+
+      for (const scale of [1, 1.5, 2]) {
+        const r = await win.evaluate((s) => {
+          document.documentElement.dataset.scale = String(s);
+          document.documentElement.style.setProperty("--scale", String(s));
+          const bar = document.querySelector(".cp-player-bar") as HTMLElement;
+          const rect = (el: Element) => el.getBoundingClientRect();
+          const seek = rect(bar.querySelector(".cp-player-bar__seek")!);
+          const controls = rect(bar.querySelector(".cp-player-bar__controls")!);
+          // The words, not the box: the right edge of the widest line of text,
+          // or the box's edge where a line is cut short with an ellipsis (a
+          // Range measures the whole text, overflow included).
+          const trackRight = rect(bar.querySelector(".cp-player-bar__track")!).right;
+          const textRight = Math.min(trackRight, Math.max(
+            ...[".cp-player-bar__title", ".cp-player-bar__meta"].map((sel) => {
+              const range = document.createRange();
+              range.selectNodeContents(bar.querySelector(sel)!);
+              return range.getBoundingClientRect().right;
+            }),
+          ));
+          const sameRow = Math.abs(seek.top - controls.top) < seek.height;
+
+          // C17: the key's text against the neighbouring " · " text.
+          const key = bar.querySelector<HTMLElement>("[data-wheel-opener]")!;
+          const textRange = (node: Node) => {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            return range.getBoundingClientRect();
+          };
+          const keyBox = textRange(key.firstChild!);
+          let dot: DOMRect | null = null;
+          for (const n of key.closest(".cp-player-bar__meta")!.childNodes) {
+            if (n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").includes("·")) {
+              dot = textRange(n);
+              break;
+            }
+          }
+          const meta = bar.querySelector<HTMLElement>(".cp-player-bar__meta")!;
+          const kc = getComputedStyle(key);
+          const mc = getComputedStyle(meta);
+          return {
+            sameRow,
+            gapLeft: seek.left - textRight,
+            gapRight: controls.left - seek.right,
+            keyBottom: keyBox.bottom,
+            dotBottom: dot?.bottom ?? null,
+            keyHeight: keyBox.height,
+            dotHeight: dot?.height ?? null,
+            sameFont: kc.fontSize === mc.fontSize && kc.fontFamily === mc.fontFamily,
+          };
+        }, scale);
+        const at = `${label} at ${scale}x`;
+        if (scale !== 3) expect(r.sameRow, `seek and controls share a row, ${at}`).toBe(true);
+        if (r.sameRow) {
+          expect(Math.abs(r.gapLeft - r.gapRight), `waveform centred, ${at}`).toBeLessThanOrEqual(2);
+        }
+        expect(r.dotBottom, `the meta line has a separator, ${at}`).not.toBeNull();
+        expect(Math.abs(r.keyBottom - (r.dotBottom as number)), `key on the baseline, ${at}`)
+          .toBeLessThanOrEqual(0.5);
+        expect(Math.abs(r.keyHeight - (r.dotHeight as number)), `key text height, ${at}`)
+          .toBeLessThanOrEqual(0.5);
+        expect(r.sameFont, `key font matches the line, ${at}`).toBe(true);
+      }
+    }
+  } finally { await app.close(); }
+});
+
+/**
+ * A disabled control's reason, with a real mouse. A disabled control swallows
+ * pointer events, so the themed tip hangs on the wrapper; component tests can
+ * only fire synthetic events at it. With no known duration the Seek slider is
+ * disabled, and a track the library does not know gives it a reason.
+ */
+test("a disabled player-bar control shows the themed tip on a real hover", async () => {
+  test.skip(!hasPlayer, NO_PLAYER);
+  const env = { ...process.env, NODE_ENV: "production",
+    CUEPOINT_HOME: mkdtempSync(path.join(tmpdir(), "cp-home-")) } as Record<string, string>;
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ cwd: ROOT,
+    args: [".", `--user-data-dir=${mkdtempSync(path.join(tmpdir(), "cp-ud-"))}`], env });
+  try {
+    const win: Page = await app.firstWindow({ timeout: 60_000 });
+    await expect(win).toHaveTitle(/CuePoint/i, { timeout: 30_000 });
+    await win.waitForSelector(".app-shell", { timeout: 20_000 });
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.setContentSize(1280, 800);
+    });
+
+    // The first-run guide sits over the bar and would take a real mouse.
+    await win.getByRole("dialog", { name: "Getting started" })
+      .getByRole("button", { name: "Skip" }).click();
+    await expect(win.getByRole("dialog")).toHaveCount(0);
+
+    await win.evaluate(async (file) => {
+      const w = window as never as Record<string, any>;
+      await w.cuepoint.player.playQueue(
+        [{ filePath: file, trackId: 987654, title: "Not In The Library", artist: "Nobody",
+           key: "8A", bpm: 128, durationSeconds: null }], 0);
+    }, path.join(tmpdir(), "cp-no-such-file.flac"));
+    await win.waitForSelector(".cp-player-bar", { timeout: 10_000 });
+
+    const slider = win.getByRole("slider", { name: "Seek" });
+    await expect(slider).toBeDisabled({ timeout: 10_000 });
+    // Its reason arrives once the library has answered; the Hint then wraps it.
+    await expect(slider).toHaveAttribute("title", /.+/, { timeout: 10_000 });
+    const reason = await slider.getAttribute("title");
+
+    // Away first so the move below is a fresh entry, then rest on it.
+    await win.mouse.move(5, 5);
+    await slider.hover({ force: true });
+    await win.waitForTimeout(500);
+    const tip = win.locator(".cp-hint__tip");
+    await expect(tip).toBeVisible();
+    await expect(tip).toHaveText(reason as string);
+    // The browser's own tip would double the themed one.
+    await expect(slider).not.toHaveAttribute("title", /.*/);
+
+    await win.mouse.move(5, 5);
+    await expect(tip).toHaveCount(0);
+    await expect(slider).toHaveAttribute("title", reason as string);
+  } finally { await app.close(); }
+});

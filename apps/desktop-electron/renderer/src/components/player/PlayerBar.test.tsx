@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import playerBarCss from "./PlayerBar.css?raw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PlayerSnapshot, QueueItem } from "../../api/cuepointBridge.types";
@@ -680,6 +681,83 @@ describe("the key opens the Camelot wheel (BAR-5, PAGES-10)", () => {
     render(<PlayerBar />);
     const key = await screen.findByRole("button", { name: "Show 8A on the Camelot wheel" });
     expect(metaLine()).toHaveTextContent("8A · 8A · 128.0 BPM");
-    expect(key.previousSibling?.textContent).toBe("8A · ");
+    expect(key.closest(".cp-hint")?.previousSibling?.textContent).toBe("8A · ");
+  });
+});
+
+describe("hover hints on the track line and the seek region (C10)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function hoverTip(el: HTMLElement) {
+    fireEvent.pointerEnter(el.closest(".cp-hint") as HTMLElement);
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    return screen.getByRole("tooltip");
+  }
+
+  async function ready(props: Parameters<typeof PlayerBar>[0]) {
+    installBridge(snapshot());
+    render(<PlayerBar {...props} />);
+    await screen.findByText("Strobe");
+    vi.useFakeTimers();
+  }
+
+  it("shows the key's words on hover", async () => {
+    await ready({});
+    const key = screen.getByRole("button", { name: "Show 8A on the Camelot wheel" });
+    expect(key).toHaveAttribute("title", "Show this key on the Camelot wheel");
+    expect(await hoverTip(key)).toHaveTextContent("Show this key on the Camelot wheel");
+    expect(key).not.toHaveAttribute("title");
+  });
+
+  it("shows the title's words on hover", async () => {
+    await ready({ onOpenTrack: () => undefined, onOpenArtist: () => undefined });
+    const link = screen.getByRole("button", { name: "Strobe" });
+    expect(await hoverTip(link)).toHaveTextContent("Show “Strobe” in the Library");
+  });
+
+  it("shows the artist's words on hover", async () => {
+    await ready({ onOpenTrack: () => undefined, onOpenArtist: () => undefined });
+    const link = screen.getByRole("button", { name: "deadmau5" });
+    expect(await hoverTip(link)).toHaveTextContent("Show deadmau5 in Discover");
+  });
+
+  it("leaves no native title over the track line or the seek region", async () => {
+    await ready({ onOpenTrack: () => undefined, onOpenArtist: () => undefined });
+    expect(metaLine()).not.toHaveAttribute("title");
+    expect(document.querySelector(".cp-player-bar__seek")).not.toHaveAttribute("title");
+  });
+
+  it("keeps the track line title off the plain-text line too", async () => {
+    installBridge(snapshot({ items: [item({ trackId: null })] }));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    expect(metaLine()).not.toHaveAttribute("title");
+  });
+});
+
+describe("the bar's CSS (C7, C9)", () => {
+  const rule = (selector: string) => {
+    const at = playerBarCss.indexOf(`${selector} {`);
+    return at < 0 ? "" : playerBarCss.slice(at, playerBarCss.indexOf("}", at));
+  };
+
+  it("lets the track grow only to its text, from a zero basis", () => {
+    const track = rule(".cp-player-bar__track");
+    expect(track).toMatch(/flex:\s*1 1 0;/);
+    expect(track).toMatch(/max-inline-size:\s*max-content;/);
+  });
+
+  it("is not selectable", () => {
+    expect(rule(".cp-player-bar")).toMatch(/user-select:\s*none;/);
+  });
+
+  it("sits the key on the text baseline", () => {
+    const key = rule(".cp-player-bar__keybtn");
+    expect(key).toMatch(/vertical-align:\s*baseline;/);
+    expect(key).not.toMatch(/text-align/);
   });
 });

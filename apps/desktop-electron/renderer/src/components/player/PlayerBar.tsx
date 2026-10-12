@@ -52,8 +52,8 @@ import "./PlayerBar.css";
  * stays the control: it lies over the waveform, transparent, so keyboard,
  * screen reader and pointer all still go through it and the logic above, and
  * its focus ring is drawn around the waveform. Until the waveform is ready, or
- * when there is none, the slider shows exactly as before, and the region's
- * title says why in words. A track that starts playing and waits for the
+ * when there is none, the slider shows exactly as before, and the slider's
+ * hint says why in words. A track that starts playing and waits for the
  * analysis is put first in its queue.
  */
 
@@ -92,16 +92,17 @@ function withKeyButton(text: string, from: number, key: string | null): ReactNod
   return (
     <>
       {text.slice(0, at)}
-      <button
-        type="button"
-        className="cp-player-bar__keybtn"
-        data-wheel-opener=""
-        title="Show this key on the Camelot wheel"
-        aria-label={`Show ${key} on the Camelot wheel`}
-        onClick={() => toggleWheel("player")}
-      >
-        {key}
-      </button>
+      <Hint inline text="Show this key on the Camelot wheel">
+        <button
+          type="button"
+          className="cp-player-bar__keybtn"
+          data-wheel-opener=""
+          aria-label={`Show ${key} on the Camelot wheel`}
+          onClick={() => toggleWheel("player")}
+        >
+          {key}
+        </button>
+      </Hint>
       {text.slice(at + key.length)}
     </>
   );
@@ -196,8 +197,8 @@ export function PlayerBar({
       ? meta.slice(artistText.length)
       : null;
 
-  // The seek area's title is the waveform's reason (WAVE-06); Hint shows it on
-  // keyboard focus too, so it sits on the slider, the one focusable piece.
+  // The waveform's reason (WAVE-06) is the slider's Hint, on hover and on
+  // keyboard focus: the slider is the one focusable piece.
   const seekReason = picture ? undefined : (waveformWords ?? undefined);
 
   const queueWords = queueOpen
@@ -242,44 +243,44 @@ export function PlayerBar({
 
       <div className="cp-player-bar__track">
         {openableTrack !== null ? (
-          <button
-            type="button"
-            className="cp-player-bar__title cp-player-bar__link"
-            title={`Show “${title}” in the Library`}
-            onClick={() => onOpenTrack?.(openableTrack)}
-          >
-            {title}
-          </button>
+          <Hint inline text={`Show “${title}” in the Library`}>
+            <button
+              type="button"
+              className="cp-player-bar__title cp-player-bar__link"
+              onClick={() => onOpenTrack?.(openableTrack)}
+            >
+              {title}
+            </button>
+          </Hint>
         ) : (
           <span className="cp-player-bar__title" title={item?.title ?? ""}>
             {title}
           </span>
         )}
         {artistSplit !== null ? (
-          <span className="cp-player-bar__meta" title={meta}>
-            <button
-              type="button"
-              className="cp-player-bar__link"
-              title={`Show ${artistText} in Discover`}
-              onClick={() => onOpenArtist?.(artistText)}
-            >
-              {artistText}
-            </button>
+          <span className="cp-player-bar__meta">
+            <Hint inline text={`Show ${artistText} in Discover`}>
+              <button
+                type="button"
+                className="cp-player-bar__link"
+                onClick={() => onOpenArtist?.(artistText)}
+              >
+                {artistText}
+              </button>
+            </Hint>
             {withKeyButton(artistSplit, 0, keyText)}
           </span>
         ) : (
-          <span className="cp-player-bar__meta" title={meta}>
+          <span className="cp-player-bar__meta">
             {withKeyButton(meta, artistText.length, keyText)}
           </span>
         )}
       </div>
 
-      <div
-        className="cp-player-bar__seek"
-        // Why there is no waveform, in the title and never in the region's
-        // space, so the bar never shows an empty box (WAVE-06).
-        title={seekReason}
-      >
+      {/* Why there is no waveform is the slider's Hint, never the region's
+          space, so the bar never shows an empty box (WAVE-06). No title here:
+          it would show natively over the slider while Hint holds its own off. */}
+      <div className="cp-player-bar__seek">
         {/* `--font-data` (DEC-048): these are dense numerals that change every
             second, which is the case that token exists for. */}
         <span className="cp-player-bar__time">{formatTime(shownPosition)}</span>
