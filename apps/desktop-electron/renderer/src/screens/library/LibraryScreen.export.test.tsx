@@ -237,7 +237,11 @@ describe("the Library header's entry (DEC-087)", () => {
     await ready();
 
     const header = screen.getByRole("banner");
-    const actions = within(header).getAllByRole("button").map((button) => button.textContent);
+    // The First steps chip sits beside the heading, not among the actions (DEC-248).
+    const actions = within(header)
+      .getAllByRole("button")
+      .filter((button) => !button.classList.contains("first-steps-chip"))
+      .map((button) => button.textContent);
     // Three buttons, never a menu (FLW-11): where they do not fit, the visible labels
     // shorten and the full names stay (see LibraryHeader.tsx).
     expect(actions).toEqual([

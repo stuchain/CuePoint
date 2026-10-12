@@ -158,6 +158,21 @@ describe("after an import", () => {
     expect(screen.getByText("Import another file…")).toBeInTheDocument();
   });
 
+  it("draws the chip beside the heading, outside the actions", () => {
+    widths = { "library-header": 700, "library-header-measure": 600 };
+    renderHeader({ extra: <button type="button">First steps 1/4</button> });
+
+    const chip = screen.getByRole("button", { name: "First steps 1/4" });
+    const title = screen.getByRole("heading", { level: 1, name: "Library" });
+    expect(title.parentElement).toContainElement(chip);
+    expect(chip.closest(".library-header__actions")).toBeNull();
+    expect(
+      document.querySelector('[data-slot="library-header-measure"]'),
+    ).not.toContainElement(chip);
+    // Same room, same labels: the chip does not push them into their short form.
+    expect(screen.getByText("Import another file…")).toBeInTheDocument();
+  });
+
   it("keeps the full names when nothing can be measured", () => {
     renderHeader();
     expect(screen.getByText("Import another file…")).toBeInTheDocument();

@@ -812,7 +812,7 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
   });
 
-  it("lists the first steps as one entry on the line once imported (RUN-3)", async () => {
+  it("lists the first steps as a chip beside the heading once imported (RUN-3)", async () => {
     const onOpenMatch = vi.fn();
     renderScreen({ onOpenMatch });
     await tableReady();
@@ -825,17 +825,20 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     expect(onOpenMatch).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves the line to another notice, and takes it when the line is free", async () => {
+  it("shows beside the heading even while a notice holds the line", async () => {
     keyFacet([{ value: null, count: 3880 }]);
     renderScreen({ onOpenMatch: vi.fn() });
     await tableReady();
     await importAnother();
 
     const note = await screen.findByRole("status", { name: "No Beatport keys yet" });
-    expect(screen.queryByRole("button", { name: /First steps:/ })).toBeNull();
+    const chip = screen.getByRole("button", { name: /First steps:/ });
+    expect(chip).toHaveTextContent("First steps 1/4");
+    expect(screen.getByRole("heading", { level: 1, name: "Library" }).parentElement).toContainElement(chip);
+    expect(note).toBeInTheDocument();
 
     await userEvent.click(within(note).getByRole("button", { name: "Dismiss this note" }));
-    expect(await screen.findByRole("button", { name: /First steps:/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /First steps:/ })).toBeInTheDocument();
   });
 
   it("is gone for good once the first steps were all done", async () => {

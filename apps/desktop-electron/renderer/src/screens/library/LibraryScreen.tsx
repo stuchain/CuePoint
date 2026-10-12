@@ -287,7 +287,6 @@ export function LibraryScreen({
   const [importedAt, setImportedAt] = useState<number | null>(readImportedAt);
   /** Whether the ready note holds the notice line; null until it has been asked. */
   const [readyShown, setReadyShown] = useState<boolean | null>(null);
-  const [keyNoteShown, setKeyNoteShown] = useState(false);
   /** Bumped by an empty Smart Collection's "Edit the rules" to open Add filter. */
   const [openAdd, setOpenAdd] = useState(0);
 
@@ -1921,6 +1920,9 @@ export function LibraryScreen({
         onImport={() => void handleImport()}
         onExport={() => openExport(NOTHING_TICKED)}
         appliedLine={lastApplied ? appliedLine(lastApplied) : null}
+        extra={
+          <FirstStepsNote onMatch={() => onOpenMatch?.()} onAddToken={() => onOpenToken?.()} />
+        }
       />
 
       <div className="library-screen__body">
@@ -1973,17 +1975,8 @@ export function LibraryScreen({
                 trackCount={summary.track_count}
                 onMatch={onOpenMatch ? () => onOpenMatch() : undefined}
                 asked={keyFilterFoundNothing}
-                onShownChange={setKeyNoteShown}
               />
             )}
-            {/* The first steps take the line only when no other notice has it (RUN-3). */}
-            {!keyIsEmptyList && !keyFilterFoundNothing && !keyNoteShown &&
-              !(isReadyNoteOpen(importedAt) && readyShown !== false) && (
-                <FirstStepsNote
-                  onMatch={() => onOpenMatch?.()}
-                  onAddToken={() => onOpenToken?.()}
-                />
-              )}
             <FilterBar
               vocabulary={vocabulary}
               // The bar's rules, not the query's: a Smart Collection that is

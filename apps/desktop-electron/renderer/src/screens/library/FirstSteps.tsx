@@ -6,8 +6,9 @@
  * the library is imported, some track has been looked up on Beatport, a track
  * has been given to the player, a token is saved. When all four are true the
  * list is gone for good (`cuepoint-first-steps-done`). On the empty Library it is the
- * full list; once something is imported it is one entry on the notice line
- * (`FirstStepsNote`) that opens the same list, so it costs the table no row.
+ * full list; once something is imported it is a small chip beside the Library
+ * heading (`FirstStepsNote`, DEC-248) that opens the same list in a popover,
+ * so it costs the table no row.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -203,9 +204,9 @@ function FirstStepsSection({ imported, ...handlers }: FirstStepsProps) {
 }
 
 /**
- * The loaded Library's entry on the notice line: "First steps: 2 of 4 done", a button
- * that opens the list in a popover, so the table keeps its rows. Escape and a click
- * outside close it.
+ * The loaded Library's entry, a small chip beside the heading (DEC-248): "First
+ * steps 2/4", a button that opens the list in a popover, so the table keeps its rows.
+ * Escape and a click outside close it.
  */
 export function FirstStepsNote(props: Omit<FirstStepsProps, "imported">) {
   const [hidden] = useState(firstStepsDone);
@@ -253,15 +254,17 @@ function FirstStepsNoteLine({ onMatch, onAddToken }: Omit<FirstStepsProps, "impo
   const doneCount = steps.filter((step) => step.done).length;
 
   return (
-    <div ref={rootRef} className="library-notice first-steps-note">
-      <Button
-        variant="secondary"
+    <div ref={rootRef} className="first-steps-note">
+      <button
+        type="button"
+        className="first-steps-chip"
+        aria-label={`First steps: ${doneCount} of 4 done`}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((was) => !was)}
       >
-        First steps: {doneCount} of 4 done
-      </Button>
+        First steps {doneCount}/4
+      </button>
       {open && (
         <div className="first-steps-note__popover" role="dialog" aria-label="First steps">
           <StepList steps={steps} />

@@ -197,12 +197,41 @@ test.describe("The Library page (LIBRARY-11)", () => {
     }
   });
 
+  test("keeps the header buttons on one line beside the First steps chip", async () => {
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await importCollection(window, writeExport(workspace, [0, 1, 2, 3, 4, 5]));
+      await openLibrary(window);
+      await expect(window.getByTestId("library-track-count")).toHaveText("6 tracks");
+
+      const chip = window.locator(".library-header").getByRole("button", { name: /^First steps/ });
+      await expect(chip).toBeVisible();
+      const title = (await window.locator(".library-header h1").boundingBox())!;
+      const chipBox = (await chip.boundingBox())!;
+      expect(chipBox.x, "chip sits to the right of the heading").toBeGreaterThan(title.x);
+      expect(Math.abs(chipBox.y + chipBox.height / 2 - (title.y + title.height / 2))).toBeLessThan(title.height);
+
+      const names = ["Check Rekordbox for changes", "Import another file…", "Export to Rekordbox…"];
+      const tops: number[] = [];
+      const shown: string[] = [];
+      for (const name of names) {
+        const button = window.locator(".library-header").getByRole("button", { name });
+        await expect(button).toBeVisible();
+        tops.push((await button.boundingBox())!.y);
+        shown.push((await button.innerText()).trim());
+      }
+      expect(new Set(tops.map(Math.round)).size, `button tops ${tops} (${shown})`).toBe(1);
+    } finally {
+      await app.close();
+    }
+  });
+
   test("shows its whole rows with the three header buttons on one line", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
-      // Measured with the notice line hidden: the first steps' entry (RUN-3) shares that
-      // line, and a library whose first steps are done shows none.
+      // Measured without the First steps chip in the header (DEC-248).
       await window.evaluate(() => localStorage.setItem("cuepoint-first-steps-done", "1"));
       await importCollection(
         window,

@@ -11,7 +11,7 @@
  * rows on screen: a note that is wrong about the user's own library is worse
  * than none, so it stays quiet when the engine cannot say.
  */
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "../../components";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -30,11 +30,9 @@ interface LibraryKeyNoteProps {
    * import does not hide it, and it has nothing to dismiss.
    */
   asked?: boolean;
-  /** Whether the note is on the page, for the notice line to know when it is free. */
-  onShownChange?: (shown: boolean) => void;
 }
 
-export function LibraryKeyNote({ trackCount, onMatch, asked = false, onShownChange }: LibraryKeyNoteProps) {
+export function LibraryKeyNote({ trackCount, onMatch, asked = false }: LibraryKeyNoteProps) {
   const [none, setNone] = useState(false);
   const [dismissed, setDismissed] = useState(wasKeyNoteDismissed);
 
@@ -54,12 +52,6 @@ export function LibraryKeyNote({ trackCount, onMatch, asked = false, onShownChan
   }, [trackCount]);
 
   const shown = none && !(dismissed && !asked);
-  // Told before paint, in the commit that shows the note, so the notice line
-  // never draws the first steps beside it for a frame (RUN-3).
-  useLayoutEffect(() => {
-    onShownChange?.(shown);
-    return () => onShownChange?.(false);
-  }, [onShownChange, shown]);
 
   if (!shown) return null;
 

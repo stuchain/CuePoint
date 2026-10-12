@@ -294,7 +294,7 @@ describe("after the import (RUN-3)", () => {
   });
 });
 
-describe("the entry on the Library's notice line", () => {
+describe("the chip in the Library header", () => {
   function mountNote() {
     const handlers = { onMatch: vi.fn(), onAddToken: vi.fn() };
     const view = render(<FirstStepsNote {...handlers} />);
@@ -304,15 +304,19 @@ describe("the entry on the Library's notice line", () => {
   it("says how many of the four are done and keeps the list closed", async () => {
     install({ health: health(10, 10) });
     mountNote();
-    expect(await screen.findByText("First steps: 1 of 4 done")).toBeInTheDocument();
+    expect(await screen.findByText("First steps 1/4")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.queryByRole("list", { name: "First steps" })).toBeNull();
+    // The visible text is short; the button keeps the full sentence as its name.
+    const chip = screen.getByRole("button", { name: "First steps: 1 of 4 done" });
+    expect(chip).toHaveClass("first-steps-chip");
+    expect(chip).toHaveAttribute("aria-haspopup", "dialog");
   });
 
   it("counts a matched library: 2 of 4", async () => {
     install({ health: health(10, 6) });
     mountNote();
-    expect(await screen.findByText("First steps: 2 of 4 done")).toBeInTheDocument();
+    expect(await screen.findByText("First steps 2/4")).toBeInTheDocument();
   });
 
   it("opens the checklist in a dialog with Match tracks… inside it", async () => {
@@ -346,7 +350,7 @@ describe("the entry on the Library's notice line", () => {
     // Waited on the stored mark, not the line's absence: the line is also absent before the
     // checks have loaded, so that wait could end at once, with nothing stored yet.
     await waitFor(() => expect(localStorage.getItem(DONE_KEY)).toBe("1"));
-    expect(screen.queryByText(/First steps:/)).toBeNull();
+    expect(screen.queryByText(/First steps \d\/4/)).toBeNull();
     first.unmount();
     install({ health: health(10, 10) });
     const { container } = mountNote();

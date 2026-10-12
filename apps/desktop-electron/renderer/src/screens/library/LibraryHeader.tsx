@@ -23,7 +23,7 @@
  * Before the first import there is one button, **Import your Rekordbox
  * collection…**: nothing to check and nothing to export yet.
  */
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import { Badge, Button } from "../../components";
 import type { LibrarySummary } from "../../api/cuepointBridge.types";
@@ -46,6 +46,8 @@ interface LibraryHeaderProps {
   onExport: () => void;
   /** The line the last refresh left behind, if there was one. */
   appliedLine?: string | null;
+  /** Sits right after the heading, outside the measured actions (the First steps chip). */
+  extra?: ReactNode;
 }
 
 /** The full names, and the shorter ones that stand in where the full ones do not fit. */
@@ -106,6 +108,7 @@ export function LibraryHeader({
   onImport,
   onExport,
   appliedLine = null,
+  extra = null,
 }: LibraryHeaderProps) {
   const source = summary?.source ?? null;
   const disabled = busy !== null;
@@ -145,9 +148,12 @@ export function LibraryHeader({
       {/* The page keeps its heading. It is small here because the counts beside
           it say more, but a page with no h1 has no name — for a screen reader,
           or for the shell's own navigation. */}
-      <h1 className="screen__title library-header__title">
-        Library
-      </h1>
+      <div className="library-header__heading">
+        <h1 className="screen__title library-header__title">
+          Library
+        </h1>
+        {extra}
+      </div>
 
       <div className="library-header__counts">
         <span className="library-header__count" data-testid="library-track-count">
