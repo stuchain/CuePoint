@@ -685,6 +685,9 @@ describe("desktop contract", () => {
       "getMatchCandidates",
       "decideMatch",
       "applyMatch",
+      "correctMatch",
+      "correctMatches",
+      "getMatchJobs",
       "setTrackOverrides",
       "revertChange",
       "revertBatch",
@@ -766,6 +769,7 @@ describe("desktop contract", () => {
         "getResumableMatches",
         "getTrackMatches",
         "getMatchCandidates",
+        "getMatchJobs",
         "getDuplicateGroups",
         "getTagWrites",
         "getLibraryHealth",
@@ -779,6 +783,26 @@ describe("desktop contract", () => {
           expect(body, name).toContain("postJson");
         }
       }
+    });
+
+    describe("candidate media (C14)", () => {
+      // Binary routes: read with fetch like getTrackArtwork, so they sit outside
+      // the JSON POST/GET sweep above.
+      const media = ["getCandidateArtwork", "getCandidatePreview"];
+
+      it.each(media)("carries %s through every layer", (method) => {
+        expect(invokedChannels(preload)).toContain(`engine:${method}`);
+        expect(handledChannels(main)).toContain(`engine:${method}`);
+        expect(supervisorMethodsDeclared(supervisor)).toContain(method);
+        expect(engineClient).toContain(`async ${method}(`);
+        expect(bridgeTypes).toContain(`${method}?:`);
+        expect(clientMethod(method)).not.toContain("postJson");
+      });
+
+      it("releases a preview URL on the preload and the bridge type", () => {
+        expect(preload).toContain("releaseCandidatePreview");
+        expect(bridgeTypes).toContain("releaseCandidatePreview?:");
+      });
     });
 
     it("writes tags by the id of a preview a person saw (DEC-070)", () => {

@@ -388,6 +388,19 @@ export interface BeatportTokenTestResult {
   reason?: "missing" | "rejected" | "unreachable";
 }
 
+/** C14: the candidate a library row proposes, as the Match table compares it. */
+export interface MatchProposal {
+  candidate_id: number;
+  key: string | null;
+  bpm: number | null;
+  genre: string | null;
+  label: string | null;
+  year: number | null;
+  mix: string | null;
+  score: number | null;
+  guard_ok: boolean;
+}
+
 /**
  * Library search (DEC-023, SHELL-04).
  *
@@ -464,6 +477,8 @@ export interface LibraryTrackRow {
   match_disputed?: boolean | null;
   /** The score of the candidate the state points at (CLEAN-13). */
   match_score?: number | null;
+  /** C14: the candidate a waiting or accepted match points at; null when none. */
+  match_proposal?: MatchProposal | null;
   file_status?: FileStatus | null;
   artwork?: ArtworkState | null;
 }
@@ -1224,6 +1239,59 @@ export interface MatchStarted extends CleanJobStarted {
   excluded: number;
   planned: number;
   resumed_from: string | null;
+}
+
+/** One field Correct copies; the key is never one (it is replaced with `replace_key`). */
+export type CorrectField = Exclude<OverrideField, "key">;
+
+/** What `replace_key` did, present only when it was asked for. */
+export type CorrectKeyOutcome = "replaced" | "not_yours" | "no_beatport_key";
+
+/** One track corrected: the decision and the fields copied, as one act (C14). */
+export interface CorrectOutcome {
+  match: TrackMatchState;
+  track: LibraryTrackRow;
+  /** Reverting it is Undo; null when nothing changed. */
+  batch_id: string | null;
+  changed: boolean;
+  applied: CorrectField[];
+  skipped: CorrectField[];
+  unchanged: CorrectField[];
+  key: CorrectKeyOutcome | null;
+}
+
+/** A selection corrected: applied inline, or the job doing it. */
+export interface CorrectBatchOutcome {
+  applied?: BatchResult;
+  job_id?: string;
+  id?: string;
+  state?: string;
+}
+
+/** One past search: a run and the resumes that finished it (C14). */
+export interface MatchRun {
+  job_id: string;
+  created_at: string;
+  label: string | null;
+  rematch: boolean;
+  selected: number;
+  excluded: number;
+  planned: number;
+  done: number;
+  found: number;
+  waiting: number;
+  not_found: number;
+  rejected: number;
+  disputed: number;
+  status: "running" | "stopped" | "done";
+  finished_at: string | null;
+  latest_job_id: string;
+  resume_job_id: string | null;
+}
+
+export interface MatchJobs {
+  jobs: MatchRun[];
+  total: number;
 }
 
 export interface ResumableMatch {
@@ -3443,6 +3511,7 @@ export interface CuePointBridge {
   startCleanMatch?: (params: {
     selection: BatchSelection;
     rematch?: boolean;
+    label?: string;
   }) => Promise<MatchStarted>;
   resumeCleanMatch?: (params: { job_id: string }) => Promise<MatchStarted>;
   getResumableMatches?: () => Promise<ResumableMatches>;
@@ -3460,6 +3529,33 @@ export interface CuePointBridge {
     track_id?: number;
     selection?: BatchSelection;
   }) => Promise<ApplyOutcome>;
+  /** Accept a candidate and copy the ticked fields as one act (C14). */
+  correctMatch?: (params: {
+    track_id: number;
+    candidate_id: number;
+    fields: CorrectField[];
+    replace_key?: boolean;
+  }) => Promise<CorrectOutcome>;
+  /** The same for a selection: each track's proposal. Inline or as a job. */
+  correctMatches?: (params: {
+    selection: BatchSelection;
+    fields: CorrectField[];
+    replace_key?: boolean;
+  }) => Promise<CorrectBatchOutcome>;
+  /** Past searches, newest first (C14). */
+  getMatchJobs?: (params?: {
+    q?: string;
+    limit?: number;
+    offset?: number;
+  }) => Promise<MatchJobs>;
+  /** A candidate's Beatport artwork as an object URL, or null; release with `releaseTrackArtwork`. */
+  getCandidateArtwork?: (params: {
+    candidateId: number;
+    size: ArtworkSize;
+  }) => Promise<string | null>;
+  /** A candidate's audio preview as an object URL, or null; release with `releaseCandidatePreview`. */
+  getCandidatePreview?: (params: { candidateId: number }) => Promise<string | null>;
+  releaseCandidatePreview?: (url: string) => void;
   setTrackOverrides?: (params: {
     trackId: number;
     key?: string | null;

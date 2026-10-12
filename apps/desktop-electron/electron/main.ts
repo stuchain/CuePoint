@@ -681,6 +681,21 @@ function registerIpcHandlers(): void {
   handle("engine:decideMatch", (_event, params) =>
     engine.decideMatch(params),
   );
+  handle("engine:correctMatch", (_event, params) =>
+    engine.correctMatch(params),
+  );
+  handle("engine:correctMatches", (_event, params) =>
+    engine.correctMatches(params),
+  );
+  handle("engine:getMatchJobs", (_event, params) =>
+    engine.getMatchJobs(params),
+  );
+  handle("engine:getCandidateArtwork", (_event, params) =>
+    engine.getCandidateArtwork(params),
+  );
+  handle("engine:getCandidatePreview", (_event, params) =>
+    engine.getCandidatePreview(params),
+  );
   handle("engine:applyMatch", (_event, params) =>
     engine.applyMatch(params),
   );

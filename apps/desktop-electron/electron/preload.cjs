@@ -275,6 +275,27 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   getTrackFolder: (params) => ipcRenderer.invoke("engine:getTrackFolder", params),
   decideMatch: (params) => ipcRenderer.invoke("engine:decideMatch", params),
   applyMatch: (params) => ipcRenderer.invoke("engine:applyMatch", params),
+  correctMatch: (params) => ipcRenderer.invoke("engine:correctMatch", params),
+  correctMatches: (params) => ipcRenderer.invoke("engine:correctMatches", params),
+  getMatchJobs: (params) => ipcRenderer.invoke("engine:getMatchJobs", params),
+  // A candidate's Beatport artwork and audio preview (C14), as object URLs like
+  // getTrackArtwork's: the bytes stay in this process and the renderer never
+  // loads a remote URL. Artwork is released with releaseTrackArtwork.
+  getCandidateArtwork: async (params) => {
+    const bytes = await ipcRenderer.invoke("engine:getCandidateArtwork", params);
+    if (!bytes) return null;
+    return URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
+  },
+  getCandidatePreview: async (params) => {
+    const preview = await ipcRenderer.invoke("engine:getCandidatePreview", params);
+    if (!preview) return null;
+    return URL.createObjectURL(
+      new Blob([preview.bytes], { type: preview.contentType || "audio/mpeg" }),
+    );
+  },
+  releaseCandidatePreview: (url) => {
+    if (typeof url === "string" && url.startsWith("blob:")) URL.revokeObjectURL(url);
+  },
   setTrackOverrides: (params) => ipcRenderer.invoke("engine:setTrackOverrides", params),
   revertChange: (params) => ipcRenderer.invoke("engine:revertChange", params),
   revertBatch: (params) => ipcRenderer.invoke("engine:revertBatch", params),

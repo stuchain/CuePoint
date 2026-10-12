@@ -905,6 +905,26 @@ export class EngineSupervisor {
     return (await this.readyClient()).applyMatch(params);
   }
 
+  async correctMatch(params: Parameters<EngineClient["correctMatch"]>[0]) {
+    return (await this.readyClient()).correctMatch(params);
+  }
+
+  async correctMatches(params: Parameters<EngineClient["correctMatches"]>[0]) {
+    return (await this.readyClient()).correctMatches(params);
+  }
+
+  async getMatchJobs(params?: Parameters<EngineClient["getMatchJobs"]>[0]) {
+    return (await this.readyClient()).getMatchJobs(params);
+  }
+
+  async getCandidateArtwork(params: Parameters<EngineClient["getCandidateArtwork"]>[0]) {
+    return (await this.readyClient()).getCandidateArtwork(params);
+  }
+
+  async getCandidatePreview(params: Parameters<EngineClient["getCandidatePreview"]>[0]) {
+    return (await this.readyClient()).getCandidatePreview(params);
+  }
+
   async setTrackOverrides(
     params: Parameters<EngineClient["setTrackOverrides"]>[0],
   ): Promise<{ track: LibraryTrackRow }> {

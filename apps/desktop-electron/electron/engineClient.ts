@@ -966,6 +966,65 @@ export interface MatchStarted extends CleanJobStarted {
   resumed_from: string | null;
 }
 
+/** One field Correct copies; the key is never one (it is replaced with `replace_key`). */
+export type CorrectField = "bpm" | "genre" | "label" | "year";
+
+/** What `replace_key` did, present only when it was asked for. */
+export type CorrectKeyOutcome = "replaced" | "not_yours" | "no_beatport_key";
+
+/** One track corrected: the decision and the fields copied, as one act (C14). */
+export interface CorrectOutcome {
+  match: TrackMatchState;
+  track: LibraryTrackRow;
+  /** Reverting it is Undo; null when nothing changed. */
+  batch_id: string | null;
+  changed: boolean;
+  applied: CorrectField[];
+  skipped: CorrectField[];
+  unchanged: CorrectField[];
+  key: CorrectKeyOutcome | null;
+}
+
+/** A selection corrected: applied inline, or the job doing it. */
+export interface CorrectBatchOutcome {
+  applied?: BatchResult;
+  job_id?: string;
+  id?: string;
+  state?: string;
+}
+
+/** One past search: a run and the resumes that finished it (C14). */
+export interface MatchRun {
+  job_id: string;
+  created_at: string;
+  label: string | null;
+  rematch: boolean;
+  selected: number;
+  excluded: number;
+  planned: number;
+  done: number;
+  found: number;
+  waiting: number;
+  not_found: number;
+  rejected: number;
+  disputed: number;
+  status: "running" | "stopped" | "done";
+  finished_at: string | null;
+  latest_job_id: string;
+  resume_job_id: string | null;
+}
+
+export interface MatchJobs {
+  jobs: MatchRun[];
+  total: number;
+}
+
+/** A candidate's audio preview: the bytes and the type the engine named. */
+export interface CandidatePreview {
+  bytes: Uint8Array;
+  contentType: string;
+}
+
 export interface ResumableMatch {
   job_id: string;
   remaining: number;
@@ -3654,6 +3713,7 @@ export class EngineClient {
   async startCleanMatch(params: {
     selection: BatchSelection;
     rematch?: boolean;
+    label?: string;
   }): Promise<MatchStarted> {
     return this.postJson("/api/v1/clean/match", params);
   }
@@ -3694,6 +3754,96 @@ export class EngineClient {
     selection?: BatchSelection;
   }): Promise<DecisionOutcome> {
     return this.postJson("/api/v1/clean/decide", params);
+  }
+
+  /**
+   * Accept a candidate and copy the ticked fields as one act (C14, DEC-068).
+   * A track answers inline; `correctMatches` takes a selection and accepts what
+   * each track proposes, answering like a batch.
+   */
+  async correctMatch(params: {
+    track_id: number;
+    candidate_id: number;
+    fields: CorrectField[];
+    replace_key?: boolean;
+  }): Promise<CorrectOutcome> {
+    return this.postJson("/api/v1/clean/correct", params);
+  }
+
+  async correctMatches(params: {
+    selection: BatchSelection;
+    fields: CorrectField[];
+    replace_key?: boolean;
+  }): Promise<CorrectBatchOutcome> {
+    return this.postJson("/api/v1/clean/correct", params);
+  }
+
+  /** Past searches, newest first; `q` finds text in a label or date. */
+  async getMatchJobs(params?: {
+    q?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<MatchJobs> {
+    const query = new URLSearchParams();
+    if (params?.q) query.set("q", params.q);
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    if (params?.offset != null) query.set("offset", String(params.offset));
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return this.getJson(`/api/v1/clean/match/jobs${suffix}`);
+  }
+
+  /** A Beatport candidate's artwork as JPEG bytes, or null when it has none (204). */
+  async getCandidateArtwork(params: {
+    candidateId: number;
+    size: ArtworkSize;
+  }): Promise<Uint8Array | null> {
+    if (!Number.isInteger(params.candidateId) || params.candidateId < 1) {
+      throw new Error("A candidate id is a positive whole number");
+    }
+    const query = new URLSearchParams({ size: params.size });
+    const res = await fetch(
+      this.url(
+        `/api/v1/clean/candidates/${encodeURIComponent(String(params.candidateId))}/artwork?${query.toString()}`,
+      ),
+      { headers: this.headers() },
+    );
+    if (res.status === 204) {
+      return null;
+    }
+    if (!res.ok) {
+      // Always throws: the answer says why.
+      await readJson(res);
+    }
+    if (!(res.headers.get("Content-Type") ?? "").startsWith("image/jpeg")) {
+      throw new Error("The engine answered candidate artwork with something other than a JPEG");
+    }
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
+  /** A candidate's audio preview and its type, or null when it has none (204). */
+  async getCandidatePreview(params: {
+    candidateId: number;
+  }): Promise<CandidatePreview | null> {
+    if (!Number.isInteger(params.candidateId) || params.candidateId < 1) {
+      throw new Error("A candidate id is a positive whole number");
+    }
+    const res = await fetch(
+      this.url(
+        `/api/v1/clean/candidates/${encodeURIComponent(String(params.candidateId))}/preview`,
+      ),
+      { headers: this.headers() },
+    );
+    if (res.status === 204) {
+      return null;
+    }
+    if (!res.ok) {
+      await readJson(res);
+    }
+    const contentType = res.headers.get("Content-Type") ?? "";
+    if (!contentType.startsWith("audio/")) {
+      throw new Error("The engine answered a preview with something other than audio");
+    }
+    return { bytes: new Uint8Array(await res.arrayBuffer()), contentType };
   }
 
   /** Copy chosen fields from decided candidates into CuePoint's layer (DEC-004). */
