@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
-import { MISSING_COLUMNS, REVIEW_COLUMNS, matchCell } from "./cleanColumns";
-import { DISPUTED_HINT } from "./cleanFormat";
+import { MISSING_COLUMNS, matchCell } from "./cleanColumns";
 
 function row(overrides: Partial<LibraryTrackRow>): LibraryTrackRow {
   return {
@@ -32,29 +31,16 @@ function row(overrides: Partial<LibraryTrackRow>): LibraryTrackRow {
   };
 }
 
-const cell = (columns: typeof REVIEW_COLUMNS, id: string, track: LibraryTrackRow) =>
+const cell = (columns: typeof MISSING_COLUMNS, id: string, track: LibraryTrackRow) =>
   columns.find((column) => column.id === id)!.render(track);
 
-describe("the review queue's columns", () => {
-  it("say where a track stands, and when a newer match disagrees", () => {
+describe("the Match cell", () => {
+  it("says where a track stands, and when a newer match disagrees", () => {
     expect(matchCell(row({ match_state: "needs_review" }))).toBe("Waiting for you");
     expect(matchCell(row({ match_state: "accepted", match_disputed: true }))).toBe(
       "Accepted · changed since you decided",
     );
     expect(matchCell(row({ match_state: null }))).toBe("");
-  });
-
-  it("show the values a user sees, overrides included", () => {
-    const track = row({ effective_key: "9A", effective_bpm: 124, effective_genre: "Techno" });
-    expect(cell(REVIEW_COLUMNS, "key", track)).toBe("9A");
-    expect(cell(REVIEW_COLUMNS, "bpm", track)).toBe("124.0");
-    expect(cell(REVIEW_COLUMNS, "genre", track)).toBe("Techno");
-    expect(cell(REVIEW_COLUMNS, "year", row({ effective_year: null }))).toBe("");
-  });
-
-  it("sort only by what the engine can order", () => {
-    expect(REVIEW_COLUMNS.find((c) => c.id === "match_state")!.sortKey).toBeUndefined();
-    expect(REVIEW_COLUMNS[0]!.sticky).toBe(true);
   });
 });
 
@@ -70,13 +56,5 @@ describe("the missing files columns", () => {
     const hint = MISSING_COLUMNS.find((column) => column.id === "file_status")!.hint;
     expect(hint).toMatch(/Missing: nothing is at that path/);
     expect(hint).toMatch(/Unreadable: the file is there but CuePoint cannot open it/);
-  });
-});
-
-describe("the Match column's hint", () => {
-  it("says what changed since you decided means", () => {
-    const column = REVIEW_COLUMNS.find((entry) => entry.id === "match_state");
-    expect(column?.hint).toContain("Changed since you decided");
-    expect(column?.hint).toContain(DISPUTED_HINT);
   });
 });

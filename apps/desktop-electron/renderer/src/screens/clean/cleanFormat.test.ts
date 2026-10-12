@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import type { TrackMatchState } from "../../api/cuepointBridge.types";
 import {
-  appliedLine,
-  decidedLine,
+  clampLabel,
+  attemptLabel,
+  correctedLine,
+  correctedManyLine,
   decisionLine,
   exportedLine,
   fileStatusHint,
@@ -12,7 +14,9 @@ import {
   matchRunningNote,
   matchStartedLine,
   matchStateLabel,
-  resumableLine,
+  nothingToCorrectLine,
+  notThisLine,
+  undidLine,
   rejectReasonText,
   signalExplanation,
   signalLabel,
@@ -32,6 +36,19 @@ function state(overrides: Partial<TrackMatchState>): TrackMatchState {
   };
 }
 
+describe("a run's name within the engine's limit", () => {
+  it("leaves a name of 200 characters or fewer alone", () => {
+    expect(clampLabel("Whole library")).toBe("Whole library");
+    expect(clampLabel("x".repeat(200))).toBe("x".repeat(200));
+  });
+
+  it("cuts a longer one to 199 characters and an ellipsis", () => {
+    const clamped = clampLabel("y".repeat(201));
+    expect(clamped).toHaveLength(200);
+    expect(clamped).toBe(`${"y".repeat(199)}…`);
+  });
+});
+
 describe("where a track stands", () => {
   it("says who decided", () => {
     expect(decisionLine(state({ decided_by: "auto" }))).toBe("Accepted automatically");
@@ -49,7 +66,7 @@ describe("where a track stands", () => {
   });
 
   it("labels every state and nothing for none", () => {
-    // CLN-4: one set of words for the Review queue, the Library and the Inspector.
+    // CLN-4: one set of words for the Match area, the Library and the Inspector.
     expect(matchStateLabel("needs_review")).toBe("Waiting for you");
     expect(matchStateLabel("accepted")).toBe("Accepted");
     expect(matchStateLabel("rejected")).toBe("Rejected");
@@ -90,24 +107,6 @@ describe("duplicate signals", () => {
   });
 });
 
-describe("a match that can be resumed", () => {
-  it("says how much is left, and that only that is matched", () => {
-    expect(resumableLine({ remaining: 12, planned: 50 }, 1)).toBe(
-      "A match stopped with 12 of 50 tracks left. Resuming matches only those.",
-    );
-    expect(resumableLine({ remaining: 1, planned: 1 }, 1)).toBe(
-      "A match stopped with 1 of 1 track left. Resuming matches only those.",
-    );
-  });
-
-  it("counts the others rather than listing them", () => {
-    expect(resumableLine({ remaining: 1200, planned: 30000 }, 2)).toBe(
-      "A match stopped with 1,200 of 30,000 tracks left. 1 other match can be resumed from Activity.",
-    );
-    expect(resumableLine({ remaining: 3, planned: 9 }, 4)).toMatch(/3 other matches can be resumed/);
-  });
-});
-
 describe("sentences about what was done", () => {
   it("says what a match started and left out", () => {
     expect(matchStartedLine({ planned: 1, excluded: 0 })).toBe("Matching 1 track on Beatport.");
@@ -131,15 +130,29 @@ describe("sentences about what was done", () => {
     expect(matchRunningNote()).toMatch(/^A match is running on Beatport\. The bar at the bottom/);
   });
 
-  it("says what was decided, applied and exported", () => {
-    expect(decidedLine("accept", "Strobe")).toBe("Accepted a match for “Strobe”.");
-    expect(decidedLine("reject", "Strobe")).toBe("Rejected the match for “Strobe”.");
-    expect(decidedLine("clear", "Strobe")).toBe("Undid your decision for “Strobe”.");
-    expect(appliedLine(["Key", "BPM"], "Strobe")).toBe("Applied Key, BPM to “Strobe”.");
+  it("says what was corrected, refused and undone, and what changed nothing", () => {
+    expect(correctedLine("Strobe")).toBe("Corrected “Strobe”.");
+    expect(nothingToCorrectLine("Strobe")).toBe("Nothing to change for “Strobe”.");
+    expect(notThisLine("Strobe")).toBe("Marked “Strobe” as not this track.");
+    expect(undidLine("Strobe")).toBe("Undid the change to “Strobe”.");
+    expect(correctedManyLine(1)).toBe("Corrected 1 track.");
+    expect(correctedManyLine(1200)).toBe("Corrected 1,200 tracks.");
+  });
+
+  it("says what was exported", () => {
     expect(exportedLine(2, "C:\\out\\review-list.csv")).toBe(
       "Exported 2 tracks to review-list.csv.",
     );
     expect(exportedLine(1, "/out/list.json")).toBe("Exported 1 track to list.json.");
+  });
+
+  it("names an attempt by when, what came of it, and its notes", () => {
+    const attempt = { id: 5, outcome: "matched" as const, finished_at: "<recorded>" };
+    expect(attemptLabel(attempt, 0, 5)).toBe("<recorded> — matched (latest, decided)");
+    expect(attemptLabel({ ...attempt, outcome: "no_match" }, 1, null)).toBe(
+      "<recorded> — found nothing",
+    );
+    expect(attemptLabel({ ...attempt, outcome: "error" }, 2, null)).toBe("<recorded> — failed");
   });
 
   it("shows a time it cannot read as it came", () => {

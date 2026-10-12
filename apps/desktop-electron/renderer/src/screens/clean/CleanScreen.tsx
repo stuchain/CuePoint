@@ -1,13 +1,14 @@
 /**
  * The Clean page (CLEAN-12, DEC-072).
  *
- * Five parts behind tabs — Review matches, Fix values, Missing files,
- * Duplicates and Health — over one read of Library Health they all share. The
- * part last used is where the page reopens (`cleanSections.ts`). Each part
- * opens with one line saying what it is for (CLN-1), and the tabs say where
- * work waits (CLN-3). The header holds the page's actions: **Match tracks…**,
- * which opens the one window where many tracks are matched (FLW-13), and
- * Review's own.
+ * Five parts behind tabs — Match, Fix values, Missing files, Duplicates and
+ * Health — over one read of Library Health they all share. The part last used
+ * is where the page reopens (`cleanSections.ts`). The tab names and the buttons
+ * say what each part is for, so no part opens with a paragraph (C15b); the tabs
+ * say where work waits (CLN-3). The header holds the page's one action:
+ * **Match tracks…**, which opens the one window where many tracks are matched
+ * (FLW-13). Match is the Match area (`match/MatchArea.tsx`): One at a time,
+ * Table and Past searches.
  *
  * Every table here is the Library's `TrackTable` over the Library's windowed
  * browse with a rule set, and every action goes through a route CLEAN-11 built.
@@ -26,7 +27,7 @@ import { HealthView } from "./HealthView";
 import { FixValues } from "./FixValues";
 import { MatchWindow } from "./MatchWindow";
 import { MissingFilesView } from "./MissingFilesView";
-import { ReviewView } from "./ReviewView";
+import { MatchArea } from "./match/MatchArea";
 import type {
   CleanFixOpening,
   CleanMatchOpening,
@@ -36,7 +37,6 @@ import type {
 import type { CleanTracks } from "./cleanTracks";
 import { entityPath } from "../discover/discoverLinks";
 import {
-  CLEAN_INTROS,
   CLEAN_SECTIONS,
   loadCleanSection,
   sectionCounts,
@@ -50,7 +50,7 @@ import "./clean.css";
 
 interface CleanScreenProps {
   /**
-   * A track to open in the review queue (CLEAN-13), from the Inspector's link.
+   * A track to open in the Match area (CLEAN-13), from the Inspector's link.
    * Applied once per navigation, as the Library's `openWith` is.
    */
   openWith?: CleanOpening | null;
@@ -89,8 +89,6 @@ export function CleanScreen({
   );
   const opened = useRef<string | null>(null);
   const [focus, setFocus] = useState<CleanOpening | null>(null);
-  // Where the Review part puts its header buttons (CLN-11).
-  const [actionsHost, setActionsHost] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!openWith || opened.current === openWith.token) return;
@@ -108,8 +106,7 @@ export function CleanScreen({
   // The match window: its tracks, and whether it is open (FLW-13).
   const [matchTracks, setMatchTracks] = useState<CleanTracks | null>(null);
   const [matchOpen, setMatchOpen] = useState(false);
-  // What Review has chosen (a selection, or the playlist in In): the header's
-  // Match tracks… opens on it.
+  // What the Match table has ticked: the header's Match tracks… opens on it.
   const [reviewTarget, setReviewTarget] = useState<CleanTracks | null>(null);
   const openMatch = useCallback((tracks: CleanTracks | null = null) => {
     setMatchTracks(tracks);
@@ -222,10 +219,8 @@ export function CleanScreen({
           >
             Match tracks…
           </Button>
-          <span className="clean-screen__actions" ref={setActionsHost} />
         </div>
       </header>
-      <p className="clean-screen__lede">{CLEAN_INTROS[section]}</p>
       {match.note && (
         <div className="clean-note" role="region" aria-label="Matching">
           <p className="clean-note__text">{match.note}</p>
@@ -233,12 +228,11 @@ export function CleanScreen({
       )}
       <div className="clean-screen__body" role="tabpanel" aria-label={label}>
         {section === "review" && (
-          <ReviewView
+          <MatchArea
             health={cleanHealth.health}
             onHealthChanged={reloadHealth}
             focus={focus}
             onOpenEntity={openEntity}
-            actionsHost={actionsHost}
             match={match}
             onMatchTracks={(tracks) => openMatch(tracks ?? null)}
             onMatchTargetChange={setReviewTarget}
@@ -275,8 +269,8 @@ export function CleanScreen({
         open={matchOpen}
         tracks={matchTracks}
         health={cleanHealth.health}
-        onStart={(selection, again) =>
-          match.start(again ? "rematch-many" : "match-many", selection, again)
+        onStart={(selection, again, label) =>
+          match.start(again ? "rematch-many" : "match-many", selection, again, label)
         }
         onClose={() => setMatchOpen(false)}
       />

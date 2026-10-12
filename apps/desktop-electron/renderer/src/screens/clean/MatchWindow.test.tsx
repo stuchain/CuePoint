@@ -105,7 +105,7 @@ describe("which tracks", () => {
     expect(dialog).toHaveTextContent("CuePoint will search Beatport for 1,204 tracks.");
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
-    expect(onStart).toHaveBeenCalledWith({ query: { filters: NOT_YET } }, false);
+    expect(onStart).toHaveBeenCalledWith({ query: { filters: NOT_YET } }, false, "Not looked up yet");
   });
 
   it("can match every track, and look up the ones that already have a match again", () => {
@@ -122,7 +122,7 @@ describe("which tracks", () => {
     fireEvent.click(again);
     expect(dialog).toHaveTextContent("CuePoint will search Beatport for 3,880 tracks.");
     fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
-    expect(onStart).toHaveBeenCalledWith({ query: {} }, true);
+    expect(onStart).toHaveBeenCalledWith({ query: {} }, true, "Whole library");
   });
 
   it("takes the chosen playlists, Collections and Sets, and counts what is not looked up in them", async () => {
@@ -147,7 +147,21 @@ describe("which tracks", () => {
         },
       },
       true,
+      // What was matched is named for Past searches (C14).
+      'Playlist "Friday"',
     );
+  });
+
+  it("names two places by how many, and a Set by its kind", async () => {
+    const { dialog, onStart } = show();
+    fireEvent.click(within(dialog).getByRole("radio", { name: /^Tracks in chosen playlists/ }));
+    fireEvent.click(await within(dialog).findByRole("checkbox", { name: "Saturday" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    expect(onStart).toHaveBeenLastCalledWith(expect.anything(), false, 'Set "Saturday"');
+
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Friday" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    expect(onStart).toHaveBeenLastCalledWith(expect.anything(), false, "2 chosen places");
   });
 });
 
@@ -160,7 +174,7 @@ describe("tracks passed in arrive chosen", () => {
     expect(within(dialog).getByRole("radio", { name: /^Tracks not looked up yet/ })).not.toBeChecked();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
-    expect(onStart).toHaveBeenCalledWith({ track_ids: [4, 5, 6] }, false);
+    expect(onStart).toHaveBeenCalledWith({ track_ids: [4, 5, 6] }, false, "3 chosen tracks");
   });
 
   it("from a filter, as a described selection with the count the Library showed", async () => {
@@ -180,6 +194,7 @@ describe("tracks passed in arrive chosen", () => {
     expect(onStart).toHaveBeenCalledWith(
       { query: { filters: { match: "all", rules: [{ field: "key", operator: "is_empty" }] } } },
       false,
+      "40 chosen tracks",
     );
   });
 

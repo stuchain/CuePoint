@@ -184,7 +184,7 @@ describe("the Health section (STATS-07)", () => {
     expect(where().dataset.section).toBe("health");
   });
 
-  it("links Match to Clean's Review matches tab", async () => {
+  it("links Match to Clean's Match tab", async () => {
     renderSection();
     await userEvent.click(within(panel("beatport")).getByRole("button", { name: "Match" }));
     expect(where()).toHaveTextContent("/clean");

@@ -1,8 +1,9 @@
 /**
  * Running a match for the Clean page (PAGES-07B, CLN-7, DEC-065).
  *
- * The match window starts matches, Review resumes a stopped one and matches a
- * single track again, and all of them are one job the status strip follows.
+ * The match window starts matches, Past searches resumes a stopped one and
+ * matches a run again, One at a time matches a single track again, and all of
+ * them are one job the status strip follows.
  * This is the one place that starts it, says what it started and where
  * progress is, and counts how many have ended so the queue is read again. A
  * match that was started before the page was opened is read from the active
@@ -14,7 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { BatchSelection, MatchStarted } from "../../api/cuepointBridge.types";
 import { useToast } from "../../components";
 import { useActiveJob } from "../../components/shell/useActiveJob";
-import { matchRunningNote, matchStartedLine } from "./cleanFormat";
+import { clampLabel, matchRunningNote, matchStartedLine } from "./cleanFormat";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
 
 export interface CleanMatch {
@@ -26,7 +27,10 @@ export interface CleanMatch {
   note: string | null;
   /** How many matches have ended while the page was open. */
   ended: number;
-  start: (key: string, selection: BatchSelection, again: boolean) => void;
+  /** How many have been started or resumed here, so Past searches is read again as one begins. */
+  started: number;
+  /** `label` is what the run is called in Past searches: the playlist, "Whole library", "1 track: …". */
+  start: (key: string, selection: BatchSelection, again: boolean, label?: string) => void;
   resume: (jobId: string) => void;
 }
 
@@ -37,6 +41,7 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
   const active = useActiveJob().jobs.find((job) => job.type === "clean_match") ?? null;
   const [note, setNote] = useState<string | null>(null);
   const [ended, setEnded] = useState(0);
+  const [started, setStarted] = useState(0);
 
   const latestEnded = useRef(onEnded);
   latestEnded.current = onEnded;
@@ -57,6 +62,7 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
     (key: string, begin: () => Promise<MatchStarted>) => {
       void jobs.run<MatchStarted>(key, begin, {
         started: (answer) => {
+          setStarted((count) => count + 1);
           setNote(matchRunningNote(answer));
           return matchStartedLine(answer);
         },
@@ -72,13 +78,13 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
   );
 
   const start = useCallback(
-    (key: string, selection: BatchSelection, again: boolean) => {
+    (key: string, selection: BatchSelection, again: boolean, label?: string) => {
       const bridge = window.cuepoint?.startCleanMatch;
       if (!bridge) {
         push("Matching needs the desktop app with CuePoint's library service running.", "warning");
         return;
       }
-      follow(key, () => bridge({ selection, rematch: again }));
+      follow(key, () => bridge({ selection, rematch: again, ...(label ? { label: clampLabel(label) } : {}) }));
     },
     [follow, push],
   );
@@ -100,6 +106,7 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
     running: jobs.running,
     note: note ?? (active ? matchRunningNote() : null),
     ended,
+    started,
     start,
     resume,
   };

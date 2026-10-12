@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { filterShortcuts, KEYBOARD_SHORTCUTS } from "./keyboardShortcuts";
-import { REVIEW_KEYS } from "../screens/clean/reviewKeyboard";
+import { MATCH_KEYS } from "../screens/clean/match/matchKeyboard";
+import oneAtATimeSource from "../screens/clean/match/OneAtATime.tsx?raw";
+import matchKeyboardSource from "../screens/clean/match/matchKeyboard.ts?raw";
 import appSource from "../App.tsx?raw";
 import globalSearchSource from "../components/shell/GlobalSearch.tsx?raw";
 import inspectorSource from "../components/shell/TrackInspector.tsx?raw";
@@ -59,23 +61,38 @@ describe("the Library's shortcuts (LIBUI-10)", () => {
   });
 });
 
-describe("the review queue's shortcuts (CLEAN-12)", () => {
-  it("documents every key the queue binds, as the queue names them", () => {
-    const clean = KEYBOARD_SHORTCUTS.filter((row) => row.context === "Clean");
-    const keys = Object.values(REVIEW_KEYS);
+describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
+  const clean = KEYBOARD_SHORTCUTS.filter((row) => row.context === "Clean");
+
+  it("documents every key One at a time binds, as it names them", () => {
+    const keys = Object.values(MATCH_KEYS);
 
     // Each command's key appears in the dialog: arrows as a pair, letters alone.
     for (const key of keys) {
       expect(clean.some((row) => row.shortcut.split(" / ").includes(key)), key).toBe(true);
     }
-    expect(clean).toHaveLength(5);
+    expect(clean).toHaveLength(8);
   });
 
   it("binds no modified key, so none can collide with a shell shortcut", () => {
-    const clean = KEYBOARD_SHORTCUTS.filter((row) => row.context === "Clean");
     for (const row of clean) {
       expect(row.shortcut).not.toMatch(/Ctrl|Alt|Shift|Cmd/);
     }
+  });
+
+  it("leaves Space to the player", () => {
+    expect(clean.map((row) => row.shortcut)).not.toContain("Space");
+    expect(matchKeyboardSource).not.toMatch(/case " "/);
+    expect(KEYBOARD_SHORTCUTS.find((row) => row.shortcut === "Space")?.context).toBe("Player");
+  });
+
+  it("answers each key in the code that binds it", () => {
+    for (const letter of ["a", "r", "n", "b", "y"]) {
+      expect(matchKeyboardSource, letter).toMatch(new RegExp(`case "${letter}"`));
+    }
+    expect(matchKeyboardSource).toMatch(/"Escape"/);
+    expect(matchKeyboardSource).toMatch(/case "ArrowLeft"/);
+    expect(oneAtATimeSource).toMatch(/matchCommand\(event, "one"\)/);
   });
 });
 

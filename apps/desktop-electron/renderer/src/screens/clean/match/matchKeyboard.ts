@@ -1,0 +1,105 @@
+/**
+ * Matching from the keyboard (CLEAN-12, C14).
+ *
+ * Checking 3,000 tracks is a keyboard job, so One at a time decides without a
+ * mouse. The keys are bare letters and arrows, which is only safe because of
+ * the rules below: a key typed into a field is text, a key pressed inside a
+ * dialog belongs to the dialog, and a key held with Ctrl, Alt or the command
+ * key belongs to the shell (SHELL-10's shortcuts are all modified). A key
+ * pressed inside a widget that moves with keys of its own — the player's queue
+ * list, a tree, a menu — belongs to that widget.
+ *
+ * **Space is not here.** It is the player's (`usePlayerShortcuts`): play or
+ * pause. Playing the track's file is Y, and the Beatport preview is B.
+ *
+ * The Table keeps the table's own Up, Down and Enter, so over the Table the
+ * only key this answers is Esc, to stop a preview.
+ */
+
+export type MatchCommand =
+  | "previous-track"
+  | "next-track"
+  | "previous-candidate"
+  | "next-candidate"
+  | "correct"
+  | "not-this"
+  | "skip"
+  | "play-preview"
+  | "play-file"
+  | "stop-preview";
+
+export type MatchView = "one" | "table";
+
+export interface KeyLike {
+  key: string;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+  target: EventTarget | null;
+}
+
+/** The keys, as the shortcuts dialog lists them. */
+export const MATCH_KEYS: Record<MatchCommand, string> = {
+  "previous-track": "Up",
+  "next-track": "Down",
+  "previous-candidate": "Left",
+  "next-candidate": "Right",
+  correct: "A",
+  "not-this": "R",
+  skip: "N",
+  "play-preview": "B",
+  "play-file": "Y",
+  "stop-preview": "Esc",
+};
+
+/** Inputs that take no typed text: a tick or a radio is not a field, so A still means Correct there. */
+const NOT_TEXT_INPUTS = ["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"];
+
+function inTheWay(target: EventTarget | null): boolean {
+  if (typeof HTMLElement === "undefined" || !(target instanceof HTMLElement)) return false;
+  if (target instanceof HTMLInputElement && NOT_TEXT_INPUTS.includes(target.type)) {
+    return (
+      target.closest('[role="dialog"], [role="menu"], [role="listbox"], [role="tree"]') !== null
+    );
+  }
+  if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable) {
+    return true;
+  }
+  return (
+    target.closest('[role="dialog"], [role="menu"], [role="listbox"], [role="tree"]') !== null
+  );
+}
+
+export function matchCommand(event: KeyLike, view: MatchView): MatchCommand | null {
+  if (event.ctrlKey || event.metaKey || event.altKey) return null;
+  if (inTheWay(event.target)) return null;
+  if (event.key === "Escape") return "stop-preview";
+  if (view === "table") return null;
+  switch (event.key) {
+    case "ArrowUp":
+      return "previous-track";
+    case "ArrowDown":
+      return "next-track";
+    case "ArrowLeft":
+      return "previous-candidate";
+    case "ArrowRight":
+      return "next-candidate";
+  }
+  // Letters without Shift: a capital typed by accident is not a decision.
+  if (event.shiftKey) return null;
+  switch (event.key) {
+    case "a":
+      return "correct";
+    case "r":
+      return "not-this";
+    case "n":
+      return "skip";
+    case "b":
+      return "play-preview";
+    case "y":
+      return "play-file";
+    default:
+      return null;
+  }
+}

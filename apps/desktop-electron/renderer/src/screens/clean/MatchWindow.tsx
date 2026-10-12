@@ -30,10 +30,12 @@ import {
   type SelectionQuery,
 } from "./cleanTracks";
 import { PlacePicker } from "./PlacePicker";
-import { useCleanSources } from "./useCleanSources";
+import { useCleanSources, type CleanSource } from "./useCleanSources";
 import { useTrackCount } from "./useTrackCount";
 
 type Which = "not_yet" | "all" | "places" | "given";
+
+const PLACE_WORDS = { playlist: "Playlist", collection: "Collection", set: "Set" } as const;
 
 interface MatchWindowProps {
   open: boolean;
@@ -41,8 +43,11 @@ interface MatchWindowProps {
   tracks: CleanTracks | null;
   /** Health's counts, which say how many tracks there are and how many were not looked up. */
   health: LibraryHealth | null;
-  /** Start matching this selection; `again` looks up tracks that already have a match. */
-  onStart: (selection: BatchSelection, again: boolean) => void;
+  /**
+   * Start matching this selection; `again` looks up tracks that already have a
+   * match. `label` says what was chosen, for Past searches (C14).
+   */
+  onStart: (selection: BatchSelection, again: boolean, label: string) => void;
   onClose: () => void;
 }
 
@@ -112,6 +117,21 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
     return tracks ? selectionOf(tracks) : null;
   };
 
+  /** What this run is called in Past searches: the place, the library, or how many tracks. */
+  const runLabel = (): string => {
+    if (which === "not_yet") return "Not looked up yet";
+    if (which === "all") return "Whole library";
+    if (which === "places") {
+      const named = places
+        .map((place) => sources.find((source) => source.kind === place.kind && source.id === place.id))
+        .filter((source): source is CleanSource => source !== undefined);
+      if (named.length === 1) return `${PLACE_WORDS[named[0]!.kind]} "${named[0]!.name}"`;
+      return `${places.length.toLocaleString()} chosen places`;
+    }
+    const chosenTracks = tracks ? chosenCount(tracks) : 0;
+    return `${chosenTracks.toLocaleString()} chosen ${chosenTracks === 1 ? "track" : "tracks"}`;
+  };
+
   const nothingChosen = which === "places" && places.length === 0;
   const nothingToDo = !nothingChosen && searched === 0;
 
@@ -131,7 +151,7 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
   const start = () => {
     const chosen = selection();
     if (!chosen) return;
-    onStart(chosen, lookedUpAgain);
+    onStart(chosen, lookedUpAgain, runLabel());
     onClose();
   };
 
@@ -153,7 +173,7 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
     >
       <p>
         CuePoint searches Beatport for each track and proposes a match. Sure matches are accepted
-        for you; the rest wait in Review matches.
+        for you; the rest wait in Match.
       </p>
       <fieldset className="clean-match-choice">
         <legend className="clean-visually-hidden">Which tracks</legend>

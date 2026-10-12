@@ -6,9 +6,7 @@ import {
   CANDIDATE_LIMIT,
   SCORE_OPEN_STORAGE_KEY,
   SCORE_ROWS,
-  VALUE_ROWS,
   applyValue,
-  candidateBadges,
   cellText,
   defaultChoice,
   loadScoreOpen,
@@ -117,76 +115,7 @@ describe("the candidates drawn", () => {
   });
 });
 
-describe("what a candidate is called", () => {
-  it("is what the decision made of it", () => {
-    expect(candidateBadges(candidate(1), state({ state: "accepted", candidate_id: 1 }))).toEqual([
-      "Accepted",
-    ]);
-    expect(candidateBadges(candidate(1), state({ state: "rejected", candidate_id: 1 }))).toEqual([
-      "Rejected",
-    ]);
-    expect(
-      candidateBadges(candidate(1, { is_winner: true }), state({ candidate_id: 1 })),
-    ).toEqual(["Suggested"]);
-  });
-
-  it("is the best score when a person chose another", () => {
-    expect(
-      candidateBadges(
-        candidate(1, { is_winner: true }),
-        state({ state: "accepted", candidate_id: 2 }),
-      ),
-    ).toEqual(["Best score"]);
-  });
-
-  it("says a guard ruled it out", () => {
-    expect(candidateBadges(candidate(2, { guard_ok: false }), state())).toEqual(["Ruled out"]);
-  });
-});
-
-describe("the rows", () => {
-  const track = {
-    title: "A Title (Extended Mix)",
-    artist: "An Artist",
-    mix: "Extended Mix",
-    remixer: null,
-    album: null,
-    label: "A Label",
-    genre: "Techno",
-    key: "8A",
-    bpm: 127.98,
-    year: null,
-  };
-
-  it("draw both sides, absent as a dash", () => {
-    const text = (id: string) => {
-      const row = VALUE_ROWS.find((entry) => entry.id === id)!;
-      return [row.track(track), row.candidate(candidate(1, { subgenre: "Peak Time" }))];
-    };
-    // Rekordbox's key is shown against Beatport's, and said not to be used (DEC-201).
-    expect(text("key")).toEqual(["8A (from Rekordbox, not used)", "A Minor"]);
-    expect(text("bpm")).toEqual(["128.0", "128.0"]);
-    expect(text("genre")).toEqual(["Techno", "Techno (Peak Time)"]);
-    expect(text("remixers")).toEqual(["—", "—"]);
-    expect(text("year")).toEqual(["—", "2020"]);
-    expect(text("release")).toEqual(["—", "A Release"]);
-  });
-
-  it("mark only the fields the engine compares", () => {
-    const compared = VALUE_ROWS.filter((row) => row.differs).map((row) => row.differs);
-    expect(compared).toEqual([
-      "title",
-      "artists",
-      "mix",
-      "remixers",
-      "label",
-      "genre",
-      "key",
-      "bpm",
-      "year",
-    ]);
-  });
-
+describe("the scoring rows", () => {
   it("show how the matcher scored, and why it refused", () => {
     const text = (id: string, c: MatchCandidate) =>
       SCORE_ROWS.find((row) => row.id === id)!.candidate(c);
@@ -218,9 +147,9 @@ describe("what applying copies", () => {
 
 describe("one plain line per candidate", () => {
   it.each([
-    [94.2, "Very likely (94/100)"],
-    [71.1, "Possible (71/100)"],
-    [41.6, "Unlikely (42/100)"],
+    [94.2, "94% likely"],
+    [71.1, "71% likely"],
+    [41.6, "42% likely"],
   ])("says %s as %s", (score, line) => {
     expect(scoreLine(candidate(1, { score }))).toBe(line);
   });

@@ -1,9 +1,10 @@
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import * as sections from "./cleanSections";
+
 import {
   CLEAN_SECTIONS,
-  CLEAN_INTROS,
   CLEAN_SECTION_STORAGE_KEY,
   sectionCounts,
   loadCleanSection,
@@ -18,7 +19,7 @@ afterEach(() => {
 describe("the Clean page's parts", () => {
   it("are the CLN-3 names, in order", () => {
     expect(CLEAN_SECTIONS.map((section) => section.label)).toEqual([
-      "Review matches",
+      "Match",
       "Fix values",
       "Missing files",
       "Duplicates",
@@ -26,7 +27,7 @@ describe("the Clean page's parts", () => {
     ]);
   });
 
-  it("open on Review the first time", () => {
+  it("open on Match the first time", () => {
     expect(loadCleanSection()).toBe("review");
   });
 
@@ -36,7 +37,7 @@ describe("the Clean page's parts", () => {
     expect(loadCleanSection()).toBe("duplicates");
   });
 
-  it("open on Review when what was stored is not a part", () => {
+  it("open on Match when what was stored is not a part", () => {
     localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, "inkey");
     expect(loadCleanSection()).toBe("review");
   });
@@ -104,11 +105,12 @@ describe("the work counts on the tabs (CLN-3)", () => {
   });
 });
 
-describe("the intro line of every part (CLN-1)", () => {
-  it("is one sentence for each", () => {
-    for (const section of CLEAN_SECTIONS) expect(CLEAN_INTROS[section.id]).toBeTruthy();
-    expect(CLEAN_INTROS.review).toBe(
-      "CuePoint looks each track up on Beatport. Sure matches are accepted for you; the rest wait here for a yes or no.",
-    );
+describe("the parts have no intro lines (C15b)", () => {
+  it("keeps the Match tab's id, so stored parts and links still reach it", () => {
+    expect(CLEAN_SECTIONS[0]).toEqual({ id: "review", label: "Match" });
+  });
+
+  it("says nothing under the title: the tab names and the buttons are enough", () => {
+    expect(sections).not.toHaveProperty("CLEAN_INTROS");
   });
 });

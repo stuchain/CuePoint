@@ -9,9 +9,9 @@ import { jobExplainer } from "../../components/shell/useActiveJob";
 import type {
   DuplicateSignal,
   FileStatus,
+  MatchAttempt,
   MatchStarted,
   MatchState,
-  ResumableMatch,
   TrackMatchState,
 } from "../../api/cuepointBridge.types";
 
@@ -22,7 +22,7 @@ function count(number: number, noun: string): string {
 /**
  * Where a track stands, in the words every page uses for it (CLN-4).
  *
- * The Review queue, the Library's Match column and the Inspector's Beatport
+ * The Match area, the Library's Match column and the Inspector's Beatport
  * section all draw this one function, so a state is called one thing wherever
  * it is seen. The stored states (`needs_review`, `no_match`, ...) do not change.
  */
@@ -184,34 +184,56 @@ export function matchRunningNote(started?: Pick<MatchStarted, "planned" | "exclu
   );
 }
 
-/**
- * A match that stopped with tracks left, offered for resuming (DEC-065).
- *
- * `total` is how many can be resumed; the newest is the one offered, and the
- * others are counted rather than listed.
- */
-export function resumableLine(newest: Pick<ResumableMatch, "remaining" | "planned">, total: number): string {
-  const head = `A match stopped with ${newest.remaining.toLocaleString()} of ${count(newest.planned, "track")} left.`;
-  if (total <= 1) return `${head} Resuming matches only those.`;
-  const others = total - 1;
-  const matches = others === 1 ? "other match" : "other matches";
-  return `${head} ${others.toLocaleString()} ${matches} can be resumed from Activity.`;
+/** One track corrected: said where the reviewer is looking, with Undo beside it (C14). */
+/** The most characters the engine keeps of a run's name. */
+export const MATCH_LABEL_LIMIT = 200;
+
+/** A run's name kept within the engine's limit: 199 characters and an ellipsis, so it is not refused. */
+export function clampLabel(label: string): string {
+  return label.length > MATCH_LABEL_LIMIT ? `${label.slice(0, MATCH_LABEL_LIMIT - 1)}…` : label;
 }
 
-/** A decision taken from the review panel, said where the reviewer is looking. */
-export function decidedLine(decision: "accept" | "reject" | "clear", title: string): string {
-  switch (decision) {
-    case "accept":
-      return `Accepted a match for “${title}”.`;
-    case "reject":
-      return `Rejected the match for “${title}”.`;
-    case "clear":
-      return `Undid your decision for “${title}”.`;
-  }
+export function correctedLine(title: string): string {
+  return `Corrected “${title}”.`;
 }
 
-export function appliedLine(fields: readonly string[], title: string): string {
-  return `Applied ${fields.join(", ")} to “${title}”.`;
+/** Correct that changed nothing: the track already had all of it, so there is nothing to undo. */
+export function nothingToCorrectLine(title: string): string {
+  return `Nothing to change for “${title}”.`;
+}
+
+export function nothingToCorrectManyLine(): string {
+  return "Nothing to change for those tracks.";
+}
+
+export function notThisLine(title: string): string {
+  return `Marked “${title}” as not this track.`;
+}
+
+export function undidLine(title: string): string {
+  return `Undid the change to “${title}”.`;
+}
+
+export function correctedManyLine(tracks: number): string {
+  return `Corrected ${count(tracks, "track")}.`;
+}
+
+/** One attempt in the picker (a disputed track has more than one): when, what came of it, and its notes. */
+export function attemptLabel(
+  attempt: Pick<MatchAttempt, "id" | "outcome" | "finished_at">,
+  index: number,
+  decidedOn: number | null,
+): string {
+  const outcome =
+    attempt.outcome === "matched"
+      ? "matched"
+      : attempt.outcome === "no_match"
+        ? "found nothing"
+        : "failed";
+  const notes = [index === 0 ? "latest" : null, attempt.id === decidedOn ? "decided" : null]
+    .filter(Boolean)
+    .join(", ");
+  return `${formatWhen(attempt.finished_at)} — ${outcome}${notes ? ` (${notes})` : ""}`;
 }
 
 export function exportedLine(count_: number, filePath: string): string {

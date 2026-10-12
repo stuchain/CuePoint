@@ -17,7 +17,7 @@ const CHECKED = fixture.checked.health as LibraryHealth;
 const SCANNED = fixture.scanned.health as LibraryHealth;
 const MATCHED = fixture.matched.health as LibraryHealth;
 
-describe("the review queue with nothing in it", () => {
+describe("the Match list with nothing in it", () => {
   it("offers to match every track on a first visit, saying what that does", () => {
     expect(fixture.untouched.needs_review.total).toBe(0);
     const view = reviewEmptyState({
@@ -32,7 +32,6 @@ describe("the review queue with nothing in it", () => {
         "It runs in the background and can take a while for a big library; you can keep using the app.",
     );
     expect(view.offer).toBe("match_all");
-    expect(view.secondary).toBe("choose_playlist");
   });
 
   it("says nothing needs review once everything was matched", () => {
@@ -47,8 +46,8 @@ describe("the review queue with nothing in it", () => {
     expect(view.offer).toBeNull();
   });
 
-  it("does not claim nothing is matched about a playlist", () => {
-    // Health counts the library; a playlist can be unmatched inside one that is.
+  it("does not claim nothing is matched about one search", () => {
+    // Health counts the library; one search can be unmatched inside one that is.
     const view = reviewEmptyState({
       scope: "needs_review",
       scoped: true,
@@ -79,6 +78,12 @@ describe("the review queue with nothing in it", () => {
     );
   });
 
+  it("says an empty search has no tracks, whatever Health says", () => {
+    const view = reviewEmptyState({ scope: "everything", scoped: true, health: MATCHED, error: null });
+    expect(view.headline).toBe("This search has no tracks.");
+    expect(view.offer).toBeNull();
+  });
+
   it("shows the engine's refusal before anything else", () => {
     const view = reviewEmptyState({
       scope: "needs_review",
@@ -90,7 +95,6 @@ describe("the review queue with nothing in it", () => {
       headline: "match_state cannot be sorted",
       hint: null,
       offer: null,
-      secondary: null,
     });
   });
 

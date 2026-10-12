@@ -28,7 +28,6 @@ const KEY_FALLBACK = /\?\?\s*[A-Za-z_][\w.?[\]]*\.key\b|[A-Za-z_][\w.?[\]]*\.key
 /** Files that may read a plain `.key`, and why that is not Rekordbox's key as the track's. */
 const ALLOWED: Readonly<Record<string, string>> = {
   "components/player/playerFormat.ts": "the queue item's key, which the engine resolved",
-  "screens/clean/comparison.ts": "Review's Rekordbox side, labeled 'not used'",
   "screens/discover/beatportKey.ts": "a Beatport track's own key, read as Camelot",
   "screens/library/CollectionsPane.tsx": "a tree row's key, not a track's",
   "screens/library/PaneTree.tsx": "a tree row's key, not a track's",

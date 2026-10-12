@@ -1,5 +1,5 @@
 /**
- * The Clean page's four parts, and which one it opens on (CLEAN-12, DEC-072).
+ * The Clean page's five parts, and which one it opens on (CLEAN-12, DEC-072).
  *
  * Tabs rather than sections, the choice DEC-072 left to the specification:
  * each part is a table or a list a person works through, and four of them
@@ -13,11 +13,12 @@ import type { LibraryHealth } from "../../api/cuepointBridge.types";
 export type CleanSection = "review" | "fix" | "missing" | "duplicates" | "health";
 
 /**
- * The one list of the page's tabs (CLN-3, FLW-12): the screen, the intros and
- * the counts all read it.
+ * The one list of the page's tabs (CLN-3, FLW-12): the screen and the counts
+ * read it. The first keeps its id `review`, so a stored part, a link and
+ * Health's counts still reach it (C14); it is called Match.
  */
 export const CLEAN_SECTIONS: ReadonlyArray<{ id: CleanSection; label: string }> = [
-  { id: "review", label: "Review matches" },
+  { id: "review", label: "Match" },
   { id: "fix", label: "Fix values" },
   { id: "missing", label: "Missing files" },
   { id: "duplicates", label: "Duplicates" },
@@ -54,27 +55,10 @@ export function saveCleanSection(section: CleanSection): void {
 }
 
 /**
- * One sentence under the title for each part (CLN-1, DEC-132): the page used to
- * explain itself only when the library was empty.
- */
-export const CLEAN_INTROS: Record<CleanSection, string> = {
-  review:
-    "CuePoint looks each track up on Beatport. Sure matches are accepted for you; the rest wait here for a yes or no.",
-  fix:
-    "Change many tracks at once: edit their key, BPM, genre, label and year, fill them in from Beatport's matches, and save the result into the audio files. Every change is recorded and can be reverted.",
-  missing:
-    "CuePoint finds files that are not where Rekordbox says, and does not move them. Missing means nothing is at that path; Unreadable means the file is there but CuePoint cannot open it.",
-  duplicates:
-    "Possible duplicates are grouped by what they share. CuePoint deletes nothing: decide which copy to keep in Rekordbox, or mark a group as not duplicates. The number on the tab counts tracks in those groups, not groups.",
-  health:
-    "What needs attention in your library, counted. Each number opens the list that fixes it, with exactly that many tracks.",
-};
-
-/**
  * Where work waits, for the tabs (CLN-3), from the Health counts the page
  * already loads. A part with nothing waiting has no number, and neither does one
  * whose check has never run: no count of missing files is not "no missing
- * files". Review counts what waits for you plus what changed since you decided.
+ * files". Match counts what waits for you plus what changed since you decided.
  */
 export function sectionCounts(
   health: LibraryHealth | null,

@@ -48,14 +48,6 @@
   gap: var(--space-sm);
 }
 
-.clean-screen__lede {
-  margin: 0;
-  padding: var(--space-sm) var(--space-md) 0;
-  max-width: 80ch;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-}
-
 .clean-screen__intro {
   display: flex;
   flex-direction: column;
@@ -172,23 +164,7 @@
   color: var(--fg-muted);
 }
 
-/* ---------------------------------------------------------------- review */
-
-/*
- * The queue and the comparison share the height, each scrolling itself. The
- * comparison gets the larger share because it is what a reviewer reads; the
- * queue keeps a floor so the cursor is always somewhere visible. Below both
- * floors the page scrolls rather than squeezing either to nothing.
- */
-.clean-review {
-  display: grid;
-  grid-template-rows:
-    auto minmax(calc(120px * var(--scale)), 1fr) auto
-    minmax(calc(200px * var(--scale)), 1.5fr);
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
+/* --------------------------------------------------------------- missing */
 
 .clean-missing {
   display: grid;
@@ -198,7 +174,6 @@
   overflow-y: auto;
 }
 
-.clean-review__table,
 .clean-missing__table {
   display: flex;
   min-height: 0;
@@ -213,250 +188,6 @@
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-sm);
   border-top: var(--hairline) solid var(--border-muted);
-}
-
-/* ------------------------------------------------------------ comparison */
-
-/* Its own share of the height, scrolled on its own. Its parts never shrink:
-   a shrunk table grew a scrollbar of its own inside the panel's, and showed
-   one row of candidates at 1×. */
-.clean-compare {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--space-sm) var(--space-md);
-  border-top: var(--border-width-heavy) solid var(--border-outline);
-  background: var(--bg-panel-alt);
-}
-
-.clean-compare > * {
-  flex-shrink: 0;
-}
-
-.clean-compare__empty,
-.clean-compare__problem {
-  margin: 0;
-  color: var(--fg-muted);
-}
-
-.clean-compare__problem {
-  color: var(--accent-danger);
-}
-
-.clean-compare__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--space-md);
-}
-
-/* The Inspector thumbnail size CLEAN-09 made, drawn at a whole-pixel size so
-   the pixel system's sizes never blur it. */
-.clean-compare__art {
-  width: calc(64px * var(--scale));
-  height: calc(64px * var(--scale));
-  object-fit: cover;
-  border: var(--border-width) solid var(--border-outline);
-  image-rendering: auto;
-}
-
-.clean-compare__art--none {
-  background: var(--bg-app);
-}
-
-.clean-compare__heading {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.clean-compare__title {
-  margin: 0;
-  font-size: var(--font-size-md);
-  overflow-wrap: anywhere;
-}
-
-.clean-compare__artist,
-.clean-compare__state {
-  margin: 0;
-  font-size: var(--font-size-xs);
-  color: var(--fg-muted);
-}
-
-.clean-compare__state {
-  color: var(--fg-primary);
-  font-weight: 700;
-}
-
-/* The containing block of the text only a screen reader reads: without it,
-   those absolutely placed spans escape this box's clipping and give the whole
-   window a scroll bar as tall as the comparison (found in CLEAN-13). */
-.clean-compare__scroll {
-  position: relative;
-  overflow-x: auto;
-  border: var(--border-width) solid var(--border-outline);
-}
-
-.clean-compare__table {
-  border-collapse: collapse;
-  font-size: var(--font-size-xs);
-  font-family: var(--font-data);
-  min-width: 100%;
-}
-
-.clean-compare__table th,
-.clean-compare__table td {
-  padding: var(--space-xs) var(--space-sm);
-  border-bottom: var(--hairline) solid var(--border-muted);
-  text-align: left;
-  vertical-align: top;
-  min-width: calc(120px * var(--scale));
-  max-width: calc(260px * var(--scale));
-  overflow-wrap: anywhere;
-}
-
-.clean-compare__table tbody th {
-  position: sticky;
-  left: 0;
-  min-width: calc(110px * var(--scale));
-  background: var(--bg-panel-alt);
-  color: var(--fg-muted);
-  font-weight: 400;
-}
-
-.clean-compare__track-head {
-  color: var(--fg-primary);
-}
-
-.clean-compare__candidate-head {
-  vertical-align: bottom;
-}
-
-/* A hit target that stays usable at 1×: a button the height of a table row,
-   not a line of text. */
-.clean-compare__pick {
-  min-height: calc(24px * var(--scale));
-  padding: 0 var(--space-sm);
-  border: var(--border-width) solid var(--border-outline);
-  background: var(--bg-panel);
-  color: var(--fg-primary);
-  font-family: var(--font-pixel);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-}
-
-.clean-compare__pick[aria-pressed="true"] {
-  background: var(--accent-info);
-  color: var(--fg-inverse);
-}
-
-.clean-compare__badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  margin-top: var(--space-xs);
-}
-
-/* The chosen candidate's column, so a reviewer can see what A would accept. */
-.clean-compare__col--chosen {
-  box-shadow:
-    inset var(--border-width) 0 0 var(--accent-info),
-    inset calc(-1 * var(--border-width)) 0 0 var(--accent-info);
-}
-
-/* A difference is marked with a glyph and words as well as this colour. */
-.clean-compare__cell--differs {
-  background: var(--accent-warning);
-  color: var(--fg-inverse);
-}
-
-.clean-compare__mark {
-  font-weight: 700;
-}
-
-.clean-compare__cell--refused {
-  color: var(--accent-danger);
-}
-
-.clean-compare__score-row th,
-.clean-compare__score-row td {
-  color: var(--fg-muted);
-}
-
-.clean-compare__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-}
-
-.clean-compare__apply {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm) var(--space-md);
-  margin: 0;
-  padding: var(--space-sm);
-  border: var(--border-width) solid var(--border-muted);
-}
-
-.clean-compare__apply legend {
-  padding: 0 var(--space-xs);
-  font-size: var(--font-size-xs);
-}
-
-.clean-compare__apply-field {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-}
-
-.clean-compare__apply-value {
-  color: var(--fg-muted);
-  font-family: var(--font-data);
-}
-
-.clean-compare__more {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-}
-
-.clean-compare__explain {
-  margin: 0;
-  flex-basis: 100%;
-  font-size: var(--font-size-xs);
-  color: var(--fg-muted);
-}
-
-.clean-compare__keys-toggle {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: var(--fg-muted);
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.clean-compare__keys p {
-  margin: var(--space-xs) 0 0;
-}
-
-.clean-compare__keys,
-.clean-compare__status {
-  margin: 0;
-  font-size: var(--font-size-xs);
-  color: var(--fg-muted);
-}
-
-.clean-compare__status {
-  color: var(--fg-primary);
 }
 
 /* ------------------------------------------------------------ duplicates */
@@ -608,18 +339,19 @@
   width: 100%;
   min-height: calc(56px * var(--scale));
   padding: var(--space-sm);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-panel);
-  box-shadow: var(--shadow-bevel-panel);
   color: var(--fg-primary);
   font-family: inherit;
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
   text-align: left;
   cursor: pointer;
 }
 
 .clean-health__count:hover,
 .clean-health__count:focus-visible {
-  background: var(--bg-panel-alt);
+  background: var(--bg-selected);
 }
 
 .clean-health__count[data-zero="true"] {
@@ -672,13 +404,6 @@
   color: var(--fg-muted);
 }
 
-/* The toolbar and anything said under it are one row of the review grid. */
-.clean-review__head {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
 .clean-note__steps {
   margin: 0;
   padding-left: var(--space-lg);
@@ -689,13 +414,6 @@
 
 .clean-note__steps li {
   margin: var(--space-xs) 0;
-}
-
-.clean-note--resume {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
 }
 
 /* ----------------------------------------------------- places, fix, match */

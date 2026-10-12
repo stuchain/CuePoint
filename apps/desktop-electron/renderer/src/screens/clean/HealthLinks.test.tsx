@@ -69,7 +69,7 @@ describe("counts that have a tab of their own", () => {
     renderHealth();
     expect(link("missing_files")).toHaveAccessibleName(/open Missing files$/);
     expect(link("duplicates")).toHaveAccessibleName(/open Duplicates$/);
-    expect(link("needs_review")).toHaveAccessibleName(/open Review matches$/);
+    expect(link("needs_review")).toHaveAccessibleName(/open Match$/);
     expect(link("missing_bpm")).toHaveAccessibleName(/open in the Library$/);
   });
 });

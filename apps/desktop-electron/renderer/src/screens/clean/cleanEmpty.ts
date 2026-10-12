@@ -14,28 +14,23 @@
  */
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
 import { DISPUTED_HINT, formatWhen, trackCount } from "./cleanFormat";
-import type { ReviewScope } from "./cleanRules";
+import type { MatchScope } from "./match/matchScope";
 
 /** The one thing an empty state offers to do about itself, when there is one. */
 type CleanEmptyOffer = "match_all" | "check_files" | "find_duplicates";
-
-/** A second thing an empty state can offer, beside the first. */
-type CleanEmptySecondary = "choose_playlist";
 
 interface CleanEmptyView {
   headline: string;
   hint: string | null;
   offer: CleanEmptyOffer | null;
-  secondary: CleanEmptySecondary | null;
 }
 
 function view(
   headline: string,
   hint: string | null = null,
   offer: CleanEmptyOffer | null = null,
-  secondary: CleanEmptySecondary | null = null,
 ): CleanEmptyView {
-  return { headline, hint, offer, secondary };
+  return { headline, hint, offer };
 }
 
 function countOf(health: LibraryHealth, id: string): number | null {
@@ -49,18 +44,18 @@ function lastRun(health: LibraryHealth, id: string): string | null | undefined {
 }
 
 interface ReviewEmptyInput {
-  scope: ReviewScope;
-  /** True when the queue is narrowed to a playlist or a Collection. */
+  scope: MatchScope;
+  /** True when the list is narrowed to one search (From). */
   scoped: boolean;
   health: LibraryHealth | null;
   error: string | null;
 }
 
 /**
- * The review queue with no rows.
+ * The Match list with no rows.
  *
- * "Nothing matched yet" is claimed only for the whole library: Health counts
- * the library, and a playlist can be unmatched inside a library that is not.
+ * "Nothing matched yet" is claimed only for All searches: Health counts the
+ * library, and one search can be unmatched inside a library that is not.
  */
 export function reviewEmptyState(input: ReviewEmptyInput): CleanEmptyView {
   if (input.error) return view(input.error);
@@ -81,7 +76,6 @@ export function reviewEmptyState(input: ReviewEmptyInput): CleanEmptyView {
         "right release, key and label. It runs in the background and can take a while " +
         "for a big library; you can keep using the app.",
       "match_all",
-      "choose_playlist",
     );
   }
 
@@ -105,6 +99,8 @@ export function reviewEmptyState(input: ReviewEmptyInput): CleanEmptyView {
       );
     case "not_matched":
       return view(`Every track${where} has been looked up.`);
+    case "everything":
+      return view("This search has no tracks.", "The tracks it matched are no longer in your library.");
   }
 }
 
