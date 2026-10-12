@@ -1099,7 +1099,9 @@ class TestAnalysisCheck:
         lines = fps.check_analysis(tmp_path / "mpv", quiet=True)
 
         detail = [line for line in lines if line.startswith("analysis detail")]
-        assert len(detail) == 2  # both transports
+        # One line per transport this platform uses: Windows reads only from the file.
+        transports = {module.default_transport(), module.TRANSPORT_FILE}
+        assert len(detail) == len(transports)
         assert all("within 0 column of its place" in line for line in detail)
 
     @pytest.mark.parametrize("samples", [0, 1, 2, -2], ids=lambda n: f"{n}-samples")
