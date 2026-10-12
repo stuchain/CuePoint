@@ -357,6 +357,7 @@ canvas.scene3d {
 .cell .new {
   position: absolute;
   left: 0;
+  transform-origin: 0 50%;
   top: 0;
   bottom: 0;
   display: flex;
@@ -735,7 +736,10 @@ canvas.scene3d {
 
 .keys-count {
   position: absolute;
-  left: 96px;
+  left: 0;
+  right: 0;
+  width: max-content;
+  margin: 0 auto;
   top: 60px;
   padding: 12px 24px 16px;
   display: flex;
@@ -759,7 +763,6 @@ canvas.scene3d {
 }
 
 .tall .keys-count {
-  left: 54px;
   top: 384px;
   font-size: 36px;
 }
@@ -1000,6 +1003,24 @@ canvas.scene3d {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 26px;
   margin-top: 10px;
+}
+
+.wide .releases {
+  gap: 18px;
+  margin-top: 0;
+}
+
+.wide .release {
+  grid-template-columns: 132px minmax(0, 1fr);
+  padding: 12px 18px;
+}
+
+.wide .slot {
+  height: 64px;
+}
+
+.wide .link {
+  height: 44px;
 }
 
 .tall .releases {

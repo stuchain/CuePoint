@@ -199,8 +199,13 @@ export function labelAmount(i: number, progress: number): number {
   const p = clamp01(progress);
   const appear = staggered(p, [PHASES.tag[0], LABEL_HOLD[0]], liftOrder(i));
   // the tag is gone before the record has turned far
-  const leaving = smooth(clamp01((staggered(p, PHASES.fly, arrivalOrder(i)) - 0.15) / 0.3));
+  const leaving = smooth(clamp01((staggered(p, PHASES.fly, arrivalOrder(i)) - 0.02) / 0.1));
   return Math.max(0, Math.min(smooth(appear), 1 - leaving));
+}
+
+/** How far record i has taken its key's colour, 0 to 1: it comes with the tag and stays through the flight. */
+export function tintAmount(i: number, progress: number): number {
+  return smooth(staggered(clamp01(progress), [PHASES.tag[0], LABEL_HOLD[0]], liftOrder(i)));
 }
 
 /** How lit record i's cell is, 0 to 1. It lights as the record lands and stays lit. */
@@ -342,7 +347,7 @@ export function create(): SceneInstance {
 
   const box = new BoxGeometry(1, 1, 1);
   const floorMaterial = new MeshLambertMaterial();
-  const floorGeometry = new PlaneGeometry(60, 60);
+  const floorGeometry = new PlaneGeometry(160, 160);
   const floor = new Mesh(floorGeometry, floorMaterial);
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
@@ -436,7 +441,7 @@ export function create(): SceneInstance {
       const tag = tags[i]!;
       const a = labelAmount(i, progress);
       // the sleeve takes its key's color with its tag, and keeps it as a cell of the wheel
-      records.setColorAt(i, tint.copy(sleeveColors[i]!).lerp(keyColors[i]!, Math.max(a, lit)));
+      records.setColorAt(i, tint.copy(sleeveColors[i]!).lerp(keyColors[i]!, Math.max(tintAmount(i, progress), lit)));
       tag.mesh.visible = a > 0.01;
       if (tag.mesh.visible) {
         // a sticker on the sleeve's face

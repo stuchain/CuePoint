@@ -247,10 +247,12 @@ function buildClean(format: FormatId, tl: Timeline): HTMLElement {
     const keyCell = [...row.querySelectorAll(".c-key")].filter((c) => c.querySelector(".new"));
     // the old value goes the instant the new one lands: the two never overlap
     tl.set(oldOf(keyCell), { opacity: 0 }, t);
-    tl.fromTo(row.querySelectorAll(".c-key .new, .status .new"), { ...POP }, { ...IN }, t);
+    const fresh = row.querySelectorAll(".c-key .new, .status .new");
+    tl.set(fresh, { opacity: 1 }, t);
+    tl.fromTo(fresh, { scale: POP.scale }, { scale: 1, duration: IN.duration, ease: IN.ease }, t);
     const tick = row.querySelector(".tick");
     if (tick) tl.fromTo(tick, { scale: 2.2, rotation: -20 }, { scale: 1, rotation: 0, duration: BEAT * 0.4, ease: "back.out(2.5)" }, t + BEAT / 8);
-    if (row.classList.contains("is-bad")) tl.to(row, { backgroundColor: "rgba(0,0,0,0)", duration: BEAT / 2, ease: "steps(2)" }, t);
+    if (row.classList.contains("is-bad")) tl.set(row, { backgroundColor: "rgba(0,0,0,0)" }, t);
   });
   // Apply from the accepted matches: tempo and genre, row by row
   tl.from(apply, { scale: 0, opacity: 0, duration: BEAT / 2, ease: "steps(3)" }, beat(4.5));
@@ -302,7 +304,7 @@ function buildKeys(format: FormatId, tl: Timeline): HTMLElement {
   // 8A rises and the rest dim
   const order = [...tileEls].sort((a, b) => Number.parseInt(a.dataset["key"]!, 10) - Number.parseInt(b.dataset["key"]!, 10));
   order.forEach((tile, i) => tl.fromTo(tile, { z: 0, opacity: 0.25 }, { z: 30, opacity: 1, duration: BEAT / 4, ease: "steps(2)" }, start + BEAT / 4 + (i * BEAT) / 16));
-  const lift = start + BEAT * 3;
+  const lift = start + BEAT * 2;
   // 8A is picked; the keys that mix with it (same number, or one step on the same letter) come up with it
   // one every half beat: 8A, then its neighbours; the rest darken (by shade, not by alpha, which went muddy)
   const mixes = new Map([["8A", 0], ["8B", 0.5], ["7A", 1], ["9A", 1.5]]);
@@ -379,7 +381,7 @@ function buildPrepare(format: FormatId, tl: Timeline): HTMLElement {
   // then the set plays through: each track in turn steps forward and lights up, half a beat apiece
   const slotEls = [...el.querySelectorAll<HTMLElement>(".slot")];
   slotEls.forEach((slot, i) => {
-    const on = start + BEAT * (4 + i);
+    const on = start + BEAT * (2.75 + i);
     tl.set(slot, { attr: { "data-playing": "1" } }, on);
     tl.to(slot, { z: 30, duration: BEAT / 4, ease: "power2.out" }, on);
     if (i < slotEls.length - 1) {
@@ -535,7 +537,8 @@ function buildExport(format: FormatId, tl: Timeline): HTMLElement {
   const file = el.querySelector(".file")!;
   const to = wide ? { x: width / 2 - 170, y: -180 } : { x: width / 2 - 180, y: -330 };
   const from = { x: to.x + 40, y: to.y + 90 };
-  tl.fromTo(file, { ...from, z: 60, scale: 0.5, opacity: 0, rotationY: -30 }, { ...to, z: 60, scale: 0.85, opacity: 1, rotationY: 14, duration: BEAT * 0.75, ease: "power3.out" }, beat(2));
+  tl.fromTo(file, { opacity: 0 }, { opacity: 1, duration: BEAT / 8, ease: "steps(1)" }, beat(2));
+  tl.fromTo(file, { ...from, z: 60, scale: 0.5, rotationY: -30 }, { ...to, z: 60, scale: 0.85, rotationY: 14, duration: BEAT * 0.75, ease: "power3.out" }, beat(2));
   tl.to(file, { y: to.y - 14, rotationY: -8, duration: end - beat(3.25), ease: "sine.inOut" }, beat(3.25));
   tl.fromTo(el.querySelector(".toast"), { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: BEAT / 2, ease: "power2.out" }, beat(2.25));
   return el;
@@ -681,9 +684,10 @@ export function buildShots(stage: HTMLElement, format: FormatId, tl: Timeline): 
   for (const id of TOUR) {
     world.body.append(panels[id]);
     const { start, end } = shot(id);
-    const from = id === "clean" ? start : start - LEAD - FLY;
+    const from = id === "clean" ? start : start - LEAD;
     const to = id === "export" ? end : end + LEAD + BEAT / 4;
     showBetween(tl, panels[id], [[from, to]]);
+    if (id !== "clean") tl.fromTo(panels[id], { opacity: 0 }, { opacity: 1, duration: FLY / 2, ease: "none" }, from);
   }
   tour(tl, world.cam, format);
   const end = buildEnd(format, tl);
